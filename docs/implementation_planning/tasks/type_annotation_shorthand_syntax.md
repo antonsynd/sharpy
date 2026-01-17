@@ -1,8 +1,8 @@
 # Task List: Type Annotation Shorthand Syntax
 
-**Feature:** Alternative type annotation syntax (syntactic sugar) for built-in collection types  
-**Status:** Proposed  
-**Created:** 2025-01-17  
+**Feature:** Alternative type annotation syntax (syntactic sugar) for built-in collection types
+**Status:** Proposed
+**Created:** 2025-01-17
 **Related Specs:** `grammar.ebnf.txt`, `type_annotations.md`, `collection_types.md`
 
 ---
@@ -86,7 +86,7 @@ AMBIGUITY: Tuple Shorthand vs Function Type
   (int) -> str -> function type (arrow follows)
 Resolution: Look ahead for '->' to distinguish
 
-AMBIGUITY: Set Shorthand vs Dict Shorthand  
+AMBIGUITY: Set Shorthand vs Dict Shorthand
   {int}        -> set[int]
   {str: int}   -> dict[str, int]
 Resolution: Presence of ':' determines dict vs set (same as literals)
@@ -99,7 +99,6 @@ Resolution: Only valid in type annotation context
 ```
 
 **Acceptance Criteria:**
-- [ ] Grammar compiles (no ambiguities in EBNF)
 - [ ] All shorthand forms documented with examples
 - [ ] Disambiguation rules clearly specified
 - [ ] Trailing comma rules documented for tuples
@@ -120,7 +119,7 @@ Sharpy provides shorthand syntax for common collection type annotations...
 ## List Shorthand
 [T] is equivalent to list[T]
 
-## Set Shorthand  
+## Set Shorthand
 {T} is equivalent to set[T]
 
 ## Dict Shorthand
@@ -135,10 +134,10 @@ Sharpy provides shorthand syntax for common collection type annotations...
 T[] is equivalent to System.Array of T
 
 ## Nullability
-All shorthand forms support the ? suffix...
+All shorthand forms support the ? suffix.
 
 ## Nesting
-Shorthand forms can be nested...
+Shorthand forms can be nested.
 
 ## Formatting Conventions
 - Single-element tuples: canonical form is (T,) with trailing comma
@@ -188,35 +187,35 @@ private TypeAnnotation ParseTypeAnnotation()
 {
     var startLine = Current.Line;
     var startColumn = Current.Column;
-    
+
     // Check for shorthand forms first
     if (Check(TokenType.LeftBracket))
     {
         // [T] list shorthand
         return ParseListTypeShorthand(startLine, startColumn);
     }
-    
+
     if (Check(TokenType.LeftBrace))
     {
         // {T} set or {K: V} dict shorthand
         return ParseSetOrDictTypeShorthand(startLine, startColumn);
     }
-    
+
     if (Check(TokenType.LeftParen))
     {
         // () empty tuple, (T) single tuple, (T, U) tuple, or (T) -> U function
         return ParseTupleOrFunctionTypeShorthand(startLine, startColumn);
     }
-    
+
     // Existing logic for identifier-based types...
     var name = ParseQualifiedName();
-    
+
     // Check for array shorthand: T[]
     if (Check(TokenType.LeftBracket) && CheckNext(TokenType.RightBracket))
     {
         return ParseArrayTypeShorthand(name, startLine, startColumn);
     }
-    
+
     // ... rest of existing logic
 }
 ```
@@ -234,17 +233,17 @@ All shorthand forms must produce the **same AST** as their canonical equivalents
 
 ```csharp
 // [int] produces same AST as list[int]:
-new TypeAnnotation 
-{ 
-    Name = "list", 
+new TypeAnnotation
+{
+    Name = "list",
     TypeArguments = new List<TypeAnnotation> { new TypeAnnotation { Name = "int" } }
 }
 
 // (int, str) produces same AST as tuple[int, str]:
 new TupleType
 {
-    ElementTypes = new List<TypeAnnotation> 
-    { 
+    ElementTypes = new List<TypeAnnotation>
+    {
         new TypeAnnotation { Name = "int" },
         new TypeAnnotation { Name = "str" }
     }
@@ -322,7 +321,7 @@ namespace Sharpy.Compiler.Tests.Parser;
 public class TypeAnnotationShorthandTests : ParserTestBase
 {
     #region List Shorthand [T]
-    
+
     [Fact]
     public void ParseListShorthand_SimpleType()
     {
@@ -332,7 +331,7 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         annotation.TypeArguments.Should().HaveCount(1);
         annotation.TypeArguments[0].Name.Should().Be("int");
     }
-    
+
     [Fact]
     public void ParseListShorthand_Nested()
     {
@@ -342,7 +341,7 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         annotation.TypeArguments[0].Name.Should().Be("list");
         annotation.TypeArguments[0].TypeArguments[0].Name.Should().Be("str");
     }
-    
+
     [Fact]
     public void ParseListShorthand_Nullable()
     {
@@ -351,11 +350,11 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         annotation.Name.Should().Be("list");
         annotation.IsNullable.Should().BeTrue();
     }
-    
+
     #endregion
-    
+
     #region Set Shorthand {T}
-    
+
     [Fact]
     public void ParseSetShorthand_SimpleType()
     {
@@ -364,11 +363,11 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         annotation.Name.Should().Be("set");
         annotation.TypeArguments.Should().HaveCount(1);
     }
-    
+
     #endregion
-    
+
     #region Dict Shorthand {K: V}
-    
+
     [Fact]
     public void ParseDictShorthand_SimpleTypes()
     {
@@ -379,11 +378,11 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         annotation.TypeArguments[0].Name.Should().Be("str");
         annotation.TypeArguments[1].Name.Should().Be("int");
     }
-    
+
     #endregion
-    
+
     #region Tuple Shorthand (T, U)
-    
+
     [Fact]
     public void ParseTupleShorthand_Empty()
     {
@@ -391,7 +390,7 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         var tuple = ParseTupleType("()");
         tuple.ElementTypes.Should().BeEmpty();
     }
-    
+
     [Fact]
     public void ParseTupleShorthand_SingleElement_NoComma()
     {
@@ -400,7 +399,7 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         tuple.ElementTypes.Should().HaveCount(1);
         tuple.ElementTypes[0].Name.Should().Be("int");
     }
-    
+
     [Fact]
     public void ParseTupleShorthand_SingleElement_WithComma()
     {
@@ -408,7 +407,7 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         var tuple = ParseTupleType("(int,)");
         tuple.ElementTypes.Should().HaveCount(1);
     }
-    
+
     [Fact]
     public void ParseTupleShorthand_MultiElement()
     {
@@ -416,7 +415,7 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         var tuple = ParseTupleType("(int, str, bool)");
         tuple.ElementTypes.Should().HaveCount(3);
     }
-    
+
     [Fact]
     public void ParseTupleShorthand_TrailingComma()
     {
@@ -424,11 +423,11 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         var tuple = ParseTupleType("(int, str,)");
         tuple.ElementTypes.Should().HaveCount(2);
     }
-    
+
     #endregion
-    
+
     #region Array Shorthand T[]
-    
+
     [Fact]
     public void ParseArrayShorthand_SimpleType()
     {
@@ -436,7 +435,7 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         var annotation = ParseTypeAnnotation("int[]");
         // Verify it's an array type (implementation detail TBD)
     }
-    
+
     [Fact]
     public void ParseArrayShorthand_OfList()
     {
@@ -444,11 +443,11 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         var annotation = ParseTypeAnnotation("[int][]");
         // Array of list[int]
     }
-    
+
     #endregion
-    
+
     #region Function Types (ensure no regression)
-    
+
     [Fact]
     public void ParseFunctionType_SingleParam()
     {
@@ -457,7 +456,7 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         funcType.ParameterTypes.Should().HaveCount(1);
         funcType.ReturnType.Name.Should().Be("str");
     }
-    
+
     [Fact]
     public void ParseFunctionType_WithShorthandTypes()
     {
@@ -466,37 +465,37 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         funcType.ParameterTypes[0].Name.Should().Be("list");
         funcType.ReturnType.Name.Should().Be("dict");
     }
-    
+
     #endregion
-    
+
     #region AST Equivalence
-    
+
     [Fact]
     public void ShorthandProducesSameAST_List()
     {
         var shorthand = ParseTypeAnnotation("[int]");
         var canonical = ParseTypeAnnotation("list[int]");
-        
+
         shorthand.Name.Should().Be(canonical.Name);
         shorthand.TypeArguments.Should().BeEquivalentTo(canonical.TypeArguments);
     }
-    
+
     [Fact]
     public void ShorthandProducesSameAST_Dict()
     {
         var shorthand = ParseTypeAnnotation("{str: int}");
         var canonical = ParseTypeAnnotation("dict[str, int]");
-        
+
         shorthand.Name.Should().Be(canonical.Name);
         shorthand.TypeArguments.Should().BeEquivalentTo(canonical.TypeArguments);
     }
-    
+
     // ... more equivalence tests
-    
+
     #endregion
-    
+
     #region Error Cases
-    
+
     [Fact]
     public void ParseError_EmptyListShorthand()
     {
@@ -504,7 +503,7 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         var ex = Assert.Throws<ParseException>(() => ParseTypeAnnotation("[]"));
         ex.Message.Should().Contain("element type");
     }
-    
+
     [Fact]
     public void ParseError_EmptySetOrDict()
     {
@@ -512,7 +511,7 @@ public class TypeAnnotationShorthandTests : ParserTestBase
         var ex = Assert.Throws<ParseException>(() => ParseTypeAnnotation("{}"));
         ex.Message.Should().Contain("type");
     }
-    
+
     #endregion
 }
 ```
@@ -545,7 +544,7 @@ def process(items: [int], mapping: {str: int}) -> (bool, str):
 ";
     var module = Parse(source);
     var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
-    
+
     func.Parameters[0].TypeAnnotation.Name.Should().Be("list");
     func.Parameters[1].TypeAnnotation.Name.Should().Be("dict");
     func.ReturnType.Should().BeOfType<TupleType>();
@@ -713,7 +712,7 @@ element type required
 
 **Acceptance Criteria:**
 - [ ] Empty `[]` error tested
-- [ ] Empty `{}` error tested  
+- [ ] Empty `{}` error tested
 - [ ] Clear, helpful error messages verified
 
 ---
@@ -749,7 +748,7 @@ Document the canonical forms and formatter behavior:
 
 ### Single-Element Tuples
 Canonical form uses trailing comma:
-- Input: `(int)` 
+- Input: `(int)`
 - Formatted: `(int,)`
 
 ### Shorthand vs Canonical
