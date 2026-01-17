@@ -127,7 +127,11 @@ calc.compute(4)                      # Returns 16 (overridden method)
 
 **Abstract Classes:**
 
-Classes can be marked `@abstract` to indicate they cannot be instantiated directly and may contain abstract members. A class with any abstract members must be marked `@abstract`:
+Classes can be marked `@abstract` to indicate they cannot be instantiated directly and may contain abstract members. A class with any abstract members must be marked `@abstract`.
+
+**Streamlined Abstract Method Syntax:**
+
+Methods in an `@abstract` class with an ellipsis (`...`) body are automatically treated as abstract - no explicit `@abstract` decorator is needed on the method. You can also use the inline ellipsis syntax for maximum brevity:
 
 ```python
 @abstract
@@ -137,15 +141,11 @@ class Shape:
     def __init__(self, name: str):
         self.name = name
 
-    @abstract
-    def area(self) -> float:
-        ...  # Must be implemented by subclasses
+    # Implicit abstract - ellipsis body in @abstract class
+    def area(self) -> float: ...
+    def perimeter(self) -> float: ...
 
-    @abstract
-    def perimeter(self) -> float:
-        ...  # Must be implemented by subclasses
-
-    # Non-abstract methods are allowed
+    # Non-abstract methods have real implementations
     def describe(self) -> str:
         return f"{self.name} with area {self.area()}"
 
@@ -168,6 +168,25 @@ class Circle(Shape):
 # shape = Shape("test")    # ERROR: Cannot instantiate abstract class
 circle = Circle(5.0)       # OK
 print(circle.describe())   # "Circle with area 78.53975"
+```
+
+The explicit `@abstract` decorator on methods is still supported but optional when using ellipsis body in an `@abstract` class:
+
+```python
+@abstract
+class Shape:
+    # Both forms are equivalent in @abstract classes:
+    def area(self) -> float: ...           # Implicit abstract (preferred)
+
+    @abstract
+    def perimeter(self) -> float: ...      # Explicit abstract (still valid)
+```
+
+**Note:** Ellipsis body in a *non-abstract* class generates a `NotImplementedException` stub instead of an abstract method:
+
+```python
+class TodoService:
+    def not_done_yet(self) -> int: ...     # Generates: throw new NotImplementedException()
 ```
 
 *Implementation: ✅ Native - Direct mapping to C# keywords.*

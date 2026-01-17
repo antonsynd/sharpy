@@ -329,7 +329,7 @@ class Shape:
     def __init__(self, name: str):
         self.name = name
 
-    @abstractmethod
+    @abstract
     def area(self) -> int:
         ...
 
@@ -364,7 +364,7 @@ print(rect.area())
         var source = @"
 @abstract
 class Animal:
-    @abstractmethod
+    @abstract
     def make_sound(self) -> str:
         ...
 
@@ -390,11 +390,11 @@ print(cat.make_sound())
         var source = @"
 @abstract
 class Vehicle:
-    @abstractmethod
+    @abstract
     def start(self) -> str:
         ...
 
-    @abstractmethod
+    @abstract
     def stop(self) -> str:
         ...
 
@@ -425,7 +425,7 @@ print(car.stop())
         var source = @"
 @abstract
 class Base:
-    @abstractmethod
+    @abstract
     def abstract_method(self) -> int:
         ...
 
@@ -809,7 +809,7 @@ class Animal:
     def __init__(self, name: str):
         self.name = name
 
-    @abstractmethod
+    @abstract
     def make_sound(self) -> str:
         ...
 
@@ -877,7 +877,7 @@ class Shape(IDrawable):
     def __init__(self, name: str):
         self.name = name
 
-    @abstractmethod
+    @abstract
     def area(self) -> int:
         ...
 
@@ -997,7 +997,7 @@ print(sq.area())
         var source = @"
 @abstract
 class Shape:
-    @abstractmethod
+    @abstract
     def area(self) -> int:
         ...
 
@@ -1016,7 +1016,7 @@ s = Shape()
         var source = @"
 @abstract
 class Shape:
-    @abstractmethod
+    @abstract
     def area(self) -> int:
         ...
 

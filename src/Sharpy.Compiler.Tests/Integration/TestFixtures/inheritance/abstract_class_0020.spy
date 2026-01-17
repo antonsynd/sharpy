@@ -1,0 +1,59 @@
+# Streamlined abstract methods - implicit abstract via ellipsis in @abstract class
+# No @abstract decorator needed on methods when using ellipsis body
+
+@abstract
+class Shape:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    # Implicit abstract - ellipsis body in abstract class
+    def area(self) -> float: ...
+    def perimeter(self) -> float: ...
+
+    # Concrete method with real implementation
+    def describe(self) -> str:
+        return self.name
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, w: float, h: float):
+        super().__init__("Rectangle")
+        self.width = w
+        self.height = h
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+class Square(Shape):
+    side: float
+
+    def __init__(self, s: float):
+        super().__init__("Square")
+        self.side = s
+
+    @override
+    def area(self) -> float:
+        return self.side * self.side
+
+    @override
+    def perimeter(self) -> float:
+        return 4.0 * self.side
+
+rect = Rectangle(4.0, 5.0)
+sq = Square(3.0)
+
+print(rect.describe())
+print(rect.area())
+print(rect.perimeter())
+print(sq.describe())
+print(sq.area())
+print(sq.perimeter())

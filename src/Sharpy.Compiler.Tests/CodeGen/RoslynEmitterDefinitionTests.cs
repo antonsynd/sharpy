@@ -1903,7 +1903,7 @@ public class RoslynEmitterDefinitionTests
                     Name = "area",
                     Decorators = new List<Decorator>
                     {
-                        new Decorator { Name = "abstractmethod" }
+                        new Decorator { Name = "abstract" }
                     },
                     Parameters = new List<Parameter>
                     {

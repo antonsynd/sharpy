@@ -1,43 +1,45 @@
-# Test abstract methods with ellipsis and pass
+# Test abstract methods with streamlined ellipsis syntax
 
 @abstract
 class Shape:
     """Base shape class with abstract methods"""
-    
-    @abstractmethod
-    def area(self) -> float:
-        ...  # Abstract method - should generate no body in C#
-    
-    @abstractmethod
-    def perimeter(self) -> float:
-        ...  # Another abstract method
-    
+
+    # Implicit abstract - ellipsis body in @abstract class (preferred)
+    def area(self) -> float: ...
+    def perimeter(self) -> float: ...
+
     def describe(self) -> str:
         return "I am a shape"
 
 class Circle(Shape):
+    radius: float
+
     def __init__(self, radius: float):
         self.radius = radius
-    
+
+    @override
     def area(self) -> float:
         return 3.14159 * self.radius * self.radius
-    
+
+    @override
     def perimeter(self) -> float:
         return 2.0 * 3.14159 * self.radius
 
 class TodoClass:
     """A class with unimplemented methods"""
-    
-    def not_done_yet(self) -> int:
-        ...  # Concrete method with ellipsis - should throw NotImplementedException
-    
+
+    def not_done_yet(self) -> int: ...  # In concrete class - throws NotImplementedException
+
     def empty_method(self) -> None:
         pass  # Empty method with pass - generates empty statement
 
-# Interface with ellipsis
+# Interface with inline ellipsis syntax
 interface IDrawable:
-    def draw(self) -> None:
-        ...  # Interface method - should generate no body
-    
-    def get_bounds(self) -> tuple[float, float, float, float]:
-        ...
+    def draw(self) -> None: ...
+    def get_bounds(self) -> tuple[float, float, float, float]: ...
+
+# Test the classes
+c = Circle(5.0)
+print(c.area())
+print(c.perimeter())
+print(c.describe())

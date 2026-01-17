@@ -574,14 +574,15 @@ class Math:
     public void TestAbstractMethodDecorator()
     {
         var source = @"
+@abstract
 class Animal:
     @abstract
     def make_sound(self) -> str:
-        pass
+        ...
 
-    @abstractmethod
+    @abstract
     def move(self):
-        pass
+        ...
 ";
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);

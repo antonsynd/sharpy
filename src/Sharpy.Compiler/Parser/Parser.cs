@@ -337,6 +337,46 @@ public class Parser
         }
 
         Expect(TokenType.Colon);
+
+        // Support inline ellipsis syntax: def foo(): ...
+        if (Current.Type == TokenType.Ellipsis)
+        {
+            var ellipsisLine = Current.Line;
+            var ellipsisColumn = Current.Column;
+            Advance(); // consume '...'
+            ExpectNewline();
+
+            return new FunctionDef
+            {
+                Name = name,
+                TypeParameters = typeParams,
+                Parameters = parameters,
+                ReturnType = returnType,
+                Body = new List<Statement>
+                {
+                    new ExpressionStatement
+                    {
+                        Expression = new EllipsisLiteral
+                        {
+                            LineStart = ellipsisLine,
+                            ColumnStart = ellipsisColumn,
+                            LineEnd = ellipsisLine,
+                            ColumnEnd = ellipsisColumn + 3
+                        },
+                        LineStart = ellipsisLine,
+                        ColumnStart = ellipsisColumn,
+                        LineEnd = ellipsisLine,
+                        ColumnEnd = ellipsisColumn + 3
+                    }
+                },
+                DocString = null,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = Current.Line,
+                ColumnEnd = Current.Column
+            };
+        }
+
         ExpectNewline();
 
         string? docString = null;

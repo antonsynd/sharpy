@@ -270,27 +270,32 @@ public class TypeChecker
             }
         }
 
-        // Check for @abstract decorator
-        bool isAbstract = functionDef.Decorators.Any(d => d.Name == "abstract" || d.Name == "abstractmethod");
+        // Determine if method is abstract:
+        // 1. Has @abstract decorator explicitly, OR
+        // 2. Is in an @abstract class AND has ellipsis body (implicit abstract)
+        bool hasAbstractDecorator = functionDef.Decorators.Any(d => d.Name == "abstract");
+        bool isInAbstractClass = _currentClass?.IsAbstract == true;
+        bool hasEllipsisBody = functionDef.Body.Count == 1
+            && functionDef.Body[0] is ExpressionStatement exprStmt
+            && exprStmt.Expression is EllipsisLiteral;
 
-        // Validate abstract methods
-        if (isAbstract)
+        bool isAbstractMethod = hasAbstractDecorator || (isInAbstractClass && hasEllipsisBody);
+
+        // Validation
+        if (hasAbstractDecorator && !hasEllipsisBody)
         {
-            // Abstract methods must have ... body (Ellipsis expression)
-            if (functionDef.Body.Count != 1 || functionDef.Body[0] is not ExpressionStatement exprStmt ||
-                exprStmt.Expression is not EllipsisLiteral)
-            {
-                AddError($"Abstract method '{functionDef.Name}' must have '...' as its body",
-                    functionDef.LineStart, functionDef.ColumnStart);
-            }
-
-            // Abstract methods must be in an abstract class
-            if (_currentClass != null && !_currentClass.IsAbstract)
-            {
-                AddError($"Abstract method '{functionDef.Name}' can only be declared in an abstract class. Add @abstract decorator to class '{_currentClass.Name}'",
-                    functionDef.LineStart, functionDef.ColumnStart);
-            }
+            AddError($"Abstract method '{functionDef.Name}' must have '...' as its body",
+                functionDef.LineStart, functionDef.ColumnStart);
         }
+
+        if (hasAbstractDecorator && !isInAbstractClass && _currentClass != null)
+        {
+            AddError($"Abstract method '{functionDef.Name}' can only be declared in an abstract class. Add @abstract decorator to class '{_currentClass.Name}'",
+                functionDef.LineStart, functionDef.ColumnStart);
+        }
+
+        // Note: Ellipsis body in concrete class is valid (generates NotImplementedException)
+        // So we don't error on that case - it's a TODO stub
 
         // Validate self parameter for instance methods
         // In Sharpy, methods without 'self' as the first parameter are treated as static methods

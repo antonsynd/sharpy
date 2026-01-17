@@ -1,0 +1,30 @@
+# Interface methods with inline ellipsis syntax
+
+interface IDrawable:
+    def draw(self) -> str: ...
+    def get_name(self) -> str: ...
+
+interface ISizable:
+    def get_size(self) -> int: ...
+
+class Widget(IDrawable, ISizable):
+    name: str
+    size: int
+
+    def __init__(self, name: str, size: int):
+        self.name = name
+        self.size = size
+
+    def draw(self) -> str:
+        return "Drawing " + self.name
+
+    def get_name(self) -> str:
+        return self.name
+
+    def get_size(self) -> int:
+        return self.size
+
+w = Widget("Button", 42)
+print(w.draw())
+print(w.get_name())
+print(w.get_size())

@@ -32,8 +32,15 @@ public class ControlFlowValidator
         _logger.LogDebug($"Validating control flow for function: {functionDef.Name}");
 
         // Skip control flow validation for abstract methods - they're just declarations
-        bool isAbstract = functionDef.Decorators.Any(d => d.Name == "abstract" || d.Name == "abstractmethod");
-        if (isAbstract)
+        // Note: Implicit abstract methods (ellipsis body in @abstract class) are also skipped
+        // because we check for ellipsis body below
+        bool hasAbstractDecorator = functionDef.Decorators.Any(d => d.Name == "abstract");
+        bool hasEllipsisBody = functionDef.Body.Count == 1
+            && functionDef.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+
+        // Skip for explicit @abstract decorator or for ellipsis-only bodies
+        // (ellipsis body in concrete class generates NotImplementedException, also doesn't need return validation)
+        if (hasAbstractDecorator || hasEllipsisBody)
         {
             return;
         }

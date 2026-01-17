@@ -33,6 +33,10 @@ public class RoslynEmitter
     // Set before generating expressions that need target type information
     private TypeAnnotation? _targetTypeContext;
 
+    // Track if we're currently generating methods for an abstract class
+    // Used for implicit abstract method detection (ellipsis body in abstract class = abstract method)
+    private bool _isInAbstractClass;
+
     // Common .NET namespace acronyms that should be all uppercase
     private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -1224,7 +1228,6 @@ public class RoslynEmitter
                 case "static":
                     tokens.Add(Token(SyntaxKind.StaticKeyword));
                     break;
-                case "abstractmethod":
                 case "abstract":
                     tokens.Add(Token(SyntaxKind.AbstractKeyword));
                     break;
@@ -1283,6 +1286,10 @@ public class RoslynEmitter
         // Track this class name for instantiation detection
         _classNames.Add(classDef.Name);
 
+        // Check if this is an abstract class (for implicit abstract method detection)
+        var wasInAbstractClass = _isInAbstractClass;
+        _isInAbstractClass = classDef.Decorators.Any(d => d.Name == "abstract");
+
         // Transform class name
         var className = NameMangler.Transform(classDef.Name, NameContext.Type);
 
@@ -1322,6 +1329,9 @@ public class RoslynEmitter
         {
             classDecl = classDecl.WithLeadingTrivia(GenerateXmlDocComment(classDef.DocString));
         }
+
+        // Restore previous abstract class context
+        _isInAbstractClass = wasInAbstractClass;
 
         return classDecl;
     }
@@ -1995,9 +2005,20 @@ public class RoslynEmitter
             parameters = new[] { objParam };
         }
 
-        // Check if this is an abstract method
-        bool isAbstract = func.Decorators.Any(d =>
-            d.Name == "abstractmethod" || d.Name == "abstract");
+        // Check if this is an abstract method:
+        // 1. Has @abstract decorator explicitly, OR
+        // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
+        bool hasAbstractDecorator = func.Decorators.Any(d => d.Name == "abstract");
+        bool hasEllipsisBody = func.Body.Count == 1
+            && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+
+        bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
+
+        // If method is abstract, ensure it has the abstract modifier in the token list
+        if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.AbstractKeyword));
+        }
 
         // Generate method declaration
         var method = MethodDeclaration(returnType, mangledName)
@@ -2069,7 +2090,6 @@ public class RoslynEmitter
                 case "static":
                     tokens.Add(Token(SyntaxKind.StaticKeyword));
                     break;
-                case "abstractmethod":
                 case "abstract":
                     tokens.Add(Token(SyntaxKind.AbstractKeyword));
                     break;
@@ -2262,6 +2282,15 @@ public class RoslynEmitter
         if (expr is NoneLiteral)
         {
             return EmptyStatement();
+        }
+
+        // Ellipsis as a statement in a concrete method body generates a throw statement
+        // Note: For abstract methods/interface methods, ellipsis is handled at the method level
+        if (expr is EllipsisLiteral)
+        {
+            return ThrowStatement(
+                ObjectCreationExpression(ParseTypeName("System.NotImplementedException"))
+                    .WithArgumentList(ArgumentList()));
         }
 
         var generated = GenerateExpression(expr);

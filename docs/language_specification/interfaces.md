@@ -6,11 +6,9 @@ Interfaces define contracts that types must satisfy.
 interface IDrawable:
     """Interface for drawable objects."""
 
-    def draw(self):
-        ...
-
-    def get_bounds(self) -> tuple[float, float, float, float]:
-        ...
+    # Inline ellipsis syntax (preferred for brevity)
+    def draw(self): ...
+    def get_bounds(self) -> tuple[float, float, float, float]: ...
 
 # Implementation
 class Circle(IDrawable):

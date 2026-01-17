@@ -1,15 +1,16 @@
+# Test streamlined abstract method syntax
+
 @abstract
 class Base:
-    @abstractmethod
-    def abstract_method(self: Base) -> int:
-        ...
+    # Implicit abstract - inline ellipsis in @abstract class
+    def abstract_method(self) -> int: ...
 
-    def concrete_method(self: Base) -> int:
+    def concrete_method(self) -> int:
         return 100
 
 class Derived(Base):
     @override
-    def abstract_method(self: Derived) -> int:
+    def abstract_method(self) -> int:
         return 42
 
 d = Derived()

@@ -366,7 +366,14 @@ public class NameResolver
 
         bool isStatic = hasStaticDecorator || !hasSelfParameter;
 
-        bool isAbstract = method.Decorators.Any(d => d.Name == "abstract" || d.Name == "abstractmethod");
+        // Determine if method is abstract:
+        // 1. Has @abstract decorator explicitly, OR
+        // 2. Is in an @abstract class AND has ellipsis body (implicit abstract)
+        bool hasAbstractDecorator = method.Decorators.Any(d => d.Name == "abstract");
+        bool hasEllipsisBody = method.Body.Count == 1
+            && method.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+
+        bool isAbstract = hasAbstractDecorator || (owningType.IsAbstract && hasEllipsisBody);
         bool isVirtual = method.Decorators.Any(d => d.Name == "virtual");
         bool isOverride = method.Decorators.Any(d => d.Name == "override");
 
