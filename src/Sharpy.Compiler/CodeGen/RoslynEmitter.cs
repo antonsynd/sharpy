@@ -3942,10 +3942,9 @@ public class RoslynEmitter
                         SyntaxKind.SimpleMemberAccessExpression,
                         qualifiedEnumType,
                         IdentifierName(enumMemberName));
-                    // Integer enums: cast to int to get the underlying value
-                    return CastExpression(
-                        PredefinedType(Token(SyntaxKind.IntKeyword)),
-                        enumMemberAccess);
+                    // Return the enum member directly (not cast to int)
+                    // The .value property is used to get the underlying int value
+                    return enumMemberAccess;
                 }
             }
         }

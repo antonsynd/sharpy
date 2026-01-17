@@ -542,6 +542,7 @@ print(r.perimeter())
     [Fact]
     public void BasicIntEnum_CompilesAndRuns()
     {
+        // Integer enums print their name when printed directly (C# enum behavior)
         var source = @"
 enum Status:
     PENDING = 0
@@ -554,7 +555,7 @@ print(s)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("1\n", result.StandardOutput);
+        Assert.Equal("Active\n", result.StandardOutput);
     }
 
     [Fact]
@@ -578,6 +579,8 @@ print(c)
     [Fact]
     public void EnumUsage_MultipleMembers()
     {
+        // Integer enums print their name when printed directly (C# enum behavior)
+        // Use .value to get the underlying integer
         var source = @"
 enum Status:
     PENDING = 0
@@ -591,12 +594,14 @@ print(Status.INACTIVE)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("0\n1\n2\n", result.StandardOutput);
+        Assert.Equal("Pending\nActive\nInactive\n", result.StandardOutput);
     }
 
     [Fact]
     public void EnumAssignment_WorksCorrectly()
     {
+        // Integer enums print their name when printed directly (C# enum behavior)
+        // Use .value to get the underlying integer
         var source = @"
 enum Status:
     PENDING = 0
@@ -613,7 +618,7 @@ print(s1)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("0\n1\n2\n", result.StandardOutput);
+        Assert.Equal("Pending\nActive\nInactive\n", result.StandardOutput);
     }
 
     [Fact]
@@ -640,6 +645,7 @@ print(LogLevel.ERROR)
     [Fact]
     public void EnumWithNegativeValues_Works()
     {
+        // Integer enums print their name when printed directly (C# enum behavior)
         var source = @"
 enum Direction:
     UP = -1
@@ -653,12 +659,13 @@ print(Direction.DOWN)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("-1\n0\n1\n", result.StandardOutput);
+        Assert.Equal("Up\nNeutral\nDown\n", result.StandardOutput);
     }
 
     [Fact]
     public void EnumWithLargeValues_Works()
     {
+        // Integer enums print their PascalCase name when printed directly (C# enum behavior)
         var source = @"
 enum Flags:
     FLAG_A = 1000000
@@ -672,7 +679,7 @@ print(Flags.FLAG_C)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("1000000\n2000000\n3000000\n", result.StandardOutput);
+        Assert.Equal("FlagA\nFlagB\nFlagC\n", result.StandardOutput);
     }
 
     #endregion
@@ -730,6 +737,8 @@ else:
     [Fact]
     public void StructWithEnumField_CompilesAndRuns()
     {
+        // Struct fields should use the enum type, not int
+        // Integer enums print their name when printed directly (C# enum behavior)
         var source = @"
 enum Status:
     PENDING = 0
@@ -738,9 +747,9 @@ enum Status:
 
 struct Task:
     name: str
-    status: int
+    status: Status
 
-    def __init__(self, name: str, status: int):
+    def __init__(self, name: str, status: Status):
         self.name = name
         self.status = status
 
@@ -751,12 +760,14 @@ print(t.status)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("My Task\n1\n", result.StandardOutput);
+        Assert.Equal("My Task\nActive\n", result.StandardOutput);
     }
 
     [Fact]
     public void StructMethod_UsingEnum()
     {
+        // Struct fields should use the enum type, not int
+        // Integer enums print their name when printed directly (C# enum behavior)
         var source = @"
 enum Status:
     PENDING = 0
@@ -764,7 +775,7 @@ enum Status:
     COMPLETE = 2
 
 struct Task:
-    status: int
+    status: Status
 
     def __init__(self):
         self.status = Status.PENDING
@@ -785,12 +796,14 @@ print(t.status)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("0\n1\n2\n", result.StandardOutput);
+        Assert.Equal("Pending\nActive\nComplete\n", result.StandardOutput);
     }
 
     [Fact]
     public void MultipleStructs_WithEnum()
     {
+        // Struct fields should use the enum type, not int
+        // Integer enums print their name when printed directly (C# enum behavior)
         var source = @"
 enum Priority:
     LOW = 1
@@ -799,15 +812,15 @@ enum Priority:
 
 struct Task:
     name: str
-    priority: int
+    priority: Priority
 
-    def __init__(self, name: str, priority: int):
+    def __init__(self, name: str, priority: Priority):
         self.name = name
         self.priority = priority
 
 struct Project:
     title: str
-    default_priority: int
+    default_priority: Priority
 
     def __init__(self, title: str):
         self.title = title
@@ -823,7 +836,7 @@ print(t.priority)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("My Project\n2\nImportant Task\n3\n", result.StandardOutput);
+        Assert.Equal("My Project\nMedium\nImportant Task\nHigh\n", result.StandardOutput);
     }
 
     #endregion
@@ -915,6 +928,7 @@ print(r.perimeter())
     [Fact]
     public void MultipleEnums_IndependentUsage()
     {
+        // Integer enums print their name when printed directly (C# enum behavior)
         var source = @"
 enum Status:
     PENDING = 0
@@ -932,12 +946,13 @@ print(p)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("1\n20\n", result.StandardOutput);
+        Assert.Equal("Active\nHigh\n", result.StandardOutput);
     }
 
     [Fact]
     public void MixedEnumTypes_IntAndString()
     {
+        // Integer enums print their name, string enums print their value
         var source = @"
 enum IntEnum:
     A = 1
@@ -955,7 +970,7 @@ print(s)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("1\nx\n", result.StandardOutput);
+        Assert.Equal("A\nx\n", result.StandardOutput);
     }
 
     #endregion
@@ -1054,6 +1069,7 @@ print(""Created"")
     [Fact]
     public void EdgeCase_SingleMemberEnum()
     {
+        // Integer enums print their name when printed directly (C# enum behavior)
         var source = @"
 enum Single:
     ONLY = 42
@@ -1064,7 +1080,7 @@ print(s)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("42\n", result.StandardOutput);
+        Assert.Equal("Only\n", result.StandardOutput);
     }
 
     [Fact]
@@ -1099,6 +1115,8 @@ print(p.z)
     [Fact]
     public void ComprehensiveTest_StructsAndEnums_Together()
     {
+        // Struct fields should use the enum type, not int
+        // Integer enums print their name when printed directly (C# enum behavior)
         var source = @"
 enum Priority:
     LOW = 1
@@ -1112,8 +1130,8 @@ enum Status:
 
 struct Task:
     title: str
-    priority: int
-    status: int
+    priority: Priority
+    status: Status
     points: int
 
     def __init__(self, title: str):
@@ -1148,7 +1166,7 @@ print(t.points)
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Build feature\n2\n0\n1\n3\n2\n5\n", result.StandardOutput);
+        Assert.Equal("Build feature\nMedium\nTodo\nInProgress\nHigh\nDone\n5\n", result.StandardOutput);
     }
 
     [Fact]

@@ -26,7 +26,9 @@
       "Bash(do dotnet test --no-build)",
       "Bash(dotnet run:*)",
       "Bash(dotnet restore:*)",
-      "mcp__Desktop_Commander__create_directory"
+      "mcp__Desktop_Commander__create_directory",
+      "Bash(dotnet test_enum_output/test_enum.dll:*)",
+      "Bash(dotnet:*)"
     ]
   }
 }
