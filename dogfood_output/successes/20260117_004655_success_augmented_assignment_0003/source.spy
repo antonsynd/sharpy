@@ -1,0 +1,50 @@
+# Test augmented assignment operators with a simple accumulator class
+
+class Accumulator:
+    total: int
+    multiplier: float
+
+    def __init__(self, start: int):
+        self.total = start
+        self.multiplier = 1.0
+
+    def add(self, value: int) -> None:
+        self.total += value
+
+    def subtract(self, value: int) -> None:
+        self.total -= value
+
+    def scale(self, factor: float) -> None:
+        self.multiplier *= factor
+
+    def get_total(self) -> int:
+        return self.total
+
+    def get_multiplier(self) -> float:
+        return self.multiplier
+
+acc = Accumulator(100)
+print(acc.get_total())
+
+acc.add(25)
+print(acc.get_total())
+
+acc.subtract(10)
+print(acc.get_total())
+
+acc.scale(2.0)
+acc.scale(1.5)
+print(acc.get_multiplier())
+
+counter: int = 0
+for i in range(5):
+    counter += i * 2
+
+print(counter)
+
+# EXPECTED OUTPUT:
+# 100
+# 125
+# 115
+# 3
+# 20

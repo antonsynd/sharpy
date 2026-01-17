@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-01-17T00:47:02.360435",
+  "generated_code": "# Test: class_static_methods - simple static method calls\nclass MathHelper:\n    def add(a: int, b: int) -> int:\n        return a + b\n    \n    def square(x: int) -> int:\n        return x * x\n\nresult1 = MathHelper.add(3, 7)\nprint(result1)\n\nresult2 = MathHelper.square(5)\nprint(result2)\n\nresult3 = MathHelper.add(result2, 10)\nprint(result3)\n\n# EXPECTED OUTPUT:\n# 10\n# 25\n# 35",
+  "expected_output": "10\n25\n35",
+  "actual_output": "Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_bdebca2e74d749a0a2c9575d4a769bc4.exe\n\n=== Running Program ===\n\n10\n25\n35",
+  "feature_focus": "class_static_methods",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 5.003988027572632,
+  "execution_duration": 1.3333780765533447
+}

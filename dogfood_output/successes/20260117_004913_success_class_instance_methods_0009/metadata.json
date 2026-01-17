@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-01-17T00:48:57.481104",
+  "generated_code": "# Test class instance methods with simple arithmetic\nclass Calculator:\n    result: int\n\n    def __init__(self, initial: int):\n        self.result = initial\n\n    def add(self, x: int) -> int:\n        self.result += x\n        return self.result\n\n    def get_result(self) -> int:\n        return self.result\n\ncalc = Calculator(5)\nprint(calc.get_result())\nprint(calc.add(7))\nprint(calc.get_result())\n\n# EXPECTED OUTPUT:\n# 5\n# 12\n# 12",
+  "expected_output": "5\n12\n12",
+  "actual_output": "Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_99885b65a494488181ca979c0a93f89d.exe\n\n=== Running Program ===\n\n5\n12\n12",
+  "feature_focus": "class_instance_methods",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 4.42876124382019,
+  "execution_duration": 1.3509509563446045
+}

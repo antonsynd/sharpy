@@ -1,0 +1,16 @@
+Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_7be4f963d7e748c4bd3e82013334e61b.exe
+
+=== Running Program ===
+
+Testing inheritance
+Car description:
+Sedan
+4
+10
+Motorcycle description:
+Speedy
+20
+Motorcycle description:
+Cruiser
+10
+All tests complete

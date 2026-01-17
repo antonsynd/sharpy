@@ -1,0 +1,2 @@
+Assembly compilation failed:
+  dogfood_test.cs(47,41): error CS0103: The name 'calc' does not exist in the current context

@@ -1,0 +1,13 @@
+Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_01ae940c27a14371a4f8fdcbd5d8c00a.exe
+
+=== Running Program ===
+
+True
+False
+True
+True
+True
+False
+True
+True
+False

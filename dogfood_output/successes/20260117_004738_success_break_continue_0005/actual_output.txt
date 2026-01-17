@@ -1,0 +1,9 @@
+Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_a19abd505c2e4f2ebe3e2c1650b29a4f.exe
+
+=== Running Program ===
+
+1
+2
+4
+5
+100

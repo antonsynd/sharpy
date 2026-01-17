@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-01-17T00:49:13.307754",
+  "generated_code": "# Test static methods in a class (methods without self parameter)\nclass MathUtils:\n    # Static method - no self parameter\n    def square(n: int) -> int:\n        return n * n\n    \n    # Another static method\n    def add_ten(n: int) -> int:\n        return n + 10\n\n# Call static methods on the class\nresult1 = MathUtils.square(5)\nprint(result1)\n\nresult2 = MathUtils.add_ten(7)\nprint(result2)\n\nresult3 = MathUtils.square(3)\nprint(result3)\n\n# EXPECTED OUTPUT:\n# 25\n# 17\n# 9",
+  "expected_output": "25\n17\n9",
+  "actual_output": "Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_c48a4254e4ef4930b1ccb9d07c5bdd1c.exe\n\n=== Running Program ===\n\n25\n17\n9",
+  "feature_focus": "class_static_methods",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 5.158143997192383,
+  "execution_duration": 1.321230173110962
+}
