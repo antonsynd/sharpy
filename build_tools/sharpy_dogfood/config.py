@@ -64,6 +64,9 @@ class Config(BaseConfig):
     # Output configuration
     output_dir: Path = field(default_factory=lambda: Path("dogfood_output"))
     issues_dir: Path = field(default_factory=lambda: Path("dogfood_output/issues"))
+    successes_dir: Path = field(
+        default_factory=lambda: Path("dogfood_output/successes")
+    )
 
     # Execution limits
     max_iterations: int = 10
@@ -130,9 +133,11 @@ class Config(BaseConfig):
         # Make paths absolute relative to project root
         self.output_dir = self.project_root / self.output_dir
         self.issues_dir = self.project_root / self.issues_dir
+        self.successes_dir = self.project_root / self.successes_dir
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.issues_dir.mkdir(parents=True, exist_ok=True)
+        self.successes_dir.mkdir(parents=True, exist_ok=True)
 
     @classmethod
     def from_file(cls, path: Path) -> "Config":

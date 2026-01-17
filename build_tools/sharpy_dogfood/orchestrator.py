@@ -24,7 +24,14 @@ from .prompts import (
     extract_expected_output,
     extract_code_block,
 )
-from .reporting import Issue, IssueType, IssueReporter, SummaryReporter
+from .reporting import (
+    Issue,
+    IssueType,
+    IssueReporter,
+    SummaryReporter,
+    Success,
+    SuccessReporter,
+)
 
 
 class IterationStatus(Enum):
@@ -41,6 +48,7 @@ class IterationResult:
 
     status: IterationStatus
     issue_dir: Optional[Path] = None
+    success_dir: Optional[Path] = None
     skip_reason: Optional[str] = None
 
 
@@ -314,6 +322,7 @@ class DogfoodOrchestrator:
         self.backend_manager = BackendManager(config)
         self.compiler = SharpyCompiler(config.project_root, config.sharpy_cli_project)
         self.issue_reporter = IssueReporter(config.issues_dir)
+        self.success_reporter = SuccessReporter(config.successes_dir)
         self.summary_reporter = SummaryReporter(config.output_dir)
         self.spec_context: Optional[str] = None
         self.example_snippets: list[str] = []
@@ -565,6 +574,7 @@ class DogfoodOrchestrator:
                 return IterationResult(IterationStatus.FAILED, issue_dir)
 
         actual_output = run_result.output.strip()
+        execution_duration = run_result.duration_seconds
         print(
             f"  Execution successful, got {len(actual_output)} chars output",
             file=sys.stderr,
@@ -609,8 +619,25 @@ class DogfoodOrchestrator:
                 "  No expected output specified, skipping verification", file=sys.stderr
             )
 
+        # Report successful iteration
+        success_dir = None
+        if expected_output:
+            success = Success(
+                timestamp=timestamp,
+                generated_code=code,
+                expected_output=expected_output,
+                actual_output=actual_output,
+                feature_focus=feature_focus,
+                complexity=complexity,
+                backend_used=gen_result.backend,
+                generation_duration=gen_result.duration_seconds,
+                execution_duration=execution_duration,
+            )
+            success_dir = self.success_reporter.report(success)
+            print(f"  Success saved: {success_dir.name}", file=sys.stderr)
+
         print("\n✓ Iteration completed successfully!", file=sys.stderr)
-        return IterationResult(IterationStatus.SUCCESS)
+        return IterationResult(IterationStatus.SUCCESS, success_dir=success_dir)
 
     async def _generate_code(self, feature_focus: str, complexity: str) -> AIResult:
         """Generate Sharpy code using AI."""
@@ -743,6 +770,7 @@ class DogfoodOrchestrator:
                         feature_focus,
                         complexity,
                         success=True,
+                        success_dir=result.success_dir,
                         duration=duration,
                     )
                 elif result.status == IterationStatus.SKIPPED:

@@ -26,6 +26,25 @@ class IssueType(str, Enum):
 
 
 @dataclass
+class Success:
+    """Represents a successful dogfooding iteration."""
+
+    timestamp: str
+    generated_code: str
+    expected_output: str
+    actual_output: str
+    feature_focus: Optional[str] = None
+    complexity: Optional[str] = None
+    backend_used: Optional[str] = None
+    generation_duration: Optional[float] = None
+    execution_duration: Optional[float] = None
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
+        return asdict(self)
+
+
+@dataclass
 class Issue:
     """Represents a single issue found during dogfooding."""
 
@@ -228,6 +247,7 @@ class SummaryReporter:
         success: bool,
         issue_type: Optional[IssueType] = None,
         issue_dir: Optional[Path] = None,
+        success_dir: Optional[Path] = None,
         duration: float = 0.0,
         skip_reason: Optional[str] = None,
     ) -> None:
@@ -238,6 +258,7 @@ class SummaryReporter:
                 "feature_focus": feature_focus,
                 "complexity": complexity,
                 "success": success,
+                "success_dir": str(success_dir) if success_dir else None,
                 "issue_type": issue_type.value if issue_type else None,
                 "issue_dir": str(issue_dir) if issue_dir else None,
                 "duration": duration,
@@ -344,3 +365,113 @@ class SummaryReporter:
         # Save human-readable summary
         summary_file = self.output_dir / "SUMMARY.md"
         summary_file.write_text(self.generate_summary())
+
+
+class SuccessReporter:
+    """Creates and manages reports for successful dogfooding iterations."""
+
+    def __init__(self, successes_dir: Path):
+        self.successes_dir = successes_dir
+        self.successes_dir.mkdir(parents=True, exist_ok=True)
+        self._success_count = 0
+
+    def _get_success_dir(self, success: Success) -> Path:
+        """Create a unique directory for this successful run."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        feature = success.feature_focus or "unknown"
+        success_name = f"{timestamp}_success_{feature}_{self._success_count:04d}"
+        self._success_count += 1
+
+        success_dir = self.successes_dir / success_name
+        success_dir.mkdir(parents=True, exist_ok=True)
+        return success_dir
+
+    def report(self, success: Success) -> Path:
+        """Create a full report for a successful iteration."""
+        success_dir = self._get_success_dir(success)
+
+        # Write the generated Sharpy code
+        (success_dir / "source.spy").write_text(success.generated_code)
+
+        # Write the expected output (for integration tests)
+        (success_dir / "expected_output.txt").write_text(success.expected_output)
+
+        # Write the actual output (should match expected)
+        (success_dir / "actual_output.txt").write_text(success.actual_output)
+
+        # Write the success metadata
+        metadata = success.to_dict()
+        (success_dir / "metadata.json").write_text(
+            json.dumps(metadata, indent=2, default=str)
+        )
+
+        # Write a human-readable summary
+        summary = self._generate_summary(success)
+        (success_dir / "README.md").write_text(summary)
+
+        return success_dir
+
+    def _generate_summary(self, success: Success) -> str:
+        """Generate a human-readable summary of the successful run."""
+        lines = [
+            "# Successful Dogfood Run",
+            "",
+            f"**Timestamp:** {success.timestamp}",
+        ]
+
+        if success.feature_focus:
+            lines.append(f"**Feature Focus:** {success.feature_focus}")
+        if success.complexity:
+            lines.append(f"**Complexity:** {success.complexity}")
+        if success.backend_used:
+            lines.append(f"**Backend:** {success.backend_used}")
+
+        lines.extend(
+            [
+                "",
+                "## Generated Sharpy Code",
+                "",
+                "```python",
+                success.generated_code,
+                "```",
+                "",
+                "## Output",
+                "",
+                "```",
+                success.actual_output,
+                "```",
+                "",
+            ]
+        )
+
+        # Timing information
+        timing = []
+        if success.generation_duration:
+            timing.append(f"- Generation: {success.generation_duration:.2f}s")
+        if success.execution_duration:
+            timing.append(f"- Execution: {success.execution_duration:.2f}s")
+
+        if timing:
+            lines.extend(
+                [
+                    "## Timing",
+                    "",
+                    *timing,
+                    "",
+                ]
+            )
+
+        lines.extend(
+            [
+                "## Converting to Integration Test",
+                "",
+                "To convert this to an integration test, run:",
+                "",
+                "```bash",
+                "python -m sharpy_dogfood convert <this_directory_name>",
+                "```",
+                "",
+            ]
+        )
+
+        return "\n".join(lines)
