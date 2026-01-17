@@ -9,6 +9,12 @@ namespace Sharpy.Compiler.Tests;
 public static class TestHelpers
 {
     /// <summary>
+    /// Global lock for console I/O operations during test execution.
+    /// Tests that redirect Console.Out/Console.Error should acquire this lock
+    /// to prevent interference from parallel test execution.
+    /// </summary>
+    public static readonly object ConsoleLock = new object();
+    /// <summary>
     /// Test logger that collects errors and warnings for assertion in tests.
     /// Useful for testing error reporting behavior without requiring ITestOutputHelper.
     /// </summary>

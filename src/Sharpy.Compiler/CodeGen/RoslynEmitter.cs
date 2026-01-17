@@ -747,13 +747,13 @@ public class RoslynEmitter
             // There's a main function and also module-level statements
             // For now, just ignore them or add to Main after the user's main is called
             // This is a corner case we'll handle later
-            Console.WriteLine($"Warning: {executableStatements.Count} module-level statement(s) ignored because a 'main' function is defined");
+            _context.Logger.LogWarning($"{executableStatements.Count} module-level statement(s) ignored because a 'main' function is defined", 0, 0);
         }
         else if (!_context.IsEntryPoint && executableStatements.Count > 0)
         {
             // Non-entry-point files with executable statements: ignore them
             // Module-level executable code should only run in the entry point
-            Console.WriteLine($"Warning: {executableStatements.Count} module-level executable statement(s) in non-entry-point file ignored");
+            _context.Logger.LogWarning($"{executableStatements.Count} module-level executable statement(s) in non-entry-point file ignored", 0, 0);
         }
 
         // Check if we're generating a Main method OR if there's a user-defined main function

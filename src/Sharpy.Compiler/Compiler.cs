@@ -159,7 +159,8 @@ public class Compiler
                 // This tells the emitter to use a simple file-based namespace
                 ProjectNamespace = !string.IsNullOrEmpty(defaultNamespace)
                     ? $"Sharpy.{ToPascalCase(defaultNamespace)}"
-                    : null
+                    : null,
+                Logger = _logger
             };
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);

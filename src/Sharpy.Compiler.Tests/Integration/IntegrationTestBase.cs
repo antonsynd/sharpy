@@ -20,7 +20,6 @@ namespace Sharpy.Compiler.Tests.Integration;
 public abstract class IntegrationTestBase
 {
     protected readonly ITestOutputHelper Output;
-    private static readonly object ConsoleLock = new object();
 
     protected IntegrationTestBase(ITestOutputHelper output)
     {
@@ -95,7 +94,8 @@ public abstract class IntegrationTestBase
             var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
             {
                 SourceFilePath = fileName,
-                IsEntryPoint = true  // Integration tests are executable programs
+                IsEntryPoint = true,  // Integration tests are executable programs
+                Logger = logger
             };
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);
@@ -201,7 +201,7 @@ public abstract class IntegrationTestBase
             var stderr = new StringBuilder();
 
             // Lock console I/O to prevent interference from parallel tests
-            lock (ConsoleLock)
+            lock (TestHelpers.ConsoleLock)
             {
                 var originalOut = Console.Out;
                 var originalErr = Console.Error;

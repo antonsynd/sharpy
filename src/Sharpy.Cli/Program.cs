@@ -598,7 +598,8 @@ class Program
             // Set up code generation context with the analyzed symbol table
             var context = new CodeGenContext(symbolTable, builtins)
             {
-                SourceFilePath = inputFile.FullName
+                SourceFilePath = inputFile.FullName,
+                Logger = logger
             };
 
             // Generate C# code using RoslynEmitter

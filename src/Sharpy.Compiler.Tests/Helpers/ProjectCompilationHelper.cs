@@ -269,55 +269,59 @@ public class ProjectCompilationHelper : IDisposable
             var stdout = new StringBuilder();
             var stderr = new StringBuilder();
 
-            var originalOut = Console.Out;
-            var originalErr = Console.Error;
-
-            try
+            // Lock console I/O to prevent interference from parallel tests
+            lock (TestHelpers.ConsoleLock)
             {
-                using var outWriter = new StringWriter(stdout);
-                using var errWriter = new StringWriter(stderr);
-                Console.SetOut(outWriter);
-                Console.SetError(errWriter);
+                var originalOut = Console.Out;
+                var originalErr = Console.Error;
 
-                var entryPoint = assembly.EntryPoint;
-                if (entryPoint == null)
+                try
                 {
-                    var moduleTypes = assembly.GetTypes().Where(t => t.Name.Contains("Module")).ToList();
-                    if (moduleTypes.Any())
-                    {
-                        var mainMethod = moduleTypes
-                            .Select(t => t.GetMethod("Main", BindingFlags.Public | BindingFlags.Static))
-                            .FirstOrDefault(m => m != null);
+                    using var outWriter = new StringWriter(stdout);
+                    using var errWriter = new StringWriter(stderr);
+                    Console.SetOut(outWriter);
+                    Console.SetError(errWriter);
 
-                        if (mainMethod != null)
+                    var entryPoint = assembly.EntryPoint;
+                    if (entryPoint == null)
+                    {
+                        var moduleTypes = assembly.GetTypes().Where(t => t.Name.Contains("Module")).ToList();
+                        if (moduleTypes.Any())
                         {
-                            mainMethod.Invoke(null, mainMethod.GetParameters().Length == 0
-                                ? null
-                                : new object[] { Array.Empty<string>() });
-                        }
-                        else
-                        {
-                            return new ExecutionResult
+                            var mainMethod = moduleTypes
+                                .Select(t => t.GetMethod("Main", BindingFlags.Public | BindingFlags.Static))
+                                .FirstOrDefault(m => m != null);
+
+                            if (mainMethod != null)
                             {
-                                Success = false,
-                                CompilationErrors = new List<string> { "No Main entry point found in assembly" },
-                                StandardOutput = string.Empty,
-                                StandardError = string.Empty
-                            };
+                                mainMethod.Invoke(null, mainMethod.GetParameters().Length == 0
+                                    ? null
+                                    : new object[] { Array.Empty<string>() });
+                            }
+                            else
+                            {
+                                return new ExecutionResult
+                                {
+                                    Success = false,
+                                    CompilationErrors = new List<string> { "No Main entry point found in assembly" },
+                                    StandardOutput = string.Empty,
+                                    StandardError = string.Empty
+                                };
+                            }
                         }
                     }
+                    else
+                    {
+                        entryPoint.Invoke(null, entryPoint.GetParameters().Length == 0
+                            ? null
+                            : new object[] { Array.Empty<string>() });
+                    }
                 }
-                else
+                finally
                 {
-                    entryPoint.Invoke(null, entryPoint.GetParameters().Length == 0
-                        ? null
-                        : new object[] { Array.Empty<string>() });
+                    Console.SetOut(originalOut);
+                    Console.SetError(originalErr);
                 }
-            }
-            finally
-            {
-                Console.SetOut(originalOut);
-                Console.SetError(originalErr);
             }
 
             var stdoutStr = stdout.ToString();

@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.CodeGen;
@@ -29,6 +30,11 @@ public class CodeGenContext
     /// Defaults to false; explicitly set to true for the entry point file.
     /// </summary>
     public bool IsEntryPoint { get; set; } = false;
+
+    /// <summary>
+    /// Logger for code generation warnings and messages.
+    /// </summary>
+    public ICompilerLogger Logger { get; set; } = NullLogger.Instance;
 
     public CodeGenContext(SymbolTable symbolTable, BuiltinRegistry builtins)
     {

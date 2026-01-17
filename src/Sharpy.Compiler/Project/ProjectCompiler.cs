@@ -424,7 +424,8 @@ public class ProjectCompiler
                 SourceFilePath = sourceFile,
                 ProjectNamespace = config.RootNamespace,
                 ProjectRootPath = Path.Combine(config.ProjectDirectory, "src"),
-                IsEntryPoint = isEntryPoint
+                IsEntryPoint = isEntryPoint,
+                Logger = _logger
             };
 
             var emitter = new RoslynEmitter(codeGenContext);
