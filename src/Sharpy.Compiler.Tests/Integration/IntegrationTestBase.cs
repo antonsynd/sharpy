@@ -49,9 +49,8 @@ public abstract class IntegrationTestBase
     /// <param name="executionTimeoutMs">Optional timeout in milliseconds for execution. Default is no timeout (0). Use for tests that may have infinite loops.</param>
     protected ExecutionResult CompileAndExecute(string sharpySource, string fileName = "test.spy", int executionTimeoutMs = 0)
     {
-        // Set up assembly resolution for Sharpy.Runtime
+        // Track path to Sharpy.Core for copying to temp execution directory
         string? runtimePath = null;
-        ResolveEventHandler? resolveHandler = null;
 
         try
         {
@@ -154,17 +153,6 @@ public abstract class IntegrationTestBase
                 {
                     references.Add(MetadataReference.CreateFromFile(runtimePath));
                     Output.WriteLine($"Loaded Sharpy.Core from: {runtimePath}");
-
-                    // Set up assembly resolver for runtime execution
-                    resolveHandler = (sender, args) =>
-                    {
-                        if (args.Name.StartsWith("Sharpy.Core,"))
-                        {
-                            return Assembly.LoadFrom(runtimePath);
-                        }
-                        return null;
-                    };
-                    AppDomain.CurrentDomain.AssemblyResolve += resolveHandler;
                 }
                 else
                 {
@@ -210,118 +198,128 @@ public abstract class IntegrationTestBase
             }
 
             // Phase 6: Execute the compiled assembly
-            ms.Seek(0, SeekOrigin.Begin);
-            var assembly = Assembly.Load(ms.ToArray());
+            // Write to a temp file and execute as a separate process to avoid
+            // reflection/interpreted mode issues on some platforms (.NET 10 on Linux x64)
+            var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempDir);
+            var tempAssemblyPath = Path.Combine(tempDir, "SharpyTestAssembly.dll");
 
-            var stdout = new StringBuilder();
-            var stderr = new StringBuilder();
-            bool timedOut = false;
-            Exception? executionException = null;
-
-            // Lock console I/O to prevent interference from parallel tests
-            lock (TestHelpers.ConsoleLock)
+            try
             {
-                var originalOut = Console.Out;
-                var originalErr = Console.Error;
-
-                try
+                ms.Seek(0, SeekOrigin.Begin);
+                using (var fileStream = File.Create(tempAssemblyPath))
                 {
-                    using var outWriter = new StringWriter(stdout);
-                    using var errWriter = new StringWriter(stderr);
-                    Console.SetOut(outWriter);
-                    Console.SetError(errWriter);
-
-                    // Find the entry point
-                    var entryPoint = assembly.EntryPoint;
-                    MethodInfo? methodToInvoke = null;
-
-                    if (entryPoint == null)
-                    {
-                        // Try to find a Main method or main function
-                        var moduleType = assembly.GetTypes().FirstOrDefault(t => t.Name.Contains("Module"));
-                        if (moduleType != null)
-                        {
-                            methodToInvoke = moduleType.GetMethod("Main", BindingFlags.Public | BindingFlags.Static)
-                                          ?? moduleType.GetMethod("main", BindingFlags.Public | BindingFlags.Static);
-                        }
-                    }
-                    else
-                    {
-                        methodToInvoke = entryPoint;
-                    }
-
-                    if (methodToInvoke != null)
-                    {
-                        // Execute with or without timeout
-                        if (executionTimeoutMs > 0)
-                        {
-                            // Run with timeout using a background thread
-                            var cts = new CancellationTokenSource();
-                            var executionTask = Task.Run(() =>
-                            {
-                                methodToInvoke.Invoke(null, methodToInvoke.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
-                            }, cts.Token);
-
-                            try
-                            {
-                                // Wait for completion or timeout
-                                if (!executionTask.Wait(executionTimeoutMs))
-                                {
-                                    timedOut = true;
-                                    cts.Cancel();
-                                    // Note: We can't forcibly terminate the thread, but marking as timed out
-                                    // allows the test to proceed. The thread will eventually complete or
-                                    // be cleaned up when the test process exits.
-                                }
-                                else if (executionTask.IsFaulted && executionTask.Exception != null)
-                                {
-                                    executionException = executionTask.Exception.InnerException ?? executionTask.Exception;
-                                }
-                            }
-                            catch (AggregateException ae)
-                            {
-                                executionException = ae.InnerException ?? ae;
-                            }
-                        }
-                        else
-                        {
-                            // No timeout - execute directly
-                            methodToInvoke.Invoke(null, methodToInvoke.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
-                        }
-                    }
+                    ms.CopyTo(fileStream);
                 }
-                finally
+
+                // Copy runtime dependencies
+                if (runtimePath != null && File.Exists(runtimePath))
                 {
-                    Console.SetOut(originalOut);
-                    Console.SetError(originalErr);
+                    var runtimeDest = Path.Combine(tempDir, "Sharpy.Core.dll");
+                    File.Copy(runtimePath, runtimeDest, overwrite: true);
                 }
-            }
 
-            if (timedOut)
-            {
+                // Create a runtimeconfig.json for the assembly
+                var runtimeConfigPath = Path.Combine(tempDir, "SharpyTestAssembly.runtimeconfig.json");
+                var runtimeConfig = @"{
+  ""runtimeOptions"": {
+    ""tfm"": ""net10.0"",
+    ""framework"": {
+      ""name"": ""Microsoft.NETCore.App"",
+      ""version"": ""10.0.0""
+    }
+  }
+}";
+                File.WriteAllText(runtimeConfigPath, runtimeConfig);
+
+                // Execute the assembly as a separate process
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = $"exec \"{tempAssemblyPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = tempDir
+                };
+
+                using var process = new Process { StartInfo = startInfo };
+                var stdout = new StringBuilder();
+                var stderr = new StringBuilder();
+                bool timedOut = false;
+
+                process.OutputDataReceived += (sender, e) =>
+                {
+                    if (e.Data != null)
+                        stdout.AppendLine(e.Data);
+                };
+                process.ErrorDataReceived += (sender, e) =>
+                {
+                    if (e.Data != null)
+                        stderr.AppendLine(e.Data);
+                };
+
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                var timeout = executionTimeoutMs > 0 ? executionTimeoutMs : 30000; // Default 30s timeout
+                if (!process.WaitForExit(timeout))
+                {
+                    timedOut = true;
+                    try { process.Kill(entireProcessTree: true); } catch { }
+                }
+
+                // Ensure async output handlers complete
+                process.WaitForExit();
+
+                if (timedOut)
+                {
+                    return new ExecutionResult
+                    {
+                        Success = false,
+                        TimedOut = true,
+                        StandardOutput = stdout.ToString(),
+                        StandardError = stderr.ToString(),
+                        GeneratedCSharp = generatedCSharp,
+                        CompilationErrors = new List<string> { $"Execution timed out after {timeout}ms" }
+                    };
+                }
+
+                if (process.ExitCode != 0)
+                {
+                    return new ExecutionResult
+                    {
+                        Success = false,
+                        StandardOutput = stdout.ToString(),
+                        StandardError = stderr.ToString(),
+                        GeneratedCSharp = generatedCSharp,
+                        CompilationErrors = new List<string> { $"Process exited with code {process.ExitCode}: {stderr}" }
+                    };
+                }
+
                 return new ExecutionResult
                 {
-                    Success = false,
-                    TimedOut = true,
+                    Success = true,
                     StandardOutput = stdout.ToString(),
                     StandardError = stderr.ToString(),
-                    GeneratedCSharp = generatedCSharp,
-                    CompilationErrors = new List<string> { $"Execution timed out after {executionTimeoutMs}ms" }
+                    GeneratedCSharp = generatedCSharp
                 };
             }
-
-            if (executionException != null)
+            finally
             {
-                throw executionException;
+                // Clean up temp directory
+                try
+                {
+                    if (Directory.Exists(tempDir))
+                        Directory.Delete(tempDir, recursive: true);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
             }
-
-            return new ExecutionResult
-            {
-                Success = true,
-                StandardOutput = stdout.ToString(),
-                StandardError = stderr.ToString(),
-                GeneratedCSharp = generatedCSharp
-            };
         }
         catch (LexerError ex)
         {
@@ -397,14 +395,6 @@ public abstract class IntegrationTestBase
                 CompilationErrors = new List<string> { errorMessage }
             };
         }
-        finally
-        {
-            // Clean up assembly resolver
-            if (resolveHandler != null)
-            {
-                AppDomain.CurrentDomain.AssemblyResolve -= resolveHandler;
-            }
-        }
     }
 
     /// <summary>
@@ -416,7 +406,6 @@ public abstract class IntegrationTestBase
     protected ExecutionResult CompileAndExecuteProject(string projectDir, string entryPointFile, int executionTimeoutMs = 0)
     {
         string? runtimePath = null;
-        ResolveEventHandler? resolveHandler = null;
 
         try
         {
@@ -509,16 +498,6 @@ public abstract class IntegrationTestBase
                 {
                     references.Add(MetadataReference.CreateFromFile(runtimePath));
                     Output.WriteLine($"Loaded Sharpy.Core from: {runtimePath}");
-
-                    resolveHandler = (sender, args) =>
-                    {
-                        if (args.Name.StartsWith("Sharpy.Core,"))
-                        {
-                            return Assembly.LoadFrom(runtimePath);
-                        }
-                        return null;
-                    };
-                    AppDomain.CurrentDomain.AssemblyResolve += resolveHandler;
                 }
             }
             catch (Exception ex)
@@ -550,109 +529,128 @@ public abstract class IntegrationTestBase
                 };
             }
 
-            // Execute the compiled assembly
-            ms.Seek(0, SeekOrigin.Begin);
-            var assembly = Assembly.Load(ms.ToArray());
+            // Execute the compiled assembly via external process to avoid
+            // reflection/interpreted mode issues on some platforms
+            var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempDir);
+            var tempAssemblyPath = Path.Combine(tempDir, "SharpyTestProject.dll");
 
-            var stdout = new StringBuilder();
-            var stderr = new StringBuilder();
-            bool timedOut = false;
-            Exception? executionException = null;
-
-            lock (TestHelpers.ConsoleLock)
+            try
             {
-                var originalOut = Console.Out;
-                var originalErr = Console.Error;
-
-                try
+                ms.Seek(0, SeekOrigin.Begin);
+                using (var fileStream = File.Create(tempAssemblyPath))
                 {
-                    using var outWriter = new StringWriter(stdout);
-                    using var errWriter = new StringWriter(stderr);
-                    Console.SetOut(outWriter);
-                    Console.SetError(errWriter);
-
-                    var entryPoint = assembly.EntryPoint;
-                    MethodInfo? methodToInvoke = null;
-
-                    if (entryPoint == null)
-                    {
-                        var moduleType = assembly.GetTypes().FirstOrDefault(t => t.Name.Contains("Module") || t.Name == "Program");
-                        if (moduleType != null)
-                        {
-                            methodToInvoke = moduleType.GetMethod("Main", BindingFlags.Public | BindingFlags.Static)
-                                          ?? moduleType.GetMethod("main", BindingFlags.Public | BindingFlags.Static);
-                        }
-                    }
-                    else
-                    {
-                        methodToInvoke = entryPoint;
-                    }
-
-                    if (methodToInvoke != null)
-                    {
-                        if (executionTimeoutMs > 0)
-                        {
-                            var cts = new CancellationTokenSource();
-                            var executionTask = Task.Run(() =>
-                            {
-                                methodToInvoke.Invoke(null, methodToInvoke.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
-                            }, cts.Token);
-
-                            try
-                            {
-                                if (!executionTask.Wait(executionTimeoutMs))
-                                {
-                                    timedOut = true;
-                                    cts.Cancel();
-                                }
-                                else if (executionTask.IsFaulted && executionTask.Exception != null)
-                                {
-                                    executionException = executionTask.Exception.InnerException ?? executionTask.Exception;
-                                }
-                            }
-                            catch (AggregateException ae)
-                            {
-                                executionException = ae.InnerException ?? ae;
-                            }
-                        }
-                        else
-                        {
-                            methodToInvoke.Invoke(null, methodToInvoke.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
-                        }
-                    }
+                    ms.CopyTo(fileStream);
                 }
-                finally
+
+                // Copy runtime dependencies
+                if (runtimePath != null && File.Exists(runtimePath))
                 {
-                    Console.SetOut(originalOut);
-                    Console.SetError(originalErr);
+                    var runtimeDest = Path.Combine(tempDir, "Sharpy.Core.dll");
+                    File.Copy(runtimePath, runtimeDest, overwrite: true);
                 }
-            }
 
-            if (timedOut)
-            {
+                // Create a runtimeconfig.json for the assembly
+                var runtimeConfigPath = Path.Combine(tempDir, "SharpyTestProject.runtimeconfig.json");
+                var runtimeConfig = @"{
+  ""runtimeOptions"": {
+    ""tfm"": ""net10.0"",
+    ""framework"": {
+      ""name"": ""Microsoft.NETCore.App"",
+      ""version"": ""10.0.0""
+    }
+  }
+}";
+                File.WriteAllText(runtimeConfigPath, runtimeConfig);
+
+                // Execute the assembly as a separate process
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = $"exec \"{tempAssemblyPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = tempDir
+                };
+
+                using var process = new Process { StartInfo = startInfo };
+                var stdout = new StringBuilder();
+                var stderr = new StringBuilder();
+                bool timedOut = false;
+
+                process.OutputDataReceived += (sender, e) =>
+                {
+                    if (e.Data != null)
+                        stdout.AppendLine(e.Data);
+                };
+                process.ErrorDataReceived += (sender, e) =>
+                {
+                    if (e.Data != null)
+                        stderr.AppendLine(e.Data);
+                };
+
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                var timeout = executionTimeoutMs > 0 ? executionTimeoutMs : 30000; // Default 30s timeout
+                if (!process.WaitForExit(timeout))
+                {
+                    timedOut = true;
+                    try { process.Kill(entireProcessTree: true); } catch { }
+                }
+
+                // Ensure async output handlers complete
+                process.WaitForExit();
+
+                if (timedOut)
+                {
+                    return new ExecutionResult
+                    {
+                        Success = false,
+                        TimedOut = true,
+                        StandardOutput = stdout.ToString(),
+                        StandardError = stderr.ToString(),
+                        GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                        CompilationErrors = new List<string> { $"Execution timed out after {timeout}ms" }
+                    };
+                }
+
+                if (process.ExitCode != 0)
+                {
+                    return new ExecutionResult
+                    {
+                        Success = false,
+                        StandardOutput = stdout.ToString(),
+                        StandardError = stderr.ToString(),
+                        GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                        CompilationErrors = new List<string> { $"Process exited with code {process.ExitCode}: {stderr}" }
+                    };
+                }
+
                 return new ExecutionResult
                 {
-                    Success = false,
-                    TimedOut = true,
+                    Success = true,
                     StandardOutput = stdout.ToString(),
                     StandardError = stderr.ToString(),
-                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
-                    CompilationErrors = new List<string> { $"Execution timed out after {executionTimeoutMs}ms" }
+                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
                 };
             }
-
-            if (executionException != null)
+            finally
             {
-                throw executionException;
+                // Clean up temp directory
+                try
+                {
+                    if (Directory.Exists(tempDir))
+                        Directory.Delete(tempDir, recursive: true);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
             }
-
-            return new ExecutionResult
-            {
-                Success = true,
-                StandardOutput = stdout.ToString(),
-                StandardError = stderr.ToString(),
-                GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
-            };
         }
         catch (Exception ex)
         {
@@ -669,13 +667,6 @@ public abstract class IntegrationTestBase
                 Exception = ex,
                 CompilationErrors = new List<string> { errorMessage }
             };
-        }
-        finally
-        {
-            if (resolveHandler != null)
-            {
-                AppDomain.CurrentDomain.AssemblyResolve -= resolveHandler;
-            }
         }
     }
 }
