@@ -588,7 +588,10 @@ class DogfoodOrchestrator:
                 print("  ✓ Output matches expected (exact)", file=sys.stderr)
             elif _outputs_equivalent(expected_normalized, actual_normalized):
                 # Float-tolerant match
-                print("  ✓ Output matches expected (with float tolerance)", file=sys.stderr)
+                print(
+                    "  ✓ Output matches expected (with float tolerance)",
+                    file=sys.stderr,
+                )
             else:
                 # Fall back to AI-assisted comparison for fuzzy matching
                 verify_result = await self._verify_output(
@@ -811,7 +814,9 @@ class DogfoodOrchestrator:
             print("\n[2/4] Validating against spec...", file=sys.stderr)
             val_result = await self._validate_code(code)
             if not val_result.success:
-                print(f"  Validation backend error: {val_result.error}", file=sys.stderr)
+                print(
+                    f"  Validation backend error: {val_result.error}", file=sys.stderr
+                )
                 last_error = f"Validation backend error: {val_result.error}"
                 if attempt < max_attempts:
                     print(
@@ -1060,7 +1065,10 @@ class DogfoodOrchestrator:
                 print("  ✓ Output matches expected (exact)", file=sys.stderr)
             elif _outputs_equivalent(expected_normalized, actual_normalized):
                 # Float-tolerant match
-                print("  ✓ Output matches expected (with float tolerance)", file=sys.stderr)
+                print(
+                    "  ✓ Output matches expected (with float tolerance)",
+                    file=sys.stderr,
+                )
             else:
                 verify_result = await self._verify_output(
                     files.get("main.spy", ""), expected_output, actual_output
