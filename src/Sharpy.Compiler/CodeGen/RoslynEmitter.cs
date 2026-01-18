@@ -27,6 +27,7 @@ public class RoslynEmitter
     private readonly HashSet<string> _stringEnumNames = new(); // Track string enum names (enums with string values)
     private readonly HashSet<string> _fromImportSymbols = new(); // Track symbols imported via "from X import Y" for proper casing
     private readonly Dictionary<string, string> _importAliasToOriginal = new(); // Map alias → original name for from-imports
+    private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions = new(); // Track interface definitions for abstract class stub generation
     private int _tempVarCounter = 0;
 
     // Target type context for collection literal type inference
@@ -635,6 +636,17 @@ public class RoslynEmitter
                 typeAndFunctionNames.Add(funcDef.Name);
             else if (stmt is EnumDef enumDef)
                 typeAndFunctionNames.Add(enumDef.Name);
+        }
+
+        // Collect interface definitions for abstract class stub generation
+        // This allows abstract classes to generate stubs for unimplemented interface methods
+        _interfaceDefinitions.Clear();
+        foreach (var stmt in statements)
+        {
+            if (stmt is InterfaceDef interfaceDef)
+            {
+                _interfaceDefinitions[interfaceDef.Name] = interfaceDef;
+            }
         }
 
         // First pass: collect const variables and detect basic execution order issues
@@ -1322,6 +1334,32 @@ public class RoslynEmitter
 
         // Generate class members from body
         var members = GenerateClassMembers(classDef.Body, className);
+
+        // For abstract classes implementing interfaces, generate abstract stubs for missing methods
+        if (_isInAbstractClass && classDef.BaseClasses.Count > 0)
+        {
+            var interfaceMethods = CollectInterfaceMethodDefs(classDef.BaseClasses);
+            var definedMethods = GetDefinedMethodNames(classDef.Body);
+
+            var stubMembers = new List<MemberDeclarationSyntax>();
+
+            foreach (var interfaceMethod in interfaceMethods)
+            {
+                // Skip if method is already defined in the class
+                if (definedMethods.Contains(interfaceMethod.Name)) continue;
+
+                // Generate abstract stub
+                var stub = GenerateAbstractMethodStub(interfaceMethod);
+                stubMembers.Add(stub);
+            }
+
+            // Add stubs to members list
+            if (stubMembers.Count > 0)
+            {
+                members = members.Concat(stubMembers).ToList();
+            }
+        }
+
         classDecl = classDecl.WithMembers(List(members));
 
         // Add XML documentation from docstring if present
@@ -1334,6 +1372,108 @@ public class RoslynEmitter
         _isInAbstractClass = wasInAbstractClass;
 
         return classDecl;
+    }
+
+    /// <summary>
+    /// Collects all method FunctionDefs from interfaces that a class implements.
+    /// Recursively collects from base interfaces as well.
+    /// </summary>
+    private List<FunctionDef> CollectInterfaceMethodDefs(List<TypeAnnotation> baseTypes)
+    {
+        var result = new List<FunctionDef>();
+        var visited = new HashSet<string>();
+        var seenMethods = new HashSet<string>();
+
+        void CollectFromInterface(string interfaceName)
+        {
+            if (visited.Contains(interfaceName)) return;
+            visited.Add(interfaceName);
+
+            // Look up the interface definition
+            if (!_interfaceDefinitions.TryGetValue(interfaceName, out var interfaceDef))
+                return;
+
+            // Collect methods from this interface
+            foreach (var stmt in interfaceDef.Body)
+            {
+                if (stmt is FunctionDef funcDef)
+                {
+                    // Skip if we've already seen a method with this name
+                    if (seenMethods.Contains(funcDef.Name)) continue;
+                    seenMethods.Add(funcDef.Name);
+                    result.Add(funcDef);
+                }
+            }
+
+            // Recursively collect from base interfaces
+            foreach (var baseInterface in interfaceDef.BaseInterfaces)
+            {
+                var baseName = baseInterface.Name;
+                if (!string.IsNullOrEmpty(baseName))
+                {
+                    CollectFromInterface(baseName);
+                }
+            }
+        }
+
+        foreach (var baseType in baseTypes)
+        {
+            var typeName = baseType.Name;
+            if (string.IsNullOrEmpty(typeName)) continue;
+
+            // Check if this is an interface (exists in our interface definitions)
+            if (_interfaceDefinitions.ContainsKey(typeName))
+            {
+                CollectFromInterface(typeName);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Returns the set of method names that are defined in the class body.
+    /// </summary>
+    private HashSet<string> GetDefinedMethodNames(List<Statement> classBody)
+    {
+        var defined = new HashSet<string>();
+
+        foreach (var stmt in classBody)
+        {
+            if (stmt is FunctionDef func)
+            {
+                defined.Add(func.Name);
+            }
+        }
+
+        return defined;
+    }
+
+    /// <summary>
+    /// Generates an abstract method stub for an interface method that is not implemented.
+    /// </summary>
+    private MethodDeclarationSyntax GenerateAbstractMethodStub(FunctionDef interfaceMethod)
+    {
+        var mangledName = NameMangler.Transform(interfaceMethod.Name, NameContext.Method);
+
+        // Determine return type from annotation or infer void
+        TypeSyntax returnType = interfaceMethod.ReturnType != null
+            ? _typeMapper.MapType(interfaceMethod.ReturnType)
+            : PredefinedType(Token(SyntaxKind.VoidKeyword));
+
+        // Generate parameters (skip 'self')
+        var parameters = interfaceMethod.Parameters
+            .Where(p => p.Name != "self")
+            .Select(GenerateParameter)
+            .ToArray();
+
+        // Create abstract method declaration
+        return MethodDeclaration(returnType, mangledName)
+            .WithModifiers(TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.AbstractKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
     }
 
     private StructDeclarationSyntax GenerateStructDeclaration(StructDef structDef)
