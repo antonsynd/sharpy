@@ -1,0 +1,765 @@
+using System.IO;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+
+namespace Sharpy.Compiler.CodeGen;
+
+/// <summary>
+/// RoslynEmitter partial class: Type declarations (functions, classes, structs, interfaces, enums)
+/// </summary>
+public partial class RoslynEmitter
+{
+    private MethodDeclarationSyntax GenerateFunctionDeclaration(FunctionDef func)
+    {
+        // Clear declared variables and version tracking for new function scope
+        _declaredVariables.Clear();
+        _variableVersions.Clear();
+        _constVariables.Clear();
+
+        // Transform name using NameMangler
+        // Special case: only convert "main" to "Main" if this is the entry point file
+        var mangledName = func.Name == "main" && !_context.IsEntryPoint
+            ? "MainFunc"  // Rename to avoid C# entry point conflict in non-entry files
+            : NameMangler.Transform(func.Name, NameContext.Method);
+
+        // Determine return type from annotation or infer void
+        TypeSyntax returnType = func.ReturnType != null
+            ? _typeMapper.MapType(func.ReturnType)
+            : PredefinedType(Token(SyntaxKind.VoidKeyword));
+
+        // Process decorators to determine modifiers
+        var modifiers = GenerateModifiersFromDecorators(func.Decorators);
+
+        // Generate parameters with type annotations
+        var parameters = func.Parameters
+            .Select(GenerateParameter)
+            .ToArray();
+
+        // Track parameters as declared variables
+        foreach (var param in func.Parameters)
+        {
+            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            _declaredVariables.Add(paramName);
+            // Also track in version map so assignments to parameters work correctly
+            var baseName = NameMangler.ToCamelCase(param.Name);
+            _variableVersions[baseName] = 0;
+        }
+
+        // Generate method body
+        var body = Block(func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+        var method = MethodDeclaration(returnType, mangledName)
+            .WithModifiers(modifiers)
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithBody(body);
+
+        // Add type parameters if generic
+        if (func.TypeParameters.Count > 0)
+        {
+            var typeParams = func.TypeParameters
+                .Select(tp => TypeParameter(tp.Name))
+                .ToArray();
+            method = method
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(func.TypeParameters));
+        }
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(func.DocString))
+        {
+            method = method.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+        }
+
+        return method;
+    }
+
+    private ParameterSyntax GenerateParameter(Parameter param)
+    {
+        var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+
+        // Get parameter type from annotation or default to object
+        TypeSyntax paramType = param.Type != null
+            ? _typeMapper.MapType(param.Type)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+        // For variadic parameters (*args), wrap the element type in an array
+        if (param.IsVariadic)
+        {
+            paramType = ArrayType(paramType)
+                .WithRankSpecifiers(SingletonList(ArrayRankSpecifier()));
+        }
+
+        var parameter = Parameter(Identifier(paramName))
+            .WithType(paramType);
+
+        // For variadic parameters, add the 'params' modifier
+        if (param.IsVariadic)
+        {
+            parameter = parameter.WithModifiers(TokenList(Token(SyntaxKind.ParamsKeyword)));
+        }
+
+        // Add default value if present
+        if (param.DefaultValue != null)
+        {
+            var defaultExpr = GenerateExpression(param.DefaultValue);
+            parameter = parameter.WithDefault(EqualsValueClause(defaultExpr));
+        }
+
+        return parameter;
+    }
+
+    private SyntaxTokenList GenerateModifiersFromDecorators(List<Decorator> decorators)
+    {
+        var tokens = new List<SyntaxToken>();
+
+        // Check for access modifiers
+        bool hasAccessModifier = false;
+        foreach (var decorator in decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "private":
+                    tokens.Add(Token(SyntaxKind.PrivateKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "protected":
+                    tokens.Add(Token(SyntaxKind.ProtectedKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "internal":
+                    tokens.Add(Token(SyntaxKind.InternalKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "public":
+                    tokens.Add(Token(SyntaxKind.PublicKeyword));
+                    hasAccessModifier = true;
+                    break;
+            }
+        }
+
+        // Default to public if no access modifier specified
+        if (!hasAccessModifier)
+        {
+            tokens.Add(Token(SyntaxKind.PublicKeyword));
+        }
+
+        // Check for other modifiers
+        foreach (var decorator in decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "staticmethod":
+                case "static":
+                    tokens.Add(Token(SyntaxKind.StaticKeyword));
+                    break;
+                case "abstract":
+                    tokens.Add(Token(SyntaxKind.AbstractKeyword));
+                    break;
+                case "virtual":
+                    tokens.Add(Token(SyntaxKind.VirtualKeyword));
+                    break;
+                case "override":
+                    tokens.Add(Token(SyntaxKind.OverrideKeyword));
+                    break;
+            }
+        }
+
+        // For module-level functions, add static modifier if not already present
+        // and if it's not a method (we'll handle this differently in classes)
+        if (!tokens.Any(t => t.IsKind(SyntaxKind.StaticKeyword) ||
+                            t.IsKind(SyntaxKind.AbstractKeyword) ||
+                            t.IsKind(SyntaxKind.VirtualKeyword) ||
+                            t.IsKind(SyntaxKind.OverrideKeyword)))
+        {
+            tokens.Add(Token(SyntaxKind.StaticKeyword));
+        }
+
+        return TokenList(tokens);
+    }
+
+    private SyntaxTriviaList GenerateXmlDocComment(string docString)
+    {
+        // Convert Python docstring to C# XML documentation
+        var lines = docString.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+        var triviaList = new List<SyntaxTrivia>
+        {
+            Comment("/// <summary>"),
+            EndOfLine("\n")
+        };
+
+        triviaList.AddRange(lines
+            .Select(line => line.Trim())
+            .Where(trimmedLine => !string.IsNullOrEmpty(trimmedLine))
+            .SelectMany(trimmedLine => new[]
+            {
+                Comment($"/// {trimmedLine}"),
+                EndOfLine("\n")
+            }));
+
+        triviaList.Add(Comment("/// </summary>"));
+        triviaList.Add(EndOfLine("\n"));
+
+        return TriviaList(triviaList);
+    }
+
+    #region Class, Struct, Interface, and Enum Generation
+
+    private ClassDeclarationSyntax GenerateClassDeclaration(ClassDef classDef)
+    {
+        // Track this class name for instantiation detection
+        _classNames.Add(classDef.Name);
+
+        // Check if this is an abstract class (for implicit abstract method detection)
+        var wasInAbstractClass = _isInAbstractClass;
+        _isInAbstractClass = classDef.Decorators.Any(d => d.Name == "abstract");
+
+        // Transform class name
+        var className = NameMangler.Transform(classDef.Name, NameContext.Type);
+
+        // Process decorators to determine modifiers
+        var modifiers = GenerateTypeModifiersFromDecorators(classDef.Decorators);
+
+        // Create class declaration
+        var classDecl = ClassDeclaration(className)
+            .WithModifiers(modifiers);
+
+        // Add type parameters if generic
+        if (classDef.TypeParameters.Count > 0)
+        {
+            var typeParams = classDef.TypeParameters
+                .Select(tp => TypeParameter(tp.Name))
+                .ToArray();
+            classDecl = classDecl
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(classDef.TypeParameters));
+        }
+
+        // Add base class and interfaces
+        if (classDef.BaseClasses.Count > 0)
+        {
+            var baseTypes = classDef.BaseClasses
+                .Select(bc => SimpleBaseType(_typeMapper.MapType(bc)))
+                .ToArray();
+            classDecl = classDecl.WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(baseTypes)));
+        }
+
+        // Generate class members from body
+        var members = GenerateClassMembers(classDef.Body, className);
+
+        // For abstract classes implementing interfaces, generate abstract stubs for missing methods
+        if (_isInAbstractClass && classDef.BaseClasses.Count > 0)
+        {
+            var interfaceMethods = CollectInterfaceMethodDefs(classDef.BaseClasses);
+            var definedMethods = GetDefinedMethodNames(classDef.Body);
+
+            var stubMembers = new List<MemberDeclarationSyntax>();
+
+            foreach (var interfaceMethod in interfaceMethods)
+            {
+                // Skip if method is already defined in the class
+                if (definedMethods.Contains(interfaceMethod.Name)) continue;
+
+                // Generate abstract stub
+                var stub = GenerateAbstractMethodStub(interfaceMethod);
+                stubMembers.Add(stub);
+            }
+
+            // Add stubs to members list
+            if (stubMembers.Count > 0)
+            {
+                members = members.Concat(stubMembers).ToList();
+            }
+        }
+
+        classDecl = classDecl.WithMembers(List(members));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(classDef.DocString))
+        {
+            classDecl = classDecl.WithLeadingTrivia(GenerateXmlDocComment(classDef.DocString));
+        }
+
+        // Restore previous abstract class context
+        _isInAbstractClass = wasInAbstractClass;
+
+        return classDecl;
+    }
+
+    /// <summary>
+    /// Collects all method FunctionDefs from interfaces that a class implements.
+    /// Recursively collects from base interfaces as well.
+    /// </summary>
+    private List<FunctionDef> CollectInterfaceMethodDefs(List<TypeAnnotation> baseTypes)
+    {
+        var result = new List<FunctionDef>();
+        var visited = new HashSet<string>();
+        var seenMethods = new HashSet<string>();
+
+        void CollectFromInterface(string interfaceName)
+        {
+            if (visited.Contains(interfaceName)) return;
+            visited.Add(interfaceName);
+
+            // Look up the interface definition
+            if (!_interfaceDefinitions.TryGetValue(interfaceName, out var interfaceDef))
+                return;
+
+            // Collect methods from this interface
+            foreach (var stmt in interfaceDef.Body)
+            {
+                if (stmt is FunctionDef funcDef)
+                {
+                    // Skip if we've already seen a method with this name
+                    if (seenMethods.Contains(funcDef.Name)) continue;
+                    seenMethods.Add(funcDef.Name);
+                    result.Add(funcDef);
+                }
+            }
+
+            // Recursively collect from base interfaces
+            foreach (var baseInterface in interfaceDef.BaseInterfaces)
+            {
+                var baseName = baseInterface.Name;
+                if (!string.IsNullOrEmpty(baseName))
+                {
+                    CollectFromInterface(baseName);
+                }
+            }
+        }
+
+        foreach (var baseType in baseTypes)
+        {
+            var typeName = baseType.Name;
+            if (string.IsNullOrEmpty(typeName)) continue;
+
+            // Check if this is an interface (exists in our interface definitions)
+            if (_interfaceDefinitions.ContainsKey(typeName))
+            {
+                CollectFromInterface(typeName);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Returns the set of method names that are defined in the class body.
+    /// </summary>
+    private HashSet<string> GetDefinedMethodNames(List<Statement> classBody)
+    {
+        var defined = new HashSet<string>();
+
+        foreach (var stmt in classBody)
+        {
+            if (stmt is FunctionDef func)
+            {
+                defined.Add(func.Name);
+            }
+        }
+
+        return defined;
+    }
+
+    /// <summary>
+    /// Generates an abstract method stub for an interface method that is not implemented.
+    /// </summary>
+    private MethodDeclarationSyntax GenerateAbstractMethodStub(FunctionDef interfaceMethod)
+    {
+        var mangledName = NameMangler.Transform(interfaceMethod.Name, NameContext.Method);
+
+        // Determine return type from annotation or infer void
+        TypeSyntax returnType = interfaceMethod.ReturnType != null
+            ? _typeMapper.MapType(interfaceMethod.ReturnType)
+            : PredefinedType(Token(SyntaxKind.VoidKeyword));
+
+        // Generate parameters (skip 'self')
+        var parameters = interfaceMethod.Parameters
+            .Where(p => p.Name != "self")
+            .Select(GenerateParameter)
+            .ToArray();
+
+        // Create abstract method declaration
+        return MethodDeclaration(returnType, mangledName)
+            .WithModifiers(TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.AbstractKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+    }
+
+    private StructDeclarationSyntax GenerateStructDeclaration(StructDef structDef)
+    {
+        // Track this struct name for instantiation detection
+        _structNames.Add(structDef.Name);
+
+        // Transform struct name
+        var structName = NameMangler.Transform(structDef.Name, NameContext.Type);
+
+        // Process decorators to determine modifiers
+        var modifiers = GenerateTypeModifiersFromDecorators(structDef.Decorators);
+
+        // Create struct declaration
+        var structDecl = StructDeclaration(structName)
+            .WithModifiers(modifiers);
+
+        // Add type parameters if generic
+        if (structDef.TypeParameters.Count > 0)
+        {
+            var typeParams = structDef.TypeParameters
+                .Select(tp => TypeParameter(tp.Name))
+                .ToArray();
+            structDecl = structDecl
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(structDef.TypeParameters));
+        }
+
+        // Add interfaces (structs can only implement interfaces, not inherit)
+        if (structDef.BaseClasses.Count > 0)
+        {
+            var baseTypes = structDef.BaseClasses
+                .Select(bc => SimpleBaseType(_typeMapper.MapType(bc)))
+                .ToArray();
+            structDecl = structDecl.WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(baseTypes)));
+        }
+
+        // Generate struct members from body
+        var members = GenerateClassMembers(structDef.Body, structName);
+        structDecl = structDecl.WithMembers(List(members));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(structDef.DocString))
+        {
+            structDecl = structDecl.WithLeadingTrivia(GenerateXmlDocComment(structDef.DocString));
+        }
+
+        return structDecl;
+    }
+
+    private InterfaceDeclarationSyntax GenerateInterfaceDeclaration(InterfaceDef interfaceDef)
+    {
+        // Transform interface name using Interface context to preserve I prefix pattern
+        var interfaceName = NameMangler.Transform(interfaceDef.Name, NameContext.Interface);
+
+        // Interfaces are always public by default
+        var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
+
+        // Create interface declaration
+        var interfaceDecl = InterfaceDeclaration(interfaceName)
+            .WithModifiers(modifiers);
+
+        // Add type parameters if generic
+        if (interfaceDef.TypeParameters.Count > 0)
+        {
+            var typeParams = interfaceDef.TypeParameters
+                .Select(tp => TypeParameter(tp.Name))
+                .ToArray();
+            interfaceDecl = interfaceDecl
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(interfaceDef.TypeParameters));
+        }
+
+        // Add base interfaces
+        if (interfaceDef.BaseInterfaces.Count > 0)
+        {
+            var baseTypes = interfaceDef.BaseInterfaces
+                .Select(bi => SimpleBaseType(_typeMapper.MapType(bi)))
+                .ToArray();
+            interfaceDecl = interfaceDecl.WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(baseTypes)));
+        }
+
+        // Generate interface members (methods only, no implementation)
+        var members = GenerateInterfaceMembers(interfaceDef.Body);
+        interfaceDecl = interfaceDecl.WithMembers(List(members));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(interfaceDef.DocString))
+        {
+            interfaceDecl = interfaceDecl.WithLeadingTrivia(GenerateXmlDocComment(interfaceDef.DocString));
+        }
+
+        return interfaceDecl;
+    }
+
+    private SyntaxList<TypeParameterConstraintClauseSyntax> GenerateConstraintClauses(
+        List<TypeParameterDef> typeParameters)
+    {
+        var clauses = new List<TypeParameterConstraintClauseSyntax>();
+
+        foreach (var typeParam in typeParameters)
+        {
+            if (typeParam.Constraints.Count == 0)
+                continue;
+
+            var constraintSyntaxes = new List<TypeParameterConstraintSyntax>();
+
+            // Order: class/struct first, then types, then new()
+            var ordered = typeParam.Constraints
+                .OrderBy(c => c switch
+                {
+                    ClassConstraint => 0,
+                    StructConstraint => 0,
+                    Parser.Ast.TypeConstraint => 1,
+                    NewConstraint => 2,
+                    _ => 3
+                });
+
+            foreach (var constraint in ordered)
+            {
+                constraintSyntaxes.Add(constraint switch
+                {
+                    ClassConstraint => ClassOrStructConstraint(
+                        SyntaxKind.ClassConstraint),
+                    StructConstraint => ClassOrStructConstraint(
+                        SyntaxKind.StructConstraint),
+                    Parser.Ast.TypeConstraint tc => Microsoft.CodeAnalysis.CSharp.SyntaxFactory.TypeConstraint(
+                        _typeMapper.MapType(tc.Type)),
+                    NewConstraint => ConstructorConstraint(),
+                    _ => throw new InvalidOperationException($"Unknown constraint type: {constraint.GetType().Name}")
+                });
+            }
+
+            clauses.Add(TypeParameterConstraintClause(typeParam.Name)
+                .WithConstraints(SeparatedList(constraintSyntaxes)));
+        }
+
+        return List(clauses);
+    }
+
+    private SyntaxNode GenerateEnumDeclaration(EnumDef enumDef)
+    {
+        // Determine if this is a string enum or integer enum
+        bool isStringEnum = IsStringEnum(enumDef);
+
+        // Track string enums for proper code generation of enum member access
+        if (isStringEnum)
+        {
+            _stringEnumNames.Add(enumDef.Name);
+            return GenerateStringEnumClass(enumDef);
+        }
+        else
+        {
+            return GenerateIntegerEnum(enumDef);
+        }
+    }
+
+    /// <summary>
+    /// Determines if an enum is a string enum (has at least one string literal value)
+    /// </summary>
+    private bool IsStringEnum(EnumDef enumDef)
+    {
+        // Check if any member has a string value
+        foreach (var member in enumDef.Members)
+        {
+            if (member.Value is StringLiteral)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if a TypeSymbol represents a string enum
+    /// </summary>
+    private bool IsStringEnumSymbol(TypeSymbol enumSymbol)
+    {
+        return _stringEnumNames.Contains(enumSymbol.Name);
+    }
+
+    /// <summary>
+    /// Generates a C# enum for integer enums
+    /// </summary>
+    private EnumDeclarationSyntax GenerateIntegerEnum(EnumDef enumDef)
+    {
+        // Transform enum name
+        var enumName = NameMangler.Transform(enumDef.Name, NameContext.Type);
+
+        // Enums are always public by default
+        var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
+
+        // Generate enum members
+        var members = enumDef.Members
+            .Select(GenerateEnumMember)
+            .ToArray();
+
+        var enumDecl = EnumDeclaration(enumName)
+            .WithModifiers(modifiers)
+            .WithMembers(SeparatedList(members));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(enumDef.DocString))
+        {
+            enumDecl = enumDecl.WithLeadingTrivia(GenerateXmlDocComment(enumDef.DocString));
+        }
+
+        return enumDecl;
+    }
+
+    /// <summary>
+    /// Generates a sealed class with public static readonly string fields for string enums
+    /// </summary>
+    private ClassDeclarationSyntax GenerateStringEnumClass(EnumDef enumDef)
+    {
+        // Transform enum name
+        var className = NameMangler.Transform(enumDef.Name, NameContext.Type);
+
+        // Create public sealed class
+        var modifiers = TokenList(
+            Token(SyntaxKind.PublicKeyword),
+            Token(SyntaxKind.SealedKeyword)
+        );
+
+        var classDecl = ClassDeclaration(className)
+            .WithModifiers(modifiers);
+
+        // Generate public static readonly string fields for each member
+        var members = new List<MemberDeclarationSyntax>();
+
+        foreach (var member in enumDef.Members)
+        {
+            var fieldName = NameMangler.Transform(member.Name, NameContext.Constant);
+
+            // Determine the value - use the explicit value if provided, otherwise use the member name
+            ExpressionSyntax valueExpr;
+            if (member.Value is StringLiteral strLit)
+            {
+                valueExpr = GenerateExpression(strLit);
+            }
+            else
+            {
+                // Default to the original member name as a string
+                valueExpr = LiteralExpression(
+                    SyntaxKind.StringLiteralExpression,
+                    Literal(member.Name)
+                );
+            }
+
+            var field = FieldDeclaration(
+                VariableDeclaration(
+                    PredefinedType(Token(SyntaxKind.StringKeyword))
+                )
+                .WithVariables(
+                    SingletonSeparatedList(
+                        VariableDeclarator(Identifier(fieldName))
+                            .WithInitializer(EqualsValueClause(valueExpr))
+                    )
+                )
+            )
+            .WithModifiers(TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.StaticKeyword),
+                Token(SyntaxKind.ReadOnlyKeyword)
+            ));
+
+            members.Add(field);
+        }
+
+        classDecl = classDecl.WithMembers(List(members));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(enumDef.DocString))
+        {
+            classDecl = classDecl.WithLeadingTrivia(GenerateXmlDocComment(enumDef.DocString));
+        }
+
+        return classDecl;
+    }
+
+    private EnumMemberDeclarationSyntax GenerateEnumMember(EnumMember member)
+    {
+        // Enum members use PascalCase in C# (RED -> Red, DARK_BLUE -> DarkBlue)
+        // Need custom logic because NameMangler.ToPascalCase preserves all-caps words
+        var memberName = TransformEnumMemberName(member.Name);
+
+        var enumMember = EnumMemberDeclaration(Identifier(memberName));
+
+        // Add explicit value if present
+        if (member.Value != null)
+        {
+            var valueExpr = GenerateExpression(member.Value);
+            enumMember = enumMember.WithEqualsValue(EqualsValueClause(valueExpr));
+        }
+
+        return enumMember;
+    }
+
+    private static string TransformEnumMemberName(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return name;
+
+        // Handle literal names (backtick-escaped)
+        if (name.StartsWith("`") && name.EndsWith("`"))
+            return name[1..^1];
+
+        // Split by underscores and capitalize each part
+        var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        var capitalizedParts = parts.Select(part =>
+            string.IsNullOrEmpty(part) ? part :
+            char.ToUpperInvariant(part[0]) + part.Substring(1).ToLowerInvariant());
+
+        return string.Join("", capitalizedParts);
+    }
+
+    private SyntaxTokenList GenerateTypeModifiersFromDecorators(List<Decorator> decorators)
+    {
+        var tokens = new List<SyntaxToken>();
+
+        // Check for access modifiers
+        bool hasAccessModifier = false;
+        foreach (var decorator in decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "private":
+                    tokens.Add(Token(SyntaxKind.PrivateKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "protected":
+                    tokens.Add(Token(SyntaxKind.ProtectedKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "internal":
+                    tokens.Add(Token(SyntaxKind.InternalKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "public":
+                    tokens.Add(Token(SyntaxKind.PublicKeyword));
+                    hasAccessModifier = true;
+                    break;
+            }
+        }
+
+        // Default to public if no access modifier specified
+        if (!hasAccessModifier)
+        {
+            tokens.Add(Token(SyntaxKind.PublicKeyword));
+        }
+
+        // Check for other modifiers
+        foreach (var decorator in decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "abstract":
+                    tokens.Add(Token(SyntaxKind.AbstractKeyword));
+                    break;
+                case "sealed":
+                    tokens.Add(Token(SyntaxKind.SealedKeyword));
+                    break;
+                case "static":
+                    tokens.Add(Token(SyntaxKind.StaticKeyword));
+                    break;
+            }
+        }
+
+        return TokenList(tokens);
+    }
+
+    #endregion
+}

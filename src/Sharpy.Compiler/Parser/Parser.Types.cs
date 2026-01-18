@@ -1,0 +1,464 @@
+using System.Text;
+using Sharpy.Compiler.Lexer;
+using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Parser.Ast;
+
+namespace Sharpy.Compiler.Parser;
+
+/// <summary>
+/// Parser partial class: Type annotation parsing and utilities
+/// </summary>
+public partial class Parser
+{
+    private TypeAnnotation ParseTypeAnnotation()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+
+        TypeAnnotation baseType;
+
+        // Check for shorthand forms first
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            // [T] list shorthand
+            baseType = ParseListTypeShorthand(startLine, startColumn);
+        }
+        else if (Current.Type == TokenType.LeftBrace)
+        {
+            // {T} set or {K: V} dict shorthand
+            baseType = ParseSetOrDictTypeShorthand(startLine, startColumn);
+        }
+        else if (Current.Type == TokenType.LeftParen)
+        {
+            // () empty tuple, (T) single tuple, (T, U) tuple, or (T) -> U function type
+            baseType = ParseTupleOrFunctionTypeShorthand(startLine, startColumn);
+        }
+        else
+        {
+            // Standard type: identifier with optional generic args
+            baseType = ParseStandardTypeAnnotation(startLine, startColumn);
+        }
+
+        // Check for array suffix: T[]
+        while (Current.Type == TokenType.LeftBracket && Peek().Type == TokenType.RightBracket)
+        {
+            Advance(); // consume '['
+            Advance(); // consume ']'
+
+            var endLine = Peek(-1).Line;
+            var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            baseType = new TypeAnnotation
+            {
+                Name = "array",
+                TypeArguments = new List<TypeAnnotation> { baseType },
+                IsNullable = false,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = endLine,
+                ColumnEnd = endColumn
+            };
+        }
+
+        // Nullable type suffix T?
+        if (Current.Type == TokenType.Question)
+        {
+            Advance();
+            var endLine = Peek(-1).Line;
+            var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            baseType = baseType with
+            {
+                IsNullable = true,
+                LineEnd = endLine,
+                ColumnEnd = endColumn
+            };
+        }
+
+        return baseType;
+    }
+
+    /// <summary>
+    /// Parses standard type annotation: identifier with optional generic arguments.
+    /// Handles: int, list[T], dict[K, V], auto, None
+    /// </summary>
+    private TypeAnnotation ParseStandardTypeAnnotation(int startLine, int startColumn)
+    {
+        // Handle 'auto' keyword for type inference
+        string name;
+        if (Current.Type == TokenType.Auto)
+        {
+            name = "auto";
+            Advance();
+        }
+        // Handle 'None' as a type name (for -> None return annotations)
+        else if (Current.Type == TokenType.None)
+        {
+            name = "None";
+            Advance();
+        }
+        else
+        {
+            name = ExpectIdentifier();
+        }
+
+        var typeArgs = new List<TypeAnnotation>();
+
+        // Generic type arguments [T, U]
+        if (Current.Type == TokenType.LeftBracket && Peek().Type != TokenType.RightBracket)
+        {
+            Advance();
+            do
+            {
+                typeArgs.Add(ParseTypeAnnotation());
+
+                if (Current.Type == TokenType.Comma)
+                    Advance();
+                else
+                    break;
+            } while (true);
+            Expect(TokenType.RightBracket);
+        }
+
+        var endLine = Peek(-1).Line;
+        var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+        return new TypeAnnotation
+        {
+            Name = name,
+            TypeArguments = typeArgs,
+            IsNullable = false,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = endLine,
+            ColumnEnd = endColumn
+        };
+    }
+
+    /// <summary>
+    /// Parses [T] list shorthand. Produces same AST as list[T].
+    /// </summary>
+    private TypeAnnotation ParseListTypeShorthand(int startLine, int startColumn)
+    {
+        Advance(); // consume '['
+
+        // Check for empty brackets - error case
+        if (Current.Type == TokenType.RightBracket)
+        {
+            throw new ParserError("List type shorthand requires an element type: [T]", Current.Line, Current.Column);
+        }
+
+        var elementType = ParseTypeAnnotation();
+        Expect(TokenType.RightBracket);
+
+        var endLine = Peek(-1).Line;
+        var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+        return new TypeAnnotation
+        {
+            Name = "list",
+            TypeArguments = new List<TypeAnnotation> { elementType },
+            IsNullable = false,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = endLine,
+            ColumnEnd = endColumn
+        };
+    }
+
+    /// <summary>
+    /// Parses {T} set or {K: V} dict shorthand.
+    /// Presence of ':' distinguishes dict from set.
+    /// </summary>
+    private TypeAnnotation ParseSetOrDictTypeShorthand(int startLine, int startColumn)
+    {
+        Advance(); // consume '{'
+
+        // Check for empty braces - error case
+        if (Current.Type == TokenType.RightBrace)
+        {
+            throw new ParserError("Set/dict type shorthand requires type arguments: {T} for set or {K: V} for dict", Current.Line, Current.Column);
+        }
+
+        var firstType = ParseTypeAnnotation();
+
+        // Check if this is a dict (has ':')
+        if (Current.Type == TokenType.Colon)
+        {
+            Advance(); // consume ':'
+            var valueType = ParseTypeAnnotation();
+            Expect(TokenType.RightBrace);
+
+            var endLine = Peek(-1).Line;
+            var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            return new TypeAnnotation
+            {
+                Name = "dict",
+                TypeArguments = new List<TypeAnnotation> { firstType, valueType },
+                IsNullable = false,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = endLine,
+                ColumnEnd = endColumn
+            };
+        }
+
+        // Otherwise it's a set
+        Expect(TokenType.RightBrace);
+
+        var setEndLine = Peek(-1).Line;
+        var setEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+        return new TypeAnnotation
+        {
+            Name = "set",
+            TypeArguments = new List<TypeAnnotation> { firstType },
+            IsNullable = false,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = setEndLine,
+            ColumnEnd = setEndColumn
+        };
+    }
+
+    /// <summary>
+    /// Parses tuple shorthand or function type.
+    /// () = empty tuple, (T) = single tuple, (T, U) = tuple, (T) -> U = function type.
+    /// Presence of '->' distinguishes function type from tuple.
+    /// </summary>
+    private TypeAnnotation ParseTupleOrFunctionTypeShorthand(int startLine, int startColumn)
+    {
+        Advance(); // consume '('
+
+        var types = new List<TypeAnnotation>();
+        var hasTrailingComma = false;
+
+        // Parse type list
+        if (Current.Type != TokenType.RightParen)
+        {
+            do
+            {
+                types.Add(ParseTypeAnnotation());
+
+                if (Current.Type == TokenType.Comma)
+                {
+                    hasTrailingComma = true;
+                    Advance();
+                }
+                else
+                {
+                    hasTrailingComma = false;
+                    break;
+                }
+            } while (Current.Type != TokenType.RightParen);
+        }
+
+        Expect(TokenType.RightParen);
+
+        // Check if this is a function type (has '->')
+        if (Current.Type == TokenType.Arrow)
+        {
+            Advance(); // consume '->'
+            var returnType = ParseTypeAnnotation();
+
+            var funcEndLine = Peek(-1).Line;
+            var funcEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            // For function types, we return a special representation
+            // The Name "function" with TypeArguments containing params + return type
+            // Last type argument is the return type
+            var funcTypeArgs = new List<TypeAnnotation>(types) { returnType };
+
+            return new TypeAnnotation
+            {
+                Name = "function",
+                TypeArguments = funcTypeArgs,
+                IsNullable = false,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = funcEndLine,
+                ColumnEnd = funcEndColumn
+            };
+        }
+
+        // It's a tuple
+        var endLine = Peek(-1).Line;
+        var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+        return new TypeAnnotation
+        {
+            Name = "tuple",
+            TypeArguments = types,
+            IsNullable = false,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = endLine,
+            ColumnEnd = endColumn
+        };
+    }
+
+    private void Advance() => _position++;
+
+    private void Expect(TokenType type)
+    {
+        if (Current.Type != type)
+            throw new ParserError($"Expected {type}, got {Current.Type}", Current.Line, Current.Column);
+        Advance();
+    }
+
+    private string ExpectIdentifier()
+    {
+        if (Current.Type != TokenType.Identifier)
+            throw new ParserError($"Expected identifier, got {Current.Type}", Current.Line, Current.Column);
+        var value = Current.Value;
+        Advance();
+        return value;
+    }
+
+    /// <summary>
+    /// Expects an identifier or keyword token and returns its value as a string.
+    /// Used for member access where keywords can be used as member names (e.g., obj.property, obj.type).
+    /// </summary>
+    private string ExpectIdentifierOrKeyword()
+    {
+        if (Current.Type == TokenType.Identifier || IsKeywordToken(Current.Type))
+        {
+            var value = Current.Value;
+            Advance();
+            return value;
+        }
+        throw new ParserError($"Expected identifier, got {Current.Type}", Current.Line, Current.Column);
+    }
+
+    /// <summary>
+    /// Checks if a token type is a keyword that can be used as an identifier in member access context.
+    /// </summary>
+    private static bool IsKeywordToken(TokenType type)
+    {
+        return type switch
+        {
+            // Control flow keywords
+            TokenType.Def or TokenType.Class or TokenType.Struct or TokenType.Interface or
+            TokenType.Enum or TokenType.If or TokenType.Else or TokenType.Elif or
+            TokenType.While or TokenType.For or TokenType.In or TokenType.Return or
+            TokenType.Break or TokenType.Continue or TokenType.Pass or TokenType.Try or
+            TokenType.Except or TokenType.Finally or TokenType.Raise or TokenType.Assert or
+            TokenType.With or
+            // Import keywords
+            TokenType.Import or TokenType.From or TokenType.As or
+            // Type/Value keywords
+            TokenType.Auto or TokenType.Const or TokenType.Lambda or TokenType.Type or
+            // Pattern matching
+            TokenType.Match or TokenType.Case or
+            // Async keywords
+            TokenType.Async or TokenType.Await or TokenType.Yield or
+            // Member keywords
+            TokenType.Property or TokenType.Event or
+            // Other keywords
+            TokenType.Del or TokenType.To or TokenType.Maybe or TokenType.Super or
+            // Future keywords
+            TokenType.Defer or TokenType.Do or
+            // Boolean operators (keywords)
+            TokenType.And or TokenType.Or or TokenType.Not or TokenType.Is or
+            // Boolean literals
+            TokenType.True or TokenType.False or TokenType.None
+                => true,
+            _ => false
+        };
+    }
+
+    private void ExpectNewline()
+    {
+        if (Current.Type == TokenType.Newline)
+            Advance();
+        else if (!IsAtEnd)
+            throw new ParserError($"Expected newline, got {Current.Type}", Current.Line, Current.Column);
+    }
+
+    private void ExpectStatementEnd()
+    {
+        // Simple statements can end with:
+        // 1. Newline (normal case)
+        // 2. Dedent (last statement in a block)
+        // 3. EOF (last statement in file)
+        if (Current.Type == TokenType.Newline)
+            Advance();
+        else if (Current.Type != TokenType.Dedent && !IsAtEnd)
+            throw new ParserError($"Expected end of statement, got {Current.Type}", Current.Line, Current.Column);
+    }
+
+    private void SkipNewlines()
+    {
+        while (Current.Type == TokenType.Newline)
+            Advance();
+    }
+
+    private bool IsTypeName(string name)
+    {
+        // Primitive types
+        if (name is "int" or "float" or "str" or "bool" or "list" or "dict" or "set" or "tuple" or "object" or "any")
+            return true;
+
+        // User-defined types typically start with uppercase letter
+        if (name.Length > 0 && char.IsUpper(name[0]))
+            return true;
+
+        return false;
+    }
+
+    /// <summary>
+    /// Parse a segmented f-string (new lexer approach)
+    /// FStringStart, (FStringText | FStringExprStart Expression [: FormatSpec] FStringExprEnd)*, FStringEnd
+    /// </summary>
+    private FStringLiteral ParseSegmentedFString(int startLine, int startColumn)
+    {
+        var parts = new List<FStringPart>();
+
+        // Consume FStringStart
+        Expect(TokenType.FStringStart);
+
+        while (Current.Type != TokenType.FStringEnd && Current.Type != TokenType.Eof)
+        {
+            if (Current.Type == TokenType.FStringText)
+            {
+                // Text segment
+                parts.Add(new FStringPart { Text = Current.Value, Expression = null });
+                Advance();
+            }
+            else if (Current.Type == TokenType.FStringExprStart)
+            {
+                // Expression segment
+                Advance(); // Skip FStringExprStart
+
+                // Parse the expression (tokens are already emitted by lexer)
+                var expr = ParseExpression();
+
+                // Check for optional format spec token
+                string? formatSpec = null;
+                if (Current.Type == TokenType.FStringFormatSpec)
+                {
+                    formatSpec = Current.Value;
+                    Advance();
+                }
+
+                parts.Add(new FStringPart { Text = null, Expression = expr, FormatSpec = formatSpec });
+
+                // Expect FStringExprEnd
+                Expect(TokenType.FStringExprEnd);
+            }
+            else
+            {
+                throw new ParserError($"Unexpected token in f-string: {Current.Type}", Current.Line, Current.Column);
+            }
+        }
+
+        var endLine = Current.Line;
+        var endColumn = Current.Column;
+
+        // Consume FStringEnd
+        Expect(TokenType.FStringEnd);
+
+        return new FStringLiteral { Parts = parts, LineStart = startLine, ColumnStart = startColumn, LineEnd = endLine, ColumnEnd = endColumn };
+    }
+}

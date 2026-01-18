@@ -1,0 +1,712 @@
+using System.Text;
+using Sharpy.Compiler.Lexer;
+using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Parser.Ast;
+
+namespace Sharpy.Compiler.Parser;
+
+/// <summary>
+/// Parser partial class: Definition parsing (functions, classes, structs, interfaces, enums)
+/// </summary>
+public partial class Parser
+{
+    private Statement ParseSimpleStatement()
+    {
+        // Could be:
+        // 1. Assignment (x = value, x += value)
+        // 2. Variable declaration (x: int = value or x: int)
+        // 3. Expression statement
+
+        var expr = ParseExpression();
+
+        // Check for tuple unpacking: x, y = ...
+        // If we see a comma after the expression, it might be a tuple target for assignment
+        if (Current.Type == TokenType.Comma)
+        {
+            var startLine = expr.LineStart;
+            var startColumn = expr.ColumnStart;
+            var elements = new List<Expression> { expr };
+
+            // Parse remaining tuple elements
+            while (Current.Type == TokenType.Comma)
+            {
+                Advance();
+                elements.Add(ParseExpression());
+            }
+
+            // Now check if we have an assignment operator
+            if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.NullCoalesceAssign)
+            {
+                // This is a tuple unpacking assignment
+                var tuple = new TupleLiteral
+                {
+                    Elements = elements,
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = Current.Line,
+                    ColumnEnd = Current.Column
+                };
+
+                var op = TokenTypeToAssignmentOperator(Current.Type);
+                Advance();
+                var value = ParseExpression();
+                ExpectStatementEnd();
+
+                return new Assignment
+                {
+                    Target = tuple,
+                    Value = value,
+                    Operator = op,
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = value.LineEnd,
+                    ColumnEnd = value.ColumnEnd
+                };
+            }
+
+            // If not an assignment, this is an error (tuple expression statements not allowed)
+            throw new ParserError("Tuple expression not allowed as a statement", Current.Line, Current.Column);
+        }
+
+        // Check for assignment operators
+        if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.NullCoalesceAssign)
+        {
+            var op = TokenTypeToAssignmentOperator(Current.Type);
+            Advance();
+            var value = ParseExpression();
+            ExpectStatementEnd();
+
+            return new Assignment
+            {
+                Target = expr,
+                Value = value,
+                Operator = op,
+                LineStart = expr.LineStart,
+                ColumnStart = expr.ColumnStart,
+                LineEnd = value.LineEnd,
+                ColumnEnd = value.ColumnEnd
+            };
+        }
+
+        // Check for type annotation (variable declaration)
+        if (Current.Type == TokenType.Colon)
+        {
+            if (expr is not Identifier id)
+                throw new ParserError("Invalid type annotation target", Current.Line, Current.Column);
+
+            Advance();  // Skip :
+            var type = ParseTypeAnnotation();
+
+            Expression? initialValue = null;
+            if (Current.Type == TokenType.Assign)
+            {
+                Advance();
+                initialValue = ParseExpression();
+            }
+
+            ExpectStatementEnd();
+
+            return new VariableDeclaration
+            {
+                Name = id.Name,
+                Type = type,
+                InitialValue = initialValue,
+                IsConst = false,
+                LineStart = id.LineStart,
+                ColumnStart = id.ColumnStart,
+                LineEnd = Current.Line,
+                ColumnEnd = Current.Column
+            };
+        }
+
+        ExpectStatementEnd();
+
+        return new ExpressionStatement
+        {
+            Expression = expr,
+            LineStart = expr.LineStart,
+            ColumnStart = expr.ColumnStart,
+            LineEnd = expr.LineEnd,
+            ColumnEnd = expr.ColumnEnd
+        };
+    }
+
+    private AssignmentOperator TokenTypeToAssignmentOperator(TokenType type) => type switch
+    {
+        TokenType.Assign => AssignmentOperator.Assign,
+        TokenType.PlusAssign => AssignmentOperator.PlusAssign,
+        TokenType.MinusAssign => AssignmentOperator.MinusAssign,
+        TokenType.StarAssign => AssignmentOperator.StarAssign,
+        TokenType.SlashAssign => AssignmentOperator.SlashAssign,
+        TokenType.DoubleSlashAssign => AssignmentOperator.DoubleSlashAssign,
+        TokenType.PercentAssign => AssignmentOperator.PercentAssign,
+        TokenType.DoubleStarAssign => AssignmentOperator.PowerAssign,
+        TokenType.AmpersandAssign => AssignmentOperator.AndAssign,
+        TokenType.PipeAssign => AssignmentOperator.OrAssign,
+        TokenType.CaretAssign => AssignmentOperator.XorAssign,
+        TokenType.LeftShiftAssign => AssignmentOperator.LeftShiftAssign,
+        TokenType.RightShiftAssign => AssignmentOperator.RightShiftAssign,
+        TokenType.NullCoalesceAssign => AssignmentOperator.NullCoalesceAssign,
+        _ => throw new ParserError($"Not an assignment operator: {type}", Current.Line, Current.Column)
+    };
+
+    private FunctionDef ParseFunctionDef()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+
+        Expect(TokenType.Def);
+        var name = ExpectIdentifier();
+
+        var typeParams = new List<TypeParameterDef>();
+
+        // Type parameters [T, U] or [T: IComparable, U: class]
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            typeParams = ParseTypeParameterList();
+        }
+
+        Expect(TokenType.LeftParen);
+
+        var parameters = ParseParameters();
+        Expect(TokenType.RightParen);
+
+        TypeAnnotation? returnType = null;
+        if (Current.Type == TokenType.Arrow)
+        {
+            Advance();
+            returnType = ParseTypeAnnotation();
+        }
+
+        Expect(TokenType.Colon);
+
+        // Support inline ellipsis syntax: def foo(): ...
+        if (Current.Type == TokenType.Ellipsis)
+        {
+            var ellipsisLine = Current.Line;
+            var ellipsisColumn = Current.Column;
+            Advance(); // consume '...'
+            ExpectNewline();
+
+            return new FunctionDef
+            {
+                Name = name,
+                TypeParameters = typeParams,
+                Parameters = parameters,
+                ReturnType = returnType,
+                Body = new List<Statement>
+                {
+                    new ExpressionStatement
+                    {
+                        Expression = new EllipsisLiteral
+                        {
+                            LineStart = ellipsisLine,
+                            ColumnStart = ellipsisColumn,
+                            LineEnd = ellipsisLine,
+                            ColumnEnd = ellipsisColumn + 3
+                        },
+                        LineStart = ellipsisLine,
+                        ColumnStart = ellipsisColumn,
+                        LineEnd = ellipsisLine,
+                        ColumnEnd = ellipsisColumn + 3
+                    }
+                },
+                DocString = null,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = Current.Line,
+                ColumnEnd = Current.Column
+            };
+        }
+
+        ExpectNewline();
+
+        string? docString = null;
+        Expect(TokenType.Indent);
+
+        // Check for docstring
+        if (Current.Type == TokenType.String)
+        {
+            docString = Current.Value;
+            Advance();
+            SkipNewlines();
+        }
+
+        var body = ParseBlock();
+        Expect(TokenType.Dedent);
+
+        return new FunctionDef
+        {
+            Name = name,
+            TypeParameters = typeParams,
+            Parameters = parameters,
+            ReturnType = returnType,
+            Body = body,
+            DocString = docString,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column
+        };
+    }
+
+    private ClassDef ParseClassDef()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+
+        Expect(TokenType.Class);
+        var name = ExpectIdentifier();
+
+        var typeParams = new List<TypeParameterDef>();
+        var baseClasses = new List<TypeAnnotation>();
+
+        // Type parameters [T, U] or [T: IComparable, U: class]
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            typeParams = ParseTypeParameterList();
+        }
+
+        // Base classes (ParentClass, Interface1, Interface2)
+        if (Current.Type == TokenType.LeftParen)
+        {
+            Advance();
+            if (Current.Type != TokenType.RightParen)
+            {
+                do
+                {
+                    baseClasses.Add(ParseTypeAnnotation());
+                    if (Current.Type == TokenType.Comma)
+                        Advance();
+                    else
+                        break;
+                } while (true);
+            }
+            Expect(TokenType.RightParen);
+        }
+
+        Expect(TokenType.Colon);
+        ExpectNewline();
+
+        string? docString = null;
+        Expect(TokenType.Indent);
+
+        // Check for docstring
+        if (Current.Type == TokenType.String)
+        {
+            docString = Current.Value;
+            Advance();
+            SkipNewlines();
+        }
+
+        var body = ParseBlock();
+        Expect(TokenType.Dedent);
+
+        return new ClassDef
+        {
+            Name = name,
+            TypeParameters = typeParams,
+            BaseClasses = baseClasses,
+            Body = body,
+            DocString = docString,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column
+        };
+    }
+
+    private StructDef ParseStructDef()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+
+        Expect(TokenType.Struct);
+        var name = ExpectIdentifier();
+
+        var typeParams = new List<TypeParameterDef>();
+        var baseInterfaces = new List<TypeAnnotation>();
+
+        // Type parameters [T, U] or [T: IComparable, U: class]
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            typeParams = ParseTypeParameterList();
+        }
+
+        // Base interfaces (structs can only implement interfaces, no inheritance)
+        if (Current.Type == TokenType.LeftParen)
+        {
+            Advance();
+            if (Current.Type != TokenType.RightParen)
+            {
+                do
+                {
+                    baseInterfaces.Add(ParseTypeAnnotation());
+                    if (Current.Type == TokenType.Comma)
+                        Advance();
+                    else
+                        break;
+                } while (true);
+            }
+            Expect(TokenType.RightParen);
+        }
+
+        Expect(TokenType.Colon);
+        ExpectNewline();
+
+        string? docString = null;
+        Expect(TokenType.Indent);
+
+        // Check for docstring
+        if (Current.Type == TokenType.String)
+        {
+            docString = Current.Value;
+            Advance();
+            SkipNewlines();
+        }
+
+        var body = ParseBlock();
+        Expect(TokenType.Dedent);
+
+        return new StructDef
+        {
+            Name = name,
+            TypeParameters = typeParams,
+            BaseClasses = baseInterfaces,
+            Body = body,
+            DocString = docString,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column
+        };
+    }
+
+    private InterfaceDef ParseInterfaceDef()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+
+        Expect(TokenType.Interface);
+        var name = ExpectIdentifier();
+
+        var typeParams = new List<TypeParameterDef>();
+        var baseInterfaces = new List<TypeAnnotation>();
+
+        // Type parameters [T, U] or [T: IComparable, U: class]
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            typeParams = ParseTypeParameterList();
+        }
+
+        // Base interfaces
+        if (Current.Type == TokenType.LeftParen)
+        {
+            Advance();
+            if (Current.Type != TokenType.RightParen)
+            {
+                do
+                {
+                    baseInterfaces.Add(ParseTypeAnnotation());
+                    if (Current.Type == TokenType.Comma)
+                        Advance();
+                    else
+                        break;
+                } while (true);
+            }
+            Expect(TokenType.RightParen);
+        }
+
+        Expect(TokenType.Colon);
+        ExpectNewline();
+
+        string? docString = null;
+        Expect(TokenType.Indent);
+
+        // Check for docstring
+        if (Current.Type == TokenType.String)
+        {
+            docString = Current.Value;
+            Advance();
+            SkipNewlines();
+        }
+
+        var body = ParseBlock();
+        Expect(TokenType.Dedent);
+
+        return new InterfaceDef
+        {
+            Name = name,
+            TypeParameters = typeParams,
+            BaseInterfaces = baseInterfaces,
+            Body = body,
+            DocString = docString,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column
+        };
+    }
+
+    private List<TypeParameterDef> ParseTypeParameterList()
+    {
+        var typeParams = new List<TypeParameterDef>();
+
+        Expect(TokenType.LeftBracket);
+
+        do
+        {
+            var paramName = ExpectIdentifier();
+            var constraints = new List<ConstraintClause>();
+
+            // Check for constraint: T: IComparable
+            if (Current.Type == TokenType.Colon)
+            {
+                Advance(); // consume ':'
+                constraints = ParseConstraints();
+            }
+
+            typeParams.Add(new TypeParameterDef
+            {
+                Name = paramName,
+                Constraints = constraints
+            });
+
+            if (Current.Type == TokenType.Comma)
+                Advance();
+            else
+                break;
+        } while (true);
+
+        Expect(TokenType.RightBracket);
+
+        return typeParams;
+    }
+
+    private List<ConstraintClause> ParseConstraints()
+    {
+        var constraints = new List<ConstraintClause>();
+
+        do
+        {
+            constraints.Add(ParseSingleConstraint());
+
+            if (Current.Type == TokenType.Ampersand)
+                Advance(); // consume '&'
+            else
+                break;
+        } while (true);
+
+        return constraints;
+    }
+
+    private ConstraintClause ParseSingleConstraint()
+    {
+        // class constraint
+        if (Current.Type == TokenType.Class)
+        {
+            Advance();
+            return new ClassConstraint();
+        }
+
+        // struct constraint
+        if (Current.Type == TokenType.Struct)
+        {
+            Advance();
+            return new StructConstraint();
+        }
+
+        // new() constraint
+        if (Current.Type == TokenType.Identifier && Current.Value == "new")
+        {
+            Advance();
+            Expect(TokenType.LeftParen);
+            Expect(TokenType.RightParen);
+            return new NewConstraint();
+        }
+
+        // Type constraint (interface or base type)
+        var type = ParseTypeAnnotation();
+        return new TypeConstraint { Type = type };
+    }
+
+    private EnumDef ParseEnumDef()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+
+        Expect(TokenType.Enum);
+        var name = ExpectIdentifier();
+        Expect(TokenType.Colon);
+        ExpectNewline();
+
+        string? docString = null;
+        Expect(TokenType.Indent);
+
+        // Check for docstring
+        if (Current.Type == TokenType.String)
+        {
+            docString = Current.Value;
+            Advance();
+            SkipNewlines();
+        }
+
+        var members = new List<EnumMember>();
+
+        while (Current.Type != TokenType.Dedent && !IsAtEnd)
+        {
+            // Handle pass statement in empty enum
+            if (Current.Type == TokenType.Pass)
+            {
+                Advance();
+                ExpectNewline();
+                SkipNewlines();
+                continue;
+            }
+
+            var memberStartLine = Current.Line;
+            var memberStartColumn = Current.Column;
+            var memberName = ExpectIdentifier();
+            Expression? value = null;
+
+            if (Current.Type == TokenType.Assign)
+            {
+                Advance();
+                value = ParseExpression();
+            }
+
+            var memberEndLine = Peek(-1).Line;
+            var memberEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            members.Add(new EnumMember
+            {
+                Name = memberName,
+                Value = value,
+                LineStart = memberStartLine,
+                ColumnStart = memberStartColumn,
+                LineEnd = memberEndLine,
+                ColumnEnd = memberEndColumn
+            });
+            ExpectNewline();
+            SkipNewlines();
+        }
+
+        Expect(TokenType.Dedent);
+
+        // Validate enum has at least one member
+        if (members.Count == 0)
+        {
+            throw new ParserError($"Enum '{name}' must have at least one member", startLine, startColumn);
+        }
+
+        return new EnumDef
+        {
+            Name = name,
+            Members = members,
+            DocString = docString,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column
+        };
+    }
+
+    private TypeAlias ParseTypeAlias()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+
+        Expect(TokenType.Type);
+        var name = ExpectIdentifier();
+        Expect(TokenType.Assign);
+
+        // Check if this is a function type: (params) -> returnType
+        TypeAnnotation? type = null;
+        FunctionType? functionType = null;
+
+        if (Current.Type == TokenType.LeftParen)
+        {
+            // Parse function type: (int, str) -> bool
+            Advance(); // consume '('
+            var paramTypes = new List<TypeAnnotation>();
+
+            // Parse parameter types
+            if (Current.Type != TokenType.RightParen)
+            {
+                do
+                {
+                    paramTypes.Add(ParseTypeAnnotation());
+
+                    if (Current.Type == TokenType.Comma)
+                        Advance();
+                    else
+                        break;
+                } while (true);
+            }
+
+            Expect(TokenType.RightParen);
+            Expect(TokenType.Arrow);
+            var returnType = ParseTypeAnnotation();
+
+            functionType = new FunctionType
+            {
+                ParameterTypes = paramTypes,
+                ReturnType = returnType
+            };
+        }
+        else
+        {
+            // Parse regular type annotation
+            type = ParseTypeAnnotation();
+        }
+
+        ExpectNewline();
+
+        return new TypeAlias
+        {
+            Name = name,
+            Type = type,
+            FunctionType = functionType,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column
+        };
+    }
+
+    private VariableDeclaration ParseConstDeclaration()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+
+        Expect(TokenType.Const);
+        var name = ExpectIdentifier();
+
+        // Type annotation is optional for const declarations
+        // const X: int = 1  (explicit type)
+        // const X = "MyApp" (type inferred)
+        TypeAnnotation? type = null;
+        if (Current.Type == TokenType.Colon)
+        {
+            Advance(); // consume ':'
+            type = ParseTypeAnnotation();
+        }
+
+        Expect(TokenType.Assign);
+        var value = ParseExpression();
+        ExpectNewline();
+
+        return new VariableDeclaration
+        {
+            Name = name,
+            Type = type,
+            InitialValue = value,
+            IsConst = true,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column
+        };
+    }
+
+}

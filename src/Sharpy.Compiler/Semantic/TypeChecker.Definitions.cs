@@ -1,0 +1,489 @@
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Logging;
+
+namespace Sharpy.Compiler.Semantic;
+
+/// <summary>
+/// TypeChecker partial class: Type definition checking (functions, classes, structs, interfaces, enums)
+/// </summary>
+public partial class TypeChecker
+{
+    private void CheckFunction(FunctionDef functionDef)
+    {
+        _logger.LogDebug($"Type checking function: {functionDef.Name}");
+
+        // Look up the function symbol to update its types
+        // For __init__ methods in classes, we need to look up from the Constructors list
+        // since multiple overloads may exist with the same name
+        FunctionSymbol? functionSymbol = null;
+        if (functionDef.Name == "__init__" && _currentClass != null)
+        {
+            // Find the matching constructor by declaration line number
+            // This uniquely identifies which overload we're checking
+            functionSymbol = _currentClass.Constructors
+                .FirstOrDefault(c => c.DeclarationLine == functionDef.LineStart);
+        }
+        else
+        {
+            functionSymbol = _symbolTable.LookupFunction(functionDef.Name);
+        }
+
+        // Enter function scope FIRST so we can register type parameters before resolving types
+        _symbolTable.EnterScope($"function:{functionDef.Name}");
+
+        // Register type parameters for generic functions so they can be resolved in parameter/return types
+        foreach (var typeParam in functionDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = null,  // No declaring type for standalone generic functions
+                DeclarationLine = functionDef.LineStart,
+                DeclarationColumn = functionDef.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
+        // Resolve return type AFTER type parameters are registered
+        var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
+
+        // Special case: __init__ always returns None/void
+        // (signature validation is in ProtocolSignatureValidator)
+        if (functionDef.Name == "__init__")
+        {
+            returnType = SemanticType.Void;
+        }
+        // Functions without explicit return type annotation default to void
+        else if (returnType == SemanticType.Unknown && functionDef.ReturnType == null)
+        {
+            returnType = SemanticType.Void;
+        }
+
+        _currentFunctionReturnType = returnType;
+
+        // Save previous method context and set new context for super() validation
+        var previousMethodName = _currentMethodName;
+        var previousMethodIsOverride = _currentMethodIsOverride;
+        var previousMethodIsDunder = _currentMethodIsDunder;
+        var previousControlFlowDepth = _controlFlowDepth;
+        var previousSuperInitCalled = _superInitCalled;
+
+        _currentMethodName = functionDef.Name;
+        _currentMethodIsOverride = functionDef.Decorators.Any(d => d.Name == "override");
+        _currentMethodIsDunder = IsDunderMethod(functionDef.Name);
+        _controlFlowDepth = 0;
+        _superInitCalled = false;
+
+        // Validate @override is required for dunders that override System.Object methods
+        if (_currentClass != null && _currentMethodIsDunder)
+        {
+            bool requiresOverride = ProtocolRegistry.IsObjectOverrideDunder(functionDef.Name);
+
+            if (requiresOverride && !_currentMethodIsOverride)
+            {
+                AddError(
+                    $"Dunder method '{functionDef.Name}' overrides a System.Object method and requires the @override decorator",
+                    functionDef.LineStart,
+                    functionDef.ColumnStart);
+            }
+        }
+
+        // Validate @override is required when a subclass method shadows a virtual base method
+        if (_currentClass != null && !_currentMethodIsOverride && _currentClass.BaseType != null)
+        {
+            var (baseMethod, baseOwner) = FindMethodInHierarchy(_currentClass.BaseType, functionDef.Name);
+            if (baseMethod != null && baseMethod.IsVirtual)
+            {
+                AddError(
+                    $"Method '{functionDef.Name}' overrides a virtual method in base class '{baseOwner?.Name ?? _currentClass.BaseType.Name}' and requires the @override decorator",
+                    functionDef.LineStart,
+                    functionDef.ColumnStart);
+            }
+        }
+
+        // Determine if method is abstract:
+        // 1. Has @abstract decorator explicitly, OR
+        // 2. Is in an @abstract class AND has ellipsis body (implicit abstract)
+        bool hasAbstractDecorator = functionDef.Decorators.Any(d => d.Name == "abstract");
+        bool isInAbstractClass = _currentClass?.IsAbstract == true;
+        bool hasEllipsisBody = functionDef.Body.Count == 1
+            && functionDef.Body[0] is ExpressionStatement exprStmt
+            && exprStmt.Expression is EllipsisLiteral;
+
+        bool isAbstractMethod = hasAbstractDecorator || (isInAbstractClass && hasEllipsisBody);
+
+        // Validation
+        if (hasAbstractDecorator && !hasEllipsisBody)
+        {
+            AddError($"Abstract method '{functionDef.Name}' must have '...' as its body",
+                functionDef.LineStart, functionDef.ColumnStart);
+        }
+
+        if (hasAbstractDecorator && !isInAbstractClass && _currentClass != null)
+        {
+            AddError($"Abstract method '{functionDef.Name}' can only be declared in an abstract class. Add @abstract decorator to class '{_currentClass.Name}'",
+                functionDef.LineStart, functionDef.ColumnStart);
+        }
+
+        // Note: Ellipsis body in concrete class is valid (generates NotImplementedException)
+        // So we don't error on that case - it's a TODO stub
+
+        // Validate self parameter for instance methods
+        // In Sharpy, methods without 'self' as the first parameter are treated as static methods
+        // This is consistent with how the code generator handles them
+        if (_currentClass != null)
+        {
+            // Check if this is a static method (explicitly decorated OR no self parameter)
+            bool hasStaticDecorator = functionDef.Decorators.Any(d =>
+                d.Name == "static" || d.Name == "staticmethod");
+
+            bool hasSelfParameter = functionDef.Parameters.Count > 0 &&
+                functionDef.Parameters[0].Name == "self";
+
+            // Method is static if it has decorator OR doesn't have self parameter
+            // No error needed - code generator will make it static
+            if (!hasStaticDecorator && !hasSelfParameter)
+            {
+                // This is implicitly a static method - valid, no error
+            }
+            else if (hasSelfParameter && hasStaticDecorator)
+            {
+                // Warning: static decorator with self parameter - self will be ignored
+                // This is allowed but could be confusing
+            }
+            // Instance methods with self are valid - no action needed
+        }
+
+        // Validate parameter ordering: non-default parameters cannot follow default parameters
+        bool hasSeenDefault = false;
+        for (int i = 0; i < functionDef.Parameters.Count; i++)
+        {
+            var param = functionDef.Parameters[i];
+
+            if (param.DefaultValue != null)
+            {
+                hasSeenDefault = true;
+            }
+            else if (hasSeenDefault)
+            {
+                AddError($"Non-default parameter '{param.Name}' cannot follow default parameters",
+                    param.LineStart, param.ColumnStart);
+            }
+        }
+
+        // Validate default parameter values (compile-time constants, no mutable defaults, None for nullable types only)
+        _defaultParameterValidator.ValidateFunctionDefaults(functionDef);
+
+        // Register parameters in scope and update the function symbol's parameter types
+        for (int i = 0; i < functionDef.Parameters.Count; i++)
+        {
+            var param = functionDef.Parameters[i];
+            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+
+            // Special handling for 'self' parameter in methods
+            if (i == 0 && param.Name == "self" && _currentClass != null)
+            {
+                paramType = new UserDefinedType { Symbol = _currentClass };
+            }
+            else if (param.Type == null)
+            {
+                // Require type annotations on all parameters except 'self'
+                AddError($"Parameter '{param.Name}' requires a type annotation",
+                    param.LineStart, param.ColumnStart);
+            }
+
+            var paramSymbol = new VariableSymbol
+            {
+                Name = param.Name,
+                Kind = SymbolKind.Parameter,
+                Type = paramType,
+                IsParameter = true,
+                DeclarationLine = null,
+                DeclarationColumn = null
+            };
+            _symbolTable.Define(paramSymbol);
+
+            // Update the function symbol's parameter type
+            if (functionSymbol != null && i < functionSymbol.Parameters.Count)
+            {
+                functionSymbol.Parameters[i] = functionSymbol.Parameters[i] with { Type = paramType };
+            }
+
+            // Type check default value if present
+            if (param.DefaultValue != null)
+            {
+                var defaultType = CheckExpression(param.DefaultValue);
+                if (!IsAssignable(defaultType, paramType))
+                {
+                    AddError($"Default value type '{defaultType.GetDisplayName()}' is not assignable to parameter type '{paramType.GetDisplayName()}'",
+                        null, null);
+                }
+            }
+        }
+
+        // Update the function symbol's return type and parameter types
+        if (functionSymbol != null)
+        {
+            // Create a new FunctionSymbol with updated return type
+            var updatedSymbol = functionSymbol with { ReturnType = returnType };
+            // Update the symbol in the symbol table
+            _symbolTable.UpdateSymbol(updatedSymbol);
+        }
+
+        // Check function body
+        foreach (var statement in functionDef.Body)
+        {
+            CheckStatement(statement);
+        }
+
+        // Validate control flow
+        _controlFlowValidator.ValidateFunction(functionDef, returnType);
+
+        // Restore previous method context
+        _currentMethodName = previousMethodName;
+        _currentMethodIsOverride = previousMethodIsOverride;
+        _currentMethodIsDunder = previousMethodIsDunder;
+        _controlFlowDepth = previousControlFlowDepth;
+        _superInitCalled = previousSuperInitCalled;
+
+        _symbolTable.ExitScope();
+        _currentFunctionReturnType = null;
+    }
+
+    private void CheckClass(ClassDef classDef)
+    {
+        _logger.LogDebug($"Type checking class: {classDef.Name}");
+
+        // Look up the class symbol
+        var classSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
+        if (classSymbol == null)
+        {
+            AddError($"Class symbol for '{classDef.Name}' not found", classDef.LineStart, classDef.ColumnStart);
+            return;
+        }
+
+        // Enter class scope
+        _symbolTable.EnterScope($"class:{classDef.Name}");
+
+        // Register type parameters in the scope so they can be resolved in field/method types
+        foreach (var typeParam in classDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = classSymbol,
+                DeclarationLine = classDef.LineStart,
+                DeclarationColumn = classDef.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
+        // Resolve field types first (before checking methods that might reference them)
+        for (int i = 0; i < classSymbol.Fields.Count; i++)
+        {
+            var fieldSymbol = classSymbol.Fields[i];
+            if (fieldSymbol.Type == SemanticType.Unknown)
+            {
+                // Find the corresponding VariableDeclaration in the AST
+                var fieldDecl = classDef.Body
+                    .OfType<VariableDeclaration>()
+                    .FirstOrDefault(v => v.Name == fieldSymbol.Name);
+
+                if (fieldDecl != null)
+                {
+                    var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type);
+                    classSymbol.Fields[i] = fieldSymbol with { Type = resolvedType };
+                }
+            }
+        }
+
+        // Set current class for method type checking and access validation
+        var previousClass = _currentClass;
+        _currentClass = classSymbol;
+        _accessValidator.EnterClass(classSymbol);
+
+        // Check all members
+        foreach (var statement in classDef.Body)
+        {
+            CheckStatement(statement);
+        }
+
+        // Validate constructor overloads after all members are checked
+        ValidateConstructorOverloads(classSymbol);
+
+        // Restore previous class
+        _currentClass = previousClass;
+        _accessValidator.ExitClass();
+
+        _symbolTable.ExitScope();
+    }
+
+    private void CheckStruct(StructDef structDef)
+    {
+        _logger.LogDebug($"Type checking struct: {structDef.Name}");
+
+        // Look up the struct symbol
+        var structSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
+        if (structSymbol == null)
+        {
+            AddError($"Struct symbol for '{structDef.Name}' not found", structDef.LineStart, structDef.ColumnStart);
+            return;
+        }
+
+        // Enter struct scope
+        _symbolTable.EnterScope($"struct:{structDef.Name}");
+
+        // Register type parameters in the scope so they can be resolved in field/method types
+        foreach (var typeParam in structDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = structSymbol,
+                DeclarationLine = structDef.LineStart,
+                DeclarationColumn = structDef.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
+        // Resolve field types first (before checking methods that might reference them)
+        for (int i = 0; i < structSymbol.Fields.Count; i++)
+        {
+            var fieldSymbol = structSymbol.Fields[i];
+            if (fieldSymbol.Type == SemanticType.Unknown)
+            {
+                // Find the corresponding VariableDeclaration in the AST
+                var fieldDecl = structDef.Body
+                    .OfType<VariableDeclaration>()
+                    .FirstOrDefault(v => v.Name == fieldSymbol.Name);
+
+                if (fieldDecl != null)
+                {
+                    var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type);
+                    structSymbol.Fields[i] = fieldSymbol with { Type = resolvedType };
+                }
+            }
+        }
+
+        // Set current class for method type checking (structs behave like classes)
+        var previousClass = _currentClass;
+        _currentClass = structSymbol;
+        _accessValidator.EnterClass(structSymbol);
+
+        // Check all members
+        foreach (var statement in structDef.Body)
+        {
+            CheckStatement(statement);
+        }
+
+        // Validate struct-specific rules
+        ValidateStructRules(structSymbol, structDef);
+
+        // Restore previous class
+        _currentClass = previousClass;
+        _accessValidator.ExitClass();
+
+        _symbolTable.ExitScope();
+    }
+
+    private void CheckInterface(InterfaceDef interfaceDef)
+    {
+        _logger.LogDebug($"Type checking interface: {interfaceDef.Name}");
+
+        // Look up the interface symbol
+        var interfaceSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;
+        if (interfaceSymbol == null)
+        {
+            AddError($"Interface symbol for '{interfaceDef.Name}' not found", interfaceDef.LineStart, interfaceDef.ColumnStart);
+            return;
+        }
+
+        // Enter interface scope to resolve type parameters
+        _symbolTable.EnterScope($"interface:{interfaceDef.Name}");
+
+        // Register type parameters in the scope so they can be resolved in method signatures
+        foreach (var typeParam in interfaceDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = interfaceSymbol,
+                DeclarationLine = interfaceDef.LineStart,
+                DeclarationColumn = interfaceDef.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
+        // Resolve method parameter types and return types
+        // Interface methods are registered in NameResolver but with Unknown types
+        // We need to resolve them here using the TypeResolver
+        foreach (var statement in interfaceDef.Body)
+        {
+            if (statement is FunctionDef method)
+            {
+                // Find the corresponding method symbol in the interface
+                var methodIndex = interfaceSymbol.Methods.FindIndex(m => m.Name == method.Name);
+                if (methodIndex >= 0)
+                {
+                    var methodSymbol = interfaceSymbol.Methods[methodIndex];
+
+                    // Resolve return type
+                    var returnType = _typeResolver.ResolveTypeAnnotation(method.ReturnType);
+                    if (returnType == SemanticType.Unknown && method.ReturnType == null)
+                    {
+                        returnType = SemanticType.Void;
+                    }
+
+                    // Resolve parameter types
+                    var updatedParameters = new List<ParameterSymbol>();
+                    for (int i = 0; i < method.Parameters.Count; i++)
+                    {
+                        var param = method.Parameters[i];
+                        var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+
+                        // Special handling for 'self' parameter
+                        if (i == 0 && param.Name == "self")
+                        {
+                            paramType = new UserDefinedType { Name = interfaceSymbol.Name, Symbol = interfaceSymbol };
+                        }
+                        else if (param.Type == null && param.Name != "self")
+                        {
+                            AddError($"Interface method parameter '{param.Name}' requires a type annotation",
+                                param.LineStart, param.ColumnStart);
+                        }
+
+                        updatedParameters.Add(new ParameterSymbol
+                        {
+                            Name = param.Name,
+                            Type = paramType,
+                            HasDefault = param.DefaultValue != null,
+                            DefaultValue = param.DefaultValue
+                        });
+                    }
+
+                    // Update the method symbol with resolved types
+                    interfaceSymbol.Methods[methodIndex] = methodSymbol with
+                    {
+                        ReturnType = returnType,
+                        Parameters = updatedParameters
+                    };
+                }
+            }
+        }
+
+        _symbolTable.ExitScope();
+    }
+
+    private void CheckEnum(EnumDef enumDef)
+    {
+        _logger.LogDebug($"Type checking enum: {enumDef.Name}");
+
+        // Validate enum-specific rules
+        ValidateEnumRules(enumDef);
+    }
+
+}

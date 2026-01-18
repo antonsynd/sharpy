@@ -1,0 +1,595 @@
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Logging;
+
+namespace Sharpy.Compiler.Semantic;
+
+/// <summary>
+/// TypeChecker partial class: Statement checking (assignments, control flow, try/catch)
+/// </summary>
+public partial class TypeChecker
+{
+    private void CheckAssignment(Assignment assignment)
+    {
+        // First, validate that the assignment target is a valid assignable expression
+        // Valid targets: Identifier, MemberAccess (attribute), IndexAccess, TupleLiteral (unpacking)
+        // Invalid targets: FunctionCall, Literal, BinaryExpression, etc.
+        if (!IsValidAssignmentTarget(assignment.Target))
+        {
+            AddError($"Cannot assign to {GetAssignmentTargetDescription(assignment.Target)}",
+                assignment.Target.LineStart, assignment.Target.ColumnStart);
+            return;
+        }
+
+        // Validate that 'self' cannot be reassigned
+        if (assignment.Target is Identifier selfId && selfId.Name == "self")
+        {
+            AddError("Cannot reassign 'self'",
+                assignment.LineStart, assignment.ColumnStart);
+            return;
+        }
+
+        // Handle tuple unpacking: x, y = expr
+        if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is TupleLiteral targetTuple)
+        {
+            var tupleValueType = CheckExpression(assignment.Value);
+
+            // Value must be a tuple type
+            if (tupleValueType is not TupleType tupleType)
+            {
+                AddError($"Cannot unpack non-tuple type '{tupleValueType.GetDisplayName()}' into tuple",
+                    assignment.LineStart, assignment.ColumnStart);
+                return;
+            }
+
+            // Check element count matches
+            if (targetTuple.Elements.Count != tupleType.ElementTypes.Count)
+            {
+                AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Count} variables",
+                    assignment.LineStart, assignment.ColumnStart);
+                return;
+            }
+
+            // Type-check each unpacking element
+            for (int i = 0; i < targetTuple.Elements.Count; i++)
+            {
+                var targetElem = targetTuple.Elements[i];
+                var valueElemType = tupleType.ElementTypes[i];
+
+                if (targetElem is Identifier tupleTargetId)
+                {
+                    var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: false);
+
+                    // Check if trying to reassign a constant
+                    if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
+                    {
+                        AddError($"Cannot reassign constant variable '{tupleTargetId.Name}' in tuple unpacking",
+                            tupleTargetId.LineStart, tupleTargetId.ColumnStart);
+                        continue;
+                    }
+
+                    // In Sharpy, tuple unpacking creates new variable versions
+                    // Create/redefine with inferred type from tuple element
+                    var newSymbol = new VariableSymbol
+                    {
+                        Name = tupleTargetId.Name,
+                        Kind = SymbolKind.Variable,
+                        Type = valueElemType,
+                        IsConstant = false,
+                        DeclarationLine = tupleTargetId.LineStart,
+                        DeclarationColumn = tupleTargetId.ColumnStart,
+                        AccessLevel = AccessLevel.Public
+                    };
+                    _symbolTable.Define(newSymbol);
+                    _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
+                    _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
+                }
+                else
+                {
+                    // For more complex targets (like attributes), just check type compatibility
+                    var targetElemType = CheckExpression(targetElem);
+                    if (!IsAssignable(valueElemType, targetElemType))
+                    {
+                        AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
+                            targetElem.LineStart, targetElem.ColumnStart);
+                    }
+                }
+            }
+
+            return;
+        }
+
+        // Check if this is a simple assignment to an identifier (type inference and redefinition case)
+        if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is Identifier targetId)
+        {
+            // Check current scope first
+            var existingSymbol = _symbolTable.Lookup(targetId.Name, searchParents: false);
+
+            // Check if trying to reassign a constant in current scope
+            if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
+            {
+                AddError($"Cannot reassign constant variable '{targetId.Name}'",
+                    assignment.LineStart, assignment.ColumnStart);
+                return;
+            }
+
+            // Also check parent scopes for consts (can't reassign outer scope const)
+            var parentSymbol = _symbolTable.Lookup(targetId.Name, searchParents: true);
+            if (parentSymbol is VariableSymbol parentVar && parentVar.IsConstant)
+            {
+                AddError($"Cannot reassign constant variable '{targetId.Name}'",
+                    assignment.LineStart, assignment.ColumnStart);
+                return;
+            }
+
+            // In Sharpy, simple assignments (x = value) create new variable versions
+            // This enables Python-like behavior where variables can be reassigned to different types
+            var inferredType = CheckExpression(assignment.Value);
+
+            // Create a new variable symbol with the inferred type (or redefine existing)
+            var newSymbol = new VariableSymbol
+            {
+                Name = targetId.Name,
+                Kind = SymbolKind.Variable,
+                Type = inferredType,
+                IsConstant = false,
+                DeclarationLine = assignment.LineStart,
+                DeclarationColumn = assignment.ColumnStart,
+                AccessLevel = AccessLevel.Public
+            };
+            _symbolTable.Define(newSymbol);
+            _semanticInfo.SetIdentifierSymbol(targetId, newSymbol);
+
+            // Cache the expression type for the identifier
+            _semanticInfo.SetExpressionType(targetId, inferredType);
+            return;
+        }
+
+        // Check target and value types
+        var targetType = CheckExpression(assignment.Target);
+        var valueType = CheckExpression(assignment.Value);
+
+        // Handle augmented assignment operators (+=, -=, *=, /=, //=, %=, **=, &=, |=, ^=, <<=, >>=)
+        if (assignment.Operator != AssignmentOperator.Assign)
+        {
+            // Check if trying to use augmented assignment on a constant
+            if (assignment.Target is Identifier augTargetId)
+            {
+                var symbol = _symbolTable.Lookup(augTargetId.Name, searchParents: true);
+                if (symbol is VariableSymbol varSym && varSym.IsConstant)
+                {
+                    AddError($"Cannot use augmented assignment on constant variable '{augTargetId.Name}'",
+                        assignment.LineStart, assignment.ColumnStart);
+                    return;
+                }
+            }
+
+            // For augmented assignments, delegate to OperatorValidator which handles:
+            // - Preferring in-place dunder methods (e.g., __iadd__) when available
+            // - Falling back to binary operators (e.g., __add__) otherwise
+            // - Verifying result type is assignable to target type
+            // - Logging appropriate errors when operators are not supported
+            _operatorValidator.ValidateAugmentedAssignment(
+                assignment.Operator,
+                targetType,
+                valueType,
+                assignment.LineStart,
+                assignment.ColumnStart);
+            return;
+        }
+
+        // Otherwise, check as a regular simple assignment
+        if (!IsAssignable(valueType, targetType))
+        {
+            // Special case: Allow None for nullable types but provide better error message
+            if (valueType is VoidType && targetType is not NullableType)
+            {
+                AddError($"Cannot assign 'None' to non-nullable type '{targetType.GetDisplayName()}'",
+                    assignment.LineStart, assignment.ColumnStart);
+            }
+            else
+            {
+                AddError($"Cannot assign type '{valueType.GetDisplayName()}' to '{targetType.GetDisplayName()}'",
+                    assignment.LineStart, assignment.ColumnStart);
+            }
+        }
+    }
+
+    private void CheckVariableDeclaration(VariableDeclaration varDecl)
+    {
+        var declaredType = _typeResolver.ResolveTypeAnnotation(varDecl.Type);
+
+        if (varDecl.InitialValue != null)
+        {
+            var initType = CheckExpression(varDecl.InitialValue);
+
+            // Handle type inference for 'auto'
+            if (declaredType is UnknownType)
+            {
+                declaredType = initType;
+                if (varDecl.Type != null)
+                {
+                    _semanticInfo.SetTypeAnnotation(varDecl.Type, initType);
+                }
+            }
+            else if (!IsAssignable(initType, declaredType))
+            {
+                // Special case: Allow None for nullable types (VoidType.IsAssignableTo handles this)
+                // but provide better error message for non-nullable types
+                if (initType is VoidType && declaredType is not NullableType)
+                {
+                    AddError($"Cannot assign 'None' to non-nullable type '{declaredType.GetDisplayName()}'",
+                        varDecl.LineStart, varDecl.ColumnStart);
+                }
+                else
+                {
+                    AddError($"Cannot assign type '{initType.GetDisplayName()}' to variable of type '{declaredType.GetDisplayName()}'",
+                        varDecl.LineStart, varDecl.ColumnStart);
+                }
+            }
+        }
+        else if (declaredType is UnknownType)
+        {
+            AddError($"Variable '{varDecl.Name}' declared with 'auto' must have an initializer",
+                varDecl.LineStart, varDecl.ColumnStart);
+        }
+
+        // Check if symbol already exists in current scope
+        var existingSymbol = _symbolTable.Lookup(varDecl.Name, searchParents: false);
+
+        // For constants:
+        // - Module-level consts are already created by NameResolver, so we update their type
+        // - Function-level consts are NOT created by NameResolver, so we need to create them
+        if (varDecl.IsConst)
+        {
+            if (existingSymbol is VariableSymbol existingConst)
+            {
+                // Module-level const was already created by NameResolver
+                // Update its type now that we've resolved it
+                existingConst.Type = declaredType;
+                return;
+            }
+
+            // Function-level const - we need to create it
+            var constSymbol = new VariableSymbol
+            {
+                Name = varDecl.Name,
+                Kind = SymbolKind.Variable,
+                Type = declaredType,
+                IsConstant = true,
+                DeclarationLine = varDecl.LineStart,
+                DeclarationColumn = varDecl.ColumnStart
+            };
+            _symbolTable.Define(constSymbol);
+            return;
+        }
+
+        if (existingSymbol is VariableSymbol existingVar)
+        {
+            // In Sharpy, variables can be redefined in the same scope (Python-like behavior)
+            // However, constants cannot be redefined
+            if (existingVar.IsConstant)
+            {
+                AddError($"Cannot redefine constant variable '{varDecl.Name}'",
+                    varDecl.LineStart, varDecl.ColumnStart);
+                return;
+            }
+
+            // For non-const variables, allow redefinition with new type
+            // This enables Python-like behavior where variables can be reassigned to different types
+            // The Scope.Define will replace the existing symbol
+        }
+
+        // Create new variable symbol (or redefine existing non-const variable)
+        var newSymbol = new VariableSymbol
+        {
+            Name = varDecl.Name,
+            Kind = SymbolKind.Variable,
+            Type = declaredType,
+            IsConstant = false,  // Non-const variable
+            DeclarationLine = varDecl.LineStart,
+            DeclarationColumn = varDecl.ColumnStart
+        };
+        _symbolTable.Define(newSymbol);
+    }
+
+    private void CheckReturn(ReturnStatement returnStmt)
+    {
+        if (_currentFunctionReturnType == null)
+        {
+            AddError("Return statement outside of function",
+                returnStmt.LineStart, returnStmt.ColumnStart);
+            return;
+        }
+
+        if (returnStmt.Value != null)
+        {
+            var returnType = CheckExpression(returnStmt.Value);
+            if (!IsAssignable(returnType, _currentFunctionReturnType))
+            {
+                AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
+                    returnStmt.LineStart, returnStmt.ColumnStart);
+            }
+        }
+        else if (_currentFunctionReturnType != SemanticType.Void)
+        {
+            AddError($"Function expects return type '{_currentFunctionReturnType.GetDisplayName()}' but got no return value",
+                returnStmt.LineStart, returnStmt.ColumnStart);
+        }
+    }
+
+    private void CheckIf(IfStatement ifStmt)
+    {
+        var condType = CheckExpression(ifStmt.Test);
+        if (condType != SemanticType.Bool && !(condType is UnknownType))
+        {
+            AddError($"If condition must be boolean, got '{condType.GetDisplayName()}'",
+                ifStmt.LineStart, ifStmt.ColumnStart);
+        }
+
+        // Check for type narrowing patterns
+        var narrowedTypesInThen = ExtractNarrowedTypes(ifStmt.Test, true);
+        var narrowedTypesInElse = ExtractNarrowedTypes(ifStmt.Test, false);
+
+        // Apply narrowed types in then branch
+        var savedNarrowedTypes = new Dictionary<string, SemanticType>(_narrowedTypes);
+        foreach (var kvp in narrowedTypesInThen)
+        {
+            _narrowedTypes[kvp.Key] = kvp.Value;
+        }
+
+        // Enter scope for if-then block
+        _symbolTable.EnterScope("if-then");
+        _controlFlowDepth++;
+        foreach (var stmt in ifStmt.ThenBody)
+            CheckStatement(stmt);
+        _controlFlowDepth--;
+        _symbolTable.ExitScope();
+
+        // Check elif clauses
+        foreach (var elif in ifStmt.ElifClauses)
+        {
+            var elifCondType = CheckExpression(elif.Test);
+            if (elifCondType != SemanticType.Bool && !(elifCondType is UnknownType))
+            {
+                AddError($"Elif condition must be boolean, got '{elifCondType.GetDisplayName()}'",
+                    elif.LineStart, elif.ColumnStart);
+            }
+
+            _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
+            var narrowedTypesInElif = ExtractNarrowedTypes(elif.Test, true);
+            foreach (var kvp in narrowedTypesInElif)
+            {
+                _narrowedTypes[kvp.Key] = kvp.Value;
+            }
+
+            _symbolTable.EnterScope("elif");
+            _controlFlowDepth++;
+            foreach (var stmt in elif.Body)
+                CheckStatement(stmt);
+            _controlFlowDepth--;
+            _symbolTable.ExitScope();
+        }
+
+        // Apply narrowed types in else branch
+        _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
+        foreach (var kvp in narrowedTypesInElse)
+        {
+            _narrowedTypes[kvp.Key] = kvp.Value;
+        }
+
+        // Enter scope for if-else block only if there are statements
+        if (ifStmt.ElseBody.Count > 0)
+        {
+            _symbolTable.EnterScope("if-else");
+            _controlFlowDepth++;
+            foreach (var stmt in ifStmt.ElseBody)
+                CheckStatement(stmt);
+            _controlFlowDepth--;
+            _symbolTable.ExitScope();
+        }
+
+        // Restore original narrowed types
+        _narrowedTypes = savedNarrowedTypes;
+    }
+
+    private void CheckWhile(WhileStatement whileStmt)
+    {
+        var condType = CheckExpression(whileStmt.Test);
+        if (condType != SemanticType.Bool && !(condType is UnknownType))
+        {
+            AddError($"While condition must be boolean, got '{condType.GetDisplayName()}'",
+                whileStmt.LineStart, whileStmt.ColumnStart);
+        }
+
+        // Check for type narrowing patterns (similar to if statement)
+        var narrowedTypesInBody = ExtractNarrowedTypes(whileStmt.Test, true);
+
+        // Apply narrowed types in the loop body
+        var savedNarrowedTypes = new Dictionary<string, SemanticType>(_narrowedTypes);
+        foreach (var kvp in narrowedTypesInBody)
+        {
+            _narrowedTypes[kvp.Key] = kvp.Value;
+        }
+
+        // Enter scope for while-body block
+        _symbolTable.EnterScope("while-body");
+        _controlFlowDepth++;
+        foreach (var stmt in whileStmt.Body)
+            CheckStatement(stmt);
+        _controlFlowDepth--;
+        _symbolTable.ExitScope();
+
+        // Restore original narrowed types
+        _narrowedTypes = savedNarrowedTypes;
+    }
+
+    private void CheckFor(ForStatement forStmt)
+    {
+        var iterType = CheckExpression(forStmt.Iterator);
+
+        // Validate that the iterator type is iterable and extract element type
+        // This uses ProtocolValidator which checks for __iter__ protocol support
+        var elementType = _protocolValidator.ValidateIteration(
+            iterType,
+            forStmt.Iterator.LineStart,
+            forStmt.Iterator.ColumnStart);
+
+        // Enter scope for for-body block FIRST
+        // This ensures loop variables are scoped to the loop
+        _symbolTable.EnterScope("for-body");
+
+        // Handle tuple unpacking: for x, y in items
+        if (forStmt.Target is TupleLiteral targetTuple)
+        {
+            // Element type must be a tuple type
+            if (elementType is not TupleType tupleType)
+            {
+                AddError($"Cannot unpack non-tuple type '{elementType.GetDisplayName()}' in for loop",
+                    forStmt.LineStart, forStmt.ColumnStart);
+            }
+            else
+            {
+                // Check element count matches
+                if (targetTuple.Elements.Count != tupleType.ElementTypes.Count)
+                {
+                    AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Count} variables in for loop",
+                        forStmt.LineStart, forStmt.ColumnStart);
+                }
+                else
+                {
+                    // Define loop variables with inferred types INSIDE the for-body scope
+                    for (int i = 0; i < targetTuple.Elements.Count; i++)
+                    {
+                        var targetElem = targetTuple.Elements[i];
+                        var elemType = tupleType.ElementTypes[i];
+
+                        if (targetElem is Identifier id)
+                        {
+                            var loopVarSymbol = new VariableSymbol
+                            {
+                                Name = id.Name,
+                                Kind = SymbolKind.Variable,
+                                Type = elemType,
+                                AccessLevel = AccessLevel.Public,
+                                DeclarationLine = id.LineStart,
+                                DeclarationColumn = id.ColumnStart
+                            };
+
+                            // Check if already defined in this scope
+                            if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
+                            {
+                                _symbolTable.Define(loopVarSymbol);
+                                _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+                            }
+
+                            _semanticInfo.SetExpressionType(targetElem, elemType);
+                        }
+                        else
+                        {
+                            // For more complex targets, just check the expression
+                            CheckExpression(targetElem);
+                        }
+                    }
+                }
+            }
+
+            _semanticInfo.SetExpressionType(forStmt.Target, elementType);
+        }
+        // Add loop variable to scope
+        // The target is typically an Identifier or TupleExpression
+        else if (forStmt.Target is Identifier id)
+        {
+            // Infer the type of the loop variable from the iterator
+            var loopVarSymbol = new VariableSymbol
+            {
+                Name = id.Name,
+                Kind = SymbolKind.Variable,
+                Type = elementType,
+                AccessLevel = AccessLevel.Public,
+                DeclarationLine = id.LineStart,
+                DeclarationColumn = id.ColumnStart
+            };
+
+            // Check if already defined in this scope
+            if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
+            {
+                _symbolTable.Define(loopVarSymbol);
+                _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+            }
+
+            _semanticInfo.SetExpressionType(forStmt.Target, elementType);
+        }
+
+        // Check loop body statements
+        _controlFlowDepth++;
+        foreach (var stmt in forStmt.Body)
+            CheckStatement(stmt);
+        _controlFlowDepth--;
+
+        // Exit for-body scope
+        _symbolTable.ExitScope();
+    }
+
+    private void CheckRaise(RaiseStatement raiseStmt)
+    {
+        // Bare raise (no exception) is only valid inside an except block
+        if (raiseStmt.Exception == null && !_inExceptBlock)
+        {
+            AddError("Bare 'raise' statement can only be used inside an exception handler",
+                raiseStmt.LineStart, raiseStmt.ColumnStart);
+        }
+
+        if (raiseStmt.Exception != null)
+        {
+            CheckExpression(raiseStmt.Exception);
+        }
+    }
+
+    private void CheckTry(TryStatement tryStmt)
+    {
+        // Try block has its own scope
+        _symbolTable.EnterScope("try");
+        _controlFlowDepth++;
+        foreach (var stmt in tryStmt.Body)
+            CheckStatement(stmt);
+        _controlFlowDepth--;
+        _symbolTable.ExitScope();
+
+        // Each exception handler has its own scope
+        foreach (var handler in tryStmt.Handlers)
+        {
+            _symbolTable.EnterScope("except");
+            _controlFlowDepth++;
+            _inExceptBlock = true;
+            foreach (var stmt in handler.Body)
+                CheckStatement(stmt);
+            _inExceptBlock = false;
+            _controlFlowDepth--;
+            _symbolTable.ExitScope();
+        }
+
+        // Finally block has its own scope
+        if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Count > 0)
+        {
+            _symbolTable.EnterScope("finally");
+            _controlFlowDepth++;
+            foreach (var stmt in tryStmt.FinallyBody)
+                CheckStatement(stmt);
+            _controlFlowDepth--;
+            _symbolTable.ExitScope();
+        }
+    }
+
+    private void CheckAssert(AssertStatement assertStmt)
+    {
+        var testType = CheckExpression(assertStmt.Test);
+        if (assertStmt.Message != null)
+        {
+            CheckExpression(assertStmt.Message);
+        }
+    }
+
+    /// <summary>
+    /// Type check an expression and return its type
+    /// </summary>
+}

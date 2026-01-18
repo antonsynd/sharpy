@@ -1,0 +1,584 @@
+using System.IO;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+
+namespace Sharpy.Compiler.CodeGen;
+
+/// <summary>
+/// RoslynEmitter partial class: Operator overloads and utility methods
+/// </summary>
+public partial class RoslynEmitter
+{
+    /// <summary>
+    /// Determines if a dunder method should generate a C# method (for overrides or special methods)
+    /// Most dunder methods should NOT generate methods to avoid conflicts with user-defined methods
+    /// </summary>
+    private static bool ShouldGenerateDunderMethod(string dunderName)
+    {
+        // __init__ is explicitly checked here for clarity, even though it IS in ProtocolRegistry.
+        // This makes the special constructor handling obvious to readers.
+        if (dunderName == "__init__")
+            return true;
+
+        // Protocol dunders that map to .NET methods should be generated
+        return ProtocolRegistry.IsProtocolDunder(dunderName);
+    }
+
+    /// <summary>
+    /// Try to generate an operator overload from a dunder method
+    /// </summary>
+    private MemberDeclarationSyntax? TryGenerateOperatorOverload(FunctionDef funcDef, string className)
+    {
+        return funcDef.Name switch
+        {
+            // Arithmetic operators (binary)
+            "__add__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.PlusToken),
+            "__sub__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.MinusToken),
+            "__mul__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.AsteriskToken),
+            "__truediv__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.SlashToken),
+            "__mod__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.PercentToken),
+
+            // Bitwise operators (binary)
+            "__and__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.AmpersandToken),
+            "__or__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.BarToken),
+            "__xor__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.CaretToken),
+            "__lshift__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.LessThanLessThanToken),
+            "__rshift__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.GreaterThanGreaterThanToken),
+
+            // Comparison operators (binary)
+            "__eq__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.EqualsEqualsToken),
+            "__ne__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.ExclamationEqualsToken),
+            "__lt__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.LessThanToken),
+            "__le__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.LessThanEqualsToken),
+            "__gt__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.GreaterThanToken),
+            "__ge__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.GreaterThanEqualsToken),
+
+            // Unary operators
+            "__neg__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.MinusToken),
+            "__pos__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.PlusToken),
+            "__invert__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.TildeToken),
+
+            // Not supported as operators (handled as methods)
+            "__pow__" => null,     // No ** operator in C#, use Math.Pow
+            "__getitem__" => null, // Requires indexer syntax, not operator
+            "__setitem__" => null, // Requires indexer syntax, not operator
+
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Generate a binary operator overload (e.g., operator +, operator -, etc.)
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateBinaryOperator(FunctionDef funcDef, string className, SyntaxKind operatorToken)
+    {
+        // Binary operators should have 2 parameters: self and other
+        // We skip 'self' and use the other parameter
+        var otherParam = funcDef.Parameters
+            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault();
+
+        if (otherParam == null)
+        {
+            throw new InvalidOperationException($"Binary operator {funcDef.Name} must have at least 2 parameters");
+        }
+
+        // Determine return type - default to class type if not specified
+        var returnType = funcDef.ReturnType != null
+            ? _typeMapper.MapType(funcDef.ReturnType)
+            : IdentifierName(className);
+
+        // Generate parameter for the operator
+        var param1 = Parameter(Identifier("left"))
+            .WithType(IdentifierName(className));
+
+        var param2Type = otherParam.Type != null
+            ? _typeMapper.MapType(otherParam.Type)
+            : IdentifierName(className);
+
+        var param2 = Parameter(Identifier("right"))
+            .WithType(param2Type);
+
+        // Generate body - call the actual dunder method on left operand
+        // Use the transformed dunder name (e.g., __add__ -> Add)
+        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
+        var invocation = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("left"),
+                IdentifierName(methodName)))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("right")))));
+
+        var body = Block(ReturnStatement(invocation));
+
+        return OperatorDeclaration(returnType, Token(operatorToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate a comparison operator overload (==, !=, <, >, <=, >=)
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateComparisonOperator(FunctionDef funcDef, string className, SyntaxKind operatorToken)
+    {
+        // Similar to binary operators but always returns bool
+        var otherParam = funcDef.Parameters
+            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault();
+
+        if (otherParam == null)
+        {
+            throw new InvalidOperationException($"Comparison operator {funcDef.Name} must have at least 2 parameters");
+        }
+
+        // Comparison operators always return bool
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+
+        // Generate parameters
+        var param1 = Parameter(Identifier("left"))
+            .WithType(IdentifierName(className));
+
+        var param2Type = otherParam.Type != null
+            ? _typeMapper.MapType(otherParam.Type)
+            : IdentifierName(className);
+
+        var param2 = Parameter(Identifier("right"))
+            .WithType(param2Type);
+
+        // Generate body - call the actual dunder method on left operand
+        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
+        var invocation = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("left"),
+                IdentifierName(methodName)))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("right")))));
+
+        var body = Block(ReturnStatement(invocation));
+
+        return OperatorDeclaration(returnType, Token(operatorToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate a unary operator overload (-, +, ~)
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateUnaryOperator(FunctionDef funcDef, string className, SyntaxKind operatorToken)
+    {
+        // Unary operators should have only 1 parameter: self
+
+        // Determine return type - default to class type if not specified
+        var returnType = funcDef.ReturnType != null
+            ? _typeMapper.MapType(funcDef.ReturnType)
+            : IdentifierName(className);
+
+        // Generate parameter for the operator
+        var param = Parameter(Identifier("value"))
+            .WithType(IdentifierName(className));
+
+        // Generate body - call the actual dunder method on the operand
+        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
+        var invocation = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("value"),
+                IdentifierName(methodName)))
+            .WithArgumentList(ArgumentList());
+
+        var body = Block(ReturnStatement(invocation));
+
+        return OperatorDeclaration(returnType, Token(operatorToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SingletonSeparatedList(param)))
+            .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate complementary operator == when only __ne__ is defined
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateComplementaryEqualsOperator(string className)
+    {
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+
+        var param1 = Parameter(Identifier("left"))
+            .WithType(IdentifierName(className));
+        var param2 = Parameter(Identifier("right"))
+            .WithType(IdentifierName(className));
+
+        // operator == returns !(left != right)
+        var body = Block(ReturnStatement(
+            PrefixUnaryExpression(
+                SyntaxKind.LogicalNotExpression,
+                BinaryExpression(
+                    SyntaxKind.NotEqualsExpression,
+                    IdentifierName("left"),
+                    IdentifierName("right")))));
+
+        return OperatorDeclaration(returnType, Token(SyntaxKind.EqualsEqualsToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate complementary operator != when only __eq__ is defined
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateComplementaryNotEqualsOperator(string className)
+    {
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+
+        var param1 = Parameter(Identifier("left"))
+            .WithType(IdentifierName(className));
+        var param2 = Parameter(Identifier("right"))
+            .WithType(IdentifierName(className));
+
+        // operator != returns !(left == right)
+        var body = Block(ReturnStatement(
+            PrefixUnaryExpression(
+                SyntaxKind.LogicalNotExpression,
+                BinaryExpression(
+                    SyntaxKind.EqualsExpression,
+                    IdentifierName("left"),
+                    IdentifierName("right")))));
+
+        return OperatorDeclaration(returnType, Token(SyntaxKind.ExclamationEqualsToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate a try expression: try expr or try[ExceptionType] expr
+    /// Wraps the expression in Result[T, E] using a try/catch pattern.
+    /// </summary>
+    private ExpressionSyntax GenerateTryExpression(TryExpression tryExpr)
+    {
+        // Generate the operand expression
+        var operandExpr = GenerateExpression(tryExpr.Operand);
+
+        // Determine the exception type to catch (default to Exception)
+        var exceptionTypeName = tryExpr.ExceptionType != null
+            ? _typeMapper.MapType(tryExpr.ExceptionType).ToString()
+            : "Exception";
+
+        // Generate: Result.Try(() => operand)
+        // or for specific exception type: Result.Try<ExceptionType>(() => operand)
+        var lambdaExpr = ParenthesizedLambdaExpression()
+            .WithExpressionBody(operandExpr);
+
+        // If exception type is specified and not the default Exception, use generic version
+        if (tryExpr.ExceptionType != null && exceptionTypeName != "Exception")
+        {
+            // Result.Try<ExceptionType>(() => operand)
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("global::Sharpy.Core.Result"),
+                    GenericName("Try")
+                        .WithTypeArgumentList(TypeArgumentList(
+                            SingletonSeparatedList<TypeSyntax>(IdentifierName(exceptionTypeName))))))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(lambdaExpr))));
+        }
+        else
+        {
+            // Result.Try(() => operand)
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("global::Sharpy.Core.Result"),
+                    IdentifierName("Try")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(lambdaExpr))));
+        }
+    }
+
+    /// <summary>
+    /// Generate a maybe expression: maybe expr
+    /// Wraps the nullable expression in Optional[T].
+    /// </summary>
+    private ExpressionSyntax GenerateMaybeExpression(MaybeExpression maybeExpr)
+    {
+        // Generate the operand expression
+        var operandExpr = GenerateExpression(maybeExpr.Operand);
+
+        // Generate: Optional.From(operand)
+        // This converts a nullable T? to Optional[T]
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("global::Sharpy.Core.Optional"),
+                IdentifierName("From")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(operandExpr))));
+    }
+
+    /// <summary>
+    /// Generate a unique temporary variable name
+    /// </summary>
+    private string GenerateTempVarName(string prefix)
+    {
+        return $"__{prefix}_{_tempVarCounter++}";
+    }
+
+    /// <summary>
+    /// Transform loop body statements for else clause support.
+    /// Wraps break statements with flag assignment: { flag = false; break; }
+    /// </summary>
+    private List<Statement> TransformLoopBodyForElse(List<Statement> body, string flagName)
+    {
+        var result = new List<Statement>();
+        foreach (var stmt in body)
+        {
+            result.Add(TransformStatementForLoopElse(stmt, flagName));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Transform a single statement for loop else support.
+    /// Recursively handles nested structures.
+    /// </summary>
+    private Statement TransformStatementForLoopElse(Statement stmt, string flagName)
+    {
+        return stmt switch
+        {
+            // Transform break statements to set flag before breaking
+            BreakStatement breakStmt => new BreakWithFlagStatement
+            {
+                FlagName = flagName,
+                LineStart = breakStmt.LineStart,
+                ColumnStart = breakStmt.ColumnStart,
+                LineEnd = breakStmt.LineEnd,
+                ColumnEnd = breakStmt.ColumnEnd
+            },
+
+            // Recursively transform if statements
+            IfStatement ifStmt => ifStmt with
+            {
+                ThenBody = TransformLoopBodyForElse(ifStmt.ThenBody, flagName),
+                ElifClauses = ifStmt.ElifClauses.Select(e => e with
+                {
+                    Body = TransformLoopBodyForElse(e.Body, flagName)
+                }).ToList(),
+                ElseBody = TransformLoopBodyForElse(ifStmt.ElseBody, flagName)
+            },
+
+            // Don't transform nested loops - their break statements apply to their own loop
+            WhileStatement _ => stmt,
+            ForStatement _ => stmt,
+
+            // All other statements pass through unchanged
+            _ => stmt
+        };
+    }
+
+    /// <summary>
+    /// Checks if an expression evaluates to a floating-point type.
+    /// Used to determine floor division semantics.
+    /// </summary>
+    private bool IsFloatExpression(Expression expr)
+    {
+        return expr switch
+        {
+            FloatLiteral => true,
+            UnaryOp unary => IsFloatExpression(unary.Operand),
+            BinaryOp binOp => binOp.Operator switch
+            {
+                // Division always produces float
+                BinaryOperator.Divide => true,
+                // Power produces float (Math.Pow returns double)
+                BinaryOperator.Power => true,
+                // Floor division depends on operands
+                BinaryOperator.FloorDivide => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right),
+                // Other operators: float if either operand is float
+                _ => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right)
+            },
+            Parenthesized paren => IsFloatExpression(paren.Expression),
+            // For other expressions (variables, function calls, etc.), assume integer
+            // A full type system would resolve these properly
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Generates floor division expression with correct Python semantics.
+    /// Floors toward negative infinity (not truncation toward zero).
+    /// - Integer operands: (int)Math.Floor((double)a / b) → result is int32 (pragmatic for .NET)
+    /// - Float operands: Math.Floor((double)(a / b)) → result is double (cast to avoid CS0121 ambiguity)
+    /// Note: Spec says integer floor division should return int64, but we return int32
+    /// for .NET compatibility with most use cases (augmented assignment, common variables).
+    /// </summary>
+    private ExpressionSyntax GenerateFloorDivision(ExpressionSyntax left, ExpressionSyntax right, bool hasFloatOperand)
+    {
+        // System.Math.Floor((double)(left / right)) for both cases
+        // Note: We use fully qualified System.Math to avoid conflicts with Sharpy.Math namespace
+        // Note: We always cast to double to avoid CS0121 ambiguity between Math.Floor(double) and Math.Floor(decimal)
+        var divisionExpr = BinaryExpression(SyntaxKind.DivideExpression,
+            hasFloatOperand ? left : CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
+            right);
+
+        // Cast division result to double to resolve Math.Floor overload ambiguity
+        var castToDouble = CastExpression(
+            PredefinedType(Token(SyntaxKind.DoubleKeyword)),
+            ParenthesizedExpression(divisionExpr));
+
+        var floorCall = InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("System"),
+                    IdentifierName("Math")),
+                IdentifierName("Floor")))
+            .AddArgumentListArguments(Argument(castToDouble));
+
+        // For integer operands, cast to int (pragmatic .NET-first approach);
+        // for float operands, return as-is (double from Math.Floor)
+        return hasFloatOperand
+            ? floorCall
+            : CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), floorCall);
+    }
+
+    /// <summary>
+    /// Checks if an expression evaluates to an enum type.
+    /// Used to determine whether .value access should be translated to an int cast.
+    /// </summary>
+    private bool IsEnumTypeExpression(Expression expr)
+    {
+        if (expr is Identifier id)
+        {
+            var symbol = _context.LookupSymbol(id.Name);
+            if (symbol is VariableSymbol varSymbol &&
+                varSymbol.Type is Semantic.UserDefinedType udt &&
+                udt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Collects all identifier names referenced in an expression.
+    /// Used for dependency analysis to determine if a variable declaration
+    /// should be a module-level field or a local variable in Main.
+    /// </summary>
+    private void CollectReferencedIdentifiers(Expression? expr, HashSet<string> identifiers)
+    {
+        if (expr == null) return;
+
+        switch (expr)
+        {
+            case Identifier id:
+                identifiers.Add(id.Name);
+                break;
+            case FunctionCall call:
+                CollectReferencedIdentifiers(call.Function, identifiers);
+                foreach (var arg in call.Arguments)
+                    CollectReferencedIdentifiers(arg, identifiers);
+                foreach (var kwarg in call.KeywordArguments)
+                    CollectReferencedIdentifiers(kwarg.Value, identifiers);
+                break;
+            case MemberAccess ma:
+                CollectReferencedIdentifiers(ma.Object, identifiers);
+                break;
+            case IndexAccess ia:
+                CollectReferencedIdentifiers(ia.Object, identifiers);
+                CollectReferencedIdentifiers(ia.Index, identifiers);
+                break;
+            case SliceAccess sa:
+                CollectReferencedIdentifiers(sa.Object, identifiers);
+                CollectReferencedIdentifiers(sa.Start, identifiers);
+                CollectReferencedIdentifiers(sa.Stop, identifiers);
+                CollectReferencedIdentifiers(sa.Step, identifiers);
+                break;
+            case BinaryOp binOp:
+                CollectReferencedIdentifiers(binOp.Left, identifiers);
+                CollectReferencedIdentifiers(binOp.Right, identifiers);
+                break;
+            case UnaryOp unOp:
+                CollectReferencedIdentifiers(unOp.Operand, identifiers);
+                break;
+            case ListLiteral list:
+                foreach (var elem in list.Elements)
+                    CollectReferencedIdentifiers(elem, identifiers);
+                break;
+            case DictLiteral dict:
+                foreach (var entry in dict.Entries)
+                {
+                    CollectReferencedIdentifiers(entry.Key, identifiers);
+                    CollectReferencedIdentifiers(entry.Value, identifiers);
+                }
+                break;
+            case SetLiteral set:
+                foreach (var elem in set.Elements)
+                    CollectReferencedIdentifiers(elem, identifiers);
+                break;
+            case TupleLiteral tuple:
+                foreach (var elem in tuple.Elements)
+                    CollectReferencedIdentifiers(elem, identifiers);
+                break;
+            case LambdaExpression lambda:
+                // Lambda body may reference outer scope variables
+                CollectReferencedIdentifiers(lambda.Body, identifiers);
+                break;
+            case ConditionalExpression cond:
+                CollectReferencedIdentifiers(cond.Test, identifiers);
+                CollectReferencedIdentifiers(cond.ThenValue, identifiers);
+                CollectReferencedIdentifiers(cond.ElseValue, identifiers);
+                break;
+            case ComparisonChain chain:
+                foreach (var operand in chain.Operands)
+                    CollectReferencedIdentifiers(operand, identifiers);
+                break;
+            case FStringLiteral fstr:
+                foreach (var part in fstr.Parts)
+                    CollectReferencedIdentifiers(part.Expression, identifiers);
+                break;
+            case ListComprehension comp:
+                CollectReferencedIdentifiers(comp.Element, identifiers);
+                foreach (var clause in comp.Clauses)
+                {
+                    if (clause is ForClause fc)
+                        CollectReferencedIdentifiers(fc.Iterator, identifiers);
+                    else if (clause is IfClause ic)
+                        CollectReferencedIdentifiers(ic.Condition, identifiers);
+                }
+                break;
+            case SetComprehension comp:
+                CollectReferencedIdentifiers(comp.Element, identifiers);
+                foreach (var clause in comp.Clauses)
+                {
+                    if (clause is ForClause fc)
+                        CollectReferencedIdentifiers(fc.Iterator, identifiers);
+                    else if (clause is IfClause ic)
+                        CollectReferencedIdentifiers(ic.Condition, identifiers);
+                }
+                break;
+            case DictComprehension comp:
+                CollectReferencedIdentifiers(comp.Key, identifiers);
+                CollectReferencedIdentifiers(comp.Value, identifiers);
+                foreach (var clause in comp.Clauses)
+                {
+                    if (clause is ForClause fc)
+                        CollectReferencedIdentifiers(fc.Iterator, identifiers);
+                    else if (clause is IfClause ic)
+                        CollectReferencedIdentifiers(ic.Condition, identifiers);
+                }
+                break;
+            // Literals and other expressions with no identifier references
+            case IntegerLiteral:
+            case FloatLiteral:
+            case StringLiteral:
+            case BooleanLiteral:
+            case NoneLiteral:
+            case EllipsisLiteral:
+            case SuperExpression:
+                // No identifiers to collect
+                break;
+        }
+    }
+}
