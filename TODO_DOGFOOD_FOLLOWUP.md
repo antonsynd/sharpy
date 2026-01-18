@@ -116,12 +116,13 @@ This violates the language rule that you can't have module-level executable stat
 - Use module-level code without `main()`, OR
 - Define `main()` without calling it (it's auto-invoked)
 
+Note that both are acceptable and there is no preference for either.
+
 ### Issues 0002, 0004, 0007: Missing module dependencies
 These examples import modules (`math_utils`, `geometry`, `colors`) that were expected to exist from previous dogfood generation sessions but don't.
 
-**Resolution**: These are incomplete test cases. Either:
-- Create the missing modules, OR
-- Remove the import dependencies
+**Resolution**: These are incomplete test cases.
+- The dogfooding prompt/logic should be updated to provide the modules it expects as additional files used together as multi-file compilation and tested together.
 
 ---
 
