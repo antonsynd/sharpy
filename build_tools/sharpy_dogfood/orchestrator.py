@@ -16,7 +16,12 @@ from typing import Optional
 
 from .config import Config
 from .backends import BackendManager, ExecutionResult as AIResult
-from .compiler import SharpyCompiler, TempSourceFile, TempProjectDir, verify_compiler_available
+from .compiler import (
+    SharpyCompiler,
+    TempSourceFile,
+    TempProjectDir,
+    verify_compiler_available,
+)
 from .prompts import (
     get_spec_context,
     get_code_generation_prompt,
@@ -1033,7 +1038,9 @@ class DogfoodOrchestrator:
             if is_multifile:
                 # Multi-file iteration
                 feature_focus = random.choice(multifile_features)
-                complexity = random.choice(["medium", "complex"])  # Multi-file is at least medium
+                complexity = random.choice(
+                    ["medium", "complex"]
+                )  # Multi-file is at least medium
             else:
                 # Regular single-file iteration
                 feature_focus = random.choice(FEATURE_FOCUSES)
@@ -1042,7 +1049,9 @@ class DogfoodOrchestrator:
             start_time = datetime.now()
             try:
                 if is_multifile:
-                    result = await self.run_multifile_iteration(i, feature_focus, complexity)
+                    result = await self.run_multifile_iteration(
+                        i, feature_focus, complexity
+                    )
                 else:
                     result = await self.run_iteration(i, feature_focus, complexity)
                 duration = (datetime.now() - start_time).total_seconds()

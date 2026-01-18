@@ -85,6 +85,7 @@ class Issue:
         """Check if this is a multi-file test."""
         return self.source_files is not None and len(self.source_files) > 1
 
+
 class IssueReporter:
     """Creates and manages issue reports."""
 
@@ -395,7 +396,9 @@ class SuccessReporter:
         feature = success.feature_focus or "unknown"
         # Add marker for multi-file tests
         multifile_marker = "_multifile" if success.is_multifile else ""
-        success_name = f"{timestamp}_success_{feature}{multifile_marker}_{self._success_count:04d}"
+        success_name = (
+            f"{timestamp}_success_{feature}{multifile_marker}_{self._success_count:04d}"
+        )
         self._success_count += 1
 
         success_dir = self.successes_dir / success_name
@@ -412,7 +415,9 @@ class SuccessReporter:
                 (success_dir / filename).write_text(code)
             # Also write main.spy as source.spy for backwards compatibility
             if "main.spy" in success.source_files:
-                (success_dir / "source.spy").write_text(success.source_files["main.spy"])
+                (success_dir / "source.spy").write_text(
+                    success.source_files["main.spy"]
+                )
         else:
             # Single-file test: write the generated Sharpy code
             (success_dir / "source.spy").write_text(success.generated_code)
@@ -453,7 +458,9 @@ class SuccessReporter:
         if success.backend_used:
             lines.append(f"**Backend:** {success.backend_used}")
         if success.is_multifile:
-            lines.append(f"**Test Type:** Multi-file ({len(success.source_files)} files)")
+            lines.append(
+                f"**Test Type:** Multi-file ({len(success.source_files)} files)"
+            )
 
         if success.is_multifile:
             lines.extend(
@@ -483,15 +490,15 @@ class SuccessReporter:
                     "```python",
                     success.generated_code,
                     "```",
-                "",
-                "## Output",
-                "",
-                "```",
-                success.actual_output,
-                "```",
-                "",
-            ]
-        )
+                    "",
+                    "## Output",
+                    "",
+                    "```",
+                    success.actual_output,
+                    "```",
+                    "",
+                ]
+            )
 
         # Timing information
         timing = []
