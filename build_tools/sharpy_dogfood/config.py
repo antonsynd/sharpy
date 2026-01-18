@@ -78,6 +78,7 @@ class Config(BaseConfig):
 
     # Execution limits
     max_iterations: int = 10
+    max_regeneration_attempts: int = 3  # Max attempts to regenerate code with feedback
     generation_timeout: float = 180.0  # 3 minutes for code generation
     compilation_timeout: float = 60.0  # 1 minute for compilation
     execution_timeout: float = 30.0  # 30 seconds for running generated code

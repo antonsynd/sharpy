@@ -27,6 +27,7 @@ from .prompts import (
     get_code_generation_prompt,
     get_multifile_generation_prompt,
     get_spec_validation_prompt,
+    get_regeneration_prompt,
     extract_expected_output,
     extract_code_block,
     extract_multifile_code,
@@ -60,6 +61,20 @@ class IterationResult:
     issue_dir: Optional[Path] = None
     success_dir: Optional[Path] = None
     skip_reason: Optional[str] = None
+
+
+@dataclass
+class GenerationResult:
+    """Result of the generate-and-validate process with retry loop."""
+
+    success: bool
+    code: Optional[str] = None
+    expected_output: Optional[str] = None
+    skip_reason: Optional[str] = None
+    backend_used: Optional[str] = None
+    generation_duration: Optional[float] = None
+    rate_limited: bool = False
+    attempts: int = 1
 
 
 def _outputs_equivalent(expected: str, actual: str, rel_tol: float = 1e-9) -> bool:
@@ -456,106 +471,54 @@ class DogfoodOrchestrator:
         start_time = datetime.now()
         timestamp = start_time.isoformat()
 
-        # Step 1: Generate code
+        # Step 1 & 2: Generate and validate code (with retry loop on validation failure)
         print("\n[1/4] Generating code...", file=sys.stderr)
-        gen_result = await self._generate_code(feature_focus, complexity)
-        if not gen_result.success or not gen_result.output:
-            # Check if it's a rate limit issue (not a real failure)
-            is_rate_limited = gen_result.rate_limited or (
-                gen_result.error
-                and any(
-                    x in gen_result.error.lower()
-                    for x in ["rate limit", "rate-limit", "unavailable", "429"]
-                )
-            )
+        gen_result = await self._generate_and_validate_code(feature_focus, complexity)
 
-            if is_rate_limited:
+        if not gen_result.success:
+            # Check if it's a rate limit issue (not a real failure)
+            if gen_result.rate_limited:
                 print(
                     "  Generation failed due to rate limiting (not a bug)",
                     file=sys.stderr,
                 )
                 return IterationResult(
                     IterationStatus.SKIPPED,
-                    skip_reason=f"Rate limited: {gen_result.error or 'All backends unavailable'}",
+                    skip_reason=gen_result.skip_reason,
                 )
 
-            issue = Issue(
-                issue_type=IssueType.GENERATION_FAILED,
-                timestamp=timestamp,
-                generated_code="",
-                error_message=gen_result.error or "No code generated",
-                feature_focus=feature_focus,
-                complexity=complexity,
-                backend_used=gen_result.backend,
-                generation_duration=gen_result.duration_seconds,
-            )
-            issue_dir = self.issue_reporter.report(issue)
-            return IterationResult(IterationStatus.FAILED, issue_dir)
-
-        code = extract_code_block(gen_result.output) or gen_result.output
-        expected_output = extract_expected_output(code)
-        print(f"  Generated {len(code)} chars of code", file=sys.stderr)
-
-        # Step 1.5: Quick pre-validation (programmatic check for forbidden features)
-        prevalidation_error = self._quick_prevalidate(code)
-        if prevalidation_error:
-            print(f"  Pre-validation failed: {prevalidation_error}", file=sys.stderr)
-            print(
-                "  Skipping (generated code uses features beyond phases 0.1.0-0.1.10)",
-                file=sys.stderr,
-            )
-            return IterationResult(
-                IterationStatus.SKIPPED,
-                skip_reason=f"Unsupported feature: {prevalidation_error}",
-            )
-
-        # Step 1.6: Verify expected output using Python (catches AI mistakes in expected output)
-        if expected_output:
-            is_valid, python_output, verify_error = await _verify_expected_with_python(
-                code, expected_output
-            )
-            if not is_valid:
+            # If it was a validation failure after retries, skip
+            if gen_result.attempts > 1:
                 print(
-                    f"  Expected output verification failed: {verify_error}",
-                    file=sys.stderr,
-                )
-                print(f"  Python output: {python_output}", file=sys.stderr)
-                print(f"  AI expected:   {expected_output}", file=sys.stderr)
-                print(
-                    "  Skipping (AI generated incorrect expected output)",
+                    f"  Code generation failed after {gen_result.attempts} attempts",
                     file=sys.stderr,
                 )
                 return IterationResult(
                     IterationStatus.SKIPPED,
-                    skip_reason=f"Invalid expected output (Python says: {python_output})",
-                )
-            elif python_output is not None:
-                print(
-                    f"  Expected output verified with Python: {python_output[:50]}...",
-                    file=sys.stderr,
+                    skip_reason=gen_result.skip_reason,
                 )
 
-        # Step 2: Validate against spec (AI-based detailed check)
-        print("\n[2/4] Validating against spec...", file=sys.stderr)
-        val_result = await self._validate_code(code)
-        if not val_result.success:
-            print(f"  Validation failed: {val_result.error}", file=sys.stderr)
-            # Skip this iteration rather than reporting as issue
-            # Invalid generated code is not a compiler bug
-            return IterationResult(
-                IterationStatus.SKIPPED,
-                skip_reason=f"Validation backend error: {val_result.error}",
+            # First attempt generation failure - report as issue
+            issue = Issue(
+                issue_type=IssueType.GENERATION_FAILED,
+                timestamp=timestamp,
+                generated_code="",
+                error_message=gen_result.skip_reason or "No code generated",
+                feature_focus=feature_focus,
+                complexity=complexity,
+                backend_used=gen_result.backend_used,
+                generation_duration=gen_result.generation_duration,
             )
+            issue_dir = self.issue_reporter.report(issue)
+            return IterationResult(IterationStatus.FAILED, issue_dir)
 
-        validation_output = val_result.output
-        if "INVALID" in validation_output.upper():
-            print(f"  Code is invalid per spec, skipping", file=sys.stderr)
-            return IterationResult(
-                IterationStatus.SKIPPED,
-                skip_reason="Generated code invalid per spec",
+        code = gen_result.code
+        expected_output = gen_result.expected_output
+        if gen_result.attempts > 1:
+            print(
+                f"  Code validated successfully after {gen_result.attempts} attempts",
+                file=sys.stderr,
             )
-
-        print("  Code validated successfully", file=sys.stderr)
 
         # Step 3: Compile and run
         print("\n[3/4] Compiling and running...", file=sys.stderr)
@@ -596,11 +559,10 @@ class DogfoodOrchestrator:
                     error_message=run_result.error,
                     compiler_output=run_result.output,
                     generated_cs=generated_cs,
-                    validation_result=validation_output,
                     feature_focus=feature_focus,
                     complexity=complexity,
-                    backend_used=gen_result.backend,
-                    generation_duration=gen_result.duration_seconds,
+                    backend_used=gen_result.backend_used,
+                    generation_duration=gen_result.generation_duration,
                     execution_duration=run_result.duration_seconds,
                 )
                 issue_dir = self.issue_reporter.report(issue)
@@ -621,33 +583,35 @@ class DogfoodOrchestrator:
             expected_normalized = expected_output.strip()
             actual_normalized = actual_output.strip()
 
-            if expected_normalized != actual_normalized:
-                # First, try programmatic float-tolerant comparison
-                if _outputs_equivalent(expected_normalized, actual_normalized):
-                    print("  Outputs match (with float tolerance)", file=sys.stderr)
-                else:
-                    # Fall back to AI-assisted comparison for fuzzy matching
-                    verify_result = await self._verify_output(
-                        code, expected_output, actual_output
+            if expected_normalized == actual_normalized:
+                # Exact match - print status (this was the missing case!)
+                print("  ✓ Output matches expected (exact)", file=sys.stderr)
+            elif _outputs_equivalent(expected_normalized, actual_normalized):
+                # Float-tolerant match
+                print("  ✓ Output matches expected (with float tolerance)", file=sys.stderr)
+            else:
+                # Fall back to AI-assisted comparison for fuzzy matching
+                verify_result = await self._verify_output(
+                    code, expected_output, actual_output
+                )
+                if "MISMATCH" in verify_result.output.upper():
+                    print("  ✗ Output mismatch detected", file=sys.stderr)
+                    issue = Issue(
+                        issue_type=IssueType.OUTPUT_MISMATCH,
+                        timestamp=timestamp,
+                        generated_code=code,
+                        expected_output=expected_output,
+                        actual_output=actual_output,
+                        feature_focus=feature_focus,
+                        complexity=complexity,
+                        backend_used=gen_result.backend_used,
+                        generation_duration=gen_result.generation_duration,
+                        execution_duration=run_result.duration_seconds,
                     )
-                    if "MISMATCH" in verify_result.output.upper():
-                        issue = Issue(
-                            issue_type=IssueType.OUTPUT_MISMATCH,
-                            timestamp=timestamp,
-                            generated_code=code,
-                            expected_output=expected_output,
-                            actual_output=actual_output,
-                            validation_result=validation_output,
-                            feature_focus=feature_focus,
-                            complexity=complexity,
-                            backend_used=gen_result.backend,
-                            generation_duration=gen_result.duration_seconds,
-                            execution_duration=run_result.duration_seconds,
-                        )
-                        issue_dir = self.issue_reporter.report(issue)
-                        return IterationResult(IterationStatus.FAILED, issue_dir)
-                    else:
-                        print("  Outputs match (AI verified)", file=sys.stderr)
+                    issue_dir = self.issue_reporter.report(issue)
+                    return IterationResult(IterationStatus.FAILED, issue_dir)
+                else:
+                    print("  ✓ Output matches expected (AI verified)", file=sys.stderr)
         else:
             print(
                 "  No expected output specified, skipping verification", file=sys.stderr
@@ -663,8 +627,8 @@ class DogfoodOrchestrator:
                 actual_output=actual_output,
                 feature_focus=feature_focus,
                 complexity=complexity,
-                backend_used=gen_result.backend,
-                generation_duration=gen_result.duration_seconds,
+                backend_used=gen_result.backend_used,
+                generation_duration=gen_result.generation_duration,
                 execution_duration=execution_duration,
             )
             success_dir = self.success_reporter.report(success)
@@ -688,6 +652,220 @@ class DogfoodOrchestrator:
         )
         return await self.backend_manager.execute(
             prompt, timeout=self.config.generation_timeout
+        )
+
+    async def _regenerate_code(
+        self,
+        feature_focus: str,
+        complexity: str,
+        previous_code: str,
+        validation_error: str,
+        attempt: int,
+    ) -> AIResult:
+        """Regenerate Sharpy code with feedback from validation failure."""
+        prompt = get_regeneration_prompt(
+            self.spec_context,
+            feature_focus=feature_focus,
+            complexity=complexity,
+            previous_code=previous_code,
+            validation_error=validation_error,
+            attempt=attempt,
+            max_attempts=self.config.max_regeneration_attempts,
+            example_snippets=(
+                random.sample(self.example_snippets, min(2, len(self.example_snippets)))
+                if self.example_snippets
+                else None
+            ),
+            existing_fixtures_section=self.fixtures_prompt_section,
+        )
+        return await self.backend_manager.execute(
+            prompt, timeout=self.config.generation_timeout
+        )
+
+    async def _generate_and_validate_code(
+        self, feature_focus: str, complexity: str
+    ) -> GenerationResult:
+        """Generate and validate code with retry loop on validation failure.
+
+        Implements a feedback loop similar to sharpy_auto_builder's fix_test_failures_node.
+        If code fails pre-validation or AI spec validation, retries up to
+        max_regeneration_attempts times with feedback about the validation error.
+
+        Returns:
+            GenerationResult with code if successful, or skip_reason if all attempts failed.
+        """
+        max_attempts = self.config.max_regeneration_attempts
+        last_code: Optional[str] = None
+        last_error: Optional[str] = None
+        total_duration = 0.0
+        backend_used: Optional[str] = None
+
+        for attempt in range(1, max_attempts + 1):
+            # Generate or regenerate code
+            if attempt == 1:
+                # First attempt: generate fresh code
+                gen_result = await self._generate_code(feature_focus, complexity)
+            else:
+                # Subsequent attempts: regenerate with feedback
+                print(
+                    f"  Regenerating code (attempt {attempt}/{max_attempts})...",
+                    file=sys.stderr,
+                )
+                gen_result = await self._regenerate_code(
+                    feature_focus=feature_focus,
+                    complexity=complexity,
+                    previous_code=last_code,
+                    validation_error=last_error,
+                    attempt=attempt,
+                )
+
+            total_duration += gen_result.duration_seconds or 0.0
+            backend_used = gen_result.backend
+
+            # Check for rate limiting
+            if not gen_result.success or not gen_result.output:
+                is_rate_limited = gen_result.rate_limited or (
+                    gen_result.error
+                    and any(
+                        x in gen_result.error.lower()
+                        for x in ["rate limit", "rate-limit", "unavailable", "429"]
+                    )
+                )
+                if is_rate_limited:
+                    return GenerationResult(
+                        success=False,
+                        skip_reason=f"Rate limited: {gen_result.error or 'All backends unavailable'}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        rate_limited=True,
+                        attempts=attempt,
+                    )
+                # Non-rate-limit generation failure - report as issue
+                return GenerationResult(
+                    success=False,
+                    skip_reason=gen_result.error or "No code generated",
+                    backend_used=backend_used,
+                    generation_duration=total_duration,
+                    attempts=attempt,
+                )
+
+            code = extract_code_block(gen_result.output) or gen_result.output
+            last_code = code
+            print(f"  Generated {len(code)} chars of code", file=sys.stderr)
+
+            # Step 1.5: Quick pre-validation (programmatic check for forbidden features)
+            prevalidation_error = self._quick_prevalidate(code)
+            if prevalidation_error:
+                print(
+                    f"  Pre-validation failed: {prevalidation_error}", file=sys.stderr
+                )
+                last_error = f"Pre-validation error: {prevalidation_error}"
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry with feedback ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return GenerationResult(
+                        success=False,
+                        skip_reason=f"Pre-validation failed after {attempt} attempts: {prevalidation_error}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+
+            # Step 1.6: Verify expected output using Python
+            expected_output = extract_expected_output(code)
+            if expected_output:
+                is_valid, python_output, verify_error = (
+                    await _verify_expected_with_python(code, expected_output)
+                )
+                if not is_valid:
+                    print(
+                        f"  Expected output verification failed: {verify_error}",
+                        file=sys.stderr,
+                    )
+                    last_error = f"Expected output verification error: {verify_error}. Python says output should be: {python_output}"
+                    if attempt < max_attempts:
+                        print(
+                            f"  Will retry with feedback ({attempt}/{max_attempts})...",
+                            file=sys.stderr,
+                        )
+                        continue
+                    else:
+                        return GenerationResult(
+                            success=False,
+                            skip_reason=f"Invalid expected output after {attempt} attempts (Python says: {python_output})",
+                            backend_used=backend_used,
+                            generation_duration=total_duration,
+                            attempts=attempt,
+                        )
+                elif python_output is not None:
+                    print(
+                        f"  Expected output verified with Python: {python_output[:50]}...",
+                        file=sys.stderr,
+                    )
+
+            # Step 2: Validate against spec (AI-based detailed check)
+            print("\n[2/4] Validating against spec...", file=sys.stderr)
+            val_result = await self._validate_code(code)
+            if not val_result.success:
+                print(f"  Validation backend error: {val_result.error}", file=sys.stderr)
+                last_error = f"Validation backend error: {val_result.error}"
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry with feedback ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return GenerationResult(
+                        success=False,
+                        skip_reason=f"Validation backend error after {attempt} attempts: {val_result.error}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+
+            validation_output = val_result.output
+            if "INVALID" in validation_output.upper():
+                print(f"  Code is invalid per spec", file=sys.stderr)
+                # Extract the specific reason from validation output
+                last_error = f"Code invalid per spec: {validation_output[:500]}"
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry with feedback ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return GenerationResult(
+                        success=False,
+                        skip_reason=f"Code invalid per spec after {attempt} attempts",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+
+            # Success!
+            print("  Code validated successfully", file=sys.stderr)
+            return GenerationResult(
+                success=True,
+                code=code,
+                expected_output=expected_output,
+                backend_used=backend_used,
+                generation_duration=total_duration,
+                attempts=attempt,
+            )
+
+        # Should not reach here, but just in case
+        return GenerationResult(
+            success=False,
+            skip_reason="Generation failed after all retry attempts",
+            backend_used=backend_used,
+            generation_duration=total_duration,
+            attempts=max_attempts,
         )
 
     async def _generate_multifile_code(
@@ -877,31 +1055,35 @@ class DogfoodOrchestrator:
             expected_normalized = expected_output.strip()
             actual_normalized = actual_output.strip()
 
-            if expected_normalized != actual_normalized:
-                if _outputs_equivalent(expected_normalized, actual_normalized):
-                    print("  Outputs match (with float tolerance)", file=sys.stderr)
-                else:
-                    verify_result = await self._verify_output(
-                        files.get("main.spy", ""), expected_output, actual_output
+            if expected_normalized == actual_normalized:
+                # Exact match - print status
+                print("  ✓ Output matches expected (exact)", file=sys.stderr)
+            elif _outputs_equivalent(expected_normalized, actual_normalized):
+                # Float-tolerant match
+                print("  ✓ Output matches expected (with float tolerance)", file=sys.stderr)
+            else:
+                verify_result = await self._verify_output(
+                    files.get("main.spy", ""), expected_output, actual_output
+                )
+                if "MISMATCH" in verify_result.output.upper():
+                    print("  ✗ Output mismatch detected", file=sys.stderr)
+                    issue = Issue(
+                        issue_type=IssueType.OUTPUT_MISMATCH,
+                        timestamp=timestamp,
+                        generated_code=files.get("main.spy", ""),
+                        source_files=files,
+                        expected_output=expected_output,
+                        actual_output=actual_output,
+                        feature_focus=feature_focus,
+                        complexity=complexity,
+                        backend_used=gen_result.backend,
+                        generation_duration=gen_result.duration_seconds,
+                        execution_duration=run_result.duration_seconds,
                     )
-                    if "MISMATCH" in verify_result.output.upper():
-                        issue = Issue(
-                            issue_type=IssueType.OUTPUT_MISMATCH,
-                            timestamp=timestamp,
-                            generated_code=files.get("main.spy", ""),
-                            source_files=files,
-                            expected_output=expected_output,
-                            actual_output=actual_output,
-                            feature_focus=feature_focus,
-                            complexity=complexity,
-                            backend_used=gen_result.backend,
-                            generation_duration=gen_result.duration_seconds,
-                            execution_duration=run_result.duration_seconds,
-                        )
-                        issue_dir = self.issue_reporter.report(issue)
-                        return IterationResult(IterationStatus.FAILED, issue_dir)
-                    else:
-                        print("  Outputs match (AI verified)", file=sys.stderr)
+                    issue_dir = self.issue_reporter.report(issue)
+                    return IterationResult(IterationStatus.FAILED, issue_dir)
+                else:
+                    print("  ✓ Output matches expected (AI verified)", file=sys.stderr)
         else:
             print(
                 "  No expected output specified, skipping verification", file=sys.stderr

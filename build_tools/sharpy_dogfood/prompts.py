@@ -472,6 +472,124 @@ CRITICAL RULES:
 7. NO circular imports between modules"""
 
 
+def get_regeneration_prompt(
+    spec_context: str,
+    feature_focus: str,
+    complexity: str,
+    previous_code: str,
+    validation_error: str,
+    attempt: int,
+    max_attempts: int,
+    example_snippets: Optional[list[str]] = None,
+    existing_fixtures_section: str = "",
+) -> str:
+    """Generate a prompt for retrying code generation with validation feedback.
+
+    Used when previous code generation failed validation. Provides the AI with
+    the previous code and the specific validation error so it can fix the issue.
+
+    Args:
+        spec_context: Language specification context.
+        feature_focus: The feature area to focus on.
+        complexity: Complexity level (simple, medium, complex).
+        previous_code: The previously generated code that failed validation.
+        validation_error: The error message from validation.
+        attempt: Current attempt number (1-indexed).
+        max_attempts: Maximum number of attempts allowed.
+        example_snippets: Optional list of example code snippets.
+        existing_fixtures_section: Formatted section showing existing test fixtures.
+
+    Returns:
+        Prompt string for regenerating code with feedback.
+    """
+    examples_section = ""
+    if example_snippets:
+        examples_section = "\n\n## Example Sharpy Code\n\n"
+        for i, snippet in enumerate(example_snippets[:2], 1):
+            examples_section += f"### Example {i}\n```python\n{snippet}\n```\n\n"
+
+    return f"""You are regenerating Sharpy code for compiler testing (dogfooding).
+
+## REGENERATION ATTEMPT {attempt}/{max_attempts}
+
+Your previous code FAILED validation. You must fix the issue and regenerate.
+
+## Previous Code That Failed
+
+```python
+{previous_code}
+```
+
+## Validation Error
+
+```
+{validation_error}
+```
+
+## Instructions
+
+1. Analyze the validation error carefully
+2. Identify which feature(s) are NOT allowed in phases 0.1.0-0.1.10
+3. REMOVE or REPLACE the forbidden features
+4. Keep the same general logic/intent but use only allowed features
+
+## CRITICAL: Allowed Features (Phases 0.1.0-0.1.10 ONLY)
+
+### ✅ ALLOWED:
+- Variables: `x: int = 42`
+- Types: `int`, `str`, `bool`, `float`, nullable `int?`
+- Operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
+- Null operators: `??`, `?.`
+- Control flow: `if`/`elif`/`else`, `while`, `for i in range(n)`, `break`, `continue`
+- Functions: `def name(param: type) -> return_type:`, default params, keyword args
+- Classes: `class Name:`, `__init__`, instance/static methods
+- Inheritance: `class Child(Parent):`, `super().__init__()`, `@abstract`, `@virtual`, `@override`
+- Interfaces: `interface IName:` with `...` bodies
+- Structs: `struct Name:`
+- Enums: `enum Name:` with explicit values
+- Type aliases: `type UserId = int`
+- Basic generics: `class Box[T]:`, `def foo[T](x: T) -> T:`
+- Imports: `import module`, `from module import item`
+- Built-ins: `print(value)` - SINGLE ARGUMENT ONLY, `range()` in for loops
+
+### ❌ FORBIDDEN (DO NOT USE):
+- NO f-strings: `f"hello {{x}}"`
+- NO multi-argument print: `print(a, b)` - use multiple print() calls instead
+- NO string concatenation: `"a" + "b"`
+- NO lists/dicts/sets: `[]`, `{{}}`
+- NO comprehensions: `[x for x in items]`
+- NO try/except/raise
+- NO lambdas
+- NO .NET interop: `from system import ...`
+- NO ternary: `x if cond else y`
+- NO tuple unpacking: `a, b = 1, 2`
+
+{examples_section}
+
+## Task
+
+Regenerate the code for: **{feature_focus}** (complexity: **{complexity}**)
+
+Fix the validation error above. Generate VALID code that does NOT use any forbidden features.
+
+## Output Format
+
+Return ONLY valid Sharpy code with expected output in comments:
+
+```python
+# Your fixed code here
+...
+# EXPECTED OUTPUT:
+# <expected output lines>
+```
+
+IMPORTANT:
+- Use ONLY simple print() calls with ONE argument
+- For multiple values, use multiple print() statements
+- NO string formatting, concatenation, or f-strings
+- Every print() output should appear in EXPECTED OUTPUT"""
+
+
 def get_spec_validation_prompt(code: str, spec_context: str) -> str:
     """Generate a prompt for validating code against the spec."""
 
