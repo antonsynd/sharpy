@@ -6,6 +6,7 @@ implementations from the nodes subpackage.
 """
 
 import sys
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -74,11 +75,15 @@ class Orchestrator(
 
         # Initialize components
         self.backend_manager = BackendManager(config)
-        self.human_loop = HumanLoopManager(
-            config.questions_dir,
-            config.answers_dir,
-            config.human_review_dir,
-        )
+        # HumanLoopManager is deprecated but kept for backwards compatibility with
+        # batch processing workflows. Suppress the warning since we're aware of it.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            self.human_loop = HumanLoopManager(
+                config.questions_dir,
+                config.answers_dir,
+                config.human_review_dir,
+            )
 
         # Initialize response analyzer and auto-decision engine (Overseer components)
         self.response_analyzer = ResponseAnalyzer(
