@@ -6,6 +6,92 @@ from pathlib import Path
 from typing import Optional
 
 
+def load_test_fixtures(fixtures_dir: Path) -> dict[str, list[tuple[str, str]]]:
+    """Load existing test fixtures organized by category.
+
+    Returns:
+        Dict mapping category name to list of (filename, content) tuples.
+    """
+    fixtures: dict[str, list[tuple[str, str]]] = {}
+
+    if not fixtures_dir.exists():
+        return fixtures
+
+    for category_dir in fixtures_dir.iterdir():
+        if not category_dir.is_dir() or category_dir.name.startswith("."):
+            continue
+
+        category_name = category_dir.name
+        fixtures[category_name] = []
+
+        for spy_file in sorted(category_dir.glob("*.spy")):
+            try:
+                content = spy_file.read_text()
+                fixtures[category_name].append((spy_file.stem, content))
+            except Exception:
+                continue
+
+    return fixtures
+
+
+def format_fixtures_for_prompt(
+    fixtures: dict[str, list[tuple[str, str]]],
+    max_examples_per_category: int = 2,
+    max_total_chars: int = 3000,
+) -> str:
+    """Format test fixtures as a prompt section showing what already exists.
+
+    Args:
+        fixtures: Dict from load_test_fixtures
+        max_examples_per_category: Max number of example files to show per category
+        max_total_chars: Maximum total characters for the section
+
+    Returns:
+        Formatted string describing existing tests.
+    """
+    if not fixtures:
+        return ""
+
+    parts = []
+    parts.append("## Existing Test Coverage (DO NOT duplicate these)")
+    parts.append("")
+    parts.append("The following tests already exist in the compiler test suite.")
+    parts.append(
+        "Generate something DIFFERENT from these - explore untested combinations!"
+    )
+    parts.append("")
+
+    total_chars = 0
+
+    for category, test_files in sorted(fixtures.items()):
+        if total_chars > max_total_chars:
+            parts.append(f"\n... and more categories (truncated for brevity)")
+            break
+
+        # List all test names in this category
+        test_names = [name for name, _ in test_files]
+        parts.append(
+            f"### {category.replace('_', ' ').title()} ({len(test_files)} tests)"
+        )
+        parts.append(f"Existing tests: {', '.join(test_names)}")
+
+        # Show a couple of examples
+        for name, content in test_files[:max_examples_per_category]:
+            # Truncate long examples
+            if len(content) > 400:
+                content = content[:400] + "\n# ... (truncated)"
+
+            example_text = f"\n**{name}.spy:**\n```python\n{content}\n```"
+            if total_chars + len(example_text) > max_total_chars:
+                break
+            parts.append(example_text)
+            total_chars += len(example_text)
+
+        parts.append("")
+
+    return "\n".join(parts)
+
+
 def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
     """Load relevant specification context for prompts."""
     context_parts = []
@@ -70,8 +156,17 @@ def get_code_generation_prompt(
     feature_focus: str = "general",
     complexity: str = "simple",
     example_snippets: list[str] = None,
+    existing_fixtures_section: str = "",
 ) -> str:
-    """Generate a prompt for creating Sharpy code."""
+    """Generate a prompt for creating Sharpy code.
+
+    Args:
+        spec_context: Language specification context.
+        feature_focus: The feature area to focus on.
+        complexity: Complexity level (simple, medium, complex).
+        example_snippets: Optional list of example code snippets.
+        existing_fixtures_section: Formatted section showing existing test fixtures.
+    """
 
     examples_section = ""
     if example_snippets:
@@ -195,10 +290,19 @@ Generate COMPLEX code:
 - **Do NOT name functions** `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`
 - Use **descriptive names** like `double_value`, `multiply_by_two`, `calculate_double` instead
 
+{existing_fixtures_section}
+
 ## Task
 
-Generate a novel, valid Sharpy program testing: **{feature_focus}**
+Generate a **NOVEL** and **UNIQUE** Sharpy program testing: **{feature_focus}**
 Complexity level: **{complexity}**
+
+**IMPORTANT**: Your code should explore DIFFERENT patterns, algorithms, or feature combinations
+than the existing tests shown above. Be creative! Some ideas:
+- Use different variable names and scenarios
+- Combine features in new ways
+- Test edge cases not covered by existing tests
+- Use different numeric values and control flow patterns
 
 {complexity_guide.get(complexity, complexity_guide["simple"])}
 

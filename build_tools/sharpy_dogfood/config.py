@@ -122,6 +122,10 @@ class Config(BaseConfig):
     def snippets_dir(self) -> Path:
         return self.project_root / "snippets"
 
+    @property
+    def test_fixtures_dir(self) -> Path:
+        return self.project_root / "src/Sharpy.Compiler.Tests/Integration/TestFixtures"
+
     def ensure_dirs(self) -> None:
         """Create output directories if they don't exist.
 

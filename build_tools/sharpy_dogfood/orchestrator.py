@@ -23,6 +23,8 @@ from .prompts import (
     get_spec_validation_prompt,
     extract_expected_output,
     extract_code_block,
+    load_test_fixtures,
+    format_fixtures_for_prompt,
 )
 from .reporting import (
     Issue,
@@ -326,6 +328,8 @@ class DogfoodOrchestrator:
         self.summary_reporter = SummaryReporter(config.output_dir)
         self.spec_context: Optional[str] = None
         self.example_snippets: list[str] = []
+        self.test_fixtures: dict[str, list[tuple[str, str]]] = {}
+        self.fixtures_prompt_section: str = ""
 
     async def initialize(self) -> bool:
         """Initialize the orchestrator and verify dependencies."""
@@ -357,7 +361,29 @@ class DogfoodOrchestrator:
         self._load_example_snippets()
         print(f"Loaded {len(self.example_snippets)} example snippets", file=sys.stderr)
 
+        # Load existing test fixtures to avoid duplicating tests
+        self._load_test_fixtures()
+        total_fixtures = sum(len(tests) for tests in self.test_fixtures.values())
+        print(
+            f"Loaded {total_fixtures} test fixtures from {len(self.test_fixtures)} categories",
+            file=sys.stderr,
+        )
+
         return True
+
+    def _load_test_fixtures(self) -> None:
+        """Load existing integration test fixtures to show the AI what already exists."""
+        fixtures_dir = self.config.test_fixtures_dir
+        if not fixtures_dir.exists():
+            print(f"Test fixtures directory not found: {fixtures_dir}", file=sys.stderr)
+            return
+
+        self.test_fixtures = load_test_fixtures(fixtures_dir)
+        self.fixtures_prompt_section = format_fixtures_for_prompt(
+            self.test_fixtures,
+            max_examples_per_category=2,
+            max_total_chars=3000,
+        )
 
     def _load_example_snippets(self) -> None:
         """Load example Sharpy snippets from the snippets directory.
@@ -650,6 +676,7 @@ class DogfoodOrchestrator:
                 if self.example_snippets
                 else None
             ),
+            existing_fixtures_section=self.fixtures_prompt_section,
         )
         return await self.backend_manager.execute(
             prompt, timeout=self.config.generation_timeout
