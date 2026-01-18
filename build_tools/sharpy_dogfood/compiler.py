@@ -194,6 +194,99 @@ class SharpyCompiler:
                 duration_seconds=time.time() - start_time,
             )
 
+    async def run_project(
+        self,
+        project_dir: Path,
+        entry_point: str = "main.spy",
+        timeout: float = 30.0,
+    ) -> ExecutionResult:
+        """Compile and run a multi-file Sharpy project using 'sharpyc run'.
+
+        Args:
+            project_dir: Directory containing the .spy source files.
+            entry_point: The entry point file (e.g., "main.spy").
+            timeout: Execution timeout in seconds.
+
+        Returns:
+            ExecutionResult with success/failure and output.
+        """
+        import time
+
+        start_time = time.time()
+        entry_point_path = project_dir / entry_point
+
+        if not entry_point_path.exists():
+            return ExecutionResult(
+                success=False,
+                output="",
+                error=f"Entry point file not found: {entry_point_path}",
+                duration_seconds=time.time() - start_time,
+            )
+
+        cmd = [
+            self._dotnet_path,
+            "run",
+            "--project",
+            str(self.cli_project),
+            "--",
+            "run",
+            str(entry_point_path),
+        ]
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=project_dir,  # Run from project dir so imports resolve
+            )
+
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                try:
+                    process.kill()
+                    await process.wait()
+                except Exception:
+                    pass
+                return ExecutionResult(
+                    success=False,
+                    output="",
+                    error=f"Execution timed out after {timeout}s",
+                    duration_seconds=time.time() - start_time,
+                    timed_out=True,
+                )
+
+            duration = time.time() - start_time
+            stdout_text = stdout.decode()
+            stderr_text = stderr.decode()
+
+            if process.returncode == 0:
+                return ExecutionResult(
+                    success=True,
+                    output=stdout_text,
+                    exit_code=process.returncode,
+                    duration_seconds=duration,
+                )
+            else:
+                return ExecutionResult(
+                    success=False,
+                    output=stdout_text,
+                    error=stderr_text or stdout_text,
+                    exit_code=process.returncode,
+                    duration_seconds=duration,
+                )
+
+        except Exception as e:
+            return ExecutionResult(
+                success=False,
+                output="",
+                error=f"Execution failed: {e}",
+                duration_seconds=time.time() - start_time,
+            )
+
     async def emit_cs(
         self,
         source_path: Path,
@@ -282,6 +375,35 @@ class TempSourceFile:
         self.path = Path(self._temp_dir.name) / f"dogfood_test{self.suffix}"
         self.path.write_text(self.code)
         return self.path
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._temp_dir:
+            self._temp_dir.cleanup()
+
+
+class TempProjectDir:
+    """Context manager for creating a temporary multi-file Sharpy project."""
+
+    def __init__(self, files: dict[str, str]):
+        """Initialize with a dictionary mapping filenames to code content.
+
+        Args:
+            files: Dict mapping filename (e.g., "main.spy") to code content.
+        """
+        self.files = files
+        self.project_dir: Optional[Path] = None
+        self._temp_dir: Optional[tempfile.TemporaryDirectory] = None
+
+    def __enter__(self) -> Path:
+        self._temp_dir = tempfile.TemporaryDirectory()
+        self.project_dir = Path(self._temp_dir.name)
+
+        # Write all source files
+        for filename, code in self.files.items():
+            file_path = self.project_dir / filename
+            file_path.write_text(code)
+
+        return self.project_dir
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self._temp_dir:

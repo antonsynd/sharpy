@@ -16,13 +16,16 @@ from typing import Optional
 
 from .config import Config
 from .backends import BackendManager, ExecutionResult as AIResult
-from .compiler import SharpyCompiler, TempSourceFile, verify_compiler_available
+from .compiler import SharpyCompiler, TempSourceFile, TempProjectDir, verify_compiler_available
 from .prompts import (
     get_spec_context,
     get_code_generation_prompt,
+    get_multifile_generation_prompt,
     get_spec_validation_prompt,
     extract_expected_output,
     extract_code_block,
+    extract_multifile_code,
+    extract_expected_output_from_multifile,
     load_test_fixtures,
     format_fixtures_for_prompt,
 )
@@ -682,6 +685,244 @@ class DogfoodOrchestrator:
             prompt, timeout=self.config.generation_timeout
         )
 
+    async def _generate_multifile_code(
+        self, feature_focus: str, complexity: str
+    ) -> AIResult:
+        """Generate multi-file Sharpy code using AI."""
+        prompt = get_multifile_generation_prompt(
+            self.spec_context,
+            feature_focus=feature_focus,
+            complexity=complexity,
+            example_snippets=(
+                random.sample(self.example_snippets, min(3, len(self.example_snippets)))
+                if self.example_snippets
+                else None
+            ),
+            existing_fixtures_section=self.fixtures_prompt_section,
+        )
+        return await self.backend_manager.execute(
+            prompt, timeout=self.config.generation_timeout
+        )
+
+    async def run_multifile_iteration(
+        self,
+        iteration: int,
+        feature_focus: str,
+        complexity: str,
+    ) -> IterationResult:
+        """Run a single multi-file dogfooding iteration.
+
+        Similar to run_iteration but for multi-file projects with imports.
+
+        Returns:
+            IterationResult with status (SUCCESS, FAILED, or SKIPPED) and optional issue_dir
+        """
+        print(f"\n{'='*60}", file=sys.stderr)
+        print(
+            f"Iteration {iteration} [MULTI-FILE]: {feature_focus} ({complexity})",
+            file=sys.stderr,
+        )
+        print(f"{'='*60}", file=sys.stderr)
+
+        start_time = datetime.now()
+        timestamp = start_time.isoformat()
+
+        # Step 1: Generate multi-file code
+        print("\n[1/4] Generating multi-file project...", file=sys.stderr)
+        gen_result = await self._generate_multifile_code(feature_focus, complexity)
+
+        if not gen_result.success or not gen_result.output:
+            # Check if it's a rate limit issue
+            is_rate_limited = gen_result.rate_limited or (
+                gen_result.error
+                and any(
+                    x in gen_result.error.lower()
+                    for x in ["rate limit", "rate-limit", "unavailable", "429"]
+                )
+            )
+
+            if is_rate_limited:
+                print(
+                    "  Generation failed due to rate limiting (not a bug)",
+                    file=sys.stderr,
+                )
+                return IterationResult(
+                    IterationStatus.SKIPPED,
+                    skip_reason=f"Rate limited: {gen_result.error or 'All backends unavailable'}",
+                )
+
+            issue = Issue(
+                issue_type=IssueType.GENERATION_FAILED,
+                timestamp=timestamp,
+                generated_code="",
+                error_message=gen_result.error or "No code generated",
+                feature_focus=feature_focus,
+                complexity=complexity,
+                backend_used=gen_result.backend,
+                generation_duration=gen_result.duration_seconds,
+            )
+            issue_dir = self.issue_reporter.report(issue)
+            return IterationResult(IterationStatus.FAILED, issue_dir)
+
+        # Parse multi-file response
+        files = extract_multifile_code(gen_result.output)
+        if not files:
+            print("  Failed to parse multi-file response", file=sys.stderr)
+            return IterationResult(
+                IterationStatus.SKIPPED,
+                skip_reason="Failed to parse multi-file response from AI",
+            )
+
+        print(f"  Generated {len(files)} files:", file=sys.stderr)
+        for filename in files:
+            print(f"    - {filename}", file=sys.stderr)
+
+        # Extract expected output from main.spy
+        expected_output = extract_expected_output_from_multifile(files)
+
+        # Step 1.5: Quick pre-validation for each file
+        for filename, code in files.items():
+            prevalidation_error = self._quick_prevalidate(code)
+            if prevalidation_error:
+                print(
+                    f"  Pre-validation failed for {filename}: {prevalidation_error}",
+                    file=sys.stderr,
+                )
+                return IterationResult(
+                    IterationStatus.SKIPPED,
+                    skip_reason=f"Unsupported feature in {filename}: {prevalidation_error}",
+                )
+
+        # Step 2: Validate each file against spec
+        print("\n[2/4] Validating against spec...", file=sys.stderr)
+        for filename, code in files.items():
+            val_result = await self._validate_code(code)
+            if not val_result.success:
+                print(
+                    f"  Validation failed for {filename}: {val_result.error}",
+                    file=sys.stderr,
+                )
+                return IterationResult(
+                    IterationStatus.SKIPPED,
+                    skip_reason=f"Validation backend error for {filename}",
+                )
+
+            if "INVALID" in val_result.output.upper():
+                print(f"  {filename} is invalid per spec, skipping", file=sys.stderr)
+                return IterationResult(
+                    IterationStatus.SKIPPED,
+                    skip_reason=f"{filename} invalid per spec",
+                )
+
+        print("  All files validated successfully", file=sys.stderr)
+
+        # Step 3: Compile and run multi-file project
+        print("\n[3/4] Compiling and running project...", file=sys.stderr)
+        with TempProjectDir(files) as project_dir:
+            run_result = await self.compiler.run_project(
+                project_dir, timeout=self.config.execution_timeout
+            )
+
+            if not run_result.success:
+                issue_type = (
+                    IssueType.TIMEOUT
+                    if run_result.timed_out
+                    else IssueType.COMPILATION_FAILED
+                )
+                if run_result.exit_code != 0 and not run_result.timed_out:
+                    if "error" in (run_result.error or "").lower():
+                        if "CS" in (run_result.error or ""):
+                            issue_type = IssueType.COMPILATION_FAILED
+                        else:
+                            issue_type = IssueType.EXECUTION_FAILED
+
+                print(
+                    f"  ✗ {issue_type.value}: {run_result.error[:200] if run_result.error else 'Unknown error'}",
+                    file=sys.stderr,
+                )
+
+                issue = Issue(
+                    issue_type=issue_type,
+                    timestamp=timestamp,
+                    generated_code=files.get("main.spy", ""),
+                    source_files=files,
+                    expected_output=expected_output,
+                    error_message=run_result.error,
+                    compiler_output=run_result.output,
+                    feature_focus=feature_focus,
+                    complexity=complexity,
+                    backend_used=gen_result.backend,
+                    generation_duration=gen_result.duration_seconds,
+                    execution_duration=run_result.duration_seconds,
+                )
+                issue_dir = self.issue_reporter.report(issue)
+                print(f"  Issue reported: {issue_dir.name}", file=sys.stderr)
+                return IterationResult(IterationStatus.FAILED, issue_dir)
+
+        actual_output = run_result.output.strip()
+        execution_duration = run_result.duration_seconds
+        print(
+            f"  Execution successful, got {len(actual_output)} chars output",
+            file=sys.stderr,
+        )
+
+        # Step 4: Verify output
+        print("\n[4/4] Verifying output...", file=sys.stderr)
+        if expected_output:
+            expected_normalized = expected_output.strip()
+            actual_normalized = actual_output.strip()
+
+            if expected_normalized != actual_normalized:
+                if _outputs_equivalent(expected_normalized, actual_normalized):
+                    print("  Outputs match (with float tolerance)", file=sys.stderr)
+                else:
+                    verify_result = await self._verify_output(
+                        files.get("main.spy", ""), expected_output, actual_output
+                    )
+                    if "MISMATCH" in verify_result.output.upper():
+                        issue = Issue(
+                            issue_type=IssueType.OUTPUT_MISMATCH,
+                            timestamp=timestamp,
+                            generated_code=files.get("main.spy", ""),
+                            source_files=files,
+                            expected_output=expected_output,
+                            actual_output=actual_output,
+                            feature_focus=feature_focus,
+                            complexity=complexity,
+                            backend_used=gen_result.backend,
+                            generation_duration=gen_result.duration_seconds,
+                            execution_duration=run_result.duration_seconds,
+                        )
+                        issue_dir = self.issue_reporter.report(issue)
+                        return IterationResult(IterationStatus.FAILED, issue_dir)
+                    else:
+                        print("  Outputs match (AI verified)", file=sys.stderr)
+        else:
+            print(
+                "  No expected output specified, skipping verification", file=sys.stderr
+            )
+
+        # Report successful iteration
+        success_dir = None
+        if expected_output:
+            success = Success(
+                timestamp=timestamp,
+                generated_code=files.get("main.spy", ""),
+                source_files=files,
+                expected_output=expected_output,
+                actual_output=actual_output,
+                feature_focus=feature_focus,
+                complexity=complexity,
+                backend_used=gen_result.backend,
+                generation_duration=gen_result.duration_seconds,
+                execution_duration=execution_duration,
+            )
+            success_dir = self.success_reporter.report(success)
+            print(f"  Success saved: {success_dir.name}", file=sys.stderr)
+
+        print("\n✓ Multi-file iteration completed successfully!", file=sys.stderr)
+        return IterationResult(IterationStatus.SUCCESS, success_dir=success_dir)
+
     def _quick_prevalidate(self, code: str) -> Optional[str]:
         """Quick programmatic check for forbidden features.
 
@@ -780,14 +1021,30 @@ class DogfoodOrchestrator:
         failed = 0
         skipped = 0
 
+        # Multi-file iteration settings
+        # Run ~20% of iterations as multi-file tests
+        multifile_probability = 0.2
+        multifile_features = ["module_imports", "cross_module_classes", "module_utils"]
+
         for i in range(1, max_iterations + 1):
-            # Randomize feature focus and complexity
-            feature_focus = random.choice(FEATURE_FOCUSES)
-            complexity = random.choice(COMPLEXITY_LEVELS)
+            # Decide if this should be a multi-file iteration
+            is_multifile = random.random() < multifile_probability
+
+            if is_multifile:
+                # Multi-file iteration
+                feature_focus = random.choice(multifile_features)
+                complexity = random.choice(["medium", "complex"])  # Multi-file is at least medium
+            else:
+                # Regular single-file iteration
+                feature_focus = random.choice(FEATURE_FOCUSES)
+                complexity = random.choice(COMPLEXITY_LEVELS)
 
             start_time = datetime.now()
             try:
-                result = await self.run_iteration(i, feature_focus, complexity)
+                if is_multifile:
+                    result = await self.run_multifile_iteration(i, feature_focus, complexity)
+                else:
+                    result = await self.run_iteration(i, feature_focus, complexity)
                 duration = (datetime.now() - start_time).total_seconds()
 
                 if result.status == IterationStatus.SUCCESS:

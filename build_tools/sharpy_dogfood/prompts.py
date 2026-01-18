@@ -342,6 +342,136 @@ IMPORTANT:
 - Keep the code simple and focused on testing the specified feature"""
 
 
+def get_multifile_generation_prompt(
+    spec_context: str,
+    feature_focus: str = "module_imports",
+    complexity: str = "medium",
+    example_snippets: list[str] | None = None,
+    existing_fixtures_section: str = "",
+) -> str:
+    """Generate a prompt for creating multi-file Sharpy code with imports.
+
+    Args:
+        spec_context: Language specification context.
+        feature_focus: The feature area to focus on.
+        complexity: Complexity level (simple, medium, complex).
+        example_snippets: Optional list of example code snippets.
+        existing_fixtures_section: Formatted section showing existing test fixtures.
+    """
+
+    examples_section = ""
+    if example_snippets:
+        examples_section = "\n\n## Example Sharpy Code\n\n"
+        for i, snippet in enumerate(example_snippets[:3], 1):
+            examples_section += f"### Example {i}\n```python\n{snippet}\n```\n\n"
+
+    complexity_guide = {
+        "simple": """
+Generate a SIMPLE multi-file project:
+- 2 files total: main.spy + one module
+- Module has 1-2 simple functions
+- main.spy imports and uses those functions
+- 2-3 print statements showing results
+""",
+        "medium": """
+Generate a MEDIUM multi-file project:
+- 2-3 files total: main.spy + 1-2 modules
+- Modules can have classes, functions, or both
+- Can use inheritance or interfaces across files
+- One module can import from another
+- 3-5 print statements showing intermediate steps
+""",
+        "complex": """
+Generate a COMPLEX multi-file project:
+- 3-4 files total: main.spy + 2-3 modules
+- Modules with classes, interfaces, structs, enums
+- Cross-module inheritance or interface implementation
+- Complex imports (from module import item1, item2)
+- 5-8 print statements showing the flow
+""",
+    }
+
+    return f"""You are generating a MULTI-FILE Sharpy project for compiler testing (dogfooding).
+
+## CRITICAL: Module System Rules (Phase 0.1.10)
+
+### Import Syntax
+- **Import entire module**: `import module_name` (then use `module_name.function()`)
+- **Import with alias**: `import module_name as alias`
+- **From import**: `from module_name import function1, function2`
+- **From import with alias**: `from module_name import Item as Alias`
+
+### Module File Structure
+- Each `.spy` file is a module
+- Module name = filename without `.spy` extension
+- No `__init__.py` needed (not Python!)
+- Modules in same directory can import each other
+
+### Allowed Features (same as single-file, phases 0.1.0-0.1.10)
+- Variables, functions, classes, structs, enums, interfaces
+- Inheritance, abstract/virtual/override methods
+- Nullable types, type aliases, basic generics
+- NO lists, dicts, f-strings, try/except, lambdas
+
+### ❌ FORBIDDEN in module system:
+- **NO relative imports**: `from .module import x` - NOT SUPPORTED
+- **NO package imports**: `from package.module import x` - NOT SUPPORTED
+- **NO .NET interop imports**: `from system import x` - v0.1.12
+- **NO star imports**: `from module import *` - NOT SUPPORTED
+
+{existing_fixtures_section}
+
+## Task
+
+Generate a **MULTI-FILE** Sharpy project testing: **{feature_focus}**
+Complexity level: **{complexity}**
+
+{complexity_guide.get(complexity, complexity_guide["medium"])}
+
+{examples_section}
+
+## Output Format
+
+Return multiple files, each clearly marked with its filename. Use this EXACT format:
+
+```
+=== FILE: module_name.spy ===
+# Module providing utility functions
+
+def helper_function(x: int) -> int:
+    return x * 2
+
+class UtilityClass:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+=== FILE: main.spy ===
+# Main entry point - imports from module_name
+from module_name import helper_function, UtilityClass
+
+result: int = helper_function(5)
+print(result)
+
+obj = UtilityClass(10)
+print(obj.value)
+
+# EXPECTED OUTPUT:
+# 10
+# 10
+```
+
+CRITICAL RULES:
+1. Each file starts with `=== FILE: filename.spy ===`
+2. One file MUST be named `main.spy` - this is the entry point
+3. EXPECTED OUTPUT comment goes in main.spy ONLY
+4. Use ONLY `from module import items` syntax (NOT `import module`)
+5. Module names match filenames exactly (without .spy)
+6. All print() calls must be in main.spy
+7. NO circular imports between modules"""
+
+
 def get_spec_validation_prompt(code: str, spec_context: str) -> str:
     """Generate a prompt for validating code against the spec."""
 
@@ -584,3 +714,86 @@ def extract_code_block(response: str) -> Optional[str]:
             return response.strip()
 
     return None
+
+
+def extract_multifile_code(response: str) -> Optional[dict[str, str]]:
+    """Extract multiple files from a response with file markers.
+
+    Parses responses in the format:
+    ```
+    === FILE: module_name.spy ===
+    <code>
+
+    === FILE: main.spy ===
+    <code>
+    ```
+
+    Args:
+        response: The AI response potentially containing multiple files.
+
+    Returns:
+        Dictionary mapping filename to code content, or None if parsing fails.
+        Returns None if no valid multi-file structure is found.
+    """
+    import re
+
+    # First, try to extract from code blocks
+    code_block_pattern = r"```(?:python|sharpy)?\s*\n(.*?)```"
+    code_blocks = re.findall(code_block_pattern, response, re.DOTALL)
+
+    # Use the code blocks if found, otherwise use the whole response
+    content = "\n".join(code_blocks) if code_blocks else response
+
+    # Pattern to match file markers: === FILE: filename.spy ===
+    file_pattern = r"===\s*FILE:\s*([a-zA-Z_][a-zA-Z0-9_]*\.spy)\s*===\s*\n"
+
+    # Find all file markers and their positions
+    markers = list(re.finditer(file_pattern, content, re.IGNORECASE))
+
+    if not markers:
+        return None
+
+    files: dict[str, str] = {}
+
+    for i, match in enumerate(markers):
+        filename = match.group(1).lower()  # Normalize filename to lowercase
+        start_pos = match.end()
+
+        # Find the end of this file's content (start of next file or end of content)
+        if i + 1 < len(markers):
+            end_pos = markers[i + 1].start()
+        else:
+            end_pos = len(content)
+
+        # Extract and clean the code
+        code = content[start_pos:end_pos].strip()
+
+        # Remove any trailing file markers that might have been included
+        code = re.sub(r"\n===\s*FILE:.*$", "", code, flags=re.IGNORECASE)
+
+        if code:
+            files[filename] = code
+
+    # Validate: must have at least 2 files and one must be main.spy
+    if len(files) < 2:
+        return None
+
+    if "main.spy" not in files:
+        return None
+
+    return files
+
+
+def extract_expected_output_from_multifile(files: dict[str, str]) -> Optional[str]:
+    """Extract expected output from the main.spy file in a multi-file project.
+
+    Args:
+        files: Dictionary mapping filename to code content.
+
+    Returns:
+        The expected output string, or None if not found.
+    """
+    if "main.spy" not in files:
+        return None
+
+    return extract_expected_output(files["main.spy"])

@@ -30,7 +30,7 @@ class Success:
     """Represents a successful dogfooding iteration."""
 
     timestamp: str
-    generated_code: str
+    generated_code: str  # For single-file tests, or main.spy content for multi-file
     expected_output: str
     actual_output: str
     feature_focus: Optional[str] = None
@@ -38,10 +38,18 @@ class Success:
     backend_used: Optional[str] = None
     generation_duration: Optional[float] = None
     execution_duration: Optional[float] = None
+    # Multi-file support: dict mapping filename -> code content
+    # If None, this is a single-file test
+    source_files: Optional[dict[str, str]] = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return asdict(self)
+
+    @property
+    def is_multifile(self) -> bool:
+        """Check if this is a multi-file test."""
+        return self.source_files is not None and len(self.source_files) > 1
 
 
 @dataclass
@@ -50,7 +58,7 @@ class Issue:
 
     issue_type: IssueType
     timestamp: str
-    generated_code: str
+    generated_code: str  # For single-file tests, or main.spy content for multi-file
     expected_output: Optional[str] = None
     actual_output: Optional[str] = None
     error_message: Optional[str] = None
@@ -63,6 +71,8 @@ class Issue:
     generation_duration: Optional[float] = None
     compilation_duration: Optional[float] = None
     execution_duration: Optional[float] = None
+    # Multi-file support: dict mapping filename -> code content
+    source_files: Optional[dict[str, str]] = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
@@ -70,6 +80,10 @@ class Issue:
         d["issue_type"] = self.issue_type.value
         return d
 
+    @property
+    def is_multifile(self) -> bool:
+        """Check if this is a multi-file test."""
+        return self.source_files is not None and len(self.source_files) > 1
 
 class IssueReporter:
     """Creates and manages issue reports."""
@@ -379,7 +393,9 @@ class SuccessReporter:
         """Create a unique directory for this successful run."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         feature = success.feature_focus or "unknown"
-        success_name = f"{timestamp}_success_{feature}_{self._success_count:04d}"
+        # Add marker for multi-file tests
+        multifile_marker = "_multifile" if success.is_multifile else ""
+        success_name = f"{timestamp}_success_{feature}{multifile_marker}_{self._success_count:04d}"
         self._success_count += 1
 
         success_dir = self.successes_dir / success_name
@@ -390,10 +406,21 @@ class SuccessReporter:
         """Create a full report for a successful iteration."""
         success_dir = self._get_success_dir(success)
 
-        # Write the generated Sharpy code
-        (success_dir / "source.spy").write_text(success.generated_code)
+        if success.is_multifile:
+            # Multi-file test: write each source file separately
+            for filename, code in success.source_files.items():
+                (success_dir / filename).write_text(code)
+            # Also write main.spy as source.spy for backwards compatibility
+            if "main.spy" in success.source_files:
+                (success_dir / "source.spy").write_text(success.source_files["main.spy"])
+        else:
+            # Single-file test: write the generated Sharpy code
+            (success_dir / "source.spy").write_text(success.generated_code)
 
         # Write the expected output (for integration tests)
+        # For multi-file tests, use main.expected to match the test infrastructure
+        if success.is_multifile:
+            (success_dir / "main.expected").write_text(success.expected_output)
         (success_dir / "expected_output.txt").write_text(success.expected_output)
 
         # Write the actual output (should match expected)
@@ -425,15 +452,37 @@ class SuccessReporter:
             lines.append(f"**Complexity:** {success.complexity}")
         if success.backend_used:
             lines.append(f"**Backend:** {success.backend_used}")
+        if success.is_multifile:
+            lines.append(f"**Test Type:** Multi-file ({len(success.source_files)} files)")
 
-        lines.extend(
-            [
-                "",
-                "## Generated Sharpy Code",
-                "",
-                "```python",
-                success.generated_code,
-                "```",
+        if success.is_multifile:
+            lines.extend(
+                [
+                    "",
+                    "## Source Files",
+                    "",
+                ]
+            )
+            for filename, code in success.source_files.items():
+                lines.extend(
+                    [
+                        f"### {filename}",
+                        "",
+                        "```python",
+                        code,
+                        "```",
+                        "",
+                    ]
+                )
+        else:
+            lines.extend(
+                [
+                    "",
+                    "## Generated Sharpy Code",
+                    "",
+                    "```python",
+                    success.generated_code,
+                    "```",
                 "",
                 "## Output",
                 "",

@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-01-18T13:00:12.720444",
+  "generated_code": "# Test boolean variables with logical operations and control flow\n\nclass AccessControl:\n    is_admin: bool\n    is_authenticated: bool\n    has_permission: bool\n\n    def __init__(self, admin: bool, authenticated: bool, permission: bool):\n        self.is_admin = admin\n        self.is_authenticated = authenticated\n        self.has_permission = permission\n\n    def can_access_resource(self) -> bool:\n        return self.is_authenticated and (self.is_admin or self.has_permission)\n\n    def get_access_level(self) -> int:\n        level: int = 0\n        if self.is_authenticated:\n            level += 1\n        if self.has_permission:\n            level += 1\n        if self.is_admin:\n            level += 2\n        return level\n\n# Test case 1: Admin user\nadmin_user = AccessControl(True, True, True)\nprint(admin_user.can_access_resource())\nprint(admin_user.get_access_level())\n\n# Test case 2: Regular authenticated user with permission\nregular_user = AccessControl(False, True, True)\nprint(regular_user.can_access_resource())\nprint(regular_user.get_access_level())\n\n# Test case 3: Authenticated user without permission\nlimited_user = AccessControl(False, True, False)\nprint(limited_user.can_access_resource())\nprint(limited_user.get_access_level())\n\n# Test case 4: Unauthenticated user\nguest_user = AccessControl(False, False, False)\nprint(guest_user.can_access_resource())\nprint(guest_user.get_access_level())\n\n# Test boolean negation\nis_locked: bool = True\nis_open: bool = not is_locked\nprint(is_open)\n\n# EXPECTED OUTPUT:\n# True\n# 4\n# True\n# 2\n# False\n# 1\n# False\n# 0\n# False",
+  "expected_output": "True\n4\nTrue\n2\nFalse\n1\nFalse\n0\nFalse\n",
+  "actual_output": "Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_e225f3b930b14868a9e85f56b9eedb29.exe\n\n=== Running Program ===\n\nTrue\n4\nTrue\n2\nFalse\n1\nFalse\n0\nFalse",
+  "feature_focus": "bool_variables",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 6.660339832305908,
+  "execution_duration": 1.6483027935028076
+}

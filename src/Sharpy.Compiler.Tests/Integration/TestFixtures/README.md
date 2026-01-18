@@ -57,10 +57,18 @@ dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests&DisplayName~h
 
 To convert a successful dogfood output to a test fixture:
 
+### Single-file tests
 1. Copy the `source.spy` file to an appropriate subdirectory
 2. Rename it to a descriptive name (e.g., `abstract_class_basic.spy`)
 3. Create the matching `.expected` file with the expected output
 4. Run the test to verify
+
+### Multi-file tests (from dogfood)
+1. The dogfood tool creates directories with names like `*_multifile_*`
+2. Copy the entire directory (containing `main.spy`, other `.spy` files, and `main.expected`) to an appropriate subdirectory
+3. Rename the directory to a descriptive name
+4. The test infrastructure auto-detects multi-file tests by the presence of `main.spy` + `main.expected`
+5. Run the test to verify
 
 ## Notes
 
@@ -68,3 +76,4 @@ To convert a successful dogfood output to a test fixture:
 - Error files use case-insensitive substring matching
 - Tests are discovered automatically at runtime - no need to register them
 - Test names in the runner are based on the file path relative to TestFixtures/
+- Multi-file tests require `main.spy` as the entry point and `main.expected` for expected output
