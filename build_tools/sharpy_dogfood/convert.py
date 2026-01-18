@@ -15,10 +15,12 @@ from typing import Optional
 def _extract_program_output(actual_output: str) -> str:
     """Extract just the program output from actual_output.txt.
 
-    The actual_output.txt contains lines like:
+    The actual_output.txt may contain lines like:
         Successfully compiled to: /path/to/exe
         === Running Program ===
         <actual program output here>
+
+    Or it may just contain the raw program output (newer format).
 
     This function extracts only the program output portion.
     Note: The dogfood tool strips trailing whitespace from output, but
@@ -35,11 +37,16 @@ def _extract_program_output(actual_output: str) -> str:
         if in_output:
             output_lines.append(line)
 
-    # Join and preserve the trailing newline if present
-    result = "\n".join(output_lines)
-    # Remove leading empty line if present (from the blank line after "=== Running Program ===")
-    if result.startswith("\n"):
-        result = result[1:]
+    # If we found the marker, use the extracted lines
+    if in_output:
+        result = "\n".join(output_lines)
+        # Remove leading empty line if present (from the blank line after "=== Running Program ===")
+        if result.startswith("\n"):
+            result = result[1:]
+    else:
+        # No marker found - the file contains raw output (newer format)
+        result = actual_output
+
     # Add trailing newline since print() adds one but dogfood strips it
     if result and not result.endswith("\n"):
         result += "\n"
