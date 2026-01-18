@@ -423,7 +423,7 @@ public class ProjectCompiler
             {
                 SourceFilePath = sourceFile,
                 ProjectNamespace = config.RootNamespace,
-                ProjectRootPath = Path.Combine(config.ProjectDirectory, "src"),
+                ProjectRootPath = ComputeSourceRootPath(config),
                 IsEntryPoint = isEntryPoint,
                 Logger = _logger
             };
@@ -508,6 +508,77 @@ public class ProjectCompiler
             Errors = _errors,
             Metrics = _projectMetrics
         };
+    }
+
+    /// <summary>
+    /// Compute the source root path from the project configuration.
+    /// This is the common directory containing all source files, used for relative path calculation.
+    /// </summary>
+    private string ComputeSourceRootPath(ProjectConfig config)
+    {
+        if (config.SourceFiles.Count == 0)
+        {
+            return config.ProjectDirectory;
+        }
+
+        // Find the common directory prefix of all source files
+        var directories = config.SourceFiles
+            .Select(f => Path.GetDirectoryName(Path.GetFullPath(f)))
+            .Where(d => d != null)
+            .Select(d => d!)
+            .Distinct()
+            .ToList();
+
+        if (directories.Count == 0)
+        {
+            return config.ProjectDirectory;
+        }
+
+        if (directories.Count == 1)
+        {
+            // All files are in the same directory
+            return directories[0];
+        }
+
+        // Find the longest common prefix path
+        var commonPath = directories[0];
+        foreach (var dir in directories.Skip(1))
+        {
+            commonPath = GetLongestCommonPath(commonPath, dir);
+            if (string.IsNullOrEmpty(commonPath))
+            {
+                // No common path, fall back to project directory
+                return config.ProjectDirectory;
+            }
+        }
+
+        return commonPath;
+    }
+
+    /// <summary>
+    /// Get the longest common path prefix between two paths.
+    /// </summary>
+    private string GetLongestCommonPath(string path1, string path2)
+    {
+        var parts1 = path1.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var parts2 = path2.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        var commonParts = new List<string>();
+        var minLength = System.Math.Min(parts1.Length, parts2.Length);
+
+        for (int i = 0; i < minLength; i++)
+        {
+            if (string.Equals(parts1[i], parts2[i], StringComparison.OrdinalIgnoreCase))
+            {
+                commonParts.Add(parts1[i]);
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return string.Join(Path.DirectorySeparatorChar.ToString(), commonParts);
     }
 
     /// <summary>
