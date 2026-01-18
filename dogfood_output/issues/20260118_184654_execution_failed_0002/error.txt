@@ -1,0 +1,3 @@
+Compilation failed:
+  Semantic error at line 6, column 16: Undefined identifier 'add_numbers'
+  Semantic error at line 7, column 16: Undefined identifier 'multiply_numbers'

@@ -1,0 +1,41 @@
+# Geometry module providing shapes and interfaces
+
+@interface
+class IMeasurable:
+    def area(self) -> float: ...
+    def perimeter(self) -> float: ...
+
+@abstract
+class Shape:
+    name: str
+
+    def __init__(self, shape_name: str):
+        self.name = shape_name
+
+    def describe(self) -> str:
+        return self.name
+
+    @abstract
+    def area(self) -> float: ...
+
+class Rectangle(Shape, IMeasurable):
+    width: float
+    height: float
+
+    def __init__(self, w: float, h: float):
+        super().__init__("Rectangle")
+        self.width = w
+        self.height = h
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+enum ShapeType:
+    RECTANGLE = 1
+    CIRCLE = 2
+    POLYGON = 3

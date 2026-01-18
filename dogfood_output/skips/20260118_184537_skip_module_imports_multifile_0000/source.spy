@@ -1,0 +1,35 @@
+# Main entry point - demonstrates cross-module imports and usage
+
+from geometry import Point, Rectangle, calculate_scaled_area
+from validators import is_square, validate_positive_dimensions
+
+# Create a rectangle and test basic operations
+rect: Rectangle = Rectangle(4, 6)
+area: int = rect.area()
+print(area)
+
+# Check if it's a square
+square_check: bool = is_square(rect)
+if square_check:
+    print(1)
+else:
+    print(0)
+
+# Create a square and verify
+square: Rectangle = Rectangle(5, 5)
+print(is_square(square) to int)
+
+# Test scaled area calculation
+scaled: int = calculate_scaled_area(rect, 3)
+print(scaled)
+
+# Validate dimensions
+valid: bool = validate_positive_dimensions(square)
+print(valid to int)
+
+# EXPECTED OUTPUT:
+# 24
+# 0
+# 1
+# 72
+# 1

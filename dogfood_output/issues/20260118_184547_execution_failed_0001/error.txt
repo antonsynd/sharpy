@@ -1,0 +1,7 @@
+Compilation failed:
+  Semantic error at line 9, column 20: Cannot pass argument of type 'int' to parameter of type 'T'
+  Semantic error at line 9, column 23: Cannot pass argument of type 'int' to parameter of type 'T'
+  Semantic error at line 9, column 1: Cannot assign type 'T' to variable of type 'int'
+  Semantic error at line 14, column 24: Cannot pass argument of type 'float' to parameter of type 'T'
+  Semantic error at line 14, column 27: Cannot pass argument of type 'float' to parameter of type 'T'
+  Semantic error at line 14, column 1: Cannot assign type 'T' to variable of type 'float'

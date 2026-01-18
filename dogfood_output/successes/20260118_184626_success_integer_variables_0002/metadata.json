@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-18T18:46:13.122198",
+  "generated_code": "# Test integer variables with a simple game scoring system\n\nclass GameScore:\n    player_points: int\n    bonus_multiplier: int\n    penalty: int\n\n    def __init__(self, initial_points: int):\n        self.player_points = initial_points\n        self.bonus_multiplier = 1\n        self.penalty = 0\n\n    def add_kill(self, points: int) -> None:\n        self.player_points += points * self.bonus_multiplier\n\n    def add_bonus_multiplier(self) -> None:\n        self.bonus_multiplier += 1\n\n    def apply_penalty(self, amount: int) -> None:\n        self.penalty += amount\n\n    def get_final_score(self) -> int:\n        return self.player_points - self.penalty\n\ndef calculate_rank(score: int) -> int:\n    if score >= 100:\n        return 3\n    elif score >= 50:\n        return 2\n    else:\n        return 1\n\n# Initialize game with starting points\ngame = GameScore(10)\nprint(game.player_points)\n\n# Player gets first kill\ngame.add_kill(15)\nprint(game.get_final_score())\n\n# Player gets bonus multiplier\ngame.add_bonus_multiplier()\nprint(game.bonus_multiplier)\n\n# Player gets second kill with multiplier\ngame.add_kill(20)\nprint(game.get_final_score())\n\n# Apply death penalty\ngame.apply_penalty(10)\nfinal = game.get_final_score()\nprint(final)\n\n# Calculate player rank\nrank = calculate_rank(final)\nprint(rank)\n\n# EXPECTED OUTPUT:\n# 10\n# 25\n# 2\n# 65\n# 55\n# 2",
+  "expected_output": "10\n25\n2\n65\n55\n2\n",
+  "actual_output": "10\n25\n2\n65\n55\n2",
+  "feature_focus": "integer_variables",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 5.680624961853027,
+  "execution_duration": 1.3496320247650146,
+  "source_files": null
+}

@@ -1,0 +1,52 @@
+# Main entry point demonstrating cross-module imports and inheritance
+from geometry import Rectangle, Shape, IMeasurable, ShapeType
+from calculator import ShapeCalculator, create_dimensions, Dimensions
+
+def test_shape_hierarchy():
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    
+    # Test inheritance - Rectangle inherits from Shape
+    shape_name: str = rect.describe()
+    print(shape_name)
+    
+    # Test interface implementation
+    calc: ShapeCalculator = ShapeCalculator(2)
+    area: float = calc.compute_area(rect)
+    perimeter: float = calc.compute_perimeter(rect)
+    
+    print(calc.round_value(area))
+    print(calc.round_value(perimeter))
+
+def test_enum_and_struct():
+    # Test enum from geometry module
+    rect_type: ShapeType = ShapeType.RECTANGLE
+    print(rect_type to int)
+    
+    # Test struct from calculator module
+    dims: Dimensions = create_dimensions(10.0, 8.0, ShapeType.RECTANGLE)
+    print(dims.length to int)
+    print(dims.width to int)
+    print(dims.shape_type to int)
+
+def test_polymorphism():
+    rect: Rectangle = Rectangle(4.0, 6.0)
+    measurable: IMeasurable = rect
+    
+    area_result: float = measurable.area()
+    print(area_result to int)
+
+print(999)
+test_shape_hierarchy()
+test_enum_and_struct()
+test_polymorphism()
+
+# EXPECTED OUTPUT:
+# 999
+# Rectangle
+# 15
+# 16
+# 1
+# 10
+# 8
+# 1
+# 24

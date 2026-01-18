@@ -1,0 +1,18 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-18T18:45:37.514587",
+  "generated_code": "# Test generic function with type parameter\ndef swap[T](a: T, b: T) -> T:\n    temp: T = a\n    a = b\n    return a\n\nx: int = 42\ny: int = 100\nresult: int = swap(x, y)\nprint(result)\n\na: float = 3.14\nb: float = 2.71\nresult_f: float = swap(a, b)\nprint(result_f)\n\n# EXPECTED OUTPUT:\n# 100\n# 2.71",
+  "expected_output": "100\n2.71\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 9, column 20: Cannot pass argument of type 'int' to parameter of type 'T'\n  Semantic error at line 9, column 23: Cannot pass argument of type 'int' to parameter of type 'T'\n  Semantic error at line 9, column 1: Cannot assign type 'T' to variable of type 'int'\n  Semantic error at line 14, column 24: Cannot pass argument of type 'float' to parameter of type 'T'\n  Semantic error at line 14, column 27: Cannot pass argument of type 'float' to parameter of type 'T'\n  Semantic error at line 14, column 1: Cannot assign type 'T' to variable of type 'float'\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "generic_function",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 4.2902607917785645,
+  "compilation_duration": null,
+  "execution_duration": 0.8637790679931641,
+  "source_files": null
+}

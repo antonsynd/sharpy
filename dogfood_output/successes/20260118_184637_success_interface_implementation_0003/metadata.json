@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-18T18:46:26.135662",
+  "generated_code": "# Test interface implementation with a payment processing system\n\ninterface IPaymentProcessor:\n    def process_payment(self, amount: int) -> bool: ...\n    def get_fee(self) -> int: ...\n\ninterface IRefundable:\n    def process_refund(self, amount: int) -> bool: ...\n\nclass CreditCardProcessor(IPaymentProcessor, IRefundable):\n    fee: int\n    total_processed: int\n\n    def __init__(self):\n        self.fee = 3\n        self.total_processed = 0\n\n    def process_payment(self, amount: int) -> bool:\n        self.total_processed += amount\n        return True\n\n    def get_fee(self) -> int:\n        return self.fee\n\n    def process_refund(self, amount: int) -> bool:\n        self.total_processed -= amount\n        return True\n\nclass CashProcessor(IPaymentProcessor):\n    fee: int\n\n    def __init__(self):\n        self.fee = 0\n\n    def process_payment(self, amount: int) -> bool:\n        return True\n\n    def get_fee(self) -> int:\n        return self.fee\n\ncc = CreditCardProcessor()\ncash = CashProcessor()\n\ncc.process_payment(100)\nprint(cc.total_processed)\nprint(cc.get_fee())\n\ncc.process_refund(25)\nprint(cc.total_processed)\n\ncash.process_payment(50)\nprint(cash.get_fee())\n\n# EXPECTED OUTPUT:\n# 100\n# 3\n# 75\n# 0",
+  "expected_output": "100\n3\n75\n0\n",
+  "actual_output": "100\n3\n75\n0",
+  "feature_focus": "interface_implementation",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 4.565621852874756,
+  "execution_duration": 1.3079192638397217,
+  "source_files": null
+}

@@ -1,0 +1,29 @@
+# Calculator module with computation utilities
+from geometry import IMeasurable, ShapeType
+
+struct Dimensions:
+    length: float
+    width: float
+    shape_type: ShapeType
+
+class ShapeCalculator:
+    precision: int
+
+    def __init__(self, prec: int):
+        self.precision = prec
+
+    def compute_area(self, measurable: IMeasurable) -> float:
+        return measurable.area()
+
+    def compute_perimeter(self, measurable: IMeasurable) -> float:
+        return measurable.perimeter()
+
+    def round_value(self, value: float) -> int:
+        return value to int
+
+def create_dimensions(length: float, width: float, st: ShapeType) -> Dimensions:
+    d: Dimensions = Dimensions()
+    d.length = length
+    d.width = width
+    d.shape_type = st
+    return d

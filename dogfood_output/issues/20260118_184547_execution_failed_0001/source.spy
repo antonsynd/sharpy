@@ -1,0 +1,19 @@
+# Test generic function with type parameter
+def swap[T](a: T, b: T) -> T:
+    temp: T = a
+    a = b
+    return a
+
+x: int = 42
+y: int = 100
+result: int = swap(x, y)
+print(result)
+
+a: float = 3.14
+b: float = 2.71
+result_f: float = swap(a, b)
+print(result_f)
+
+# EXPECTED OUTPUT:
+# 100
+# 2.71

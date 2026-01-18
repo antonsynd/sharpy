@@ -1,0 +1,12 @@
+# Validation utilities module
+
+from geometry import Point, Rectangle
+
+public def is_square(rect: Rectangle) -> bool:
+    return rect.width == rect.height
+
+public def is_at_origin(point: Point) -> bool:
+    return point.x == 0 and point.y == 0
+
+public def validate_positive_dimensions(rect: Rectangle) -> bool:
+    return rect.width > 0 and rect.height > 0
