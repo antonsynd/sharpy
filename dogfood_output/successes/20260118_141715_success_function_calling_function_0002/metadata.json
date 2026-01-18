@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-18T14:17:05.584652",
+  "generated_code": "# Test function calling another function with calculations\ndef calculate_sum(a: int, b: int) -> int:\n    return a + b\n\ndef calculate_product(a: int, b: int) -> int:\n    return a * b\n\ndef combined_operation(x: int, y: int) -> int:\n    sum_result = calculate_sum(x, y)\n    product_result = calculate_product(x, y)\n    return sum_result + product_result\n\nresult = combined_operation(3, 7)\nprint(result)\n\n# EXPECTED OUTPUT:\n# 31",
+  "expected_output": "31\n",
+  "actual_output": "31",
+  "feature_focus": "function_calling_function",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 3.39867901802063,
+  "execution_duration": 1.3532960414886475,
+  "source_files": null
+}

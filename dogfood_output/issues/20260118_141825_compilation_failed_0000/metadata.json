@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-01-18T14:17:53.394897",
+  "generated_code": "# Test function default parameters with multiple scenarios\n\ndef calculate_price(base: int, tax_rate: float = 0.1, discount: int = 0) -> int:\n    # Since we can't use 'to float' conversion, work with ints\n    # We'll use integer arithmetic and return cents instead of dollars\n    base_cents: int = base * 100\n    tax_cents: int = (base_cents * (int)(tax_rate * 100)) // 100\n    total_cents: int = base_cents + tax_cents\n    discount_cents: int = discount * 100\n    final_cents: int = total_cents - discount_cents\n    return final_cents // 100\n\ndef greet(name: str, greeting: str = \"Hello\", punctuation: str = \"!\") -> str:\n    # Can't concatenate strings, so just return the greeting part\n    return greeting\n\ndef power(base: int, exponent: int = 2) -> int:\n    result: int = 1\n    i: int = 0\n    while i < exponent:\n        result = result * base\n        i = i + 1\n    return result\n\n# Test with all defaults\nprice1: int = calculate_price(100)\nprint(price1)\n\n# Test with one override (20% tax)\nprice2: int = calculate_price(100, 0.2)\nprint(price2)\n\n# Test with all parameters specified (15% tax, $10 discount)\nprice3: int = calculate_price(100, 0.15, 10)\nprint(price3)\n\n# Test power with default exponent (square)\nsquared: int = power(5)\nprint(squared)\n\n# Test power with custom exponent\ncubed: int = power(3, 3)\nprint(cubed)\n\n# Test with positional arguments only\nprice4: int = calculate_price(50, 0.1, 5)\nprint(price4)\n\n# Test with positional arguments\nprice5: int = calculate_price(200, 0.1, 20)\nprint(price5)\n\n# EXPECTED OUTPUT:\n# 110\n# 120\n# 105\n# 25\n# 27\n# 50\n# 200",
+  "expected_output": "110\n120\n105\n25\n27\n50\n200\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Compilation failed: Complex function expressions not yet supported\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "function_default_params",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 19.912884950637817,
+  "compilation_duration": null,
+  "execution_duration": 0.9033129215240479,
+  "source_files": null
+}

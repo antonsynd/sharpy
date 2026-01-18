@@ -1,0 +1,123 @@
+```python
+# Test nested if statements inside loops with class-based game state management
+
+@abstract
+class GameEntity:
+    health: int
+    damage: int
+
+    def __init__(self, hp: int, dmg: int):
+        self.health = hp
+        self.damage = dmg
+
+    @abstract
+    def take_damage(self, amount: int) -> bool:
+        ...
+
+    @abstract
+    def is_alive(self) -> bool:
+        ...
+
+class Player(GameEntity):
+    shield: int
+    critical_threshold: int
+
+    def __init__(self, hp: int, dmg: int, shld: int):
+        super().__init__(hp, dmg)
+        self.shield = shld
+        self.critical_threshold = 30
+
+    @override
+    def take_damage(self, amount: int) -> bool:
+        absorbed: int = 0
+        if self.shield > 0:
+            if amount > self.shield:
+                absorbed = self.shield
+                self.shield = 0
+                self.health -= (amount - absorbed)
+            else:
+                self.shield -= amount
+                absorbed = amount
+        else:
+            self.health -= amount
+        return absorbed > 0
+
+    @override
+    def is_alive(self) -> bool:
+        return self.health > 0
+
+class Enemy(GameEntity):
+    armor: int
+
+    def __init__(self, hp: int, dmg: int, arm: int):
+        super().__init__(hp, dmg)
+        self.armor = arm
+
+    @override
+    def take_damage(self, amount: int) -> bool:
+        reduced: int = amount - self.armor
+        if reduced > 0:
+            self.health -= reduced
+            return True
+        return False
+
+    @override
+    def is_alive(self) -> bool:
+        return self.health > 0
+
+def simulate_combat(p: Player, e: Enemy, rounds: int) -> None:
+    round_num: int = 1
+    while round_num <= rounds:
+        print(round_num)
+        
+        if p.is_alive():
+            if e.is_alive():
+                damage_dealt: int = p.damage
+                if p.health < p.critical_threshold:
+                    if p.shield == 0:
+                        damage_dealt = p.damage * 2
+                        print(999)
+                
+                if e.take_damage(damage_dealt):
+                    print(1)
+                else:
+                    print(0)
+            else:
+                print(777)
+                break
+        
+        if e.is_alive():
+            if p.is_alive():
+                if p.take_damage(e.damage):
+                    print(2)
+                else:
+                    print(3)
+            else:
+                print(888)
+                break
+        
+        round_num += 1
+
+player: Player = Player(100, 25, 50)
+enemy: Enemy = Enemy(120, 30, 5)
+simulate_combat(player, enemy, 5)
+
+# EXPECTED OUTPUT:
+# 1
+# 1
+# 2
+# 2
+# 1
+# 3
+# 3
+# 999
+# 1
+# 3
+# 4
+# 999
+# 1
+# 3
+# 5
+# 999
+# 1
+# 888
