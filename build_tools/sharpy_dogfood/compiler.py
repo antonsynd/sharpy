@@ -35,6 +35,30 @@ class ExecutionResult:
     timed_out: bool = False
 
 
+def _strip_compilation_header(output: str) -> str:
+    """Strip the compilation success message and '=== Running Program ===' header.
+
+    The Sharpy CLI outputs:
+        Successfully compiled to: /path/to/file.exe
+
+        === Running Program ===
+
+        <actual program output>
+
+    This function extracts only the actual program output.
+    """
+    # Look for the "=== Running Program ===" marker
+    marker = "=== Running Program ==="
+    marker_idx = output.find(marker)
+    if marker_idx != -1:
+        # Skip the marker and any following newlines
+        program_output = output[marker_idx + len(marker) :]
+        # Strip leading whitespace/newlines but preserve trailing newline structure
+        return program_output.lstrip("\n")
+    # If no marker found, return original output (might be an error case)
+    return output
+
+
 class SharpyCompiler:
     """Interface to the Sharpy compiler."""
 
@@ -173,14 +197,14 @@ class SharpyCompiler:
             if process.returncode == 0:
                 return ExecutionResult(
                     success=True,
-                    output=stdout_text,
+                    output=_strip_compilation_header(stdout_text),
                     exit_code=process.returncode,
                     duration_seconds=duration,
                 )
             else:
                 return ExecutionResult(
                     success=False,
-                    output=stdout_text,
+                    output=_strip_compilation_header(stdout_text),
                     error=stderr_text or stdout_text,
                     exit_code=process.returncode,
                     duration_seconds=duration,
@@ -266,14 +290,14 @@ class SharpyCompiler:
             if process.returncode == 0:
                 return ExecutionResult(
                     success=True,
-                    output=stdout_text,
+                    output=_strip_compilation_header(stdout_text),
                     exit_code=process.returncode,
                     duration_seconds=duration,
                 )
             else:
                 return ExecutionResult(
                     success=False,
-                    output=stdout_text,
+                    output=_strip_compilation_header(stdout_text),
                     error=stderr_text or stdout_text,
                     exit_code=process.returncode,
                     duration_seconds=duration,

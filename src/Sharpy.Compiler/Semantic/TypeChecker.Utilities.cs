@@ -502,31 +502,43 @@ public partial class TypeChecker
         }
 
         // Check 3: Cannot access fields via super()
-        var parentField = _currentClass.BaseType.Fields.FirstOrDefault(f => f.Name == memberName);
-        if (parentField != null)
+        // Check the entire inheritance chain for fields
+        var currentType = _currentClass.BaseType;
+        while (currentType != null)
         {
-            AddError("Cannot access parent fields via super(); only methods are allowed",
-                memberAccess.LineStart, memberAccess.ColumnStart);
-            return SemanticType.Unknown;
+            var field = currentType.Fields.FirstOrDefault(f => f.Name == memberName);
+            if (field != null)
+            {
+                AddError("Cannot access parent fields via super(); only methods are allowed",
+                    memberAccess.LineStart, memberAccess.ColumnStart);
+                return SemanticType.Unknown;
+            }
+            currentType = currentType.BaseType;
         }
 
         // Check 4: Validate based on method context
         ValidateSuperContextRules(memberName, superExpr, memberAccess);
 
-        // Look up the method in the parent class and return its type
-        var parentMethod = _currentClass.BaseType.Methods.FirstOrDefault(m => m.Name == memberName);
+        // Look up the method in the parent class hierarchy and return its type
+        // Use FindMethodInHierarchy to traverse the full inheritance chain
+        var (parentMethod, methodOwner) = FindMethodInHierarchy(_currentClass.BaseType, memberName);
         if (parentMethod == null && memberName == "__init__")
         {
-            // __init__ might be in Constructors list
-            var parentCtor = _currentClass.BaseType.Constructors.FirstOrDefault();
-            if (parentCtor != null)
+            // __init__ might be in Constructors list - check full hierarchy
+            currentType = _currentClass.BaseType;
+            while (currentType != null)
             {
-                var paramTypes = parentCtor.Parameters.Skip(1).Select(p => p.Type).ToList();
-                return new FunctionType
+                var parentCtor = currentType.Constructors.FirstOrDefault();
+                if (parentCtor != null)
                 {
-                    ParameterTypes = paramTypes,
-                    ReturnType = SemanticType.Void
-                };
+                    var paramTypes = parentCtor.Parameters.Skip(1).Select(p => p.Type).ToList();
+                    return new FunctionType
+                    {
+                        ParameterTypes = paramTypes,
+                        ReturnType = SemanticType.Void
+                    };
+                }
+                currentType = currentType.BaseType;
             }
         }
 
@@ -540,7 +552,7 @@ public partial class TypeChecker
             };
         }
 
-        AddError($"Parent class '{_currentClass.BaseType.Name}' has no method '{memberName}'",
+        AddError($"No method '{memberName}' found in parent class hierarchy of '{_currentClass.Name}'",
             memberAccess.LineStart, memberAccess.ColumnStart);
         return SemanticType.Unknown;
     }

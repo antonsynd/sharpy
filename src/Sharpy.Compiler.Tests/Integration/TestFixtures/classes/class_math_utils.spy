@@ -1,0 +1,13 @@
+# Test static methods in a simple Math utility class
+class MathUtils:
+    def square(x: int) -> int:
+        return x * x
+
+    def add_three(a: int, b: int, c: int) -> int:
+        return a + b + c
+
+result1: int = MathUtils.square(7)
+print(result1)
+
+result2: int = MathUtils.add_three(2, 5, 8)
+print(result2)

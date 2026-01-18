@@ -1,0 +1,33 @@
+# Test static methods with a utility class for temperature conversions
+
+class TemperatureConverter:
+    freezing_point: int
+    boiling_point: int
+
+    def __init__(self):
+        self.freezing_point = 0
+        self.boiling_point = 100
+
+    def celsius_to_fahrenheit(celsius: int) -> int:
+        return (celsius * 9 // 5) + 32
+
+    def fahrenheit_to_celsius(fahrenheit: int) -> int:
+        return (fahrenheit - 32) * 5 // 9
+
+    def is_freezing(celsius: int) -> bool:
+        return celsius <= 0
+
+    def is_boiling(celsius: int) -> bool:
+        return celsius >= 100
+
+# Test static methods without creating an instance
+temp1: int = 0
+temp2: int = 100
+temp3: int = 25
+temp4: int = -10
+
+print(TemperatureConverter.celsius_to_fahrenheit(temp1))
+print(TemperatureConverter.celsius_to_fahrenheit(temp2))
+print(TemperatureConverter.fahrenheit_to_celsius(77))
+print(TemperatureConverter.is_freezing(temp3))
+print(TemperatureConverter.is_boiling(temp4))

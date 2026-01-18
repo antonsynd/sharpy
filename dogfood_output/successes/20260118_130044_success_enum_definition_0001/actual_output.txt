@@ -1,7 +1,0 @@
-Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_df5089df5fd54559b96e2d244a5f4813.exe
-
-=== Running Program ===
-
-True
-False
-True

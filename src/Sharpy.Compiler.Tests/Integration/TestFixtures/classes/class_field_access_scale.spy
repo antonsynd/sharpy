@@ -1,0 +1,49 @@
+# Test class field access with multiple fields and computed properties
+
+class Rectangle:
+    width: int
+    height: int
+    label: str
+
+    def __init__(self, w: int, h: int, name: str):
+        self.width = w
+        self.height = h
+        self.label = name
+
+    def area(self) -> int:
+        return self.width * self.height
+
+    def perimeter(self) -> int:
+        return 2 * self.width + 2 * self.height
+
+    def scale(self, factor: int) -> None:
+        self.width *= factor
+        self.height *= factor
+
+class Point:
+    x: int
+    y: int
+
+    def __init__(self, px: int, py: int):
+        self.x = px
+        self.y = py
+
+    def distance_from_origin(self) -> int:
+        # Simplified: using abs for Manhattan distance
+        return self.x + self.y if self.x >= 0 and self.y >= 0 else 0
+
+rect = Rectangle(5, 3, "MyRect")
+print(rect.width)
+print(rect.height)
+print(rect.area())
+print(rect.perimeter())
+
+rect.scale(2)
+print(rect.width)
+print(rect.height)
+print(rect.area())
+
+point = Point(4, 6)
+print(point.x)
+print(point.y)
+print(point.distance_from_origin())

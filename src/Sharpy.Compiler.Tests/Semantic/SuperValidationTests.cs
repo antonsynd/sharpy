@@ -350,7 +350,7 @@ class Child(Parent):
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("has no method"));
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("No method") && e.Message.Contains("found in parent class hierarchy"));
     }
 
     #endregion
