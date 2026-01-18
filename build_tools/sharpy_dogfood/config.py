@@ -75,6 +75,7 @@ class Config(BaseConfig):
     successes_dir: Path = field(
         default_factory=lambda: Path("dogfood_output/successes")
     )
+    skips_dir: Path = field(default_factory=lambda: Path("dogfood_output/skips"))
 
     # Execution limits
     max_iterations: int = 10
@@ -147,10 +148,12 @@ class Config(BaseConfig):
         self.output_dir = self.project_root / self.output_dir
         self.issues_dir = self.project_root / self.issues_dir
         self.successes_dir = self.project_root / self.successes_dir
+        self.skips_dir = self.project_root / self.skips_dir
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.issues_dir.mkdir(parents=True, exist_ok=True)
         self.successes_dir.mkdir(parents=True, exist_ok=True)
+        self.skips_dir.mkdir(parents=True, exist_ok=True)
 
     @classmethod
     def from_file(cls, path: Path) -> "Config":

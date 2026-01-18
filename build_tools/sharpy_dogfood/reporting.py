@@ -26,6 +26,33 @@ class IssueType(str, Enum):
 
 
 @dataclass
+class Skip:
+    """Represents a skipped dogfooding iteration (for inspection/prompt improvement)."""
+
+    timestamp: str
+    skip_reason: str
+    generated_code: str  # For single-file tests, or main.spy content for multi-file
+    expected_output: Optional[str] = None
+    feature_focus: Optional[str] = None
+    complexity: Optional[str] = None
+    backend_used: Optional[str] = None
+    generation_duration: Optional[float] = None
+    # Multi-file support: dict mapping filename -> code content
+    source_files: Optional[dict[str, str]] = None
+    # Validation details (if skip was due to validation)
+    validation_output: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
+        return asdict(self)
+
+    @property
+    def is_multifile(self) -> bool:
+        """Check if this is a multi-file test."""
+        return self.source_files is not None and len(self.source_files) > 1
+
+
+@dataclass
 class Success:
     """Represents a successful dogfooding iteration."""
 
@@ -263,6 +290,7 @@ class SummaryReporter:
         issue_type: Optional[IssueType] = None,
         issue_dir: Optional[Path] = None,
         success_dir: Optional[Path] = None,
+        skip_dir: Optional[Path] = None,
         duration: float = 0.0,
         skip_reason: Optional[str] = None,
     ) -> None:
@@ -276,6 +304,7 @@ class SummaryReporter:
                 "success_dir": str(success_dir) if success_dir else None,
                 "issue_type": issue_type.value if issue_type else None,
                 "issue_dir": str(issue_dir) if issue_dir else None,
+                "skip_dir": str(skip_dir) if skip_dir else None,
                 "duration": duration,
                 "timestamp": datetime.now().isoformat(),
                 "skip_reason": skip_reason,
@@ -526,6 +555,161 @@ class SuccessReporter:
                 "```bash",
                 "python -m sharpy_dogfood convert <this_directory_name>",
                 "```",
+                "",
+            ]
+        )
+
+        return "\n".join(lines)
+
+
+class SkipReporter:
+    """Creates and manages reports for skipped dogfooding iterations.
+
+    Skipped iterations are saved for inspection to help improve prompting
+    and understand what kind of code the AI is generating that doesn't
+    match the spec.
+    """
+
+    def __init__(self, skips_dir: Path):
+        self.skips_dir = skips_dir
+        self.skips_dir.mkdir(parents=True, exist_ok=True)
+        self._skip_count = 0
+
+    def _get_skip_dir(self, skip: Skip) -> Path:
+        """Create a unique directory for this skipped run."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        feature = skip.feature_focus or "unknown"
+        # Add marker for multi-file tests
+        multifile_marker = "_multifile" if skip.is_multifile else ""
+        skip_name = (
+            f"{timestamp}_skip_{feature}{multifile_marker}_{self._skip_count:04d}"
+        )
+        self._skip_count += 1
+
+        skip_dir = self.skips_dir / skip_name
+        skip_dir.mkdir(parents=True, exist_ok=True)
+        return skip_dir
+
+    def report(self, skip: Skip) -> Path:
+        """Create a full report for a skipped iteration."""
+        skip_dir = self._get_skip_dir(skip)
+
+        if skip.is_multifile:
+            # Multi-file test: write each source file separately
+            for filename, code in skip.source_files.items():
+                (skip_dir / filename).write_text(code)
+            # Also write main.spy as source.spy for backwards compatibility
+            if "main.spy" in skip.source_files:
+                (skip_dir / "source.spy").write_text(skip.source_files["main.spy"])
+        elif skip.generated_code:
+            # Single-file test: write the generated Sharpy code
+            (skip_dir / "source.spy").write_text(skip.generated_code)
+
+        # Write expected output if available
+        if skip.expected_output:
+            (skip_dir / "expected_output.txt").write_text(skip.expected_output)
+
+        # Write validation output if available
+        if skip.validation_output:
+            (skip_dir / "validation_output.txt").write_text(skip.validation_output)
+
+        # Write the skip reason
+        (skip_dir / "skip_reason.txt").write_text(skip.skip_reason)
+
+        # Write the skip metadata
+        metadata = skip.to_dict()
+        (skip_dir / "metadata.json").write_text(
+            json.dumps(metadata, indent=2, default=str)
+        )
+
+        # Write a human-readable summary
+        summary = self._generate_summary(skip)
+        (skip_dir / "README.md").write_text(summary)
+
+        return skip_dir
+
+    def _generate_summary(self, skip: Skip) -> str:
+        """Generate a human-readable summary of the skipped run."""
+        lines = [
+            "# Skipped Dogfood Run",
+            "",
+            f"**Timestamp:** {skip.timestamp}",
+            f"**Skip Reason:** {skip.skip_reason}",
+        ]
+
+        if skip.feature_focus:
+            lines.append(f"**Feature Focus:** {skip.feature_focus}")
+        if skip.complexity:
+            lines.append(f"**Complexity:** {skip.complexity}")
+        if skip.backend_used:
+            lines.append(f"**Backend:** {skip.backend_used}")
+        if skip.is_multifile:
+            lines.append(f"**Test Type:** Multi-file ({len(skip.source_files)} files)")
+
+        if skip.is_multifile and skip.source_files:
+            lines.extend(
+                [
+                    "",
+                    "## Source Files",
+                    "",
+                ]
+            )
+            for filename, code in skip.source_files.items():
+                lines.extend(
+                    [
+                        f"### {filename}",
+                        "",
+                        "```python",
+                        code,
+                        "```",
+                        "",
+                    ]
+                )
+        elif skip.generated_code:
+            lines.extend(
+                [
+                    "",
+                    "## Generated Sharpy Code",
+                    "",
+                    "```python",
+                    skip.generated_code,
+                    "```",
+                    "",
+                ]
+            )
+
+        if skip.validation_output:
+            lines.extend(
+                [
+                    "## Validation Output",
+                    "",
+                    "```",
+                    skip.validation_output[:2000],  # Truncate long output
+                    "```",
+                    "",
+                ]
+            )
+
+        # Timing information
+        if skip.generation_duration:
+            lines.extend(
+                [
+                    "## Timing",
+                    "",
+                    f"- Generation: {skip.generation_duration:.2f}s",
+                    "",
+                ]
+            )
+
+        lines.extend(
+            [
+                "## Notes",
+                "",
+                "This iteration was skipped because the generated code didn't pass validation.",
+                "This is typically due to the AI generating code with unsupported features",
+                "or syntax that doesn't match the Sharpy spec (phases 0.1.0-0.1.10).",
+                "",
+                "This output is saved for inspection to help improve prompting.",
                 "",
             ]
         )

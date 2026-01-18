@@ -39,6 +39,8 @@ from .reporting import (
     Issue,
     IssueType,
     IssueReporter,
+    Skip,
+    SkipReporter,
     SummaryReporter,
     Success,
     SuccessReporter,
@@ -60,6 +62,7 @@ class IterationResult:
     status: IterationStatus
     issue_dir: Optional[Path] = None
     success_dir: Optional[Path] = None
+    skip_dir: Optional[Path] = None
     skip_reason: Optional[str] = None
 
 
@@ -75,6 +78,7 @@ class GenerationResult:
     generation_duration: Optional[float] = None
     rate_limited: bool = False
     attempts: int = 1
+    validation_output: Optional[str] = None  # AI validation output (for debugging)
 
 
 def _outputs_equivalent(expected: str, actual: str, rel_tol: float = 1e-9) -> bool:
@@ -348,6 +352,7 @@ class DogfoodOrchestrator:
         self.compiler = SharpyCompiler(config.project_root, config.sharpy_cli_project)
         self.issue_reporter = IssueReporter(config.issues_dir)
         self.success_reporter = SuccessReporter(config.successes_dir)
+        self.skip_reporter = SkipReporter(config.skips_dir)
         self.summary_reporter = SummaryReporter(config.output_dir)
         self.spec_context: Optional[str] = None
         self.example_snippets: list[str] = []
@@ -487,14 +492,33 @@ class DogfoodOrchestrator:
                     skip_reason=gen_result.skip_reason,
                 )
 
-            # If it was a validation failure after retries, skip
+            # If it was a validation failure after retries, skip but save for inspection
             if gen_result.attempts > 1:
                 print(
                     f"  Code generation failed after {gen_result.attempts} attempts",
                     file=sys.stderr,
                 )
+                # Save the skip for inspection if we have generated code
+                skip_dir = None
+                if gen_result.code:
+                    skip = Skip(
+                        timestamp=timestamp,
+                        skip_reason=gen_result.skip_reason or "Validation failed",
+                        generated_code=gen_result.code,
+                        expected_output=gen_result.expected_output,
+                        feature_focus=feature_focus,
+                        complexity=complexity,
+                        backend_used=gen_result.backend_used,
+                        generation_duration=gen_result.generation_duration,
+                        validation_output=gen_result.validation_output,
+                    )
+                    skip_dir = self.skip_reporter.report(skip)
+                    print(
+                        f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr
+                    )
                 return IterationResult(
                     IterationStatus.SKIPPED,
+                    skip_dir=skip_dir,
                     skip_reason=gen_result.skip_reason,
                 )
 
@@ -772,6 +796,8 @@ class DogfoodOrchestrator:
                 else:
                     return GenerationResult(
                         success=False,
+                        code=code,
+                        expected_output=extract_expected_output(code),
                         skip_reason=f"Pre-validation failed after {attempt} attempts: {prevalidation_error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
@@ -799,6 +825,8 @@ class DogfoodOrchestrator:
                     else:
                         return GenerationResult(
                             success=False,
+                            code=code,
+                            expected_output=expected_output,
                             skip_reason=f"Invalid expected output after {attempt} attempts (Python says: {python_output})",
                             backend_used=backend_used,
                             generation_duration=total_duration,
@@ -827,10 +855,13 @@ class DogfoodOrchestrator:
                 else:
                     return GenerationResult(
                         success=False,
+                        code=code,
+                        expected_output=expected_output,
                         skip_reason=f"Validation backend error after {attempt} attempts: {val_result.error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
                         attempts=attempt,
+                        validation_output=val_result.error,
                     )
 
             validation_output = val_result.output
@@ -847,10 +878,13 @@ class DogfoodOrchestrator:
                 else:
                     return GenerationResult(
                         success=False,
+                        code=code,
+                        expected_output=expected_output,
                         skip_reason=f"Code invalid per spec after {attempt} attempts",
                         backend_used=backend_used,
                         generation_duration=total_duration,
                         attempts=attempt,
+                        validation_output=validation_output,
                     )
 
             # Success!
@@ -867,6 +901,8 @@ class DogfoodOrchestrator:
         # Should not reach here, but just in case
         return GenerationResult(
             success=False,
+            code=last_code,
+            expected_output=extract_expected_output(last_code) if last_code else None,
             skip_reason="Generation failed after all retry attempts",
             backend_used=backend_used,
             generation_duration=total_duration,
@@ -956,8 +992,21 @@ class DogfoodOrchestrator:
         files = extract_multifile_code(gen_result.output)
         if not files:
             print("  Failed to parse multi-file response", file=sys.stderr)
+            # Save raw output for debugging prompt issues
+            skip = Skip(
+                timestamp=timestamp,
+                skip_reason="Failed to parse multi-file response from AI",
+                generated_code=gen_result.output,  # Raw output for debugging
+                feature_focus=feature_focus,
+                complexity=complexity,
+                backend_used=gen_result.backend,
+                generation_duration=gen_result.duration_seconds,
+            )
+            skip_dir = self.skip_reporter.report(skip)
+            print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
             return IterationResult(
                 IterationStatus.SKIPPED,
+                skip_dir=skip_dir,
                 skip_reason="Failed to parse multi-file response from AI",
             )
 
@@ -976,8 +1025,23 @@ class DogfoodOrchestrator:
                     f"  Pre-validation failed for {filename}: {prevalidation_error}",
                     file=sys.stderr,
                 )
+                # Save for inspection
+                skip = Skip(
+                    timestamp=timestamp,
+                    skip_reason=f"Unsupported feature in {filename}: {prevalidation_error}",
+                    generated_code=files.get("main.spy", ""),
+                    expected_output=expected_output,
+                    feature_focus=feature_focus,
+                    complexity=complexity,
+                    backend_used=gen_result.backend,
+                    generation_duration=gen_result.duration_seconds,
+                    source_files=files,
+                )
+                skip_dir = self.skip_reporter.report(skip)
+                print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
                 return IterationResult(
                     IterationStatus.SKIPPED,
+                    skip_dir=skip_dir,
                     skip_reason=f"Unsupported feature in {filename}: {prevalidation_error}",
                 )
 
@@ -990,15 +1054,47 @@ class DogfoodOrchestrator:
                     f"  Validation failed for {filename}: {val_result.error}",
                     file=sys.stderr,
                 )
+                # Save for inspection
+                skip = Skip(
+                    timestamp=timestamp,
+                    skip_reason=f"Validation backend error for {filename}",
+                    generated_code=files.get("main.spy", ""),
+                    expected_output=expected_output,
+                    feature_focus=feature_focus,
+                    complexity=complexity,
+                    backend_used=gen_result.backend,
+                    generation_duration=gen_result.duration_seconds,
+                    source_files=files,
+                    validation_output=val_result.error,
+                )
+                skip_dir = self.skip_reporter.report(skip)
+                print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
                 return IterationResult(
                     IterationStatus.SKIPPED,
+                    skip_dir=skip_dir,
                     skip_reason=f"Validation backend error for {filename}",
                 )
 
             if "INVALID" in val_result.output.upper():
                 print(f"  {filename} is invalid per spec, skipping", file=sys.stderr)
+                # Save for inspection
+                skip = Skip(
+                    timestamp=timestamp,
+                    skip_reason=f"{filename} invalid per spec",
+                    generated_code=files.get("main.spy", ""),
+                    expected_output=expected_output,
+                    feature_focus=feature_focus,
+                    complexity=complexity,
+                    backend_used=gen_result.backend,
+                    generation_duration=gen_result.duration_seconds,
+                    source_files=files,
+                    validation_output=val_result.output,
+                )
+                skip_dir = self.skip_reporter.report(skip)
+                print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
                 return IterationResult(
                     IterationStatus.SKIPPED,
+                    skip_dir=skip_dir,
                     skip_reason=f"{filename} invalid per spec",
                 )
 
@@ -1264,6 +1360,7 @@ class DogfoodOrchestrator:
                         complexity,
                         success=False,
                         issue_type=IssueType.SKIPPED,
+                        skip_dir=result.skip_dir,
                         duration=duration,
                         skip_reason=result.skip_reason,
                     )
