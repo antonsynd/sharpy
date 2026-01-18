@@ -58,14 +58,14 @@ dotnet test --filter "FullyQualifiedName~Lexer"
 dotnet test --filter "FullyQualifiedName~Parser"
 dotnet test --filter "FullyQualifiedName~Semantic"
 dotnet test --filter "FullyQualifiedName~CodeGen"
+dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
 ```
 
 **CRITICAL:** Fix bugs, don't change test expectations. Use `[Fact(Skip = "reason")]` if blocked.
 
 ## Debugging
 
-```csharp
-// Dump AST for debugging
-var dumper = new AstDumper();
-Console.WriteLine(dumper.Dump(module));
+Inspect generated C# code to debug code emission:
+```bash
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy
 ```

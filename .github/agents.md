@@ -91,12 +91,17 @@ When axioms conflict: **Axiom 1 > Axiom 3 > Axiom 2**
 dotnet build sharpy.sln          # Build all
 dotnet test                       # Run all tests
 dotnet format                     # Format before committing
+dotnet run --project src/Sharpy.Cli -- run file.spy  # Compile and execute
+
+# Debugging codegen - inspect generated C#
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy
 
 # Filtered tests
 dotnet test --filter "FullyQualifiedName~Lexer"
 dotnet test --filter "FullyQualifiedName~Parser"
 dotnet test --filter "FullyQualifiedName~Semantic"
 dotnet test --filter "FullyQualifiedName~CodeGen"
+dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
 
 # Verify Python behavior
 python3 -c "print([1,2,3].pop())"

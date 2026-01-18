@@ -52,7 +52,7 @@ MapType(type) => type switch {
 
 ```bash
 dotnet test --filter "FullyQualifiedName~CodeGen"
-dotnet run --project src/Sharpy.Cli -- build file.spy --emit-csharp
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy
 ```
 
 ## Boundaries

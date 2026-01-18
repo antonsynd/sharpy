@@ -23,14 +23,24 @@ Specializes in the Sharpy standard library (`Sharpy.Core`). Implements Pythonic 
 
 ## Key Patterns
 
-### Partial Exports
+### Partial Class Directory Pattern
+Types are split across `Partial.{Type}/` directories:
+```
+Partial.List/
+├── List.cs              # Main class + constructor
+├── List.ISequence.cs    # ISequence implementation
+├── List.IEnumerable.cs  # IEnumerable implementation
+└── List.IBoolConvertible.cs
+```
+
+### Builtins via Partial Exports
 ```csharp
+// Distributed across files: Print.cs, Len.cs, Range.cs, etc.
 namespace Sharpy.Core;
 
 public static partial class Exports
 {
-    public static void print(object? value) => Console.WriteLine(value);
-    public static int len<T>(ICollection<T> collection) => collection.Count;
+    public static void Print(object? value) => Console.WriteLine(value);
 }
 ```
 

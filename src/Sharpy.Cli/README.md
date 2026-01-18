@@ -11,56 +11,51 @@ dotnet build
 
 ## Usage
 
-### Single File Compilation
+### Commands
 
 ```bash
-sharpyc <input.spy> [options]
+# Compile and run immediately
+sharpyc run <input.spy>
+
+# Compile to binary/library
+sharpyc build <input.spy> [options]
+
+# Build a project
+sharpyc project <path.spyproj> [options]
+
+# Emit intermediate representations (for debugging)
+sharpyc emit tokens <input.spy>   # Lexer tokens
+sharpyc emit ast <input.spy>      # Abstract syntax tree
+sharpyc emit csharp <input.spy>   # Generated C# code
 ```
 
-### Project Compilation
+### Build Options
 
-```bash
-sharpyc [--project <path.spyproj>] [options]
-```
+- `-t, --type <exe|library>` - Output type (default: library)
+- `-o, --output <path>` - Output file path
+- `-r, --reference <assembly>` - Add .NET assembly references
+- `-p, --project-reference <project>` - Add .NET project references
+- `-m, --module-path <path>` - Additional module search paths
 
-If `--project` is not specified, the compiler will automatically search for a `.spyproj` file in the current directory.
-
-### Options
-
-#### Emit Modes
-
-- `--emit-tokens` - Emit lexer tokens for the input file (single-file mode only)
-  - Displays all tokens produced by the lexer with their types, positions, and values
-  - Useful for debugging lexical analysis
-
-- `--emit-ast` - Emit the abstract syntax tree (NOT IMPLEMENTED YET)
-  - Will display the parsed AST structure
-
-#### Project Options
-
-- `--project <path>` - Compile a Sharpy project file
-  - Auto-discovers `.spyproj` file if not specified
-  - Compiles all source files in the project
+### Project Options
 
 - `-c, --configuration <Debug|Release>` - Build configuration (default: Debug)
-  - Determines output directory: `bin/Debug` or `bin/Release`
-
-#### Compilation Options (NOT IMPLEMENTED YET)
-
-- `-o, --output <path>` - Specify output file path (single-file mode)
-  - Default output name is based on input file name
-
-- `--module-path <path>` - Add module search path(s) (single-file mode)
-  - Can be specified multiple times for multiple paths
-  - Example: `--module-path ./libs --module-path ../common`
+- `--clean` - Delete bin/ and obj/ directories before building
+- `--emit-cs-to <dir>` - Save generated C# code to directory
 
 ## Examples
 
-### Emit Tokens (Single-File Mode)
+### Run a Sharpy File
 
 ```bash
-# Display tokens for a Sharpy file
-dotnet run --project src/Sharpy.Cli -- hello.spy --emit-tokens
+# Compile and execute immediately
+dotnet run --project src/Sharpy.Cli -- run hello.spy
+```
+
+### Emit Tokens (for debugging lexer)
+
+```bash
+dotnet run --project src/Sharpy.Cli -- emit tokens hello.spy
 ```
 
 Output:
@@ -75,17 +70,20 @@ Tokens for hello.spy:
 Total tokens: 37
 ```
 
+### Emit Generated C# (for debugging codegen)
+
+```bash
+dotnet run --project src/Sharpy.Cli -- emit csharp hello.spy
+```
+
 ### Project Compilation
 
 ```bash
 # Compile a project in Debug mode (default)
-sharpyc
-
-# Compile a specific project file
-sharpyc --project myapp.spyproj
+sharpyc project calculator.spyproj
 
 # Compile in Release mode
-sharpyc --configuration Release
+sharpyc project calculator.spyproj --configuration Release
 ```
 
 ### Project File Format
@@ -135,26 +133,18 @@ bin/
       MyApp.dll
 ```
 
-### Future Examples (Not Implemented Yet)
-
-```bash
-# Compile single file with custom output
-sharpyc myfile.spy -o output.dll
-
-# Compile with module search paths
-sharpyc main.spy --module-path ./libs --module-path ../common
-
-# Emit AST
-sharpyc myfile.spy --emit-ast
-```
-
 ## Implementation Status
 
 ### ✅ Implemented
 - Command-line argument parsing (using System.CommandLine)
-- Input file validation
-- `--emit-tokens` mode with formatted token output
-- Error handling for lexer errors
+- `run` command - compile and execute immediately
+- `build` command - compile to binary/library
+- `project` command - build multi-file projects
+- `emit` subcommands - tokens, ast, csharp
+- `cache` command - manage overload discovery cache
+- `--clean` option for project builds
+- `--emit-cs-to` option to save intermediate C#
+- Error handling with formatted output
 - **Project compilation** with `.spyproj` files
   - Glob pattern support for source files
   - Multi-file compilation with shared symbol table
@@ -164,13 +154,6 @@ sharpyc myfile.spy --emit-ast
   - Assembly generation (.exe/.dll)
 - **`__init__.spy` support** for package-level exports
 - **Improved error messages** with file context
-
-### 🚧 Not Implemented Yet
-- `--emit-ast` - AST emission
-- `--module-path` option for single-file compilation
-- `--output` option for single-file compilation
-- `--clean` command to delete bin/ directories
-- `--emit-cs-to` option to save intermediate C# code
 
 ## Development
 
@@ -183,25 +166,30 @@ dotnet run -- <args>
 
 Example:
 ```bash
-dotnet run -- ../../test_sharpyc.spy --emit-tokens
+dotnet run -- run ../../snippets/hello.spy
 ```
 
 ### Testing
 
 Create a simple test file:
-```sharpy
+```python
 # test.spy
 def greet(name: str) -> None:
     message: str = f"Hello, {name}!"
     print(message)
 
-x: auto = 42
+x = 42
 greet("World")
 ```
 
 Run the compiler:
 ```bash
-dotnet run --project src/Sharpy.Cli -- test.spy --emit-tokens
+dotnet run --project src/Sharpy.Cli -- run test.spy
+```
+
+Or emit tokens for debugging:
+```bash
+dotnet run --project src/Sharpy.Cli -- emit tokens test.spy
 ```
 
 ## Error Handling

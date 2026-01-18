@@ -31,25 +31,28 @@ Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, 
 
 ## Key Patterns
 
-### Symbol Table
+### Semantic Analysis Pipeline
 ```csharp
-public class SymbolTable
-{
-    private readonly SymbolTable? _parent;
-    private readonly Dictionary<string, Symbol> _symbols = new();
+var nameResolver = new NameResolver(symbolTable, logger);
+nameResolver.ResolveDeclarations(module);  // Pass 1: declarations
+nameResolver.ResolveInheritance();          // Pass 2: inheritance
 
-    public Symbol? Resolve(string name) =>
-        _symbols.TryGetValue(name, out var s) ? s : _parent?.Resolve(name);
-}
+var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
+var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
+typeChecker.CheckModule(module);
 ```
 
-### Type Representation
+### Type Representation (`SemanticType.cs`)
 ```csharp
-public abstract record SharType;
-public record PrimitiveType(string Name) : SharType;
-public record NullableType(SharType Inner) : SharType;
-public record GenericType(string Name, ImmutableArray<SharType> TypeArgs) : SharType;
+public abstract record SemanticType;
+public record BuiltinType : SemanticType { public string Name { get; init; } }
+public record NullableType(SemanticType UnderlyingType) : SemanticType;
+public record GenericType : SemanticType { public string Name; public List<SemanticType> TypeArguments; }
+public record UserDefinedType : SemanticType { public string Name { get; init; } }
 ```
+
+### Type Narrowing
+Narrowed types tracked in `TypeChecker._narrowedTypes` dictionary for `is None`/`isinstance` checks.
 
 ## Commands
 

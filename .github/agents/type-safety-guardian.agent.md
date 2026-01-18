@@ -29,15 +29,11 @@ y: int? = None       # ✅ Explicit nullable
 z: int = None        # ❌ ERROR: Cannot assign None to non-nullable
 ```
 
-### 2. No Dynamic Typing
+### 2. Type Inference Allowed, Explicit Types Preferred
 ```python
-x = 42               # ❌ ERROR: Type annotation required
-x: Any = 42          # ❌ ERROR: 'Any' type not allowed
-def process(data):   # ❌ ERROR: Parameter type required
-    pass
-
-x: int = 42          # ✅ Explicit type
-def process(data: MyClass) -> str:  # ✅ Typed
+x = 42               # ✅ Inferred as int (type inference supported)
+x: int = 42          # ✅ Explicit type (preferred)
+def process(data: MyClass) -> str:  # ✅ Parameters/returns should be typed
     return data.value
 ```
 

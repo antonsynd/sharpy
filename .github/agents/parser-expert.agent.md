@@ -25,12 +25,18 @@ Specializes in the Sharpy parser. Handles EBNF grammar translation, AST node con
 
 ## Key Patterns
 
-### AST Nodes
+### AST Nodes (`Parser/Ast/`)
 ```csharp
 // Immutable records with source locations
-public abstract record AstNode(SourceSpan Span);
-public abstract record Expression(SourceSpan Span) : AstNode(Span);
-public abstract record Statement(SourceSpan Span) : AstNode(Span);
+public abstract record Node
+{
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
+}
+public abstract record Expression : Node;
+public abstract record Statement : Node;
 ```
 
 ### Recursive Descent

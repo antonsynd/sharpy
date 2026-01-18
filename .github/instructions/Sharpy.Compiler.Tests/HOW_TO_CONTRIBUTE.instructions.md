@@ -31,8 +31,8 @@ dotnet test --filter "FullyQualifiedName~Integration"
 [Fact]
 public void TestTokenizeIdentifier()
 {
-    var lexer = new Lexer("hello_world");
-    var tokens = lexer.Tokenize();
+    var lexer = new Lexer("hello_world", logger);
+    var tokens = lexer.TokenizeAll();
     Assert.Equal(TokenType.Identifier, tokens[0].Type);
 }
 ```
@@ -42,8 +42,9 @@ public void TestTokenizeIdentifier()
 [Fact]
 public void TestParseIfStatement()
 {
-    var parser = new Parser("if x > 0:\n    print(x)");
-    var module = parser.Parse();
+    var tokens = new Lexer("if x > 0:\n    print(x)", logger).TokenizeAll();
+    var parser = new Parser(tokens, logger);
+    var module = parser.ParseModule();
     Assert.IsType<IfStmt>(module.Body[0]);
 }
 ```
@@ -74,6 +75,28 @@ public void CompileAndExecute()
 ```csharp
 public class MyTests : IntegrationTestBase
 {
-    protected ExecutionResult CompileAndExecute(string source) { ... }
+    [Fact]
+    public void MyFeature_Works()
+    {
+        var result = CompileAndExecute("print(42)");
+        Assert.True(result.Success);
+        Assert.Equal("42\n", result.StandardOutput);
+    }
 }
+```
+
+## File-Based Tests
+
+Auto-discovered tests in `Integration/TestFixtures/`:
+```
+TestFixtures/
+├── basics/hello_world.spy      # Source
+├── basics/hello_world.expected # Expected stdout (exact match)
+├── errors/undefined_var.spy    # Error case
+└── errors/undefined_var.error  # Substring to match in error
+```
+
+**Run file-based tests:**
+```bash
+dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
 ```

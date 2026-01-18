@@ -31,31 +31,45 @@ Assert.Equal(correct_value, result);  // Fix the function, not the test
 ### Unit Tests
 ```csharp
 [Fact]
-public void ScanTokens_IntegerLiteral_ReturnsCorrectToken()
+public void TokenizeAll_IntegerLiteral_ReturnsCorrectToken()
 {
-    var lexer = new Lexer("42");
-    var tokens = lexer.ScanTokens();
+    var lexer = new Lexer("42", logger);
+    var tokens = lexer.TokenizeAll();
     Assert.Equal(42, tokens[0].Literal);
 }
 
 [Theory]
 [InlineData("0b1010", 10)]
 [InlineData("0xFF", 255)]
-public void ScanTokens_NumericBases_ParsesCorrectly(string input, int expected)
+public void TokenizeAll_NumericBases_ParsesCorrectly(string input, int expected)
 {
     // ...
 }
 ```
 
 ### Integration Tests
+Inherit from `IntegrationTestBase` and use `CompileAndExecute()`:
 ```csharp
-[Fact]
-public void Compile_SimpleFunction_ProducesValidCSharp()
+public class MyTests : IntegrationTestBase
 {
-    var source = "def greet(name: str) -> str:\n    return f\"Hello, {name}!\"";
-    var result = compiler.Compile(source);
-    Assert.True(result.Success);
+    [Fact]
+    public void MyFeature_Works()
+    {
+        var result = CompileAndExecute("print(42)");
+        Assert.True(result.Success);
+        Assert.Equal("42\n", result.StandardOutput);
+    }
 }
+```
+
+### File-Based Tests (`Integration/TestFixtures/`)
+Auto-discovered tests via `.spy` + `.expected` (or `.error`) pairs:
+```
+TestFixtures/
+├── basics/hello_world.spy      # Source
+├── basics/hello_world.expected # Expected stdout (exact match)
+├── errors/undefined_var.spy    # Error case
+└── errors/undefined_var.error  # Substring to match in error
 ```
 
 ### Skipping Tests

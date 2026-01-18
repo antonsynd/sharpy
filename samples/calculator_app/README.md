@@ -25,12 +25,12 @@ calculator_app/
 
 From this directory:
 ```bash
-sharpyc
+sharpyc project calculator.spyproj
 ```
 
-Or specify the project file:
+Or from the repo root:
 ```bash
-sharpyc --project calculator.spyproj
+dotnet run --project src/Sharpy.Cli -- project samples/calculator_app/calculator.spyproj
 ```
 
 ## Running

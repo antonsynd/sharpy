@@ -17,17 +17,23 @@ Specializes in the Sharpy command-line interface (`sharpyc`).
 ## Commands
 
 ```bash
-# Build a Sharpy file
+# Compile and run a Sharpy file
+dotnet run --project src/Sharpy.Cli -- run file.spy
+
+# Build a Sharpy file to DLL
 dotnet run --project src/Sharpy.Cli -- build file.spy
 
 # Build with output path
 dotnet run --project src/Sharpy.Cli -- build file.spy -o output
 
-# Check syntax without compiling
-dotnet run --project src/Sharpy.Cli -- check file.spy
+# Emit C# (for debugging codegen)
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy
 
-# Emit C# (for debugging)
-dotnet run --project src/Sharpy.Cli -- build file.spy --emit-csharp
+# Emit AST (for debugging parser)
+dotnet run --project src/Sharpy.Cli -- emit ast file.spy
+
+# Emit tokens (for debugging lexer)
+dotnet run --project src/Sharpy.Cli -- emit tokens file.spy
 ```
 
 ## Implementation

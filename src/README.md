@@ -19,7 +19,7 @@ Sharpy.Compiler/
 │   │   ├── Statement.cs # Statement nodes
 │   │   ├── Expression.cs # Expression nodes
 │   │   └── Types.cs    # Type annotations
-│   └── Parser.cs       # (To be implemented)
+│   └── Parser.cs       # Recursive descent parser
 ├── Semantic/           # Semantic analysis
 │   ├── Symbol.cs       # Symbol definitions
 │   ├── Scope.cs        # Scope management
@@ -38,10 +38,16 @@ The runtime library that compiled Sharpy code depends on.
 ```
 Sharpy.Core/
 ├── Builtins/           # Always-available types and functions
-│   ├── Exports.cs      # Global functions (print, len, etc.)
-│   └── Exceptions.cs   # Exception types
-└── Modules/            # Importable standard library modules
-    └── (Future: sys, collections, json, etc.)
+│   └── Exports.cs      # Global functions (print, len, etc.)
+├── Partial.List/       # List[T] implementation (partial class pattern)
+├── Partial.Set/        # Set[T] implementation
+├── Partial.Str/        # String extensions
+├── Partial.*/          # Other type implementations split by interface
+├── Collections/        # Collection interfaces
+├── Dict.cs             # dict[K,V] implementation
+├── Range.cs            # range() builtin
+├── Enumerate.cs        # enumerate() builtin
+└── *.cs                # Other builtins (Zip, Map, Filter, etc.)
 ```
 
 ## Key Design Decisions
@@ -88,26 +94,15 @@ dotnet build src/Sharpy.Compiler
 dotnet build src/Sharpy.Core
 ```
 
-## Usage (Future)
+## Usage
 
-```csharp
-using Sharpy.Compiler;
+```bash
+# Compile and run a Sharpy file
+dotnet run --project src/Sharpy.Cli -- run myfile.spy
 
-var compiler = new Compiler();
-var result = compiler.Compile("def main(): print('Hello')", "output.dll");
+# Build to DLL
+dotnet run --project src/Sharpy.Cli -- build myfile.spy -o output.dll
 
-if (result.Success)
-{
-    // Run the compiled assembly
-    Assembly.LoadFile("output.dll");
-}
+# Inspect generated C# (for debugging)
+dotnet run --project src/Sharpy.Cli -- emit csharp myfile.spy
 ```
-
-## Next Steps
-
-1. Port lexer from Rust implementation
-2. Implement parser
-3. Implement semantic analyzer with builtin registry
-4. Complete code generator
-5. Add CLI tool (Sharpy.Cli)
-6. Add test projects
