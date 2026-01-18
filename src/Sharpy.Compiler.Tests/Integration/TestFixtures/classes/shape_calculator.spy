@@ -1,0 +1,93 @@
+# Geometry classes and shape calculator - tests class inheritance and polymorphism
+
+class Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def distance_from_origin(self) -> float:
+        return (self.x * self.x + self.y * self.y) ** 0.5
+
+class Shape:
+    label: str
+
+    def __init__(self, label: str):
+        self.label = label
+
+    @virtual
+    def area(self) -> float:
+        return 0.0
+
+class Circle(Shape):
+    center: Point
+    radius: float
+
+    def __init__(self, label: str, center: Point, radius: float):
+        super().__init__(label)
+        self.center = center
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, label: str, width: float, height: float):
+        super().__init__(label)
+        self.width = width
+        self.height = height
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+class ShapeCalculator:
+    total_area: float
+
+    def __init__(self):
+        self.total_area = 0.0
+
+    def add_shape(self, shape: Shape) -> None:
+        area: float = shape.area()
+        self.total_area = self.total_area + area
+
+    def get_total(self) -> float:
+        return self.total_area
+
+def compare_shapes(s1: Shape, s2: Shape) -> str:
+    area1: float = s1.area()
+    area2: float = s2.area()
+
+    if area1 > area2:
+        return s1.label
+    elif area2 > area1:
+        return s2.label
+    else:
+        return "equal"
+
+# Create shapes
+p1: Point = Point(3.0, 4.0)
+print(p1.distance_from_origin())
+
+c1: Circle = Circle("MyCircle", p1, 5.0)
+r1: Rectangle = Rectangle("MyRect", 10.0, 7.0)
+
+print(c1.area())
+print(r1.area())
+
+# Use calculator
+calc: ShapeCalculator = ShapeCalculator()
+calc.add_shape(c1)
+calc.add_shape(r1)
+
+print(calc.get_total())
+
+# Compare shapes
+winner: str = compare_shapes(c1, r1)
+print(winner)
