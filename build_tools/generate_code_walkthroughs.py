@@ -78,6 +78,10 @@ except ImportError:
     from shared.model_selector import TaskType, TaskComplexity
 
 
+# Default heartbeat interval for long-running CLI operations
+DEFAULT_HEARTBEAT_INTERVAL = 60.0  # Log heartbeat every 60 seconds
+
+
 class RateLimitExceeded(Exception):
     """Exception raised when all backends are rate limited."""
 
@@ -96,6 +100,55 @@ class BackendUnavailable(Exception):
         super().__init__(message)
         self.backend = backend
         self.wait_time = wait_time
+
+
+async def _communicate_with_heartbeat(
+    process: asyncio.subprocess.Process,
+    input_data: Optional[bytes],
+    start_time: float,
+    heartbeat_interval: float = DEFAULT_HEARTBEAT_INTERVAL,
+    label: str = "CLI",
+) -> tuple[bytes, bytes]:
+    """
+    Communicate with a subprocess while logging periodic heartbeats.
+
+    This helps track long-running operations and provides visibility
+    into whether the process is still active.
+
+    Args:
+        process: The subprocess to communicate with
+        input_data: Data to send to stdin (or None)
+        start_time: When the operation started (for elapsed time calculation)
+        heartbeat_interval: Seconds between heartbeat messages
+        label: Label to use in heartbeat messages (e.g., "Claude", "Copilot")
+
+    Returns:
+        tuple[bytes, bytes]: (stdout, stderr) from the process
+    """
+
+    async def heartbeat_logger():
+        """Log periodic heartbeats while waiting for process."""
+        while True:
+            await asyncio.sleep(heartbeat_interval)
+            elapsed = time.time() - start_time
+            print(
+                f"[heartbeat] {label} still running... ({elapsed:.0f}s elapsed)",
+                file=sys.stderr,
+            )
+
+    heartbeat_task = asyncio.create_task(heartbeat_logger())
+    try:
+        if input_data is not None:
+            stdout, stderr = await process.communicate(input=input_data)
+        else:
+            stdout, stderr = await process.communicate()
+        return stdout, stderr
+    finally:
+        heartbeat_task.cancel()
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            pass
 
 
 # =============================================================================
@@ -762,6 +815,12 @@ The following specs may be relevant to understanding this file:
 ## Architecture Overview
 The Sharpy compiler pipeline flows: Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → RoslynEmitter → C#
 
+## Important: Partial Classes
+Note that large modules in the Sharpy codebase are often split across multiple files using C# partial classes.
+For example, the standard library in `Sharpy.Core` uses `partial class Exports` spread across directories like
+`Partial.List/`, `Partial.Str/`, etc. If you see a partial class, you may need to reference related files
+to provide complete documentation. Include cross-referencing links to related partial class files when relevant.
+
 ## Task
 Create a walkthrough document covering:
 
@@ -784,10 +843,15 @@ Write the walkthrough as a well-structured markdown document to '{relative_outpu
 - Bullet points for lists
 - Emphasis on readability for someone new to the codebase
 
-Focus on providing intuition and understanding, not just restating what the code does line-by-line."""
+Focus on providing intuition and understanding, not just restating what the code does line-by-line.
+
+8. **Cross-References**: If this file is a partial class or heavily depends on other files, include links to related documentation files."""
 
         # Build the command for the specified CLI provider
         cmd, stdin_input = _build_cli_command(cli_provider, prompt)
+
+        # Determine label for heartbeat logging
+        heartbeat_label = "Claude" if cli_provider == "claude" else "Copilot"
 
         # Call the AI CLI in programmatic mode with write permissions
         # Change to the base directory so relative paths work
@@ -804,8 +868,16 @@ Focus on providing intuition and understanding, not just restating what the code
         try:
             # Pass prompt via stdin if required (e.g., for Claude CLI)
             input_bytes = stdin_input.encode("utf-8") if stdin_input else None
+            # Use heartbeat-enabled communication for visibility during long operations
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(input=input_bytes), timeout=timeout
+                _communicate_with_heartbeat(
+                    process,
+                    input_data=input_bytes,
+                    start_time=start_time,
+                    heartbeat_interval=DEFAULT_HEARTBEAT_INTERVAL,
+                    label=heartbeat_label,
+                ),
+                timeout=timeout,
             )
             duration = time.time() - start_time
 
@@ -886,7 +958,9 @@ Focus on providing intuition and understanding, not just restating what the code
                     is_stale=is_stale,
                     extra={"backend": cli_provider},
                 )
-                print(f"✓ Generated: {output_path} (via {cli_provider})")
+                print(
+                    f"✓ Generated: {output_path} (via {cli_provider}, {duration:.1f}s)"
+                )
                 return True, cli_provider
             else:
                 log_execution(
@@ -901,13 +975,14 @@ Focus on providing intuition and understanding, not just restating what the code
                     extra={"backend": cli_provider},
                 )
                 print(
-                    f"Warning: CLI completed but output file not found: {output_path}",
+                    f"⚠ Warning: CLI completed but output file not found: {output_path}",
                     file=sys.stderr,
                 )
                 # Print CLI's response for debugging
                 if stdout:
+                    cli_output = stdout.decode("utf-8")[:500]
                     print(
-                        f"CLI output: {stdout.decode('utf-8')[:500]}",
+                        f"  CLI output preview: {cli_output}",
                         file=sys.stderr,
                     )
                 return False, cli_provider
@@ -925,9 +1000,16 @@ Focus on providing intuition and understanding, not just restating what the code
                 is_stale=is_stale,
                 extra={"backend": cli_provider},
             )
-            print(f"Timeout analyzing {cs_file}", file=sys.stderr)
-            process.kill()
-            await process.wait()
+            print(
+                f"⏱ Timeout analyzing {cs_file} after {timeout}s (backend: {cli_provider})",
+                file=sys.stderr,
+            )
+            # Kill the process on timeout
+            try:
+                process.kill()
+                await process.wait()
+            except Exception:
+                pass  # Process may have already exited
             return False, cli_provider
 
     except BackendUnavailable:
@@ -1216,10 +1298,24 @@ async def main_async(config: Config):
 
             # Wait between batches to avoid rate limiting (except for the last batch)
             if batch_num + config.parallel_instances < len(files_to_process):
+                remaining_batches = total_batches - current_batch_num
                 print(
-                    f"Waiting {config.timeout_between_batches}s to avoid rate limiting..."
+                    f"\n⏳ Waiting {config.timeout_between_batches}s before next batch "
+                    f"({remaining_batches} batches remaining)..."
                 )
-                await asyncio.sleep(config.timeout_between_batches)
+                # Use a heartbeat during the wait period for long waits
+                wait_start = time.time()
+                remaining_wait = config.timeout_between_batches
+                while remaining_wait > 0:
+                    sleep_chunk = min(remaining_wait, 30.0)  # Check every 30s
+                    await asyncio.sleep(sleep_chunk)
+                    remaining_wait -= sleep_chunk
+                    if remaining_wait > 0 and config.timeout_between_batches >= 60:
+                        elapsed = time.time() - wait_start
+                        print(
+                            f"[heartbeat] Batch wait: {elapsed:.0f}s / {config.timeout_between_batches}s",
+                            file=sys.stderr,
+                        )
     except RateLimitExceeded as e:
         # All backends exhausted, stop processing
         print(
