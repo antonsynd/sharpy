@@ -754,16 +754,28 @@ public partial class TypeChecker
             // Special handling for constructor calls (calling a type)
             if (symbol is TypeSymbol typeSymbol)
             {
-                // Cannot instantiate abstract classes
-                if (typeSymbol.IsAbstract)
+                // For primitive types (int, float, str, bool, long, etc.), route to builtin function overloads
+                // instead of treating as constructor. This matches Python semantics where int(x) calls
+                // the int conversion function, not constructs a new int object.
+                var primitiveOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
+                if (primitiveOverloads != null && primitiveOverloads.Count > 0 && typeSymbol.ClrType != null && typeSymbol.ClrType.IsPrimitive)
                 {
-                    AddError($"Cannot instantiate abstract class '{typeSymbol.Name}'",
-                        call.LineStart, call.ColumnStart);
-                    return SemanticType.Unknown;
+                    // Route to builtin function overload resolution below
+                    // (fall through to overload handling)
                 }
+                else
+                {
+                    // Cannot instantiate abstract classes
+                    if (typeSymbol.IsAbstract)
+                    {
+                        AddError($"Cannot instantiate abstract class '{typeSymbol.Name}'",
+                            call.LineStart, call.ColumnStart);
+                        return SemanticType.Unknown;
+                    }
 
-                // Constructor call returns an instance of the type
-                return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+                    // Constructor call returns an instance of the type
+                    return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+                }
             }
 
             funcSymbol = symbol as FunctionSymbol;
