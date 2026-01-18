@@ -108,7 +108,7 @@ public class TypeChecker
                 break;
 
             case InterfaceDef interfaceDef:
-                // Interface methods don't have bodies to check
+                CheckInterface(interfaceDef);
                 break;
 
             case EnumDef enumDef:
@@ -390,14 +390,13 @@ public class TypeChecker
             }
         }
 
-        // Update the function symbol's return type
+        // Update the function symbol's return type and parameter types
         if (functionSymbol != null)
         {
             // Create a new FunctionSymbol with updated return type
             var updatedSymbol = functionSymbol with { ReturnType = returnType };
-            // The symbol table stores symbols by reference, so we need to update it
-            // Unfortunately, we can't directly update a record in the symbol table
-            // This is a limitation of the current design
+            // Update the symbol in the symbol table
+            _symbolTable.UpdateSymbol(updatedSymbol);
         }
 
         // Check function body
@@ -554,6 +553,95 @@ public class TypeChecker
         // Restore previous class
         _currentClass = previousClass;
         _accessValidator.ExitClass();
+
+        _symbolTable.ExitScope();
+    }
+
+    private void CheckInterface(InterfaceDef interfaceDef)
+    {
+        _logger.LogDebug($"Type checking interface: {interfaceDef.Name}");
+
+        // Look up the interface symbol
+        var interfaceSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;
+        if (interfaceSymbol == null)
+        {
+            AddError($"Interface symbol for '{interfaceDef.Name}' not found", interfaceDef.LineStart, interfaceDef.ColumnStart);
+            return;
+        }
+
+        // Enter interface scope to resolve type parameters
+        _symbolTable.EnterScope($"interface:{interfaceDef.Name}");
+
+        // Register type parameters in the scope so they can be resolved in method signatures
+        foreach (var typeParam in interfaceDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = interfaceSymbol,
+                DeclarationLine = interfaceDef.LineStart,
+                DeclarationColumn = interfaceDef.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
+        // Resolve method parameter types and return types
+        // Interface methods are registered in NameResolver but with Unknown types
+        // We need to resolve them here using the TypeResolver
+        foreach (var statement in interfaceDef.Body)
+        {
+            if (statement is FunctionDef method)
+            {
+                // Find the corresponding method symbol in the interface
+                var methodIndex = interfaceSymbol.Methods.FindIndex(m => m.Name == method.Name);
+                if (methodIndex >= 0)
+                {
+                    var methodSymbol = interfaceSymbol.Methods[methodIndex];
+
+                    // Resolve return type
+                    var returnType = _typeResolver.ResolveTypeAnnotation(method.ReturnType);
+                    if (returnType == SemanticType.Unknown && method.ReturnType == null)
+                    {
+                        returnType = SemanticType.Void;
+                    }
+
+                    // Resolve parameter types
+                    var updatedParameters = new List<ParameterSymbol>();
+                    for (int i = 0; i < method.Parameters.Count; i++)
+                    {
+                        var param = method.Parameters[i];
+                        var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+
+                        // Special handling for 'self' parameter
+                        if (i == 0 && param.Name == "self")
+                        {
+                            paramType = new UserDefinedType { Name = interfaceSymbol.Name, Symbol = interfaceSymbol };
+                        }
+                        else if (param.Type == null && param.Name != "self")
+                        {
+                            AddError($"Interface method parameter '{param.Name}' requires a type annotation",
+                                param.LineStart, param.ColumnStart);
+                        }
+
+                        updatedParameters.Add(new ParameterSymbol
+                        {
+                            Name = param.Name,
+                            Type = paramType,
+                            HasDefault = param.DefaultValue != null,
+                            DefaultValue = param.DefaultValue
+                        });
+                    }
+
+                    // Update the method symbol with resolved types
+                    interfaceSymbol.Methods[methodIndex] = methodSymbol with
+                    {
+                        ReturnType = returnType,
+                        Parameters = updatedParameters
+                    };
+                }
+            }
+        }
 
         _symbolTable.ExitScope();
     }

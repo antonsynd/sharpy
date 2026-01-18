@@ -1,0 +1,37 @@
+# Test that interface method return types are properly resolved
+# This specifically tests that calling a method through an interface type
+# returns the correct type for use in expressions like augmented assignment
+
+interface ICalculator:
+    def calculate(self, x: int) -> int:
+        ...
+
+class SimpleCalculator(ICalculator):
+    multiplier: int
+
+    def __init__(self, m: int):
+        self.multiplier = m
+
+    def calculate(self, x: int) -> int:
+        return x * self.multiplier
+
+def run_calculator(calculator: ICalculator, value: int) -> int:
+    return calculator.calculate(value)
+
+def main():
+    # Create calculator and use through interface type
+    calculator: ICalculator = SimpleCalculator(2)
+
+    # Direct method call through interface type
+    result1: int = calculator.calculate(5)
+    print(result1)
+
+    # Method call through interface parameter, used with augmented assignment
+    total: int = 0
+    total += run_calculator(calculator, 3)
+    total += run_calculator(calculator, 4)
+    print(total)
+
+# EXPECTED OUTPUT:
+# 10
+# 14

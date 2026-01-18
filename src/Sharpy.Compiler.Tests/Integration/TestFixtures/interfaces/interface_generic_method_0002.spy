@@ -1,0 +1,53 @@
+# Test that interface method return types with complex signatures are properly resolved
+# This tests that multiple interface methods with different return types work correctly
+
+interface IProcessor:
+    def process_int(self, x: int) -> int:
+        ...
+
+    def process_str(self, s: str) -> str:
+        ...
+
+    def get_name(self) -> str:
+        ...
+
+class MyProcessor(IProcessor):
+    name: str
+
+    def __init__(self, n: str):
+        self.name = n
+
+    def process_int(self, x: int) -> int:
+        return x * 2
+
+    def process_str(self, s: str) -> str:
+        return s + s
+
+    def get_name(self) -> str:
+        return self.name
+
+def run_int_processor(proc: IProcessor, value: int) -> int:
+    return proc.process_int(value)
+
+def run_str_processor(proc: IProcessor, value: str) -> str:
+    return proc.process_str(value)
+
+def main():
+    proc: IProcessor = MyProcessor("test")
+
+    # Test int return type inference
+    result1: int = run_int_processor(proc, 5)
+    print(result1)
+
+    # Test str return type inference
+    result2: str = run_str_processor(proc, "hello")
+    print(result2)
+
+    # Test direct method call
+    name: str = proc.get_name()
+    print(name)
+
+# EXPECTED OUTPUT:
+# 10
+# hellohello
+# test

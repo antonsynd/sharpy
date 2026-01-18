@@ -65,6 +65,26 @@ public class Scope
         return _symbols.ContainsKey(name);
     }
 
+    /// <summary>
+    /// Updates an existing symbol in this scope or a parent scope.
+    /// Used to update function symbols with resolved return types during type checking.
+    /// </summary>
+    public bool Update(Symbol symbol)
+    {
+        if (_symbols.ContainsKey(symbol.Name))
+        {
+            _symbols[symbol.Name] = symbol;
+            return true;
+        }
+
+        if (_parent != null)
+        {
+            return _parent.Update(symbol);
+        }
+
+        return false;
+    }
+
     public IEnumerable<Symbol> GetAllSymbols()
     {
         return _symbols.Values;

@@ -98,6 +98,15 @@ public class SymbolTable
         return Lookup(name) as TypeAliasSymbol;
     }
 
+    /// <summary>
+    /// Updates an existing symbol in the scope chain.
+    /// Used to update function symbols with resolved return types during type checking.
+    /// </summary>
+    public bool UpdateSymbol(Symbol symbol)
+    {
+        return CurrentScope.Update(symbol);
+    }
+
     public Scope CurrentScope => _scopeStack.Peek();
     public Scope GlobalScope => _globalScope;
     public int ScopeDepth => _scopeStack.Count;
