@@ -4,780 +4,625 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-`RoslynEmitter` is the **final stage** of the Sharpy compiler pipeline, responsible for transforming the typed Abstract Syntax Tree (AST) into C# source code. It uses the **Roslyn Syntax API** (Microsoft.CodeAnalysis.CSharp) to generate well-formed C# syntax trees programmatically—no string templating!
+`RoslynEmitter.cs` is the main entry point for the **Code Generation** phase of the Sharpy compiler. It transforms a typed Abstract Syntax Tree (AST) produced by semantic analysis into valid C# code using Microsoft's Roslyn compiler API. This is the final phase in the Sharpy compilation pipeline.
 
-### Position in the Pipeline
-
+**Pipeline Position:**
 ```
-Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → RoslynEmitter → C# Source
-                                              ↓                   ↓
-                                     SemanticInfo +          CompilationUnitSyntax
-                                      Typed AST
+Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → RoslynEmitter → C# Code
 ```
 
-**Upstream Input:**
-- `Module` AST node (root of the parsed source)
-- `SemanticInfo` with resolved types and symbols (from Semantic Analysis)
+**Key Responsibility:** Bridge the gap between Sharpy's Python-like syntax and C#/.NET semantics by:
+- Converting snake_case identifiers to appropriate C# naming conventions (PascalCase, camelCase, CONSTANT_CASE)
+- Managing variable shadowing and redefinition through name versioning
+- Tracking module-level vs. local scope for proper name resolution
+- Coordinating with `TypeMapper` for type conversions and `NameMangler` for identifier transformations
 
-**Downstream Output:**
-- `CompilationUnitSyntax` (Roslyn syntax tree) → serialized to C# source code
-- Ready for .NET compilation via Roslyn or `dotnet build`
+## Important: Partial Class Architecture
 
-### Key Responsibilities
+`RoslynEmitter` is split across **multiple partial class files** for maintainability:
 
-- Generate C# compilation units (files) from Sharpy modules
-- Transform Sharpy naming conventions to C# conventions (snake_case → PascalCase/camelCase)
-- Map Sharpy types to .NET types via `TypeMapper`
-- Generate C# class structures, methods, properties, and operators
-- Handle Python-style constructs (list comprehensions, tuple unpacking, dunder methods)
-- Emit idiomatic C# code that interoperates with .NET
+- **`RoslynEmitter.cs`** (this file): Core state, initialization, and name mangling logic
+- **`RoslynEmitter.CompilationUnit.cs`**: Top-level compilation unit, namespace, and import generation
+- **`RoslynEmitter.Expressions.cs`**: Expression generation (literals, operators, calls, comprehensions)
+- **`RoslynEmitter.Statements.cs`**: Statement generation (control flow, assignments, try/catch)
+- **`RoslynEmitter.TypeDeclarations.cs`**: Type declarations (classes, structs, enums, interfaces)
+- **`RoslynEmitter.ClassMembers.cs`**: Class member generation (methods, properties, fields)
+- **`RoslynEmitter.ModuleClass.cs`**: Module-level code wrapping and exports
+- **`RoslynEmitter.Operators.cs`**: Operator expression generation
 
----
+**When reading this file, remember:** You're only seeing the "control center" - the actual code generation logic is distributed across these companion files.
 
-## 2. Class/Type Structure
+## Class Structure
 
-### Main Class: `RoslynEmitter`
+### Main Class: `RoslynEmitter` (partial)
 
 ```csharp
-public class RoslynEmitter
+public partial class RoslynEmitter
 {
+    // Core dependencies
     private readonly CodeGenContext _context;
     private readonly TypeMapper _typeMapper;
+
+    // Name tracking and versioning
     private readonly HashSet<string> _declaredVariables;
     private readonly Dictionary<string, int> _variableVersions;
-    private int _tempVarCounter;
-    private static readonly HashSet<string> UpperCaseAcronyms;
+    private readonly HashSet<string> _constVariables;
+    private readonly HashSet<string> _moduleConstVariables;
+    private readonly HashSet<string> _moduleVariables;
+    private readonly HashSet<string> _moduleFieldNames;
+    private HashSet<string> _variablesWithExecutionOrderIssues;
+    private readonly HashSet<string> _classNames;
+    private readonly HashSet<string> _structNames;
+    private readonly HashSet<string> _stringEnumNames;
+    private readonly HashSet<string> _fromImportSymbols;
+    private readonly Dictionary<string, string> _importAliasToOriginal;
+    private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions;
+
+    // Context flags
+    private int _tempVarCounter = 0;
+    private TypeAnnotation? _targetTypeContext;
+    private bool _isInAbstractClass;
 }
 ```
 
-### Field Reference
+The class is intentionally **stateful** - it accumulates information during code generation to make context-aware decisions about naming and scoping.
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `_context` | `CodeGenContext` | Compilation state: symbol table, builtins, source paths, project namespace |
-| `_typeMapper` | `TypeMapper` | Converts Sharpy types to C# type syntax (e.g., `list[int]` → `List<int>`) |
-| `_declaredVariables` | `HashSet<string>` | Tracks variables declared in current scope to avoid redeclaration |
-| `_variableVersions` | `Dictionary<string, int>` | Supports Python-style variable redefinition (shadowing with different types) |
-| `_tempVarCounter` | `int` | Counter for generating unique temporary variable names |
+## Key Dependencies
 
-### Static Data
+### 1. `CodeGenContext`
+Maintains state during code generation:
+- **Symbol table** for name resolution
+- **Builtin registry** for recognizing built-in types/functions
+- **Error collection** for reporting code generation issues
+- **Project namespace information** for multi-file compilation
+
+Located at: `src/Sharpy.Compiler/CodeGen/CodeGenContext.cs` (src/Sharpy.Compiler/CodeGen/CodeGenContext.cs:9)
+
+### 2. `TypeMapper`
+Handles all type conversions from Sharpy to C#:
+- Maps Sharpy primitives (`int`, `str`, `bool`) to C# types
+- Converts generic types (`list[int]` → `global::Sharpy.Core.List<int>`)
+- Handles nullable types, tuples, and function types (`Func<>`, `Action<>`)
+
+Located at: `src/Sharpy.Compiler/CodeGen/TypeMapper.cs` (src/Sharpy.Compiler/CodeGen/TypeMapper.cs:12)
+
+### 3. `NameMangler`
+Static utility for name transformations:
+- `ToPascalCase()`: Functions, methods, types
+- `ToCamelCase()`: Variables, parameters
+- `ToConstantCase()`: Constants (preserves CAPS_SNAKE_CASE)
+- Handles C# keyword escaping (`@base`, `@object`)
+- Maps dunder methods (`__str__` → `ToString`)
+
+Located at: `src/Sharpy.Compiler/CodeGen/NameMangler.cs` (src/Sharpy.Compiler/CodeGen/NameMangler.cs:8)
+
+## Core State: Tracking Collections
+
+The `RoslynEmitter` maintains numerous HashSets and Dictionaries to track names across different scopes. Understanding these is crucial for debugging name resolution issues.
+
+### Variable Tracking
 
 ```csharp
-private static readonly HashSet<string> UpperCaseAcronyms = new(...)
+private readonly HashSet<string> _declaredVariables = new();
+private readonly Dictionary<string, int> _variableVersions = new();
+```
+
+**Purpose:** Handle Sharpy's variable shadowing semantics in C# where redeclaration is not allowed.
+
+**Example:**
+```python
+# Sharpy code
+x = 10
+x = 20  # Redeclaration allowed in Sharpy
+```
+
+Generated C#:
+```csharp
+var x = 10;
+var x_1 = 20;  // Versioned to avoid conflict
+```
+
+### Constant Tracking
+
+```csharp
+private readonly HashSet<string> _constVariables = new();           // Local constants
+private readonly HashSet<string> _moduleConstVariables = new();     // Module-level constants
+```
+
+**Purpose:** Distinguish constants from variables to preserve `CONSTANT_CASE` naming.
+
+**Example:**
+```python
+# Sharpy module-level
+MAX_CONNECTIONS = 100
+
+def configure():
+    timeout = 30  # variable → camelCase
+    return MAX_CONNECTIONS  # constant → CONSTANT_CASE
+```
+
+### Module-Level Tracking
+
+```csharp
+private readonly HashSet<string> _moduleVariables = new();
+private readonly HashSet<string> _moduleFieldNames = new();
+private HashSet<string> _variablesWithExecutionOrderIssues = new();
+```
+
+**Purpose:** Track module-level variables for PascalCase conversion (they become static fields in the generated module class).
+
+**Why it matters:** Module-level variables in Sharpy are accessible like attributes in Python, but in C# they need to be public static fields with PascalCase names.
+
+The `_variablesWithExecutionOrderIssues` tracks variables that should not become fields due to initialization order problems.
+
+### Type Name Tracking
+
+```csharp
+private readonly HashSet<string> _classNames = new();
+private readonly HashSet<string> _structNames = new();
+private readonly HashSet<string> _stringEnumNames = new();
+private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions = new();
+```
+
+**Purpose:** Remember which identifiers are type names vs. variables to apply correct casing rules. The `_interfaceDefinitions` dictionary is used for generating abstract class stubs from interfaces.
+
+### Import Symbol Tracking
+
+```csharp
+private readonly HashSet<string> _fromImportSymbols = new();
+private readonly Dictionary<string, string> _importAliasToOriginal = new();
+```
+
+**Purpose:** Handle `from module import symbol` statements where imported symbols need exact casing preservation.
+
+**Example:**
+```python
+from config import MAX_RETRIES, get_timeout as timeout_fn
+```
+
+The emitter needs to know that `MAX_RETRIES` should stay in CONSTANT_CASE and `timeout_fn` is an alias for `get_timeout`.
+
+### Context Flags
+
+```csharp
+private TypeAnnotation? _targetTypeContext;
+private bool _isInAbstractClass;
+private int _tempVarCounter = 0;
+```
+
+- **`_targetTypeContext`**: Used for C# collection literal type inference (e.g., `List<int> items = [1, 2, 3]`)
+- **`_isInAbstractClass`**: Tracks whether we're generating methods inside an abstract class (affects how `...` ellipsis bodies are interpreted - they become abstract methods)
+- **`_tempVarCounter`**: Generates unique temporary variable names
+
+## Key Method: `GetMangledVariableName()`
+
+This is the **heart of name resolution** in RoslynEmitter. It's called whenever the emitter needs to generate a C# identifier from a Sharpy name.
+
+Located at: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:60`
+
+### Method Signature
+
+```csharp
+private string GetMangledVariableName(string name, bool isNewDeclaration)
+```
+
+**Parameters:**
+- `name`: The original Sharpy identifier (e.g., `my_variable`, `MAX_VALUE`, `MyClass`)
+- `isNewDeclaration`: `true` if this is a variable declaration/redefinition, `false` if it's a reference
+
+**Returns:** The C# identifier with appropriate casing and versioning (e.g., `myVariable`, `myVariable_1`, `MAX_VALUE`, `MyClass`)
+
+### Resolution Strategy (Priority Order)
+
+The method implements a **priority-based resolution strategy**. It checks conditions in this exact order:
+
+#### 1. Local Variable Versioning (Highest Priority)
+
+```csharp
+if (_variableVersions.ContainsKey(baseName))
+{
+    if (isNewDeclaration)
+    {
+        var currentVersion = _variableVersions[baseName];
+        var newVersion = currentVersion + 1;
+        _variableVersions[baseName] = newVersion;
+        return $"{baseName}_{newVersion}";
+    }
+    else
+    {
+        var currentVersion = _variableVersions[baseName];
+        return currentVersion == 0 ? baseName : $"{baseName}_{currentVersion}";
+    }
+}
+```
+
+**Why first?** Local variables shadow module-level names, so we check local scope before anything else.
+
+**Key insight:** This handles Sharpy's Python-like variable redefinition semantics where you can reassign a variable with a different type.
+
+#### 2. Local Constant Check
+
+```csharp
+if (_constVariables.Contains(name))
+{
+    return NameMangler.ToConstantCase(name);
+}
+```
+
+**Example:** `MAX_RETRIES` in local scope stays as `MAX_RETRIES`.
+
+#### 3. Module-Level Constant Check
+
+```csharp
+if (_moduleConstVariables.Contains(name))
+{
+    return NameMangler.ToConstantCase(name);
+}
+```
+
+**Example:** Module-level `API_KEY` stays as `API_KEY`.
+
+#### 4. Module-Level Variable Check
+
+```csharp
+if (_moduleVariables.Contains(name))
+{
+    return NameMangler.ToPascalCase(name);
+}
+```
+
+**Example:** Module-level `connection_pool` becomes `ConnectionPool` (static field).
+
+#### 5. Type Name Check
+
+```csharp
+if (_classNames.Contains(name) || _structNames.Contains(name))
+{
+    return NameMangler.ToPascalCase(name);
+}
+```
+
+**Example:** Class `user_profile` becomes `UserProfile`.
+
+#### 6. From-Import Symbol Resolution
+
+```csharp
+if (_fromImportSymbols.Contains(name))
+{
+    // If this is an alias, use the original name for code generation
+    var actualName = _importAliasToOriginal.TryGetValue(name, out var originalName)
+        ? originalName
+        : name;
+
+    // Use the same casing rules as exported module members
+    if (IsConstantCaseName(actualName))
+        return NameMangler.ToConstantCase(actualName);
+    else
+        return NameMangler.ToPascalCase(actualName);
+}
+```
+
+**Complex case:** Handles aliased imports and preserves the exported casing convention.
+
+**Example:**
+```python
+from config import MAX_RETRIES as max_retries
+print(max_retries)  # References MAX_RETRIES
+```
+
+The `max_retries` alias maps back to `MAX_RETRIES` (constant case).
+
+#### 7. Module Symbol (Import) Check
+
+```csharp
+var symbol = _context.LookupSymbol(name);
+if (symbol is ModuleSymbol)
+{
+    // Use the same sanitization as in GenerateImportUsings
+    // Also escape C# keywords like "base" -> "@base"
+    return EscapeCSharpKeyword(name.Replace(".", "_"));
+}
+```
+
+**Example:** `import math_utils` stays as `math_utils` (becomes a `using` alias).
+
+**Note:** Module names preserve their exact casing with dots replaced by underscores and C# keyword escaping applied.
+
+#### 8. Default: New Local Variable
+
+```csharp
+if (isNewDeclaration)
+{
+    // First declaration of this local variable
+    _variableVersions[baseName] = 0;
+    return baseName;
+}
+else
+{
+    // Reference to a variable not yet declared (shouldn't happen in valid code)
+    // Fall back to just returning the base name
+    return baseName;
+}
+```
+
+**Fallback case:** For variables that don't match any of the above categories, treat them as new local variables with camelCase naming.
+
+### Common Patterns and Edge Cases
+
+#### Example 1: Variable Shadowing
+
+**Sharpy:**
+```python
+global_var = "module"
+
+def my_function():
+    global_var = "local"  # Shadows module-level variable
+    print(global_var)
+```
+
+**Generated C#:**
+```csharp
+public static string GlobalVar = "module";
+
+public static void MyFunction()
+{
+    var globalVar = "local";  // Different from GlobalVar
+    Console.WriteLine(globalVar);
+}
+```
+
+Notice: `global_var` at module level → `GlobalVar` (PascalCase), but `global_var` in local scope → `globalVar` (camelCase).
+
+#### Example 2: Variable Redefinition with Versioning
+
+**Sharpy:**
+```python
+x = 10
+x = 20
+x = x + 1
+```
+
+**Generated C#:**
+```csharp
+var x = 10;
+var x_1 = 20;
+var x_2 = x_1 + 1;  // References the current version
+```
+
+**Key point:** Each redefinition increments the version, and references use the current version.
+
+#### Example 3: From-Import Aliasing
+
+**Sharpy:**
+```python
+from config import MAX_RETRIES as max_retries, get_settings
+print(max_retries)  # Uses alias
+get_settings()      # Uses original name
+```
+
+**Generated C#:**
+```csharp
+using static Config.Exports;
+
+Console.WriteLine(MAX_RETRIES);  // Alias resolves to original
+GetSettings();                    // Direct use
+```
+
+The alias `max_retries` is tracked in `_importAliasToOriginal`, but the actual C# code uses `MAX_RETRIES` (the original exported name).
+
+## Static Data: `UpperCaseAcronyms`
+
+```csharp
+private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
 {
     "io", "ui", "xml", "html", "api", "sql", "db", "http", "ftp",
     "smtp", "tcp", "udp", "ip", "uri", "url", "json", "csv", "guid"
 };
 ```
 
-Used for namespace conversions—ensures `system.io` becomes `System.IO` rather than `System.Io`.
+**Purpose:** Recognize common .NET acronyms that should be fully uppercase in PascalCase (e.g., `HttpClient`, `ApiResponse`, `JsonData`).
 
----
+**Usage:** Used during namespace and type name generation to ensure .NET naming conventions are followed.
 
-## 3. Key Functions/Methods
+## Patterns and Design Decisions
 
-### 3.1 Entry Point: `GenerateCompilationUnit(Module module)`
+### 1. Stateful Code Generation
 
-**Signature:**
-```csharp
-public CompilationUnitSyntax GenerateCompilationUnit(Module module)
-```
-
-**What it does:** Orchestrates the entire code generation process, producing a complete C# file.
-
-**Generated Structure:**
-```csharp
-// Generated C# structure:
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using global::Sharpy.Core;
-
-namespace ProjectNamespace.FileName;
-
-public static class Exports
-{
-    // Module-level functions become static methods
-    // Classes remain classes
-    // Module-level executable code goes into Main()
-}
-```
-
-**Key Steps:**
-1. Collects `using` directives from Sharpy import statements
-2. Separates imports from executable/declarative statements
-3. Generates file-scoped namespace from source file path
-4. Wraps module content in `public static class Exports`
-5. Creates `Main()` method if entry point and has executable statements
-
-**Design Note:** All module code goes into a static `Exports` class to match Python's module-level execution model while maintaining .NET conventions.
-
----
-
-### 3.2 Namespace Generation
-
-```csharp
-private NameSyntax GenerateNamespaceName()
-private NameSyntax GenerateProjectNamespace()
-```
-
-**Dual Mode Operation:**
-
-| Mode | When Used | Example Input | Example Output |
-|------|-----------|---------------|----------------|
-| **Project** | `ProjectNamespace` + `ProjectRootPath` set | `src/myapp/utils.spy` in project "MyProject" | `MyProject.Myapp.Utils` |
-| **Single-file** | No project context | `src/myapp/utils.spy` | `Myapp.Utils` |
-
-**Transformation Rules:**
-- Filters out common directories (`src`, `lib`, `.`)
-- Applies `SimpleToPascalCase` to each path component
-- Handles acronyms: `io` → `IO`, `http` → `HTTP`
-- Falls back to `SharpyGenerated` if no path available
-
----
-
-### 3.3 Import Handling: Using Directive Generation
-
-```csharp
-private List<UsingDirectiveSyntax> GenerateUsingDirectives(Module module)
-private IEnumerable<UsingDirectiveSyntax> GenerateImportUsings(ImportStatement import)
-private IEnumerable<UsingDirectiveSyntax> GenerateFromImportUsings(FromImportStatement fromImport)
-```
-
-**Default Imports Always Added:**
-- `System`
-- `System.Collections.Generic`
-- `System.Linq`
-- `global::Sharpy.Core` (runtime library)
-
-**Sharpy → C# Mapping Examples:**
-
-```python
-# Sharpy
-import system.io
-from system.collections.generic import List
-import mymodule as m
-```
-
-```csharp
-// Generated C#
-using System.IO;
-using System.Collections.Generic;
-using m = Mymodule;
-```
-
-**Why `global::Sharpy.Core`?** Prevents namespace conflicts when output namespace contains "Sharpy" (e.g., `namespace Sharpy.MyApp`).
-
----
-
-### 3.4 Function Generation
-
-```csharp
-private MethodDeclarationSyntax GenerateFunctionDeclaration(FunctionDef func)
-```
-
-**Transformation Example:**
-
-```python
-# Sharpy
-@public
-def calculate_sum(values: list[int]) -> int:
-    """Calculate sum of values"""
-    return sum(values)
-```
-
-```csharp
-// Generated C#
-/// <summary>
-/// Calculate sum of values
-/// </summary>
-public static int CalculateSum(List<int> values)
-{
-    return global::Sharpy.Core.Exports.Sum(values);
-}
-```
-
-**Key Behaviors:**
-
-1. **Scope Reset:** Clears `_declaredVariables` and `_variableVersions` for fresh scope
-2. **Name Mangling:** `calculate_sum` → `CalculateSum` via `NameMangler.Transform()`
-3. **Parameter Tracking:** Registers parameters in `_variableVersions` for proper reference resolution
-4. **Decorator → Modifier Mapping:**
-
-| Sharpy Decorator | C# Modifier |
-|-----------------|-------------|
-| `@public` | `public` (default) |
-| `@private` | `private` |
-| `@protected` | `protected` |
-| `@internal` | `internal` |
-| `@staticmethod` / `@static` | `static` |
-| `@abstractmethod` / `@abstract` | `abstract` |
-| `@virtual` | `virtual` |
-| `@override` | `override` |
-
-5. **Default Static:** Module-level functions default to `public static`
-6. **Docstring → XML Doc:** Python docstrings become C# XML documentation comments
-
----
-
-### 3.5 Class Generation
-
-```csharp
-private ClassDeclarationSyntax GenerateClassDeclaration(ClassDef classDef)
-private List<MemberDeclarationSyntax> GenerateClassMembers(List<Statement> body, string className)
-```
-
-**Two-Pass Member Generation:**
-
-1. **First Pass:** Generate fields, build name mapping dictionary
-2. **Second Pass:** Generate methods, constructors, operators (using field mapping)
-
-**Why Two Passes?** Ensures consistent field naming in constructors that reference fields declared later in source order.
-
-**Example Transformation:**
-
-```python
-# Sharpy
-class Point:
-    x: int
-    y: int
-
-    def __init__(self, x: int, y: int):
-        self.x = x
-        self.y = y
-
-    def __add__(self, other: Point) -> Point:
-        return Point(self.x + other.x, self.y + other.y)
-```
-
-```csharp
-// Generated C#
-public class Point
-{
-    public int X;
-    public int Y;
-
-    public Point(int x, int y)
-    {
-        this.X = x;
-        this.Y = y;
-    }
-
-    public Point __Add__(Point other)
-    {
-        return new Point(this.X + other.X, this.Y + other.Y);
-    }
-
-    public static Point operator +(Point left, Point right)
-    {
-        return left.__Add__(right);
-    }
-}
-```
-
-**Special Handling:**
-- `__init__` → Constructor
-- Dunder methods → Both method AND operator overload (where applicable)
-- Automatic complementary operators (`__eq__` alone generates both `==` and `!=`)
-
----
-
-### 3.6 Constructor Generation
-
-```csharp
-private ConstructorDeclarationSyntax GenerateConstructor(
-    FunctionDef func,
-    string className,
-    Dictionary<string, string> fieldMapping)
-```
-
-**Special `self` Assignment Handling:**
-
-```python
-# Sharpy
-def __init__(self, name: str, age: int):
-    self.name = name
-    self.age = age
-```
-
-```csharp
-// Generated C#
-public MyClass(string name, int age)
-{
-    this.Name = name;
-    this.Age = age;
-}
-```
-
-**Key Logic:**
-- Skips `self` parameter from parameter list
-- Detects `self.field = value` patterns
-- Uses `fieldMapping` dictionary to ensure consistent field names (PascalCase)
-- Maps parameter references to their mangled forms
-
----
-
-### 3.7 Assignment Handling
-
-```csharp
-private StatementSyntax GenerateAssignment(Assignment assign)
-private string GetMangledVariableName(string name, bool isNewDeclaration)
-```
-
-**Sharpy's Variable Redefinition Semantics:**
-
-Python allows reassigning variables with different types. C# doesn't, so the emitter creates versioned variables:
-
-```python
-# Sharpy
-x = 5         # int
-x = "hello"   # string - this shadows!
-print(x)      # references the string version
-```
-
-```csharp
-// Generated C#
-var x = 5;
-var x_1 = "hello";
-Console.WriteLine(x_1);
-```
-
-**Supported Assignment Targets:**
-
-| Target Type | Sharpy | C# |
-|-------------|--------|-----|
-| Simple identifier | `x = value` | `var x = value;` or `x = value;` |
-| Index access | `arr[0] = value` | `arr[0] = value;` |
-| Member access | `obj.field = value` | `obj.Field = value;` |
-| Tuple unpacking | `x, y = (1, 2)` | `var (x, y) = (1, 2);` |
-
-**Augmented Assignment Handling:**
-
-```python
-x += 10      # Sharpy
-x **= 2      # Power assign
-x //= 3      # Floor divide assign
-```
-
-```csharp
-x = x + 10;              // Standard operators
-x = Math.Pow(x, 2);      // Power requires method call
-x = (int)(x / 3);        // Floor divide requires cast
-```
-
----
-
-### 3.8 Statement Generation
-
-```csharp
-private StatementSyntax? GenerateBodyStatement(Statement stmt)
-```
-
-**Dispatcher Pattern:** Routes each AST statement type to its specific generator.
-
-**Supported Statement Types:**
-
-| Sharpy Statement | C# Output | Generator Method |
-|-----------------|-----------|------------------|
-| `return expr` | `return expr;` | `GenerateReturn()` |
-| `x = value` | `var x = value;` | `GenerateAssignment()` |
-| `x: int = 5` | `int x = 5;` | `GenerateVariableDeclaration()` |
-| `if/elif/else` | `if/else if/else` | `GenerateIf()` |
-| `while cond:` | `while (cond)` | `GenerateWhile()` |
-| `for x in items:` | `foreach (var x in items)` | `GenerateFor()` |
-| `try/except/finally` | `try/catch/finally` | `GenerateTry()` |
-| `raise Exception()` | `throw new Exception();` | `GenerateRaise()` |
-| `assert cond, msg` | `Debug.Assert(cond, msg);` | `GenerateAssert()` |
-| `pass` | `;` (empty statement) | — |
-| `break` | `break;` | — |
-| `continue` | `continue;` | — |
-
----
-
-### 3.9 Expression Generation
-
-```csharp
-private ExpressionSyntax GenerateExpression(Expression expr)
-```
-
-**Massive switch expression** handling all expression types:
-
-#### Literals
-
-| Sharpy | C# |
-|--------|-----|
-| `42` | `42` |
-| `3.14` | `3.14` |
-| `"hello"` | `"hello"` |
-| `True` / `False` | `true` / `false` |
-| `None` | `null` |
-| `...` | `throw new NotImplementedException()` |
-
-#### Collection Literals
-
-```python
-# Sharpy
-[1, 2, 3]
-{"a": 1, "b": 2}
-{1, 2, 3}
-(1, 2, 3)
-```
-
-```csharp
-// C#
-new global::Sharpy.Core.List<int> { 1, 2, 3 }
-new global::Sharpy.Core.Dict<string, int> { { "a", 1 }, { "b", 2 } }
-new global::Sharpy.Core.Set<int> { 1, 2, 3 }
-(1, 2, 3)  // C# ValueTuple
-```
-
-#### Comprehensions → LINQ
-
-```python
-[x * 2 for x in items if x > 0]
-```
-
-```csharp
-items.Where(x => x > 0).Select(x => x * 2).ToList()
-```
-
-**Current Limitation:** Only single `for` clause supported (no nested comprehensions).
-
-#### Special Binary Operators
-
-| Sharpy | C# | Notes |
-|--------|-----|-------|
-| `x ** y` | `Math.Pow(x, y)` | No power operator in C# |
-| `x // y` | `(int)(x / y)` | Floor division |
-| `x in y` | `y.__Contains__(x)` | Membership test |
-| `x not in y` | `!y.__Contains__(x)` | Negated membership |
-| `x is None` | `x == null` | Optimized null check |
-| `x is y` | `object.ReferenceEquals(x, y)` | Identity check |
-| `x is not y` | `!object.ReferenceEquals(x, y)` | Negated identity |
-
-#### F-Strings
-
-```python
-f"Hello {name}, you are {age} years old"
-```
-
-```csharp
-$"Hello {name}, you are {age} years old"
-```
-
----
-
-### 3.10 Operator Overload Generation
-
-```csharp
-private MemberDeclarationSyntax? TryGenerateOperatorOverload(FunctionDef funcDef, string className)
-private OperatorDeclarationSyntax GenerateBinaryOperator(...)
-private OperatorDeclarationSyntax GenerateComparisonOperator(...)
-private OperatorDeclarationSyntax GenerateUnaryOperator(...)
-```
-
-**When a dunder method is found, TWO members are generated:**
-1. The method itself (e.g., `__Add__` with preserved dunder naming)
-2. The C# operator (e.g., `operator +`)
-
-**Supported Operator Mappings:**
-
-| Category | Dunder Methods | C# Operators |
-|----------|----------------|--------------|
-| **Arithmetic** | `__add__`, `__sub__`, `__mul__`, `__truediv__`, `__mod__` | `+`, `-`, `*`, `/`, `%` |
-| **Bitwise** | `__and__`, `__or__`, `__xor__`, `__lshift__`, `__rshift__` | `&`, `|`, `^`, `<<`, `>>` |
-| **Comparison** | `__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__` | `==`, `!=`, `<`, `<=`, `>`, `>=` |
-| **Unary** | `__neg__`, `__pos__`, `__invert__` | `-`, `+`, `~` |
-
-**Unsupported (method only):**
-- `__pow__` → No `**` operator in C#, use `Math.Pow()`
-- `__getitem__` / `__setitem__` → Requires indexer syntax
-
-**Complementary Operator Generation:**
-
-C# requires both `==` and `!=` if either is defined. The emitter auto-generates:
-
-```csharp
-// If only __eq__ is defined:
-public static bool operator !=(Point left, Point right)
-{
-    return !(left == right);
-}
-```
-
----
-
-## 4. Dependencies
-
-### Internal Dependencies
-
-| Dependency | File | Purpose |
-|------------|------|---------|
-| `CodeGenContext` | `CodeGenContext.cs` | Compilation state, symbol table, builtin registry |
-| `TypeMapper` | `TypeMapper.cs` | Sharpy type → C# type conversion (generics, nullability) |
-| `NameMangler` | `NameMangler.cs` | Naming convention transformation (snake_case → PascalCase) |
-| `ProtocolRegistry` | `Semantic/ProtocolRegistry.cs` | Dunder method metadata (return types, CLR mappings) |
-
-### AST Dependencies (from `Sharpy.Compiler.Parser.Ast`)
-
-- Root: `Module`
-- Declarations: `FunctionDef`, `ClassDef`, `StructDef`, `InterfaceDef`, `EnumDef`
-- Statements: `Assignment`, `ReturnStatement`, `IfStatement`, `WhileStatement`, `ForStatement`, `TryStatement`, etc.
-- Expressions: `BinaryOp`, `UnaryOp`, `FunctionCall`, `ListLiteral`, `ComparisonChain`, etc.
-
-### External Dependencies (NuGet)
-
-| Package | Namespace | Usage |
-|---------|-----------|-------|
-| Microsoft.CodeAnalysis.CSharp | `Microsoft.CodeAnalysis.CSharp` | Roslyn syntax tree API |
-| — | `Microsoft.CodeAnalysis.CSharp.Syntax` | Syntax node types |
-| — | `static SyntaxFactory` | Fluent API for building syntax |
-
----
-
-## 5. Patterns and Design Decisions
-
-### Pattern: Roslyn Fluent Builder API
-
-Instead of error-prone string concatenation:
-
-```csharp
-// BAD (string templating):
-var code = $"public {returnType} {methodName}({parameters}) {{ {body} }}";
-
-// GOOD (Roslyn API):
-var method = MethodDeclaration(returnType, methodName)
-    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
-    .WithParameterList(ParameterList(SeparatedList(parameters)))
-    .WithBody(Block(bodyStatements));
-```
-
-**Benefits:**
-- Type-safe code generation
-- Automatic syntax validation
-- Consistent formatting via `.NormalizeWhitespace()`
-
-### Pattern: Switch Expression Dispatching
-
-Instead of visitor pattern, uses exhaustive `switch` expressions:
-
-```csharp
-return stmt switch
-{
-    ReturnStatement ret => GenerateReturn(ret),
-    Assignment assign => GenerateAssignment(assign),
-    // ... more cases
-    _ => null
-};
-```
-
-**Benefits:** Concise, compiler-enforced exhaustiveness, easy to extend.
-
-### Design Decision: Static Exports Class
-
-All module content goes into `public static class Exports`:
-- Simplifies interop (everything callable as `Namespace.Exports.Method()`)
-- Mirrors Python's module-as-namespace semantics
-- Allows module-level statements to go into `Main()`
-
-### Design Decision: Dunder Dual Generation
-
-Dunder methods generate **both** a method and an operator:
-
-```csharp
-// From __add__(self, other):
-public Point __Add__(Point other) { ... }           // Method (preserves dunder name)
-public static Point operator +(Point left, Point right)
-{
-    return left.__Add__(right);  // Delegates to method
-}
-```
+**Decision:** RoslynEmitter accumulates state across the entire module compilation.
 
 **Rationale:**
-- Operators for natural syntax: `p1 + p2`
-- Methods for explicit calls: `p1.__Add__(p2)`
-- Avoids conflicts with user-defined `Add()` methods
-- Single source of truth (operator delegates to method)
+- Need to track variable versions across the entire function scope
+- Need to remember module-level declarations to resolve references correctly
+- Simplifies the API for partial class methods (they share state)
 
-### Design Decision: Variable Versioning
+**Trade-off:** Not thread-safe, but compiler phases are sequential anyway.
 
-Python allows variable redefinition; C# doesn't. Solution: generate versioned names.
+### 2. Priority-Based Name Resolution
 
-Tracked via `_variableVersions[baseName] = version`:
-- Version 0: `x`
-- Version 1: `x_1`
-- Version 2: `x_2`
+**Decision:** Check scopes in a specific order (local → module → imports → types).
 
-Scope is reset (`Clear()`) at each function boundary.
+**Rationale:** Matches Python's LEGB (Local, Enclosing, Global, Built-in) scoping rules adapted for Sharpy's semantics.
 
----
+**Implementation:** The `GetMangledVariableName()` method implements this as an explicit sequence of if-checks, making the priority order clear and debuggable.
 
-## 6. Debugging Tips
+### 3. Explicit Tracking Collections
 
-### Viewing Generated C# Code
+**Decision:** Use many small HashSets/Dictionaries instead of a unified symbol resolution system.
 
-```bash
-# Enable emit-csharp flag:
-dotnet run --project src/Sharpy.Cli -- build file.spy --emit-csharp
-```
+**Rationale:**
+- Simple and explicit (easy to debug)
+- Each collection has a single, clear purpose
+- Avoids complex hierarchical scope structures
+- Performance is excellent (O(1) lookups)
 
-### Inspecting Syntax Trees
+**Trade-off:** More bookkeeping code, but fewer bugs from scope edge cases.
 
-Add this to inspect a generated node:
+### 4. Separation via Partial Classes
+
+**Decision:** Split `RoslynEmitter` into 7+ partial class files.
+
+**Rationale:**
+- Original single file was too large (thousands of lines)
+- Each partial file has a cohesive responsibility (expressions, statements, types, etc.)
+- Easier to navigate and maintain
+- Enables parallel development on different aspects
+
+**Trade-off:** Must coordinate state across files, but the shared fields make this manageable.
+
+### 5. Version Suffix Strategy
+
+**Decision:** Use numeric suffixes for variable versioning (`x`, `x_1`, `x_2`).
+
+**Rationale:**
+- Simple and predictable
+- Easy to debug (version number in the name)
+- Doesn't conflict with user identifiers (assuming they don't use numeric suffixes)
+- Preserves semantic information about redefinition
+
+**Alternative considered:** Mangled names like `x_v1`, `x_shadow1` - rejected for being too verbose.
+
+## Debugging Tips
+
+### Tip 1: Name Resolution Issues
+
+**Symptom:** Variable has wrong casing or wrong version suffix.
+
+**Debug approach:**
+1. Set a breakpoint in `GetMangledVariableName()` at line 60
+2. Check which branch the code takes (step through the priority checks)
+3. Inspect the tracking collections:
+   - `_variableVersions` - should contain local variables with their version numbers
+   - `_moduleVariables` - should contain module-level variable names
+   - `_constVariables` / `_moduleConstVariables` - should contain constants
+4. Verify `isNewDeclaration` is set correctly at the call site
+5. Check the `baseName` after `ToCamelCase()` transformation
+
+**Common issue:** Local variable shadowing module variable not working - likely the local variable wasn't added to `_variableVersions`.
+
+### Tip 2: Missing Imports
+
+**Symptom:** Generated C# references undefined identifiers from imported modules.
+
+**Debug approach:**
+1. Check `_fromImportSymbols` - was the symbol tracked during import processing?
+2. Check `_importAliasToOriginal` - is the alias mapping correct?
+3. Look at `RoslynEmitter.CompilationUnit.cs` → `GenerateUsingDirectives()` method
+4. Verify the symbol table contains the imported module/symbol
+
+### Tip 3: Variable Shadowing Problems
+
+**Symptom:** Local variable incorrectly references module-level variable or vice versa.
+
+**Debug approach:**
+1. Verify `isNewDeclaration` is set correctly at call sites (assignment vs. reference)
+2. Check that `_variableVersions` is cleared between function scopes (should be in `GenerateFunctionDeclaration()`)
+3. Ensure module-level variables are added to `_moduleVariables` during the initial module processing pass
+4. Verify the priority order in `GetMangledVariableName()` is being followed
+
+### Tip 4: Constant Casing
+
+**Symptom:** Constants are being converted to camelCase or PascalCase instead of preserving CONSTANT_CASE.
+
+**Debug approach:**
+1. Check if the constant was added to `_constVariables` or `_moduleConstVariables`
+2. Verify `IsConstantCaseName()` helper function is working correctly (detecting ALL_CAPS names)
+3. Ensure constants are recognized during the semantic analysis phase
+4. Check that `from module import CONSTANT` populates `_fromImportSymbols` correctly
+
+### Tip 5: Inspect Generated Roslyn Syntax Trees
+
+**Useful technique:**
 ```csharp
-var method = GenerateFunctionDeclaration(funcDef);
-Console.WriteLine(method.NormalizeWhitespace().ToFullString());
+// In any Generate* method
+var generatedSyntax = /* ... your generation code ... */;
+Console.WriteLine(generatedSyntax.NormalizeWhitespace().ToFullString());
 ```
 
-### AST Dumping (Before Code Gen)
+The `ToFullString()` method shows the exact C# code that will be emitted, with proper formatting.
 
-```csharp
-var dumper = new AstDumper();
-Console.WriteLine(dumper.Dump(module));
-```
+### Tip 6: Version Number Mismatches
 
-### Key Breakpoint Locations
+**Symptom:** Variable reference uses wrong version (e.g., `x` instead of `x_1`).
 
-1. `GenerateCompilationUnit()` — Entry point
-2. `GenerateBodyStatement()` — Statement dispatch
-3. `GenerateExpression()` — Expression dispatch
-4. `GetMangledVariableName()` — Variable versioning
-5. Specific `Generate*()` methods for the construct you're debugging
+**Debug approach:**
+1. Check that `isNewDeclaration = false` for references
+2. Verify `_variableVersions[baseName]` contains the expected version number
+3. Ensure the assignment that created the version came before the reference
+4. Check that the version counter isn't being reset unexpectedly
 
-### Common Issues and Solutions
+## Contribution Guidelines
 
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| "Identifier expected" | Invalid C# identifier (Python keyword) | Check `NameMangler.EscapeKeywordIfNeeded()` |
-| "Type not found" | Missing using or incorrect namespace | Debug `GenerateUsingDirectives()` |
-| Variable redefinition error | Versioning not working | Check `_variableVersions` in `GenerateAssignment()` |
-| Operator overload missing | Dunder not recognized | Add case to `TryGenerateOperatorOverload()` |
-| Wrong field name in constructor | Field mapping mismatch | Verify `GenerateClassMembers()` first pass |
+### When to Modify This File
 
-### Roslyn Syntax Visualizer
+**Add new tracking collections when:**
+- You introduce a new category of symbols that needs special name resolution
+- You need to track new semantic information across the compilation unit
+- Example: Adding support for async/await might require tracking `async` method contexts
 
-For complex syntax issues, use the **Roslyn Syntax Visualizer** VS extension to inspect tree structure.
+**Add new name resolution rules when:**
+- You're implementing new language features that affect scoping
+- You need to handle new import patterns
+- Example: Supporting `from module import *` might need wildcard import tracking
 
----
+**Modify `GetMangledVariableName()` when:**
+- Changing the priority order of name resolution
+- Adding new special cases for naming (e.g., property names)
+- Fixing bugs in variable shadowing or versioning
 
-## 7. Contribution Guidelines
+**Don't modify this file when:**
+- Adding new expression types (go to `RoslynEmitter.Expressions.cs`)
+- Adding new statement types (go to `RoslynEmitter.Statements.cs`)
+- Changing type mapping logic (go to `TypeMapper.cs`)
+- Changing name mangling rules (go to `NameMangler.cs`)
 
-### Adding a New Statement Type
+### Testing Considerations
 
-1. **Add case to `GenerateBodyStatement()`:**
-```csharp
-MyNewStatement newStmt => GenerateMyNewStatement(newStmt),
-```
+When modifying name resolution:
+1. **Test variable shadowing** (module-level vs. local)
+2. **Test variable redefinition** (versioning with multiple assignments)
+3. **Test constant preservation** (CONSTANT_CASE vs. PascalCase)
+4. **Test from-import aliasing** (alias → original name mapping)
+5. **Test edge cases** (keywords, dunder methods, special characters)
+6. **Test cross-references** (variable used before/after redefinition)
 
-2. **Implement generator:**
-```csharp
-private StatementSyntax GenerateMyNewStatement(MyNewStatement stmt)
-{
-    // Use Roslyn SyntaxFactory methods
-    return /* C# statement syntax */;
-}
-```
+### Code Style
 
-3. **Add tests** in `Sharpy.Compiler.Tests/CodeGen/`
+**Follow existing patterns:**
+- Use descriptive collection names (`_moduleConstVariables` not `_modConsts`)
+- Add XML doc comments for new public/internal methods
+- Keep `GetMangledVariableName()` priority order well-commented
+- Use `readonly` for collections that are initialized once
+- Initialize collections inline when possible (`new()` syntax)
 
-### Adding a New Expression Type
+### Performance Considerations
 
-1. **Add case to `GenerateExpression()`:**
-```csharp
-MyNewExpression expr => GenerateMyNewExpression(expr),
-```
+- **HashSet lookups are O(1)**: Adding more tracking collections doesn't significantly impact performance
+- **Avoid LINQ in hot paths**: `GetMangledVariableName()` is called for every identifier - keep it efficient
+- **Pre-populate collections**: Do module-level scans before generating code to avoid repeated symbol lookups
+- **Use `StringComparer.OrdinalIgnoreCase` judiciously**: Only when case-insensitive comparisons are needed
 
-2. **Implement generator:**
-```csharp
-private ExpressionSyntax GenerateMyNewExpression(MyNewExpression expr)
-{
-    var operands = expr.Operands.Select(GenerateExpression);
-    return /* C# expression syntax */;
-}
-```
+## Cross-References
 
-### Adding a New Operator Mapping
+This file is part of a larger partial class. For complete understanding, see:
 
-1. **Add case to `TryGenerateOperatorOverload()`:**
-```csharp
-"__my_op__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.MyToken),
-```
+- **[RoslynEmitter.CompilationUnit.md](./RoslynEmitter.CompilationUnit.md)**: Top-level module structure and imports
+- **[RoslynEmitter.Expressions.md](./RoslynEmitter.Expressions.md)**: How expressions are converted to Roslyn syntax
+- **[RoslynEmitter.Statements.md](./RoslynEmitter.Statements.md)**: Control flow and statement generation
+- **[RoslynEmitter.TypeDeclarations.md](./RoslynEmitter.TypeDeclarations.md)**: Class, struct, enum, interface generation
+- **[RoslynEmitter.ClassMembers.md](./RoslynEmitter.ClassMembers.md)**: Method and property generation
+- **[RoslynEmitter.ModuleClass.md](./RoslynEmitter.ModuleClass.md)**: Module wrapping and exports
+- **[RoslynEmitter.Operators.md](./RoslynEmitter.Operators.md)**: Operator expression handling
 
-2. **If no C# operator exists**, generate method call instead (like `Math.Pow()` for `__pow__`)
+**Related core files:**
+- **[CodeGenContext.md](./CodeGenContext.md)**: State container for code generation
+- **[TypeMapper.md](./TypeMapper.md)**: Type conversion Sharpy → C#
+- **[NameMangler.md](./NameMangler.md)**: Identifier transformation utilities
 
-### Extending Comprehension Support
+**Upstream dependencies:**
+- `Sharpy.Compiler.Parser.Ast`: AST node definitions
+- `Sharpy.Compiler.Semantic`: Semantic analysis (symbol tables, type checking)
 
-**Current limitation:** Only single `for` clause.
-
-```python
-[x for x in items]              # ✅ Supported
-[x for x in items if x > 0]     # ✅ Supported
-[x for x in items for y in x]   # ❌ Not yet
-```
-
-**To add nested comprehension support:**
-1. Detect multiple `ForClause` in `GenerateListComprehension()`
-2. Generate nested `SelectMany()` LINQ calls
-
-### Best Practices
-
-1. **Always use Roslyn SyntaxFactory** — Never string templates
-2. **Test edge cases**: Empty collections, null values, single-element cases
-3. **Match Python semantics** — Run equivalent Python to verify behavior
-4. **Add XML doc comments** for complex generators
-5. **Use `NormalizeWhitespace()`** on final output
-6. **Respect naming conventions**:
-   - Methods: PascalCase
-   - Parameters: camelCase
-   - Public fields: PascalCase
-   - Constants: UPPER_SNAKE_CASE
-
-### Testing
-
-```bash
-# Unit tests for code generation
-dotnet test --filter "FullyQualifiedName~CodeGen"
-
-# Integration tests (compile and run generated C#)
-dotnet test --filter "FullyQualifiedName~Integration"
-
-# Manual inspection
-dotnet run --project src/Sharpy.Cli -- build snippets/test.spy --emit-csharp
-```
-
----
-
-## Summary
-
-`RoslynEmitter` is the bridge between Python-style Sharpy and idiomatic C#. It handles:
-
-- **Syntax transformation**: Pythonic constructs → C# equivalents
-- **Naming convention conversion**: snake_case → PascalCase/camelCase
-- **Type mapping**: Sharpy types → .NET types via `TypeMapper`
-- **Operator synthesis**: Dunder methods → C# operator overloads
-- **Semantic preservation**: Python behavior expressed in C# constructs
-- **Scope management**: Variable versioning for Python's redefinition semantics
-
-The key to understanding this file is recognizing it's a **giant pattern matcher** that walks the AST and builds Roslyn syntax trees. Each `Generate*()` method handles one piece of the transformation puzzle.
-
----
-
-## Related Documentation
-
-- **Language Spec**: `docs/language_specification/dotnet_interop.md` — .NET interop semantics
-- **Dependencies**:
-  - `docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/NameMangler.md`
-  - `docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/TypeMapper.md`
-  - `docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/CodeGenContext.md`
-- **AST Reference**: `docs/implementation_walkthrough/src/Sharpy.Compiler/Parser/Ast/`
-
----
-
-**Next Steps for Newcomers:**
-1. Read `NameMangler.cs` — understand naming transformations
-2. Read `TypeMapper.cs` — understand type mappings
-3. Explore `Parser/Ast/*.cs` — see input AST structure
-4. Run integration tests — see end-to-end transformations
-5. Try adding a simple feature (e.g., support for a new expression type)
+**Specifications:**
+- `docs/language_specification/dotnet_interop.md`: .NET interop rules that affect code generation

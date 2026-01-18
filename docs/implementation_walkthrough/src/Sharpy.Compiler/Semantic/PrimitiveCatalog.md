@@ -4,69 +4,69 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-`PrimitiveCatalog` is the **single source of truth** for all primitive types in the Sharpy compiler. Think of it as a registry and rules engine that:
+`PrimitiveCatalog` is a static registry that serves as the **authoritative source** for all primitive type information in the Sharpy compiler. It acts as a bridge between Sharpy's type syntax (like `int32`, `str`, `float`) and the underlying .NET CLR types (like `System.Int32`, `System.String`, `System.Double`).
 
-- **Defines** what types count as primitives (int, float, str, bool, etc.)
-- **Maps** between Sharpy names (`str`), C# names (`string`), and .NET runtime types
-- **Categorizes** primitives by their numeric characteristics (signed int, unsigned int, float, etc.)
-- **Implements** type promotion rules (e.g., `int + float` → `float`)
-- **Validates** implicit and explicit conversions between types
+**Role in the Compiler Pipeline:**
+- **Used by**: Parser (type resolution), Semantic Analysis (type checking, promotion), CodeGen (CLR type emission)
+- **Purpose**:
+  - Map Sharpy type names to CLR types
+  - Provide numeric promotion rules for arithmetic operations
+  - Determine implicit/explicit conversion compatibility
+  - Support both Sharpy-style (`int32`, `str`) and C#-style (`int`, `string`) type aliases
 
-This is used throughout the semantic analysis phase whenever the compiler needs to reason about primitive types, perform type checking, or determine whether operations are valid.
-
-### Role in the Compiler Pipeline
-
-```
-Parser (AST) → Semantic Analysis → Code Generation
-                      ↑
-                PrimitiveCatalog
-                (consulted during type checking)
-```
-
-When the `TypeChecker` encounters operations like `x + y`, it uses `PrimitiveCatalog` to determine if the types are compatible and what the result type should be.
+This is a **read-only, immutable catalog** initialized at startup using `FrozenDictionary` for optimal lookup performance.
 
 ---
 
-## 2. Class/Type Structure
+## Class/Type Structure
 
-### 2.1 `NumericKind` Enum
+### `PrimitiveCatalog` (Static Class)
+
+The main class containing all registry data and query methods.
+
+### `NumericKind` (Enum)
+
+Categorizes primitives by their numeric characteristics:
 
 ```csharp
 public enum NumericKind
 {
-    None,            // Non-numeric: void, bool, string, char
-    SignedInteger,   // sbyte, short, int, long
-    UnsignedInteger, // byte, ushort, uint, ulong
-    FloatingPoint,   // float, double
-    Decimal          // decimal (128-bit)
+    None,           // Not numeric: void, bool, string, char
+    SignedInteger,  // sbyte, short, int, long
+    UnsignedInteger,// byte, ushort, uint, ulong
+    FloatingPoint,  // float, double
+    Decimal         // decimal (128-bit precision)
 }
 ```
 
-**Purpose**: Groups primitives by their numeric nature. This drives conversion rules:
-- Floats and decimals **cannot mix** (would lose precision guarantees)
-- Signed/unsigned integers of the same size need special promotion logic
-- Non-numeric types follow different rules
+**Why this matters**: The `NumericKind` drives critical type system behavior:
+- **Promotion rules**: Only numeric types can be promoted (combined in arithmetic)
+- **Mixing restrictions**: `Decimal` cannot mix with `FloatingPoint` types
+- **Conversion rules**: Different rules apply for integer widening vs float conversions
 
-### 2.2 `PrimitiveInfo` Record
+### `PrimitiveInfo` (Record)
+
+Immutable descriptor for each primitive type:
 
 ```csharp
 public record PrimitiveInfo(
-    string SharpyName,    // "int", "str" (what users write)
-    string CSharpName,    // "int", "string" (what gets emitted)
-    Type ClrType,         // typeof(int), typeof(string)
-    NumericKind Kind,     // SignedInteger, FloatingPoint, etc.
-    int SizeInBits,       // 8, 16, 32, 64, 128 (0 for non-numeric)
-    bool IsSigned         // true for signed types
+    string SharpyName,   // "int32", "str", "float"
+    string CSharpName,   // "int", "string", "double"
+    Type ClrType,        // typeof(int), typeof(string)
+    NumericKind Kind,    // Classification
+    int SizeInBits,      // 8, 16, 32, 64, 128 (0 for non-numeric)
+    bool IsSigned        // true for signed integers/floats
 );
 ```
 
-**Purpose**: Immutable descriptor for each primitive. Contains all metadata needed for type operations.
+**Key Design Decision**: Using a `record` provides:
+- Immutability (thread-safe, no accidental mutation)
+- Value semantics (equality by content)
+- Concise syntax with positional parameters
 
-**Key Design Decision**: Using a `record` makes instances immutable and value-comparable by default, which is perfect for compiler metadata.
-
-### 2.3 Static Dictionaries
+### Two-Way Lookup Dictionaries
 
 ```csharp
 private static readonly FrozenDictionary<string, PrimitiveInfo> _bySharpyName;
@@ -74,17 +74,22 @@ private static readonly FrozenDictionary<Type, PrimitiveInfo> _byClrType;
 ```
 
 **Why `FrozenDictionary`?**
-- Read-only after initialization (frozen in static constructor)
-- Better performance than regular `Dictionary` for lookups
-- Thread-safe by design (important for compiler parallelization)
+- Optimized for read-heavy workloads (no writes after initialization)
+- Lower memory overhead than `Dictionary`
+- Faster lookups than regular dictionaries
+- Perfect for static, immutable registries
 
-**Two indices**: Allows O(1) lookup by either Sharpy name (`"int"`) or CLR type (`typeof(int)`).
+**Dual indexing** allows fast lookups in both directions:
+- **Sharpy → CLR**: Parser resolves `int32` to `typeof(int)`
+- **CLR → Sharpy**: CodeGen translates `typeof(int)` back to `"int"` for emission
 
 ---
 
-## 3. Key Functions/Methods
+## Key Functions/Methods
 
-### 3.1 Static Constructor & Registration
+### Registration and Initialization
+
+#### Static Constructor (lines 44-51)
 
 ```csharp
 static PrimitiveCatalog()
@@ -97,40 +102,70 @@ static PrimitiveCatalog()
 }
 ```
 
-**What it does**: Initializes both dictionaries at program startup (before any code runs).
+**Pattern**: Build in mutable dictionaries, freeze for production use. This is executed once when the type is first accessed.
 
-**Pattern**: Build mutable dictionaries, populate them, then freeze them. This is a common pattern for static registries.
+#### `RegisterAll()` Method (lines 59-101)
 
-#### `RegisterAll()` Method
+Registers all primitives with **both Sharpy-style and C#-style aliases**:
 
-Registers all primitives in categorized sections:
-1. **Signed integers** (sbyte → long)
-2. **Unsigned integers** (byte → ulong)
-3. **Floating-point** (float32, float, float64, double, decimal)
-4. **Non-numeric** (bool, char, str, string, object)
-5. **Void/None** (with `None`/`void` aliases)
+```csharp
+// Sharpy-style (primary per language spec)
+Register(..., new PrimitiveInfo("int32", "int", typeof(int), ...));
 
-**Important Details**:
-- `str` and `string` both map to C# `string` (alias support)
-- `None` and `void` both map to C# `void` (Pythonic vs. C# naming)
-- `float` and `float64` both map to C# `double` (Sharpy `float` is 64-bit by default)
-- `float32` maps to C# `float` (32-bit single precision)
-- Size is 0 for reference types (string, object) since they're not value types
+// C#-style alias (for familiarity)
+Register(..., new PrimitiveInfo("int", "int", typeof(int), ...));
+```
 
-### 3.2 Query Methods
+**Critical Categories**:
 
-#### `GetByName(string sharpyName)` and `GetByClrType(Type clrType)`
+1. **Signed Integers** (lines 62-70):
+   - Sharpy names: `int8`, `int16`, `int32`, `int64`
+   - C# aliases: `sbyte`, `short`, `int`, `long`
+   - Comment `1.2.1` references language spec section
+
+2. **Unsigned Integers** (lines 73-81):
+   - Sharpy names: `uint8`, `uint16`, `uint32`, `uint64`
+   - C# aliases: `byte`, `ushort`, `uint`, `ulong`
+   - Comment `1.2.2` references language spec section
+
+3. **Floating-Point** (lines 84-89):
+   - `float32` → C# `float` (32-bit)
+   - `float` / `float64` / `double` → C# `double` (64-bit)
+   - `decimal` → C# `decimal` (128-bit, for financial precision)
+   - **Important**: Sharpy's default `float` is 64-bit (C# `double`), unlike C# where `float` is 32-bit
+
+4. **Non-Numeric** (lines 92-96):
+   - `bool`, `char`, `str` (Sharpy-style) / `string` (C# alias), `object`
+   - Size is 0 for reference types
+
+5. **Void/None** (lines 99-100):
+   - `None` (Pythonic) / `void` (C#-style) both map to `typeof(void)`
+   - Represents absence of a value in function returns
+
+**Design Note**: The comments reference spec section `1.2.x`, showing tight coupling to language design docs.
+
+---
+
+### Query Methods (Section 1.3, lines 103-166)
+
+#### `GetByName(string sharpyName)` → `PrimitiveInfo?` (lines 106-107)
 
 ```csharp
 public static PrimitiveInfo? GetByName(string sharpyName)
     => _bySharpyName.GetValueOrDefault(sharpyName);
 ```
 
-**Returns**: `null` if not found (nullable return type).
+**Used by**: Parser when resolving type annotations like `x: int32`
 
-**Usage**: Parser sees `int` → calls `GetByName("int")` → gets full metadata.
+**Returns**: `null` if not a primitive (e.g., custom class names)
 
-#### `GetPrimitiveInfo(SemanticType type)`
+**Connects to Downstream**: CodeGen uses the returned `CSharpName` to emit correct C# syntax
+
+#### `GetByClrType(Type clrType)` → `PrimitiveInfo?` (lines 110-111)
+
+Reverse lookup: given a .NET `Type`, find the primitive info. Used during semantic analysis when working with resolved types.
+
+#### `GetPrimitiveInfo(SemanticType type)` → `PrimitiveInfo?` (lines 121-132)
 
 ```csharp
 public static PrimitiveInfo? GetPrimitiveInfo(SemanticType type)
@@ -147,21 +182,25 @@ public static PrimitiveInfo? GetPrimitiveInfo(SemanticType type)
 }
 ```
 
-**Why CLR type first?**: The CLR type is canonical—names can have aliases, but `typeof(string)` is unique.
+**Why CLR-first lookup?** CLR types are canonical and unambiguous (no alias conflicts). Names like `str`/`string` both map to `typeof(string)`.
 
-**Pattern**: Try the most reliable lookup first, then fall back to name matching.
+**Used by**: Semantic analysis when checking if a resolved type is primitive.
 
-#### Helper Predicates
+**Connects to Upstream**: Receives `SemanticType` instances created by the Parser
+
+#### Type Classification Helpers (lines 134-161)
 
 ```csharp
-IsNumeric(type)       // Any numeric type
-IsInteger(type)       // Signed or unsigned integer
-IsFloatingPoint(type) // float or double
-IsDecimal(type)       // decimal only
-IsPrimitive(name)     // Check if name refers to a registered primitive
+IsNumeric(SemanticType)       // Any numeric type?
+IsInteger(SemanticType)       // Signed or unsigned integer?
+IsFloatingPoint(SemanticType) // float or double?
+IsDecimal(SemanticType)       // decimal?
+IsPrimitive(string)           // Is name a registered primitive?
 ```
 
-These are **semantic sugar** over `GetPrimitiveInfo()` + checking the `Kind`. Used extensively in `TypeChecker` for readable validation:
+**Pattern**: All delegate to `GetPrimitiveInfo()` then check `Kind`. Clean separation of concerns.
+
+**Usage in Semantic Analysis**: Used extensively in type checking for readable validation:
 
 ```csharp
 if (PrimitiveCatalog.IsNumeric(leftType) && PrimitiveCatalog.IsNumeric(rightType))
@@ -170,139 +209,147 @@ if (PrimitiveCatalog.IsNumeric(leftType) && PrimitiveCatalog.IsNumeric(rightType
 }
 ```
 
-#### `GetAllPrimitives()`
-
-```csharp
-public static IEnumerable<(string Name, PrimitiveInfo Info)> GetAllPrimitives()
-    => _bySharpyName.Select(kv => (kv.Key, kv.Value));
-```
+#### `GetAllPrimitives()` (lines 164-165)
 
 Returns all registered primitives for iteration—useful for debugging and tooling.
 
-### 3.3 Numeric Promotion Rules
+---
 
-#### `GetPromotionPriority(PrimitiveInfo info)`
+### Numeric Promotion Rules (Section 1.4, lines 167-272)
 
-**Purpose**: Assigns a numeric "weight" to each type for determining promotion.
+#### `GetPromotionPriority(PrimitiveInfo)` → `int` (lines 171-195)
 
-**Algorithm**:
+**Purpose**: Assigns numeric "rank" to determine which type wins in mixed arithmetic.
+
+```csharp
+private static int GetPromotionPriority(PrimitiveInfo info)
+{
+    return info.ClrType switch
+    {
+        Type when info.Kind == NumericKind.Decimal => 100,  // Highest
+        Type t when t == typeof(double) => 50,
+        Type t when t == typeof(float) => 40,
+        Type t when t == typeof(ulong) => 35,
+        Type t when t == typeof(long) => 34,
+        // ... rest in descending order ...
+    };
+}
 ```
-decimal:  100  (isolated, doesn't mix with floats)
-double:    50
-float:     40
-ulong:     35
-long:      34
-uint:      33
-int:       32
-ushort:    31
-short:     30
-byte:      29
-sbyte:     28
-void:       0  (special case)
-```
+
+**Key Insight**: Higher priority = wider type. The hierarchy:
+1. `decimal` (100) - special case, doesn't mix with floats
+2. `double` (50) > `float` (40)
+3. Integers by size: `ulong` (35) > `long` (34) > ... > `sbyte` (28)
 
 **Design Rationale**:
-- Higher priority = wider type
+- Follows .NET standard conversion rules
 - Decimal gets special treatment (value 100) to prevent mixing with floats
-- Order follows .NET standard conversion rules
+- Void gets priority 0 (special case, line 174)
 
-#### `GetPromotedType(PrimitiveInfo left, PrimitiveInfo right)`
+#### `GetPromotedType(PrimitiveInfo, PrimitiveInfo)` → `PrimitiveInfo?` (lines 202-236)
 
-**The Core Logic**: Determines result type for binary operations like `+`, `-`, `*`, `/`.
+**Core logic for binary operator type checking** (e.g., `int + float → float`).
 
-**Rules Implemented**:
+```csharp
+public static PrimitiveInfo? GetPromotedType(PrimitiveInfo left, PrimitiveInfo right)
+{
+    // 1. Both must be numeric
+    if (left.Kind == NumericKind.None || right.Kind == NumericKind.None)
+        return null;
 
-1. **Non-numeric rejection**:
-   ```csharp
-   if (left.Kind == NumericKind.None || right.Kind == NumericKind.None)
-       return null;
-   ```
-   Can't promote `bool + int`.
+    // 2. Decimal doesn't mix with float/double
+    if ((left.Kind == NumericKind.Decimal) != (right.Kind == NumericKind.Decimal))
+        return null;
 
-2. **Decimal isolation**:
-   ```csharp
-   if ((left.Kind == NumericKind.Decimal) != (right.Kind == NumericKind.Decimal))
-       return null;
-   ```
-   `decimal + float` is **not allowed** (matches C# semantics—prevents silent precision loss).
+    // 3. Special case: signed + unsigned of same size → promote to larger signed
+    if (left.SizeInBits == right.SizeInBits && /* mixing signed/unsigned */)
+    {
+        return left.SizeInBits switch
+        {
+            8 => GetByName("short"),   // sbyte + byte → short
+            16 => GetByName("int"),    // short + ushort → int
+            32 => GetByName("long"),   // int + uint → long
+            64 => null                 // long + ulong: ERROR (no safe promotion)
+        };
+    }
 
-3. **Mixed signedness with same size** (special case):
-   ```csharp
-   if (left is signed && right is unsigned && same size) {
-       // Promote to next larger signed type
-       8-bit  → short (16-bit)
-       16-bit → int (32-bit)
-       32-bit → long (64-bit)
-       64-bit → null (ERROR: no safe promotion exists)
-   }
-   ```
+    // 4. Otherwise, return higher priority type
+    return leftPriority >= rightPriority ? left : right;
+}
+```
 
-   **Why?**: Mixing `int` and `uint` could overflow. C# promotes to `long` for safety. But `long + ulong` has nowhere to go—requires explicit cast.
+**Critical Cases**:
+- `int32 + float` → `float` (float has higher priority)
+- `int32 + uint32` → `int64` (safe promotion to avoid overflow, line 225)
+- `int64 + uint64` → `null` (ERROR: no safe 64-bit signed+unsigned mix, line 226)
+- `decimal + float` → `null` (ERROR: cannot mix decimal with float, lines 209-210)
 
-4. **Standard promotion**:
-   ```csharp
-   return leftPriority >= rightPriority ? left : right;
-   ```
-   Just pick the wider type: `float + int` → `float`.
+**Algorithm**:
+1. **Non-numeric rejection** (lines 205-206): Can't promote `bool + int`
+2. **Decimal isolation** (lines 209-210): Prevents silent precision loss
+3. **Mixed signedness handling** (lines 214-229): Special safety promotion for same-size signed/unsigned mixing
+4. **Standard promotion** (lines 232-235): Pick the wider type based on priority
 
-#### `GetPromotedType(SemanticType left, SemanticType right)` Overload
+**Connects to Downstream**: Result used by CodeGen to emit correct cast operations
 
-**Why two versions?** One works with `PrimitiveInfo` (metadata), one works with `SemanticType` (AST types).
+#### `GetPromotedType(SemanticType, SemanticType)` → `SemanticType?` (lines 239-272)
 
-**Key optimization**:
+**Overload for semantic analysis** - wraps the `PrimitiveInfo` version and returns semantic types.
+
+**Key Optimization** (lines 252-271): Returns singleton instances for common types:
+
 ```csharp
 return promoted.ClrType switch
 {
     Type t when t == typeof(int) => SemanticType.Int,      // Singleton
     Type t when t == typeof(long) => SemanticType.Long,    // Singleton
-    // ...
-    _ => new BuiltinType { ... }  // Create instance for rare types
+    Type t when t == typeof(float) => SemanticType.Float32,
+    Type t when t == typeof(double) => SemanticType.Double,
+    // Less common types: create new BuiltinType instances
+    Type t when t == typeof(sbyte) => new BuiltinType { Name = "sbyte", ... },
+    ...
 };
 ```
 
-**Why?**: Common types (int, long, float, double) have **singleton instances** in `SemanticType` to reduce allocations. Rare types (sbyte, ushort) get new instances only when needed.
+**Why singletons?** Common types like `int` are used heavily; reusing instances reduces allocations during compilation.
 
-**Performance tip**: In a large codebase, creating millions of `BuiltinType` objects for `int` would be wasteful. Singletons solve this.
+**Connects to Upstream**: Receives `SemanticType` from Parser AST nodes
+**Connects to Downstream**: Returns `SemanticType` used throughout semantic analysis
 
-### 3.4 Conversion Checking
+---
 
-#### `CanImplicitlyConvert(PrimitiveInfo from, PrimitiveInfo to)`
+### Conversion Checking (Section 1.5, lines 274-348)
 
-**Purpose**: Determines if a type can be converted **without explicit cast** and **without data loss**.
+#### `CanImplicitlyConvert(PrimitiveInfo from, PrimitiveInfo to)` → `bool` (lines 279-324)
 
-**Key Rules**:
+**Determines if conversion is safe without casts** (no data loss).
 
-1. **Void cannot convert**:
+**Rules Implemented**:
+
+1. **Void cannot convert** (lines 282-283):
    ```csharp
    if (from.ClrType == typeof(void) || to.ClrType == typeof(void))
        return false;
    ```
 
-2. **Same type**:
-   ```csharp
-   if (from.ClrType == to.ClrType)
-       return true;
-   ```
+2. **Same type** (lines 285-286): Always allowed
 
-3. **Decimal accepts integers only**:
+3. **Non-numeric only convert to themselves** (lines 289-290)
+
+4. **Decimal accepts integers only** (lines 293-294):
    ```csharp
    if (to.Kind == NumericKind.Decimal)
-       return from.Kind is SignedInteger or UnsignedInteger;
+       return from.Kind == NumericKind.SignedInteger || from.Kind == NumericKind.UnsignedInteger;
    ```
    Can't implicitly convert `float` → `decimal` (precision semantics differ).
 
-4. **Decimal converts to nothing**:
-   ```csharp
-   if (from.Kind == NumericKind.Decimal)
-       return false;
-   ```
-   Must explicitly cast `decimal` to anything else.
+5. **Decimal converts to nothing** (lines 297-298): Must explicitly cast `decimal` to anything else
 
-5. **Integer → Float/Double**: Allowed (matches C# spec, though precision may be lost for large `long` values).
+6. **Integer → Float/Double** (lines 301-303): Allowed (matches C# spec, though precision may be lost for large `long` values)
 
-6. **Float → Double**: Allowed (widening).
+7. **Float → Double** (lines 306-307): Allowed (widening)
 
-7. **Integer widening**:
+8. **Integer widening** (lines 310-321):
    ```csharp
    // Unsigned → Signed requires extra bit
    if (!from.IsSigned && to.IsSigned)
@@ -316,284 +363,270 @@ return promoted.ClrType switch
    return to.SizeInBits >= from.SizeInBits;
    ```
 
-   **Examples**:
-   - `byte` (unsigned 8-bit) → `short` (signed 16-bit): ✅ (needs extra bit)
-   - `byte` (unsigned 8-bit) → `sbyte` (signed 8-bit): ❌ (would overflow)
-   - `int` (signed) → `uint` (unsigned): ❌ (negative values would corrupt)
-   - `short` → `int`: ✅ (widening with same signedness)
+**Examples**:
+- `int8 → int32`: ✅ (widening, same signedness)
+- `uint32 → int64`: ✅ (unsigned to larger signed)
+- `int32 → uint32`: ❌ (signed to unsigned not implicit)
+- `int64 → float`: ✅ (per C# spec, though precision may be lost)
+- `float → int32`: ❌ (would lose fractional part)
 
-#### `CanExplicitlyConvert(PrimitiveInfo from, PrimitiveInfo to)`
+**Connects to Downstream**: Used by semantic analyzer to validate assignments and parameter passing
 
-**Purpose**: Determines if explicit cast (potentially lossy) is allowed.
+#### `CanExplicitlyConvert(PrimitiveInfo from, PrimitiveInfo to)` → `bool` (lines 329-348)
 
-**Rules**:
-- Void cannot convert (no exception)
-- Any numeric → any numeric: ✅ (even if lossy, explicit cast allows it)
-- `char` ↔ integer: ✅ (C# allows explicit cast between char and int)
-- Falls back to implicit check for non-numeric types
+**Explicit casts** allow potentially lossy conversions:
 
-**Example**: `long` → `int` loses upper 32 bits, but explicit cast is allowed.
+```csharp
+public static bool CanExplicitlyConvert(PrimitiveInfo from, PrimitiveInfo to)
+{
+    // Void cannot convert
+    if (from.ClrType == typeof(void) || to.ClrType == typeof(void))
+        return false;
+
+    // Any numeric → any numeric: allowed
+    if (from.Kind != NumericKind.None && to.Kind != NumericKind.None)
+        return true;
+
+    // char ↔ integer: allowed
+    if (/* char to int OR int to char */)
+        return true;
+
+    return CanImplicitlyConvert(from, to); // Implicit also explicit
+}
+```
+
+**Examples**:
+- `int64 → int8`: ✅ (explicit, may truncate)
+- `float → int32`: ✅ (explicit, loses fractional)
+- `double → decimal`: ✅ (explicit)
+- `char → int`: ✅ (get Unicode code point, lines 340-345)
+
+**Important Note** (line 347): All implicit conversions are also explicit (they fall through to the final return).
 
 ---
 
-## 4. Dependencies
+## Dependencies
 
-### Internal Dependencies (within Sharpy.Compiler.Semantic)
-
-- **`SemanticType` hierarchy**: `PrimitiveCatalog` works with `BuiltinType` records and returns `SemanticType` instances.
-- **`TypeChecker`**: Calls `GetPromotedType()`, `CanImplicitlyConvert()` during type validation.
-- **`TypeResolver`**: Uses `GetByName()` to resolve type annotations like `: int`.
-- **`BuiltinType.IsAssignableTo()`**: The `BuiltinType` class delegates implicit conversion checking to `PrimitiveCatalog.CanImplicitlyConvert()`.
+### Internal Dependencies
+- **`SemanticType`**: Base class for type representations (used throughout methods)
+- **`BuiltinType`**: Specific `SemanticType` subclass for primitives (checked in `GetPrimitiveInfo`)
+- **Semantic Analyzer**: Calls promotion/conversion methods during type checking
+- **`TypeMapper`**: Uses CLR type mappings during code generation (in CodeGen phase)
 
 ### External Dependencies
+- **`System.Collections.Frozen`**: .NET 8+ optimized frozen collections (line 1)
+- **`System.Type`**: CLR reflection system for type metadata
 
-- **`System.Collections.Frozen`**: For `FrozenDictionary` (read-only, optimized dictionaries).
-- **`System.Type`**: Uses .NET reflection types as canonical identifiers.
-
-### Dependents
-
-Any code that needs to:
-- Check if a type is numeric
-- Determine result type of arithmetic operations
-- Validate type conversions
-- Emit correct C# primitive names
+### Cross-References
+- **[BuiltinRegistry.md](BuiltinRegistry.md)**: Manages built-in functions like `len()`, `print()`
+- **[TypeMapper.md](TypeMapper.md)**: Translates semantic types to Roslyn syntax (depends on `PrimitiveCatalog`)
+- **[OperatorValidator.md](OperatorValidator.md)**: Uses promotion rules to validate operators
+- **[NameResolver.md](NameResolver.md)**: Uses primitive lookups during name resolution
 
 ---
 
-## 5. Patterns and Design Decisions
+## Patterns and Design Decisions
 
-### 5.1 Static Registry Pattern
+### 1. **Static Catalog Pattern**
+- Entire class is `static` with no instance state
+- All data initialized once in static constructor
+- Thread-safe by design (immutable after init)
 
-**Why static?** Primitives are fixed at compile-time. No need for instance state or dependency injection.
+### 2. **Frozen Collections for Performance**
+- `FrozenDictionary` chosen for read-heavy workloads
+- Trade slightly higher startup cost for faster runtime lookups
+- Critical since type lookups happen thousands of times per compilation
 
-**Thread safety**: `FrozenDictionary` is immutable after initialization, so concurrent access is safe.
+### 3. **Dual Aliasing Strategy**
+- Supports both Sharpy-style (`int32`) and C#-style (`int`) names
+- Makes language approachable for C# developers
+- Spec comments (`1.2.1`, `1.2.2`) tie to formal language design
 
-### 5.2 Exhaustive Documentation Comments
+### 4. **Explicit Promotion Priority Hierarchy**
+- `GetPromotionPriority()` encodes .NET numeric type hierarchy
+- Matches C# language spec for consistency with target platform
+- Special handling for `decimal` (doesn't mix with floats)
 
-Each section has numbered comments (1.2.1, 1.2.2, etc.), suggesting this file serves as **documentation** as much as code. The structure mirrors a specification document.
+### 5. **Null-Safe Query Methods**
+- All query methods return nullable types (`PrimitiveInfo?`, `SemanticType?`)
+- Forces callers to handle "not a primitive" cases explicitly
+- Prevents NullReferenceExceptions downstream
 
-### 5.3 Separation of Concerns
+### 6. **Separation of Concerns**
+- Registration logic (`RegisterAll`) separate from query logic
+- Promotion rules separate from conversion rules
+- Each method has single, clear responsibility
 
-- **Metadata** (PrimitiveInfo) vs. **Semantic Type** (SemanticType): Keeps compiler infrastructure separate from AST representation.
-- **Promotion** vs. **Conversion**: Distinct methods for "what's the result type?" vs. "can this assignment happen?".
-
-### 5.4 Null-Safe API
-
-All lookup methods return **nullable types** (`PrimitiveInfo?`, `SemanticType?`). Callers must handle `null` explicitly, preventing null reference exceptions.
-
-### 5.5 Performance Optimizations
-
-1. **FrozenDictionary**: Faster lookup than regular `Dictionary`.
-2. **Singleton SemanticTypes**: Reuse instances for common types (int, float, etc.).
-3. **Priority-based promotion**: O(1) switch statements instead of complex algorithms.
-
-### 5.6 Alignment with C# Semantics
-
-The promotion and conversion rules **mirror C# exactly**. This ensures generated C# code behaves predictably and avoids surprises when interoperating with .NET libraries.
-
----
-
-## 6. Debugging Tips
-
-### 6.1 Tracing Type Promotion Issues
-
-If you see unexpected type errors like "cannot add int and float":
-
-1. **Set a breakpoint** in `GetPromotedType()`.
-2. **Inspect** `leftInfo` and `rightInfo` to verify they're being looked up correctly.
-3. **Check** if one type is `null` (indicates lookup failure).
-4. **Trace** the priority calculation—maybe a new type wasn't registered.
-
-### 6.2 Adding Debug Logging
-
-Add a method to dump all registered primitives:
-
-```csharp
-public static void DumpCatalog()
-{
-    foreach (var (name, info) in _bySharpyName)
-    {
-        Console.WriteLine($"{name} -> {info.CSharpName} " +
-                          $"({info.Kind}, {info.SizeInBits}-bit)");
-    }
-}
-```
-
-Call from `Compiler.Main()` to see what's registered.
-
-### 6.3 Testing Conversion Rules
-
-Write unit tests that assert expected conversions:
-
-```csharp
-[Fact]
-public void ByteCanImplicitlyConvertToShort()
-{
-    var from = PrimitiveCatalog.GetByName("byte");
-    var to = PrimitiveCatalog.GetByName("short");
-    Assert.True(PrimitiveCatalog.CanImplicitlyConvert(from, to));
-}
-```
-
-### 6.4 Common Pitfalls
-
-- **Forgetting to register a new primitive**: If you add a type, update `RegisterAll()`.
-- **Mixing decimal and float**: Remember they **don't mix**—this is intentional per C# spec.
-- **Assuming name uniqueness**: Use CLR type for reliable comparisons, not names (due to aliases).
+### 7. **Alignment with C# Semantics**
+- The promotion and conversion rules **mirror C# exactly**
+- Ensures generated C# code behaves predictably
+- Avoids surprises when interoperating with .NET libraries
 
 ---
 
-## 7. Contribution Guidelines
+## Debugging Tips
 
-### 7.1 Adding a New Primitive Type
+### Common Issues and How to Diagnose
 
-**When?** Rarely needed—most primitives are already defined. But if Sharpy adds a new builtin (e.g., `complex` numbers):
+#### 1. **Type Not Found Errors**
+**Symptom**: `GetByName()` returns `null` for a valid-looking type name.
 
-1. **Add to `RegisterAll()`**:
-   ```csharp
-   Register(byName, byClr, new PrimitiveInfo(
-       "complex", "System.Numerics.Complex",
-       typeof(System.Numerics.Complex),
-       NumericKind.None,  // Or create a new kind
-       0, false
-   ));
-   ```
+**Check**:
+- Is the type name using the correct case? (`int` vs `Int`)
+- Is it a Sharpy primitive or a user-defined type?
+- Call `GetAllPrimitives()` to dump registered types:
+  ```csharp
+  foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
+      Console.WriteLine($"{name} -> {info.CSharpName}");
+  ```
 
-2. **Update promotion rules** if needed:
-   - Add case in `GetPromotionPriority()`
-   - Add logic in `GetPromotedType()` for how it mixes with other types
+#### 2. **Promotion Returning Null**
+**Symptom**: `GetPromotedType()` returns `null` for seemingly compatible types.
 
-3. **Add conversion rules** in `CanImplicitlyConvert()` and `CanExplicitlyConvert()`.
+**Check**:
+- Are both types numeric? (Call `IsNumeric()` on each)
+- Are you mixing `decimal` with `float`/`double`? (Not allowed, lines 209-210)
+- Are you mixing `long` + `ulong`? (No safe promotion exists, line 226)
+- Add logging:
+  ```csharp
+  var leftInfo = GetPrimitiveInfo(left);
+  var rightInfo = GetPrimitiveInfo(right);
+  Console.WriteLine($"Left: {leftInfo?.Kind}, Right: {rightInfo?.Kind}");
+  ```
 
-4. **Write tests** in `Sharpy.Compiler.Tests/Semantic/PrimitiveCatalogTests.cs`.
+#### 3. **Conversion Failures**
+**Symptom**: Semantic analyzer rejects a conversion you expect to work.
 
-### 7.2 Modifying Promotion Rules
+**Check**:
+- Is it implicit or explicit? (`int → float` implicit, `float → int` explicit only)
+- Use the REPL to test:
+  ```csharp
+  var from = PrimitiveCatalog.GetByName("float");
+  var to = PrimitiveCatalog.GetByName("int");
+  Console.WriteLine($"Implicit: {CanImplicitlyConvert(from, to)}");
+  Console.WriteLine($"Explicit: {CanExplicitlyConvert(from, to)}");
+  ```
 
-**When?** If C# changes its spec, or if Sharpy needs to diverge for Pythonic behavior.
+#### 4. **Signed/Unsigned Confusion**
+**Symptom**: Unexpected promotion results with mixed signedness.
 
-**Steps**:
-1. Update the logic in `GetPromotedType()`.
-2. Document **why** with a comment (e.g., "Deviates from C# to match Python's `int` promotion").
-3. Add test cases covering the change.
-4. Update `docs/specs/type_system.md` to reflect the new rules.
+**Debug Strategy**:
+- Check `IsSigned` and `SizeInBits` for both operands
+- Remember: `uint32 + int32 → int64` (promotes to larger signed, line 225)
+- Add assertions in tests:
+  ```csharp
+  var result = GetPromotedType(uint32Info, int32Info);
+  Assert.Equal("long", result?.SharpyName);
+  ```
 
-### 7.3 Performance Improvements
-
-**Ideas**:
-- Cache promotion results if profiling shows repeated lookups.
-- Replace `switch` expressions with arrays indexed by enum for `GetPromotionPriority()`.
-
-**Before optimizing**:
-- **Profile first**: Use BenchmarkDotNet to measure actual impact.
-- Don't optimize unless this shows up as a bottleneck (unlikely for a static registry).
-
-### 7.4 Testing Additions
-
-All changes to conversion or promotion logic **must** include tests:
-
-```csharp
-// In Sharpy.Compiler.Tests/Semantic/PrimitiveCatalogTests.cs
-[Theory]
-[InlineData("int", "float", true)]    // Can implicitly convert
-[InlineData("long", "int", false)]   // Cannot (narrowing)
-public void ImplicitConversionRules(string from, string to, bool expected)
-{
-    var fromInfo = PrimitiveCatalog.GetByName(from);
-    var toInfo = PrimitiveCatalog.GetByName(to);
-    Assert.Equal(expected,
-                 PrimitiveCatalog.CanImplicitlyConvert(fromInfo, toInfo));
-}
-```
-
-### 7.5 Documentation Requirements
-
-- **Inline comments**: Explain **why**, not **what**. The code is self-documenting for "what".
-- **Architecture docs**: Update `docs/architecture/semantic-analyzer-architecture.md` if structure changes.
-- **Spec docs**: Update `docs/specs/type_system.md` if promotion/conversion rules change.
-
-### 7.6 Code Style
-
-- Use **expression-bodied members** for simple methods (`=> _dict.GetValueOrDefault(key)`).
-- Keep **pattern matching** readable—avoid deeply nested switches.
-- Prefer **early returns** for validation (reduces nesting).
-
----
-
-## 8. Related Files to Explore
-
-After understanding `PrimitiveCatalog`, check out:
-
-1. **`SemanticType.cs`**: See how `BuiltinType` and other semantic types are defined, and note how `BuiltinType.IsAssignableTo()` delegates to `PrimitiveCatalog`.
-2. **`TypeChecker.cs`**: See how `PrimitiveCatalog` is used during type checking.
-3. **`RoslynEmitter.cs`** (in CodeGen): See how `CSharpName` is used to emit correct C# code.
-4. **`BuiltinRegistry.cs`**: See how builtin functions (`len()`, `print()`) work alongside primitives.
-5. **Tests**: `Sharpy.Compiler.Tests/Semantic/PrimitiveCatalogTests.cs` (if it exists) or integration tests showing type promotion in action.
-
----
-
-## 9. Quick Reference: Common Scenarios
-
-### Scenario 1: Check if a type is numeric
+### Useful Debug Queries
 
 ```csharp
-if (PrimitiveCatalog.IsNumeric(type))
-{
-    // Can perform arithmetic
-}
-```
-
-### Scenario 2: Get promoted type for binary operation
-
-```csharp
-var resultType = PrimitiveCatalog.GetPromotedType(leftType, rightType);
-if (resultType == null)
-{
-    // Error: incompatible types
-}
-```
-
-### Scenario 3: Check if assignment is valid
-
-```csharp
-var fromInfo = PrimitiveCatalog.GetPrimitiveInfo(valueType);
-var toInfo = PrimitiveCatalog.GetPrimitiveInfo(targetType);
-if (fromInfo != null && toInfo != null &&
-    !PrimitiveCatalog.CanImplicitlyConvert(fromInfo, toInfo))
-{
-    // Error: cannot implicitly convert
-}
-```
-
-### Scenario 4: Lookup Sharpy name → C# name for codegen
-
-```csharp
-var info = PrimitiveCatalog.GetByName(sharpyTypeName);
-var csharpName = info?.CSharpName;  // e.g., "str" → "string"
-```
-
-### Scenario 5: Iterate all primitives
-
-```csharp
+// List all integer types
 foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
 {
-    Console.WriteLine($"{name}: {info.Kind}");
+    if (info.Kind is NumericKind.SignedInteger or NumericKind.UnsignedInteger)
+        Console.WriteLine($"{name}: {info.SizeInBits} bits, signed={info.IsSigned}");
 }
+
+// Check what types can promote to each other
+var int32 = PrimitiveCatalog.GetByName("int32");
+var float32 = PrimitiveCatalog.GetByName("float32");
+var promoted = PrimitiveCatalog.GetPromotedType(int32, float32);
+Console.WriteLine($"int32 + float32 = {promoted?.SharpyName}");
 ```
 
 ---
 
-## 10. Summary
+## Contribution Guidelines
 
-`PrimitiveCatalog` is a **foundational component** that encodes the rules of Sharpy's primitive type system. It's designed to be:
+### When to Modify This File
 
-- **Authoritative**: Single source of truth
-- **Fast**: Frozen dictionaries and singletons
-- **Safe**: Null-safe APIs, immutable data
-- **Maintainable**: Clear structure, well-documented
-- **Aligned**: Matches C# semantics for interop
+#### ✅ **Do modify when**:
+1. **Adding new primitive types** to the language spec
+   - Add entries in `RegisterAll()`
+   - Update `NumericKind` if new category needed
+   - Add tests for promotion/conversion rules
 
-Understanding this file is key to working on type checking, code generation, or any compiler feature involving primitive types. It's also a great example of the **static registry pattern** used throughout the compiler for managing compile-time metadata.
+2. **Changing promotion rules**
+   - Update `GetPromotionPriority()` hierarchy
+   - Update `GetPromotedType()` special cases
+   - Add test cases for new edge cases
+
+3. **Adding type aliases**
+   - Register new alias in `RegisterAll()`
+   - Document in comments (reference spec section)
+
+4. **Fixing conversion bugs**
+   - Update `CanImplicitlyConvert()` or `CanExplicitlyConvert()`
+   - Add regression tests
+
+#### ❌ **Don't modify for**:
+1. **User-defined types** (classes, structs, enums)
+   - Use `TypeMapper` or `BuiltinRegistry` instead
+2. **Generic types** (List<T>, Dictionary<K,V>)
+   - Handled by separate generic type system
+3. **Type inference logic**
+   - Belongs in semantic analyzer, not the catalog
+
+### Testing Guidelines
+
+When modifying, ensure you have tests for:
+
+```csharp
+// 1. Registration
+[Fact] void CanLookupBySharpyName() { ... }
+[Fact] void CanLookupByClrType() { ... }
+
+// 2. Promotion
+[Theory]
+[InlineData("int32", "float", "float")]  // int + float → float
+[InlineData("int32", "uint32", "long")]  // int + uint → long
+[InlineData("int64", "uint64", null)]    // long + ulong → ERROR
+void TestPromotion(string left, string right, string expected) { ... }
+
+// 3. Conversion
+[Theory]
+[InlineData("int8", "int32", true, true)]   // implicit and explicit
+[InlineData("int32", "int8", false, true)]  // explicit only
+[InlineData("int32", "uint32", false, false)] // signed → unsigned not allowed
+void TestConversion(string from, string to, bool implicit, bool explicit) { ... }
+```
+
+### Code Style Notes
+
+- Use `record` for immutable data types
+- Prefer `switch` expressions over `if-else` chains (see line 177 for example)
+- Use `GetValueOrDefault()` instead of `TryGetValue()` for cleaner code (see line 107)
+- Document spec references in comments (e.g., `// 1.2.1 Signed integer types`, line 61)
+- Keep methods small and focused (single responsibility)
+
+### Performance Considerations
+
+- **Avoid allocations in hot paths**: Use singletons for common `SemanticType` instances (lines 252-271)
+- **FrozenDictionary lookups are O(1)**: Don't cache results unnecessarily
+- **Promotion priority calculation is cheap**: No need to memoize
 
 ---
 
-**Next Steps**: Try adding a debug method to `PrimitiveCatalog.DumpCatalog()` and call it from `Compiler.cs` to see all registered primitives. Then trace through `TypeChecker.cs` to see promotion rules in action!
+## Summary
+
+`PrimitiveCatalog` is the **single source of truth** for primitive types in Sharpy. It:
+- Maps between Sharpy syntax, C# keywords, and CLR types
+- Enforces numeric promotion rules for arithmetic operations
+- Determines implicit/explicit conversion compatibility
+- Uses frozen collections for optimal read performance
+- Supports dual aliasing (Sharpy-style + C#-style names)
+
+**Mental Model**: Think of it as a **reference book** that other compiler phases consult when they need to answer questions about primitive types. It's declarative (data-driven) rather than procedural, making it easy to extend and test.
+
+**Key Characteristics**:
+- **350 lines** of well-documented code
+- **Zero runtime mutations** (immutable after startup)
+- **Dual indexing** (by name and by CLR type)
+- **C# semantics alignment** (matches .NET behavior exactly)
+
+**Next Steps**:
+- See **[TypeMapper.md](TypeMapper.md)** for how these primitives map to Roslyn syntax nodes
+- See **[OperatorValidator.md](OperatorValidator.md)** for how promotion rules validate binary operators
+- See **[BuiltinRegistry.md](BuiltinRegistry.md)** for built-in function signatures that use these primitives

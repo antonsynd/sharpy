@@ -20,6 +20,8 @@ The context is instantiated *after* semantic analysis completes and is passed to
 - Look up symbols to determine their types and properties
 - Check if identifiers refer to builtin functions or types
 - Track source file information for namespace generation
+- Collect errors that occur during code generation
+- Log warnings and debug information
 - Manage indentation state (though this is largely unused in the Roslyn-based emitter)
 
 ---
@@ -36,6 +38,7 @@ public class CodeGenContext
     // Private state
     private int _indentLevel = 0;
     private const int IndentSize = 4;
+    private readonly List<string> _errors = new();
 
     // Core dependencies (immutable after construction)
     public SymbolTable SymbolTable { get; }
@@ -45,7 +48,15 @@ public class CodeGenContext
     public string? SourceFilePath { get; set; }
     public string? ProjectNamespace { get; set; }
     public string? ProjectRootPath { get; set; }
-    public bool IsEntryPoint { get; set; } = true;
+    public bool IsEntryPoint { get; set; } = false;
+
+    // Error tracking
+    public IReadOnlyList<string> Errors => _errors;
+    public bool HasErrors => _errors.Count > 0;
+    public void AddError(string message) => _errors.Add(message);
+
+    // Logging
+    public ICompilerLogger Logger { get; set; } = NullLogger.Instance;
 }
 ```
 
@@ -56,7 +67,9 @@ public class CodeGenContext
 | **Core Dependencies** | `SymbolTable`, `Builtins` | Read-only references from semantic analysis |
 | **File Context** | `SourceFilePath` | Used to derive namespace names from file paths |
 | **Project Context** | `ProjectNamespace`, `ProjectRootPath` | Multi-file compilation support |
-| **Entry Point** | `IsEntryPoint` | Controls whether `Main()` is generated |
+| **Entry Point** | `IsEntryPoint` | Controls whether `Main()` is generated (default: `false`) |
+| **Error Tracking** | `Errors`, `HasErrors`, `AddError()` | Collects errors during code generation |
+| **Logging** | `Logger` | Logs warnings and debug info (uses Null Object pattern by default) |
 | **Indentation** | `_indentLevel`, `IndentSize` | Legacy text-based emission support |
 
 ---
@@ -169,6 +182,79 @@ else
 
 ---
 
+### Error Tracking
+
+```csharp
+public IReadOnlyList<string> Errors => _errors;
+public bool HasErrors => _errors.Count > 0;
+public void AddError(string message) => _errors.Add(message);
+```
+
+**Purpose**: Collects errors that occur during the code generation phase.
+
+**Why This Exists**: While most errors are caught during semantic analysis, some issues can only be detected during code generation:
+- Type mapping failures for complex or unsupported types
+- Code generation patterns that can't be expressed in C#
+- Edge cases in name mangling or namespace generation
+
+**Usage Pattern**:
+```csharp
+// In RoslynEmitter when encountering an issue
+if (!CanGenerateCodeFor(node))
+{
+    _context.AddError($"Cannot generate code for {node.GetType().Name} at line {node.Line}");
+    return null; // Or generate placeholder code
+}
+
+// Later, check if code generation succeeded
+if (context.HasErrors)
+{
+    foreach (var error in context.Errors)
+        Console.WriteLine($"CodeGen Error: {error}");
+}
+```
+
+**Design Note**: The error list is exposed as `IReadOnlyList<string>` to prevent external code from modifying it directly, while still allowing iteration and inspection.
+
+---
+
+### Logging
+
+```csharp
+public ICompilerLogger Logger { get; set; } = NullLogger.Instance;
+```
+
+**Purpose**: Provides a logging interface for warnings, debug info, and trace-level messages during code generation.
+
+**Default Value**: `NullLogger.Instance` — a Null Object pattern implementation that silently discards all log messages. This means logging has zero overhead when not configured.
+
+**When to Use**:
+- Warnings for deprecated patterns or potential issues
+- Debug information for tracing code generation decisions
+- Trace-level logging for detailed step-by-step emission
+
+**Example Usage**:
+```csharp
+// Log a warning about a deprecated pattern
+context.Logger.LogWarning("Using deprecated syntax for operator overload", node.Line, node.Column);
+
+// Log debug info about type mapping decisions
+if (context.Logger.IsEnabled(CompilerLogLevel.Debug))
+{
+    context.Logger.LogDebug($"Mapping {sharpyType} to {csharpType}");
+}
+```
+
+**Enabling Logging**: Set a concrete logger (like `ConsoleCompilerLogger`) when configuring the context:
+```csharp
+var context = new CodeGenContext(symbolTable, builtins)
+{
+    Logger = new ConsoleCompilerLogger(CompilerLogLevel.Debug)
+};
+```
+
+---
+
 ### Indentation Management
 
 ```csharp
@@ -201,6 +287,8 @@ context.Dedent();
 | `SymbolTable` | `Sharpy.Compiler.Semantic` | Scope-based symbol storage from semantic analysis |
 | `BuiltinRegistry` | `Sharpy.Compiler.Semantic` | Registry of Sharpy's built-in types and functions |
 | `Symbol` | `Sharpy.Compiler.Semantic` | Base class for all symbol types |
+| `ICompilerLogger` | `Sharpy.Compiler.Logging` | Interface for compiler logging |
+| `NullLogger` | `Sharpy.Compiler.Logging` | Null Object pattern implementation for logging |
 
 ### Relationship Diagram
 
@@ -221,6 +309,9 @@ context.Dedent();
 │  ┌──────────────┐  ┌───────────────┐  ┌──────────────────┐  │
 │  │ SymbolTable  │  │ BuiltinRegistry│  │ Config Properties│  │
 │  └──────────────┘  └───────────────┘  └──────────────────┘  │
+│  ┌──────────────┐  ┌───────────────┐                        │
+│  │ Error List   │  │    Logger     │                        │
+│  └──────────────┘  └───────────────┘                        │
 └─────────────────────────────────────────────────────────────┘
                               │
                               │ injected into
@@ -269,9 +360,18 @@ The context supports both compilation modes:
 
 | Property | Single-File | Multi-File |
 |----------|-------------|------------|
-| `IsEntryPoint` | `true` (default) | `true` only for `main.spy` |
+| `IsEntryPoint` | Explicitly set to `true` | `true` only for `main.spy` |
 | `ProjectNamespace` | `null` | Set from project config |
 | `ProjectRootPath` | `null` | Points to `src/` directory |
+
+**Note**: `IsEntryPoint` defaults to `false`, so it must be explicitly set when compiling a file that should have a `Main()` method.
+
+### Null Object Pattern for Logging
+
+The `Logger` property defaults to `NullLogger.Instance`, which implements `ICompilerLogger` with empty method bodies. This pattern:
+- Eliminates null checks throughout the codebase
+- Provides zero-overhead logging when disabled (methods are aggressively inlined)
+- Makes it safe to call logging methods unconditionally
 
 ### Minimal Abstraction
 
@@ -331,6 +431,35 @@ var allBuiltins = _context.Builtins.GetAllFunctions();
 - Function name mismatch (Python `print` vs. C# `Print`)
 - Sharpy.Core assembly not loaded properly
 
+### Checking Code Generation Errors
+
+Always check if errors occurred after code generation:
+
+```csharp
+var emitter = new RoslynEmitter(context);
+var result = emitter.GenerateCompilationUnit(module);
+
+if (context.HasErrors)
+{
+    Console.WriteLine("Code generation failed with errors:");
+    foreach (var error in context.Errors)
+    {
+        Console.WriteLine($"  - {error}");
+    }
+}
+```
+
+### Enabling Debug Logging
+
+For detailed tracing of code generation decisions:
+
+```csharp
+var context = new CodeGenContext(symbolTable, builtins)
+{
+    Logger = new ConsoleCompilerLogger(CompilerLogLevel.Debug)
+};
+```
+
 ### Namespace Generation Issues
 
 If generated namespaces are wrong, check the context configuration:
@@ -349,6 +478,7 @@ Console.WriteLine($"ProjectRootPath: {context.ProjectRootPath}");
 | Wrong C# type emitted | Builtin type not recognized | Check `IsBuiltinType()` returns expected value |
 | Missing `Main()` method | `IsEntryPoint` is false | Verify entry point detection logic |
 | Wrong namespace in output | `ProjectRootPath` mismatch | Check path computation logic |
+| Silent failures | Errors collected but not checked | Inspect `context.Errors` after generation |
 
 ---
 
@@ -360,6 +490,7 @@ Console.WriteLine($"ProjectRootPath: {context.ProjectRootPath}");
 - Adding new configuration properties for new compilation modes
 - Adding new lookup convenience methods (following the pattern of `IsBuiltinFunction`/`IsBuiltinType`)
 - Adding properties to support new code generation features
+- Extending error tracking with more structured error types
 
 **Unlikely Changes:**
 - Changing the constructor signature (would require updating all call sites)
@@ -434,11 +565,41 @@ public void TestSymbolLookup()
     Assert.NotNull(result);
     Assert.IsType<VariableSymbol>(result);
 }
+
+[Fact]
+public void TestErrorTracking()
+{
+    var builtins = new BuiltinRegistry();
+    var symbolTable = new SymbolTable(builtins);
+    var context = new CodeGenContext(symbolTable, builtins);
+
+    Assert.False(context.HasErrors);
+    Assert.Empty(context.Errors);
+
+    context.AddError("Test error message");
+
+    Assert.True(context.HasErrors);
+    Assert.Single(context.Errors);
+    Assert.Equal("Test error message", context.Errors[0]);
+}
 ```
 
 ---
 
-## Related Files
+## 8. Cross-References
+
+### Related Walkthrough Documents
+
+| File | Relationship |
+|------|--------------|
+| [`RoslynEmitter.md`](./RoslynEmitter.md) | Primary consumer of CodeGenContext; uses it for all code generation decisions |
+| [`TypeMapper.md`](./TypeMapper.md) | Uses context for type resolution and mapping Sharpy types to C# |
+| [`SymbolTable.md`](../Semantic/SymbolTable.md) | Provides the symbol lookup functionality exposed through CodeGenContext |
+| [`BuiltinRegistry.md`](../Semantic/BuiltinRegistry.md) | Provides builtin identification used by `IsBuiltinFunction` and `IsBuiltinType` |
+| [`ICompilerLogger.md`](../Logging/ICompilerLogger.md) | Logging interface used by the `Logger` property |
+| [`NullLogger.md`](../Logging/NullLogger.md) | Default logger implementation (Null Object pattern) |
+
+### Source Files
 
 | File | Relationship |
 |------|--------------|
@@ -448,15 +609,34 @@ public void TestSymbolLookup()
 | `BuiltinRegistry.cs` | Provides builtin identification |
 | `Compiler.cs` | Creates and initializes context |
 
+### RoslynEmitter Partial Class Files
+
+The `RoslynEmitter` class is split across multiple partial class files for maintainability:
+
+| File | Purpose |
+|------|---------|
+| `RoslynEmitter.cs` | Core class definition and variable name mangling |
+| `RoslynEmitter.CompilationUnit.cs` | Top-level file generation (usings, namespace, class wrapper) |
+| `RoslynEmitter.ModuleClass.cs` | Module-level code (fields, static constructor, Main) |
+| `RoslynEmitter.ClassMembers.cs` | Class/struct member generation |
+| `RoslynEmitter.TypeDeclarations.cs` | Type declarations (classes, structs, enums, interfaces) |
+| `RoslynEmitter.Statements.cs` | Statement-level code generation |
+| `RoslynEmitter.Expressions.cs` | Expression-level code generation |
+| `RoslynEmitter.Operators.cs` | Operator overload generation |
+
+All of these partial class files use `CodeGenContext` through the `_context` field.
+
 ---
 
 ## Summary
 
 `CodeGenContext` is the **state management backbone** of Sharpy's code generation phase:
 
-- **Small but critical**: Only ~58 lines, but used throughout code generation
+- **Small but critical**: Only ~80 lines, but used throughout code generation
 - **Glue layer**: Connects semantic analysis results with code generation logic
 - **Query interface**: Provides convenient methods for symbol and builtin lookups
+- **Error collection**: Accumulates errors that occur during code generation
+- **Logging support**: Enables debug and trace logging with zero overhead when disabled
 - **Configuration container**: Holds project-level settings and metadata
 
 **Key Takeaway**: This class doesn't generate code—it **enables** code generation by providing necessary context and state. Think of it as the "toolbox" that `RoslynEmitter` reaches into while doing the actual work.

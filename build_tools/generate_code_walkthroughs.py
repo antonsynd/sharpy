@@ -331,6 +331,16 @@ class Config:
     force_regenerate: bool = False  # regenerate all docs regardless of timestamps
     execution_log_path: str = "docs/implementation_walkthrough/execution_log.jsonl"
     spec_dir: str = "docs/language_specification"
+    claude_model: Optional[str] = "claude-sonnet-4-5-20250929"  # Model for Claude CLI
+    copilot_model: Optional[str] = "claude-sonnet-4.5"  # Model for Copilot CLI
+
+    def get_model_for_provider(self, provider: str) -> Optional[str]:
+        """Get the appropriate model for the given provider."""
+        if provider == "claude":
+            return self.claude_model
+        elif provider == "copilot":
+            return self.copilot_model
+        return None
 
     def __post_init__(self):
         if self.source_dirs is None:
@@ -672,7 +682,7 @@ def log_execution(
 
 
 def _build_cli_command(
-    cli_provider: str, prompt: str
+    cli_provider: str, prompt: str, model: Optional[str] = None
 ) -> Tuple[List[str], Optional[str]]:
     """
     Build the command line arguments for the specified CLI provider.
@@ -690,6 +700,7 @@ def _build_cli_command(
     Args:
         cli_provider: Either "copilot" or "claude"
         prompt: The prompt to send to the AI
+        model: Optional model identifier for the CLI
 
     Returns:
         Tuple of (command arguments, stdin input or None)
@@ -697,32 +708,34 @@ def _build_cli_command(
     if cli_provider == "copilot":
         # GitHub Copilot CLI: explicitly allow only read and write tools
         # This prevents shell access, file deletion, or editing existing files
-        return (
-            [
-                "/opt/homebrew/bin/copilot",
-                "--prompt",
-                prompt,
-                "--allow-tool",
-                "read",
-                "--allow-tool",
-                "write",
-            ],
-            None,
-        )
+        cmd = [
+            "/opt/homebrew/bin/copilot",
+            "--prompt",
+            prompt,
+            "--allow-tool",
+            "read",
+            "--allow-tool",
+            "write",
+        ]
+        # Add model if specified
+        if model:
+            cmd.extend(["--model", model])
+        return (cmd, None)
     elif cli_provider == "claude":
         # Claude Code CLI: explicitly allow only Read and Write tools
         # Do NOT use --dangerously-skip-permissions as it bypasses all safety checks
         # Only Read and Write are allowed - no Bash, Edit, or other tools
         # The prompt is passed via stdin when using --print mode
-        return (
-            [
-                "claude",
-                "--print",
-                "--allowedTools",
-                "Read,Write",
-            ],
-            prompt,
-        )
+        cmd = [
+            "claude",
+            "--print",
+            "--allowedTools",
+            "Read,Write",
+        ]
+        # Add model if specified
+        if model:
+            cmd.extend(["--model", model])
+        return (cmd, prompt)
     else:
         raise ValueError(f"Unknown CLI provider: {cli_provider}")
 
@@ -848,7 +861,9 @@ Focus on providing intuition and understanding, not just restating what the code
 8. **Cross-References**: If this file is a partial class or heavily depends on other files, include links to related documentation files."""
 
         # Build the command for the specified CLI provider
-        cmd, stdin_input = _build_cli_command(cli_provider, prompt)
+        # Get the appropriate model for this provider
+        model = config.get_model_for_provider(cli_provider)
+        cmd, stdin_input = _build_cli_command(cli_provider, prompt, model=model)
 
         # Determine label for heartbeat logging
         heartbeat_label = "Claude" if cli_provider == "claude" else "Copilot"
@@ -1474,6 +1489,19 @@ Security Model:
         help="Force regeneration of all documentation, even if up-to-date",
     )
 
+    parser.add_argument(
+        "--claude-model",
+        default="claude-sonnet-4-5-20250929",
+        help="Model for Claude CLI (default: claude-sonnet-4-5-20250929)",
+    )
+
+    parser.add_argument(
+        "--copilot-model",
+        default="claude-sonnet-4.5",
+        help="Model for Copilot CLI. Choices: claude-sonnet-4.5, gpt-5.1, "
+        "gemini-3-pro-preview, etc. (default: claude-sonnet-4.5)",
+    )
+
     args = parser.parse_args()
 
     # Validate arguments
@@ -1497,6 +1525,8 @@ Security Model:
         output_dir=args.output_dir,
         cli_provider=args.cli,
         force_regenerate=args.force,
+        claude_model=args.claude_model,
+        copilot_model=args.copilot_model,
     )
 
     # Run async main

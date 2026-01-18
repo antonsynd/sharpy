@@ -31,7 +31,7 @@ A single static class containing the CLI implementation. No instance state is ma
 
 ### Nested Class: `SingleFileProjectConfig`
 
-**Location:** Lines 961-994
+**Location:** Lines 997-1030
 
 ```csharp
 private class SingleFileProjectConfig : ProjectConfig
@@ -222,18 +222,38 @@ sharpyc emit ast hello.spy
 
 ### 8. `EmitCSharp()` - Code Generation Debugging
 
-**Lines:** 552-610
+**Lines:** 552-646
 
 **Purpose:** Generates and saves the C# code that would be produced by the Sharpy compiler without compiling it to an assembly.
 
 **Pipeline:**
 1. Lex and parse the Sharpy source
-2. Create `SymbolTable` and `CodeGenContext`
-3. Use `RoslynEmitter` to generate a Roslyn `CompilationUnit`
-4. Convert to C# source string via `ToFullString()`
-5. Write to file (defaults to `<input>.cs`)
+2. Run semantic analysis:
+   - Create `SymbolTable` and `SemanticInfo`
+   - Run `NameResolver` to register type aliases, classes, functions
+   - Run `TypeChecker` to verify types
+3. Create `CodeGenContext` with the analyzed symbol table
+4. Use `RoslynEmitter` to generate a Roslyn `CompilationUnit`
+5. Convert to C# source string via `ToFullString()`
+6. Write to file (defaults to `<input>.cs`)
 
-**Limitations:** Only performs lexing, parsing, and code generation—skips semantic analysis. This means the generated C# might not be valid if there are type errors.
+**Key Implementation Details (Lines 564-596):**
+```csharp
+// Run semantic analysis to register type aliases and resolve types
+var builtins = new BuiltinRegistry();
+var symbolTable = new SymbolTable(builtins);
+var semanticInfo = new SemanticInfo();
+
+// Name resolution pass (registers type aliases, classes, functions, etc.)
+var nameResolver = new NameResolver(symbolTable, logger);
+nameResolver.ResolveDeclarations(module);
+nameResolver.ResolveInheritance();
+
+// Type checking pass
+var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
+var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
+typeChecker.CheckModule(module);
+```
 
 **Use Case:** Debugging code generation issues or understanding how Sharpy constructs map to C#.
 
@@ -246,7 +266,7 @@ sharpyc emit csharp hello.spy --output hello_generated.cs
 
 ### 9. `CompileToBinary()` - Core Compilation Logic
 
-**Lines:** 827-956
+**Lines:** 863-992
 
 **Purpose:** The workhorse method that performs full Sharpy → C# → .NET Assembly compilation.
 
@@ -288,11 +308,11 @@ sharpyc emit csharp hello.spy --output hello_generated.cs
 └─────────────────┘
 ```
 
-**Output Path Resolution (Lines 866-878):**
+**Output Path Resolution (Lines 901-914):**
 - If `output` is provided, use it directly
 - Otherwise, use current directory with input filename + appropriate extension
 
-**SingleFileProjectConfig Usage (Lines 888-900):**
+**SingleFileProjectConfig Usage (Lines 924-936):**
 Creates a minimal project configuration to satisfy `AssemblyCompiler`'s expectations. Key properties:
 - `assemblyName` - Derived from input filename
 - `targetFramework` - Hardcoded to "net8.0" (could be made configurable)
@@ -300,7 +320,7 @@ Creates a minimal project configuration to satisfy `AssemblyCompiler`'s expectat
 
 **Error Handling:**
 - Lexer errors → Exit code 1, display line/column
-- Parser errors → Exit code 1, display line/column  
+- Parser errors → Exit code 1, display line/column
 - Semantic errors → Exit code 1, display compiler errors
 - Assembly compilation errors → Exit code 1, display Roslyn diagnostics
 
@@ -308,7 +328,7 @@ Creates a minimal project configuration to satisfy `AssemblyCompiler`'s expectat
 
 ### 10. `CompileProject()` - Project Build Orchestration
 
-**Lines:** 631-723
+**Lines:** 667-759
 
 **Purpose:** Builds a multi-file Sharpy project from a `.spyproj` file.
 
@@ -340,7 +360,7 @@ sharpyc project --configuration Release --emit-cs-to ./generated
 
 ### 11. Cache Management Commands
 
-#### `ClearCache(string?)` - Lines 612-629
+#### `ClearCache(string?)` - Lines 648-665
 
 **Purpose:** Clears the overload discovery cache to force reindexing of .NET assemblies.
 
@@ -348,11 +368,11 @@ sharpyc project --configuration Release --emit-cs-to ./generated
 
 **Implementation:** Uses `OverloadIndexCache.ClearAll()`
 
-#### `ShowCacheInfo(string?)` - Lines 725-744
+#### `ShowCacheInfo(string?)` - Lines 761-780
 
 **Purpose:** Displays cache statistics (location, number of assemblies, total size).
 
-**Helper:** `FormatBytes()` (lines 746-759) converts byte counts to human-readable format (B, KB, MB, GB).
+**Helper:** `FormatBytes()` (lines 782-795) converts byte counts to human-readable format (B, KB, MB, GB).
 
 ---
 
@@ -378,13 +398,13 @@ sharpyc project --configuration Release --emit-cs-to ./generated
 
 **Purpose:** Similar to `OutputMetrics()` but for `ProjectCompilationMetrics` (includes per-file breakdowns).
 
-#### `CleanProject()` - Lines 761-795
+#### `CleanProject()` - Lines 797-831
 
 **Purpose:** Deletes `bin/` and `obj/` directories for a clean build.
 
 **Error Handling:** Warnings if deletion fails, but doesn't abort the build.
 
-#### `SaveGeneratedCSharp()` - Lines 797-825
+#### `SaveGeneratedCSharp()` - Lines 833-861
 
 **Purpose:** Saves generated C# code to a directory when `--emit-cs-to` is used.
 
@@ -408,7 +428,7 @@ sharpyc project --configuration Release --emit-cs-to ./generated
 using Sharpy.Compiler;              // Main Compiler class
 using Sharpy.Compiler.Lexer;        // Lexer, Token types
 using Sharpy.Compiler.Parser;       // Parser, AST nodes
-using Sharpy.Compiler.Semantic;     // SymbolTable, BuiltinRegistry
+using Sharpy.Compiler.Semantic;     // SymbolTable, BuiltinRegistry, NameResolver, TypeChecker
 using Sharpy.Compiler.CodeGen;      // RoslynEmitter, CodeGenContext
 using Sharpy.Compiler.Discovery.Caching;  // OverloadIndexCache
 using Sharpy.Compiler.Diagnostics;  // CompilationMetrics
@@ -435,13 +455,13 @@ buildCommand.SetAction((parseResult) =>
     // Extract values from parseResult
     var input = parseResult.GetValue(buildInputArg)!;
     var type = parseResult.GetValue(buildTypeOpt) ?? "library";
-    
+
     // Invoke handler
     HandleBuildCommand(input, type, ...);
 });
 ```
 
-**Rationale:** 
+**Rationale:**
 - Keeps related code together
 - Avoids ceremony of separate handler classes
 - Still delegates to focused methods for complex logic
@@ -626,7 +646,7 @@ dotnet ./debug.exe
 
 ### 7. Stack Traces on Unexpected Errors
 
-**Notice the pattern (lines 716-721):**
+**Notice the pattern (lines 752-758):**
 
 ```csharp
 catch (Exception ex)
@@ -670,7 +690,7 @@ myCommand.SetAction((parseResult) =>
     var option = parseResult.GetValue(myOption);
     var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
     var logFile = parseResult.GetValue(logFileOption);
-    
+
     var logger = CreateLogger(logLevel, logFile);
     HandleMyCommand(input, option, logger);
 });
@@ -739,7 +759,7 @@ myCommand.SetAction((parseResult) =>
     // ... other values ...
     var metricsFormat = parseResult.GetValue(metricsFormatOption);
     var metricsOutput = parseResult.GetValue(metricsOutputOption);
-    
+
     HandleMyCommand(..., metricsFormat, metricsOutput);
 });
 
@@ -827,15 +847,67 @@ echo "All tests passed"
 
 ---
 
+## Cross-References
+
+This file integrates with several key components of the Sharpy compiler. For deeper understanding, see these related walkthrough documents:
+
+### Core Compiler Components
+
+- **[Compiler.md](../Sharpy.Compiler/Compiler.md)** - The main `Compiler` class that orchestrates the compilation pipeline. Called by `CompileToBinary()` and `CompileProject()`.
+
+- **[AssemblyCompiler.md](../Sharpy.Compiler/AssemblyCompiler.md)** - Handles the final C# → .NET assembly compilation using Roslyn. Used in `CompileToBinary()`.
+
+- **[ProjectConfig.md](../Sharpy.Compiler/ProjectConfig.md)** - Base class that `SingleFileProjectConfig` extends for single-file builds.
+
+### Lexer and Parser
+
+- **[Lexer.md](../Sharpy.Compiler/Lexer/Lexer.md)** - Tokenizes Sharpy source code. Used by `EmitTokens()`.
+
+- **[Parser.md](../Sharpy.Compiler/Parser/Parser.md)** - Parses tokens into an AST. Used by `EmitAst()`.
+
+- **[AstDumper.md](../Sharpy.Compiler/Parser/AstDumper.md)** - Pretty-prints the AST. Used by `EmitAst()`.
+
+### Semantic Analysis
+
+- **[SymbolTable.md](../Sharpy.Compiler/Semantic/SymbolTable.md)** - Manages symbol declarations and lookups. Created in `EmitCSharp()`.
+
+- **[NameResolver.md](../Sharpy.Compiler/Semantic/NameResolver.md)** - Registers type aliases, classes, and functions. Used in `EmitCSharp()`.
+
+- **[TypeChecker.md](../Sharpy.Compiler/Semantic/TypeChecker.md)** - Validates types in the AST. Used in `EmitCSharp()`.
+
+- **[BuiltinRegistry.md](../Sharpy.Compiler/Semantic/BuiltinRegistry.md)** - Provides built-in type definitions. Created in `EmitCSharp()`.
+
+### Code Generation
+
+- **[RoslynEmitter.md](../Sharpy.Compiler/CodeGen/RoslynEmitter.md)** - Generates C# code from the AST using Roslyn syntax trees. Used in `EmitCSharp()`.
+
+- **[CodeGenContext.md](../Sharpy.Compiler/CodeGen/CodeGenContext.md)** - Configuration for code generation. Created in `EmitCSharp()`.
+
+### Caching and Performance
+
+- **[OverloadIndexCache.md](../Sharpy.Compiler/Discovery/Caching/OverloadIndexCache.md)** - Manages the cache for .NET method overloads. Used by cache commands.
+
+- **[CompilationMetrics.md](../Sharpy.Compiler/Diagnostics/CompilationMetrics.md)** - Tracks timing for compilation phases. Used by metrics output functions.
+
+### Logging
+
+- **[ICompilerLogger.md](../Sharpy.Compiler/Logging/ICompilerLogger.md)** - Logger interface used throughout the CLI.
+
+- **[ConsoleCompilerLogger.md](../Sharpy.Compiler/Logging/ConsoleCompilerLogger.md)** - Default console logger implementation.
+
+- **[NullLogger.md](../Sharpy.Compiler/Logging/NullLogger.md)** - No-op logger for when logging is disabled.
+
+---
+
 ## Summary
 
 `Program.cs` is a well-structured CLI application that follows modern C# conventions. Key strengths:
 
-✅ **Clear separation of concerns** - Orchestration vs. compilation logic  
-✅ **Consistent error handling** - Structured catches, exit codes, stderr usage  
-✅ **Debuggability** - Emit commands for each pipeline stage  
-✅ **Extensibility** - Easy to add new commands/options  
-✅ **User-friendly** - Helpful error messages, auto-discovery, metrics  
+- **Clear separation of concerns** - Orchestration vs. compilation logic
+- **Consistent error handling** - Structured catches, exit codes, stderr usage
+- **Debuggability** - Emit commands for each pipeline stage
+- **Extensibility** - Easy to add new commands/options
+- **User-friendly** - Helpful error messages, auto-discovery, metrics
 
 **Areas for improvement:**
 - Add integration tests for CLI commands

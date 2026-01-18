@@ -4,25 +4,28 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-`OperatorValidator` is a critical component of Sharpy's semantic analysis phase that validates operator usage and determines result types for operator expressions. It sits at the intersection of Sharpy's Python-like operator semantics and .NET's CLR operator overloads, enabling seamless interoperability between Sharpy code and .NET libraries.
+The `OperatorValidator` is a critical component in the **Semantic Analysis** phase of the Sharpy compiler pipeline. Its primary responsibility is to validate operator usage in Sharpy source code and determine the result types of operator expressions.
 
-**Core Responsibilities:**
-- Validate binary operators (`+`, `-`, `*`, `==`, `and`, `in`, etc.)
-- Validate unary operators (`+`, `-`, `~`, `not`)
-- Validate augmented assignment operators (`+=`, `-=`, `*=`, etc.)
-- Resolve operator overloads through multiple strategies:
-  - Sharpy dunder methods (`__add__`, `__eq__`, etc.)
-  - Sharpy builtin type operations (int, float, str, list, etc.)
-  - CLR operator overloads via reflection (`op_Addition`, `op_Equality`, etc.)
-- Cache results for performance optimization
+**Key Responsibilities**:
+- Validate binary operators (arithmetic, comparison, bitwise, logical)
+- Validate unary operators (negation, bitwise not, logical not)
+- Validate augmented assignment operators (`+=`, `-=`, etc.)
+- Support both **Sharpy dunder methods** (e.g., `__add__`, `__mul__`) and **CLR operator overloads** for .NET interop
+- Implement overload resolution when multiple operator implementations exist
+- Perform type checking and inference for operator expressions
 
-**Why it exists:** Python's flexible operator overloading via dunder methods needs to coexist with .NET's static operator overloading. This class provides the unified resolution logic that makes both work seamlessly in Sharpy.
+**Pipeline Position**:
+- **Input**: AST nodes from the Parser representing operator expressions
+- **Output**: Validated operator types that flow to RoslynEmitter for code generation
+- **Works with**: SymbolTable (for type lookups), ProtocolValidator (for membership operators)
+
+**Thread Safety**: This class is NOT thread-safe. Instances should not be shared across threads due to internal caching without locks.
 
 ---
 
-## 2. Class Structure
+## Class Structure
 
 ### Main Class: `OperatorValidator`
 
@@ -34,30 +37,31 @@ public class OperatorValidator
     private readonly List<SemanticError> _errors;
     private readonly ProtocolValidator? _protocolValidator;
     private readonly ClrMemberCache _clrMemberCache;
-    
-    // Performance caches (NOT thread-safe!)
+
+    // Performance caches (not thread-safe)
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache;
     private readonly Dictionary<(UnaryOperator, SemanticType), SemanticType?> _unaryOpCache;
 }
 ```
 
-**Key Design Decisions:**
-
-1. **Not Thread-Safe by Design**: The class explicitly documents that it's not thread-safe due to internal caches. This is a deliberate performance optimization—operator validation happens frequently during type checking, and avoiding lock overhead significantly improves compilation speed.
-
-2. **Optional Dependencies**: `ProtocolValidator` and `ClrMemberCache` are optional, with null checks throughout. This allows flexible composition and testing.
-
-3. **Error Collection**: Errors are accumulated in `_errors` list and also logged immediately via `_logger`. This dual approach supports both batch error reporting and real-time logging.
-
-4. **Caching Strategy**: Uses tuple keys `(SemanticType, BinaryOperator, SemanticType)` for efficient cache lookups. The cache stores nullable `SemanticType?` to distinguish between "not yet computed" (missing from cache) and "failed to resolve" (cached as `null`).
+**Key Fields**:
+- `_symbolTable`: Provides access to symbol information for type lookups
+- `_logger`: Used for logging errors during validation
+- `_errors`: Accumulates semantic errors found during validation
+- `_protocolValidator`: Optional validator for protocol-based operations (e.g., `__contains__` for `in` operator)
+- `_clrMemberCache`: Caches CLR operator methods for performance
+- `_binaryOpCache` / `_unaryOpCache`: Performance optimization to avoid re-validating the same operator combinations
 
 ---
 
-## 3. Key Methods
+## Key Methods and Validation Flow
 
-### 3.1 Public API Methods
+### 1. Binary Operator Validation
 
-#### `ValidateBinaryOp`
+#### `ValidateBinaryOp()`
+**Location**: Lines 51-132
+
+The main entry point for validating binary operations like `a + b`, `x == y`, `foo in bar`, etc.
 
 ```csharp
 public SemanticType ValidateBinaryOp(
@@ -68,869 +72,439 @@ public SemanticType ValidateBinaryOp(
     int column)
 ```
 
-**Purpose**: The main entry point for validating binary operations. Called by `TypeChecker` when encountering binary expressions like `x + y` or `a == b`.
+**Flow**:
+1. **Check cache**: If this exact combination of `(left type, operator, right type)` has been validated before, return the cached result
+2. **Handle special cases**:
+   - Logical operators (`and`, `or`): Always return `bool`
+   - Null coalescing (`??`): Validate left is nullable, right is assignable to non-nullable version
+   - Membership operators (`in`, `not in`): Delegate to `ProtocolValidator` to check for `__contains__`
+   - Identity operators (`is`, `is not`): Always return `bool`
+3. **Resolve overloaded operators**: For all other operators, call `ResolveOperatorOverload()`
+4. **Cache the result** for future lookups
+5. Return the result type
 
-**Implementation Strategy**:
-1. **Check cache first** - Fast path for repeated operations
-2. **Handle special cases** - Logical, identity, and membership operators that don't use traditional overloading
-3. **Resolve operator overload** - For arithmetic, comparison, and bitwise operators
-4. **Cache and return** - Store result for future calls
+**Important Design Decision**: Special operators are handled first to avoid unnecessary overload resolution. This improves performance and provides clearer error messages.
 
-**Special Cases Handled Directly**:
+---
 
-```csharp
-BinaryOperator.And, BinaryOperator.Or
-    → Always return SemanticType.Bool (short-circuit evaluation)
+### 2. Operator Overload Resolution
 
-BinaryOperator.In, BinaryOperator.NotIn
-    → Delegate to ProtocolValidator to check __contains__ protocol
-    → Return bool
+#### `ResolveOperatorOverload()`
+**Location**: Lines 269-290
 
-BinaryOperator.Is, BinaryOperator.IsNot
-    → Always return SemanticType.Bool (identity comparison)
+This method attempts to find a valid operator implementation through multiple resolution strategies.
 
-BinaryOperator.NullCoalesce
-    → Currently unimplemented (returns Unknown + error)
-```
+**Resolution Order** (implemented in `TryResolveOperatorOverloadWithoutLogging`, lines 296-348):
 
-**Why special cases?** These operators have fixed semantics in Python/Sharpy and don't participate in operator overloading. For example, `and`/`or` always return bool regardless of operand types, and `is`/`is not` always perform identity checks.
+1. **User-defined operator methods** (Sharpy dunder methods)
+   - Check if the left operand is a `UserDefinedType` with operator methods
+   - Look up the appropriate dunder method (e.g., `__add__` for `+`)
+   - Perform overload resolution if multiple implementations exist
 
-#### `ValidateUnaryOp`
+2. **Equality complement synthesis**
+   - Special logic: if only `__eq__` is defined, synthesize `__ne__` (and vice versa)
+   - This matches the behavior in `RoslynEmitter` where missing equality operators are auto-generated
 
-```csharp
-public SemanticType ValidateUnaryOp(
-    UnaryOperator op,
-    SemanticType operand,
-    int line,
-    int column)
-```
+3. **Sharpy builtin type operators**
+   - Handle operators on primitive types (`int`, `float`, `str`, `list`, etc.)
+   - Implement Python-like semantics (e.g., `/` always returns `float`, `+` on lists concatenates)
 
-**Purpose**: Validates unary operations like `-x`, `+x`, `~x`, `not x`.
+4. **CLR operator methods** (.NET interop)
+   - Use reflection to find CLR operator overloads (e.g., `op_Addition`)
+   - Enables Sharpy code to work with .NET types that define operators
 
-**Simpler than binary ops** because:
-- Only one operand to consider
-- Fewer special cases (only `not` returns bool unconditionally)
-- No complement synthesis logic needed
+If no valid operator is found, an error is added to the errors collection.
 
-#### `ValidateAugmentedAssignment`
+---
 
-```csharp
-public SemanticType ValidateAugmentedAssignment(
-    AssignmentOperator op,
-    SemanticType targetType,
-    SemanticType valueType,
-    int line,
-    int column)
-```
+### 3. Overload Resolution with "Most Specific" Semantics
 
-**Purpose**: Validates augmented assignments like `x += y`, `a *= b`.
+#### `ResolveBestOverload()`
+**Location**: Lines 406-505
 
-**Two-Phase Resolution**:
-1. **Try in-place operators first**: `__iadd__`, `__isub__`, etc.
-   - These modify the object in-place (Python optimization)
-   - Must return a type assignable to the target
-2. **Fall back to binary operators**: `__add__`, `__sub__`, etc.
-   - Creates a new object with the result
-   - Also must be assignable to target
+When a type defines multiple operator overloads (e.g., `__add__(self, int)` and `__add__(self, object)`), this method determines which one to use.
 
-**Critical Validation**: The result type must be assignable to the target type. This catches errors like:
-```python
-x: int = 5
-x += 2.5  # Error: float not assignable to int
-```
-
-### 3.2 Operator Resolution Methods
-
-#### `ResolveOperatorOverload` (Binary)
-
-**Resolution Strategy** (in order):
-1. **User-defined types** via dunder methods
-   - Check `Symbol.OperatorMethods` dictionary
-   - Use `ResolveBestOverload` for overload resolution
-   - Try equality complement synthesis if applicable
-2. **Sharpy builtin types** via `TryResolveBuiltinOperator`
-   - Hardcoded rules for int, float, str, list, etc.
-3. **CLR types** via reflection using `ClrMemberCache`
-   - Look up `op_Addition`, `op_Equality`, etc.
-
-**Why this order?** User-defined operators take precedence (explicit overrides), then builtin types (language semantics), then CLR operators (interop fallback).
-
-#### `ResolveBestOverload`
-
-**Sophisticated overload resolution algorithm**:
-
-```csharp
-private FunctionSymbol? ResolveBestOverload(
-    List<FunctionSymbol> candidates,
-    SemanticType argumentType,
-    string operatorSymbol,
-    string leftTypeName,
-    int line,
-    int column)
-```
-
-**Resolution Steps**:
-1. **Exact match**: Parameter type equals argument type exactly
-2. **Assignable matches**: Argument type is assignable to parameter type
-3. **Most specific match**: Among assignable matches, find the most derived/specific
-   - Uses assignability hierarchy to determine specificity
-   - Type A is more specific than B if A is assignable to B
-4. **Ambiguity detection**: Reports error if multiple equally specific matches exist
+**Resolution Strategy**:
+1. **Exact match first**: If the argument type exactly matches a parameter type, use that overload
+2. **Assignable matches**: Find all overloads where the argument is assignable to the parameter
+3. **Most specific selection**: If multiple assignable matches exist, choose the most specific (most derived) parameter type
 
 **Example**:
 ```python
-class Animal: pass
-class Dog(Animal): pass
-class Labrador(Dog): pass
+class Calculator:
+    def __add__(self, other: object) -> Calculator: ...
+    def __add__(self, other: int) -> Calculator: ...
 
-class Handler:
-    def __add__(self, other: Animal) -> Handler: ...
-    def __add__(self, other: Dog) -> Handler: ...
-
-h = Handler()
-l = Labrador()
-h + l  # Chooses Dog overload (most specific match)
+calc = Calculator()
+result = calc + 5  # Chooses __add__(self, int) because int is more specific than object
 ```
 
-#### `TryResolveEqualityComplement`
-
-**Equality Complement Synthesis**: A clever optimization that matches Python semantics and the code generator behavior.
-
-**The Problem**: In Python, you often define only `__eq__` and get `__ne__` for free (or vice versa).
-
-**The Solution**:
-- If only `__eq__` is defined, synthesize `__ne__` by negating `__eq__`
-- If only `__ne__` is defined, synthesize `__eq__` by negating `__ne__`
-- Both return `SemanticType.Bool`
-
-**Why it matters**: This allows Sharpy classes to follow the Python convention of defining minimal operators. The `RoslynEmitter` performs the same synthesis during code generation, so semantic analysis must match.
-
-```python
-class Point:
-    def __eq__(self, other: Point) -> bool:
-        # Only define equality
-        pass
-
-# Sharpy automatically synthesizes:
-# def __ne__(self, other: Point) -> bool:
-#     return not self.__eq__(other)
-```
-
-### 3.3 Builtin Type Resolution
-
-#### `TryResolveBuiltinOperator`
-
-**Handles Sharpy's built-in types with hardcoded semantics**:
-
-**Numeric Types** (int, long, float, double, decimal, etc.):
-```csharp
-BinaryOperator.Add | Subtract | Multiply | Divide | ... 
-    → InferNumericResultType(left, right)
-    → Uses PrimitiveCatalog.GetPromotedType() for type promotion
-    → Example: int + float → float
-```
-
-**String Operations**:
-```csharp
-Str + Str → Str          // Concatenation
-Str == Str → Bool        // Comparison
-Str < Str → Bool         // Lexicographic comparison
-```
-
-**List Operations**:
-```csharp
-list[T] + list[T] → list[T]   // Concatenation (same element type)
-list[T] + list[U] → null      // Error (incompatible element types)
-list[?] + list[T] → list[T]   // Untyped + typed → typed
-```
-
-**Default Equality**:
-```csharp
-T == T → Bool  // For any identical types
-```
-
-**Why hardcoded?** These are fundamental language semantics that shouldn't require symbol table lookups. Performance-critical operations benefit from direct implementation.
-
-### 3.4 CLR Interop Methods
-
-#### `TryResolveClrOperator`
-
-**Enables .NET operator overload interop**:
-
-1. **Map Sharpy operator to CLR method name**:
-   - `BinaryOperator.Add` → `"op_Addition"`
-   - `BinaryOperator.Equal` → `"op_Equality"`
-   - `UnaryOperator.Minus` → `"op_UnaryNegation"`
-
-2. **Get CLR types** from both operands using `GetClrType()`
-
-3. **Query ClrMemberCache** for operator methods on the left operand's type
-
-4. **Match overload** by comparing parameter types exactly
-
-5. **Map return type** back to `SemanticType`
-
-**Example: Using System.Numerics.Complex**:
-```python
-from System.Numerics import Complex
-
-c1 = Complex(1.0, 2.0)
-c2 = Complex(3.0, 4.0)
-result = c1 + c2  # Resolves to Complex.op_Addition(Complex, Complex)
-```
-
-**Cache Benefits**: `ClrMemberCache` uses reflection only once per CLR type, then caches all operator methods. This makes repeated validation essentially free.
-
-### 3.5 Operator Mapping Methods
-
-These utility methods translate between Sharpy's operator representations and Python/CLR conventions:
-
-#### `BinaryOperatorToDunder`
-Maps `BinaryOperator` enum → Python dunder method name:
-- `BinaryOperator.Add` → `"__add__"`
-- `BinaryOperator.Multiply` → `"__mul__"`
-- `BinaryOperator.Equal` → `"__eq__"`
-- Returns `null` for operators without dunder methods (like `and`, `or`, `is`)
-
-#### `BinaryOperatorToClrMethod`
-Maps `BinaryOperator` enum → CLR operator method name:
-- `BinaryOperator.Add` → `"op_Addition"`
-- `BinaryOperator.Equal` → `"op_Equality"`
-- `BinaryOperator.LeftShift` → `"op_LeftShift"`
-
-#### `GetOperatorSymbol` / `GetUnaryOperatorSymbol`
-Provides human-readable symbols for error messages:
-- `BinaryOperator.Power` → `"**"`
-- `BinaryOperator.FloorDivide` → `"//"`
-- `UnaryOperator.BitwiseNot` → `"~"`
+**Ambiguity Detection**: If multiple "most specific" overloads are found, an error is reported with candidate types.
 
 ---
 
-## 4. Dependencies
+### 4. Builtin Type Operators
+
+#### `TryResolveBuiltinOperator()`
+**Location**: Lines 577-685
+
+Implements operator semantics for Sharpy's builtin types following Python conventions.
+
+**Key Behaviors**:
+
+**Numeric Operations**:
+- Arithmetic operators (`+`, `-`, `*`, `//`, `%`): Return the promoted numeric type (e.g., `int + float` → `float`)
+- Division (`/`) and power (`**`): Always return `float64` (Python semantics)
+- Bitwise operators (`&`, `|`, `^`, `<<`, `>>`): Only work on integer types
+
+**String Operations**:
+- `str + str` → `str` (concatenation)
+- Comparison operators on strings → `bool`
+
+**List Operations**:
+- `list[T] + list[T]` → `list[T]` (concatenation with same element type)
+- Mixed typed/untyped lists: Return the typed version
+- Incompatible element types: Return `null` (error will be reported)
+
+**Default Equality**:
+- `==` and `!=` work for any two types if they're identical
+- Ensures you can always compare values of the same type
+
+**Delegation to PrimitiveCatalog**:
+The actual numeric type checking and promotion logic is delegated to `PrimitiveCatalog` (lines 822-841), which centralizes knowledge about all numeric primitive types.
+
+---
+
+### 5. CLR Interop
+
+#### `TryResolveClrOperator()`
+**Location**: Lines 714-749
+
+Enables Sharpy to work with .NET types that define operator overloads using CLR conventions.
+
+**How It Works**:
+1. Map Sharpy operator to CLR method name (e.g., `+` → `"op_Addition"`)
+2. Get CLR types for both operands
+3. Use `ClrMemberCache` to retrieve operator methods via reflection
+4. Find the overload where parameter types match exactly
+5. Map the CLR return type back to a `SemanticType`
+
+**Example**:
+```python
+# Sharpy code using .NET's TimeSpan
+from System import TimeSpan
+duration1 = TimeSpan.FromHours(1)
+duration2 = TimeSpan.FromMinutes(30)
+total = duration1 + duration2  # Calls TimeSpan.op_Addition
+```
+
+**Mapping Tables**:
+- `BinaryOperatorToClrMethod()` (lines 224-249): Maps operators like `+` → `"op_Addition"`
+- `UnaryOperatorToClrMethod()` (lines 254-264): Maps unary operators like `-` → `"op_UnaryNegation"`
+
+---
+
+### 6. Unary Operator Validation
+
+#### `ValidateUnaryOp()`
+**Location**: Lines 137-160
+
+Validates unary operators like `-x`, `~x`, `not x`.
+
+**Flow**:
+1. Check cache for previous validation
+2. Special case: `not` always returns `bool`
+3. For other operators, resolve via `ResolveUnaryOperatorOverload()`
+4. Cache and return result
+
+#### `ResolveUnaryOperatorOverload()`
+**Location**: Lines 353-394
+
+Similar to binary operator resolution but simpler (no overload selection needed):
+1. Try user-defined dunder method (e.g., `__neg__`)
+2. Try builtin type operators
+3. Try CLR operator methods
+
+---
+
+### 7. Augmented Assignment Validation
+
+#### `ValidateAugmentedAssignment()`
+**Location**: Lines 1001-1074
+
+Validates compound assignment operators like `x += 5`, `flags |= FLAG_ENABLED`.
+
+**Resolution Strategy**:
+1. Try **in-place operator** first (e.g., `__iadd__` for `+=`)
+   - These allow types to optimize in-place modifications
+   - Example: `list.__iadd__()` can modify the list directly rather than creating a new one
+2. Fall back to **binary operator** (e.g., `__add__` for `+=`)
+   - This is the common case for types that don't define in-place operators
+3. Validate result type is assignable to target type
+   - Important: `x += y` requires that the result of `x + y` can be assigned back to `x`
+
+**Special Case for `??=`**:
+The null coalescing assignment `x ??= y` returns the target type (which remains nullable), not the non-nullable version.
+
+**Mapping Tables**:
+- `AssignmentOperatorToInPlaceDunder()` (lines 919-938): Maps `+=` → `"__iadd__"`
+- `AssignmentOperatorToBinaryOperator()` (lines 944-964): Maps `+=` → `BinaryOperator.Add`
+
+---
+
+## Dunder Method Mapping
+
+Sharpy uses Python-style "dunder" (double underscore) methods for operator overloading:
+
+### Binary Operators
+```
++   → __add__
+-   → __sub__
+*   → __mul__
+/   → __truediv__
+//  → __floordiv__
+%   → __mod__
+**  → __pow__
+&   → __and__
+|   → __or__
+^   → __xor__
+<<  → __lshift__
+>>  → __rshift__
+==  → __eq__
+!=  → __ne__
+<   → __lt__
+<=  → __le__
+>   → __gt__
+>=  → __ge__
+```
+
+### Unary Operators
+```
++x  → __pos__
+-x  → __neg__
+~x  → __invert__
+```
+
+### In-Place Assignment Operators
+```
++=  → __iadd__
+-=  → __isub__
+*=  → __imul__
+/=  → __itruediv__
+//= → __ifloordiv__
+%=  → __imod__
+**= → __ipow__
+&=  → __iand__
+|=  → __ior__
+^=  → __ixor__
+<<= → __ilshift__
+>>= → __irshift__
+```
+
+**See**: `BinaryOperatorToDunder()` (lines 165-204), `UnaryOperatorToDunder()` (lines 209-219)
+
+---
+
+## Dependencies
 
 ### Internal Dependencies
 
-**SymbolTable** (`_symbolTable`):
-- Stores user-defined types and their operator methods
-- Accessed via `udt.Symbol.OperatorMethods` dictionary
-- Essential for resolving custom operator overloads
+1. **SymbolTable** (`_symbolTable`)
+   - Provides access to type symbols and their operator methods
+   - Used to look up `UserDefinedType` symbols and their `OperatorMethods` dictionary
 
-**ProtocolValidator** (`_protocolValidator`, optional):
-- Validates protocol implementations like `__contains__` for membership testing
-- Used for `in` and `not in` operators
-- Falls back to `Bool` if not provided (backwards compatibility)
+2. **ProtocolValidator** (`_protocolValidator`)
+   - Used for validating membership operators (`in`, `not in`)
+   - Checks if a type implements the `__contains__` protocol
 
-**ClrMemberCache** (`_clrMemberCache`):
-- Caches CLR type operator methods discovered via reflection
-- Prevents expensive repeated reflection calls
-- Automatically created if not provided
+3. **ClrMemberCache** (`_clrMemberCache`)
+   - Caches CLR operator methods discovered via reflection
+   - Improves performance by avoiding repeated reflection calls
 
-**PrimitiveCatalog** (static utility):
-- Defines numeric type hierarchy and promotion rules
-- Methods: `IsNumeric()`, `IsInteger()`, `GetPromotedType()`
-- Centralized primitive type knowledge
+4. **PrimitiveCatalog** (static dependency)
+   - Centralized knowledge about numeric primitive types
+   - Methods: `IsNumeric()`, `IsInteger()`, `GetPromotedType()`
+   - See lines 822-841
 
 ### External Dependencies
 
-**Parser.Ast** namespace:
-- `BinaryOperator`, `UnaryOperator`, `AssignmentOperator` enums
-- Defines the operator types being validated
-
-**Logging** namespace:
-- `ICompilerLogger` interface for error/warning output
-- `SemanticError` for structured error reporting
-
-**System.Reflection**:
-- Used by CLR operator resolution
-- `Type`, `MethodInfo`, `ParameterInfo` for reflection
-
-### Data Flow
-
-```
-TypeChecker
-    ↓ (calls ValidateBinaryOp/ValidateUnaryOp)
-OperatorValidator
-    ↓ (queries)
-SymbolTable → UserDefinedType.OperatorMethods
-    ↓ (fallback)
-PrimitiveCatalog → Builtin type rules
-    ↓ (fallback)
-ClrMemberCache → Reflection-based CLR operators
-    ↓ (on error)
-ICompilerLogger + SemanticError collection
-```
+- `Sharpy.Compiler.Parser.Ast`: Provides operator enums (`BinaryOperator`, `UnaryOperator`, `AssignmentOperator`, `ComparisonOperator`)
+- `Sharpy.Compiler.Logging`: Error logging infrastructure
+- `System.Reflection`: Used for CLR operator discovery
 
 ---
 
-## 5. Patterns and Design Decisions
+## Patterns and Design Decisions
 
-### 5.1 Multi-Strategy Resolution Pattern
+### 1. **Caching for Performance**
+The validator maintains caches for binary and unary operator results. This is crucial because:
+- Operator validation can be expensive (symbol lookups, reflection, overload resolution)
+- The same operator combinations are often validated multiple times in a codebase
+- Trade-off: Caches are not thread-safe, so instances cannot be shared across threads
 
-**Pattern**: Try multiple resolution strategies in priority order, returning on first success.
+### 2. **Multi-Strategy Resolution**
+The operator resolution follows a clear priority order:
+1. User-defined operators (Sharpy dunder methods)
+2. Builtin type operators (with special semantics)
+3. CLR operators (.NET interop)
 
-**Implementation**:
-```csharp
-// User-defined → Builtin → CLR
-var userResult = TryResolveUserDefined(...);
-if (userResult != null) return userResult;
+This ensures Sharpy types can override builtin behavior and .NET types work seamlessly.
 
-var builtinResult = TryResolveBuiltinOperator(...);
-if (builtinResult != null) return builtinResult;
+### 3. **Equality Complement Synthesis**
+If a type defines only `__eq__` or only `__ne__`, the validator synthesizes the complement operator. This matches the code generation behavior in `RoslynEmitter` and provides a better developer experience (you only need to define one).
 
-var clrResult = TryResolveClrOperator(...);
-if (clrResult != null) return clrResult;
+See `TryResolveEqualityComplement()` at lines 511-572.
 
-// Only report error if all strategies fail
-AddError(...);
-return SemanticType.Unknown;
-```
+### 4. **Error Collection Pattern**
+Errors are collected in a list (`_errors`) and also logged immediately. This allows:
+- Continued type checking after an error (don't stop at first error)
+- Post-processing of all errors
+- Immediate feedback via logging
 
-**Benefits**:
-- Clear precedence: user code > language semantics > platform interop
-- Extensible: easy to add new resolution strategies
-- Fail-safe: always returns a type (Unknown if all else fails)
-
-### 5.2 Caching with Tuple Keys
-
-**Pattern**: Use value tuples as dictionary keys for multi-dimensional lookups.
-
-```csharp
-private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache;
-
-var cacheKey = (left, op, right);
-if (_binaryOpCache.TryGetValue(cacheKey, out var cached))
-    return cached ?? SemanticType.Unknown;
-```
-
-**Benefits**:
-- Natural composite key representation
-- Structural equality by default (perfect for types/enums)
-- Excellent performance for compiler hot paths
-
-**Trade-offs**:
-- Not thread-safe (deliberate choice)
-- Memory cost increases with code size
-- Cache persists for validator lifetime (per-file compilation)
-
-### 5.3 Separation of Concerns: Validation vs. Logging
-
-**Pattern**: Methods come in pairs—one that validates and logs, one that only validates.
-
-```csharp
-// Public method: validates AND logs errors
-private SemanticType ResolveOperatorOverload(...)
-{
-    var result = TryResolveOperatorOverloadWithoutLogging(...);
-    if (result == null)
-    {
-        AddError(...);  // Only log at top level
-        return SemanticType.Unknown;
-    }
-    return result;
-}
-
-// Private helper: only validates, no logging
-private SemanticType? TryResolveOperatorOverloadWithoutLogging(...)
-{
-    // Try user-defined, builtin, CLR...
-    return null;  // Indicate failure without side effects
-}
-```
-
-**Benefits**:
-- Prevents duplicate error messages when trying multiple strategies
-- Allows internal retry logic (e.g., complement synthesis) without noise
-- Testing-friendly: can test validation logic independently of logging
-
-### 5.4 Null Handling Conventions
-
-**Pattern**: Use nullable return types to distinguish success/failure.
-
-```csharp
-// null = no operator found (not an error yet)
-private SemanticType? TryResolveBuiltinOperator(...)
-
-// Unknown = operator not found AND error reported
-public SemanticType ValidateBinaryOp(...)  // Never returns null
-```
-
-**Convention**:
-- **Internal methods** (`Try*`) return `SemanticType?` where `null` means "not found"
-- **Public API** returns `SemanticType` (never null), uses `Unknown` for errors
-- **Cache** stores `SemanticType?` to cache negative results
-
-### 5.5 The "Most Specific Match" Algorithm
-
-**Pattern**: Resolve overload ambiguity using type hierarchy specificity.
-
-```csharp
-// Type A is more specific than Type B if:
-// A.IsAssignableTo(B) but not B.IsAssignableTo(A)
-
-foreach (var candidate in assignableMatches)
-{
-    bool isMostSpecific = true;
-    foreach (var other in assignableMatches)
-    {
-        if (otherParamType.IsAssignableTo(candidateParamType))
-        {
-            isMostSpecific = false;  // Other is more specific
-            break;
-        }
-    }
-    // ...
-}
-```
-
-**Why it matters**: Matches C# overload resolution semantics and user intuition—call the most derived/specific overload available.
-
-### 5.6 Defensive Programming
-
-**Pattern**: Multiple layers of null checks and early returns.
-
-```csharp
-// Check prerequisites before expensive operations
-if (left is not UserDefinedType udt) return null;
-if (udt.Symbol == null) return null;
-if (!udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods)) return null;
-
-// Now safe to proceed with methods
-var bestOverload = ResolveBestOverload(methods, ...);
-```
-
-**Benefits**:
-- Prevents null reference exceptions
-- Clear, flat code structure (avoid deep nesting)
-- Fail-fast on invalid preconditions
+### 5. **Separation of Concerns**
+- Operator-to-dunder mapping is separated from resolution logic
+- CLR mapping is isolated in dedicated methods
+- Overload resolution is a reusable helper method
+- This makes the code maintainable and easy to extend with new operators
 
 ---
 
-## 6. Debugging Tips
+## Debugging Tips
 
-### 6.1 Tracing Operator Resolution
+### 1. **Cache-Related Issues**
+If you see inconsistent validation results:
+- Check if the cache is being inappropriately shared across validation contexts
+- Remember: Caches are keyed by `SemanticType` instances, so type identity matters
+- Clear caches between test runs if needed
 
-**Add logging to understand resolution path**:
+### 2. **Overload Resolution Failures**
+When "ambiguous overload" errors occur:
+- Look at the candidate parameter types in the error message
+- Check if types have proper inheritance relationships defined
+- Verify `IsAssignableTo()` works correctly for your types
+- Add logging in `ResolveBestOverload()` to see which candidates are considered
 
-```csharp
-// Temporarily add debug output
-private SemanticType? TryResolveOperatorOverloadWithoutLogging(...)
-{
-    Console.WriteLine($"Resolving {op} for {left.GetDisplayName()} and {right.GetDisplayName()}");
-    
-    if (left is UserDefinedType udt && ...)
-    {
-        Console.WriteLine($"  → Trying user-defined operators on {udt.Name}");
-        // ...
-    }
-    
-    var builtinResult = TryResolveBuiltinOperator(op, left, right);
-    if (builtinResult != null)
-    {
-        Console.WriteLine($"  → Resolved via builtin: {builtinResult.GetDisplayName()}");
-        return builtinResult;
-    }
-    
-    Console.WriteLine($"  → Failed to resolve");
-    return null;
-}
-```
+### 3. **Missing Operators**
+If an operator isn't working:
+1. Check if dunder method is properly registered in `UserDefinedType.Symbol.OperatorMethods`
+2. Verify the dunder name mapping is correct (check `BinaryOperatorToDunder()`)
+3. For CLR types, verify the operator method exists via reflection
+4. Add a breakpoint in the appropriate `TryResolve*` method to trace resolution
 
-**Better approach**: Enable compiler verbose logging if available, or add conditional compilation flags for debug builds.
+### 4. **Type Promotion Issues**
+For numeric operators returning wrong types:
+- Check `PrimitiveCatalog.GetPromotedType()` logic
+- Verify both operand types are being recognized as numeric
+- Look at `InferNumericResultType()` (lines 836-841)
 
-### 6.2 Cache Investigation
+### 5. **Tracking Validation Flow**
+The validation flow is:
+1. `ValidateBinaryOp()` or `ValidateUnaryOp()` (entry point)
+2. `ResolveOperatorOverload()` or `ResolveUnaryOperatorOverload()`
+3. `TryResolveOperatorOverloadWithoutLogging()` (tries all strategies)
+4. Individual `TryResolve*` methods
 
-**Problem**: Cached wrong result causing cascading type errors.
-
-**Solution**: Clear or bypass cache during debugging:
-
-```csharp
-// Option 1: Disable caching temporarily
-public SemanticType ValidateBinaryOp(...)
-{
-    // Comment out cache check
-    // if (_binaryOpCache.TryGetValue(cacheKey, out var cached)) ...
-    
-    // Always compute fresh result
-    SemanticType result = /* ... */;
-    
-    // Don't cache
-    // _binaryOpCache[cacheKey] = result;
-    return result;
-}
-
-// Option 2: Add cache inspection helper
-public void DumpCache()
-{
-    foreach (var kvp in _binaryOpCache)
-    {
-        Console.WriteLine($"{kvp.Key} → {kvp.Value?.GetDisplayName() ?? "null"}");
-    }
-}
-```
-
-### 6.3 Overload Resolution Ambiguity
-
-**Symptom**: Error says "Ambiguous overload" but you only see one definition.
-
-**Likely causes**:
-1. Inherited overloads from base classes
-2. Extension methods (if supported)
-3. Multiple overloads with compatible parameter types
-
-**Debug approach**:
-```csharp
-private FunctionSymbol? ResolveBestOverload(...)
-{
-    // Add at the start
-    Console.WriteLine($"Resolving overload for {operatorSymbol} on {leftTypeName}");
-    Console.WriteLine($"  Candidates: {candidates.Count}");
-    foreach (var c in candidates)
-    {
-        Console.WriteLine($"    - {c.Name}({string.Join(", ", c.Parameters.Select(p => p.Type.GetDisplayName()))})");
-    }
-    
-    // Continue with normal logic...
-}
-```
-
-### 6.4 CLR Operator Not Found
-
-**Symptom**: CLR type has operator overload but Sharpy doesn't find it.
-
-**Checklist**:
-1. Verify operator is static: `public static T operator+(T a, T b)`
-2. Check parameter types match exactly (no implicit conversions)
-3. Inspect `ClrMemberCache` contents
-4. Confirm CLR method name mapping is correct
-
-**Debug helper**:
-```csharp
-private SemanticType? TryResolveClrOperator(...)
-{
-    var operators = _clrMemberCache.GetOperatorMethods(leftClrType);
-    Console.WriteLine($"CLR operators on {leftClrType.Name}:");
-    foreach (var op in operators)
-    {
-        Console.WriteLine($"  {op.Key}: {op.Value.Count} overloads");
-    }
-    // ...
-}
-```
-
-### 6.5 Type Promotion Confusion
-
-**Symptom**: `int + float` gives unexpected result type.
-
-**Solution**: Check `PrimitiveCatalog.GetPromotedType()` behavior:
-
-```csharp
-private static SemanticType InferNumericResultType(SemanticType left, SemanticType right)
-{
-    var promoted = PrimitiveCatalog.GetPromotedType(left, right);
-    
-    // Debug output
-    Console.WriteLine($"Promoting {left.GetDisplayName()} + {right.GetDisplayName()} → {promoted?.GetDisplayName() ?? "Unknown"}");
-    
-    return promoted ?? SemanticType.Unknown;
-}
-```
-
-**Common gotchas**:
-- `decimal` + `float` → `Unknown` (no standard promotion)
-- `long` + `ulong` → `Unknown` (ambiguous without overflow checking)
-- `int` + `double` → `double` (standard widening)
-
-### 6.6 Error Location Tracking
-
-**Problem**: Error message points to wrong line/column.
-
-**Root cause**: Line/column passed from `TypeChecker` may be from wrong AST node.
-
-**Investigation**:
-1. Verify caller passes correct `expression.Line` and `expression.Column`
-2. Check if offset is applied (some AST nodes have start/end positions)
-3. Look for off-by-one errors in lexer token positions
-
-**Temporary fix**: Add assertion to catch invalid positions:
-```csharp
-private void AddError(string message, int line, int column)
-{
-    if (line <= 0 || column <= 0)
-    {
-        // Invalid position - log stack trace
-        Console.WriteLine($"Invalid error position: {line}:{column}");
-        Console.WriteLine(Environment.StackTrace);
-    }
-    
-    _errors.Add(new SemanticError(message, line, column));
-    _logger.LogError(message, line, column);
-}
-```
+Set breakpoints at each level to understand where resolution fails.
 
 ---
 
-## 7. Contribution Guidelines
+## Contribution Guidelines
 
-### 7.1 Adding Support for New Operators
+### Adding a New Operator
 
-**Example: Adding the matrix multiplication operator `@` (Python 3.5+)**
+To add support for a new operator:
 
-**Step 1**: Define operator in AST enum (`Parser/Ast/Operator.cs`):
-```csharp
-public enum BinaryOperator
-{
-    // ... existing operators
-    MatrixMultiply
-}
-```
+1. **Add to AST enums** (in `Parser.Ast` namespace):
+   - Add to `BinaryOperator`, `UnaryOperator`, or `AssignmentOperator` enum
 
-**Step 2**: Add dunder method mapping:
-```csharp
-private string? BinaryOperatorToDunder(BinaryOperator op)
-{
-    return op switch
-    {
-        // ... existing mappings
-        BinaryOperator.MatrixMultiply => "__matmul__",
-        _ => null
-    };
-}
-```
+2. **Add dunder mapping**:
+   - Update `BinaryOperatorToDunder()` or `UnaryOperatorToDunder()`
+   - Follow Python naming conventions
 
-**Step 3**: Add operator symbol for error messages:
-```csharp
-private string GetOperatorSymbol(BinaryOperator op)
-{
-    return op switch
-    {
-        // ... existing mappings
-        BinaryOperator.MatrixMultiply => "@",
-        _ => op.ToString()
-    };
-}
-```
+3. **Add CLR mapping** (if applicable):
+   - Update `BinaryOperatorToClrMethod()` or `UnaryOperatorToClrMethod()`
+   - Follow .NET operator naming (e.g., `op_*`)
 
-**Step 4**: Add CLR mapping if applicable (optional):
-```csharp
-private string? BinaryOperatorToClrMethod(BinaryOperator op)
-{
-    return op switch
-    {
-        // ... existing mappings
-        // Note: .NET doesn't have standard matrix multiply operator
-        BinaryOperator.MatrixMultiply => null,  
-        _ => null
-    };
-}
-```
+4. **Add symbol mapping**:
+   - Update `GetOperatorSymbol()` or `GetUnaryOperatorSymbol()` for error messages
+   - If it's an assignment operator, update `GetAssignmentOperatorSymbol()`
 
-**Step 5**: Add tests in `Sharpy.Compiler.Tests/Semantic/OperatorValidatorTests.cs`:
-```csharp
-[Fact]
-public void TestMatrixMultiplication_ValidTypes()
-{
-    var validator = new OperatorValidator(symbolTable);
-    var matrixType = new UserDefinedType { Name = "Matrix", Symbol = matrixSymbol };
-    
-    var result = validator.ValidateBinaryOp(
-        BinaryOperator.MatrixMultiply,
-        matrixType,
-        matrixType,
-        1, 1);
-    
-    Assert.Equal(matrixType, result);
-}
-```
+5. **Add builtin semantics** (if needed):
+   - Update `TryResolveBuiltinOperator()` or `TryResolveBuiltinUnaryOperator()`
+   - Define behavior for primitive types
 
-### 7.2 Improving Builtin Type Support
+6. **Update special case handling** (if needed):
+   - If the operator has special validation logic, add it to `ValidateBinaryOp()` switch
 
-**Example: Adding set operations (`set & set`, `set | set`)**
+7. **Write tests**:
+   - Test user-defined operator overloads
+   - Test builtin type behavior
+   - Test CLR interop (if applicable)
+   - Test error cases (missing operators, type mismatches)
 
-Modify `TryResolveBuiltinOperator`:
+### Extending Overload Resolution
 
-```csharp
-// After list concatenation logic
-if (left is GenericType { Name: "set" } leftSet &&
-    right is GenericType { Name: "set" } rightSet)
-{
-    if (op == BinaryOperator.BitwiseAnd)  // Intersection: set & set
-    {
-        // Return set with common element type
-        if (leftSet.TypeArguments.Count > 0 && rightSet.TypeArguments.Count > 0)
-        {
-            var leftElem = leftSet.TypeArguments[0];
-            var rightElem = rightSet.TypeArguments[0];
-            
-            if (leftElem.Equals(rightElem))
-                return leftSet;
-                
-            return null;  // Incompatible element types
-        }
-    }
-    else if (op == BinaryOperator.BitwiseOr)  // Union: set | set
-    {
-        // Similar logic...
-    }
-}
-```
+If you need to modify overload resolution logic:
+- Consider backward compatibility (existing code relies on current behavior)
+- Update `ResolveBestOverload()` carefully (it's used by multiple operators)
+- Add comprehensive tests for ambiguous cases
+- Document the resolution strategy in comments
 
-**Testing strategy**:
-1. Test typed sets: `set[int] & set[int]`
-2. Test untyped sets: `set & set`
-3. Test mixed: `set[int] & set`
-4. Test incompatible: `set[int] & set[str]` (should error)
+### Performance Improvements
 
-### 7.3 Enhancing Overload Resolution
+When optimizing:
+- Profile first to identify actual bottlenecks
+- Consider expanding caching (but be mindful of memory usage)
+- Could pre-populate builtin operator cache at startup
+- Could use more efficient data structures for overload storage
 
-**Potential improvements**:
+### CLR Interop Enhancements
 
-**A. Consider parameter names** (Python keyword arguments):
-```python
-class Processor:
-    def __add__(self, value: int) -> Processor: ...
-    def __add__(self, items: list[int]) -> Processor: ...
+To improve .NET interop:
+- Consider supporting CLR generic type operators (currently not fully handled)
+- Could implement reverse operator lookup (e.g., `int + MyType` where `MyType` defines the operator)
+- Could add support for conversion operators (`op_Implicit`, `op_Explicit`)
 
-p = Processor()
-p + value=5      # Could select first overload by name
-p + items=[1,2]  # Could select second overload by name
-```
+---
 
-**B. Support optional parameters**:
-```python
-class Logger:
-    def __add__(self, message: str, level: int = 1) -> Logger: ...
+## Cross-References
 
-log = Logger()
-log + "error"  # Should match with level defaulting to 1
-```
+### Related Semantic Analysis Components
 
-**Implementation hint**: Modify `ResolveBestOverload` to:
-1. Check exact parameter count match
-2. Check parameter count with defaults
-3. Match by parameter names if provided
+- **SymbolTable**: Stores type symbols and their operator methods; queried by this validator
+- **ProtocolValidator**: Validates protocol-based operations (e.g., `__contains__` for `in` operator)
+  - Documentation: `docs/implementation_walkthrough/src/Sharpy.Compiler/Semantic/ProtocolValidator.md` (if exists)
+- **ClrMemberCache**: Performance optimization for caching CLR member lookups
+- **PrimitiveCatalog**: Centralized numeric type knowledge (type checking and promotion)
 
-**C. Support variadic parameters** (`*args`, `**kwargs`):
-```python
-class Builder:
-    def __call__(self, *items: int) -> Builder: ...
-```
+### Upstream Components
 
-This requires extending `FunctionSymbol` to track variadic parameters.
+- **Parser**: Produces AST nodes with operator expressions that need validation
+  - See `docs/implementation_walkthrough/src/Sharpy.Compiler/Parser/Parser.Expressions.md`
 
-### 7.4 Performance Optimizations
+### Downstream Components
 
-**A. Implement cache warmup**:
-```csharp
-public void WarmupCache(IEnumerable<(BinaryOperator, SemanticType, SemanticType)> commonOps)
-{
-    foreach (var (op, left, right) in commonOps)
-    {
-        ValidateBinaryOp(op, left, right, 0, 0);  // Precompute and cache
-    }
-}
-```
+- **RoslynEmitter**: Consumes validated operator types to generate C# code
+  - Must handle equality complement synthesis (matches this validator's logic)
+  - See `docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/RoslynEmitter.Operators.md` (if exists)
 
-Call during initialization with common patterns like `int + int`, `str + str`.
+### Specification Documents
 
-**B. Use more efficient cache key**:
-```csharp
-// Instead of full SemanticType in key, use type ID (if available)
-private readonly Dictionary<(int, BinaryOperator, int), SemanticType?> _binaryOpCache;
-
-var leftId = GetTypeId(left);
-var rightId = GetTypeId(right);
-var cacheKey = (leftId, op, rightId);
-```
-
-This reduces tuple size and improves hashing performance.
-
-**C. Implement cache eviction strategy**:
-```csharp
-private const int MaxCacheSize = 10000;
-
-private void AddToCache<TKey>(Dictionary<TKey, SemanticType?> cache, TKey key, SemanticType? value)
-{
-    if (cache.Count >= MaxCacheSize)
-    {
-        // Simple strategy: clear half the cache
-        var keysToRemove = cache.Keys.Take(MaxCacheSize / 2).ToList();
-        foreach (var k in keysToRemove)
-            cache.Remove(k);
-    }
-    
-    cache[key] = value;
-}
-```
-
-Prevents unbounded memory growth in pathological cases.
-
-### 7.5 Testing Checklist
-
-When contributing changes, ensure:
-
-**Unit tests**:
-- [ ] Test with user-defined types having custom operators
-- [ ] Test with all builtin primitive types
-- [ ] Test with CLR types (e.g., `System.DateTime`)
-- [ ] Test overload resolution with inheritance hierarchy
-- [ ] Test equality complement synthesis
-- [ ] Test augmented assignments
-- [ ] Test error messages are clear and actionable
-
-**Integration tests**:
-- [ ] Compile and run complete Sharpy programs using the operators
-- [ ] Verify generated C# code is correct
-- [ ] Test interop with real .NET libraries
-
-**Edge cases**:
-- [ ] Empty/null types
-- [ ] Generic types with missing type arguments
-- [ ] Recursive type definitions
-- [ ] Operator overloads with 0 or >2 parameters (malformed)
-- [ ] Ambiguous overloads
-
-**Performance**:
-- [ ] No regressions in compilation time
-- [ ] Cache hit rate is reasonable (>80% in typical code)
-
-### 7.6 Code Style Guidelines
-
-**Follow existing patterns**:
-- Use early returns to avoid deep nesting
-- Separate validation logic from error reporting (Try* pattern)
-- Document non-obvious algorithm choices
-- Use descriptive variable names (avoid single letters except in tight loops)
-- Null checks before dereferencing
-- Prefer pattern matching over type casting chains
-
-**Error messages**:
-- Include operator symbol: `"operator '+'"` not just `"operator Add"`
-- Include type names: `'int'` and `'str'` (with quotes)
-- Suggest fixes when possible
-- Reference line/column accurately
-
-**Example good error message**:
-```
-Type 'str' does not support operator '+' with right operand of type 'int'
-Consider converting the int to str: str(value)
-```
-
-**Example bad error message**:
-```
-Invalid operator usage
-```
+- `docs/language_specification/arithmetic_operators.md`: Defines arithmetic operator semantics
+- `docs/language_specification/operator_overloading.md`: Defines how operator overloading works in Sharpy
+- `docs/language_specification/operator_precedence.md`: Defines operator precedence (handled by parser, not validator)
 
 ---
 
 ## Summary
 
-`OperatorValidator` is a sophisticated type resolution system that bridges Python's duck-typed operator overloading with .NET's static type system. Its multi-strategy resolution (user-defined → builtin → CLR) and caching architecture make it both powerful and performant.
+`OperatorValidator` is the semantic analysis component responsible for ensuring operator expressions are type-safe and determining their result types. It bridges Sharpy's Python-like dunder methods with .NET's CLR operator overloads, providing a seamless experience for both Sharpy and .NET types.
 
-**Key takeaways for contributors**:
-1. **Understand the resolution order**: user operators beat builtins beat CLR
-2. **Use the Try* pattern**: validate without logging, then log once at the top level
-3. **Cache aggressively**: operator validation is a hot path
-4. **Test thoroughly**: operators interact with every part of the type system
-5. **Error messages matter**: users see these frequently, make them helpful
+**Key Takeaways**:
+- Supports three operator systems: Sharpy dunder methods, builtin type operators, and CLR operators
+- Implements sophisticated overload resolution with "most specific" parameter semantics
+- Uses caching aggressively for performance (not thread-safe)
+- Follows clear separation of concerns for maintainability
+- Synthesizes complement equality operators to improve developer experience
 
-When debugging, start by tracing which resolution strategy is being used and why others failed. Most issues stem from misunderstanding the precedence rules or missing null checks.
+When debugging operator issues, start by tracing through the resolution strategies in order: user-defined → builtin → CLR. Understanding this flow will help you quickly identify where validation fails.

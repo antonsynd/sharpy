@@ -46,7 +46,7 @@ public class TypeResolver
 
 **Key Dependencies:**
 
-- **`SymbolTable`**: Lookup table for all declared types, functions, and variables in the current compilation unit. Used to resolve user-defined type names like `MyClass` to their corresponding `TypeSymbol`.
+- **`SymbolTable`**: Lookup table for all declared types, functions, and variables in the current compilation unit. Used to resolve user-defined type names like `MyClass` to their corresponding `TypeSymbol`, as well as type aliases.
 
 - **`SemanticInfo`**: A side-table that maps AST nodes to their semantic information. The resolver **caches** resolved types here so that if the same `TypeAnnotation` node is resolved multiple times, we don't redo the work.
 
@@ -109,7 +109,7 @@ if (annotation.Name == "auto")
 
 **Resolution Strategy:**
 
-The resolver tries three approaches in order:
+The resolver tries multiple approaches in a cascading order:
 
 #### a) Builtin Types
 ```csharp
@@ -120,16 +120,38 @@ if (TryResolveBuiltinType(annotation.Name, out var builtinType))
 ```
 Check if it's a primitive like `int`, `str`, `bool`, etc. These are resolved directly to singleton `SemanticType` instances for efficiency.
 
-#### b) Generic Types
+#### b) Type Aliases
+```csharp
+else if (_symbolTable.LookupTypeAlias(annotation.Name) is TypeAliasSymbol aliasSymbol)
+{
+    result = ExpandTypeAlias(aliasSymbol, annotation.IsNullable);
+}
+```
+If the name refers to a type alias (e.g., `type UserId = int`), expand the alias to its underlying type. Type aliases can point to either simple types or function types.
+
+#### c) Generic Types
 ```csharp
 else if (annotation.TypeArguments.Count > 0)
 {
     result = ResolveGenericType(annotation);
 }
 ```
-If there are type arguments (e.g., `list[int]`, `dict[str, float]`), this is a generic type instantiation. Delegate to `ResolveGenericType()`.
+If there are type arguments (e.g., `list[int]`, `dict[str, float]`), this is a generic type instantiation. Delegate to `ResolveGenericType()`. Note that tuples are handled specially within this method.
 
-#### c) User-Defined Types
+#### d) Type Parameters
+```csharp
+else if (_symbolTable.Lookup(annotation.Name) is TypeParameterSymbol typeParamSymbol)
+{
+    result = new TypeParameterType
+    {
+        Name = annotation.Name,
+        DeclaringType = typeParamSymbol.DeclaringType
+    };
+}
+```
+If the name refers to a type parameter (e.g., `T` in `class Box[T]`), create a `TypeParameterType`. This allows generic classes and functions to refer to their own type parameters during semantic analysis.
+
+#### e) User-Defined Types
 ```csharp
 else
 {
@@ -153,13 +175,17 @@ For simple names like `MyClass`, look them up in the symbol table. If not found,
 
 **Nullable Wrapping:**
 ```csharp
-// Handle nullable types
-if (annotation.IsNullable && result != SemanticType.Unknown)
+// Handle nullable types (already handled for type aliases in ExpandTypeAlias)
+// For non-alias types, apply nullable modifier here
+if (annotation.IsNullable && result != SemanticType.Unknown
+    && _symbolTable.LookupTypeAlias(annotation.Name) == null)
 {
     result = new NullableType { UnderlyingType = result };
 }
 ```
-If the annotation has the `?` suffix (e.g., `int?`), wrap the resolved type in a `NullableType`. Note: we skip this for `Unknown` to avoid cascading errors.
+If the annotation has the `?` suffix (e.g., `int?`), wrap the resolved type in a `NullableType`.
+
+**Important**: Type aliases are handled separately in `ExpandTypeAlias()`, which already applies the nullable modifier. This check skips aliases to avoid double-wrapping.
 
 **Caching the Result:**
 ```csharp
@@ -220,7 +246,7 @@ This mapping ensures Sharpy's default `float` type provides double-precision sem
 
 ### 3. `ResolveGenericType(TypeAnnotation annotation)` — Generic Type Instantiation
 
-**Purpose:** Resolve generic types like `list[int]`, `dict[str, int]`, or `MyGenericClass[T, U]`.
+**Purpose:** Resolve generic types like `list[int]`, `dict[str, int]`, or `MyGenericClass[T, U]`. This method also handles the special case of tuple types.
 
 **Signature:**
 ```csharp
@@ -228,6 +254,22 @@ private SemanticType ResolveGenericType(TypeAnnotation annotation)
 ```
 
 **Flow:**
+
+#### Special Case: Tuple Types
+```csharp
+// Special handling for tuple types - they have variable arity (tuple[int], tuple[int, str], etc.)
+if (annotation.Name == "tuple")
+{
+    var elementTypes = annotation.TypeArguments
+        .Select(ResolveTypeAnnotation)
+        .ToList();
+
+    return new TupleType { ElementTypes = elementTypes };
+}
+```
+Tuples are treated specially because they have **variable arity**—unlike `list[T]` which always takes exactly one type argument, `tuple` can take any number: `tuple[int]`, `tuple[int, str]`, `tuple[int, str, bool]`, etc.
+
+By creating a `TupleType` instead of a `GenericType`, we enable tuple-specific semantics like element-wise assignability checking.
 
 #### Step 1: Lookup the Generic Definition
 ```csharp
@@ -286,7 +328,109 @@ Package everything into a `GenericType` record. This includes:
 
 ---
 
-### 4. `AddError(string message, int? line, int? column)` — Error Accumulation
+### 4. `ExpandTypeAlias(TypeAliasSymbol aliasSymbol, bool isNullable)` — Type Alias Expansion
+
+**Purpose:** Expand a type alias to its underlying type definition. Type aliases are compile-time only and don't generate C# code—they're purely for developer convenience.
+
+**Signature:**
+```csharp
+private SemanticType ExpandTypeAlias(TypeAliasSymbol aliasSymbol, bool isNullable)
+```
+
+**Flow:**
+
+```csharp
+SemanticType result;
+
+// Expand type annotation
+if (aliasSymbol.TypeAnnotation != null)
+{
+    result = ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+}
+// Expand function type
+else if (aliasSymbol.FunctionType != null)
+{
+    result = ResolveFunctionType(aliasSymbol.FunctionType);
+}
+else
+{
+    AddError($"Type alias '{aliasSymbol.Name}' has no type definition",
+        aliasSymbol.DeclarationLine, aliasSymbol.DeclarationColumn);
+    return SemanticType.Unknown;
+}
+```
+
+Type aliases can refer to either:
+1. **Simple type annotations**: `type UserId = int` → expands via `ResolveTypeAnnotation()`
+2. **Function types**: `type Callback = (int, str) -> bool` → expands via `ResolveFunctionType()`
+
+**Nullable Handling:**
+```csharp
+// Apply nullable modifier if present at usage site
+if (isNullable && result != SemanticType.Unknown)
+{
+    result = new NullableType { UnderlyingType = result };
+}
+
+return result;
+```
+
+The nullable modifier (`?`) is applied **at the usage site**, not at the alias definition site. For example:
+
+```python
+type UserId = int
+x: UserId?   # Creates NullableType wrapping the expanded int type
+```
+
+This allows the same alias to be used in both nullable and non-nullable contexts.
+
+---
+
+### 5. `ResolveFunctionType(Parser.Ast.FunctionType functionType)` — Function Type Resolution
+
+**Purpose:** Resolve function type annotations like `(int, str) -> bool`. These are used for type aliases, lambda types, and higher-order function parameters.
+
+**Signature:**
+```csharp
+private Semantic.FunctionType ResolveFunctionType(Parser.Ast.FunctionType functionType)
+```
+
+**Implementation:**
+```csharp
+var paramTypes = functionType.ParameterTypes
+    .Select(ResolveTypeAnnotation)
+    .ToList();
+
+var returnType = ResolveTypeAnnotation(functionType.ReturnType);
+
+return new Semantic.FunctionType
+{
+    ParameterTypes = paramTypes,
+    ReturnType = returnType
+};
+```
+
+**Note the Namespace Distinction:**
+- `Parser.Ast.FunctionType`: The AST representation (input)
+- `Semantic.FunctionType`: The semantic representation (output)
+
+This method recursively resolves all parameter types and the return type, then constructs a semantic function type that can be used for type checking.
+
+**Example Usage:**
+```python
+type Callback = (int, str) -> bool
+
+def apply(f: Callback, x: int, y: str) -> bool:
+    return f(x, y)
+```
+
+The `Callback` alias uses `ResolveFunctionType()` to create a `FunctionType` with:
+- `ParameterTypes`: `[SemanticType.Int, SemanticType.Str]`
+- `ReturnType`: `SemanticType.Bool`
+
+---
+
+### 6. `AddError(string message, int? line, int? column)` — Error Accumulation
 
 **Purpose:** Record an error without stopping compilation.
 
@@ -307,7 +451,7 @@ private void AddError(string message, int? line = null, int? column = null)
 
 **Design Philosophy:** The compiler continues after errors to report **multiple** issues in a single compilation run. This is much better UX than stopping at the first error.
 
-**Note:** Currently, `line` and `column` are always `null` in `TypeResolver` because the AST nodes don't yet consistently track location info. This is a known limitation that could be improved (see "Contribution Guidelines" below).
+**Note:** Currently, `line` and `column` are often `null` in `TypeResolver` because the `TypeAnnotation` AST nodes don't yet consistently track location info. The exception is when resolving type aliases, where the error can include the alias definition's location from the `TypeAliasSymbol`.
 
 ---
 
@@ -317,8 +461,11 @@ private void AddError(string message, int? line = null, int? column = null)
 
 #### 1. `SymbolTable` (`Semantic/SymbolTable.cs`)
 - **Purpose**: Central registry of all symbols (types, functions, variables) in scope.
-- **Used For**: Looking up user-defined types and generic definitions.
-- **Key Method**: `LookupType(string name)` → `TypeSymbol?`
+- **Used For**: Looking up user-defined types, type aliases, type parameters, and generic definitions.
+- **Key Methods**:
+  - `LookupType(string name)` → `TypeSymbol?`
+  - `LookupTypeAlias(string name)` → `TypeAliasSymbol?`
+  - `Lookup(string name)` → `Symbol?` (for type parameters)
 
 #### 2. `SemanticInfo` (`Semantic/SemanticInfo.cs`)
 - **Purpose**: Side-table mapping AST nodes to semantic data.
@@ -328,18 +475,33 @@ private void AddError(string message, int? line = null, int? column = null)
   - `SetTypeAnnotation(TypeAnnotation, SemanticType)`
 
 #### 3. `SemanticType` and Subclasses (`Semantic/SemanticType.cs`)
-- **Records**: `BuiltinType`, `GenericType`, `UserDefinedType`, `NullableType`, `FunctionType`, `TupleType`, `UnknownType`, `VoidType`
+- **Records**: `BuiltinType`, `GenericType`, `UserDefinedType`, `NullableType`, `FunctionType`, `TupleType`, `TypeParameterType`, `UnknownType`, `VoidType`
 - **Used For**: Representing the resolved type system.
 - **Key Feature**: Singleton instances for common types (`SemanticType.Int`, etc.).
 
-#### 4. `TypeAnnotation` (`Parser/Ast/Types.cs`)
+#### 4. `Symbol` and Subclasses (`Semantic/Symbol.cs`)
+- **Records**: `TypeSymbol`, `TypeAliasSymbol`, `TypeParameterSymbol`
+- **Used For**: Representing declared types, aliases, and type parameters.
+- **Key Fields**:
+  - `TypeSymbol.TypeParameters`: List of generic type parameters
+  - `TypeAliasSymbol.TypeAnnotation`: The aliased type
+  - `TypeAliasSymbol.FunctionType`: For function type aliases
+  - `TypeParameterSymbol.DeclaringType`: Which type declares this parameter
+
+#### 5. `TypeAnnotation` (`Parser/Ast/Types.cs`)
 - **Purpose**: AST representation of a type annotation.
 - **Key Fields**:
   - `Name`: The type name (e.g., "int", "list", "MyClass")
   - `TypeArguments`: List of nested type annotations (for generics)
   - `IsNullable`: Whether the `?` suffix is present
 
-#### 5. `ICompilerLogger` (`Logging/ICompilerLogger.cs`)
+#### 6. `Parser.Ast.FunctionType` (`Parser/Ast/Types.cs`)
+- **Purpose**: AST representation of function type annotations.
+- **Key Fields**:
+  - `ParameterTypes`: List of parameter type annotations
+  - `ReturnType`: Return type annotation
+
+#### 7. `ICompilerLogger` (`Logging/ICompilerLogger.cs`)
 - **Purpose**: Abstraction for logging errors, warnings, and info messages.
 - **Used For**: Reporting type resolution errors.
 
@@ -350,13 +512,17 @@ TypeAnnotation (AST)
         ↓
   TypeResolver.ResolveTypeAnnotation()
         ↓
-  SymbolTable.LookupType() ← (for user types)
-        ↓
-  SemanticType (output)
-        ↓
-  SemanticInfo (cached)
-        ↓
-  TypeChecker (consumer)
+  ┌─────┴──────┐
+  ↓            ↓
+SymbolTable    (recursive)
+  ↓
+LookupType() / LookupTypeAlias() / Lookup()
+  ↓
+SemanticType (output)
+  ↓
+SemanticInfo (cached)
+  ↓
+TypeChecker (consumer)
 ```
 
 ---
@@ -392,6 +558,16 @@ TypeAnnotation (AST)
 - **Why?** Performance. Builtins are checked first, and a switch expression compiles to a jump table.
 - **Alternative**: Could use `SymbolTable`, but that adds dictionary lookup overhead.
 
+### 7. **Cascading Resolution Strategy**
+- **Why?** Different kinds of types (builtins, aliases, generics, user types) require different resolution logic.
+- **Pattern**: Check builtins first (fast path), then aliases, then generics, then type parameters, finally user types.
+- **Benefit**: Fast common case (primitives), with fallback to more complex lookups.
+
+### 8. **Tuple Special-Casing**
+- **Why?** Tuples have variable arity unlike other generics, and need element-wise type checking semantics.
+- **Pattern**: Check for `"tuple"` name before general generic handling.
+- **Benefit**: Enables proper tuple semantics without complicating the generic type system.
+
 ---
 
 ## Debugging Tips
@@ -406,16 +582,19 @@ TypeAnnotation (AST)
 - The type wasn't added to the `SymbolTable` by `NameResolver`.
 - The type is defined later in the file (forward reference issue).
 - Import statement is missing or failed to resolve.
+- The name is a type alias but `LookupTypeAlias()` isn't finding it.
 
 **How to Debug:**
 ```csharp
 // Add breakpoint in ResolveTypeAnnotation()
 var typeSymbol = _symbolTable.LookupType(annotation.Name);
 // Inspect _symbolTable._scopeStack to see what's in scope
+// Also check:
+var alias = _symbolTable.LookupTypeAlias(annotation.Name);
 ```
 
 **Fix Strategy:**
-- Check `NameResolver` to ensure it visits class/type definitions.
+- Check `NameResolver` to ensure it visits class/type definitions and type aliases.
 - Verify import resolution is working correctly.
 - Consider whether Sharpy should support forward references (currently limited).
 
@@ -458,7 +637,47 @@ _semanticInfo._typeAnnotations.Clear();  // Not exposed publicly, but useful for
 - Ensure `SemanticInfo` is recreated for each compilation.
 - Never reuse `SemanticInfo` across files or compilation runs.
 
-#### 4. **Recursive Type Definitions (Future Issue)**
+#### 4. **Type Alias Expansion Issues**
+
+**Symptom:** Type alias doesn't expand correctly, or nullable modifier is applied incorrectly.
+
+**Causes:**
+- The `TypeAliasSymbol` has neither `TypeAnnotation` nor `FunctionType` set.
+- Nullable modifier is being double-applied (both in alias and at usage site).
+
+**How to Debug:**
+```csharp
+// In ExpandTypeAlias(), check:
+aliasSymbol.TypeAnnotation  // Should be non-null for simple aliases
+aliasSymbol.FunctionType    // Should be non-null for function aliases
+// Verify only one is set, not both
+```
+
+**Fix Strategy:**
+- Ensure `NameResolver` properly creates `TypeAliasSymbol` instances.
+- Check that the nullable wrapping logic in `ResolveTypeAnnotation()` skips aliases.
+
+#### 5. **Type Parameter Resolution Failure**
+
+**Symptom:** Inside a generic class, type parameter `T` is not recognized.
+
+**Causes:**
+- Type parameters weren't registered in the `SymbolTable` during name resolution.
+- The `TypeParameterSymbol` doesn't have the correct `DeclaringType` set.
+
+**How to Debug:**
+```csharp
+// In ResolveTypeAnnotation(), check:
+var symbol = _symbolTable.Lookup(annotation.Name);
+// Verify it's a TypeParameterSymbol
+// Check symbol.DeclaringType points to the correct generic type
+```
+
+**Fix Strategy:**
+- Ensure `NameResolver` creates `TypeParameterSymbol` entries for generic type parameters.
+- Verify the declaring type relationship is correctly established.
+
+#### 6. **Recursive Type Definitions (Future Issue)**
 
 **Symptom:** Stack overflow when resolving types.
 
@@ -483,67 +702,23 @@ class Node:
 ### Areas for Improvement
 
 #### 1. **Add Source Location Tracking**
-**Current Issue:** Errors don't include line/column numbers.
+**Current Issue:** Errors often don't include line/column numbers because `TypeAnnotation` nodes don't consistently track location.
 
 **Task:**
-- Modify `AddError()` to extract location from `annotation.LineStart`, `annotation.ColumnStart`.
-- Update error messages to include file context.
+- Modify `TypeAnnotation` AST nodes to include `LineStart`, `ColumnStart`, `LineEnd`, `ColumnEnd`.
+- Update `AddError()` calls to extract location from annotation nodes:
+  ```csharp
+  AddError($"Type '{annotation.Name}' not found",
+           annotation.LineStart, annotation.ColumnStart);
+  ```
 
 **Impact:** Better error messages for users.
-
-**Difficulty:** Easy
-
----
-
-#### 2. **Support for Tuple Types**
-**Current Issue:** `tuple[int, str]` is treated as a generic type, but should be a `TupleType`.
-
-**Task:**
-- Add special handling in `ResolveTypeAnnotation()`:
-  ```csharp
-  if (annotation.Name == "tuple" && annotation.TypeArguments.Count > 0)
-  {
-      return new TupleType
-      {
-          ElementTypes = annotation.TypeArguments
-              .Select(ResolveTypeAnnotation)
-              .ToList()
-      };
-  }
-  ```
-
-**Impact:** Proper support for tuple types (currently partial).
-
-**Difficulty:** Easy
-
----
-
-#### 3. **Support for Function Types**
-**Current Issue:** Function type annotations `(int, str) -> bool` aren't resolved.
-
-**Task:**
-- Add a new AST node type for function type annotations (in `Parser/Ast/Types.cs`).
-- Handle it in `ResolveTypeAnnotation()`:
-  ```csharp
-  if (annotation is FunctionTypeAnnotation funcType)
-  {
-      return new FunctionType
-      {
-          ParameterTypes = funcType.ParameterTypes
-              .Select(ResolveTypeAnnotation)
-              .ToList(),
-          ReturnType = ResolveTypeAnnotation(funcType.ReturnType)
-      };
-  }
-  ```
-
-**Impact:** Enable first-class function types for lambdas and higher-order functions.
 
 **Difficulty:** Medium (requires parser changes)
 
 ---
 
-#### 4. **Cycle Detection for Recursive Types**
+#### 2. **Cycle Detection for Recursive Types**
 **Current Issue:** Self-referential types would cause infinite recursion.
 
 **Task:**
@@ -568,19 +743,24 @@ class Node:
 
 **Impact:** Support recursive data structures (linked lists, trees, etc.).
 
-**Difficulty:** Medium
+**Difficulty:** Medium-Hard (requires careful design of recursive type semantics)
 
 ---
 
-#### 5. **Better Error Messages**
+#### 3. **Better Error Messages**
 **Current Issue:** Generic errors like "Type 'X' not found" aren't actionable.
 
 **Task:**
 - Add suggestions using Levenshtein distance:
   ```csharp
-  AddError($"Type '{annotation.Name}' not found. Did you mean '{suggestedName}'?", ...);
+  var suggestions = FindSimilarTypeNames(annotation.Name);
+  if (suggestions.Any())
+      AddError($"Type '{annotation.Name}' not found. Did you mean '{suggestions.First()}'?", ...);
+  else
+      AddError($"Type '{annotation.Name}' not found.", ...);
   ```
 - Distinguish between "not imported" vs. "doesn't exist".
+- For arity mismatches, suggest correct types (e.g., "Did you mean tuple[int, str] instead of list[int, str]?").
 
 **Impact:** Significantly better developer experience.
 
@@ -588,16 +768,70 @@ class Node:
 
 ---
 
-#### 6. **Support for Type Aliases**
-**Current Issue:** No support for `type MyAlias = dict[str, int]`.
+#### 4. **Support for Union Types**
+**Current Issue:** No support for `int | str` union type syntax.
 
 **Task:**
-- Extend `SymbolTable` to store type aliases.
-- In `ResolveTypeAnnotation()`, check if name is an alias and resolve to the aliased type.
+- Extend `TypeAnnotation` to support union syntax in parser.
+- Add `UnionType` semantic type.
+- In `ResolveTypeAnnotation()`, handle union annotations:
+  ```csharp
+  if (annotation is UnionTypeAnnotation union)
+  {
+      var types = union.Types.Select(ResolveTypeAnnotation).ToList();
+      return new UnionType { Types = types };
+  }
+  ```
 
-**Impact:** Enable user-defined type aliases (major language feature).
+**Impact:** Enable Python-style union types (major language feature).
 
-**Difficulty:** Hard (requires language design decisions)
+**Difficulty:** Hard (requires language design decisions and parser changes)
+
+---
+
+#### 5. **Validation of Type Parameter Constraints**
+**Current Issue:** No validation that type arguments satisfy constraints.
+
+**Example:**
+```python
+class Box[T: Comparable]:  # T must implement Comparable
+    pass
+
+Box[int]      # OK if int implements Comparable
+Box[object]   # Should error if object doesn't
+```
+
+**Task:**
+- Store constraints in `TypeParameterDef`.
+- In `ResolveGenericType()`, validate each type argument against its constraint:
+  ```csharp
+  for (int i = 0; i < typeArgs.Count; i++)
+  {
+      var arg = typeArgs[i];
+      var param = typeSymbol.TypeParameters[i];
+      if (param.Constraint != null && !arg.SatisfiesConstraint(param.Constraint))
+      {
+          AddError($"Type '{arg.GetDisplayName()}' does not satisfy constraint '{param.Constraint}'", ...);
+      }
+  }
+  ```
+
+**Impact:** Enable constrained generics (major language feature).
+
+**Difficulty:** Hard
+
+---
+
+#### 6. **Performance Optimization: Intern Type Names**
+**Current Issue:** String comparisons for type names may be inefficient at scale.
+
+**Task:**
+- Use string interning for type names to enable reference equality checks.
+- In `TryResolveBuiltinType()`, compare interned strings by reference instead of value.
+
+**Impact:** Minor performance improvement in large codebases.
+
+**Difficulty:** Easy-Medium
 
 ---
 
@@ -617,7 +851,70 @@ When contributing to `TypeResolver`, ensure you:
    }
    ```
 
-2. **Test error cases**:
+2. **Test type aliases**:
+   ```csharp
+   [Fact]
+   public void ResolveTypeAlias_SimpleAlias_ExpandsToUnderlyingType()
+   {
+       var alias = new TypeAliasSymbol
+       {
+           Name = "UserId",
+           TypeAnnotation = new TypeAnnotation { Name = "int" }
+       };
+       symbolTable.AddTypeAlias(alias);
+
+       var annotation = new TypeAnnotation { Name = "UserId" };
+       var result = resolver.ResolveTypeAnnotation(annotation);
+       Assert.Equal(SemanticType.Int, result);
+   }
+   ```
+
+3. **Test function types**:
+   ```csharp
+   [Fact]
+   public void ResolveFunctionType_SimpleFunction_ResolvesCorrectly()
+   {
+       var funcType = new Parser.Ast.FunctionType
+       {
+           ParameterTypes = new List<TypeAnnotation>
+           {
+               new TypeAnnotation { Name = "int" },
+               new TypeAnnotation { Name = "str" }
+           },
+           ReturnType = new TypeAnnotation { Name = "bool" }
+       };
+
+       var result = resolver.ResolveFunctionType(funcType);
+       Assert.Equal(2, result.ParameterTypes.Count);
+       Assert.Equal(SemanticType.Int, result.ParameterTypes[0]);
+       Assert.Equal(SemanticType.Str, result.ParameterTypes[1]);
+       Assert.Equal(SemanticType.Bool, result.ReturnType);
+   }
+   ```
+
+4. **Test type parameters**:
+   ```csharp
+   [Fact]
+   public void ResolveTypeParameter_InsideGenericClass_ResolvesCorrectly()
+   {
+       var typeSymbol = new TypeSymbol { Name = "Box" };
+       var paramSymbol = new TypeParameterSymbol
+       {
+           Name = "T",
+           DeclaringType = typeSymbol
+       };
+       symbolTable.Add("T", paramSymbol);
+
+       var annotation = new TypeAnnotation { Name = "T" };
+       var result = resolver.ResolveTypeAnnotation(annotation);
+
+       Assert.IsType<TypeParameterType>(result);
+       Assert.Equal("T", ((TypeParameterType)result).Name);
+       Assert.Equal(typeSymbol, ((TypeParameterType)result).DeclaringType);
+   }
+   ```
+
+5. **Test error cases**:
    ```csharp
    [Fact]
    public void ResolveTypeAnnotation_UnknownType_AddsError()
@@ -630,7 +927,7 @@ When contributing to `TypeResolver`, ensure you:
    }
    ```
 
-3. **Test caching**:
+6. **Test caching**:
    ```csharp
    [Fact]
    public void ResolveTypeAnnotation_SameNodeTwice_UsesCache()
@@ -643,21 +940,31 @@ When contributing to `TypeResolver`, ensure you:
    }
    ```
 
-4. **Integration tests** with full compilation pipeline:
+7. **Test tuple types**:
    ```csharp
    [Fact]
-   public void Compile_GenericType_Resolves()
+   public void ResolveGenericType_Tuple_CreatesTupleType()
    {
-       var source = @"
-           def process(items: list[int]) -> None:
-               print(items)
-       ";
-       var result = CompileAndExecute(source);
-       Assert.Empty(result.Errors);
+       var annotation = new TypeAnnotation
+       {
+           Name = "tuple",
+           TypeArguments = new List<TypeAnnotation>
+           {
+               new TypeAnnotation { Name = "int" },
+               new TypeAnnotation { Name = "str" }
+           }
+       };
+
+       var result = resolver.ResolveTypeAnnotation(annotation);
+       Assert.IsType<TupleType>(result);
+       var tuple = (TupleType)result;
+       Assert.Equal(2, tuple.ElementTypes.Count);
+       Assert.Equal(SemanticType.Int, tuple.ElementTypes[0]);
+       Assert.Equal(SemanticType.Str, tuple.ElementTypes[1]);
    }
    ```
 
-5. **Test float type mappings**:
+8. **Test float type mappings**:
    ```csharp
    [Theory]
    [InlineData("float", typeof(double))]
@@ -674,33 +981,55 @@ When contributing to `TypeResolver`, ensure you:
    }
    ```
 
+9. **Integration tests** with full compilation pipeline:
+   ```csharp
+   [Fact]
+   public void Compile_GenericType_Resolves()
+   {
+       var source = @"
+           def process(items: list[int]) -> None:
+               print(items)
+       ";
+       var result = CompileAndExecute(source);
+       Assert.Empty(result.Errors);
+   }
+   ```
+
 ---
 
 ## Summary
 
 `TypeResolver` is the bridge between **syntax** (type annotations in source code) and **semantics** (the type system the compiler reasons about). It's a straightforward translator that:
 
-1. **Resolves** type names to their definitions
-2. **Handles** generics, nullables, and builtins
-3. **Caches** results for performance
-4. **Recovers** from errors gracefully
+1. **Resolves** type names to their definitions (builtins, user types, aliases, type parameters)
+2. **Handles** generics, tuples, nullables, and function types
+3. **Expands** type aliases transparently
+4. **Caches** results for performance
+5. **Recovers** from errors gracefully
 
 **Key Takeaways:**
-- **Simple but critical**: A small class (~140 lines) that every type in the program flows through.
-- **Recursive by nature**: Handles nested generics naturally.
+- **Simple but critical**: A focused class (~210 lines) that every type in the program flows through.
+- **Recursive by nature**: Handles nested generics and complex type structures naturally.
 - **Performance-conscious**: Caching and singletons minimize allocations.
-- **Error-tolerant**: Returns `Unknown` on failure to enable continued compilation.
+- **Error-tolerant**: Returns `Unknown` on failure to enable continued compilation and better error reporting.
+- **Extensible**: New type forms (unions, intersections, etc.) can be added by extending the resolution cascade.
 
 When working with `TypeResolver`, always remember: **it's about translation, not validation**. Type checking comes later in `TypeChecker`.
 
 ---
 
-## Further Reading
+## Cross-References
 
-- **`SemanticType.cs`**: Understand the type hierarchy and assignability rules.
-- **`SymbolTable.cs`**: See how types are stored and looked up.
-- **`TypeChecker.cs`**: The next step in the pipeline that uses resolved types.
-- **`docs/language_specification/type_annotations.md`**: Language spec for type annotations.
-- **`docs/language_specification/type_hierarchy.md`**: Type hierarchy design.
-- **`docs/language_specification/type_casting.md`**: The `to` operator and casting rules.
-- **`docs/language_specification/type_narrowing.md`**: How types are narrowed in conditionals.
+### Related Semantic Analysis Components
+- **[SemanticType.md](SemanticType.md)**: Understand the type hierarchy and assignability rules
+- **[Symbol.md](Symbol.md)**: Learn about type symbols, aliases, and parameters
+- **[SymbolTable.md](SymbolTable.md)**: See how types are stored and looked up
+- **[SemanticInfo.md](SemanticInfo.md)**: Understand the caching mechanism
+- **[TypeChecker.md](TypeChecker.md)**: The next step that validates types
+- **[NameResolver.md](NameResolver.md)**: The previous step that creates symbols
+
+### Language Specifications
+- **`docs/language_specification/type_annotations.md`**: Type annotation syntax
+- **`docs/language_specification/type_hierarchy.md`**: Type hierarchy design
+- **`docs/language_specification/type_casting.md`**: The `to` operator and casting rules
+- **`docs/language_specification/type_narrowing.md`**: How types are narrowed in conditionals

@@ -93,7 +93,11 @@ Expression (abstract)
     ├── TypeCast              (value as Type)
     ├── TypeCoercion          (value to Type)
     ├── TypeCheck             (value is Type)
-    └── Parenthesized         ((expr))
+    ├── Parenthesized         ((expr))
+    ├── SuperExpression       (super())
+    ├── WalrusExpression      (name := value)
+    ├── TryExpression         (try expr, try[ValueError] expr)
+    └── MaybeExpression       (maybe expr)
 ```
 
 ---
@@ -132,6 +136,9 @@ var binaryOp = new BinaryOp
 | `SliceAccess` | `Object` | `Start`, `Stop`, `Step` |
 | `TypeCast` | `Value`, `TargetType` | — |
 | `TypeCoercion` | `Value`, `TargetType` | — |
+| `TryExpression` | `Operand` | `ExceptionType` |
+| `MaybeExpression` | `Operand` | — |
+| `WalrusExpression` | `Target`, `Value` | — |
 
 ### 3.2 Consuming Expressions Downstream
 
@@ -143,7 +150,10 @@ SemanticType CheckExpression(Expression expr) => expr switch
     BinaryOp binOp => CheckBinaryOperation(binOp),
     FunctionCall call => CheckFunctionCall(call),
     TypeCoercion coercion => CheckTypeCoercion(coercion),
-    // ... ~25 more cases
+    TryExpression tryExpr => CheckTryExpression(tryExpr),
+    MaybeExpression maybeExpr => CheckMaybeExpression(maybeExpr),
+    WalrusExpression walrus => CheckWalrusExpression(walrus),
+    // ... ~28 more cases
 };
 ```
 
@@ -154,6 +164,7 @@ ExpressionSyntax EmitExpression(Expression expr) => expr switch
     IntegerLiteral lit => SyntaxFactory.LiteralExpression(...),
     BinaryOp binOp => EmitBinaryOp(binOp),
     ComparisonChain chain => EmitComparisonChain(chain),
+    TryExpression tryExpr => EmitTryExpression(tryExpr),
     // Maps each Sharpy expression to Roslyn C# syntax
 };
 ```
@@ -516,7 +527,7 @@ public record TypeCheck : Expression
 | On failure (nullable `T?`) | Returns `None` | Returns `None` |
 | Use case | Safe/optional casts | Assertive conversions |
 
-See `docs/language_specification/operator_precedence.md` for how `to` interacts with `try` and `maybe` expressions.
+See `docs/language_specification/type_casting.md` for detailed semantics.
 
 #### Parenthesized
 ```csharp
@@ -529,6 +540,103 @@ public record Parenthesized : Expression
 **Represents:** `(x + y) * z`
 - Preserves AST structure exactly as written for better error messages and code formatting
 
+#### SuperExpression
+```csharp
+public record SuperExpression : Expression;
+```
+
+**Represents:** `super()`
+
+Provides access to the parent class. Can only be used in specific contexts:
+- `__init__` methods to call `super().__init__(...)`
+- Dunder methods to call `super().__any_dunder__(...)`
+- `@override` methods to call `super().method(...)`
+
+**Example:**
+```python
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)  # Call parent constructor
+
+    @override
+    def speak(self) -> str:
+        return super().speak() + " Woof!"  # Extend parent behavior
+```
+
+#### WalrusExpression
+```csharp
+public record WalrusExpression : Expression
+{
+    public string Target { get; init; } = "";
+    public Expression Value { get; init; } = null!;
+}
+```
+
+**Represents:** `name := value`
+
+Assigns value to name and returns the value, enabling assignment within expressions.
+
+**Example:**
+```python
+# Capture value in conditional
+if (match := pattern.search(text)) is not None:
+    print(f"Found at {match.start()}")
+
+# Reuse computed value in comprehension
+results = [y for x in data if (y := transform(x)) is not None]
+```
+
+**Important:** Variables assigned with `:=` inside comprehensions are **local to the comprehension** (unlike Python 3.8+). See `docs/language_specification/walrus_operator.md`.
+
+#### TryExpression
+```csharp
+public record TryExpression : Expression
+{
+    public Expression Operand { get; init; } = null!;
+    public TypeAnnotation? ExceptionType { get; init; }
+}
+```
+
+**Represents:** `try expr` or `try[ExceptionType] expr`
+
+Wraps an expression in `Result[T, E]` where `E` is the exception type. If the expression raises an exception of type `E`, the result holds its `Err` case.
+
+**Examples:**
+```python
+# Generic exception handling
+x = try int("some string")  # x: Result[int, Exception]
+
+# Specific exception type
+y = try[ValueError] int("bad")  # y: Result[int, ValueError]
+
+# Safe type coercion
+z = try my_dog to Cat  # z: Result[Cat, InvalidCastException]
+```
+
+**Precedence:** Very low precedence—captures entire following expression. See `docs/language_specification/try_expressions.md`.
+
+#### MaybeExpression
+```csharp
+public record MaybeExpression : Expression
+{
+    public Expression Operand { get; init; } = null!;
+}
+```
+
+**Represents:** `maybe expr`
+
+Wraps a nullable expression in `Optional[T]`. If the expression is `None`, the result holds its `Nothing` case.
+
+**Example:**
+```python
+d: dict[str, int] = {"y": 5}
+x = maybe d.get("x")  # x: Optional[int]
+```
+
+**Type requirement:** The expression **must** return a nullable type (`T?`), otherwise it's a type-checking error.
+
+**Precedence:** Very low precedence—captures entire following expression. See `docs/language_specification/maybe_expressions.md`.
+
 ---
 
 ## 5. Dependencies
@@ -538,7 +646,7 @@ public record Parenthesized : Expression
 | File | Types Used |
 |------|------------|
 | `Node.cs` | `Node` base class (location tracking) |
-| `Types.cs` | `TypeAnnotation` (for `TypeCast`, `TypeCoercion`, `TypeCheck`) |
+| `Types.cs` | `TypeAnnotation` (for `TypeCast`, `TypeCoercion`, `TypeCheck`, `TryExpression`) |
 | `Statement.cs` | `Parameter` (for `LambdaExpression`) |
 
 ### 5.2 Downstream Consumers
@@ -615,6 +723,7 @@ Several helper records don't inherit from `Node`:
 - `FStringPart` - component of f-strings
 - `DictEntry` - key-value pair in dictionaries
 - `KeywordArgument` - named argument in function calls (but does track its own location)
+- `ComprehensionClause` - base for `ForClause` and `IfClause` (inherits from `Node`)
 
 ---
 
@@ -653,6 +762,10 @@ BinaryOp (Add)
 - `as` → `TypeCast` (safe, returns None on failure)
 - `to` → `TypeCoercion` (assertive, throws on failure)
 
+**Issue: `TryExpression` or `MaybeExpression` capturing too much:**
+- **Cause:** These have very low precedence and capture entire expressions
+- **Fix:** Use parentheses to limit scope: `(try foo()) + bar()`
+
 ### 7.3 Useful Search Commands
 
 ```bash
@@ -664,6 +777,9 @@ grep -r "case BinaryOp" src/Sharpy.Compiler/
 
 # Find all expression pattern matching:
 grep -r "switch.*Expression" src/Sharpy.Compiler/
+
+# Find uses of new expression types:
+grep -r "TryExpression\|MaybeExpression\|WalrusExpression" src/
 ```
 
 ---
@@ -700,6 +816,10 @@ grep -r "switch.*Expression" src/Sharpy.Compiler/
    - CodeGen test: verify generated C#
    - Integration test: end-to-end compilation
 
+7. **Update Documentation**:
+   - Add language specification document if it's a new feature
+   - Update this walkthrough
+
 ### 8.2 Adding a New Operator
 
 1. Add to `BinaryOperator` or `UnaryOperator` enum
@@ -707,6 +827,7 @@ grep -r "switch.*Expression" src/Sharpy.Compiler/
 3. Update `ParseBinaryExpression()` with precedence
 4. Handle in `TypeChecker` for operand type validation
 5. Handle in `RoslynEmitter` for C# code generation
+6. Update `docs/language_specification/operator_precedence.md`
 
 ### 8.3 What NOT to Do
 
@@ -730,22 +851,32 @@ grep -r "switch.*Expression" src/Sharpy.Compiler/
 
 ---
 
-## 9. Related Documentation
+## 9. Cross-References
 
-### Language Specification
-- `docs/language_specification/expressions.md` - Expression syntax and semantics
-- `docs/language_specification/operator_precedence.md` - Operator precedence table including `|>`, `to`, `??`
-
-### Related Implementation Files
+### Related AST Files
 | File | Purpose |
 |------|---------|
-| `Node.cs` | Base `Node` class with location tracking |
-| `Statement.cs` | Statement nodes + `Parameter` record |
-| `Types.cs` | `TypeAnnotation` for type-related expressions |
-| `Parser.cs` | Creates expression nodes |
-| `TypeChecker.cs` | Type-checks expressions |
-| `RoslynEmitter.cs` | Generates C# from expressions |
-| `AstDumper.cs` | Debug visualization |
+| [`Node.cs`](Node.md) | Base `Node` class with location tracking |
+| [`Statement.cs`](Statement.md) | Statement nodes + `Parameter` record |
+| [`Types.cs`](Types.md) | `TypeAnnotation` for type-related expressions |
+
+### Implementation Files
+| File | Purpose |
+|------|---------|
+| [`Parser.cs`](../Parser.md) | Creates expression nodes |
+| [`TypeChecker.cs`](../../Semantic/TypeChecker.md) | Type-checks expressions |
+| [`RoslynEmitter.cs`](../../CodeGen/RoslynEmitter.md) | Generates C# from expressions |
+| [`AstDumper.cs`](../AstDumper.md) | Debug visualization |
+
+### Language Specification
+- [`expressions.md`](../../../../language_specification/expressions.md) - Expression syntax and semantics
+- [`operator_precedence.md`](../../../../language_specification/operator_precedence.md) - Complete precedence table
+- [`try_expressions.md`](../../../../language_specification/try_expressions.md) - Try expression semantics
+- [`maybe_expressions.md`](../../../../language_specification/maybe_expressions.md) - Maybe expression semantics
+- [`walrus_operator.md`](../../../../language_specification/walrus_operator.md) - Walrus operator (`:=`) semantics
+- [`type_casting.md`](../../../../language_specification/type_casting.md) - Type cast vs coercion
+- [`comprehensions.md`](../../../../language_specification/comprehensions.md) - List/set/dict comprehensions
+- [`fstrings.md`](../../../../language_specification/fstrings.md) - F-string formatting
 
 ---
 
@@ -782,6 +913,11 @@ grep -r "switch.*Expression" src/Sharpy.Compiler/
 | `value to Type` | `TypeCoercion` |
 | `value is Type` | `TypeCheck` |
 | `(expr)` | `Parenthesized` |
+| `super()` | `SuperExpression` |
+| `name := value` | `WalrusExpression` |
+| `try expr` | `TryExpression` |
+| `try[ValueError] expr` | `TryExpression` |
+| `maybe expr` | `MaybeExpression` |
 
 ### Learning Path
 

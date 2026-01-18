@@ -4,147 +4,120 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-`CachedModuleDiscovery` is the **high-level orchestrator** for discovering and caching .NET assembly metadata in the Sharpy compiler. When Sharpy code imports a .NET library (like `System.Collections` or `Sharpy.Core`), this class efficiently discovers all public functions available in that assembly.
+The `CachedModuleDiscovery.cs` file implements a **performance-optimized module discovery system** that finds and indexes function overloads from .NET assemblies. It sits at the boundary between the Sharpy compiler and external .NET libraries, enabling Sharpy code to call functions from compiled assemblies.
 
-**The Performance Problem It Solves:**
+**Role in Pipeline**: This component operates during the **semantic analysis phase**, specifically during import resolution. When Sharpy code imports from a compiled module (e.g., `from builtins import print`), this class discovers what functions are available and their signatures.
 
-Using reflection to scan assemblies for functions is expensive—it can add hundreds of milliseconds to compilation time. `CachedModuleDiscovery` solves this by:
-1. **First load**: Uses reflection to discover functions, then saves the results to disk
-2. **Subsequent loads**: Reads pre-computed metadata from cache (typically 10-100x faster)
-3. **Thread-safe**: Multiple compilation units can safely load assemblies concurrently
+**Key Innovation**: Uses a two-tier caching strategy:
+1. **In-memory cache** (`ConcurrentDictionary`) - Fast lookup for already-loaded assemblies in the current compilation session
+2. **Persistent disk cache** (`OverloadIndexCache`) - Serialized function signatures that survive across compiler invocations
 
-**Where It Fits in the Compiler Pipeline:**
+**Performance Impact**: Without caching, reflection on large assemblies like `Sharpy.Core` takes 100-200ms. With caching, subsequent loads take <1ms. This is critical for compiler responsiveness during development.
 
-```
-Sharpy Source → Parser → Semantic Analysis
-                              ↓
-                   (imports a .NET module)
-                              ↓
-                   CachedModuleDiscovery ← You are here
-                              ↓
-                   Returns FunctionSymbols
-                              ↓
-                   Type Checker validates calls
-```
+**Key Responsibilities**:
+- Discovering function overloads from .NET assemblies via reflection
+- Caching discovered signatures to disk (gzipped JSON in `~/.sharpy/cache/overload-index/`)
+- Converting between CLR types and Sharpy semantic types
+- Thread-safe concurrent access for parallel compilation
+- Providing query interface for semantic analyzer to resolve imports
 
 ---
 
-## 2. Class Structure
+## Class/Type Structure
 
-### Main Class: `CachedModuleDiscovery`
+### Main Class
 
-This is a **thread-safe service class** with four key collaborators:
+#### `CachedModuleDiscovery`
 
+A facade that coordinates the discovery and caching subsystems.
+
+**Fields**:
 ```csharp
-public class CachedModuleDiscovery
-{
-    private readonly OverloadIndexCache _cache;          // Disk persistence
-    private readonly OverloadIndexBuilder _builder;      // Reflection scanner
-    private readonly TypeMapper _typeMapper;             // CLR→Sharpy type conversion
-    private readonly ConcurrentDictionary<string, OverloadIndex> _loadedIndices;
-                                                         // In-memory registry
-}
+private readonly OverloadIndexCache _cache;                                    // Persistent disk cache
+private readonly OverloadIndexBuilder _builder;                                // Reflection-based indexer
+private readonly TypeMapper _typeMapper;                                       // CLR ↔ Sharpy type converter
+private readonly ConcurrentDictionary<string, OverloadIndex> _loadedIndices;  // In-memory cache
 ```
 
-**Design Pattern**: This class follows the **Facade pattern**—it provides a simple interface (`LoadAssembly`, `GetModuleFunctions`) while hiding the complexity of caching, reflection, and type conversion.
+**Design Pattern**: This is a **Cache-Aside** pattern implementation. The class checks the in-memory cache first, then the disk cache, and finally falls back to expensive reflection.
 
----
+**Thread Safety**: Uses `ConcurrentDictionary.GetOrAdd()` to ensure only one thread builds an index for a given assembly, even under concurrent access.
 
-## 3. Key Methods
-
-### 3.1 Constructor
-
+**Constructors**:
 ```csharp
-public CachedModuleDiscovery(OverloadIndexCache? cache)
-{
-    _cache = cache ?? new OverloadIndexCache();
-    _builder = new OverloadIndexBuilder();
-    _typeMapper = new TypeMapper();
-}
+public CachedModuleDiscovery()                              // Uses default cache location
+public CachedModuleDiscovery(OverloadIndexCache? cache)     // Allows custom cache (for testing)
 ```
 
-**What it does:**
-- Initializes the caching infrastructure
-- If no custom cache is provided, uses the default cache directory (`~/.sharpy/cache` or similar)
-- Creates the builder (reflection engine) and type mapper
-
-**When to use custom cache:**
-- Testing: provide a mock cache to avoid disk I/O
-- Custom build systems: specify a shared cache directory
+The parameterized constructor enables **dependency injection** for testing - you can pass a temporary cache directory to avoid conflicts between parallel test runs.
 
 ---
 
-### 3.2 `LoadAssembly` - The Core Workflow
+## Key Methods
 
+### 1. `LoadAssembly(Assembly assembly)`
+
+**Purpose**: Main entry point for loading an assembly and discovering its exported functions.
+
+**Algorithm**:
 ```csharp
 public void LoadAssembly(Assembly assembly)
 {
-    var identity = AssemblyIdentity.FromAssembly(assembly);
+    var identity = AssemblyIdentity.FromAssembly(assembly);  // Create versioned identity
 
-    _loadedIndices.GetOrAdd(identity.Name, _ =>
+    _loadedIndices.GetOrAdd(identity.Name, _ =>              // Thread-safe cache lookup
     {
-        var index = _cache.TryLoad(identity);  // 1. Try cache first
-        
+        var index = _cache.TryLoad(identity);                // Try disk cache
+
         if (index == null)
         {
-            index = _builder.BuildFromAssembly(assembly);  // 2. Cache miss
-            _cache.Save(index);                            // 3. Persist
+            index = _builder.BuildFromAssembly(assembly);    // Cache miss - use reflection
+            _cache.Save(index);                              // Persist for next time
         }
-        
+
         return index;
     });
 }
 ```
 
-**Step-by-step breakdown:**
+**Cache Invalidation**: The `AssemblyIdentity` includes:
+- Assembly name
+- Version number (from `AssemblyName.Version`)
+- Content hash (SHA256 of the .dll file)
 
-1. **Create assembly identity**: `AssemblyIdentity` captures name, version, and public key token—this uniquely identifies the assembly and serves as the cache key
+This ensures that if you recompile `Sharpy.Core` or update a dependency, the cache is automatically invalidated because the hash changes.
 
-2. **Thread-safe loading with `GetOrAdd`**:
-   - `ConcurrentDictionary.GetOrAdd` ensures only ONE thread builds/loads a given assembly
-   - Other threads wait and receive the same `OverloadIndex` instance
-   - This prevents duplicate work in multi-threaded builds
+**Thread Safety Note**: `GetOrAdd` ensures that if 10 threads try to load the same assembly simultaneously, only one will execute the factory function. The others will wait and receive the same `OverloadIndex` instance.
 
-3. **Cache lookup** (`_cache.TryLoad`):
-   - Checks disk for a cached JSON file like `System.Collections.Generic-4.0.0.0.json`
-   - Validates the cache format version matches current compiler
-   - Returns `null` on cache miss or version mismatch
+**Upstream Connection**: Called by `ModuleRegistry` when resolving imports from compiled modules.
 
-4. **Reflection fallback** (`_builder.BuildFromAssembly`):
-   - Uses reflection to scan all public static methods in the assembly
-   - Groups them by module name (usually the namespace)
-   - Converts CLR types to Sharpy-friendly `TypeSignature` objects
-
-5. **Persist to cache** (`_cache.Save`):
-   - Serializes the `OverloadIndex` to JSON
-   - Saves to `~/.sharpy/cache/assemblies/{AssemblyName}.json`
-   - Future compilations skip steps 4-5
-
-**Why the `_` parameter?**
-```csharp
-_loadedIndices.GetOrAdd(identity.Name, _ => { ... });
-```
-The underscore is a convention for "unused parameter." `GetOrAdd` passes the key (`identity.Name`) to the factory function, but we already have `identity` in scope, so we ignore it.
+**Downstream Connection**: Delegates to:
+- `OverloadIndexCache.TryLoad()` for cache retrieval
+- `OverloadIndexBuilder.BuildFromAssembly()` for reflection-based discovery
+- `OverloadIndexCache.Save()` for persistence
 
 ---
 
-### 3.3 `GetModuleFunctions` - Querying Cached Data
+### 2. `GetModuleFunctions(string moduleName)`
 
+**Purpose**: Retrieve all function symbols available in a specific module (e.g., "builtins").
+
+**Algorithm**:
 ```csharp
 public List<FunctionSymbol> GetModuleFunctions(string moduleName)
 {
     var functions = new List<FunctionSymbol>();
 
-    foreach (var index in _loadedIndices.Values)  // 1. Search all assemblies
+    foreach (var index in _loadedIndices.Values)                      // Search all loaded assemblies
     {
         if (!index.Modules.TryGetValue(moduleName, out var moduleOverloads))
-            continue;  // This assembly doesn't have this module
+            continue;
 
         foreach (var (functionName, signatures) in moduleOverloads.Functions)
         {
-            foreach (var signature in signatures)  // 2. Handle overloads
+            foreach (var signature in signatures)                     // Each overload becomes a FunctionSymbol
             {
                 functions.Add(ConvertToFunctionSymbol(signature, moduleName));
             }
@@ -155,29 +128,48 @@ public List<FunctionSymbol> GetModuleFunctions(string moduleName)
 }
 ```
 
-**What it does:**
-- Given a module name (e.g., `"System.Linq"`), returns all functions available
-- Searches across ALL loaded assemblies (since multiple assemblies can contribute to the same namespace)
-- Converts cached `FunctionSignature` objects back to live `FunctionSymbol` instances
+**Design Decision**: Returns a **flat list** of `FunctionSymbol` objects, with overloads represented as separate symbols. This matches how the semantic analyzer expects function data.
 
-**Example usage in the compiler:**
+**Example**: If `Sharpy.Core.dll` has:
 ```csharp
-// When Sharpy code does: from System.Linq import *
-var linqFunctions = discovery.GetModuleFunctions("System.Linq");
-symbolTable.AddFunctions(linqFunctions);
+public static class Exports
+{
+    public static int Abs(int x) { ... }
+    public static double Abs(double x) { ... }
+}
 ```
 
-**Why iterate all indices?**
+Then `GetModuleFunctions("builtins")` returns two `FunctionSymbol` objects, both named "abs" but with different parameter types.
 
-In .NET, namespaces can span multiple assemblies:
-- `System.Linq` exists in `System.Linq.dll`
-- But also `System.Linq.Expressions.dll`
-- Both contribute functions to the `System.Linq` namespace
+**Upstream Connection**: Called by `ImportResolver` during semantic analysis when resolving `from builtins import abs`.
 
 ---
 
-### 3.4 `ConvertToFunctionSymbol` - Rehydrating Cached Data
+### 3. `GetLoadedModules()`
 
+**Purpose**: Query all module names available across all loaded assemblies.
+
+**Implementation**:
+```csharp
+public IEnumerable<string> GetLoadedModules()
+{
+    return _loadedIndices.Values
+        .SelectMany(index => index.Modules.Keys)
+        .Distinct();
+}
+```
+
+**Use Case**: Useful for diagnostic purposes or IDE tooling (e.g., autocomplete for module names).
+
+**Performance Note**: Uses LINQ deferred execution - the enumeration only happens when consumed.
+
+---
+
+### 4. `ConvertToFunctionSymbol(FunctionSignature signature, string moduleName)` (Private)
+
+**Purpose**: Rehydrate cached function signatures back into live `FunctionSymbol` objects that the semantic analyzer can use.
+
+**Implementation**:
 ```csharp
 private FunctionSymbol ConvertToFunctionSymbol(FunctionSignature signature, string moduleName)
 {
@@ -200,459 +192,417 @@ private FunctionSymbol ConvertToFunctionSymbol(FunctionSignature signature, stri
 }
 ```
 
-**The serialization challenge:**
+**Known Limitation**: The `DefaultValue = null` line indicates incomplete default parameter support. Default values are serialized as strings (e.g., `"42"`, `"true"`) but not reconstructed back into AST `Expression` nodes. This is noted as a TODO for future enhancement.
 
-`FunctionSymbol` contains rich .NET objects like `Expression` (for default values). These can't be trivially serialized to JSON. The caching layer handles this with a **lossy conversion**:
-
-| Live Object | Cached Representation | Recovery Strategy |
-|-------------|----------------------|-------------------|
-| `SemanticType` | `TypeSignature` (JSON) | `ConvertTypeSignature` |
-| `Expression` (default value) | `string?` | Currently `null`—**TODO** |
-| Method reference | `MethodToken` string | Re-resolve via reflection if needed |
-
-**Note the TODO comment**: Default parameter values aren't fully restored from cache. This is acceptable because:
-- Most imported functions don't have default parameters
-- The type checker can still validate calls
-- Code generation can query the actual MethodInfo if needed
+**Why This Matters**: Without proper default value reconstruction, the compiler might not correctly emit default parameters when generating C# code for imported functions.
 
 ---
 
-### 3.5 `ConvertTypeSignature` - The Type Mapping Brain
+### 5. `ConvertTypeSignature(TypeSignature signature)` (Private)
 
-This is the **most complex method** in the file—it converts serialized type metadata back to Sharpy's semantic type system.
+**Purpose**: Convert cached type metadata back into `SemanticType` objects used by the type checker.
 
+**Algorithm**:
 ```csharp
 private SemanticType ConvertTypeSignature(TypeSignature signature)
 {
-    // Fast path: primitives
+    // 1. Handle primitive types by name matching
     if (signature.Name == "int") return SemanticType.Int;
     if (signature.Name == "str") return SemanticType.Str;
     // ... more primitives ...
 
-    // Generic types: List<T>, Dict<K,V>, etc.
+    // 2. Handle generic types (e.g., List[int])
     if (signature.IsGeneric)
     {
         return new GenericType
         {
-            Name = signature.Name[..signature.Name.IndexOf('[')],
+            Name = ExtractBaseName(signature.Name),      // "List[int]" → "List"
             TypeArguments = signature.TypeArguments
-                .Select(ConvertTypeSignature)  // Recursive!
+                .Select(ConvertTypeSignature)             // Recursive conversion
                 .ToList()
         };
     }
 
-    // CLR types: RangeIterator, custom .NET types
+    // 3. Handle non-generic CLR types using reflection
     if (!string.IsNullOrEmpty(signature.ClrTypeName))
     {
-        var clrType = Type.GetType(signature.ClrTypeName)
-            ?? AppDomain.CurrentDomain.GetAssemblies()
-                .Select(a => a.GetType(signature.ClrTypeName))
-                .FirstOrDefault(t => t != null);
+        var clrType = Type.GetType(signature.ClrTypeName)         // Try direct lookup
+                   ?? FindTypeInLoadedAssemblies(signature.ClrTypeName);
 
         if (clrType != null)
         {
-            return new BuiltinType { Name = signature.Name, ClrType = clrType };
+            return new BuiltinType
+            {
+                Name = signature.Name,
+                ClrType = clrType
+            };
         }
     }
 
-    return SemanticType.Object;  // Fallback
+    // 4. Fallback for unknown types
+    return SemanticType.Object;
 }
 ```
 
-**Three-tier type resolution:**
-
-1. **Primitive fast path**: Direct lookups for common types (`int`, `str`, `bool`)
-   - No allocation, no reflection
-   - 90% of types hit this path
-
-2. **Generic types**: Handles `List<int>`, `Dict<str, float>`, etc.
-   - Recursively converts type arguments
-   - Extracts base name from serialized form like `"List[int]"`
-
-3. **CLR types**: Complex .NET types like `RangeIterator` or custom types
-   - Uses `ClrTypeName` (assembly-qualified name) to resolve via reflection
-   - Falls back to searching all loaded assemblies if `Type.GetType` fails
-   - **Performance note**: This is slow but rare (only for exotic types)
-
-**Edge case handling:**
-
+**Interesting Detail**: The float type mapping:
 ```csharp
-Name = signature.Name.Contains('[')
-    ? signature.Name[..signature.Name.IndexOf('[')]
-    : signature.Name
+if (signature.Name == "float") return SemanticType.Float;       // float → double (per spec)
+if (signature.Name == "float32") return SemanticType.Float32;   // float32 → C# float
+if (signature.Name == "float64") return SemanticType.Double;    // float64 → double
 ```
 
-Why the conditional? The cached `Name` might be:
-- Simple: `"List"`
-- Formatted: `"List[int]"` (includes type args for readability)
+This reflects Sharpy's design decision that `float` defaults to double-precision (like Python), while `float32` explicitly requests single-precision.
 
-The code defensively extracts just the base name.
+**Performance Note**: The `AppDomain.CurrentDomain.GetAssemblies()` search for CLR types is expensive, and the comment suggests caching this if performance becomes an issue. This is a good example of **premature optimization avoidance** - the feature works correctly, and only if profiling shows this as a bottleneck should caching be added.
+
+**Edge Case Handling**: Returns `SemanticType.Object` as a safe fallback for types that can't be resolved. This prevents crashes but may lead to less precise type checking.
 
 ---
 
-### 3.6 `GetLoadedModules` - Discovery Metadata
+## Dependencies
 
+### Internal Dependencies
+
+#### 1. `Sharpy.Compiler.Discovery.Caching` Namespace
+
+**OverloadIndexCache** (`src/Sharpy.Compiler/Discovery/Caching/OverloadIndexCache.cs`):
+- Manages persistent caching to `~/.sharpy/cache/overload-index/`
+- Handles gzip compression, JSON serialization, and file locking
+- Implements retry logic for concurrent access from multiple processes
+- Automatically cleans up stale caches (>7 days old)
+
+**OverloadIndexBuilder** (`src/Sharpy.Compiler/Discovery/Caching/OverloadIndexBuilder.cs`):
+- Uses reflection to scan assemblies for `Exports` classes
+- Discovers public static methods (filters out properties, generics, type constructors)
+- Converts C# method names from PascalCase to snake_case (e.g., `ReadLine` → `read_line`)
+- Creates serializable `FunctionSignature` objects with method tokens for rehydration
+
+**OverloadIndex** (`src/Sharpy.Compiler/Discovery/Caching/OverloadIndex.cs`):
+- Data model for cached function signatures
+- Structure: `OverloadIndex` → `ModuleOverloads` → `FunctionSignature` → `ParameterSignature`/`TypeSignature`
+- All classes are JSON-serializable with camelCase naming
+
+**AssemblyIdentity** (`src/Sharpy.Compiler/Discovery/Caching/AssemblyIdentity.cs`):
+- Creates versioned identity with SHA256 content hash
+- Generates cache keys like `sharpy.core-1.0.0-a1b2c3d4e5f6.json.gz`
+- Implements equality comparison for cache validation
+
+#### 2. `Sharpy.Compiler.Semantic` Namespace
+
+**TypeMapper** (not shown, but used):
+- Converts CLR types to Sharpy semantic types
+- Handles primitive mappings, generics, nullable types, etc.
+
+**Symbol.cs** (`src/Sharpy.Compiler/Semantic/Symbol.cs`):
+- `FunctionSymbol`: Target type for discovered functions
+- `ParameterSymbol`: Represents function parameters
+- `SemanticType`: Type system representation used by type checker
+
+### External Dependencies
+
+- **System.Reflection**: Core dependency for assembly introspection
+- **System.Collections.Concurrent**: Thread-safe in-memory caching
+- **System.IO.Compression**: Gzip compression for cache files (via `OverloadIndexCache`)
+- **System.Text.Json**: JSON serialization (via `OverloadIndexCache`)
+
+---
+
+## Patterns and Design Decisions
+
+### 1. **Cache-Aside Pattern**
+
+The classic caching strategy:
+```
+┌─────────────────────────────────────────────┐
+│ 1. Check in-memory cache (ConcurrentDict)  │
+│    ↓ Hit: Return immediately               │
+│    ↓ Miss: Continue...                     │
+├─────────────────────────────────────────────┤
+│ 2. Check disk cache (OverloadIndexCache)   │
+│    ↓ Hit: Return and populate memory cache │
+│    ↓ Miss: Continue...                     │
+├─────────────────────────────────────────────┤
+│ 3. Use reflection (OverloadIndexBuilder)   │
+│    ↓ Populate both disk and memory cache   │
+└─────────────────────────────────────────────┘
+```
+
+**Benefit**: Optimizes for the common case (recompiling the same code repeatedly during development) while gracefully handling cache misses.
+
+### 2. **Separation of Concerns**
+
+Each class has a single, well-defined responsibility:
+- `CachedModuleDiscovery`: Orchestration and public API
+- `OverloadIndexCache`: Persistent storage with file I/O
+- `OverloadIndexBuilder`: Reflection logic and type mapping
+- `OverloadIndex`: Data model
+
+**Benefit**: Easy to test each component in isolation, and changes to caching strategy don't affect reflection logic.
+
+### 3. **Immutable Data Structures**
+
+The `OverloadIndex`, `FunctionSignature`, `ParameterSignature`, and `TypeSignature` classes use init-only properties:
 ```csharp
-public IEnumerable<string> GetLoadedModules()
+public class FunctionSignature
 {
-    return _loadedIndices.Values
-        .SelectMany(index => index.Modules.Keys)
-        .Distinct();
+    public string Name { get; set; } = string.Empty;
+    public List<ParameterSignature> Parameters { get; set; } = new();
+    // ...
 }
 ```
 
-**Purpose**: Returns all available module names (namespaces) across loaded assemblies.
+**Benefit**: Once created, these objects cannot be accidentally modified, making them safe to share across threads.
 
-**Use case**: Implementing autocomplete in an IDE:
+### 4. **Optimistic Concurrency**
+
+Uses `ConcurrentDictionary.GetOrAdd()` instead of locks:
 ```csharp
-var modules = discovery.GetLoadedModules();
-// Suggests: "System.Linq", "System.Collections", "Sharpy.Core", ...
+_loadedIndices.GetOrAdd(identity.Name, _ => {
+    // This factory function runs only once per key
+});
 ```
 
----
+**Benefit**: Lock-free reads for already-cached assemblies, and automatic deduplication for concurrent writes.
 
-### 3.7 `ClearCache` - Maintenance Operation
+### 5. **Content-Based Cache Invalidation**
 
-```csharp
-public void ClearCache()
-{
-    _cache.ClearAll();
-}
+Cache keys include SHA256 hash of the assembly file:
+```
+sharpy.core-1.0.0-a1b2c3d4e5f6.json.gz
+                 ↑
+                 First 12 chars of SHA256 hash
 ```
 
-**When to use:**
-- .NET SDK version changed → cached metadata might be stale
-- Compiler updated with new caching logic
-- Debugging cache-related issues
+**Benefit**: If you edit `Sharpy.Core` and recompile, the hash changes, automatically invalidating the cache. No need for manual cache clearing.
 
-**Note**: This only clears disk cache, not `_loadedIndices`. In-memory data persists until the `CachedModuleDiscovery` instance is disposed.
+### 6. **Graceful Degradation**
 
----
+Multiple fallback mechanisms:
+- If disk cache is corrupted → delete it and rebuild from reflection
+- If type mapping fails → fall back to `SemanticType.Object`
+- If cache save fails → log warning but continue (caching is optional)
 
-## 4. Dependencies
-
-### Internal Dependencies (Sharpy Compiler)
-
-| Dependency | Purpose | Location |
-|------------|---------|----------|
-| `OverloadIndexCache` | Disk serialization (JSON) | `Discovery/Caching/` |
-| `OverloadIndexBuilder` | Reflection-based scanning | `Discovery/Caching/` |
-| `OverloadIndex` | Data model for cached metadata | `Discovery/Caching/` |
-| `TypeMapper` | CLR → Sharpy type conversion | `Discovery/` |
-| `FunctionSymbol` | Compiler's function representation | `Semantic/Symbol.cs` |
-| `SemanticType` | Sharpy's type system | `Semantic/SemanticType.cs` |
-
-### External Dependencies (.NET BCL)
-
-- `System.Reflection.Assembly` - Introspection of .NET assemblies
-- `System.Collections.Concurrent.ConcurrentDictionary` - Thread-safe storage
-- `System.Linq` - LINQ queries for collection transformations
+**Benefit**: The compiler remains functional even when caching subsystems fail.
 
 ---
 
-## 5. Patterns and Design Decisions
+## Data Flow Example
 
-### 5.1 Thread Safety Strategy
+Let's trace what happens when Sharpy code imports from builtins:
 
-**Pattern**: Optimistic concurrency with `ConcurrentDictionary`
-
-```csharp
-_loadedIndices.GetOrAdd(identity.Name, _ => { ... });
+```python
+# user_code.spy
+from builtins import print
 ```
 
-**Why this works:**
-- `GetOrAdd` is atomic—only one factory function executes per key
-- Reflection/disk I/O happens once per assembly, even with 100 concurrent threads
-- No locks needed! The dictionary handles synchronization
+**Step-by-step execution**:
 
-**Alternative considered**: Manual locking
-```csharp
-lock (_lock)
-{
-    if (!_loadedIndices.ContainsKey(key))
-        _loadedIndices[key] = Build();
-}
-```
-**Rejected because**: Slower, error-prone, doesn't scale as well.
+1. **Semantic Analyzer** calls `ImportResolver.ResolveImport("builtins")`
 
----
+2. **ImportResolver** asks `ModuleRegistry` for the "builtins" module
 
-### 5.2 Immutability of Cached Data
+3. **ModuleRegistry** identifies "builtins" as a compiled module (from `Sharpy.Core.dll`)
 
-**Decision**: `OverloadIndex` and related types are mutable POCOs, not immutable records.
+4. **ModuleRegistry** calls `cachedDiscovery.LoadAssembly(sharpyCoreAssembly)`
 
-**Rationale:**
-- JSON deserialization requires settable properties
-- Performance: No allocations for `with` expressions
-- Cache data is **read-only after creation**—mutation isn't a concern
+5. **CachedModuleDiscovery**:
+   - Creates `AssemblyIdentity` with name="Sharpy.Core", version="1.0.0", hash="a1b2c3..."
+   - Checks in-memory cache → MISS
+   - Checks disk cache at `~/.sharpy/cache/overload-index/sharpy.core-1.0.0-a1b2c3d4e5f6.json.gz` → HIT
+   - Deserializes `OverloadIndex` containing all function signatures
+   - Stores in `_loadedIndices["Sharpy.Core"]`
 
-**Trade-off**: Less safety, more performance. Acceptable for internal infrastructure.
+6. **ModuleRegistry** calls `cachedDiscovery.GetModuleFunctions("builtins")`
 
----
+7. **CachedModuleDiscovery**:
+   - Searches all loaded indices for module name "builtins"
+   - Finds `Sharpy.Core` assembly has module "builtins"
+   - Iterates through all function signatures (print, len, range, etc.)
+   - Converts each `FunctionSignature` to `FunctionSymbol` via `ConvertToFunctionSymbol()`
+   - Returns list of 100+ function symbols
 
-### 5.3 Separation of Concerns
+8. **ImportResolver** filters for functions named "print"
 
-The class delegates specialized work:
+9. **TypeChecker** can now verify calls to `print()` have valid signatures
 
-| Concern | Handler |
-|---------|---------|
-| Reflection | `OverloadIndexBuilder` |
-| Disk I/O | `OverloadIndexCache` |
-| Type conversion | `TypeMapper` + `ConvertTypeSignature` |
-| Thread safety | `ConcurrentDictionary` |
-
-**Benefit**: Each class is testable in isolation. Easy to replace implementations (e.g., mock cache for testing).
+**Performance**: Steps 1-5 take <1ms (disk cache hit). Without caching, step 5 would take ~150ms for reflection on `Sharpy.Core`.
 
 ---
 
-### 5.4 The "Signature" vs "Symbol" Dichotomy
+## Debugging Tips
 
-**Two parallel type hierarchies:**
+### 1. **Cache Issues**
 
-1. **Signatures** (`FunctionSignature`, `TypeSignature`):
-   - Serializable POCOs (JSON-friendly)
-   - Store **names and strings**, not live .NET objects
-   - Lightweight for caching
+If functions aren't being discovered correctly:
 
-2. **Symbols** (`FunctionSymbol`, `SemanticType`):
-   - Rich compiler objects
-   - May contain `Expression` trees, `Type` instances, scope info
-   - Not serializable
-
-**The bridge**: `ConvertToFunctionSymbol` and `ConvertTypeSignature` convert between these worlds.
-
----
-
-## 6. Debugging Tips
-
-### 6.1 Cache Miss Debugging
-
-**Symptom**: Compilation is slow; assembly always being rescanned.
-
-**Check:**
-```csharp
-var index = _cache.TryLoad(identity);
-if (index == null)
-{
-    Console.WriteLine($"Cache miss for {identity.Name}");
-    // Add logging here to see why
-}
-```
-
-**Common causes:**
-- Cache format version mismatch (compiler was upgraded)
-- File permissions issue (cache directory not writable)
-- Assembly version changed (e.g., `System.Collections.4.0.0.0` → `4.1.0.0`)
-
-**Quick fix**: Clear cache and rebuild
 ```bash
-rm -rf ~/.sharpy/cache/assemblies/*
+# Check cache directory
+ls -lh ~/.sharpy/cache/overload-index/
+
+# Clear all caches and force rebuild
+rm -rf ~/.sharpy/cache/overload-index/
 ```
+
+**Diagnostic Code**:
+```csharp
+var cacheInfo = _cache.GetInfo();
+Console.WriteLine($"Cache dir: {cacheInfo.CacheDirectory}");
+Console.WriteLine($"Cached assemblies: {cacheInfo.CachedAssemblies}");
+Console.WriteLine($"Total size: {cacheInfo.TotalSizeBytes / 1024}KB");
+```
+
+### 2. **Assembly Not Found**
+
+If `GetModuleFunctions()` returns empty list:
+
+- Check that the assembly was actually loaded with `LoadAssembly()`
+- Verify the module name matches what `OverloadIndexBuilder.DeriveModuleName()` generates:
+  - `Sharpy.Core.Exports` → `"builtins"` (special case)
+  - `MyCompany.MyLib.Exports` → `"mycompany_mylib"`
+- Look for errors in `OverloadIndexBuilder` that might have skipped methods
+
+### 3. **Type Conversion Issues**
+
+If types aren't resolving correctly in `ConvertTypeSignature()`:
+
+- Add logging to see what `signature.Name` and `signature.ClrTypeName` contain
+- Check if `Type.GetType()` is failing due to missing assembly references
+- Verify the `TypeMapper` correctly handles the CLR type
+
+**Debug Pattern**:
+```csharp
+private SemanticType ConvertTypeSignature(TypeSignature signature)
+{
+    Console.WriteLine($"Converting: Name={signature.Name}, CLR={signature.ClrTypeName}, Generic={signature.IsGeneric}");
+    // ... rest of method
+}
+```
+
+### 4. **Concurrency Issues**
+
+If you suspect race conditions:
+
+- The `ConcurrentDictionary` should handle thread safety automatically
+- Check for exceptions in the `GetOrAdd` factory function - these could indicate contention
+- Use `Debug.WriteLine()` with thread IDs to trace execution:
+  ```csharp
+  Debug.WriteLine($"[Thread {Thread.CurrentThread.ManagedThreadId}] Loading {identity.Name}");
+  ```
+
+### 5. **Cache Corruption**
+
+Symptoms: Deserialization failures, missing functions after cache hit
+
+**Recovery**:
+```bash
+# Find corrupted cache files
+cd ~/.sharpy/cache/overload-index/
+file *.json.gz | grep -v "gzip compressed data"
+
+# Delete specific cache
+rm sharpy.core-*.json.gz
+```
+
+The cache automatically cleans up on load failure, but manual intervention can help diagnose patterns.
 
 ---
 
-### 6.2 Type Conversion Failures
+## Contribution Guidelines
 
-**Symptom**: Compilation error like "Cannot convert System.Linq.IEnumerable to Sharpy type"
+### When to Modify This File
 
-**Debug strategy:**
-1. Add logging in `ConvertTypeSignature`:
+1. **Adding New Module Sources**: If Sharpy gains the ability to import from sources other than `Exports` classes (e.g., native modules, dynamic assemblies)
+
+2. **Improving Type Mapping**: Extending `ConvertTypeSignature()` to handle new semantic types or CLR types
+
+3. **Fixing Default Parameter Support**: Implementing the TODO to reconstruct `DefaultValue` expressions from cached strings
+
+4. **Performance Optimization**: Adding caching for `AppDomain.GetAssemblies()` type lookup if profiling shows it as a bottleneck
+
+5. **Query Methods**: Adding new methods to query cached data (e.g., `GetFunctionsByPrefix()`, `GetModulesByNamespace()`)
+
+### What NOT to Change
+
+- **Caching Strategy**: The `OverloadIndexCache` handles persistence. Changes to cache format should happen there, not here.
+- **Reflection Logic**: The `OverloadIndexBuilder` handles discovery. Changes to what gets discovered should happen there.
+- **Type System**: Changes to `SemanticType` hierarchy should happen in `src/Sharpy.Compiler/Semantic/SemanticType.cs`
+
+### Testing Considerations
+
+When adding features:
+
+1. **Unit Tests**: Mock `OverloadIndexCache` to test without disk I/O
    ```csharp
-   Console.WriteLine($"Converting: {signature.Name}, Generic={signature.IsGeneric}, ClrTypeName={signature.ClrTypeName}");
+   var tempCache = new OverloadIndexCache(Path.GetTempPath());
+   var discovery = new CachedModuleDiscovery(tempCache);
    ```
 
-2. Check if type is falling through to `SemanticType.Object` fallback
+2. **Integration Tests**: Test with real assemblies:
+   ```csharp
+   var assembly = typeof(Sharpy.Core.Exports).Assembly;
+   discovery.LoadAssembly(assembly);
+   var functions = discovery.GetModuleFunctions("builtins");
+   Assert.True(functions.Any(f => f.Name == "print"));
+   ```
 
-3. Verify `TypeMapper` is generating correct `TypeSignature` during cache build
+3. **Concurrency Tests**: Use `Parallel.For` to simulate concurrent loads
 
-**Common issue**: Generic types with nested generics
-- Example: `List<Dict<str, int>>`
-- Ensure recursive `TypeArguments` are fully populated
+4. **Cache Invalidation Tests**: Modify an assembly file and verify cache is rebuilt
 
----
+### Code Style Notes
 
-### 6.3 Concurrent Loading Issues
-
-**Symptom**: Rare exceptions or cache corruption under load.
-
-**Verify thread safety:**
-```csharp
-// Add this to LoadAssembly to detect reentrancy bugs
-var threadId = Environment.CurrentManagedThreadId;
-Console.WriteLine($"[Thread {threadId}] Loading {assembly.FullName}");
-```
-
-**Known safe scenario**: Multiple threads loading **different** assemblies
-**Potential issue**: Same assembly loaded from different file paths (symlinks, etc.)
+- Use **XML doc comments** for all public methods
+- Prefer **LINQ** for collection operations (maintains consistency with codebase)
+- Use **string interpolation** (`$"..."`) for formatting
+- Add **TODO comments** for incomplete features (like default value reconstruction)
+- Log warnings with `Console.Error.WriteLine()` for non-critical failures
 
 ---
 
-### 6.4 Memory Leaks
+## Cross-References
 
-**Watch for**: `_loadedIndices` growing unbounded in long-running processes (e.g., LSP server)
+### Related Source Files
 
-**Mitigation**: Add cache eviction if needed:
-```csharp
-if (_loadedIndices.Count > 1000)
-{
-    // Evict least recently used
-}
-```
+**Discovery/Caching Subsystem**:
+- [`OverloadIndexCache.md`](Caching/OverloadIndexCache.md) - Persistent cache management
+- [`OverloadIndexBuilder.md`](Caching/OverloadIndexBuilder.md) - Reflection-based function discovery
+- [`OverloadIndex.md`](Caching/OverloadIndex.md) - Cached data model
+- [`AssemblyIdentity.md`](Caching/AssemblyIdentity.md) - Versioned assembly identification
 
-Currently not implemented—assumes bounded number of assemblies per compilation.
+**Semantic Analysis**:
+- `src/Sharpy.Compiler/Semantic/ModuleRegistry.cs` - Calls this class to resolve compiled modules
+- `src/Sharpy.Compiler/Semantic/ImportResolver.cs` - Uses discovered functions during import resolution
+- `src/Sharpy.Compiler/Semantic/Symbol.cs` - Target data structures (`FunctionSymbol`, `ParameterSymbol`)
+- `src/Sharpy.Compiler/Semantic/SemanticType.cs` - Type system used in conversion
 
----
+**Code Generation**:
+- [`TypeMapper.md`](TypeMapper.md) - Shared type mapping logic between discovery and emission
 
-## 7. Contribution Guidelines
+### Related Documentation
 
-### 7.1 Easy Wins
+**Language Specifications**:
+- `docs/language_specification/module_resolution.md` - How imports are resolved
+- `docs/language_specification/module_system.md` - Module naming and organization
 
-**Fix the TODO: Restore default parameter values**
+### Future Enhancements
 
-Currently:
-```csharp
-DefaultValue = null  // TODO: Reconstruct from cached string
-```
-
-**Approach:**
-1. Update `ParameterSignature` to store default value as JSON
-2. Deserialize in `ConvertToFunctionSymbol`
-3. Convert to appropriate `Expression` type (literal, constant, etc.)
-
-**Test with**: C# methods like `void Foo(int x = 42)`
-
----
-
-### 7.2 Performance Improvements
-
-**Optimize CLR type resolution**
-
-Current code searches all assemblies:
-```csharp
-AppDomain.CurrentDomain.GetAssemblies()
-    .Select(a => a.GetType(signature.ClrTypeName))
-    .FirstOrDefault(t => t != null);
-```
-
-**Improvement**: Cache assembly → types mapping
-```csharp
-private readonly ConcurrentDictionary<string, Type> _typeCache = new();
-```
-
-**Benchmark first**: Is this actually a bottleneck? Use BenchmarkDotNet.
+1. **Default Parameter Reconstruction**: Parse cached default value strings back into AST expressions
+2. **Generic Method Support**: Currently filtered out by `OverloadIndexBuilder`, needs semantic model for generics
+3. **Property Discovery**: Extend to discover public static properties from `Exports` classes
+4. **Assembly Watching**: Automatically reload when referenced assemblies change on disk
+5. **Lazy Loading**: Only discover functions when module is first imported (saves startup time)
 
 ---
 
-### 7.3 Robustness Enhancements
+## Summary
 
-**Add cache validation**
+`CachedModuleDiscovery` is a critical performance optimization that makes Sharpy's compiler responsive during development. By caching function signatures discovered via reflection, it reduces import resolution from hundreds of milliseconds to under a millisecond.
 
-Before deserializing, verify:
-- File is valid JSON
-- `CacheFormatVersion` matches
-- `AssemblyIdentity` matches expected
+The class demonstrates several best practices:
+- **Layered caching** (memory + disk)
+- **Thread-safe concurrent access**
+- **Content-based cache invalidation**
+- **Graceful error handling**
+- **Separation of concerns**
 
-**Current behavior**: Silently treats bad cache as miss (rebuilds)
-**Better behavior**: Log warning to help diagnose cache corruption
-
----
-
-### 7.4 Testing Additions
-
-**Missing test scenarios:**
-- Concurrent loading of same assembly from multiple threads
-- Cache invalidation when assembly version changes
-- Generic types with complex nesting (`List<Dict<Tuple<int, str>, Set<float>>>`)
-
-**Test structure:**
-```csharp
-[Fact]
-public void LoadAssembly_Concurrent_LoadsOnlyOnce()
-{
-    var discovery = new CachedModuleDiscovery();
-    var assembly = typeof(List<>).Assembly;
-    
-    Parallel.For(0, 10, _ => discovery.LoadAssembly(assembly));
-    
-    // Verify only one index exists
-    Assert.Single(discovery.GetLoadedModules().Where(m => m.StartsWith("System.Collections")));
-}
-```
-
----
-
-### 7.5 Architecture Evolution
-
-**Potential future direction: Incremental caching**
-
-Current limitation: Cache entire assembly or nothing
-Better: Cache per-module (namespace) granularity
-
-**Benefits:**
-- Faster cache updates when assembly changes
-- Lower memory footprint for large assemblies
-
-**Trade-offs:**
-- More complex cache management
-- Need to track module → assembly mappings
-
----
-
-## 8. Related Files
-
-When working on `CachedModuleDiscovery`, you'll often touch:
-
-| File | Relationship |
-|------|-------------|
-| `Discovery/Caching/OverloadIndexCache.cs` | Storage layer—handles JSON serialization and file I/O |
-| `Discovery/Caching/OverloadIndexBuilder.cs` | Reflection engine—discovers functions from assemblies |
-| `Discovery/Caching/OverloadIndex.cs` | Data models—defines cache format |
-| `Discovery/TypeMapper.cs` | Type conversion—maps CLR types to Sharpy types |
-| `Semantic/Symbol.cs` | Target format—defines `FunctionSymbol` and `ParameterSymbol` |
-| `Semantic/SemanticType.cs` | Type system—defines Sharpy's type hierarchy |
-
----
-
-## 9. Quick Reference
-
-### Common Operations
-
-**Load an assembly:**
-```csharp
-var discovery = new CachedModuleDiscovery();
-var assembly = Assembly.LoadFrom("MyLibrary.dll");
-discovery.LoadAssembly(assembly);
-```
-
-**Query functions:**
-```csharp
-var functions = discovery.GetModuleFunctions("MyLibrary.Core");
-foreach (var func in functions)
-{
-    Console.WriteLine($"{func.Name}: {func.ReturnType}");
-}
-```
-
-**Clear cache:**
-```csharp
-discovery.ClearCache();
-```
-
-**Custom cache directory:**
-```csharp
-var cache = new OverloadIndexCache("/path/to/cache");
-var discovery = new CachedModuleDiscovery(cache);
-```
-
----
-
-## 10. Final Thoughts
-
-`CachedModuleDiscovery` is a **critical performance component** that makes Sharpy compilation fast enough for interactive development. Its design balances:
-- **Performance**: Aggressive caching eliminates repeated reflection
-- **Correctness**: Thread-safe, handles edge cases gracefully
-- **Simplicity**: Clean API hides caching complexity
-
-When debugging, remember: **cache is an optimization, not correctness**. You can always delete the cache and rely on the reflection path to verify behavior.
-
-**Key insight**: The entire `Discovery/` subsystem exists because .NET's reflection API is too slow for real-time compilation. This is a common pattern in compiler design—use expensive discovery once, cache aggressively, serve fast.
+For most development, you won't need to modify this file - it's a stable component that "just works." However, understanding its role is essential for debugging import resolution issues or extending Sharpy to support new module sources.

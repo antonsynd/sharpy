@@ -4,65 +4,246 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-The `ProjectConfig.cs` file is the heart of Sharpy's project system. It provides two essential components:
+`ProjectConfig.cs` is the **entry point** for understanding how Sharpy projects are configured and loaded. This file defines:
 
-1. **`ProjectConfig` class**: A data model that represents all the configuration for a Sharpy project (`.spyproj` files)
-2. **`ProjectFileParser` class**: A parser that reads XML-based `.spyproj` files and converts them into `ProjectConfig` objects
+1. **ProjectConfig**: A data model class representing a compiled Sharpy project's configuration
+2. **ProjectFileParser**: A parser that reads `.spyproj` XML files and produces `ProjectConfig` instances
 
-Think of this file as the bridge between the MSBuild-style project file format and the compiler's internal representation. When you run `sharpyc project myapp.spyproj`, this code is responsible for:
-- Reading the XML project file
-- Resolving glob patterns like `src/**/*.spy` into actual file paths
-- Computing output paths based on configuration (Debug/Release)
-- Validating that the project has required elements
+**Role in the Compiler Pipeline**: This file sits at the **very beginning** of the compilation process. Before any lexing, parsing, or code generation happens, the compiler needs to know:
+- Which `.spy` source files to compile
+- What the output should be (executable vs library)
+- What dependencies exist
+- Where to place build outputs
 
-**Role in the overall architecture**: This file sits at the entry point of multi-file compilation. The CLI (`Sharpy.Cli`) uses `ProjectFileParser.Load()` to get a `ProjectConfig`, which is then passed to `AssemblyCompiler` to orchestrate the full compilation pipeline.
-
----
-
-## 2. Class/Type Structure
-
-### 2.1 `ProjectConfig` Class
-
-A plain configuration data class (no complex logic) using C# 9.0 init-only properties. It's effectively a **Data Transfer Object (DTO)** pattern.
-
-```csharp
-public class ProjectConfig
-{
-    // Properties with init-only setters
-    public string ProjectFilePath { get; init; } = string.Empty;
-    public string RootNamespace { get; init; } = string.Empty;
-    // ... more properties
-    
-    // Computed properties with getters only
-    public string OutputPath { get; }
-    public virtual string OutputAssemblyPath { get; }
-}
-```
-
-**Key design decision**: All properties use `init` accessors, making instances **immutable after construction**. This prevents accidental modification during compilation and makes the code easier to reason about.
-
-### 2.2 `ProjectFileParser` Class
-
-A static utility class following the **Factory pattern**. It has no instance state—all methods are static.
-
-```csharp
-public class ProjectFileParser
-{
-    public static ProjectConfig Load(string projectFilePath, string? configuration = null)
-    public static string? FindProjectFile(string directory)
-    private static List<string> ResolveGlobPattern(string baseDirectory, string pattern)
-}
-```
-
-**Why static?** The parser has no state to maintain between operations. Each `Load()` call is independent, making it thread-safe and simple to use.
+Think of this as the Sharpy equivalent of `.csproj` files in C# or `package.json` in Node.js.
 
 ---
 
-## 3. Key Functions/Methods
+## Class/Type Structure
 
-### 3.1 `ProjectConfig.OutputPath` (Computed Property)
+### 1. ProjectConfig (Data Model)
+
+A configuration object with **init-only properties** (immutable after construction). This is a simple data container with no behavior except two computed properties.
+
+**Key Properties**:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `ProjectFilePath` | `string` | Absolute path to the `.spyproj` file |
+| `ProjectDirectory` | `string` | Directory containing the project (project root) |
+| `RootNamespace` | `string` | Root namespace for generated C# code (required) |
+| `OutputType` | `string` | `"library"` or `"exe"` - determines output format |
+| `TargetFramework` | `string` | E.g., `"net8.0"` - the .NET target framework |
+| `AssemblyName` | `string?` | Output assembly name (defaults to RootNamespace) |
+| `EntryPoint` | `string?` | Entry point file for executables (e.g., `"main.spy"`) |
+| `SourceFiles` | `List<string>` | Resolved list of `.spy` files to compile |
+| `References` | `List<string>` | External .NET assemblies to reference |
+| `ModulePaths` | `List<string>` | Search paths for resolving module imports |
+| `Configuration` | `string` | Build configuration: `"Debug"` or `"Release"` |
+
+**Computed Properties**:
+
+```csharp
+public string OutputPath { get; }
+// Returns: bin/{Configuration}/{TargetFramework}
+// Example: bin/Debug/net8.0
+
+public virtual string OutputAssemblyPath { get; }
+// Returns: bin/{Configuration}/{TargetFramework}/{AssemblyName}.{dll|exe}
+// Example: bin/Debug/net8.0/MyProject.dll
+```
+
+The `virtual` keyword on `OutputAssemblyPath` suggests this class may be subclassed in tests or other contexts.
+
+---
+
+### 2. ProjectFileParser (Static Parser)
+
+A static utility class that reads and parses `.spyproj` XML files. This is the **workhorse** of project configuration.
+
+**Key Methods**:
+- `Load(string projectFilePath, string? configuration)` - Main parsing method
+- `FindProjectFile(string directory)` - Locates a `.spyproj` in a directory
+- `ResolveGlobPattern(...)` - Resolves glob patterns to actual file paths (private)
+
+---
+
+## Key Functions/Methods
+
+### `ProjectFileParser.Load(string projectFilePath, string? configuration)`
+
+**Purpose**: Parse a `.spyproj` XML file and return a fully populated `ProjectConfig`.
+
+**Flow**:
+
+```
+1. Validate file exists
+2. Load XML document
+3. Validate root <Project> element
+4. Parse <PropertyGroup> (required settings)
+5. Parse <ItemGroup> elements (source files, references, module paths)
+6. Resolve glob patterns for source files
+7. Deduplicate source files
+8. Validate at least one source file exists
+9. Return ProjectConfig instance
+```
+
+**Important Implementation Details**:
+
+1. **XML Structure Validation** (lines 113-129):
+   ```csharp
+   if (root == null || root.Name.LocalName != "Project")
+       throw new InvalidDataException("Invalid .spyproj file: missing <Project> root element");
+   ```
+   The parser is strict about requiring a `<PropertyGroup>` and `<RootNamespace>`. This prevents cryptic errors downstream.
+
+2. **Dual Element Names** (lines 144-167):
+   ```csharp
+   // Both <SpyFile> and <SourceFile> are supported
+   foreach (var spyFile in itemGroup.Elements("SpyFile")) { ... }
+   foreach (var sourceFile in itemGroup.Elements("SourceFile")) { ... }
+   ```
+   This flexibility allows users to use either element name, improving ergonomics.
+
+3. **Glob Pattern Resolution with Exclusions** (lines 146-153):
+   ```csharp
+   var include = spyFile.Attribute("Include")?.Value;
+   var exclude = spyFile.Attribute("Exclude")?.Value;
+
+   if (!string.IsNullOrWhiteSpace(include))
+   {
+       var resolvedFiles = ResolveGlobPattern(projectDirectory, include, exclude);
+       sourceFiles.AddRange(resolvedFiles);
+   }
+   ```
+   Supports MSBuild-style glob patterns like `**/*.spy` with optional `Exclude` patterns like `bin/**;obj/**`.
+
+4. **Path Resolution** (lines 176-179):
+   ```csharp
+   var referencePath = Path.IsPathRooted(include)
+       ? include
+       : Path.Combine(projectDirectory, include);
+   ```
+   Absolute paths are used as-is; relative paths are resolved from the project directory.
+
+5. **Deduplication** (line 198):
+   ```csharp
+   sourceFiles = sourceFiles.Distinct().ToList();
+   ```
+   Prevents the same file from being compiled multiple times if matched by multiple patterns.
+
+**Parameters**:
+- `projectFilePath` - Path to the `.spyproj` file
+- `configuration` - Optional build configuration (`"Debug"` or `"Release"`, defaults to `"Debug"`)
+
+**Returns**: `ProjectConfig` instance
+
+**Throws**:
+- `FileNotFoundException` - Project file doesn't exist
+- `InvalidDataException` - Malformed XML or missing required elements
+
+---
+
+### `ProjectFileParser.FindProjectFile(string directory)`
+
+**Purpose**: Locate a `.spyproj` file in a directory automatically.
+
+**Behavior**:
+- Returns `null` if no `.spyproj` found
+- Returns the single `.spyproj` path if exactly one exists
+- **Throws** if multiple `.spyproj` files exist (ambiguous)
+
+**Usage Example**:
+```csharp
+var projectFile = ProjectFileParser.FindProjectFile(Directory.GetCurrentDirectory());
+if (projectFile == null)
+{
+    Console.WriteLine("No project file found. Run 'sharpy init' to create one.");
+}
+```
+
+This is typically used by CLI commands that operate on "the current project" without requiring explicit file paths.
+
+---
+
+### `ProjectFileParser.ResolveGlobPattern(string baseDirectory, string includePattern, string? excludePattern)`
+
+**Purpose**: Convert glob patterns like `**/*.spy` into concrete file paths.
+
+**Key Features**:
+
+1. **Microsoft.Extensions.FileSystemGlobbing**: Uses the official .NET globbing library, same as MSBuild
+   ```csharp
+   var matcher = new Matcher();
+   matcher.AddInclude(includePattern);
+   ```
+
+2. **Multiple Exclude Patterns** (lines 253-260):
+   ```csharp
+   var excludePatterns = excludePattern.Split(';', StringSplitOptions.RemoveEmptyEntries);
+   foreach (var pattern in excludePatterns)
+   {
+       matcher.AddExclude(pattern.Trim());
+   }
+   ```
+   Supports semicolon-separated exclusions: `Exclude="bin/**;obj/**"`
+
+3. **Full Path Resolution** (lines 266-269):
+   ```csharp
+   return result.Files
+       .Select(f => Path.GetFullPath(Path.Combine(baseDirectory, f.Path)))
+       .Where(File.Exists)
+       .ToList();
+   ```
+   Returns absolute paths and filters out non-existent files (defensive programming).
+
+**Returns**: `List<string>` of absolute file paths
+
+---
+
+## Dependencies
+
+### External Dependencies
+
+1. **System.Xml.Linq** (line 1):
+   - Used for XML parsing with LINQ
+   - Provides `XDocument`, `XElement`, etc.
+
+2. **Microsoft.Extensions.FileSystemGlobbing** (lines 2-3):
+   - Official .NET library for glob pattern matching
+   - Same library used by MSBuild and .NET SDK project system
+
+### Internal Dependencies
+
+This file has **no dependencies** on other Sharpy compiler components. It's intentionally isolated to:
+- Allow project files to be loaded independently
+- Enable tooling (e.g., IDE integration) to read projects without loading the full compiler
+- Make testing easier
+
+### Downstream Consumers
+
+Files that depend on `ProjectConfig.cs`:
+- **Compiler.cs**: Uses `ProjectConfig` to drive the compilation process
+- **CLI commands** (Program.cs): Load projects to build, run, or analyze
+- **Build orchestration**: Determines what files to compile and where to output results
+
+---
+
+## Patterns and Design Decisions
+
+### 1. **Init-Only Properties Pattern**
+
+```csharp
+public string RootNamespace { get; init; } = string.Empty;
+```
+
+All properties use `{ get; init; }`, making `ProjectConfig` immutable after construction. This prevents accidental modification during compilation and makes the object thread-safe.
+
+### 2. **Computed Properties for Paths**
+
+Instead of storing `OutputPath` and `OutputAssemblyPath`, they're computed on-the-fly:
 
 ```csharp
 public string OutputPath
@@ -75,438 +256,218 @@ public string OutputPath
 }
 ```
 
-**What it does**: Computes the output directory path following .NET conventions.
+**Benefit**: Ensures these paths stay consistent with `Configuration` and `TargetFramework` without manual sync.
 
-**Example output**: 
-- Debug build: `<project_dir>/bin/Debug/net8.0/`
-- Release build: `<project_dir>/bin/Release/net8.0/`
+### 3. **Static Parser Class**
 
-**Key insight**: This mimics MSBuild's directory structure, making Sharpy projects feel familiar to .NET developers. The path is computed on-demand rather than stored, ensuring it's always consistent with `Configuration` and `TargetFramework`.
+`ProjectFileParser` is a static class (all methods are static). This is a common pattern for:
+- Utility/parser code with no instance state
+- Discouraging instantiation when there's no object state to maintain
 
-### 3.2 `ProjectConfig.OutputAssemblyPath` (Computed Property)
+### 4. **MSBuild-Compatible XML Structure**
+
+The `.spyproj` format mirrors MSBuild conventions:
+
+```xml
+<Project>
+  <PropertyGroup>
+    <RootNamespace>MyProject</RootNamespace>
+    <OutputType>exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <SpyFile Include="**/*.spy" Exclude="bin/**;obj/**" />
+    <Reference Include="path/to/library.dll" />
+  </ItemGroup>
+</Project>
+```
+
+**Rationale**: Familiar to .NET developers and allows reuse of existing tooling/libraries.
+
+### 5. **Fail-Fast Validation**
+
+The parser throws exceptions immediately when encountering invalid data:
+- Missing required elements
+- No source files
+- Multiple project files in a directory
+
+This prevents silent failures and provides clear error messages early.
+
+---
+
+## Debugging Tips
+
+### Common Issues and How to Debug
+
+1. **"No source files found in project"** (line 202):
+   - **Cause**: Glob patterns didn't match any files, or all matched files were excluded
+   - **Debug**: Print the glob patterns and the directory being searched
+   - **Fix**: Check that `Include` patterns are correct and files actually exist
+
+2. **"Multiple .spyproj files found"** (line 236):
+   - **Cause**: Directory contains more than one `.spyproj` file
+   - **Debug**: Run `ls *.spyproj` in the directory
+   - **Fix**: Explicitly specify which project file to use, or remove unused `.spyproj` files
+
+3. **Reference paths not resolving**:
+   - **Cause**: Relative paths are resolved from `ProjectDirectory`, not the current working directory
+   - **Debug**: Print `ProjectDirectory` and the resolved reference paths
+   - **Fix**: Ensure references are relative to the `.spyproj` file location
+
+4. **Source files being compiled twice**:
+   - **Cause**: Multiple glob patterns match the same file, and deduplication failed
+   - **Debug**: Add breakpoint at line 198 and inspect `sourceFiles` before/after `Distinct()`
+   - **Fix**: Adjust glob patterns to be mutually exclusive, or verify `Distinct()` is working
+
+### Debugging Workflow
+
+To inspect what a project file parses to:
 
 ```csharp
-public virtual string OutputAssemblyPath
+var config = ProjectFileParser.Load("path/to/project.spyproj");
+
+Console.WriteLine($"Root Namespace: {config.RootNamespace}");
+Console.WriteLine($"Output Type: {config.OutputType}");
+Console.WriteLine($"Source Files ({config.SourceFiles.Count}):");
+foreach (var file in config.SourceFiles)
 {
-    get
-    {
-        var assemblyName = AssemblyName ?? RootNamespace;
-        var extension = OutputType.ToLowerInvariant() == "exe" ? ".exe" : ".dll";
-        return Path.Combine(OutputPath, assemblyName + extension);
-    }
+    Console.WriteLine($"  - {file}");
+}
+Console.WriteLine($"References ({config.References.Count}):");
+foreach (var reference in config.References)
+{
+    Console.WriteLine($"  - {reference}");
 }
 ```
 
-**What it does**: Determines the full path to the final compiled assembly.
+### Logging Recommendations
 
-**Parameters/Logic**:
-- Falls back to `RootNamespace` if `AssemblyName` isn't specified
-- Chooses `.exe` for console apps, `.dll` for libraries
-- Builds on top of `OutputPath`
-
-**Why virtual?** Allows test projects or specialized compilers to override the output path logic without modifying the base class.
-
-**Example**: For project with `RootNamespace="MyApp"` and `OutputType="exe"`:
-```
-/path/to/project/bin/Debug/net8.0/MyApp.exe
-```
-
-### 3.3 `ProjectFileParser.Load()` (Main Entry Point)
-
-This is the **workhorse method** that deserializes `.spyproj` files.
-
-```csharp
-public static ProjectConfig Load(string projectFilePath, string? configuration = null)
-```
-
-**What it does**: 
-1. Validates the file exists
-2. Parses XML using `XDocument`
-3. Extracts required elements (`RootNamespace`)
-4. Extracts optional elements (with defaults)
-5. Resolves glob patterns to actual files
-6. Returns an immutable `ProjectConfig`
-
-**Implementation flow**:
-
-```
-Load(projectFilePath)
-    ↓
-Validate file exists
-    ↓
-Parse XML with XDocument
-    ↓
-Extract <PropertyGroup> elements
-    ↓
-Loop through <ItemGroup> elements
-    ↓
-    For each <SpyFile Include="...">:
-        Call ResolveGlobPattern()
-    ↓
-    For each <Reference Include="...">:
-        Resolve relative paths
-    ↓
-    For each <ModulePath Include="...">:
-        Resolve relative paths
-    ↓
-Validate at least one source file found
-    ↓
-Return new ProjectConfig { ... }
-```
-
-**Error handling**:
-- `FileNotFoundException`: Project file doesn't exist
-- `InvalidDataException`: Missing required XML elements or no source files
-
-**Key parameters**:
-- `projectFilePath`: Path to `.spyproj` file (can be relative or absolute)
-- `configuration`: Optional override for Debug/Release (defaults to "Debug")
-
-**Return value**: A fully-initialized `ProjectConfig` with all paths resolved to absolute paths.
-
-### 3.4 `ProjectFileParser.FindProjectFile()` (Convenience Method)
-
-```csharp
-public static string? FindProjectFile(string directory)
-```
-
-**What it does**: Searches for a `.spyproj` file in a directory, with smart error handling.
-
-**Behavior**:
-- **0 files found**: Returns `null` (not an error—allows callers to handle this)
-- **1 file found**: Returns the file path ✅
-- **2+ files found**: Throws `InvalidOperationException` with helpful message listing all files
-
-**Example error message**:
-```
-Multiple .spyproj files found in '/path/to/dir'. Please specify which project to build:
-  - app.spyproj
-  - lib.spyproj
-```
-
-**Use case**: Enables `sharpyc project .` to auto-discover the project file in the current directory.
-
-### 3.5 `ProjectFileParser.ResolveGlobPattern()` (Private Helper)
-
-```csharp
-private static List<string> ResolveGlobPattern(string baseDirectory, string pattern)
-```
-
-**What it does**: Converts glob patterns into actual file paths using Microsoft's globbing library.
-
-**How it works**:
-```csharp
-var matcher = new Matcher();
-matcher.AddInclude(pattern);  // e.g., "src/**/*.spy"
-var result = matcher.Execute(new DirectoryInfoWrapper(directoryInfo));
-```
-
-**Glob pattern examples**:
-- `**/*.spy`: All `.spy` files recursively
-- `src/**/*.spy`: All `.spy` files under `src/`
-- `*.spy`: Only `.spy` files in project root
-
-**Key implementation details**:
-1. Uses `Microsoft.Extensions.FileSystemGlobbing` (industry-standard library)
-2. Wraps `DirectoryInfo` with `DirectoryInfoWrapper` (required by the API)
-3. Converts relative paths to **absolute paths** via `Path.GetFullPath()`
-4. Filters with `File.Exists()` to exclude non-existent paths (defensive)
-
-**Return value**: List of absolute file paths, ready for compilation.
+If adding logging to this file, focus on:
+- Which glob patterns are being evaluated
+- How many files each pattern matches
+- Which files are being excluded
+- Final source file count after deduplication
 
 ---
 
-## 4. Dependencies
+## Contribution Guidelines
 
-### External NuGet Packages
-- **`System.Xml.Linq`**: For parsing XML project files
-- **`Microsoft.Extensions.FileSystemGlobbing`**: For glob pattern matching
+### When to Modify This File
 
-### Internal Dependencies
-- **`AssemblyCompiler.cs`**: Consumes `ProjectConfig` to compile multi-file projects
-- **`Sharpy.Cli/Program.cs`**: Calls `ProjectFileParser.Load()` and `FindProjectFile()`
-- **`Compiler.cs`**: Single-file compilation doesn't use `ProjectConfig`, but could be extended
+1. **Adding New Project Properties**:
+   - Add the property to `ProjectConfig` with a sensible default
+   - Parse it from `<PropertyGroup>` in `Load()`
+   - Document its purpose and format
 
-### Coupling Analysis
-- **Low coupling**: Only depends on standard .NET libraries
-- **High cohesion**: Everything in this file is about project configuration
-- **Interface design**: `ProjectConfig` is just data—no behavior beyond computed properties
+2. **Supporting New Item Types**:
+   - Add parsing logic in the `foreach (var itemGroup in root.Elements("ItemGroup"))` loop
+   - Follow the pattern of `<Reference>` or `<ModulePath>` elements
 
----
+3. **Changing Output Path Structure**:
+   - Modify the `OutputPath` or `OutputAssemblyPath` computed properties
+   - Ensure compatibility with existing projects or provide migration guidance
 
-## 5. Patterns and Design Decisions
+4. **Improving Error Messages**:
+   - Add more specific exceptions with actionable guidance
+   - Example: Instead of "Invalid .spyproj file", say "Missing <RootNamespace> in <PropertyGroup>"
 
-### 5.1 Immutability via Init-Only Properties
+### Testing Checklist
 
-```csharp
-public string RootNamespace { get; init; } = string.Empty;
-```
+When making changes:
+1. **Test with missing/malformed XML**: Ensure exceptions are clear
+2. **Test glob edge cases**: Empty directories, no matches, only excluded files
+3. **Test path resolution**: Relative vs absolute paths, Windows vs Unix paths
+4. **Test multiple configurations**: Debug vs Release builds
 
-**Why?** Once a `ProjectConfig` is created, its state should never change. This:
-- Prevents bugs from accidental mutation
-- Makes the object thread-safe
-- Simplifies reasoning about data flow
+### Performance Considerations
 
-**Trade-off**: Requires creating new instances for modifications (not an issue here, as configs are created once).
+This file is called **once per compilation**, so performance is not critical. However:
+- Glob pattern matching can be slow for large directory trees
+- Consider caching if projects are reloaded frequently (e.g., in watch mode)
 
-### 5.2 Factory Pattern
+### Backwards Compatibility
 
-`ProjectFileParser` is a static factory that creates `ProjectConfig` instances. This separates:
-- **What**: The data model (`ProjectConfig`)
-- **How**: The creation logic (`ProjectFileParser`)
-
-**Alternative considered**: Could have made `Load()` a static method on `ProjectConfig` itself, but keeping parsing separate allows for:
-- Different parsers in the future (e.g., JSON-based configs)
-- Cleaner separation of concerns
-
-### 5.3 Fail-Fast Validation
-
-The parser validates **immediately** during `Load()`:
-
-```csharp
-if (string.IsNullOrWhiteSpace(rootNamespace))
-{
-    throw new InvalidDataException("Invalid .spyproj file: <RootNamespace> is required");
-}
-```
-
-**Philosophy**: Better to fail early with a clear error than to pass around incomplete data structures.
-
-### 5.4 Computed Properties vs. Stored Values
-
-`OutputPath` and `OutputAssemblyPath` are computed, not stored. This is a **declarative** approach:
-
-**Pros**:
-- Always consistent—can't have stale values
-- No need to update multiple fields when `Configuration` changes
-
-**Cons**:
-- Minor performance overhead (but these are called rarely)
-
-### 5.5 Sensible Defaults
-
-```csharp
-public string OutputType { get; init; } = "library";
-public string TargetFramework { get; init; } = "net8.0";
-```
-
-Default to building libraries for .NET 8.0—the most common case. This follows the **convention over configuration** principle.
-
-### 5.6 Path Resolution Strategy
-
-All paths are normalized to **absolute paths** during loading:
-
-```csharp
-ProjectFilePath = Path.GetFullPath(projectFilePath)
-```
-
-**Why?** Prevents ambiguity when the working directory changes during compilation. Absolute paths are unambiguous.
+When changing the `.spyproj` format:
+- Support old formats with defaults where possible
+- Provide clear migration messages for breaking changes
+- Consider a version attribute: `<Project Version="2.0">`
 
 ---
 
-## 6. Debugging Tips
+## Cross-References
 
-### 6.1 Common Issues
+### Related Files
 
-**Problem**: "Invalid .spyproj file: missing <RootNamespace>"
+- **Compiler.md** (`docs/implementation_walkthrough/src/Sharpy.Compiler/Compiler.md`):
+  - See how single-file compilation works
+  - `ProjectConfig` is for multi-file projects; single-file uses different path
 
-**Debug approach**:
-1. Check the XML structure—is `<PropertyGroup>` present?
-2. Is `<RootNamespace>` inside `<PropertyGroup>`?
-3. Is there whitespace-only content? The check uses `IsNullOrWhiteSpace()`
+- **Program.md** (`docs/implementation_walkthrough/src/Sharpy.Cli/Program.md`):
+  - CLI commands that load and use `ProjectConfig`
+  - Example: `build`, `run`, `test` commands
 
-**Problem**: "No source files found in project"
+### Example Project Files
 
-**Debug approach**:
-1. Check the glob pattern in `<SpyFile Include="..." />`
-2. Manually test the glob with a tool: `ls src/**/*.spy`
-3. Add logging to `ResolveGlobPattern()` to see what's being matched:
-   ```csharp
-   var files = ResolveGlobPattern(projectDirectory, include);
-   Console.WriteLine($"Pattern '{include}' matched {files.Count} files");
-   ```
+Look for sample `.spyproj` files in:
+- `examples/` directory for sample Sharpy projects
+- Integration tests may have test project files in `tests/` directory
 
-**Problem**: Wrong output path generated
+### Design Philosophy
 
-**Debug approach**:
-1. Inspect `OutputPath` property—does it reflect the expected configuration?
-2. Check `Configuration` property value—is it "Debug" or "Release"?
-3. Verify `TargetFramework`—should match your expected TFM
+This file embodies the principle of **separation of concerns**:
+- **Configuration loading** is isolated from compilation logic
+- **Data** (ProjectConfig) is separate from **behavior** (ProjectFileParser)
+- **Validation** happens early, at parse time, not during compilation
 
-### 6.2 Breakpoint Locations
-
-**Key places to set breakpoints**:
-1. **Line 96** (`Load()` entry): See what project file is being loaded
-2. **Line 142** (inside `ResolveGlobPattern` call): See glob results
-3. **Line 180** (return statement): Inspect final `ProjectConfig` state
-
-### 6.3 Quick Test
-
-To test project loading without running the full compiler:
-
-```csharp
-var config = ProjectFileParser.Load("path/to/test.spyproj");
-Console.WriteLine($"Root namespace: {config.RootNamespace}");
-Console.WriteLine($"Source files: {string.Join(", ", config.SourceFiles)}");
-Console.WriteLine($"Output: {config.OutputAssemblyPath}");
-```
-
-### 6.4 XML Parsing Gotchas
-
-- **XML namespaces**: The parser uses `.Name.LocalName` to ignore XML namespaces. If someone adds `xmlns="..."` to their project file, it still works.
-- **Case sensitivity**: XML element names are case-sensitive. `<propertygroup>` won't match `<PropertyGroup>`.
+This makes the codebase more modular and testable.
 
 ---
 
-## 7. Contribution Guidelines
+## Example .spyproj File
 
-### 7.1 When to Modify This File
+Here's a complete example to illustrate what this parser handles:
 
-**Add new properties to `ProjectConfig` when**:
-- Sharpy needs new project-level settings (e.g., optimization flags, package metadata)
-- You're adding a compiler feature that requires configuration
+```xml
+<Project>
+  <PropertyGroup>
+    <RootNamespace>MySharpyApp</RootNamespace>
+    <OutputType>exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>MyApp</AssemblyName>
+    <EntryPoint>main.spy</EntryPoint>
+  </PropertyGroup>
 
-**Example**: Adding nullable reference type warnings:
-```csharp
-public bool NullableWarnings { get; init; } = true;
+  <ItemGroup>
+    <!-- Include all .spy files, but exclude build outputs -->
+    <SpyFile Include="**/*.spy" Exclude="bin/**;obj/**" />
+
+    <!-- Reference external libraries -->
+    <Reference Include="../libs/SomeLibrary.dll" />
+    <Reference Include="/absolute/path/to/AnotherLib.dll" />
+
+    <!-- Module search paths for imports -->
+    <ModulePath Include="../shared/modules" />
+  </ItemGroup>
+</Project>
 ```
 
-Then update `Load()` to parse it:
-```csharp
-var nullableWarnings = bool.TryParse(
-    propertyGroup.Element("NullableWarnings")?.Value, 
-    out var value) ? value : true;
-```
-
-### 7.2 What Types of Changes Are Welcome
-
-✅ **Encouraged**:
-- Adding new optional project properties
-- Improving error messages (make them more actionable)
-- Supporting additional `<ItemGroup>` element types
-- Adding validation for conflicting settings
-
-❌ **Discouraged**:
-- Breaking changes to existing property names (would break user projects)
-- Adding complex business logic to `ProjectConfig` (keep it a data class)
-- Making the XML schema overly complex
-
-### 7.3 Testing Checklist
-
-When you modify this file, test:
-
-1. **Valid project files**: Does a minimal `.spyproj` still work?
-   ```xml
-   <Project>
-     <PropertyGroup>
-       <RootNamespace>Test</RootNamespace>
-       <OutputType>exe</OutputType>
-     </PropertyGroup>
-     <ItemGroup>
-       <SpyFile Include="*.spy" />
-     </ItemGroup>
-   </Project>
-   ```
-
-2. **Invalid project files**: Do you get good error messages?
-   - Missing `<RootNamespace>`
-   - No source files
-   - Malformed XML
-
-3. **Glob patterns**: Test various patterns
-   - `**/*.spy` (recursive)
-   - `src/**/*.spy` (subdirectory)
-   - `*.spy` (flat)
-
-4. **Path resolution**: Test with relative and absolute paths
-
-### 7.4 Code Style Guidelines
-
-**Follow existing patterns**:
-- Use `init` for all `ProjectConfig` properties
-- Use `string.Empty` instead of `""` for default values
-- Use `Path.Combine()` for building paths (cross-platform)
-- Add XML doc comments (`/// <summary>`) for all public members
-
-**Example of a good addition**:
-```csharp
-/// <summary>
-/// Whether to generate XML documentation file
-/// </summary>
-public bool GenerateDocumentationFile { get; init; } = false;
-```
-
-### 7.5 Example: Adding Support for Package References
-
-Let's say you want to add NuGet package references. Here's how:
-
-**Step 1**: Add property to `ProjectConfig`:
-```csharp
-/// <summary>
-/// List of NuGet package references
-/// </summary>
-public List<PackageReference> PackageReferences { get; init; } = new();
-
-public class PackageReference
-{
-    public string Name { get; init; } = string.Empty;
-    public string Version { get; init; } = string.Empty;
-}
-```
-
-**Step 2**: Parse in `ProjectFileParser.Load()`:
-```csharp
-// Inside the ItemGroup loop
-foreach (var packageRef in itemGroup.Elements("PackageReference"))
-{
-    var name = packageRef.Attribute("Include")?.Value;
-    var version = packageRef.Attribute("Version")?.Value ?? "1.0.0";
-    
-    if (!string.IsNullOrWhiteSpace(name))
-    {
-        packageReferences.Add(new PackageReference { Name = name, Version = version });
-    }
-}
-```
-
-**Step 3**: Add to constructor:
-```csharp
-return new ProjectConfig
-{
-    // ... existing properties
-    PackageReferences = packageReferences
-};
-```
-
-**Step 4**: Update `AssemblyCompiler` to use the new property.
-
-### 7.6 Documentation Updates
-
-When you add new properties:
-1. Add XML doc comments to the property
-2. Update `samples/` with example `.spyproj` files showing the new property
-3. Update `.github/instructions/Sharpy.Compiler/HOW_TO_CONTRIBUTE.instructions.md` if it affects the project format
-
----
-
-## Related Files to Explore Next
-
-After understanding `ProjectConfig.cs`, check out:
-
-1. **`AssemblyCompiler.cs`**: See how `ProjectConfig` is used to drive compilation
-2. **`Sharpy.Cli/Program.cs`**: See how the CLI calls `ProjectFileParser.Load()`
-3. **`samples/*.spyproj`**: Look at real-world project files
-4. **`Compiler.cs`**: Single-file compilation (doesn't use `ProjectConfig`)
+**Parsed Result**:
+- `RootNamespace`: `"MySharpyApp"`
+- `OutputType`: `"exe"`
+- `AssemblyName`: `"MyApp"`
+- `EntryPoint`: `"main.spy"`
+- `SourceFiles`: All `.spy` files in the directory tree except those in `bin/` or `obj/`
+- `References`: Two DLL paths (one relative, one absolute)
+- `ModulePaths`: One shared module directory
+- `OutputAssemblyPath`: `bin/Debug/net8.0/MyApp.exe`
 
 ---
 
 ## Summary
 
-`ProjectConfig.cs` is a small but critical file that:
-- Defines the **data model** for Sharpy projects
-- Parses **XML project files** with glob pattern support
-- Follows **immutable design** with computed properties
-- Provides **excellent error messages** for invalid configs
-- Mimics **.NET/MSBuild conventions** for familiarity
+`ProjectConfig.cs` is the **foundation** of Sharpy's build system. It's:
+- **Simple**: Just two classes with clear responsibilities
+- **Robust**: Fail-fast validation and clear error messages
+- **Familiar**: Uses MSBuild conventions that .NET developers know
+- **Isolated**: No dependencies on the rest of the compiler
 
-It's a great example of a well-designed configuration system: simple, focused, and easy to extend. When in doubt, keep changes **minimal** and **backward-compatible**—many users will have existing `.spyproj` files that must continue to work.
+When working on this file, prioritize clarity and error messages - developers will encounter project configuration issues frequently, and good errors save hours of debugging.

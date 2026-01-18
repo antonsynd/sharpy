@@ -4,145 +4,114 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-### What This File Does
+The `TypeMapper.cs` file is the **bridge between .NET's type system and Sharpy's type system**. It performs bidirectional type mapping, converting CLR (Common Language Runtime) types to Sharpy's `SemanticType` instances during compilation.
 
-`TypeMapper.cs` serves as a **bridge between the .NET CLR type system and Sharpy's semantic type system**. When the Sharpy compiler imports .NET assemblies or needs to understand external types (e.g., from `System.*` or `Sharpy.Core.*`), this class translates CLR `System.Type` instances into Sharpy's internal `SemanticType` representations.
+**Role in Pipeline**: TypeMapper operates during the **semantic analysis phase** and **code generation phase**. When the compiler needs to understand external .NET types (from referenced assemblies, standard library, or platform APIs), TypeMapper translates those reflection-based CLR types into the semantic type representations that the rest of the compiler can work with.
 
-### Role in the Overall Project
+**Key Responsibilities**:
+- Convert CLR `System.Type` instances to Sharpy `SemanticType` instances
+- Map primitive types (int, str, bool, etc.) to their semantic equivalents
+- Handle complex generic types (List<T>, Dictionary<K,V>, etc.)
+- Support nullable types and tuples
+- Provide thread-safe caching for performance
+- Handle special Sharpy runtime types (iterators)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  External .NET Assemblies / Sharpy.Core Standard Library    │
-└────────────────────┬────────────────────────────────────────┘
-                     │ System.Type objects
-                     ↓
-          ┌──────────────────────┐
-          │     TypeMapper       │ ← This file
-          │  MapClrTypeToSemantic│
-          └──────────┬───────────┘
-                     │ SemanticType objects
-                     ↓
-┌────────────────────────────────────────────────────────────┐
-│  Semantic Analysis (TypeChecker, TypeResolver, etc.)       │
-│  Uses SemanticType for type checking & inference           │
-└────────────────────────────────────────────────────────────┘
-```
-
-**Key Insight**: Sharpy compiles to C# via Roslyn, but during compilation it needs to reason about types in its own semantic model. TypeMapper performs the essential translation so the compiler can:
-- Type-check calls to .NET methods
-- Understand return types from standard library functions
-- Handle generic types like `List<int>` → `list[int]`
-- Map primitive types consistently
-
-### Thread Safety
-
-The class is explicitly designed to be **thread-safe** using `ConcurrentDictionary`, allowing multiple compilation units to share a single `TypeMapper` instance without race conditions.
+**When This Runs**: TypeMapper is invoked when:
+- Discovering members from .NET assemblies during module loading
+- Type-checking calls to .NET framework methods
+- Resolving return types from external library functions
+- Processing type annotations that reference imported .NET types
 
 ---
 
-## 2. Class Structure
+## Class/Type Structure
 
 ### Main Class: `TypeMapper`
 
+A stateless, thread-safe mapper with internal caching for performance optimization.
+
+**Fields**:
 ```csharp
-public class TypeMapper
-{
-    private readonly ConcurrentDictionary<Type, SemanticType> _typeCache = new();
-    
-    public SemanticType MapClrTypeToSemanticType(Type clrType) { ... }
-    private SemanticType MapTypeInternal(Type clrType) { ... }
-    private SemanticType MapGenericType(Type clrType) { ... }
-    private Type? GetIteratorElementType(Type clrType) { ... }
-    private bool IsGenericTypeDefinition(Type type, Type genericTypeDef) { ... }
-}
+private readonly ConcurrentDictionary<Type, SemanticType> _typeCache
 ```
 
-**Architecture**: Single-purpose class with a clean public API (`MapClrTypeToSemanticType`) and internal helpers. No inheritance or complex state—just caching and type mapping logic.
+- **Purpose**: Memoizes CLR type → SemanticType mappings to avoid redundant work
+- **Thread Safety**: Uses `ConcurrentDictionary` for safe concurrent access across compilation phases
+- **Design Rationale**: Reflection is expensive, so caching dramatically improves performance when the same .NET types are encountered repeatedly (e.g., `int`, `string`, `List<T>`)
 
 ---
 
-## 3. Key Methods Walkthrough
+## Key Functions/Methods
 
-### 3.1 `MapClrTypeToSemanticType(Type clrType)` - Public Entry Point
+### 1. `MapClrTypeToSemanticType(Type clrType)` - Public Entry Point
 
-**Purpose**: The only public method—converts a CLR type to a Sharpy semantic type with caching.
+**Purpose**: Main public API for converting a CLR type to a SemanticType.
 
+**Signature**:
 ```csharp
 public SemanticType MapClrTypeToSemanticType(Type clrType)
-{
-    return _typeCache.GetOrAdd(clrType, MapTypeInternal);
-}
 ```
 
 **How It Works**:
-1. Checks if `clrType` has already been mapped (cache lookup)
-2. If not cached, calls `MapTypeInternal` to perform the mapping
-3. Stores the result in `_typeCache` atomically (thread-safe)
-4. Returns the `SemanticType`
+```csharp
+return _typeCache.GetOrAdd(clrType, MapTypeInternal);
+```
 
-**Key Parameters**:
-- `clrType`: A `System.Type` from reflection (e.g., `typeof(int)`, `typeof(List<string>)`)
+- Uses `ConcurrentDictionary.GetOrAdd` for thread-safe lazy initialization
+- First call for a type triggers `MapTypeInternal` and caches the result
+- Subsequent calls return the cached value instantly
 
-**Return Value**: A `SemanticType` (e.g., `SemanticType.Int`, `new GenericType { Name = "list", ... }`)
+**Thread Safety Pattern**: The `GetOrAdd` method ensures that even if multiple threads request the same type simultaneously, `MapTypeInternal` will only execute once, and all threads will receive the same `SemanticType` instance.
 
-**Design Decision**: Using `GetOrAdd` ensures thread-safety and prevents duplicate work if multiple threads request the same type simultaneously.
+**Example Usage**:
+```csharp
+var mapper = new TypeMapper();
+var clrListType = typeof(List<int>);
+var semanticType = mapper.MapClrTypeToSemanticType(clrListType);
+// semanticType is now: GenericType { Name = "list", TypeArguments = [Int] }
+```
+
+**Connection to Pipeline**:
+- **Upstream**: Called by `CachedModuleDiscovery` when loading external assemblies
+- **Downstream**: Results consumed by `TypeChecker` during semantic analysis
 
 ---
 
-### 3.2 `MapTypeInternal(Type clrType)` - Core Mapping Logic
+### 2. `MapTypeInternal(Type clrType)` - Core Mapping Logic
 
-**Purpose**: The workhorse method that performs the actual type mapping through a decision tree.
+**Purpose**: The workhorse method that performs the actual type classification and mapping.
 
-#### Decision Flow
-
-```
-MapTypeInternal(clrType)
-    ↓
-1. Is it a primitive type? → Check PrimitiveCatalog
-    ↓ Yes: Return SemanticType.Int, SemanticType.Str, etc.
-    ↓ No: Continue
-    ↓
-2. Is it an array? → T[] becomes list[T]
-    ↓ No: Continue
-    ↓
-3. Is it a nullable value type? → int? becomes int?
-    ↓ No: Continue
-    ↓
-4. Is it an Iterator<T>? → Special handling for Sharpy.Core iterators
-    ↓ No: Continue
-    ↓
-5. Is it generic? → Delegate to MapGenericType()
-    ↓ No: Continue
-    ↓
-6. Is it an enum? → Map to SemanticType.Int
-    ↓ No: Continue
-    ↓
-7. Fallback → Return SemanticType.Object
+**Signature**:
+```csharp
+private SemanticType MapTypeInternal(Type clrType)
 ```
 
-#### Step-by-Step Breakdown
+**Algorithm Flow** (Hierarchical Decision Tree):
 
-**Step 1: Primitive Types**
+#### Step 1: Check Primitive Types (Lines 27-45)
 ```csharp
 var primitiveInfo = PrimitiveCatalog.GetByClrType(clrType);
 if (primitiveInfo != null)
 {
     return primitiveInfo.SharpyName switch
     {
-        "int" => SemanticType.Int,      // Singleton instance
-        "str" => SemanticType.Str,      // Singleton instance
-        "bool" => SemanticType.Bool,    // Singleton instance
-        // ... etc
+        "int" => SemanticType.Int,
+        "long" => SemanticType.Long,
+        "float" => SemanticType.Float,       // C# double → Sharpy float
+        "float32" => SemanticType.Float32,   // C# float → Sharpy float32
+        // ... other primitives
+        _ => new BuiltinType { Name = primitiveInfo.SharpyName, ClrType = clrType }
     };
 }
 ```
-- Uses `PrimitiveCatalog` (a registry of all primitive types)
-- Returns **singleton instances** for common types (memory efficient!)
-- Falls back to `new BuiltinType` for less common primitives
 
-**Step 2: Arrays**
+**Design Decision**: Returns **singleton instances** for common types (Int, Long, Float, etc.) to reduce memory allocations and enable reference equality checks. Less common primitives create new `BuiltinType` instances.
+
+**Cross-Reference**: See `PrimitiveCatalog.cs:110` for the CLR type lookup logic and `docs/language_specification/type_annotations.md` for the language-level type naming conventions.
+
+#### Step 2: Handle Arrays (Lines 47-62)
 ```csharp
 if (clrType.IsArray)
 {
@@ -152,16 +121,19 @@ if (clrType.IsArray)
         Name = "list",
         TypeArguments = new List<SemanticType>
         {
-            MapClrTypeToSemanticType(elementType)  // Recursive call!
+            MapClrTypeToSemanticType(elementType)  // Recursive call
         }
     };
 }
 ```
-- C# arrays (`int[]`) → Sharpy lists (`list[int]`)
-- **Recursive mapping**: element type is mapped via the same method
-- Note: This loses some array-specific behavior (fixed size) but matches Python semantics
 
-**Step 3: Nullable Value Types**
+**Key Insight**: C# arrays (`T[]`) are mapped to Sharpy's `list[T]` type. This reflects Sharpy's Python-like syntax where arrays are presented as lists.
+
+**Recursive Pattern**: Notice the recursive call to `MapClrTypeToSemanticType` for the element type. This ensures nested types benefit from caching (e.g., `int[][]` becomes `list[list[int]]`).
+
+**Defensive Programming**: Returns `SemanticType.Object` if `GetElementType()` returns null (though this should never happen for valid array types).
+
+#### Step 3: Handle Nullable Value Types (Lines 64-72)
 ```csharp
 var underlyingNullable = Nullable.GetUnderlyingType(clrType);
 if (underlyingNullable != null)
@@ -172,10 +144,14 @@ if (underlyingNullable != null)
     };
 }
 ```
-- `int?` in C# → `int?` in Sharpy
-- Again, recursive mapping for the underlying type
 
-**Step 4: Iterator Types**
+**Purpose**: Converts C# nullable value types (`int?`, `bool?`, etc.) to Sharpy's `NullableType` wrapper.
+
+**Example**: `typeof(int?)` → `NullableType { UnderlyingType = SemanticType.Int }`
+
+**Limitation**: This only handles nullable value types. Reference types are always nullable in Sharpy (following Python semantics), so they don't need special handling here.
+
+#### Step 4: Handle Iterator Types (Lines 74-84)
 ```csharp
 var iteratorElementType = GetIteratorElementType(clrType);
 if (iteratorElementType != null)
@@ -187,45 +163,114 @@ if (iteratorElementType != null)
     };
 }
 ```
-- Handles special case: types that extend `Sharpy.Core.Iterator<T>` (like `RangeIterator`)
-- These are kept as builtin types rather than being mapped to `list` (preserving lazy evaluation)
 
-**Step 5: Generic Types**
+**Purpose**: Special handling for Sharpy runtime types that extend `Iterator<T>` (like `RangeIterator`).
+
+**Design Rationale**: Iterator types are opaque to the type system but need to be recognized for protocol validation (supporting `for` loops).
+
+**TODO Note**: The method comment at line 107 mentions this logic is duplicated in `Semantic/ProtocolValidator.cs` and should be consolidated in a future refactoring phase.
+
+#### Step 5: Handle Generic Types (Lines 86-90)
 ```csharp
 if (clrType.IsGenericType)
 {
-    return MapGenericType(clrType);  // Delegate to specialized method
+    return MapGenericType(clrType);
 }
 ```
-- Complex handling for `List<T>`, `Dictionary<K,V>`, etc.
-- See section 3.3 below for details
 
-**Step 6: Enums**
+Delegates to specialized generic type handling (see below).
+
+#### Step 6: Handle Enums (Lines 92-96)
 ```csharp
 if (clrType.IsEnum)
 {
     return SemanticType.Int;
 }
 ```
-- All enums map to `int` (simplified but practical)
-- Loses type safety but matches Python's `IntEnum` behavior
 
-**Step 7: Fallback**
+**Design Decision**: All C# enums are treated as `int` in Sharpy's type system. This simplification aligns with Sharpy's philosophy of treating enums as named integer constants.
+
+**Implication**: Enum type safety is lost at the Sharpy semantic level, but the generated C# code still has full enum safety.
+
+#### Step 7: Fallback to Object (Lines 98-99)
 ```csharp
 return SemanticType.Object;
 ```
-- Unknown types become `object` (top type in Sharpy's type hierarchy)
-- Allows compilation to proceed with minimal type information
+
+**Defensive Default**: Unknown or complex types default to `object`, the universal base type. This prevents compilation crashes when encountering unfamiliar .NET types.
 
 ---
 
-### 3.3 `MapGenericType(Type clrType)` - Generic Type Handling
+### 3. `GetIteratorElementType(Type clrType)` - Iterator Detection
 
-**Purpose**: Maps .NET generic types to Sharpy's generic representations.
+**Purpose**: Detects if a type is or extends `Sharpy.Core.Iterator<T>` and extracts the element type.
 
-#### Supported Generic Types
+**Signature**:
+```csharp
+private Type? GetIteratorElementType(Type clrType)
+```
 
-**1. Lists** (`List<T>`, `IList<T>`)
+**Algorithm** (Lines 110-123):
+```csharp
+var currentType = clrType;
+while (currentType != null)
+{
+    if (currentType.IsGenericType &&
+        currentType.GetGenericTypeDefinition().FullName == "Sharpy.Core.Iterator`1")
+    {
+        return currentType.GetGenericArguments()[0];
+    }
+    currentType = currentType.BaseType;
+}
+return null;
+```
+
+**How It Works**:
+1. Walk up the inheritance chain starting from `clrType`
+2. Check each base type to see if it's the generic `Iterator<T>` definition
+3. If found, extract the generic argument `T` (the element type)
+4. Return `null` if no `Iterator<T>` is found in the hierarchy
+
+**Example**:
+- Input: `typeof(RangeIterator)` where `RangeIterator : Iterator<int>`
+- Output: `typeof(int)`
+
+**String Comparison Rationale**: Uses `FullName == "Sharpy.Core.Iterator`1"` instead of `typeof(Iterator<>)` to avoid circular assembly dependencies during bootstrapping.
+
+**TODO**: Line 107-108 note that this is duplicated in `ProtocolValidator.cs` and should be extracted to a shared utility in Phase 7.
+
+---
+
+### 4. `MapGenericType(Type clrType)` - Generic Type Mapping
+
+**Purpose**: Convert generic .NET types to their Sharpy equivalents.
+
+**Signature**:
+```csharp
+private SemanticType MapGenericType(Type clrType)
+```
+
+**Prerequisite Extraction** (Lines 127-128):
+```csharp
+var genericDef = clrType.GetGenericTypeDefinition();
+var typeArgs = clrType.GetGenericArguments();
+```
+
+- `genericDef`: The open generic type (e.g., `List<>` without type arguments)
+- `typeArgs`: The closed type arguments (e.g., `[typeof(int)]` for `List<int>`)
+
+#### Supported Generic Type Mappings:
+
+| .NET Type(s) | Sharpy Type | Lines |
+|--------------|-------------|-------|
+| `List<T>`, `IList<T>` | `list[T]` | 131-142 |
+| `Dictionary<K,V>`, `IDictionary<K,V>` | `dict[K, V]` | 144-157 |
+| `HashSet<T>`, `ISet<T>` | `set[T]` | 159-171 |
+| `IEnumerable<T>` | `list[T]` (Note: loses lazy evaluation) | 173-186 |
+| `Tuple<...>`, `ValueTuple<...>` | `tuple[...]` | 188-198 |
+| Unknown generic | `object` | 200-201 |
+
+#### Example: Mapping `List<int>` (Lines 131-142)
 ```csharp
 if (IsGenericTypeDefinition(genericDef, typeof(List<>)) ||
     IsGenericTypeDefinition(genericDef, typeof(IList<>)))
@@ -235,15 +280,15 @@ if (IsGenericTypeDefinition(genericDef, typeof(List<>)) ||
         Name = "list",
         TypeArguments = new List<SemanticType>
         {
-            MapClrTypeToSemanticType(typeArgs[0])  // Recursively map element type
+            MapClrTypeToSemanticType(typeArgs[0])  // Recursive mapping
         }
     };
 }
 ```
-- `List<int>` → `list[int]`
-- `IList<string>` → `list[str]`
 
-**2. Dictionaries** (`Dictionary<K,V>`, `IDictionary<K,V>`)
+**Recursive Mapping**: Each type argument is recursively mapped, allowing nested generics like `List<Dictionary<string, int>>` to work correctly.
+
+#### Example: Mapping `Dictionary<string, int>` (Lines 144-157)
 ```csharp
 if (IsGenericTypeDefinition(genericDef, typeof(Dictionary<,>)) ||
     IsGenericTypeDefinition(genericDef, typeof(IDictionary<,>)))
@@ -259,44 +304,18 @@ if (IsGenericTypeDefinition(genericDef, typeof(Dictionary<,>)) ||
     };
 }
 ```
-- `Dictionary<string, int>` → `dict[str, int]`
 
-**3. Sets** (`HashSet<T>`, `ISet<T>`)
+#### Important Limitation: `IEnumerable<T>` (Lines 178-179)
 ```csharp
-if (IsGenericTypeDefinition(genericDef, typeof(HashSet<>)) ||
-    IsGenericTypeDefinition(genericDef, typeof(ISet<>)))
-{
-    return new GenericType
-    {
-        Name = "set",
-        TypeArguments = new List<SemanticType>
-        {
-            MapClrTypeToSemanticType(typeArgs[0])
-        }
-    };
-}
+// Note: IEnumerable<T> is mapped to list for simplicity, losing lazy evaluation semantics.
+// This is a known limitation - iterables are treated as eager lists in the type system.
 ```
-- `HashSet<int>` → `set[int]`
 
-**4. Enumerables** (`IEnumerable<T>`)
-```csharp
-if (IsGenericTypeDefinition(genericDef, typeof(IEnumerable<>)))
-{
-    return new GenericType
-    {
-        // Note: IEnumerable<T> is mapped to list for simplicity
-        Name = "list",
-        TypeArguments = new List<SemanticType>
-        {
-            MapClrTypeToSemanticType(typeArgs[0])
-        }
-    };
-}
-```
-- `IEnumerable<T>` → `list[T]`
-- **Important Limitation**: This loses lazy evaluation semantics! The comment acknowledges this trade-off.
+**Design Trade-off**: Sharpy's type system doesn't distinguish between lazy sequences and eager collections. `IEnumerable<T>` is mapped to `list[T]` for simplicity, even though this loses the lazy evaluation semantics.
 
-**5. Tuples** (`System.Tuple`, `System.ValueTuple`)
+**Implication**: LINQ queries returning `IEnumerable<T>` will type-check as `list[T]`, which may surprise developers expecting iterator semantics.
+
+#### Tuple Handling (Lines 188-198)
 ```csharp
 if (genericDef.FullName?.StartsWith("System.Tuple") == true ||
     genericDef.FullName?.StartsWith("System.ValueTuple") == true)
@@ -304,68 +323,23 @@ if (genericDef.FullName?.StartsWith("System.Tuple") == true ||
     return new TupleType
     {
         ElementTypes = typeArgs
-            .Select(MapClrTypeToSemanticType)  // Map each element type
+            .Select(MapClrTypeToSemanticType)
             .ToList()
     };
 }
 ```
-- `(int, string)` → `tuple[int, str]`
-- Handles both reference tuples and value tuples
 
-**6. Unknown Generics**
-```csharp
-return SemanticType.Object;
-```
-- Any other generic type falls back to `object`
+**String Matching**: Uses `StartsWith` to handle all tuple arities (`Tuple<T1>`, `Tuple<T1,T2>`, etc.) without explicitly checking each one.
 
-#### Algorithm Insight
-
-The method uses the **type definition** (via `GetGenericTypeDefinition()`) to identify the generic type, then recursively maps the type arguments. This allows nested generics to work correctly:
-- `List<List<int>>` → `list[list[int]]`
-- `Dictionary<string, List<int>>` → `dict[str, list[int]]`
+**Value vs Reference Tuples**: Both C# value tuples (`(int, string)`) and reference tuples (`Tuple<int, string>`) map to Sharpy's `TupleType`.
 
 ---
 
-### 3.4 `GetIteratorElementType(Type clrType)` - Iterator Type Detection
+### 5. `IsGenericTypeDefinition(Type type, Type genericTypeDef)` - Helper
 
-**Purpose**: Checks if a type extends `Sharpy.Core.Iterator<T>` and extracts the element type.
+**Purpose**: Simple equality check for generic type definitions.
 
-```csharp
-private Type? GetIteratorElementType(Type clrType)
-{
-    var currentType = clrType;
-    while (currentType != null)
-    {
-        if (currentType.IsGenericType &&
-            currentType.GetGenericTypeDefinition().FullName == "Sharpy.Core.Iterator`1")
-        {
-            return currentType.GetGenericArguments()[0];  // Extract T
-        }
-        currentType = currentType.BaseType;  // Walk up inheritance chain
-    }
-    return null;  // Not an Iterator<T>
-}
-```
-
-**Algorithm**: Walks the **inheritance hierarchy** (base class chain) looking for `Iterator<T>`.
-
-**Example**:
-```csharp
-class RangeIterator : Iterator<int>  // Defined in Sharpy.Core
-```
-- Input: `typeof(RangeIterator)`
-- Output: `typeof(int)`
-
-**Why This Matters**: Iterator types need special handling to preserve lazy evaluation semantics. They shouldn't be eagerly converted to `list`.
-
-**TODO Note**: The comment mentions this method is duplicated in `Semantic/ProtocolValidator.cs`. This is a known code smell—both places need the same logic, suggesting future refactoring into a shared utility.
-
----
-
-### 3.5 `IsGenericTypeDefinition(Type type, Type genericTypeDef)` - Type Definition Comparison
-
-**Purpose**: Simple helper to check if a type matches a generic type definition.
-
+**Signature**:
 ```csharp
 private bool IsGenericTypeDefinition(Type type, Type genericTypeDef)
 {
@@ -373,240 +347,208 @@ private bool IsGenericTypeDefinition(Type type, Type genericTypeDef)
 }
 ```
 
-**Usage**: 
-```csharp
-IsGenericTypeDefinition(genericDef, typeof(List<>))
-```
+**Why a Separate Method?**:
+- **Clarity**: Makes the calling code more readable
+- **Future-Proofing**: Can be extended if more complex comparison logic is needed (e.g., handling type equivalence across assemblies)
+- **Searchability**: Easy to find all generic type comparisons in the codebase
 
-**Why It Exists**: Encapsulates the pattern for clarity. The actual comparison is trivial, but having a named method makes the calling code more readable.
+**Current Simplicity**: Right now it's just a direct equality check, but having it as a named method documents the intent.
 
 ---
 
-## 4. Dependencies
+## Dependencies
 
 ### Internal Dependencies
 
-| Dependency | Purpose | Location |
-|------------|---------|----------|
-| `SemanticType` | Base type for Sharpy's type system | `Semantic/SemanticType.cs` |
-| `BuiltinType` | Represents primitive/builtin types | `Semantic/SemanticType.cs` |
-| `GenericType` | Represents generic types like `list[T]` | `Semantic/SemanticType.cs` |
-| `NullableType` | Represents nullable types like `int?` | `Semantic/SemanticType.cs` |
-| `TupleType` | Represents tuple types | `Semantic/SemanticType.cs` |
-| `PrimitiveCatalog` | Registry of all primitive types | `Semantic/PrimitiveCatalog.cs` |
+1. **`Sharpy.Compiler.Semantic.SemanticType`** (Line 4)
+   - The target type hierarchy for all mapping operations
+   - Provides `BuiltinType`, `GenericType`, `NullableType`, `TupleType` concrete implementations
+   - Cross-reference: `src/Sharpy.Compiler/Semantic/SemanticType.cs`
+
+2. **`Sharpy.Compiler.Semantic.PrimitiveCatalog`** (Line 28)
+   - Authoritative registry of Sharpy's primitive types
+   - Provides bidirectional lookup: Sharpy name ↔ CLR type
+   - Cross-reference: `src/Sharpy.Compiler/Semantic/PrimitiveCatalog.cs:110` for `GetByClrType`
 
 ### External Dependencies
 
-- **System.Reflection**: For CLR type introspection
-- **System.Collections.Concurrent**: For thread-safe caching
-- **System.Collections**: For generic type matching
+1. **`System.Collections.Concurrent.ConcurrentDictionary`** (Line 14)
+   - Provides thread-safe caching infrastructure
 
-### Dependency Graph
+2. **`System.Reflection`** (Line 3)
+   - Enables runtime type inspection via `Type` class
+   - Used for: `IsArray`, `IsGenericType`, `GetGenericTypeDefinition`, `GetGenericArguments`, etc.
 
-```
-TypeMapper
-    ↓ uses
-PrimitiveCatalog (lookup primitive types)
-    ↓ returns
-SemanticType hierarchy
-    ├── BuiltinType
-    ├── GenericType
-    ├── NullableType
-    └── TupleType
-```
+### Cross-File References
+
+- **`Semantic/ProtocolValidator.cs`**: Contains duplicate `GetIteratorElementType` logic (mentioned in TODO at line 107)
+- **`CodeGen/RoslynEmitter.cs`**: Consumes TypeMapper during code generation when emitting calls to .NET APIs
+- **`Discovery/ClrMemberCache.cs`** (Planned Phase 7): Will consolidate shared CLR reflection utilities
 
 ---
 
-## 5. Patterns and Design Decisions
+## Patterns and Design Decisions
 
-### 5.1 Singleton Pattern for Common Types
+### 1. **Singleton Pattern for Common Types**
 
-**Pattern**: `SemanticType.Int`, `SemanticType.Str`, etc. are reused instead of creating new instances.
-
-**Why**: Memory efficiency and fast equality checks (reference equality instead of structural equality).
-
+**Pattern**:
 ```csharp
-"int" => SemanticType.Int,  // Reuse singleton
+"int" => SemanticType.Int,
+"long" => SemanticType.Long,
 ```
 
-### 5.2 Thread-Safe Caching with ConcurrentDictionary
+**Rationale**:
+- Reduces memory allocations (one `Int` instance used everywhere)
+- Enables fast reference equality checks: `type == SemanticType.Int`
+- Improves cache locality and GC pressure
 
-**Pattern**: All cached data uses `ConcurrentDictionary` with atomic `GetOrAdd`.
+### 2. **Hierarchical Type Classification**
 
-**Why**: TypeMapper may be shared across multiple compilation units in parallel builds. The cache prevents redundant work and ensures consistent mappings.
+**Pattern**: The `MapTypeInternal` method uses a decision tree rather than polymorphism or a lookup table.
 
-**Implementation**:
+**Advantages**:
+- **Performance**: Short-circuits on primitives (most common case) first
+- **Clarity**: Explicit ordering shows priority (primitives before generics)
+- **Flexibility**: Easy to insert new type categories
+
+**Ordering Rationale**:
+1. Primitives (most common, fastest check)
+2. Arrays (common collection type)
+3. Nullables (common for value types)
+4. Iterators (Sharpy-specific)
+5. Generics (more expensive reflection)
+6. Enums (less common)
+7. Fallback to object
+
+### 3. **Recursive Mapping with Memoization**
+
+**Pattern**:
 ```csharp
-return _typeCache.GetOrAdd(clrType, MapTypeInternal);
+MapClrTypeToSemanticType(elementType)  // Recursive call goes through cache
 ```
-- If the key exists, returns cached value
-- If not, calls `MapTypeInternal` and stores result atomically
-- No locks needed—ConcurrentDictionary handles synchronization
 
-### 5.3 Recursive Type Mapping
+**Key Insight**: Recursive calls go through the public `MapClrTypeToSemanticType` method, not `MapTypeInternal` directly. This ensures **nested types benefit from caching**.
 
-**Pattern**: Type arguments are mapped recursively through the same entry point.
+**Example**:
+- Mapping `List<int>` caches both `List<int>` and `int`
+- Later mapping `Dictionary<int, string>` reuses the cached `int` mapping
 
-**Why**: Handles arbitrarily nested generics correctly.
+### 4. **Defensive Programming**
 
+**Examples**:
 ```csharp
-MapClrTypeToSemanticType(elementType)  // Recursive call
+if (elementType == null)
+    return SemanticType.Object; // Defensive fallback (line 52)
+
+return SemanticType.Object;  // Unknown type fallback (line 99)
 ```
 
-**Example Flow**:
-```
-List<List<int>> 
-    → GenericType(list, [?])
-        → List<int>
-            → GenericType(list, [?])
-                → int
-                    → SemanticType.Int
-```
+**Philosophy**: TypeMapper never throws exceptions. Unknown or malformed types gracefully degrade to `object` rather than crashing the compiler.
 
-### 5.4 Decision Tree with Early Returns
+**Trade-off**: May mask errors during development, but prevents brittle compilation failures when encountering unexpected .NET types from third-party libraries.
 
-**Pattern**: Series of `if` checks with early returns, no complex nested logic.
+### 5. **Thread Safety via Immutability**
 
-**Why**: Clear control flow, easy to understand precedence, and good performance (short-circuits on match).
+**Pattern**:
+- `ConcurrentDictionary` for mutable cache
+- `SemanticType` instances are immutable records
+- No mutable state in TypeMapper fields
 
-```csharp
-if (primitiveInfo != null) return ...;
-if (clrType.IsArray) return ...;
-if (underlyingNullable != null) return ...;
-// ...
-```
-
-### 5.5 Defensive Fallback to `object`
-
-**Pattern**: Unknown types → `SemanticType.Object`
-
-**Why**: Allows compilation to proceed even with incomplete type information. Better to lose precision than fail compilation.
-
-```csharp
-return SemanticType.Object;  // Safe fallback
-```
-
-### 5.6 Interface and Implementation Unification
-
-**Pattern**: Both `List<T>` and `IList<T>` map to `list[T]`.
-
-**Why**: Sharpy doesn't expose interface/implementation distinction—Python doesn't have this concept. The mapper abstracts away .NET's interface vs. concrete class distinction.
+**Guarantee**: Multiple compilation threads can share a single `TypeMapper` instance safely.
 
 ---
 
-## 6. Debugging Tips
+## Debugging Tips
 
-### 6.1 Tracing Type Mappings
+### 1. **Tracing Type Mapping**
 
-**Problem**: "Why is this .NET type mapping to the wrong Sharpy type?"
+Add logging to `MapTypeInternal` to see the mapping decisions:
 
-**Solution**: Add logging to `MapTypeInternal`:
 ```csharp
 private SemanticType MapTypeInternal(Type clrType)
 {
     Console.WriteLine($"Mapping CLR type: {clrType.FullName}");
-    
-    // ... existing logic
-    
-    var result = ...; // computed result
-    Console.WriteLine($"  → {result.GetDisplayName()}");
-    return result;
+
+    var primitiveInfo = PrimitiveCatalog.GetByClrType(clrType);
+    if (primitiveInfo != null)
+    {
+        Console.WriteLine($"  → Mapped to primitive: {primitiveInfo.SharpyName}");
+        // ...
+    }
+    // ...
 }
 ```
 
-### 6.2 Cache Inspection
+### 2. **Inspecting the Type Cache**
 
-**Problem**: "Is the cache working correctly?"
+The `_typeCache` is private, but you can add a debug property during development:
 
-**Solution**: Expose cache contents for debugging:
 ```csharp
-// Add to TypeMapper class
+#if DEBUG
 public IReadOnlyDictionary<Type, SemanticType> GetCacheSnapshot()
+    => _typeCache.ToDictionary(kv => kv.Key, kv => kv.Value);
+#endif
+```
+
+### 3. **Common Issues**
+
+**Issue**: "Expected `list[int]` but got `object`"
+- **Cause**: TypeMapper encountered an unknown generic type and fell back to `object`
+- **Fix**: Add explicit handling for the generic type in `MapGenericType`
+
+**Issue**: "Type mismatch when calling .NET method"
+- **Cause**: CLR type → SemanticType mapping doesn't match Sharpy's expectations
+- **Debug**: Check what `MapClrTypeToSemanticType` returns for the method's return type
+
+**Issue**: "Iterator type not recognized in for loop"
+- **Cause**: `GetIteratorElementType` returned null
+- **Debug**: Verify the type actually extends `Sharpy.Core.Iterator<T>` and the base class name matches exactly
+
+### 4. **Unit Testing Strategy**
+
+Test each type category independently:
+
+```csharp
+[Test]
+public void MapClrTypeToSemanticType_Primitives()
 {
-    return new Dictionary<Type, SemanticType>(_typeCache);
+    var mapper = new TypeMapper();
+    Assert.That(mapper.MapClrTypeToSemanticType(typeof(int)), Is.EqualTo(SemanticType.Int));
+    Assert.That(mapper.MapClrTypeToSemanticType(typeof(string)), Is.EqualTo(SemanticType.Str));
 }
-```
 
-### 6.3 Identifying Generic Type Issues
-
-**Problem**: "Generic types not mapping correctly."
-
-**Diagnostic**:
-```csharp
-// In MapGenericType, log the generic definition
-var genericDef = clrType.GetGenericTypeDefinition();
-Console.WriteLine($"Generic definition: {genericDef.FullName}");
-Console.WriteLine($"Type args: {string.Join(", ", typeArgs.Select(t => t.Name))}");
-```
-
-### 6.4 Handling `null` or Invalid Types
-
-**Current Behavior**: The code assumes valid `Type` objects. If `clrType` is `null`, you'll get a `NullReferenceException`.
-
-**Defensive Fix** (if needed):
-```csharp
-public SemanticType MapClrTypeToSemanticType(Type clrType)
+[Test]
+public void MapClrTypeToSemanticType_Arrays()
 {
-    if (clrType == null)
-        throw new ArgumentNullException(nameof(clrType));
-    
-    return _typeCache.GetOrAdd(clrType, MapTypeInternal);
-}
-```
-
-### 6.5 Common Pitfalls
-
-**Pitfall 1**: Forgetting that `IEnumerable<T>` maps to `list[T]` (loses laziness).
-- **Solution**: Check if the caller expects lazy evaluation; consider using `Iterator<T>` pattern instead.
-
-**Pitfall 2**: Enum mapping loses type information (all enums → `int`).
-- **Solution**: If you need enum-specific behavior, add a dedicated `EnumType` to `SemanticType` hierarchy.
-
-**Pitfall 3**: Nested generics not resolving correctly.
-- **Solution**: Ensure recursive calls are happening. Add logging to trace recursion depth.
-
-### 6.6 Performance Profiling
-
-**Concern**: Is type mapping a bottleneck?
-
-**How to Profile**:
-```csharp
-private SemanticType MapTypeInternal(Type clrType)
-{
-    var sw = Stopwatch.StartNew();
-    var result = /* ... actual mapping logic ... */;
-    sw.Stop();
-    
-    if (sw.ElapsedMilliseconds > 10)  // Log slow mappings
-        Console.WriteLine($"Slow mapping: {clrType.FullName} took {sw.ElapsedMilliseconds}ms");
-    
-    return result;
+    var mapper = new TypeMapper();
+    var result = mapper.MapClrTypeToSemanticType(typeof(int[]));
+    Assert.That(result, Is.InstanceOf<GenericType>());
+    var generic = (GenericType)result;
+    Assert.That(generic.Name, Is.EqualTo("list"));
+    Assert.That(generic.TypeArguments[0], Is.EqualTo(SemanticType.Int));
 }
 ```
 
 ---
 
-## 7. Contribution Guidelines
+## Contribution Guidelines
 
-### 7.1 Adding Support for New .NET Types
+### What Kinds of Changes Might Be Made
 
-**When**: You need to map a new .NET type that currently falls through to `object`.
+#### 1. **Adding New Generic Type Mappings**
 
-**Steps**:
-1. Determine the appropriate Sharpy type representation
-2. Add a case in `MapTypeInternal` or `MapGenericType`
-3. Add tests in `Sharpy.Compiler.Tests/Discovery/TypeMapperTests.cs`
-4. Update this documentation
+**When**: Supporting new .NET collection types or common generic patterns.
 
-**Example**: Adding support for `Span<T>`
+**Example**: Adding `Span<T>` support:
+
 ```csharp
-// In MapGenericType, before the fallback:
+// In MapGenericType method
 if (IsGenericTypeDefinition(genericDef, typeof(Span<>)) ||
     IsGenericTypeDefinition(genericDef, typeof(ReadOnlySpan<>)))
 {
     return new GenericType
     {
-        Name = "list",  // Or a new "span" type if needed
+        Name = "list",  // or create a new SpanType if needed
         TypeArguments = new List<SemanticType>
         {
             MapClrTypeToSemanticType(typeArgs[0])
@@ -615,149 +557,83 @@ if (IsGenericTypeDefinition(genericDef, typeof(Span<>)) ||
 }
 ```
 
-### 7.2 Optimizing Cache Performance
+**Testing**: Add unit tests for the new mapping and integration tests using the type in Sharpy code.
 
-**When**: Compilation is slow and profiling shows cache contention.
+#### 2. **Improving Iterator Detection**
+
+**When**: Consolidating the duplicate `GetIteratorElementType` logic (TODO at line 107).
+
+**Where to Move It**: Extract to a new `ClrReflectionUtils` class in a shared utilities namespace:
+
+```csharp
+namespace Sharpy.Compiler.Utils;
+
+public static class ClrReflectionUtils
+{
+    public static Type? GetIteratorElementType(Type clrType) { /* ... */ }
+}
+```
+
+**Impact**: Update both `TypeMapper.cs` and `ProtocolValidator.cs` to use the shared implementation.
+
+#### 3. **Optimizing Cache Performance**
+
+**When**: Profiling shows cache misses or excessive allocations.
 
 **Ideas**:
-- Use `ImmutableDictionary` for read-heavy scenarios
-- Implement cache eviction for long-running processes
-- Pre-populate cache with common types at startup
+- Pre-populate cache with common types (int, string, List<int>, etc.)
+- Add cache hit/miss metrics for monitoring
+- Consider `FrozenDictionary` for read-heavy scenarios (after warmup)
 
-### 7.3 Improving Iterator Type Detection
+#### 4. **Supporting User-Defined Generic Types**
 
-**Current Issue**: `GetIteratorElementType` is duplicated in `ProtocolValidator.cs`.
+**When**: Sharpy adds support for generic class definitions in user code.
 
-**Refactoring Opportunity**:
-1. Extract to a shared utility class (e.g., `Semantic/TypeIntrospection.cs`)
-2. Add comprehensive tests for edge cases (multiple inheritance levels, interface implementations)
-3. Update both call sites to use the shared method
+**Current Limitation**: TypeMapper only handles built-in .NET generics.
 
-**Suggested Location**:
+**Required Changes**:
+- Add a case for Sharpy-defined generic types
+- Likely need to query the `SymbolTable` or `SemanticInfo` for user type definitions
+- Coordinate with semantic analysis phase
+
+#### 5. **Better Error Reporting**
+
+**When**: Debugging type mapping issues becomes common.
+
+**Example**: Instead of silently falling back to `object`, emit warnings:
+
 ```csharp
-// Semantic/TypeIntrospection.cs
-public static class TypeIntrospection
-{
-    public static Type? GetIteratorElementType(Type clrType) { ... }
-    // Other type introspection utilities
-}
+// Fallback to object for unknown types
+_logger?.LogWarning($"Unknown CLR type '{clrType.FullName}' mapped to 'object'");
+return SemanticType.Object;
 ```
-
-### 7.4 Enhancing Type Information Preservation
-
-**Current Limitation**: Some .NET types lose information when mapped.
-
-**Examples**:
-- `IEnumerable<T>` → `list[T]` (loses laziness)
-- Enums → `int` (loses type safety)
-- Arrays → `list` (loses fixed-size constraint)
-
-**Contribution Ideas**:
-- Add `LazyListType` or `IterableType` for `IEnumerable<T>`
-- Add `EnumType` with original CLR type information
-- Add metadata to track original .NET type characteristics
-
-### 7.5 Adding Validation and Error Handling
-
-**Current Behavior**: Fails silently with fallbacks to `object`.
-
-**Improvement Ideas**:
-- Add optional diagnostics/warnings for fallback cases
-- Validate that mapped types are compatible with Sharpy's type system
-- Add explicit error for unsupported types (e.g., pointers, ref structs)
-
-**Example**:
-```csharp
-// In MapTypeInternal
-if (clrType.IsByRef || clrType.IsPointer)
-{
-    throw new NotSupportedException(
-        $"Type {clrType.FullName} is not supported in Sharpy (pointers/refs not allowed)");
-}
-```
-
-### 7.6 Testing Checklist
-
-When modifying `TypeMapper`, ensure:
-- [ ] Thread-safety is preserved (concurrent access test)
-- [ ] Cache hit rate is measured (performance test)
-- [ ] Recursive mappings work correctly (nested generic test)
-- [ ] Edge cases handled (`null` element types, empty tuples, etc.)
-- [ ] Integration tests pass (end-to-end compilation with new type)
-
-### 7.7 Documentation Maintenance
-
-**When adding a new type mapping**, update:
-1. This walkthrough document (add example to relevant section)
-2. XML documentation comments in the source code
-3. Type system specification (`docs/specs/type_system.md`)
-4. Release notes if it's a user-visible change
 
 ---
 
-## 8. Advanced Topics
+## Cross-References
 
-### 8.1 Type Mapping and Type Erasure
+### Related Files
 
-**Concept**: Generic types in .NET retain their type arguments at runtime (reified generics), but Sharpy's compilation to C# needs to preserve this information through the pipeline.
+- **`src/Sharpy.Compiler/Semantic/SemanticType.cs`**: Defines the target type hierarchy (`BuiltinType`, `GenericType`, `NullableType`, etc.)
+- **`src/Sharpy.Compiler/Semantic/PrimitiveCatalog.cs`**: Authoritative registry for primitive type information
+- **`src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`**: Contains duplicate `GetIteratorElementType` logic (should be consolidated)
+- **`src/Sharpy.Compiler/CodeGen/TypeMapper.cs`**: **Different file!** Maps Sharpy types → C# types (reverse direction)
+- **`src/Sharpy.Compiler/Discovery/CachedModuleDiscovery.cs`**: Uses TypeMapper to import external assemblies
 
-**How TypeMapper Helps**: By creating `GenericType` instances with explicit `TypeArguments`, the semantic analysis phase can reason about type compatibility without losing information.
+### Related Documentation
 
-**Example**:
-```python
-# Sharpy code
-def process(items: list[int]) -> int:
-    return sum(items)
-```
+- **`docs/language_specification/type_annotations.md`**: Sharpy type naming conventions (int, str, float, etc.)
+- **`docs/language_specification/type_hierarchy.md`**: Object as universal base type, assignability rules
+- **`docs/language_specification/type_casting.md`**: Implicit and explicit conversion rules (though TypeMapper focuses on mapping, not conversion)
+- **`docs/language_specification/type_narrowing.md`**: Type narrowing in control flow
 
-The compiler needs to know that `items` is specifically `list[int]`, not just `list`. TypeMapper ensures this information is captured when mapping .NET types back to Sharpy types.
+### Future Refactoring
 
-### 8.2 Covariance and Contravariance
-
-**Current Limitation**: TypeMapper doesn't consider variance when mapping generic types.
-
-**Example**:
-```csharp
-IEnumerable<string> → list[str]
-IEnumerable<object> → list[object]
-```
-
-In C#, `IEnumerable<string>` is covariant with `IEnumerable<object>`, but Sharpy's type system may not preserve this relationship.
-
-**Future Work**: Add variance information to `GenericType` or implement variance checking in `TypeChecker`.
-
-### 8.3 Nullable Reference Types (C# 8+)
-
-**Current Behavior**: TypeMapper only handles nullable **value** types (`int?`).
-
-**Missing**: Support for nullable reference types (`string?` in C# 8+).
-
-**Why It's Tricky**: Nullable reference types are a compile-time feature, not represented in CLR metadata. The information is stored in attributes that require special parsing.
-
-**Contribution Opportunity**: Add support by checking for `NullableAttribute` on types/members.
+- **Phase 7 (Planned)**: Extract `ClrMemberCache` utilities, consolidate reflection helpers like `GetIteratorElementType`
 
 ---
 
-## 9. Related Files to Explore
-
-| File | Why It's Related |
-|------|------------------|
-| `Semantic/SemanticType.cs` | Defines the `SemanticType` hierarchy that TypeMapper produces |
-| `Semantic/PrimitiveCatalog.cs` | Registry of primitive types that TypeMapper consults |
-| `Semantic/ProtocolValidator.cs` | Contains duplicate `GetIteratorElementType` logic |
-| `Semantic/TypeChecker.cs` | Consumes `SemanticType` instances for type checking |
-| `CodeGen/TypeMapper.cs` | **Different file!** Maps Sharpy types → C# types (reverse direction) |
-| `Discovery/CachedModuleDiscovery.cs` | Uses TypeMapper to import external assemblies |
-
-**Key Distinction**: There are **two** `TypeMapper.cs` files in the codebase:
-1. `Discovery/TypeMapper.cs` (this file): CLR → Sharpy
-2. `CodeGen/TypeMapper.cs`: Sharpy → C# (for code generation)
-
-Don't confuse them!
-
----
-
-## 10. Quick Reference: Type Mapping Rules
+## Quick Reference: Type Mapping Rules
 
 | .NET Type | Sharpy Type | Notes |
 |-----------|-------------|-------|
@@ -778,13 +654,15 @@ Don't confuse them!
 
 ---
 
-## Conclusion
+## Summary
 
-`TypeMapper.cs` is a critical but conceptually simple component: it translates between two type systems. Its design prioritizes correctness (thread-safety), performance (caching), and maintainability (clear decision tree). Understanding this file is essential for anyone working on:
+`TypeMapper.cs` is a **critical infrastructure component** that enables Sharpy to seamlessly interoperate with the .NET ecosystem. It's designed for:
 
-- Importing external .NET assemblies
-- Adding new builtin types to Sharpy
-- Debugging type checking errors with .NET interop
-- Optimizing compilation performance
+- **Correctness**: Accurately maps .NET types to Sharpy's semantic model
+- **Performance**: Aggressive caching for repeated lookups
+- **Thread Safety**: Concurrent compilation support
+- **Robustness**: Defensive fallbacks prevent crashes on unknown types
 
-When in doubt, remember the core principle: **TypeMapper bridges .NET and Sharpy, making the compiler bilingual in type systems.**
+When working with TypeMapper, remember it's a **read-only translator** — it doesn't modify types or perform conversions, just maps them to Sharpy's internal representation for semantic analysis and code generation.
+
+**Key Principle**: TypeMapper bridges .NET and Sharpy, making the compiler bilingual in type systems.

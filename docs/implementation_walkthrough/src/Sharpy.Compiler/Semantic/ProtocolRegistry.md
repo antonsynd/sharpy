@@ -17,13 +17,13 @@ Think of it as a **Rosetta Stone** that maps between these three representations
 - What Sharpy.Core interface should be implemented?
 - What .NET method does this correspond to for interop?
 
-**Key Distinction**: This registry handles **non-operator** dunders (protocols like `__len__`, `__str__`). Operator dunders (`__add__`, `__eq__`, etc.) are handled separately by `OperatorSignatureValidator`.
+**Key Distinction**: This registry handles **non-operator** dunders (protocols like `__len__`, `__str__`). Operator dunders (`__add__`, `__eq__`, etc.) are handled separately by `OperatorSignatureValidator` (see src/Sharpy.Compiler/Semantic/OperatorSignatureValidator.cs:9).
 
 ---
 
 ## 2. Class/Type Structure
 
-### 2.1 `ProtocolKind` Enum
+### 2.1 `ProtocolKind` Enum (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:8-16)
 
 ```csharp
 public enum ProtocolKind
@@ -42,7 +42,7 @@ public enum ProtocolKind
 - Organize documentation and error messages
 - Understand the protocol's intent at a glance
 
-### 2.2 `ProtocolInfo` Record
+### 2.2 `ProtocolInfo` Record (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:28-36)
 
 ```csharp
 public record ProtocolInfo(
@@ -73,27 +73,27 @@ This is the **core data structure** that describes everything about a protocol d
 - Some protocols don't have direct CLR equivalents (e.g., `__delitem__`)
 - Generic protocols don't have fixed return types (e.g., `__getitem__` returns the element type)
 
-### 2.3 `ProtocolRegistry` Static Class
+### 2.3 `ProtocolRegistry` Static Class (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:42-288)
 
 ```csharp
 public static class ProtocolRegistry
 {
     private static readonly FrozenDictionary<string, ProtocolInfo> _protocols;
-    
+
     static ProtocolRegistry() { ... }
 }
 ```
 
 **Design Choice**: This is a static class with a frozen dictionary. Why?
 - **Immutable after initialization**: Protocols are fixed at compile time, so we use `FrozenDictionary` for optimal read performance
-- **Static initialization**: The `static ProtocolRegistry()` constructor runs once when the class is first accessed
+- **Static initialization**: The `static ProtocolRegistry()` constructor (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:46-51) runs once when the class is first accessed
 - **Thread-safe**: Frozen collections are inherently thread-safe for reads
 
 ---
 
 ## 3. Key Functions/Methods
 
-### 3.1 Registration: `RegisterAllProtocols()`
+### 3.1 Registration: `RegisterAllProtocols()` (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:58-192)
 
 ```csharp
 private static void RegisterAllProtocols(Dictionary<string, ProtocolInfo> protocols)
@@ -108,7 +108,7 @@ private static void RegisterAllProtocols(Dictionary<string, ProtocolInfo> protoc
         ExpectedParamCount: -1,  // Variable (1+ including self)
         ExpectedReturnType: "None"
     ));
-    
+
     // Container protocols
     Register(protocols, new ProtocolInfo(
         DunderName: "__len__",
@@ -119,7 +119,7 @@ private static void RegisterAllProtocols(Dictionary<string, ProtocolInfo> protoc
         ExpectedParamCount: 1,  // Just self
         ExpectedReturnType: "int"
     ));
-    
+
     // ... more registrations
 }
 ```
@@ -128,24 +128,24 @@ private static void RegisterAllProtocols(Dictionary<string, ProtocolInfo> protoc
 
 **Key Implementation Details**:
 
-1. **Variable parameter counts**: `ExpectedParamCount: -1` means "any count ≥ 1". Used for `__init__` which can have arbitrary parameters beyond `self`.
+1. **Variable parameter counts** (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:67): `ExpectedParamCount: -1` means "any count ≥ 1". Used for `__init__` which can have arbitrary parameters beyond `self`.
 
 2. **Special CLR mappings**:
    - `".ctor"` - Constructor (not a regular method)
    - `"get_Count"` - Property getter (not a method)
    - `"set_Item"` - Indexer setter
-   - `"op_Explicit"` - Explicit cast operator
+   - `"op_Explicit"` - Explicit cast operator (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:184)
 
-3. **Important comment about `__len__`** (lines 72-74):
+3. **Important comment about `__len__`** (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:72-74):
    ```csharp
    // NOTE: ISized.__Len__() returns uint in Sharpy.Core, but we register "int" here
    // because that's the common Sharpy/Python return type for len(). The code generator
    // handles the uint-to-int conversion when emitting calls to __Len__().
    ```
-   
+
    This reveals a **design compromise**: Python's `len()` returns `int`, but .NET's `Count` is often `uint`. The registry records the Sharpy expectation (`int`), and the code generator (`RoslynEmitter`) handles the conversion.
 
-4. **Operator protocols are excluded** (lines 189-191):
+4. **Operator protocols are excluded** (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:189-191):
    ```csharp
    // Note: __eq__ and __ne__ are handled by OperatorSignatureValidator as they
    // are comparison operators that map to .NET operator overloads.
@@ -153,7 +153,7 @@ private static void RegisterAllProtocols(Dictionary<string, ProtocolInfo> protoc
 
 ### 3.2 Basic Queries
 
-#### `GetProtocol(string dunderName)`
+#### `GetProtocol(string dunderName)` (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:199-200)
 ```csharp
 public static ProtocolInfo? GetProtocol(string dunderName)
     => _protocols.GetValueOrDefault(dunderName);
@@ -162,11 +162,11 @@ public static ProtocolInfo? GetProtocol(string dunderName)
 **What it does**: Primary lookup method. Returns full protocol info or null.
 
 **Usage pattern**: This is the most common query. Used by:
-- `ProtocolSignatureValidator` - to validate method signatures
+- `ProtocolSignatureValidator` (src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs:26) - to validate method signatures
 - `RoslynEmitter` - to generate appropriate C# code
 - `ProtocolValidator` - to check protocol implementations
 
-#### `IsProtocolDunder(string name)`
+#### `IsProtocolDunder(string name)` (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:206-207)
 ```csharp
 public static bool IsProtocolDunder(string name)
     => _protocols.ContainsKey(name);
@@ -174,11 +174,11 @@ public static bool IsProtocolDunder(string name)
 
 **What it does**: Quick check if a method name is a registered protocol dunder.
 
-**Why separate from GetProtocol?**: Sometimes you just need a boolean check without allocating the full `ProtocolInfo` object.
+**Why separate from GetProtocol?**: Sometimes you just need a boolean check without allocating the full `ProtocolInfo` object. This is used by `ProtocolSignatureValidator.IsProtocolDunder()` (src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs:14-15).
 
 ### 3.3 Advanced Queries
 
-#### `GetProtocolsByKind(ProtocolKind kind)`
+#### `GetProtocolsByKind(ProtocolKind kind)` (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:218-219)
 ```csharp
 public static IEnumerable<ProtocolInfo> GetProtocolsByKind(ProtocolKind kind)
     => _protocols.Values.Where(p => p.Kind == kind);
@@ -192,7 +192,7 @@ var containerProtocols = ProtocolRegistry.GetProtocolsByKind(ProtocolKind.Contai
 // Returns: __len__, __contains__, __getitem__, __setitem__, __delitem__
 ```
 
-#### `GetDunderForInterface(string interfaceName)`
+#### `GetDunderForInterface(string interfaceName)` (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:254-258)
 ```csharp
 public static string? GetDunderForInterface(string interfaceName)
     => _protocols.Values
@@ -203,11 +203,11 @@ public static string? GetDunderForInterface(string interfaceName)
 
 **What it does**: **Reverse lookup** - given a Sharpy.Core interface name, find the corresponding dunder.
 
-**Important caveat** (lines 249-253): If multiple protocols map to the same interface (e.g., `__setitem__` and `__delitem__` both map to `IMutableSequence`), this returns only the first match. For exhaustive lookups, use `GetAllProtocols()` and filter manually.
+**Important caveat** (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:249-253): If multiple protocols map to the same interface (e.g., `__setitem__` and `__delitem__` both map to `IMutableSequence`), this returns only the first match. For exhaustive lookups, use `GetAllProtocols()` and filter manually.
 
 **Use case**: When analyzing .NET interop, the compiler might need to determine which protocol a CLR type supports based on its interfaces.
 
-#### `IsAnyDunder(string methodName)`
+#### `IsAnyDunder(string methodName)` (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:264-265)
 ```csharp
 public static bool IsAnyDunder(string methodName)
     => IsProtocolDunder(methodName) || OperatorSignatureValidator.IsOperatorDunder(methodName);
@@ -222,7 +222,7 @@ public static bool IsAnyDunder(string methodName)
 
 All dunders get special handling, but protocol vs operator dunders follow different validation and code generation rules.
 
-#### `GetExpectedSignature(string dunderName)`
+#### `GetExpectedSignature(string dunderName)` (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:271-277)
 ```csharp
 public static (int ParamCount, string? ReturnType)? GetExpectedSignature(string dunderName)
 {
@@ -236,6 +236,20 @@ public static (int ParamCount, string? ReturnType)? GetExpectedSignature(string 
 **What it does**: Convenience method that extracts just the signature constraints (parameter count and return type).
 
 **Use case**: Quick validation during semantic analysis without needing the full `ProtocolInfo`.
+
+#### `IsObjectOverrideDunder(string methodName)` (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:286-287)
+
+```csharp
+public static bool IsObjectOverrideDunder(string methodName)
+    => methodName is "__str__" or "__eq__" or "__hash__";
+```
+
+Identifies dunders that override `System.Object` virtuals:
+
+These dunders require the `@override` decorator in Sharpy source code because they override base class methods:
+- `__str__` → `Object.ToString()`
+- `__eq__` → `Object.Equals()`
+- `__hash__` → `Object.GetHashCode()`
 
 ---
 
@@ -251,32 +265,40 @@ using System.Collections.Frozen;
 
 ### 4.2 Inbound Dependencies (Who uses ProtocolRegistry?)
 
-1. **`ProtocolSignatureValidator`** (`Semantic/ProtocolSignatureValidator.cs`)
+1. **`ProtocolSignatureValidator`** (src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs)
    - Validates that user-defined protocol methods have correct signatures
-   - Calls `GetProtocol()` to get expected parameter counts and return types
+   - Calls `GetProtocol()` (src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs:26) to get expected parameter counts and return types
 
-2. **`RoslynEmitter`** (`CodeGen/RoslynEmitter.cs`)
+2. **`RoslynEmitter`** (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs)
    - Generates C# code from Sharpy AST
    - Uses protocol info to:
      - Map `__len__()` to `ISized.__Len__()`
      - Generate appropriate interface implementations
      - Handle special cases like constructors
 
-3. **`NameMangler`** (`CodeGen/NameMangler.cs`)
+3. **`NameMangler`** (src/Sharpy.Compiler/CodeGen/NameMangler.cs)
    - Converts Sharpy names to C# names (snake_case → PascalCase)
    - Uses `GetAllProtocols()` to know which names are dunders that should preserve their format
 
-4. **`ProtocolValidator`** (`Semantic/ProtocolValidator.cs`)
+4. **`ProtocolValidator`** (src/Sharpy.Compiler/Semantic/ProtocolValidator.cs)
    - Checks if types support specific protocols
    - Validates protocol usage in expressions
 
+5. **`TypeChecker.Definitions.cs`** (src/Sharpy.Compiler/Semantic/TypeChecker.Definitions.cs)
+   - Queries registry during type definition analysis
+
+6. **`OperatorValidator`** (src/Sharpy.Compiler/Semantic/OperatorValidator.cs:112-114)
+   - Integrates protocol validation for membership operators (`in`, `not in`)
+   - Uses `ProtocolValidator` which depends on this registry
+
 ### 4.3 Related Files
 
-- **`OperatorSignatureValidator.cs`**: Handles operator dunders (`__add__`, `__eq__`, etc.)
+- **`OperatorSignatureValidator.cs`** (src/Sharpy.Compiler/Semantic/OperatorSignatureValidator.cs): Handles operator dunders (`__add__`, `__eq__`, etc.)
 - **`Sharpy.Core` interfaces**: The actual interface definitions (e.g., `ISized`, `IContainer`)
 - **Test files**:
   - `ProtocolRegistryTests.cs`: Unit tests for the registry itself
   - `ProtocolSignatureValidatorTests.cs`: Tests for signature validation
+  - `RegistryConsistencyTests.cs` (src/Sharpy.Compiler.Tests/CodeGen/RegistryConsistencyTests.cs): Ensures protocol and operator registries are disjoint
 
 ---
 
@@ -290,6 +312,12 @@ using System.Collections.Frozen;
 - **Different semantics**: Protocols define capabilities (e.g., "this object has a length"), while operators define computations (e.g., "add two objects")
 - **Different mappings**: Protocols map to interfaces, operators map to C# operator overloads
 - **Different validation rules**: Protocol validation checks signatures, operator validation checks commutativity and type compatibility
+
+The division is clear in the code:
+- `ProtocolRegistry`: `__len__`, `__str__`, `__iter__`, etc.
+- `OperatorSignatureValidator`: `__add__`, `__eq__`, `__lt__`, etc.
+
+**Exception**: `__eq__` and `__ne__` are in `OperatorSignatureValidator` even though they integrate with equality protocols (see src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:189-191).
 
 ### 5.2 Frozen Collections for Performance
 
@@ -324,10 +352,10 @@ This flexibility allows the registry to handle all protocols uniformly while ack
 ExpectedParamCount: -1,  // Variable (1+ including self)
 ```
 
-**Why -1 instead of nullable int?** 
+**Why -1 instead of nullable int?**
 - `-1` explicitly signals "variable count, 1 or more"
 - `null` would be ambiguous (no constraint? unknown? error?)
-- Makes validation code cleaner: `if (expectedCount == -1) return;`
+- Makes validation code cleaner: `if (expectedCount == -1) return;` (see src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs:51-52)
 
 ### 5.5 Comprehensive Documentation Comments
 
@@ -337,6 +365,15 @@ Every protocol registration includes comments explaining:
 - Why certain fields are null
 
 **Why this matters**: This file is the **authoritative source** for protocol semantics. Future maintainers need to understand the rationale behind each mapping.
+
+### 5.6 Numbered Section Comments
+
+Notice the pattern: `// 2.2.1 Lifecycle protocols`, `// 2.2.2 Container protocols` (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:60, 71)
+
+These reference a specification or design document structure, making it easy to:
+- Correlate code with specs
+- Navigate the registration logic
+- Ensure completeness
 
 ---
 
@@ -356,6 +393,17 @@ public static ProtocolInfo? GetProtocol(string dunderName)
 
 **Watch for**: Unexpected dunder names being queried (might indicate a bug elsewhere).
 
+Or add logging:
+
+```csharp
+public static ProtocolInfo? GetProtocol(string dunderName)
+{
+    var result = _protocols.GetValueOrDefault(dunderName);
+    Console.WriteLine($"[ProtocolRegistry] Lookup '{dunderName}': {(result != null ? "Found" : "Not found")}");
+    return result;
+}
+```
+
 ### 6.2 Verifying Registry Contents
 
 In a debugger or test, inspect `_protocols` to see all registered protocols:
@@ -368,7 +416,44 @@ foreach (var p in allProtocols)
     Console.WriteLine($"  {p.DunderName} -> {p.SharpyCoreInterface ?? "(no interface)"}");
 ```
 
-### 6.3 Common Issues
+Or check by category:
+
+```csharp
+var allProtocols = ProtocolRegistry.GetAllProtocols();
+Console.WriteLine($"Total registered protocols: {ProtocolRegistry.Count}");
+foreach (var kind in Enum.GetValues<ProtocolKind>())
+{
+    var count = ProtocolRegistry.GetProtocolsByKind(kind).Count();
+    Console.WriteLine($"  {kind}: {count} protocols");
+}
+```
+
+### 6.3 Testing Protocol vs Operator Distinction
+
+When a dunder isn't being validated correctly:
+
+```csharp
+string dunder = "__add__";  // Example
+Console.WriteLine($"Is protocol? {ProtocolRegistry.IsProtocolDunder(dunder)}");
+Console.WriteLine($"Is operator? {OperatorSignatureValidator.IsOperatorDunder(dunder)}");
+Console.WriteLine($"Is any dunder? {ProtocolRegistry.IsAnyDunder(dunder)}");
+```
+
+### 6.4 Inspecting Interface Mappings
+
+To see all interface mappings:
+
+```csharp
+foreach (var protocol in ProtocolRegistry.GetAllProtocols())
+{
+    if (protocol.SharpyCoreInterface != null)
+    {
+        Console.WriteLine($"{protocol.DunderName} → {protocol.SharpyCoreInterface}.{protocol.InterfaceMethodName}");
+    }
+}
+```
+
+### 6.5 Common Issues
 
 **Issue**: "Protocol validation is failing for a valid dunder"
 - **Check**: Is the dunder registered in `RegisterAllProtocols()`?
@@ -378,12 +463,13 @@ foreach (var p in allProtocols)
 **Issue**: "Code generation produces wrong C# method name"
 - **Check**: What is `ClrMethodName` set to for this protocol?
 - **Check**: Is there special-case handling in `RoslynEmitter` for this protocol?
+- **Check**: For properties, the CLR name should be `"get_PropertyName"` or `"set_PropertyName"`
 
 **Issue**: "Protocol seems to work in Sharpy code but fails during .NET interop"
 - **Check**: Does the protocol have a `ClrMethodName` mapping?
 - **Check**: Is the .NET type expected to have this method/property?
 
-### 6.4 Testing Protocol Changes
+### 6.6 Testing Protocol Changes
 
 When modifying protocol registrations:
 
@@ -451,9 +537,9 @@ When modifying protocol registrations:
    ```
 
 7. **Update related components**:
-   - Add validation in `ProtocolSignatureValidator` if needed
+   - `ProtocolSignatureValidator` automatically validates it
    - Add code generation in `RoslynEmitter`
-   - Update documentation
+   - Update language specification documentation
 
 ### 7.2 Modifying an Existing Protocol
 
@@ -474,18 +560,24 @@ When modifying protocol registrations:
 2. Compile sample programs
 3. Regenerate documentation if signature changed
 
-### 7.3 Improving Performance
+### 7.3 What NOT to Change
 
-Current performance is excellent (frozen dictionary), but if you need to optimize further:
+**Do NOT add operator dunders to this registry.** They belong in `OperatorSignatureValidator`. The division is:
+- `ProtocolRegistry`: `__len__`, `__str__`, `__iter__`, etc.
+- `OperatorSignatureValidator`: `__add__`, `__eq__`, `__lt__`, etc.
 
-**Potential improvements**:
-- Add a cache for common query patterns
-- Pre-compute frequently-used subsets (e.g., "all generic protocols")
-- Use spans for string comparisons if profiling shows string allocation overhead
+### 7.4 Consistency Requirements
 
-**Before optimizing**: Profile first! The current implementation is likely fast enough. Only optimize if you have evidence that `ProtocolRegistry` is a bottleneck.
+When adding a protocol, ensure consistency across:
 
-### 7.4 Code Style
+1. **Registry**: Add `ProtocolInfo` here
+2. **Validator**: `ProtocolSignatureValidator` will automatically validate it
+3. **Code Generator**: Update `RoslynEmitter` to emit correct C# code
+4. **Sharpy.Core**: Add the corresponding interface to the runtime library
+5. **Tests**: Add tests in `ProtocolRegistryTests.cs` and `ProtocolSignatureValidatorTests.cs`
+6. **Documentation**: Update language specification if adding a user-facing feature
+
+### 7.5 Code Style
 
 **Follow these conventions when contributing**:
 
@@ -505,12 +597,13 @@ Current performance is excellent (frozen dictionary), but if you need to optimiz
    ));
    ```
 
-### 7.5 Testing Checklist
+### 7.6 Testing Checklist
 
 Before submitting a PR that modifies `ProtocolRegistry.cs`:
 
 - [ ] Run unit tests: `dotnet test --filter "FullyQualifiedName~ProtocolRegistry"`
 - [ ] Run integration tests: `dotnet test --filter "FullyQualifiedName~Integration"`
+- [ ] Run consistency tests: `dotnet test --filter "FullyQualifiedName~RegistryConsistencyTests"`
 - [ ] Compile sample programs that use protocols
 - [ ] Check that generated C# code is correct
 - [ ] Verify error messages are helpful
@@ -539,8 +632,8 @@ print(len(lst))
 
 **3. Semantic Analysis**:
 - `TypeChecker` encounters the method
-- Calls `ProtocolSignatureValidator.ValidateDunderSignature()`
-- Which calls `ProtocolRegistry.GetProtocol("__len__")`
+- Calls `ProtocolSignatureValidator.ValidateDunderSignature()` (src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs:21)
+- Which calls `ProtocolRegistry.GetProtocol("__len__")` (src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs:26)
 - Returns `ProtocolInfo` with `ExpectedParamCount: 1`, `ExpectedReturnType: "int"`
 - Validator checks: ✓ Has 1 parameter (self), ✓ Returns int
 
@@ -562,7 +655,7 @@ print(len(lst))
 
 ### 8.2 Example: Why `__init__` is Special
 
-Notice that `__init__` has several special values:
+Notice that `__init__` has several special values (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:61-69):
 
 ```csharp
 Register(protocols, new ProtocolInfo(
@@ -581,6 +674,27 @@ Register(protocols, new ProtocolInfo(
 - **`.ctor`**: Special name that `RoslynEmitter` recognizes to generate a constructor
 - **`-1` params**: `__init__(self)` is valid, but so is `__init__(self, a, b, c, ...)`
 - **Returns `None`**: In Python, `__init__` implicitly returns None; in C#, constructors return void
+
+### 8.3 Example: Type Conversion Nuance with `__len__`
+
+The `__len__` registration demonstrates an important design decision (src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs:72-83):
+
+```csharp
+// NOTE: ISized.__Len__() returns uint in Sharpy.Core, but we register "int" here
+// because that's the common Sharpy/Python return type for len(). The code generator
+// handles the uint-to-int conversion when emitting calls to __Len__().
+Register(protocols, new ProtocolInfo(
+    DunderName: "__len__",
+    Kind: ProtocolKind.Container,
+    SharpyCoreInterface: "ISized",
+    InterfaceMethodName: "__Len__",
+    ClrMethodName: "get_Count",
+    ExpectedParamCount: 1,
+    ExpectedReturnType: "int"  // Sharpy uses int; codegen handles uint conversion
+));
+```
+
+This shows the registry reflects **Sharpy semantics** (Python-like `int`), while the code generator handles translation to **.NET semantics** (unsigned `uint` for counts).
 
 ---
 
@@ -605,7 +719,48 @@ Register(protocols, new ProtocolInfo(
 
 ---
 
-## 10. Quick Reference
+## 10. Cross-References
+
+### Related Implementation Files
+
+- **`OperatorSignatureValidator.cs`** (src/Sharpy.Compiler/Semantic/OperatorSignatureValidator.cs): Complementary registry for operator dunders
+- **`ProtocolSignatureValidator.cs`** (src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs): Uses this registry to validate protocol signatures
+- **`OperatorValidator.cs`** (src/Sharpy.Compiler/Semantic/OperatorValidator.cs): Runtime validation of operator usage
+- **`RoslynEmitter.Operators.cs`**: Code generation for operators (uses CLR method mappings)
+- **`RoslynEmitter.ClassMembers.cs`**: Code generation for class members (uses interface mappings)
+
+### Related Walkthrough Documents
+
+- [`OperatorSignatureValidator.md`](./OperatorSignatureValidator.md) - Walkthrough of operator dunder handling
+- [`ProtocolSignatureValidator.md`](./ProtocolSignatureValidator.md) - Walkthrough of protocol signature validation
+- [`ProtocolValidator.md`](./ProtocolValidator.md) - Walkthrough of runtime protocol validation
+- [`NameResolver.md`](./NameResolver.md) - How dunders are resolved in symbol tables
+- [`../CodeGen/RoslynEmitter.md`](../CodeGen/RoslynEmitter.md) - How protocols are emitted to C#
+
+### Test Files
+
+- **`src/Sharpy.Compiler.Tests/Semantic/ProtocolRegistryTests.cs`**: Unit tests for this registry
+- **`src/Sharpy.Compiler.Tests/Semantic/ProtocolSignatureValidatorTests.cs`**: Integration tests with validation
+- **`src/Sharpy.Compiler.Tests/CodeGen/RegistryConsistencyTests.cs`**: Ensures protocol/operator registries are disjoint
+
+### Sharpy.Core Runtime
+
+The `Sharpy.Core` library defines the interfaces referenced by this registry:
+- `Sharpy.Core.Protocols.ISized` - Defines `__Len__()`
+- `Sharpy.Core.Protocols.IContainer` - Defines `__Contains__()`
+- `Sharpy.Core.Protocols.IIterable` - Defines `__Iter__()`
+- `Sharpy.Core.Protocols.ISequence` - Defines `__GetItem__()`
+- `Sharpy.Core.Protocols.IMutableSequence` - Defines `__SetItem__()` and `__DelItem__()`
+- `Sharpy.Core.Protocols.IStrConvertible` - Defines `__Str__()`
+- `Sharpy.Core.Protocols.IRepresentable` - Defines `__Repr__()`
+- `Sharpy.Core.Protocols.IHashable` - Defines `__Hash__()`
+- `Sharpy.Core.Protocols.IBoolConvertible` - Defines `__Bool__()`
+
+Check the `Sharpy.Core` project for the actual interface definitions.
+
+---
+
+## 11. Quick Reference
 
 ### Common Queries
 
@@ -627,6 +782,12 @@ var containers = ProtocolRegistry.GetProtocolsByKind(ProtocolKind.Container);
 
 // How many protocols are registered?
 int count = ProtocolRegistry.Count;
+
+// Is this any kind of dunder (protocol or operator)?
+bool isAnyDunder = ProtocolRegistry.IsAnyDunder("__add__");
+
+// Does this override System.Object?
+bool overridesObject = ProtocolRegistry.IsObjectOverrideDunder("__str__");
 ```
 
 ### Protocol Categories at a Glance
@@ -642,7 +803,7 @@ int count = ProtocolRegistry.Count;
 
 ---
 
-## 11. Conclusion
+## 12. Conclusion
 
 `ProtocolRegistry.cs` is a **foundational piece** of the Sharpy compiler. It's small (< 300 lines) but critical. Every protocol interaction in Sharpy code flows through this registry.
 

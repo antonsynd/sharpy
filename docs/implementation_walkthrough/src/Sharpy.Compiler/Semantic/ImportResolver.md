@@ -4,578 +4,661 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-`ImportResolver` is the cornerstone of Sharpy's module system. It handles the discovery, loading, and validation of both Sharpy source modules (`.spy` files) and .NET assembly modules. Think of it as the "librarian" that finds the books (modules) you request via `import` and `from...import` statements.
+The **ImportResolver** is a critical component in Sharpy's semantic analysis phase that handles all aspects of import statement resolution. It bridges the gap between Python-style import syntax and the underlying module system, supporting both:
 
-**Key Responsibilities:**
-- Resolve module names to file paths (e.g., `my.module` → `my/module.spy`)
-- Load and parse `.spy` source files into AST modules
-- Interface with `ModuleRegistry` to access .NET assemblies
-- Extract exported symbols from loaded modules (functions, classes, constants, etc.)
-- Detect circular imports
-- Cache loaded modules for performance
-- Validate that imported symbols actually exist in the target module
+1. **Sharpy modules** (`.spy` files) - Source files written in Sharpy
+2. **.NET assemblies** - Compiled .NET libraries loaded through the ModuleRegistry
 
-**Position in the Compiler Pipeline:**
-```
-Parser → ImportResolver (during NameResolver) → TypeResolver → TypeChecker → CodeGen
-```
+The ImportResolver is responsible for:
+- Resolving module names to actual file paths (via ModuleResolver)
+- Loading and parsing imported modules
+- Extracting exported symbols from modules
+- Detecting circular import dependencies
+- Validating import visibility rules (public/protected/private)
+- Supporting re-export patterns (`from .submodule import func`)
+- Populating symbol information for code generation
 
-Import resolution happens during the semantic analysis phase, specifically during name resolution when the compiler encounters `import` or `from...import` statements.
+**Pipeline Position**: This component sits early in the semantic analysis phase, after the Parser produces the AST but before type checking and name resolution can proceed. It's essential because downstream components need symbol information from imported modules.
 
 ---
 
-## 2. Class Structure
+## Class/Type Structure
 
-### Main Class: `ImportResolver`
-
+### ImportChainEntry (Record)
 ```csharp
-public class ImportResolver
-{
-    private readonly ICompilerLogger _logger;
-    private readonly List<SemanticError> _errors;
-    private readonly HashSet<string> _loadedModules;
-    private readonly HashSet<string> _loadingModules;  // Circular import detection
-    private readonly Dictionary<string, ModuleInfo> _moduleCache;
-    private readonly ModuleRegistry? _moduleRegistry;
-    private string? _currentModulePath;
-}
+internal record ImportChainEntry(
+    string ModulePath,
+    int? LineStart,
+    int? ColumnStart,
+    string? ImportingModule
+);
 ```
 
-**Field Breakdown:**
+A lightweight record used for circular import detection. Each entry represents one step in the import chain, storing:
+- **ModulePath**: The absolute path to the module being imported
+- **LineStart/ColumnStart**: Source location where the import occurs (for error reporting)
+- **ImportingModule**: The module that triggered this import (parent in the chain)
 
-- **`_logger`**: For diagnostic logging (debug, info, warnings)
-- **`_errors`**: Accumulates semantic errors encountered during import resolution
-- **`_loadedModules`**: Tracks successfully loaded module paths to avoid redundant work
-- **`_loadingModules`**: Temporary set used to detect circular dependencies (e.g., `A imports B imports A`)
-- **`_moduleCache`**: Maps module paths to `ModuleInfo` objects for fast lookup
-- **`_moduleRegistry`**: Optional registry for accessing preloaded .NET assemblies
-- **`_currentModulePath`**: Context for resolving relative imports (set via `SetCurrentModule`)
+### ImportResolver (Main Class)
 
-### Supporting Class: `ModuleInfo`
+The main class that orchestrates import resolution. Key fields:
+
+```csharp
+private readonly ICompilerLogger _logger;
+private readonly List<SemanticError> _errors = new();
+private readonly HashSet<string> _loadedModules = new();
+private readonly Stack<ImportChainEntry> _importChain = new();
+private readonly Dictionary<string, ModuleInfo> _moduleCache = new();
+private readonly ModuleRegistry? _moduleRegistry;
+private readonly ModuleResolver _moduleResolver;
+private string? _currentModulePath = null;
+```
+
+**Field Breakdown**:
+- **_errors**: Collects semantic errors during import resolution (available via `Errors` property)
+- **_loadedModules**: Prevents duplicate loading of the same module
+- **_importChain**: Stack-based tracking for detecting circular imports with detailed error reporting
+- **_moduleCache**: Caches parsed modules to avoid re-parsing (keyed by absolute path or `.net:moduleName`)
+- **_moduleRegistry**: Optional registry for .NET assembly interop
+- **_moduleResolver**: Handles the low-level path resolution logic (relative imports, search paths, etc.)
+- **_currentModulePath**: Tracks which module is currently being processed (for relative import resolution)
+
+### ModuleInfo (Data Class)
 
 ```csharp
 public class ModuleInfo
 {
     public string Path { get; init; }
-    public Module Module { get; init; }  // AST representation (null for .NET modules)
+    public Module Module { get; init; }
     public Dictionary<string, Symbol> ExportedSymbols { get; init; }
     public bool IsNetModule { get; init; }
 }
 ```
 
-This is the data structure returned after successfully resolving an import. It contains:
-- The module's file path (or `.net:ModuleName` for .NET assemblies)
-- The parsed AST `Module` (null for .NET assemblies since they don't have Sharpy source)
-- A dictionary of all symbols this module exports
-- A flag indicating whether it's a .NET module
-
-**⚠️ Important**: Always check `IsNetModule` before accessing `Module` property to avoid null references!
+Represents a loaded module with all its exported symbols. Important notes:
+- **Path**: For .spy files, this is the absolute file path; for .NET modules, it's `.net:moduleName`
+- **Module**: The parsed AST (null for .NET modules - always check `IsNetModule` before accessing!)
+- **ExportedSymbols**: All symbols that can potentially be imported (visibility is enforced separately)
+- **IsNetModule**: Flag indicating this module comes from a .NET assembly, not a .spy file
 
 ---
 
-## 3. Key Methods
+## Key Functions/Methods
 
-### 3.1 `ResolveImport` - Handle `import` Statements
+### Public API Methods
 
+#### ResolveImport(ImportStatement, string?)
 ```csharp
 public List<ModuleInfo> ResolveImport(ImportStatement importStmt, string? searchPath = null)
 ```
 
-**Purpose**: Resolves `import module1, module2 as alias` statements.
+**Purpose**: Resolves `import` statements like `import math` or `import utils.helpers as h`.
 
-**Algorithm:**
-1. Iterate through each module name in the import statement
-2. First attempt: Try to resolve as a .NET module via `ModuleRegistry`
-3. Fallback: If not a .NET module, resolve as a `.spy` file
-4. Collect all successfully resolved modules
-5. Record errors for any modules that couldn't be found
+**Algorithm**:
+1. Iterate through each import name in the statement (can be comma-separated)
+2. Try to resolve as .NET module first (via `TryResolveNetModule`)
+3. If not a .NET module, resolve as .spy file (via `ResolveModulePath`)
+4. Load the module with `LoadModule` (which handles parsing, caching, circular detection)
+5. Collect all successfully loaded modules
 
-**Example Input:**
-```python
-import math, my_utils, System.Collections
-```
+**Returns**: List of `ModuleInfo` objects, one per successfully resolved import
 
-**Returns**: A list of `ModuleInfo` objects, one per successfully resolved module.
+**Error Handling**: Adds errors for modules that can't be found, but continues processing remaining imports
 
-**Error Handling**: If a module can't be found, an error is added to `_errors` but the method continues processing remaining modules (fail-soft approach).
-
----
-
-### 3.2 `ResolveFromImport` - Handle `from...import` Statements
-
+#### ResolveFromImport(FromImportStatement, string?)
 ```csharp
 public ModuleInfo? ResolveFromImport(FromImportStatement fromImport, string? searchPath = null)
 ```
 
-**Purpose**: Resolves `from module import symbol1, symbol2` statements.
+**Purpose**: Resolves `from ... import ...` statements like `from math import sqrt, pi` or `from .helpers import *`.
 
-**Algorithm:**
-1. Resolve the source module (same logic as `ResolveImport`: .NET first, then `.spy`)
-2. If `from module import *`, skip validation (all symbols will be imported)
-3. Otherwise, validate that each imported symbol exists in the module's `ExportedSymbols`
-4. Record errors for missing symbols
+**Key Responsibilities**:
+1. Resolve the source module (same logic as `ResolveImport`)
+2. Store the canonical module path in `fromImport.ResolvedModulePath` for code generation
+3. Validate that imported names actually exist in the module
+4. Enforce visibility rules:
+   - Direct imports: Can't import `__private` symbols (double underscore)
+   - Wildcard imports (`import *`): Only imports public symbols (no leading underscore)
+5. Populate `fromImport.ReExportedSymbols` for code generation
 
-**Example Input:**
-```python
-from my_math import add, subtract, nonexistent_func  # Error on nonexistent_func
+**Special Handling for `import *`**:
+```csharp
+if (fromImport.ImportAll)
+{
+    // Populate re-export symbols for code generation
+    foreach (var (name, symbol) in moduleInfo.ExportedSymbols)
+    {
+        if (!name.StartsWith("_"))  // Only public symbols
+        {
+            var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
+            fromImport.ReExportedSymbols[name] = reExportSymbol;
+        }
+    }
+}
 ```
 
-**Returns**: The `ModuleInfo` for the source module, or `null` if the module couldn't be found.
+**Returns**: The `ModuleInfo` for the source module, or null if resolution fails
 
-**Key Difference from `ResolveImport`**: This method validates individual symbol existence, whereas `ResolveImport` only validates module existence.
+### Core Import Resolution Methods
 
----
-
-### 3.3 `LoadModule` - Load and Parse Sharpy Source Files
-
+#### LoadModule(string, int?, int?)
 ```csharp
 private ModuleInfo? LoadModule(string modulePath, int? lineStart, int? columnStart)
 ```
 
-**Purpose**: The workhorse method that actually loads a `.spy` file from disk, parses it, and extracts exported symbols.
+**Purpose**: The workhorse method that loads, parses, and analyzes a .spy module.
 
-**Algorithm:**
-1. **Check cache**: Return immediately if already loaded
-2. **Circular import detection**: Check if currently being loaded (in `_loadingModules`)
-3. **Mark as loading**: Add to `_loadingModules` to catch circular dependencies
-4. **Read source**: Load file contents from disk
-5. **Tokenize**: Run the lexer to produce tokens
-6. **Parse**: Run the parser to produce an AST `Module`
-7. **Extract exports**: Walk the module's top-level statements to collect exported symbols
-8. **Cache and mark loaded**: Store in `_moduleCache` and add to `_loadedModules`
-9. **Cleanup**: Remove from `_loadingModules` in a `finally` block
+**Critical Algorithm Steps**:
 
-**Circular Import Detection Example:**
+1. **Cache Check**: Return cached module if already loaded
+   ```csharp
+   if (_moduleCache.TryGetValue(modulePath, out var cached))
+       return cached;
+   ```
+
+2. **Circular Import Detection**: Check if module is already in the current import chain
+   ```csharp
+   if (IsModuleInChain(modulePath))
+   {
+       var chainMessage = FormatCircularImportChain(modulePath);
+       AddError(chainMessage, lineStart, columnStart);
+       return null;
+   }
+   ```
+
+3. **Push to Import Chain**: Track this import for circular detection
+   ```csharp
+   _importChain.Push(new ImportChainEntry(
+       modulePath, lineStart, columnStart, _currentModulePath
+   ));
+   ```
+
+4. **Parse the Module**: Read source, tokenize, parse
+   ```csharp
+   var source = File.ReadAllText(modulePath);
+   var lexer = new Lexer.Lexer(source, _logger);
+   var tokens = lexer.TokenizeAll();
+   var parser = new Parser.Parser(tokens, _logger);
+   var module = parser.ParseModule();
+   ```
+
+5. **Extract Exported Symbols**: Walk the AST and collect top-level declarations
+   ```csharp
+   foreach (var statement in module.Body)
+   {
+       ExtractExportedSymbol(statement, moduleInfo);
+   }
+   ```
+
+6. **Recursive Import Resolution**: Process imports within the loaded module (detects transitive circular dependencies)
+   ```csharp
+   ResolveModuleImports(module, Path.GetDirectoryName(modulePath));
+   ```
+
+7. **Cache and Return**: Store in both `_moduleCache` and `_loadedModules`
+
+**Important Context Switching**:
+The method temporarily changes `_currentModulePath` to the module being loaded. This is crucial for resolving relative imports correctly within the loaded module:
+```csharp
+var previousModulePath = _currentModulePath;
+_currentModulePath = modulePath;
+try {
+    // Extract symbols and resolve imports
+} finally {
+    _currentModulePath = previousModulePath;
+}
 ```
-Module A loads → calls LoadModule("B")
-  Module B loads → calls LoadModule("A")
-    Module A already in _loadingModules → Error!
-```
 
-**Error Recovery**: Uses try-catch to handle file I/O errors, parse errors, etc. Returns `null` on failure.
-
----
-
-### 3.4 `ExtractExportedSymbol` - Collect Module Exports
-
+#### ExtractExportedSymbol(Statement, ModuleInfo)
 ```csharp
 private void ExtractExportedSymbol(Statement statement, ModuleInfo moduleInfo)
 ```
 
-**Purpose**: Examines a top-level statement and adds exportable symbols to `moduleInfo.ExportedSymbols`.
+**Purpose**: Extracts symbol information from top-level AST statements and adds them to the module's exported symbols.
 
-**Exported Statement Types:**
+**Handled Statement Types**:
+- **FunctionDef**: Creates `FunctionSymbol` with parameters and return type
+- **ClassDef**: Creates `TypeSymbol` with `TypeKind.Class`
+- **StructDef**: Creates `TypeSymbol` with `TypeKind.Struct`
+- **InterfaceDef**: Creates `TypeSymbol` with `TypeKind.Interface`
+- **EnumDef**: Creates `TypeSymbol` with `TypeKind.Enum`
+- **VariableDeclaration**: Creates `VariableSymbol` (constants or regular variables)
+- **FromImportStatement**: Handles re-exports via `ExtractReExportedSymbols`
 
-| Statement Type | Symbol Created | Notes |
-|---------------|----------------|-------|
-| `FunctionDef` | `FunctionSymbol` | All top-level functions are exported |
-| `ClassDef` | `TypeSymbol` (Class) | All top-level classes are exported |
-| `StructDef` | `TypeSymbol` (Struct) | All top-level structs are exported |
-| `InterfaceDef` | `TypeSymbol` (Interface) | All top-level interfaces are exported |
-| `EnumDef` | `TypeSymbol` (Enum) | All top-level enums are exported |
-| `VariableDeclaration` (const) | `VariableSymbol` | Only constants are exported |
+**Access Level Determination**:
+Uses naming conventions to determine visibility:
+```csharp
+private AccessLevel GetAccessLevel(string name)
+{
+    if (name.StartsWith("__")) return AccessLevel.Private;
+    if (name.StartsWith("_")) return AccessLevel.Protected;
+    return AccessLevel.Public;
+}
+```
 
-**Design Decision**: Sharpy follows Python's convention where all top-level declarations are implicitly public and exported. There's no `export` keyword or `__all__` list (though this might be added in the future).
+**Type Annotation Conversion**:
+Converts parser-level type annotations to semantic types for primitive types:
+```csharp
+private SemanticType ConvertTypeAnnotationToSemanticType(TypeAnnotation? typeAnnotation)
+{
+    // Maps "int" -> SemanticType.Int, "str" -> SemanticType.Str, etc.
+    // Returns SemanticType.Unknown for complex types (resolved later)
+}
+```
 
-**Non-exported Items:**
-- Regular variable declarations (non-const)
-- Nested functions/classes (defined inside other functions/classes)
-- Expressions, control flow statements, etc.
+#### ExtractReExportedSymbols(FromImportStatement, ModuleInfo)
+```csharp
+private void ExtractReExportedSymbols(FromImportStatement fromImport, ModuleInfo moduleInfo)
+```
 
----
+**Purpose**: Handles the re-export pattern where a module imports symbols from another module and makes them available to its own importers.
 
-### 3.5 `TryResolveNetModule` - Load .NET Assembly Modules
+**Example Use Case**:
+```python
+# utils/__init__.spy
+from .helpers import format_string, parse_input
+from .math import sqrt
 
+# Now other modules can do: from utils import format_string
+```
+
+**Algorithm**:
+1. Resolve the source module path
+2. Load the source module to get its symbols
+3. For `import *`: Re-export all public symbols (no leading underscore)
+4. For specific imports: Re-export only the named symbols (respecting aliases)
+5. Add re-exported symbols to both:
+   - `moduleInfo.ExportedSymbols` (makes them available for import)
+   - `fromImport.ReExportedSymbols` (needed for code generation)
+
+**Symbol Cloning**:
+Creates new symbol instances with updated metadata:
+```csharp
+private Symbol CreateReExportSymbol(Symbol originalSymbol, FromImportStatement fromImport, string? newName = null)
+{
+    // Clones the symbol with:
+    // - New name (if aliased)
+    // - IsReExport = true
+    // - OriginalModule = fromImport.Module
+    // - DeclarationLine/Column = fromImport location
+}
+```
+
+### .NET Interop Methods
+
+#### TryResolveNetModule(string, int?, int?)
 ```csharp
 private ModuleInfo? TryResolveNetModule(string moduleName, int? lineStart, int? columnStart)
 ```
 
-**Purpose**: Attempts to resolve a module name as a .NET assembly that's been registered with the `ModuleRegistry`.
+**Purpose**: Attempts to resolve a module name as a .NET assembly loaded in the `ModuleRegistry`.
 
-**Algorithm:**
+**Process**:
 1. Check if `ModuleRegistry` is available (it's optional)
-2. Ask the registry if this module is loaded
-3. Check cache (keyed by `.net:ModuleName`)
-4. Retrieve all exported functions from the registry
+2. Query registry to see if module is loaded
+3. Check cache with key `.net:moduleName`
+4. Retrieve function symbols from registry
 5. Create a `ModuleInfo` with `IsNetModule = true` and `Module = null!`
-6. Populate `ExportedSymbols` with function symbols
 
-**Example:**
-```python
-# If System.Math.dll is loaded in ModuleRegistry
-import System.Math
-# TryResolveNetModule finds it and returns ModuleInfo with exported functions
-```
+**Important Note**: .NET modules don't have an AST (`Module` property is null), so consumers must check `IsNetModule` before accessing the `Module` property.
 
-**Why Module is null**: .NET assemblies don't have Sharpy AST representations. They're already compiled IL. The `null!` (null-forgiving operator) documents this is intentional.
+### Utility Methods
 
----
-
-### 3.6 `ResolveModulePath` - Find `.spy` Files
-
+#### IsDirectlyImportable(string)
 ```csharp
-private string? ResolveModulePath(string moduleName, string? searchPath = null)
+private bool IsDirectlyImportable(string symbolName)
+{
+    return !symbolName.StartsWith("__");  // Private symbols can't be directly imported
+}
 ```
 
-**Purpose**: Converts a Python-style dotted module name to a file system path.
+Enforces Python-style visibility rules for direct imports (`from module import symbol`).
 
-**Search Strategy** (in order):
-
-1. **Current module's directory** (if `_currentModulePath` is set)
-   - Try `current/dir/module/submodule.spy`
-   - Try `current/dir/module/submodule/__init__.spy` (package)
-
-2. **Provided search path**
-   - Try `searchPath/module/submodule.spy`
-   - Try `searchPath/module/submodule/__init__.spy`
-
-3. **Current working directory**
-   - Try `cwd/module/submodule.spy`
-   - Try `cwd/module/submodule/__init__.spy`
-
-**Module Name Transformation:**
-```python
-# Input: "my.nested.module"
-# Transforms to: "my/nested/module.spy" (on Unix) or "my\nested\module.spy" (on Windows)
-```
-
-**Package Support**: If `module/__init__.spy` exists, the module is treated as a package. This matches Python's package system.
-
-**Returns**: Full absolute path to the module file, or `null` if not found.
-
-**Debugging Tip**: On failure, logs all searched paths via `_logger.LogDebug()` to help diagnose why a module wasn't found.
-
----
-
-### 3.7 `AddError` - Error Recording Helper
-
+#### IsExportedByImportAll(string) & GetImportAllSymbols(ModuleInfo)
 ```csharp
-private void AddError(string message, int? line, int? column)
+private bool IsExportedByImportAll(string symbolName)
+{
+    return !symbolName.StartsWith("_");  // Only public symbols (no underscore prefix)
+}
+
+public Dictionary<string, Symbol> GetImportAllSymbols(ModuleInfo moduleInfo)
+{
+    return moduleInfo.ExportedSymbols
+        .Where(kvp => IsExportedByImportAll(kvp.Key))
+        .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+}
 ```
 
-**Purpose**: Centralized error recording that adds context (current module name) to error messages.
+Implements the filtering logic for `from module import *` statements.
 
-**Behavior**: If `_currentModulePath` is set, appends `(in filename.spy)` to the error message for better diagnostics.
+#### FormatCircularImportChain(string)
+```csharp
+private string FormatCircularImportChain(string cycleStartModule)
+```
+
+**Purpose**: Creates a user-friendly error message showing the exact circular import chain.
+
+**Output Example**:
+```
+Circular import detected:
+  -> module_a.spy
+  -> module_b.spy
+  -> module_c.spy
+  -> module_a.spy (cycle)
+```
+
+The method walks the `_importChain` stack in reverse order, finds where the cycle starts, and formats only the relevant portion of the chain.
 
 ---
 
-## 4. Dependencies
+## Dependencies
 
-### Internal Dependencies
+### Internal Sharpy Dependencies
 
-- **`Parser.Ast`**: Needs AST node types (`ImportStatement`, `FromImportStatement`, `FunctionDef`, `ClassDef`, etc.)
-- **`Lexer`**: Uses `Lexer.Lexer` to tokenize source files
-- **`Parser`**: Uses `Parser.Parser` to parse tokens into AST
-- **`Symbol`**: Creates various symbol types (`FunctionSymbol`, `TypeSymbol`, `VariableSymbol`)
-- **`ModuleRegistry`**: Optional dependency for .NET assembly support
-- **`ICompilerLogger`**: For logging and diagnostics
-- **`SemanticError`**: For error reporting
+1. **ModuleResolver** (`Semantic/ModuleResolver.cs`)
+   - Handles low-level path resolution
+   - Supports relative imports (`.module`, `..parent`)
+   - Manages search paths for module discovery
+   - Returns `ModuleResolutionResult` with canonical module names
+
+2. **ModuleRegistry** (`Semantic/ModuleRegistry.cs`)
+   - Optional component for .NET assembly interop
+   - Provides access to compiled .NET functions
+   - Used for importing .NET libraries into Sharpy code
+
+3. **Symbol Types** (`Semantic/Symbol.cs`)
+   - `Symbol`, `FunctionSymbol`, `TypeSymbol`, `VariableSymbol`, `ParameterSymbol`
+   - Represents exported symbols from modules
+   - Includes re-export metadata (`IsReExport`, `OriginalModule`)
+
+4. **SemanticType** (`Semantic/SemanticType.cs`)
+   - Type system primitives (`Int`, `Str`, `Bool`, etc.)
+   - Used for early type annotation conversion
+   - Full type resolution happens later in the pipeline
+
+5. **Parser/AST** (`Parser/Ast/`)
+   - `Module`, `ImportStatement`, `FromImportStatement`
+   - `FunctionDef`, `ClassDef`, `StructDef`, `InterfaceDef`, `EnumDef`
+   - `VariableDeclaration`, `TypeAnnotation`, `Expression`
+
+6. **Lexer and Parser** (`Lexer/`, `Parser/`)
+   - Used to tokenize and parse imported `.spy` files
+   - Each imported module is fully parsed into an AST
 
 ### External Dependencies
 
-- **`System.IO.File`**: Reading `.spy` files from disk
-- **`System.IO.Path`**: Path manipulation and normalization
-
-### Related Components in the Pipeline
-
-**Upstream:**
-- **Parser**: Produces `ImportStatement` and `FromImportStatement` nodes that this class processes
-
-**Downstream:**
-- **NameResolver**: Calls `ImportResolver` to populate the symbol table with imported symbols
-- **TypeResolver**: Uses the symbols loaded by `ImportResolver` to resolve type references
+- **System.IO**: File operations for reading source files
+- **LINQ**: Extensive use for filtering and transforming collections
 
 ---
 
-## 5. Design Patterns and Decisions
+## Patterns and Design Decisions
 
-### 5.1 Dual-Source Module Resolution
+### 1. **Two-Phase Resolution Strategy**
 
-**Pattern**: Strategy pattern with fallback chain
-
-The resolver tries .NET assemblies first, then falls back to Sharpy source files. This allows seamless interop:
-
-```python
-import System.Collections  # .NET assembly
-import my_sharpy_module    # .spy file
-```
-
-**Rationale**: .NET modules are checked first because they're expected to be more common in production code and they're faster to validate (no parsing needed).
-
-### 5.2 Caching Strategy
-
-**Pattern**: Memoization with multi-key cache
-
-The `_moduleCache` stores loaded modules by path. For .NET modules, the key is prefixed with `.net:` to avoid collisions with file paths.
-
-**Benefits**:
-- Prevents re-parsing the same `.spy` file multiple times
-- Avoids duplicate symbol extraction
-- Speeds up compilation when a module is imported from multiple places
-
-**Cache Key Examples:**
-```
-/full/path/to/my_module.spy
-.net:System.Collections
-.net:MyCustomAssembly
-```
-
-### 5.3 Circular Import Detection
-
-**Pattern**: Temporary marker set
-
-Using `_loadingModules` as a stack-like structure to track the current loading chain. When `LoadModule` is called recursively, it checks this set before proceeding.
-
-**Why Not Track the Full Chain?**: Only need to detect cycles, not report the full dependency path. A simple set membership check suffices.
-
-**Cleanup**: The `finally` block ensures `_loadingModules` is cleaned up even if loading fails.
-
-### 5.4 Fail-Soft Error Handling
-
-**Pattern**: Error accumulation
-
-Rather than throwing exceptions on first error, `ImportResolver` collects errors in `_errors` list and continues processing. This provides better developer experience by showing all import errors at once.
-
-**Example:**
-```python
-import module1, missing_module, module3
-# Shows errors for missing_module but still processes module1 and module3
-```
-
-### 5.5 Implicit Export Model
-
-**Design Decision**: All top-level declarations are public/exported by default.
-
-This differs from some languages (like TypeScript) that require explicit `export` keywords. The rationale:
-- Matches Python's behavior (Sharpy is Pythonic)
-- Simpler for beginners
-- Can add explicit export control later if needed (via `__all__` or similar)
-
-### 5.6 Null Safety for .NET Modules
-
-**Pattern**: Nullable reference types with documentation
-
-The `ModuleInfo.Module` property is marked as `null!` for .NET modules, and the class has XML comments warning consumers to check `IsNetModule` first.
-
-**Alternative Considered**: Using a discriminated union or separate classes for `.spy` vs .NET modules. Rejected for simplicity - a flag is more straightforward.
-
----
-
-## 6. Debugging Tips
-
-### 6.1 Enable Debug Logging
-
-When imports fail mysteriously, turn on debug logging to see the search paths:
-
+The ImportResolver tries .NET modules first, then falls back to .spy files:
 ```csharp
-// In compiler setup
-var logger = new ConsoleLogger(LogLevel.Debug);
-var resolver = new ImportResolver(logger);
-```
-
-You'll see output like:
-```
-Module 'my_module' not found. Searched: [/path1/my_module.spy, /path2/my_module.spy, ...]
-```
-
-### 6.2 Check Module Cache State
-
-If modules aren't reloading as expected, inspect the cache:
-
-```csharp
-// In debugger or diagnostic code
-Console.WriteLine($"Loaded modules: {string.Join(", ", resolver._loadedModules)}");
-Console.WriteLine($"Cache size: {resolver._moduleCache.Count}");
-```
-
-### 6.3 Circular Import Detection
-
-If you get "Circular import detected", trace through `_loadingModules`:
-
-**Debugging Strategy:**
-1. Set breakpoint in `LoadModule` before circular check
-2. Inspect `_loadingModules.Contains(modulePath)` 
-3. Look at call stack to see the import chain
-
-**Common Cause**: Two modules importing each other at the top level. Solution: Move one import inside a function or refactor to break the cycle.
-
-### 6.4 Symbol Not Found Errors
-
-When `from module import symbol` fails with "has no exported symbol":
-
-**Checklist:**
-1. Is the symbol spelled correctly? (case-sensitive!)
-2. Is it defined at the top level of the module?
-3. For variables, is it marked `const`? (non-const variables aren't exported)
-4. For nested items, they're not exported (by design)
-
-**Debugging:**
-```csharp
-// In debugger after module load
-var symbols = moduleInfo.ExportedSymbols.Keys;
-// Inspect to see what's actually exported
-```
-
-### 6.5 .NET Module vs Source Module Confusion
-
-If you're getting `NullReferenceException` on `moduleInfo.Module`:
-
-**Root Cause**: Trying to access `Module` property on a .NET module.
-
-**Fix**: Always check `IsNetModule` first:
-```csharp
-if (!moduleInfo.IsNetModule)
-{
-    var astModule = moduleInfo.Module;  // Safe
-    // Process AST...
+var moduleInfo = TryResolveNetModule(importAlias.Name, lineStart, columnStart);
+if (moduleInfo == null) {
+    var modulePath = ResolveModulePath(importAlias.Name, searchPath);
+    moduleInfo = LoadModule(modulePath, lineStart, columnStart);
 }
 ```
 
-### 6.6 Path Resolution Issues
+**Rationale**: This allows .NET assemblies to shadow .spy modules with the same name, which is useful for providing optimized native implementations.
 
-Module not found but file exists?
+### 2. **Lazy Symbol Table Population**
 
-**Common Issues:**
-- Using wrong path separator (`\` vs `/`) - `Path.DirectorySeparatorChar` handles this
-- Relative vs absolute paths - use `Path.GetFullPath()` to normalize
-- Case sensitivity on Unix vs Windows
-- `__init__.spy` missing from package directories
+The ImportResolver only extracts top-level symbol *metadata* (names, access levels, type annotations). It does **not**:
+- Perform full type checking
+- Resolve type references
+- Analyze function bodies
 
-**Debug Technique:**
-1. Add breakpoint in `ResolveModulePath`
-2. Step through each search location
-3. Manually check if file exists at each path
-4. Look for typos in directory names
+**Rationale**: This keeps import resolution fast and prevents circular dependencies during semantic analysis. The TypeChecker handles deep analysis later.
+
+### 3. **Context-Aware Module Loading**
+
+The `_currentModulePath` field is carefully maintained during recursive imports:
+```csharp
+var previousModulePath = _currentModulePath;
+_currentModulePath = modulePath;
+try {
+    // Process imports within the loaded module
+} finally {
+    _currentModulePath = previousModulePath;
+}
+```
+
+**Rationale**: Relative imports (`.submodule`) must be resolved relative to the module being processed, not the original entry point.
+
+### 4. **Import Chain for Detailed Error Reporting**
+
+Rather than just detecting "circular import exists", the resolver maintains a full stack trace:
+```csharp
+_importChain.Push(new ImportChainEntry(modulePath, lineStart, columnStart, _currentModulePath));
+```
+
+**Rationale**: Provides developers with exact import chains for debugging, showing how the circular dependency was created.
+
+### 5. **Re-Export Symbol Cloning**
+
+When symbols are re-exported, they're cloned with new metadata:
+```csharp
+IsReExport = true,
+OriginalModule = fromImport.Module,
+DeclarationLine = fromImport.LineStart  // Points to the re-export, not the original
+```
+
+**Rationale**: This allows the code generator to properly resolve symbol references and generate correct `using` statements for the original module.
+
+### 6. **Visibility Rules Enforcement**
+
+Three levels of visibility:
+- **Public** (no underscore): Importable by anyone, included in `import *`
+- **Protected** (single underscore `_foo`): Importable directly, excluded from `import *`
+- **Private** (double underscore `__foo`): Not directly importable at all
+
+**Rationale**: Matches Python conventions while providing stronger encapsulation.
+
+### 7. **Module Caching Strategy**
+
+Modules are cached by absolute path (or `.net:moduleName` for .NET modules):
+```csharp
+_moduleCache[modulePath] = moduleInfo;
+_loadedModules.Add(modulePath);
+```
+
+**Rationale**: Prevents re-parsing the same module multiple times when it's imported from different locations.
 
 ---
 
-## 7. Contribution Guidelines
+## Debugging Tips
 
-### 7.1 Adding Support for New Statement Types
+### Common Issues and How to Diagnose
 
-If you add a new top-level declaration type (e.g., `TypeAliasDef`):
+#### 1. **Circular Import Errors**
 
-1. **Add case to `ExtractExportedSymbol`**:
-   ```csharp
-   case TypeAliasDef typeAlias:
-       var symbol = new TypeSymbol { ... };
-       moduleInfo.ExportedSymbols[typeAlias.Name] = symbol;
-       break;
-   ```
+**Symptom**: "Circular import detected" error with a chain of modules
 
-2. **Add corresponding `Symbol` subclass if needed** (in `Symbol.cs`)
+**Debug Strategy**:
+- Examine the import chain in the error message
+- Look for modules that import each other directly or indirectly
+- Check if you can restructure to move shared types to a separate module
+- Remember: Circular imports are allowed for type annotations (forward references), but not for base classes
 
-3. **Write tests** in `ImportResolverTests.cs`:
-   ```csharp
-   [Fact]
-   public void TestImportTypeAlias() { ... }
-   ```
+**Code to Check**: `IsModuleInChain()` and `FormatCircularImportChain()`
 
-### 7.2 Enhancing Module Search Logic
+#### 2. **Module Not Found**
 
-Want to add support for `sys.path`-style search directories?
+**Symptom**: "Cannot find module 'xyz'" error
 
-**Steps:**
-1. Add `List<string> _searchPaths` field to `ImportResolver`
-2. Add `AddSearchPath(string path)` method
-3. Modify `ResolveModulePath` to iterate through `_searchPaths`
-4. Consider order: current dir first, then search paths, then cwd
+**Debug Strategy**:
+- Check if the module name uses correct dot notation (`utils.helpers`, not `utils/helpers`)
+- For relative imports, verify the dots match the directory structure (`.helpers` = same directory, `..parent` = parent directory)
+- Add logging to `ModuleResolver.Resolve()` to see which paths are being searched
+- Verify search paths are configured correctly (check `_moduleResolver._searchPaths`)
 
-**Design Consideration**: Should search paths be global or per-resolver instance? Currently instance-level for thread safety.
+**Code to Check**: `ResolveModulePath()` and `ModuleResolver.Resolve()`
 
-### 7.3 Implementing Conditional Imports
+#### 3. **Symbol Not Found in Module**
 
-For features like:
-```python
-if platform == "windows":
-    import windows_module
-```
+**Symptom**: "Module 'xyz' has no exported symbol 'abc'" error
 
-**Current Limitation**: `ImportResolver` processes all imports unconditionally at compile time.
+**Debug Strategy**:
+- Check if the symbol name is spelled correctly (case-sensitive!)
+- Verify the symbol is at the top level of the module (not nested in a class/function)
+- Check if the symbol is private (`__private`) and you're trying to import it directly
+- Add logging to `ExtractExportedSymbol()` to see what symbols are being extracted
 
-**Enhancement Path:**
-1. Add conditional flag to `ImportStatement` AST node (in `Parser`)
-2. Modify `ResolveImport` to check condition at compile time
-3. Consider warning for unresolved conditional imports
+**Code to Check**: `ExtractExportedSymbol()` and symbol visibility checks
 
-### 7.4 Supporting Import Aliases
+#### 4. **Re-Export Not Working**
 
-Currently aliases are in the AST but not fully utilized:
+**Symptom**: Symbol imported in `__init__.spy` isn't available to external modules
 
-```python
-import module as alias  # Alias stored but not validated
-```
+**Debug Strategy**:
+- Verify `ExtractReExportedSymbols()` is being called (it should happen during `ExtractExportedSymbol` for `FromImportStatement`)
+- Check that the re-exported symbols are added to `moduleInfo.ExportedSymbols`
+- Ensure the source module is being loaded successfully
 
-**Enhancement**: Store alias mapping in `ModuleInfo` or symbol table for name mangling in code generation phase.
+**Code to Check**: `ExtractReExportedSymbols()` and `CreateReExportSymbol()`
 
-### 7.5 Adding `__all__` Export Lists
+#### 5. **Type Information Missing**
 
-Python allows explicit export control:
-```python
-__all__ = ["public_func", "PublicClass"]
-```
+**Symptom**: Parameters or return types show as `Unknown` in symbol table
 
-**Implementation Plan:**
-1. Detect `__all__` assignment in module's top-level statements
-2. Parse the list of exported names
-3. Filter `ExportedSymbols` to only include names in `__all__`
-4. Consider backward compatibility (default to current behavior if `__all__` is absent)
+**Debug Strategy**:
+- Remember: `ConvertTypeAnnotationToSemanticType()` only handles primitive types
+- Complex types (generics, user-defined classes) are resolved later by the TypeChecker
+- This is expected behavior during import resolution
+- If primitive types are showing as `Unknown`, check the type annotation conversion logic
 
-### 7.6 Improving Error Messages
+**Code to Check**: `ConvertTypeAnnotationToSemanticType()`
 
-Current errors are basic. Consider adding:
-- **Suggestions**: "Did you mean 'my_modul'?" (Levenshtein distance)
-- **Context**: Show the import statement that failed
-- **Fix hints**: "Module 'X' found but has no `__init__.spy`"
+### Logging and Diagnostics
 
-**Implementation**: Enhance `AddError` to build richer error objects.
-
-### 7.7 Performance Optimization
-
-For large projects with many imports:
-
-**Profiling Targets:**
-1. **File I/O**: Consider async/await for parallel module loading
-2. **Parsing**: Cache parse trees across compilation runs (persistent cache)
-3. **Symbol extraction**: Use lazy evaluation - only extract symbols when accessed
-
-**Benchmark First**: Use `BenchmarkDotNet` to measure before optimizing.
-
-### 7.8 Testing Best Practices
-
-When adding tests for `ImportResolver`:
-
-**Test Categories:**
-- **Unit tests**: Mock file system, test logic in isolation
-- **Integration tests**: Use real `.spy` files in `test_modules/` directory
-- **Error cases**: Circular imports, missing modules, missing symbols
-- **.NET interop**: Test with actual .NET assemblies
-
-**Example Test Structure:**
+Enable debug logging to trace import resolution:
 ```csharp
-[Fact]
-public void TestResolveImport_CircularDependency()
-{
-    // Setup: Create module A that imports B, and B that imports A
-    // Act: Call ResolveImport
-    // Assert: Check for circular import error
-}
+_logger.LogDebug($"Resolving import: {string.Join(", ", importStmt.Names.Select(n => n.Name))}");
+_logger.LogInfo($"Loading module: {modulePath}");
 ```
+
+The logger tracks:
+- Which imports are being resolved
+- Which modules are being loaded
+- .NET module function counts
+
+### Breakpoint Recommendations
+
+Key methods to set breakpoints in:
+1. **ResolveImport** / **ResolveFromImport**: Entry points for debugging import resolution
+2. **LoadModule**: See when modules are loaded and in what order
+3. **IsModuleInChain**: Catch circular imports as they're detected
+4. **ExtractExportedSymbol**: Understand what symbols are being extracted
+5. **TryResolveNetModule**: Debug .NET assembly resolution
+
+---
+
+## Contribution Guidelines
+
+### When You Might Modify This File
+
+1. **Adding New Import Syntax**
+   - Example: Supporting `from module import (name1, name2, name3)` multi-line imports
+   - Modify `ResolveFromImport` to handle new AST node structure
+   - Add corresponding tests
+
+2. **Changing Visibility Rules**
+   - Example: Adding a `@public` decorator to make `_protected` symbols fully public
+   - Modify `GetAccessLevel`, `IsDirectlyImportable`, and `IsExportedByImportAll`
+   - Update language specification documentation
+
+3. **Improving Error Messages**
+   - Example: Adding suggestions for common typos in module names
+   - Modify `AddError` calls to include hints
+   - Consider adding a "did you mean?" feature
+
+4. **Supporting New Symbol Types**
+   - Example: Adding support for type aliases as top-level exports
+   - Add new case to `ExtractExportedSymbol` switch statement
+   - Create appropriate symbol type (likely extending `Symbol`)
+   - Update `CreateReExportSymbol` to handle cloning
+
+5. **Optimizing Module Loading**
+   - Example: Parallel loading of independent modules
+   - Be extremely careful with `_importChain` and `_currentModulePath` state
+   - Consider thread-safety implications
+
+### Testing Considerations
+
+When modifying ImportResolver, ensure you test:
+- Simple imports (`import module`)
+- From-imports (`from module import name`)
+- Wildcard imports (`from module import *`)
+- Aliased imports (`import module as alias`, `from module import name as alias`)
+- Relative imports (`.module`, `..parent`)
+- Re-exports via `__init__.spy`
+- Circular import detection
+- Visibility rule enforcement (public, protected, private)
+- .NET module imports (if applicable)
+- Error messages for various failure scenarios
+
+### Code Style Notes
+
+- Prefer early returns for error cases to avoid deep nesting
+- Use pattern matching switches for AST node type checking
+- Maintain the context switching pattern (save/restore `_currentModulePath`)
+- Always pop from `_importChain` in a `finally` block
+- Add debug logging for important decision points
+- Include XML doc comments for public methods
+
+---
+
+## Cross-References
+
+### Related Implementation Files
+
+- **[ModuleResolver.md](ModuleResolver.md)** - Low-level module path resolution
+- **[Symbol.md](Symbol.md)** - Symbol type definitions and metadata
+- **[SymbolTable.md](SymbolTable.md)** - Symbol table that consumes ImportResolver's output
+- **[TypeChecker.md](TypeChecker.md)** - Performs full type checking after import resolution
+- **[ModuleRegistry.md](ModuleRegistry.md)** - .NET assembly interop
+
+### Related Specification Documents
+
+- **[Import Statements](../../../../language_specification/import_statements.md)** - Language spec for import syntax
+- **[Module System](../../../../language_specification/module_system.md)** - Module resolution and circular import handling
+- **[Module Resolution](../../../../language_specification/module_resolution.md)** - Resolution algorithm details (if exists)
+
+### Upstream Components
+
+- **Parser** (`src/Sharpy.Compiler/Parser/Parser.cs`) - Produces the AST with ImportStatement and FromImportStatement nodes
+- **Lexer** (`src/Sharpy.Compiler/Lexer/Lexer.cs`) - Used to tokenize imported source files
+
+### Downstream Components
+
+- **TypeChecker** (`src/Sharpy.Compiler/Semantic/TypeChecker.cs`) - Uses resolved symbols for type checking
+- **NameResolver** (`src/Sharpy.Compiler/Semantic/NameResolver.cs`) - Resolves names to symbols using import information
+- **RoslynEmitter** (`src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`) - Generates C# `using` statements from resolved imports
 
 ---
 
 ## Summary
 
-`ImportResolver` is a critical component that bridges the gap between Sharpy's module system and both Sharpy source files and .NET assemblies. Key takeaways:
+The ImportResolver is a foundational component that makes Sharpy's module system work. It handles the complex task of resolving Python-style imports to actual modules, extracting symbol information, and enforcing visibility rules—all while detecting circular dependencies and supporting both .spy files and .NET assemblies.
 
-- **Dual-source**: Handles both `.spy` files and .NET assemblies seamlessly
-- **Caching**: Avoids redundant parsing and loading
-- **Safety**: Detects circular imports and validates symbol existence
-- **Pythonic**: Follows Python's implicit export model
-- **Error-tolerant**: Collects errors without stopping on first failure
+Key takeaways for newcomers:
+- **Resolution happens in two phases**: .NET modules first, then .spy files
+- **Symbols are extracted lazily**: Only metadata, not full type checking
+- **Context matters**: `_currentModulePath` enables correct relative import resolution
+- **Circular imports are tracked carefully**: Full chain available for debugging
+- **Re-exports enable clean package APIs**: `__init__.spy` can aggregate submodule exports
+- **The resolver is stateful**: It maintains caches, import chains, and current context
 
-When working with imports in Sharpy, `ImportResolver` is your first debugging stop. Check its error list, enable debug logging, and trace through the module path resolution logic to diagnose issues.
-
-For contributions, focus on enhancing error messages, adding new export patterns, or optimizing performance for large projects. Always maintain backward compatibility with existing `.spy` code.
+Understanding this file is essential for working on:
+- Module system improvements
+- Import statement features
+- .NET interop
+- Symbol resolution debugging

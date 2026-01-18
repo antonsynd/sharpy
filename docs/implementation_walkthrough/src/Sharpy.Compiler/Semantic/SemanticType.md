@@ -6,99 +6,71 @@
 
 ## Overview
 
-`SemanticType.cs` is the **heart of Sharpy's type system** during semantic analysis. It defines the abstract type hierarchy that represents every possible type in a Sharpy program after parsing but before code generation.
+`SemanticType.cs` defines the type system used during semantic analysis in the Sharpy compiler. This file contains the core abstraction for representing types after parsing but before code generation. Think of it as the "type vocabulary" the compiler uses to reason about type compatibility, assignability, and type checking.
 
-Think of this file as the "type DNA" of Sharpy: it encodes what types exist (primitives, generics, user-defined classes), how they relate to each other (inheritance, assignability), and how they're displayed to users in error messages.
+**Role in Pipeline**:
+- **Input**: Receives type information from the Parser (via AST type annotations)
+- **Processing**: Validates type compatibility, checks assignability, supports type inference
+- **Output**: Provides type information to CodeGen (RoslynEmitter) for C# code generation
 
-**Key Role**: This file bridges the gap between:
-- **Parser output** (AST with type annotations as strings like `"list[int]"`)
-- **Type checker** (needs to reason about type compatibility and conversions)
-- **Code generator** (needs to emit proper C# types)
-
----
-
-## Architecture Position
-
-```
-Lexer → Parser (AST) → [SemanticType lives here] → TypeChecker → CodeGen
-                        ↓
-                   Converts type annotations
-                   to SemanticType instances
-```
-
-During the **semantic analysis phase**:
-1. `TypeResolver` converts AST type annotations into `SemanticType` instances
-2. `TypeChecker` uses `SemanticType.IsAssignableTo()` to validate assignments
-3. `SemanticInfo` stores the mapping: `Expression → SemanticType`
+**Key Insight**: While the AST has a `TypeExpression` that represents what the programmer *wrote*, `SemanticType` represents what the compiler *understands* about types. This distinction is crucial for proper type checking.
 
 ---
 
 ## Class/Type Structure
 
-### Base Class: `SemanticType`
+The file defines a type hierarchy using C# records (immutable reference types):
 
-```csharp
-public abstract record SemanticType
+```
+SemanticType (abstract base)
+├── UnknownType          - Error recovery
+├── VoidType             - None/void return
+├── BuiltinType          - int, str, bool, float, etc.
+├── GenericType          - list[int], dict[str, int]
+├── UserDefinedType      - Custom classes, structs, interfaces
+├── NullableType         - T? (nullable wrapper)
+├── FunctionType         - Lambda and function types
+├── TupleType            - tuple[int, str]
+├── ModuleType           - Imported modules as namespaces
+├── TypeParameterType    - Generic type parameters (T, U)
+└── GenericFunctionType  - Instantiated generic functions
 ```
 
-An **abstract record** that uses C# 9's record feature for:
-- **Immutability**: Types don't change once created (functional programming style)
-- **Value equality**: Two `BuiltinType { Name = "int" }` instances are equal
-- **Concise syntax**: `record` auto-generates `Equals()`, `GetHashCode()`, `ToString()`
+**Design Decision**: Using C# `record` types provides:
+- Immutability (types don't change after creation)
+- Value-based equality by default (two `int` types are equal)
+- Pattern matching support (useful for type checking)
 
-#### Singleton Instances (Type Constants)
+---
+
+## Singleton Type Instances
+
+The base `SemanticType` class defines commonly-used type singletons:
 
 ```csharp
 public static readonly SemanticType Unknown = new UnknownType();
 public static readonly SemanticType Void = new VoidType();
 public static readonly SemanticType Int = new BuiltinType { Name = "int", ClrType = typeof(int) };
-public static readonly SemanticType Long = new BuiltinType { Name = "long", ClrType = typeof(long) };
-// Per spec: Sharpy 'float' maps to C# 'double' (64-bit), 'float32' maps to C# 'float' (32-bit)
 public static readonly SemanticType Float = new BuiltinType { Name = "float", ClrType = typeof(double) };
-public static readonly SemanticType Double = new BuiltinType { Name = "double", ClrType = typeof(double) };
-public static readonly SemanticType Float32 = new BuiltinType { Name = "float32", ClrType = typeof(float) };
-public static readonly SemanticType Bool = new BuiltinType { Name = "bool", ClrType = typeof(bool) };
-public static readonly SemanticType Str = new BuiltinType { Name = "str", ClrType = typeof(string) };
-public static readonly SemanticType Object = new UserDefinedType { Name = "object" };
+// ... more primitives
 ```
 
-**Design Decision**: Common types are pre-allocated singletons to:
-- **Reduce allocations**: `SemanticType.Int` reused everywhere instead of creating new instances
-- **Enable reference equality**: `type == SemanticType.Int` works quickly
-- **Improve debugging**: Easier to see "ah, this is THE Int type" in the debugger
+**Why Singletons?**
+- Performance: Avoid allocating the same type repeatedly
+- Identity checks: Can use reference equality for common types
+- Consistency: Everyone uses the same `Int` instance
 
-**Note on `Object`**: The `object` type is a `UserDefinedType`, not a `BuiltinType`. This is because `object` represents `System.Object`—the universal base type that all other types can be assigned to.
+**Important Note**: Sharpy's `float` maps to C# `double` (64-bit), while `float32` maps to C# `float` (32-bit). See line 13-16 for this mapping.
 
 ---
 
-## Type Hierarchy
+## Key Methods
 
-```
-SemanticType (abstract)
-├── UnknownType          // Error recovery
-├── VoidType             // "None" in Python, void in C#
-├── BuiltinType          // int, float, bool, str, etc.
-├── GenericType          // list[T], dict[K,V]
-├── UserDefinedType      // Classes, interfaces, object
-├── NullableType         // T?
-├── FunctionType         // (int, str) -> bool
-└── TupleType            // tuple[int, str, float]
-```
+### `IsAssignableTo(SemanticType other)` - The Core Type Compatibility Check
 
-Each type implements:
-- `GetDisplayName()`: Human-readable name for error messages
-- `IsAssignableTo(SemanticType other)`: Core type compatibility logic
+This virtual method determines if a value of this type can be assigned to a variable of another type. Every `SemanticType` subclass overrides this to define its specific assignability rules.
 
----
-
-## Key Methods Deep Dive
-
-### `IsAssignableTo(SemanticType other)` - The Assignability Engine
-
-This is **the most important method** in the type system. It answers: "Can I assign a value of `this` type to a variable of `other` type?"
-
-#### Base Implementation (in `SemanticType`)
-
+**Base Implementation** (lines 24-31):
 ```csharp
 public virtual bool IsAssignableTo(SemanticType other)
 {
@@ -110,138 +82,38 @@ public virtual bool IsAssignableTo(SemanticType other)
 }
 ```
 
-**Logic**:
-1. **Universal base type**: Everything can be assigned to `object` (Python's object / .NET's `System.Object`)
-2. **Default**: Two types are compatible if they're equal (same type)
+**Key Design Pattern**: The method uses C# pattern matching extensively. For example:
+- `other is UserDefinedType { Name: "object" }` - checks if `other` is a UserDefinedType AND its Name is "object"
 
-#### Overrides in Derived Types
+**Why Virtual?** Each type has unique assignability rules:
 
-Each type refines this logic:
+1. **UnknownType** (line 46): Always assignable to anything to avoid cascading errors during error recovery
+2. **VoidType** (lines 56-63): Can be assigned to nullable types (None → T?)
+3. **BuiltinType** (lines 76-90): Delegates to `PrimitiveCatalog` for implicit conversion rules (e.g., int → long)
+4. **GenericType** (lines 108-125): Checks type arguments match exactly (no variance support yet - see line 114 comment)
+5. **UserDefinedType** (lines 172-196): Walks inheritance chain and checks interfaces
+6. **NullableType** (lines 208-219): Supports implicit unwrapping (T? → T)
+7. **TupleType** (lines 250-262): Element-wise assignability check
 
-**`UnknownType.IsAssignableTo()`**:
-```csharp
-public override bool IsAssignableTo(SemanticType other) => true;
-```
-- **Always returns true** to prevent cascading errors
-- Example: If `x` has type `Unknown` (due to parsing error), don't emit 100 "incompatible type" errors downstream
+### `GetDisplayName()` - Human-Readable Type Names
 
-**`VoidType.IsAssignableTo()`** (representing `None`):
-```csharp
-public override bool IsAssignableTo(SemanticType other)
-{
-    // None can be assigned to any nullable type
-    if (other is NullableType)
-        return true;
-
-    return base.IsAssignableTo(other);
-}
-```
-- Python's `None` can be assigned to `int?`, `str?`, etc.
-- Cannot be assigned to non-nullable types (caught by base implementation)
-
-**`BuiltinType.IsAssignableTo()`**:
-```csharp
-public override bool IsAssignableTo(SemanticType other)
-{
-    if (base.IsAssignableTo(other)) return true;
-
-    // Use PrimitiveCatalog for implicit conversion rules
-    var thisInfo = PrimitiveCatalog.GetPrimitiveInfo(this);
-    var otherInfo = PrimitiveCatalog.GetPrimitiveInfo(other);
-
-    if (thisInfo != null && otherInfo != null)
-    {
-        return PrimitiveCatalog.CanImplicitlyConvert(thisInfo, otherInfo);
-    }
-
-    return false;
-}
-```
-- **Delegates to `PrimitiveCatalog`** for numeric conversion rules
-- Examples:
-  - `int` → `long` ✅ (widening conversion)
-  - `int` → `float` ✅ (implicit)
-  - `long` → `int` ❌ (narrowing, requires explicit cast)
-
-**`NullableType.IsAssignableTo()`**:
-```csharp
-public override bool IsAssignableTo(SemanticType other)
-{
-    // Nullable T is assignable to T (implicit unwrapping)
-    if (UnderlyingType.IsAssignableTo(other))
-        return true;
-
-    // Nullable T is assignable to Nullable T
-    if (other is NullableType otherNullable)
-        return UnderlyingType.IsAssignableTo(otherNullable.UnderlyingType);
-
-    return base.IsAssignableTo(other);
-}
-```
-- **Key insight**: `int?` can be assigned to `int` (with null check at runtime)
-- `int?` can also be assigned to `long?` if `int` → `long` is valid
-
-**`UserDefinedType.IsAssignableTo()`**:
-```csharp
-public override bool IsAssignableTo(SemanticType other)
-{
-    if (base.IsAssignableTo(other)) return true;
-
-    if (other is UserDefinedType otherUdt && Symbol != null)
-    {
-        // Same type
-        if (Symbol == otherUdt.Symbol || Name == otherUdt.Name)
-            return true;
-
-        // Check inheritance chain
-        var current = Symbol.BaseType;
-        while (current != null)
-        {
-            if (current == otherUdt.Symbol || current.Name == otherUdt.Name)
-                return true;
-            current = current.BaseType;
-        }
-
-        // Check interfaces
-        return Symbol.Interfaces.Any(i => i == otherUdt.Symbol || i.Name == otherUdt.Name);
-    }
-
-    return false;
-}
-```
-- **Walks the inheritance tree**: If `Dog : Animal`, then `Dog` → `Animal`
-- **Checks interfaces**: `Dog : IComparable` means `Dog` → `IComparable`
-- **Uses `Symbol`**: The `TypeSymbol` holds inheritance/interface info
-
----
-
-### `GetDisplayName()` - User-Facing Type Names
-
-Every type implements this for error messages.
+Returns a string representation for error messages and debugging.
 
 **Examples**:
+- `int` → "int"
+- `list[int]` → "list[int]"
+- `int?` → "int?"
+- `(int, str) -> bool` → "(int, str) -> bool"
+- Module → "module 'math'"
+- Unknown → "<?>"
 
-| Type | Display Name |
-|------|-------------|
-| `UnknownType` | `<?>` |
-| `VoidType` | `None` |
-| `BuiltinType { Name = "int" }` | `int` |
-| `GenericType { Name = "list", TypeArguments = [Int] }` | `list[int]` |
-| `NullableType { UnderlyingType = Int }` | `int?` |
-| `FunctionType { ParameterTypes = [Int, Str], ReturnType = Bool }` | `(int, str) -> bool` |
-| `TupleType { ElementTypes = [Int, Str] }` | `tuple[int, str]` |
-
-**Why important**: When type checking fails, users see messages like:
-```
-Error: Cannot assign 'str' to variable of type 'int'
-```
-The display names come from `GetDisplayName()`.
+**Usage**: TypeChecker uses this when reporting type mismatch errors to users.
 
 ---
 
-## Individual Type Classes
+## Detailed Type Breakdown
 
-### `UnknownType` - Error Recovery Hero
+### UnknownType - The Error Recovery Type
 
 ```csharp
 public record UnknownType : SemanticType
@@ -251,54 +123,79 @@ public record UnknownType : SemanticType
 }
 ```
 
-**Purpose**: Graceful degradation when type resolution fails.
+**Purpose**: When type checking encounters an error (e.g., undefined variable), it returns `Unknown` instead of crashing. The `IsAssignableTo` always returns `true` to prevent cascading errors.
 
-**Example scenario**:
+**Example Scenario**:
 ```python
-# In Sharpy code
-x = undefined_variable  # Parser/semantic error
-y = x + 5               # Should we emit error here too?
+x = undefined_variable  # x gets type Unknown
+y: int = x              # Doesn't report a type error, avoiding cascading noise
 ```
 
-By assigning `x` the type `Unknown`, the compiler:
-1. Reports the first error (`undefined_variable`)
-2. Lets `x + 5` type-check successfully (since `Unknown` is assignable to anything)
-3. Avoids cascading errors that confuse users
+### VoidType - Representing "None"
 
----
+```csharp
+public record VoidType : SemanticType
+{
+    public override string GetDisplayName() => "None";
 
-### `BuiltinType` - Primitives
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        // None can be assigned to any nullable type
+        if (other is NullableType)
+            return true;
+
+        return base.IsAssignableTo(other);
+    }
+}
+```
+
+**Key Feature**: Sharpy's `None` can be assigned to nullable types, implementing the common pattern:
+```python
+x: int? = None  # Valid
+y: int = None   # Type error
+```
+
+### BuiltinType - Primitives with CLR Mapping
 
 ```csharp
 public record BuiltinType : SemanticType
 {
     public string Name { get; init; } = string.Empty;
-    public Type? ClrType { get; init; }
+    public Type? ClrType { get; init; }  // Maps to .NET runtime type
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        if (base.IsAssignableTo(other)) return true;
+
+        // Use PrimitiveCatalog for implicit conversion rules
+        var thisInfo = PrimitiveCatalog.GetPrimitiveInfo(this);
+        var otherInfo = PrimitiveCatalog.GetPrimitiveInfo(other);
+
+        if (thisInfo != null && otherInfo != null)
+            return PrimitiveCatalog.CanImplicitlyConvert(thisInfo, otherInfo);
+
+        return false;
+    }
 }
 ```
 
-**Represents**: Sharpy's built-in primitives that map to .NET types
+**ClrType Property**: Links Sharpy types to .NET types for code generation. Example: `SemanticType.Str` has `ClrType = typeof(string)`.
 
-| Sharpy Name | CLR Type | Notes |
-|-------------|----------|-------|
-| `int` | `System.Int32` | Default integer |
-| `long` | `System.Int64` | Large integers |
-| `float` | `System.Double` | **64-bit** (per spec: Sharpy `float` = C# `double`) |
-| `float32` | `System.Single` | 32-bit float (explicit when needed) |
-| `double` | `System.Double` | 64-bit float (alias for `float`) |
-| `bool` | `System.Boolean` | True/False |
-| `str` | `System.String` | Immutable strings |
+**Implicit Conversion**: Delegates to `PrimitiveCatalog` which implements the numeric promotion rules (int → long, int → float, etc.).
 
-**Important**: Note that Sharpy's `float` maps to C# `double` (64-bit), not `float` (32-bit). This is a deliberate design decision—see the comment in source:
-```csharp
-// Per spec: Sharpy 'float' maps to C# 'double' (64-bit), 'float32' maps to C# 'float' (32-bit)
-```
+**Builtin Types Table**:
 
-**The `ClrType` field**: Critical for code generation! The `RoslynEmitter` uses this to emit the correct C# type.
+| Sharpy Name | CLR Type | Line | Notes |
+|-------------|----------|------|-------|
+| `int` | `System.Int32` | 11 | Default integer type |
+| `long` | `System.Int64` | 12 | Large integers |
+| `float` | `System.Double` | 14 | **64-bit** (Sharpy float = C# double) |
+| `double` | `System.Double` | 15 | Alias for float |
+| `float32` | `System.Single` | 16 | 32-bit float (explicit when needed) |
+| `bool` | `System.Boolean` | 17 | Boolean values |
+| `str` | `System.String` | 18 | Immutable strings |
 
----
-
-### `GenericType` - The Complex One
+### GenericType - Parameterized Types
 
 ```csharp
 public record GenericType : SemanticType
@@ -306,532 +203,432 @@ public record GenericType : SemanticType
     public string Name { get; init; } = string.Empty;
     public List<SemanticType> TypeArguments { get; init; } = new();
     public TypeSymbol? GenericDefinition { get; init; }
-}
-```
 
-**Represents**: Parameterized types like `list[int]`, `dict[str, User]`
-
-**Key fields**:
-- `Name`: The generic type name (e.g., `"list"`)
-- `TypeArguments`: Concrete type parameters (e.g., `[SemanticType.Int]`)
-- `GenericDefinition`: Points to the symbol defining the generic type (e.g., the `list` class)
-
-**Assignability logic**:
-```csharp
-public override bool IsAssignableTo(SemanticType other)
-{
-    if (other is GenericType otherGeneric
-        && Name == otherGeneric.Name
-        && TypeArguments.Count == otherGeneric.TypeArguments.Count)
+    public override string GetDisplayName()
     {
-        // Check if type arguments match exactly
-        for (int i = 0; i < TypeArguments.Count; i++)
-        {
-            if (!TypeArguments[i].Equals(otherGeneric.TypeArguments[i]))
-                return false;
-        }
-        return true;
+        var args = string.Join(", ", TypeArguments.Select(t => t.GetDisplayName()));
+        return $"{Name}[{args}]";
     }
-    return base.IsAssignableTo(other);
 }
 ```
 
-**Current limitation**: Requires **exact match** of type arguments
-- `list[int]` → `list[int]` ✅
-- `list[int]` → `list[long]` ❌
-- Future: Covariance/contravariance (e.g., `list[Dog]` → `list[Animal]`)
+**Components**:
+- `Name`: The generic type name (e.g., "list", "dict")
+- `TypeArguments`: Concrete types supplied (e.g., [int] for list[int])
+- `GenericDefinition`: Reference to the TypeSymbol defining the generic class
 
-#### Custom Equality Implementation
+**Custom Equality** (lines 129-159): Overrides `Equals` and `GetHashCode` to compare by content, not reference. This is crucial for:
+- Cache effectiveness in `OperatorValidator` (see line 128 comment)
+- Correct type comparison (two `list[int]` instances should be equal)
 
-```csharp
-public virtual bool Equals(GenericType? other)
-{
-    // Compare Name, GenericDefinition, and all TypeArguments
-    // ...
-}
+**Assignability Logic**:
+The `IsAssignableTo` method (lines 108-125) currently requires exact type argument matches. For example:
+- `list[int]` is assignable to `list[int]` ✅
+- `list[int]` is NOT assignable to `list[long]` ❌
 
-public override int GetHashCode()
-{
-    var hash = new HashCode();
-    hash.Add(Name);
-    hash.Add(GenericDefinition);
-    foreach (var arg in TypeArguments) hash.Add(arg);
-    return hash.ToHashCode();
-}
-```
+**Future Work**: Line 114 notes that covariance/contravariance is not yet implemented. This would allow derived types in certain positions (e.g., `list[Dog]` → `IEnumerable[Animal]` for read-only collections).
 
-**Why override?**: The comment says "improves cache effectiveness in OperatorValidator"
-- `OperatorValidator` caches operator signatures by type
-- With proper `Equals()`/`GetHashCode()`, `list[int]` always hashes the same
-- Without this, two `list[int]` instances might be unequal due to reference equality
-
----
-
-### `UserDefinedType` - Classes and Interfaces
+### UserDefinedType - Custom Classes and Structs
 
 ```csharp
 public record UserDefinedType : SemanticType
 {
     public string Name { get; init; } = string.Empty;
-    public TypeSymbol? Symbol { get; init; }
+    public TypeSymbol? Symbol { get; init; }  // Links to symbol table
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        if (base.IsAssignableTo(other)) return true;
+
+        if (other is UserDefinedType otherUdt && Symbol != null)
+        {
+            // Same type
+            if (Symbol == otherUdt.Symbol || Name == otherUdt.Name)
+                return true;
+
+            // Check inheritance chain
+            var current = Symbol.BaseType;
+            while (current != null)
+            {
+                if (current == otherUdt.Symbol || current.Name == otherUdt.Name)
+                    return true;
+                current = current.BaseType;
+            }
+
+            // Check interfaces
+            return Symbol.Interfaces.Any(i => i == otherUdt.Symbol || i.Name == otherUdt.Name);
+        }
+
+        return false;
+    }
 }
 ```
 
-**Represents**: User-defined classes, structs, interfaces from Sharpy code, plus `object`
+**Symbol Linkage**: The `Symbol` property connects to the `TypeSymbol` in the symbol table, providing access to:
+- Base class hierarchy
+- Implemented interfaces
+- Member methods and fields
 
-**The `Symbol` field**: Links to `TypeSymbol` which contains:
-- Base class (`BaseType`)
-- Implemented interfaces (`Interfaces`)
-- Members (fields, methods, properties)
-- Operator/protocol methods
-
-**Example**:
+**Inheritance Check**: Walks the inheritance chain to support derived-to-base assignments:
 ```python
-# Sharpy code
-class Animal:
-    def speak(self) -> str:
-        return "..."
+class Animal: pass
+class Dog(Animal): pass
 
-class Dog(Animal):
-    def speak(self) -> str:
-        return "Woof!"
+def feed(animal: Animal): pass
+
+dog = Dog()
+feed(dog)  # Valid: Dog is assignable to Animal
 ```
 
-- `Dog` → `UserDefinedType { Name = "Dog", Symbol = <TypeSymbol for Dog> }`
-- `Symbol.BaseType` → `<TypeSymbol for Animal>`
-- `IsAssignableTo()` walks from `Dog` → `Animal` → checks match
+**Note on `object` type**: The special `object` type (line 19) is defined as a `UserDefinedType` rather than a `BuiltinType`. This represents the universal base type that all other types can be assigned to (see base `IsAssignableTo` implementation at line 27).
 
----
-
-### `NullableType` - Optional Values
+### NullableType - Optional Values
 
 ```csharp
 public record NullableType : SemanticType
 {
     public SemanticType UnderlyingType { get; init; } = SemanticType.Unknown;
-}
-```
-
-**Represents**: Sharpy's `T?` syntax (Python's `Optional[T]`)
-
-**Examples**:
-- `int?` → `NullableType { UnderlyingType = Int }`
-- `list[str]?` → `NullableType { UnderlyingType = GenericType { Name = "list", TypeArguments = [Str] } }`
-
-**Critical assignability rule**: `int?` can be assigned to `int`
-```csharp
-if (UnderlyingType.IsAssignableTo(other))
-    return true;
-```
-
-This enables:
-```python
-x: int? = 5
-y: int = x  # Type checks! Runtime: null check inserted
-```
-
----
-
-### `FunctionType` - First-Class Functions
-
-```csharp
-public record FunctionType : SemanticType
-{
-    public List<SemanticType> ParameterTypes { get; init; } = new();
-    public SemanticType ReturnType { get; init; } = SemanticType.Void;
-}
-```
-
-**Represents**: Function signatures for lambdas, delegates, callbacks
-
-**Example**:
-```python
-# Sharpy code
-def process(callback: (int, str) -> bool) -> None:
-    result = callback(42, "test")
-```
-
-- `callback` has type: `FunctionType { ParameterTypes = [Int, Str], ReturnType = Bool }`
-
-**Future work**: Currently no `IsAssignableTo()` override, so function types must match exactly. Future: Covariance/contravariance for parameters/return types.
-
----
-
-### `TupleType` - Heterogeneous Collections
-
-```csharp
-public record TupleType : SemanticType
-{
-    public List<SemanticType> ElementTypes { get; init; } = new();
-}
-```
-
-**Represents**: Fixed-size, heterogeneous tuples
-
-**Example**:
-```python
-# Sharpy code
-point: tuple[int, int] = (10, 20)
-mixed: tuple[str, int, bool] = ("hello", 42, true)
-```
-
-- `point` → `TupleType { ElementTypes = [Int, Int] }`
-- `mixed` → `TupleType { ElementTypes = [Str, Int, Bool] }`
-
-**Note**: Currently no custom `IsAssignableTo()`, so tuples must match exactly (same count and types).
-
----
-
-## Dependencies
-
-### Internal Dependencies
-
-1. **`Symbol.cs`** (especially `TypeSymbol`):
-   - `UserDefinedType.Symbol` links here
-   - `GenericType.GenericDefinition` links here
-   - Provides inheritance/interface data for assignability checks
-
-2. **`PrimitiveCatalog.cs`**:
-   - `BuiltinType.IsAssignableTo()` delegates conversion rules here
-   - Centralizes knowledge of numeric promotions (int→long, float→double, etc.)
-
-3. **`SemanticInfo.cs`**:
-   - Stores the mapping: `Expression → SemanticType`
-   - The "database" that remembers what type each AST node has
-
-### Usage Sites
-
-- **`TypeResolver.cs`**: Constructs `SemanticType` instances from AST type annotations
-- **`TypeChecker.cs`**: Calls `IsAssignableTo()` to validate assignments, parameters, return types
-- **`RoslynEmitter.cs`** (CodeGen): Converts `SemanticType` → Roslyn syntax nodes for C# types
-- **`OperatorValidator.cs`**: Caches operator signatures using `GenericType` equality
-
----
-
-## Patterns and Design Decisions
-
-### 1. **Immutable Records Pattern**
-
-**Decision**: Use C# `record` instead of `class`
-
-**Why**:
-- **Functional purity**: Types don't mutate; easier to reason about
-- **Value equality**: `new BuiltinType { Name = "int" }` equals another `new BuiltinType { Name = "int" }`
-- **Pattern matching**: Easy to use with `if (type is GenericType { Name: "list" })`
-- **Cache-friendly**: Same types produce same hash codes
-
-### 2. **Singleton Pattern for Common Types**
-
-**Decision**: Pre-allocate `SemanticType.Int`, `SemanticType.Str`, etc.
-
-**Why**:
-- **Performance**: Avoid allocating thousands of `BuiltinType { Name = "int" }` instances
-- **Reference equality**: Can use `==` for quick checks (though value equality also works)
-- **Canonical types**: One authoritative `Int` type instance
-
-### 3. **Visitor Pattern (Not Used)**
-
-**Decision**: No visitor pattern; use pattern matching instead
-
-**Why**:
-- C# 9+ pattern matching (`switch` expressions, `is` patterns) is ergonomic
-- Adding a new type requires updating switch expressions (compile error if missed)
-- Visitor pattern adds boilerplate without much benefit in modern C#
-
-### 4. **Delegation to `PrimitiveCatalog`**
-
-**Decision**: `BuiltinType` doesn't contain conversion logic; delegates to `PrimitiveCatalog`
-
-**Why**:
-- **Separation of concerns**: Conversion rules are complex and centralized
-- **Easier to test**: Test conversion rules independently of the type system
-- **Consistency**: All numeric conversions follow the same rules
-
-### 5. **Type Narrowing (Implicit in Design)**
-
-**Note**: `SemanticType` itself doesn't handle type narrowing (e.g., `if x is not None: ...`). That's handled by `TypeChecker` with a separate `_narrowedTypes` dictionary.
-
-**Why separate**:
-- Type narrowing is **context-dependent** (depends on control flow)
-- `SemanticType` is **context-independent** (just describes the type)
-- Keeps `SemanticType` simple and reusable
-
----
-
-## Debugging Tips
-
-### 1. **Trace Assignability Checks**
-
-Add a breakpoint in `IsAssignableTo()` to see why types are/aren't compatible:
-
-```csharp
-// In SemanticType.cs
-public virtual bool IsAssignableTo(SemanticType other)
-{
-    // Set breakpoint here ← Debugger will hit for every assignability check
-    if (other is UserDefinedType { Name: "object" })
-        return true;
-    return this.Equals(other);
-}
-```
-
-**Pro tip**: Use a conditional breakpoint:
-```
-other.GetDisplayName() == "SomeTypeYouCareAbout"
-```
-
-### 2. **Inspect Display Names**
-
-When debugging, hover over a `SemanticType` and call `GetDisplayName()` in the watch window:
-```
-type.GetDisplayName()  // Shows "list[int]" instead of memory address
-```
-
-### 3. **Check Type Equality**
-
-If assignability is failing unexpectedly, verify:
-```csharp
-// In watch window or immediate mode
-this.Equals(other)              // Should match?
-this.GetHashCode() == other.GetHashCode()  // Should be equal if types are equal
-```
-
-For `GenericType`, check:
-```csharp
-TypeArguments[0].Equals(otherGeneric.TypeArguments[0])
-```
-
-### 4. **Look for Null Symbols**
-
-`UserDefinedType` and `GenericType` have `Symbol` and `GenericDefinition` fields that can be `null`:
-```csharp
-if (Symbol != null)  // Always check before dereferencing
-```
-
-**Common bug**: Symbol is `null` because `TypeResolver` failed to resolve the type → creates `UserDefinedType` with no symbol → assignability check fails silently.
-
-### 5. **Trace Type Resolution**
-
-If a type isn't what you expect, trace backward:
-1. Set breakpoint in `TypeResolver.ResolveType()`
-2. See what AST type annotation it's processing
-3. See what `SemanticType` it creates
-
-### 6. **Use `ToString()` for Quick Inspection**
-
-Records auto-generate `ToString()`:
-```csharp
-var type = new GenericType { Name = "list", TypeArguments = new() { SemanticType.Int } };
-Console.WriteLine(type);
-// Output: GenericType { Name = list, TypeArguments = [BuiltinType { Name = int, ClrType = System.Int32 }], ... }
-```
-
----
-
-## Common Issues and Solutions
-
-### Issue: "Types should match but don't"
-
-**Symptom**: `list[int]` not assignable to `list[int]`
-
-**Cause**: Two separate `GenericType` instances with different `GenericDefinition` symbols
-
-**Solution**: Ensure `TypeResolver` reuses the same `TypeSymbol` for generic types
-
----
-
-### Issue: "Implicit conversion not working"
-
-**Symptom**: `int` not assignable to `long`
-
-**Cause**: `PrimitiveCatalog` may not be set up correctly
-
-**Solution**:
-1. Check `PrimitiveCatalog.CanImplicitlyConvert()`
-2. Verify `BuiltinType.IsAssignableTo()` is calling the catalog
-
----
-
-### Issue: "Nullable assignability wrong"
-
-**Symptom**: `int?` not assignable to `int`
-
-**Cause**: Check `NullableType.IsAssignableTo()` logic
-
-**Solution**: Verify the unwrapping logic:
-```csharp
-if (UnderlyingType.IsAssignableTo(other))
-    return true;  // This should allow int? → int
-```
-
----
-
-## Contribution Guidelines
-
-### Adding a New Type
-
-**Example**: Adding `ArrayType` for fixed-size arrays:
-
-1. **Define the record**:
-```csharp
-/// <summary>
-/// Fixed-size array type (e.g., int[10])
-/// </summary>
-public record ArrayType : SemanticType
-{
-    public SemanticType ElementType { get; init; } = SemanticType.Unknown;
-    public int Size { get; init; }
-
-    public override string GetDisplayName() => $"{ElementType.GetDisplayName()}[{Size}]";
 
     public override bool IsAssignableTo(SemanticType other)
     {
-        // Arrays of same element type and size
-        if (other is ArrayType otherArray)
-            return Size == otherArray.Size && ElementType.Equals(otherArray.ElementType);
+        // Nullable T is assignable to T (implicit unwrapping)
+        if (UnderlyingType.IsAssignableTo(other))
+            return true;
+
+        // Nullable T is assignable to Nullable T
+        if (other is NullableType otherNullable)
+            return UnderlyingType.IsAssignableTo(otherNullable.UnderlyingType);
 
         return base.IsAssignableTo(other);
     }
 }
 ```
 
-2. **Update `TypeResolver.cs`** to construct `ArrayType` from AST
-3. **Update `RoslynEmitter.cs`** to emit C# array syntax
-4. **Add tests** in `Sharpy.Compiler.Tests/Semantic/TypeCheckerTests.cs`
-
----
-
-### Modifying Assignability Rules
-
-**Example**: Allow `list[Dog]` to be assigned to `list[Animal]` (covariance)
-
-**Current code**:
-```csharp
-// In GenericType.IsAssignableTo()
-if (!TypeArguments[i].Equals(otherGeneric.TypeArguments[i]))
-    return false;  // Requires exact match
-```
-
-**Proposed change**:
-```csharp
-// Check if type arguments are assignable (not just equal)
-if (!TypeArguments[i].IsAssignableTo(otherGeneric.TypeArguments[i]))
-    return false;
-```
-
-**⚠️ Warning**: This enables covariance but is **unsound** for mutable collections!
-- Safe: `IEnumerable[Dog]` → `IEnumerable[Animal]` (read-only)
-- Unsafe: `List[Dog]` → `List[Animal]` (can insert `Cat` into `List[Dog]`!)
-
-**Proper solution**: Add variance annotations to generic type parameters (like C#'s `in`/`out`).
-
----
-
-### Testing Assignability
-
-**Pattern**:
-```csharp
-[Fact]
-public void TestAssignability_IntToLong()
-{
-    var intType = SemanticType.Int;
-    var longType = SemanticType.Long;
-
-    Assert.True(intType.IsAssignableTo(longType));
-    Assert.False(longType.IsAssignableTo(intType));  // Narrowing
-}
-```
-
-**Pro tip**: Test both directions and edge cases (nullables, generics, etc.).
-
----
-
-## Future Enhancements
-
-### 1. **Variance for Generic Types**
-
-**Goal**: Support covariance/contravariance
-
+**Key Feature**: Implicit unwrapping (line 211) allows:
 ```python
-# Sharpy code (future)
-animals: list[Animal] = list[Dog]()  # Covariance
+x: int? = 42
+y: int = x  # Valid in Sharpy (unsafe but convenient)
 ```
 
-**Implementation**:
-- Add `Variance` enum (`Covariant`, `Contravariant`, `Invariant`)
-- Store variance per type parameter in `TypeSymbol`
-- Update `GenericType.IsAssignableTo()` to respect variance
+**Nullable Chain**: `int?` is assignable to both `int` (via unwrapping) and to `int?` (via underlying type check).
 
----
+**Relationship with VoidType**: The `VoidType` (representing `None`) can be assigned to any `NullableType` (see VoidType.IsAssignableTo at line 59), enabling:
+```python
+x: int? = None  # None is assignable to int?
+```
 
-### 2. **Union Types**
-
-**Goal**: Support `int | str` (TypeScript-style unions)
+### FunctionType - First-Class Functions
 
 ```csharp
-public record UnionType : SemanticType
+public record FunctionType : SemanticType
 {
-    public List<SemanticType> Alternatives { get; init; } = new();
+    public List<SemanticType> ParameterTypes { get; init; } = new();
+    public SemanticType ReturnType { get; init; } = SemanticType.Void;
 
-    public override bool IsAssignableTo(SemanticType other)
+    public override string GetDisplayName()
     {
-        // Union is assignable if ALL alternatives are assignable
-        return Alternatives.All(alt => alt.IsAssignableTo(other));
+        var params_ = string.Join(", ", ParameterTypes.Select(p => p.GetDisplayName()));
+        return $"({params_}) -> {ReturnType.GetDisplayName()}";
     }
 }
 ```
 
----
-
-### 3. **Structural Subtyping**
-
-**Goal**: Duck typing for protocols/interfaces
-
+**Usage**: Represents lambda expressions and function references:
 ```python
-# Sharpy code (future)
-protocol Drawable:
-    def draw(self) -> None
-
-# Any type with draw() is assignable to Drawable
+f: (int, int) -> int = lambda x, y: x + y
 ```
 
-**Implementation**:
-- Add `ProtocolType` (like `UserDefinedType` but checks members structurally)
-- Update `IsAssignableTo()` to check method signatures match
+**Note**: Currently doesn't override `IsAssignableTo`, meaning function type compatibility is based on structural equality (exact parameter and return type match).
 
----
-
-### 4. **Better Error Messages**
-
-**Goal**: When assignability fails, explain why
+### TupleType - Structural Product Types
 
 ```csharp
-public virtual (bool, string?) IsAssignableToWithReason(SemanticType other)
+public record TupleType : SemanticType
 {
-    if (IsAssignableTo(other))
-        return (true, null);
+    public List<SemanticType> ElementTypes { get; init; } = new();
 
-    return (false, $"Cannot assign '{GetDisplayName()}' to '{other.GetDisplayName()}'");
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        if (other is TupleType otherTuple && ElementTypes.Count == otherTuple.ElementTypes.Count)
+        {
+            for (int i = 0; i < ElementTypes.Count; i++)
+            {
+                if (!ElementTypes[i].IsAssignableTo(otherTuple.ElementTypes[i]))
+                    return false;
+            }
+            return true;
+        }
+        return base.IsAssignableTo(other);
+    }
 }
 ```
 
-Then `TypeChecker` can show: `"Cannot assign 'Dog' to 'Cat': types are unrelated"`
+**Element-wise Assignability**: Tuples are assignable if each element is assignable:
+```python
+x: tuple[int, str] = (42, "hello")
+y: tuple[int, object] = x  # Valid: str is assignable to object
+```
+
+**Custom Equality**: Like `GenericType`, overrides equality (lines 265-290) for content-based comparison. This ensures two `tuple[int, str]` instances are considered equal even if they're different object instances.
+
+### ModuleType - Namespace Representation
+
+```csharp
+public record ModuleType : SemanticType
+{
+    public ModuleSymbol Symbol { get; init; } = null!;
+
+    public override string GetDisplayName() => $"module '{Symbol.Name}'";
+}
+```
+
+**Usage**: Represents imported modules used as namespaces:
+```python
+import math
+x = math.pi  # 'math' has type ModuleType
+```
+
+**No Assignability**: Modules are not assignable to other types (doesn't override `IsAssignableTo`).
+
+### TypeParameterType - Generic Type Variables
+
+```csharp
+public record TypeParameterType : SemanticType
+{
+    public string Name { get; init; } = string.Empty;
+    public TypeSymbol? DeclaringType { get; init; }
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        // Type parameters can be assigned to themselves
+        if (other is TypeParameterType otherParam && Name == otherParam.Name)
+            return true;
+
+        // Type parameters can be assigned to object
+        return base.IsAssignableTo(other);
+    }
+}
+```
+
+**Context**: Used inside generic class/function bodies:
+```python
+class Box[T]:
+    def get(self) -> T:
+        # Inside here, T is a TypeParameterType
+        return self.value
+```
+
+**Limited Assignability**: Only assignable to itself or `object`, reflecting that we don't know the concrete type at compile time.
+
+### GenericFunctionType - Instantiated Generic Functions
+
+```csharp
+public record GenericFunctionType : SemanticType
+{
+    public FunctionSymbol FunctionSymbol { get; init; } = null!;
+    public List<SemanticType> TypeArguments { get; init; } = new();
+
+    public override string GetDisplayName()
+    {
+        var typeArgs = string.Join(", ", TypeArguments.Select(t => t.GetDisplayName()));
+        var paramTypes = string.Join(", ", FunctionSymbol.Parameters.Select(p => p.Type.GetDisplayName()));
+        return $"{FunctionSymbol.Name}[{typeArgs}]({paramTypes}) -> {FunctionSymbol.ReturnType.GetDisplayName()}";
+    }
+}
+```
+
+**Purpose**: Internal bridge type used when calling generic functions with explicit type arguments (see line 328 comment):
+```python
+def identity[T](value: T) -> T:
+    return value
+
+x = identity[int](42)  # identity[int] becomes GenericFunctionType
+```
+
+**Flow**: `IndexAccess` node creates `GenericFunctionType` → `FunctionCall` node consumes it for type inference (line 329).
 
 ---
 
-## Summary
+## Dependencies
 
-`SemanticType.cs` is the **type system kernel** of Sharpy:
-- **Defines all type variants**: Built-ins, generics, user types, nullables, functions, tuples
-- **Implements assignability**: The `IsAssignableTo()` method is the decision engine for type compatibility
-- **Bridges phases**: Connects AST (strings) → semantic analysis (types) → code gen (Roslyn)
+This file has minimal dependencies, making it a foundational type:
 
-**Key insights**:
-- Immutable records enable value equality and functional reasoning
-- Singleton instances reduce allocations
-- Delegation to `PrimitiveCatalog` centralizes conversion rules
-- Future enhancements require careful design (variance, unions, structural typing)
+1. **PrimitiveCatalog** (`Sharpy.Compiler.Semantic.PrimitiveCatalog`):
+   - Used by `BuiltinType.IsAssignableTo` for implicit conversion rules (line 81-86)
+   - See: `docs/implementation_walkthrough/src/Sharpy.Compiler/Semantic/PrimitiveCatalog.md`
 
-**When debugging**: Focus on `IsAssignableTo()` logic and ensure `TypeResolver` creates types correctly.
+2. **Symbol** (`Sharpy.Compiler.Semantic.Symbol`):
+   - Several types reference symbol table entries:
+     - `GenericType.GenericDefinition` → `TypeSymbol` (line 100)
+     - `UserDefinedType.Symbol` → `TypeSymbol` (line 168)
+     - `ModuleType.Symbol` → `ModuleSymbol` (line 298)
+     - `GenericFunctionType.FunctionSymbol` → `FunctionSymbol` (line 332)
+   - See: `docs/implementation_walkthrough/src/Sharpy.Compiler/Semantic/Symbol.md`
 
-**When contributing**: Add tests for new types, update assignability rules carefully (soundness!), and maintain the clean separation between type definitions and type checking logic.
+3. **.NET BCL**:
+   - `System.Type` for CLR type mapping in `BuiltinType` (line 72)
+   - `System.Linq` for collection operations
+
+---
+
+## Patterns and Design Decisions
+
+### 1. Immutable Records for Type Safety
+
+Using C# `record` types (line 6) ensures:
+- Types cannot be mutated after creation
+- Thread-safe (no concurrent modification issues)
+- Value-based equality (two structurally identical types are equal)
+
+### 2. Virtual Method Pattern for Extensibility
+
+The `IsAssignableTo` and `GetDisplayName` methods are virtual, allowing each subclass to define its behavior. This is the classic object-oriented "Template Method" pattern.
+
+### 3. Content-Based Equality for Composite Types
+
+`GenericType` (lines 129-159) and `TupleType` (lines 265-290) override `Equals` and `GetHashCode` to compare their collections:
+```csharp
+// Two list[int] types with different List instances are still equal
+var type1 = new GenericType { Name = "list", TypeArguments = [SemanticType.Int] };
+var type2 = new GenericType { Name = "list", TypeArguments = [SemanticType.Int] };
+type1.Equals(type2) // true
+```
+
+**Why?** Enables caching in `OperatorValidator` (per line 128 comment) and correct type comparisons.
+
+### 4. Singleton Pattern for Common Types
+
+Pre-allocated singletons (lines 9-19) avoid repeated allocation:
+```csharp
+SemanticType.Int  // Always the same instance
+```
+
+### 5. Null Object Pattern for Unknown Type
+
+`UnknownType` acts as a null object, allowing the compiler to continue type checking even after errors without null reference exceptions (line 46).
+
+### 6. Bridge Pattern for Symbol Table Integration
+
+Types like `UserDefinedType` and `GenericType` hold references to symbol table entries, bridging the type system and symbol resolution.
+
+---
+
+## Debugging Tips
+
+### Debugging Type Assignability Issues
+
+When a type check fails unexpectedly:
+
+1. **Check the IsAssignableTo chain**: Add breakpoints in the relevant `IsAssignableTo` override
+2. **Inspect GetDisplayName**: Use this in the debugger to see human-readable type names
+3. **Check symbol linkage**: For `UserDefinedType`, verify the `Symbol` property is not null
+4. **Verify type arguments**: For `GenericType`, inspect the `TypeArguments` list
+
+**Common Pitfall**: Forgetting that `NullableType` allows implicit unwrapping (T? → T).
+
+### Inspecting Types in the Debugger
+
+Set a watch expression:
+```csharp
+someType.GetDisplayName()  // Shows human-readable name
+someType.GetType().Name    // Shows C# class name (e.g., "GenericType")
+```
+
+### Tracking Type Flow
+
+To understand where a type comes from:
+1. Set breakpoint on the `SemanticType` constructor
+2. Enable "Break on all CLR exceptions" for type errors
+3. Use call stack to trace back to TypeChecker or TypeResolver
+
+### Testing Type Relationships
+
+You can write unit tests using the existing singleton types:
+```csharp
+Assert.True(SemanticType.Int.IsAssignableTo(SemanticType.Long));  // Numeric widening
+Assert.True(SemanticType.Void.IsAssignableTo(new NullableType { UnderlyingType = SemanticType.Int }));  // None → int?
+```
+
+---
+
+## Contribution Guidelines
+
+### When to Modify This File
+
+You should modify `SemanticType.cs` when:
+
+1. **Adding a new type category** (e.g., union types, intersection types)
+   - Create a new record inheriting from `SemanticType`
+   - Override `GetDisplayName` and `IsAssignableTo`
+   - Add custom equality if the type has collections
+
+2. **Changing assignability rules** (e.g., adding variance support)
+   - Modify the relevant `IsAssignableTo` override
+   - Update tests in `Sharpy.Tests` to cover new behavior
+   - Consider impact on TypeChecker and CodeGen
+
+3. **Adding new built-in types** (e.g., `byte`, `decimal`)
+   - Add a new singleton to the base class
+   - Map it to the appropriate CLR type
+   - Register in `PrimitiveCatalog` if it's a numeric type
+
+4. **Adding metadata to types** (e.g., nullability annotations, variance markers)
+   - Add properties to the relevant record
+   - Update equality/hashcode if needed
+
+### What NOT to Change
+
+- **Don't break immutability**: Never add settable properties
+- **Don't add logic to the base class**: Keep `SemanticType` abstract and simple
+- **Don't skip equality overrides**: If your type has collections, override `Equals`/`GetHashCode`
+
+### Testing Changes
+
+When modifying this file:
+1. Run type checker tests: `dotnet test --filter TypeChecker`
+2. Run semantic analysis tests: `dotnet test --filter Semantic`
+3. Add new test cases demonstrating the changed behavior
+4. Test edge cases (e.g., nested generics, inheritance chains)
+
+### Code Style Conventions
+
+Follow these patterns established in the file:
+- Use `record` for immutability
+- Use init-only properties (`{ get; init; }`)
+- Use pattern matching in `IsAssignableTo`
+- Provide XML doc comments for new types
+- Keep display names concise and readable
+
+---
+
+## Cross-References
+
+**Closely Related Files**:
+
+- **Symbol.md** (`docs/implementation_walkthrough/src/Sharpy.Compiler/Semantic/Symbol.md`): Defines `TypeSymbol`, `FunctionSymbol`, `ModuleSymbol` referenced by several `SemanticType` subclasses
+- **PrimitiveCatalog.md** (`docs/implementation_walkthrough/src/Sharpy.Compiler/Semantic/PrimitiveCatalog.md`): Implements numeric promotion and implicit conversion rules used by `BuiltinType`
+- **TypeChecker.md** (`docs/implementation_walkthrough/src/Sharpy.Compiler/Semantic/TypeChecker.md`): Primary consumer of `SemanticType`, performs type checking using `IsAssignableTo`
+- **TypeResolver.md** (`docs/implementation_walkthrough/src/Sharpy.Compiler/Semantic/TypeResolver.md`): Converts AST `TypeExpression` nodes into `SemanticType` instances
+- **OperatorValidator.md** (`docs/implementation_walkthrough/src/Sharpy.Compiler/Semantic/OperatorValidator.md`): Uses type equality for operator overload caching
+
+**Specification References**:
+- `docs/language_specification/type_annotations.md`: Defines how types are written in Sharpy
+- `docs/language_specification/type_hierarchy.md`: Specifies the type inheritance rules
+- `docs/language_specification/type_narrowing.md`: Describes type refinement (may use nullable types)
+- `docs/language_specification/type_casting.md`: Describes explicit type conversions
+
+**CodeGen Integration**:
+- **RoslynEmitter.md** (`docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/RoslynEmitter.md`): Translates `SemanticType` to C# Roslyn syntax nodes
+- **TypeMapper.md** (`docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/TypeMapper.md`): Maps `SemanticType` to Roslyn type syntax
+
+---
+
+## Conclusion
+
+`SemanticType.cs` is the foundation of Sharpy's type system during semantic analysis. Its design emphasizes:
+- **Immutability**: Types are values, not mutable state
+- **Extensibility**: Virtual methods allow subclasses to customize behavior
+- **Integration**: Bridges to symbol table for inheritance/interface checks
+- **Performance**: Singletons and custom equality for caching
+
+Understanding this file is essential for working on type checking, type inference, or adding new language features involving types. The clean separation between type representation (this file) and type checking logic (TypeChecker.cs) makes the codebase maintainable and testable.

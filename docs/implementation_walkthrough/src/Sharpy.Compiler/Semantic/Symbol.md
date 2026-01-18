@@ -12,7 +12,8 @@ Think of symbols as the compiler's internal "business cards" for everything that
 - Variables and parameters
 - Functions and methods
 - Classes, interfaces, and types
-- Modules and properties
+- Modules and type aliases
+- Generic type parameters
 
 This file is **pure data definitions** - no logic, just immutable record types that hold metadata about program entities. It's the vocabulary that other semantic analysis components (like `NameResolver`, `TypeChecker`, `SymbolTable`) use to communicate.
 
@@ -36,7 +37,9 @@ Symbol (abstract base)
 ├── VariableSymbol      - Variables, fields
 ├── FunctionSymbol      - Functions, methods
 ├── TypeSymbol          - Classes, structs, interfaces, enums
-└── ModuleSymbol        - Sharpy modules (.spy files)
+├── ModuleSymbol        - Sharpy modules (.spy files)
+├── TypeAliasSymbol     - Type aliases (compile-time only)
+└── TypeParameterSymbol - Generic type parameters (T, K, V, etc.)
 
 Supporting Types:
 ├── ParameterSymbol     - Function parameters
@@ -75,6 +78,10 @@ public abstract record Symbol
     public AccessLevel AccessLevel { get; init; } = AccessLevel.Public;
     public int? DeclarationLine { get; init; }
     public int? DeclarationColumn { get; init; }
+
+    // Re-export tracking (for module imports)
+    public bool IsReExport { get; init; }
+    public string? OriginalModule { get; init; }
 }
 ```
 
@@ -83,8 +90,24 @@ public abstract record Symbol
 - **`Kind`**: Discriminator enum - quickly tells you what kind of symbol this is
 - **`AccessLevel`**: Visibility (currently simplified to Public/Protected/Private)
 - **`DeclarationLine/Column`**: Source location for error messages and IDE features
+- **`IsReExport`**: True if this symbol is re-exported from another module (e.g., via `from .submodule import func`)
+- **`OriginalModule`**: For re-exported symbols, the original module name where the symbol was defined
 
 **Design Note:** All symbols have location info for diagnostics. When the compiler says "error at line 42," it's using these fields.
+
+**Re-export Tracking:** The `IsReExport` and `OriginalModule` properties support Sharpy's module system. When you write:
+```python
+# module_a.spy
+from .utils import helper_function
+
+# Now helper_function is re-exported from module_a
+```
+
+The symbol for `helper_function` in `module_a` will have:
+```csharp
+IsReExport = true
+OriginalModule = "utils"
+```
 
 ---
 
@@ -93,7 +116,7 @@ public abstract record Symbol
 ```csharp
 public record VariableSymbol : Symbol
 {
-    public SemanticType Type { get; init; } = SemanticType.Unknown;
+    public SemanticType Type { get; set; } = SemanticType.Unknown;
     public bool IsParameter { get; init; }
     public bool IsConstant { get; init; }
     public bool HasDefaultValue { get; init; }
@@ -106,7 +129,7 @@ public record VariableSymbol : Symbol
 - Module-level variables
 
 **Key Properties:**
-- **`Type`**: The resolved type (e.g., `int`, `str`, `List[int]`)
+- **`Type`**: The resolved type (e.g., `int`, `str`, `List[int]`) - Note this is mutable (`set`) to allow multi-pass type inference
 - **`IsParameter`**: True if this is a function parameter (could use `ParameterSymbol` instead, but this dual-purpose design exists)
 - **`IsConstant`**: True for `const` declarations (immutable values)
 - **`HasDefaultValue`**: Whether the variable has an initializer
@@ -137,7 +160,11 @@ public record FunctionSymbol : Symbol
     public bool IsAbstract { get; init; }
     public bool IsVirtual { get; init; }
     public bool IsOverride { get; init; }
-    
+
+    // Generic type parameters (for generic functions like def identity[T](value: T) -> T)
+    public List<TypeParameterDef> TypeParameters { get; init; } = new();
+    public bool IsGeneric => TypeParameters.Count > 0;
+
     // For .NET interop
     public System.Reflection.MethodInfo? ClrMethod { get; init; }
 }
@@ -146,6 +173,7 @@ public record FunctionSymbol : Symbol
 **Represents:**
 - Functions: `def calculate(x: int) -> float:`
 - Methods: `def process(self) -> None:`
+- Generic functions: `def identity[T](value: T) -> T:`
 - .NET interop methods: `List<T>.Add()`
 
 **Key Properties:**
@@ -153,6 +181,8 @@ public record FunctionSymbol : Symbol
 - **`ReturnType`**: What the function returns (or `None` for void)
 - **`IsStatic`**: Methods without `self` parameter
 - **`IsAbstract/IsVirtual/IsOverride`**: OOP modifiers for inheritance
+- **`TypeParameters`**: Generic type parameters (e.g., `[T, U]` for `def func[T, U](...)`)
+- **`IsGeneric`**: Computed property - true if function has type parameters
 - **`ClrMethod`**: **Critical for .NET interop** - links to actual .NET reflection method
 
 **Design Insight: The .NET Bridge**
@@ -171,6 +201,21 @@ var listAddMethod = new FunctionSymbol
 
 Later, `RoslynEmitter` uses `ClrMethod` to generate the correct C# call.
 
+**Generic Functions:**
+
+Sharpy supports generic functions similar to Python's typing:
+```python
+def identity[T](value: T) -> T:
+    return value
+
+def zip[T, U](list1: List[T], list2: List[U]) -> List[Tuple[T, U]]:
+    # ...
+```
+
+The `TypeParameters` property stores these as AST `TypeParameterDef` nodes, which include:
+- Type parameter name (`T`, `U`, etc.)
+- Optional constraints (future feature)
+
 ---
 
 ### 3.4 TypeSymbol (Most Complex)
@@ -180,20 +225,26 @@ public record TypeSymbol : Symbol
 {
     public TypeKind TypeKind { get; init; }
     public Type? ClrType { get; init; }
-    
-    // Generics
-    public List<string> TypeParameters { get; init; } = new();
+    public bool IsAbstract { get; init; }
+
+    // Generic type parameters
+    public List<TypeParameterDef> TypeParameters { get; init; } = new();
     public bool IsGeneric => TypeParameters.Count > 0;
-    
+
     // Members
     public List<VariableSymbol> Fields { get; init; } = new();
     public List<FunctionSymbol> Methods { get; init; } = new();
     public List<PropertySymbol> Properties { get; init; } = new();
-    
-    // Operator/Protocol methods (Python dunders)
+
+    // Operator methods (dunder methods for operators)
     public Dictionary<string, List<FunctionSymbol>> OperatorMethods { get; init; } = new();
+
+    // Protocol methods (non-operator dunders like __len__, __str__, __iter__)
     public Dictionary<string, List<FunctionSymbol>> ProtocolMethods { get; init; } = new();
-    
+
+    // Constructors - tracks all __init__ overloads
+    public List<FunctionSymbol> Constructors { get; init; } = new();
+
     // Inheritance
     public TypeSymbol? BaseType { get; set; }
     public List<TypeSymbol> Interfaces { get; init; } = new();
@@ -202,22 +253,32 @@ public record TypeSymbol : Symbol
 
 **Represents:**
 - Classes: `class User:`
+- Generic classes: `class List[T]:`
 - Structs, Interfaces, Enums
-- Generic types: `class List[T]:`
 - .NET types: `System.String`
 
 **Property Deep Dive:**
 
 #### Generics
 ```csharp
-public List<string> TypeParameters { get; init; } = new();
+public List<TypeParameterDef> TypeParameters { get; init; } = new();
 public bool IsGeneric => TypeParameters.Count > 0;
 ```
 
 For `class Dict[K, V]:`, this would be:
 ```csharp
-TypeParameters = new() { "K", "V" }
+TypeParameters = new() {
+    new TypeParameterDef { Name = "K" },
+    new TypeParameterDef { Name = "V" }
+}
 IsGeneric = true
+```
+
+**Note:** Unlike the older documentation, type parameters are now stored as `TypeParameterDef` AST nodes (not strings), which allows for future constraint support:
+```python
+# Future syntax (hypothetical)
+class Dict[K: Hashable, V]:
+    # K must implement Hashable protocol
 ```
 
 #### Members
@@ -234,7 +295,7 @@ Sharpy follows Python's protocol: operators and built-in functions are implement
 class Point:
     def __add__(self, other):  # Operator: p1 + p2
         return Point(self.x + other.x, self.y + other.y)
-    
+
     def __str__(self):         # Protocol: str(p)
         return f"Point({self.x}, {self.y})"
 ```
@@ -266,6 +327,38 @@ class Point:
 ```python
 def __add__(self, other: Point) -> Point: ...
 def __add__(self, other: int) -> Point: ...  # Overload
+```
+
+This enables better .NET interop where overloading is common.
+
+#### Constructors
+
+The `Constructors` property is a new addition that tracks all `__init__` method overloads:
+
+```csharp
+public List<FunctionSymbol> Constructors { get; init; } = new();
+```
+
+**Why separate from Methods?** Unlike Python (which allows only one `__init__` that gets replaced), Sharpy supports multiple `__init__` methods that map to C# constructor overloads:
+
+```python
+class Point:
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+```
+
+Both `__init__` methods are stored in `Constructors`, and `RoslynEmitter` generates multiple C# constructors:
+```csharp
+public class Point
+{
+    public Point() { ... }
+    public Point(int x, int y) { ... }
+}
 ```
 
 #### Inheritance
@@ -347,7 +440,7 @@ class User:
 public record ModuleSymbol : Symbol
 {
     public string FilePath { get; init; } = string.Empty;
-    public List<Symbol> Exports { get; init; } = new();
+    public Dictionary<string, Symbol> Exports { get; init; } = new();
 }
 ```
 
@@ -355,7 +448,9 @@ public record ModuleSymbol : Symbol
 
 **Key Properties:**
 - **`FilePath`**: Absolute path to the `.spy` file
-- **`Exports`**: Symbols visible to other modules (public functions, classes, etc.)
+- **`Exports`**: Dictionary mapping exported names to their symbols (public functions, classes, etc.)
+
+**Important Change:** `Exports` is now a `Dictionary<string, Symbol>` (not `List<Symbol>`), which provides O(1) lookup by name.
 
 **Usage Pattern:**
 ```csharp
@@ -364,8 +459,98 @@ var moduleSymbol = new ModuleSymbol
 {
     Name = "utils",
     FilePath = "/path/to/utils.spy",
-    Exports = new() { calculateFunctionSymbol, HelperClassSymbol }
+    Exports = new()
+    {
+        ["calculate"] = calculateFunctionSymbol,
+        ["Helper"] = HelperClassSymbol
+    }
 };
+```
+
+---
+
+### 3.8 TypeAliasSymbol
+
+```csharp
+public record TypeAliasSymbol : Symbol
+{
+    public TypeAnnotation? TypeAnnotation { get; init; }
+    public Parser.Ast.FunctionType? FunctionType { get; init; }
+}
+```
+
+**Represents:** Type aliases (compile-time only, no C# output)
+
+**Purpose:** Sharpy supports Python-style type aliases for better code readability:
+```python
+# Simple type alias
+UserId = int
+
+# Complex type alias
+JsonDict = Dict[str, Any]
+
+# Function type alias
+Callback = Callable[[int, str], bool]
+```
+
+**Key Properties:**
+- **`TypeAnnotation`**: For simple and generic type aliases (e.g., `UserId = int`, `JsonDict = Dict[str, Any]`)
+- **`FunctionType`**: For callable/function type aliases (e.g., `Callback = Callable[[int], bool]`)
+
+**Design Note:** Type aliases are purely compile-time constructs. They don't generate any C# code - they're just replaced with their underlying types during semantic analysis.
+
+**Usage in Compiler:**
+```csharp
+// When the type checker encounters a type alias:
+if (symbol is TypeAliasSymbol alias)
+{
+    // Resolve to the underlying type
+    var actualType = ResolveTypeAnnotation(alias.TypeAnnotation);
+    // Use actualType for type checking
+}
+```
+
+---
+
+### 3.9 TypeParameterSymbol
+
+```csharp
+public record TypeParameterSymbol : Symbol
+{
+    /// <summary>
+    /// The type symbol that declares this type parameter
+    /// </summary>
+    public TypeSymbol? DeclaringType { get; init; }
+}
+```
+
+**Represents:** Generic type parameter symbols (e.g., `T` in `class Box[T]`)
+
+**Purpose:** When you define a generic type or function, each type parameter gets its own symbol:
+```python
+class Box[T]:
+    def get(self) -> T:
+        # T is a TypeParameterSymbol here
+        return self.value
+```
+
+**Key Properties:**
+- **`DeclaringType`**: Back-reference to the type that declares this type parameter
+
+**Design Insight:** Type parameters are symbols too! This allows them to be looked up in the symbol table like any other identifier. When the compiler sees `T` in the body of `Box[T]`, it resolves it to a `TypeParameterSymbol`.
+
+**Example:**
+```csharp
+// For class Box[T]:
+var typeParamSymbol = new TypeParameterSymbol
+{
+    Name = "T",
+    Kind = SymbolKind.TypeParameter,
+    DeclaringType = boxTypeSymbol
+};
+
+// Add to symbol table so `T` can be resolved in method bodies
+symbolTable.Define(typeParamSymbol);
 ```
 
 ---
@@ -382,7 +567,9 @@ public enum SymbolKind
     Function,
     Type,
     Module,
-    Property
+    Property,
+    TypeAlias,
+    TypeParameter
 }
 ```
 
@@ -396,6 +583,10 @@ if (symbol.Kind == SymbolKind.Function)
     // Now access funcSymbol.Parameters
 }
 ```
+
+**Recent Additions:**
+- `TypeAlias`: Added to support type alias symbols
+- `TypeParameter`: Added to support generic type parameter symbols
 
 ---
 
@@ -452,7 +643,7 @@ This follows Python's convention, though enforcement is not as strict as C#.
 **Direct Dependencies:**
 ```
 Symbol.cs
-├── Parser.Ast (Expression, Node types)
+├── Parser.Ast (Expression, TypeAnnotation, TypeParameterDef, FunctionType)
 └── SemanticType (defined elsewhere in Semantic/)
 ```
 
@@ -487,7 +678,9 @@ These are critical for bridging Sharpy ↔ .NET interop.
 - Prevents accidental mutation during multi-pass analysis
 - Clear data flow: create once, never modify
 
-**Exception:** `TypeSymbol.BaseType` is mutable (`set`) due to circular inheritance resolution.
+**Exceptions:**
+- `TypeSymbol.BaseType` is mutable (`set`) due to circular inheritance resolution
+- `VariableSymbol.Type` is mutable (`set`) to allow multi-pass type inference
 
 ---
 
@@ -534,27 +727,30 @@ ProtocolMethods["__len__"]  // Just needs to return int
 
 ---
 
-### 6.4 Generic Type Parameters as Strings
+### 6.4 Generic Type Parameters as AST Nodes
 
-**Decision:** Store type parameters as `List<string>` not `List<TypeSymbol>`
+**Decision:** Store type parameters as `List<TypeParameterDef>` not `List<string>`
 
 ```csharp
-public List<string> TypeParameters { get; init; } = new();
+public List<TypeParameterDef> TypeParameters { get; init; } = new();
 ```
 
-**Why strings?**
+**Why AST nodes instead of strings?**
 ```python
-class Dict[K, V]:  # K and V are names, not resolved types yet
+class Dict[K, V]:  # K and V have metadata beyond just names
     def get(self, key: K) -> V:
         ...
 ```
 
-At symbol creation time, `K` and `V` are just identifiers. They get resolved to actual types during type instantiation:
+Using `TypeParameterDef` (an AST node) allows for:
+1. **Source location tracking**: Error messages can point to the type parameter declaration
+2. **Future constraints**: Support for `class Dict[K: Hashable, V]` syntax
+3. **Metadata**: Additional information like variance (covariant/contravariant) in the future
+
+The `TypeResolver` handles mapping these to actual types during type instantiation:
 ```python
 my_dict: Dict[str, int]  # K=str, V=int
 ```
-
-The `TypeResolver` handles this mapping later.
 
 ---
 
@@ -577,6 +773,62 @@ This enables better .NET interop where overloading is common.
 
 ---
 
+### 6.6 Module Exports as Dictionary
+
+**Decision:** `ModuleSymbol.Exports` uses `Dictionary<string, Symbol>` instead of `List<Symbol>`
+
+**Why dictionary?**
+1. **O(1) lookup**: When resolving `from module import foo`, we can directly look up "foo" without iterating
+2. **Prevents duplicates**: Dictionary keys are unique, preventing accidental duplicate exports
+3. **Matches usage pattern**: Module imports always look up by name
+
+**Before (old design):**
+```csharp
+// O(n) lookup
+var symbol = module.Exports.FirstOrDefault(s => s.Name == "foo");
+```
+
+**After (current design):**
+```csharp
+// O(1) lookup
+module.Exports.TryGetValue("foo", out var symbol);
+```
+
+---
+
+### 6.7 Separate Constructors Collection
+
+**Decision:** `TypeSymbol.Constructors` is separate from `Methods`
+
+**Why separate?**
+1. **C# mapping**: Constructors are distinct from methods in C# (different syntax, no return type)
+2. **Overload resolution**: Constructor overloading is common and needs special handling
+3. **Python semantics**: While Python only allows one `__init__`, Sharpy extends this to support overloading
+4. **Code generation**: `RoslynEmitter` generates constructors differently from methods
+
+**Example:**
+```python
+class Point:
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+```
+
+Both are stored in `Constructors`, not `Methods`:
+```csharp
+typeSymbol.Constructors = new()
+{
+    constructorNoArgs,
+    constructorWithArgs
+};
+```
+
+---
+
 ## 7. Debugging Tips
 
 ### 7.1 Inspecting Symbols
@@ -591,6 +843,13 @@ if (symbol is FunctionSymbol func)
 {
     Console.WriteLine($"  Params: {string.Join(", ", func.Parameters.Select(p => $"{p.Name}: {p.Type}"))}");
     Console.WriteLine($"  Return: {func.ReturnType}");
+    Console.WriteLine($"  Generic: {func.IsGeneric} ({func.TypeParameters.Count} type params)");
+}
+
+if (symbol is TypeSymbol type)
+{
+    Console.WriteLine($"  Generic: {type.IsGeneric} ({type.TypeParameters.Count} type params)");
+    Console.WriteLine($"  Constructors: {type.Constructors.Count}");
 }
 ```
 
@@ -602,6 +861,7 @@ if (symbol is FunctionSymbol func)
 1. Was symbol added to `SymbolTable`? (Check `NameResolver`)
 2. Is it in the correct scope? (Check `Scope.cs`)
 3. Is the name correct? (Python `snake_case` vs C# `PascalCase`)
+4. For re-exported symbols, check `IsReExport` and `OriginalModule`
 
 **Problem:** Wrong type information
 
@@ -609,6 +869,7 @@ if (symbol is FunctionSymbol func)
 1. Check `TypeResolver` - did it visit this symbol?
 2. Look for `SemanticType.Unknown` - means type wasn't resolved
 3. For .NET types, verify `ClrType` is set
+4. For type parameters, check `TypeParameterSymbol` is in scope
 
 **Problem:** Operator/protocol not working
 
@@ -616,6 +877,20 @@ if (symbol is FunctionSymbol func)
 1. Check `OperatorMethods`/`ProtocolMethods` dictionaries
 2. Verify dunder name is correct (`__add__`, not `__Add__`)
 3. Check signature in `OperatorValidator`/`ProtocolValidator`
+
+**Problem:** Constructor not generating correctly
+
+**Debug checklist:**
+1. Check if `__init__` is in `Constructors` (not `Methods`)
+2. Verify all overloads are tracked
+3. Check `RoslynEmitter` is reading from `Constructors`
+
+**Problem:** Type alias not resolving
+
+**Debug checklist:**
+1. Check `TypeAliasSymbol.TypeAnnotation` or `FunctionType` is set
+2. Verify `TypeResolver` is unwrapping the alias
+3. Ensure alias is in symbol table with `SymbolKind.TypeAlias`
 
 ---
 
@@ -638,7 +913,13 @@ Set breakpoints at these locations when investigating symbol issues:
 3. **Type Assignment:**
    ```csharp
    // TypeResolver.cs
-   symbol = symbol with { Type = resolvedType };  // ← BREAKPOINT HERE
+   symbol.Type = resolvedType;  // ← BREAKPOINT HERE (for VariableSymbol)
+   ```
+
+4. **Constructor Registration:**
+   ```csharp
+   // NameResolver.cs (or wherever constructors are added)
+   typeSymbol.Constructors.Add(constructorSymbol);  // ← BREAKPOINT HERE
    ```
 
 ---
@@ -653,12 +934,35 @@ public static void DumpSymbolTable(SymbolTable table)
     foreach (var symbol in table.AllSymbols())
     {
         Console.WriteLine($"{symbol.Kind} '{symbol.Name}' at {symbol.DeclarationLine}");
-        
+
         if (symbol is TypeSymbol type)
         {
             Console.WriteLine($"  Fields: {type.Fields.Count}");
             Console.WriteLine($"  Methods: {type.Methods.Count}");
+            Console.WriteLine($"  Constructors: {type.Constructors.Count}");
             Console.WriteLine($"  Operators: {string.Join(", ", type.OperatorMethods.Keys)}");
+            Console.WriteLine($"  Protocols: {string.Join(", ", type.ProtocolMethods.Keys)}");
+            Console.WriteLine($"  Generic: {type.IsGeneric} ({type.TypeParameters.Count} params)");
+        }
+
+        if (symbol is FunctionSymbol func)
+        {
+            Console.WriteLine($"  Generic: {func.IsGeneric} ({func.TypeParameters.Count} params)");
+        }
+
+        if (symbol is ModuleSymbol module)
+        {
+            Console.WriteLine($"  Exports: {string.Join(", ", module.Exports.Keys)}");
+        }
+
+        if (symbol is TypeAliasSymbol alias)
+        {
+            Console.WriteLine($"  Aliasing: {alias.TypeAnnotation?.ToString() ?? alias.FunctionType?.ToString()}");
+        }
+
+        if (symbol.IsReExport)
+        {
+            Console.WriteLine($"  Re-exported from: {symbol.OriginalModule}");
         }
     }
 }
@@ -674,6 +978,7 @@ public static void DumpSymbolTable(SymbolTable table)
 - Adding a new language feature that introduces new symbol types
 - Adding metadata needed by multiple semantic passes
 - Extending .NET interop capabilities
+- Supporting new type system features (e.g., type aliases, type parameters)
 
 ❌ **DON'T** modify for:
 - Logic or validation (put in separate semantic components)
@@ -693,10 +998,10 @@ public record MySymbol : Symbol
 {
     // Core properties
     public SemanticType Type { get; init; } = SemanticType.Unknown;
-    
+
     // Feature-specific properties
     public bool MyFeatureFlag { get; init; }
-    
+
     // .NET interop (if applicable)
     public SomeClrType? ClrReference { get; init; }
 }
@@ -726,7 +1031,7 @@ public record MySymbol : Symbol
 public record FunctionSymbol : Symbol
 {
     // Existing properties...
-    
+
     /// <summary>
     /// Indicates if this function is async (future feature for async/await)
     /// </summary>
@@ -768,10 +1073,10 @@ public void TestNewSymbolFeature()
         def my_function(x: int) -> str:
             return str(x)
     ";
-    
+
     var module = CompileToSemanticModel(source);
     var funcSymbol = module.GetSymbol<FunctionSymbol>("my_function");
-    
+
     Assert.Equal(SemanticType.Str, funcSymbol.ReturnType);
     // Assert your new property
 }
@@ -797,7 +1102,7 @@ public record FunctionSymbol : Symbol
 // ❌ PROBLEMATIC
 public record TypeSymbol : Symbol
 {
-    public TypeSymbol? BaseType { get; init; }  // Can't build cirular chains with init!
+    public TypeSymbol? BaseType { get; init; }  // Can't build circular chains with init!
 }
 
 // ✅ ACCEPTABLE (already implemented)
@@ -812,13 +1117,34 @@ public record TypeSymbol : Symbol
 // ❌ BAD - Creates tight coupling
 public record FunctionSymbol : Symbol
 {
-    public FunctionDef AstNode { get; init; }  // Don't store AST!
+    public FunctionDef AstNode { get; init; }  // Don't store entire AST!
 }
 
-// ✅ GOOD - Use location info instead
+// ✅ GOOD - Use location info or specific AST fragments
 public record FunctionSymbol : Symbol
 {
     public int? DeclarationLine { get; init; }  // Just line/col is enough
+}
+
+// ✅ ACCEPTABLE - For specific AST fragments needed by semantic analysis
+public record ParameterSymbol
+{
+    public Expression? DefaultValue { get; init; }  // OK: needed for codegen
+}
+```
+
+**Pitfall 4: Using strings instead of typed references**
+```csharp
+// ❌ BAD
+public record TypeSymbol : Symbol
+{
+    public List<string> TypeParameters { get; init; }  // Just names, no metadata
+}
+
+// ✅ GOOD
+public record TypeSymbol : Symbol
+{
+    public List<TypeParameterDef> TypeParameters { get; init; }  // Rich AST nodes
 }
 ```
 
@@ -848,13 +1174,18 @@ If you need to deprecate a symbol property:
 
 | File | Purpose | Relationship |
 |------|---------|--------------|
-| `SymbolTable.cs` | Stores symbols, scoped lookup | Uses `Symbol` as data |
-| `Scope.cs` | Manages lexical scopes | Contains `Symbol` instances |
-| `SemanticType.cs` | Type representation | Stored in `Symbol.Type` |
-| `NameResolver.cs` | AST → Symbol conversion | Creates `Symbol` instances |
-| `TypeResolver.cs` | Resolves types | Populates `Symbol.Type` |
-| `TypeChecker.cs` | Validates semantics | Reads `Symbol` metadata |
-| `SemanticInfo.cs` | AST ↔ Symbol mapping | Maps `Node` → `Symbol` |
+| [`SymbolTable.md`](SymbolTable.md) | Stores symbols, scoped lookup | Uses `Symbol` as data |
+| [`Scope.md`](Scope.md) | Manages lexical scopes | Contains `Symbol` instances |
+| [`SemanticType.md`](SemanticType.md) | Type representation | Stored in `Symbol.Type` |
+| [`NameResolver.md`](NameResolver.md) | AST → Symbol conversion | Creates `Symbol` instances |
+| [`TypeResolver.md`](TypeResolver.md) | Resolves types | Populates `Symbol.Type` |
+| [`TypeChecker.md`](TypeChecker.md) | Validates semantics | Reads `Symbol` metadata |
+| [`SemanticInfo.md`](SemanticInfo.md) | AST ↔ Symbol mapping | Maps `Node` → `Symbol` |
+
+**Code Generation:**
+| File | Purpose |
+|------|---------|
+| [`../CodeGen/RoslynEmitter.md`](../CodeGen/RoslynEmitter.md) | Reads symbols to generate C# |
 
 ---
 
@@ -871,6 +1202,8 @@ Class/struct/interface        TypeSymbol
 Module (.spy file)            ModuleSymbol
 Function parameter            ParameterSymbol
 Property (future)             PropertySymbol
+Type alias                    TypeAliasSymbol
+Generic type parameter        TypeParameterSymbol
 ```
 
 ### Property Quick Lookup
@@ -883,10 +1216,14 @@ Where was it declared?             symbol.DeclarationLine/Column
 What type is it?                   symbol.Type (Variable/Parameter)
 What does it return?               funcSymbol.ReturnType
 What are its parameters?           funcSymbol.Parameters
-Is it generic?                     typeSymbol.IsGeneric
+Is it generic?                     typeSymbol.IsGeneric / funcSymbol.IsGeneric
+How many type parameters?          typeSymbol.TypeParameters.Count
+What constructors does it have?    typeSymbol.Constructors
 What operators does it support?    typeSymbol.OperatorMethods
 What protocols does it implement?  typeSymbol.ProtocolMethods
 What .NET type is it?              typeSymbol.ClrType
+Is it re-exported?                 symbol.IsReExport
+What does the alias represent?     aliasSymbol.TypeAnnotation
 ```
 
 ---
@@ -896,17 +1233,44 @@ What .NET type is it?              typeSymbol.ClrType
 `Symbol.cs` is the **data backbone** of Sharpy's semantic analysis. It defines immutable, strongly-typed records that represent every named entity in a Sharpy program. Key takeaways:
 
 1. **Pure data structures** - No logic, just properties
-2. **Immutable by design** - Uses C# records with `init`
+2. **Immutable by design** - Uses C# records with `init` (with selective exceptions)
 3. **.NET interop ready** - `ClrType` and `ClrMethod` bridge to .NET
 4. **Python semantics** - Operator/protocol methods via dunders
 5. **Multi-pass friendly** - Designed for incremental analysis
+6. **Generics support** - Type parameters for both types and functions
+7. **Type aliases** - Compile-time type definitions
+8. **Re-export tracking** - Supports module import/export system
+9. **Constructor overloading** - Separate tracking for `__init__` methods
 
 When working with semantic analysis, you'll constantly create, read, and pass around these symbols. Understanding this file is essential to understanding how Sharpy's compiler thinks about code structure and types.
 
 ---
 
+## 12. Cross-References
+
+### Related Documentation Files
+
+This file is closely related to:
+- [`SymbolTable.md`](SymbolTable.md) - How symbols are stored and looked up
+- [`SemanticType.md`](SemanticType.md) - The type system used by symbols
+- [`NameResolver.md`](NameResolver.md) - How symbols are created from AST
+- [`TypeResolver.md`](TypeResolver.md) - How symbol types are resolved
+- [`Scope.md`](Scope.md) - How symbols are organized in scopes
+
+### AST Dependencies
+
+Symbol.cs depends on these AST types from `Parser.Ast`:
+- `Expression` - For default parameter values
+- `TypeAnnotation` - For type alias definitions
+- `TypeParameterDef` - For generic type parameters
+- `FunctionType` - For callable type aliases
+
+See the Parser documentation for details on these AST node types.
+
+---
+
 **Next Steps:**
-- Read `SymbolTable.cs` to see how symbols are stored and looked up
-- Read `NameResolver.cs` to see how symbols are created from AST
-- Read `TypeChecker.cs` to see how symbols are validated
-- Read `RoslynEmitter.cs` to see how symbols drive code generation
+- Read [`SymbolTable.md`](SymbolTable.md) to see how symbols are stored and looked up
+- Read [`NameResolver.md`](NameResolver.md) to see how symbols are created from AST
+- Read [`TypeChecker.md`](TypeChecker.md) to see how symbols are validated
+- Read [`../CodeGen/RoslynEmitter.md`](../CodeGen/RoslynEmitter.md) to see how symbols drive code generation

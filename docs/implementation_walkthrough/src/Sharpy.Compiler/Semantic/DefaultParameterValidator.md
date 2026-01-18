@@ -4,23 +4,19 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-The `DefaultParameterValidator` is a focused semantic analysis component that validates default parameter values in function definitions. Its role is to catch common programming mistakes that stem from Python's infamous "mutable default argument" footgun and to ensure type safety when using `None` as a default value.
+The `DefaultParameterValidator` is a semantic analysis component responsible for validating default parameter values in function definitions. It enforces Python-like rules about default parameters while integrating with C#'s type system, ensuring that:
 
-**Primary Responsibilities:**
-- **Mutable Default Detection**: Prevents dangerous patterns like `def foo(items: list = [])` where the mutable default is shared across all calls
-- **Compile-Time Constant Enforcement**: Ensures default values can be evaluated at compile time, not runtime
-- **Nullable Type Checking**: Validates that `None` is only used as a default for parameters with nullable types
+1. **Default values are compile-time constants** (no runtime expressions)
+2. **Mutable defaults are forbidden** (prevents the classic Python pitfall of shared mutable state)
+3. **`None` defaults match nullable types** (type safety for null values)
 
-**Where It Fits:**
-In the compiler pipeline, this validator runs during semantic analysis, typically after type resolution:
-```
-Lexer → Parser → NameResolver → TypeResolver → DefaultParameterValidator → TypeChecker → RoslynEmitter
-```
+This validator runs during the semantic analysis phase, after the AST has been constructed but before code generation. It's a focused, single-responsibility component that catches common programming errors early.
 
-**Why This Matters:**
-In Python, this code creates a subtle bug:
+**Pipeline Position**: Parser (AST) → **Semantic Analysis** (Name Resolution → Type Resolution → **Default Parameter Validation**) → CodeGen (RoslynEmitter)
+
+**Why This Matters**: In Python, this code creates a subtle bug:
 ```python
 def append_to(element, to=[]):  # BUG: mutable default!
     to.append(element)
@@ -34,7 +30,7 @@ Sharpy catches this at compile time rather than letting it become a runtime surp
 
 ---
 
-## 2. Class Structure
+## Class/Type Structure
 
 ### Main Class: `DefaultParameterValidator`
 
@@ -50,19 +46,44 @@ public class DefaultParameterValidator
 }
 ```
 
-**Dependencies:**
-- `_symbolTable`: Access to symbol information (currently unused but available for future enhancements like const variable lookup)
-- `_typeResolver`: Used to resolve type annotations when checking `None` defaults against nullable types
-- `_logger`: For debug/error output during validation
-- `_errors`: Accumulated validation errors exposed via the `Errors` property
+**Dependencies**:
+- `SymbolTable`: Provides symbol lookup for checking const references and enum types
+- `TypeResolver`: Resolves type annotations to check nullable types
+- `ICompilerLogger`: Optional logging for diagnostic output
+- `_errors`: Accumulates validation errors for later reporting
 
-**Design Note:** The validator follows the error-accumulation pattern common in Sharpy's semantic analysis. Errors are collected in a list rather than thrown immediately, allowing the validator to report multiple issues in a single pass.
+**Design Pattern**: This class follows the **Validator pattern** - it validates AST nodes and accumulates errors without throwing exceptions, allowing the compiler to continue and report multiple errors at once.
 
 ---
 
-## 3. Key Methods
+## Key Functions/Methods
 
-### 3.1 `ValidateFunctionDefaults` - Entry Point
+### 1. Constructor
+
+```csharp
+public DefaultParameterValidator(
+    SymbolTable symbolTable,
+    TypeResolver typeResolver,
+    ICompilerLogger? logger = null)
+{
+    _symbolTable = symbolTable;
+    _typeResolver = typeResolver;
+    _logger = logger ?? NullLogger.Instance;
+}
+```
+
+**Purpose**: Initializes the validator with required dependencies.
+
+**Parameters**:
+- `symbolTable`: Needed to look up const references and enum types (lines 197-220)
+- `typeResolver`: Needed to check if parameter types are nullable (line 76)
+- `logger`: Optional logger (defaults to `NullLogger.Instance` if null)
+
+**Design Note**: The nullable logger parameter with a default provides flexibility - tests can omit it, while production code can supply one.
+
+---
+
+### 2. `ValidateFunctionDefaults(FunctionDef functionDef)` - Entry Point
 
 ```csharp
 public void ValidateFunctionDefaults(FunctionDef functionDef)
@@ -77,93 +98,143 @@ public void ValidateFunctionDefaults(FunctionDef functionDef)
 }
 ```
 
-**Purpose:** Main entry point that validates all default parameter values in a function definition.
+**Purpose**: Entry point for validating all default parameters in a function.
 
-**Parameters:**
-- `functionDef`: The AST node representing the function to validate
+**How It Works**:
+- Iterates through all parameters in the function definition
+- Delegates validation of each default value to `ValidateDefaultValue`
+- Passes the function name for better error messages
 
-**What It Does:**
-1. Iterates through all parameters in the function definition
-2. For each parameter with a default value, delegates to `ValidateDefaultValue`
+**Usage in Pipeline**: Called by higher-level semantic analyzers (e.g., `SemanticAnalyzer`) when processing function definitions:
 
-**Usage Context:**
-This method is called by the semantic analyzer when processing function definitions:
 ```csharp
-// In the semantic analyzer
 var validator = new DefaultParameterValidator(symbolTable, typeResolver, logger);
 validator.ValidateFunctionDefaults(functionDef);
 if (validator.Errors.Any())
 {
-    // Handle validation errors
+    // Report errors to user
 }
 ```
 
 ---
 
-### 3.2 `ValidateDefaultValue` - Core Validation Logic
+### 3. `ValidateDefaultValue(Parameter param, string functionName)` - Core Validation Logic
 
 ```csharp
 private void ValidateDefaultValue(Parameter param, string functionName)
 ```
 
-**Purpose:** Performs the three-stage validation on a single parameter's default value.
+**Purpose**: Validates a single parameter's default value through three key checks.
 
-**Parameters:**
-- `param`: The parameter with a default value to validate
-- `functionName`: Used for error message context
+**Validation Steps** (in order of execution):
 
-**Validation Stages (in order):**
+#### Step 1: Check for Mutable Defaults (Lines 53-61)
+```csharp
+if (IsMutableDefault(defaultValue))
+{
+    AddError(
+        $"Mutable default value is not allowed for parameter '{param.Name}' in function '{functionName}'. " +
+        "Use None as default and initialize in the function body instead.",
+        param.LineStart,
+        param.ColumnStart);
+    return;  // Early exit
+}
+```
 
-1. **Mutable Default Check** (highest priority)
-   ```csharp
-   if (IsMutableDefault(defaultValue))
-   {
-       AddError("Mutable default value is not allowed...");
-       return;  // Early exit - no further checks needed
-   }
-   ```
-   Mutable defaults are rejected immediately because they represent a fundamental design problem, not a type error.
+**Why This Matters**: In Python, mutable defaults are shared across function calls:
+```python
+# Bad - shared mutable default
+def add_item(item, items=[]):  # [] is created once
+    items.append(item)
+    return items
 
-2. **Compile-Time Constant Check**
-   ```csharp
-   if (!IsCompileTimeConstant(defaultValue))
-   {
-       AddError("Default value must be a compile-time constant expression");
-       return;
-   }
-   ```
-   This ensures defaults can be evaluated during compilation.
+# Every call shares the same list!
+add_item(1)  # [1]
+add_item(2)  # [1, 2] - Oops!
+```
 
-3. **Nullable Type Check for None**
-   ```csharp
-   if (defaultValue is NoneLiteral)
-   {
-       var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
-       if (paramType is not NullableType && paramType is not UnknownType)
-       {
-           AddError("Cannot use 'None' as default value for non-nullable parameter...");
-       }
-   }
-   ```
-   This ensures type safety when using `None` as a default.
+Sharpy prevents this entirely by forbidding `[]`, `{}`, `set()`, etc. as defaults.
 
-**Early Exit Pattern:**
-Notice how the method uses early returns after the first two checks. This is intentional:
-- A mutable default is fundamentally wrong, regardless of whether it's also a constant
-- A non-constant default is wrong, regardless of its nullability
+**Early Exit Pattern**: If a mutable default is detected, the method returns immediately. No need to check if it's also a non-constant - it's fundamentally wrong.
+
+#### Step 2: Check for Compile-Time Constants (Lines 64-71)
+```csharp
+if (!IsCompileTimeConstant(defaultValue))
+{
+    AddError(
+        $"Default value for parameter '{param.Name}' in function '{functionName}' must be a compile-time constant expression",
+        param.LineStart,
+        param.ColumnStart);
+    return;  // Early exit
+}
+```
+
+**Why This Matters**: Default values must be known at compile time for C# code generation. This excludes:
+- Function calls (except const references)
+- Variable references (except const variables)
+- Runtime computations
+
+**Example Valid Constants**:
+```python
+def foo(x: int = 42):              # ✓ Literal
+def bar(y: int = 10 * 1024):       # ✓ Arithmetic on constants
+def baz(z: tuple = (1, 2, 3)):     # ✓ Tuple of constants
+```
+
+**Example Invalid Expressions**:
+```python
+x = 42
+def foo(y: int = x):               # ✗ Variable reference
+def bar(z: int = len("hello")):    # ✗ Function call
+```
+
+#### Step 3: Validate `None` for Nullable Types (Lines 74-87)
+```csharp
+if (defaultValue is NoneLiteral)
+{
+    var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+
+    if (paramType is not NullableType && paramType is not UnknownType)
+    {
+        AddError(
+            $"Cannot use 'None' as default value for non-nullable parameter '{param.Name}' of type '{paramType.GetDisplayName()}' in function '{functionName}'. " +
+            $"Use '{paramType.GetDisplayName()}?' to make the parameter nullable.",
+            param.LineStart,
+            param.ColumnStart);
+    }
+}
+```
+
+**Why This Matters**: Prevents null assignment to non-nullable types:
+```python
+# Bad - None for non-nullable type
+def process(value: int = None):  # ✗ Error!
+    pass
+
+# Good - nullable type
+def process(value: int? = None):  # ✓ OK
+    pass
+```
+
+**Design Note**: The check includes `UnknownType` to avoid spurious errors during type inference. If the type hasn't been resolved yet, we don't report an error - the type checker will handle it later.
+
+**Error Message Quality**: Note how the error message:
+1. Identifies the specific parameter (`'value'`)
+2. Shows the actual type (`'int'`)
+3. Provides the exact fix needed (`'int?'`)
 
 ---
 
-### 3.3 `IsMutableDefault` - Mutable Collection Detection
+### 4. `IsMutableDefault(Expression expr)` - Mutable Detection
 
 ```csharp
 private static bool IsMutableDefault(Expression expr)
 {
     return expr switch
     {
-        ListLiteral => true,
-        DictLiteral => true,
-        SetLiteral => true,
+        ListLiteral => true,              // [], [1, 2, 3]
+        DictLiteral => true,              // {}, {"key": "value"}
+        SetLiteral => true,               // {1, 2, 3}
         FunctionCall call when call.Function is Identifier id && id.Name == "set" => true,
         FunctionCall call when call.Function is Identifier id && id.Name == "list" => true,
         FunctionCall call when call.Function is Identifier id && id.Name == "dict" => true,
@@ -173,118 +244,245 @@ private static bool IsMutableDefault(Expression expr)
 }
 ```
 
-**Purpose:** Identifies expressions that create mutable objects.
+**Purpose**: Detects expressions that create mutable collections.
 
-**Detected Patterns:**
-| Pattern | AST Type | Example |
-|---------|----------|---------|
-| List literal | `ListLiteral` | `[]`, `[1, 2, 3]` |
-| Dict literal | `DictLiteral` | `{}`, `{"a": 1}` |
-| Set literal | `SetLiteral` | `{1, 2, 3}` |
-| Set constructor | `FunctionCall` | `set()`, `set([1,2])` |
-| List constructor | `FunctionCall` | `list()`, `list("abc")` |
-| Dict constructor | `FunctionCall` | `dict()`, `dict(a=1)` |
-| Parenthesized | `Parenthesized` | `([])` (unwraps) |
+**Detected Patterns**:
 
-**Key Implementation Detail:**
-The function call detection uses pattern matching to identify specific built-in constructors:
-```csharp
-FunctionCall call when call.Function is Identifier id && id.Name == "set" => true
-```
+| Pattern | AST Type | Example | Why Mutable |
+|---------|----------|---------|-------------|
+| List literal | `ListLiteral` | `[]`, `[1, 2, 3]` | Lists are mutable |
+| Dict literal | `DictLiteral` | `{}`, `{"a": 1}` | Dicts are mutable |
+| Set literal | `SetLiteral` | `{1, 2, 3}` | Sets are mutable |
+| `set()` call | `FunctionCall` | `set()`, `set([1,2])` | Creates mutable set |
+| `list()` call | `FunctionCall` | `list()`, `list("abc")` | Creates mutable list |
+| `dict()` call | `FunctionCall` | `dict()`, `dict(a=1)` | Creates mutable dict |
+| Parenthesized | `Parenthesized` | `([])` | Recursively unwraps |
 
-This only catches direct calls like `set()`, not aliased calls like:
-```python
-my_set = set
-def foo(s=my_set()):  # Not caught by IsMutableDefault
-    pass
-```
+**Key Implementation Details**:
 
-However, this would be caught by `IsCompileTimeConstant` since function calls are not constants.
+1. **Constructor Detection** (Lines 109-115): Uses pattern matching to identify specific built-in constructors:
+   ```csharp
+   FunctionCall call when call.Function is Identifier id && id.Name == "set" => true
+   ```
+   This pattern checks:
+   - Is it a function call?
+   - Is the function an identifier (not `obj.method()`)?
+   - Is the identifier name `"set"`?
 
-**Design Decision:** The method is `static` because it performs pure syntactic analysis on the AST with no dependency on instance state.
+2. **Parenthesized Unwrapping** (Line 118): Recursively checks the inner expression:
+   ```python
+   def foo(x = ([])):  # Still caught - parentheses don't change mutability
+   ```
+
+3. **Aliasing Limitation**: This detection only catches direct calls:
+   ```python
+   my_list = list
+   def foo(x = my_list()):  # NOT caught by IsMutableDefault
+       pass
+   ```
+   However, this would still be caught by `IsCompileTimeConstant` since function calls aren't constants.
+
+**Why It's Static**: This is a pure function with no dependencies on instance state, so it's marked `static` for clarity and potential performance benefits.
+
+**Pattern Matching**: Uses C# 9+ switch expressions with pattern matching for clean, exhaustive case handling.
 
 ---
 
-### 3.4 `IsCompileTimeConstant` - Constant Expression Analysis
+### 5. `IsCompileTimeConstant(Expression expr)` - Constant Detection
 
 ```csharp
-private static bool IsCompileTimeConstant(Expression expr)
+private bool IsCompileTimeConstant(Expression expr)
 {
     return expr switch
     {
-        // Primitive literals
         IntegerLiteral => true,
         FloatLiteral => true,
         StringLiteral => true,
         BooleanLiteral => true,
         NoneLiteral => true,
-
-        // Composite constants
         TupleLiteral tuple => tuple.Elements.All(IsCompileTimeConstant),
-
-        // Operations on constants
         UnaryOp unary => IsCompileTimeConstant(unary.Operand),
-        BinaryOp binary => IsCompileTimeConstant(binary.Left) &&
-                          IsCompileTimeConstant(binary.Right),
+        BinaryOp binary => IsCompileTimeConstant(binary.Left) && IsCompileTimeConstant(binary.Right),
         Parenthesized paren => IsCompileTimeConstant(paren.Expression),
-        ConditionalExpression cond => IsCompileTimeConstant(cond.Test) &&
-                                      IsCompileTimeConstant(cond.ThenValue) &&
-                                      IsCompileTimeConstant(cond.ElseValue),
-
-        // Non-constants
-        Identifier => false,          // Variables
-        FunctionCall => false,        // Runtime evaluation
-        MemberAccess => false,        // Attribute lookup
-        IndexAccess => false,         // Subscript operation
-        ListLiteral => false,         // Mutable
-        DictLiteral => false,         // Mutable
-        SetLiteral => false,          // Mutable
-        ListComprehension => false,   // Runtime iteration
-        SetComprehension => false,    // Runtime iteration
-        DictComprehension => false,   // Runtime iteration
-        LambdaExpression => false,    // Creates new function object
-
-        _ => false  // Conservative default
+        ConditionalExpression cond => /* all parts constant */,
+        Identifier id => IsConstReference(id),
+        MemberAccess memberAccess => IsEnumMemberAccess(memberAccess),
+        // ... many explicitly forbidden cases
+        _ => false
     };
 }
 ```
 
-**Purpose:** Determines whether an expression can be evaluated at compile time.
+**Purpose**: Determines if an expression can be evaluated at compile time.
 
-**What Qualifies as Compile-Time Constants:**
+**Allowed Compile-Time Constants**:
 
-| Category | Examples | Why |
-|----------|----------|-----|
-| Primitive literals | `42`, `3.14`, `"hello"`, `True`, `None` | Immutable, known at compile time |
-| Tuple of constants | `(1, 2, 3)`, `("a", "b")` | Tuples are immutable in Python |
-| Unary on constant | `-1`, `+5`, `not True` | Operators on constants yield constants |
-| Binary on constants | `1 + 2`, `"a" + "b"` | Operators on constants yield constants |
-| Ternary on constants | `1 if True else 2` | All parts are constant |
+1. **Primitive Literals** (Lines 139-143):
+   ```python
+   def foo(x: int = 42):          # ✓ Integer literal
+   def bar(y: float = 3.14):      # ✓ Float literal
+   def baz(s: str = "hello"):     # ✓ String literal
+   def qux(b: bool = True):       # ✓ Boolean literal
+   def quux(n: int? = None):      # ✓ None literal
+   ```
 
-**What Does NOT Qualify:**
+2. **Tuples of Constants** (Line 146):
+   ```python
+   def foo(point: tuple[int, int] = (0, 0)):  # ✓ Tuple of constants
+   def bar(nested: tuple = ((1, 2), (3, 4))): # ✓ Nested tuples
+   ```
+   Uses `.All()` to recursively validate all elements.
 
-| Category | Examples | Why |
-|----------|----------|-----|
-| Identifiers | `x`, `MY_CONST` | Requires symbol table lookup |
-| Function calls | `len([])`, `int("42")` | Runtime evaluation needed |
-| Member access | `obj.attr`, `math.pi` | Requires runtime lookup |
-| Index access | `arr[0]`, `d["key"]` | Runtime subscript operation |
-| Mutable collections | `[]`, `{}`, `{1,2}` | Creates new mutable object each time |
-| Comprehensions | `[x for x in y]` | Requires runtime iteration |
-| Lambdas | `lambda x: x + 1` | Creates new function object |
+3. **Arithmetic on Constants** (Lines 149-152):
+   ```python
+   def foo(size: int = 10 * 1024):      # ✓ Binary operation
+   def bar(value: int = -1):            # ✓ Unary negation
+   def baz(positive: int = +42):        # ✓ Unary plus
+   def qux(inverted: bool = not True):  # ✓ Logical negation
+   ```
 
-**Code Comment on Identifiers:**
-```csharp
-// Identifiers are NOT compile-time constants (they reference variables)
-// Exception could be made for const variables, but that requires symbol table lookup
-Identifier => false,
-```
+4. **Parenthesized Expressions** (Line 155):
+   ```python
+   def foo(x: int = (42)):              # ✓ Just removes parentheses
+   def bar(y: int = ((1 + 2))):         # ✓ Nested parentheses
+   ```
 
-This is a conservative choice. A future enhancement could use the `_symbolTable` to look up `const` declarations and allow those as compile-time constants.
+5. **Conditional Expressions** (Lines 158-161):
+   ```python
+   def foo(val: int = 5 if True else 10):  # ✓ All parts are constant
+   ```
+   All three parts (test, then-value, else-value) must be constants.
+
+6. **Const References** (Line 164):
+   ```python
+   const MAX_SIZE = 100
+   def foo(size: int = MAX_SIZE):  # ✓ References const declaration
+   ```
+   Delegates to `IsConstReference()` for symbol table lookup.
+
+7. **Enum Members** (Line 171):
+   ```python
+   enum HttpMethod:
+       GET = 1
+       POST = 2
+
+   def request(method: HttpMethod = HttpMethod.GET):  # ✓ Enum member
+   ```
+   Delegates to `IsEnumMemberAccess()` for enum detection.
+
+**Explicitly Forbidden** (with rationale):
+
+| Expression Type | Lines | Why Forbidden | Example |
+|----------------|-------|---------------|---------|
+| Function calls | 168 | Runtime evaluation | `len([])`, `int("42")` |
+| Index access | 174 | Runtime subscript | `arr[0]`, `d["key"]` |
+| Mutable collections | 177-179 | Creates new object | `[]`, `{}`, `{1,2}` |
+| Comprehensions | 182-184 | Runtime iteration | `[x for x in y]` |
+| Lambdas | 187 | Creates function object | `lambda x: x + 1` |
+
+**Default Case** (Line 190): Returns `false` for unknown expression types - conservative approach ensures new AST node types are explicitly considered.
+
+**Recursive Validation**: Several cases use recursion to validate nested structures:
+- Tuples: Check all elements
+- Unary ops: Check operand
+- Binary ops: Check both operands
+- Parenthesized: Check inner expression
+- Conditionals: Check all three parts
 
 ---
 
-### 3.5 `AddError` - Error Recording
+### 6. `IsConstReference(Identifier id)` - Symbol Table Lookup
+
+```csharp
+private bool IsConstReference(Identifier id)
+{
+    var symbol = _symbolTable.Lookup(id.Name);
+    return symbol is VariableSymbol { IsConstant: true };
+}
+```
+
+**Purpose**: Checks if an identifier references a const declaration.
+
+**How It Works**:
+1. Looks up the identifier in the symbol table
+2. Uses C# pattern matching to check if it's a `VariableSymbol` with `IsConstant = true`
+
+**Example**:
+```python
+const DEFAULT_PORT = 8080
+def connect(port: int = DEFAULT_PORT):  # ✓ Valid - const reference
+    pass
+
+regular_var = 9000
+def connect2(port: int = regular_var):  # ✗ Error - not const
+    pass
+```
+
+**Symbol Table Integration**: This is where the validator depends on the `SymbolTable` being properly populated during earlier semantic analysis phases. The symbol table must have:
+- Registered all const declarations
+- Marked them with `IsConstant = true`
+
+**Null Safety**: If the symbol isn't found, `Lookup` returns `null`, and the pattern match fails, returning `false`.
+
+---
+
+### 7. `IsEnumMemberAccess(MemberAccess memberAccess)` - Enum Detection
+
+```csharp
+private bool IsEnumMemberAccess(MemberAccess memberAccess)
+{
+    // The object must be an identifier (the enum type name)
+    if (memberAccess.Object is not Identifier typeId)
+    {
+        return false;
+    }
+
+    // Look up the type in the symbol table
+    var symbol = _symbolTable.Lookup(typeId.Name);
+
+    // Check if it's an enum type
+    return symbol is TypeSymbol { TypeKind: TypeKind.Enum };
+}
+```
+
+**Purpose**: Validates that a member access like `Color.RED` refers to an enum member.
+
+**How It Works**:
+
+1. **Structural Check** (Lines 210-213): Verifies the object part is an identifier
+   ```python
+   Color.RED        # ✓ Object is identifier 'Color'
+   obj.method.RED   # ✗ Object is MemberAccess, not Identifier
+   ```
+
+2. **Symbol Lookup** (Line 216): Looks up the identifier in the symbol table
+   ```python
+   # Symbol table should contain:
+   # "Color" -> TypeSymbol { TypeKind = TypeKind.Enum }
+   ```
+
+3. **Type Check** (Line 219): Verifies it's a `TypeSymbol` with `TypeKind.Enum`
+
+**Why This Pattern**: The validator doesn't check if the member name (e.g., `RED`) is valid - that's the type checker's job. This validator only ensures the pattern `EnumType.Member` is structurally correct for compile-time constants.
+
+**Example**:
+```python
+enum Color:
+    RED = 1
+    GREEN = 2
+
+def draw(color: Color = Color.RED):     # ✓ Valid enum member
+    pass
+
+def bad(color: Color = Color.BLUE):     # TypeChecker will catch this
+    pass                                 # (BLUE doesn't exist)
+```
+
+**Scope Limitation**: This only handles simple enum member access. Qualified names like `MyModule.Color.RED` would require additional logic to resolve the module path.
+
+---
+
+### 8. `AddError(string message, int? line, int? column)` - Error Reporting
 
 ```csharp
 private void AddError(string message, int? line = null, int? column = null)
@@ -295,368 +493,541 @@ private void AddError(string message, int? line = null, int? column = null)
 }
 ```
 
-**Purpose:** Helper method to record validation errors with source location information.
+**Purpose**: Centralizes error creation and logging.
 
-**Parameters:**
-- `message`: Human-readable error description
-- `line`: Optional line number from AST node
-- `column`: Optional column number from AST node
+**Dual Reporting**:
+1. **Adds to `_errors` list**: Allows batch retrieval via the `Errors` property
+2. **Logs immediately via `_logger`**: Provides real-time diagnostics during compilation
 
-**Dual Reporting:**
-The method both:
-1. Adds the error to the `_errors` list for programmatic access
-2. Logs it via `_logger` for immediate output/debugging
+**Nullable Parameters**: Line/column are optional because some errors may not have precise location info (though in practice, parameter nodes always have location data).
+
+**Null Coalescing** (Line 226): `line ?? 0` ensures the logger receives a valid line number even if null is passed.
 
 ---
 
-## 4. Dependencies
+## Dependencies
 
-### Internal Dependencies
+### Internal Sharpy Dependencies
 
-**AST Nodes** (`Sharpy.Compiler.Parser.Ast`):
-- `FunctionDef`: Function definition containing parameters
-- `Parameter`: Individual function parameter with optional default value
-- Expression types: `IntegerLiteral`, `FloatLiteral`, `StringLiteral`, `BooleanLiteral`, `NoneLiteral`, `TupleLiteral`, `ListLiteral`, `DictLiteral`, `SetLiteral`, `UnaryOp`, `BinaryOp`, `Parenthesized`, `ConditionalExpression`, `Identifier`, `FunctionCall`, `MemberAccess`, `IndexAccess`, `ListComprehension`, `SetComprehension`, `DictComprehension`, `LambdaExpression`
+1. **`SymbolTable`** (from `Sharpy.Compiler.Semantic`):
+   - Provides `Lookup(string name)` for symbol resolution
+   - Used to check if identifiers are const references (line 199)
+   - Used to validate enum types (line 216)
+   - Must be populated before validation runs
 
-**Semantic Types** (`Sharpy.Compiler.Semantic`):
-- `SymbolTable`: Symbol information storage
-- `TypeResolver`: Resolves type annotations to `SemanticType`
-- `SemanticError`: Error representation
-- `NullableType`: Represents optional/nullable types
-- `UnknownType`: Represents unresolved types
+2. **`TypeResolver`** (from `Sharpy.Compiler.Semantic`):
+   - Provides `ResolveTypeAnnotation(TypeAnnotation)` for type resolution
+   - Used to check if parameter types are nullable (line 76)
+   - Returns `SemanticType` instances like `NullableType`, `UnknownType`
 
-**Logging** (`Sharpy.Compiler.Logging`):
-- `ICompilerLogger`: Logging interface
-- `NullLogger`: No-op logger for when logging isn't needed
+3. **AST Types** (from `Sharpy.Compiler.Parser.Ast`):
+   - `FunctionDef`: Function definition containing parameters
+   - `Parameter`: Individual function parameter with optional default value
+   - Expression hierarchy: `IntegerLiteral`, `FloatLiteral`, `StringLiteral`, `BooleanLiteral`, `NoneLiteral`, `TupleLiteral`, `ListLiteral`, `DictLiteral`, `SetLiteral`, `UnaryOp`, `BinaryOp`, `Parenthesized`, `ConditionalExpression`, `Identifier`, `FunctionCall`, `MemberAccess`, `IndexAccess`, `ListComprehension`, `SetComprehension`, `DictComprehension`, `LambdaExpression`
+
+4. **`ICompilerLogger`** (from `Sharpy.Compiler.Logging`):
+   - Interface for logging diagnostic messages
+   - `NullLogger.Instance` provides a no-op implementation for tests
+
+5. **`SemanticError`** (from `Sharpy.Compiler.Semantic`):
+   - Represents a semantic validation error with location information
+   - Contains message, line, and column
+
+6. **Semantic Types** (from `Sharpy.Compiler.Semantic`):
+   - `NullableType`: Represents optional/nullable types (e.g., `int?`)
+   - `UnknownType`: Represents types not yet resolved during multi-pass analysis
+   - `VariableSymbol`: Symbol table entry for variables (includes `IsConstant` flag)
+   - `TypeSymbol`: Symbol table entry for types (includes `TypeKind` enum)
 
 ### External Dependencies
-- Standard .NET collections (`List<T>`, `IReadOnlyList<T>`)
-- LINQ (`All` extension method)
+- Standard .NET collections: `List<T>`, `IReadOnlyList<T>`
+- LINQ: `All()` extension method for validating tuple elements
 
 ---
 
-## 5. Design Patterns & Decisions
+## Patterns and Design Decisions
 
-### 5.1 Error Accumulation Pattern
+### 1. **Error Accumulation Pattern**
 
-Like other validators in Sharpy, errors are collected rather than thrown:
+The validator collects errors rather than throwing exceptions:
+
 ```csharp
 private readonly List<SemanticError> _errors = new();
 public IReadOnlyList<SemanticError> Errors => _errors;
 ```
 
-**Benefits:**
+**Benefits**:
 - Multiple errors can be reported in a single pass
+- Compiler can continue analyzing other code
+- Better user experience (see all errors, not just the first one)
 - Caller decides how to handle errors
-- Useful for IDE tooling that wants to show all issues at once
 
-### 5.2 Prioritized Validation
-
-The three validation checks run in a specific order with early exits:
-```
-Mutable Default → Compile-Time Constant → Nullable Type
-```
-
-**Why This Order:**
-1. **Mutable defaults are always wrong** - No point checking if `[]` is a constant
-2. **Non-constants are always wrong** - No point checking nullability if it's not allowed anyway
-3. **Nullable checking is conditional** - Only applies to `None` literals
-
-### 5.3 Static Helper Methods
-
-Both `IsMutableDefault` and `IsCompileTimeConstant` are `static`:
+**Usage Pattern**:
 ```csharp
-private static bool IsMutableDefault(Expression expr)
-private static bool IsCompileTimeConstant(Expression expr)
-```
+var validator = new DefaultParameterValidator(symbolTable, typeResolver);
+validator.ValidateFunctionDefaults(functionDef);
 
-**Rationale:**
-- Pure functions that only examine AST structure
-- No instance state needed
-- Can be easily tested in isolation
-- Clearly communicates that no side effects occur
-
-### 5.4 Switch Expression Pattern Matching
-
-The validators use C# switch expressions with pattern matching for concise AST traversal:
-```csharp
-return expr switch
+if (validator.Errors.Any())
 {
-    IntegerLiteral => true,
-    TupleLiteral tuple => tuple.Elements.All(IsCompileTimeConstant),
-    FunctionCall call when call.Function is Identifier id && id.Name == "set" => true,
-    _ => false
-};
-```
-
-**Benefits:**
-- Exhaustive case handling (compiler warns about missing cases)
-- Type narrowing (e.g., `tuple` is already typed as `TupleLiteral`)
-- Guard clauses (`when`) for complex conditions
-- Concise compared to if-else chains
-
-### 5.5 Conservative Defaults
-
-The validators are conservative in what they accept:
-- `Identifier => false` - Even if the identifier refers to a constant
-- `_ => false` - Unknown expression types are rejected
-
-**Philosophy:** It's better to reject valid edge cases than to accept invalid ones. Users can always restructure their code to pass validation.
-
----
-
-## 6. Debugging Tips
-
-### 6.1 Common Issues
-
-**Issue: "Mutable default" error for seemingly valid code**
-- Check if the default is a collection literal, even if empty
-- Look for parenthesized expressions wrapping mutable values: `([])` is still mutable
-- Check for `set()`, `list()`, or `dict()` constructor calls
-
-**Issue: "Not a compile-time constant" error**
-- Verify the default doesn't reference any variables
-- Check for hidden function calls
-- Look for member access (e.g., `enum.Value`)
-- Ensure comprehensions aren't being used
-
-**Issue: "Cannot use None for non-nullable parameter" error**
-- Add `?` to the type annotation: `str?` instead of `str`
-- Or use `Optional[str]` syntax if supported
-
-### 6.2 Testing Strategy
-
-When testing default parameter validation:
-
-1. **Test each mutable type:**
-   ```python
-   def test_list(items: list = []):  # Should error
-   def test_dict(data: dict = {}):   # Should error
-   def test_set(values: set = set()): # Should error
-   ```
-
-2. **Test valid constants:**
-   ```python
-   def test_int(x: int = 42):           # Valid
-   def test_tuple(t: tuple = (1, 2)):   # Valid
-   def test_expr(n: int = 1 + 2):       # Valid
-   def test_unary(n: int = -1):         # Valid
-   ```
-
-3. **Test None with types:**
-   ```python
-   def test_none_ok(x: str? = None):    # Valid
-   def test_none_bad(x: str = None):    # Should error
-   ```
-
-4. **Test edge cases:**
-   ```python
-   def test_nested(t: tuple = ((1, 2), (3, 4))):  # Valid - nested tuples
-   def test_paren(x: int = (42)):                  # Valid - just parenthesized
-   def test_paren_mut(x: list = ([])):             # Should error - parenthesized mutable
-   ```
-
-### 6.3 Debugging Walkthrough
-
-If you encounter unexpected behavior:
-
-1. **Check the AST:**
-   Use the `AstDumper` to see the exact AST structure:
-   ```csharp
-   Console.WriteLine(AstDumper.Dump(param.DefaultValue));
-   ```
-
-2. **Trace method calls:**
-   ```csharp
-   private static bool IsMutableDefault(Expression expr)
-   {
-       Console.WriteLine($"IsMutableDefault checking: {expr.GetType().Name}");
-       var result = expr switch { /* ... */ };
-       Console.WriteLine($"  Result: {result}");
-       return result;
-   }
-   ```
-
-3. **Verify type resolution:**
-   ```csharp
-   var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
-   Console.WriteLine($"Parameter type: {paramType.GetType().Name} - {paramType.GetDisplayName()}");
-   Console.WriteLine($"Is nullable: {paramType is NullableType}");
-   ```
-
----
-
-## 7. Contribution Guidelines
-
-### 7.1 When to Modify This File
-
-**Add New Mutable Type Detection:**
-If Sharpy adds new mutable types (e.g., `deque`, `Counter`), add them to `IsMutableDefault`:
-```csharp
-FunctionCall call when call.Function is Identifier id && id.Name == "deque" => true,
-```
-
-**Add New Constant Expression Types:**
-If new literal types are added to the AST, update `IsCompileTimeConstant`:
-```csharp
-BytesLiteral => true,  // If bytes literals are added
-FrozenSetLiteral frozenSet => frozenSet.Elements.All(IsCompileTimeConstant),  // Immutable set
-```
-
-**Support Const Variable References:**
-To allow references to `const` declarations:
-```csharp
-Identifier id => _symbolTable.TryLookup(id.Name, out var symbol)
-                 && symbol.Kind == SymbolKind.Const,
-```
-Note: This would require making the method non-static and passing the symbol table.
-
-**Add Warning-Level Diagnostics:**
-For patterns that are technically valid but suspicious:
-```csharp
-// Warn about complex constant expressions
-if (expr is BinaryOp binary && IsCompileTimeConstant(expr))
-{
-    _logger.LogWarning("Consider simplifying complex default value expression", ...);
-}
-```
-
-### 7.2 Testing Requirements
-
-All changes **must** include:
-1. **Positive tests**: Valid defaults that should pass
-2. **Negative tests**: Invalid defaults that should error with correct messages
-3. **Boundary tests**: Edge cases at the boundary of validity
-
-Test location: `src/Sharpy.Compiler.Tests/Semantic/DefaultParameterValidatorTests.cs`
-
-### 7.3 Error Message Quality
-
-When adding or modifying error messages:
-
-**Good:**
-```csharp
-AddError(
-    $"Mutable default value is not allowed for parameter '{param.Name}' in function '{functionName}'. " +
-    "Use None as default and initialize in the function body instead.",
-    param.LineStart,
-    param.ColumnStart);
-```
-
-**Why it's good:**
-- Identifies the specific parameter and function
-- Explains the restriction
-- Provides actionable guidance
-
-**Bad:**
-```csharp
-AddError("Invalid default value", null, null);
-```
-
-### 7.4 Maintaining Python Compatibility
-
-Sharpy's default parameter validation is **stricter** than Python because Sharpy catches these issues at compile time. However, the philosophy should be:
-- Reject patterns that would cause bugs in Python
-- Don't reject patterns that are valid and safe in Python
-
-Example: Python allows `def foo(x=1+2)` - this is fine in Sharpy because the expression is constant.
-
-### 7.5 Common Contribution Scenarios
-
-**Scenario 1: Add FrozenSet Support**
-```csharp
-// In IsMutableDefault - frozenset is immutable, so NOT mutable
-FunctionCall call when call.Function is Identifier id && id.Name == "frozenset" => false,
-
-// In IsCompileTimeConstant - but it requires runtime evaluation
-FunctionCall call when call.Function is Identifier id && id.Name == "frozenset" => false,
-// Still false because it's a function call, even if result is immutable
-```
-
-**Scenario 2: Support Module-Level Constants**
-```csharp
-// This would require architecture changes
-public class DefaultParameterValidator
-{
-    // Need to track const declarations
-    private readonly Dictionary<string, object> _constants;
-
-    // IsCompileTimeConstant becomes non-static
-    private bool IsCompileTimeConstant(Expression expr)
+    foreach (var error in validator.Errors)
     {
-        return expr switch
-        {
-            Identifier id when _constants.ContainsKey(id.Name) => true,
-            // ... rest unchanged
-        };
+        Console.WriteLine($"{error.Line}:{error.Column}: {error.Message}");
     }
 }
 ```
 
 ---
 
-## 8. Related Components
+### 2. **Fail-Fast Validation with Early Returns**
 
-### Upstream (Inputs)
-- **Parser**: Produces `FunctionDef` and `Parameter` AST nodes
-- **TypeResolver**: Provides `ResolveTypeAnnotation` for nullable type checking
+Validation checks run in priority order with early exits:
 
-### Downstream (Outputs)
-- **TypeChecker**: May use this validator's results; runs after default validation
-- **RoslynEmitter**: Generates C# code knowing defaults are safe
+```csharp
+private void ValidateDefaultValue(Parameter param, string functionName)
+{
+    if (IsMutableDefault(defaultValue))
+    {
+        AddError(...);
+        return;  // Stop checking this parameter
+    }
 
-### Sibling Validators in Semantic Analysis
-- **ControlFlowValidator**: Validates return paths and unreachable code
-- **ProtocolValidator**: Validates protocol implementations
-- **AccessValidator**: Checks access modifiers and visibility
-- **OperatorValidator**: Validates operator usage
+    if (!IsCompileTimeConstant(defaultValue))
+    {
+        AddError(...);
+        return;  // Stop checking this parameter
+    }
+
+    // Only check None if we got this far
+    if (defaultValue is NoneLiteral) { ... }
+}
+```
+
+**Order of Checks**:
+1. **Mutable defaults** (highest priority) - fundamental design error
+2. **Compile-time constants** - codegen requirement
+3. **Nullable type checking** (lowest priority) - only for None literals
+
+**Why**: Each validation check returns early if it fails. This prevents cascading errors (e.g., a mutable default would also fail the compile-time constant check, but we only report the more specific mutable default error).
 
 ---
 
-## 9. Future Enhancements
+### 3. **Recursive Validation with Pattern Matching**
 
-### 9.1 Const Variable Support
-Allow references to `const` declarations as default values:
+Both `IsMutableDefault` and `IsCompileTimeConstant` use switch expressions for clean, exhaustive case analysis:
+
+```csharp
+private bool IsCompileTimeConstant(Expression expr)
+{
+    return expr switch
+    {
+        IntegerLiteral => true,
+        TupleLiteral tuple => tuple.Elements.All(IsCompileTimeConstant),  // Recursive
+        Parenthesized paren => IsCompileTimeConstant(paren.Expression),   // Recursive
+        // ...
+        _ => false  // Default case
+    };
+}
+```
+
+**Benefits**:
+- Readable and maintainable
+- Compiler warns if a new expression type is added but not handled
+- Natural recursion for nested structures (tuples, parenthesized expressions)
+- Type narrowing (e.g., `tuple` is already typed as `TupleLiteral`)
+
+**Recursive Cases**:
+- `TupleLiteral`: Validates all elements recursively
+- `UnaryOp`: Validates operand
+- `BinaryOp`: Validates both left and right operands
+- `ConditionalExpression`: Validates test, then-value, and else-value
+- `Parenthesized`: Validates inner expression
+
+---
+
+### 4. **Conservative Unknown Handling**
+
+The validator treats unknown types permissively:
+
+```csharp
+if (paramType is not NullableType && paramType is not UnknownType)
+{
+    AddError(...);
+}
+```
+
+**Why**: During multi-pass semantic analysis, some types may not be resolved yet. By allowing `UnknownType`, the validator avoids false positives. The type checker will catch real errors later.
+
+**Example**:
 ```python
-MAX_SIZE: const int = 100
-
-def create_buffer(size: int = MAX_SIZE):  # Should be valid
+# During first pass, SomeType might not be resolved yet
+def foo(x: SomeType = None):
     pass
 ```
 
-### 9.2 Frozen Collection Support
-If Sharpy adds immutable collection types:
-```python
-def process(items: frozenset = frozenset([1, 2, 3])):  # Should be valid
-    pass
+If `SomeType` resolves to `UnknownType`, we don't error. If it later resolves to a non-nullable type, the type checker will catch it.
+
+---
+
+### 5. **Helpful Error Messages**
+
+Error messages include:
+- The parameter name
+- The function name
+- The specific problem
+- Suggested fixes
+
+**Examples**:
+
+```
+"Mutable default value is not allowed for parameter 'items' in function 'add_item'.
+Use None as default and initialize in the function body instead."
 ```
 
-### 9.3 Suggested Fixes
-Provide automated fix suggestions:
 ```
-Error: Mutable default value is not allowed for parameter 'items' in function 'process'.
-Suggestion: Change to:
-    def process(items: list? = None):
-        if items is None:
-            items = []
+"Cannot use 'None' as default value for non-nullable parameter 'count' of type 'int' in function 'process'.
+Use 'int?' to make the parameter nullable."
 ```
 
-### 9.4 Type-Based Default Validation
-Ensure the default value is assignable to the parameter type:
-```python
-def foo(x: int = "hello"):  # Currently caught by TypeChecker, could be here
-    pass
+**Quality Guidelines**:
+- ✓ Identify specific parameter and function
+- ✓ Explain the restriction
+- ✓ Provide actionable guidance
+- ✗ Avoid generic messages like "Invalid default value"
+
+---
+
+### 6. **Static Helper Methods**
+
+Both `IsMutableDefault` and `IsCompileTimeConstant` are `static`:
+
+```csharp
+private static bool IsMutableDefault(Expression expr)
+private static bool IsCompileTimeConstant(Expression expr)
 ```
+
+**Rationale**:
+- Pure functions that only examine AST structure
+- No instance state needed (except for `IsConstReference` and `IsEnumMemberAccess` delegations)
+- Can be easily tested in isolation
+- Clearly communicates that no side effects occur
+
+**Exception**: `IsCompileTimeConstant` is actually non-static because it calls `IsConstReference` and `IsEnumMemberAccess`, which need access to `_symbolTable`.
+
+---
+
+## Debugging Tips
+
+### 1. **Check Symbol Table State**
+
+If `IsConstReference` or `IsEnumMemberAccess` isn't working:
+- Verify the symbol table has been populated before validation
+- Check that const declarations are marked with `IsConstant = true`
+- Ensure enum types are registered with `TypeKind.Enum`
+
+**Debug Point**: Set breakpoint in `IsConstReference` and inspect `symbol`:
+```csharp
+var symbol = _symbolTable.Lookup(id.Name);  // Breakpoint here
+// Inspect: Is symbol null? Is it a VariableSymbol? Is IsConstant true?
+return symbol is VariableSymbol { IsConstant: true };
+```
+
+**Common Issues**:
+- Symbol table not populated yet (validation running too early in pipeline)
+- Const declarations not being registered as `IsConstant = true`
+- Wrong scope being searched (need to traverse parent scopes)
+
+---
+
+### 2. **Trace Recursive Validation**
+
+For nested expressions, trace the recursion:
+
+```csharp
+private bool IsCompileTimeConstant(Expression expr)
+{
+    _logger.LogDebug($"IsCompileTimeConstant: {expr.GetType().Name}");
+    var result = expr switch { /* ... */ };
+    _logger.LogDebug($"  -> {result}");
+    return result;
+}
+```
+
+Example trace for `(1 + 2)`:
+```
+IsCompileTimeConstant: Parenthesized
+  IsCompileTimeConstant: BinaryOp
+    IsCompileTimeConstant: IntegerLiteral
+      -> true
+    IsCompileTimeConstant: IntegerLiteral
+      -> true
+    -> true
+  -> true
+```
+
+---
+
+### 3. **Verify Validation Order**
+
+The validation checks run in this order:
+1. **Mutable defaults** (highest priority) - line 53
+2. **Compile-time constants** - line 64
+3. **None for nullable types** - line 74
+
+If you're not seeing expected errors, check if an earlier validation is returning early:
+
+```csharp
+private void ValidateDefaultValue(Parameter param, string functionName)
+{
+    _logger.LogDebug($"Validating {param.Name} in {functionName}");
+
+    if (IsMutableDefault(defaultValue))
+    {
+        _logger.LogDebug("  -> Mutable default detected");
+        AddError(...);
+        return;  // Stops here!
+    }
+
+    // Won't reach if mutable
+    if (!IsCompileTimeConstant(defaultValue))
+    {
+        _logger.LogDebug("  -> Non-constant detected");
+        AddError(...);
+        return;
+    }
+
+    // Won't reach if non-constant
+    if (defaultValue is NoneLiteral)
+    {
+        _logger.LogDebug("  -> Checking None nullable");
+        // ...
+    }
+}
+```
+
+---
+
+### 4. **Test Edge Cases**
+
+Common edge cases to test:
+
+```python
+# Nested structures
+def foo(t: tuple = ((1, 2), (3, 4))):     # Valid - nested tuples
+def bar(t: tuple = ([1, 2], [3, 4])):     # Invalid - tuples containing lists
+
+# Parentheses
+def baz(x: int = (42)):                   # Valid - just parenthesized
+def qux(x: int = ((1 + 2))):              # Valid - nested parentheses
+def quux(x: list = ([])):                 # Invalid - parenthesized mutable
+
+# Ternary expressions
+def test1(x: int = 5 if True else 10):    # Valid - all constants
+def test2(x: int = y if True else 10):    # Invalid - y is variable
+def test3(x: int? = None if True else 5): # Valid - None + constant
+
+# Const references
+const MAX = 100
+def test4(x: int = MAX):                  # Valid - const reference
+def test5(x: int = MAX * 2):              # Valid - const in expression
+
+# Enum members
+enum Color:
+    RED = 1
+
+def test6(c: Color = Color.RED):          # Valid - enum member
+def test7(c: Color = Color):              # Invalid - enum type, not member
+```
+
+---
+
+### 5. **Location Information**
+
+If errors don't point to the right location:
+- Check that `param.LineStart` and `param.ColumnStart` are set correctly by the parser
+- The error points to the parameter declaration, not the default value expression
+- Consider whether pointing to the default value would be more helpful (enhancement)
+
+**Current**: Error at parameter declaration
+```python
+def foo(items: list = []):
+        ^^^^^ Error here
+```
+
+**Potential Enhancement**: Error at default value
+```python
+def foo(items: list = []):
+                      ^^ Error here
+```
+
+---
+
+### 6. **Use AST Dumper for Inspection**
+
+When debugging unexpected AST structures:
+
+```csharp
+using Sharpy.Compiler.Parser;
+
+// In your debugging code
+Console.WriteLine("Parameter default value AST:");
+Console.WriteLine(AstDumper.Dump(param.DefaultValue));
+```
+
+This shows the exact AST structure, helping identify:
+- Unexpected node types
+- Nested structures
+- Parenthesization levels
+
+---
+
+## Contribution Guidelines
+
+### When to Modify This File
+
+1. **Adding New Mutable Types**:
+   - If Sharpy adds new mutable collection types, update `IsMutableDefault`
+   - Example: Adding a mutable `OrderedDict` type:
+     ```csharp
+     FunctionCall call when call.Function is Identifier id && id.Name == "OrderedDict" => true,
+     ```
+
+2. **Supporting New Constant Expression Types**:
+   - If new literal types are added to the AST, update `IsCompileTimeConstant`
+   - Example: Adding bytes literals:
+     ```csharp
+     BytesLiteral => true,
+     ```
+
+3. **Relaxing Constant Rules**:
+   - If certain function calls should be allowed as constants
+   - Example: Allowing `len()` on constant strings:
+     ```csharp
+     FunctionCall call when IsConstantLenCall(call) => true,
+     ```
+   - Consider codegen implications - can the C# backend handle it?
+
+4. **Improving Error Messages**:
+   - Add more context or better suggestions
+   - Include code examples in error messages
+   - Provide IDE quick-fixes (requires architecture changes)
+
+5. **Supporting Qualified Enum Access**:
+   - If Sharpy needs to support `MyModule.Color.RED` patterns
+   - Update `IsEnumMemberAccess` to resolve module paths
+
+### What NOT to Change
+
+1. **Don't Make This a Multi-Pass Validator**:
+   - Keep it as a single-pass, focused validator
+   - Complex type checking belongs in `TypeChecker`
+
+2. **Don't Add Type Inference Here**:
+   - This validator assumes types are already resolved by `TypeResolver`
+   - Type inference happens elsewhere in semantic analysis
+
+3. **Don't Throw Exceptions for Validation Errors**:
+   - Maintain the error accumulation pattern
+   - Exceptions are for internal errors only (e.g., null dependencies)
+
+4. **Don't Add Complex Type Compatibility Checking**:
+   - Example: Don't check if `42` is assignable to `str` parameter
+   - That's the `TypeChecker`'s responsibility
+
+### Testing Considerations
+
+When modifying, ensure tests cover:
+
+**Mutable Default Tests**:
+```python
+def test_list(items: list = []):          # Must error
+def test_dict(data: dict = {}):           # Must error
+def test_set(values: set = set()):        # Must error
+def test_list_ctor(items: list = list()): # Must error
+def test_paren_mut(items: list = ([])):   # Must error
+```
+
+**Compile-Time Constant Tests**:
+```python
+# Valid
+def test_int(x: int = 42):
+def test_tuple(t: tuple = (1, 2)):
+def test_expr(n: int = 1 + 2):
+def test_unary(n: int = -1):
+
+const MAX = 100
+def test_const(x: int = MAX):
+def test_enum(c: Color = Color.RED):
+
+# Invalid
+x = 42
+def test_var(y: int = x):                 # Must error
+def test_call(n: int = len("hello")):     # Must error
+```
+
+**Nullable Type Tests**:
+```python
+def test_none_nullable(x: str? = None):   # Valid
+def test_none_non_null(x: str = None):    # Must error
+def test_none_unknown(x: UnknownType = None): # No error (type unresolved)
+```
+
+**Edge Cases**:
+```python
+def test_nested_tuple(t: tuple = ((1, 2), (3, 4))): # Valid
+def test_ternary(x: int = 5 if True else 10):       # Valid
+def test_complex_expr(n: int = (1 + 2) * 3):        # Valid
+```
+
+Test file location (expected): `tests/Sharpy.Compiler.Tests/Semantic/DefaultParameterValidatorTests.cs`
+
+---
+
+## Cross-References
+
+### Related Semantic Analysis Files
+
+- **[SymbolTable.md](SymbolTable.md)**: Provides symbol lookup functionality used by this validator (lines 199, 216)
+- **[TypeResolver.md](TypeResolver.md)**: Resolves type annotations for nullable type checking (line 76)
+- **[SemanticError.md](SemanticError.md)**: Error type used for reporting validation failures
+- **`SemanticAnalyzer.cs`**: Likely orchestrates semantic analysis and calls `ValidateFunctionDefaults`
+
+### Related AST Files
+
+- **[../Parser/Ast/Statement.md](../Parser/Ast/Statement.md)**: Defines `FunctionDef` and `Parameter` classes
+- **[../Parser/Ast/Expression.md](../Parser/Ast/Expression.md)**: Defines all expression types checked in this validator
+
+### Downstream Impact
+
+- **[../CodeGen/RoslynEmitter.md](../CodeGen/RoslynEmitter.md)**: Relies on this validator to ensure default values can be emitted as C# default parameters
+- C# default parameters have similar restrictions (must be constants), so this validator ensures Sharpy→C# mapping is valid
+
+### Related Validators
+
+- **[ControlFlowValidator.md](ControlFlowValidator.md)**: Validates return paths and unreachable code
+- **[ProtocolValidator.md](ProtocolValidator.md)**: Validates protocol implementations
+- **[AccessValidator.md](AccessValidator.md)**: Checks access modifiers and visibility
+- **[OperatorValidator.md](OperatorValidator.md)**: Validates operator usage
 
 ---
 
 ## Summary
 
-The `DefaultParameterValidator` is a focused, defensive component that prevents a common class of Python bugs at compile time. Its design prioritizes:
+The `DefaultParameterValidator` is a focused, well-designed component that enforces critical rules about default parameter values:
 
-- **Safety**: Catches mutable default arguments before runtime
-- **Clarity**: Clear error messages with actionable guidance
-- **Simplicity**: Straightforward validation logic using pattern matching
-- **Conservatism**: Rejects uncertain cases rather than accepting potentially problematic code
+1. **Prevents mutable defaults** - avoiding Python's shared state pitfall
+2. **Enforces compile-time constants** - ensuring C# codegen compatibility
+3. **Type-checks None defaults** - maintaining null safety
 
-When working with this validator, remember the core principle: **default values should be immutable, compile-time-evaluable constants**. This restriction prevents subtle bugs while allowing the common use cases of default integers, strings, booleans, None, and tuples.
+**Key Design Principles**:
+- **Single Responsibility**: Only validates default parameters, nothing else
+- **Error Accumulation**: Collects all errors for batch reporting
+- **Fail-Fast Validation**: Prioritized checks with early exits
+- **Conservative Approach**: Rejects uncertain cases rather than accepting potentially problematic code
+- **Helpful Messages**: Clear error messages with actionable guidance
+
+**Integration Points**:
+- **Depends on**: `SymbolTable` (for const/enum lookup), `TypeResolver` (for nullable checks)
+- **Called by**: `SemanticAnalyzer` during semantic analysis phase
+- **Ensures**: Code is safe for `RoslynEmitter` to generate C# defaults
+
+When working with this code, remember its position in the pipeline - it assumes AST is complete and symbols are resolved, but doesn't perform complex type inference itself. Its goal is simple: **default values should be immutable, compile-time-evaluable constants**.
