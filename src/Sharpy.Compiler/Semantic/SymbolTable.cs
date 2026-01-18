@@ -22,18 +22,22 @@ public class SymbolTable
     private void PopulateBuiltins()
     {
         // Add builtin types
+        var typeNames = new HashSet<string>();
         foreach (var (name, typeSymbol) in _builtins.GetAllTypes())
         {
             _globalScope.Define(typeSymbol);
+            typeNames.Add(name);
         }
 
         // Add builtin functions (only add one symbol per function name, overload resolution happens later)
         // For functions with multiple overloads, only the first overload is added to the global scope.
         // The TypeChecker uses BuiltinRegistry.GetFunctionOverloads() for proper overload resolution.
+        // Skip functions that have the same name as types (e.g., int(), str(), bool()) - these are
+        // handled by TypeChecker which routes primitive type "constructor" calls to builtin function overloads.
         var addedFunctions = new HashSet<string>();
         foreach (var (name, funcSymbol) in _builtins.GetAllFunctions())
         {
-            if (!addedFunctions.Contains(name))
+            if (!addedFunctions.Contains(name) && !typeNames.Contains(name))
             {
                 _globalScope.Define(funcSymbol);
                 addedFunctions.Add(name);

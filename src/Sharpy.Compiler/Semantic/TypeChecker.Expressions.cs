@@ -789,15 +789,25 @@ public partial class TypeChecker
             }
 
             // Special handling for builtin functions with overloads
-            // If there is exactly one overload, it will be handled by the regular function symbol validation below.
+            // When there are multiple overloads, we need to perform overload resolution to find the right one.
+            // The funcSymbol from Lookup is just the first overload, which may not match the call.
+            // Only use builtin overloads if there's no user-defined function shadowing the builtin.
             var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
-            if (overloads != null && overloads.Count > 1)
+            var isBuiltinWithOverloads = overloads != null && overloads.Count > 1;
+            // If funcSymbol was found in symbol table AND it's one of the builtin overloads, use overload resolution
+            var needsOverloadResolution = isBuiltinWithOverloads &&
+                (funcSymbol == null || (funcSymbol != null && overloads!.Contains(funcSymbol)));
+            if (needsOverloadResolution)
             {
-                // First pass: filter by argument count (considering default parameters)
+                // First pass: filter by argument count (considering default parameters and variadic parameters)
                 var candidateOverloads = overloads.Where(o =>
                 {
-                    var requiredParams = o.Parameters.Count(p => !p.HasDefault);
+                    var requiredParams = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
+                    var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
                     var totalParams = o.Parameters.Count;
+                    // Variadic functions can accept any number of arguments >= required
+                    if (hasVariadic)
+                        return totalArgCount >= requiredParams;
                     return totalArgCount >= requiredParams && totalArgCount <= totalParams;
                 }).ToList();
 
@@ -806,9 +816,30 @@ public partial class TypeChecker
                 foreach (var overload in candidateOverloads)
                 {
                     bool typesMatch = true;
+                    var hasVariadic = overload.Parameters.Any(p => p.IsVariadic);
+                    var variadicParam = overload.Parameters.FirstOrDefault(p => p.IsVariadic);
+
                     for (int i = 0; i < argTypes.Count; i++)
                     {
-                        if (!IsAssignable(argTypes[i], overload.Parameters[i].Type))
+                        SemanticType expectedType;
+                        if (i < overload.Parameters.Count && !overload.Parameters[i].IsVariadic)
+                        {
+                            // Regular parameter
+                            expectedType = overload.Parameters[i].Type;
+                        }
+                        else if (variadicParam != null)
+                        {
+                            // Variadic parameter - all remaining args must match the element type
+                            expectedType = variadicParam.Type;
+                        }
+                        else
+                        {
+                            // Index out of bounds - shouldn't happen with valid candidates
+                            typesMatch = false;
+                            break;
+                        }
+
+                        if (!IsAssignable(argTypes[i], expectedType))
                         {
                             typesMatch = false;
                             break;
@@ -832,8 +863,11 @@ public partial class TypeChecker
                     // No matching overload found
                     var expectedCounts = string.Join(" or ", overloads.Select(o =>
                     {
-                        var required = o.Parameters.Count(p => !p.HasDefault);
+                        var required = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
                         var total = o.Parameters.Count;
+                        var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
+                        if (hasVariadic)
+                            return $"{required}+";
                         return required == total ? total.ToString() : $"{required}-{total}";
                     }).Distinct());
                     AddError($"Function '{id.Name}' expects {expectedCounts} arguments but got {totalArgCount}",

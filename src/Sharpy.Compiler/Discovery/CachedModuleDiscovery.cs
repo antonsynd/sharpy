@@ -116,14 +116,32 @@ public class CachedModuleDiscovery
                 .Select(p => new ParameterSymbol
                 {
                     Name = p.Name,
-                    Type = ConvertTypeSignature(p.Type),
+                    // For variadic parameters, extract the element type from list[T] -> T
+                    Type = p.IsVariadic ? GetVariadicElementType(p.Type) : ConvertTypeSignature(p.Type),
                     HasDefault = p.HasDefault,
                     // Note: DefaultValue Expression reconstruction is simplified
-                    DefaultValue = null  // TODO: Reconstruct from cached string
+                    DefaultValue = null,  // TODO: Reconstruct from cached string
+                    IsVariadic = p.IsVariadic
                 })
                 .ToList(),
             AccessLevel = AccessLevel.Public
         };
+    }
+
+    /// <summary>
+    /// Extract the element type from a variadic parameter's type signature.
+    /// Variadic parameters are stored as list[T] but we need just T for type checking.
+    /// </summary>
+    private SemanticType GetVariadicElementType(TypeSignature typeSignature)
+    {
+        // Variadic parameters are stored as list[T] (mapped from T[])
+        // We need to extract T
+        if (typeSignature.IsGeneric && typeSignature.Name.StartsWith("list") && typeSignature.TypeArguments.Count == 1)
+        {
+            return ConvertTypeSignature(typeSignature.TypeArguments[0]);
+        }
+        // Fallback to the full type if not a list
+        return ConvertTypeSignature(typeSignature);
     }
 
     /// <summary>

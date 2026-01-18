@@ -134,18 +134,24 @@ public partial class RoslynEmitter
 
         if (call.Function is Identifier funcName)
         {
+            // Check if this is a builtin function call (e.g., int(), str(), print(), len(), etc.)
+            // Builtin functions are always invocation expressions, never constructor calls.
+            var isBuiltinFunc = _context.IsBuiltinFunction(funcName.Name);
+
             // Check if this is a type instantiation (calling a class or struct constructor)
             // We check both:
             // 1. The _classNames and _structNames sets (populated during type declaration generation)
             // 2. The symbol table (for testing and imported types)
+            // BUT: If it's a builtin function, it's NOT a type instantiation (e.g., int(x) is a conversion function)
             var symbol = _context.LookupSymbol(funcName.Name);
-            var isTypeInstantiation = _classNames.Contains(funcName.Name) ||
-                                     _structNames.Contains(funcName.Name) ||
-                                     (symbol is TypeSymbol typeSymbol &&
-                                      (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
-                                       typeSymbol.TypeKind == Semantic.TypeKind.Struct));
+            var isTypeInstantiation = !isBuiltinFunc &&
+                                     (_classNames.Contains(funcName.Name) ||
+                                      _structNames.Contains(funcName.Name) ||
+                                      (symbol is TypeSymbol typeSymbol &&
+                                       (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
+                                        typeSymbol.TypeKind == Semantic.TypeKind.Struct)));
 
-            var name = _context.IsBuiltinFunction(funcName.Name)
+            var name = isBuiltinFunc
                 ? $"global::Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
                 : NameMangler.ToPascalCase(funcName.Name);
 

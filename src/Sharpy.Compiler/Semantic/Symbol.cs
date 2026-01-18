@@ -113,6 +113,11 @@ public record ParameterSymbol
     public SemanticType Type { get; init; } = SemanticType.Unknown;
     public bool HasDefault { get; init; }
     public Expression? DefaultValue { get; init; }
+    /// <summary>
+    /// If true, this parameter accepts a variable number of arguments (params array).
+    /// The Type property contains the element type of the params array.
+    /// </summary>
+    public bool IsVariadic { get; init; }
 }
 
 /// <summary>

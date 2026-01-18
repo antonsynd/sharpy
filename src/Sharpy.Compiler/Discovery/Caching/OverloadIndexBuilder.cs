@@ -72,8 +72,8 @@ public class OverloadIndexBuilder
             .Where(m => !m.Name.StartsWith("set_"))
             .Where(m => !m.IsSpecialName)
             .Where(m => !m.IsGenericMethodDefinition)  // Skip generic methods for now
-            // Note: Type constructors (Int, Bool, Str, etc.) are included as they are
-            // valid builtin functions that can be called for type conversion.
+                                                       // Note: Type constructors (Int, Bool, Str, etc.) are included as they are
+                                                       // valid builtin functions that can be called for type conversion.
             .ToList();
 
         // Group by function name
