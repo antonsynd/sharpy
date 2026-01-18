@@ -9,6 +9,9 @@
 # Test results
 **/TestResults/
 
+**/bin/Debug/net*/
+**/bin/Release/net*/
+
 # .NET compiled artifacts
 *.dll
 *.pdb

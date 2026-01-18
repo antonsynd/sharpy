@@ -1,0 +1,7 @@
+# math_utils module - provides basic math functions
+
+def square(n: int) -> int:
+    return n * n
+
+def multiply_by_two(n: int) -> int:
+    return n * 2

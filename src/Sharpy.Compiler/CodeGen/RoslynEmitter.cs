@@ -1817,6 +1817,11 @@ public class RoslynEmitter
 
     private ConstructorDeclarationSyntax GenerateConstructor(FunctionDef func, string className, Dictionary<string, string> fieldMapping)
     {
+        // Clear declared variables and version tracking for new method scope
+        _declaredVariables.Clear();
+        _variableVersions.Clear();
+        _constVariables.Clear();
+
         // Process decorators to determine modifiers
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
 
@@ -1832,6 +1837,18 @@ public class RoslynEmitter
             .ToDictionary(
                 p => p.Name,
                 p => NameMangler.Transform(p.Name, NameContext.Parameter));
+
+        // Track parameters as declared variables
+        foreach (var param in func.Parameters)
+        {
+            if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+                continue;
+            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            _declaredVariables.Add(paramName);
+            // Also track in version map so assignments to parameters work correctly
+            var baseName = NameMangler.ToCamelCase(param.Name);
+            _variableVersions[baseName] = 0;
+        }
 
         // Check if the first statement is a super().__init__() call
         // This needs to be converted to a constructor initializer (: base(...))
@@ -1877,9 +1894,11 @@ public class RoslynEmitter
                     string.Equals(id.Name, "self", StringComparison.OrdinalIgnoreCase))
                 {
                     // Look up the field name from the field mapping to ensure consistency
+                    // For fields not in mapping (inherited fields), use PascalCase to match
+                    // the convention used by GenerateField
                     string fieldName = fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName)
                         ? mappedFieldName
-                        : NameMangler.Transform(memberAccess.Member, NameContext.Type);
+                        : NameMangler.ToPascalCase(memberAccess.Member);
 
                     // Generate: this.Field = value;
                     var thisAccess = MemberAccessExpression(
@@ -1939,6 +1958,11 @@ public class RoslynEmitter
 
     private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)
     {
+        // Clear declared variables and version tracking for new method scope
+        _declaredVariables.Clear();
+        _variableVersions.Clear();
+        _constVariables.Clear();
+
         // For class methods, use the same logic as module functions but handle special cases
         // Transform name using NameMangler (handles dunder methods automatically)
         var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
@@ -2003,6 +2027,19 @@ public class RoslynEmitter
             var objParam = Parameter(Identifier(parameters[0].Identifier.Text))
                 .WithType(PredefinedType(Token(SyntaxKind.ObjectKeyword)));
             parameters = new[] { objParam };
+        }
+
+        // Track parameters as declared variables
+        foreach (var param in func.Parameters)
+        {
+            if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(param.Name, "cls", StringComparison.OrdinalIgnoreCase))
+                continue;
+            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            _declaredVariables.Add(paramName);
+            // Also track in version map so assignments to parameters work correctly
+            var baseName = NameMangler.ToCamelCase(param.Name);
+            _variableVersions[baseName] = 0;
         }
 
         // Check if this is an abstract method:

@@ -8,6 +8,7 @@ using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
+using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
 using Xunit.Abstractions;
 using static Sharpy.Compiler.Tests.TestHelpers;
@@ -399,6 +400,278 @@ public abstract class IntegrationTestBase
         finally
         {
             // Clean up assembly resolver
+            if (resolveHandler != null)
+            {
+                AppDomain.CurrentDomain.AssemblyResolve -= resolveHandler;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Compiles a multi-file Sharpy project and executes it.
+    /// </summary>
+    /// <param name="projectDir">Directory containing the Sharpy source files.</param>
+    /// <param name="entryPointFile">The main entry point file (e.g., "main.spy").</param>
+    /// <param name="executionTimeoutMs">Optional timeout in milliseconds for execution.</param>
+    protected ExecutionResult CompileAndExecuteProject(string projectDir, string entryPointFile, int executionTimeoutMs = 0)
+    {
+        string? runtimePath = null;
+        ResolveEventHandler? resolveHandler = null;
+
+        try
+        {
+            var logger = new OutputTestLogger(Output);
+
+            // Discover all .spy files in the directory
+            var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.TopDirectoryOnly)
+                .ToList();
+
+            if (sourceFiles.Count == 0)
+            {
+                return new ExecutionResult
+                {
+                    Success = false,
+                    CompilationErrors = new List<string> { $"No .spy files found in {projectDir}" }
+                };
+            }
+
+            Output.WriteLine($"Found {sourceFiles.Count} source files:");
+            foreach (var file in sourceFiles)
+            {
+                Output.WriteLine($"  - {Path.GetFileName(file)}");
+            }
+
+            // Create a project config for the test
+            var projectConfig = new ProjectConfig
+            {
+                ProjectDirectory = projectDir,
+                ProjectFilePath = Path.Combine(projectDir, "test.spyproj"),
+                RootNamespace = "Sharpy.Test",
+                OutputType = "exe",
+                EntryPoint = entryPointFile,
+                SourceFiles = sourceFiles,
+                Configuration = "Debug",
+                TargetFramework = "net10.0"
+            };
+
+            // Compile the project
+            var projectCompiler = new ProjectCompiler(logger);
+            var result = projectCompiler.Compile(projectConfig);
+
+            if (!result.Success)
+            {
+                return new ExecutionResult
+                {
+                    Success = false,
+                    CompilationErrors = result.Errors,
+                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
+                };
+            }
+
+            // Log generated C#
+            Output.WriteLine("=== Generated C# ===");
+            foreach (var (fileName, code) in result.GeneratedCSharpFiles)
+            {
+                Output.WriteLine($"// {fileName}");
+                Output.WriteLine(code);
+                Output.WriteLine("---");
+            }
+            Output.WriteLine("====================");
+
+            // Parse and compile the generated C#
+            var syntaxTrees = result.GeneratedCSharpFiles.Values
+                .Select(code => CSharpSyntaxTree.ParseText(code))
+                .ToList();
+
+            // Get references to required assemblies
+            var references = new List<MetadataReference>
+            {
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location),
+                MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
+                MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
+            };
+
+            // Try to add Sharpy.Core reference
+            try
+            {
+                var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
+                var testDir = Path.GetDirectoryName(testAssemblyPath);
+                var targetFramework = testDir!.Split(Path.DirectorySeparatorChar)
+                    .FirstOrDefault(s => s.StartsWith("net") && char.IsDigit(s.Length > 3 ? s[3] : ' '))
+                    ?? "net10.0";
+
+                runtimePath = Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Core", "bin", "Debug", targetFramework, "Sharpy.Core.dll");
+                runtimePath = Path.GetFullPath(runtimePath);
+
+                if (File.Exists(runtimePath))
+                {
+                    references.Add(MetadataReference.CreateFromFile(runtimePath));
+                    Output.WriteLine($"Loaded Sharpy.Core from: {runtimePath}");
+
+                    resolveHandler = (sender, args) =>
+                    {
+                        if (args.Name.StartsWith("Sharpy.Core,"))
+                        {
+                            return Assembly.LoadFrom(runtimePath);
+                        }
+                        return null;
+                    };
+                    AppDomain.CurrentDomain.AssemblyResolve += resolveHandler;
+                }
+            }
+            catch (Exception ex)
+            {
+                Output.WriteLine($"Warning: Failed to load Sharpy.Core: {ex.Message}");
+            }
+
+            var compilation = CSharpCompilation.Create(
+                "SharpyTestProject",
+                syntaxTrees,
+                references,
+                new CSharpCompilationOptions(OutputKind.ConsoleApplication));
+
+            using var ms = new MemoryStream();
+            var emitResult = compilation.Emit(ms);
+
+            if (!emitResult.Success)
+            {
+                var errors = emitResult.Diagnostics
+                    .Where(d => d.Severity == DiagnosticSeverity.Error)
+                    .Select(d => d.ToString())
+                    .ToList();
+
+                return new ExecutionResult
+                {
+                    Success = false,
+                    CompilationErrors = errors,
+                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
+                };
+            }
+
+            // Execute the compiled assembly
+            ms.Seek(0, SeekOrigin.Begin);
+            var assembly = Assembly.Load(ms.ToArray());
+
+            var stdout = new StringBuilder();
+            var stderr = new StringBuilder();
+            bool timedOut = false;
+            Exception? executionException = null;
+
+            lock (TestHelpers.ConsoleLock)
+            {
+                var originalOut = Console.Out;
+                var originalErr = Console.Error;
+
+                try
+                {
+                    using var outWriter = new StringWriter(stdout);
+                    using var errWriter = new StringWriter(stderr);
+                    Console.SetOut(outWriter);
+                    Console.SetError(errWriter);
+
+                    var entryPoint = assembly.EntryPoint;
+                    MethodInfo? methodToInvoke = null;
+
+                    if (entryPoint == null)
+                    {
+                        var moduleType = assembly.GetTypes().FirstOrDefault(t => t.Name.Contains("Module") || t.Name == "Program");
+                        if (moduleType != null)
+                        {
+                            methodToInvoke = moduleType.GetMethod("Main", BindingFlags.Public | BindingFlags.Static)
+                                          ?? moduleType.GetMethod("main", BindingFlags.Public | BindingFlags.Static);
+                        }
+                    }
+                    else
+                    {
+                        methodToInvoke = entryPoint;
+                    }
+
+                    if (methodToInvoke != null)
+                    {
+                        if (executionTimeoutMs > 0)
+                        {
+                            var cts = new CancellationTokenSource();
+                            var executionTask = Task.Run(() =>
+                            {
+                                methodToInvoke.Invoke(null, methodToInvoke.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
+                            }, cts.Token);
+
+                            try
+                            {
+                                if (!executionTask.Wait(executionTimeoutMs))
+                                {
+                                    timedOut = true;
+                                    cts.Cancel();
+                                }
+                                else if (executionTask.IsFaulted && executionTask.Exception != null)
+                                {
+                                    executionException = executionTask.Exception.InnerException ?? executionTask.Exception;
+                                }
+                            }
+                            catch (AggregateException ae)
+                            {
+                                executionException = ae.InnerException ?? ae;
+                            }
+                        }
+                        else
+                        {
+                            methodToInvoke.Invoke(null, methodToInvoke.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
+                        }
+                    }
+                }
+                finally
+                {
+                    Console.SetOut(originalOut);
+                    Console.SetError(originalErr);
+                }
+            }
+
+            if (timedOut)
+            {
+                return new ExecutionResult
+                {
+                    Success = false,
+                    TimedOut = true,
+                    StandardOutput = stdout.ToString(),
+                    StandardError = stderr.ToString(),
+                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                    CompilationErrors = new List<string> { $"Execution timed out after {executionTimeoutMs}ms" }
+                };
+            }
+
+            if (executionException != null)
+            {
+                throw executionException;
+            }
+
+            return new ExecutionResult
+            {
+                Success = true,
+                StandardOutput = stdout.ToString(),
+                StandardError = stderr.ToString(),
+                GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
+            };
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = $"Unexpected error: {ex.Message}";
+            if (ex.InnerException != null)
+            {
+                errorMessage += $"\nInner Exception: {ex.InnerException.Message}";
+                errorMessage += $"\nStack Trace: {ex.InnerException.StackTrace}";
+            }
+
+            return new ExecutionResult
+            {
+                Success = false,
+                Exception = ex,
+                CompilationErrors = new List<string> { errorMessage }
+            };
+        }
+        finally
+        {
             if (resolveHandler != null)
             {
                 AppDomain.CurrentDomain.AssemblyResolve -= resolveHandler;

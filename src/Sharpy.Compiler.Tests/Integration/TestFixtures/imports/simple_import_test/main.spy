@@ -1,0 +1,7 @@
+# Main entry point - uses math_utils module
+from math_utils import square, multiply_by_two
+
+def main():
+    x: int = 5
+    print(square(x))
+    print(multiply_by_two(x))
