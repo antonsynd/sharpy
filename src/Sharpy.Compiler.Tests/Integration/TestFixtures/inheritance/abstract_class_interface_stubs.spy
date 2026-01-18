@@ -1,0 +1,80 @@
+# Test abstract class implementing interface with missing methods
+# The abstract class Shape declares it implements IDisplayable but doesn't
+# provide the display() method. The subclass Rectangle must implement it.
+
+interface IDisplayable:
+    def display(self) -> None: ...
+
+interface ICalculable:
+    def calculate(self) -> int: ...
+
+@abstract
+class Shape(IDisplayable):
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @abstract
+    def area(self) -> int:
+        ...
+
+    @virtual
+    def describe(self) -> str:
+        return self.name
+
+class Rectangle(Shape, ICalculable):
+    width: int
+    height: int
+
+    def __init__(self, w: int, h: int):
+        super().__init__("Rectangle")
+        self.width = w
+        self.height = h
+
+    @override
+    def area(self) -> int:
+        return self.width * self.height
+
+    # This overrides the abstract stub generated in Shape
+    @override
+    def display(self) -> None:
+        print(self.name)
+        print(self.area())
+
+    def calculate(self) -> int:
+        return self.width + self.height
+
+class Circle(Shape):
+    radius: int
+
+    def __init__(self, r: int):
+        super().__init__("Circle")
+        self.radius = r
+
+    @override
+    def area(self) -> int:
+        return 3 * self.radius * self.radius
+
+    @override
+    def display(self) -> None:
+        print("Circle with radius:")
+        print(self.radius)
+
+rect: Rectangle = Rectangle(5, 3)
+rect.display()
+print(rect.calculate())
+print(rect.describe())
+
+circ: Circle = Circle(4)
+circ.display()
+print(circ.describe())
+
+# EXPECTED OUTPUT:
+# Rectangle
+# 15
+# 8
+# Rectangle
+# Circle with radius:
+# 4
+# Circle
