@@ -6,20 +6,20 @@ from math_utils import square, is_even
 def process_numbers(limit: int) -> None:
     print(limit)
     count: int = 0
-    
+
     for i in range(1, limit):
         if is_even(i):
             result: int = square(i)
             print(result)
             count += 1
-    
+
     print(count)
 
 def demonstrate_module_access() -> None:
     val: int = 5
     cubed: int = math_utils.cube(val)
     print(cubed)
-    
+
     pi: int = math_utils.PI_APPROX
     print(pi)
 

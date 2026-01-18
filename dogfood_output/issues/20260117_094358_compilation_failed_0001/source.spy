@@ -1,24 +1,20 @@
 # Test class instance methods with inheritance and interfaces
 
 interface IDisplayable:
-    def display(self) -> None:
-        ...
+    def display(self) -> None: ...
 
 interface ICalculable:
-    def calculate(self) -> int:
-        ...
+    def calculate(self) -> int: ...
 
 @abstract
 class Shape(IDisplayable):
     name: str
-    
+
     def __init__(self, name: str):
         self.name = name
-    
-    @abstract
-    def area(self) -> int:
-        ...
-    
+
+    def area(self) -> int: ...
+
     @virtual
     def describe(self) -> int:
         return 1
@@ -26,27 +22,27 @@ class Shape(IDisplayable):
 class Rectangle(Shape, ICalculable):
     width: int
     height: int
-    
+
     def __init__(self, w: int, h: int):
         super().__init__("Rectangle")
         self.width = w
         self.height = h
-    
+
     @override
     def area(self) -> int:
         return self.width * self.height
-    
+
     @override
     def describe(self) -> int:
         return 2
-    
+
     def display(self) -> None:
         print(self.name)
         print(self.area())
-    
+
     def calculate(self) -> int:
         return self.width + self.height
-    
+
     def scale(self, factor: int) -> None:
         self.width *= factor
         self.height *= factor
@@ -55,7 +51,7 @@ class Square(Rectangle):
     def __init__(self, side: int):
         super().__init__(side, side)
         self.name = "Square"
-    
+
     @override
     def describe(self) -> int:
         base_val: int = super().describe()

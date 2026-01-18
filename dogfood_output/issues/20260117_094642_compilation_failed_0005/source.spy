@@ -16,9 +16,9 @@ def show_factorial_result(n: int, result: int) -> None:
 def main() -> None:
     num: int = 5
     print(num)
-    
+
     factorial_result: int = compute_factorial(num)
-    
+
     show_factorial_result(num, factorial_result)
 
 main()
