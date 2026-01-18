@@ -155,7 +155,7 @@ def get_code_generation_prompt(
     spec_context: str,
     feature_focus: str = "general",
     complexity: str = "simple",
-    example_snippets: list[str] = None,
+    example_snippets: list[str] | None = None,
     existing_fixtures_section: str = "",
 ) -> str:
     """Generate a prompt for creating Sharpy code.

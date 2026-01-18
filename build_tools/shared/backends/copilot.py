@@ -263,13 +263,9 @@ class CopilotBackend(Backend):
                 tool_name = tool.value.lower()
                 cmd.extend(["--allow-tool", tool_name])
 
-        # Note: Copilot CLI doesn't support model selection via CLI flags
-        # If model is specified, we log a warning but proceed
-        if config.model and self._heartbeat_callback:
-            self._heartbeat_callback(
-                f"Warning: Copilot CLI doesn't support model selection. "
-                f"Ignoring model: {config.model}"
-            )
+        # Add model if specified
+        if config.model:
+            cmd.extend(["--model", config.model])
 
         return cmd
 

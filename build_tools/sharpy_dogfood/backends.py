@@ -200,6 +200,7 @@ class ClaudeBackend:
         shared_config = SharedBackendConfig(
             timeout_seconds=int(effective_timeout),
             allowed_tools={ToolPermission.READ},  # Read-only for validation
+            model=self.config.model,  # Use model from backend config
         )
 
         # Execute via shared backend (includes heartbeat logging)
@@ -273,6 +274,7 @@ class CopilotBackend:
         shared_config = SharedBackendConfig(
             timeout_seconds=int(effective_timeout),
             allowed_tools={ToolPermission.READ},  # Read-only for validation
+            model=self.config.model,  # Use model from backend config
         )
 
         # Execute via shared backend (includes heartbeat logging)
@@ -292,7 +294,7 @@ DogfoodBackend = ClaudeBackend | CopilotBackend
 class BackendManager:
     """Manages multiple AI backends with automatic failover."""
 
-    BACKEND_PRIORITY = ["claude", "copilot"]
+    BACKEND_PRIORITY: list[BackendType] = ["claude", "copilot"]
 
     def __init__(self, config: Config):
         self.config = config

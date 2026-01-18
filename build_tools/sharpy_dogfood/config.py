@@ -42,6 +42,14 @@ class BackendConfig:
     claude_cli_path: Optional[str] = None
     copilot_cli_path: Optional[str] = None
 
+    # Model to use for this backend (if None, uses backend default)
+    model: Optional[str] = None
+
+
+# Default models for dogfooding
+CLAUDE_CLI_MODEL = "claude-sonnet-4-5-20250929"  # Full model name for Claude CLI
+COPILOT_CLI_MODEL = "claude-sonnet-4.5"  # Copilot CLI model format
+
 
 @dataclass
 class Config(BaseConfig):
@@ -77,8 +85,8 @@ class Config(BaseConfig):
     # Backend configuration
     backends: dict[BackendType, BackendConfig] = field(
         default_factory=lambda: {
-            "claude": BackendConfig(name="claude"),
-            "copilot": BackendConfig(name="copilot"),
+            "claude": BackendConfig(name="claude", model=CLAUDE_CLI_MODEL),
+            "copilot": BackendConfig(name="copilot", model=COPILOT_CLI_MODEL),
         }
     )
 

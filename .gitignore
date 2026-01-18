@@ -1,3 +1,6 @@
+# Screen files
+screenlog.*
+
 # SQLite database files
 *.db
 *.db-wal
