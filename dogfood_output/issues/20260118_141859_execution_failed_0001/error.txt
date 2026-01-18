@@ -1,2 +1,0 @@
-Compilation failed:
-  Compilation failed: Lexer error at line 1, column 10: Unterminated literal name (backtick-delimited identifier)

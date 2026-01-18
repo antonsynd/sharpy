@@ -1,2 +1,0 @@
-Compilation failed:
-  Compilation failed: Complex function expressions not yet supported
