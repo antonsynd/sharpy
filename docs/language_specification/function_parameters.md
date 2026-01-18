@@ -9,6 +9,7 @@ Sharpy supports several parameter types:
 - **Default parameters** - Optional with compile-time constant defaults (see [Function Default Parameters](function_default_parameters.md))
 - **Named arguments** - Pass arguments by name for clarity
 - **Variadic arguments** - Accept variable number of arguments with `*args` (see [Function Variadic Arguments](function_variadic_arguments.md))
+- **Flexible arguments** - Positional-only, keyword-only, and kwargs support (see [Flexible Arguments](flexible_arguments.md))
 
 ## Default Parameters
 
@@ -79,38 +80,46 @@ total = sum_all(1, 2, 3)  # 6
 
 For complete details on variadic arguments, including unpacking rules, C# interop, and examples, see [Function Variadic Arguments](function_variadic_arguments.md).
 
-## No `**kwargs` Support
+## Flexible Arguments (Extended Features)
 
-Sharpy does not support `**kwargs` (variadic keyword arguments), as .NET has no direct equivalent.
+Sharpy provides optional extended argument handling for Python-style flexibility:
 
-**Alternatives:**
+- **Positional-only (`/`)** and **keyword-only (`*`)** parameter markers — zero-cost compile-time validation
+- **Typed kwargs** via `@kwargs` decorator — generates a companion struct for bundling keyword arguments
+- **Dynamic kwargs** via `@dynamic_kwargs` decorator — dictionary-based kwargs for truly dynamic scenarios
+
+These features are opt-in and preserve the vanilla C# calling convention alongside any extended overloads.
+
+For complete details, see [Flexible Arguments](flexible_arguments.md).
+
+### Quick Example
 
 ```python
-# Instead of: def configure(**kwargs) -> None
-
-# Option 1: Named parameters with defaults
-def configure(host: str = "localhost", port: int = 8080, debug: bool = False) -> None:
+# Tier 0: Positional-only and keyword-only markers (zero cost)
+def search(query: str, /, limit: int = 10, *, case_sensitive: bool = False) -> list[str]:
     pass
 
-# Option 2: Typed configuration class
-class Config:
-    host: str = "localhost"
-    port: int = 8080
-    debug: bool = False
+search("hello", 20, case_sensitive=True)  # ✅ Valid
+search(query="hello")                      # ❌ ERROR: 'query' is positional-only
+search("hello", 20, True)                  # ❌ ERROR: 'case_sensitive' is keyword-only
 
-def configure(config: Config) -> None:
-    pass
+# Tier 1: Typed kwargs struct (small overhead, full type safety)
+@kwargs
+def configure(host: str, /, *, port: int = 8080, timeout: float = 30.0) -> Config:
+    return Config(host, port, timeout)
 
-# Option 3: Dictionary parameter (loses type safety on values)
-def configure(options: dict[str, object]) -> None:
-    host = options.get("host") ?? "localhost"
-    port = options.get("port") to int? ?? 8080
-    # ...
+opts = ConfigureKwargs(port=9000, timeout=60.0)
+configure("localhost", opts)  # Pass bundled options
+
+# Tier 2: Dynamic kwargs (runtime cost, for forwarding scenarios)
+@dynamic_kwargs
+def forward_request(endpoint: str, **kwargs: dict[str, object]) -> Response:
+    return http_post(endpoint, kwargs)
 ```
 
-## Positional-Only and Keyword-Only Parameters
+## Method Overloading
 
-Sharpy does not support Python's positional-only (`/`) or keyword-only (`*`) parameter markers. All parameters can be passed either positionally or by name.
+Sharpy supports method overloading following C# semantics. Multiple functions can share the same name if they differ in parameter count or types:
 
 ```python
 def process(value: int) -> str:
@@ -250,6 +259,7 @@ For complete details, see the [C# Language Specification: Overload Resolution](h
 
 ## See Also
 
+- [Flexible Arguments](flexible_arguments.md) - Positional-only, keyword-only, and kwargs support
 - [Function Default Parameters](function_default_parameters.md) - Detailed guide to default parameter values and compile-time constant requirements
 - [Function Variadic Arguments](function_variadic_arguments.md) - Comprehensive coverage of `*args` and unpacking
 - [Parameter Modifiers](parameter_modifiers.md) - `ref`, `out`, and `in` pass-by-reference parameters

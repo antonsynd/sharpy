@@ -190,3 +190,54 @@ class TodoService:
 ```
 
 *Implementation: ✅ Native - Direct mapping to C# keywords.*
+
+
+## Flexible Argument Decorators
+
+These decorators enable Python-style keyword argument flexibility. See [Flexible Arguments](flexible_arguments.md) for complete details.
+
+| Decorator | Purpose | Cost |
+|-----------|---------|------|
+| `@kwargs` | Generate typed kwargs struct and overload | Small (struct allocation) |
+| `@dynamic_kwargs` | Enable dictionary-based `**kwargs` | Runtime (dictionary operations) |
+
+### `@kwargs`
+
+Generates a companion struct for bundling keyword-only arguments:
+
+```python
+@kwargs
+def configure(host: str, /, *, port: int = 8080, timeout: float = 30.0) -> Config:
+    return Config(host, port, timeout)
+
+# Usage
+opts = ConfigureKwargs(port=9000, timeout=60.0)
+configure("localhost", opts)
+
+# Or standard calling convention (always available)
+configure("localhost", port=9000, timeout=60.0)
+```
+
+**Requirements:**
+- Function must have keyword-only parameters (after `*`)
+- Positional-only parameters (before `/`) are excluded from the struct
+
+*Implementation: 🔄 Lowered - Generates struct definition and method overload.*
+
+### `@dynamic_kwargs`
+
+Enables truly dynamic keyword arguments via dictionary:
+
+```python
+@dynamic_kwargs
+def forward_request(endpoint: str, **kwargs: dict[str, object]) -> Response:
+    return http_post(endpoint, kwargs)
+
+# Usage
+forward_request("/api", name="Alice", age=30)
+```
+
+**Requirements:**
+- Function must have a `**kwargs` parameter with explicit `dict[str, T]` type annotation
+
+*Implementation: 🔄 Lowered - Generates method with dictionary parameter.*

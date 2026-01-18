@@ -1,4 +1,0 @@
-Rectangle
-20
-Circle
-28.26

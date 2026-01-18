@@ -1,8 +1,0 @@
-Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_c0d576edd1ed4164810835a72789863d.exe
-
-=== Running Program ===
-
-Rectangle
-20
-Circle
-28.259999999999998
