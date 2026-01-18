@@ -1,8 +1,0 @@
-Assembly compilation failed:
-  dogfood_test.cs(27,22): error CS0019: Operator '==' cannot be applied to operands of type 'Program.OrderStatus' and 'int'
-  dogfood_test.cs(31,22): error CS0019: Operator '==' cannot be applied to operands of type 'Program.OrderStatus' and 'int'
-  dogfood_test.cs(35,22): error CS0019: Operator '==' cannot be applied to operands of type 'Program.OrderStatus' and 'int'
-  dogfood_test.cs(51,22): error CS0019: Operator '==' cannot be applied to operands of type 'Program.OrderStatus' and 'int'
-  dogfood_test.cs(66,29): error CS0266: Cannot implicitly convert type 'int' to 'Sharpy.DogfoodTest.DogfoodTest.Program.OrderStatus'. An explicit conversion exists (are you missing a cast?)
-  dogfood_test.cs(69,29): error CS0266: Cannot implicitly convert type 'int' to 'Sharpy.DogfoodTest.DogfoodTest.Program.OrderStatus'. An explicit conversion exists (are you missing a cast?)
-  dogfood_test.cs(72,29): error CS0266: Cannot implicitly convert type 'int' to 'Sharpy.DogfoodTest.DogfoodTest.Program.OrderStatus'. An explicit conversion exists (are you missing a cast?)

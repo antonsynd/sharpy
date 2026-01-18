@@ -1,7 +1,0 @@
-Order is pending
-True
-Order is being processed
-True
-Order has been shipped
-False
-Order delivered successfully

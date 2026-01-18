@@ -1,2 +1,0 @@
-Compilation failed:
-  Cannot have module-level executable statements when a 'main' function is defined. The main function is automatically invoked as the entry point.

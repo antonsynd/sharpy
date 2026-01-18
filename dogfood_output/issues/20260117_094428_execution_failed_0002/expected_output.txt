@@ -1,8 +1,0 @@
-78
-Circle
-ColoredCircle
-314
-Circle
-Circle
-3
-True
