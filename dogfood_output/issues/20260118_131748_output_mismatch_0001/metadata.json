@@ -1,0 +1,18 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-01-18T13:17:31.225175",
+  "generated_code": "# Test virtual and override methods with a simple shape hierarchy\n\n@abstract\nclass Shape:\n    name: str\n\n    def __init__(self, name: str):\n        self.name = name\n\n    @virtual\n    def area(self) -> float:\n        return 0.0\n\n    @virtual\n    def perimeter(self) -> float:\n        return 0.0\n\n    def describe(self) -> None:\n        print(self.name)\n        print(self.area())\n        print(self.perimeter())\n\nclass Rectangle(Shape):\n    width: float\n    height: float\n\n    def __init__(self, width: float, height: float):\n        super().__init__(\"Rectangle\")\n        self.width = width\n        self.height = height\n\n    @override\n    def area(self) -> float:\n        return self.width * self.height\n\n    @override\n    def perimeter(self) -> float:\n        return 2.0 * (self.width + self.height)\n\nclass Circle(Shape):\n    radius: float\n\n    def __init__(self, radius: float):\n        super().__init__(\"Circle\")\n        self.radius = radius\n\n    @override\n    def area(self) -> float:\n        return 3.14 * self.radius * self.radius\n\n    @override\n    def perimeter(self) -> float:\n        return 2.0 * 3.14 * self.radius\n\nrect: Rectangle = Rectangle(5.0, 3.0)\nrect.describe()\n\ncirc: Circle = Circle(4.0)\ncirc.describe()\n\n# EXPECTED OUTPUT:\n# Rectangle\n# 15.0\n# 16.0\n# Circle\n# 50.24\n# 25.12",
+  "expected_output": "Rectangle\n15.0\n16.0\nCircle\n50.24\n25.12\n",
+  "actual_output": "Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_23f0dbc765dd4156bf5a05a80d70d30d.exe\n\n=== Running Program ===\n\nRectangle\n15\n16\nCircle\n50.24\n25.12",
+  "error_message": null,
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": "```\nVALID\nThe code uses only features from phases 0.1.0-0.1.10.\n```\n\n**Feature breakdown:**\n\n- **Classes (0.1.6)**: `Shape`, `Rectangle`, `Circle` with fields and methods\n- **Inheritance (0.1.7)**: `Rectangle(Shape)`, `Circle(Shape)`\n- **Abstract classes (0.1.7)**: `@abstract` decorator on `Shape`\n- **Virtual methods (0.1.7)**: `@virtual` on `area()` and `perimeter()`\n- **Override methods (0.1.7)**: `@override` on child class methods\n- **Constructor (0.1.6)**: `__init__` methods\n- **Super calls (0.1.7)**: `super().__init__(\"Rectangle\")`, `super().__init__(\"Circle\")`\n- **Instance methods (0.1.6)**: `describe()`, `area()`, `perimeter()`\n- **Fields (0.1.6)**: `name`, `width`, `height`, `radius`\n- **Primitive types (0.1.3)**: `str`, `float`, `None` (void return)\n- **Variables (0.1.3)**: `rect: Rectangle = Rectangle(5.0, 3.0)`\n- **Built-ins**: `print()` with single arguments\n- **Literals**: String literals (`\"Rectangle\"`, `\"Circle\"`), float literals (`5.0`, `3.0`, `3.14`, etc.)\n- **Operators (0.1.3)**: `*`, `+`, arithmetic operations\n- **Return statements (0.1.5)**: `return` with values\n\nAll features are within the allowed phases 0.1.0-0.1.10.\n",
+  "feature_focus": "virtual_override",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 5.067548036575317,
+  "compilation_duration": null,
+  "execution_duration": 1.3034591674804688,
+  "source_files": null
+}

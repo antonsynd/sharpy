@@ -1,0 +1,84 @@
+# Complex test: Functions calling other functions with classes and inheritance
+
+@abstract
+class Calculator:
+    name: str
+    
+    def __init__(self, calc_name: str):
+        self.name = calc_name
+    
+    @abstract
+    def calculate(self, a: int, b: int) -> int:
+        ...
+    
+    def get_name(self) -> str:
+        return self.name
+
+class Adder(Calculator):
+    def __init__(self):
+        super().__init__("Addition Calculator")
+    
+    @override
+    def calculate(self, a: int, b: int) -> int:
+        return self.add_values(a, b)
+    
+    def add_values(self, x: int, y: int) -> int:
+        return x + y
+
+class Multiplier(Calculator):
+    def __init__(self):
+        super().__init__("Multiplication Calculator")
+    
+    @override
+    def calculate(self, a: int, b: int) -> int:
+        return self.multiply_values(a, b)
+    
+    def multiply_values(self, x: int, y: int) -> int:
+        return x * y
+
+def process_calculation(calc: Calculator, val1: int, val2: int) -> int:
+    print(calc.get_name())
+    result: int = calc.calculate(val1, val2)
+    return result
+
+def apply_operation(a: int, b: int, use_add: bool) -> int:
+    if use_add:
+        adder: Calculator = Adder()
+        return process_calculation(adder, a, b)
+    else:
+        multiplier: Calculator = Multiplier()
+        return process_calculation(multiplier, a, b)
+
+def compute_with_modifier(base: int, modifier: int) -> int:
+    intermediate: int = apply_operation(base, modifier, True)
+    print(intermediate)
+    final: int = apply_operation(intermediate, 2, False)
+    return final
+
+def run_demo() -> None:
+    print(100)
+    
+    result1: int = compute_with_modifier(5, 3)
+    print(result1)
+    
+    print(200)
+    
+    result2: int = compute_with_modifier(10, 7)
+    print(result2)
+    
+    print(300)
+
+run_demo()
+
+# EXPECTED OUTPUT:
+# 100
+# Addition Calculator
+# 8
+# Multiplication Calculator
+# 16
+# 200
+# Addition Calculator
+# 17
+# Multiplication Calculator
+# 34
+# 300

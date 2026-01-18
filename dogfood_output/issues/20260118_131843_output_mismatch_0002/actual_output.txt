@@ -1,0 +1,15 @@
+Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_1e579e5d87ed47e5863d044f91598a9d.exe
+
+=== Running Program ===
+
+100
+Addition Calculator
+8
+Multiplication Calculator
+16
+200
+Addition Calculator
+17
+Multiplication Calculator
+34
+300

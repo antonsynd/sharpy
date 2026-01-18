@@ -1,0 +1,2 @@
+Compilation failed:
+  Semantic error at line 37, column 9: Parent class 'Rectangle' has no method 'describe'

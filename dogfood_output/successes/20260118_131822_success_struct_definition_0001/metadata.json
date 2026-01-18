@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-18T13:18:08.474149",
+  "generated_code": "# Test struct definition with value semantics (copy on assignment)\n\nstruct Point:\n    x: int\n    y: int\n\n    def __init__(self, x: int, y: int):\n        self.x = x\n        self.y = y\n\n    def move(self, dx: int, dy: int) -> None:\n        self.x += dx\n        self.y += dy\n\np1 = Point(10, 20)\np2 = p1\np2.move(5, 5)\n\nprint(p1.x)\nprint(p1.y)\nprint(p2.x)\nprint(p2.y)\n\n# EXPECTED OUTPUT:\n# 10\n# 20\n# 15\n# 25",
+  "expected_output": "10\n20\n15\n25\n",
+  "actual_output": "Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_02ac3f50d45049a08766d939da5520cb.exe\n\n=== Running Program ===\n\n10\n20\n15\n25",
+  "feature_focus": "struct_definition",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 4.169224262237549,
+  "execution_duration": 1.296288013458252,
+  "source_files": null
+}

@@ -1,0 +1,5 @@
+MyRectangle
+15
+MySquare
+4
+16

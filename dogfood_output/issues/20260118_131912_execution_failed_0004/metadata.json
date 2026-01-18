@@ -1,0 +1,18 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-18T13:18:59.911109",
+  "generated_code": "# Test virtual and override methods with a calculator hierarchy\n\n@abstract\nclass Calculator:\n    base_value: int\n\n    def __init__(self, value: int):\n        self.base_value = value\n\n    @virtual\n    def calculate(self, operand: int) -> int:\n        return self.base_value + operand\n\n    @virtual\n    def get_operation_name(self) -> str:\n        return \"addition\"\n\nclass Multiplier(Calculator):\n    factor: int\n\n    def __init__(self, value: int, mult_factor: int):\n        super().__init__(value)\n        self.factor = mult_factor\n\n    @override\n    def calculate(self, operand: int) -> int:\n        return self.base_value * operand * self.factor\n\n    @override\n    def get_operation_name(self) -> str:\n        return \"multiplication\"\n\nclass Subtractor(Calculator):\n    def __init__(self, value: int):\n        super().__init__(value)\n\n    @override\n    def calculate(self, operand: int) -> int:\n        return self.base_value - operand\n\ncalc1: Calculator = Calculator(10)\nprint(calc1.calculate(5))\nprint(calc1.get_operation_name())\n\ncalc2: Calculator = Multiplier(3, 2)\nprint(calc2.calculate(4))\nprint(calc2.get_operation_name())\n\ncalc3: Calculator = Subtractor(20)\nprint(calc3.calculate(7))\n\n# EXPECTED OUTPUT:\n# 15\n# addition\n# 24\n# multiplication\n# 13",
+  "expected_output": "15\naddition\n24\nmultiplication\n13\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 41, column 21: Cannot instantiate abstract class 'Calculator'\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": "VALID\nThe code uses only features from phases 0.1.0-0.1.10.\n\nLine-by-line validation:\n- **@abstract decorator** (0.1.7): Line 3\n- **Class definition** (0.1.6): Lines 3, 22, 34\n- **Field declarations** (0.1.6): Lines 4, 23\n- **Constructor __init__** (0.1.6): Lines 6, 24, 35\n- **@virtual decorator** (0.1.7): Lines 9, 13\n- **Instance methods** (0.1.6): All method definitions\n- **super() calls** (0.1.7): Lines 25, 37\n- **@override decorator** (0.1.7): Lines 28, 32, 38\n- **Variable declaration with type annotation** (0.1.3): Lines 42-44\n- **Type narrowing via inheritance** (0.1.7): Using Calculator type for subclass instances\n- **print() with single argument** (built-in): Lines 43-47\n- **Arithmetic operators** (0.1.3): `+`, `*`, `-`\n- **Return statements** (0.1.5): All method returns\n- **String literals** (literals): Lines 11, 15, 21, 33\n- **Integer literals** (literals): All numeric values\n\nAll decorators, inheritance patterns, method overriding, field declarations, and control flow constructs are explicitly allowed in phase 0.1.7 (Inheritance & Interfaces).\n",
+  "feature_focus": "virtual_override",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 4.829077959060669,
+  "compilation_duration": null,
+  "execution_duration": 0.8362360000610352,
+  "source_files": null
+}

@@ -1,0 +1,5 @@
+15
+addition
+24
+multiplication
+13
