@@ -1,0 +1,3 @@
+Assembly compilation failed:
+  dogfood_test.cs(104,40): error CS0103: The name 'room' does not exist in the current context
+  dogfood_test.cs(105,40): error CS0103: The name 'room' does not exist in the current context

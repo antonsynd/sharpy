@@ -1,0 +1,108 @@
+# Complex test: School management system with inheritance and multiple classes
+
+@abstract
+class Person:
+    name: str
+    age: int
+
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+    @abstract
+    def get_role(self) -> str:
+        ...
+
+    def get_info(self) -> int:
+        return self.age
+
+class Student(Person):
+    student_id: int
+    grade_level: int
+
+    def __init__(self, name: str, age: int, sid: int, level: int):
+        super().__init__(name, age)
+        self.student_id = sid
+        self.grade_level = level
+
+    @override
+    def get_role(self) -> str:
+        return "Student"
+
+    def advance_grade(self) -> None:
+        self.grade_level += 1
+
+class Teacher(Person):
+    subject: str
+    years_experience: int
+
+    def __init__(self, name: str, age: int, subj: str, exp: int):
+        super().__init__(name, age)
+        self.subject = subj
+        self.years_experience = exp
+
+    @override
+    def get_role(self) -> str:
+        return "Teacher"
+
+    def gain_experience(self, years: int) -> None:
+        self.years_experience += years
+
+class Classroom:
+    room_number: int
+    capacity: int
+    enrolled: int
+
+    def __init__(self, room: int, cap: int):
+        self.room_number = room
+        self.capacity = cap
+        self.enrolled = 0
+
+    def enroll_student(self) -> bool:
+        if self.enrolled < self.capacity:
+            self.enrolled += 1
+            return True
+        return False
+
+    def get_available_seats(self) -> int:
+        return self.capacity - self.enrolled
+
+# Create students
+s1: Student = Student("Alice", 15, 1001, 9)
+s2: Student = Student("Bob", 16, 1002, 10)
+
+# Create teacher
+t1: Teacher = Teacher("Dr Smith", 45, "Math", 20)
+
+# Create classroom
+room: Classroom = Classroom(101, 30)
+
+# Test student operations
+print(s1.get_info())
+print(s1.grade_level)
+s1.advance_grade()
+print(s1.grade_level)
+
+# Test teacher operations
+print(t1.get_info())
+print(t1.years_experience)
+t1.gain_experience(3)
+print(t1.years_experience)
+
+# Test classroom enrollment
+print(room.get_available_seats())
+enrolled1: bool = room.enroll_student()
+enrolled2: bool = room.enroll_student()
+print(room.enrolled)
+print(room.get_available_seats())
+
+# EXPECTED OUTPUT:
+# 15
+# 9
+# 10
+# 45
+# 20
+# 23
+# 30
+# 2
+# 28

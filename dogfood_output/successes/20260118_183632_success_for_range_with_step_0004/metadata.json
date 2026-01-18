@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-18T18:36:20.555941",
+  "generated_code": "# Test for loops with step parameter - counting patterns\n\nclass StepCounter:\n    def count_by_twos(self, limit: int) -> None:\n        for i in range(0, limit, 2):\n            print(i)\n\n    def count_by_fives(self, start: int, end: int) -> None:\n        for i in range(start, end, 5):\n            print(i)\n\n    def countdown_by_threes(self, start: int) -> None:\n        for i in range(start, 0, -3):\n            print(i)\n\ncounter = StepCounter()\n\ncounter.count_by_twos(10)\nprint(999)\n\ncounter.count_by_fives(10, 30)\nprint(888)\n\ncounter.countdown_by_threes(20)\n\n# EXPECTED OUTPUT:\n# 0\n# 2\n# 4\n# 6\n# 8\n# 999\n# 10\n# 15\n# 20\n# 25\n# 888\n# 20\n# 17\n# 14\n# 11\n# 8\n# 5\n# 2",
+  "expected_output": "0\n2\n4\n6\n8\n999\n10\n15\n20\n25\n888\n20\n17\n14\n11\n8\n5\n2\n",
+  "actual_output": "0\n2\n4\n6\n8\n999\n10\n15\n20\n25\n888\n20\n17\n14\n11\n8\n5\n2",
+  "feature_focus": "for_range_with_step",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 5.174209117889404,
+  "execution_duration": 1.482278823852539,
+  "source_files": null
+}

@@ -1,0 +1,95 @@
+# Issue Report: compilation_failed
+
+**Timestamp:** 2026-01-18T18:35:44.558122
+**Type:** compilation_failed
+**Feature Focus:** type_alias
+**Complexity:** medium
+**Backend:** claude
+
+## Generated Sharpy Code
+
+```python
+# Test type aliases with different scenarios
+# Using type aliases for primitive types and classes
+
+type UserId = int
+type Temperature = float
+type Message = str
+
+class User:
+    id: UserId
+    name: str
+    
+    def __init__(self, user_id: UserId, user_name: str):
+        self.id = user_id
+        self.name = user_name
+    
+    def get_id(self) -> UserId:
+        return self.id
+
+class WeatherStation:
+    current_temp: Temperature
+    
+    def __init__(self, temp: Temperature):
+        self.current_temp = temp
+    
+    def update_temperature(self, new_temp: Temperature) -> None:
+        self.current_temp = new_temp
+    
+    def get_temperature(self) -> Temperature:
+        return self.current_temp
+
+def process_user_id(uid: UserId) -> UserId:
+    return uid + 1000
+
+def format_message(msg: Message, code: UserId) -> Message:
+    return msg
+
+def float_to_int(val: float) -> int:
+    if val >= 0.0:
+        return int(val)
+    return int(val)
+
+# Test with User class
+user: User = User(42, "Alice")
+print(user.get_id())
+
+new_id: UserId = process_user_id(user.id)
+print(new_id)
+
+# Test with WeatherStation class
+station: WeatherStation = WeatherStation(23.5)
+temp1: int = float_to_int(station.get_temperature())
+print(temp1)
+
+station.update_temperature(25.8)
+temp2: int = float_to_int(station.get_temperature())
+print(temp2)
+
+# Test with simple variables
+temp_reading: Temperature = 18.3
+temp3: int = float_to_int(temp_reading)
+print(temp3)
+
+# EXPECTED OUTPUT:
+# 42
+# 1042
+# 23
+# 25
+# 18
+```
+
+## Error
+
+```
+Assembly compilation failed:
+  dogfood_test.cs(67,28): error CS0102: The type 'Program' already contains a definition for 'User'
+  dogfood_test.cs(68,49): error CS0229: Ambiguity between 'Program.User' and 'Program.User'
+  dogfood_test.cs(76,47): error CS0229: Ambiguity between 'Program.User' and 'Program.User'
+
+```
+
+## Timing
+
+- Generation: 12.19s
+- Execution: 1.49s

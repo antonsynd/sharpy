@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-18T18:36:10.577607",
+  "generated_code": "# Test null coalescing operator with different types\n\n# Basic null coalescing with int\nx: int? = None\ny: int = x ?? 42\nprint(y)\n\n# Null coalescing with non-null value\na: int? = 100\nb: int = a ?? 999\nprint(b)\n\n# Null coalescing with str\nname: str? = None\ndefault_name: str = name ?? \"Guest\"\nprint(default_name)\n\n# Chain of null coalescing\nfirst: int? = None\nsecond: int? = None\nthird: int = 77\nresult: int = first ?? second ?? third\nprint(result)\n\n# EXPECTED OUTPUT:\n# 42\n# 100\n# Guest\n# 77",
+  "expected_output": "42\n100\nGuest\n77\n",
+  "actual_output": "42\n100\nGuest\n77",
+  "feature_focus": "null_coalescing",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 3.7160940170288086,
+  "execution_duration": 1.512753963470459,
+  "source_files": null
+}

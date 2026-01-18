@@ -1,0 +1,122 @@
+[
+  {
+    "iteration": 1,
+    "feature_focus": "class_instance_methods",
+    "complexity": "simple",
+    "success": true,
+    "success_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/successes/20260118_183454_success_class_instance_methods_0000",
+    "issue_type": null,
+    "issue_dir": null,
+    "duration": 11.672883,
+    "timestamp": "2026-01-18T18:34:54.083299",
+    "skip_reason": null
+  },
+  {
+    "iteration": 2,
+    "feature_focus": "augmented_assignment",
+    "complexity": "simple",
+    "success": true,
+    "success_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/successes/20260118_183502_success_augmented_assignment_0001",
+    "issue_type": null,
+    "issue_dir": null,
+    "duration": 8.900979,
+    "timestamp": "2026-01-18T18:35:02.984451",
+    "skip_reason": null
+  },
+  {
+    "iteration": 3,
+    "feature_focus": "class_static_methods",
+    "complexity": "simple",
+    "success": true,
+    "success_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/successes/20260118_183512_success_class_static_methods_0002",
+    "issue_type": null,
+    "issue_dir": null,
+    "duration": 9.152401,
+    "timestamp": "2026-01-18T18:35:12.137304",
+    "skip_reason": null
+  },
+  {
+    "iteration": 4,
+    "feature_focus": "module_imports",
+    "complexity": "complex",
+    "success": false,
+    "success_dir": null,
+    "issue_type": "skipped",
+    "issue_dir": null,
+    "duration": 32.419231,
+    "timestamp": "2026-01-18T18:35:44.556973",
+    "skip_reason": "calculator.spy invalid per spec"
+  },
+  {
+    "iteration": 5,
+    "feature_focus": "type_alias",
+    "complexity": "medium",
+    "success": false,
+    "success_dir": null,
+    "issue_type": "compilation_failed",
+    "issue_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/issues/20260118_183610_compilation_failed_0000",
+    "duration": 26.018828,
+    "timestamp": "2026-01-18T18:36:10.576941",
+    "skip_reason": null
+  },
+  {
+    "iteration": 6,
+    "feature_focus": "null_coalescing",
+    "complexity": "simple",
+    "success": true,
+    "success_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/successes/20260118_183620_success_null_coalescing_0003",
+    "issue_type": null,
+    "issue_dir": null,
+    "duration": 9.977893,
+    "timestamp": "2026-01-18T18:36:20.555496",
+    "skip_reason": null
+  },
+  {
+    "iteration": 7,
+    "feature_focus": "for_range_with_step",
+    "complexity": "medium",
+    "success": true,
+    "success_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/successes/20260118_183632_success_for_range_with_step_0004",
+    "issue_type": null,
+    "issue_dir": null,
+    "duration": 11.805191,
+    "timestamp": "2026-01-18T18:36:32.361128",
+    "skip_reason": null
+  },
+  {
+    "iteration": 8,
+    "feature_focus": "access_modifiers",
+    "complexity": "complex",
+    "success": false,
+    "success_dir": null,
+    "issue_type": "output_mismatch",
+    "issue_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/issues/20260118_183709_output_mismatch_0001",
+    "duration": 37.151966,
+    "timestamp": "2026-01-18T18:37:09.513570",
+    "skip_reason": null
+  },
+  {
+    "iteration": 9,
+    "feature_focus": "class_with_init",
+    "complexity": "complex",
+    "success": false,
+    "success_dir": null,
+    "issue_type": "compilation_failed",
+    "issue_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/issues/20260118_183726_compilation_failed_0002",
+    "duration": 17.286597,
+    "timestamp": "2026-01-18T18:37:26.800898",
+    "skip_reason": null
+  },
+  {
+    "iteration": 10,
+    "feature_focus": "null_conditional",
+    "complexity": "medium",
+    "success": true,
+    "success_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/successes/20260118_183749_success_null_conditional_0005",
+    "issue_type": null,
+    "issue_dir": null,
+    "duration": 22.391661,
+    "timestamp": "2026-01-18T18:37:49.193001",
+    "skip_reason": null
+  }
+]

@@ -1,0 +1,23 @@
+# Test static methods with class-level operations
+
+class MathHelper:
+    def multiply(x: int, y: int) -> int:
+        return x * y
+    
+    def is_even(n: int) -> bool:
+        return n % 2 == 0
+
+# Call static methods directly on class
+result: int = MathHelper.multiply(6, 7)
+print(result)
+
+check: bool = MathHelper.is_even(result)
+print(check)
+
+check2: bool = MathHelper.is_even(10)
+print(check2)
+
+# EXPECTED OUTPUT:
+# 42
+# True
+# True

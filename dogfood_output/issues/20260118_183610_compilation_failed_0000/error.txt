@@ -1,0 +1,4 @@
+Assembly compilation failed:
+  dogfood_test.cs(67,28): error CS0102: The type 'Program' already contains a definition for 'User'
+  dogfood_test.cs(68,49): error CS0229: Ambiguity between 'Program.User' and 'Program.User'
+  dogfood_test.cs(76,47): error CS0229: Ambiguity between 'Program.User' and 'Program.User'
