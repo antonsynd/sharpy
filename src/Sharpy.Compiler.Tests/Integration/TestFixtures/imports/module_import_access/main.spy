@@ -1,0 +1,23 @@
+# Main file - tests module-level access via import statement
+
+import calculator
+
+def main():
+    # Test basic operations
+    result1: int = calculator.add(5, 3)
+    print(result1)
+
+    result2: int = calculator.subtract(10, 4)
+    print(result2)
+
+    result3: int = calculator.multiply(7, 6)
+    print(result3)
+
+    # Test module-level constant
+    base: int = calculator.BASE
+    print(base)
+
+    # Chain operations
+    step1: int = calculator.add(base, 5)
+    step2: int = calculator.multiply(step1, 2)
+    print(step2)

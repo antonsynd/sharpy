@@ -1,0 +1,12 @@
+# math_utils module - provides mathematical utilities
+
+def square(n: int) -> int:
+    return n * n
+
+def cube(n: int) -> int:
+    return n * n * n
+
+def is_even(n: int) -> bool:
+    return n % 2 == 0
+
+PI_APPROX: int = 3
