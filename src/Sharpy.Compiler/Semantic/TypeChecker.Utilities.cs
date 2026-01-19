@@ -522,7 +522,6 @@ public partial class TypeChecker
         // Look up the method in the parent class hierarchy and return its type
         // Use FindMethodInHierarchy to traverse the full inheritance chain
         var (parentMethod, methodOwner) = FindMethodInHierarchy(_currentClass.BaseType, memberName);
-
         if (parentMethod == null && memberName == "__init__")
         {
             // __init__ might be in Constructors list - check full hierarchy
