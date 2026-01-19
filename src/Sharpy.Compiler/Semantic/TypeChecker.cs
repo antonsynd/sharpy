@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Validation;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -20,6 +21,10 @@ public partial class TypeChecker
     private readonly DefaultParameterValidator _defaultParameterValidator;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
+
+    // Validation pipeline support
+    private readonly ValidationPipeline? _validationPipeline;
+    private readonly bool _usePipeline;
 
     // Track current function return type for return statement checking
     private SemanticType? _currentFunctionReturnType = null;
@@ -44,12 +49,20 @@ public partial class TypeChecker
     public bool ContinueAfterError { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
 
-    public TypeChecker(SymbolTable symbolTable, SemanticInfo semanticInfo, TypeResolver typeResolver, ICompilerLogger? logger = null)
+    public TypeChecker(
+        SymbolTable symbolTable,
+        SemanticInfo semanticInfo,
+        TypeResolver typeResolver,
+        ICompilerLogger? logger = null,
+        ValidationPipeline? validationPipeline = null)
     {
         _symbolTable = symbolTable;
         _semanticInfo = semanticInfo;
         _typeResolver = typeResolver;
         _logger = logger ?? NullLogger.Instance;
+        _validationPipeline = validationPipeline;
+        _usePipeline = validationPipeline != null;
+
         _controlFlowValidator = new ControlFlowValidator(_logger);
         _accessValidator = new AccessValidator(_symbolTable, _semanticInfo, _logger);
 
@@ -62,18 +75,33 @@ public partial class TypeChecker
         _defaultParameterValidator = new DefaultParameterValidator(_symbolTable, _typeResolver, _logger);
     }
 
+    /// <summary>
+    /// Creates a SemanticContext for use with the validation pipeline.
+    /// </summary>
+    public SemanticContext CreateSemanticContext()
+    {
+        return new SemanticContext(_symbolTable, _semanticInfo, _typeResolver, _logger);
+    }
+
     public IReadOnlyList<SemanticError> Errors
     {
         get
         {
-            // Combine errors from type checker, type resolver, control flow validator, access validator, operator validator, protocol validator, and default parameter validator.
+            // Combine errors from type checker, type resolver, and validators.
             var allErrors = new List<SemanticError>(_errors);
             allErrors.AddRange(_typeResolver.Errors);
-            allErrors.AddRange(_controlFlowValidator.Errors);
-            allErrors.AddRange(_accessValidator.Errors);
-            allErrors.AddRange(_operatorValidator.Errors);
-            allErrors.AddRange(_protocolValidator.Errors);
-            allErrors.AddRange(_defaultParameterValidator.Errors);
+
+            if (!_usePipeline)
+            {
+                // Legacy behavior - collect from individual validators
+                allErrors.AddRange(_controlFlowValidator.Errors);
+                allErrors.AddRange(_accessValidator.Errors);
+                allErrors.AddRange(_operatorValidator.Errors);
+                allErrors.AddRange(_protocolValidator.Errors);
+                allErrors.AddRange(_defaultParameterValidator.Errors);
+            }
+            // When using pipeline, errors are merged in CheckModule
+
             return allErrors;
         }
     }
@@ -88,6 +116,25 @@ public partial class TypeChecker
         foreach (var statement in module.Body)
         {
             CheckStatement(statement);
+        }
+
+        // If pipeline is configured, run additional validators
+        if (_usePipeline && _validationPipeline != null)
+        {
+            var context = CreateSemanticContext();
+            context.MergeFromLegacyErrors(_errors);
+            context.MergeFromLegacyErrors(_typeResolver.Errors);
+
+            _validationPipeline.Validate(module, context);
+
+            // Merge pipeline diagnostics back to legacy error list
+            foreach (var error in context.Diagnostics.GetErrors())
+            {
+                if (!_errors.Any(e => e.Message == error.Message && e.Line == error.Line))
+                {
+                    _errors.Add(new SemanticError(error.Message, error.Line, error.Column));
+                }
+            }
         }
     }
 
