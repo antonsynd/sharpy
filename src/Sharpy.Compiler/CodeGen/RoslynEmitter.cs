@@ -150,16 +150,11 @@ public partial class RoslynEmitter
     /// <returns>The C# variable name with version suffix (e.g., "x", "x_1", "x_2")</returns>
     private string GetMangledVariableName(string name, bool isNewDeclaration)
     {
-        // Try CodeGenInfo-based resolution first
-        var codeGenName = TryGetCSharpNameFromCodeGenInfo(name, isNewDeclaration);
-        if (codeGenName != null)
-            return codeGenName;
-
-        // Fall back to existing logic...
         var baseName = NameMangler.ToCamelCase(name);
 
-        // FIRST: Check if this is a local variable that shadows a module-level one
-        // Local variables take precedence over module-level variables
+        // FIRST: Check if this is a local variable (including parameters)
+        // Local variables take precedence over module-level variables and CodeGenInfo
+        // This handles parameter shadowing correctly (parameter x shadows global x)
         if (_variableVersions.ContainsKey(baseName))
         {
             // There's a local variable with this name - use local resolution
@@ -180,26 +175,10 @@ public partial class RoslynEmitter
         }
 
         // Check if this is a reference to a local const variable - use constant case
+        // (still needed for local scope tracking during emission)
         if (_constVariables.Contains(name))
         {
             return NameMangler.ToConstantCase(name);
-        }
-
-        // Legacy fallback for when CodeGenInfo is not computed (e.g., computeCodeGenInfo: false)
-        // These checks will be removed once all compilation paths enable CodeGenInfo
-
-        // Check if this is a reference to a module-level const - use constant case
-        // [LEGACY FALLBACK] - Marked for removal when CodeGenInfo is always enabled
-        if (_moduleConstVariables.Contains(name))
-        {
-            return NameMangler.ToConstantCase(name);
-        }
-
-        // Check if this is a reference to a module-level variable - use PascalCase
-        // [LEGACY FALLBACK] - Marked for removal when CodeGenInfo is always enabled
-        if (_moduleVariables.Contains(name))
-        {
-            return NameMangler.ToPascalCase(name);
         }
 
         // Check if this is a reference to a class or struct name - preserve PascalCase
@@ -240,6 +219,12 @@ public partial class RoslynEmitter
             // Also escape C# keywords like "base" -> "@base"
             return EscapeCSharpKeyword(name.Replace(".", "_"));
         }
+
+        // Try CodeGenInfo-based resolution for module-level symbols
+        // This comes after local variable checks to ensure parameters shadow globals correctly
+        var codeGenName = TryGetCSharpNameFromCodeGenInfo(name, isNewDeclaration);
+        if (codeGenName != null)
+            return codeGenName;
 
         // If we reach here, this is a new local variable that doesn't shadow any module-level var
         if (isNewDeclaration)

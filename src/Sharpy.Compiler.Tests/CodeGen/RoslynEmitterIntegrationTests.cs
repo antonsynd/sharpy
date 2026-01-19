@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Xunit;
@@ -16,6 +17,35 @@ public class RoslynEmitterIntegrationTests
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = sourceFilePath,
+            IsEntryPoint = isEntryPoint
+        };
+        return new RoslynEmitter(context);
+    }
+
+    /// <summary>
+    /// Creates an emitter with full semantic analysis including CodeGenInfo computation.
+    /// Use this when testing code generation that depends on semantic analysis results.
+    /// </summary>
+    private RoslynEmitter CreateEmitterWithSemanticAnalysis(Module module, string? sourceFilePath = null, bool isEntryPoint = true)
+    {
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var semanticInfo = new SemanticInfo();
+        var logger = NullLogger.Instance;
+
+        // Run name resolution
+        var nameResolver = new NameResolver(symbolTable, logger);
+        nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance();
+
+        // Run type checking with CodeGenInfo computation
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
+        typeChecker.CheckModule(module, computeCodeGenInfo: true);
+
         var context = new CodeGenContext(symbolTable, builtins)
         {
             SourceFilePath = sourceFilePath,
@@ -342,7 +372,6 @@ public class RoslynEmitterIntegrationTests
         // Arrange - Const declared at module level, referenced in function
         // Note: Currently module-level consts become local in Main(), so this tests
         // that the naming is consistent even though scoping needs future work
-        var emitter = CreateEmitter();
         var module = new Module
         {
             Body = new List<Statement>
@@ -377,6 +406,9 @@ public class RoslynEmitterIntegrationTests
                 }
             }
         };
+
+        // Create emitter with semantic analysis (required for CodeGenInfo)
+        var emitter = CreateEmitterWithSemanticAnalysis(module);
 
         // Act
         var result = emitter.GenerateCompilationUnit(module);

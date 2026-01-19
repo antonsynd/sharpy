@@ -131,7 +131,7 @@ public class Compiler
             metrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline);
-            typeChecker.CheckModule(module);
+            typeChecker.CheckModule(module, computeCodeGenInfo: true);
             metrics.EndPhase();
 
             if (typeChecker.Errors.Any())

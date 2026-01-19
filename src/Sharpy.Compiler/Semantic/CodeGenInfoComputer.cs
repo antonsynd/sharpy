@@ -87,9 +87,15 @@ public class CodeGenInfoComputer
             // Use execution order analysis result instead of simple initializer check
             var hasIssues = _variablesWithExecutionOrderIssues.Contains(varDecl.Name);
 
+            // Variables with execution order issues become locals in Main() and use camelCase
+            // Module-level fields use PascalCase
+            var csharpName = hasIssues
+                ? NameMangler.ToCamelCase(varDecl.Name)
+                : NameMangler.ToPascalCase(varDecl.Name);
+
             varSymbol.CodeGenInfo = new CodeGenInfo
             {
-                CSharpName = NameMangler.ToPascalCase(varDecl.Name),
+                CSharpName = csharpName,
                 OriginalName = varDecl.Name,
                 Version = 0,
                 IsModuleLevel = !hasIssues,  // Not module-level if has execution order issues

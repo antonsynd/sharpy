@@ -583,7 +583,7 @@ class Program
             // Type checking pass
             var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
-            typeChecker.CheckModule(module);
+            typeChecker.CheckModule(module, computeCodeGenInfo: true);
 
             if (typeChecker.Errors.Any())
             {
