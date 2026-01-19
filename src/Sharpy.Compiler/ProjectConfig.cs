@@ -79,10 +79,10 @@ public class ProjectConfig
 
     /// <summary>
     /// If true, compute CodeGenInfo during semantic analysis and use it during code generation.
-    /// This is a migration feature flag - set to true to use the new pre-computed approach.
-    /// Default is false for backwards compatibility during migration.
+    /// When enabled, symbols will have their CodeGenInfo property populated after type checking,
+    /// containing pre-computed C# names, version numbers, and other code generation metadata.
     /// </summary>
-    public bool UsePrecomputedCodeGenInfo { get; set; } = false;
+    public bool UsePrecomputedCodeGenInfo { get; set; } = true;
 
     /// <summary>
     /// Full path to the output assembly
