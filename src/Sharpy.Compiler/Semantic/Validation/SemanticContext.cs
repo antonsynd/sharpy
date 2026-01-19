@@ -35,10 +35,21 @@ public class SemanticContext
     public bool ContinueAfterErrors { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
 
-    // State tracking for validators
+    // Centralized AST traversal state (recommended for new validators)
+    /// <summary>
+    /// Centralized AST traversal state for validators.
+    /// Use this instead of the individual state properties for stack-based scope tracking.
+    /// </summary>
+    public AstTraversalContext Traversal { get; } = new();
+
+    // Legacy state tracking (prefer using Traversal instead)
+    [Obsolete("Use Traversal.CurrentClass instead. This property will be removed in v0.2.")]
     public TypeSymbol? CurrentClass { get; set; }
+    [Obsolete("Use Traversal.CurrentFunction instead. This property will be removed in v0.2.")]
     public FunctionSymbol? CurrentFunction { get; set; }
+    [Obsolete("Use Traversal.InLoop instead. This property will be removed in v0.2.")]
     public bool InLoop { get; set; }
+    [Obsolete("Use Traversal.LoopDepth instead. This property will be removed in v0.2.")]
     public int LoopDepth { get; set; }
 
     public SemanticContext(

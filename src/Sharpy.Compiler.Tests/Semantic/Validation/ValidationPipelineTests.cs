@@ -156,6 +156,73 @@ public class ValidationPipelineTests
     }
 
     [Fact]
+    public void DefaultPipeline_HasAllValidators()
+    {
+        var pipeline = ValidationPipelineFactory.CreateDefault();
+        var validators = pipeline.Validators.ToList();
+
+        Assert.Equal(6, validators.Count);
+        Assert.Contains(validators, v => v is SignatureValidatorV2);
+        Assert.Contains(validators, v => v is DefaultParameterValidatorV2);
+        Assert.Contains(validators, v => v is ControlFlowValidatorV2);
+        Assert.Contains(validators, v => v is AccessValidatorV2);
+        Assert.Contains(validators, v => v is ProtocolValidatorV2);
+        Assert.Contains(validators, v => v is OperatorValidatorV2);
+    }
+
+    [Fact]
+    public void DefaultPipeline_ValidatorsInCorrectOrder()
+    {
+        var pipeline = ValidationPipelineFactory.CreateDefault();
+        var orders = pipeline.Validators.Select(v => v.Order).ToList();
+
+        // Should be sorted
+        Assert.Equal(orders.OrderBy(o => o).ToList(), orders);
+
+        // Signature validator should be first (Order 150)
+        Assert.Equal(150, orders[0]);
+    }
+
+    [Fact]
+    public void DefaultPipeline_SignatureValidatorFirst()
+    {
+        var pipeline = ValidationPipelineFactory.CreateDefault();
+        var firstValidator = pipeline.Validators.FirstOrDefault();
+
+        Assert.NotNull(firstValidator);
+        Assert.IsType<SignatureValidatorV2>(firstValidator);
+        Assert.Equal("SignatureValidator", firstValidator.Name);
+    }
+
+    [Fact]
+    public void DefaultPipeline_ControlFlowValidatorPresent()
+    {
+        var pipeline = ValidationPipelineFactory.CreateDefault();
+        var controlFlowValidator = pipeline.Validators.FirstOrDefault(v => v is ControlFlowValidatorV2);
+
+        Assert.NotNull(controlFlowValidator);
+        Assert.Equal(400, controlFlowValidator.Order);
+    }
+
+    [Fact]
+    public void FastPipeline_HasOnlyControlFlowValidator()
+    {
+        var pipeline = ValidationPipelineFactory.CreateFast();
+        var validators = pipeline.Validators.ToList();
+
+        Assert.Single(validators);
+        Assert.IsType<ControlFlowValidatorV2>(validators[0]);
+    }
+
+    [Fact]
+    public void MinimalPipeline_HasNoValidators()
+    {
+        var pipeline = ValidationPipelineFactory.CreateMinimal();
+
+        Assert.Empty(pipeline.Validators);
+    }
+
+    [Fact]
     public void Validate_StopsWhenContinueAfterErrorsIsFalse()
     {
         var executionOrder = new List<string>();
