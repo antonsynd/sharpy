@@ -319,6 +319,16 @@ public partial class RoslynEmitter
             }
 
             var member = GenerateStatement(stmt);
+
+            // After generating class/struct/function declarations, clear local scope tracking
+            // so that parameter names from their methods don't leak into module-level code
+            if (stmt is ClassDef or StructDef or FunctionDef or InterfaceDef or EnumDef)
+            {
+                _declaredVariables.Clear();
+                _variableVersions.Clear();
+                _constVariables.Clear();
+            }
+
             if (member is MemberDeclarationSyntax memberDecl)
             {
                 declarations.Add(memberDecl);
