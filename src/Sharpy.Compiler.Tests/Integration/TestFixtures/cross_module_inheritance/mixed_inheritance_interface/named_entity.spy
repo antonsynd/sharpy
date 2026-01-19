@@ -15,5 +15,6 @@ class NamedEntity(Entity, ISerializable):
     def get_type(self) -> str:
         return "NamedEntity"
     
+    @virtual
     def to_string(self) -> str:
-        return self.name + "(" + (self.id to str) + ")"
+        return self.name + "(" + str(self.id) + ")"

@@ -40,6 +40,7 @@ public partial class TypeChecker
             ConditionalExpression cond => CheckConditionalExpression(cond),
             LambdaExpression lambda => CheckLambda(lambda),
             TypeCast cast => CheckTypeCast(cast),
+            TypeCoercion coercion => CheckTypeCoercion(coercion),
             TypeCheck typeCheck => CheckTypeCheck(typeCheck),
             Parenthesized paren => CheckExpression(paren.Expression),
             _ => SemanticType.Unknown
@@ -1415,6 +1416,173 @@ public partial class TypeChecker
     {
         CheckExpression(cast.Value);
         return _typeResolver.ResolveTypeAnnotation(cast.TargetType);
+    }
+
+    /// <summary>
+    /// Type-checks a type coercion expression (value to Type).
+    /// Validates that the coercion is valid per the language specification.
+    /// </summary>
+    private SemanticType CheckTypeCoercion(TypeCoercion coercion)
+    {
+        var sourceType = CheckExpression(coercion.Value);
+        var targetType = _typeResolver.ResolveTypeAnnotation(coercion.TargetType);
+
+        // If either type is unknown, skip validation to avoid cascading errors
+        if (sourceType is UnknownType || targetType is UnknownType)
+        {
+            return targetType;
+        }
+
+        // Get the underlying target type (strip nullable wrapper if present)
+        var underlyingTargetType = targetType is NullableType nullable ? nullable.UnderlyingType : targetType;
+
+        // Validate the coercion
+        ValidateTypeCoercion(coercion, sourceType, underlyingTargetType);
+
+        return targetType;
+    }
+
+    /// <summary>
+    /// Validates that a type coercion is valid per the language specification.
+    /// Reports errors for invalid casts.
+    /// </summary>
+    private void ValidateTypeCoercion(TypeCoercion coercion, SemanticType sourceType, SemanticType targetType)
+    {
+        // Unboxing: object to any type is valid (runtime check) - check this first
+        if (IsObjectType(sourceType))
+        {
+            return; // Valid
+        }
+
+        // Numeric to numeric conversions are always valid (may throw at runtime for narrowing)
+        if (PrimitiveCatalog.IsNumeric(sourceType) && PrimitiveCatalog.IsNumeric(targetType))
+        {
+            return; // Valid
+        }
+
+        // Check for invalid numeric/bool to string conversion
+        // This is a common mistake - users should use str(x) instead
+        if (IsStringType(targetType))
+        {
+            var sourceInfo = PrimitiveCatalog.GetPrimitiveInfo(sourceType);
+            if (sourceInfo != null && sourceInfo.ClrType != typeof(string))
+            {
+                // Source is a primitive but not string - reject
+                AddError(
+                    $"Cannot cast '{sourceType.GetDisplayName()}' to 'str'. Use str(...) instead.",
+                    coercion.LineStart, coercion.ColumnStart);
+                return;
+            }
+        }
+
+        // Check for valid reference type casts (inheritance relationship or interface implementation)
+        if (!CanPotentiallyCast(sourceType, targetType))
+        {
+            AddError(
+                $"Cannot cast '{sourceType.GetDisplayName()}' to '{targetType.GetDisplayName()}' (no inheritance relationship).",
+                coercion.LineStart, coercion.ColumnStart);
+        }
+    }
+
+    /// <summary>
+    /// Returns true if the type is the str/string type.
+    /// </summary>
+    private static bool IsStringType(SemanticType type)
+    {
+        return type is BuiltinType builtin && (builtin.Name == "str" || builtin.Name == "string");
+    }
+
+    /// <summary>
+    /// Returns true if the type is the object type.
+    /// </summary>
+    private static bool IsObjectType(SemanticType type)
+    {
+        return type is BuiltinType builtin && builtin.Name == "object";
+    }
+
+    /// <summary>
+    /// Determines if a cast between two types COULD potentially succeed at runtime.
+    /// Returns true if there's an inheritance relationship, interface implementation, or unboxing potential.
+    /// Returns false if the cast is statically impossible.
+    /// </summary>
+    private bool CanPotentiallyCast(SemanticType source, SemanticType target)
+    {
+        // Same type is always castable
+        if (source.Equals(target))
+            return true;
+
+        // Both must be user-defined types for inheritance checks
+        if (source is UserDefinedType sourceUdt && target is UserDefinedType targetUdt)
+        {
+            // Check if source inherits from target (downcast - always safe)
+            if (InheritsFrom(sourceUdt.Symbol, targetUdt.Symbol))
+                return true;
+
+            // Check if target inherits from source (upcast - runtime check)
+            if (InheritsFrom(targetUdt.Symbol, sourceUdt.Symbol))
+                return true;
+
+            // Check if target is an interface that could be implemented
+            if (targetUdt.Symbol?.TypeKind == TypeKind.Interface)
+                return true;
+
+            // Check if source is an interface that the target could implement
+            if (sourceUdt.Symbol?.TypeKind == TypeKind.Interface)
+                return true;
+
+            // No relationship found
+            return false;
+        }
+
+        // Interface casting is always potentially valid at runtime
+        if (source is UserDefinedType && target is UserDefinedType targetType && targetType.Symbol?.TypeKind == TypeKind.Interface)
+            return true;
+
+        // Builtin to user-defined: only valid if unboxing from object
+        if (source is BuiltinType sourceBuiltin && sourceBuiltin.Name == "object")
+            return true;
+
+        // User-defined to builtin: only valid for boxing to object
+        if (target is BuiltinType targetBuiltin && targetBuiltin.Name == "object")
+            return true;
+
+        // For generic types, check the base definition
+        if (source is GenericType sourceGeneric && target is GenericType targetGeneric)
+        {
+            // Same generic definition with potentially different type args
+            if (sourceGeneric.GenericDefinition?.Name == targetGeneric.GenericDefinition?.Name)
+                return true;
+        }
+
+        // Default: allow if types don't fit the checked categories (to be conservative)
+        // This handles edge cases and allows the C# compiler to do final validation
+        return true;
+    }
+
+    /// <summary>
+    /// Checks if a type symbol inherits from another type symbol (directly or indirectly).
+    /// </summary>
+    private bool InheritsFrom(TypeSymbol? derived, TypeSymbol? baseType)
+    {
+        if (derived == null || baseType == null)
+            return false;
+
+        var current = derived.BaseType;
+        while (current != null)
+        {
+            if (current == baseType || current.Name == baseType.Name)
+                return true;
+            current = current.BaseType;
+        }
+
+        // Also check interfaces
+        foreach (var iface in derived.Interfaces)
+        {
+            if (iface == baseType || iface.Name == baseType.Name)
+                return true;
+        }
+
+        return false;
     }
 
     private SemanticType CheckTypeCheck(TypeCheck typeCheck)

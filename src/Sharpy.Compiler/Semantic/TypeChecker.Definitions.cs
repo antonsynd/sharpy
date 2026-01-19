@@ -112,6 +112,37 @@ public partial class TypeChecker
             }
         }
 
+        // Validate @override is only used when base class method is virtual, abstract, or override
+        if (_currentClass != null && _currentMethodIsOverride && !_currentMethodIsDunder)
+        {
+            var (baseMethod, baseOwner) = _currentClass.BaseType != null
+                ? FindMethodInHierarchy(_currentClass.BaseType, functionDef.Name)
+                : (null, null);
+
+            if (baseMethod == null)
+            {
+                // No matching method in base class
+                AddError(
+                    $"Method '{functionDef.Name}' is marked @override but no matching method exists in base class",
+                    functionDef.LineStart,
+                    functionDef.ColumnStart);
+            }
+            else if (!baseMethod.IsVirtual && !baseMethod.IsAbstract && !baseMethod.IsOverride)
+            {
+                // Check if the base owner is an interface - interface methods are implicitly abstract
+                bool isInterfaceMethod = baseOwner?.TypeKind == TypeKind.Interface;
+
+                if (!isInterfaceMethod)
+                {
+                    // Base method exists but is not virtual/abstract/override
+                    AddError(
+                        $"Cannot override '{functionDef.Name}' because the base class method in '{baseOwner?.Name}' is not marked @virtual or @abstract. Add @virtual to the method in the base class.",
+                        functionDef.LineStart,
+                        functionDef.ColumnStart);
+                }
+            }
+        }
+
         // Determine if method is abstract:
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an @abstract class AND has ellipsis body (implicit abstract)

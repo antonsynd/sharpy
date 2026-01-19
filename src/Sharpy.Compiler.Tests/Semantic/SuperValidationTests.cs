@@ -59,6 +59,7 @@ class Child(Parent):
     {
         var source = @"
 class Parent:
+    @virtual
     def process(self):
         pass
 
@@ -266,8 +267,10 @@ class Child(Parent):
     {
         var source = @"
 class Parent:
+    @virtual
     def process(self):
         pass
+    @virtual
     def other(self):
         pass
 
@@ -350,7 +353,8 @@ class Child(Parent):
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("No method") && e.Message.Contains("found in parent class hierarchy"));
+        // Error is now caught by override validation: "@override but no matching method exists in base class"
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("@override") && e.Message.Contains("no matching method"));
     }
 
     #endregion
