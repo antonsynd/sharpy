@@ -1,9 +1,46 @@
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// Represents a type in the semantic analysis phase
+/// Represents a resolved type during semantic analysis.
+///
+/// <para><b>Design Invariants:</b></para>
+/// <list type="bullet">
+/// <item><description>
+/// SemanticType is IMMUTABLE - once created, it never changes.
+/// </description></item>
+/// <item><description>
+/// SemanticType represents TYPE USAGE, not TYPE DECLARATION.
+/// For declarations, see TypeSymbol.
+/// </description></item>
+/// <item><description>
+/// User-defined types (UserDefinedType) always reference their declaring TypeSymbol.
+/// </description></item>
+/// <item><description>
+/// Generic types (GenericType) contain resolved type arguments, not parameters.
+/// </description></item>
+/// </list>
+///
+/// <para><b>Relationship to Other Types:</b></para>
+/// <list type="bullet">
+/// <item><description>
+/// TypeAnnotation (AST) → resolved by TypeResolver → SemanticType
+/// </description></item>
+/// <item><description>
+/// TypeSymbol (Symbol) → used by → UserDefinedType.Symbol
+/// </description></item>
+/// </list>
+///
+/// <para><b>Future Extensions (v0.2.x):</b></para>
+/// <list type="bullet">
+/// <item><description>
+/// UnionType - for tagged unions / ADTs
+/// </description></item>
+/// <item><description>
+/// TaskType - for async functions returning Task&lt;T&gt;
+/// </description></item>
+/// </list>
 /// </summary>
-public abstract record SemanticType
+public abstract record SemanticType : ITypeInfo
 {
     // Singleton instances for common types
     public static readonly SemanticType Unknown = new UnknownType();
@@ -34,6 +71,59 @@ public abstract record SemanticType
     /// Get a human-readable name for this type
     /// </summary>
     public abstract string GetDisplayName();
+
+    // ITypeInfo implementation
+    string ITypeInfo.DisplayName => GetDisplayName();
+
+    /// <summary>
+    /// Whether this type can hold null values. Override in NullableType.
+    /// </summary>
+    public virtual bool IsNullable => false;
+
+    /// <summary>
+    /// Whether this is a value type. Override in BuiltinType and UserDefinedType.
+    /// </summary>
+    public virtual bool IsValueType => false;
+
+    /// <summary>
+    /// The CLR type, if known. Override in BuiltinType.
+    /// </summary>
+    public virtual Type? ClrType { get => null; }
+
+    /// <summary>
+    /// The declaring TypeSymbol. Override in UserDefinedType.
+    /// </summary>
+    public virtual TypeSymbol? DeclaringSymbol => null;
+
+    /// <summary>
+    /// Check if this type is assignable to another ITypeInfo.
+    /// </summary>
+    public virtual bool IsAssignableTo(ITypeInfo other)
+    {
+        if (other is SemanticType semanticType)
+            return this.IsAssignableTo(semanticType);
+        return false;
+    }
+
+    /// <summary>
+    /// Create a nullable version of this type.
+    /// </summary>
+    public virtual ITypeInfo MakeNullable()
+    {
+        if (this is NullableType)
+            return this;
+        return new NullableType { UnderlyingType = this };
+    }
+
+    /// <summary>
+    /// Unwrap nullable type. Returns the underlying type if nullable, otherwise this.
+    /// </summary>
+    public virtual ITypeInfo UnwrapNullable()
+    {
+        if (this is NullableType nullable)
+            return nullable.UnderlyingType;
+        return this;
+    }
 }
 
 /// <summary>
@@ -69,9 +159,11 @@ public record VoidType : SemanticType
 public record BuiltinType : SemanticType
 {
     public string Name { get; init; } = string.Empty;
-    public Type? ClrType { get; init; }
+    public new Type? ClrType { get; init; }
 
     public override string GetDisplayName() => Name;
+
+    public override bool IsValueType => ClrType?.IsValueType ?? false;
 
     public override bool IsAssignableTo(SemanticType other)
     {
@@ -169,6 +261,12 @@ public record UserDefinedType : SemanticType
 
     public override string GetDisplayName() => Name;
 
+    public override bool IsValueType => Symbol?.TypeKind == TypeKind.Struct;
+
+    public override TypeSymbol? DeclaringSymbol => Symbol;
+
+    public override Type? ClrType => Symbol?.ClrType;
+
     public override bool IsAssignableTo(SemanticType other)
     {
         if (base.IsAssignableTo(other)) return true;
@@ -246,6 +344,10 @@ public record NullableType : SemanticType
     public SemanticType UnderlyingType { get; init; } = SemanticType.Unknown;
 
     public override string GetDisplayName() => $"{UnderlyingType.GetDisplayName()}?";
+
+    public override bool IsNullable => true;
+
+    public override bool IsValueType => UnderlyingType is SemanticType st && st.IsValueType;
 
     public override bool IsAssignableTo(SemanticType other)
     {
