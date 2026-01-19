@@ -197,6 +197,11 @@ public class ProtocolValidator
     /// <summary>
     /// Validates that a type can be used with len() and returns int.
     /// </summary>
+    /// <remarks>
+    /// MIGRATION NOTE: Use TypeInferenceService.InferLenType for type inference.
+    /// This method combines type inference with error reporting.
+    /// </remarks>
+    [Obsolete("Use TypeInferenceService for type inference. This method will be removed in v0.2.")]
     public SemanticType ValidateLen(SemanticType containerType, int line, int column)
     {
         if (!HasProtocol(containerType, "__len__"))
@@ -214,6 +219,11 @@ public class ProtocolValidator
     /// Validates that a type is iterable (for 'for' loops and comprehensions).
     /// Returns the element type if known, otherwise Unknown.
     /// </summary>
+    /// <remarks>
+    /// MIGRATION NOTE: Use TypeInferenceService.InferIterableElementType for type inference.
+    /// This method combines type inference with error reporting.
+    /// </remarks>
+    [Obsolete("Use TypeInferenceService for type inference. This method will be removed in v0.2.")]
     public SemanticType ValidateIteration(SemanticType iterableType, int line, int column)
     {
         if (!HasProtocol(iterableType, "__iter__"))
@@ -301,6 +311,11 @@ public class ProtocolValidator
     /// <summary>
     /// Validates the 'in' operator (membership test).
     /// </summary>
+    /// <remarks>
+    /// MIGRATION NOTE: Use TypeInferenceService.InferMembershipType for type inference.
+    /// This method combines type inference with error reporting.
+    /// </remarks>
+    [Obsolete("Use TypeInferenceService for type inference. This method will be removed in v0.2.")]
     public SemanticType ValidateMembership(
         SemanticType containerType,
         SemanticType itemType,
@@ -326,6 +341,11 @@ public class ProtocolValidator
     /// Validates indexing access (e.g., x[0]).
     /// Returns the element type if known.
     /// </summary>
+    /// <remarks>
+    /// MIGRATION NOTE: Use TypeInferenceService.InferIndexAccessType for type inference.
+    /// This method combines type inference with error reporting.
+    /// </remarks>
+    [Obsolete("Use TypeInferenceService for type inference. This method will be removed in v0.2.")]
     public SemanticType ValidateIndexAccess(
         SemanticType containerType,
         SemanticType indexType,

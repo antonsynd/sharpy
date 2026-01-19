@@ -25,6 +25,9 @@ public partial class TypeChecker
     // Validation pipeline - always enabled (default created if not provided)
     private readonly ValidationPipeline _validationPipeline;
 
+    // Type inference service - extracted from validators for clean separation
+    private readonly TypeInferenceService _typeInference;
+
     // Track current function return type for return statement checking
     private SemanticType? _currentFunctionReturnType = null;
 
@@ -71,6 +74,9 @@ public partial class TypeChecker
         // Pass ProtocolValidator to OperatorValidator for 'in' operator membership checking
         _operatorValidator = new OperatorValidator(_symbolTable, _logger, _protocolValidator, sharedClrCache);
         _defaultParameterValidator = new DefaultParameterValidator(_symbolTable, _typeResolver, _logger);
+
+        // Initialize type inference service (uses same CLR cache)
+        _typeInference = new TypeInferenceService(_symbolTable, sharedClrCache);
     }
 
     /// <summary>

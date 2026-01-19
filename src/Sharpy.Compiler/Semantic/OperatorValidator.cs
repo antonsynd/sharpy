@@ -54,6 +54,13 @@ public class OperatorValidator
     /// <summary>
     /// Validates a binary operation and returns the result type.
     /// </summary>
+    /// <remarks>
+    /// MIGRATION NOTE: Use TypeInferenceService.InferBinaryOpType for type inference.
+    /// This method combines type inference with error reporting. Future code should
+    /// separate these concerns: use TypeInferenceService for types, and V2 validators
+    /// (OperatorValidatorV2) for validation.
+    /// </remarks>
+    [Obsolete("Use TypeInferenceService.InferBinaryOpType for type inference. This method will be removed in v0.2.")]
     public SemanticType ValidateBinaryOp(
         BinaryOperator op,
         SemanticType left,
@@ -140,6 +147,12 @@ public class OperatorValidator
     /// <summary>
     /// Validates a unary operation and returns the result type.
     /// </summary>
+    /// <remarks>
+    /// MIGRATION NOTE: Use TypeInferenceService.InferUnaryOpType for type inference.
+    /// This method combines type inference with error reporting. Future code should
+    /// separate these concerns.
+    /// </remarks>
+    [Obsolete("Use TypeInferenceService.InferUnaryOpType for type inference. This method will be removed in v0.2.")]
     public SemanticType ValidateUnaryOp(
         UnaryOperator op,
         SemanticType operand,
