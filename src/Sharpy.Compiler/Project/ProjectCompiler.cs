@@ -355,7 +355,7 @@ public class ProjectCompiler
             fileMetrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
             var typeChecker = new TypeChecker(_symbolTable, _semanticInfo, typeResolver, _logger, pipeline);
-            typeChecker.CheckModule(module);
+            typeChecker.CheckModule(module, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo);
             fileMetrics.EndPhase();
 
             if (typeChecker.Errors.Any())
