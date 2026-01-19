@@ -1,0 +1,36 @@
+# Main entry point demonstrating cross-module imports
+from geometry import Rectangle
+from calculator import ShapeCalculator, create_dimensions, Dimensions
+
+def test_shape_hierarchy():
+    rect: Rectangle = Rectangle(5.0, 3.0)
+
+    # Test Rectangle method
+    shape_name: str = rect.describe()
+    print(shape_name)
+
+    # Test ShapeCalculator from another module
+    calc: ShapeCalculator = ShapeCalculator(2)
+    area: float = calc.compute_area(rect)
+    perimeter: float = calc.compute_perimeter(rect)
+
+    print(calc.round_value(area))
+    print(calc.round_value(perimeter))
+
+def test_struct():
+    # Test struct from calculator module
+    dims: Dimensions = create_dimensions(10.0, 8.0, 5.0)
+    print(dims.length to int)
+    print(dims.width to int)
+    print(dims.height to int)
+
+def test_direct_rect():
+    rect: Rectangle = Rectangle(4.0, 6.0)
+    area_result: float = rect.area()
+    print(area_result to int)
+
+def main():
+    print(999)
+    test_shape_hierarchy()
+    test_struct()
+    test_direct_rect()

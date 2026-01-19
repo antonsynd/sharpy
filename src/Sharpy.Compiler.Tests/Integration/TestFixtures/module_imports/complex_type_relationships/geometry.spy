@@ -1,0 +1,20 @@
+# Geometry module providing shapes
+
+class Rectangle:
+    width: float
+    height: float
+    name: str
+
+    def __init__(self, w: float, h: float):
+        self.name = "Rectangle"
+        self.width = w
+        self.height = h
+
+    def area(self) -> float:
+        return self.width * self.height
+
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+    def describe(self) -> str:
+        return self.name

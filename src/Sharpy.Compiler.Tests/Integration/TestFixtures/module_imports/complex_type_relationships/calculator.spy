@@ -1,0 +1,29 @@
+# Calculator module with computation utilities
+from geometry import Rectangle
+
+struct Dimensions:
+    length: float
+    width: float
+    height: float
+
+class ShapeCalculator:
+    precision: int
+
+    def __init__(self, prec: int):
+        self.precision = prec
+
+    def compute_area(self, rect: Rectangle) -> float:
+        return rect.area()
+
+    def compute_perimeter(self, rect: Rectangle) -> float:
+        return rect.perimeter()
+
+    def round_value(self, value: float) -> int:
+        return value to int
+
+def create_dimensions(length: float, width: float, height: float) -> Dimensions:
+    d: Dimensions = Dimensions()
+    d.length = length
+    d.width = width
+    d.height = height
+    return d

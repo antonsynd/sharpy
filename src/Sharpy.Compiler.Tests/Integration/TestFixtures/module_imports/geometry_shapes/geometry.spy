@@ -1,0 +1,31 @@
+# Geometry module providing shape calculations
+
+class Point:
+    x: int
+    y: int
+
+    def __init__(self, x_val: int, y_val: int):
+        self.x = x_val
+        self.y = y_val
+
+    def distance_from_origin(self) -> int:
+        # Simplified integer distance (no sqrt)
+        return self.x * self.x + self.y * self.y
+
+class Rectangle:
+    width: int
+    height: int
+
+    def __init__(self, w: int, h: int):
+        self.width = w
+        self.height = h
+
+    def area(self) -> int:
+        return self.width * self.height
+
+    def perimeter(self) -> int:
+        return 2 * (self.width + self.height)
+
+def calculate_scaled_area(rect: Rectangle, scale_factor: int) -> int:
+    base_area: int = rect.area()
+    return base_area * scale_factor
