@@ -2,7 +2,7 @@
 # Tests: Interface inheritance across files, polymorphism
 
 from implementation import User
-from base_interface import IIdentifiable
+from base_interface import IIdentity
 
 def main():
     user: User = User(1, "Alice")
@@ -13,5 +13,5 @@ def main():
     print(user.is_active())
     
     # Test base interface assignment and polymorphism
-    identifiable: IIdentifiable = user
+    identifiable: IIdentity = user
     print(identifiable.get_id())

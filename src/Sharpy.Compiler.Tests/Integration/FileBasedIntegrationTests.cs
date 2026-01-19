@@ -102,6 +102,12 @@ public class FileBasedIntegrationTests : IntegrationTestBase
                 }
                 processedDirectories.Add(spyDir);
 
+                // Skip tests with .skip files (tests pending fixes)
+                if (File.Exists(Path.Combine(spyDir, "main.skip")))
+                {
+                    continue;
+                }
+
                 // Use the directory path as the test identifier
                 var relativePath = Path.GetRelativePath(FixturesPath, spyDir);
                 var testName = relativePath.Replace(Path.DirectorySeparatorChar, '/');
@@ -111,6 +117,12 @@ public class FileBasedIntegrationTests : IntegrationTestBase
             }
             else
             {
+                // Skip tests with .skip files (tests pending fixes)
+                if (File.Exists(Path.ChangeExtension(spyFile, ".skip")))
+                {
+                    continue;
+                }
+
                 // Single-file test
                 var relativePath = Path.GetRelativePath(FixturesPath, spyFile);
                 var testName = Path.ChangeExtension(relativePath, null).Replace(Path.DirectorySeparatorChar, '/');

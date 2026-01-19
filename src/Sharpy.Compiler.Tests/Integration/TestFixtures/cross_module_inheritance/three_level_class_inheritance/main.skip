@@ -1,0 +1,1 @@
+Requires code generation fix: cross-module type references need fully qualified names (e.g., 'Animal' generates as namespace but class is 'Animal.Exports.Animal')

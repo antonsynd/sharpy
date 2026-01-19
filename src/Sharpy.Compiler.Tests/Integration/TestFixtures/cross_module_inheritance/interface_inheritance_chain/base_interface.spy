@@ -1,5 +1,5 @@
-# Base interface: IIdentifiable
+# Base interface: IIdentity
 # Tests: Interface inheritance across files (Level 1)
 
-interface IIdentifiable:
+interface IIdentity:
     def get_id(self) -> int: ...

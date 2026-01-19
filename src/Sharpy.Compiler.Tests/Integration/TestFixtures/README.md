@@ -43,6 +43,29 @@ errors/
 └── undefined_var.error  # Contains: "undefined_var" (substring to match)
 ```
 
+### Skipping Tests
+
+To temporarily skip a test that is pending a fix:
+1. Create a `.skip` file with the reason for skipping
+
+Example:
+```
+my_feature/
+├── test_name.spy        # Sharpy source code
+├── test_name.expected   # Expected stdout output
+└── test_name.skip       # Contains: "Reason for skipping"
+```
+
+For multi-file tests:
+```
+my_feature/
+├── test_dir/
+│   ├── main.spy         # Entry point
+│   ├── module.spy       # Additional module
+│   ├── main.expected    # Expected output
+│   └── main.skip        # Reason for skipping
+```
+
 ## Running Tests
 
 ```bash

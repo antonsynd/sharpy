@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -8,17 +9,25 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 public class SemanticInfo
 {
+    // Use ReferenceEqualityComparer because AST nodes are records with value-based equality,
+    // but we need to distinguish between different instances (e.g., two super().__init__() calls
+    // in different files should be cached separately even if they have the same structure)
+
     // Map expressions to their resolved types
-    private readonly Dictionary<Expression, SemanticType> _expressionTypes = new();
+    private readonly Dictionary<Expression, SemanticType> _expressionTypes =
+        new(ReferenceEqualityComparer.Instance);
 
     // Map identifiers to their symbols
-    private readonly Dictionary<Identifier, Symbol> _identifierSymbols = new();
+    private readonly Dictionary<Identifier, Symbol> _identifierSymbols =
+        new(ReferenceEqualityComparer.Instance);
 
     // Map function calls to resolved function symbols
-    private readonly Dictionary<FunctionCall, FunctionSymbol> _callTargets = new();
+    private readonly Dictionary<FunctionCall, FunctionSymbol> _callTargets =
+        new(ReferenceEqualityComparer.Instance);
 
     // Map type annotations to resolved semantic types
-    private readonly Dictionary<TypeAnnotation, SemanticType> _typeAnnotations = new();
+    private readonly Dictionary<TypeAnnotation, SemanticType> _typeAnnotations =
+        new(ReferenceEqualityComparer.Instance);
 
     public void SetExpressionType(Expression expr, SemanticType type)
     {
