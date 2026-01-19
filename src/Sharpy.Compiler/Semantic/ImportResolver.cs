@@ -470,10 +470,18 @@ public class ImportResolver
                 Kind = type.Kind,
                 TypeKind = type.TypeKind,
                 AccessLevel = type.AccessLevel,
+                TypeParameters = type.TypeParameters,
+                Fields = type.Fields,
+                Methods = type.Methods,
+                Properties = type.Properties,
+                Constructors = type.Constructors,
+                BaseType = type.BaseType,
+                Interfaces = type.Interfaces,
                 DeclarationLine = fromImport.LineStart,
                 DeclarationColumn = fromImport.ColumnStart,
                 IsReExport = true,
-                OriginalModule = fromImport.Module
+                OriginalModule = fromImport.Module,
+                DefiningModule = type.DefiningModule ?? fromImport.ResolvedModulePath ?? fromImport.Module
             },
             VariableSymbol var => new VariableSymbol
             {

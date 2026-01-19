@@ -1,1 +1,0 @@
-Requires code generation fix: cross-module type references need fully qualified names (e.g., 'NamedEntity' generates as namespace but class is 'NamedEntity.Exports.NamedEntity')

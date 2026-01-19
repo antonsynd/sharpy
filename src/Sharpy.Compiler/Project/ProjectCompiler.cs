@@ -189,6 +189,9 @@ public class ProjectCompiler
         // Phase 3a: Collect all type declarations (shells only)
         foreach (var (sourceFile, module) in _parsedModules)
         {
+            // Set current file path so types know which file they're defined in
+            nameResolver.SetCurrentFilePath(sourceFile);
+
             // Only collect declarations - don't resolve inheritance yet
             // The NameResolver.ResolveDeclarations() method registers type names
             // and stores ClassDef/StructDef/InterfaceDef in internal lists
@@ -294,10 +297,14 @@ public class ProjectCompiler
                     var moduleInfo = _importResolver.ResolveFromImport(fromImport, config.ProjectDirectory);
                     if (moduleInfo != null)
                     {
+                        // Use ReExportedSymbols which have DefiningModule set for cross-module type references
+                        // This is populated by ImportResolver.ResolveFromImport via CreateReExportSymbol
+                        var symbolsToImport = fromImport.ReExportedSymbols ?? moduleInfo.ExportedSymbols;
+
                         // Add specific imported symbols (skip if already defined from project files)
                         if (fromImport.ImportAll)
                         {
-                            foreach (var (name, symbol) in moduleInfo.ExportedSymbols)
+                            foreach (var (name, symbol) in symbolsToImport)
                             {
                                 _symbolTable.TryDefine(symbol);
                             }
@@ -306,20 +313,10 @@ public class ProjectCompiler
                         {
                             foreach (var importAlias in fromImport.Names)
                             {
-                                if (moduleInfo.ExportedSymbols.TryGetValue(importAlias.Name, out var symbol))
+                                var symbolName = importAlias.AsName ?? importAlias.Name;
+                                if (symbolsToImport.TryGetValue(symbolName, out var symbol))
                                 {
-                                    // If there's an alias, we need to create a new symbol with the aliased name
-                                    var symbolName = importAlias.AsName ?? importAlias.Name;
-                                    if (symbolName != symbol.Name)
-                                    {
-                                        // Clone the symbol with new name
-                                        var aliasedSymbol = symbol with { Name = symbolName };
-                                        _symbolTable.TryDefine(aliasedSymbol);
-                                    }
-                                    else
-                                    {
-                                        _symbolTable.TryDefine(symbol);
-                                    }
+                                    _symbolTable.TryDefine(symbol);
                                 }
                             }
                         }

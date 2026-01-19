@@ -64,6 +64,18 @@ public record TypeSymbol : Symbol
     public Type? ClrType { get; init; }
     public bool IsAbstract { get; init; }
 
+    /// <summary>
+    /// The module path that defines this type (e.g., "animal" for a type imported from animal.spy).
+    /// Null for types defined in the current module.
+    /// </summary>
+    public string? DefiningModule { get; init; }
+
+    /// <summary>
+    /// The file path where this type is defined (e.g., "/path/to/animal.spy").
+    /// Used for cross-file type references within the same project.
+    /// </summary>
+    public string? DefiningFilePath { get; init; }
+
     // Generic type parameters
     public List<TypeParameterDef> TypeParameters { get; init; } = new();
     public bool IsGeneric => TypeParameters.Count > 0;

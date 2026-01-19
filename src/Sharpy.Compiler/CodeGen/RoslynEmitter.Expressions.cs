@@ -151,9 +151,20 @@ public partial class RoslynEmitter
                                        (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
                                         typeSymbol.TypeKind == Semantic.TypeKind.Struct)));
 
-            var name = isBuiltinFunc
-                ? $"global::Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
-                : NameMangler.ToPascalCase(funcName.Name);
+            string name;
+            if (isBuiltinFunc)
+            {
+                name = $"global::Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}";
+            }
+            else if (isTypeInstantiation && symbol is TypeSymbol typeSymbolForName)
+            {
+                // For type instantiation, use fully qualified name if type is from another file
+                name = GetFullyQualifiedTypeName(typeSymbolForName, funcName.Name);
+            }
+            else
+            {
+                name = NameMangler.ToPascalCase(funcName.Name);
+            }
 
             // Generate positional arguments
             var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
@@ -1242,6 +1253,63 @@ public partial class RoslynEmitter
 
         return InterpolatedStringExpression(Token(SyntaxKind.InterpolatedStringStartToken))
             .WithContents(List(parts));
+    }
+
+    /// <summary>
+    /// Gets the fully qualified C# type name for a type, handling cross-file references.
+    /// </summary>
+    private string GetFullyQualifiedTypeName(TypeSymbol typeSymbol, string sharpyTypeName)
+    {
+        // Check if type is from a different file (cross-file reference)
+        if (!string.IsNullOrEmpty(typeSymbol.DefiningFilePath) &&
+            !string.IsNullOrEmpty(_context.SourceFilePath) &&
+            !string.Equals(typeSymbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
+        {
+            // Type from another file - use fully qualified name
+            var moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath);
+            var typeName = NameMangler.ToPascalCase(sharpyTypeName);
+
+            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+            {
+                return $"{_context.ProjectNamespace}.{moduleNamespace}.Exports.{typeName}";
+            }
+            return $"{moduleNamespace}.Exports.{typeName}";
+        }
+
+        // Check if type is from an external module (imported via DefiningModule)
+        if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))
+        {
+            var moduleNamespace = ConvertModuleToNamespace(typeSymbol.DefiningModule);
+            var typeName = NameMangler.ToPascalCase(sharpyTypeName);
+
+            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+            {
+                return $"{_context.ProjectNamespace}.{moduleNamespace}.Exports.{typeName}";
+            }
+            return $"{moduleNamespace}.Exports.{typeName}";
+        }
+
+        // Type is in current file - use simple name
+        return NameMangler.ToPascalCase(sharpyTypeName);
+    }
+
+    /// <summary>
+    /// Derives a module namespace from a file path.
+    /// E.g., "/path/to/animal.spy" -> "Animal"
+    /// </summary>
+    private static string GetModuleNameFromFilePath(string filePath)
+    {
+        var fileName = Path.GetFileNameWithoutExtension(filePath);
+        return NameMangler.ToPascalCase(fileName);
+    }
+
+    /// <summary>
+    /// Converts a module path (e.g., "animal" or "lib.animal") to a C# namespace segment.
+    /// </summary>
+    private static string ConvertModuleToNamespace(string modulePath)
+    {
+        var parts = modulePath.Split('.');
+        return string.Join(".", parts.Select(p => NameMangler.ToPascalCase(p)));
     }
 
 }

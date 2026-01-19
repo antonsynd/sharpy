@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Parser.Ast;
@@ -66,7 +67,7 @@ public class TypeMapper
             NullableType nullable => NullableType(MapSemanticType(nullable.UnderlyingType)),
 
             // Handle user-defined types
-            UserDefinedType udt => ParseTypeName(GetMappedTypeName(udt.Name)),
+            UserDefinedType udt => ParseTypeName(GetMappedTypeNameFromSymbol(udt)),
 
             // Handle type parameters (e.g., T in class Box[T])
             TypeParameterType typeParam => IdentifierName(typeParam.Name),
@@ -230,9 +231,113 @@ public class TypeMapper
             return $"Sharpy.{sharpyTypeName}";
         }
 
-        // User-defined types keep their original name
-        // Name mangling will be applied separately if needed
-        return sharpyTypeName;
+        // Check if it's a user-defined type from another file/module
+        var typeSymbol = _context.SymbolTable.LookupType(sharpyTypeName);
+        if (typeSymbol != null)
+        {
+            // Check if type is from a different file (cross-file reference in same project)
+            if (!string.IsNullOrEmpty(typeSymbol.DefiningFilePath) &&
+                !string.IsNullOrEmpty(_context.SourceFilePath) &&
+                !string.Equals(typeSymbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
+            {
+                // Type from another file - use fully qualified name
+                return GetFullyQualifiedTypeName(typeSymbol, sharpyTypeName);
+            }
+
+            // Check if type is from an external module (imported)
+            if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))
+            {
+                // Type from another module - use fully qualified name
+                return GetFullyQualifiedTypeName(typeSymbol, sharpyTypeName);
+            }
+        }
+
+        // User-defined types in current module keep their PascalCase name
+        return NameMangler.ToPascalCase(sharpyTypeName);
+    }
+
+    /// <summary>
+    /// Gets the fully qualified C# type name for a type from another file/module.
+    /// </summary>
+    private string GetFullyQualifiedTypeName(TypeSymbol typeSymbol, string sharpyTypeName)
+    {
+        string moduleNamespace;
+
+        if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))
+        {
+            // Use DefiningModule (e.g., "animal" from import)
+            moduleNamespace = ConvertModuleToNamespace(typeSymbol.DefiningModule);
+        }
+        else if (!string.IsNullOrEmpty(typeSymbol.DefiningFilePath))
+        {
+            // Derive module namespace from file path
+            moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath);
+        }
+        else
+        {
+            // Fallback - shouldn't happen
+            return NameMangler.ToPascalCase(sharpyTypeName);
+        }
+
+        var typeName = NameMangler.ToPascalCase(sharpyTypeName);
+
+        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+        {
+            return $"{_context.ProjectNamespace}.{moduleNamespace}.Exports.{typeName}";
+        }
+        return $"{moduleNamespace}.Exports.{typeName}";
+    }
+
+    /// <summary>
+    /// Derives a module namespace from a file path.
+    /// E.g., "/path/to/animal.spy" -> "Animal"
+    /// </summary>
+    private static string GetModuleNameFromFilePath(string filePath)
+    {
+        var fileName = Path.GetFileNameWithoutExtension(filePath);
+        return SimpleToPascalCase(fileName);
+    }
+
+    /// <summary>
+    /// Maps a UserDefinedType to its fully qualified C# name, using the Symbol if available.
+    /// </summary>
+    private string GetMappedTypeNameFromSymbol(UserDefinedType udt)
+    {
+        if (udt.Symbol != null)
+        {
+            // Check if type is from a different file (cross-file reference)
+            if (!string.IsNullOrEmpty(udt.Symbol.DefiningFilePath) &&
+                !string.IsNullOrEmpty(_context.SourceFilePath) &&
+                !string.Equals(udt.Symbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
+            {
+                return GetFullyQualifiedTypeName(udt.Symbol, udt.Name);
+            }
+
+            // Check if type is from an external module (imported)
+            if (!string.IsNullOrEmpty(udt.Symbol.DefiningModule))
+            {
+                return GetFullyQualifiedTypeName(udt.Symbol, udt.Name);
+            }
+        }
+
+        // Fall back to name-based lookup
+        return GetMappedTypeName(udt.Name);
+    }
+
+    /// <summary>
+    /// Converts a module path (e.g., "animal" or "lib.animal") to a C# namespace segment.
+    /// </summary>
+    private static string ConvertModuleToNamespace(string modulePath)
+    {
+        var parts = modulePath.Split('.');
+        return string.Join(".", parts.Select(p => SimpleToPascalCase(p)));
+    }
+
+    private static string SimpleToPascalCase(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return name;
+        // Use NameMangler for proper snake_case to PascalCase conversion
+        return NameMangler.ToPascalCase(name);
     }
 
     /// <summary>

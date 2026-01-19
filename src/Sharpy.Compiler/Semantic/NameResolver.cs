@@ -14,6 +14,7 @@ public class NameResolver
     private readonly List<ClassDef> _classDefs = new();
     private readonly List<StructDef> _structDefs = new();
     private readonly List<InterfaceDef> _interfaceDefs = new();
+    private string? _currentFilePath;
 
     public NameResolver(SymbolTable symbolTable, ICompilerLogger? logger = null)
     {
@@ -22,6 +23,14 @@ public class NameResolver
     }
 
     public IReadOnlyList<SemanticError> Errors => _errors;
+
+    /// <summary>
+    /// Set the current source file path for tracking type definitions.
+    /// </summary>
+    public void SetCurrentFilePath(string? filePath)
+    {
+        _currentFilePath = filePath;
+    }
 
     /// <summary>
     /// Resolve names in a module (first pass: declarations only)
@@ -127,6 +136,7 @@ public class NameResolver
             AccessLevel = AccessLevel.Public,
             TypeParameters = classDef.TypeParameters,
             IsAbstract = isAbstract,
+            DefiningFilePath = _currentFilePath,
             DeclarationLine = classDef.LineStart,
             DeclarationColumn = classDef.ColumnStart
         };
@@ -187,6 +197,7 @@ public class NameResolver
             TypeKind = TypeKind.Struct,
             AccessLevel = AccessLevel.Public,
             TypeParameters = structDef.TypeParameters,
+            DefiningFilePath = _currentFilePath,
             DeclarationLine = structDef.LineStart,
             DeclarationColumn = structDef.ColumnStart
         };
@@ -245,6 +256,7 @@ public class NameResolver
             TypeKind = TypeKind.Interface,
             AccessLevel = AccessLevel.Public,
             TypeParameters = interfaceDef.TypeParameters,
+            DefiningFilePath = _currentFilePath,
             DeclarationLine = interfaceDef.LineStart,
             DeclarationColumn = interfaceDef.ColumnStart
         };
@@ -300,6 +312,7 @@ public class NameResolver
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Enum,
             AccessLevel = AccessLevel.Public,
+            DefiningFilePath = _currentFilePath,
             DeclarationLine = enumDef.LineStart,
             DeclarationColumn = enumDef.ColumnStart
         };
