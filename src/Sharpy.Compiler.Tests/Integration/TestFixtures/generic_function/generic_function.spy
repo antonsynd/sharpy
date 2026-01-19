@@ -1,0 +1,25 @@
+# Test generic function with explicit type parameter
+def identity[T](x: T) -> T:
+    return x
+
+def swap[T](a: T, b: T) -> T:
+    temp: T = a
+    a = b
+    return a
+
+def main():
+    # Test with int
+    result_int: int = identity[int](42)
+    print(result_int)
+
+    # Test swap with int
+    x: int = 42
+    y: int = 100
+    result: int = swap[int](x, y)
+    print(result)
+
+    # Test with float
+    a: float = 3.14
+    b: float = 2.71
+    result_f: float = swap[float](a, b)
+    print(result_f)

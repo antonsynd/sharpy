@@ -1,0 +1,40 @@
+# Test interface definition and implementation
+
+interface IDrawable:
+    def draw(self) -> str: ...
+    def area(self) -> int: ...
+
+class Circle(IDrawable):
+    radius: int
+
+    def __init__(self, r: int):
+        self.radius = r
+
+    def draw(self) -> str:
+        return "Drawing Circle"
+
+    def area(self) -> int:
+        return 3 * self.radius * self.radius
+
+class Rectangle(IDrawable):
+    width: int
+    height: int
+
+    def __init__(self, w: int, h: int):
+        self.width = w
+        self.height = h
+
+    def draw(self) -> str:
+        return "Drawing Rectangle"
+
+    def area(self) -> int:
+        return self.width * self.height
+
+def main():
+    circle: IDrawable = Circle(5)
+    print(circle.draw())
+    print(circle.area())
+
+    rect: IDrawable = Rectangle(4, 6)
+    print(rect.draw())
+    print(rect.area())
