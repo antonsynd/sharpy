@@ -185,13 +185,18 @@ public partial class RoslynEmitter
             return NameMangler.ToConstantCase(name);
         }
 
+        // Legacy fallback for when CodeGenInfo is not computed (e.g., computeCodeGenInfo: false)
+        // These checks will be removed once all compilation paths enable CodeGenInfo
+
         // Check if this is a reference to a module-level const - use constant case
+        // [LEGACY FALLBACK] - Marked for removal when CodeGenInfo is always enabled
         if (_moduleConstVariables.Contains(name))
         {
             return NameMangler.ToConstantCase(name);
         }
 
         // Check if this is a reference to a module-level variable - use PascalCase
+        // [LEGACY FALLBACK] - Marked for removal when CodeGenInfo is always enabled
         if (_moduleVariables.Contains(name))
         {
             return NameMangler.ToPascalCase(name);
