@@ -81,7 +81,7 @@ public partial class RoslynEmitter
 
     /// <summary>
     /// Resolve the C# name for a variable using CodeGenInfo.
-    /// Returns null if CodeGenInfo is not available (falls back to legacy).
+    /// Returns null if CodeGenInfo is not available or if this is a local redeclaration.
     /// </summary>
     private string? TryGetCSharpNameFromCodeGenInfo(string sharpyName, bool isNewDeclaration)
     {
@@ -91,14 +91,12 @@ public partial class RoslynEmitter
 
         var info = symbol.CodeGenInfo;
 
-        // For new declarations, track the version increment
-        // Note: CodeGenInfo has the version pre-computed, but for redeclarations
-        // within the same emission scope, we may need runtime tracking
+        // For new declarations, check if this is a local redeclaration
+        // Local variable redeclarations still need runtime tracking via _variableVersions
+        // because they happen during emission, not semantic analysis
         if (isNewDeclaration && !info.IsModuleLevel)
         {
-            // Local variable redeclarations still need runtime tracking
-            // because they happen during emission, not semantic analysis
-            return null; // Fall back to legacy for local redeclarations
+            return null; // Let GetMangledVariableName handle local redeclarations
         }
 
         var csharpName = info.GetVersionedCSharpName();

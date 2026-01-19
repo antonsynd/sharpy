@@ -78,9 +78,11 @@ public class ProjectConfig
     }
 
     /// <summary>
-    /// If true, compute CodeGenInfo during semantic analysis and use it during code generation.
-    /// When enabled, symbols will have their CodeGenInfo property populated after type checking,
+    /// Compute CodeGenInfo during semantic analysis. This is required for code generation.
+    /// Symbols will have their CodeGenInfo property populated after type checking,
     /// containing pre-computed C# names, version numbers, and other code generation metadata.
+    /// Note: Setting this to false will cause code generation to fail since legacy tracking
+    /// has been removed.
     /// </summary>
     public bool UsePrecomputedCodeGenInfo { get; set; } = true;
 
