@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic.Validation;
+using Sharpy.Compiler.Services;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -51,6 +52,9 @@ public partial class TypeChecker
     public bool ContinueAfterError { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
 
+    // Optional CompilerServices for centralized access
+    private readonly CompilerServices? _services;
+
     public TypeChecker(
         SymbolTable symbolTable,
         SemanticInfo semanticInfo,
@@ -80,10 +84,30 @@ public partial class TypeChecker
     }
 
     /// <summary>
+    /// Create TypeChecker with CompilerServices for centralized service access.
+    /// Preferred constructor for new code.
+    /// </summary>
+    public TypeChecker(CompilerServices services, ValidationPipeline? validationPipeline = null)
+        : this(
+            services.SymbolTable,
+            services.SemanticInfo,
+            ((TypeResolverAdapter)services.TypeResolver).UnderlyingResolver,
+            services.Logger,
+            validationPipeline)
+    {
+        _services = services;
+    }
+
+    /// <summary>
     /// Creates a SemanticContext for use with the validation pipeline.
     /// </summary>
     public SemanticContext CreateSemanticContext()
     {
+        // Prefer using CompilerServices if available
+        if (_services != null)
+        {
+            return new SemanticContext(_services);
+        }
         return new SemanticContext(_symbolTable, _semanticInfo, _typeResolver, _logger);
     }
 

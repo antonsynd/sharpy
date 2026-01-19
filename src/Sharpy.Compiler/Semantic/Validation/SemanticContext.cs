@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Services;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -35,6 +36,12 @@ public class SemanticContext
     public bool ContinueAfterErrors { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
 
+    /// <summary>
+    /// Optional CompilerServices for centralized service access.
+    /// When set, provides access to all compiler services.
+    /// </summary>
+    public CompilerServices? Services { get; }
+
     // Centralized AST traversal state (recommended for new validators)
     /// <summary>
     /// Centralized AST traversal state for validators.
@@ -65,6 +72,27 @@ public class SemanticContext
 
         Diagnostics = new DiagnosticBag();
         ClrCache = new ClrMemberCache();
+    }
+
+    /// <summary>
+    /// Create a context backed by CompilerServices.
+    /// Preferred constructor for new code.
+    /// </summary>
+    public SemanticContext(CompilerServices services)
+    {
+        Services = services ?? throw new ArgumentNullException(nameof(services));
+        SymbolTable = services.SymbolTable;
+        SemanticInfo = services.SemanticInfo;
+        TypeResolver = (services.TypeResolver as TypeResolverAdapter)?.UnderlyingResolver
+            ?? throw new InvalidOperationException("TypeResolver must be a TypeResolverAdapter");
+        Logger = services.Logger;
+        Diagnostics = services.DiagnosticReporter.Diagnostics;
+        ClrCache = (services.ClrMapper as ClrTypeMapperAdapter)?.UnderlyingCache ?? new ClrMemberCache();
+        CurrentFilePath = services.CurrentFilePath;
+
+        // Propagate configuration from CompilerServices
+        ContinueAfterErrors = services.Configuration.ContinueAfterErrors;
+        MaxErrors = services.Configuration.MaxErrors;
     }
 
     /// <summary>

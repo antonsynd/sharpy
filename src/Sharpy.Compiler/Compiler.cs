@@ -7,6 +7,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Services;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace Sharpy.Compiler;
@@ -203,6 +204,24 @@ public class Compiler
                 Metrics = metrics
             };
         }
+    }
+
+    /// <summary>
+    /// Create CompilerServices from compilation state.
+    /// </summary>
+    private CompilerServices CreateServices(
+        SymbolTable symbolTable,
+        SemanticInfo semanticInfo,
+        TypeResolver typeResolver,
+        ClrMemberCache? clrCache = null)
+    {
+        return new CompilerServicesBuilder()
+            .WithLogger(_logger)
+            .WithSymbolTable(symbolTable)
+            .WithSemanticInfo(semanticInfo)
+            .WithTypeResolver(typeResolver)
+            .WithClrCache(clrCache ?? new ClrMemberCache())
+            .Build();
     }
 
     /// <summary>
