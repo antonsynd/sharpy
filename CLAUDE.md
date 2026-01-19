@@ -84,6 +84,54 @@ Add new tests by creating `.spy` + `.expected` (or `.error`) pairs—auto-discov
 
 Prefer .NET semantics unless zero-cost abstraction is possible. Sharpy is a .NET-first language.
 
+## Axiom Precedence
+
+Sharpy follows three core axioms. When they conflict:
+
+**Axiom 1 (.NET) > Axiom 3 (Type Safety) > Axiom 2 (Python Syntax)**
+
+1. **Axiom 1**: .NET Runtime Compatibility — compiles to C# 9.0 for .NET CLR
+2. **Axiom 2**: Python Surface Syntax — uses Python 3 syntax and idioms
+3. **Axiom 3**: Static & Null-Safe Typing — explicit types, non-nullable by default
+
+## Custom Slash Commands
+
+Available in `.claude/commands/` for common workflows:
+
+| Command | Purpose |
+|---------|---------|
+| `/project:implement <task>` | Implement a feature end-to-end |
+| `/project:review <target>` | Code review (read-only analysis) |
+| `/project:plan <feature>` | Decompose complex task into subtasks |
+| `/project:test <component>` | Run tests for a component |
+| `/project:emit <file.spy>` | Inspect generated C# code |
+| `/project:verify-python <expr>` | Verify Python behavior |
+| `/project:fix-issue <issue>` | Diagnose and fix a GitHub issue |
+| `/project:check-axioms <decision>` | Verify axiom compliance |
+| `/project:add-test-fixture <desc>` | Create file-based test |
+
+## Specialized Agents
+
+Domain-specific guidance in `.github/agents/`:
+
+**Compiler Pipeline:**
+- `lexer-expert` — Tokenization (`src/Sharpy.Compiler/Lexer/`)
+- `parser-expert` — AST construction (`src/Sharpy.Compiler/Parser/`)
+- `semantic-expert` — Type checking (`src/Sharpy.Compiler/Semantic/`)
+- `codegen-expert` — C# emission (`src/Sharpy.Compiler/CodeGen/`)
+
+**Core Agents:**
+- `implementer` — Full implementation workflow
+- `code-reviewer` — PR review (read-only)
+- `task-planner` — Task decomposition
+- `test-expert` — Testing all components
+
+**Axiom Guardians (Advisory):**
+- `net-axiom-guardian` — .NET compatibility
+- `python-axiom-guardian` — Python syntax fidelity
+- `type-safety-guardian` — Static typing rules
+- `axiom-arbiter` — Conflict resolution
+
 ## CI/CD
 
 Workflows in `.github/workflows/`:
