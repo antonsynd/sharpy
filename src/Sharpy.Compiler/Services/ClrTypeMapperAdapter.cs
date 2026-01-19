@@ -59,17 +59,19 @@ public class ClrTypeMapperAdapter : IClrTypeMapper
         {
             var (type, name) = key;
 
-            // Try method first (public instance and static)
-            var method = type.GetMethod(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
-            if (method != null) return method;
-
-            // Try property
+            // Try property first (properties are usually the most targeted lookup)
             var property = type.GetProperty(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
             if (property != null) return property;
 
             // Try field
             var field = type.GetField(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
             if (field != null) return field;
+
+            // Try methods (use GetMethods to handle overloads - just return the first match)
+            var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
+                .Where(m => m.Name == name)
+                .ToArray();
+            if (methods.Length > 0) return methods[0];
 
             return null;
         });
