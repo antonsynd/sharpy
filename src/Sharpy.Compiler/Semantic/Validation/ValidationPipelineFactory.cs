@@ -42,6 +42,6 @@ public static class ValidationPipelineFactory
     {
         return new ValidationPipeline(logger)
             .AddValidator(new ControlFlowValidatorV2());
-            // Skip signature validators, protocol validators, etc.
+        // Skip signature validators, protocol validators, etc.
     }
 }

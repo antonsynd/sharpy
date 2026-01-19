@@ -44,7 +44,7 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
             case StructDef structDef:
                 ValidateStruct(structDef);
                 break;
-            // Other top-level statements don't need control flow validation
+                // Other top-level statements don't need control flow validation
         }
     }
 
