@@ -15,27 +15,9 @@ public partial class RoslynEmitter
 {
     public CompilationUnitSyntax GenerateCompilationUnit(Module module)
     {
-        // Pre-process from-import statements to track imported symbol names
-        // This allows proper casing when these symbols are referenced
-        _fromImportSymbols.Clear();
-        _importAliasToOriginal.Clear();
-        foreach (var stmt in module.Body)
-        {
-            if (stmt is FromImportStatement fromImport)
-            {
-                foreach (var importedName in fromImport.Names)
-                {
-                    // Track the original name
-                    _fromImportSymbols.Add(importedName.Name);
-                    if (importedName.AsName != null)
-                    {
-                        // Track the alias and map it to the original name
-                        _fromImportSymbols.Add(importedName.AsName);
-                        _importAliasToOriginal[importedName.AsName] = importedName.Name;
-                    }
-                }
-            }
-        }
+        // Note: From-import symbol tracking is now handled by CodeGenInfo during semantic analysis.
+        // The CodeGenInfoComputer.ProcessFromImport method sets CodeGenInfo.CSharpName and
+        // CodeGenInfo.OriginalImportName for proper symbol name resolution.
 
         // Collect all using directives from import statements
         var usingDirectives = GenerateUsingDirectives(module);

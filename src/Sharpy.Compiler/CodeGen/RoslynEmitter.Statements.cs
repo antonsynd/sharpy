@@ -126,16 +126,13 @@ public partial class RoslynEmitter
                 var baseName = NameMangler.ToCamelCase(name.Name);
 
                 // Check if this variable was already declared in current scope
-                // _variableVersions tracks all variables by base name
-                // Also check if this is a module-level variable which should be assigned, not declared
-                // Check via CodeGenInfo first, then fall back to legacy tracking
+                // _variableVersions tracks local variables by base name
+                // Also check if this is a module-level variable via CodeGenInfo
                 var symbol = _context.LookupSymbol(name.Name);
-                var existsViaCodeGenInfo = symbol?.CodeGenInfo?.IsModuleLevel == true;
-                var existsViaLegacy = _variableVersions.ContainsKey(baseName) ||
-                    _moduleVariables.Contains(name.Name) ||
-                    _moduleConstVariables.Contains(name.Name);
+                var existsAsModuleLevel = symbol?.CodeGenInfo?.IsModuleLevel == true;
+                var existsAsLocal = _variableVersions.ContainsKey(baseName);
 
-                if (existsViaCodeGenInfo || existsViaLegacy)
+                if (existsAsModuleLevel || existsAsLocal)
                 {
                     // Variable exists - just update it with a regular assignment
                     var currentName = GetMangledVariableName(name.Name, isNewDeclaration: false);

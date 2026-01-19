@@ -18,72 +18,42 @@ public partial class RoslynEmitter
     private readonly HashSet<string> _declaredVariables = new();
 
     // ============================================================
-    // LEGACY TRACKING FIELDS - Deprecated in favor of CodeGenInfo
+    // LOCAL SCOPE TRACKING FIELDS
     //
-    // These fields track mutable state during emission and are used
-    // by GetMangledVariableName and related methods. They will be
-    // removed once all emission code migrates to use the CodeGenInfo-
-    // aware helper methods (GetCSharpNameForSymbol, etc.).
+    // These fields track mutable state during emission for LOCAL variables.
+    // They are needed because local variable redeclarations happen during
+    // emission, not during semantic analysis (so CodeGenInfo can't pre-compute them).
     //
-    // Migration path: Use Symbol.CodeGenInfo instead of these fields.
-    // See helper methods at the end of this file for CodeGenInfo usage.
+    // For module-level symbols (variables, functions, types, imports),
+    // use Symbol.CodeGenInfo which is computed during semantic analysis.
     // ============================================================
 
     /// <summary>
-    /// [DEPRECATED] Use Symbol.CodeGenInfo.Version instead.
-    /// Tracks variable version numbers for handling variable redeclarations.
+    /// Tracks variable version numbers for handling local variable redeclarations.
+    /// E.g., x = 1; x = "hello" produces x then x_1.
     /// </summary>
     private readonly Dictionary<string, int> _variableVersions = new();
 
     /// <summary>
-    /// [DEPRECATED] Use Symbol.CodeGenInfo.IsConstant instead.
     /// Tracks const variable names (original Sharpy names) within local scopes.
+    /// Needed for local const declarations within functions.
     /// </summary>
     private readonly HashSet<string> _constVariables = new();
 
     /// <summary>
-    /// [DEPRECATED] Use Symbol.CodeGenInfo.IsModuleLevel and IsConstant instead.
-    /// Tracks module-level const names (preserved across function scopes).
-    /// </summary>
-    private readonly HashSet<string> _moduleConstVariables = new();
-
-    /// <summary>
-    /// [DEPRECATED] Use Symbol.CodeGenInfo.IsModuleLevel instead.
-    /// Tracks module-level variable names (for PascalCase reference).
-    /// </summary>
-    private readonly HashSet<string> _moduleVariables = new();
-
-    /// <summary>
     /// Tracks module-level field names (C# names) to prevent duplicate field declarations.
-    /// Note: This is still needed during emission even with CodeGenInfo.
+    /// This is still needed during emission even with CodeGenInfo because we need to
+    /// track which C# field names have already been emitted.
     /// </summary>
     private readonly HashSet<string> _moduleFieldNames = new();
 
-    /// <summary>
-    /// [DEPRECATED] Use Symbol.CodeGenInfo.HasExecutionOrderIssues instead.
-    /// Tracks variables that should not become static fields due to execution order issues.
-    /// </summary>
-    private HashSet<string> _variablesWithExecutionOrderIssues = new();
-
     // ============================================================
-    // END LEGACY TRACKING FIELDS
+    // END LOCAL SCOPE TRACKING FIELDS
     // ============================================================
 
     private readonly HashSet<string> _classNames = new(); // Track class names defined in the current module
     private readonly HashSet<string> _structNames = new(); // Track struct names defined in the current module
     private readonly HashSet<string> _stringEnumNames = new(); // Track string enum names (enums with string values)
-
-    /// <summary>
-    /// [DEPRECATED] Use Symbol.CodeGenInfo.ImportKind instead.
-    /// Tracks symbols imported via "from X import Y" for proper casing.
-    /// </summary>
-    private readonly HashSet<string> _fromImportSymbols = new();
-
-    /// <summary>
-    /// [DEPRECATED] Use Symbol.CodeGenInfo.OriginalImportName instead.
-    /// Maps alias → original name for from-imports.
-    /// </summary>
-    private readonly Dictionary<string, string> _importAliasToOriginal = new();
 
     private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions = new(); // Track interface definitions for abstract class stub generation
     private int _tempVarCounter = 0;
@@ -187,29 +157,6 @@ public partial class RoslynEmitter
             return NameMangler.ToPascalCase(name);
         }
 
-        // Check if this is a symbol imported via "from X import Y"
-        // These are accessed via "using static" and must match the exported name casing
-        if (_fromImportSymbols.Contains(name))
-        {
-            // If this is an alias, use the original name for code generation
-            // e.g., "from config import MAX_VALUE as MAX" → MAX maps to MAX_VALUE
-            var actualName = _importAliasToOriginal.TryGetValue(name, out var originalName)
-                ? originalName
-                : name;
-
-            // Use the same casing rules as exported module members:
-            // - ALL_CAPS names (constants) stay as CONSTANT_CASE
-            // - Other names become PascalCase
-            if (IsConstantCaseName(actualName))
-            {
-                return NameMangler.ToConstantCase(actualName);
-            }
-            else
-            {
-                return NameMangler.ToPascalCase(actualName);
-            }
-        }
-
         // Check if this is a module symbol - preserve the exact name (with sanitization)
         // This ensures imported module names match their using alias (e.g., math_ops stays math_ops)
         var symbol = _context.LookupSymbol(name);
@@ -220,7 +167,8 @@ public partial class RoslynEmitter
             return EscapeCSharpKeyword(name.Replace(".", "_"));
         }
 
-        // Try CodeGenInfo-based resolution for module-level symbols
+        // Try CodeGenInfo-based resolution for module-level symbols and from-imports
+        // CodeGenInfo handles: module-level variables, constants, from-imports (with aliases)
         // This comes after local variable checks to ensure parameters shadow globals correctly
         var codeGenName = TryGetCSharpNameFromCodeGenInfo(name, isNewDeclaration);
         if (codeGenName != null)
@@ -242,24 +190,26 @@ public partial class RoslynEmitter
     }
 
     // ============================================================
-    // CodeGenInfo-aware helper methods (Phase 4 of Recommendation #4)
-    // These check for pre-computed CodeGenInfo first, then fall back
-    // to existing logic for backwards compatibility.
+    // CodeGenInfo helper methods
+    //
+    // These methods read from Symbol.CodeGenInfo which is computed
+    // during semantic analysis. CodeGenInfo is always populated for
+    // module-level symbols (via TypeChecker.CheckModule with computeCodeGenInfo: true).
     // ============================================================
 
     /// <summary>
-    /// Get the C# name for a symbol, using CodeGenInfo if available.
-    /// Falls back to existing logic if CodeGenInfo is not computed.
+    /// Get the C# name for a symbol using CodeGenInfo.
     /// </summary>
     private string GetCSharpNameForSymbol(Symbol symbol, bool isNewDeclaration = false)
     {
-        // If CodeGenInfo is computed, use it
         if (symbol.CodeGenInfo != null)
         {
             return symbol.CodeGenInfo.GetVersionedCSharpName();
         }
 
-        // Fall back to existing logic based on symbol kind
+        // CodeGenInfo not available - use fallback logic for symbol kind
+        // This should only happen for symbols not processed by CodeGenInfoComputer
+        // (e.g., local variables during emission)
         return symbol.Kind switch
         {
             Semantic.SymbolKind.Variable => GetMangledVariableName(symbol.Name, isNewDeclaration),
@@ -272,73 +222,43 @@ public partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Check if a symbol is a module-level constant, using CodeGenInfo if available.
+    /// Check if a symbol is a module-level constant using CodeGenInfo.
     /// </summary>
     private bool IsModuleLevelConstant(Symbol symbol)
     {
-        if (symbol.CodeGenInfo != null)
-        {
-            return symbol.CodeGenInfo.IsModuleLevel && symbol.CodeGenInfo.IsConstant;
-        }
-
-        // Fall back to existing tracking
-        return _moduleConstVariables.Contains(symbol.Name);
+        return symbol.CodeGenInfo?.IsModuleLevel == true && symbol.CodeGenInfo.IsConstant;
     }
 
     /// <summary>
-    /// Check if a symbol is a module-level variable (not constant), using CodeGenInfo if available.
+    /// Check if a symbol is a module-level variable (not constant) using CodeGenInfo.
     /// </summary>
     private bool IsModuleLevelVariable(Symbol symbol)
     {
-        if (symbol.CodeGenInfo != null)
-        {
-            return symbol.CodeGenInfo.IsModuleLevel && !symbol.CodeGenInfo.IsConstant;
-        }
-
-        // Fall back to existing tracking
-        return _moduleVariables.Contains(symbol.Name);
+        return symbol.CodeGenInfo?.IsModuleLevel == true && !symbol.CodeGenInfo.IsConstant;
     }
 
     /// <summary>
-    /// Check if a symbol has execution order issues, using CodeGenInfo if available.
+    /// Check if a symbol has execution order issues using CodeGenInfo.
     /// </summary>
     private bool HasExecutionOrderIssues(Symbol symbol)
     {
-        if (symbol.CodeGenInfo != null)
-        {
-            return symbol.CodeGenInfo.HasExecutionOrderIssues;
-        }
-
-        // Fall back to existing tracking
-        return _variablesWithExecutionOrderIssues.Contains(symbol.Name);
+        return symbol.CodeGenInfo?.HasExecutionOrderIssues == true;
     }
 
     /// <summary>
-    /// Check if a symbol is a from-import symbol, using CodeGenInfo if available.
+    /// Check if a symbol is a from-import symbol using CodeGenInfo.
     /// </summary>
     private bool IsFromImportSymbol(Symbol symbol)
     {
-        if (symbol.CodeGenInfo != null)
-        {
-            return symbol.CodeGenInfo.ImportKind == ImportKind.FromImport ||
-                   symbol.CodeGenInfo.ImportKind == ImportKind.FromImportWithAlias;
-        }
-
-        // Fall back to existing tracking
-        return _fromImportSymbols.Contains(symbol.Name);
+        return symbol.CodeGenInfo?.ImportKind == ImportKind.FromImport ||
+               symbol.CodeGenInfo?.ImportKind == ImportKind.FromImportWithAlias;
     }
 
     /// <summary>
-    /// Get the original import name for an aliased from-import, using CodeGenInfo if available.
+    /// Get the original import name for an aliased from-import using CodeGenInfo.
     /// </summary>
     private string? GetOriginalImportName(Symbol symbol)
     {
-        if (symbol.CodeGenInfo != null)
-        {
-            return symbol.CodeGenInfo.OriginalImportName;
-        }
-
-        // Fall back to existing tracking
-        return _importAliasToOriginal.TryGetValue(symbol.Name, out var originalName) ? originalName : null;
+        return symbol.CodeGenInfo?.OriginalImportName;
     }
 }
