@@ -1,0 +1,526 @@
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Logging;
+
+namespace Sharpy.Compiler.Semantic.Validation;
+
+/// <summary>
+/// Validates operator usage in Sharpy code:
+/// - Binary operators (+, -, *, /, ==, etc.)
+/// - Unary operators (-, +, not, ~)
+/// - Augmented assignment operators (+=, -=, etc.)
+///
+/// This is the pipeline-compatible version of OperatorValidator.
+/// Unlike the legacy version which provides type inference during type-checking,
+/// this validator performs post-pass validation only.
+/// The legacy OperatorValidator is still used for type inference.
+/// </summary>
+public class OperatorValidatorV2 : SemanticValidatorBase
+{
+    public override string Name => "OperatorValidator";
+    public override int Order => 500; // Same as ProtocolValidator (after access validation)
+
+    private ICompilerLogger _logger = NullLogger.Instance;
+    private SemanticContext _context = null!;
+
+    public override void Validate(Module module, SemanticContext context)
+    {
+        _context = context;
+        _logger = context.Logger;
+        _logger.LogDebug("Starting operator validation");
+
+        foreach (var stmt in module.Body)
+        {
+            ValidateStatement(stmt);
+        }
+    }
+
+    private void ValidateStatement(Statement stmt)
+    {
+        switch (stmt)
+        {
+            case FunctionDef funcDef:
+                foreach (var bodyStmt in funcDef.Body)
+                    ValidateStatement(bodyStmt);
+                break;
+            case ClassDef classDef:
+                foreach (var member in classDef.Body)
+                    ValidateStatement(member);
+                break;
+            case StructDef structDef:
+                foreach (var member in structDef.Body)
+                    ValidateStatement(member);
+                break;
+            case ForStatement forStmt:
+                ValidateExpression(forStmt.Iterator);
+                foreach (var bodyStmt in forStmt.Body)
+                    ValidateStatement(bodyStmt);
+                break;
+            case WhileStatement whileStmt:
+                ValidateExpression(whileStmt.Test);
+                foreach (var bodyStmt in whileStmt.Body)
+                    ValidateStatement(bodyStmt);
+                break;
+            case IfStatement ifStmt:
+                ValidateExpression(ifStmt.Test);
+                foreach (var bodyStmt in ifStmt.ThenBody)
+                    ValidateStatement(bodyStmt);
+                foreach (var elif in ifStmt.ElifClauses)
+                {
+                    ValidateExpression(elif.Test);
+                    foreach (var bodyStmt in elif.Body)
+                        ValidateStatement(bodyStmt);
+                }
+                foreach (var bodyStmt in ifStmt.ElseBody)
+                    ValidateStatement(bodyStmt);
+                break;
+            case TryStatement tryStmt:
+                foreach (var bodyStmt in tryStmt.Body)
+                    ValidateStatement(bodyStmt);
+                foreach (var handler in tryStmt.Handlers)
+                {
+                    foreach (var bodyStmt in handler.Body)
+                        ValidateStatement(bodyStmt);
+                }
+                foreach (var bodyStmt in tryStmt.FinallyBody)
+                    ValidateStatement(bodyStmt);
+                break;
+            case ExpressionStatement exprStmt:
+                ValidateExpression(exprStmt.Expression);
+                break;
+            case Assignment assignment:
+                // Check if this is an augmented assignment (+=, -=, etc.)
+                if (assignment.Operator != AssignmentOperator.Assign)
+                {
+                    ValidateAugmentedAssignment(assignment);
+                }
+                ValidateExpression(assignment.Target);
+                ValidateExpression(assignment.Value);
+                break;
+            case VariableDeclaration varDecl:
+                if (varDecl.InitialValue != null)
+                    ValidateExpression(varDecl.InitialValue);
+                break;
+            case ReturnStatement returnStmt:
+                if (returnStmt.Value != null)
+                    ValidateExpression(returnStmt.Value);
+                break;
+        }
+    }
+
+    private void ValidateExpression(Expression expr)
+    {
+        switch (expr)
+        {
+            case BinaryOp binOp:
+                ValidateBinaryOp(binOp);
+                ValidateExpression(binOp.Left);
+                ValidateExpression(binOp.Right);
+                break;
+            case UnaryOp unaryOp:
+                ValidateUnaryOp(unaryOp);
+                ValidateExpression(unaryOp.Operand);
+                break;
+            case FunctionCall call:
+                ValidateExpression(call.Function);
+                foreach (var arg in call.Arguments)
+                    ValidateExpression(arg);
+                foreach (var kwArg in call.KeywordArguments)
+                    ValidateExpression(kwArg.Value);
+                break;
+            case MemberAccess memberAccess:
+                ValidateExpression(memberAccess.Object);
+                break;
+            case IndexAccess indexAccess:
+                ValidateExpression(indexAccess.Object);
+                ValidateExpression(indexAccess.Index);
+                break;
+            case ListLiteral listLit:
+                foreach (var elem in listLit.Elements)
+                    ValidateExpression(elem);
+                break;
+            case DictLiteral dictLit:
+                foreach (var entry in dictLit.Entries)
+                {
+                    ValidateExpression(entry.Key);
+                    ValidateExpression(entry.Value);
+                }
+                break;
+            case SetLiteral setLit:
+                foreach (var elem in setLit.Elements)
+                    ValidateExpression(elem);
+                break;
+            case TupleLiteral tupleLit:
+                foreach (var elem in tupleLit.Elements)
+                    ValidateExpression(elem);
+                break;
+            case ListComprehension listComp:
+                ValidateExpression(listComp.Element);
+                foreach (var clause in listComp.Clauses)
+                {
+                    if (clause is ForClause forClause)
+                        ValidateExpression(forClause.Iterator);
+                    else if (clause is IfClause ifClause)
+                        ValidateExpression(ifClause.Condition);
+                }
+                break;
+            case SetComprehension setComp:
+                ValidateExpression(setComp.Element);
+                foreach (var clause in setComp.Clauses)
+                {
+                    if (clause is ForClause forClause)
+                        ValidateExpression(forClause.Iterator);
+                    else if (clause is IfClause ifClause)
+                        ValidateExpression(ifClause.Condition);
+                }
+                break;
+            case DictComprehension dictComp:
+                ValidateExpression(dictComp.Key);
+                ValidateExpression(dictComp.Value);
+                foreach (var clause in dictComp.Clauses)
+                {
+                    if (clause is ForClause forClause)
+                        ValidateExpression(forClause.Iterator);
+                    else if (clause is IfClause ifClause)
+                        ValidateExpression(ifClause.Condition);
+                }
+                break;
+            case ConditionalExpression cond:
+                ValidateExpression(cond.Test);
+                ValidateExpression(cond.ThenValue);
+                ValidateExpression(cond.ElseValue);
+                break;
+            case Parenthesized paren:
+                ValidateExpression(paren.Expression);
+                break;
+        }
+    }
+
+    private void ValidateBinaryOp(BinaryOp binOp)
+    {
+        var leftType = _context.SemanticInfo.GetExpressionType(binOp.Left);
+        var rightType = _context.SemanticInfo.GetExpressionType(binOp.Right);
+
+        if (leftType == null || rightType == null)
+            return;
+        if (leftType is UnknownType || rightType is UnknownType)
+            return;
+
+        // Validate specific operators
+        switch (binOp.Operator)
+        {
+            case BinaryOperator.NullCoalesce:
+                ValidateNullCoalesce(binOp, leftType, rightType);
+                break;
+
+            case BinaryOperator.And:
+            case BinaryOperator.Or:
+            case BinaryOperator.Is:
+            case BinaryOperator.IsNot:
+            case BinaryOperator.In:
+            case BinaryOperator.NotIn:
+                // These are always valid
+                break;
+
+            default:
+                // For arithmetic, comparison, and bitwise operators,
+                // validate that the types support the operation
+                ValidateArithmeticOrComparisonOp(binOp, leftType, rightType);
+                break;
+        }
+    }
+
+    private void ValidateNullCoalesce(BinaryOp binOp, SemanticType leftType, SemanticType rightType)
+    {
+        if (leftType is not NullableType)
+        {
+            AddError(_context,
+                $"Left operand of null coalescing operator must be nullable, but got '{leftType.GetDisplayName()}'",
+                binOp.LineStart, binOp.ColumnStart);
+        }
+    }
+
+    private void ValidateArithmeticOrComparisonOp(BinaryOp binOp, SemanticType leftType, SemanticType rightType)
+    {
+        var dunderName = BinaryOperatorToDunder(binOp.Operator);
+        if (dunderName == null)
+            return;
+
+        // Check if operator is supported by the left type
+        if (!SupportsOperator(leftType, dunderName))
+        {
+            // Check if it's a comparison operator - primitives support these
+            if (!IsComparisonOperator(binOp.Operator) || !IsPrimitiveType(leftType))
+            {
+                // Check right-hand side for reflected operator
+                var reflectedDunder = GetReflectedDunder(dunderName);
+                if (reflectedDunder == null || !SupportsOperator(rightType, reflectedDunder))
+                {
+                    AddError(_context,
+                        $"Unsupported operand types for {OperatorToString(binOp.Operator)}: '{leftType.GetDisplayName()}' and '{rightType.GetDisplayName()}'",
+                        binOp.LineStart, binOp.ColumnStart);
+                }
+            }
+        }
+    }
+
+    private void ValidateUnaryOp(UnaryOp unaryOp)
+    {
+        var operandType = _context.SemanticInfo.GetExpressionType(unaryOp.Operand);
+        if (operandType == null || operandType is UnknownType)
+            return;
+
+        // 'not' is always valid
+        if (unaryOp.Operator == UnaryOperator.Not)
+            return;
+
+        var dunderName = UnaryOperatorToDunder(unaryOp.Operator);
+        if (dunderName == null)
+            return;
+
+        if (!SupportsOperator(operandType, dunderName))
+        {
+            AddError(_context,
+                $"Bad operand type for unary {OperatorToString(unaryOp.Operator)}: '{operandType.GetDisplayName()}'",
+                unaryOp.LineStart, unaryOp.ColumnStart);
+        }
+    }
+
+    private void ValidateAugmentedAssignment(Assignment assignment)
+    {
+        var targetType = _context.SemanticInfo.GetExpressionType(assignment.Target);
+        var valueType = _context.SemanticInfo.GetExpressionType(assignment.Value);
+
+        if (targetType == null || valueType == null)
+            return;
+        if (targetType is UnknownType || valueType is UnknownType)
+            return;
+
+        var dunderName = AugmentedOperatorToDunder(assignment.Operator);
+        if (dunderName == null)
+            return;
+
+        // Check for in-place operator first, fall back to regular binary operator
+        if (!SupportsOperator(targetType, dunderName))
+        {
+            var regularDunder = dunderName.Replace("__i", "__");
+            if (!SupportsOperator(targetType, regularDunder))
+            {
+                AddError(_context,
+                    $"Unsupported operand types for {OperatorToString(assignment.Operator)}: '{targetType.GetDisplayName()}' and '{valueType.GetDisplayName()}'",
+                    assignment.LineStart, assignment.ColumnStart);
+            }
+        }
+    }
+
+    private bool SupportsOperator(SemanticType type, string dunderName)
+    {
+        // String supports concatenation and comparison (check first, before BuiltinType)
+        if (type == SemanticType.Str)
+        {
+            return dunderName is "__add__" or "__mul__" or "__eq__" or "__ne__" or "__lt__" or "__le__" or "__gt__" or "__ge__";
+        }
+
+        // Builtin numeric types support arithmetic operations
+        if (type is BuiltinType)
+        {
+            return dunderName switch
+            {
+                // Arithmetic - supported by int, float, etc.
+                "__add__" or "__sub__" or "__mul__" or "__truediv__" or "__floordiv__" or "__mod__" or "__pow__"
+                    => IsNumericType(type),
+                // Bitwise - supported by int
+                "__and__" or "__or__" or "__xor__" or "__lshift__" or "__rshift__"
+                    => type == SemanticType.Int || type == SemanticType.Long,
+                // Unary
+                "__neg__" or "__pos__" => IsNumericType(type),
+                "__invert__" => type == SemanticType.Int || type == SemanticType.Long,
+                // Comparison - supported by all primitives
+                "__eq__" or "__ne__" or "__lt__" or "__le__" or "__gt__" or "__ge__" => true,
+                _ => false
+            };
+        }
+
+        // Generic types (list, dict, set, tuple)
+        if (type is GenericType generic)
+        {
+            return generic.Name switch
+            {
+                "list" => dunderName is "__add__" or "__iadd__" or "__mul__" or "__imul__" or "__eq__" or "__ne__",
+                "tuple" => dunderName is "__add__" or "__mul__" or "__eq__" or "__ne__",
+                "set" => dunderName is "__or__" or "__and__" or "__sub__" or "__xor__" or "__ior__" or "__iand__" or "__isub__" or "__ixor__" or "__eq__" or "__ne__",
+                "dict" => dunderName is "__or__" or "__ior__" or "__eq__" or "__ne__",
+                _ => false
+            };
+        }
+
+        // User-defined types
+        if (type is UserDefinedType udt && udt.Symbol != null)
+        {
+            // Check protocol methods
+            if (udt.Symbol.ProtocolMethods.ContainsKey(dunderName))
+                return true;
+
+            // Check regular methods
+            if (udt.Symbol.Methods.Any(m => m.Name == dunderName))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool IsNumericType(SemanticType type)
+    {
+        return type == SemanticType.Int
+            || type == SemanticType.Long
+            || type == SemanticType.Float
+            || type == SemanticType.Float32
+            || type == SemanticType.Double;
+    }
+
+    private bool IsPrimitiveType(SemanticType type)
+    {
+        return type is BuiltinType || type == SemanticType.Str;
+    }
+
+    private bool IsComparisonOperator(BinaryOperator op)
+    {
+        return op is BinaryOperator.Equal or BinaryOperator.NotEqual
+            or BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
+            or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual;
+    }
+
+    private string? BinaryOperatorToDunder(BinaryOperator op)
+    {
+        return op switch
+        {
+            BinaryOperator.Add => "__add__",
+            BinaryOperator.Subtract => "__sub__",
+            BinaryOperator.Multiply => "__mul__",
+            BinaryOperator.Divide => "__truediv__",
+            BinaryOperator.FloorDivide => "__floordiv__",
+            BinaryOperator.Modulo => "__mod__",
+            BinaryOperator.Power => "__pow__",
+            BinaryOperator.BitwiseAnd => "__and__",
+            BinaryOperator.BitwiseOr => "__or__",
+            BinaryOperator.BitwiseXor => "__xor__",
+            BinaryOperator.LeftShift => "__lshift__",
+            BinaryOperator.RightShift => "__rshift__",
+            BinaryOperator.Equal => "__eq__",
+            BinaryOperator.NotEqual => "__ne__",
+            BinaryOperator.LessThan => "__lt__",
+            BinaryOperator.LessThanOrEqual => "__le__",
+            BinaryOperator.GreaterThan => "__gt__",
+            BinaryOperator.GreaterThanOrEqual => "__ge__",
+            _ => null
+        };
+    }
+
+    private string? GetReflectedDunder(string dunderName)
+    {
+        return dunderName switch
+        {
+            "__add__" => "__radd__",
+            "__sub__" => "__rsub__",
+            "__mul__" => "__rmul__",
+            "__truediv__" => "__rtruediv__",
+            "__floordiv__" => "__rfloordiv__",
+            "__mod__" => "__rmod__",
+            "__pow__" => "__rpow__",
+            "__and__" => "__rand__",
+            "__or__" => "__ror__",
+            "__xor__" => "__rxor__",
+            "__lshift__" => "__rlshift__",
+            "__rshift__" => "__rrshift__",
+            _ => null
+        };
+    }
+
+    private string? UnaryOperatorToDunder(UnaryOperator op)
+    {
+        return op switch
+        {
+            UnaryOperator.Minus => "__neg__",
+            UnaryOperator.Plus => "__pos__",
+            UnaryOperator.BitwiseNot => "__invert__",
+            _ => null
+        };
+    }
+
+    private string? AugmentedOperatorToDunder(AssignmentOperator op)
+    {
+        return op switch
+        {
+            AssignmentOperator.PlusAssign => "__iadd__",
+            AssignmentOperator.MinusAssign => "__isub__",
+            AssignmentOperator.StarAssign => "__imul__",
+            AssignmentOperator.SlashAssign => "__itruediv__",
+            AssignmentOperator.DoubleSlashAssign => "__ifloordiv__",
+            AssignmentOperator.PercentAssign => "__imod__",
+            AssignmentOperator.PowerAssign => "__ipow__",
+            AssignmentOperator.AndAssign => "__iand__",
+            AssignmentOperator.OrAssign => "__ior__",
+            AssignmentOperator.XorAssign => "__ixor__",
+            AssignmentOperator.LeftShiftAssign => "__ilshift__",
+            AssignmentOperator.RightShiftAssign => "__irshift__",
+            _ => null
+        };
+    }
+
+    private string OperatorToString(BinaryOperator op)
+    {
+        return op switch
+        {
+            BinaryOperator.Add => "+",
+            BinaryOperator.Subtract => "-",
+            BinaryOperator.Multiply => "*",
+            BinaryOperator.Divide => "/",
+            BinaryOperator.FloorDivide => "//",
+            BinaryOperator.Modulo => "%",
+            BinaryOperator.Power => "**",
+            BinaryOperator.BitwiseAnd => "&",
+            BinaryOperator.BitwiseOr => "|",
+            BinaryOperator.BitwiseXor => "^",
+            BinaryOperator.LeftShift => "<<",
+            BinaryOperator.RightShift => ">>",
+            BinaryOperator.Equal => "==",
+            BinaryOperator.NotEqual => "!=",
+            BinaryOperator.LessThan => "<",
+            BinaryOperator.LessThanOrEqual => "<=",
+            BinaryOperator.GreaterThan => ">",
+            BinaryOperator.GreaterThanOrEqual => ">=",
+            _ => op.ToString()
+        };
+    }
+
+    private string OperatorToString(UnaryOperator op)
+    {
+        return op switch
+        {
+            UnaryOperator.Minus => "-",
+            UnaryOperator.Plus => "+",
+            UnaryOperator.Not => "not",
+            UnaryOperator.BitwiseNot => "~",
+            _ => op.ToString()
+        };
+    }
+
+    private string OperatorToString(AssignmentOperator op)
+    {
+        return op switch
+        {
+            AssignmentOperator.PlusAssign => "+=",
+            AssignmentOperator.MinusAssign => "-=",
+            AssignmentOperator.StarAssign => "*=",
+            AssignmentOperator.SlashAssign => "/=",
+            AssignmentOperator.DoubleSlashAssign => "//=",
+            AssignmentOperator.PercentAssign => "%=",
+            AssignmentOperator.PowerAssign => "**=",
+            AssignmentOperator.AndAssign => "&=",
+            AssignmentOperator.OrAssign => "|=",
+            AssignmentOperator.XorAssign => "^=",
+            AssignmentOperator.LeftShiftAssign => "<<=",
+            AssignmentOperator.RightShiftAssign => ">>=",
+            _ => op.ToString()
+        };
+    }
+}

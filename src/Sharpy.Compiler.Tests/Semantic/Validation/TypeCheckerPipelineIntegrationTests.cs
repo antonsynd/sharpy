@@ -41,7 +41,7 @@ def foo() -> int:
         typeChecker.CheckModule(module);
 
         // Legacy mode still works - control flow errors should be present
-        Assert.True(typeChecker.Errors.Any(e => e.Message.Contains("must return")));
+        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("must return"));
     }
 
     [Fact]
@@ -61,7 +61,7 @@ def foo() -> int:
         typeChecker.CheckModule(module);
 
         // Pipeline mode should also report control flow errors
-        Assert.True(typeChecker.Errors.Any(e => e.Message.Contains("must return")));
+        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("must return"));
     }
 
     [Fact]
@@ -106,7 +106,7 @@ def foo() -> int:
 
         // With empty pipeline, legacy control flow validator is not used
         // So no control flow errors should be present
-        Assert.False(typeChecker.Errors.Any(e => e.Message.Contains("must return")));
+        Assert.DoesNotContain(typeChecker.Errors, e => e.Message.Contains("must return"));
     }
 
     [Fact]
@@ -166,7 +166,7 @@ def foo() -> int:
 
         // Should detect break outside loop
         var errors = typeChecker.Errors;
-        Assert.True(errors.Any(e => e.Message.Contains("'break' statement outside loop")));
+        Assert.Contains(errors, e => e.Message.Contains("'break' statement outside loop"));
     }
 
     [Fact]

@@ -325,12 +325,79 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
 
             if (udt.Symbol.Methods.Any(m => m.Name == dunderName))
                 return true;
+
+            // Check CLR type if available
+            if (udt.Symbol.ClrType != null && HasClrProtocol(udt.Symbol.ClrType, dunderName))
+                return true;
+        }
+
+        // Check builtin types with CLR backing
+        if (type is BuiltinType builtin && builtin.ClrType != null)
+        {
+            if (HasClrProtocol(builtin.ClrType, dunderName))
+                return true;
         }
 
         // For other types (including int, bool, etc.), default to false for most protocols
         // except __str__ and __hash__ which all objects have
         if (dunderName is "__str__" or "__hash__")
             return true;
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if a CLR type supports a protocol by examining its interfaces.
+    /// </summary>
+    private bool HasClrProtocol(System.Type clrType, string dunderName)
+    {
+        // Check for IEnumerable<T> or IEnumerable -> __iter__
+        if (dunderName == "__iter__")
+        {
+            if (typeof(System.Collections.IEnumerable).IsAssignableFrom(clrType))
+                return true;
+
+            // Check for Sharpy.Core.Iterator<T> base class
+            var currentType = clrType;
+            while (currentType != null)
+            {
+                if (currentType.IsGenericType &&
+                    currentType.GetGenericTypeDefinition().FullName == "Sharpy.Core.Iterator`1")
+                {
+                    return true;
+                }
+                currentType = currentType.BaseType;
+            }
+
+            // Check for IIterable<T> from Sharpy.Core
+            var interfaces = clrType.GetInterfaces();
+            if (interfaces.Any(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition().FullName == "Sharpy.Core.Collections.Interfaces.IIterable`1"))
+            {
+                return true;
+            }
+        }
+
+        // ICollection -> __len__, __contains__
+        if (dunderName is "__len__" or "__contains__")
+        {
+            if (typeof(System.Collections.ICollection).IsAssignableFrom(clrType))
+                return true;
+        }
+
+        // IList -> __getitem__, __setitem__
+        if (dunderName is "__getitem__" or "__setitem__")
+        {
+            if (typeof(System.Collections.IList).IsAssignableFrom(clrType))
+                return true;
+        }
+
+        // IDictionary -> __getitem__, __setitem__, __contains__, __len__
+        if (dunderName is "__getitem__" or "__setitem__" or "__contains__" or "__len__")
+        {
+            if (typeof(System.Collections.IDictionary).IsAssignableFrom(clrType))
+                return true;
+        }
 
         return false;
     }

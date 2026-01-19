@@ -108,10 +108,10 @@ public partial class TypeChecker
                 // This path will be removed once all validators are migrated to the pipeline.
                 // To use the new pipeline, pass a ValidationPipeline to the TypeChecker constructor.
                 allErrors.AddRange(_controlFlowValidator.Errors);
-                // AccessValidator errors now reported via AccessValidatorV2 in pipeline
+                allErrors.AddRange(_accessValidator.Errors);
                 allErrors.AddRange(_operatorValidator.Errors);
-                // ProtocolValidator errors now reported via ProtocolValidatorV2 in pipeline
-                // DefaultParameterValidator errors now reported via DefaultParameterValidatorV2 in pipeline
+                allErrors.AddRange(_protocolValidator.Errors);
+                allErrors.AddRange(_defaultParameterValidator.Errors);
             }
             // When using pipeline, errors are merged in CheckModule
 
