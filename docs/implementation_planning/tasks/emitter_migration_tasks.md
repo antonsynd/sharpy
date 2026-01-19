@@ -1,6 +1,6 @@
 # Task List: Emitter Migration & Type System Unification
 
-**Status:** Part A Partially Complete, Part B Not Started
+**Status:** Part A Partially Complete, Part B Complete
 **Estimated Total Effort:** 3-5 days
 **Prerequisites:** All tests passing (3591+ tests)
 **Branch Name:** `feature/emitter-migration-type-unification`
@@ -42,7 +42,37 @@
 
 ### Part B: Type System Unification
 
-**Status:** Not Started
+**Status:** Complete
+
+**Completed:**
+- ✅ B.1: Created `type_system_analysis.md` documenting type relationships
+- ✅ B.2: Added `ITypeInfo` interface and implemented on `SemanticType`
+  - Base class implements common methods: `MakeNullable()`, `UnwrapNullable()`
+  - Subclasses override: `IsNullable`, `IsValueType`, `ClrType`, `DeclaringSymbol`
+- ✅ B.3: Created `TypeRegistry` class for centralized type lookup
+- ✅ B.4: Created `type_system_design.md` documenting invariants and design
+- ✅ B.5: Added placeholder types for v0.2.x features:
+  - `UnionType` - for tagged unions / ADTs
+  - `TaskType` - for async functions returning Task<T>
+- ✅ B.6: Created `TypeUtils` class with utility methods:
+  - `IsNumeric`, `IsInteger`, `IsFloatingPoint`, `IsString`, `IsBool`
+  - `IsCollection`, `IsList`, `IsDict`, `IsSet`, `IsTuple`
+  - `GetElementType`, `GetKeyType`, `UnwrapAllNullable`
+  - `AreEquivalent`, `GetCommonType`
+- ✅ B.7: Added 43 tests in `TypeUtilsTests.cs`
+
+**Files Created:**
+- `src/Sharpy.Compiler/Semantic/ITypeInfo.cs`
+- `src/Sharpy.Compiler/Semantic/TypeRegistry.cs`
+- `src/Sharpy.Compiler/Semantic/TypeUtils.cs`
+- `src/Sharpy.Compiler.Tests/Semantic/TypeUtilsTests.cs`
+- `docs/implementation_planning/type_system_analysis.md`
+- `docs/implementation_planning/type_system_design.md`
+
+**Files Modified:**
+- `src/Sharpy.Compiler/Semantic/SemanticType.cs` - Added `ITypeInfo` implementation and placeholder types
+
+**Test Count:** 3646 tests passing (up from 3591 baseline)
 
 ---
 
