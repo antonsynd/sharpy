@@ -40,20 +40,27 @@ The `NameResolver.cs` handles inheritance in two passes:
 
 **Problem**: When a class in module A inherits from a class in module B, the inheritance resolution may fail if module B's types haven't been fully collected yet.
 
-**Current Code** (`ProjectCompiler.cs`):
+**Current Code** (`ProjectCompiler.cs` lines ~160-195):
 ```csharp
-// Phase 3: Collect type declarations
-foreach (var (sourceFile, module) in _parsedModules)
+private void CollectTypeDeclarations(ProjectConfig config)
 {
-    var nameResolver = new NameResolver(_symbolTable, _logger);
-    nameResolver.ResolveDeclarations(module);
-}
+    _logger.LogInfo("Phase 2: Collecting type declarations across all files");
 
-// Phase 3b: Resolve inheritance
-foreach (var (sourceFile, module) in _parsedModules)
-{
-    var nameResolver = new NameResolver(_symbolTable, _logger);
-    nameResolver.ResolveInheritance();
+    foreach (var (sourceFile, module) in _parsedModules)
+    {
+        var nameResolver = new NameResolver(_symbolTable, _logger);
+        nameResolver.ResolveDeclarations(module);
+        // ...
+    }
+
+    // Now that all types are declared, resolve inheritance relationships
+    _logger.LogInfo("Phase 2b: Resolving inheritance across all files");
+    foreach (var (sourceFile, module) in _parsedModules)
+    {
+        var nameResolver = new NameResolver(_symbolTable, _logger);
+        nameResolver.ResolveInheritance();
+        // ...
+    }
 }
 ```
 
@@ -203,8 +210,8 @@ case ClassDef classDef:
         }
     }
     
-    // Store base classes for later resolution
-    classSymbol.UnresolvedBaseClasses = classDef.BaseClasses;
+    // Note: Base class resolution happens in NameResolver.ResolveInheritance()
+    // after all types are registered in the symbol table
 ```
 
 ### Task 3: Add .NET Type Import Support

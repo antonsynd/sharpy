@@ -10,6 +10,16 @@ This document contains edge case test scenarios for the Sharpy compiler. Each te
 4. **Verify**: Compare output with expected output
 5. **Report**: If output differs, report the bug with the test case name
 
+### Prerequisites
+
+Before running these tests, ensure that the following compiler fixes are implemented:
+- **Task 1**: Fix NameResolver Instance Isolation Bug (required for all cross-module tests)
+- **Task 2**: Extract Full Type Information from Imported Modules (required for member access tests)
+- **Task 4**: Propagate Inherited Interface Methods (required for interface inheritance tests)
+- **Task 5**: Interface Implementation Validation (required for error case tests)
+
+See `cross_module_inheritance_tasks.md` for implementation details.
+
 ---
 
 ## Category 1: Multi-Level Import Chains

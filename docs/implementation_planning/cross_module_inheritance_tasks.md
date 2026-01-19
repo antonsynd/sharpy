@@ -4,9 +4,20 @@
 
 This document provides a comprehensive investigation of the current support for multi-file/module compilation and inheritance/interface implementation across modules in the Sharpy compiler. It identifies **5 critical gaps** and provides detailed remediation tasks.
 
-**Status**: Investigation Complete  
+**Status**: Investigation Complete, Tasks Verified Against Codebase  
+**Last Updated**: January 2026  
 **Priority**: P0 (Critical for v0.2.0)  
 **Estimated Total Effort**: 4-5 days (for experienced engineer with compiler knowledge)
+
+### Quick Reference: Gap Summary
+
+| Gap | Description | Impact | Fix Difficulty |
+|-----|-------------|--------|----------------|
+| Gap 1 | NameResolver instance isolation | Cross-module inheritance fails | Easy (2-3h) |
+| Gap 2 | Incomplete type extraction | Cannot access imported members | Medium (4-6h) |
+| Gap 3 | No .NET type import | Cannot inherit from .NET types | Hard (6-8h) |
+| Gap 4 | No interface method propagation | Missing inherited interface methods | Easy (2-3h) |
+| Gap 5 | No interface validation | Missing methods not detected | Medium (4-5h) |
 
 ---
 
@@ -63,21 +74,28 @@ NameResolver.ResolveInheritance()
 
 **Problem**: Phase 3b creates a **new** `NameResolver` instance for each file, but the `_classDefs`, `_structDefs`, and `_interfaceDefs` lists are instance fields. These lists only get populated during `ResolveDeclarations()` (Phase 3a), so when `ResolveInheritance()` is called on a fresh instance, these lists are empty.
 
-**Current Code**:
+**Current Code** (from `ProjectCompiler.cs` lines ~160-195):
 ```csharp
-// Phase 3: Collect type declarations
-foreach (var (sourceFile, module) in _parsedModules)
+private void CollectTypeDeclarations(ProjectConfig config)
 {
-    var nameResolver = new NameResolver(_symbolTable, _logger);
-    nameResolver.ResolveDeclarations(module);
-    // _classDefs populated here
-}
+    _logger.LogInfo("Phase 2: Collecting type declarations across all files");
 
-// Phase 3b: Resolve inheritance
-foreach (var (sourceFile, module) in _parsedModules)
-{
-    var nameResolver = new NameResolver(_symbolTable, _logger);  // NEW INSTANCE!
-    nameResolver.ResolveInheritance();  // _classDefs is EMPTY!
+    foreach (var (sourceFile, module) in _parsedModules)
+    {
+        var nameResolver = new NameResolver(_symbolTable, _logger);
+        nameResolver.ResolveDeclarations(module);
+        // _classDefs populated here
+        // ...
+    }
+
+    // Now that all types are declared, resolve inheritance relationships
+    _logger.LogInfo("Phase 2b: Resolving inheritance across all files");
+    foreach (var (sourceFile, module) in _parsedModules)
+    {
+        var nameResolver = new NameResolver(_symbolTable, _logger);  // NEW INSTANCE!
+        nameResolver.ResolveInheritance();  // _classDefs is EMPTY!
+        // ...
+    }
 }
 ```
 
@@ -96,9 +114,10 @@ foreach (var (sourceFile, module) in _parsedModules)
 - `BaseType` - Not set (null)
 - `Interfaces` - List stays empty
 
-**Current Code**:
+**Current Code** (from `ImportResolver.cs` method `ExtractExportedSymbol`, lines ~250-330):
 ```csharp
 case ClassDef classDef:
+    var classAccessLevel = GetAccessLevel(classDef.Name);
     var classSymbol = new TypeSymbol
     {
         Name = classDef.Name,
@@ -107,9 +126,10 @@ case ClassDef classDef:
         AccessLevel = classAccessLevel,
         DeclarationLine = classDef.LineStart,
         DeclarationColumn = classDef.ColumnStart
-        // NO Fields, Methods, BaseType, Interfaces!
+        // NO Fields, Methods, BaseType, Interfaces, TypeParameters!
     };
     moduleInfo.ExportedSymbols[classDef.Name] = classSymbol;
+    break;
 ```
 
 **Impact**: 
@@ -180,7 +200,33 @@ private void ResolveInterfaceInheritance(InterfaceDef interfaceDef)
 
 ---
 
+## What Works Correctly (No Changes Needed)
+
+Before diving into the tasks, it's important to note what already works:
+
+1. **Single-file inheritance**: The `NameResolver` correctly resolves inheritance when all classes are in the same file.
+
+2. **Symbol table lookup**: The `SymbolTable.Lookup()` method correctly searches across scopes and can find imported types.
+
+3. **Import resolution**: The `ImportResolver` correctly parses and loads imported `.spy` files and registers their types in the symbol table.
+
+4. **Code generation for inheritance**: The `RoslynEmitter` correctly generates C# inheritance syntax when the semantic information is complete.
+
+5. **Interface method tracking**: `TypeSymbol.Methods` correctly stores interface methods when they are registered.
+
+---
+
 ## Detailed Task List
+
+### Important Implementation Notes
+
+Before implementing these tasks, note the following about the current codebase:
+
+1. **NameResolver Error Collection**: The `_errors` list in `NameResolver` is an instance field that accumulates errors. When using a single instance across multiple files, errors will accumulate. This is the desired behavior for detecting all inheritance errors.
+
+2. **Existing Type Resolution**: The `NameResolver` already looks up types via `_symbolTable.Lookup()` during inheritance resolution. The issue is that for imported types, only a shell TypeSymbol exists without full member information.
+
+3. **Phase Ordering**: Imports are resolved AFTER type declarations are collected (Phase 4 after Phase 3). This means when resolving inheritance in Phase 3b, imported types may already be in the symbol table from a previous compilation or from the same project's earlier files.
 
 ### Task 1: Fix NameResolver Instance Isolation Bug
 
@@ -191,7 +237,7 @@ private void ResolveInterfaceInheritance(InterfaceDef interfaceDef)
 
 **Detailed Steps**:
 
-1. **Modify `CollectTypeDeclarations` method** (lines ~147-183):
+1. **Modify `CollectTypeDeclarations` method** (lines ~160-195):
 
 ```csharp
 /// <summary>
@@ -201,7 +247,7 @@ private void ResolveInterfaceInheritance(InterfaceDef interfaceDef)
 /// </summary>
 private void CollectTypeDeclarations(ProjectConfig config)
 {
-    _logger.LogInfo("Phase 3: Collecting type declarations across all files");
+    _logger.LogInfo("Phase 2: Collecting type declarations across all files");
 
     // CHANGE: Create ONE NameResolver for ALL files
     var nameResolver = new NameResolver(_symbolTable, _logger);
@@ -210,13 +256,23 @@ private void CollectTypeDeclarations(ProjectConfig config)
     foreach (var (sourceFile, module) in _parsedModules)
     {
         nameResolver.ResolveDeclarations(module);
+        
+        // Collect warnings during declaration phase (don't fail yet)
+        if (nameResolver.Errors.Any())
+        {
+            foreach (var error in nameResolver.Errors)
+            {
+                _logger.LogWarning($"{sourceFile}({error.Line},{error.Column}): {error.Message}",
+                    error.Line ?? 0, error.Column ?? 0);
+            }
+        }
     }
 
     // Phase 3b: Resolve inheritance (using the SAME NameResolver instance)
-    _logger.LogInfo("Phase 3b: Resolving inheritance across all files");
+    _logger.LogInfo("Phase 2b: Resolving inheritance across all files");
     nameResolver.ResolveInheritance();
 
-    // Collect any errors
+    // Collect any inheritance resolution errors
     if (nameResolver.Errors.Any())
     {
         _errors.AddRange(nameResolver.Errors.Select(e =>
@@ -224,6 +280,12 @@ private void CollectTypeDeclarations(ProjectConfig config)
     }
 }
 ```
+
+**Important Note**: The NameResolver currently clears errors between calls, so we need to either:
+- Add a `ClearErrors()` method or
+- Collect errors immediately after each phase
+
+The fix above handles this by collecting warnings during declaration and errors after inheritance.
 
 **Verification**:
 - Run test: `cross_module_inheritance/three_level_class_inheritance`
@@ -301,9 +363,14 @@ private TypeSymbol ExtractFullClassSymbol(ClassDef classDef)
     }
 
     // Store base class names for later resolution
-    // (Actual TypeSymbol resolution happens in NameResolver.ResolveInheritance)
-    // We need to store these for the imported symbol to be resolvable
-    classSymbol.UnresolvedBaseClasses = classDef.BaseClasses; // Add this property
+    // Note: We don't need to store UnresolvedBaseClasses because:
+    // 1. The NameResolver has access to the AST (ClassDef) during inheritance resolution
+    // 2. The symbol table lookup works for imported types
+    // The key is ensuring Task 1 is done first (single NameResolver instance)
+    foreach (var baseClass in classDef.BaseClasses)
+    {
+        _logger.LogDebug($"Class '{classDef.Name}' has base class: {baseClass.Name}");
+    }
 
     return classSymbol;
 }
@@ -377,21 +444,21 @@ private void ExtractExportedSymbol(Statement statement, ModuleInfo moduleInfo)
 
 3. **Add similar methods for struct and interface extraction** (similar pattern to class)
 
-4. **Add `UnresolvedBaseClasses` property to TypeSymbol**:
+4. **Alternative approach (simpler, no new property needed)**:
 
-In `Symbol.cs`:
-```csharp
-public record TypeSymbol : Symbol
-{
-    // ... existing properties ...
-    
-    /// <summary>
-    /// Unresolved base class type annotations (used during import resolution).
-    /// These are resolved to actual TypeSymbols during NameResolver.ResolveInheritance().
-    /// </summary>
-    public List<TypeAnnotation> UnresolvedBaseClasses { get; set; } = new();
-}
-```
+Instead of adding `UnresolvedBaseClasses` to `TypeSymbol`, we can leverage the fact that:
+- When `ImportResolver` loads a module, it parses the AST
+- The `NameResolver` has access to the class definitions which contain base class info
+- The symbol table lookup already works for finding imported types
+
+The key insight is that the fix for Task 1 (using a single NameResolver instance) will naturally collect all class definitions from all files, including imported ones. The base class resolution will then work because all types will be in the symbol table.
+
+**Recommended approach**: Skip adding `UnresolvedBaseClasses` for now. Instead, ensure that:
+1. Task 1 is completed (single NameResolver instance)
+2. The `ExtractFullClassSymbol` method extracts all members (fields, methods)
+3. Trust that `NameResolver.ResolveClassInheritance()` will find the base types via symbol table lookup
+
+If base type resolution still fails after Task 1, THEN add explicit tracking of unresolved base classes.
 
 **Verification**:
 - Import a class from another module
@@ -1017,14 +1084,15 @@ def main():
 
 | File | Tasks | Changes |
 |------|-------|---------|
-| `ProjectCompiler.cs` | 1 | Fix CollectTypeDeclarations |
-| `ImportResolver.cs` | 2, 3 | Add full type extraction, .NET type support |
-| `NameResolver.cs` | 4 | Add method propagation |
-| `Symbol.cs` | 2 | Add UnresolvedBaseClasses property |
-| `ModuleRegistry.cs` | 3 | Add type discovery methods |
+| `ProjectCompiler.cs` | 1 | Fix CollectTypeDeclarations to use single NameResolver |
+| `ImportResolver.cs` | 2, 3 | Add full type extraction helpers, .NET type support |
+| `NameResolver.cs` | 4 | Add interface method propagation |
+| `ModuleRegistry.cs` | 3 | Add GetModuleTypes() method |
 | `TypeChecker.Definitions.cs` | 5 | Integrate interface validation |
-| `InterfaceValidator.cs` | 5 | New file |
-| New test files | All | 3 new test fixtures |
+| `InterfaceValidator.cs` | 5 | New file for interface validation logic |
+| New test files | All | 3+ new test fixtures |
+
+**Note**: The `Symbol.cs` file does NOT need to be modified. The original plan to add `UnresolvedBaseClasses` is unnecessary because the NameResolver already has access to the AST during inheritance resolution.
 
 ---
 
