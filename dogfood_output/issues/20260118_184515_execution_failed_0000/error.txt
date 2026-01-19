@@ -1,2 +1,0 @@
-Compilation failed:
-  Compilation failed: Parser error at line 4, column 26: Expected Colon, got Newline
