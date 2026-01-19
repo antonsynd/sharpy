@@ -247,8 +247,10 @@ class MyClass:
     }
 
     [Fact]
-    public void ComputeForModule_ModuleLevelVariable_WithFunctionCall_HasExecutionOrderIssues()
+    public void ComputeForModule_ModuleLevelVariable_WithFunctionCall_NoExecutionOrderIssues()
     {
+        // A variable initialized with a function call that's defined earlier
+        // does NOT have execution order issues - it can be a static field
         var source = @"
 def get_value() -> int:
     return 42
@@ -263,7 +265,49 @@ result: int = get_value()
         var symbol = symbolTable.Lookup("result") as VariableSymbol;
         symbol.Should().NotBeNull();
         symbol!.CodeGenInfo.Should().NotBeNull();
+        // Function is defined before variable, so no execution order issues
+        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeFalse();
+        symbol.CodeGenInfo.IsModuleLevel.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ComputeForModule_ModuleLevelVariable_AssignmentBeforeDeclaration_HasExecutionOrderIssues()
+    {
+        // Assignment before declaration is a true execution order issue
+        var source = @"
+x = 5
+x: int = 10
+";
+        var (module, symbolTable) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable);
+
+        computer.ComputeForModule(module);
+
+        var symbol = symbolTable.Lookup("x") as VariableSymbol;
+        symbol.Should().NotBeNull();
+        symbol!.CodeGenInfo.Should().NotBeNull();
         symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeTrue();
+        symbol.CodeGenInfo.IsModuleLevel.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ComputeForModule_ModuleLevelVariable_ReferencesAssignmentVariable_HasExecutionOrderIssues()
+    {
+        // Referencing an assignment variable (no type annotation) is an execution order issue
+        var source = @"
+x = 5
+y: int = x
+";
+        var (module, symbolTable) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable);
+
+        computer.ComputeForModule(module);
+
+        var symbol = symbolTable.Lookup("y") as VariableSymbol;
+        symbol.Should().NotBeNull();
+        symbol!.CodeGenInfo.Should().NotBeNull();
+        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeTrue();
+        symbol.CodeGenInfo.IsModuleLevel.Should().BeFalse();
     }
 
     [Fact]

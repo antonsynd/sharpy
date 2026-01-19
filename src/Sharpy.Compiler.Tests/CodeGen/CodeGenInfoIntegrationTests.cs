@@ -150,8 +150,10 @@ struct point:
     }
 
     [Fact]
-    public void VariableWithFunctionCall_HasExecutionOrderIssues()
+    public void VariableWithFunctionCall_NoExecutionOrderIssues()
     {
+        // A variable initialized with a function call that's defined earlier
+        // does NOT have execution order issues - it can be a static field
         var source = @"
 def get_value() -> int:
     return 42
@@ -163,8 +165,49 @@ result: int = get_value()
         var symbol = symbolTable.Lookup("result") as VariableSymbol;
         symbol.Should().NotBeNull();
         symbol!.CodeGenInfo.Should().NotBeNull();
+        // Function is defined before variable, so no execution order issues
+        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeFalse(
+            "Variable initialized with function call defined earlier should NOT have execution order issues");
+        symbol.CodeGenInfo.IsModuleLevel.Should().BeTrue(
+            "Variable should be emitted as a static field");
+    }
+
+    [Fact]
+    public void VariableWithAssignmentBeforeDeclaration_HasExecutionOrderIssues()
+    {
+        // Assignment before declaration is a true execution order issue
+        var source = @"
+x = 5
+x: int = 10
+";
+        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+
+        var symbol = symbolTable.Lookup("x") as VariableSymbol;
+        symbol.Should().NotBeNull();
+        symbol!.CodeGenInfo.Should().NotBeNull();
         symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeTrue(
-            "Variable initialized with function call should have execution order issues");
+            "Assignment before declaration is an execution order issue");
+        symbol.CodeGenInfo.IsModuleLevel.Should().BeFalse(
+            "Variable should be emitted as local in Main()");
+    }
+
+    [Fact]
+    public void VariableReferencingAssignmentVariable_HasExecutionOrderIssues()
+    {
+        // Referencing an assignment variable (no type annotation) is an execution order issue
+        var source = @"
+x = 5
+y: int = x
+";
+        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+
+        var symbol = symbolTable.Lookup("y") as VariableSymbol;
+        symbol.Should().NotBeNull();
+        symbol!.CodeGenInfo.Should().NotBeNull();
+        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeTrue(
+            "Referencing an assignment variable is an execution order issue");
+        symbol.CodeGenInfo.IsModuleLevel.Should().BeFalse(
+            "Variable should be emitted as local in Main()");
     }
 
     [Fact]

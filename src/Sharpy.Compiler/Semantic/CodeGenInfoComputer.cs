@@ -14,6 +14,7 @@ public class CodeGenInfoComputer
 {
     private readonly SymbolTable _symbolTable;
     private readonly HashSet<string> _processedModuleLevelVars = new();
+    private HashSet<string> _variablesWithExecutionOrderIssues = new();
 
     public CodeGenInfoComputer(SymbolTable symbolTable)
     {
@@ -25,6 +26,10 @@ public class CodeGenInfoComputer
     /// </summary>
     public void ComputeForModule(Module module)
     {
+        // Run execution order analysis first to detect variables that need special handling
+        var analyzer = new ExecutionOrderAnalyzer(_symbolTable);
+        _variablesWithExecutionOrderIssues = analyzer.Analyze(module.Body);
+
         // First pass: Process module-level declarations (top-level statements)
         ProcessModuleLevelDeclarations(module);
 
@@ -79,14 +84,17 @@ public class CodeGenInfoComputer
         var symbol = _symbolTable.Lookup(varDecl.Name);
         if (symbol is VariableSymbol varSymbol)
         {
+            // Use execution order analysis result instead of simple initializer check
+            var hasIssues = _variablesWithExecutionOrderIssues.Contains(varDecl.Name);
+
             varSymbol.CodeGenInfo = new CodeGenInfo
             {
                 CSharpName = NameMangler.ToPascalCase(varDecl.Name),
                 OriginalName = varDecl.Name,
                 Version = 0,
-                IsModuleLevel = true,
+                IsModuleLevel = !hasIssues,  // Not module-level if has execution order issues
                 IsConstant = false,
-                HasExecutionOrderIssues = HasExecutionOrderIssues(varDecl.InitialValue)
+                HasExecutionOrderIssues = hasIssues
             };
             _processedModuleLevelVars.Add(varDecl.Name);
         }
@@ -290,49 +298,8 @@ public class CodeGenInfoComputer
         }
     }
 
-    private bool HasExecutionOrderIssues(Expression? initializer)
-    {
-        if (initializer == null)
-            return false;
-
-        // Check if the initializer contains any non-constant expressions
-        // that would cause execution order issues as a static field
-        return ContainsRuntimeExpression(initializer);
-    }
-
-    private bool ContainsRuntimeExpression(Expression expr)
-    {
-        return expr switch
-        {
-            IntegerLiteral => false,
-            FloatLiteral => false,
-            StringLiteral => false,
-            BooleanLiteral => false,
-            NoneLiteral => false,
-            // Function calls (including method calls) are runtime
-            FunctionCall => true,
-            // Identifier references might be runtime (depends on what they reference)
-            Identifier => true, // Conservative: assume runtime
-            // List/dict/set literals could be runtime
-            ListLiteral => true,
-            DictLiteral => true,
-            SetLiteral => true,
-            TupleLiteral => true,
-            // Compound expressions - check recursively
-            BinaryOp binExpr => ContainsRuntimeExpression(binExpr.Left) || ContainsRuntimeExpression(binExpr.Right),
-            UnaryOp unaryExpr => ContainsRuntimeExpression(unaryExpr.Operand),
-            // Conditional expressions
-            ConditionalExpression cond => ContainsRuntimeExpression(cond.Test) ||
-                                          ContainsRuntimeExpression(cond.ThenValue) ||
-                                          ContainsRuntimeExpression(cond.ElseValue),
-            // Parenthesized expressions
-            Parenthesized paren => ContainsRuntimeExpression(paren.Expression),
-            // Member access, index access, slice - all are runtime
-            MemberAccess => true,
-            IndexAccess => true,
-            SliceAccess => true,
-            // Default: assume runtime for safety
-            _ => true
-        };
-    }
+    // Note: HasExecutionOrderIssues and ContainsRuntimeExpression methods were removed.
+    // The ExecutionOrderAnalyzer class now handles execution order detection with
+    // proper multi-pass analysis including assignment-before-declaration and
+    // transitive dependency detection.
 }

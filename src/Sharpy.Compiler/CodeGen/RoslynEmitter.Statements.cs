@@ -432,7 +432,13 @@ public partial class RoslynEmitter
     {
         // Check if this variable has execution order issues (assigned before declared, or multiple declarations)
         // If so, skip generating a field - it will be handled as a local variable in Main()
-        if (_variablesWithExecutionOrderIssues.Contains(varDecl.Name))
+        var symbol = _context.LookupSymbol(varDecl.Name);
+        if (symbol != null && HasExecutionOrderIssues(symbol))
+        {
+            return null;
+        }
+        // [LEGACY FALLBACK] If no symbol found, fall back to legacy tracking
+        else if (symbol == null && _variablesWithExecutionOrderIssues.Contains(varDecl.Name))
         {
             return null;
         }

@@ -80,32 +80,14 @@ public partial class RoslynEmitter
 
     private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements, List<FromImportStatement>? reExportImports = null)
     {
-        // Pre-scan for module-level variable declarations to track them across all scopes
-        // This ensures functions can reference variables with correct casing
+        // Clear tracking fields for this module
         _moduleConstVariables.Clear();
         _moduleVariables.Clear();
         _moduleFieldNames.Clear();
-
-        // Track variables that need special handling due to execution order issues
-        // (e.g., variables assigned before they are declared, or variables with multiple declarations,
-        // or variables whose initializers reference other local variables)
         _variablesWithExecutionOrderIssues = new HashSet<string>();
-        var variableFirstSeen = new Dictionary<string, int>();
-        var variableFirstDeclaration = new Dictionary<string, int>();
 
-        // Collect class, struct, and function names - these are valid to reference from module-level fields
-        var typeAndFunctionNames = new HashSet<string>();
-        foreach (var stmt in statements)
-        {
-            if (stmt is ClassDef classDef)
-                typeAndFunctionNames.Add(classDef.Name);
-            else if (stmt is StructDef structDef)
-                typeAndFunctionNames.Add(structDef.Name);
-            else if (stmt is FunctionDef funcDef)
-                typeAndFunctionNames.Add(funcDef.Name);
-            else if (stmt is EnumDef enumDef)
-                typeAndFunctionNames.Add(enumDef.Name);
-        }
+        // Populate tracking fields from CodeGenInfo if available, otherwise fall back to legacy detection
+        PopulateModuleVariableTracking(statements);
 
         // Collect interface definitions for abstract class stub generation
         // This allows abstract classes to generate stubs for unimplemented interface methods
@@ -115,173 +97,6 @@ public partial class RoslynEmitter
             if (stmt is InterfaceDef interfaceDef)
             {
                 _interfaceDefinitions[interfaceDef.Name] = interfaceDef;
-            }
-        }
-
-        // First pass: collect const variables and detect basic execution order issues
-        var constVariables = new HashSet<string>();
-        for (int i = 0; i < statements.Count; i++)
-        {
-            var stmt = statements[i];
-            if (stmt is VariableDeclaration varDecl)
-            {
-                var varName = varDecl.Name;
-
-                // Track const variables
-                if (varDecl.IsConst || IsConstantCaseName(varDecl.Name))
-                {
-                    constVariables.Add(varName);
-                    continue;
-                }
-
-                if (variableFirstDeclaration.ContainsKey(varName))
-                {
-                    // Multiple declarations - needs special handling
-                    _variablesWithExecutionOrderIssues.Add(varName);
-                }
-                else
-                {
-                    variableFirstDeclaration[varName] = i;
-                    // Check if there was an assignment before this declaration
-                    if (variableFirstSeen.TryGetValue(varName, out var firstSeenIndex) && firstSeenIndex < i)
-                    {
-                        _variablesWithExecutionOrderIssues.Add(varName);
-                    }
-                }
-            }
-            else if (stmt is Assignment assign && assign.Target is Identifier assignId)
-            {
-                var varName = assignId.Name;
-                if (!variableFirstSeen.ContainsKey(varName))
-                {
-                    variableFirstSeen[varName] = i;
-                }
-            }
-        }
-
-        // Second pass: detect variables whose initializers reference local variables
-        // A variable must be local if its initializer references any identifier that:
-        // 1. Is in _variablesWithExecutionOrderIssues (already known to be local), OR
-        // 2. Is a variable created by an Assignment statement (these go to Main), OR
-        // 3. Is a variable (not const, not type/function) that will be local
-        // We iterate until no new variables are added (transitive closure)
-        var variableDeclarations = new Dictionary<string, VariableDeclaration>();
-        var variableDeclarationOrder = new Dictionary<string, int>();
-
-        // Track variables created by Assignment statements (without type annotations)
-        // These always go to Main() as executable statements, so any VariableDeclaration
-        // that references them must also be local
-        var assignmentVariables = new HashSet<string>();
-        for (int i = 0; i < statements.Count; i++)
-        {
-            if (statements[i] is VariableDeclaration vd && !constVariables.Contains(vd.Name))
-            {
-                variableDeclarations[vd.Name] = vd;
-                if (!variableDeclarationOrder.ContainsKey(vd.Name))
-                    variableDeclarationOrder[vd.Name] = i;
-            }
-            else if (statements[i] is Assignment assign && assign.Target is Identifier targetId)
-            {
-                // This is an assignment without type annotation - it goes to Main
-                // and any VariableDeclaration referencing it must also go to Main
-                assignmentVariables.Add(targetId.Name);
-            }
-        }
-
-        bool changed = true;
-        while (changed)
-        {
-            changed = false;
-            foreach (var kvp in variableDeclarations)
-            {
-                var varName = kvp.Key;
-                var varDecl = kvp.Value;
-
-                if (_variablesWithExecutionOrderIssues.Contains(varName))
-                    continue; // Already marked
-
-                if (varDecl.InitialValue == null)
-                    continue; // No initializer to check
-
-                // Collect all identifiers referenced in the initializer
-                var referencedIds = new HashSet<string>();
-                CollectReferencedIdentifiers(varDecl.InitialValue, referencedIds);
-
-                // Check if any referenced identifier requires this to be local
-                foreach (var refId in referencedIds)
-                {
-                    // Skip if it's a type/function name (these are always available)
-                    if (typeAndFunctionNames.Contains(refId))
-                        continue;
-
-                    // Skip if it's a const variable (always available at module level)
-                    if (constVariables.Contains(refId))
-                        continue;
-
-                    // Skip if it's a builtin or known symbol
-                    var symbol = _context.LookupSymbol(refId);
-                    if (symbol is FunctionSymbol or TypeSymbol)
-                        continue;
-
-                    // If referenced variable is already marked as local, this one must be too
-                    if (_variablesWithExecutionOrderIssues.Contains(refId))
-                    {
-                        _variablesWithExecutionOrderIssues.Add(varName);
-                        changed = true;
-                        break;
-                    }
-
-                    // If referenced variable is created by an Assignment (no type annotation),
-                    // it will be a local variable in Main, so this one must be too
-                    if (assignmentVariables.Contains(refId))
-                    {
-                        _variablesWithExecutionOrderIssues.Add(varName);
-                        changed = true;
-                        break;
-                    }
-
-                    // If referenced variable is a module variable declared AFTER this one,
-                    // the order of static field initialization is undefined, so make this local
-                    if (variableDeclarationOrder.TryGetValue(refId, out var refOrder) &&
-                        variableDeclarationOrder.TryGetValue(varName, out var thisOrder) &&
-                        refOrder < thisOrder)
-                    {
-                        // Referenced variable is declared before this one, but if it has
-                        // execution order issues, it will be local, so check that
-                        // (This case is already handled above by the _variablesWithExecutionOrderIssues check)
-                    }
-                    else if (variableDeclarations.ContainsKey(refId) && !constVariables.Contains(refId))
-                    {
-                        // Referenced variable is NOT const and is a module-level variable
-                        // If it doesn't have explicit execution order issues yet, we need to check
-                        // if it references this variable (mutual dependency) or will be local
-                        // For safety, if a variable references another non-const variable that
-                        // is declared later (or at all, to be safe), make it local
-                        // This ensures proper execution order semantics
-                        _variablesWithExecutionOrderIssues.Add(varName);
-                        changed = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        foreach (var stmt in statements)
-        {
-            if (stmt is VariableDeclaration varDecl)
-            {
-                // Treat as constant if explicitly const OR if name is ALL_CAPS (Python-style constant)
-                if (varDecl.IsConst || IsConstantCaseName(varDecl.Name))
-                {
-                    _moduleConstVariables.Add(varDecl.Name);
-                }
-                else if (!_variablesWithExecutionOrderIssues.Contains(varDecl.Name))
-                {
-                    // Only track as module variable if no execution order issues
-                    _moduleVariables.Add(varDecl.Name);
-                }
-                // Variables with execution order issues are NOT added to _moduleVariables
-                // They will be handled as local variables in Main()
             }
         }
 
@@ -425,6 +240,216 @@ public partial class RoslynEmitter
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.StaticKeyword)))
             .WithMembers(List(declarations));
+    }
+
+    /// <summary>
+    /// Populate module variable tracking fields from CodeGenInfo if available,
+    /// otherwise fall back to legacy detection.
+    /// </summary>
+    private void PopulateModuleVariableTracking(List<Statement> statements)
+    {
+        // Try to use CodeGenInfo first (preferred path when UsePrecomputedCodeGenInfo is enabled)
+        bool usedCodeGenInfo = false;
+
+        foreach (var stmt in statements)
+        {
+            if (stmt is VariableDeclaration varDecl)
+            {
+                var symbol = _context.LookupSymbol(varDecl.Name);
+                if (symbol is VariableSymbol varSymbol && varSymbol.CodeGenInfo != null)
+                {
+                    usedCodeGenInfo = true;
+                    var info = varSymbol.CodeGenInfo;
+
+                    if (info.IsConstant)
+                    {
+                        _moduleConstVariables.Add(varDecl.Name);
+                    }
+                    else if (info.IsModuleLevel && !info.HasExecutionOrderIssues)
+                    {
+                        _moduleVariables.Add(varDecl.Name);
+                    }
+
+                    if (info.HasExecutionOrderIssues)
+                    {
+                        _variablesWithExecutionOrderIssues.Add(varDecl.Name);
+                    }
+                }
+            }
+            else if (stmt is Assignment assign && assign.Target is Identifier targetId)
+            {
+                // Assignment statements (without type annotations) always have execution order issues
+                var symbol = _context.LookupSymbol(targetId.Name);
+                if (symbol is VariableSymbol varSymbol && varSymbol.CodeGenInfo != null)
+                {
+                    usedCodeGenInfo = true;
+                    if (varSymbol.CodeGenInfo.HasExecutionOrderIssues)
+                    {
+                        _variablesWithExecutionOrderIssues.Add(targetId.Name);
+                    }
+                }
+            }
+        }
+
+        // If we didn't find any CodeGenInfo, fall back to legacy detection
+        if (!usedCodeGenInfo)
+        {
+            PopulateModuleVariableTrackingLegacy(statements);
+        }
+    }
+
+    /// <summary>
+    /// [LEGACY] Original detection logic for when CodeGenInfo is not available.
+    /// This code path is deprecated and will be removed once CodeGenInfo is always computed.
+    /// </summary>
+    private void PopulateModuleVariableTrackingLegacy(List<Statement> statements)
+    {
+        var variableFirstSeen = new Dictionary<string, int>();
+        var variableFirstDeclaration = new Dictionary<string, int>();
+
+        // Collect class, struct, and function names - these are valid to reference from module-level fields
+        var typeAndFunctionNames = new HashSet<string>();
+        foreach (var stmt in statements)
+        {
+            if (stmt is ClassDef classDef)
+                typeAndFunctionNames.Add(classDef.Name);
+            else if (stmt is StructDef structDef)
+                typeAndFunctionNames.Add(structDef.Name);
+            else if (stmt is FunctionDef funcDef)
+                typeAndFunctionNames.Add(funcDef.Name);
+            else if (stmt is EnumDef enumDef)
+                typeAndFunctionNames.Add(enumDef.Name);
+        }
+
+        // First pass: collect const variables and detect basic execution order issues
+        var constVariables = new HashSet<string>();
+        for (int i = 0; i < statements.Count; i++)
+        {
+            var stmt = statements[i];
+            if (stmt is VariableDeclaration varDecl)
+            {
+                var varName = varDecl.Name;
+
+                // Track const variables
+                if (varDecl.IsConst || IsConstantCaseName(varDecl.Name))
+                {
+                    constVariables.Add(varName);
+                    continue;
+                }
+
+                if (variableFirstDeclaration.ContainsKey(varName))
+                {
+                    // Multiple declarations - needs special handling
+                    _variablesWithExecutionOrderIssues.Add(varName);
+                }
+                else
+                {
+                    variableFirstDeclaration[varName] = i;
+                    // Check if there was an assignment before this declaration
+                    if (variableFirstSeen.TryGetValue(varName, out var firstSeenIndex) && firstSeenIndex < i)
+                    {
+                        _variablesWithExecutionOrderIssues.Add(varName);
+                    }
+                }
+            }
+            else if (stmt is Assignment assign && assign.Target is Identifier assignId)
+            {
+                var varName = assignId.Name;
+                if (!variableFirstSeen.ContainsKey(varName))
+                {
+                    variableFirstSeen[varName] = i;
+                }
+            }
+        }
+
+        // Second pass: detect variables whose initializers reference local variables
+        var variableDeclarations = new Dictionary<string, VariableDeclaration>();
+        var variableDeclarationOrder = new Dictionary<string, int>();
+        var assignmentVariables = new HashSet<string>();
+
+        for (int i = 0; i < statements.Count; i++)
+        {
+            if (statements[i] is VariableDeclaration vd && !constVariables.Contains(vd.Name))
+            {
+                variableDeclarations[vd.Name] = vd;
+                if (!variableDeclarationOrder.ContainsKey(vd.Name))
+                    variableDeclarationOrder[vd.Name] = i;
+            }
+            else if (statements[i] is Assignment assign && assign.Target is Identifier targetId)
+            {
+                assignmentVariables.Add(targetId.Name);
+            }
+        }
+
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var kvp in variableDeclarations)
+            {
+                var varName = kvp.Key;
+                var varDecl = kvp.Value;
+
+                if (_variablesWithExecutionOrderIssues.Contains(varName))
+                    continue;
+
+                if (varDecl.InitialValue == null)
+                    continue;
+
+                var referencedIds = new HashSet<string>();
+                CollectReferencedIdentifiers(varDecl.InitialValue, referencedIds);
+
+                foreach (var refId in referencedIds)
+                {
+                    if (typeAndFunctionNames.Contains(refId))
+                        continue;
+
+                    if (constVariables.Contains(refId))
+                        continue;
+
+                    var symbol = _context.LookupSymbol(refId);
+                    if (symbol is FunctionSymbol or TypeSymbol)
+                        continue;
+
+                    if (_variablesWithExecutionOrderIssues.Contains(refId))
+                    {
+                        _variablesWithExecutionOrderIssues.Add(varName);
+                        changed = true;
+                        break;
+                    }
+
+                    if (assignmentVariables.Contains(refId))
+                    {
+                        _variablesWithExecutionOrderIssues.Add(varName);
+                        changed = true;
+                        break;
+                    }
+
+                    if (variableDeclarations.ContainsKey(refId) && !constVariables.Contains(refId))
+                    {
+                        _variablesWithExecutionOrderIssues.Add(varName);
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Populate tracking fields
+        foreach (var stmt in statements)
+        {
+            if (stmt is VariableDeclaration varDecl)
+            {
+                if (varDecl.IsConst || IsConstantCaseName(varDecl.Name))
+                {
+                    _moduleConstVariables.Add(varDecl.Name);
+                }
+                else if (!_variablesWithExecutionOrderIssues.Contains(varDecl.Name))
+                {
+                    _moduleVariables.Add(varDecl.Name);
+                }
+            }
+        }
     }
 
     private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)
