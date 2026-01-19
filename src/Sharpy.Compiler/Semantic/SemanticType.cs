@@ -188,8 +188,50 @@ public record UserDefinedType : SemanticType
                 current = current.BaseType;
             }
 
-            // Check interfaces
-            return Symbol.Interfaces.Any(i => i == otherUdt.Symbol || i.Name == otherUdt.Name);
+            // Check all interfaces (including inherited from base classes)
+            return ImplementsInterface(Symbol, otherUdt);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Check if a type implements an interface, including interfaces
+    /// inherited from base classes and interface inheritance chains.
+    /// </summary>
+    private static bool ImplementsInterface(TypeSymbol type, UserDefinedType targetInterface)
+    {
+        // Use BFS to search all interfaces in the hierarchy
+        var visited = new HashSet<string>();
+        var queue = new Queue<TypeSymbol>();
+
+        // Add direct interfaces of the type and all its base classes
+        var currentType = type;
+        while (currentType != null)
+        {
+            foreach (var iface in currentType.Interfaces)
+            {
+                queue.Enqueue(iface);
+            }
+            currentType = currentType.BaseType;
+        }
+
+        // BFS through interface inheritance
+        while (queue.Count > 0)
+        {
+            var iface = queue.Dequeue();
+            if (!visited.Add(iface.Name))
+                continue;
+
+            // Check if this is the target interface
+            if (iface == targetInterface.Symbol || iface.Name == targetInterface.Name)
+                return true;
+
+            // Add base interfaces to the queue
+            foreach (var baseIface in iface.Interfaces)
+            {
+                queue.Enqueue(baseIface);
+            }
         }
 
         return false;
