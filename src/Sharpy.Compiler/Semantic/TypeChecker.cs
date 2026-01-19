@@ -22,9 +22,8 @@ public partial class TypeChecker
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
 
-    // Validation pipeline support
-    private readonly ValidationPipeline? _validationPipeline;
-    private readonly bool _usePipeline;
+    // Validation pipeline - always enabled (default created if not provided)
+    private readonly ValidationPipeline _validationPipeline;
 
     // Track current function return type for return statement checking
     private SemanticType? _currentFunctionReturnType = null;
@@ -60,8 +59,7 @@ public partial class TypeChecker
         _semanticInfo = semanticInfo;
         _typeResolver = typeResolver;
         _logger = logger ?? NullLogger.Instance;
-        _validationPipeline = validationPipeline;
-        _usePipeline = validationPipeline != null;
+        _validationPipeline = validationPipeline ?? ValidationPipelineFactory.CreateDefault(logger);
 
         _controlFlowValidator = new ControlFlowValidator(_logger);
         _accessValidator = new AccessValidator(_symbolTable, _semanticInfo, _logger);
@@ -84,39 +82,76 @@ public partial class TypeChecker
     }
 
     /// <summary>
-    /// Gets all semantic errors from type checking.
-    /// When using the validation pipeline, errors from V2 validators are automatically merged.
-    /// When not using the pipeline (legacy mode), errors are collected from individual validators.
+    /// Gets all semantic errors from type checking and validation.
+    /// Errors are collected from multiple sources:
+    /// 1. Direct TypeChecker errors (_errors)
+    /// 2. TypeResolver errors
+    /// 3. Legacy validators (still used for type inference)
+    /// 4. V2 pipeline validators (merged during CheckModule)
+    ///
+    /// Duplicate errors are automatically filtered out.
     /// </summary>
     /// <remarks>
-    /// MIGRATION NOTE: Legacy mode (collecting errors from individual validators) is deprecated.
-    /// Use ValidationPipelineFactory.CreateDefault() to enable pipeline mode.
-    /// All validators should be migrated to the ISemanticValidator interface.
-    /// See ControlFlowValidatorV2 as the reference implementation.
+    /// MIGRATION NOTE: As validators are migrated to the V2 pipeline pattern,
+    /// legacy validator errors will be phased out. See ControlFlowValidatorV2
+    /// as the reference implementation for the new pattern.
     /// </remarks>
     public IReadOnlyList<SemanticError> Errors
     {
         get
         {
-            // Combine errors from type checker, type resolver, and validators.
+            // Combine errors from type checker and legacy validators.
+            // When the pipeline runs (CheckModule), it merges _errors, _typeResolver.Errors,
+            // and V2 validator errors back into _errors, so we start with those.
+            // Legacy validators are still called during type checking for type inference,
+            // so we also collect their errors with deduplication.
             var allErrors = new List<SemanticError>(_errors);
-            allErrors.AddRange(_typeResolver.Errors);
 
-            if (!_usePipeline)
+            // Collect errors from type resolver and legacy validators.
+            // These may be duplicated if the pipeline ran (since CheckModule merges them),
+            // so we deduplicate when adding.
+            var legacyErrors = new List<SemanticError>();
+            legacyErrors.AddRange(_typeResolver.Errors);
+            legacyErrors.AddRange(_controlFlowValidator.Errors);
+            legacyErrors.AddRange(_accessValidator.Errors);
+            legacyErrors.AddRange(_operatorValidator.Errors);
+            legacyErrors.AddRange(_protocolValidator.Errors);
+            legacyErrors.AddRange(_defaultParameterValidator.Errors);
+
+            // Deduplicate: only add legacy errors that aren't already in allErrors.
+            // Compare by line number and raw message content (accounting for format differences).
+            foreach (var legacyError in legacyErrors)
             {
-                // DEPRECATED: Legacy behavior - collect from individual validators.
-                // This path will be removed once all validators are migrated to the pipeline.
-                // To use the new pipeline, pass a ValidationPipeline to the TypeChecker constructor.
-                allErrors.AddRange(_controlFlowValidator.Errors);
-                allErrors.AddRange(_accessValidator.Errors);
-                allErrors.AddRange(_operatorValidator.Errors);
-                allErrors.AddRange(_protocolValidator.Errors);
-                allErrors.AddRange(_defaultParameterValidator.Errors);
+                bool isDuplicate = allErrors.Any(e =>
+                    e.Line == legacyError.Line &&
+                    (e.Message == legacyError.Message ||
+                     // Handle case where one message contains the other (format differences)
+                     e.Message.Contains(ExtractRawMessage(legacyError.Message)) ||
+                     legacyError.Message.Contains(ExtractRawMessage(e.Message))));
+                if (!isDuplicate)
+                {
+                    allErrors.Add(legacyError);
+                }
             }
-            // When using pipeline, errors are merged in CheckModule
 
             return allErrors;
         }
+    }
+
+    /// <summary>
+    /// Extracts the raw error message from a formatted SemanticError message.
+    /// Removes prefixes like "Semantic error at line X, column Y: ".
+    /// </summary>
+    private static string ExtractRawMessage(string message)
+    {
+        // Pattern: "Semantic error at line X, column Y: " or "Semantic error at line X: " or "Semantic error: "
+        if (message.StartsWith("Semantic error"))
+        {
+            var colonIdx = message.IndexOf(": ");
+            if (colonIdx >= 0 && colonIdx < message.Length - 2)
+                return message.Substring(colonIdx + 2);
+        }
+        return message;
     }
 
     /// <summary>
@@ -131,22 +166,25 @@ public partial class TypeChecker
             CheckStatement(statement);
         }
 
-        // If pipeline is configured, run additional validators
-        if (_usePipeline && _validationPipeline != null)
+        // Run pipeline validators (always enabled)
+        var context = CreateSemanticContext();
+        context.MergeFromLegacyErrors(_errors);
+        context.MergeFromLegacyErrors(_typeResolver.Errors);
+
+        _validationPipeline.Validate(module, context);
+
+        // Merge pipeline diagnostics back to legacy error list
+        // Note: SemanticError.Message is formatted with "Semantic error at line X:" prefix,
+        // while CompilerDiagnostic.Message is raw. We need to check if the raw message
+        // is contained in the formatted message for proper deduplication.
+        foreach (var error in context.Diagnostics.GetErrors())
         {
-            var context = CreateSemanticContext();
-            context.MergeFromLegacyErrors(_errors);
-            context.MergeFromLegacyErrors(_typeResolver.Errors);
-
-            _validationPipeline.Validate(module, context);
-
-            // Merge pipeline diagnostics back to legacy error list
-            foreach (var error in context.Diagnostics.GetErrors())
+            bool isDuplicate = _errors.Any(e =>
+                e.Line == error.Line &&
+                (e.Message == error.Message || e.Message.EndsWith(": " + error.Message)));
+            if (!isDuplicate)
             {
-                if (!_errors.Any(e => e.Message == error.Message && e.Line == error.Line))
-                {
-                    _errors.Add(new SemanticError(error.Message, error.Line, error.Column));
-                }
+                _errors.Add(new SemanticError(error.Message, error.Line, error.Column));
             }
         }
     }

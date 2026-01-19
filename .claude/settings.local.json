@@ -31,7 +31,8 @@
       "Bash(dotnet:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nimports: Fix cross-file namespace generation for multi-file projects\n\nCompute source root path dynamically from actual source files instead\nof hardcoding \"src\" subdirectory. This allows imports between files\nin the same directory to resolve correctly.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit -m \"$\\(cat <<''EOF''\ntest: Add multi-file compilation integration tests\n\nAdd tests that demonstrate multi-file import scenarios:\n- import_with_classes: Tests import/from-import in same file\n- module_import_access: Tests module.function\\(\\) access pattern\n\nThese tests verify the cross-file namespace generation fix works\nfor realistic multi-file projects.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git -C /Users/anton/Documents/github/sharpy log --oneline -20)"
+      "Bash(git -C /Users/anton/Documents/github/sharpy log --oneline -20)",
+      "Bash(git commit:*)"
     ]
   }
 }

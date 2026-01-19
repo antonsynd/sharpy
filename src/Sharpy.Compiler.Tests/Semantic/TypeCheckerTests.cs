@@ -1110,7 +1110,10 @@ s -= "" world""
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("does not support");
+        // Check for either legacy or V2 error format
+        var errorMsg = typeChecker.Errors[0].Message;
+        (errorMsg.Contains("does not support") || errorMsg.Contains("Unsupported operand types"))
+            .Should().BeTrue($"Expected operator error message but got: {errorMsg}");
     }
 
     [Fact]
@@ -1124,7 +1127,10 @@ x &= 2
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("does not support");
+        // Check for either legacy or V2 error format
+        var errorMsg = typeChecker.Errors[0].Message;
+        (errorMsg.Contains("does not support") || errorMsg.Contains("Unsupported operand types"))
+            .Should().BeTrue($"Expected operator error message but got: {errorMsg}");
     }
 
     [Fact]
