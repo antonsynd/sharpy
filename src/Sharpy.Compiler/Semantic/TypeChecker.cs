@@ -111,7 +111,7 @@ public partial class TypeChecker
                 // AccessValidator errors now reported via AccessValidatorV2 in pipeline
                 allErrors.AddRange(_operatorValidator.Errors);
                 allErrors.AddRange(_protocolValidator.Errors);
-                allErrors.AddRange(_defaultParameterValidator.Errors);
+                // DefaultParameterValidator errors now reported via DefaultParameterValidatorV2 in pipeline
             }
             // When using pipeline, errors are merged in CheckModule
 
