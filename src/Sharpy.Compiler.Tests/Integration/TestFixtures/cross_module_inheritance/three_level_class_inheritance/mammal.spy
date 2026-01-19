@@ -1,0 +1,18 @@
+# Middle class: Mammal extends Animal
+# Tests: Three-level inheritance across files (Level 2)
+
+from animal import Animal
+
+class Mammal(Animal):
+    warm_blooded: bool
+    
+    def __init__(self, name: str):
+        super().__init__(name)
+        self.warm_blooded = True
+    
+    @override
+    def speak(self) -> str:
+        return "mammal sound"
+    
+    def is_warm_blooded(self) -> bool:
+        return self.warm_blooded

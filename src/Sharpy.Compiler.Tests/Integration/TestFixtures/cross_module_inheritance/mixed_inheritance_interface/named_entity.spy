@@ -1,0 +1,19 @@
+# NamedEntity class: extends Entity, implements ISerializable
+# Tests: Mixed inheritance + interface at level 2
+
+from base_entity import Entity
+from contracts import ISerializable
+
+class NamedEntity(Entity, ISerializable):
+    name: str
+    
+    def __init__(self, id: int, name: str):
+        super().__init__(id)
+        self.name = name
+    
+    @override
+    def get_type(self) -> str:
+        return "NamedEntity"
+    
+    def to_string(self) -> str:
+        return self.name + "(" + (self.id to str) + ")"

@@ -1,0 +1,15 @@
+# Base class: Animal
+# Tests: Three-level inheritance across files (Level 1)
+
+class Animal:
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    @virtual
+    def speak(self) -> str:
+        return "..."
+    
+    def get_name(self) -> str:
+        return self.name

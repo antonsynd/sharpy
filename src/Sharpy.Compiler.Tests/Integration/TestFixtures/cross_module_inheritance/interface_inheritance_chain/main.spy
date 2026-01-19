@@ -1,0 +1,17 @@
+# Main entry point for interface inheritance chain test
+# Tests: Interface inheritance across files, polymorphism
+
+from implementation import User
+from base_interface import IIdentifiable
+
+def main():
+    user: User = User(1, "Alice")
+    
+    # Test direct methods
+    print(user.get_id())
+    print(user.get_name())
+    print(user.is_active())
+    
+    # Test base interface assignment and polymorphism
+    identifiable: IIdentifiable = user
+    print(identifiable.get_id())

@@ -1,0 +1,8 @@
+# Contracts module with interfaces
+# Tests: Interfaces used with class inheritance
+
+interface ISerializable:
+    def to_string(self) -> str: ...
+
+interface IComparable:
+    def compare_to(self, other: int) -> int: ...

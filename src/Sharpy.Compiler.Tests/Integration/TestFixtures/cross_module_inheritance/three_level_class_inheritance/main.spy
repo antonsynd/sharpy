@@ -1,0 +1,20 @@
+# Main entry point for three-level inheritance test
+# Tests: Inheritance across 3 files, method resolution, polymorphism
+
+from dog import Dog
+from mammal import Mammal
+from animal import Animal
+
+def main():
+    dog: Dog = Dog("Rex", "Shepherd")
+    
+    # Test inherited methods from all levels
+    print(dog.speak())
+    print(dog.get_name())
+    print(dog.is_warm_blooded())
+    print(dog.get_breed())
+    
+    # Test polymorphism - assign to base class reference
+    animal: Animal = dog
+    print(animal.speak())
+    print(animal.get_name())

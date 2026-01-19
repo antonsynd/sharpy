@@ -1,0 +1,12 @@
+# Base entity class
+# Tests: Base class for mixed inheritance
+
+class Entity:
+    id: int
+    
+    def __init__(self, id: int):
+        self.id = id
+    
+    @virtual
+    def get_type(self) -> str:
+        return "Entity"

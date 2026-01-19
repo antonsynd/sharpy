@@ -1,0 +1,32 @@
+# Main entry point for mixed inheritance + interface test
+# Tests: Three-level inheritance with interfaces, polymorphism
+
+from user import User
+from contracts import ISerializable, IComparable
+from base_entity import Entity
+
+def main():
+    user: User = User(42, "Alice", "alice@example.com")
+    
+    # Test direct methods
+    print(user.get_type())
+    print(user.to_string())
+    print(user.compare_to(50))
+    print(user.compare_to(42))
+    print(user.compare_to(10))
+    
+    # Test inherited field access
+    print(user.id)
+    print(user.name)
+    print(user.email)
+    
+    # Test interface assignments
+    serializable: ISerializable = user
+    print(serializable.to_string())
+    
+    comparable: IComparable = user
+    print(comparable.compare_to(100))
+    
+    # Test base class assignment and polymorphism
+    entity: Entity = user
+    print(entity.get_type())

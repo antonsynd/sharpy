@@ -1,0 +1,28 @@
+# User class: extends NamedEntity, adds IComparable
+# Tests: Three-level mixed inheritance + multiple interfaces
+
+from named_entity import NamedEntity
+from contracts import IComparable
+
+class User(NamedEntity, IComparable):
+    email: str
+    
+    def __init__(self, id: int, name: str, email: str):
+        super().__init__(id, name)
+        self.email = email
+    
+    @override
+    def get_type(self) -> str:
+        return "User"
+    
+    @override
+    def to_string(self) -> str:
+        base_str: str = super().to_string()
+        return base_str + "<" + self.email + ">"
+    
+    def compare_to(self, other: int) -> int:
+        if self.id < other:
+            return -1
+        if self.id > other:
+            return 1
+        return 0

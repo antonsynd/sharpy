@@ -1,0 +1,18 @@
+# Derived class: Dog extends Mammal
+# Tests: Three-level inheritance across files (Level 3)
+
+from mammal import Mammal
+
+class Dog(Mammal):
+    breed: str
+    
+    def __init__(self, name: str, breed: str):
+        super().__init__(name)
+        self.breed = breed
+    
+    @override
+    def speak(self) -> str:
+        return "woof"
+    
+    def get_breed(self) -> str:
+        return self.breed

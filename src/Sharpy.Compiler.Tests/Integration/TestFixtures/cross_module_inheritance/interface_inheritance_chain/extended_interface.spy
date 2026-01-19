@@ -1,0 +1,8 @@
+# Extended interface: IEntity extends IIdentifiable
+# Tests: Interface inheritance across files (Level 2)
+
+from base_interface import IIdentifiable
+
+interface IEntity(IIdentifiable):
+    def get_name(self) -> str: ...
+    def is_active(self) -> bool: ...

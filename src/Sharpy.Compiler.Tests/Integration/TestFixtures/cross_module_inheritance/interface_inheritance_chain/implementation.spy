@@ -1,0 +1,23 @@
+# Implementation class: User implements IEntity
+# Tests: Cross-module interface implementation
+
+from extended_interface import IEntity
+
+class User(IEntity):
+    id: int
+    name: str
+    active: bool
+    
+    def __init__(self, id: int, name: str):
+        self.id = id
+        self.name = name
+        self.active = True
+    
+    def get_id(self) -> int:
+        return self.id
+    
+    def get_name(self) -> str:
+        return self.name
+    
+    def is_active(self) -> bool:
+        return self.active
