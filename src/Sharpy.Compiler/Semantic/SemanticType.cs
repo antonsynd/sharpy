@@ -483,3 +483,76 @@ public record GenericFunctionType : SemanticType
         return $"{FunctionSymbol.Name}[{typeArgs}]({paramTypes}) -> {FunctionSymbol.ReturnType.GetDisplayName()}";
     }
 }
+
+/// <summary>
+/// Represents a tagged union type (v0.2.x feature).
+/// Example: Result[T, E] with cases Ok(T) and Err(E)
+///
+/// <para><b>This is a placeholder for future implementation.</b></para>
+///
+/// Usage pattern (v0.2.x):
+/// <code>
+/// type Result[T, E]:
+///     Ok(value: T)
+///     Err(error: E)
+///
+/// def divide(a: int, b: int) -> Result[int, str]:
+///     if b == 0:
+///         return Err("division by zero")
+///     return Ok(a / b)
+/// </code>
+/// </summary>
+public record UnionType : SemanticType
+{
+    public string Name { get; init; } = string.Empty;
+    public TypeSymbol? Symbol { get; init; }
+
+    /// <summary>
+    /// The union case types. Each case is itself a type.
+    /// </summary>
+    public List<SemanticType> CaseTypes { get; init; } = new();
+
+    public override string GetDisplayName() => Name;
+
+    public override TypeSymbol? DeclaringSymbol => Symbol;
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        if (other is UnionType otherUnion && Name == otherUnion.Name)
+            return true;
+        return base.IsAssignableTo(other);
+    }
+}
+
+/// <summary>
+/// Represents an async Task type (v0.2.x feature).
+/// Wraps the return type of async functions.
+///
+/// <para><b>This is a placeholder for future implementation.</b></para>
+///
+/// Usage pattern (v0.2.x):
+/// <code>
+/// async def fetch_data(url: str) -> str:
+///     response = await http_get(url)
+///     return response.body
+/// </code>
+/// </summary>
+public record TaskType : SemanticType
+{
+    /// <summary>
+    /// The result type (T in Task&lt;T&gt;). Null for Task (void return).
+    /// </summary>
+    public SemanticType? ResultType { get; init; }
+
+    public override string GetDisplayName()
+    {
+        if (ResultType == null)
+            return "Task";
+        return $"Task[{ResultType.GetDisplayName()}]";
+    }
+
+    public override Type? ClrType =>
+        ResultType == null
+            ? typeof(System.Threading.Tasks.Task)
+            : null; // Generic Task<T> needs runtime resolution
+}
