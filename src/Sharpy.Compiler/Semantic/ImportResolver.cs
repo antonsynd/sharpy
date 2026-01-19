@@ -324,47 +324,20 @@ public class ImportResolver
                 break;
 
             case ClassDef classDef:
-                // All classes are tracked
-                var classAccessLevel = GetAccessLevel(classDef.Name);
-                var classSymbol = new TypeSymbol
-                {
-                    Name = classDef.Name,
-                    Kind = SymbolKind.Type,
-                    TypeKind = TypeKind.Class,
-                    AccessLevel = classAccessLevel,
-                    DeclarationLine = classDef.LineStart,
-                    DeclarationColumn = classDef.ColumnStart
-                };
+                // Extract full class information including fields, methods, and type parameters
+                var classSymbol = ExtractFullClassSymbol(classDef);
                 moduleInfo.ExportedSymbols[classDef.Name] = classSymbol;
                 break;
 
             case StructDef structDef:
-                // All structs are tracked
-                var structAccessLevel = GetAccessLevel(structDef.Name);
-                var structSymbol = new TypeSymbol
-                {
-                    Name = structDef.Name,
-                    Kind = SymbolKind.Type,
-                    TypeKind = TypeKind.Struct,
-                    AccessLevel = structAccessLevel,
-                    DeclarationLine = structDef.LineStart,
-                    DeclarationColumn = structDef.ColumnStart
-                };
+                // Extract full struct information including fields, methods, and type parameters
+                var structSymbol = ExtractFullStructSymbol(structDef);
                 moduleInfo.ExportedSymbols[structDef.Name] = structSymbol;
                 break;
 
             case InterfaceDef interfaceDef:
-                // All interfaces are tracked
-                var interfaceAccessLevel = GetAccessLevel(interfaceDef.Name);
-                var interfaceSymbol = new TypeSymbol
-                {
-                    Name = interfaceDef.Name,
-                    Kind = SymbolKind.Type,
-                    TypeKind = TypeKind.Interface,
-                    AccessLevel = interfaceAccessLevel,
-                    DeclarationLine = interfaceDef.LineStart,
-                    DeclarationColumn = interfaceDef.ColumnStart
-                };
+                // Extract full interface information including methods and type parameters
+                var interfaceSymbol = ExtractFullInterfaceSymbol(interfaceDef);
                 moduleInfo.ExportedSymbols[interfaceDef.Name] = interfaceSymbol;
                 break;
 
@@ -565,6 +538,206 @@ public class ImportResolver
         }
 
         return baseType;
+    }
+
+    /// <summary>
+    /// Extract full type information from a class definition including
+    /// fields, methods, constructors, and type parameters.
+    /// Note: Base class resolution happens later in NameResolver.ResolveInheritance()
+    /// after all types are registered in the symbol table.
+    /// </summary>
+    private TypeSymbol ExtractFullClassSymbol(ClassDef classDef)
+    {
+        var accessLevel = GetAccessLevel(classDef.Name);
+        bool isAbstract = classDef.Decorators.Any(d => d.Name == "abstract");
+
+        var classSymbol = new TypeSymbol
+        {
+            Name = classDef.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = accessLevel,
+            IsAbstract = isAbstract,
+            TypeParameters = classDef.TypeParameters,
+            DeclarationLine = classDef.LineStart,
+            DeclarationColumn = classDef.ColumnStart
+        };
+
+        // Extract fields
+        foreach (var stmt in classDef.Body)
+        {
+            if (stmt is VariableDeclaration varDecl)
+            {
+                var fieldSymbol = new VariableSymbol
+                {
+                    Name = varDecl.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
+                    IsConstant = varDecl.IsConst,
+                    AccessLevel = GetAccessLevel(varDecl.Name),
+                    DeclarationLine = varDecl.LineStart,
+                    DeclarationColumn = varDecl.ColumnStart
+                };
+                classSymbol.Fields.Add(fieldSymbol);
+            }
+        }
+
+        // Extract methods
+        foreach (var stmt in classDef.Body)
+        {
+            if (stmt is FunctionDef method)
+            {
+                var methodSymbol = ExtractMethodSymbol(method);
+                classSymbol.Methods.Add(methodSymbol);
+
+                // Track constructors separately
+                if (method.Name == "__init__")
+                {
+                    classSymbol.Constructors.Add(methodSymbol);
+                }
+            }
+        }
+
+        return classSymbol;
+    }
+
+    /// <summary>
+    /// Extract full type information from a struct definition including
+    /// fields, methods, and type parameters.
+    /// </summary>
+    private TypeSymbol ExtractFullStructSymbol(StructDef structDef)
+    {
+        var accessLevel = GetAccessLevel(structDef.Name);
+
+        var structSymbol = new TypeSymbol
+        {
+            Name = structDef.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Struct,
+            AccessLevel = accessLevel,
+            TypeParameters = structDef.TypeParameters,
+            DeclarationLine = structDef.LineStart,
+            DeclarationColumn = structDef.ColumnStart
+        };
+
+        // Extract fields
+        foreach (var stmt in structDef.Body)
+        {
+            if (stmt is VariableDeclaration varDecl)
+            {
+                var fieldSymbol = new VariableSymbol
+                {
+                    Name = varDecl.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
+                    IsConstant = varDecl.IsConst,
+                    AccessLevel = GetAccessLevel(varDecl.Name),
+                    DeclarationLine = varDecl.LineStart,
+                    DeclarationColumn = varDecl.ColumnStart
+                };
+                structSymbol.Fields.Add(fieldSymbol);
+            }
+        }
+
+        // Extract methods
+        foreach (var stmt in structDef.Body)
+        {
+            if (stmt is FunctionDef method)
+            {
+                var methodSymbol = ExtractMethodSymbol(method);
+                structSymbol.Methods.Add(methodSymbol);
+
+                // Track constructors separately
+                if (method.Name == "__init__")
+                {
+                    structSymbol.Constructors.Add(methodSymbol);
+                }
+            }
+        }
+
+        return structSymbol;
+    }
+
+    /// <summary>
+    /// Extract full type information from an interface definition including
+    /// methods and type parameters.
+    /// </summary>
+    private TypeSymbol ExtractFullInterfaceSymbol(InterfaceDef interfaceDef)
+    {
+        var accessLevel = GetAccessLevel(interfaceDef.Name);
+
+        var interfaceSymbol = new TypeSymbol
+        {
+            Name = interfaceDef.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Interface,
+            AccessLevel = accessLevel,
+            TypeParameters = interfaceDef.TypeParameters,
+            DeclarationLine = interfaceDef.LineStart,
+            DeclarationColumn = interfaceDef.ColumnStart
+        };
+
+        // Extract methods (interface methods are always abstract)
+        foreach (var stmt in interfaceDef.Body)
+        {
+            if (stmt is FunctionDef method)
+            {
+                var methodSymbol = ExtractMethodSymbol(method);
+                // Interface methods are implicitly abstract unless they have an implementation
+                if (!methodSymbol.IsAbstract)
+                {
+                    // Check if the method has an ellipsis body (abstract method signature)
+                    bool hasEllipsisBody = method.Body.Count == 1
+                        && method.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+                    if (hasEllipsisBody)
+                    {
+                        methodSymbol = methodSymbol with { IsAbstract = true };
+                    }
+                }
+                interfaceSymbol.Methods.Add(methodSymbol);
+            }
+        }
+
+        return interfaceSymbol;
+    }
+
+    /// <summary>
+    /// Extract method symbol with parameter and return type information.
+    /// </summary>
+    private FunctionSymbol ExtractMethodSymbol(FunctionDef method)
+    {
+        var accessLevel = GetAccessLevel(method.Name);
+
+        bool hasSelfParameter = method.Parameters.Any(p =>
+            string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+        bool hasStaticDecorator = method.Decorators.Any(d =>
+            d.Name == "static" || d.Name == "staticmethod");
+        bool isStatic = hasStaticDecorator || !hasSelfParameter;
+
+        var parameters = method.Parameters.Select(p => new ParameterSymbol
+        {
+            Name = p.Name,
+            Type = ConvertTypeAnnotationToSemanticType(p.Type),
+            HasDefault = p.DefaultValue != null,
+            DefaultValue = p.DefaultValue,
+            IsVariadic = p.IsVariadic
+        }).ToList();
+
+        return new FunctionSymbol
+        {
+            Name = method.Name,
+            Kind = SymbolKind.Function,
+            Parameters = parameters,
+            ReturnType = ConvertTypeAnnotationToSemanticType(method.ReturnType),
+            IsStatic = isStatic,
+            IsAbstract = method.Decorators.Any(d => d.Name == "abstract"),
+            IsVirtual = method.Decorators.Any(d => d.Name == "virtual"),
+            IsOverride = method.Decorators.Any(d => d.Name == "override"),
+            TypeParameters = method.TypeParameters,
+            AccessLevel = accessLevel,
+            DeclarationLine = method.LineStart,
+            DeclarationColumn = method.ColumnStart
+        };
     }
 
     /// <summary>

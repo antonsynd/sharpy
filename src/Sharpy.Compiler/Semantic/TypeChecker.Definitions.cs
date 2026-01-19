@@ -13,18 +13,28 @@ public partial class TypeChecker
         _logger.LogDebug($"Type checking function: {functionDef.Name}");
 
         // Look up the function symbol to update its types
-        // For __init__ methods in classes, we need to look up from the Constructors list
-        // since multiple overloads may exist with the same name
+        // For class methods, we need to look up from the class's Methods list
+        // since the methods were registered in a scope that no longer exists
         FunctionSymbol? functionSymbol = null;
-        if (functionDef.Name == "__init__" && _currentClass != null)
+        if (_currentClass != null)
         {
-            // Find the matching constructor by declaration line number
-            // This uniquely identifies which overload we're checking
-            functionSymbol = _currentClass.Constructors
-                .FirstOrDefault(c => c.DeclarationLine == functionDef.LineStart);
+            if (functionDef.Name == "__init__")
+            {
+                // Find the matching constructor by declaration line number
+                // This uniquely identifies which overload we're checking
+                functionSymbol = _currentClass.Constructors
+                    .FirstOrDefault(c => c.DeclarationLine == functionDef.LineStart);
+            }
+            else
+            {
+                // Find the method in the class's Methods list by name and line number
+                functionSymbol = _currentClass.Methods
+                    .FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart);
+            }
         }
         else
         {
+            // For top-level functions, look up from symbol table
             functionSymbol = _symbolTable.LookupFunction(functionDef.Name);
         }
 
@@ -313,6 +323,12 @@ public partial class TypeChecker
         // Validate constructor overloads after all members are checked
         ValidateConstructorOverloads(classSymbol);
 
+        // Validate interface implementations (skip for abstract classes)
+        if (!classSymbol.IsAbstract)
+        {
+            ValidateInterfaceImplementations(classSymbol, classDef.LineStart, classDef.ColumnStart);
+        }
+
         // Restore previous class
         _currentClass = previousClass;
         _accessValidator.ExitClass();
@@ -381,6 +397,9 @@ public partial class TypeChecker
 
         // Validate struct-specific rules
         ValidateStructRules(structSymbol, structDef);
+
+        // Validate interface implementations (structs must implement all interface methods)
+        ValidateInterfaceImplementations(structSymbol, structDef.LineStart, structDef.ColumnStart);
 
         // Restore previous class
         _currentClass = previousClass;

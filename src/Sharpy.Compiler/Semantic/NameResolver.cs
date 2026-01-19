@@ -645,46 +645,43 @@ public class NameResolver
         if (typeSymbol == null)
             return;
 
-        // Resolve first base class as the base type (C# single inheritance model)
-        var baseClassAnnot = classDef.BaseClasses[0];
-        var baseSymbol = _symbolTable.Lookup(baseClassAnnot.Name) as TypeSymbol;
-        if (baseSymbol == null)
-        {
-            AddError($"Base class '{baseClassAnnot.Name}' not found",
-                classDef.LineStart, classDef.ColumnStart);
-            return;
-        }
+        // Process all base classes
+        // First class (if present) becomes BaseType, all interfaces go to Interfaces list
+        bool hasSetBaseType = false;
 
-        if (baseSymbol.TypeKind != TypeKind.Class && baseSymbol.TypeKind != TypeKind.Interface)
+        foreach (var baseAnnot in classDef.BaseClasses)
         {
-            AddError($"'{baseClassAnnot.Name}' is not a class or interface",
-                classDef.LineStart, classDef.ColumnStart);
-            return;
-        }
-
-        // Update the type symbol with the base type
-        typeSymbol.BaseType = baseSymbol;
-
-        // Handle remaining base classes as interfaces
-        for (int i = 1; i < classDef.BaseClasses.Count; i++)
-        {
-            var interfaceAnnot = classDef.BaseClasses[i];
-            var interfaceSymbol = _symbolTable.Lookup(interfaceAnnot.Name) as TypeSymbol;
-            if (interfaceSymbol == null)
+            var baseSymbol = _symbolTable.Lookup(baseAnnot.Name) as TypeSymbol;
+            if (baseSymbol == null)
             {
-                AddError($"Interface '{interfaceAnnot.Name}' not found",
+                AddError($"Base type '{baseAnnot.Name}' not found",
                     classDef.LineStart, classDef.ColumnStart);
                 continue;
             }
 
-            if (interfaceSymbol.TypeKind != TypeKind.Interface)
+            if (baseSymbol.TypeKind != TypeKind.Class && baseSymbol.TypeKind != TypeKind.Interface)
             {
-                AddError($"'{interfaceAnnot.Name}' is not an interface",
+                AddError($"'{baseAnnot.Name}' is not a class or interface",
                     classDef.LineStart, classDef.ColumnStart);
                 continue;
             }
 
-            typeSymbol.Interfaces.Add(interfaceSymbol);
+            if (baseSymbol.TypeKind == TypeKind.Class)
+            {
+                // Only one base class allowed (C# single inheritance)
+                if (hasSetBaseType)
+                {
+                    AddError($"Class '{classDef.Name}' cannot have multiple base classes (only one class inheritance allowed)",
+                        classDef.LineStart, classDef.ColumnStart);
+                    continue;
+                }
+                typeSymbol.BaseType = baseSymbol;
+                hasSetBaseType = true;
+            }
+            else // TypeKind.Interface
+            {
+                typeSymbol.Interfaces.Add(baseSymbol);
+            }
         }
     }
 
@@ -748,5 +745,59 @@ public class NameResolver
 
             typeSymbol.Interfaces.Add(baseInterfaceSymbol);
         }
+
+        // Propagate inherited methods from base interfaces
+        PropagateInterfaceMethods(typeSymbol);
+    }
+
+    /// <summary>
+    /// Propagate methods from base interfaces to the derived interface.
+    /// Uses BFS to handle multi-level interface inheritance.
+    /// </summary>
+    private void PropagateInterfaceMethods(TypeSymbol interfaceSymbol)
+    {
+        // Build a set of method signatures we already have
+        var seenMethods = new HashSet<string>(
+            interfaceSymbol.Methods.Select(m => GetMethodSignature(m)));
+
+        var visited = new HashSet<string> { interfaceSymbol.Name };
+        var queue = new Queue<TypeSymbol>(interfaceSymbol.Interfaces);
+
+        while (queue.Count > 0)
+        {
+            var baseInterface = queue.Dequeue();
+            if (!visited.Add(baseInterface.Name))
+                continue;
+
+            // Copy methods from base interface that we don't already have
+            foreach (var method in baseInterface.Methods)
+            {
+                var signature = GetMethodSignature(method);
+                if (seenMethods.Add(signature))
+                {
+                    // Add a reference to the inherited method (don't clone, just add reference)
+                    // The method is marked as coming from the base interface by keeping original line info
+                    interfaceSymbol.Methods.Add(method);
+                }
+            }
+
+            // Add base interface's bases to the queue
+            foreach (var grandBase in baseInterface.Interfaces)
+            {
+                queue.Enqueue(grandBase);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Get a unique signature string for method deduplication.
+    /// Includes method name and parameter types (excluding 'self').
+    /// </summary>
+    private string GetMethodSignature(FunctionSymbol method)
+    {
+        var paramTypes = method.Parameters
+            .Where(p => p.Name != "self")
+            .Select(p => p.Type?.GetDisplayName() ?? "unknown");
+        return $"{method.Name}({string.Join(",", paramTypes)})";
     }
 }

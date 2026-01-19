@@ -639,6 +639,128 @@ public partial class TypeChecker
         return type == SemanticType.Str;
     }
 
+    /// <summary>
+    /// Validate that a class or struct implements all required interface methods.
+    /// This includes methods from directly implemented interfaces and their base interfaces.
+    /// </summary>
+    private void ValidateInterfaceImplementations(TypeSymbol typeSymbol, int? declarationLine, int? declarationColumn)
+    {
+        // Collect all interfaces that need to be implemented
+        var allInterfaces = CollectAllInterfaces(typeSymbol);
+        if (allInterfaces.Count == 0)
+            return;
+
+        _logger.LogDebug($"Validating interface implementations for '{typeSymbol.Name}': {allInterfaces.Count} interfaces");
+
+        // Collect all methods implemented by this type and its base classes (by name)
+        var implementedMethodsByName = CollectImplementedMethodsByName(typeSymbol);
+
+        // Check each interface method is implemented
+        foreach (var iface in allInterfaces)
+        {
+            foreach (var interfaceMethod in iface.Methods)
+            {
+                // Check if there's a method with the same name
+                if (!implementedMethodsByName.TryGetValue(interfaceMethod.Name, out var classMethod))
+                {
+                    AddError(
+                        $"Class '{typeSymbol.Name}' does not implement interface method '{iface.Name}.{interfaceMethod.Name}'",
+                        declarationLine,
+                        declarationColumn);
+                    continue;
+                }
+
+                // Verify parameter count matches (excluding 'self')
+                var interfaceParams = interfaceMethod.Parameters.Where(p => p.Name != "self").ToList();
+                var classParams = classMethod.Parameters.Where(p => p.Name != "self").ToList();
+
+                if (interfaceParams.Count != classParams.Count)
+                {
+                    AddError(
+                        $"Class '{typeSymbol.Name}' method '{interfaceMethod.Name}' has {classParams.Count} parameters but interface '{iface.Name}' requires {interfaceParams.Count}",
+                        declarationLine,
+                        declarationColumn);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Collect all interfaces a type implements, including:
+    /// - Directly implemented interfaces
+    /// - Base interfaces (interface inheritance)
+    /// - Interfaces implemented by base classes
+    /// </summary>
+    private HashSet<TypeSymbol> CollectAllInterfaces(TypeSymbol type)
+    {
+        var result = new HashSet<TypeSymbol>();
+        var visited = new HashSet<string>();
+        var visitedBaseClasses = new HashSet<string>();
+        var queue = new Queue<TypeSymbol>();
+
+        // Add directly implemented interfaces
+        foreach (var iface in type.Interfaces)
+        {
+            queue.Enqueue(iface);
+        }
+
+        // Add interfaces from base class hierarchy (with cycle detection)
+        var baseType = type.BaseType;
+        while (baseType != null && visitedBaseClasses.Add(baseType.Name))
+        {
+            foreach (var iface in baseType.Interfaces)
+            {
+                queue.Enqueue(iface);
+            }
+            baseType = baseType.BaseType;
+        }
+
+        // BFS through interface inheritance
+        while (queue.Count > 0)
+        {
+            var iface = queue.Dequeue();
+            if (!visited.Add(iface.Name))
+                continue;
+
+            result.Add(iface);
+
+            // Add base interfaces
+            foreach (var baseIface in iface.Interfaces)
+            {
+                queue.Enqueue(baseIface);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Collect all methods implemented by a type and its base classes.
+    /// Returns a dictionary mapping method name to the FunctionSymbol.
+    /// Used for interface implementation validation by name matching.
+    /// </summary>
+    private Dictionary<string, FunctionSymbol> CollectImplementedMethodsByName(TypeSymbol type)
+    {
+        var result = new Dictionary<string, FunctionSymbol>();
+        var visited = new HashSet<string>();
+
+        var currentType = type;
+        while (currentType != null && visited.Add(currentType.Name))
+        {
+            foreach (var method in currentType.Methods)
+            {
+                // Only add if not already present (prefer most derived implementation)
+                if (!result.ContainsKey(method.Name))
+                {
+                    result[method.Name] = method;
+                }
+            }
+            currentType = currentType.BaseType;
+        }
+
+        return result;
+    }
+
     private void AddError(string message, int? line = null, int? column = null)
     {
         if (_errors.Count >= MaxErrors)

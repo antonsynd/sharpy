@@ -172,46 +172,40 @@ public class ProjectCompiler
     /// Phase 3: Collect type declarations from all files
     /// This is a preliminary pass that registers type names in the symbol table
     /// without resolving inheritance or members yet. This enables cross-file type references.
+    ///
+    /// IMPORTANT: We use a SINGLE NameResolver instance across all files so that the
+    /// _classDefs, _structDefs, and _interfaceDefs lists are populated with ALL type
+    /// definitions before resolving inheritance. This is critical for cross-module
+    /// inheritance to work correctly.
     /// </summary>
     private void CollectTypeDeclarations(ProjectConfig config)
     {
         _logger.LogInfo("Phase 2: Collecting type declarations across all files");
 
+        // Create a SINGLE NameResolver for ALL files to preserve type definition lists
+        // across files for correct inheritance resolution
+        var nameResolver = new NameResolver(_symbolTable, _logger);
+
+        // Phase 3a: Collect all type declarations (shells only)
         foreach (var (sourceFile, module) in _parsedModules)
         {
-            // Use NameResolver to collect type declarations
-            // This will register type names in the symbol table
-            var nameResolver = new NameResolver(_symbolTable, _logger);
-
             // Only collect declarations - don't resolve inheritance yet
-            // The NameResolver.ResolveDeclarations() method already does two passes:
-            // 1. First pass: registers all type names
-            // 2. Second pass: resolves members
+            // The NameResolver.ResolveDeclarations() method registers type names
+            // and stores ClassDef/StructDef/InterfaceDef in internal lists
             nameResolver.ResolveDeclarations(module);
-
-            // Collect any errors but don't fail yet - we'll do full validation in semantic analysis
-            if (nameResolver.Errors.Any())
-            {
-                foreach (var error in nameResolver.Errors)
-                {
-                    _logger.LogWarning($"{sourceFile}({error.Line},{error.Column}): {error.Message}",
-                        error.Line ?? 0, error.Column ?? 0);
-                }
-            }
         }
 
-        // Now that all types are declared, resolve inheritance relationships
+        // Phase 3b: Resolve inheritance (using the SAME NameResolver instance)
+        // Now all types from all files are in the internal lists, so cross-module
+        // inheritance resolution will work correctly
         _logger.LogInfo("Phase 2b: Resolving inheritance across all files");
-        foreach (var (sourceFile, module) in _parsedModules)
-        {
-            var nameResolver = new NameResolver(_symbolTable, _logger);
-            nameResolver.ResolveInheritance();
+        nameResolver.ResolveInheritance();
 
-            if (nameResolver.Errors.Any())
-            {
-                _errors.AddRange(nameResolver.Errors.Select(e =>
-                    $"{sourceFile}({e.Line},{e.Column}): error: {e.Message}"));
-            }
+        // Collect all errors from both declaration and inheritance phases
+        if (nameResolver.Errors.Any())
+        {
+            _errors.AddRange(nameResolver.Errors.Select(e =>
+                $"({e.Line},{e.Column}): error: {e.Message}"));
         }
     }
 
