@@ -187,7 +187,12 @@ public partial class TypeChecker
     /// <summary>
     /// Type check all statements in a module
     /// </summary>
-    public void CheckModule(Module module)
+    /// <param name="module">The module to check</param>
+    /// <param name="computeCodeGenInfo">
+    /// If true, compute CodeGenInfo for all symbols after type checking.
+    /// This is controlled by the UsePrecomputedCodeGenInfo feature flag.
+    /// </param>
+    public void CheckModule(Module module, bool computeCodeGenInfo = false)
     {
         _logger.LogInfo("Type checking module");
 
@@ -216,6 +221,13 @@ public partial class TypeChecker
             {
                 _errors.Add(new SemanticError(error.Message, error.Line, error.Column));
             }
+        }
+
+        // Compute CodeGenInfo for all symbols if enabled
+        if (computeCodeGenInfo)
+        {
+            var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable);
+            codeGenInfoComputer.ComputeForModule(module);
         }
     }
 
