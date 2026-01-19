@@ -110,6 +110,39 @@ public partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Resolve the C# name for a variable using CodeGenInfo.
+    /// Returns null if CodeGenInfo is not available (falls back to legacy).
+    /// </summary>
+    private string? TryGetCSharpNameFromCodeGenInfo(string sharpyName, bool isNewDeclaration)
+    {
+        var symbol = _context.LookupSymbol(sharpyName);
+        if (symbol?.CodeGenInfo == null)
+            return null;
+
+        var info = symbol.CodeGenInfo;
+
+        // For new declarations, track the version increment
+        // Note: CodeGenInfo has the version pre-computed, but for redeclarations
+        // within the same emission scope, we may need runtime tracking
+        if (isNewDeclaration && !info.IsModuleLevel)
+        {
+            // Local variable redeclarations still need runtime tracking
+            // because they happen during emission, not semantic analysis
+            return null; // Fall back to legacy for local redeclarations
+        }
+
+        var csharpName = info.GetVersionedCSharpName();
+
+        // Module imports need C# keyword escaping (e.g., "base" -> "@base")
+        if (symbol is ModuleSymbol)
+        {
+            return EscapeCSharpKeyword(csharpName);
+        }
+
+        return csharpName;
+    }
+
+    /// <summary>
     /// Get the mangled variable name with version suffix if this is a redefinition.
     /// </summary>
     /// <param name="name">The original Sharpy variable name</param>
@@ -117,6 +150,12 @@ public partial class RoslynEmitter
     /// <returns>The C# variable name with version suffix (e.g., "x", "x_1", "x_2")</returns>
     private string GetMangledVariableName(string name, bool isNewDeclaration)
     {
+        // Try CodeGenInfo-based resolution first
+        var codeGenName = TryGetCSharpNameFromCodeGenInfo(name, isNewDeclaration);
+        if (codeGenName != null)
+            return codeGenName;
+
+        // Fall back to existing logic...
         var baseName = NameMangler.ToCamelCase(name);
 
         // FIRST: Check if this is a local variable that shadows a module-level one
