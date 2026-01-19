@@ -18,9 +18,9 @@ public static class ValidationPipelineFactory
             .AddValidator(new DefaultParameterValidatorV2())  // Order: 250
             .AddValidator(new ControlFlowValidatorV2())       // Order: 400
             .AddValidator(new AccessValidatorV2())            // Order: 450
+            .AddValidator(new ProtocolValidatorV2())          // Order: 500
             // Add other V2 validators as they are migrated:
             // .AddValidator(new OperatorValidatorV2())
-            // .AddValidator(new ProtocolValidatorV2())
             // .AddValidator(new OperatorSignatureValidatorV2())
             // .AddValidator(new ProtocolSignatureValidatorV2())
             ;
