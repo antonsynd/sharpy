@@ -427,7 +427,6 @@ public class RoslynEmitterIntegrationTests
         // Sharpy allows: x: int = 1; x: auto = "hello"
         // When there are multiple declarations for the same variable,
         // they become local variables in Main() to preserve execution order
-        var emitter = CreateEmitter();
         var module = new Module
         {
             Body = new List<Statement>
@@ -448,6 +447,9 @@ public class RoslynEmitterIntegrationTests
                 }
             }
         };
+
+        // Create emitter with semantic analysis (required for CodeGenInfo and execution order detection)
+        var emitter = CreateEmitterWithSemanticAnalysis(module);
 
         // Act
         var result = emitter.GenerateCompilationUnit(module);
@@ -473,7 +475,6 @@ public class RoslynEmitterIntegrationTests
     public void GeneratedCode_ModuleLevelConstRedefinition_SkipsDuplicateField()
     {
         // Arrange - Module-level const redefined with different type
-        var emitter = CreateEmitter();
         var module = new Module
         {
             Body = new List<Statement>
@@ -496,6 +497,9 @@ public class RoslynEmitterIntegrationTests
                 }
             }
         };
+
+        // Create emitter with semantic analysis (required for CodeGenInfo)
+        var emitter = CreateEmitterWithSemanticAnalysis(module);
 
         // Act
         var result = emitter.GenerateCompilationUnit(module);

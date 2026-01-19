@@ -437,11 +437,8 @@ public partial class RoslynEmitter
         {
             return null;
         }
-        // [LEGACY FALLBACK] If no symbol found, fall back to legacy tracking
-        else if (symbol == null && _variablesWithExecutionOrderIssues.Contains(varDecl.Name))
-        {
-            return null;
-        }
+        // Note: If symbol is null, we can't check execution order issues
+        // This shouldn't happen in well-typed code that went through semantic analysis
 
         // Track const variables by their original Sharpy name for consistent reference resolution
         if (varDecl.IsConst)
