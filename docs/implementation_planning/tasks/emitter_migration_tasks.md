@@ -1,9 +1,48 @@
 # Task List: Emitter Migration & Type System Unification
 
-**Status:** Ready for Implementation
+**Status:** Part A Partially Complete, Part B Not Started
 **Estimated Total Effort:** 3-5 days
 **Prerequisites:** All tests passing (3591+ tests)
 **Branch Name:** `feature/emitter-migration-type-unification`
+
+---
+
+## Implementation Summary (2026-01-19)
+
+### Part A: Emitter Migration
+
+**Status:** Partially Complete - CodeGenInfo integration done, legacy field removal blocked
+
+**Completed:**
+- ✅ A.1: Verified baseline (3591 tests passing, UsePrecomputedCodeGenInfo = true)
+- ✅ A.2: Audited legacy field usage
+- ✅ A.3: Created `TryGetCSharpNameFromCodeGenInfo()` and integrated into `GetMangledVariableName()`
+- ✅ A.4: Updated `GenerateAssignment()` to check `CodeGenInfo.IsModuleLevel`
+- ✅ A.5: From-import handling already covered by A.3 (CodeGenInfo used for symbol resolution)
+- ✅ A.6: Added 12 migration tests in `EmitterMigrationTests.cs`
+- ⚠️ A.7-A.9: Marked legacy code for removal but CANNOT fully remove yet
+
+**Blocker Discovered:**
+`CodeGenInfoComputer` has a limitation that prevents full legacy field removal:
+- When an Assignment (`x = 5`) precedes a VariableDeclaration (`x: auto = 10`), the pre-scan in `GenerateModuleClass` correctly identifies execution order issues
+- However, `CodeGenInfoComputer.ProcessModuleLevelVariable()` marks the variable as `IsModuleLevel = true` without checking for prior assignments
+- Result: 5 tests fail when enabling CodeGenInfo for all integration tests
+
+**Required to Complete Part A:**
+1. Enhance `CodeGenInfoComputer` to track assignments before declarations (like `GenerateModuleClass` pre-scan does)
+2. Update `CodeGenInfoComputer.ProcessModuleLevelVariable()` to NOT set `IsModuleLevel = true` when variable has execution order issues
+3. Enable `computeCodeGenInfo: true` in `IntegrationTestBase`
+4. Remove `[LEGACY FALLBACK]` marked code paths
+
+**Commits Made:**
+1. `feat(codegen): integrate CodeGenInfo into GetMangledVariableName with fallback`
+2. `feat(codegen): use CodeGenInfo for module-level variable checks with fallback`
+3. `test(codegen): add migration tests for CodeGenInfo-based emission`
+4. `docs(codegen): mark legacy fallback code for future removal`
+
+### Part B: Type System Unification
+
+**Status:** Not Started
 
 ---
 
