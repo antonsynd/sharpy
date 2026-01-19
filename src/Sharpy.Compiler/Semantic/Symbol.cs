@@ -22,6 +22,17 @@ public abstract record Symbol
     /// For re-exported symbols, the original module name where the symbol was defined
     /// </summary>
     public string? OriginalModule { get; init; }
+
+    /// <summary>
+    /// Code generation information computed during semantic analysis.
+    /// Null until CodeGenInfo computation pass runs.
+    /// </summary>
+    /// <remarks>
+    /// Uses 'set' instead of 'init' to allow setting CodeGenInfo after initial symbol creation,
+    /// which is necessary because symbols are created during NameResolver but CodeGenInfo
+    /// is computed during/after TypeChecker.
+    /// </remarks>
+    public CodeGenInfo? CodeGenInfo { get; set; }
 }
 
 /// <summary>
