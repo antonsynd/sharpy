@@ -78,6 +78,13 @@ public class ProjectConfig
     }
 
     /// <summary>
+    /// If true, compute CodeGenInfo during semantic analysis and use it during code generation.
+    /// This is a migration feature flag - set to true to use the new pre-computed approach.
+    /// Default is false for backwards compatibility during migration.
+    /// </summary>
+    public bool UsePrecomputedCodeGenInfo { get; set; } = false;
+
+    /// <summary>
     /// Full path to the output assembly
     /// </summary>
     public virtual string OutputAssemblyPath
