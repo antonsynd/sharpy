@@ -563,14 +563,13 @@ class Person:
     def __init__(self, name: str) -> int:
         self.name = name
 ";
-        // Protocol signature validation now happens in NameResolver, not TypeChecker
-        var (module, _, _, typeChecker, nameResolver) = CompileAndCheckWithNameResolver(source);
+        // Protocol signature validation now happens in SignatureValidatorV2 pipeline
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // The error is raised by NameResolver during protocol signature validation
-        nameResolver.Errors.Should().NotBeEmpty();
-        nameResolver.Errors[0].Message.Should().Contain("__init__");
-        nameResolver.Errors[0].Message.Should().Contain("must return");
+        // The error is raised by SignatureValidatorV2 during type checking
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("__init__") && e.Message.Contains("must return"));
     }
 
     [Fact]
@@ -583,13 +582,13 @@ class Person:
     def __init__(self, name: str) -> str:
         self.name = name
 ";
-        // Protocol signature validation now happens in NameResolver, not TypeChecker
-        var (module, _, _, typeChecker, nameResolver) = CompileAndCheckWithNameResolver(source);
+        // Protocol signature validation now happens in SignatureValidatorV2 pipeline
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // The error is raised by NameResolver during protocol signature validation
-        nameResolver.Errors.Should().NotBeEmpty();
-        nameResolver.Errors[0].Message.Should().Contain("__init__");
+        // The error is raised by SignatureValidatorV2 during type checking
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("__init__"));
     }
 
     [Fact]

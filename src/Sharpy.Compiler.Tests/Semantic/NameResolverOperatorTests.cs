@@ -216,11 +216,17 @@ class Example:
 
     #endregion
 
-    #region Invalid Operator Rejection Tests
+    #region Invalid Operator Registration Tests
+    // NOTE: Signature validation has been moved from NameResolver to SignatureValidatorV2.
+    // NameResolver now registers all operator methods regardless of signature validity.
+    // Signature errors are reported by the validation pipeline, not NameResolver.
+    // See SignatureValidatorV2Tests for signature validation tests.
 
     [Fact]
-    public void RejectsOperatorWithWrongParameterCount()
+    public void RegistersOperatorEvenWithWrongParameterCount()
     {
+        // Previously this tested rejection; now NameResolver registers all operators
+        // and validation happens in SignatureValidatorV2
         var source = @"
 class BadVector:
     def __add__(self, x, y, z) -> BadVector:
@@ -231,17 +237,19 @@ class BadVector:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().NotBeEmpty();
-        resolver.Errors[0].Message.Should().Contain("must have exactly 2 parameters");
+        // NameResolver no longer validates signatures - it just registers methods
+        resolver.Errors.Should().BeEmpty();
 
         var vectorType = symbolTable.Lookup("BadVector") as TypeSymbol;
         vectorType.Should().NotBeNull();
-        vectorType!.OperatorMethods.Should().NotContainKey("__add__");
+        // Method is still registered for later validation
+        vectorType!.OperatorMethods.Should().ContainKey("__add__");
     }
 
     [Fact]
-    public void RejectsComparisonOperatorWithNonBoolReturn()
+    public void RegistersComparisonOperatorEvenWithNonBoolReturn()
     {
+        // Previously this tested rejection; now NameResolver registers all operators
         var source = @"
 class BadCompare:
     def __eq__(self, other: BadCompare) -> int:
@@ -252,17 +260,17 @@ class BadCompare:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().NotBeEmpty();
-        resolver.Errors[0].Message.Should().Contain("must return 'bool'");
+        resolver.Errors.Should().BeEmpty();
 
         var compareType = symbolTable.Lookup("BadCompare") as TypeSymbol;
         compareType.Should().NotBeNull();
-        compareType!.OperatorMethods.Should().NotContainKey("__eq__");
+        compareType!.OperatorMethods.Should().ContainKey("__eq__");
     }
 
     [Fact]
-    public void RejectsUnaryOperatorWithWrongParameterCount()
+    public void RegistersUnaryOperatorEvenWithWrongParameterCount()
     {
+        // Previously this tested rejection; now NameResolver registers all operators
         var source = @"
 class BadNegate:
     def __neg__(self, extra) -> BadNegate:
@@ -273,17 +281,17 @@ class BadNegate:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().NotBeEmpty();
-        resolver.Errors[0].Message.Should().Contain("must have exactly 1 parameter");
+        resolver.Errors.Should().BeEmpty();
 
         var negateType = symbolTable.Lookup("BadNegate") as TypeSymbol;
         negateType.Should().NotBeNull();
-        negateType!.OperatorMethods.Should().NotContainKey("__neg__");
+        negateType!.OperatorMethods.Should().ContainKey("__neg__");
     }
 
     [Fact]
-    public void RejectsOperatorWithVoidReturn()
+    public void RegistersOperatorEvenWithVoidReturn()
     {
+        // Previously this tested rejection; now NameResolver registers all operators
         var source = @"
 class BadAdd:
     def __add__(self, other: BadAdd) -> None:
@@ -294,12 +302,11 @@ class BadAdd:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().NotBeEmpty();
-        resolver.Errors[0].Message.Should().Contain("must return a non-void type");
+        resolver.Errors.Should().BeEmpty();
 
         var addType = symbolTable.Lookup("BadAdd") as TypeSymbol;
         addType.Should().NotBeNull();
-        addType!.OperatorMethods.Should().NotContainKey("__add__");
+        addType!.OperatorMethods.Should().ContainKey("__add__");
     }
 
     #endregion

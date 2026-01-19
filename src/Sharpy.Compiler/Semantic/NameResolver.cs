@@ -447,51 +447,27 @@ public class NameResolver
             _symbolTable.Define(funcSymbol);
         }
 
-        // Validate and register operator dunder methods
+        // Register operator dunder methods in cache (validation moved to SignatureValidatorV2)
         if (OperatorSignatureValidator.IsOperatorDunder(method.Name))
         {
-            var validationErrors = OperatorSignatureValidator.ValidateDunderSignature(method, owningType);
-
-            if (validationErrors.Count > 0)
+            if (!owningType.OperatorMethods.TryGetValue(method.Name, out var overloads))
             {
-                // Add all validation errors to the errors list
-                _errors.AddRange(validationErrors);
+                overloads = new List<FunctionSymbol>();
+                owningType.OperatorMethods[method.Name] = overloads;
             }
-            else
-            {
-                // Signature is valid, add to operator methods cache
-                if (!owningType.OperatorMethods.TryGetValue(method.Name, out var overloads))
-                {
-                    overloads = new List<FunctionSymbol>();
-                    owningType.OperatorMethods[method.Name] = overloads;
-                }
-                overloads.Add(funcSymbol);
-
-                _logger.LogDebug($"Registered operator method: {owningType.Name}.{method.Name}");
-            }
+            overloads.Add(funcSymbol);
+            _logger.LogDebug($"Registered operator method: {owningType.Name}.{method.Name}");
         }
-        // Validate and register protocol dunder methods
+        // Register protocol dunder methods in cache (validation moved to SignatureValidatorV2)
         else if (ProtocolSignatureValidator.IsProtocolDunder(method.Name))
         {
-            var validationErrors = ProtocolSignatureValidator.ValidateDunderSignature(method, owningType);
-
-            if (validationErrors.Count > 0)
+            if (!owningType.ProtocolMethods.TryGetValue(method.Name, out var overloads))
             {
-                // Add all validation errors to the errors list
-                _errors.AddRange(validationErrors);
+                overloads = new List<FunctionSymbol>();
+                owningType.ProtocolMethods[method.Name] = overloads;
             }
-            else
-            {
-                // Signature is valid, add to protocol methods cache
-                if (!owningType.ProtocolMethods.TryGetValue(method.Name, out var overloads))
-                {
-                    overloads = new List<FunctionSymbol>();
-                    owningType.ProtocolMethods[method.Name] = overloads;
-                }
-                overloads.Add(funcSymbol);
-
-                _logger.LogDebug($"Registered protocol method: {owningType.Name}.{method.Name}");
-            }
+            overloads.Add(funcSymbol);
+            _logger.LogDebug($"Registered protocol method: {owningType.Name}.{method.Name}");
         }
     }
 

@@ -15,6 +15,7 @@ public static class ValidationPipelineFactory
     {
         return new ValidationPipeline(logger)
             // Order values determine execution sequence
+            .AddValidator(new SignatureValidatorV2())         // Order: 150 (early, validates dunder signatures)
             .AddValidator(new DefaultParameterValidatorV2())  // Order: 250
             .AddValidator(new ControlFlowValidatorV2())       // Order: 400
             .AddValidator(new AccessValidatorV2())            // Order: 450
