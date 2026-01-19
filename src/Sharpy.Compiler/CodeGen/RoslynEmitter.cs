@@ -16,17 +16,75 @@ public partial class RoslynEmitter
     private readonly CodeGenContext _context;
     private readonly TypeMapper _typeMapper;
     private readonly HashSet<string> _declaredVariables = new();
+
+    // ============================================================
+    // LEGACY TRACKING FIELDS - Deprecated in favor of CodeGenInfo
+    //
+    // These fields track mutable state during emission and are used
+    // by GetMangledVariableName and related methods. They will be
+    // removed once all emission code migrates to use the CodeGenInfo-
+    // aware helper methods (GetCSharpNameForSymbol, etc.).
+    //
+    // Migration path: Use Symbol.CodeGenInfo instead of these fields.
+    // See helper methods at the end of this file for CodeGenInfo usage.
+    // ============================================================
+
+    /// <summary>
+    /// [DEPRECATED] Use Symbol.CodeGenInfo.Version instead.
+    /// Tracks variable version numbers for handling variable redeclarations.
+    /// </summary>
     private readonly Dictionary<string, int> _variableVersions = new();
-    private readonly HashSet<string> _constVariables = new(); // Track const variable names (original Sharpy names)
-    private readonly HashSet<string> _moduleConstVariables = new(); // Track module-level const names (preserved across function scopes)
-    private readonly HashSet<string> _moduleVariables = new(); // Track module-level variable names (for PascalCase reference)
-    private readonly HashSet<string> _moduleFieldNames = new(); // Track module-level field names (C# names) to prevent duplicates
-    private HashSet<string> _variablesWithExecutionOrderIssues = new(); // Variables that should not become fields
+
+    /// <summary>
+    /// [DEPRECATED] Use Symbol.CodeGenInfo.IsConstant instead.
+    /// Tracks const variable names (original Sharpy names) within local scopes.
+    /// </summary>
+    private readonly HashSet<string> _constVariables = new();
+
+    /// <summary>
+    /// [DEPRECATED] Use Symbol.CodeGenInfo.IsModuleLevel and IsConstant instead.
+    /// Tracks module-level const names (preserved across function scopes).
+    /// </summary>
+    private readonly HashSet<string> _moduleConstVariables = new();
+
+    /// <summary>
+    /// [DEPRECATED] Use Symbol.CodeGenInfo.IsModuleLevel instead.
+    /// Tracks module-level variable names (for PascalCase reference).
+    /// </summary>
+    private readonly HashSet<string> _moduleVariables = new();
+
+    /// <summary>
+    /// Tracks module-level field names (C# names) to prevent duplicate field declarations.
+    /// Note: This is still needed during emission even with CodeGenInfo.
+    /// </summary>
+    private readonly HashSet<string> _moduleFieldNames = new();
+
+    /// <summary>
+    /// [DEPRECATED] Use Symbol.CodeGenInfo.HasExecutionOrderIssues instead.
+    /// Tracks variables that should not become static fields due to execution order issues.
+    /// </summary>
+    private HashSet<string> _variablesWithExecutionOrderIssues = new();
+
+    // ============================================================
+    // END LEGACY TRACKING FIELDS
+    // ============================================================
+
     private readonly HashSet<string> _classNames = new(); // Track class names defined in the current module
     private readonly HashSet<string> _structNames = new(); // Track struct names defined in the current module
     private readonly HashSet<string> _stringEnumNames = new(); // Track string enum names (enums with string values)
-    private readonly HashSet<string> _fromImportSymbols = new(); // Track symbols imported via "from X import Y" for proper casing
-    private readonly Dictionary<string, string> _importAliasToOriginal = new(); // Map alias → original name for from-imports
+
+    /// <summary>
+    /// [DEPRECATED] Use Symbol.CodeGenInfo.ImportKind instead.
+    /// Tracks symbols imported via "from X import Y" for proper casing.
+    /// </summary>
+    private readonly HashSet<string> _fromImportSymbols = new();
+
+    /// <summary>
+    /// [DEPRECATED] Use Symbol.CodeGenInfo.OriginalImportName instead.
+    /// Maps alias → original name for from-imports.
+    /// </summary>
+    private readonly Dictionary<string, string> _importAliasToOriginal = new();
+
     private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions = new(); // Track interface definitions for abstract class stub generation
     private int _tempVarCounter = 0;
 
