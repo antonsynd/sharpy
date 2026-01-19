@@ -9,6 +9,12 @@ namespace Sharpy.Compiler.Semantic;
 ///
 /// NOTE: This class is NOT thread-safe (same as OperatorValidator).
 /// </summary>
+/// <remarks>
+/// MIGRATION NOTE: This validator should be migrated to the new validation pipeline
+/// by implementing ISemanticValidator (see ControlFlowValidatorV2 as reference).
+/// New code should use ValidationPipelineFactory.CreateDefault() instead of
+/// instantiating this class directly.
+/// </remarks>
 public class ProtocolValidator
 {
     private readonly SymbolTable _symbolTable;

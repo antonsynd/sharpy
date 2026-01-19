@@ -9,6 +9,12 @@ namespace Sharpy.Compiler.Semantic;
 /// - Protected members (_name) only accessible within class hierarchy
 /// - Public members accessible everywhere
 /// </summary>
+/// <remarks>
+/// MIGRATION NOTE: This validator should be migrated to the new validation pipeline
+/// by implementing ISemanticValidator (see ControlFlowValidatorV2 as reference).
+/// New code should use ValidationPipelineFactory.CreateDefault() instead of
+/// instantiating this class directly.
+/// </remarks>
 public class AccessValidator
 {
     private readonly SymbolTable _symbolTable;

@@ -83,6 +83,17 @@ public partial class TypeChecker
         return new SemanticContext(_symbolTable, _semanticInfo, _typeResolver, _logger);
     }
 
+    /// <summary>
+    /// Gets all semantic errors from type checking.
+    /// When using the validation pipeline, errors from V2 validators are automatically merged.
+    /// When not using the pipeline (legacy mode), errors are collected from individual validators.
+    /// </summary>
+    /// <remarks>
+    /// MIGRATION NOTE: Legacy mode (collecting errors from individual validators) is deprecated.
+    /// Use ValidationPipelineFactory.CreateDefault() to enable pipeline mode.
+    /// All validators should be migrated to the ISemanticValidator interface.
+    /// See ControlFlowValidatorV2 as the reference implementation.
+    /// </remarks>
     public IReadOnlyList<SemanticError> Errors
     {
         get
@@ -93,7 +104,9 @@ public partial class TypeChecker
 
             if (!_usePipeline)
             {
-                // Legacy behavior - collect from individual validators
+                // DEPRECATED: Legacy behavior - collect from individual validators.
+                // This path will be removed once all validators are migrated to the pipeline.
+                // To use the new pipeline, pass a ValidationPipeline to the TypeChecker constructor.
                 allErrors.AddRange(_controlFlowValidator.Errors);
                 allErrors.AddRange(_accessValidator.Errors);
                 allErrors.AddRange(_operatorValidator.Errors);

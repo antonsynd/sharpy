@@ -9,6 +9,12 @@ namespace Sharpy.Compiler.Semantic;
 /// - Validates return paths
 /// - Ensures break/continue are only in loops
 /// </summary>
+/// <remarks>
+/// DEPRECATED: This validator is being replaced by ControlFlowValidatorV2 which
+/// implements the ISemanticValidator interface for the new validation pipeline.
+/// New code should use ValidationPipelineFactory.CreateDefault() instead of
+/// instantiating this class directly.
+/// </remarks>
 public class ControlFlowValidator
 {
     private readonly ICompilerLogger _logger;

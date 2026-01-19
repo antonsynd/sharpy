@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.CodeGen;
@@ -127,7 +128,8 @@ public class Compiler
             metrics.EndPhase();
 
             metrics.StartPhase("Type Checking");
-            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger);
+            var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
+            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline);
             typeChecker.CheckModule(module);
             metrics.EndPhase();
 

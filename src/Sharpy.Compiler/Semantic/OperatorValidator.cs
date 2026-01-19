@@ -11,6 +11,12 @@ namespace Sharpy.Compiler.Semantic;
 /// NOTE: This class is NOT thread-safe. Instances should not be shared across threads.
 /// The internal caches are not protected by locks for performance reasons.
 /// </summary>
+/// <remarks>
+/// MIGRATION NOTE: This validator should be migrated to the new validation pipeline
+/// by implementing ISemanticValidator (see ControlFlowValidatorV2 as reference).
+/// New code should use ValidationPipelineFactory.CreateDefault() instead of
+/// instantiating this class directly.
+/// </remarks>
 public class OperatorValidator
 {
     private readonly SymbolTable _symbolTable;
