@@ -19,7 +19,8 @@ public partial class Parser
         {
             case TokenType.Integer:
                 {
-                    var tokenValue = Current.Value;
+                    var token = Current;
+                    var tokenValue = token.Value;
                     Advance();
 
                     // Extract suffix if present (L, U, UL, etc.)
@@ -41,12 +42,22 @@ public partial class Parser
                         }
                     }
 
-                    return new IntegerLiteral { Value = value, Suffix = suffix, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    return new IntegerLiteral
+                    {
+                        Value = value,
+                        Suffix = suffix,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(token)
+                    };
                 }
 
             case TokenType.Float:
                 {
-                    var tokenValue = Current.Value;
+                    var token = Current;
+                    var tokenValue = token.Value;
                     Advance();
 
                     // Extract suffix if present (f, F, d, D, m, M)
@@ -59,44 +70,116 @@ public partial class Parser
                         value = tokenValue.Substring(0, tokenValue.Length - 1);
                     }
 
-                    return new FloatLiteral { Value = value, Suffix = suffix, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    return new FloatLiteral
+                    {
+                        Value = value,
+                        Suffix = suffix,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(token)
+                    };
                 }
 
             case TokenType.String:
                 {
-                    var value = Current.Value;
+                    var token = Current;
+                    var value = token.Value;
                     Advance();
-                    return new StringLiteral { Value = value, IsRaw = false, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    return new StringLiteral
+                    {
+                        Value = value,
+                        IsRaw = false,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(token)
+                    };
                 }
 
             case TokenType.RawString:
                 {
-                    var value = Current.Value;
+                    var token = Current;
+                    var value = token.Value;
                     Advance();
-                    return new StringLiteral { Value = value, IsRaw = true, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    return new StringLiteral
+                    {
+                        Value = value,
+                        IsRaw = true,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(token)
+                    };
                 }
 
             case TokenType.FStringStart:
                 {
+                    var startToken = Current;
                     // Segmented f-string lexing
-                    return ParseSegmentedFString(startLine, startColumn);
+                    return ParseSegmentedFString(startLine, startColumn, startToken);
                 }
 
             case TokenType.True:
-                Advance();
-                return new BooleanLiteral { Value = true, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                {
+                    var token = Current;
+                    Advance();
+                    return new BooleanLiteral
+                    {
+                        Value = true,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(token)
+                    };
+                }
 
             case TokenType.False:
-                Advance();
-                return new BooleanLiteral { Value = false, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                {
+                    var token = Current;
+                    Advance();
+                    return new BooleanLiteral
+                    {
+                        Value = false,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(token)
+                    };
+                }
 
             case TokenType.None:
-                Advance();
-                return new NoneLiteral { LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                {
+                    var token = Current;
+                    Advance();
+                    return new NoneLiteral
+                    {
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(token)
+                    };
+                }
 
             case TokenType.Ellipsis:
-                Advance();
-                return new EllipsisLiteral { LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                {
+                    var token = Current;
+                    Advance();
+                    return new EllipsisLiteral
+                    {
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(token)
+                    };
+                }
 
             case TokenType.Identifier:
                 {

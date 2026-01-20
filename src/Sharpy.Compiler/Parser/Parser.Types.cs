@@ -435,7 +435,7 @@ public partial class Parser
     /// Parse a segmented f-string (new lexer approach)
     /// FStringStart, (FStringText | FStringExprStart Expression [: FormatSpec] FStringExprEnd)*, FStringEnd
     /// </summary>
-    private FStringLiteral ParseSegmentedFString(int startLine, int startColumn)
+    private FStringLiteral ParseSegmentedFString(int startLine, int startColumn, Token startToken)
     {
         var parts = new List<FStringPart>();
 
@@ -479,10 +479,19 @@ public partial class Parser
 
         var endLine = Current.Line;
         var endColumn = Current.Column;
+        var endToken = Current;
 
         // Consume FStringEnd
         Expect(TokenType.FStringEnd);
 
-        return new FStringLiteral { Parts = parts, LineStart = startLine, ColumnStart = startColumn, LineEnd = endLine, ColumnEnd = endColumn };
+        return new FStringLiteral
+        {
+            Parts = parts,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = endLine,
+            ColumnEnd = endColumn,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
     }
 }
