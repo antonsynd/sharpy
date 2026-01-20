@@ -470,7 +470,7 @@ public class CompilationUnitTests
 
 ### Task 2.1: Create ProjectModel.cs
 
-- [ ] Create `/src/Sharpy.Compiler/Model/ProjectModel.cs`
+- [x] Create `/src/Sharpy.Compiler/Model/ProjectModel.cs`
 
 ```csharp
 using System.Collections.Immutable;
@@ -754,7 +754,7 @@ public class ProjectModel
 
 ### Task 2.2: Create unit tests for ProjectModel
 
-- [ ] Create `/src/Sharpy.Compiler.Tests/Model/ProjectModelTests.cs`
+- [x] Create `/src/Sharpy.Compiler.Tests/Model/ProjectModelTests.cs`
 
 ```csharp
 using Sharpy.Compiler.Model;
@@ -975,18 +975,18 @@ public class ProjectModelTests
 
 ### Task 2.3: Verify tests pass
 
-- [ ] Run the new tests:
+- [x] Run the new tests:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj --filter "FullyQualifiedName~ProjectModelTests"
   ```
-- [ ] Run all tests:
+- [x] Run all tests:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj --filter "Category!=Performance"
   ```
 
 ### Task 2.4: Commit Phase 2
 
-- [ ] Commit changes:
+- [x] Commit changes:
   ```bash
   git add .
   git commit -m "Add ProjectModel class for unified project representation
