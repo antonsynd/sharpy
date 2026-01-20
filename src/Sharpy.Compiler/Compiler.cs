@@ -294,6 +294,12 @@ public class ProjectCompilationResult
     /// Available for tooling/analysis (e.g., incremental compilation, build order visualization).
     /// </summary>
     public Project.DependencyGraph? DependencyGraph { get; init; }
+
+    /// <summary>
+    /// The ProjectModel containing all CompilationUnits.
+    /// Available for tooling and analysis.
+    /// </summary>
+    public Model.ProjectModel? ProjectModel { get; init; }
 }
 
 /// <summary>

@@ -6,6 +6,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Model;
 
 namespace Sharpy.Compiler.Project;
 
@@ -40,6 +41,9 @@ public class ProjectCompiler
     private DependencyGraphBuilder _graphBuilder = null!;
     private DependencyGraph? _dependencyGraph;
 
+    // Unified project model containing all CompilationUnits
+    private ProjectModel? _projectModel;
+
     public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null)
     {
         _logger = logger ?? NullLogger.Instance;
@@ -58,6 +62,7 @@ public class ProjectCompiler
         _projectMetrics = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
         _parsedModules = new Dictionary<string, Module>();
         _fileMetrics = new Dictionary<string, CompilationMetrics>();
+        _projectModel = new ProjectModel(config);
 
         try
         {
@@ -99,7 +104,8 @@ public class ProjectCompiler
                 Success = false,
                 Errors = new List<string> { $"Project compilation failed: {ex.Message}" },
                 Metrics = _projectMetrics,
-                DependencyGraph = _dependencyGraph
+                DependencyGraph = _dependencyGraph,
+                ProjectModel = _projectModel
             };
         }
     }
@@ -122,15 +128,38 @@ public class ProjectCompiler
             {
                 var source = File.ReadAllText(sourceFile);
 
+                // Create CompilationUnit for this file
+                var modulePath = CompilationUnitFactory.ComputeModulePath(sourceFile, config.ProjectDirectory);
+                var compilationUnit = _projectModel!.CreateUnit(sourceFile, modulePath, source);
+
                 fileMetrics.StartPhase("Lexical Analysis");
                 var lexer = new Lexer.Lexer(source, _logger);
                 var tokens = lexer.TokenizeAll();
                 fileMetrics.EndPhase();
 
+                // Store tokens in CompilationUnit
+                compilationUnit.Tokens = tokens;
+                compilationUnit.Phase = CompilationPhase.Lexed;
+
                 fileMetrics.StartPhase("Syntax Analysis");
                 var parser = new Parser.Parser(tokens, _logger);
                 var module = parser.ParseModule();
                 fileMetrics.EndPhase();
+
+                // Store AST in CompilationUnit
+                compilationUnit.Ast = module;
+                compilationUnit.Phase = CompilationPhase.Parsed;
+
+                // Extract imports from AST
+                var imports = new List<ImportStatement>();
+                var fromImports = new List<FromImportStatement>();
+                foreach (var stmt in module.Body)
+                {
+                    if (stmt is ImportStatement import) imports.Add(import);
+                    else if (stmt is FromImportStatement fromImport) fromImports.Add(fromImport);
+                }
+                compilationUnit.Imports = imports;
+                compilationUnit.FromImports = fromImports;
 
                 _parsedModules[sourceFile] = module;
                 _fileMetrics[sourceFile] = fileMetrics;
@@ -145,16 +174,40 @@ public class ProjectCompiler
             }
             catch (LexerError ex)
             {
+                // Add to CompilationUnit diagnostics if available
+                var unit = _projectModel!.GetUnit(sourceFile);
+                if (unit != null)
+                {
+                    unit.Diagnostics.AddError(ex.Message, ex.Line, ex.Column, sourceFile);
+                    unit.Phase = CompilationPhase.Failed;
+                }
+
                 _errors.Add($"{sourceFile}({ex.Line},{ex.Column}): error: {ex.Message}");
                 _projectMetrics.AddFileMetrics(fileMetrics);
             }
             catch (ParserError ex)
             {
+                // Add to CompilationUnit diagnostics if available
+                var unit = _projectModel!.GetUnit(sourceFile);
+                if (unit != null)
+                {
+                    unit.Diagnostics.AddError(ex.Message, ex.Line, ex.Column, sourceFile);
+                    unit.Phase = CompilationPhase.Failed;
+                }
+
                 _errors.Add($"{sourceFile}({ex.Line},{ex.Column}): error: {ex.Message}");
                 _projectMetrics.AddFileMetrics(fileMetrics);
             }
             catch (Exception ex)
             {
+                // Add to CompilationUnit diagnostics if available
+                var unit = _projectModel!.GetUnit(sourceFile);
+                if (unit != null)
+                {
+                    unit.Diagnostics.AddError(ex.Message, filePath: sourceFile);
+                    unit.Phase = CompilationPhase.Failed;
+                }
+
                 _errors.Add($"{sourceFile}: error: {ex.Message}");
                 _projectMetrics.AddFileMetrics(fileMetrics);
             }
@@ -172,6 +225,10 @@ public class ProjectCompiler
         _symbolTable = new SymbolTable(builtinRegistry);
         _semanticInfo = new SemanticInfo();
         _importResolver = new ImportResolver(_logger, _moduleRegistry);
+
+        // Store in ProjectModel
+        _projectModel!.GlobalSymbols = _symbolTable;
+        _projectModel.SemanticInfo = _semanticInfo;
 
         // Initialize dependency graph builder and connect to import resolver
         _graphBuilder = new DependencyGraphBuilder();
@@ -344,6 +401,9 @@ public class ProjectCompiler
         // Build the dependency graph after all imports are resolved
         _dependencyGraph = _graphBuilder.Build();
 
+        // Store in ProjectModel
+        _projectModel!.DependencyGraph = _dependencyGraph;
+
         // Detect circular dependencies first - this is more specific than generic import errors
         var cycles = _dependencyGraph.DetectCycles();
         if (cycles.Count > 0)
@@ -403,6 +463,7 @@ public class ProjectCompiler
         foreach (var sourceFile in modulesToProcess)
         {
             var module = _parsedModules[sourceFile];
+            var unit = _projectModel!.GetUnit(sourceFile);
 
             // Get the file metrics we created during parsing
             var fileMetrics = _fileMetrics[sourceFile];
@@ -421,8 +482,25 @@ public class ProjectCompiler
 
             if (typeChecker.Errors.Any())
             {
+                // Add to unit diagnostics
+                foreach (var error in typeChecker.Errors)
+                {
+                    unit?.Diagnostics.AddError(error.Message, error.Line, error.Column, sourceFile);
+                }
+                if (unit != null)
+                {
+                    unit.Phase = CompilationPhase.Failed;
+                }
+
                 _errors.AddRange(typeChecker.Errors.Select(e =>
                     $"{sourceFile}({e.Line},{e.Column}): error: {e.Message}"));
+            }
+            else
+            {
+                if (unit != null)
+                {
+                    unit.Phase = CompilationPhase.TypeChecked;
+                }
             }
 
             // Log per-file semantic analysis metrics at Debug level
@@ -446,6 +524,8 @@ public class ProjectCompiler
 
         foreach (var (sourceFile, module) in _parsedModules)
         {
+            var unit = _projectModel!.GetUnit(sourceFile);
+
             // Get the file metrics we created during parsing
             var fileMetrics = _fileMetrics[sourceFile];
             var relativePath = Path.GetRelativePath(config.ProjectDirectory, sourceFile);
@@ -483,8 +563,8 @@ public class ProjectCompiler
             };
 
             var emitter = new RoslynEmitter(codeGenContext);
-            var compilationUnit = emitter.GenerateCompilationUnit(module);
-            var csharpCode = compilationUnit.ToFullString();
+            var roslynCompilationUnit = emitter.GenerateCompilationUnit(module);
+            var csharpCode = roslynCompilationUnit.ToFullString();
 
             fileMetrics.EndPhase();
 
@@ -493,9 +573,21 @@ public class ProjectCompiler
             {
                 foreach (var error in codeGenContext.Errors)
                 {
+                    unit?.Diagnostics.AddError(error, filePath: sourceFile);
                     _errors.Add($"{sourceFile}: error: {error}");
                 }
+                if (unit != null)
+                {
+                    unit.Phase = CompilationPhase.Failed;
+                }
                 continue;
+            }
+
+            // Store generated C# in CompilationUnit
+            if (unit != null)
+            {
+                unit.GeneratedCSharp = csharpCode;
+                unit.Phase = CompilationPhase.CodeGenerated;
             }
 
             // Log per-file code gen metrics at Debug level
@@ -536,7 +628,8 @@ public class ProjectCompiler
                 Errors = _errors,
                 Warnings = assemblyResult.Warnings,
                 Metrics = _projectMetrics,
-                DependencyGraph = _dependencyGraph
+                DependencyGraph = _dependencyGraph,
+                ProjectModel = _projectModel
             };
         }
 
@@ -549,7 +642,8 @@ public class ProjectCompiler
             Warnings = _warnings,
             GeneratedCSharpFiles = generatedCSharp,
             Metrics = _projectMetrics,
-            DependencyGraph = _dependencyGraph
+            DependencyGraph = _dependencyGraph,
+            ProjectModel = _projectModel
         };
     }
 
@@ -563,7 +657,8 @@ public class ProjectCompiler
             Success = false,
             Errors = _errors,
             Metrics = _projectMetrics,
-            DependencyGraph = _dependencyGraph
+            DependencyGraph = _dependencyGraph,
+            ProjectModel = _projectModel
         };
     }
 

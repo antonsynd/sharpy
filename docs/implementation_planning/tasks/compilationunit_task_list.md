@@ -1008,7 +1008,7 @@ public class ProjectModelTests
 
 ### Task 3.1: Create CompilationUnitFactory.cs
 
-- [ ] Create `/src/Sharpy.Compiler/Model/CompilationUnitFactory.cs`
+- [x] Create `/src/Sharpy.Compiler/Model/CompilationUnitFactory.cs`
 
 ```csharp
 using Sharpy.Compiler.Lexer;
@@ -1170,7 +1170,7 @@ public static class CompilationUnitFactory
 
 ### Task 3.2: Create unit tests for CompilationUnitFactory
 
-- [ ] Create `/src/Sharpy.Compiler.Tests/Model/CompilationUnitFactoryTests.cs`
+- [x] Create `/src/Sharpy.Compiler.Tests/Model/CompilationUnitFactoryTests.cs`
 
 ```csharp
 using Sharpy.Compiler.Model;
@@ -1351,18 +1351,18 @@ x = 1";
 
 ### Task 3.3: Verify tests pass
 
-- [ ] Run the new tests:
+- [x] Run the new tests:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj --filter "FullyQualifiedName~CompilationUnitFactoryTests"
   ```
-- [ ] Run all tests:
+- [x] Run all tests:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj --filter "Category!=Performance"
   ```
 
 ### Task 3.4: Commit Phase 3
 
-- [ ] Commit changes:
+- [x] Commit changes:
   ```bash
   git add .
   git commit -m "Add CompilationUnitFactory for creating and processing units
