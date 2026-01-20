@@ -100,9 +100,18 @@ public partial class Parser
 
             case TokenType.Identifier:
                 {
-                    var name = Current.Value;
+                    var identToken = Current;
+                    var name = identToken.Value;
                     Advance();
-                    return new Identifier { Name = name, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    return new Identifier
+                    {
+                        Name = name,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(identToken)
+                    };
                 }
 
             case TokenType.Super:

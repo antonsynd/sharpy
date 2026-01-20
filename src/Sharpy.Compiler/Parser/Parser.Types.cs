@@ -300,6 +300,30 @@ public partial class Parser
 
     private void Advance() => _position++;
 
+    /// <summary>
+    /// Gets a TextSpan from a token, if position tracking is available.
+    /// Returns null if the token doesn't have position information.
+    /// </summary>
+    private static Text.TextSpan? GetSpanFromToken(Token token)
+    {
+        return token.GetSpan();
+    }
+
+    /// <summary>
+    /// Gets a TextSpan spanning from start token to end token (inclusive).
+    /// Returns null if either token doesn't have position information.
+    /// </summary>
+    private static Text.TextSpan? GetSpanFromTokens(Token start, Token end)
+    {
+        var startSpan = start.GetSpan();
+        var endSpan = end.GetSpan();
+
+        if (startSpan == null || endSpan == null)
+            return null;
+
+        return Text.TextSpan.FromBounds(startSpan.Value.Start, endSpan.Value.End);
+    }
+
     private void Expect(TokenType type)
     {
         if (Current.Type != type)

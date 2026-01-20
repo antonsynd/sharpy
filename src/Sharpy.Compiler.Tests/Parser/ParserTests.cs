@@ -327,4 +327,40 @@ public partial class ParserTests
 
     #endregion
 
+    #region Source Span Tracking
+
+    [Fact]
+    public void ParseIdentifier_TracksSpan()
+    {
+        var module = Parse("myVar");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var identifier = exprStmt.Expression.Should().BeOfType<Identifier>().Subject;
+
+        identifier.Name.Should().Be("myVar");
+        identifier.Span.Should().NotBeNull();
+        identifier.Span!.Value.Start.Should().Be(0);
+        identifier.Span.Value.Length.Should().Be(5);
+        identifier.Span.Value.End.Should().Be(5);
+    }
+
+    [Fact]
+    public void ParseIdentifier_WithIndentation_TracksCorrectSpan()
+    {
+        // Use a full statement context to avoid indentation issues
+        var module = Parse("def test():\n    x");
+        // Find the identifier 'x' in the function body
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        var exprStmt = funcDef.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var identifier = exprStmt.Expression.Should().BeOfType<Identifier>().Subject;
+
+        identifier.Name.Should().Be("x");
+        identifier.Span.Should().NotBeNull();
+        // Position should be at offset of "x" in "def test():\n    x"
+        // That's 11 (def test():) + 1 (\n) + 4 (spaces) = 16
+        identifier.Span!.Value.Start.Should().Be(16);
+        identifier.Span.Value.Length.Should().Be(1);
+    }
+
+    #endregion
+
 }
