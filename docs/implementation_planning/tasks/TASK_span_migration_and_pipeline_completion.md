@@ -58,17 +58,19 @@ dotnet test src/Sharpy.Compiler.Tests --no-build
 
 ---
 
-# Part A: Source Span Migration
+# Part A: Source Span Migration ✅ COMPLETED
 
 **Goal:** Add `TextSpan? Span` tracking to all AST nodes for future LSP, debugger, and error reporting.
 
 **Why now:** From architecture addendum: *"Start #10 (Source Spans) during v0.1.x — retrofitting is extremely expensive."*
 
-**Current State:** Foundation complete (`TextSpan`, `SourceText`, `Token.Position`), only `Identifier` has spans populated.
+**Current State:** ✅ All AST nodes now have TextSpan support. Foundation complete with all parser nodes populated.
+
+**Completed:** January 2026
 
 ---
 
-## A.1: Verify Foundation Is Complete
+## A.1: Verify Foundation Is Complete ✅
 
 **Files:** Multiple in `Text/` and `Lexer/`  
 **Effort:** 15 minutes  
@@ -110,11 +112,12 @@ If any of these fail, the foundation work is incomplete. Refer to `task_f7_and_s
 
 ---
 
-## A.2: Add Spans to Primary Expressions (Literals)
+## A.2: Add Spans to Primary Expressions (Literals) ✅
 
-**File:** `src/Sharpy.Compiler/Parser/Parser.Primaries.cs`  
-**Effort:** 1 hour  
+**File:** `src/Sharpy.Compiler/Parser/Parser.Primaries.cs`
+**Effort:** 1 hour
 **Risk:** Low
+**Status:** ✅ Completed - Spans added to IntegerLiteral, FloatLiteral, StringLiteral, BooleanLiteral, NoneLiteral, EllipsisLiteral
 
 ### Task A.2.1: Add Span to IntegerLiteral
 
@@ -244,11 +247,12 @@ Part of source span migration (Rec #10)."
 
 ---
 
-## A.3: Add Spans to Collection Literals
+## A.3: Add Spans to Collection Literals ✅
 
-**File:** `src/Sharpy.Compiler/Parser/Parser.Primaries.cs`  
-**Effort:** 45 minutes  
+**File:** `src/Sharpy.Compiler/Parser/Parser.Primaries.cs`
+**Effort:** 45 minutes
 **Risk:** Low
+**Status:** ✅ Completed - Spans added to ListLiteral, TupleLiteral, DictLiteral, SetLiteral
 
 Collection literals span from opening bracket/brace to closing bracket/brace.
 
@@ -317,11 +321,12 @@ Spans cover from opening to closing bracket/brace."
 
 ---
 
-## A.4: Add Spans to Comprehensions
+## A.4: Add Spans to Comprehensions ✅
 
-**File:** `src/Sharpy.Compiler/Parser/Parser.Primaries.cs`  
-**Effort:** 30 minutes  
+**File:** `src/Sharpy.Compiler/Parser/Parser.Primaries.cs`
+**Effort:** 30 minutes
 **Risk:** Low
+**Status:** ✅ Completed - Spans added to ListComprehension, DictComprehension, SetComprehension, GeneratorExpression
 
 ### Task A.4.1: Add Span to ListComprehension
 
@@ -355,11 +360,12 @@ Add spans to: ListComprehension, DictComprehension, SetComprehension, GeneratorE
 
 ---
 
-## A.5: Add Spans to Binary and Unary Operators
+## A.5: Add Spans to Binary and Unary Operators ✅
 
-**File:** `src/Sharpy.Compiler/Parser/Parser.Expressions.cs`  
-**Effort:** 1 hour  
+**File:** `src/Sharpy.Compiler/Parser/Parser.Expressions.cs`
+**Effort:** 1 hour
 **Risk:** Low-Medium (many expression parsing methods)
+**Status:** ✅ Completed - Spans added to BinaryOp, UnaryOp, ComparisonChain; CombineSpans helper added
 
 For expressions, the span should cover from the first operand to the last operand.
 
@@ -449,11 +455,12 @@ Add CombineSpans helper for merging node spans."
 
 ---
 
-## A.6: Add Spans to Access Expressions
+## A.6: Add Spans to Access Expressions ✅
 
-**File:** `src/Sharpy.Compiler/Parser/Parser.Expressions.cs`  
-**Effort:** 45 minutes  
+**File:** `src/Sharpy.Compiler/Parser/Parser.Expressions.cs`
+**Effort:** 45 minutes
 **Risk:** Low
+**Status:** ✅ Completed - Spans added to MemberAccess, IndexAccess, SliceAccess, FunctionCall
 
 ### Task A.6.1: Add Span to MemberAccess
 
@@ -501,11 +508,12 @@ These are high-value for error reporting."
 
 ---
 
-## A.7: Add Spans to Other Expressions
+## A.7: Add Spans to Other Expressions ✅
 
-**File:** `src/Sharpy.Compiler/Parser/Parser.Expressions.cs`  
-**Effort:** 1 hour  
+**File:** `src/Sharpy.Compiler/Parser/Parser.Expressions.cs`
+**Effort:** 1 hour
 **Risk:** Low
+**Status:** ✅ Completed - Spans added to Parenthesized, TernaryExpression, LambdaExpression, AwaitExpression, YieldExpression, WalrusExpression, TryExpression, MaybeExpression, SuperExpression
 
 ### Task A.7.1: Add Span to Parenthesized
 
@@ -557,11 +565,12 @@ MaybeExpression, SuperExpression"
 
 ---
 
-## A.8: Add Spans to Simple Statements
+## A.8: Add Spans to Simple Statements ✅
 
-**File:** `src/Sharpy.Compiler/Parser/Parser.Statements.cs`  
-**Effort:** 1.5 hours  
+**File:** `src/Sharpy.Compiler/Parser/Parser.Statements.cs`
+**Effort:** 1.5 hours
 **Risk:** Low
+**Status:** ✅ Completed - Spans added to ExpressionStatement, Assignment, AugmentedAssignment, VariableDeclaration, ReturnStatement, BreakStatement, ContinueStatement, PassStatement, RaiseStatement, AssertStatement
 
 ### Task A.8.1: Add Span to ExpressionStatement
 
@@ -625,11 +634,12 @@ PassStatement, RaiseStatement, AssertStatement, DelStatement"
 
 ---
 
-## A.9: Add Spans to Control Flow Statements
+## A.9: Add Spans to Control Flow Statements ✅
 
-**File:** `src/Sharpy.Compiler/Parser/Parser.Statements.cs`  
-**Effort:** 1 hour  
+**File:** `src/Sharpy.Compiler/Parser/Parser.Statements.cs`
+**Effort:** 1 hour
 **Risk:** Low
+**Status:** ✅ Completed - Spans added to IfStatement, WhileStatement, ForStatement, TryStatement, WithStatement, MatchStatement; also added spans to auxiliary types (ElifClause, ExceptHandler, ImportAlias, Parameter)
 
 ### Task A.9.1: Add Span to IfStatement
 
@@ -674,11 +684,12 @@ WithStatement, MatchStatement"
 
 ---
 
-## A.10: Add Spans to Definitions
+## A.10: Add Spans to Definitions ✅
 
-**File:** `src/Sharpy.Compiler/Parser/Parser.Definitions.cs`  
-**Effort:** 1.5 hours  
+**File:** `src/Sharpy.Compiler/Parser/Parser.Definitions.cs`
+**Effort:** 1.5 hours
 **Risk:** Low
+**Status:** ✅ Completed - Spans added to FunctionDef, ClassDef, StructDef, InterfaceDef, EnumDef, EnumMember, TypeAlias, VariableDeclaration (const), Decorator, Parameter, TypeParameterDef
 
 ### Task A.10.1: Add Span to FunctionDef
 
@@ -735,11 +746,12 @@ PropertyDef, EventDef, Decorator, Parameter"
 
 ---
 
-## A.11: Add Spans to Import Statements
+## A.11: Add Spans to Import Statements ✅
 
-**File:** `src/Sharpy.Compiler/Parser/Parser.Statements.cs`  
-**Effort:** 30 minutes  
+**File:** `src/Sharpy.Compiler/Parser/Parser.Statements.cs`
+**Effort:** 30 minutes
 **Risk:** Low
+**Status:** ✅ Completed - Spans added to ImportStatement, FromImportStatement (completed as part of A.8/A.9)
 
 ### Task A.11.1: Add Span to ImportStatement
 
@@ -765,11 +777,12 @@ Add spans to: ImportStatement, FromImportStatement"
 
 ---
 
-## A.12: Add Spans to Type Annotations
+## A.12: Add Spans to Type Annotations ✅
 
-**File:** `src/Sharpy.Compiler/Parser/Parser.Types.cs`  
-**Effort:** 1 hour  
+**File:** `src/Sharpy.Compiler/Parser/Parser.Types.cs`
+**Effort:** 1 hour
 **Risk:** Low-Medium
+**Status:** ✅ Completed - Spans added to TypeAnnotation and FunctionType records; updated all type parsing methods to pass startToken parameter
 
 Type annotations have multiple variants in the AST.
 
@@ -814,11 +827,12 @@ FunctionType, TupleType"
 
 ---
 
-## A.13: Add Span Tests
+## A.13: Add Span Tests ✅
 
-**File:** New test file  
-**Effort:** 1 hour  
+**File:** `src/Sharpy.Compiler.Tests/Parser/ParserSpanTests.cs`
+**Effort:** 1 hour
 **Risk:** None
+**Status:** ✅ Completed - Created 21 comprehensive tests verifying TextSpan correctness on major AST node types (all tests passing)
 
 ### Task A.13.1: Create Parser Span Tests
 
@@ -1794,78 +1808,79 @@ After this task list is complete, the following become unblocked:
 
 Use this to track progress on Part A span migration:
 
-### Expressions
-- [ ] Identifier (already done)
-- [ ] IntegerLiteral
-- [ ] FloatLiteral
-- [ ] StringLiteral
-- [ ] BooleanLiteral
-- [ ] NoneLiteral
-- [ ] EllipsisLiteral
-- [ ] FStringLiteral
-- [ ] ListLiteral
-- [ ] DictLiteral
-- [ ] SetLiteral
-- [ ] TupleLiteral
-- [ ] BinaryOp
-- [ ] UnaryOp
-- [ ] ComparisonChain
-- [ ] MemberAccess
-- [ ] IndexAccess
-- [ ] SliceAccess
-- [ ] Call
-- [ ] ListComprehension
-- [ ] DictComprehension
-- [ ] SetComprehension
-- [ ] GeneratorExpression
-- [ ] Parenthesized
-- [ ] TernaryExpression
-- [ ] LambdaExpression
-- [ ] AwaitExpression
-- [ ] YieldExpression
-- [ ] WalrusExpression
-- [ ] TryExpression
-- [ ] MaybeExpression
-- [ ] SuperExpression
+### Expressions ✅ All Complete
+- [x] Identifier (already done)
+- [x] IntegerLiteral
+- [x] FloatLiteral
+- [x] StringLiteral
+- [x] BooleanLiteral
+- [x] NoneLiteral
+- [x] EllipsisLiteral
+- [x] FStringLiteral
+- [x] ListLiteral
+- [x] DictLiteral
+- [x] SetLiteral
+- [x] TupleLiteral
+- [x] BinaryOp
+- [x] UnaryOp
+- [x] ComparisonChain
+- [x] MemberAccess
+- [x] IndexAccess
+- [x] SliceAccess
+- [x] Call (FunctionCall)
+- [x] ListComprehension
+- [x] DictComprehension
+- [x] SetComprehension
+- [x] GeneratorExpression
+- [x] Parenthesized
+- [x] TernaryExpression
+- [x] LambdaExpression
+- [x] AwaitExpression
+- [x] YieldExpression
+- [x] WalrusExpression
+- [x] TryExpression
+- [x] MaybeExpression
+- [x] SuperExpression
 
-### Statements
-- [ ] ExpressionStatement
-- [ ] Assignment
-- [ ] AugmentedAssignment
-- [ ] VariableDeclaration
-- [ ] ReturnStatement
-- [ ] IfStatement
-- [ ] WhileStatement
-- [ ] ForStatement
-- [ ] BreakStatement
-- [ ] ContinueStatement
-- [ ] PassStatement
-- [ ] RaiseStatement
-- [ ] AssertStatement
-- [ ] TryStatement
-- [ ] WithStatement
-- [ ] MatchStatement
-- [ ] DelStatement
+### Statements ✅ All Complete
+- [x] ExpressionStatement
+- [x] Assignment
+- [x] AugmentedAssignment
+- [x] VariableDeclaration
+- [x] ReturnStatement
+- [x] IfStatement
+- [x] WhileStatement
+- [x] ForStatement
+- [x] BreakStatement
+- [x] ContinueStatement
+- [x] PassStatement
+- [x] RaiseStatement
+- [x] AssertStatement
+- [x] TryStatement
+- [x] WithStatement
+- [x] MatchStatement
+- [ ] DelStatement (not implemented in parser)
 
-### Definitions
-- [ ] FunctionDef
-- [ ] ClassDef
-- [ ] StructDef
-- [ ] InterfaceDef
-- [ ] EnumDef
-- [ ] PropertyDef
-- [ ] EventDef
-- [ ] Decorator
-- [ ] Parameter
+### Definitions ✅ All Complete
+- [x] FunctionDef
+- [x] ClassDef
+- [x] StructDef
+- [x] InterfaceDef
+- [x] EnumDef
+- [x] EnumMember
+- [x] TypeAlias
+- [x] TypeParameterDef
+- [ ] PropertyDef (not a separate node)
+- [ ] EventDef (not a separate node)
+- [x] Decorator
+- [x] Parameter
 
-### Imports
-- [ ] ImportStatement
-- [ ] FromImportStatement
+### Imports ✅ All Complete
+- [x] ImportStatement
+- [x] FromImportStatement
+- [x] ImportAlias
 
-### Types
-- [ ] SimpleType
-- [ ] NullableType
-- [ ] GenericType
-- [ ] UnionType
-- [ ] FunctionType
-- [ ] TupleType
+### Types ✅ All Complete
+- [x] TypeAnnotation (covers SimpleType, NullableType, GenericType, UnionType)
+- [x] FunctionType
+- [ ] TupleType (uses TypeAnnotation with tuple name)
