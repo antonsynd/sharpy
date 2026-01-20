@@ -723,6 +723,7 @@ public partial class Parser
         {
             var startLine = Current.Line;
             var startColumn = Current.Column;
+            var startToken = Current;
 
             // Check for variadic parameter (*args)
             var isVariadic = false;
@@ -753,8 +754,9 @@ public partial class Parser
                 defaultValue = ParseExpression();
             }
 
-            var endLine = Peek(-1).Line;
-            var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+            var endToken = Previous;
+            var endLine = endToken.Line;
+            var endColumn = endToken.Column + endToken.Value.Length;
 
             parameters.Add(new Parameter
             {
@@ -765,7 +767,8 @@ public partial class Parser
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = endLine,
-                ColumnEnd = endColumn
+                ColumnEnd = endColumn,
+                Span = GetSpanFromTokens(startToken, endToken)
             });
 
             if (Current.Type == TokenType.Comma)

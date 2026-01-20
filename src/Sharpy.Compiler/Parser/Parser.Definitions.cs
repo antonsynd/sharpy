@@ -160,6 +160,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.Def);
         var name = ExpectIdentifier();
@@ -191,6 +192,7 @@ public partial class Parser
         {
             var ellipsisLine = Current.Line;
             var ellipsisColumn = Current.Column;
+            var ellipsisToken = Current;
             Advance(); // consume '...'
             ExpectNewline();
 
@@ -209,19 +211,22 @@ public partial class Parser
                             LineStart = ellipsisLine,
                             ColumnStart = ellipsisColumn,
                             LineEnd = ellipsisLine,
-                            ColumnEnd = ellipsisColumn + 3
+                            ColumnEnd = ellipsisColumn + 3,
+                            Span = GetSpanFromToken(ellipsisToken)
                         },
                         LineStart = ellipsisLine,
                         ColumnStart = ellipsisColumn,
                         LineEnd = ellipsisLine,
-                        ColumnEnd = ellipsisColumn + 3
+                        ColumnEnd = ellipsisColumn + 3,
+                        Span = GetSpanFromToken(ellipsisToken)
                     }
                 },
                 DocString = null,
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = Current.Line,
-                ColumnEnd = Current.Column
+                ColumnEnd = Current.Column,
+                Span = GetSpanFromTokens(startToken, ellipsisToken)
             };
         }
 
@@ -240,6 +245,7 @@ public partial class Parser
 
         var body = ParseBlock();
         Expect(TokenType.Dedent);
+        var endToken = Previous;
 
         return new FunctionDef
         {
@@ -252,7 +258,8 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            ColumnEnd = Current.Column,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -260,6 +267,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.Class);
         var name = ExpectIdentifier();
@@ -307,6 +315,7 @@ public partial class Parser
 
         var body = ParseBlock();
         Expect(TokenType.Dedent);
+        var endToken = Previous;
 
         return new ClassDef
         {
@@ -318,7 +327,8 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            ColumnEnd = Current.Column,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -326,6 +336,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.Struct);
         var name = ExpectIdentifier();
@@ -373,6 +384,7 @@ public partial class Parser
 
         var body = ParseBlock();
         Expect(TokenType.Dedent);
+        var endToken = Previous;
 
         return new StructDef
         {
@@ -384,7 +396,8 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            ColumnEnd = Current.Column,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -392,6 +405,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.Interface);
         var name = ExpectIdentifier();
@@ -439,6 +453,7 @@ public partial class Parser
 
         var body = ParseBlock();
         Expect(TokenType.Dedent);
+        var endToken = Previous;
 
         return new InterfaceDef
         {
@@ -450,7 +465,8 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            ColumnEnd = Current.Column,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -462,6 +478,10 @@ public partial class Parser
 
         do
         {
+            var paramStartLine = Current.Line;
+            var paramStartColumn = Current.Column;
+            var paramStartToken = Current;
+
             var paramName = ExpectIdentifier();
             var constraints = new List<ConstraintClause>();
 
@@ -472,10 +492,17 @@ public partial class Parser
                 constraints = ParseConstraints();
             }
 
+            var paramEndToken = Previous;
+
             typeParams.Add(new TypeParameterDef
             {
                 Name = paramName,
-                Constraints = constraints
+                Constraints = constraints,
+                LineStart = paramStartLine,
+                ColumnStart = paramStartColumn,
+                LineEnd = paramEndToken.Line,
+                ColumnEnd = paramEndToken.Column + paramEndToken.Value.Length,
+                Span = GetSpanFromTokens(paramStartToken, paramEndToken)
             });
 
             if (Current.Type == TokenType.Comma)
@@ -540,6 +567,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.Enum);
         var name = ExpectIdentifier();
@@ -572,6 +600,7 @@ public partial class Parser
 
             var memberStartLine = Current.Line;
             var memberStartColumn = Current.Column;
+            var memberStartToken = Current;
             var memberName = ExpectIdentifier();
             Expression? value = null;
 
@@ -581,8 +610,9 @@ public partial class Parser
                 value = ParseExpression();
             }
 
-            var memberEndLine = Peek(-1).Line;
-            var memberEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+            var memberEndToken = Previous;
+            var memberEndLine = memberEndToken.Line;
+            var memberEndColumn = memberEndToken.Column + memberEndToken.Value.Length;
 
             members.Add(new EnumMember
             {
@@ -591,13 +621,15 @@ public partial class Parser
                 LineStart = memberStartLine,
                 ColumnStart = memberStartColumn,
                 LineEnd = memberEndLine,
-                ColumnEnd = memberEndColumn
+                ColumnEnd = memberEndColumn,
+                Span = GetSpanFromTokens(memberStartToken, memberEndToken)
             });
             ExpectNewline();
             SkipNewlines();
         }
 
         Expect(TokenType.Dedent);
+        var endToken = Previous;
 
         // Validate enum has at least one member
         if (members.Count == 0)
@@ -613,7 +645,8 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            ColumnEnd = Current.Column,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -621,6 +654,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.Type);
         var name = ExpectIdentifier();
@@ -666,6 +700,7 @@ public partial class Parser
             type = ParseTypeAnnotation();
         }
 
+        var endToken = Previous;
         ExpectNewline();
 
         return new TypeAlias
@@ -676,7 +711,8 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            ColumnEnd = Current.Column,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -684,6 +720,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.Const);
         var name = ExpectIdentifier();
@@ -700,6 +737,7 @@ public partial class Parser
 
         Expect(TokenType.Assign);
         var value = ParseExpression();
+        var endToken = Previous;
         ExpectNewline();
 
         return new VariableDeclaration
@@ -711,7 +749,8 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            ColumnEnd = Current.Column,
+            Span = CombineSpans(GetSpanFromToken(startToken), value.Span)
         };
     }
 

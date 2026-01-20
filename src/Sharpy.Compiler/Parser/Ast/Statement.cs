@@ -262,6 +262,11 @@ public record EnumMember
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+
+    /// <summary>
+    /// Character offset-based span. May be null if not tracked.
+    /// </summary>
+    public Text.TextSpan? Span { get; init; }
 }
 
 /// <summary>
@@ -282,6 +287,17 @@ public record TypeParameterDef
 {
     public string Name { get; init; } = "";
     public List<ConstraintClause> Constraints { get; init; } = new();
+
+    // Source location
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
+
+    /// <summary>
+    /// Character offset-based span. May be null if not tracked.
+    /// </summary>
+    public Text.TextSpan? Span { get; init; }
 }
 
 /// <summary>
@@ -326,6 +342,11 @@ public record Decorator
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+
+    /// <summary>
+    /// Character offset-based span. May be null if not tracked.
+    /// </summary>
+    public Text.TextSpan? Span { get; init; }
 }
 
 /// <summary>
@@ -346,6 +367,11 @@ public record Parameter
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+
+    /// <summary>
+    /// Character offset-based span. May be null if not tracked.
+    /// </summary>
+    public Text.TextSpan? Span { get; init; }
 }
 
 #endregion

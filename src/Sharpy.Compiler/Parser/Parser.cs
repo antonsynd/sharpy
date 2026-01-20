@@ -127,14 +127,16 @@ public partial class Parser
         {
             var decoratorStartLine = Current.Line;
             var decoratorStartColumn = Current.Column;
+            var decoratorStartToken = Current;
             Advance();  // Skip @
             if (Current.Type != TokenType.Identifier)
                 throw new ParserError("Expected decorator name", Current.Line, Current.Column);
 
             var decoratorName = Current.Value;
             Advance();
-            var decoratorEndLine = Peek(-1).Line;
-            var decoratorEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+            var decoratorEndToken = Previous;
+            var decoratorEndLine = decoratorEndToken.Line;
+            var decoratorEndColumn = decoratorEndToken.Column + decoratorEndToken.Value.Length;
 
             decorators.Add(new Decorator
             {
@@ -142,7 +144,8 @@ public partial class Parser
                 LineStart = decoratorStartLine,
                 ColumnStart = decoratorStartColumn,
                 LineEnd = decoratorEndLine,
-                ColumnEnd = decoratorEndColumn
+                ColumnEnd = decoratorEndColumn,
+                Span = GetSpanFromTokens(decoratorStartToken, decoratorEndToken)
             });
             ExpectNewline();
         }
