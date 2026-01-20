@@ -2,6 +2,7 @@ using System.Text;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Project;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -27,6 +28,7 @@ public class ImportResolver
     private readonly Dictionary<string, ModuleInfo> _moduleCache = new();
     private readonly ModuleRegistry? _moduleRegistry;
     private readonly ModuleResolver _moduleResolver;
+    private DependencyGraphBuilder? _graphBuilder;
 
     private string? _currentModulePath = null;
 
@@ -38,6 +40,16 @@ public class ImportResolver
     }
 
     public IReadOnlyList<SemanticError> Errors => _errors;
+
+    /// <summary>
+    /// Set the dependency graph builder for tracking file dependencies.
+    /// When set, the resolver will call AddDependency for each import.
+    /// </summary>
+    /// <param name="builder">The builder to use for tracking dependencies.</param>
+    public void SetDependencyGraphBuilder(DependencyGraphBuilder builder)
+    {
+        _graphBuilder = builder;
+    }
 
     /// <summary>
     /// Set the current module path for resolving relative imports
@@ -71,6 +83,13 @@ public class ImportResolver
                     AddError($"Cannot find module '{importAlias.Name}'",
                         importAlias.LineStart, importAlias.ColumnStart);
                     continue;
+                }
+
+                // Track the dependency (current module depends on imported module)
+                // Note: .NET modules are not tracked in the file dependency graph
+                if (_graphBuilder != null && _currentModulePath != null)
+                {
+                    _graphBuilder.AddDependency(_currentModulePath, modulePath);
                 }
 
                 moduleInfo = LoadModule(modulePath, importAlias.LineStart, importAlias.ColumnStart);
@@ -109,6 +128,13 @@ public class ImportResolver
             // Store the resolved module path for code generation
             // For relative imports like ".helpers", this gives the canonical name like "mypackage.helpers"
             fromImport.ResolvedModulePath = resolution.CanonicalModuleName ?? resolution.ModuleName;
+
+            // Track the dependency (current module depends on imported module)
+            // Note: .NET modules are not tracked in the file dependency graph
+            if (_graphBuilder != null && _currentModulePath != null)
+            {
+                _graphBuilder.AddDependency(_currentModulePath, resolution.FullPath);
+            }
 
             moduleInfo = LoadModule(resolution.FullPath, fromImport.LineStart, fromImport.ColumnStart);
         }

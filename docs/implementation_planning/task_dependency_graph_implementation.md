@@ -251,17 +251,17 @@ Assert.Contains("b.spy", graph.GetDirectDependencies("a.spy"));
 **File:** `src/Sharpy.Compiler/Semantic/ImportResolver.cs`  
 **Estimated:** 45 minutes
 
-- [ ] Add optional `DependencyGraphBuilder? _graphBuilder` field
-- [ ] Add `SetDependencyGraphBuilder(DependencyGraphBuilder builder)` method
-- [ ] In `LoadModule()`, when a module is loaded, call:
+- [x] Add optional `DependencyGraphBuilder? _graphBuilder` field
+- [x] Add `SetDependencyGraphBuilder(DependencyGraphBuilder builder)` method
+- [x] In `LoadModule()`, when a module is loaded, call:
   ```csharp
   _graphBuilder?.AddDependency(_currentModulePath, modulePath);
   ```
-- [ ] In `ResolveImport()`, after resolving each import alias:
+- [x] In `ResolveImport()`, after resolving each import alias:
   ```csharp
   _graphBuilder?.AddDependency(_currentModulePath, resolvedPath);
   ```
-- [ ] In `ResolveFromImport()`, after resolving the module:
+- [x] In `ResolveFromImport()`, after resolving the module:
   ```csharp
   _graphBuilder?.AddDependency(_currentModulePath, resolvedPath);
   ```
@@ -269,27 +269,27 @@ Assert.Contains("b.spy", graph.GetDirectDependencies("a.spy"));
 **Verification:** Existing import tests should still pass (builder is optional).
 
 ### Task 4.2: Handle .NET Module Dependencies
-**File:** `src/Sharpy.Compiler/Semantic/ImportResolver.cs`  
+**File:** `src/Sharpy.Compiler/Semantic/ImportResolver.cs`
 **Estimated:** 15 minutes
 
-- [ ] For .NET modules (from `ModuleRegistry`), don't add to file dependency graph
-- [ ] Consider adding a separate mechanism for assembly dependencies later
-- [ ] Document this decision in comments
+- [x] For .NET modules (from `ModuleRegistry`), don't add to file dependency graph
+- [x] Consider adding a separate mechanism for assembly dependencies later
+- [x] Document this decision in comments
 
 ### Task 4.3: Add Integration Tests
-**File:** `src/Sharpy.Compiler.Tests/Semantic/ImportResolverDependencyTests.cs`  
+**File:** `src/Sharpy.Compiler.Tests/Semantic/ImportResolverDependencyTests.cs`
 **Estimated:** 45 minutes
 
-- [ ] Create test fixture that sets up ImportResolver with DependencyGraphBuilder
-- [ ] `ResolveImport_AddsDependency`
-- [ ] `ResolveFromImport_AddsDependency`
-- [ ] `NestedImports_AddsTransitiveDependencies`
-- [ ] `CircularImport_StillRecordsDependency` (before error is raised)
-- [ ] `NetModule_NotAddedToGraph`
+- [x] Create test fixture that sets up ImportResolver with DependencyGraphBuilder
+- [x] `ResolveImport_AddsDependency`
+- [x] `ResolveFromImport_AddsDependency`
+- [ ] `NestedImports_AddsTransitiveDependencies` - skipped, tested in ProjectCompiler
+- [ ] `CircularImport_StillRecordsDependency` - existing circular import tests cover this
+- [x] `NetModule_NotAddedToGraph`
 
 ### ✅ Checkpoint 4.4: Commit Phase 4
-- [ ] All tests pass (including existing ImportResolver tests)
-- [ ] Commit with message: `feat(semantic): Integrate DependencyGraphBuilder with ImportResolver`
+- [x] All tests pass (including existing ImportResolver tests)
+- [x] Commit with message: `feat(semantic): Integrate DependencyGraphBuilder with ImportResolver`
 
 ---
 
