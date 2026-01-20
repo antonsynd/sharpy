@@ -129,6 +129,11 @@ public record ElifClause
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+
+    /// <summary>
+    /// Character offset-based span. May be null if not tracked.
+    /// </summary>
+    public Text.TextSpan? Span { get; init; }
 }
 
 /// <summary>
@@ -174,6 +179,11 @@ public record ExceptHandler
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+
+    /// <summary>
+    /// Character offset-based span. May be null if not tracked.
+    /// </summary>
+    public Text.TextSpan? Span { get; init; }
 }
 
 #endregion
@@ -360,6 +370,11 @@ public record ImportAlias
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+
+    /// <summary>
+    /// Character offset-based span. May be null if not tracked.
+    /// </summary>
+    public Text.TextSpan? Span { get; init; }
 }
 
 /// <summary>

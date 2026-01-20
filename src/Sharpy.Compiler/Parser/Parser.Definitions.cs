@@ -60,7 +60,8 @@ public partial class Parser
                     LineStart = startLine,
                     ColumnStart = startColumn,
                     LineEnd = value.LineEnd,
-                    ColumnEnd = value.ColumnEnd
+                    ColumnEnd = value.ColumnEnd,
+                    Span = CombineSpans(tuple.Span, value.Span)
                 };
             }
 
@@ -84,7 +85,8 @@ public partial class Parser
                 LineStart = expr.LineStart,
                 ColumnStart = expr.ColumnStart,
                 LineEnd = value.LineEnd,
-                ColumnEnd = value.ColumnEnd
+                ColumnEnd = value.ColumnEnd,
+                Span = CombineSpans(expr.Span, value.Span)
             };
         }
 
@@ -114,8 +116,11 @@ public partial class Parser
                 IsConst = false,
                 LineStart = id.LineStart,
                 ColumnStart = id.ColumnStart,
-                LineEnd = Current.Line,
-                ColumnEnd = Current.Column
+                LineEnd = Previous.Line,
+                ColumnEnd = Previous.Column + Previous.Value.Length,
+                Span = initialValue != null
+                    ? CombineSpans(id.Span, initialValue.Span)
+                    : id.Span  // TypeAnnotation doesn't have Span yet (A.12)
             };
         }
 
@@ -127,7 +132,8 @@ public partial class Parser
             LineStart = expr.LineStart,
             ColumnStart = expr.ColumnStart,
             LineEnd = expr.LineEnd,
-            ColumnEnd = expr.ColumnEnd
+            ColumnEnd = expr.ColumnEnd,
+            Span = expr.Span
         };
     }
 

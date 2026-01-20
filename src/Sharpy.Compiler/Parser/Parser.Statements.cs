@@ -14,6 +14,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.If);
         var test = ParseExpression();
@@ -22,6 +23,7 @@ public partial class Parser
         Expect(TokenType.Indent);
         var thenBody = ParseBlock();
         Expect(TokenType.Dedent);
+        var endToken = Previous;
 
         var elifClauses = new List<ElifClause>();
         var elseBody = new List<Statement>();
@@ -31,6 +33,7 @@ public partial class Parser
         {
             var elifStartLine = Current.Line;
             var elifStartColumn = Current.Column;
+            var elifStartToken = Current;
             Advance();
             var elifTest = ParseExpression();
             Expect(TokenType.Colon);
@@ -40,6 +43,7 @@ public partial class Parser
             Expect(TokenType.Dedent);
             var elifEndLine = Peek(-1).Line;
             var elifEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+            endToken = Previous;
 
             elifClauses.Add(new ElifClause
             {
@@ -48,7 +52,8 @@ public partial class Parser
                 LineStart = elifStartLine,
                 ColumnStart = elifStartColumn,
                 LineEnd = elifEndLine,
-                ColumnEnd = elifEndColumn
+                ColumnEnd = elifEndColumn,
+                Span = GetSpanFromTokens(elifStartToken, Previous)
             });
         }
 
@@ -61,6 +66,7 @@ public partial class Parser
             Expect(TokenType.Indent);
             elseBody = ParseBlock();
             Expect(TokenType.Dedent);
+            endToken = Previous;
         }
 
         return new IfStatement
@@ -71,8 +77,9 @@ public partial class Parser
             ElseBody = elseBody,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -80,6 +87,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.While);
         var test = ParseExpression();
@@ -88,6 +96,7 @@ public partial class Parser
         Expect(TokenType.Indent);
         var body = ParseBlock();
         Expect(TokenType.Dedent);
+        var endToken = Previous;
 
         // Optional else clause (runs if loop completes without break)
         var elseBody = new List<Statement>();
@@ -99,6 +108,7 @@ public partial class Parser
             Expect(TokenType.Indent);
             elseBody = ParseBlock();
             Expect(TokenType.Dedent);
+            endToken = Previous;
         }
 
         return new WhileStatement
@@ -108,8 +118,9 @@ public partial class Parser
             ElseBody = elseBody,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -117,6 +128,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.For);
 
@@ -131,6 +143,7 @@ public partial class Parser
         Expect(TokenType.Indent);
         var body = ParseBlock();
         Expect(TokenType.Dedent);
+        var endToken = Previous;
 
         // Optional else clause (runs if loop completes without break)
         var elseBody = new List<Statement>();
@@ -142,6 +155,7 @@ public partial class Parser
             Expect(TokenType.Indent);
             elseBody = ParseBlock();
             Expect(TokenType.Dedent);
+            endToken = Previous;
         }
 
         return new ForStatement
@@ -152,8 +166,9 @@ public partial class Parser
             ElseBody = elseBody,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -257,6 +272,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.Try);
         Expect(TokenType.Colon);
@@ -264,6 +280,7 @@ public partial class Parser
         Expect(TokenType.Indent);
         var body = ParseBlock();
         Expect(TokenType.Dedent);
+        var endToken = Previous;
 
         var handlers = new List<ExceptHandler>();
 
@@ -271,6 +288,7 @@ public partial class Parser
         {
             var handlerStartLine = Current.Line;
             var handlerStartColumn = Current.Column;
+            var handlerStartToken = Current;
             Advance();
 
             TypeAnnotation? exceptionType = null;
@@ -295,6 +313,7 @@ public partial class Parser
             Expect(TokenType.Dedent);
             var handlerEndLine = Peek(-1).Line;
             var handlerEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+            endToken = Previous;
 
             handlers.Add(new ExceptHandler
             {
@@ -304,7 +323,8 @@ public partial class Parser
                 LineStart = handlerStartLine,
                 ColumnStart = handlerStartColumn,
                 LineEnd = handlerEndLine,
-                ColumnEnd = handlerEndColumn
+                ColumnEnd = handlerEndColumn,
+                Span = GetSpanFromTokens(handlerStartToken, Previous)
             });
         }
 
@@ -318,6 +338,7 @@ public partial class Parser
             Expect(TokenType.Indent);
             elseBody = ParseBlock();
             Expect(TokenType.Dedent);
+            endToken = Previous;
         }
 
         var finallyBody = new List<Statement>();
@@ -329,6 +350,7 @@ public partial class Parser
             Expect(TokenType.Indent);
             finallyBody = ParseBlock();
             Expect(TokenType.Dedent);
+            endToken = Previous;
         }
 
         return new TryStatement
@@ -339,8 +361,9 @@ public partial class Parser
             FinallyBody = finallyBody,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -348,6 +371,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var returnToken = Current;
 
         Expect(TokenType.Return);
 
@@ -362,8 +386,11 @@ public partial class Parser
             Value = value,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = value != null
+                ? CombineSpans(GetSpanFromToken(returnToken), value.Span)
+                : GetSpanFromToken(returnToken)
         };
     }
 
@@ -371,6 +398,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var raiseToken = Current;
 
         Expect(TokenType.Raise);
 
@@ -391,14 +419,18 @@ public partial class Parser
 
         ExpectNewline();
 
+        // Determine the span end based on what was parsed
+        var endSpan = cause?.Span ?? exception?.Span ?? GetSpanFromToken(raiseToken);
+
         return new RaiseStatement
         {
             Exception = exception,
             Cause = cause,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = CombineSpans(GetSpanFromToken(raiseToken), endSpan)
         };
     }
 
@@ -406,6 +438,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var assertToken = Current;
 
         Expect(TokenType.Assert);
         var test = ParseExpression();
@@ -419,14 +452,17 @@ public partial class Parser
 
         ExpectNewline();
 
+        var endSpan = message?.Span ?? test.Span;
+
         return new AssertStatement
         {
             Test = test,
             Message = message,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = CombineSpans(GetSpanFromToken(assertToken), endSpan)
         };
     }
 
@@ -434,6 +470,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var passToken = Current;
 
         Expect(TokenType.Pass);
         ExpectStatementEnd();
@@ -442,8 +479,9 @@ public partial class Parser
         {
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = GetSpanFromToken(passToken)
         };
     }
 
@@ -451,6 +489,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var breakToken = Current;
 
         Expect(TokenType.Break);
         ExpectStatementEnd();
@@ -459,8 +498,9 @@ public partial class Parser
         {
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = GetSpanFromToken(breakToken)
         };
     }
 
@@ -468,6 +508,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var continueToken = Current;
 
         Expect(TokenType.Continue);
         ExpectStatementEnd();
@@ -476,8 +517,9 @@ public partial class Parser
         {
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = GetSpanFromToken(continueToken)
         };
     }
 
@@ -485,6 +527,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.Import);
 
@@ -494,6 +537,7 @@ public partial class Parser
         {
             var aliasStartLine = Current.Line;
             var aliasStartColumn = Current.Column;
+            var aliasStartToken = Current;
             var name = ParseDottedName();
             string? asName = null;
 
@@ -513,7 +557,8 @@ public partial class Parser
                 LineStart = aliasStartLine,
                 ColumnStart = aliasStartColumn,
                 LineEnd = aliasEndLine,
-                ColumnEnd = aliasEndColumn
+                ColumnEnd = aliasEndColumn,
+                Span = GetSpanFromTokens(aliasStartToken, Previous)
             });
 
             if (Current.Type == TokenType.Comma)
@@ -522,6 +567,7 @@ public partial class Parser
                 break;
         } while (true);
 
+        var endToken = Previous;
         ExpectNewline();
 
         return new ImportStatement
@@ -529,8 +575,9 @@ public partial class Parser
             Names = names,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -538,6 +585,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         Expect(TokenType.From);
         var module = ParseModuleName();
@@ -557,6 +605,7 @@ public partial class Parser
             {
                 var aliasStartLine = Current.Line;
                 var aliasStartColumn = Current.Column;
+                var aliasStartToken = Current;
                 var name = ExpectIdentifier();
                 string? asName = null;
 
@@ -576,7 +625,8 @@ public partial class Parser
                     LineStart = aliasStartLine,
                     ColumnStart = aliasStartColumn,
                     LineEnd = aliasEndLine,
-                    ColumnEnd = aliasEndColumn
+                    ColumnEnd = aliasEndColumn,
+                    Span = GetSpanFromTokens(aliasStartToken, Previous)
                 });
 
                 if (Current.Type == TokenType.Comma)
@@ -586,6 +636,7 @@ public partial class Parser
             } while (true);
         }
 
+        var endToken = Previous;
         ExpectNewline();
 
         return new FromImportStatement
@@ -595,8 +646,9 @@ public partial class Parser
             ImportAll = importAll,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
