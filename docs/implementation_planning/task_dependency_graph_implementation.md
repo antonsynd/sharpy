@@ -202,12 +202,12 @@ Assert.Contains("a.spy", groups[1]);
 **File:** `src/Sharpy.Compiler/Project/DependencyGraphBuilder.cs`  
 **Estimated:** 30 minutes
 
-- [ ] Create `DependencyGraphBuilder` class
-- [ ] Add `AddFile(string filePath)` to register a file
-- [ ] Add `AddDependency(string fromFile, string toFile)` to record a dependency
-- [ ] Add `Build()` method returning `DependencyGraph`
-- [ ] Normalize paths on add (consistent separators)
-- [ ] Thread-safe implementation (use `ConcurrentDictionary` or locks)
+- [x] Create `DependencyGraphBuilder` class
+- [x] Add `AddFile(string filePath)` to register a file
+- [x] Add `AddDependency(string fromFile, string toFile)` to record a dependency
+- [x] Add `Build()` method returning `DependencyGraph`
+- [x] Normalize paths on add (consistent separators)
+- [x] Thread-safe implementation (use `ConcurrentDictionary` or locks)
 
 **Verification:**
 ```csharp
@@ -223,23 +223,23 @@ Assert.Contains("b.spy", graph.GetDirectDependencies("a.spy"));
 **File:** `src/Sharpy.Compiler/Project/DependencyGraphBuilder.cs`  
 **Estimated:** 20 minutes
 
-- [ ] Validate that dependency targets exist (optional, can be enabled)
-- [ ] Add `Build(bool validateTargets = false)` overload
-- [ ] Throw `InvalidOperationException` if validation fails with clear message
+- [x] Validate that dependency targets exist (optional, can be enabled)
+- [x] Add `Build(bool validateTargets = false)` overload
+- [x] Throw `InvalidOperationException` if validation fails with clear message
 
 ### Task 3.3: Create Builder Tests
-**File:** `src/Sharpy.Compiler.Tests/Project/DependencyGraphBuilderTests.cs`  
+**File:** `src/Sharpy.Compiler.Tests/Project/DependencyGraphBuilderTests.cs`
 **Estimated:** 30 minutes
 
-- [ ] `Build_EmptyBuilder_ReturnsEmptyGraph`
-- [ ] `AddDependency_AutoRegistersFiles`
-- [ ] `Build_MultipleCalls_ReturnsSameGraph` (builder is idempotent)
-- [ ] `PathNormalization_WorksCorrectly`
-- [ ] `ThreadSafety_ConcurrentAdds_NoExceptions` (parallel test)
+- [x] `Build_EmptyBuilder_ReturnsEmptyGraph`
+- [x] `AddDependency_AutoRegistersFiles`
+- [x] `Build_MultipleCalls_ReturnsSameGraph` (builder is idempotent)
+- [x] `PathNormalization_WorksCorrectly`
+- [x] `ThreadSafety_ConcurrentAdds_NoExceptions` (parallel test)
 
 ### ✅ Checkpoint 3.4: Commit Phase 3
-- [ ] All tests pass
-- [ ] Commit with message: `feat(project): Add DependencyGraphBuilder`
+- [x] All tests pass
+- [x] Commit with message: `feat(project): Add DependencyGraphBuilder`
 
 ---
 
