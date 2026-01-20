@@ -112,13 +112,22 @@ public partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // Delegate all operator validation to OperatorValidator
-        return _operatorValidator.ValidateBinaryOp(
-            binOp.Operator,
-            leftType,
-            rightType,
-            binOp.LineStart,
-            binOp.ColumnStart);
+        // Use TypeInferenceService for type inference (errors reported by V2 validator in pipeline)
+        var resultType = _typeInference.InferBinaryOpType(binOp.Operator, leftType, rightType);
+
+        // Fall back to legacy validator for error reporting and edge cases not yet in TypeInferenceService
+        // TODO: Remove this fallback once TypeInferenceService covers all cases
+        if (resultType == null)
+        {
+            return _operatorValidator.ValidateBinaryOp(
+                binOp.Operator,
+                leftType,
+                rightType,
+                binOp.LineStart,
+                binOp.ColumnStart);
+        }
+
+        return resultType;
     }
 
     /// <summary>
@@ -385,12 +394,21 @@ public partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // Delegate all unary operator validation to OperatorValidator
-        return _operatorValidator.ValidateUnaryOp(
-            unOp.Operator,
-            operandType,
-            unOp.LineStart,
-            unOp.ColumnStart);
+        // Use TypeInferenceService for type inference (errors reported by V2 validator in pipeline)
+        var resultType = _typeInference.InferUnaryOpType(unOp.Operator, operandType);
+
+        // Fall back to legacy validator for error reporting and edge cases
+        // TODO: Remove this fallback once TypeInferenceService covers all cases
+        if (resultType == null)
+        {
+            return _operatorValidator.ValidateUnaryOp(
+                unOp.Operator,
+                operandType,
+                unOp.LineStart,
+                unOp.ColumnStart);
+        }
+
+        return resultType;
     }
 
     private SemanticType CheckComparisonChain(ComparisonChain chain)
@@ -652,13 +670,21 @@ public partial class TypeChecker
         var objectType = CheckExpression(indexAccess.Object);
         var indexType = CheckExpression(indexAccess.Index);
 
-        // Validate that the object type supports indexing and get the element type
-        // This uses ProtocolValidator which checks for __getitem__ protocol support
-        return _protocolValidator.ValidateIndexAccess(
-            objectType,
-            indexType,
-            indexAccess.LineStart,
-            indexAccess.ColumnStart);
+        // Use TypeInferenceService for type inference (errors reported by V2 validator in pipeline)
+        var resultType = _typeInference.InferIndexAccessType(objectType, indexType);
+
+        // Fall back to legacy validator for error reporting and edge cases
+        // TODO: Remove this fallback once TypeInferenceService covers all cases
+        if (resultType == null)
+        {
+            return _protocolValidator.ValidateIndexAccess(
+                objectType,
+                indexType,
+                indexAccess.LineStart,
+                indexAccess.ColumnStart);
+        }
+
+        return resultType;
     }
 
     private SemanticType CheckFunctionCall(FunctionCall call)
@@ -744,10 +770,20 @@ public partial class TypeChecker
             // TODO: Consider using a constant from BuiltinRegistry or BuiltinNames class instead of hardcoded string
             if (id.Name == "len" && argTypes.Count == 1)
             {
-                return _protocolValidator.ValidateLen(
-                    argTypes[0],
-                    call.LineStart,
-                    call.ColumnStart);
+                // Use TypeInferenceService for type inference (errors reported by V2 validator in pipeline)
+                var lenType = _typeInference.InferLenType(argTypes[0]);
+
+                // Fall back to legacy validator for error reporting
+                // TODO: Remove this fallback once TypeInferenceService covers all cases
+                if (lenType == null)
+                {
+                    return _protocolValidator.ValidateLen(
+                        argTypes[0],
+                        call.LineStart,
+                        call.ColumnStart);
+                }
+
+                return lenType;
             }
 
             var symbol = _symbolTable.Lookup(id.Name);
@@ -1180,12 +1216,13 @@ public partial class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type and validate __iter__ protocol
+                // Check iterator type and infer element type
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = _protocolValidator.ValidateIteration(
-                    iterType,
-                    forClause.Iterator.LineStart,
-                    forClause.Iterator.ColumnStart);
+                var elemType = _typeInference.InferIterableElementType(iterType)
+                    ?? _protocolValidator.ValidateIteration(
+                        iterType,
+                        forClause.Iterator.LineStart,
+                        forClause.Iterator.ColumnStart);
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)
@@ -1245,12 +1282,13 @@ public partial class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type and validate __iter__ protocol
+                // Check iterator type and infer element type
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = _protocolValidator.ValidateIteration(
-                    iterType,
-                    forClause.Iterator.LineStart,
-                    forClause.Iterator.ColumnStart);
+                var elemType = _typeInference.InferIterableElementType(iterType)
+                    ?? _protocolValidator.ValidateIteration(
+                        iterType,
+                        forClause.Iterator.LineStart,
+                        forClause.Iterator.ColumnStart);
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)
@@ -1309,12 +1347,13 @@ public partial class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type and validate __iter__ protocol
+                // Check iterator type and infer element type
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = _protocolValidator.ValidateIteration(
-                    iterType,
-                    forClause.Iterator.LineStart,
-                    forClause.Iterator.ColumnStart);
+                var elemType = _typeInference.InferIterableElementType(iterType)
+                    ?? _protocolValidator.ValidateIteration(
+                        iterType,
+                        forClause.Iterator.LineStart,
+                        forClause.Iterator.ColumnStart);
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)

@@ -427,12 +427,12 @@ public partial class TypeChecker
     {
         var iterType = CheckExpression(forStmt.Iterator);
 
-        // Validate that the iterator type is iterable and extract element type
-        // This uses ProtocolValidator which checks for __iter__ protocol support
-        var elementType = _protocolValidator.ValidateIteration(
-            iterType,
-            forStmt.Iterator.LineStart,
-            forStmt.Iterator.ColumnStart);
+        // Infer element type from the iterator (errors reported by V2 validator in pipeline)
+        var elementType = _typeInference.InferIterableElementType(iterType)
+            ?? _protocolValidator.ValidateIteration(
+                iterType,
+                forStmt.Iterator.LineStart,
+                forStmt.Iterator.ColumnStart);
 
         // Enter scope for for-body block FIRST
         // This ensures loop variables are scoped to the loop
