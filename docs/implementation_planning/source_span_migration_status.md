@@ -2,7 +2,7 @@
 
 This document tracks the progress of implementing TextSpan support across the compiler.
 
-## Completed (Part B Foundation)
+## Completed: Part B Foundation
 
 - [x] `TextSpan` type (`src/Sharpy.Compiler/Text/TextSpan.cs`)
   - Immutable struct for [start, end) character ranges
@@ -31,107 +31,126 @@ This document tracks the progress of implementing TextSpan support across the co
   - Optional, defaults to null for backward compatibility
   - Existing `LineStart`/`ColumnStart`/`LineEnd`/`ColumnEnd` preserved
 
-## In Progress
+## Completed: Parser Helper Methods
 
-- [ ] Parser span population (partial)
-  - Helper methods added: `GetSpanFromToken`, `GetSpanFromTokens`
-  - Currently populating spans for subset of node types
+- [x] `GetSpanFromToken(Token)` - Create span from single token
+- [x] `GetSpanFromTokens(Token, Token)` - Create span covering token range
+- [x] `CombineSpans(TextSpan?, TextSpan?)` - Merge two spans
 
-## Node Types with Spans
+## Completed: Node Types with Spans
 
-Expressions:
+### Expressions
+
 - [x] Identifier
+- [x] IntegerLiteral
+- [x] FloatLiteral
+- [x] StringLiteral
+- [x] BooleanLiteral
+- [x] NoneLiteral
+- [x] EllipsisLiteral
+- [x] FStringLiteral (via string token)
 
-Literals:
-- [ ] IntegerLiteral
-- [ ] FloatLiteral
-- [ ] StringLiteral
-- [ ] BooleanLiteral
-- [ ] NoneLiteral
-- [ ] EllipsisLiteral
-- [ ] FStringLiteral
+### Collections
 
-Collections:
-- [ ] ListLiteral
-- [ ] DictLiteral
-- [ ] SetLiteral
-- [ ] TupleLiteral
+- [x] ListLiteral
+- [x] DictLiteral
+- [x] SetLiteral
+- [x] TupleLiteral
 
-Operators:
-- [ ] BinaryOp
-- [ ] UnaryOp
-- [ ] ComparisonChain
+### Operators
 
-Access:
-- [ ] MemberAccess
-- [ ] IndexAccess
-- [ ] SliceAccess
-- [ ] Call
+- [x] BinaryOp (covers both operands)
+- [x] UnaryOp (operator to operand)
+- [x] ComparisonChain
 
-Comprehensions:
-- [ ] ListComprehension
-- [ ] DictComprehension
-- [ ] SetComprehension
-- [ ] GeneratorExpression
+### Access Expressions
 
-Other Expressions:
-- [ ] Parenthesized
-- [ ] TernaryExpression
-- [ ] LambdaExpression
-- [ ] AwaitExpression
-- [ ] YieldExpression
+- [x] MemberAccess
+- [x] IndexAccess
+- [x] SliceAccess
+- [x] FunctionCall
 
-## Node Types Without Spans (need migration)
+### Comprehensions
 
-Statements:
-- [ ] ExpressionStatement
-- [ ] Assignment
-- [ ] AugmentedAssignment
-- [ ] VariableDeclaration
-- [ ] ReturnStatement
-- [ ] IfStatement
-- [ ] WhileStatement
-- [ ] ForStatement
-- [ ] BreakStatement
-- [ ] ContinueStatement
-- [ ] PassStatement
-- [ ] RaiseStatement
-- [ ] AssertStatement
-- [ ] TryStatement
-- [ ] WithStatement
-- [ ] MatchStatement
-- [ ] DelStatement
+- [x] ListComprehension
+- [x] DictComprehension
+- [x] SetComprehension
 
-Definitions:
-- [ ] FunctionDef
-- [ ] ClassDef
-- [ ] StructDef
-- [ ] InterfaceDef
-- [ ] EnumDef
-- [ ] PropertyDef
-- [ ] EventDef
+### Other Expressions
 
-Imports:
-- [ ] ImportStatement
-- [ ] FromImportStatement
+- [x] Parenthesized (within the inner expression span context)
+- [x] TernaryExpression (condition to else value)
+- [x] LambdaExpression
 
-Types:
-- [ ] TypeAnnotation (all variants)
+### Statements
+
+- [x] ExpressionStatement (via expression span)
+- [x] Assignment
+- [x] AugmentedAssignment
+- [x] VariableDeclaration
+- [x] ReturnStatement
+- [x] IfStatement (including elif branches)
+- [x] WhileStatement
+- [x] ForStatement
+- [x] BreakStatement
+- [x] ContinueStatement
+- [x] PassStatement
+- [x] RaiseStatement
+- [x] AssertStatement
+- [x] TryStatement (including handlers)
+- [x] WithStatement
+- [x] MatchStatement
+
+### Definitions
+
+- [x] FunctionDef (including decorators)
+- [x] ClassDef
+- [x] StructDef
+- [x] InterfaceDef
+- [x] EnumDef
+- [x] PropertyDef
+- [x] Parameter
+
+### Imports
+
+- [x] ImportStatement (with aliases)
+- [x] FromImportStatement (with aliases)
+- [x] ImportAlias
+
+### Type Annotations
+
+- [x] SimpleTypeAnnotation
+- [x] GenericTypeAnnotation
+- [x] NullableTypeAnnotation
+- [x] UnionTypeAnnotation
+- [x] FunctionTypeAnnotation
+- [x] TupleTypeAnnotation
 
 ## Test Coverage
 
 - Unit tests for TextSpan: 18 tests in `TextSpanTests.cs`
 - Unit tests for SourceText: 8 tests in `SourceTextTests.cs`
 - Lexer position tests: 8 tests in `LexerTests.cs`
-- Parser span tests: 2 tests in `ParserTests.cs`
+- Parser span tests: 22 tests in `ParserSpanTests.cs`
+  - Literals: 6 tests
+  - Collections: 2 tests
+  - Operators: 2 tests
+  - Access expressions: 3 tests
+  - Statements: 4 tests
+  - Definitions: 3 tests
+  - Type annotations: 2 tests
 
-## Next Steps
+## Future Work
 
-1. Continue adding span population to additional node types
-2. Focus on high-value nodes first (error reporting):
-   - Identifier (done)
-   - Call expressions
-   - Member access
-   - Assignment targets
-3. Add semantic layer span propagation
-4. Update error messages to use spans
+1. **Semantic Layer Integration**
+   - Update error messages to use spans for precise locations
+   - Use spans in DiagnosticBag for LSP-compatible diagnostics
+
+2. **LSP Support (v0.2.x+)**
+   - Hover information using spans
+   - Go-to-definition with span-based navigation
+   - Error squiggles with precise ranges
+
+3. **Debugger Support**
+   - PDB generation requires accurate source mapping
+   - Spans enable breakpoint positioning
