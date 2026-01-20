@@ -311,4 +311,161 @@ class Number:
     }
 
     #endregion
+
+    #region Error Deduplication
+
+    [Fact]
+    public void DefaultPipeline_NoDuplicateErrors()
+    {
+        var code = @"
+def foo() -> int:
+    x = 5
+";
+        var (_, typeChecker) = CompileAndCheck(code);
+
+        // Should have exactly one "must return" error, not duplicates from both
+        // legacy validator and V2 validator
+        var returnErrors = typeChecker.Errors
+            .Where(e => e.Message.Contains("must return"))
+            .ToList();
+
+        Assert.Single(returnErrors);
+    }
+
+    [Fact]
+    public void DefaultPipeline_NoDuplicateBreakErrors()
+    {
+        var code = @"
+def foo() -> None:
+    break
+";
+        var (_, typeChecker) = CompileAndCheck(code);
+
+        // Should have exactly one "break statement outside loop" error
+        var breakErrors = typeChecker.Errors
+            .Where(e => e.Message.Contains("break"))
+            .ToList();
+
+        Assert.Single(breakErrors);
+    }
+
+    [Fact]
+    public void DefaultPipeline_NoDuplicateOperatorErrors()
+    {
+        var code = @"
+def foo() -> None:
+    x: int = 'hello' + 5
+";
+        var (_, typeChecker) = CompileAndCheck(code);
+
+        // Should have type error(s) but no duplicates for same operator error
+        var operatorErrors = typeChecker.Errors
+            .Where(e => e.Message.Contains("does not support operator"))
+            .GroupBy(e => (e.Line, e.Message))
+            .ToList();
+
+        // Each error should appear only once (grouping by line+message should have count 1)
+        foreach (var group in operatorErrors)
+        {
+            Assert.Single(group);
+        }
+    }
+
+    #endregion
+
+    #region Error Ordering
+
+    [Fact]
+    public void DefaultPipeline_ReportsMultipleErrorTypes()
+    {
+        // Code with multiple error types to verify all are reported
+        var code = @"
+class BadOperator:
+    def __add__(self) -> int:
+        break
+        return 0
+";
+        var (_, typeChecker) = CompileAndCheck(code);
+
+        // Should have at least 2 errors: signature and control flow
+        Assert.True(typeChecker.Errors.Count >= 2);
+
+        // Verify both error types are present
+        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("parameter"));
+        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("break"));
+    }
+
+    #endregion
+
+    #region TypeInferenceService Integration
+
+    [Fact]
+    public void DefaultPipeline_InfersBinaryOpTypes()
+    {
+        var code = @"
+def foo() -> int:
+    x: int = 5 + 3
+    y: int = x * 2
+    return y
+";
+        var (_, typeChecker) = CompileAndCheck(code);
+
+        Assert.Empty(typeChecker.Errors);
+    }
+
+    [Fact]
+    public void DefaultPipeline_InfersUnaryOpTypes()
+    {
+        var code = @"
+def foo() -> int:
+    x: int = 5
+    y: int = -x
+    return y
+";
+        var (_, typeChecker) = CompileAndCheck(code);
+
+        Assert.Empty(typeChecker.Errors);
+    }
+
+    [Fact]
+    public void DefaultPipeline_InfersIterableElementTypes()
+    {
+        var code = @"
+def foo() -> None:
+    items: list[int] = [1, 2, 3]
+    for item in items:
+        x: int = item
+";
+        var (_, typeChecker) = CompileAndCheck(code);
+
+        Assert.Empty(typeChecker.Errors);
+    }
+
+    [Fact]
+    public void DefaultPipeline_InfersIndexAccessTypes()
+    {
+        var code = @"
+def foo() -> int:
+    items: list[int] = [1, 2, 3]
+    return items[0]
+";
+        var (_, typeChecker) = CompileAndCheck(code);
+
+        Assert.Empty(typeChecker.Errors);
+    }
+
+    [Fact]
+    public void DefaultPipeline_InfersLenReturnType()
+    {
+        var code = @"
+def foo() -> int:
+    items: list[int] = [1, 2, 3]
+    return len(items)
+";
+        var (_, typeChecker) = CompileAndCheck(code);
+
+        Assert.Empty(typeChecker.Errors);
+    }
+
+    #endregion
 }
