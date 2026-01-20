@@ -1,3 +1,5 @@
+using Sharpy.Compiler.Text;
+
 namespace Sharpy.Compiler.Lexer;
 
 /// <summary>
@@ -164,7 +166,7 @@ public enum TokenType
 /// <summary>
 /// Represents a token in the Sharpy source code
 /// </summary>
-public record Token
+public record Token : ILocatable
 {
     public TokenType Type { get; init; }
     public string Value { get; init; } = string.Empty;
@@ -204,10 +206,16 @@ public record Token
     /// Gets a TextSpan representing this token's location in the source.
     /// Returns null if position tracking was not enabled.
     /// </summary>
-    public Text.TextSpan? GetSpan()
+    public TextSpan? GetSpan()
     {
         if (Position < 0)
             return null;
-        return new Text.TextSpan(Position, Length);
+        return new TextSpan(Position, Length);
     }
+
+    /// <summary>
+    /// The span of this token in the source text (ILocatable implementation).
+    /// Returns null if position tracking was not enabled.
+    /// </summary>
+    TextSpan? ILocatable.Span => GetSpan();
 }
