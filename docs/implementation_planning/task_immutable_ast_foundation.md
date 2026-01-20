@@ -250,7 +250,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
 
 **Goal**: Migrate non-Node helper records that contain List<T>.
 
-- [ ] **2.1.1** Migrate `ElifClause` in `Statement.cs`
+- [x] **2.1.1** Migrate `ElifClause` in `Statement.cs`
   ```csharp
   // BEFORE:
   public record ElifClause
@@ -269,7 +269,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.1.2** Migrate `ExceptHandler` in `Statement.cs`
+- [x] **2.1.2** Migrate `ExceptHandler` in `Statement.cs`
   ```csharp
   // AFTER:
   public record ExceptHandler
@@ -281,13 +281,13 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.1.3** Migrate `Parameter` in `Statement.cs`
+- [x] **2.1.3** Migrate `Parameter` in `Statement.cs`
   - No List<T> changes needed, but verify all properties use `init`
 
-- [ ] **2.1.4** Migrate `EnumMember` in `Statement.cs`
+- [x] **2.1.4** Migrate `EnumMember` in `Statement.cs`
   - No List<T> changes needed
 
-- [ ] **2.1.5** Migrate `TypeParameterDef` in `Statement.cs`
+- [x] **2.1.5** Migrate `TypeParameterDef` in `Statement.cs`
   ```csharp
   // AFTER:
   public record TypeParameterDef
@@ -298,22 +298,22 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.1.6** Migrate `Decorator` in `Statement.cs`
+- [x] **2.1.6** Migrate `Decorator` in `Statement.cs`
   - No List<T> changes needed
 
-- [ ] **2.1.7** Migrate `ImportAlias` in `Statement.cs`
+- [x] **2.1.7** Migrate `ImportAlias` in `Statement.cs`
   - No List<T> changes needed
 
-- [ ] **2.1.8** Migrate `FStringPart` in `Expression.cs`
+- [x] **2.1.8** Migrate `FStringPart` in `Expression.cs`
   - No List<T> changes needed
 
-- [ ] **2.1.9** Migrate `DictEntry` in `Expression.cs`
+- [x] **2.1.9** Migrate `DictEntry` in `Expression.cs`
   - No List<T> changes needed
 
-- [ ] **2.1.10** Migrate `KeywordArgument` in `Expression.cs`
+- [x] **2.1.10** Migrate `KeywordArgument` in `Expression.cs`
   - No List<T> changes needed
 
-- [ ] **2.1.11** Run tests - expect some failures in parser tests
+- [x] **2.1.11** Run tests - expect some failures in parser tests
   ```bash
   dotnet test
   ```
@@ -327,7 +327,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
 
 **Goal**: Update parser code that creates helper records.
 
-- [ ] **2.2.1** Update `Parser.Statements.cs` - `ParseIfStatement`
+- [x] **2.2.1** Update `Parser.Statements.cs` - `ParseIfStatement`
   ```csharp
   // BEFORE:
   var elifClauses = new List<ElifClause>();
@@ -346,13 +346,13 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   };
   ```
 
-- [ ] **2.2.2** Update `Parser.Statements.cs` - `ParseTryStatement`
+- [x] **2.2.2** Update `Parser.Statements.cs` - `ParseTryStatement`
   - Update exception handler list building
 
-- [ ] **2.2.3** Update other parser methods that build helper type lists
+- [x] **2.2.3** Update other parser methods that build helper type lists
   - Search for patterns like `new List<ElifClause>()`, `new List<ExceptHandler>()`, etc.
 
-- [ ] **2.2.4** Run tests - should have fewer failures now
+- [x] **2.2.4** Run tests - should have fewer failures now
   ```bash
   dotnet test
   ```
@@ -365,7 +365,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
 
 **Goal**: Migrate type-related AST nodes.
 
-- [ ] **2.3.1** Migrate `TypeAnnotation` in `Types.cs`
+- [x] **2.3.1** Migrate `TypeAnnotation` in `Types.cs`
   ```csharp
   // AFTER:
   public record TypeAnnotation
@@ -377,7 +377,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.3.2** Migrate `FunctionType` in `Types.cs`
+- [x] **2.3.2** Migrate `FunctionType` in `Types.cs`
   ```csharp
   // AFTER:
   public record FunctionType
@@ -388,7 +388,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.3.3** Migrate `TupleType` in `Types.cs`
+- [x] **2.3.3** Migrate `TupleType` in `Types.cs`
   ```csharp
   // AFTER:
   public record TupleType
@@ -397,10 +397,10 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.3.4** Update `Parser.Types.cs` to build ImmutableArrays
+- [x] **2.3.4** Update `Parser.Types.cs` to build ImmutableArrays
   - Update `ParseTypeAnnotation`, `ParseFunctionType`, etc.
 
-- [ ] **2.3.5** Run tests
+- [x] **2.3.5** Run tests
   ```bash
   dotnet test
   ```
@@ -413,7 +413,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
 
 **Goal**: Migrate expression AST nodes.
 
-- [ ] **2.4.1** Migrate collection literal expressions in `Expression.cs`
+- [x] **2.4.1** Migrate collection literal expressions in `Expression.cs`
   ```csharp
   // ListLiteral
   public record ListLiteral : Expression
@@ -440,7 +440,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.4.2** Migrate `FStringLiteral` in `Expression.cs`
+- [x] **2.4.2** Migrate `FStringLiteral` in `Expression.cs`
   ```csharp
   public record FStringLiteral : Expression
   {
@@ -448,7 +448,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.4.3** Migrate comprehension types in `Expression.cs`
+- [x] **2.4.3** Migrate comprehension types in `Expression.cs`
   ```csharp
   // ListComprehension
   public record ListComprehension : Expression
@@ -473,7 +473,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.4.4** Migrate `FunctionCall` in `Expression.cs`
+- [x] **2.4.4** Migrate `FunctionCall` in `Expression.cs`
   ```csharp
   public record FunctionCall : Expression
   {
@@ -483,7 +483,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.4.5** Migrate `ComparisonChain` in `Expression.cs`
+- [x] **2.4.5** Migrate `ComparisonChain` in `Expression.cs`
   ```csharp
   public record ComparisonChain : Expression
   {
@@ -492,7 +492,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.4.6** Migrate `LambdaExpression` in `Expression.cs`
+- [x] **2.4.6** Migrate `LambdaExpression` in `Expression.cs`
   ```csharp
   public record LambdaExpression : Expression
   {
@@ -501,10 +501,10 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.4.7** Update `Parser.Expressions.cs` and `Parser.Primaries.cs`
+- [x] **2.4.7** Update `Parser.Expressions.cs` and `Parser.Primaries.cs`
   - Update all methods that create expression nodes with List<T>
 
-- [ ] **2.4.8** Run tests
+- [x] **2.4.8** Run tests
   ```bash
   dotnet test
   ```
@@ -517,7 +517,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
 
 **Goal**: Migrate statement AST nodes.
 
-- [ ] **2.5.1** Migrate control flow statements in `Statement.cs`
+- [x] **2.5.1** Migrate control flow statements in `Statement.cs`
   ```csharp
   // IfStatement
   public record IfStatement : Statement
@@ -555,7 +555,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.5.2** Migrate import statements in `Statement.cs`
+- [x] **2.5.2** Migrate import statements in `Statement.cs`
   ```csharp
   // ImportStatement
   public record ImportStatement : Statement
@@ -577,10 +577,10 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.5.3** Update `Parser.Statements.cs`
+- [x] **2.5.3** Update `Parser.Statements.cs`
   - Update all statement parsing methods
 
-- [ ] **2.5.4** Run tests
+- [x] **2.5.4** Run tests
   ```bash
   dotnet test
   ```
@@ -593,7 +593,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
 
 **Goal**: Migrate function, class, struct, interface, enum definitions.
 
-- [ ] **2.6.1** Migrate `FunctionDef` in `Statement.cs`
+- [x] **2.6.1** Migrate `FunctionDef` in `Statement.cs`
   ```csharp
   public record FunctionDef : Statement
   {
@@ -607,7 +607,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.6.2** Migrate `ClassDef` in `Statement.cs`
+- [x] **2.6.2** Migrate `ClassDef` in `Statement.cs`
   ```csharp
   public record ClassDef : Statement
   {
@@ -620,7 +620,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.6.3** Migrate `StructDef` in `Statement.cs`
+- [x] **2.6.3** Migrate `StructDef` in `Statement.cs`
   ```csharp
   public record StructDef : Statement
   {
@@ -633,7 +633,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.6.4** Migrate `InterfaceDef` in `Statement.cs`
+- [x] **2.6.4** Migrate `InterfaceDef` in `Statement.cs`
   ```csharp
   public record InterfaceDef : Statement
   {
@@ -645,7 +645,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.6.5** Migrate `EnumDef` in `Statement.cs`
+- [x] **2.6.5** Migrate `EnumDef` in `Statement.cs`
   ```csharp
   public record EnumDef : Statement
   {
@@ -655,10 +655,10 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.6.6** Update `Parser.Definitions.cs`
+- [x] **2.6.6** Update `Parser.Definitions.cs`
   - Update all definition parsing methods
 
-- [ ] **2.6.7** Run tests
+- [x] **2.6.7** Run tests
   ```bash
   dotnet test
   ```
@@ -671,7 +671,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
 
 **Goal**: Migrate the root Module node.
 
-- [ ] **2.7.1** Migrate `Module` in `Node.cs`
+- [x] **2.7.1** Migrate `Module` in `Node.cs`
   ```csharp
   public record Module : Node
   {
@@ -680,9 +680,9 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   }
   ```
 
-- [ ] **2.7.2** Update `Parser.cs` - `ParseModule` method
+- [x] **2.7.2** Update `Parser.cs` - `ParseModule` method
 
-- [ ] **2.7.3** Run tests
+- [x] **2.7.3** Run tests
   ```bash
   dotnet test
   ```
@@ -697,14 +697,14 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
 
 **Goal**: Update TypeChecker, NameResolver, etc. to work with ImmutableArray.
 
-- [ ] **3.1.1** Update `NameResolver.cs`
+- [x] **3.1.1** Update `NameResolver.cs`
   - Replace `foreach (var stmt in node.Body)` patterns (should work unchanged)
   - Replace any code that adds to AST node lists (should be removed)
 
-- [ ] **3.1.2** Update `TypeChecker.cs` and partials
+- [x] **3.1.2** Update `TypeChecker.cs` and partials
   - Same pattern as above
 
-- [ ] **3.1.3** Update all validators
+- [x] **3.1.3** Update all validators
   - `AccessValidator.cs`
   - `ControlFlowValidator.cs`
   - `DefaultParameterValidator.cs`
@@ -712,7 +712,7 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   - `ProtocolValidator.cs`
   - etc.
 
-- [ ] **3.1.4** Run tests
+- [x] **3.1.4** Run tests
   ```bash
   dotnet test
   ```
@@ -725,11 +725,11 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
 
 **Goal**: Update RoslynEmitter to work with ImmutableArray.
 
-- [ ] **3.2.1** Update `RoslynEmitter.cs`
+- [x] **3.2.1** Update `RoslynEmitter.cs`
   - ImmutableArray iteration works the same as List
   - No major changes expected, but verify
 
-- [ ] **3.2.2** Run tests
+- [x] **3.2.2** Run tests
   ```bash
   dotnet test
   ```
@@ -742,16 +742,16 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
 
 **Goal**: Update test code that creates AST nodes directly.
 
-- [ ] **3.3.1** Search for test patterns that need updating
+- [x] **3.3.1** Search for test patterns that need updating
   ```bash
   grep -r "new List<" src/Sharpy.Compiler.Tests/ --include="*.cs"
   grep -r "Body = new()" src/Sharpy.Compiler.Tests/ --include="*.cs"
   ```
 
-- [ ] **3.3.2** Update test helper methods
+- [x] **3.3.2** Update test helper methods
   - Update `Parse()` helper methods if they create AST directly
 
-- [ ] **3.3.3** Update individual tests that create AST manually
+- [x] **3.3.3** Update individual tests that create AST manually
   ```csharp
   // BEFORE:
   var func = new FunctionDef
@@ -770,10 +770,10 @@ The strategy is to migrate from leaf nodes (simple types) to root nodes (complex
   };
   ```
 
-- [ ] **3.3.4** Enable the immutability tests created in Phase 1
+- [x] **3.3.4** Enable the immutability tests created in Phase 1
   - Remove `Skip` attributes from `ImmutabilityTests.cs`
 
-- [ ] **3.3.5** Run all tests
+- [x] **3.3.5** Run all tests
   ```bash
   dotnet test
   ```
