@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace Sharpy.Compiler.Parser.Ast;
 
 /// <summary>
