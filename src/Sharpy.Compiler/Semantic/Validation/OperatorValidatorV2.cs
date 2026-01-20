@@ -256,7 +256,7 @@ public class OperatorValidatorV2 : SemanticValidatorBase
                 if (reflectedDunder == null || !SupportsOperator(rightType, reflectedDunder))
                 {
                     AddError(_context,
-                        $"Unsupported operand types for {OperatorToString(binOp.Operator)}: '{leftType.GetDisplayName()}' and '{rightType.GetDisplayName()}'",
+                        $"Type '{leftType.GetDisplayName()}' does not support operator '{OperatorToString(binOp.Operator)}' with right operand of type '{rightType.GetDisplayName()}'",
                         binOp.LineStart, binOp.ColumnStart);
                 }
             }
@@ -280,7 +280,7 @@ public class OperatorValidatorV2 : SemanticValidatorBase
         if (!SupportsOperator(operandType, dunderName))
         {
             AddError(_context,
-                $"Bad operand type for unary {OperatorToString(unaryOp.Operator)}: '{operandType.GetDisplayName()}'",
+                $"Type '{operandType.GetDisplayName()}' does not support unary operator '{OperatorToString(unaryOp.Operator)}'",
                 unaryOp.LineStart, unaryOp.ColumnStart);
         }
     }
