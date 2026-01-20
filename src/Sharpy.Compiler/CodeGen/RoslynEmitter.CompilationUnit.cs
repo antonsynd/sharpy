@@ -35,7 +35,7 @@ public partial class RoslynEmitter
         {
             fromImports = module.Body
                 .OfType<FromImportStatement>()
-                .Where(f => f.ReExportedSymbols != null && f.ReExportedSymbols.Count > 0)
+                .Where(f => HasReExportedSymbols(f))
                 .ToList();
         }
 
@@ -283,7 +283,7 @@ public partial class RoslynEmitter
 
             // Use ResolvedModulePath for relative imports (e.g., ".helpers" → "mypackage.helpers")
             // Fall back to Module for non-relative imports or when resolution hasn't been performed
-            var moduleName = fromImport.ResolvedModulePath ?? fromImport.Module;
+            var moduleName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
             var moduleNamespacePath = ConvertModuleNameToNamespace(moduleName);
 
             // The module class is always named "Exports" (not the module name)

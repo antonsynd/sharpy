@@ -226,13 +226,20 @@ public class ProjectCompiler
         _semanticInfo = new SemanticInfo();
         _importResolver = new ImportResolver(_logger, _moduleRegistry);
 
+        // Create SemanticBinding for storing semantic data separate from AST
+        var semanticBinding = new SemanticBinding();
+
         // Store in ProjectModel
         _projectModel!.GlobalSymbols = _symbolTable;
         _projectModel.SemanticInfo = _semanticInfo;
+        _projectModel.SemanticBinding = semanticBinding;
 
         // Initialize dependency graph builder and connect to import resolver
         _graphBuilder = new DependencyGraphBuilder();
         _importResolver.SetDependencyGraphBuilder(_graphBuilder);
+
+        // Connect SemanticBinding to import resolver for storing import data
+        _importResolver.SetSemanticBinding(semanticBinding);
 
         // Register all parsed files in the dependency graph
         foreach (var sourceFile in _parsedModules.Keys)
@@ -559,7 +566,8 @@ public class ProjectCompiler
                 ProjectNamespace = config.RootNamespace,
                 ProjectRootPath = ComputeSourceRootPath(config),
                 IsEntryPoint = isEntryPoint,
-                Logger = _logger
+                Logger = _logger,
+                SemanticBinding = _projectModel.SemanticBinding
             };
 
             var emitter = new RoslynEmitter(codeGenContext);

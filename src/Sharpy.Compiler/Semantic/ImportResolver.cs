@@ -30,6 +30,7 @@ public class ImportResolver
     private readonly ModuleRegistry? _moduleRegistry;
     private readonly ModuleResolver _moduleResolver;
     private DependencyGraphBuilder? _graphBuilder;
+    private SemanticBinding? _semanticBinding;
 
     private string? _currentModulePath = null;
 
@@ -38,6 +39,16 @@ public class ImportResolver
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = moduleRegistry;
         _moduleResolver = moduleResolver ?? new ModuleResolver(logger);
+    }
+
+    /// <summary>
+    /// Sets the semantic binding for storing semantic data separate from AST nodes.
+    /// When set, import resolution data will be stored in SemanticBinding instead of
+    /// directly on AST nodes, enabling immutable AST.
+    /// </summary>
+    public void SetSemanticBinding(SemanticBinding binding)
+    {
+        _semanticBinding = binding;
     }
 
     public IReadOnlyList<SemanticError> Errors => _errors;
@@ -128,7 +139,16 @@ public class ImportResolver
 
             // Store the resolved module path for code generation
             // For relative imports like ".helpers", this gives the canonical name like "mypackage.helpers"
-            fromImport.ResolvedModulePath = resolution.CanonicalModuleName ?? resolution.ModuleName;
+            var resolvedPath = resolution.CanonicalModuleName ?? resolution.ModuleName;
+            if (_semanticBinding != null)
+            {
+                _semanticBinding.SetResolvedModulePath(fromImport, resolvedPath);
+            }
+            else
+            {
+                // Legacy fallback: store directly on AST (will be removed in future)
+                fromImport.ResolvedModulePath = resolvedPath;
+            }
 
             // Track the dependency (current module depends on imported module)
             // Note: .NET modules are not tracked in the file dependency graph
@@ -144,7 +164,7 @@ public class ImportResolver
         if (moduleInfo != null)
         {
             // Initialize the re-exported symbols dictionary for code generation
-            fromImport.ReExportedSymbols ??= new Dictionary<string, Symbol>();
+            var reExportedSymbols = new Dictionary<string, Symbol>();
 
             if (fromImport.ImportAll)
             {
@@ -158,7 +178,7 @@ public class ImportResolver
                     if (!name.StartsWith("_"))
                     {
                         var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
-                        fromImport.ReExportedSymbols[name] = reExportSymbol;
+                        reExportedSymbols[name] = reExportSymbol;
                     }
                 }
             }
@@ -189,8 +209,22 @@ public class ImportResolver
                     if (moduleInfo.ExportedSymbols.TryGetValue(symbolName, out var symbol))
                     {
                         var reExportSymbol = CreateReExportSymbol(symbol, fromImport, targetName);
-                        fromImport.ReExportedSymbols[targetName] = reExportSymbol;
+                        reExportedSymbols[targetName] = reExportSymbol;
                     }
+                }
+            }
+
+            // Store re-exported symbols
+            if (reExportedSymbols.Count > 0)
+            {
+                if (_semanticBinding != null)
+                {
+                    _semanticBinding.SetReExportedSymbols(fromImport, reExportedSymbols);
+                }
+                else
+                {
+                    // Legacy fallback: store directly on AST (will be removed in future)
+                    fromImport.ReExportedSymbols = reExportedSymbols;
                 }
             }
         }
@@ -434,8 +468,8 @@ public class ImportResolver
             return;
         }
 
-        // Initialize the re-exported symbols dictionary for code generation
-        fromImport.ReExportedSymbols ??= new Dictionary<string, Symbol>();
+        // Build re-exported symbols dictionary for code generation
+        var reExportedSymbols = new Dictionary<string, Symbol>();
 
         if (fromImport.ImportAll)
         {
@@ -447,7 +481,7 @@ public class ImportResolver
                     // Create a re-export symbol that references the original
                     var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
                     moduleInfo.ExportedSymbols[name] = reExportSymbol;
-                    fromImport.ReExportedSymbols[name] = reExportSymbol;
+                    reExportedSymbols[name] = reExportSymbol;
                 }
             }
         }
@@ -464,9 +498,23 @@ public class ImportResolver
                     // Create a re-export symbol, possibly with a different name (alias)
                     var reExportSymbol = CreateReExportSymbol(symbol, fromImport, targetName);
                     moduleInfo.ExportedSymbols[targetName] = reExportSymbol;
-                    fromImport.ReExportedSymbols[targetName] = reExportSymbol;
+                    reExportedSymbols[targetName] = reExportSymbol;
                 }
                 // If symbol not found, error will be reported during full import resolution
+            }
+        }
+
+        // Store re-exported symbols
+        if (reExportedSymbols.Count > 0)
+        {
+            if (_semanticBinding != null)
+            {
+                _semanticBinding.SetReExportedSymbols(fromImport, reExportedSymbols);
+            }
+            else
+            {
+                // Legacy fallback: store directly on AST (will be removed in future)
+                fromImport.ReExportedSymbols = reExportedSymbols;
             }
         }
     }
@@ -508,7 +556,7 @@ public class ImportResolver
                 DeclarationColumn = fromImport.ColumnStart,
                 IsReExport = true,
                 OriginalModule = fromImport.Module,
-                DefiningModule = type.DefiningModule ?? fromImport.ResolvedModulePath ?? fromImport.Module
+                DefiningModule = type.DefiningModule ?? GetResolvedModulePath(fromImport) ?? fromImport.Module
             },
             VariableSymbol var => new VariableSymbol
             {
@@ -524,6 +572,18 @@ public class ImportResolver
             },
             _ => originalSymbol // Fallback: use as-is
         };
+    }
+
+    /// <summary>
+    /// Gets the resolved module path from SemanticBinding or the AST property.
+    /// </summary>
+    private string? GetResolvedModulePath(FromImportStatement fromImport)
+    {
+        if (_semanticBinding != null)
+        {
+            return _semanticBinding.GetResolvedModulePath(fromImport);
+        }
+        return fromImport.ResolvedModulePath;
     }
 
     /// <summary>

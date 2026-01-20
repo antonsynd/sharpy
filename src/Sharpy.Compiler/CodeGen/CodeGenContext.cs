@@ -52,6 +52,12 @@ public class CodeGenContext
     /// </summary>
     public ICompilerLogger Logger { get; set; } = NullLogger.Instance;
 
+    /// <summary>
+    /// Semantic binding storing semantic data separate from AST nodes.
+    /// Used to retrieve import resolution data without reading from mutable AST properties.
+    /// </summary>
+    public SemanticBinding? SemanticBinding { get; set; }
+
     public CodeGenContext(SymbolTable symbolTable, BuiltinRegistry builtins)
     {
         SymbolTable = symbolTable;

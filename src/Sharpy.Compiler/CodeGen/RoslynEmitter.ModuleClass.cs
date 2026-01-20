@@ -260,15 +260,18 @@ public partial class RoslynEmitter
     /// </summary>
     private IEnumerable<MemberDeclarationSyntax> GenerateReExportMembers(FromImportStatement fromImport)
     {
-        if (fromImport.ReExportedSymbols == null || fromImport.ResolvedModulePath == null)
+        var reExportedSymbols = GetReExportedSymbols(fromImport);
+        var resolvedModulePath = GetResolvedModulePath(fromImport);
+
+        if (reExportedSymbols == null || resolvedModulePath == null)
             yield break;
 
         // Convert the resolved module path to a namespace path
         // e.g., "mypackage.helpers" -> "Mypackage.Helpers.Exports"
-        var sourceModuleNamespace = ConvertModuleNameToNamespace(fromImport.ResolvedModulePath);
+        var sourceModuleNamespace = ConvertModuleNameToNamespace(resolvedModulePath);
         var sourceClassName = $"{sourceModuleNamespace}.Exports";
 
-        foreach (var (localName, symbol) in fromImport.ReExportedSymbols)
+        foreach (var (localName, symbol) in reExportedSymbols)
         {
             switch (symbol)
             {

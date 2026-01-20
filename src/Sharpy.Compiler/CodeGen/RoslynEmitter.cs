@@ -259,4 +259,44 @@ public partial class RoslynEmitter
     {
         return symbol.CodeGenInfo?.OriginalImportName;
     }
+
+    // ============================================================
+    // SemanticBinding helper methods for FromImportStatement data
+    //
+    // These methods read from SemanticBinding when available,
+    // falling back to direct AST properties for backward compatibility.
+    // ============================================================
+
+    /// <summary>
+    /// Gets the resolved module path for a FromImportStatement from SemanticBinding or AST.
+    /// </summary>
+    private string? GetResolvedModulePath(FromImportStatement fromImport)
+    {
+        if (_context.SemanticBinding != null)
+        {
+            return _context.SemanticBinding.GetResolvedModulePath(fromImport);
+        }
+        return fromImport.ResolvedModulePath;
+    }
+
+    /// <summary>
+    /// Gets the re-exported symbols for a FromImportStatement from SemanticBinding or AST.
+    /// </summary>
+    private Dictionary<string, Symbol>? GetReExportedSymbols(FromImportStatement fromImport)
+    {
+        if (_context.SemanticBinding != null)
+        {
+            return _context.SemanticBinding.GetReExportedSymbols(fromImport);
+        }
+        return fromImport.ReExportedSymbols;
+    }
+
+    /// <summary>
+    /// Checks if a FromImportStatement has re-exported symbols.
+    /// </summary>
+    private bool HasReExportedSymbols(FromImportStatement fromImport)
+    {
+        var symbols = GetReExportedSymbols(fromImport);
+        return symbols != null && symbols.Count > 0;
+    }
 }

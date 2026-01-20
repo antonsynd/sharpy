@@ -112,6 +112,13 @@ public class ProjectModel
     /// </summary>
     public SemanticInfo? SemanticInfo { get; internal set; }
 
+    /// <summary>
+    /// The semantic binding storing semantic data separate from AST nodes.
+    /// This enables immutable AST while allowing semantic annotations.
+    /// Null until semantic analysis begins.
+    /// </summary>
+    public SemanticBinding? SemanticBinding { get; internal set; }
+
     #endregion
 
     #region Dependencies
