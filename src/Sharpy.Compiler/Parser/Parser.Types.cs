@@ -14,6 +14,7 @@ public partial class Parser
     {
         var startLine = Current.Line;
         var startColumn = Current.Column;
+        var startToken = Current;
 
         TypeAnnotation baseType;
 
@@ -21,22 +22,22 @@ public partial class Parser
         if (Current.Type == TokenType.LeftBracket)
         {
             // [T] list shorthand
-            baseType = ParseListTypeShorthand(startLine, startColumn);
+            baseType = ParseListTypeShorthand(startLine, startColumn, startToken);
         }
         else if (Current.Type == TokenType.LeftBrace)
         {
             // {T} set or {K: V} dict shorthand
-            baseType = ParseSetOrDictTypeShorthand(startLine, startColumn);
+            baseType = ParseSetOrDictTypeShorthand(startLine, startColumn, startToken);
         }
         else if (Current.Type == TokenType.LeftParen)
         {
             // () empty tuple, (T) single tuple, (T, U) tuple, or (T) -> U function type
-            baseType = ParseTupleOrFunctionTypeShorthand(startLine, startColumn);
+            baseType = ParseTupleOrFunctionTypeShorthand(startLine, startColumn, startToken);
         }
         else
         {
             // Standard type: identifier with optional generic args
-            baseType = ParseStandardTypeAnnotation(startLine, startColumn);
+            baseType = ParseStandardTypeAnnotation(startLine, startColumn, startToken);
         }
 
         // Check for array suffix: T[]
@@ -44,9 +45,10 @@ public partial class Parser
         {
             Advance(); // consume '['
             Advance(); // consume ']'
+            var endToken = Previous;
 
-            var endLine = Peek(-1).Line;
-            var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+            var endLine = endToken.Line;
+            var endColumn = endToken.Column + endToken.Value.Length;
 
             baseType = new TypeAnnotation
             {
@@ -56,7 +58,8 @@ public partial class Parser
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = endLine,
-                ColumnEnd = endColumn
+                ColumnEnd = endColumn,
+                Span = GetSpanFromTokens(startToken, endToken)
             };
         }
 
@@ -64,14 +67,16 @@ public partial class Parser
         if (Current.Type == TokenType.Question)
         {
             Advance();
-            var endLine = Peek(-1).Line;
-            var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+            var endToken = Previous;
+            var endLine = endToken.Line;
+            var endColumn = endToken.Column + endToken.Value.Length;
 
             baseType = baseType with
             {
                 IsNullable = true,
                 LineEnd = endLine,
-                ColumnEnd = endColumn
+                ColumnEnd = endColumn,
+                Span = GetSpanFromTokens(startToken, endToken)
             };
         }
 
@@ -82,7 +87,7 @@ public partial class Parser
     /// Parses standard type annotation: identifier with optional generic arguments.
     /// Handles: int, list[T], dict[K, V], auto, None
     /// </summary>
-    private TypeAnnotation ParseStandardTypeAnnotation(int startLine, int startColumn)
+    private TypeAnnotation ParseStandardTypeAnnotation(int startLine, int startColumn, Token startToken)
     {
         // Handle 'auto' keyword for type inference
         string name;
@@ -120,8 +125,9 @@ public partial class Parser
             Expect(TokenType.RightBracket);
         }
 
-        var endLine = Peek(-1).Line;
-        var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+        var endToken = Previous;
+        var endLine = endToken.Line;
+        var endColumn = endToken.Column + endToken.Value.Length;
 
         return new TypeAnnotation
         {
@@ -131,14 +137,15 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endLine,
-            ColumnEnd = endColumn
+            ColumnEnd = endColumn,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
     /// <summary>
     /// Parses [T] list shorthand. Produces same AST as list[T].
     /// </summary>
-    private TypeAnnotation ParseListTypeShorthand(int startLine, int startColumn)
+    private TypeAnnotation ParseListTypeShorthand(int startLine, int startColumn, Token startToken)
     {
         Advance(); // consume '['
 
@@ -151,8 +158,9 @@ public partial class Parser
         var elementType = ParseTypeAnnotation();
         Expect(TokenType.RightBracket);
 
-        var endLine = Peek(-1).Line;
-        var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+        var endToken = Previous;
+        var endLine = endToken.Line;
+        var endColumn = endToken.Column + endToken.Value.Length;
 
         return new TypeAnnotation
         {
@@ -162,7 +170,8 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endLine,
-            ColumnEnd = endColumn
+            ColumnEnd = endColumn,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 
@@ -170,7 +179,7 @@ public partial class Parser
     /// Parses {T} set or {K: V} dict shorthand.
     /// Presence of ':' distinguishes dict from set.
     /// </summary>
-    private TypeAnnotation ParseSetOrDictTypeShorthand(int startLine, int startColumn)
+    private TypeAnnotation ParseSetOrDictTypeShorthand(int startLine, int startColumn, Token startToken)
     {
         Advance(); // consume '{'
 
@@ -189,8 +198,9 @@ public partial class Parser
             var valueType = ParseTypeAnnotation();
             Expect(TokenType.RightBrace);
 
-            var endLine = Peek(-1).Line;
-            var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+            var endToken = Previous;
+            var endLine = endToken.Line;
+            var endColumn = endToken.Column + endToken.Value.Length;
 
             return new TypeAnnotation
             {
@@ -200,15 +210,17 @@ public partial class Parser
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = endLine,
-                ColumnEnd = endColumn
+                ColumnEnd = endColumn,
+                Span = GetSpanFromTokens(startToken, endToken)
             };
         }
 
         // Otherwise it's a set
         Expect(TokenType.RightBrace);
 
-        var setEndLine = Peek(-1).Line;
-        var setEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+        var setEndToken = Previous;
+        var setEndLine = setEndToken.Line;
+        var setEndColumn = setEndToken.Column + setEndToken.Value.Length;
 
         return new TypeAnnotation
         {
@@ -218,7 +230,8 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = setEndLine,
-            ColumnEnd = setEndColumn
+            ColumnEnd = setEndColumn,
+            Span = GetSpanFromTokens(startToken, setEndToken)
         };
     }
 
@@ -227,7 +240,7 @@ public partial class Parser
     /// () = empty tuple, (T) = single tuple, (T, U) = tuple, (T) -> U = function type.
     /// Presence of '->' distinguishes function type from tuple.
     /// </summary>
-    private TypeAnnotation ParseTupleOrFunctionTypeShorthand(int startLine, int startColumn)
+    private TypeAnnotation ParseTupleOrFunctionTypeShorthand(int startLine, int startColumn, Token startToken)
     {
         Advance(); // consume '('
 
@@ -262,8 +275,9 @@ public partial class Parser
             Advance(); // consume '->'
             var returnType = ParseTypeAnnotation();
 
-            var funcEndLine = Peek(-1).Line;
-            var funcEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+            var funcEndToken = Previous;
+            var funcEndLine = funcEndToken.Line;
+            var funcEndColumn = funcEndToken.Column + funcEndToken.Value.Length;
 
             // For function types, we return a special representation
             // The Name "function" with TypeArguments containing params + return type
@@ -278,13 +292,15 @@ public partial class Parser
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = funcEndLine,
-                ColumnEnd = funcEndColumn
+                ColumnEnd = funcEndColumn,
+                Span = GetSpanFromTokens(startToken, funcEndToken)
             };
         }
 
         // It's a tuple
-        var endLine = Peek(-1).Line;
-        var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+        var endToken = Previous;
+        var endLine = endToken.Line;
+        var endColumn = endToken.Column + endToken.Value.Length;
 
         return new TypeAnnotation
         {
@@ -294,7 +310,8 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endLine,
-            ColumnEnd = endColumn
+            ColumnEnd = endColumn,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 

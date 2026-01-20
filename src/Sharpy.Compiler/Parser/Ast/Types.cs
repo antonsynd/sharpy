@@ -14,6 +14,11 @@ public record TypeAnnotation
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+
+    /// <summary>
+    /// Character offset-based span. May be null if not tracked.
+    /// </summary>
+    public Text.TextSpan? Span { get; init; }
 }
 
 /// <summary>
@@ -23,6 +28,17 @@ public record FunctionType
 {
     public List<TypeAnnotation> ParameterTypes { get; init; } = new();
     public TypeAnnotation ReturnType { get; init; } = null!;
+
+    // Source location
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
+
+    /// <summary>
+    /// Character offset-based span. May be null if not tracked.
+    /// </summary>
+    public Text.TextSpan? Span { get; init; }
 }
 
 /// <summary>
