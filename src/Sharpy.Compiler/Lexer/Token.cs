@@ -171,11 +171,43 @@ public record Token
     public int Line { get; init; }
     public int Column { get; init; }
 
+    /// <summary>
+    /// The zero-based character offset where this token starts in the source text.
+    /// This is -1 if position tracking was not enabled during lexing.
+    /// </summary>
+    public int Position { get; init; } = -1;
+
+    /// <summary>
+    /// The length of this token in characters.
+    /// This equals Value.Length for most tokens.
+    /// </summary>
+    public int Length => Value.Length;
+
     public Token(TokenType type, string value, int line, int column)
     {
         Type = type;
         Value = value;
         Line = line;
         Column = column;
+    }
+
+    public Token(TokenType type, string value, int line, int column, int position)
+    {
+        Type = type;
+        Value = value;
+        Line = line;
+        Column = column;
+        Position = position;
+    }
+
+    /// <summary>
+    /// Gets a TextSpan representing this token's location in the source.
+    /// Returns null if position tracking was not enabled.
+    /// </summary>
+    public Text.TextSpan? GetSpan()
+    {
+        if (Position < 0)
+            return null;
+        return new Text.TextSpan(Position, Length);
     }
 }

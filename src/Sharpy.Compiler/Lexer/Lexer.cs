@@ -158,9 +158,9 @@ public class Lexer
             if (_indentStack.Count > 1)
             {
                 _indentStack.Pop();
-                return new Token(TokenType.Dedent, "", _line, _column);
+                return CreateToken(TokenType.Dedent, "", _line, _column, _position);
             }
-            return new Token(TokenType.Eof, "", _line, _column);
+            return CreateToken(TokenType.Eof, "", _line, _column, _position);
         }
 
         // Handle indentation at line start
@@ -219,7 +219,7 @@ public class Lexer
                 _indentStack.Push(indentLevel);
                 _atLineStart = false;
                 _logger.LogIndentChange(currentIndent, indentLevel);
-                return new Token(TokenType.Indent, "", _line, 1);
+                return CreateToken(TokenType.Indent, "", _line, 1, _position);
             }
             else if (indentLevel < currentIndent)
             {
@@ -228,7 +228,7 @@ public class Lexer
                 while (_indentStack.Count > 1 && _indentStack.Peek() > indentLevel)
                 {
                     _indentStack.Pop();
-                    dedents.Add(new Token(TokenType.Dedent, "", _line, 1));
+                    dedents.Add(CreateToken(TokenType.Dedent, "", _line, 1, _position));
                 }
 
                 // No need to check here - MeasureIndentation already validated
@@ -254,6 +254,7 @@ public class Lexer
 
         var startLine = _line;
         var startColumn = _column;
+        var startPosition = _position;
         var current = _source[_position];
 
         // Comments
@@ -360,7 +361,7 @@ public class Lexer
             _line++;
             _column = 1;
             _atLineStart = true;
-            return LogAndReturn(new Token(TokenType.Newline, "\n", startLine, startColumn));
+            return LogAndReturn(CreateToken(TokenType.Newline, "\n", startLine, startColumn, startPosition));
         }
 
         // String literals
@@ -397,6 +398,14 @@ public class Lexer
     {
         _logger.LogTokenRead(token.Type.ToString(), token.Line, token.Column, token.Value);
         return token;
+    }
+
+    /// <summary>
+    /// Creates a token with position tracking.
+    /// </summary>
+    private static Token CreateToken(TokenType type, string value, int startLine, int startColumn, int startPosition)
+    {
+        return new Token(type, value, startLine, startColumn, startPosition);
     }
 
     private int MeasureIndentation()
@@ -511,6 +520,7 @@ public class Lexer
     {
         var startLine = _line;
         var startColumn = _column;
+        var startPosition = _position;
         var quote = _source[_position];
         var sb = new StringBuilder();
 
@@ -526,7 +536,7 @@ public class Lexer
         {
             _position += 2;
             _column += 2;
-            return ReadTripleQuotedString(quote, startLine, startColumn);
+            return ReadTripleQuotedString(quote, startLine, startColumn, startPosition);
         }
 
         // Single-line string
@@ -538,7 +548,7 @@ public class Lexer
             {
                 _position++;
                 _column++;
-                return new Token(TokenType.String, sb.ToString(), startLine, startColumn);
+                return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition);
             }
 
             if (c == '\\')
@@ -565,7 +575,7 @@ public class Lexer
         throw new LexerError("Unterminated string literal", _line, _column);
     }
 
-    private Token ReadTripleQuotedString(char quote, int startLine, int startColumn)
+    private Token ReadTripleQuotedString(char quote, int startLine, int startColumn, int startPosition)
     {
         var sb = new StringBuilder();
 
@@ -579,7 +589,7 @@ public class Lexer
             {
                 _position += 3;
                 _column += 3;
-                return new Token(TokenType.String, sb.ToString(), startLine, startColumn);
+                return CreateToken(TokenType.String, sb.ToString(), startLine, startColumn, startPosition);
             }
 
             var c = _source[_position];
@@ -625,6 +635,7 @@ public class Lexer
     {
         var startLine = _line;
         var startColumn = _column;
+        var startPosition = _position;
 
         // Skip 'f'
         _position++;
@@ -653,7 +664,7 @@ public class Lexer
             BraceDepth = 0
         });
 
-        return new Token(TokenType.FStringStart, isTriple ? $"f{quote}{quote}{quote}" : $"f{quote}", startLine, startColumn);
+        return CreateToken(TokenType.FStringStart, isTriple ? $"f{quote}{quote}{quote}" : $"f{quote}", startLine, startColumn, startPosition);
     }
 
     /// <summary>
@@ -669,6 +680,7 @@ public class Lexer
         var context = _fstringStack.Peek();
         var startLine = _line;
         var startColumn = _column;
+        var startPosition = _position;
 
         // If we're inside an expression (brace depth > 0), tokenize normally
         if (context.BraceDepth > 0)
@@ -686,12 +698,12 @@ public class Lexer
                 {
                     // End of expression - reset format spec flag
                     context.InFormatSpec = false;
-                    return new Token(TokenType.FStringExprEnd, "}", startLine, startColumn);
+                    return CreateToken(TokenType.FStringExprEnd, "}", startLine, startColumn, startPosition);
                 }
                 else
                 {
                     // Nested closing brace within expression
-                    return new Token(TokenType.RightBrace, "}", startLine, startColumn);
+                    return CreateToken(TokenType.RightBrace, "}", startLine, startColumn, startPosition);
                 }
             }
 
@@ -701,7 +713,7 @@ public class Lexer
                 context.BraceDepth++;
                 _position++;
                 _column++;
-                return new Token(TokenType.LeftBrace, "{", startLine, startColumn);
+                return CreateToken(TokenType.LeftBrace, "{", startLine, startColumn, startPosition);
             }
 
             // For everything else, tokenize normally (but skip indentation handling)
@@ -713,6 +725,7 @@ public class Lexer
             current = _source[_position];
             startLine = _line;
             startColumn = _column;
+            startPosition = _position;
 
             // Check for braces again after skipping whitespace
             if (current == '}')
@@ -725,11 +738,11 @@ public class Lexer
                 if (context.BraceDepth == 0)
                 {
                     context.InFormatSpec = false;  // Reset format spec flag
-                    return new Token(TokenType.FStringExprEnd, "}", startLine, startColumn);
+                    return CreateToken(TokenType.FStringExprEnd, "}", startLine, startColumn, startPosition);
                 }
                 else
                 {
-                    return new Token(TokenType.RightBrace, "}", startLine, startColumn);
+                    return CreateToken(TokenType.RightBrace, "}", startLine, startColumn, startPosition);
                 }
             }
 
@@ -738,7 +751,7 @@ public class Lexer
                 context.BraceDepth++;
                 _position++;
                 _column++;
-                return new Token(TokenType.LeftBrace, "{", startLine, startColumn);
+                return CreateToken(TokenType.LeftBrace, "{", startLine, startColumn, startPosition);
             }
 
             // Check for format specification start (: at BraceDepth == 1)
@@ -755,6 +768,7 @@ public class Lexer
                 var formatSpecBuilder = new StringBuilder();
                 var formatSpecStartLine = _line;
                 var formatSpecStartColumn = _column;
+                var formatSpecStartPosition = _position;
                 var nestedBraceDepth = 0;  // Track nested braces in format spec
 
                 while (_position < _source.Length)
@@ -785,7 +799,7 @@ public class Lexer
                             // This is the end of the expression, emit the format spec token
                             // Don't consume the }, it will be handled on next call
                             context.InFormatSpec = false;
-                            return new Token(TokenType.FStringFormatSpec, formatSpecBuilder.ToString(), formatSpecStartLine, formatSpecStartColumn);
+                            return CreateToken(TokenType.FStringFormatSpec, formatSpecBuilder.ToString(), formatSpecStartLine, formatSpecStartColumn, formatSpecStartPosition);
                         }
                     }
                     // Regular character in format spec
@@ -844,14 +858,14 @@ public class Lexer
                         if (sb.Length > 0)
                         {
                             // Return the text token. On next call, we'll handle the closing triple-quote
-                            return new Token(TokenType.FStringText, sb.ToString(), startLine, startColumn);
+                            return CreateToken(TokenType.FStringText, sb.ToString(), startLine, startColumn, startPosition);
                         }
 
                         // End of f-string
                         _position += 3;
                         _column += 3;
                         _fstringStack.Pop();
-                        return new Token(TokenType.FStringEnd, new string(context.QuoteChar, 3), startLine, startColumn);
+                        return CreateToken(TokenType.FStringEnd, new string(context.QuoteChar, 3), startLine, startColumn, startPosition);
                     }
                     // Not end of triple-quote, treat as regular character
                     sb.Append(c);
@@ -866,14 +880,14 @@ public class Lexer
                     {
                         // Return the text token. On next call, we'll handle the closing quote
                         // Don't pop the stack yet!
-                        return new Token(TokenType.FStringText, sb.ToString(), startLine, startColumn);
+                        return CreateToken(TokenType.FStringText, sb.ToString(), startLine, startColumn, startPosition);
                     }
 
                     // End of f-string
                     _position++;
                     _column++;
                     _fstringStack.Pop();
-                    return new Token(TokenType.FStringEnd, context.QuoteChar.ToString(), startLine, startColumn);
+                    return CreateToken(TokenType.FStringEnd, context.QuoteChar.ToString(), startLine, startColumn, startPosition);
                 }
             }
             // Check for expression start
@@ -893,14 +907,14 @@ public class Lexer
                     if (sb.Length > 0)
                     {
                         // Return the text token. On next call, we'll handle the {
-                        return new Token(TokenType.FStringText, sb.ToString(), startLine, startColumn);
+                        return CreateToken(TokenType.FStringText, sb.ToString(), startLine, startColumn, startPosition);
                     }
 
                     // Start expression - consume the { and increment brace depth
                     _position++;
                     _column++;
                     context.BraceDepth = 1;
-                    return new Token(TokenType.FStringExprStart, "{", startLine, startColumn);
+                    return CreateToken(TokenType.FStringExprStart, "{", startLine, startColumn, startPosition);
                 }
             }
             // Check for escaped closing brace }}
@@ -976,6 +990,7 @@ public class Lexer
     {
         var startLine = _line;
         var startColumn = _column;
+        var startPosition = _position;
 
         // Skip 'r'
         _position++;
@@ -1005,7 +1020,7 @@ public class Lexer
                 {
                     _position += 3;
                     _column += 3;
-                    return new Token(TokenType.RawString, sb.ToString(), startLine, startColumn);
+                    return CreateToken(TokenType.RawString, sb.ToString(), startLine, startColumn, startPosition);
                 }
 
                 var c = _source[_position];
@@ -1036,7 +1051,7 @@ public class Lexer
             {
                 _position++;
                 _column++;
-                return new Token(TokenType.RawString, sb2.ToString(), startLine, startColumn);
+                return CreateToken(TokenType.RawString, sb2.ToString(), startLine, startColumn, startPosition);
             }
 
             if (c == '\n' || c == '\r')
@@ -1147,6 +1162,7 @@ public class Lexer
     {
         var startLine = _line;
         var startColumn = _column;
+        var startPosition = _position;
         var sb = new StringBuilder();
         var isFloat = false;
 
@@ -1157,17 +1173,17 @@ public class Lexer
             if (nextChar == 'x' || nextChar == 'X')
             {
                 // Hexadecimal
-                return ReadHexNumber(startLine, startColumn);
+                return ReadHexNumber(startLine, startColumn, startPosition);
             }
             else if (nextChar == 'b' || nextChar == 'B')
             {
                 // Binary
-                return ReadBinaryNumber(startLine, startColumn);
+                return ReadBinaryNumber(startLine, startColumn, startPosition);
             }
             else if (nextChar == 'o' || nextChar == 'O')
             {
                 // Octal
-                return ReadOctalNumber(startLine, startColumn);
+                return ReadOctalNumber(startLine, startColumn, startPosition);
             }
         }
 
@@ -1295,10 +1311,10 @@ public class Lexer
         }
 
         var tokenType = isFloat ? TokenType.Float : TokenType.Integer;
-        return new Token(tokenType, sb.ToString(), startLine, startColumn);
+        return CreateToken(tokenType, sb.ToString(), startLine, startColumn, startPosition);
     }
 
-    private Token ReadHexNumber(int startLine, int startColumn)
+    private Token ReadHexNumber(int startLine, int startColumn, int startPosition)
     {
         var sb = new StringBuilder();
         sb.Append("0x");
@@ -1342,10 +1358,10 @@ public class Lexer
         if (lastChar == '_')
             throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
 
-        return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
+        return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
     }
 
-    private Token ReadBinaryNumber(int startLine, int startColumn)
+    private Token ReadBinaryNumber(int startLine, int startColumn, int startPosition)
     {
         var sb = new StringBuilder();
         sb.Append("0b");
@@ -1394,10 +1410,10 @@ public class Lexer
         if (lastChar == '_')
             throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
 
-        return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
+        return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
     }
 
-    private Token ReadOctalNumber(int startLine, int startColumn)
+    private Token ReadOctalNumber(int startLine, int startColumn, int startPosition)
     {
         var sb = new StringBuilder();
         sb.Append("0o");
@@ -1446,13 +1462,14 @@ public class Lexer
         if (lastChar == '_')
             throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
 
-        return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
+        return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
     }
 
     private Token ReadIdentifierOrKeyword()
     {
         var startLine = _line;
         var startColumn = _column;
+        var startPosition = _position;
         var sb = new StringBuilder();
 
         while (_position < _source.Length &&
@@ -1467,15 +1484,16 @@ public class Lexer
 
         // Check if it's a keyword
         if (Keywords.TryGetValue(value, out var tokenType))
-            return new Token(tokenType, value, startLine, startColumn);
+            return CreateToken(tokenType, value, startLine, startColumn, startPosition);
 
-        return new Token(TokenType.Identifier, value, startLine, startColumn);
+        return CreateToken(TokenType.Identifier, value, startLine, startColumn, startPosition);
     }
 
     private Token ReadLiteralName()
     {
         var startLine = _line;
         var startColumn = _column;
+        var startPosition = _position;
         var sb = new StringBuilder();
 
         // Skip opening backtick
@@ -1491,7 +1509,7 @@ public class Lexer
                 // Found closing backtick
                 _position++;
                 _column++;
-                return new Token(TokenType.Identifier, sb.ToString(), startLine, startColumn);
+                return CreateToken(TokenType.Identifier, sb.ToString(), startLine, startColumn, startPosition);
             }
 
             if (c == '\n' || c == '\r')
@@ -1511,6 +1529,7 @@ public class Lexer
     {
         var startLine = _line;
         var startColumn = _column;
+        var startPosition = _position;
         var c = _source[_position];
 
         // Two-character and three-character operators
@@ -1522,27 +1541,27 @@ public class Lexer
                 case "...":
                     _position += 3;
                     _column += 3;
-                    return new Token(TokenType.Ellipsis, threeChar, startLine, startColumn);
+                    return CreateToken(TokenType.Ellipsis, threeChar, startLine, startColumn, startPosition);
                 case "<<=":
                     _position += 3;
                     _column += 3;
-                    return new Token(TokenType.LeftShiftAssign, threeChar, startLine, startColumn);
+                    return CreateToken(TokenType.LeftShiftAssign, threeChar, startLine, startColumn, startPosition);
                 case ">>=":
                     _position += 3;
                     _column += 3;
-                    return new Token(TokenType.RightShiftAssign, threeChar, startLine, startColumn);
+                    return CreateToken(TokenType.RightShiftAssign, threeChar, startLine, startColumn, startPosition);
                 case "**=":
                     _position += 3;
                     _column += 3;
-                    return new Token(TokenType.DoubleStarAssign, threeChar, startLine, startColumn);
+                    return CreateToken(TokenType.DoubleStarAssign, threeChar, startLine, startColumn, startPosition);
                 case "//=":
                     _position += 3;
                     _column += 3;
-                    return new Token(TokenType.DoubleSlashAssign, threeChar, startLine, startColumn);
+                    return CreateToken(TokenType.DoubleSlashAssign, threeChar, startLine, startColumn, startPosition);
                 case "??=":
                     _position += 3;
                     _column += 3;
-                    return new Token(TokenType.NullCoalesceAssign, threeChar, startLine, startColumn);
+                    return CreateToken(TokenType.NullCoalesceAssign, threeChar, startLine, startColumn, startPosition);
             }
         }
 
@@ -1554,87 +1573,87 @@ public class Lexer
                 case "==":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.Equal, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.Equal, twoChar, startLine, startColumn, startPosition);
                 case "!=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.NotEqual, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.NotEqual, twoChar, startLine, startColumn, startPosition);
                 case "<=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.LessEqual, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.LessEqual, twoChar, startLine, startColumn, startPosition);
                 case ">=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.GreaterEqual, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.GreaterEqual, twoChar, startLine, startColumn, startPosition);
                 case "<<":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.LeftShift, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.LeftShift, twoChar, startLine, startColumn, startPosition);
                 case ">>":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.RightShift, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.RightShift, twoChar, startLine, startColumn, startPosition);
                 case "**":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.DoubleStar, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.DoubleStar, twoChar, startLine, startColumn, startPosition);
                 case "//":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.DoubleSlash, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.DoubleSlash, twoChar, startLine, startColumn, startPosition);
                 case "->":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.Arrow, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.Arrow, twoChar, startLine, startColumn, startPosition);
                 case "?.":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.NullConditional, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.NullConditional, twoChar, startLine, startColumn, startPosition);
                 case "??":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.NullCoalesce, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.NullCoalesce, twoChar, startLine, startColumn, startPosition);
                 case "+=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.PlusAssign, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.PlusAssign, twoChar, startLine, startColumn, startPosition);
                 case "-=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.MinusAssign, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.MinusAssign, twoChar, startLine, startColumn, startPosition);
                 case "*=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.StarAssign, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.StarAssign, twoChar, startLine, startColumn, startPosition);
                 case "/=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.SlashAssign, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.SlashAssign, twoChar, startLine, startColumn, startPosition);
                 case "%=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.PercentAssign, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.PercentAssign, twoChar, startLine, startColumn, startPosition);
                 case "&=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.AmpersandAssign, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.AmpersandAssign, twoChar, startLine, startColumn, startPosition);
                 case "|=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.PipeAssign, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.PipeAssign, twoChar, startLine, startColumn, startPosition);
                 case "|>":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.PipeForward, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.PipeForward, twoChar, startLine, startColumn, startPosition);
                 case "^=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.CaretAssign, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.CaretAssign, twoChar, startLine, startColumn, startPosition);
                 case ":=":
                     _position += 2;
                     _column += 2;
-                    return new Token(TokenType.ColonAssign, twoChar, startLine, startColumn);
+                    return CreateToken(TokenType.ColonAssign, twoChar, startLine, startColumn, startPosition);
             }
         }
 
@@ -1650,31 +1669,31 @@ public class Lexer
 
         var token = c switch
         {
-            '+' => new Token(TokenType.Plus, "+", startLine, startColumn),
-            '-' => new Token(TokenType.Minus, "-", startLine, startColumn),
-            '*' => new Token(TokenType.Star, "*", startLine, startColumn),
-            '/' => new Token(TokenType.Slash, "/", startLine, startColumn),
-            '%' => new Token(TokenType.Percent, "%", startLine, startColumn),
-            '&' => new Token(TokenType.Ampersand, "&", startLine, startColumn),
-            '|' => new Token(TokenType.Pipe, "|", startLine, startColumn),
-            '^' => new Token(TokenType.Caret, "^", startLine, startColumn),
-            '~' => new Token(TokenType.Tilde, "~", startLine, startColumn),
-            '=' => new Token(TokenType.Assign, "=", startLine, startColumn),
-            '<' => new Token(TokenType.Less, "<", startLine, startColumn),
-            '>' => new Token(TokenType.Greater, ">", startLine, startColumn),
-            '?' => new Token(TokenType.Question, "?", startLine, startColumn),
-            '(' => new Token(TokenType.LeftParen, "(", startLine, startColumn),
-            ')' => new Token(TokenType.RightParen, ")", startLine, startColumn),
-            '[' => new Token(TokenType.LeftBracket, "[", startLine, startColumn),
-            ']' => new Token(TokenType.RightBracket, "]", startLine, startColumn),
-            '{' => new Token(TokenType.LeftBrace, "{", startLine, startColumn),
-            '}' => new Token(TokenType.RightBrace, "}", startLine, startColumn),
-            ',' => new Token(TokenType.Comma, ",", startLine, startColumn),
-            ':' => new Token(TokenType.Colon, ":", startLine, startColumn),
-            ';' => new Token(TokenType.Semicolon, ";", startLine, startColumn),
-            '.' => new Token(TokenType.Dot, ".", startLine, startColumn),
-            '@' => new Token(TokenType.At, "@", startLine, startColumn),
-            '\\' => new Token(TokenType.Backslash, "\\", startLine, startColumn),
+            '+' => CreateToken(TokenType.Plus, "+", startLine, startColumn, startPosition),
+            '-' => CreateToken(TokenType.Minus, "-", startLine, startColumn, startPosition),
+            '*' => CreateToken(TokenType.Star, "*", startLine, startColumn, startPosition),
+            '/' => CreateToken(TokenType.Slash, "/", startLine, startColumn, startPosition),
+            '%' => CreateToken(TokenType.Percent, "%", startLine, startColumn, startPosition),
+            '&' => CreateToken(TokenType.Ampersand, "&", startLine, startColumn, startPosition),
+            '|' => CreateToken(TokenType.Pipe, "|", startLine, startColumn, startPosition),
+            '^' => CreateToken(TokenType.Caret, "^", startLine, startColumn, startPosition),
+            '~' => CreateToken(TokenType.Tilde, "~", startLine, startColumn, startPosition),
+            '=' => CreateToken(TokenType.Assign, "=", startLine, startColumn, startPosition),
+            '<' => CreateToken(TokenType.Less, "<", startLine, startColumn, startPosition),
+            '>' => CreateToken(TokenType.Greater, ">", startLine, startColumn, startPosition),
+            '?' => CreateToken(TokenType.Question, "?", startLine, startColumn, startPosition),
+            '(' => CreateToken(TokenType.LeftParen, "(", startLine, startColumn, startPosition),
+            ')' => CreateToken(TokenType.RightParen, ")", startLine, startColumn, startPosition),
+            '[' => CreateToken(TokenType.LeftBracket, "[", startLine, startColumn, startPosition),
+            ']' => CreateToken(TokenType.RightBracket, "]", startLine, startColumn, startPosition),
+            '{' => CreateToken(TokenType.LeftBrace, "{", startLine, startColumn, startPosition),
+            '}' => CreateToken(TokenType.RightBrace, "}", startLine, startColumn, startPosition),
+            ',' => CreateToken(TokenType.Comma, ",", startLine, startColumn, startPosition),
+            ':' => CreateToken(TokenType.Colon, ":", startLine, startColumn, startPosition),
+            ';' => CreateToken(TokenType.Semicolon, ";", startLine, startColumn, startPosition),
+            '.' => CreateToken(TokenType.Dot, ".", startLine, startColumn, startPosition),
+            '@' => CreateToken(TokenType.At, "@", startLine, startColumn, startPosition),
+            '\\' => CreateToken(TokenType.Backslash, "\\", startLine, startColumn, startPosition),
             _ => throw new LexerError($"Unexpected character: '{c}'", startLine, startColumn)
         };
 

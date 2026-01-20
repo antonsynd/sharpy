@@ -1738,4 +1738,134 @@ y = 2";
     }
 
     #endregion
+
+    #region Position Tracking
+
+    [Fact]
+    public void Tokenize_SimpleExpression_TracksPositions()
+    {
+        var source = "x + y";
+        var tokens = Tokenize(source);
+
+        // x at position 0
+        tokens[0].Type.Should().Be(TokenType.Identifier);
+        tokens[0].Value.Should().Be("x");
+        tokens[0].Position.Should().Be(0);
+        tokens[0].Length.Should().Be(1);
+
+        // + at position 2
+        tokens[1].Type.Should().Be(TokenType.Plus);
+        tokens[1].Position.Should().Be(2);
+        tokens[1].Length.Should().Be(1);
+
+        // y at position 4
+        tokens[2].Type.Should().Be(TokenType.Identifier);
+        tokens[2].Value.Should().Be("y");
+        tokens[2].Position.Should().Be(4);
+        tokens[2].Length.Should().Be(1);
+    }
+
+    [Fact]
+    public void Tokenize_String_TracksPositionIncludingQuotes()
+    {
+        var source = "\"hello\"";
+        var token = SingleToken(source);
+
+        token.Type.Should().Be(TokenType.String);
+        token.Position.Should().Be(0);
+        // Value doesn't include quotes, but we started at position 0
+        token.Value.Should().Be("hello");
+    }
+
+    [Fact]
+    public void Tokenize_MultiCharOperator_TracksPosition()
+    {
+        var source = "a == b";
+        var tokens = Tokenize(source);
+
+        // == at position 2
+        tokens[1].Type.Should().Be(TokenType.Equal);
+        tokens[1].Position.Should().Be(2);
+        tokens[1].Length.Should().Be(2);
+    }
+
+    [Fact]
+    public void Tokenize_ThreeCharOperator_TracksPosition()
+    {
+        var source = "x <<= 1";
+        var tokens = Tokenize(source);
+
+        // <<= at position 2
+        tokens[1].Type.Should().Be(TokenType.LeftShiftAssign);
+        tokens[1].Position.Should().Be(2);
+        tokens[1].Length.Should().Be(3);
+    }
+
+    [Fact]
+    public void Tokenize_MultilineCode_TracksPositionsCorrectly()
+    {
+        var source = "def foo():\n    return 1";
+        var tokens = Tokenize(source);
+
+        // def at position 0
+        tokens[0].Type.Should().Be(TokenType.Def);
+        tokens[0].Position.Should().Be(0);
+        tokens[0].Line.Should().Be(1);
+        tokens[0].Column.Should().Be(1);
+
+        // return at position 15 (after "def foo():\n    ")
+        var returnToken = tokens.First(t => t.Type == TokenType.Return);
+        returnToken.Position.Should().Be(15);
+        returnToken.Line.Should().Be(2);
+        returnToken.Column.Should().Be(5);
+    }
+
+    [Fact]
+    public void Token_GetSpan_ReturnsTextSpanForTrackedToken()
+    {
+        var source = "hello";
+        var token = SingleToken(source);
+
+        var span = token.GetSpan();
+        span.Should().NotBeNull();
+        span!.Value.Start.Should().Be(0);
+        span.Value.Length.Should().Be(5);
+        span.Value.End.Should().Be(5);
+    }
+
+    [Fact]
+    public void Tokenize_Number_TracksPosition()
+    {
+        var source = "12345";
+        var token = SingleToken(source);
+
+        token.Type.Should().Be(TokenType.Integer);
+        token.Position.Should().Be(0);
+        token.Length.Should().Be(5);
+    }
+
+    [Fact]
+    public void Tokenize_HexNumber_TracksPosition()
+    {
+        var source = "0xFF";
+        var token = SingleToken(source);
+
+        token.Type.Should().Be(TokenType.Integer);
+        token.Position.Should().Be(0);
+        token.Value.Should().Be("0xFF");
+    }
+
+    [Fact]
+    public void Tokenize_Keyword_TracksPosition()
+    {
+        var source = "    def";  // 4 spaces (valid indentation)
+        var tokens = Tokenize(source);
+
+        // Should have: INDENT, def, EOF
+        var defToken = tokens.First(t => t.Type == TokenType.Def);
+        defToken.Position.Should().Be(4);  // After 4 spaces
+        defToken.Length.Should().Be(3);
+    }
+
+    #endregion
 }
