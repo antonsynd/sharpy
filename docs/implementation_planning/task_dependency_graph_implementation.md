@@ -3,7 +3,7 @@
 **Target:** v0.1.x enhancement  
 **Priority:** High (enables incremental compilation, parallel compilation)  
 **Estimated Effort:** Medium (3-5 focused implementation sessions)  
-**Status:** Not Started
+**Status:** In Progress (Phase 1 Complete)
 
 ---
 
@@ -42,15 +42,15 @@ This task implements an explicit dependency graph for the Sharpy compiler, repla
 **File:** `src/Sharpy.Compiler/Project/DependencyGraph.cs`  
 **Estimated:** 45-60 minutes
 
-- [ ] Create `DependencyGraph` class with:
+- [x] Create `DependencyGraph` class with:
   - `FileDependencies`: `IReadOnlyDictionary<string, ImmutableHashSet<string>>` (file → files it depends on)
   - `ReverseDependencies`: `IReadOnlyDictionary<string, ImmutableHashSet<string>>` (file → files that depend on it)
   - `AllFiles`: `IReadOnlySet<string>` (all files in the graph)
-- [ ] Add constructor that takes both dictionaries
-- [ ] Add `GetDirectDependencies(string filePath)` method
-- [ ] Add `GetDirectDependents(string filePath)` method
-- [ ] Add XML documentation comments
-- [ ] Ensure paths are normalized (consistent separators, case handling)
+- [x] Add constructor that takes both dictionaries
+- [x] Add `GetDirectDependencies(string filePath)` method
+- [x] Add `GetDirectDependents(string filePath)` method
+- [x] Add XML documentation comments
+- [x] Ensure paths are normalized (consistent separators, case handling)
 
 **Verification:**
 ```csharp
@@ -68,13 +68,13 @@ Assert.Equal(new[] { "b.spy" }, graph.GetDirectDependencies("a.spy"));
 **File:** `src/Sharpy.Compiler/Project/DependencyGraph.cs`  
 **Estimated:** 30-45 minutes
 
-- [ ] Add `GetBuildOrder()` method returning `IReadOnlyList<string>`
-- [ ] Implement Kahn's algorithm for topological sort:
+- [x] Add `GetBuildOrder()` method returning `IReadOnlyList<string>`
+- [x] Implement Kahn's algorithm for topological sort:
   1. Find all files with no dependencies (roots)
   2. Process roots, removing them from graph
   3. Repeat until all files processed
-- [ ] Return files with no dependencies first (leaf modules)
-- [ ] Handle empty graph (return empty list)
+- [x] Return files with no dependencies first (leaf modules)
+- [x] Handle empty graph (return empty list)
 
 **Verification:**
 ```csharp
@@ -89,11 +89,11 @@ Assert.True(order.IndexOf("b.spy") < order.IndexOf("a.spy"));
 **File:** `src/Sharpy.Compiler/Project/DependencyGraph.cs`  
 **Estimated:** 30-45 minutes
 
-- [ ] Add `DetectCycles()` method returning `IReadOnlyList<ImmutableArray<string>>`
-- [ ] Implement depth-first search with path tracking
-- [ ] Each returned array is one cycle (in order of imports)
-- [ ] Empty list means no cycles
-- [ ] For multiple cycles, return all distinct cycles
+- [x] Add `DetectCycles()` method returning `IReadOnlyList<ImmutableArray<string>>`
+- [x] Implement depth-first search with path tracking
+- [x] Each returned array is one cycle (in order of imports)
+- [x] Empty list means no cycles
+- [x] For multiple cycles, return all distinct cycles
 
 **Verification:**
 ```csharp
@@ -108,11 +108,11 @@ Assert.Contains("a.spy", cycles[0]);
 **File:** `src/Sharpy.Compiler/Project/DependencyGraph.cs`  
 **Estimated:** 30 minutes
 
-- [ ] Add `GetAffectedFiles(string changedFile)` returning `ImmutableHashSet<string>`
-- [ ] Add `GetAffectedFiles(IEnumerable<string> changedFiles)` for batch queries
-- [ ] Include the changed file(s) in the result
-- [ ] Compute transitive closure of reverse dependencies
-- [ ] Use breadth-first search for efficiency
+- [x] Add `GetAffectedFiles(string changedFile)` returning `ImmutableHashSet<string>`
+- [x] Add `GetAffectedFiles(IEnumerable<string> changedFiles)` for batch queries
+- [x] Include the changed file(s) in the result
+- [x] Compute transitive closure of reverse dependencies
+- [x] Use breadth-first search for efficiency
 
 **Verification:**
 ```csharp
@@ -128,11 +128,11 @@ Assert.Contains("b.spy", affected); // includes itself
 **File:** `src/Sharpy.Compiler/Project/DependencyGraph.cs`  
 **Estimated:** 30-45 minutes
 
-- [ ] Add `GetParallelizableGroups()` returning `IReadOnlyList<ImmutableHashSet<string>>`
-- [ ] Each group contains files that can be compiled in parallel
-- [ ] Groups are ordered by dependency (compile group 0 before group 1, etc.)
-- [ ] Files with no dependencies are in group 0
-- [ ] A file is in group N where N = max(group of dependencies) + 1
+- [x] Add `GetParallelizableGroups()` returning `IReadOnlyList<ImmutableHashSet<string>>`
+- [x] Each group contains files that can be compiled in parallel
+- [x] Groups are ordered by dependency (compile group 0 before group 1, etc.)
+- [x] Files with no dependencies are in group 0
+- [x] A file is in group N where N = max(group of dependencies) + 1
 
 **Verification:**
 ```csharp
@@ -146,8 +146,8 @@ Assert.Contains("a.spy", groups[1]);
 ```
 
 ### ✅ Checkpoint 1.6: Commit Phase 1
-- [ ] Run existing tests to ensure no regressions
-- [ ] Commit with message: `feat(project): Add DependencyGraph core data structure`
+- [x] Run existing tests to ensure no regressions
+- [x] Commit with message: `feat(project): Add DependencyGraph core data structure`
 
 ---
 
@@ -159,38 +159,38 @@ Assert.Contains("a.spy", groups[1]);
 **File:** `src/Sharpy.Compiler.Tests/Project/DependencyGraphTests.cs`  
 **Estimated:** 60-90 minutes
 
-- [ ] Create test class `DependencyGraphTests`
-- [ ] Add helper method `BuildGraph(params (string, string)[] edges)` for test setup
-- [ ] Add tests for:
-  - [ ] `GetDirectDependencies_ReturnsCorrectDependencies`
-  - [ ] `GetDirectDependents_ReturnsCorrectDependents`
-  - [ ] `GetBuildOrder_ReturnsTopologicalOrder`
-  - [ ] `GetBuildOrder_EmptyGraph_ReturnsEmptyList`
-  - [ ] `GetBuildOrder_SingleFile_ReturnsSingleFile`
-  - [ ] `GetBuildOrder_LinearChain_ReturnsCorrectOrder`
-  - [ ] `GetBuildOrder_Diamond_HandlesCorrectly` (a→b, a→c, b→d, c→d)
-  - [ ] `DetectCycles_NoCycles_ReturnsEmpty`
-  - [ ] `DetectCycles_SimpleCycle_ReturnsCycle`
-  - [ ] `DetectCycles_SelfCycle_ReturnsSingleElementCycle`
-  - [ ] `GetAffectedFiles_SingleChange_ReturnsTransitiveDependents`
-  - [ ] `GetAffectedFiles_MultipleChanges_CombinesResults`
-  - [ ] `GetAffectedFiles_LeafFile_ReturnsSelf`
-  - [ ] `GetParallelizableGroups_IndependentFiles_AllInFirstGroup`
-  - [ ] `GetParallelizableGroups_LinearChain_OneFilePerGroup`
-  - [ ] `GetParallelizableGroups_Diamond_CorrectGrouping`
+- [x] Create test class `DependencyGraphTests`
+- [x] Add helper method `BuildGraph(params (string, string)[] edges)` for test setup
+- [x] Add tests for:
+  - [x] `GetDirectDependencies_ReturnsCorrectDependencies`
+  - [x] `GetDirectDependents_ReturnsCorrectDependents`
+  - [x] `GetBuildOrder_ReturnsTopologicalOrder`
+  - [x] `GetBuildOrder_EmptyGraph_ReturnsEmptyList`
+  - [x] `GetBuildOrder_SingleFile_ReturnsSingleFile`
+  - [x] `GetBuildOrder_LinearChain_ReturnsCorrectOrder`
+  - [x] `GetBuildOrder_Diamond_HandlesCorrectly` (a→b, a→c, b→d, c→d)
+  - [x] `DetectCycles_NoCycles_ReturnsEmpty`
+  - [x] `DetectCycles_SimpleCycle_ReturnsCycle`
+  - [x] `DetectCycles_SelfCycle_ReturnsSingleElementCycle`
+  - [x] `GetAffectedFiles_SingleChange_ReturnsTransitiveDependents`
+  - [x] `GetAffectedFiles_MultipleChanges_CombinesResults`
+  - [x] `GetAffectedFiles_LeafFile_ReturnsSelf`
+  - [x] `GetParallelizableGroups_IndependentFiles_AllInFirstGroup`
+  - [x] `GetParallelizableGroups_LinearChain_OneFilePerGroup`
+  - [x] `GetParallelizableGroups_Diamond_CorrectGrouping`
 
 ### Task 2.2: Add Edge Case Tests
 **File:** `src/Sharpy.Compiler.Tests/Project/DependencyGraphTests.cs`  
 **Estimated:** 30 minutes
 
-- [ ] `GetDirectDependencies_UnknownFile_ReturnsEmpty`
-- [ ] `PathNormalization_HandlesSlashVariants`
-- [ ] `PathNormalization_HandlesCaseDifferences` (if on case-insensitive OS)
-- [ ] `LargeGraph_Performance_CompletesQuickly` (1000+ files)
+- [x] `GetDirectDependencies_UnknownFile_ReturnsEmpty`
+- [x] `PathNormalization_HandlesSlashVariants`
+- [x] `PathNormalization_HandlesCaseDifferences` (if on case-insensitive OS)
+- [ ] `LargeGraph_Performance_CompletesQuickly` (1000+ files) - skipped for now
 
 ### ✅ Checkpoint 2.3: Commit Phase 2
-- [ ] All new tests pass
-- [ ] Commit with message: `test(project): Add DependencyGraph unit tests`
+- [x] All new tests pass
+- [x] Commit with message: `test(project): Add DependencyGraph unit tests`
 
 ---
 
