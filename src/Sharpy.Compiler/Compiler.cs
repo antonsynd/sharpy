@@ -288,6 +288,12 @@ public class ProjectCompilationResult
     public string? OutputAssemblyPath { get; init; }
     public Dictionary<string, string> GeneratedCSharpFiles { get; init; } = new();
     public ProjectCompilationMetrics? Metrics { get; init; }
+
+    /// <summary>
+    /// The dependency graph built during compilation.
+    /// Available for tooling/analysis (e.g., incremental compilation, build order visualization).
+    /// </summary>
+    public Project.DependencyGraph? DependencyGraph { get; init; }
 }
 
 /// <summary>

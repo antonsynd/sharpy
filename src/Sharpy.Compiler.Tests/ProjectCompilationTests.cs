@@ -608,5 +608,288 @@ def helper() -> str:
             Directory.Delete(tempDir, true);
         }
     }
+
+    #region Dependency Graph Integration Tests
+
+    [Fact]
+    public void CompileProject_BuildsDependencyGraph()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), @"
+def main():
+    print('Hello')
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                SourceFiles = new List<string> { Path.Combine(tempDir, "main.spy") }
+            };
+
+            var compiler = new Compiler(_logger);
+
+            // Act
+            var result = compiler.CompileProject(config);
+
+            // Assert
+            Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+            Assert.NotNull(result.DependencyGraph);
+            Assert.Single(result.DependencyGraph.AllFiles);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void CompileProject_DependencyGraphHasCorrectDependencies()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // Create utils.spy (no dependencies)
+            var utilsPath = Path.Combine(tempDir, "utils.spy");
+            File.WriteAllText(utilsPath, @"
+def helper() -> int:
+    return 42
+");
+
+            // Create main.spy (depends on utils)
+            var mainPath = Path.Combine(tempDir, "main.spy");
+            File.WriteAllText(mainPath, @"
+import utils
+
+def main():
+    print(utils.helper())
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                SourceFiles = new List<string> { mainPath, utilsPath }
+            };
+
+            var compiler = new Compiler(_logger);
+
+            // Act
+            var result = compiler.CompileProject(config);
+
+            // Assert
+            Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+            Assert.NotNull(result.DependencyGraph);
+
+            // Verify main depends on utils
+            var mainDeps = result.DependencyGraph.GetDirectDependencies(mainPath);
+            Assert.Single(mainDeps);
+            Assert.Contains(mainDeps, p => p.EndsWith("utils.spy", StringComparison.OrdinalIgnoreCase));
+
+            // Verify utils has no dependencies
+            var utilsDeps = result.DependencyGraph.GetDirectDependencies(utilsPath);
+            Assert.Empty(utilsDeps);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void CompileProject_CircularDependency_ReportsError()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // Create a.spy (imports b)
+            var aPath = Path.Combine(tempDir, "a.spy");
+            File.WriteAllText(aPath, @"
+import b
+
+def a_func() -> int:
+    return 1
+");
+
+            // Create b.spy (imports a - circular!)
+            var bPath = Path.Combine(tempDir, "b.spy");
+            File.WriteAllText(bPath, @"
+import a
+
+def b_func() -> int:
+    return 2
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                SourceFiles = new List<string> { aPath, bPath }
+            };
+
+            var compiler = new Compiler(_logger);
+
+            // Act
+            var result = compiler.CompileProject(config);
+
+            // Assert
+            Assert.False(result.Success);
+            Assert.Contains(result.Errors, e => e.Contains("Circular dependency"));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void CompileProject_CircularDependency_ErrorShowsChain()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // Create a 3-file circular dependency: a -> b -> c -> a
+            var aPath = Path.Combine(tempDir, "a.spy");
+            File.WriteAllText(aPath, @"
+import b
+
+def a_func():
+    pass
+");
+
+            var bPath = Path.Combine(tempDir, "b.spy");
+            File.WriteAllText(bPath, @"
+import c
+
+def b_func():
+    pass
+");
+
+            var cPath = Path.Combine(tempDir, "c.spy");
+            File.WriteAllText(cPath, @"
+import a
+
+def c_func():
+    pass
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                SourceFiles = new List<string> { aPath, bPath, cPath }
+            };
+
+            var compiler = new Compiler(_logger);
+
+            // Act
+            var result = compiler.CompileProject(config);
+
+            // Assert
+            Assert.False(result.Success);
+            Assert.Contains(result.Errors, e => e.Contains("Circular dependency"));
+            // The error should show the cycle chain with file names
+            Assert.Contains(result.Errors, e =>
+                e.Contains("a.spy") && e.Contains("b.spy") && e.Contains("c.spy"));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void CompileProject_TransitiveDependencies_TrackedCorrectly()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // Create base.spy (no dependencies)
+            var basePath = Path.Combine(tempDir, "base.spy");
+            File.WriteAllText(basePath, @"
+BASE_VALUE: int = 42
+");
+
+            // Create utils.spy (depends on base)
+            var utilsPath = Path.Combine(tempDir, "utils.spy");
+            File.WriteAllText(utilsPath, @"
+import base
+def get_base() -> int:
+    return base.BASE_VALUE
+");
+
+            // Create main.spy (depends on utils, transitively on base)
+            var mainPath = Path.Combine(tempDir, "main.spy");
+            File.WriteAllText(mainPath, @"
+import utils
+
+def main():
+    print(utils.get_base())
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                SourceFiles = new List<string> { mainPath, utilsPath, basePath }
+            };
+
+            var compiler = new Compiler(_logger);
+
+            // Act
+            var result = compiler.CompileProject(config);
+
+            // Assert
+            Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+            Assert.NotNull(result.DependencyGraph);
+
+            // Verify build order: base -> utils -> main
+            var buildOrder = result.DependencyGraph.GetBuildOrder();
+            Assert.Equal(3, buildOrder.Count);
+
+            // Find indices (using normalized paths)
+            int baseIndex = -1, utilsIndex = -1, mainIndex = -1;
+            for (int i = 0; i < buildOrder.Count; i++)
+            {
+                if (buildOrder[i].EndsWith("base.spy", StringComparison.OrdinalIgnoreCase)) baseIndex = i;
+                if (buildOrder[i].EndsWith("utils.spy", StringComparison.OrdinalIgnoreCase)) utilsIndex = i;
+                if (buildOrder[i].EndsWith("main.spy", StringComparison.OrdinalIgnoreCase)) mainIndex = i;
+            }
+
+            Assert.True(baseIndex >= 0, "base.spy should be in build order");
+            Assert.True(utilsIndex >= 0, "utils.spy should be in build order");
+            Assert.True(mainIndex >= 0, "main.spy should be in build order");
+            Assert.True(baseIndex < utilsIndex, "base should be built before utils");
+            Assert.True(utilsIndex < mainIndex, "utils should be built before main");
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    #endregion
 }
 

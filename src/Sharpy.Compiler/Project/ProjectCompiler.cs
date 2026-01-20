@@ -36,6 +36,10 @@ public class ProjectCompiler
     // Metrics tracking
     private ProjectCompilationMetrics _projectMetrics = null!;
 
+    // Dependency graph for build ordering and incremental compilation
+    private DependencyGraphBuilder _graphBuilder = null!;
+    private DependencyGraph? _dependencyGraph;
+
     public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null)
     {
         _logger = logger ?? NullLogger.Instance;
@@ -94,7 +98,8 @@ public class ProjectCompiler
             {
                 Success = false,
                 Errors = new List<string> { $"Project compilation failed: {ex.Message}" },
-                Metrics = _projectMetrics
+                Metrics = _projectMetrics,
+                DependencyGraph = _dependencyGraph
             };
         }
     }
@@ -167,6 +172,16 @@ public class ProjectCompiler
         _symbolTable = new SymbolTable(builtinRegistry);
         _semanticInfo = new SemanticInfo();
         _importResolver = new ImportResolver(_logger, _moduleRegistry);
+
+        // Initialize dependency graph builder and connect to import resolver
+        _graphBuilder = new DependencyGraphBuilder();
+        _importResolver.SetDependencyGraphBuilder(_graphBuilder);
+
+        // Register all parsed files in the dependency graph
+        foreach (var sourceFile in _parsedModules.Keys)
+        {
+            _graphBuilder.AddFile(sourceFile);
+        }
     }
 
     /// <summary>
@@ -326,6 +341,26 @@ public class ProjectCompiler
             }
         }
 
+        // Build the dependency graph after all imports are resolved
+        _dependencyGraph = _graphBuilder.Build();
+
+        // Detect circular dependencies first - this is more specific than generic import errors
+        var cycles = _dependencyGraph.DetectCycles();
+        if (cycles.Count > 0)
+        {
+            foreach (var cycle in cycles)
+            {
+                var cycleFiles = cycle.Select(Path.GetFileName).ToList();
+                var cycleDescription = string.Join(" → ", cycleFiles);
+                _errors.Add($"Circular dependency detected: {cycleDescription}");
+            }
+            // Don't add import resolver errors when we have circular dependencies
+            // as they would be redundant/confusing (e.g., "module not found" errors
+            // that are caused by the circular import)
+            return false;
+        }
+
+        // Add import resolver errors only if no circular dependencies were detected
         if (_importResolver.Errors.Any())
         {
             _errors.AddRange(_importResolver.Errors.Select(e => e.Message));
@@ -341,8 +376,34 @@ public class ProjectCompiler
     {
         _logger.LogInfo("Phase 4: Semantic Analysis");
 
-        foreach (var (sourceFile, module) in _parsedModules)
+        // Process modules in dependency order (dependencies before dependents)
+        // This ensures proper symbol resolution across modules
+        IEnumerable<string> modulesToProcess;
+        if (_dependencyGraph != null)
         {
+            // Build a mapping from normalized paths to original paths
+            var normalizedToOriginal = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var path in _parsedModules.Keys)
+            {
+                var normalized = NormalizePath(path);
+                normalizedToOriginal[normalized] = path;
+            }
+
+            // Get build order and map back to original paths
+            var buildOrder = _dependencyGraph.GetBuildOrder();
+            modulesToProcess = buildOrder
+                .Select(normalized => normalizedToOriginal.TryGetValue(normalized, out var original) ? original : null)
+                .Where(path => path != null)!;
+        }
+        else
+        {
+            modulesToProcess = _parsedModules.Keys;
+        }
+
+        foreach (var sourceFile in modulesToProcess)
+        {
+            var module = _parsedModules[sourceFile];
+
             // Get the file metrics we created during parsing
             var fileMetrics = _fileMetrics[sourceFile];
 
@@ -474,7 +535,8 @@ public class ProjectCompiler
                 Success = false,
                 Errors = _errors,
                 Warnings = assemblyResult.Warnings,
-                Metrics = _projectMetrics
+                Metrics = _projectMetrics,
+                DependencyGraph = _dependencyGraph
             };
         }
 
@@ -486,7 +548,8 @@ public class ProjectCompiler
             OutputAssemblyPath = assemblyResult.OutputAssemblyPath,
             Warnings = _warnings,
             GeneratedCSharpFiles = generatedCSharp,
-            Metrics = _projectMetrics
+            Metrics = _projectMetrics,
+            DependencyGraph = _dependencyGraph
         };
     }
 
@@ -499,7 +562,8 @@ public class ProjectCompiler
         {
             Success = false,
             Errors = _errors,
-            Metrics = _projectMetrics
+            Metrics = _projectMetrics,
+            DependencyGraph = _dependencyGraph
         };
     }
 
@@ -572,6 +636,20 @@ public class ProjectCompiler
         }
 
         return string.Join(Path.DirectorySeparatorChar.ToString(), commonParts);
+    }
+
+    /// <summary>
+    /// Normalizes a file path for consistent comparison.
+    /// Uses the same normalization logic as DependencyGraph.
+    /// </summary>
+    private static string NormalizePath(string path)
+    {
+        var normalized = path.Replace('\\', '/');
+        if (!OperatingSystem.IsLinux())
+        {
+            normalized = normalized.ToLowerInvariant();
+        }
+        return normalized;
     }
 
     /// <summary>
