@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -58,7 +59,7 @@ public partial class RoslynEmitter
             .WithBody(body);
 
         // Add type parameters if generic
-        if (func.TypeParameters.Count > 0)
+        if (func.TypeParameters.Length > 0)
         {
             var typeParams = func.TypeParameters
                 .Select(tp => TypeParameter(tp.Name))
@@ -112,7 +113,7 @@ public partial class RoslynEmitter
         return parameter;
     }
 
-    private SyntaxTokenList GenerateModifiersFromDecorators(List<Decorator> decorators)
+    private SyntaxTokenList GenerateModifiersFromDecorators(IReadOnlyList<Decorator> decorators)
     {
         var tokens = new List<SyntaxToken>();
 
@@ -229,7 +230,7 @@ public partial class RoslynEmitter
             .WithModifiers(modifiers);
 
         // Add type parameters if generic
-        if (classDef.TypeParameters.Count > 0)
+        if (classDef.TypeParameters.Length > 0)
         {
             var typeParams = classDef.TypeParameters
                 .Select(tp => TypeParameter(tp.Name))
@@ -240,7 +241,7 @@ public partial class RoslynEmitter
         }
 
         // Add base class and interfaces
-        if (classDef.BaseClasses.Count > 0)
+        if (classDef.BaseClasses.Length > 0)
         {
             var baseTypes = classDef.BaseClasses
                 .Select(bc => SimpleBaseType(_typeMapper.MapType(bc)))
@@ -252,7 +253,7 @@ public partial class RoslynEmitter
         var members = GenerateClassMembers(classDef.Body, className);
 
         // For abstract classes implementing interfaces, generate abstract stubs for missing methods
-        if (_isInAbstractClass && classDef.BaseClasses.Count > 0)
+        if (_isInAbstractClass && classDef.BaseClasses.Length > 0)
         {
             var interfaceMethods = CollectInterfaceMethodDefs(classDef.BaseClasses);
             var definedMethods = GetDefinedMethodNames(classDef.Body);
@@ -294,7 +295,7 @@ public partial class RoslynEmitter
     /// Collects all method FunctionDefs from interfaces that a class implements.
     /// Recursively collects from base interfaces as well.
     /// </summary>
-    private List<FunctionDef> CollectInterfaceMethodDefs(List<TypeAnnotation> baseTypes)
+    private List<FunctionDef> CollectInterfaceMethodDefs(IReadOnlyList<TypeAnnotation> baseTypes)
     {
         var result = new List<FunctionDef>();
         var visited = new HashSet<string>();
@@ -350,7 +351,7 @@ public partial class RoslynEmitter
     /// <summary>
     /// Returns the set of method names that are defined in the class body.
     /// </summary>
-    private HashSet<string> GetDefinedMethodNames(List<Statement> classBody)
+    private HashSet<string> GetDefinedMethodNames(IReadOnlyList<Statement> classBody)
     {
         var defined = new HashSet<string>();
 
@@ -408,7 +409,7 @@ public partial class RoslynEmitter
             .WithModifiers(modifiers);
 
         // Add type parameters if generic
-        if (structDef.TypeParameters.Count > 0)
+        if (structDef.TypeParameters.Length > 0)
         {
             var typeParams = structDef.TypeParameters
                 .Select(tp => TypeParameter(tp.Name))
@@ -419,7 +420,7 @@ public partial class RoslynEmitter
         }
 
         // Add interfaces (structs can only implement interfaces, not inherit)
-        if (structDef.BaseClasses.Count > 0)
+        if (structDef.BaseClasses.Length > 0)
         {
             var baseTypes = structDef.BaseClasses
                 .Select(bc => SimpleBaseType(_typeMapper.MapType(bc)))
@@ -453,7 +454,7 @@ public partial class RoslynEmitter
             .WithModifiers(modifiers);
 
         // Add type parameters if generic
-        if (interfaceDef.TypeParameters.Count > 0)
+        if (interfaceDef.TypeParameters.Length > 0)
         {
             var typeParams = interfaceDef.TypeParameters
                 .Select(tp => TypeParameter(tp.Name))
@@ -464,7 +465,7 @@ public partial class RoslynEmitter
         }
 
         // Add base interfaces
-        if (interfaceDef.BaseInterfaces.Count > 0)
+        if (interfaceDef.BaseInterfaces.Length > 0)
         {
             var baseTypes = interfaceDef.BaseInterfaces
                 .Select(bi => SimpleBaseType(_typeMapper.MapType(bi)))
@@ -486,13 +487,13 @@ public partial class RoslynEmitter
     }
 
     private SyntaxList<TypeParameterConstraintClauseSyntax> GenerateConstraintClauses(
-        List<TypeParameterDef> typeParameters)
+        IReadOnlyList<TypeParameterDef> typeParameters)
     {
         var clauses = new List<TypeParameterConstraintClauseSyntax>();
 
         foreach (var typeParam in typeParameters)
         {
-            if (typeParam.Constraints.Count == 0)
+            if (typeParam.Constraints.Length == 0)
                 continue;
 
             var constraintSyntaxes = new List<TypeParameterConstraintSyntax>();
@@ -706,7 +707,7 @@ public partial class RoslynEmitter
         return string.Join("", capitalizedParts);
     }
 
-    private SyntaxTokenList GenerateTypeModifiersFromDecorators(List<Decorator> decorators)
+    private SyntaxTokenList GenerateTypeModifiersFromDecorators(IReadOnlyList<Decorator> decorators)
     {
         var tokens = new List<SyntaxToken>();
 

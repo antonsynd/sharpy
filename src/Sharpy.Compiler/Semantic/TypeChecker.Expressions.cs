@@ -420,7 +420,7 @@ public partial class TypeChecker
 
         // Validate chain structure: operators count should equal operands count minus 1
         // (e.g., 3 operands need 2 operators: a < b < c)
-        if (chain.Operands.Count < 2 || chain.Operators.Count != chain.Operands.Count - 1)
+        if (chain.Operands.Length < 2 || chain.Operators.Length != chain.Operands.Length - 1)
         {
             // Malformed chain, just return bool and let parser handle errors
             return SemanticType.Bool;
@@ -428,13 +428,13 @@ public partial class TypeChecker
 
         // Check all operands and build their types
         var operandTypes = new List<SemanticType>();
-        for (int i = 0; i < chain.Operands.Count; i++)
+        for (int i = 0; i < chain.Operands.Length; i++)
         {
             operandTypes.Add(CheckExpression(chain.Operands[i]));
         }
 
         // Validate each comparison pair using OperatorValidator
-        for (int i = 0; i < chain.Operators.Count; i++)
+        for (int i = 0; i < chain.Operators.Length; i++)
         {
             var leftType = operandTypes[i];
             var rightType = operandTypes[i + 1];
@@ -1126,7 +1126,7 @@ public partial class TypeChecker
 
     private SemanticType CheckListLiteral(ListLiteral list)
     {
-        if (list.Elements.Count == 0)
+        if (list.Elements.Length == 0)
         {
             return new GenericType
             {
@@ -1157,7 +1157,7 @@ public partial class TypeChecker
 
     private SemanticType CheckDictLiteral(DictLiteral dict)
     {
-        if (dict.Entries.Count == 0)
+        if (dict.Entries.Length == 0)
         {
             return new GenericType
             {
@@ -1181,7 +1181,7 @@ public partial class TypeChecker
 
     private SemanticType CheckSetLiteral(SetLiteral set)
     {
-        if (set.Elements.Count == 0)
+        if (set.Elements.Length == 0)
         {
             return new GenericType
             {

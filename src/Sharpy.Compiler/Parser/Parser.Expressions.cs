@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
@@ -325,8 +326,8 @@ public partial class Parser
         // Comparison chain
         return new ComparisonChain
         {
-            Operands = operands,
-            Operators = operators,
+            Operands = operands.ToImmutableArray(),
+            Operators = operators.ToImmutableArray(),
             LineStart = operands[0].LineStart,
             ColumnStart = operands[0].ColumnStart,
             LineEnd = operands[^1].LineEnd,
@@ -731,8 +732,8 @@ public partial class Parser
                 expr = new FunctionCall
                 {
                     Function = expr,
-                    Arguments = args,
-                    KeywordArguments = kwargs,
+                    Arguments = args.ToImmutableArray(),
+                    KeywordArguments = kwargs.ToImmutableArray(),
                     LineStart = expr.LineStart,
                     ColumnStart = expr.ColumnStart,
                     LineEnd = Previous.Line,
@@ -815,7 +816,7 @@ public partial class Parser
             // Create a TupleLiteral to hold multiple type arguments
             var tuple = new TupleLiteral
             {
-                Elements = elements,
+                Elements = elements.ToImmutableArray(),
                 LineStart = start!.LineStart,
                 ColumnStart = start!.ColumnStart,
                 LineEnd = Current.Line,

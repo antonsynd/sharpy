@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -329,14 +330,14 @@ public partial class RoslynEmitter
     /// Transform loop body statements for else clause support.
     /// Wraps break statements with flag assignment: { flag = false; break; }
     /// </summary>
-    private List<Statement> TransformLoopBodyForElse(List<Statement> body, string flagName)
+    private ImmutableArray<Statement> TransformLoopBodyForElse(IReadOnlyList<Statement> body, string flagName)
     {
-        var result = new List<Statement>();
+        var builder = ImmutableArray.CreateBuilder<Statement>(body.Count);
         foreach (var stmt in body)
         {
-            result.Add(TransformStatementForLoopElse(stmt, flagName));
+            builder.Add(TransformStatementForLoopElse(stmt, flagName));
         }
-        return result;
+        return builder.ToImmutable();
     }
 
     /// <summary>
@@ -364,7 +365,7 @@ public partial class RoslynEmitter
                 ElifClauses = ifStmt.ElifClauses.Select(e => e with
                 {
                     Body = TransformLoopBodyForElse(e.Body, flagName)
-                }).ToList(),
+                }).ToImmutableArray(),
                 ElseBody = TransformLoopBodyForElse(ifStmt.ElseBody, flagName)
             },
 

@@ -41,7 +41,7 @@ public class ControlFlowValidator
         // Note: Implicit abstract methods (ellipsis body in @abstract class) are also skipped
         // because we check for ellipsis body below
         bool hasAbstractDecorator = functionDef.Decorators.Any(d => d.Name == "abstract");
-        bool hasEllipsisBody = functionDef.Body.Count == 1
+        bool hasEllipsisBody = functionDef.Body.Length == 1
             && functionDef.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
 
         // Skip for explicit @abstract decorator or for ellipsis-only bodies
@@ -67,7 +67,7 @@ public class ControlFlowValidator
     /// Validates a block of statements
     /// Returns (alwaysReturns, hasUnreachableCode)
     /// </summary>
-    private (bool, bool) ValidateBlock(List<Statement> statements)
+    private (bool, bool) ValidateBlock(IReadOnlyList<Statement> statements)
     {
         bool alwaysReturns = false;
         bool alwaysExits = false; // returns, raises, break, continue
@@ -173,7 +173,7 @@ public class ControlFlowValidator
         }
 
         // Check else branch
-        if (ifStmt.ElseBody != null && ifStmt.ElseBody.Count > 0)
+        if (ifStmt.ElseBody != null && ifStmt.ElseBody.Length > 0)
         {
             var (elseReturns, _) = ValidateBlock(ifStmt.ElseBody);
             allBranchesReturn = allBranchesReturn && elseReturns;
@@ -219,7 +219,7 @@ public class ControlFlowValidator
         }
 
         bool finallyReturns = false;
-        if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Count > 0)
+        if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Length > 0)
         {
             var (finReturns, _) = ValidateBlock(tryStmt.FinallyBody);
             finallyReturns = finReturns;

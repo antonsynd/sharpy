@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.IO;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -190,7 +191,7 @@ public class TypeMapper
         var baseTypeName = GetMappedTypeName(type.Name);
 
         // Handle generic type arguments
-        if (type.TypeArguments.Count > 0)
+        if (type.TypeArguments.Length > 0)
         {
             var typeArgs = type.TypeArguments
                 .Select(MapType)
@@ -384,7 +385,7 @@ public class TypeMapper
     /// </summary>
     public TypeSyntax MapTupleType(Parser.Ast.TupleType tupleType)
     {
-        if (tupleType.ElementTypes.Count == 0)
+        if (tupleType.ElementTypes.IsEmpty)
         {
             // Empty tuple
             return ParseTypeName("System.ValueTuple");

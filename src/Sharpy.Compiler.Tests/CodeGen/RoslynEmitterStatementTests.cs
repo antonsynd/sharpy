@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -101,7 +102,7 @@ public class RoslynEmitterStatementTests
                 Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>
                 {
                     new StringLiteral { Value = "error" }
-                }
+                }.ToImmutableArray()
             }
         };
 
@@ -179,7 +180,7 @@ public class RoslynEmitterStatementTests
                 TypeArguments = new List<TypeAnnotation>
                 {
                     new TypeAnnotation { Name = "int" }
-                }
+                }.ToImmutableArray()
             },
             InitialValue = new ListLiteral
             {
@@ -188,7 +189,7 @@ public class RoslynEmitterStatementTests
                     new IntegerLiteral { Value = "1" },
                     new IntegerLiteral { Value = "2" },
                     new IntegerLiteral { Value = "3" }
-                }
+                }.ToImmutableArray()
             }
         };
 
@@ -214,7 +215,7 @@ public class RoslynEmitterStatementTests
                 {
                     new TypeAnnotation { Name = "str" },
                     new TypeAnnotation { Name = "int" }
-                }
+                }.ToImmutableArray()
             },
             InitialValue = new DictLiteral
             {
@@ -225,7 +226,7 @@ public class RoslynEmitterStatementTests
                         Key = new StringLiteral { Value = "a" },
                         Value = new IntegerLiteral { Value = "1" }
                     }
-                }
+                }.ToImmutableArray()
             }
         };
 
@@ -250,7 +251,7 @@ public class RoslynEmitterStatementTests
                 TypeArguments = new List<TypeAnnotation>
                 {
                     new TypeAnnotation { Name = "int" }
-                }
+                }.ToImmutableArray()
             },
             InitialValue = new SetLiteral
             {
@@ -259,7 +260,7 @@ public class RoslynEmitterStatementTests
                     new IntegerLiteral { Value = "1" },
                     new IntegerLiteral { Value = "2" },
                     new IntegerLiteral { Value = "3" }
-                }
+                }.ToImmutableArray()
             }
         };
 
@@ -285,7 +286,7 @@ public class RoslynEmitterStatementTests
                 {
                     new IntegerLiteral { Value = "1" },
                     new IntegerLiteral { Value = "2" }
-                }
+                }.ToImmutableArray()
             }
         };
 
@@ -416,7 +417,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "1" },
                     Operator = AssignmentOperator.Assign
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -439,7 +440,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "1" },
                     Operator = AssignmentOperator.Assign
                 }
-            },
+            }.ToImmutableArray(),
             ElseBody = new List<Statement>
             {
                 new Assignment
@@ -448,7 +449,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "2" },
                     Operator = AssignmentOperator.Assign
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -478,7 +479,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "1" },
                     Operator = AssignmentOperator.Assign
                 }
-            },
+            }.ToImmutableArray(),
             ElifClauses = new List<ElifClause>
             {
                 new ElifClause
@@ -497,9 +498,9 @@ public class RoslynEmitterStatementTests
                             Value = new IntegerLiteral { Value = "2" },
                             Operator = AssignmentOperator.Assign
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            },
+            }.ToImmutableArray(),
             ElseBody = new List<Statement>
             {
                 new Assignment
@@ -508,7 +509,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "3" },
                     Operator = AssignmentOperator.Assign
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -545,7 +546,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "1" },
                     Operator = AssignmentOperator.PlusAssign
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -572,10 +573,10 @@ public class RoslynEmitterStatementTests
                         Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>
                         {
                             new Identifier { Name = "item" }
-                        }
+                        }.ToImmutableArray()
                     }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -596,7 +597,7 @@ public class RoslynEmitterStatementTests
             Body = new List<Statement>
             {
                 new Sharpy.Compiler.Parser.Ast.BreakStatement()
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -627,7 +628,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "1" },
                     Operator = AssignmentOperator.Assign
                 }
-            },
+            }.ToImmutableArray(),
             Handlers = new List<ExceptHandler>
             {
                 new ExceptHandler
@@ -636,9 +637,9 @@ public class RoslynEmitterStatementTests
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -661,7 +662,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "1" },
                     Operator = AssignmentOperator.Assign
                 }
-            },
+            }.ToImmutableArray(),
             Handlers = new List<ExceptHandler>
             {
                 new ExceptHandler
@@ -678,12 +679,12 @@ public class RoslynEmitterStatementTests
                                 Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>
                                 {
                                     new Identifier { Name = "e" }
-                                }
+                                }.ToImmutableArray()
                             }
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -706,7 +707,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "1" },
                     Operator = AssignmentOperator.Assign
                 }
-            },
+            }.ToImmutableArray(),
             FinallyBody = new List<Statement>
             {
                 new ExpressionStatement
@@ -714,10 +715,10 @@ public class RoslynEmitterStatementTests
                     Expression = new FunctionCall
                     {
                         Function = new Identifier { Name = "cleanup" },
-                        Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>()
+                        Arguments = ImmutableArray<Sharpy.Compiler.Parser.Ast.Expression>.Empty
                     }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -741,7 +742,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "1" },
                     Operator = AssignmentOperator.Assign
                 }
-            },
+            }.ToImmutableArray(),
             Handlers = new List<ExceptHandler>
             {
                 new ExceptHandler
@@ -750,9 +751,9 @@ public class RoslynEmitterStatementTests
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 }
-            },
+            }.ToImmutableArray(),
             FinallyBody = new List<Statement>
             {
                 new ExpressionStatement
@@ -760,10 +761,10 @@ public class RoslynEmitterStatementTests
                     Expression = new FunctionCall
                     {
                         Function = new Identifier { Name = "cleanup" },
-                        Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>()
+                        Arguments = ImmutableArray<Sharpy.Compiler.Parser.Ast.Expression>.Empty
                     }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -788,7 +789,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "1" },
                     Operator = AssignmentOperator.Assign
                 }
-            },
+            }.ToImmutableArray(),
             Handlers = new List<ExceptHandler>
             {
                 new ExceptHandler
@@ -797,7 +798,7 @@ public class RoslynEmitterStatementTests
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 },
                 new ExceptHandler
                 {
@@ -805,9 +806,9 @@ public class RoslynEmitterStatementTests
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -830,7 +831,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "1" },
                     Operator = AssignmentOperator.Assign
                 }
-            },
+            }.ToImmutableArray(),
             Handlers = new List<ExceptHandler>
             {
                 new ExceptHandler
@@ -839,9 +840,9 @@ public class RoslynEmitterStatementTests
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 }
-            },
+            }.ToImmutableArray(),
             ElseBody = new List<Statement>
             {
                 new ExpressionStatement
@@ -849,10 +850,10 @@ public class RoslynEmitterStatementTests
                     Expression = new FunctionCall
                     {
                         Function = new Identifier { Name = "success" },
-                        Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>()
+                        Arguments = ImmutableArray<Sharpy.Compiler.Parser.Ast.Expression>.Empty
                     }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);
@@ -883,7 +884,7 @@ public class RoslynEmitterStatementTests
                     Value = new IntegerLiteral { Value = "1" },
                     Operator = AssignmentOperator.Assign
                 }
-            },
+            }.ToImmutableArray(),
             Handlers = new List<ExceptHandler>
             {
                 new ExceptHandler
@@ -892,9 +893,9 @@ public class RoslynEmitterStatementTests
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 }
-            },
+            }.ToImmutableArray(),
             ElseBody = new List<Statement>
             {
                 new ExpressionStatement
@@ -902,10 +903,10 @@ public class RoslynEmitterStatementTests
                     Expression = new FunctionCall
                     {
                         Function = new Identifier { Name = "success" },
-                        Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>()
+                        Arguments = ImmutableArray<Sharpy.Compiler.Parser.Ast.Expression>.Empty
                     }
                 }
-            },
+            }.ToImmutableArray(),
             FinallyBody = new List<Statement>
             {
                 new ExpressionStatement
@@ -913,10 +914,10 @@ public class RoslynEmitterStatementTests
                     Expression = new FunctionCall
                     {
                         Function = new Identifier { Name = "cleanup" },
-                        Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>()
+                        Arguments = ImmutableArray<Sharpy.Compiler.Parser.Ast.Expression>.Empty
                     }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         var result = GenerateStatementCode(stmt);

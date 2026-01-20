@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -129,7 +130,7 @@ public class RoslynEmitterExpressionTests
     public void GenerateExpression_EmptyListLiteral_GeneratesSharpyList()
     {
         // Arrange
-        var expr = new ListLiteral { Elements = new List<Expression>() };
+        var expr = new ListLiteral { Elements = ImmutableArray<Expression>.Empty };
 
         // Act
         var result = InvokeGenerateExpression(expr);
@@ -149,7 +150,7 @@ public class RoslynEmitterExpressionTests
                 new IntegerLiteral { Value = "1" },
                 new IntegerLiteral { Value = "2" },
                 new IntegerLiteral { Value = "3" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -181,7 +182,7 @@ public class RoslynEmitterExpressionTests
                     Key = new StringLiteral { Value = "b" },
                     Value = new IntegerLiteral { Value = "2" }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -204,7 +205,7 @@ public class RoslynEmitterExpressionTests
             {
                 new IntegerLiteral { Value = "1" },
                 new IntegerLiteral { Value = "2" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -225,7 +226,7 @@ public class RoslynEmitterExpressionTests
             {
                 new IntegerLiteral { Value = "1" },
                 new StringLiteral { Value = "test" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -481,7 +482,7 @@ public class RoslynEmitterExpressionTests
                 Arguments = new List<Expression>
                 {
                     new Identifier { Name = "y" }
-                }
+                }.ToImmutableArray()
             }
         };
 
@@ -508,7 +509,7 @@ public class RoslynEmitterExpressionTests
                 {
                     new Identifier { Name = "y" },
                     new Identifier { Name = "z" }
-                }
+                }.ToImmutableArray()
             }
         };
 
@@ -559,13 +560,13 @@ public class RoslynEmitterExpressionTests
                 Right = new FunctionCall
                 {
                     Function = new Identifier { Name = "f" },
-                    Arguments = new List<Expression> { new Identifier { Name = "y" } }
+                    Arguments = new List<Expression> { new Identifier { Name = "y" } }.ToImmutableArray()
                 }
             },
             Right = new FunctionCall
             {
                 Function = new Identifier { Name = "g" },
-                Arguments = new List<Expression> { new Identifier { Name = "z" } }
+                Arguments = new List<Expression> { new Identifier { Name = "z" } }.ToImmutableArray()
             }
         };
 
@@ -613,11 +614,11 @@ public class RoslynEmitterExpressionTests
             Right = new FunctionCall
             {
                 Function = new Identifier { Name = "f" },
-                Arguments = new List<Expression> { new Identifier { Name = "y" } },
+                Arguments = new List<Expression> { new Identifier { Name = "y" } }.ToImmutableArray(),
                 KeywordArguments = new List<KeywordArgument>
                 {
                     new KeywordArgument { Name = "key", Value = new Identifier { Name = "value" } }
-                }
+                }.ToImmutableArray()
             }
         };
 
@@ -914,12 +915,12 @@ public class RoslynEmitterExpressionTests
                 new Identifier { Name = "a" },
                 new Identifier { Name = "b" },
                 new Identifier { Name = "c" }
-            },
+            }.ToImmutableArray(),
             Operators = new List<ComparisonOperator>
             {
                 ComparisonOperator.LessThan,
                 ComparisonOperator.LessThan
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -970,7 +971,7 @@ public class RoslynEmitterExpressionTests
         // Arrange
         var expr = new LambdaExpression
         {
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             Body = new IntegerLiteral { Value = "42" }
         };
 
@@ -993,7 +994,7 @@ public class RoslynEmitterExpressionTests
             Parameters = new List<Parameter>
             {
                 new Parameter { Name = "x" }
-            },
+            }.ToImmutableArray(),
             Body = new BinaryOp
             {
                 Operator = BinaryOperator.Multiply,
@@ -1023,7 +1024,7 @@ public class RoslynEmitterExpressionTests
             {
                 new Parameter { Name = "x" },
                 new Parameter { Name = "y" }
-            },
+            }.ToImmutableArray(),
             Body = new BinaryOp
             {
                 Operator = BinaryOperator.Add,
@@ -1180,7 +1181,7 @@ public class RoslynEmitterExpressionTests
                 new FStringPart { Text = "Hello " },
                 new FStringPart { Expression = new Identifier { Name = "name" } },
                 new FStringPart { Text = "!" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1208,7 +1209,7 @@ public class RoslynEmitterExpressionTests
             Arguments = new List<Expression>
             {
                 new StringLiteral { Value = "hello" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1241,7 +1242,7 @@ public class RoslynEmitterExpressionTests
             {
                 new IntegerLiteral { Value = "3" },
                 new IntegerLiteral { Value = "4" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1274,7 +1275,7 @@ public class RoslynEmitterExpressionTests
             Arguments = new List<Expression>
             {
                 new StringLiteral { Value = "john" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1303,7 +1304,7 @@ public class RoslynEmitterExpressionTests
         var expr = new FunctionCall
         {
             Function = new Identifier { Name = "Rectangle" },
-            Arguments = new List<Expression>(),
+            Arguments = ImmutableArray<Expression>.Empty,
             KeywordArguments = new List<KeywordArgument>
             {
                 new KeywordArgument
@@ -1316,7 +1317,7 @@ public class RoslynEmitterExpressionTests
                     Name = "height",
                     Value = new IntegerLiteral { Value = "20" }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1348,7 +1349,7 @@ public class RoslynEmitterExpressionTests
         var expr = new FunctionCall
         {
             Function = new Identifier { Name = "Empty" },
-            Arguments = new List<Expression>()
+            Arguments = ImmutableArray<Expression>.Empty
         };
 
         // Act
@@ -1381,7 +1382,7 @@ public class RoslynEmitterExpressionTests
             {
                 new IntegerLiteral { Value = "10" },
                 new IntegerLiteral { Value = "20" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1411,7 +1412,7 @@ public class RoslynEmitterExpressionTests
         var expr = new FunctionCall
         {
             Function = new Identifier { Name = "Vector2" },
-            Arguments = new List<Expression>()
+            Arguments = ImmutableArray<Expression>.Empty
         };
 
         // Act
@@ -1443,7 +1444,7 @@ public class RoslynEmitterExpressionTests
             Arguments = new List<Expression>
             {
                 new IntegerLiteral { Value = "1" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1472,7 +1473,7 @@ public class RoslynEmitterExpressionTests
         var expr = new FunctionCall
         {
             Function = new Identifier { Name = "Color" },
-            Arguments = new List<Expression>(),
+            Arguments = ImmutableArray<Expression>.Empty,
             KeywordArguments = new List<KeywordArgument>
             {
                 new KeywordArgument
@@ -1490,7 +1491,7 @@ public class RoslynEmitterExpressionTests
                     Name = "b",
                     Value = new IntegerLiteral { Value = "0" }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1526,7 +1527,7 @@ public class RoslynEmitterExpressionTests
             Arguments = new List<Expression>
             {
                 new IntegerLiteral { Value = "5" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act

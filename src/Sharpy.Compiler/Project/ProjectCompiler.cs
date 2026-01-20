@@ -304,7 +304,7 @@ public class ProjectCompiler
                     var modules = _importResolver.ResolveImport(import, config.ProjectDirectory);
 
                     // Match each resolved module with its import alias to get the correct name/alias
-                    for (int i = 0; i < import.Names.Count && i < modules.Count; i++)
+                    for (int i = 0; i < import.Names.Length && i < modules.Count; i++)
                     {
                         var importAlias = import.Names[i];
                         var moduleInfo = modules[i];

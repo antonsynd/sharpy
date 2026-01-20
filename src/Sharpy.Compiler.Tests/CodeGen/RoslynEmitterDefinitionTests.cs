@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -33,16 +34,16 @@ public partial class RoslynEmitterDefinitionTests
         var func = new FunctionDef
         {
             Name = "greet",
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = null,
             Body = new List<Statement>
             {
                 new ReturnStatement { Value = null }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -61,16 +62,16 @@ public partial class RoslynEmitterDefinitionTests
             {
                 new Parameter { Name = "x", Type = new TypeAnnotation { Name = "int" } },
                 new Parameter { Name = "y", Type = new TypeAnnotation { Name = "int" } }
-            },
+            }.ToImmutableArray(),
             ReturnType = new TypeAnnotation { Name = "int" },
             Body = new List<Statement>
             {
                 new ReturnStatement { Value = new IntegerLiteral { Value = "0" } }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -93,16 +94,16 @@ public partial class RoslynEmitterDefinitionTests
                     Type = new TypeAnnotation { Name = "string" },
                     DefaultValue = new StringLiteral { Value = "World" }
                 }
-            },
+            }.ToImmutableArray(),
             ReturnType = new TypeAnnotation { Name = "string" },
             Body = new List<Statement>
             {
                 new ReturnStatement { Value = new StringLiteral { Value = "Hello" } }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -117,17 +118,17 @@ public partial class RoslynEmitterDefinitionTests
         var func = new FunctionDef
         {
             Name = "greet",
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = new TypeAnnotation { Name = "string" },
             Body = new List<Statement>
             {
                 new ReturnStatement { Value = new StringLiteral { Value = "Hello" } }
-            },
+            }.ToImmutableArray(),
             DocString = "Greets the world"
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -144,17 +145,17 @@ public partial class RoslynEmitterDefinitionTests
         var func = new FunctionDef
         {
             Name = "helper",
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = null,
-            Body = new List<Statement> { new PassStatement() },
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray(),
             Decorators = new List<Decorator>
             {
                 new Decorator { Name = "private" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -179,7 +180,7 @@ public partial class RoslynEmitterDefinitionTests
                     Type = new TypeAnnotation { Name = "int" },
                     DefaultValue = new IntegerLiteral { Value = "1" }
                 }
-            },
+            }.ToImmutableArray(),
             ReturnType = new TypeAnnotation { Name = "int" },
             Body = new List<Statement>
             {
@@ -192,11 +193,11 @@ public partial class RoslynEmitterDefinitionTests
                         Right = new Identifier { Name = "b" }
                     }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -212,20 +213,20 @@ public partial class RoslynEmitterDefinitionTests
         var func = new FunctionDef
         {
             Name = "identity",
-            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } },
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } }.ToImmutableArray(),
             Parameters = new List<Parameter>
             {
                 new Parameter { Name = "value", Type = new TypeAnnotation { Name = "T" } }
-            },
+            }.ToImmutableArray(),
             ReturnType = new TypeAnnotation { Name = "T" },
             Body = new List<Statement>
             {
                 new ReturnStatement { Value = new Identifier { Name = "value" } }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -240,21 +241,21 @@ public partial class RoslynEmitterDefinitionTests
         var func = new FunctionDef
         {
             Name = "find_max",
-            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" }, new TypeParameterDef { Name = "U" } },
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" }, new TypeParameterDef { Name = "U" } }.ToImmutableArray(),
             Parameters = new List<Parameter>
             {
                 new Parameter { Name = "a", Type = new TypeAnnotation { Name = "T" } },
                 new Parameter { Name = "b", Type = new TypeAnnotation { Name = "U" } }
-            },
+            }.ToImmutableArray(),
             ReturnType = new TypeAnnotation { Name = "T" },
             Body = new List<Statement>
             {
                 new ReturnStatement { Value = new Identifier { Name = "a" } }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -269,7 +270,7 @@ public partial class RoslynEmitterDefinitionTests
         var func = new FunctionDef
         {
             Name = "get_first",
-            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } },
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } }.ToImmutableArray(),
             Parameters = new List<Parameter>
             {
                 new Parameter
@@ -281,10 +282,10 @@ public partial class RoslynEmitterDefinitionTests
                         TypeArguments = new List<TypeAnnotation>
                         {
                             new TypeAnnotation { Name = "T" }
-                        }
+                        }.ToImmutableArray()
                     }
                 }
-            },
+            }.ToImmutableArray(),
             ReturnType = new TypeAnnotation { Name = "T" },
             Body = new List<Statement>
             {
@@ -296,11 +297,11 @@ public partial class RoslynEmitterDefinitionTests
                         Index = new IntegerLiteral { Value = "0" }
                     }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 

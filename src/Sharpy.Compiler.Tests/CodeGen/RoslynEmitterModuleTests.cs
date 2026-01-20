@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Parser.Ast;
@@ -29,7 +30,7 @@ public class RoslynEmitterModuleTests
         var emitter = CreateEmitter();
         var module = new Module
         {
-            Body = new List<Statement>()
+            Body = ImmutableArray<Statement>.Empty
         };
 
         // Act
@@ -48,7 +49,7 @@ public class RoslynEmitterModuleTests
         var emitter = CreateEmitter("src/myapp/utils.spy");
         var module = new Module
         {
-            Body = new List<Statement>()
+            Body = ImmutableArray<Statement>.Empty
         };
 
         // Act
@@ -66,7 +67,7 @@ public class RoslynEmitterModuleTests
         var emitter = CreateEmitter();
         var module = new Module
         {
-            Body = new List<Statement>()
+            Body = ImmutableArray<Statement>.Empty
         };
 
         // Act
@@ -94,9 +95,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "system.io" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -121,9 +122,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "system.collections.generic", AsName = "Collections" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -149,9 +150,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "File" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -176,7 +177,7 @@ public class RoslynEmitterModuleTests
                     Module = "system.text",
                     ImportAll = true
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -202,14 +203,14 @@ public class RoslynEmitterModuleTests
                     {
                         new ImportAlias { Name = "system.io" },
                         new ImportAlias { Name = "system.text" }
-                    }
+                    }.ToImmutableArray()
                 },
                 new FromImportStatement
                 {
                     Module = "system.linq",
                     ImportAll = true
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -236,9 +237,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "utils.helpers" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -263,9 +264,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "utils.helpers", AsName = "h" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -290,15 +291,15 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "system.io" }
-                    }
+                    }.ToImmutableArray()
                 },
                 new FunctionDef
                 {
                     Name = "my_function",
-                    Parameters = new List<Parameter>(),
-                    Body = new List<Statement>()
+                    Parameters = ImmutableArray<Parameter>.Empty,
+                    Body = ImmutableArray<Statement>.Empty
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -330,9 +331,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "my_custom_module.sub_module" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -358,7 +359,7 @@ public class RoslynEmitterModuleTests
         var emitter = new RoslynEmitter(context);
         var module = new Module
         {
-            Body = new List<Statement>()
+            Body = ImmutableArray<Statement>.Empty
         };
 
         // Act
@@ -376,7 +377,7 @@ public class RoslynEmitterModuleTests
         var emitter = CreateEmitter("src/myapp/services/auth.spy");
         var module = new Module
         {
-            Body = new List<Statement>()
+            Body = ImmutableArray<Statement>.Empty
         };
 
         // Act
@@ -402,7 +403,7 @@ public class RoslynEmitterModuleTests
         var emitter = new RoslynEmitter(context);
         var module = new Module
         {
-            Body = new List<Statement>()
+            Body = ImmutableArray<Statement>.Empty
         };
 
         // Act
@@ -420,7 +421,7 @@ public class RoslynEmitterModuleTests
         var emitter = CreateEmitter("src/lib/mymodule.spy");
         var module = new Module
         {
-            Body = new List<Statement>()
+            Body = ImmutableArray<Statement>.Empty
         };
 
         // Act
@@ -447,9 +448,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "___" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Test with backticks only - should handle gracefully
@@ -462,9 +463,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "``" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -497,7 +498,7 @@ public class RoslynEmitterModuleTests
             ProjectRootPath = "/project/src"
         };
         var emitter = new RoslynEmitter(context);
-        var module = new Module { Body = new List<Statement>() };
+        var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
         var result = emitter.GenerateCompilationUnit(module);
@@ -512,7 +513,7 @@ public class RoslynEmitterModuleTests
     {
         // Arrange - File name starting with number
         var emitter = CreateEmitter("/some/path/123test.spy");
-        var module = new Module { Body = new List<Statement>() };
+        var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
         var result = emitter.GenerateCompilationUnit(module);
@@ -536,7 +537,7 @@ public class RoslynEmitterModuleTests
             ProjectRootPath = "/project/src"
         };
         var emitter = new RoslynEmitter(context);
-        var module = new Module { Body = new List<Statement>() };
+        var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
         var result = emitter.GenerateCompilationUnit(module);
@@ -559,7 +560,7 @@ public class RoslynEmitterModuleTests
             ProjectRootPath = "/dogfood/issues"
         };
         var emitter = new RoslynEmitter(context);
-        var module = new Module { Body = new List<Statement>() };
+        var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
         var result = emitter.GenerateCompilationUnit(module);
@@ -575,7 +576,7 @@ public class RoslynEmitterModuleTests
         // Arrange - Single-file compilation with numeric-starting path
         // This simulates the dogfooding scenario where path is /20260113.../source.spy
         var emitter = CreateEmitter("/dogfood/20260113_compilation_failed/source.spy");
-        var module = new Module { Body = new List<Statement>() };
+        var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
         var result = emitter.GenerateCompilationUnit(module);
@@ -599,7 +600,7 @@ public class RoslynEmitterModuleTests
             // ProjectRootPath not set
         };
         var emitter = new RoslynEmitter(context);
-        var module = new Module { Body = new List<Statement>() };
+        var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
         var result = emitter.GenerateCompilationUnit(module);
@@ -614,7 +615,7 @@ public class RoslynEmitterModuleTests
     {
         // Arrange - No source file path
         var emitter = CreateEmitter(null);
-        var module = new Module { Body = new List<Statement>() };
+        var module = new Module { Body = ImmutableArray<Statement>.Empty };
 
         // Act
         var result = emitter.GenerateCompilationUnit(module);
@@ -635,7 +636,7 @@ public class RoslynEmitterModuleTests
         var emitter = CreateEmitter();
         var module = new Module
         {
-            Body = new List<Statement>()
+            Body = ImmutableArray<Statement>.Empty
         };
 
         // Act
@@ -653,7 +654,7 @@ public class RoslynEmitterModuleTests
         var emitter = CreateEmitter();
         var module = new Module
         {
-            Body = new List<Statement>()
+            Body = ImmutableArray<Statement>.Empty
         };
 
         // Act
@@ -686,11 +687,11 @@ public class RoslynEmitterModuleTests
                             Name = "value",
                             Type = new TypeAnnotation { Name = "int", IsNullable = true }
                         }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "void" },
-                    Body = new List<Statement>()
+                    Body = ImmutableArray<Statement>.Empty
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -714,7 +715,7 @@ public class RoslynEmitterModuleTests
                 new FunctionDef
                 {
                     Name = "get_name",
-                    Parameters = new List<Parameter>(),
+                    Parameters = ImmutableArray<Parameter>.Empty,
                     ReturnType = new TypeAnnotation { Name = "str", IsNullable = true },
                     Body = new List<Statement>
                     {
@@ -722,9 +723,9 @@ public class RoslynEmitterModuleTests
                         {
                             Value = new NoneLiteral()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -747,14 +748,14 @@ public class RoslynEmitterModuleTests
                 new FunctionDef
                 {
                     Name = "get_items",
-                    Parameters = new List<Parameter>(),
+                    Parameters = ImmutableArray<Parameter>.Empty,
                     ReturnType = new TypeAnnotation
                     {
                         Name = "list",
                         TypeArguments = new List<TypeAnnotation>
                         {
                             new TypeAnnotation { Name = "int" }
-                        },
+                        }.ToImmutableArray(),
                         IsNullable = true
                     },
                     Body = new List<Statement>
@@ -763,9 +764,9 @@ public class RoslynEmitterModuleTests
                         {
                             Value = new NoneLiteral()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -788,14 +789,14 @@ public class RoslynEmitterModuleTests
                 new FunctionDef
                 {
                     Name = "get_items",
-                    Parameters = new List<Parameter>(),
+                    Parameters = ImmutableArray<Parameter>.Empty,
                     ReturnType = new TypeAnnotation
                     {
                         Name = "list",
                         TypeArguments = new List<TypeAnnotation>
                         {
                             new TypeAnnotation { Name = "int", IsNullable = true }
-                        },
+                        }.ToImmutableArray(),
                         IsNullable = false
                     },
                     Body = new List<Statement>
@@ -804,12 +805,12 @@ public class RoslynEmitterModuleTests
                         {
                             Value = new ListLiteral
                             {
-                                Elements = new List<Expression>()
+                                Elements = ImmutableArray<Expression>.Empty
                             }
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -839,9 +840,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "MAX_SIZE" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -869,9 +870,9 @@ public class RoslynEmitterModuleTests
                     {
                         new ImportAlias { Name = "format_text" },
                         new ImportAlias { Name = "parse_json" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -898,9 +899,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "add" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -926,7 +927,7 @@ public class RoslynEmitterModuleTests
                     Module = "utils",
                     ImportAll = true
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -953,9 +954,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "get_connection" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -982,9 +983,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "MAX_SIZE", AsName = "max" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1013,7 +1014,7 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "MAX_SIZE" }
-                    }
+                    }.ToImmutableArray()
                 },
                 new FromImportStatement
                 {
@@ -1021,9 +1022,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "MIN_SIZE" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1065,10 +1066,10 @@ public class RoslynEmitterModuleTests
                 new FunctionDef
                 {
                     Name = "package_func",
-                    Parameters = new List<Parameter>(),
-                    Body = new List<Statement>()
+                    Parameters = ImmutableArray<Parameter>.Empty,
+                    Body = ImmutableArray<Statement>.Empty
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1107,7 +1108,7 @@ public class RoslynEmitterModuleTests
                     InitialValue = new StringLiteral { Value = "1.0.0" },
                     IsConst = true
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -1135,9 +1136,9 @@ public class RoslynEmitterModuleTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "mypackage" }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act

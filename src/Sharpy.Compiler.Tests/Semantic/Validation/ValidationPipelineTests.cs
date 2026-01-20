@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Xunit;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
@@ -19,7 +20,7 @@ public class ValidationPipelineTests
 
     private Module CreateEmptyModule()
     {
-        return new Module { Body = new List<Statement>() };
+        return new Module { Body = ImmutableArray<Statement>.Empty };
     }
 
     [Fact]

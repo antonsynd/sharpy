@@ -41,7 +41,7 @@ public record StringLiteral : Expression
 /// </summary>
 public record FStringLiteral : Expression
 {
-    public List<FStringPart> Parts { get; init; } = new();
+    public ImmutableArray<FStringPart> Parts { get; init; } = ImmutableArray<FStringPart>.Empty;
 }
 
 public record FStringPart
@@ -78,7 +78,7 @@ public record EllipsisLiteral : Expression;
 /// </summary>
 public record ListLiteral : Expression
 {
-    public List<Expression> Elements { get; init; } = new();
+    public ImmutableArray<Expression> Elements { get; init; } = ImmutableArray<Expression>.Empty;
 }
 
 /// <summary>
@@ -86,7 +86,7 @@ public record ListLiteral : Expression
 /// </summary>
 public record DictLiteral : Expression
 {
-    public List<DictEntry> Entries { get; init; } = new();
+    public ImmutableArray<DictEntry> Entries { get; init; } = ImmutableArray<DictEntry>.Empty;
 }
 
 public record DictEntry
@@ -100,7 +100,7 @@ public record DictEntry
 /// </summary>
 public record SetLiteral : Expression
 {
-    public List<Expression> Elements { get; init; } = new();
+    public ImmutableArray<Expression> Elements { get; init; } = ImmutableArray<Expression>.Empty;
 }
 
 /// <summary>
@@ -108,7 +108,7 @@ public record SetLiteral : Expression
 /// </summary>
 public record TupleLiteral : Expression
 {
-    public List<Expression> Elements { get; init; } = new();
+    public ImmutableArray<Expression> Elements { get; init; } = ImmutableArray<Expression>.Empty;
 }
 
 #endregion
@@ -121,7 +121,7 @@ public record TupleLiteral : Expression
 public record ListComprehension : Expression
 {
     public Expression Element { get; init; } = null!;
-    public List<ComprehensionClause> Clauses { get; init; } = new();
+    public ImmutableArray<ComprehensionClause> Clauses { get; init; } = ImmutableArray<ComprehensionClause>.Empty;
 }
 
 /// <summary>
@@ -130,7 +130,7 @@ public record ListComprehension : Expression
 public record SetComprehension : Expression
 {
     public Expression Element { get; init; } = null!;
-    public List<ComprehensionClause> Clauses { get; init; } = new();
+    public ImmutableArray<ComprehensionClause> Clauses { get; init; } = ImmutableArray<ComprehensionClause>.Empty;
 }
 
 /// <summary>
@@ -140,7 +140,7 @@ public record DictComprehension : Expression
 {
     public Expression Key { get; init; } = null!;
     public Expression Value { get; init; } = null!;
-    public List<ComprehensionClause> Clauses { get; init; } = new();
+    public ImmutableArray<ComprehensionClause> Clauses { get; init; } = ImmutableArray<ComprehensionClause>.Empty;
 }
 
 /// <summary>
@@ -213,8 +213,8 @@ public record SliceAccess : Expression
 public record FunctionCall : Expression
 {
     public Expression Function { get; init; } = null!;
-    public List<Expression> Arguments { get; init; } = new();
-    public List<KeywordArgument> KeywordArguments { get; init; } = new();
+    public ImmutableArray<Expression> Arguments { get; init; } = ImmutableArray<Expression>.Empty;
+    public ImmutableArray<KeywordArgument> KeywordArguments { get; init; } = ImmutableArray<KeywordArgument>.Empty;
 }
 
 public record KeywordArgument
@@ -308,8 +308,8 @@ public enum BinaryOperator
 /// </summary>
 public record ComparisonChain : Expression
 {
-    public List<Expression> Operands { get; init; } = new();
-    public List<ComparisonOperator> Operators { get; init; } = new();
+    public ImmutableArray<Expression> Operands { get; init; } = ImmutableArray<Expression>.Empty;
+    public ImmutableArray<ComparisonOperator> Operators { get; init; } = ImmutableArray<ComparisonOperator>.Empty;
 }
 
 public enum ComparisonOperator
@@ -345,7 +345,7 @@ public record ConditionalExpression : Expression
 /// </summary>
 public record LambdaExpression : Expression
 {
-    public List<Parameter> Parameters { get; init; } = new();
+    public ImmutableArray<Parameter> Parameters { get; init; } = ImmutableArray<Parameter>.Empty;
     public Expression Body { get; init; } = null!;
 }
 

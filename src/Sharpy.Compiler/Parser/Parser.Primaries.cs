@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
@@ -225,7 +226,7 @@ public partial class Parser
                         Advance();
                         return new TupleLiteral
                         {
-                            Elements = new List<Expression>(),
+                            Elements = ImmutableArray<Expression>.Empty,
                             LineStart = startLine,
                             ColumnStart = startColumn,
                             LineEnd = Previous.Line,
@@ -252,7 +253,7 @@ public partial class Parser
                         Expect(TokenType.RightParen);
                         return new TupleLiteral
                         {
-                            Elements = elements,
+                            Elements = elements.ToImmutableArray(),
                             LineStart = startLine,
                             ColumnStart = startColumn,
                             LineEnd = Previous.Line,
@@ -284,7 +285,7 @@ public partial class Parser
                         Advance();
                         return new ListLiteral
                         {
-                            Elements = new List<Expression>(),
+                            Elements = ImmutableArray<Expression>.Empty,
                             LineStart = startLine,
                             ColumnStart = startColumn,
                             LineEnd = Previous.Line,
@@ -303,7 +304,7 @@ public partial class Parser
                         return new ListComprehension
                         {
                             Element = firstExpr,
-                            Clauses = clauses,
+                            Clauses = clauses.ToImmutableArray(),
                             LineStart = startLine,
                             ColumnStart = startColumn,
                             LineEnd = Previous.Line,
@@ -327,7 +328,7 @@ public partial class Parser
                     Expect(TokenType.RightBracket);
                     return new ListLiteral
                     {
-                        Elements = elements,
+                        Elements = elements.ToImmutableArray(),
                         LineStart = startLine,
                         ColumnStart = startColumn,
                         LineEnd = Previous.Line,
@@ -348,7 +349,7 @@ public partial class Parser
                         Expect(TokenType.RightBrace);
                         return new SetLiteral
                         {
-                            Elements = new List<Expression>(),
+                            Elements = ImmutableArray<Expression>.Empty,
                             LineStart = startLine,
                             ColumnStart = startColumn,
                             LineEnd = Previous.Line,
@@ -363,7 +364,7 @@ public partial class Parser
                         Advance();
                         return new DictLiteral
                         {
-                            Entries = new List<DictEntry>(),
+                            Entries = ImmutableArray<DictEntry>.Empty,
                             LineStart = startLine,
                             ColumnStart = startColumn,
                             LineEnd = Previous.Line,
@@ -389,7 +390,7 @@ public partial class Parser
                             {
                                 Key = firstExpr,
                                 Value = firstValue,
-                                Clauses = clauses,
+                                Clauses = clauses.ToImmutableArray(),
                                 LineStart = startLine,
                                 ColumnStart = startColumn,
                                 LineEnd = Previous.Line,
@@ -416,7 +417,7 @@ public partial class Parser
                         Expect(TokenType.RightBrace);
                         return new DictLiteral
                         {
-                            Entries = entries,
+                            Entries = entries.ToImmutableArray(),
                             LineStart = startLine,
                             ColumnStart = startColumn,
                             LineEnd = Previous.Line,
@@ -435,7 +436,7 @@ public partial class Parser
                             return new SetComprehension
                             {
                                 Element = firstExpr,
-                                Clauses = clauses,
+                                Clauses = clauses.ToImmutableArray(),
                                 LineStart = startLine,
                                 ColumnStart = startColumn,
                                 LineEnd = Previous.Line,
@@ -458,7 +459,7 @@ public partial class Parser
                         Expect(TokenType.RightBrace);
                         return new SetLiteral
                         {
-                            Elements = elements,
+                            Elements = elements.ToImmutableArray(),
                             LineStart = startLine,
                             ColumnStart = startColumn,
                             LineEnd = Previous.Line,
@@ -500,7 +501,7 @@ public partial class Parser
 
                     return new LambdaExpression
                     {
-                        Parameters = parameters,
+                        Parameters = parameters.ToImmutableArray(),
                         Body = body,
                         LineStart = startLine,
                         ColumnStart = startColumn,

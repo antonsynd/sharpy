@@ -26,6 +26,6 @@ public abstract record Node : ILocatable
 /// </summary>
 public record Module : Node
 {
-    public List<Statement> Body { get; init; } = new();
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public string? DocString { get; init; }
 }

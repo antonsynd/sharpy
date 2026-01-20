@@ -116,15 +116,15 @@ public record RaiseStatement : Statement
 public record IfStatement : Statement
 {
     public Expression Test { get; init; } = null!;
-    public List<Statement> ThenBody { get; init; } = new();
-    public List<ElifClause> ElifClauses { get; init; } = new();
-    public List<Statement> ElseBody { get; init; } = new();
+    public ImmutableArray<Statement> ThenBody { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<ElifClause> ElifClauses { get; init; } = ImmutableArray<ElifClause>.Empty;
+    public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
 }
 
 public record ElifClause
 {
     public Expression Test { get; init; } = null!;
-    public List<Statement> Body { get; init; } = new();
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
 
     // Source location
     public int LineStart { get; init; }
@@ -144,8 +144,8 @@ public record ElifClause
 public record WhileStatement : Statement
 {
     public Expression Test { get; init; } = null!;
-    public List<Statement> Body { get; init; } = new();
-    public List<Statement> ElseBody { get; init; } = new();
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
 }
 
 /// <summary>
@@ -155,8 +155,8 @@ public record ForStatement : Statement
 {
     public Expression Target { get; init; } = null!;  // Loop variable(s)
     public Expression Iterator { get; init; } = null!;
-    public List<Statement> Body { get; init; } = new();
-    public List<Statement> ElseBody { get; init; } = new();
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
 }
 
 /// <summary>
@@ -164,17 +164,17 @@ public record ForStatement : Statement
 /// </summary>
 public record TryStatement : Statement
 {
-    public List<Statement> Body { get; init; } = new();
-    public List<ExceptHandler> Handlers { get; init; } = new();
-    public List<Statement> ElseBody { get; init; } = new();
-    public List<Statement> FinallyBody { get; init; } = new();
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<ExceptHandler> Handlers { get; init; } = ImmutableArray<ExceptHandler>.Empty;
+    public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<Statement> FinallyBody { get; init; } = ImmutableArray<Statement>.Empty;
 }
 
 public record ExceptHandler
 {
     public TypeAnnotation? ExceptionType { get; init; }
     public string? Name { get; init; }  // except Exception as e:
-    public List<Statement> Body { get; init; } = new();
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
 
     // Source location
     public int LineStart { get; init; }
@@ -198,11 +198,11 @@ public record ExceptHandler
 public record FunctionDef : Statement
 {
     public string Name { get; init; } = "";
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
-    public List<Parameter> Parameters { get; init; } = new();
+    public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
+    public ImmutableArray<Parameter> Parameters { get; init; } = ImmutableArray<Parameter>.Empty;
     public TypeAnnotation? ReturnType { get; init; }
-    public List<Statement> Body { get; init; } = new();
-    public List<Decorator> Decorators { get; init; } = new();
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
     public string? DocString { get; init; }
 }
 
@@ -212,10 +212,10 @@ public record FunctionDef : Statement
 public record ClassDef : Statement
 {
     public string Name { get; init; } = "";
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
-    public List<TypeAnnotation> BaseClasses { get; init; } = new();
-    public List<Statement> Body { get; init; } = new();
-    public List<Decorator> Decorators { get; init; } = new();
+    public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
+    public ImmutableArray<TypeAnnotation> BaseClasses { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
     public string? DocString { get; init; }
 }
 
@@ -225,10 +225,10 @@ public record ClassDef : Statement
 public record StructDef : Statement
 {
     public string Name { get; init; } = "";
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
-    public List<TypeAnnotation> BaseClasses { get; init; } = new();  // Interfaces only
-    public List<Statement> Body { get; init; } = new();
-    public List<Decorator> Decorators { get; init; } = new();
+    public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
+    public ImmutableArray<TypeAnnotation> BaseClasses { get; init; } = ImmutableArray<TypeAnnotation>.Empty;  // Interfaces only
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
     public string? DocString { get; init; }
 }
 
@@ -238,9 +238,9 @@ public record StructDef : Statement
 public record InterfaceDef : Statement
 {
     public string Name { get; init; } = "";
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
-    public List<TypeAnnotation> BaseInterfaces { get; init; } = new();
-    public List<Statement> Body { get; init; } = new();
+    public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
+    public ImmutableArray<TypeAnnotation> BaseInterfaces { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public string? DocString { get; init; }
 }
 
@@ -250,7 +250,7 @@ public record InterfaceDef : Statement
 public record EnumDef : Statement
 {
     public string Name { get; init; } = "";
-    public List<EnumMember> Members { get; init; } = new();
+    public ImmutableArray<EnumMember> Members { get; init; } = ImmutableArray<EnumMember>.Empty;
     public string? DocString { get; init; }
 }
 
@@ -288,7 +288,7 @@ public record TypeAlias : Statement
 public record TypeParameterDef
 {
     public string Name { get; init; } = "";
-    public List<ConstraintClause> Constraints { get; init; } = new();
+    public ImmutableArray<ConstraintClause> Constraints { get; init; } = ImmutableArray<ConstraintClause>.Empty;
 
     // Source location
     public int LineStart { get; init; }
@@ -385,7 +385,7 @@ public record Parameter
 /// </summary>
 public record ImportStatement : Statement
 {
-    public List<ImportAlias> Names { get; init; } = new();
+    public ImmutableArray<ImportAlias> Names { get; init; } = ImmutableArray<ImportAlias>.Empty;
 }
 
 public record ImportAlias
@@ -411,7 +411,7 @@ public record ImportAlias
 public record FromImportStatement : Statement
 {
     public string Module { get; init; } = "";
-    public List<ImportAlias> Names { get; init; } = new();
+    public ImmutableArray<ImportAlias> Names { get; init; } = ImmutableArray<ImportAlias>.Empty;
     public bool ImportAll { get; init; }  // from module import *
 
     /// <summary>

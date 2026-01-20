@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
@@ -592,7 +593,7 @@ public class ImportResolver
             TypeKind = TypeKind.Class,
             AccessLevel = accessLevel,
             IsAbstract = isAbstract,
-            TypeParameters = classDef.TypeParameters,
+            TypeParameters = classDef.TypeParameters.ToList(),
             DeclarationLine = classDef.LineStart,
             DeclarationColumn = classDef.ColumnStart
         };
@@ -649,7 +650,7 @@ public class ImportResolver
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Struct,
             AccessLevel = accessLevel,
-            TypeParameters = structDef.TypeParameters,
+            TypeParameters = structDef.TypeParameters.ToList(),
             DeclarationLine = structDef.LineStart,
             DeclarationColumn = structDef.ColumnStart
         };
@@ -706,7 +707,7 @@ public class ImportResolver
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Interface,
             AccessLevel = accessLevel,
-            TypeParameters = interfaceDef.TypeParameters,
+            TypeParameters = interfaceDef.TypeParameters.ToList(),
             DeclarationLine = interfaceDef.LineStart,
             DeclarationColumn = interfaceDef.ColumnStart
         };
@@ -721,7 +722,7 @@ public class ImportResolver
                 if (!methodSymbol.IsAbstract)
                 {
                     // Check if the method has an ellipsis body (abstract method signature)
-                    bool hasEllipsisBody = method.Body.Count == 1
+                    bool hasEllipsisBody = method.Body.Length == 1
                         && method.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
                     if (hasEllipsisBody)
                     {
@@ -767,7 +768,7 @@ public class ImportResolver
             IsAbstract = method.Decorators.Any(d => d.Name == "abstract"),
             IsVirtual = method.Decorators.Any(d => d.Name == "virtual"),
             IsOverride = method.Decorators.Any(d => d.Name == "override"),
-            TypeParameters = method.TypeParameters,
+            TypeParameters = method.TypeParameters.ToList(),
             AccessLevel = accessLevel,
             DeclarationLine = method.LineStart,
             DeclarationColumn = method.ColumnStart

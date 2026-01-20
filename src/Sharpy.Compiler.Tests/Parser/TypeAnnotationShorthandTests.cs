@@ -433,7 +433,7 @@ public class TypeAnnotationShorthandTests
         var canonical = ParseTypeAnnotation("list[int]");
 
         shorthand.Name.Should().Be(canonical.Name);
-        shorthand.TypeArguments.Should().HaveCount(canonical.TypeArguments.Count);
+        shorthand.TypeArguments.Should().HaveCount(canonical.TypeArguments.Length);
         shorthand.TypeArguments[0].Name.Should().Be(canonical.TypeArguments[0].Name);
     }
 
@@ -454,7 +454,7 @@ public class TypeAnnotationShorthandTests
         var canonical = ParseTypeAnnotation("dict[str, int]");
 
         shorthand.Name.Should().Be(canonical.Name);
-        shorthand.TypeArguments.Should().HaveCount(canonical.TypeArguments.Count);
+        shorthand.TypeArguments.Should().HaveCount(canonical.TypeArguments.Length);
         shorthand.TypeArguments[0].Name.Should().Be(canonical.TypeArguments[0].Name);
         shorthand.TypeArguments[1].Name.Should().Be(canonical.TypeArguments[1].Name);
     }
@@ -466,7 +466,7 @@ public class TypeAnnotationShorthandTests
         var canonical = ParseTypeAnnotation("tuple[int, str]");
 
         shorthand.Name.Should().Be(canonical.Name);
-        shorthand.TypeArguments.Should().HaveCount(canonical.TypeArguments.Count);
+        shorthand.TypeArguments.Should().HaveCount(canonical.TypeArguments.Length);
         shorthand.TypeArguments[0].Name.Should().Be(canonical.TypeArguments[0].Name);
         shorthand.TypeArguments[1].Name.Should().Be(canonical.TypeArguments[1].Name);
     }

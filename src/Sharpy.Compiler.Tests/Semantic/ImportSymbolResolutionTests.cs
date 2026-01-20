@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
@@ -59,7 +60,7 @@ def public_func():
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "public_func", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -90,7 +91,7 @@ class PublicClass:
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "PublicClass", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -125,7 +126,7 @@ def _protected_func():
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "_protected_func", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -156,7 +157,7 @@ def _protected_func():
         var fromImport = new FromImportStatement
         {
             Module = "mymodule",
-            Names = new List<ImportAlias>(),
+            Names = ImmutableArray<ImportAlias>.Empty,
             ImportAll = true,
             LineStart = 1,
             ColumnStart = 1
@@ -201,7 +202,7 @@ def __private_func():
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "__private_func", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -231,7 +232,7 @@ def __private_func():
         var fromImport = new FromImportStatement
         {
             Module = "mymodule",
-            Names = new List<ImportAlias>(),
+            Names = ImmutableArray<ImportAlias>.Empty,
             ImportAll = true,
             LineStart = 1,
             ColumnStart = 1
@@ -293,7 +294,7 @@ const __PRIVATE_CONSTANT: int = 123
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "public_func", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -309,7 +310,7 @@ const __PRIVATE_CONSTANT: int = 123
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "_protected_func", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -327,7 +328,7 @@ const __PRIVATE_CONSTANT: int = 123
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "__private_func", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -368,7 +369,7 @@ class __PrivateClass:
         var fromImport = new FromImportStatement
         {
             Module = "mymodule",
-            Names = new List<ImportAlias>(),
+            Names = ImmutableArray<ImportAlias>.Empty,
             ImportAll = true,
             LineStart = 1,
             ColumnStart = 1
@@ -426,7 +427,7 @@ def __private_func():
                 new ImportAlias { Name = "public_func", AsName = null, LineStart = 1, ColumnStart = 1 },
                 new ImportAlias { Name = "_protected_func", AsName = null, LineStart = 1, ColumnStart = 10 },
                 new ImportAlias { Name = "__private_func", AsName = null, LineStart = 1, ColumnStart = 20 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -462,7 +463,7 @@ def existing_func():
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "nonexistent_func", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -496,7 +497,7 @@ struct _ProtectedStruct:
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "_ProtectedStruct", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -527,7 +528,7 @@ interface __PrivateInterface:
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "__PrivateInterface", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -559,7 +560,7 @@ enum Color:
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "Color", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -593,7 +594,7 @@ const PI: float = 3.14159
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "PI", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -623,7 +624,7 @@ const _MAX_SIZE: int = 1000
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "_MAX_SIZE", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -653,7 +654,7 @@ const __SECRET_KEY: str = ""secret""
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "__SECRET_KEY", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -684,7 +685,7 @@ pass
         var fromImport = new FromImportStatement
         {
             Module = "mymodule",
-            Names = new List<ImportAlias>(),
+            Names = ImmutableArray<ImportAlias>.Empty,
             ImportAll = true,
             LineStart = 1,
             ColumnStart = 1
@@ -716,7 +717,7 @@ def _protected_func():
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "_protected_func", AsName = "my_func", LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -746,7 +747,7 @@ def __private_func():
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "__private_func", AsName = "my_func", LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1

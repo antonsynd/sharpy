@@ -29,11 +29,11 @@ public class AstDumper
             _output.AppendLine($"{IndentUnit}DocString: \"{EscapeString(module.DocString)}\"");
         }
 
-        _output.AppendLine($"{IndentUnit}Body: [{module.Body.Count} statement(s)]");
+        _output.AppendLine($"{IndentUnit}Body: [{module.Body.Length} statement(s)]");
 
-        for (int i = 0; i < module.Body.Count; i++)
+        for (int i = 0; i < module.Body.Length; i++)
         {
-            DumpNode(module.Body[i], 2, i == module.Body.Count - 1);
+            DumpNode(module.Body[i], 2, i == module.Body.Length - 1);
         }
 
         return _output.ToString();
@@ -123,35 +123,35 @@ public class AstDumper
                 _output.AppendLine($"{indent}{prefix}IfStatement @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Test:");
                 DumpNode(ifStmt.Test, depth + 2, false);
-                _output.AppendLine($"{indent}{childPrefix}ThenBody: [{ifStmt.ThenBody.Count} statement(s)]");
-                for (int i = 0; i < ifStmt.ThenBody.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}ThenBody: [{ifStmt.ThenBody.Length} statement(s)]");
+                for (int i = 0; i < ifStmt.ThenBody.Length; i++)
                 {
-                    DumpNode(ifStmt.ThenBody[i], depth + 2, i == ifStmt.ThenBody.Count - 1);
+                    DumpNode(ifStmt.ThenBody[i], depth + 2, i == ifStmt.ThenBody.Length - 1);
                 }
-                if (ifStmt.ElifClauses.Count > 0)
+                if (ifStmt.ElifClauses.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}ElifClauses: [{ifStmt.ElifClauses.Count}]");
-                    for (int i = 0; i < ifStmt.ElifClauses.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}ElifClauses: [{ifStmt.ElifClauses.Length}]");
+                    for (int i = 0; i < ifStmt.ElifClauses.Length; i++)
                     {
                         var elif = ifStmt.ElifClauses[i];
                         var elifIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var elifPrefix = i == ifStmt.ElifClauses.Count - 1 && ifStmt.ElseBody.Count == 0 ? "└─ " : "├─ ";
+                        var elifPrefix = i == ifStmt.ElifClauses.Length - 1 && ifStmt.ElseBody.Length == 0 ? "└─ " : "├─ ";
                         _output.AppendLine($"{elifIndent}{elifPrefix}ElifClause @ L{elif.LineStart}:C{elif.ColumnStart}");
                         _output.AppendLine($"{elifIndent}   Test:");
                         DumpNode(elif.Test, depth + 3, false);
-                        _output.AppendLine($"{elifIndent}   Body: [{elif.Body.Count} statement(s)]");
-                        for (int j = 0; j < elif.Body.Count; j++)
+                        _output.AppendLine($"{elifIndent}   Body: [{elif.Body.Length} statement(s)]");
+                        for (int j = 0; j < elif.Body.Length; j++)
                         {
-                            DumpNode(elif.Body[j], depth + 3, j == elif.Body.Count - 1);
+                            DumpNode(elif.Body[j], depth + 3, j == elif.Body.Length - 1);
                         }
                     }
                 }
-                if (ifStmt.ElseBody.Count > 0)
+                if (ifStmt.ElseBody.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}ElseBody: [{ifStmt.ElseBody.Count} statement(s)]");
-                    for (int i = 0; i < ifStmt.ElseBody.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}ElseBody: [{ifStmt.ElseBody.Length} statement(s)]");
+                    for (int i = 0; i < ifStmt.ElseBody.Length; i++)
                     {
-                        DumpNode(ifStmt.ElseBody[i], depth + 2, i == ifStmt.ElseBody.Count - 1);
+                        DumpNode(ifStmt.ElseBody[i], depth + 2, i == ifStmt.ElseBody.Length - 1);
                     }
                 }
                 break;
@@ -160,10 +160,10 @@ public class AstDumper
                 _output.AppendLine($"{indent}{prefix}WhileStatement @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Test:");
                 DumpNode(whileStmt.Test, depth + 2, false);
-                _output.AppendLine($"{indent}{childPrefix}Body: [{whileStmt.Body.Count} statement(s)]");
-                for (int i = 0; i < whileStmt.Body.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Body: [{whileStmt.Body.Length} statement(s)]");
+                for (int i = 0; i < whileStmt.Body.Length; i++)
                 {
-                    DumpNode(whileStmt.Body[i], depth + 2, i == whileStmt.Body.Count - 1);
+                    DumpNode(whileStmt.Body[i], depth + 2, i == whileStmt.Body.Length - 1);
                 }
                 break;
 
@@ -173,28 +173,28 @@ public class AstDumper
                 DumpNode(forStmt.Target, depth + 2, false);
                 _output.AppendLine($"{indent}{childPrefix}Iterator:");
                 DumpNode(forStmt.Iterator, depth + 2, false);
-                _output.AppendLine($"{indent}{childPrefix}Body: [{forStmt.Body.Count} statement(s)]");
-                for (int i = 0; i < forStmt.Body.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Body: [{forStmt.Body.Length} statement(s)]");
+                for (int i = 0; i < forStmt.Body.Length; i++)
                 {
-                    DumpNode(forStmt.Body[i], depth + 2, i == forStmt.Body.Count - 1);
+                    DumpNode(forStmt.Body[i], depth + 2, i == forStmt.Body.Length - 1);
                 }
                 break;
 
             case TryStatement tryStmt:
                 _output.AppendLine($"{indent}{prefix}TryStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine($"{indent}{childPrefix}Body: [{tryStmt.Body.Count} statement(s)]");
-                for (int i = 0; i < tryStmt.Body.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Body: [{tryStmt.Body.Length} statement(s)]");
+                for (int i = 0; i < tryStmt.Body.Length; i++)
                 {
-                    DumpNode(tryStmt.Body[i], depth + 2, i == tryStmt.Body.Count - 1);
+                    DumpNode(tryStmt.Body[i], depth + 2, i == tryStmt.Body.Length - 1);
                 }
-                if (tryStmt.Handlers.Count > 0)
+                if (tryStmt.Handlers.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}Handlers: [{tryStmt.Handlers.Count}]");
-                    for (int i = 0; i < tryStmt.Handlers.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}Handlers: [{tryStmt.Handlers.Length}]");
+                    for (int i = 0; i < tryStmt.Handlers.Length; i++)
                     {
                         var handler = tryStmt.Handlers[i];
                         var handlerIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var handlerPrefix = i == tryStmt.Handlers.Count - 1 && tryStmt.ElseBody.Count == 0 && tryStmt.FinallyBody.Count == 0 ? "└─ " : "├─ ";
+                        var handlerPrefix = i == tryStmt.Handlers.Length - 1 && tryStmt.ElseBody.Length == 0 && tryStmt.FinallyBody.Length == 0 ? "└─ " : "├─ ";
                         _output.AppendLine($"{handlerIndent}{handlerPrefix}ExceptHandler @ L{handler.LineStart}:C{handler.ColumnStart}");
                         if (handler.ExceptionType != null)
                         {
@@ -205,27 +205,27 @@ public class AstDumper
                         {
                             _output.AppendLine($"{handlerIndent}   Name: {handler.Name}");
                         }
-                        _output.AppendLine($"{handlerIndent}   Body: [{handler.Body.Count} statement(s)]");
-                        for (int j = 0; j < handler.Body.Count; j++)
+                        _output.AppendLine($"{handlerIndent}   Body: [{handler.Body.Length} statement(s)]");
+                        for (int j = 0; j < handler.Body.Length; j++)
                         {
-                            DumpNode(handler.Body[j], depth + 3, j == handler.Body.Count - 1);
+                            DumpNode(handler.Body[j], depth + 3, j == handler.Body.Length - 1);
                         }
                     }
                 }
-                if (tryStmt.ElseBody.Count > 0)
+                if (tryStmt.ElseBody.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}ElseBody: [{tryStmt.ElseBody.Count} statement(s)]");
-                    for (int i = 0; i < tryStmt.ElseBody.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}ElseBody: [{tryStmt.ElseBody.Length} statement(s)]");
+                    for (int i = 0; i < tryStmt.ElseBody.Length; i++)
                     {
-                        DumpNode(tryStmt.ElseBody[i], depth + 2, i == tryStmt.ElseBody.Count - 1 && tryStmt.FinallyBody.Count == 0);
+                        DumpNode(tryStmt.ElseBody[i], depth + 2, i == tryStmt.ElseBody.Length - 1 && tryStmt.FinallyBody.Length == 0);
                     }
                 }
-                if (tryStmt.FinallyBody.Count > 0)
+                if (tryStmt.FinallyBody.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}FinallyBody: [{tryStmt.FinallyBody.Count} statement(s)]");
-                    for (int i = 0; i < tryStmt.FinallyBody.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}FinallyBody: [{tryStmt.FinallyBody.Length} statement(s)]");
+                    for (int i = 0; i < tryStmt.FinallyBody.Length; i++)
                     {
-                        DumpNode(tryStmt.FinallyBody[i], depth + 2, i == tryStmt.FinallyBody.Count - 1);
+                        DumpNode(tryStmt.FinallyBody[i], depth + 2, i == tryStmt.FinallyBody.Length - 1);
                     }
                 }
                 break;
@@ -237,23 +237,23 @@ public class AstDumper
                 {
                     _output.AppendLine($"{indent}{childPrefix}DocString: \"{EscapeString(funcDef.DocString)}\"");
                 }
-                if (funcDef.Decorators.Count > 0)
+                if (funcDef.Decorators.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}Decorators: [{funcDef.Decorators.Count}]");
-                    for (int i = 0; i < funcDef.Decorators.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}Decorators: [{funcDef.Decorators.Length}]");
+                    for (int i = 0; i < funcDef.Decorators.Length; i++)
                     {
                         var decorator = funcDef.Decorators[i];
                         var decIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var decPrefix = i == funcDef.Decorators.Count - 1 ? "└─ " : "├─ ";
+                        var decPrefix = i == funcDef.Decorators.Length - 1 ? "└─ " : "├─ ";
                         _output.AppendLine($"{decIndent}{decPrefix}@{decorator.Name} @ L{decorator.LineStart}:C{decorator.ColumnStart}");
                     }
                 }
-                if (funcDef.Parameters.Count > 0)
+                if (funcDef.Parameters.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}Parameters: [{funcDef.Parameters.Count}]");
-                    for (int i = 0; i < funcDef.Parameters.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}Parameters: [{funcDef.Parameters.Length}]");
+                    for (int i = 0; i < funcDef.Parameters.Length; i++)
                     {
-                        DumpParameter(funcDef.Parameters[i], depth + 2, i == funcDef.Parameters.Count - 1);
+                        DumpParameter(funcDef.Parameters[i], depth + 2, i == funcDef.Parameters.Length - 1);
                     }
                 }
                 if (funcDef.ReturnType != null)
@@ -261,10 +261,10 @@ public class AstDumper
                     _output.AppendLine($"{indent}{childPrefix}ReturnType:");
                     DumpTypeAnnotation(funcDef.ReturnType, depth + 2, false);
                 }
-                _output.AppendLine($"{indent}{childPrefix}Body: [{funcDef.Body.Count} statement(s)]");
-                for (int i = 0; i < funcDef.Body.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Body: [{funcDef.Body.Length} statement(s)]");
+                for (int i = 0; i < funcDef.Body.Length; i++)
                 {
-                    DumpNode(funcDef.Body[i], depth + 2, i == funcDef.Body.Count - 1);
+                    DumpNode(funcDef.Body[i], depth + 2, i == funcDef.Body.Length - 1);
                 }
                 break;
 
@@ -275,33 +275,33 @@ public class AstDumper
                 {
                     _output.AppendLine($"{indent}{childPrefix}DocString: \"{EscapeString(classDef.DocString)}\"");
                 }
-                if (classDef.TypeParameters.Count > 0)
+                if (classDef.TypeParameters.Length > 0)
                 {
                     _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", classDef.TypeParameters.Select(tp => tp.Name))}]");
                 }
-                if (classDef.Decorators.Count > 0)
+                if (classDef.Decorators.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}Decorators: [{classDef.Decorators.Count}]");
-                    for (int i = 0; i < classDef.Decorators.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}Decorators: [{classDef.Decorators.Length}]");
+                    for (int i = 0; i < classDef.Decorators.Length; i++)
                     {
                         var decorator = classDef.Decorators[i];
                         var decIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var decPrefix = i == classDef.Decorators.Count - 1 ? "└─ " : "├─ ";
+                        var decPrefix = i == classDef.Decorators.Length - 1 ? "└─ " : "├─ ";
                         _output.AppendLine($"{decIndent}{decPrefix}@{decorator.Name} @ L{decorator.LineStart}:C{decorator.ColumnStart}");
                     }
                 }
-                if (classDef.BaseClasses.Count > 0)
+                if (classDef.BaseClasses.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}BaseClasses: [{classDef.BaseClasses.Count}]");
-                    for (int i = 0; i < classDef.BaseClasses.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}BaseClasses: [{classDef.BaseClasses.Length}]");
+                    for (int i = 0; i < classDef.BaseClasses.Length; i++)
                     {
-                        DumpTypeAnnotation(classDef.BaseClasses[i], depth + 2, i == classDef.BaseClasses.Count - 1);
+                        DumpTypeAnnotation(classDef.BaseClasses[i], depth + 2, i == classDef.BaseClasses.Length - 1);
                     }
                 }
-                _output.AppendLine($"{indent}{childPrefix}Body: [{classDef.Body.Count} statement(s)]");
-                for (int i = 0; i < classDef.Body.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Body: [{classDef.Body.Length} statement(s)]");
+                for (int i = 0; i < classDef.Body.Length; i++)
                 {
-                    DumpNode(classDef.Body[i], depth + 2, i == classDef.Body.Count - 1);
+                    DumpNode(classDef.Body[i], depth + 2, i == classDef.Body.Length - 1);
                 }
                 break;
 
@@ -312,22 +312,22 @@ public class AstDumper
                 {
                     _output.AppendLine($"{indent}{childPrefix}DocString: \"{EscapeString(structDef.DocString)}\"");
                 }
-                if (structDef.TypeParameters.Count > 0)
+                if (structDef.TypeParameters.Length > 0)
                 {
                     _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", structDef.TypeParameters.Select(tp => tp.Name))}]");
                 }
-                if (structDef.BaseClasses.Count > 0)
+                if (structDef.BaseClasses.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}BaseClasses: [{structDef.BaseClasses.Count}]");
-                    for (int i = 0; i < structDef.BaseClasses.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}BaseClasses: [{structDef.BaseClasses.Length}]");
+                    for (int i = 0; i < structDef.BaseClasses.Length; i++)
                     {
-                        DumpTypeAnnotation(structDef.BaseClasses[i], depth + 2, i == structDef.BaseClasses.Count - 1);
+                        DumpTypeAnnotation(structDef.BaseClasses[i], depth + 2, i == structDef.BaseClasses.Length - 1);
                     }
                 }
-                _output.AppendLine($"{indent}{childPrefix}Body: [{structDef.Body.Count} statement(s)]");
-                for (int i = 0; i < structDef.Body.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Body: [{structDef.Body.Length} statement(s)]");
+                for (int i = 0; i < structDef.Body.Length; i++)
                 {
-                    DumpNode(structDef.Body[i], depth + 2, i == structDef.Body.Count - 1);
+                    DumpNode(structDef.Body[i], depth + 2, i == structDef.Body.Length - 1);
                 }
                 break;
 
@@ -338,22 +338,22 @@ public class AstDumper
                 {
                     _output.AppendLine($"{indent}{childPrefix}DocString: \"{EscapeString(interfaceDef.DocString)}\"");
                 }
-                if (interfaceDef.TypeParameters.Count > 0)
+                if (interfaceDef.TypeParameters.Length > 0)
                 {
                     _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", interfaceDef.TypeParameters.Select(tp => tp.Name))}]");
                 }
-                if (interfaceDef.BaseInterfaces.Count > 0)
+                if (interfaceDef.BaseInterfaces.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}BaseInterfaces: [{interfaceDef.BaseInterfaces.Count}]");
-                    for (int i = 0; i < interfaceDef.BaseInterfaces.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}BaseInterfaces: [{interfaceDef.BaseInterfaces.Length}]");
+                    for (int i = 0; i < interfaceDef.BaseInterfaces.Length; i++)
                     {
-                        DumpTypeAnnotation(interfaceDef.BaseInterfaces[i], depth + 2, i == interfaceDef.BaseInterfaces.Count - 1);
+                        DumpTypeAnnotation(interfaceDef.BaseInterfaces[i], depth + 2, i == interfaceDef.BaseInterfaces.Length - 1);
                     }
                 }
-                _output.AppendLine($"{indent}{childPrefix}Body: [{interfaceDef.Body.Count} statement(s)]");
-                for (int i = 0; i < interfaceDef.Body.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Body: [{interfaceDef.Body.Length} statement(s)]");
+                for (int i = 0; i < interfaceDef.Body.Length; i++)
                 {
-                    DumpNode(interfaceDef.Body[i], depth + 2, i == interfaceDef.Body.Count - 1);
+                    DumpNode(interfaceDef.Body[i], depth + 2, i == interfaceDef.Body.Length - 1);
                 }
                 break;
 
@@ -364,12 +364,12 @@ public class AstDumper
                 {
                     _output.AppendLine($"{indent}{childPrefix}DocString: \"{EscapeString(enumDef.DocString)}\"");
                 }
-                _output.AppendLine($"{indent}{childPrefix}Members: [{enumDef.Members.Count}]");
-                for (int i = 0; i < enumDef.Members.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Members: [{enumDef.Members.Length}]");
+                for (int i = 0; i < enumDef.Members.Length; i++)
                 {
                     var member = enumDef.Members[i];
                     var memIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                    var memPrefix = i == enumDef.Members.Count - 1 ? "└─ " : "├─ ";
+                    var memPrefix = i == enumDef.Members.Length - 1 ? "└─ " : "├─ ";
                     if (member.Value != null)
                     {
                         _output.AppendLine($"{memIndent}{memPrefix}{member.Name} @ L{member.LineStart}:C{member.ColumnStart} =");
@@ -384,12 +384,12 @@ public class AstDumper
 
             case ImportStatement importStmt:
                 _output.AppendLine($"{indent}{prefix}ImportStatement @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine($"{indent}{childPrefix}Names: [{importStmt.Names.Count}]");
-                for (int i = 0; i < importStmt.Names.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Names: [{importStmt.Names.Length}]");
+                for (int i = 0; i < importStmt.Names.Length; i++)
                 {
                     var import = importStmt.Names[i];
                     var impIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                    var impPrefix = i == importStmt.Names.Count - 1 ? "└─ " : "├─ ";
+                    var impPrefix = i == importStmt.Names.Length - 1 ? "└─ " : "├─ ";
                     if (import.AsName != null)
                     {
                         _output.AppendLine($"{impIndent}{impPrefix}{import.Name} as {import.AsName} @ L{import.LineStart}:C{import.ColumnStart}");
@@ -410,12 +410,12 @@ public class AstDumper
                 }
                 else
                 {
-                    _output.AppendLine($"{indent}{childPrefix}Names: [{fromImportStmt.Names.Count}]");
-                    for (int i = 0; i < fromImportStmt.Names.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}Names: [{fromImportStmt.Names.Length}]");
+                    for (int i = 0; i < fromImportStmt.Names.Length; i++)
                     {
                         var import = fromImportStmt.Names[i];
                         var impIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var impPrefix = i == fromImportStmt.Names.Count - 1 ? "└─ " : "├─ ";
+                        var impPrefix = i == fromImportStmt.Names.Length - 1 ? "└─ " : "├─ ";
                         if (import.AsName != null)
                         {
                             _output.AppendLine($"{impIndent}{impPrefix}{import.Name} as {import.AsName} @ L{import.LineStart}:C{import.ColumnStart}");
@@ -446,12 +446,12 @@ public class AstDumper
 
             case FStringLiteral fstrLit:
                 _output.AppendLine($"{indent}{prefix}FStringLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine($"{indent}{childPrefix}Parts: [{fstrLit.Parts.Count}]");
-                for (int i = 0; i < fstrLit.Parts.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Parts: [{fstrLit.Parts.Length}]");
+                for (int i = 0; i < fstrLit.Parts.Length; i++)
                 {
                     var part = fstrLit.Parts[i];
                     var partIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                    var partPrefix = i == fstrLit.Parts.Count - 1 ? "└─ " : "├─ ";
+                    var partPrefix = i == fstrLit.Parts.Length - 1 ? "└─ " : "├─ ";
                     if (part.Text != null)
                     {
                         _output.AppendLine($"{partIndent}{partPrefix}Text: \"{EscapeString(part.Text)}\"");
@@ -478,21 +478,21 @@ public class AstDumper
 
             case ListLiteral listLit:
                 _output.AppendLine($"{indent}{prefix}ListLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine($"{indent}{childPrefix}Elements: [{listLit.Elements.Count}]");
-                for (int i = 0; i < listLit.Elements.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Elements: [{listLit.Elements.Length}]");
+                for (int i = 0; i < listLit.Elements.Length; i++)
                 {
-                    DumpNode(listLit.Elements[i], depth + 2, i == listLit.Elements.Count - 1);
+                    DumpNode(listLit.Elements[i], depth + 2, i == listLit.Elements.Length - 1);
                 }
                 break;
 
             case DictLiteral dictLit:
                 _output.AppendLine($"{indent}{prefix}DictLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine($"{indent}{childPrefix}Entries: [{dictLit.Entries.Count}]");
-                for (int i = 0; i < dictLit.Entries.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Entries: [{dictLit.Entries.Length}]");
+                for (int i = 0; i < dictLit.Entries.Length; i++)
                 {
                     var entry = dictLit.Entries[i];
                     var entryIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                    var entryPrefix = i == dictLit.Entries.Count - 1 ? "└─ " : "├─ ";
+                    var entryPrefix = i == dictLit.Entries.Length - 1 ? "└─ " : "├─ ";
                     _output.AppendLine($"{entryIndent}{entryPrefix}Entry:");
                     _output.AppendLine($"{entryIndent}   Key:");
                     DumpNode(entry.Key, depth + 3, false);
@@ -503,19 +503,19 @@ public class AstDumper
 
             case SetLiteral setLit:
                 _output.AppendLine($"{indent}{prefix}SetLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine($"{indent}{childPrefix}Elements: [{setLit.Elements.Count}]");
-                for (int i = 0; i < setLit.Elements.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Elements: [{setLit.Elements.Length}]");
+                for (int i = 0; i < setLit.Elements.Length; i++)
                 {
-                    DumpNode(setLit.Elements[i], depth + 2, i == setLit.Elements.Count - 1);
+                    DumpNode(setLit.Elements[i], depth + 2, i == setLit.Elements.Length - 1);
                 }
                 break;
 
             case TupleLiteral tupleLit:
                 _output.AppendLine($"{indent}{prefix}TupleLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine($"{indent}{childPrefix}Elements: [{tupleLit.Elements.Count}]");
-                for (int i = 0; i < tupleLit.Elements.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Elements: [{tupleLit.Elements.Length}]");
+                for (int i = 0; i < tupleLit.Elements.Length; i++)
                 {
-                    DumpNode(tupleLit.Elements[i], depth + 2, i == tupleLit.Elements.Count - 1);
+                    DumpNode(tupleLit.Elements[i], depth + 2, i == tupleLit.Elements.Length - 1);
                 }
                 break;
 
@@ -523,10 +523,10 @@ public class AstDumper
                 _output.AppendLine($"{indent}{prefix}ListComprehension @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Element:");
                 DumpNode(listComp.Element, depth + 2, false);
-                _output.AppendLine($"{indent}{childPrefix}Clauses: [{listComp.Clauses.Count}]");
-                for (int i = 0; i < listComp.Clauses.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Clauses: [{listComp.Clauses.Length}]");
+                for (int i = 0; i < listComp.Clauses.Length; i++)
                 {
-                    DumpComprehensionClause(listComp.Clauses[i], depth + 2, i == listComp.Clauses.Count - 1);
+                    DumpComprehensionClause(listComp.Clauses[i], depth + 2, i == listComp.Clauses.Length - 1);
                 }
                 break;
 
@@ -534,10 +534,10 @@ public class AstDumper
                 _output.AppendLine($"{indent}{prefix}SetComprehension @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Element:");
                 DumpNode(setComp.Element, depth + 2, false);
-                _output.AppendLine($"{indent}{childPrefix}Clauses: [{setComp.Clauses.Count}]");
-                for (int i = 0; i < setComp.Clauses.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Clauses: [{setComp.Clauses.Length}]");
+                for (int i = 0; i < setComp.Clauses.Length; i++)
                 {
-                    DumpComprehensionClause(setComp.Clauses[i], depth + 2, i == setComp.Clauses.Count - 1);
+                    DumpComprehensionClause(setComp.Clauses[i], depth + 2, i == setComp.Clauses.Length - 1);
                 }
                 break;
 
@@ -547,10 +547,10 @@ public class AstDumper
                 DumpNode(dictComp.Key, depth + 2, false);
                 _output.AppendLine($"{indent}{childPrefix}Value:");
                 DumpNode(dictComp.Value, depth + 2, false);
-                _output.AppendLine($"{indent}{childPrefix}Clauses: [{dictComp.Clauses.Count}]");
-                for (int i = 0; i < dictComp.Clauses.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Clauses: [{dictComp.Clauses.Length}]");
+                for (int i = 0; i < dictComp.Clauses.Length; i++)
                 {
-                    DumpComprehensionClause(dictComp.Clauses[i], depth + 2, i == dictComp.Clauses.Count - 1);
+                    DumpComprehensionClause(dictComp.Clauses[i], depth + 2, i == dictComp.Clauses.Length - 1);
                 }
                 break;
 
@@ -599,22 +599,22 @@ public class AstDumper
                 _output.AppendLine($"{indent}{prefix}FunctionCall @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Function:");
                 DumpNode(funcCall.Function, depth + 2, false);
-                if (funcCall.Arguments.Count > 0)
+                if (funcCall.Arguments.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}Arguments: [{funcCall.Arguments.Count}]");
-                    for (int i = 0; i < funcCall.Arguments.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}Arguments: [{funcCall.Arguments.Length}]");
+                    for (int i = 0; i < funcCall.Arguments.Length; i++)
                     {
-                        DumpNode(funcCall.Arguments[i], depth + 2, i == funcCall.Arguments.Count - 1 && funcCall.KeywordArguments.Count == 0);
+                        DumpNode(funcCall.Arguments[i], depth + 2, i == funcCall.Arguments.Length - 1 && funcCall.KeywordArguments.Length == 0);
                     }
                 }
-                if (funcCall.KeywordArguments.Count > 0)
+                if (funcCall.KeywordArguments.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}KeywordArguments: [{funcCall.KeywordArguments.Count}]");
-                    for (int i = 0; i < funcCall.KeywordArguments.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}KeywordArguments: [{funcCall.KeywordArguments.Length}]");
+                    for (int i = 0; i < funcCall.KeywordArguments.Length; i++)
                     {
                         var kwarg = funcCall.KeywordArguments[i];
                         var kwIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var kwPrefix = i == funcCall.KeywordArguments.Count - 1 ? "└─ " : "├─ ";
+                        var kwPrefix = i == funcCall.KeywordArguments.Length - 1 ? "└─ " : "├─ ";
                         _output.AppendLine($"{kwIndent}{kwPrefix}{kwarg.Name} @ L{kwarg.LineStart}:C{kwarg.ColumnStart}:");
                         DumpNode(kwarg.Value, depth + 3, true);
                     }
@@ -637,10 +637,10 @@ public class AstDumper
 
             case ComparisonChain compChain:
                 _output.AppendLine($"{indent}{prefix}ComparisonChain @ L{node.LineStart}:C{node.ColumnStart}");
-                _output.AppendLine($"{indent}{childPrefix}Operands: [{compChain.Operands.Count}]");
-                for (int i = 0; i < compChain.Operands.Count; i++)
+                _output.AppendLine($"{indent}{childPrefix}Operands: [{compChain.Operands.Length}]");
+                for (int i = 0; i < compChain.Operands.Length; i++)
                 {
-                    DumpNode(compChain.Operands[i], depth + 2, i == compChain.Operands.Count - 1);
+                    DumpNode(compChain.Operands[i], depth + 2, i == compChain.Operands.Length - 1);
                 }
                 _output.AppendLine($"{indent}{childPrefix}Operators: [{string.Join(", ", compChain.Operators)}]");
                 break;
@@ -657,12 +657,12 @@ public class AstDumper
 
             case LambdaExpression lambdaExpr:
                 _output.AppendLine($"{indent}{prefix}LambdaExpression @ L{node.LineStart}:C{node.ColumnStart}");
-                if (lambdaExpr.Parameters.Count > 0)
+                if (lambdaExpr.Parameters.Length > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}Parameters: [{lambdaExpr.Parameters.Count}]");
-                    for (int i = 0; i < lambdaExpr.Parameters.Count; i++)
+                    _output.AppendLine($"{indent}{childPrefix}Parameters: [{lambdaExpr.Parameters.Length}]");
+                    for (int i = 0; i < lambdaExpr.Parameters.Length; i++)
                     {
-                        DumpParameter(lambdaExpr.Parameters[i], depth + 2, i == lambdaExpr.Parameters.Count - 1);
+                        DumpParameter(lambdaExpr.Parameters[i], depth + 2, i == lambdaExpr.Parameters.Length - 1);
                     }
                 }
                 _output.AppendLine($"{indent}{childPrefix}Body:");
@@ -736,7 +736,7 @@ public class AstDumper
     private string FormatType(TypeAnnotation type)
     {
         var result = type.Name;
-        if (type.TypeArguments.Count > 0)
+        if (type.TypeArguments.Length > 0)
         {
             var args = string.Join(", ", type.TypeArguments.Select(FormatType));
             result += $"[{args}]";

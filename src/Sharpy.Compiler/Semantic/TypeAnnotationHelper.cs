@@ -19,7 +19,7 @@ public static class TypeAnnotationHelper
         if (typeAnnotation == null)
             return "void";
 
-        var baseName = typeAnnotation.TypeArguments.Count > 0
+        var baseName = typeAnnotation.TypeArguments.Length > 0
             ? $"{typeAnnotation.Name}[{string.Join(", ", typeAnnotation.TypeArguments.Select(GetName))}]"
             : typeAnnotation.Name;
 

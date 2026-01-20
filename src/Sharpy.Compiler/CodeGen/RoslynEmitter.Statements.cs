@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -619,18 +620,18 @@ public partial class RoslynEmitter
         ElseClauseSyntax? elseClause = null;
 
         // Process elif clauses from last to first to build nested if-else structure
-        if (ifStmt.ElifClauses.Count > 0 || ifStmt.ElseBody.Count > 0)
+        if (ifStmt.ElifClauses.Length > 0 || ifStmt.ElseBody.Length > 0)
         {
             StatementSyntax? currentElse = null;
 
             // Start with the final else block if it exists
-            if (ifStmt.ElseBody.Count > 0)
+            if (ifStmt.ElseBody.Length > 0)
             {
                 currentElse = Block(ifStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
             }
 
             // Process elif clauses in reverse order
-            for (int i = ifStmt.ElifClauses.Count - 1; i >= 0; i--)
+            for (int i = ifStmt.ElifClauses.Length - 1; i >= 0; i--)
             {
                 var elif = ifStmt.ElifClauses[i];
                 var elifCondition = GenerateExpression(elif.Test);
@@ -656,7 +657,7 @@ public partial class RoslynEmitter
         var condition = GenerateExpression(whileStmt.Test);
 
         // If there's no else clause, generate simple while loop
-        if (whileStmt.ElseBody.Count == 0)
+        if (whileStmt.ElseBody.IsEmpty)
         {
             var body = Block(whileStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
             return WhileStatement(condition, body);
@@ -696,7 +697,7 @@ public partial class RoslynEmitter
         var iterator = GenerateExpression(forStmt.Iterator);
 
         // If there's no else clause, generate simple foreach loop
-        if (forStmt.ElseBody.Count == 0)
+        if (forStmt.ElseBody.IsEmpty)
         {
             return GenerateForEachCore(forStmt.Target, iterator, forStmt.Body);
         }
@@ -735,7 +736,7 @@ public partial class RoslynEmitter
     ///   foreach (var __loopVar in items) { var i = __loopVar; ... }
     /// This allows the user to modify 'i' inside the loop body.
     /// </summary>
-    private StatementSyntax GenerateForEachCore(Expression target, ExpressionSyntax iterator, List<Statement> bodyStatements)
+    private StatementSyntax GenerateForEachCore(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements)
     {
         if (target is Identifier varName)
         {
@@ -846,7 +847,7 @@ public partial class RoslynEmitter
         // catch { ... }
         // finally { ... }
         // if (__trySucceeded) { else_body }
-        if (tryStmt.ElseBody.Count > 0)
+        if (tryStmt.ElseBody.Length > 0)
         {
             return GenerateTryWithElse(tryStmt);
         }
@@ -884,7 +885,7 @@ public partial class RoslynEmitter
 
         // Generate finally block if present
         FinallyClauseSyntax? finallyClause = null;
-        if (tryStmt.FinallyBody.Count > 0)
+        if (tryStmt.FinallyBody.Length > 0)
         {
             var finallyBlock = Block(tryStmt.FinallyBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
             finallyClause = FinallyClause(finallyBlock);
@@ -943,7 +944,7 @@ public partial class RoslynEmitter
 
         // Generate finally block if present
         FinallyClauseSyntax? finallyClause = null;
-        if (tryStmt.FinallyBody.Count > 0)
+        if (tryStmt.FinallyBody.Length > 0)
         {
             var finallyBlock = Block(tryStmt.FinallyBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
             finallyClause = FinallyClause(finallyBlock);

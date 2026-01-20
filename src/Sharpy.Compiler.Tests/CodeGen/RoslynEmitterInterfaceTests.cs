@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Parser.Ast;
@@ -31,8 +32,8 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IDrawable",
-                    TypeParameters = new List<TypeParameterDef>(),
-                    BaseInterfaces = new List<TypeAnnotation>(),
+                    TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
+                    BaseInterfaces = ImmutableArray<TypeAnnotation>.Empty,
                     Body = new List<Statement>
                     {
                         new FunctionDef
@@ -41,7 +42,7 @@ public class RoslynEmitterInterfaceTests
                             Parameters = new List<Parameter>
                             {
                                 new Parameter { Name = "self" }
-                            },
+                            }.ToImmutableArray(),
                             ReturnType = new TypeAnnotation { Name = "None" },
                             Body = new List<Statement>
                             {
@@ -49,11 +50,11 @@ public class RoslynEmitterInterfaceTests
                                 {
                                     Expression = new EllipsisLiteral()
                                 }
-                            }
+                            }.ToImmutableArray()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -77,8 +78,8 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IShape",
-                    TypeParameters = new List<TypeParameterDef>(),
-                    BaseInterfaces = new List<TypeAnnotation>(),
+                    TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
+                    BaseInterfaces = ImmutableArray<TypeAnnotation>.Empty,
                     Body = new List<Statement>
                     {
                         new FunctionDef
@@ -87,7 +88,7 @@ public class RoslynEmitterInterfaceTests
                             Parameters = new List<Parameter>
                             {
                                 new Parameter { Name = "self" }
-                            },
+                            }.ToImmutableArray(),
                             ReturnType = new TypeAnnotation { Name = "float" },
                             Body = new List<Statement>
                             {
@@ -95,11 +96,11 @@ public class RoslynEmitterInterfaceTests
                                 {
                                     Expression = new EllipsisLiteral()
                                 }
-                            }
+                            }.ToImmutableArray()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -123,8 +124,8 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IMovable",
-                    TypeParameters = new List<TypeParameterDef>(),
-                    BaseInterfaces = new List<TypeAnnotation>(),
+                    TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
+                    BaseInterfaces = ImmutableArray<TypeAnnotation>.Empty,
                     Body = new List<Statement>
                     {
                         new FunctionDef
@@ -143,7 +144,7 @@ public class RoslynEmitterInterfaceTests
                                     Name = "y",
                                     Type = new TypeAnnotation { Name = "int" }
                                 }
-                            },
+                            }.ToImmutableArray(),
                             ReturnType = new TypeAnnotation { Name = "None" },
                             Body = new List<Statement>
                             {
@@ -151,11 +152,11 @@ public class RoslynEmitterInterfaceTests
                                 {
                                     Expression = new EllipsisLiteral()
                                 }
-                            }
+                            }.ToImmutableArray()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -179,8 +180,8 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IEntity",
-                    TypeParameters = new List<TypeParameterDef>(),
-                    BaseInterfaces = new List<TypeAnnotation>(),
+                    TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
+                    BaseInterfaces = ImmutableArray<TypeAnnotation>.Empty,
                     Body = new List<Statement>
                     {
                         new VariableDeclaration
@@ -189,9 +190,9 @@ public class RoslynEmitterInterfaceTests
                             Type = new TypeAnnotation { Name = "str" },
                             InitialValue = null
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -217,8 +218,8 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IGameObject",
-                    TypeParameters = new List<TypeParameterDef>(),
-                    BaseInterfaces = new List<TypeAnnotation>(),
+                    TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
+                    BaseInterfaces = ImmutableArray<TypeAnnotation>.Empty,
                     Body = new List<Statement>
                     {
                         new VariableDeclaration
@@ -238,7 +239,7 @@ public class RoslynEmitterInterfaceTests
                                     Name = "delta_time",
                                     Type = new TypeAnnotation { Name = "float" }
                                 }
-                            },
+                            }.ToImmutableArray(),
                             ReturnType = new TypeAnnotation { Name = "None" },
                             Body = new List<Statement>
                             {
@@ -246,7 +247,7 @@ public class RoslynEmitterInterfaceTests
                                 {
                                     Expression = new EllipsisLiteral()
                                 }
-                            }
+                            }.ToImmutableArray()
                         },
                         new FunctionDef
                         {
@@ -254,7 +255,7 @@ public class RoslynEmitterInterfaceTests
                             Parameters = new List<Parameter>
                             {
                                 new Parameter { Name = "self" }
-                            },
+                            }.ToImmutableArray(),
                             ReturnType = new TypeAnnotation { Name = "None" },
                             Body = new List<Statement>
                             {
@@ -262,11 +263,11 @@ public class RoslynEmitterInterfaceTests
                                 {
                                     Expression = new EllipsisLiteral()
                                 }
-                            }
+                            }.ToImmutableArray()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -292,11 +293,11 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IClickable",
-                    TypeParameters = new List<TypeParameterDef>(),
+                    TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
                     BaseInterfaces = new List<TypeAnnotation>
                     {
                         new TypeAnnotation { Name = "IDrawable" }
-                    },
+                    }.ToImmutableArray(),
                     Body = new List<Statement>
                     {
                         new FunctionDef
@@ -305,7 +306,7 @@ public class RoslynEmitterInterfaceTests
                             Parameters = new List<Parameter>
                             {
                                 new Parameter { Name = "self" }
-                            },
+                            }.ToImmutableArray(),
                             ReturnType = new TypeAnnotation { Name = "None" },
                             Body = new List<Statement>
                             {
@@ -313,11 +314,11 @@ public class RoslynEmitterInterfaceTests
                                 {
                                     Expression = new EllipsisLiteral()
                                 }
-                            }
+                            }.ToImmutableArray()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -341,12 +342,12 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IUIElement",
-                    TypeParameters = new List<TypeParameterDef>(),
+                    TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
                     BaseInterfaces = new List<TypeAnnotation>
                     {
                         new TypeAnnotation { Name = "IDrawable" },
                         new TypeAnnotation { Name = "IClickable" }
-                    },
+                    }.ToImmutableArray(),
                     Body = new List<Statement>
                     {
                         new FunctionDef
@@ -355,7 +356,7 @@ public class RoslynEmitterInterfaceTests
                             Parameters = new List<Parameter>
                             {
                                 new Parameter { Name = "self" }
-                            },
+                            }.ToImmutableArray(),
                             ReturnType = new TypeAnnotation { Name = "None" },
                             Body = new List<Statement>
                             {
@@ -363,11 +364,11 @@ public class RoslynEmitterInterfaceTests
                                 {
                                     Expression = new EllipsisLiteral()
                                 }
-                            }
+                            }.ToImmutableArray()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -391,8 +392,8 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IRepository",
-                    TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } },
-                    BaseInterfaces = new List<TypeAnnotation>(),
+                    TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } }.ToImmutableArray(),
+                    BaseInterfaces = ImmutableArray<TypeAnnotation>.Empty,
                     Body = new List<Statement>
                     {
                         new FunctionDef
@@ -406,7 +407,7 @@ public class RoslynEmitterInterfaceTests
                                     Name = "id",
                                     Type = new TypeAnnotation { Name = "int" }
                                 }
-                            },
+                            }.ToImmutableArray(),
                             ReturnType = new TypeAnnotation { Name = "T" },
                             Body = new List<Statement>
                             {
@@ -414,11 +415,11 @@ public class RoslynEmitterInterfaceTests
                                 {
                                     Expression = new EllipsisLiteral()
                                 }
-                            }
+                            }.ToImmutableArray()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -442,8 +443,8 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IDrawable",
-                    TypeParameters = new List<TypeParameterDef>(),
-                    BaseInterfaces = new List<TypeAnnotation>(),
+                    TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
+                    BaseInterfaces = ImmutableArray<TypeAnnotation>.Empty,
                     DocString = "Represents an object that can be drawn on screen",
                     Body = new List<Statement>
                     {
@@ -453,7 +454,7 @@ public class RoslynEmitterInterfaceTests
                             Parameters = new List<Parameter>
                             {
                                 new Parameter { Name = "self" }
-                            },
+                            }.ToImmutableArray(),
                             ReturnType = new TypeAnnotation { Name = "None" },
                             DocString = "Draws the object",
                             Body = new List<Statement>
@@ -462,11 +463,11 @@ public class RoslynEmitterInterfaceTests
                                 {
                                     Expression = new EllipsisLiteral()
                                 }
-                            }
+                            }.ToImmutableArray()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -491,11 +492,11 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IDrawable",
-                    TypeParameters = new List<TypeParameterDef>(),
-                    BaseInterfaces = new List<TypeAnnotation>(),
-                    Body = new List<Statement>()
+                    TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
+                    BaseInterfaces = ImmutableArray<TypeAnnotation>.Empty,
+                    Body = ImmutableArray<Statement>.Empty
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act

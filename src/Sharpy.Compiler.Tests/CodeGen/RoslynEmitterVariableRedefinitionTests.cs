@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -38,7 +39,7 @@ public class RoslynEmitterVariableRedefinitionTests
         var func = new FunctionDef
         {
             Name = "test_redefinition",
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = null,
             Body = new List<Statement>
             {
@@ -64,8 +65,8 @@ public class RoslynEmitterVariableRedefinitionTests
                 {
                     Value = new Identifier { Name = "x" }
                 }
-            },
-            Decorators = new List<Decorator>()
+            }.ToImmutableArray(),
+            Decorators = ImmutableArray<Decorator>.Empty
         };
 
         var result = GenerateFunctionCode(func);
@@ -87,7 +88,7 @@ public class RoslynEmitterVariableRedefinitionTests
         var func = new FunctionDef
         {
             Name = "test_redefinition",
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = null,
             Body = new List<Statement>
             {
@@ -107,8 +108,8 @@ public class RoslynEmitterVariableRedefinitionTests
                 {
                     Value = new Identifier { Name = "x" }
                 }
-            },
-            Decorators = new List<Decorator>()
+            }.ToImmutableArray(),
+            Decorators = ImmutableArray<Decorator>.Empty
         };
 
         var result = GenerateFunctionCode(func);
@@ -132,7 +133,7 @@ public class RoslynEmitterVariableRedefinitionTests
         var func = new FunctionDef
         {
             Name = "test_redefinition",
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = null,
             Body = new List<Statement>
             {
@@ -152,8 +153,8 @@ public class RoslynEmitterVariableRedefinitionTests
                 {
                     Value = new Identifier { Name = "x" }
                 }
-            },
-            Decorators = new List<Decorator>()
+            }.ToImmutableArray(),
+            Decorators = ImmutableArray<Decorator>.Empty
         };
 
         var result = GenerateFunctionCode(func);
@@ -173,7 +174,7 @@ public class RoslynEmitterVariableRedefinitionTests
         var func = new FunctionDef
         {
             Name = "test_redefinition",
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = null,
             Body = new List<Statement>
             {
@@ -193,8 +194,8 @@ public class RoslynEmitterVariableRedefinitionTests
                 {
                     Value = new Identifier { Name = "x" }
                 }
-            },
-            Decorators = new List<Decorator>()
+            }.ToImmutableArray(),
+            Decorators = ImmutableArray<Decorator>.Empty
         };
 
         var result = GenerateFunctionCode(func);
@@ -218,7 +219,7 @@ public class RoslynEmitterVariableRedefinitionTests
         var func = new FunctionDef
         {
             Name = "test_redefinition",
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = null,
             Body = new List<Statement>
             {
@@ -230,7 +231,7 @@ public class RoslynEmitterVariableRedefinitionTests
                         {
                             new Identifier { Name = "x" },
                             new Identifier { Name = "y" }
-                        }
+                        }.ToImmutableArray()
                     },
                     Operator = AssignmentOperator.Assign,
                     Value = new TupleLiteral
@@ -239,7 +240,7 @@ public class RoslynEmitterVariableRedefinitionTests
                         {
                             new IntegerLiteral { Value = "1" },
                             new IntegerLiteral { Value = "2" }
-                        }
+                        }.ToImmutableArray()
                     }
                 },
                 new Assignment
@@ -250,7 +251,7 @@ public class RoslynEmitterVariableRedefinitionTests
                         {
                             new Identifier { Name = "x" },
                             new Identifier { Name = "y" }
-                        }
+                        }.ToImmutableArray()
                     },
                     Operator = AssignmentOperator.Assign,
                     Value = new TupleLiteral
@@ -259,15 +260,15 @@ public class RoslynEmitterVariableRedefinitionTests
                         {
                             new IntegerLiteral { Value = "3" },
                             new IntegerLiteral { Value = "4" }
-                        }
+                        }.ToImmutableArray()
                     }
                 },
                 new ReturnStatement
                 {
                     Value = new Identifier { Name = "x" }
                 }
-            },
-            Decorators = new List<Decorator>()
+            }.ToImmutableArray(),
+            Decorators = ImmutableArray<Decorator>.Empty
         };
 
         var result = GenerateFunctionCode(func);
@@ -291,7 +292,7 @@ public class RoslynEmitterVariableRedefinitionTests
         var func = new FunctionDef
         {
             Name = "test_augmented",
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = null,
             Body = new List<Statement>
             {
@@ -323,8 +324,8 @@ public class RoslynEmitterVariableRedefinitionTests
                 {
                     Value = new Identifier { Name = "x" }
                 }
-            },
-            Decorators = new List<Decorator>()
+            }.ToImmutableArray(),
+            Decorators = ImmutableArray<Decorator>.Empty
         };
 
         var result = GenerateFunctionCode(func);
@@ -352,7 +353,7 @@ public class RoslynEmitterVariableRedefinitionTests
         var func = new FunctionDef
         {
             Name = "test_complex",
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = null,
             Body = new List<Statement>
             {
@@ -370,7 +371,7 @@ public class RoslynEmitterVariableRedefinitionTests
                         Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>
                         {
                             new Identifier { Name = "x" }
-                        }
+                        }.ToImmutableArray()
                     }
                 },
                 new VariableDeclaration
@@ -387,7 +388,7 @@ public class RoslynEmitterVariableRedefinitionTests
                         Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>
                         {
                             new Identifier { Name = "x" }
-                        }
+                        }.ToImmutableArray()
                     }
                 },
                 new VariableDeclaration
@@ -404,11 +405,11 @@ public class RoslynEmitterVariableRedefinitionTests
                         Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>
                         {
                             new Identifier { Name = "x" }
-                        }
+                        }.ToImmutableArray()
                     }
                 }
-            },
-            Decorators = new List<Decorator>()
+            }.ToImmutableArray(),
+            Decorators = ImmutableArray<Decorator>.Empty
         };
 
         var result = GenerateFunctionCode(func);
@@ -434,7 +435,7 @@ public class RoslynEmitterVariableRedefinitionTests
         var func = new FunctionDef
         {
             Name = "test_multiple",
-            Parameters = new List<Parameter>(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = null,
             Body = new List<Statement>
             {
@@ -471,8 +472,8 @@ public class RoslynEmitterVariableRedefinitionTests
                         Right = new Identifier { Name = "y" }
                     }
                 }
-            },
-            Decorators = new List<Decorator>()
+            }.ToImmutableArray(),
+            Decorators = ImmutableArray<Decorator>.Empty
         };
 
         var result = GenerateFunctionCode(func);

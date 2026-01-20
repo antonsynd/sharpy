@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Xunit;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Parser.Ast;
@@ -37,7 +38,7 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "Vector" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "Vector" },
                     Body = new List<Statement>
                     {
@@ -45,13 +46,13 @@ public class RoslynEmitterOperatorTests
                         {
                             Value = new Identifier { Name = "self" }
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -75,18 +76,18 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "Number" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "Number" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new Identifier { Name = "self" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -110,18 +111,18 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "Matrix" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "Matrix" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new Identifier { Name = "self" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -145,18 +146,18 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "object" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "bool" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new BooleanLiteral { Value = true } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -182,18 +183,18 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "Version" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "bool" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new BooleanLiteral { Value = false } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -216,18 +217,18 @@ public class RoslynEmitterOperatorTests
                     Parameters = new List<Parameter>
                     {
                         new() { Name = "self", Type = null }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "Complex" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new Identifier { Name = "self" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -251,18 +252,18 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "Flags" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "Flags" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new Identifier { Name = "self" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -285,20 +286,20 @@ public class RoslynEmitterOperatorTests
                     Parameters = new List<Parameter>
                     {
                         new() { Name = "self", Type = null }
-                    },
+                    }.ToImmutableArray(),
                     Body = new List<Statement>
                     {
                         new ReturnStatement
                         {
                             Value = new StringLiteral { Value = "Person" }
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -321,20 +322,20 @@ public class RoslynEmitterOperatorTests
                     Parameters = new List<Parameter>
                     {
                         new() { Name = "self", Type = null }
-                    },
+                    }.ToImmutableArray(),
                     Body = new List<Statement>
                     {
                         new ReturnStatement
                         {
                             Value = new IntegerLiteral { Value = "42" }
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -358,9 +359,9 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "Number" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "Number" },
-                    Body = new List<Statement> { new ReturnStatement { Value = new Identifier { Name = "self" } } }
+                    Body = new List<Statement> { new ReturnStatement { Value = new Identifier { Name = "self" } } }.ToImmutableArray()
                 },
                 new FunctionDef
                 {
@@ -369,9 +370,9 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "Number" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "Number" },
-                    Body = new List<Statement> { new ReturnStatement { Value = new Identifier { Name = "self" } } }
+                    Body = new List<Statement> { new ReturnStatement { Value = new Identifier { Name = "self" } } }.ToImmutableArray()
                 },
                 new FunctionDef
                 {
@@ -380,15 +381,15 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "object" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "bool" },
-                    Body = new List<Statement> { new ReturnStatement { Value = new BooleanLiteral { Value = true } } }
+                    Body = new List<Statement> { new ReturnStatement { Value = new BooleanLiteral { Value = true } } }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -415,18 +416,18 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "Vector" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "Vector" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new Identifier { Name = "self" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -452,18 +453,18 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "object" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "bool" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new BooleanLiteral { Value = true } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -488,18 +489,18 @@ public class RoslynEmitterOperatorTests
                     {
                         new() { Name = "self", Type = null },
                         new() { Name = "other", Type = new TypeAnnotation { Name = "Point" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "bool" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new BooleanLiteral { Value = false } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 

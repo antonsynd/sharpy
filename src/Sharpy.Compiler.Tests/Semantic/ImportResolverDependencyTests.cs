@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Project;
@@ -97,7 +98,7 @@ import utils
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "utils", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             LineStart = 1,
             ColumnStart = 1
         };
@@ -130,7 +131,7 @@ import utils
             {
                 new ImportAlias { Name = "utils", AsName = null, LineStart = 1, ColumnStart = 1 },
                 new ImportAlias { Name = "models", AsName = null, LineStart = 1, ColumnStart = 8 }
-            },
+            }.ToImmutableArray(),
             LineStart = 1,
             ColumnStart = 1
         };
@@ -174,7 +175,7 @@ from utils import helper
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "helper", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 1,
             ColumnStart = 1
@@ -206,7 +207,7 @@ def func2(): pass
         var fromImport = new FromImportStatement
         {
             Module = "utils",
-            Names = new List<ImportAlias>(),
+            Names = ImmutableArray<ImportAlias>.Empty,
             ImportAll = true,
             LineStart = 1,
             ColumnStart = 1
@@ -251,7 +252,7 @@ def b_func(): pass
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "b", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             LineStart = 1,
             ColumnStart = 1
         };
@@ -316,7 +317,7 @@ def b_func(): pass
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "nonexistent_net_module", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             LineStart = 1,
             ColumnStart = 1
         };
@@ -352,7 +353,7 @@ def b_func(): pass
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "utils", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             LineStart = 1,
             ColumnStart = 1
         };
@@ -387,7 +388,7 @@ def b_func(): pass
             {
                 new ImportAlias { Name = "utils", AsName = null, LineStart = 1, ColumnStart = 1 },
                 new ImportAlias { Name = "models", AsName = null, LineStart = 2, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             LineStart = 1,
             ColumnStart = 1
         }, _testDir);
@@ -422,7 +423,7 @@ def b_func(): pass
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "utils", AsName = null, LineStart = 1, ColumnStart = 1 }
-            },
+            }.ToImmutableArray(),
             LineStart = 1,
             ColumnStart = 1
         }, _testDir);

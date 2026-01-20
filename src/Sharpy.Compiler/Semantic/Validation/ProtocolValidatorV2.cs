@@ -205,7 +205,7 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
         }
     }
 
-    private void ValidateComprehension(Expression element, List<ComprehensionClause> clauses)
+    private void ValidateComprehension(Expression element, IReadOnlyList<ComprehensionClause> clauses)
     {
         ValidateExpression(element);
         foreach (var clause in clauses)
@@ -270,7 +270,7 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
     private void ValidateFunctionCall(FunctionCall call)
     {
         // Check for len() calls
-        if (call.Function is Identifier id && id.Name == "len" && call.Arguments.Count == 1)
+        if (call.Function is Identifier id && id.Name == "len" && call.Arguments.Length == 1)
         {
             var argType = _context.SemanticInfo.GetExpressionType(call.Arguments[0]);
             if (argType == null || argType is UnknownType)

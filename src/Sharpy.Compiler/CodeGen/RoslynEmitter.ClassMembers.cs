@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -15,7 +16,7 @@ public partial class RoslynEmitter
 {
     #region Class Member Generation
 
-    private List<MemberDeclarationSyntax> GenerateClassMembers(List<Statement> body, string className)
+    private List<MemberDeclarationSyntax> GenerateClassMembers(IReadOnlyList<Statement> body, string className)
     {
         var members = new List<MemberDeclarationSyntax>();
 
@@ -165,7 +166,7 @@ public partial class RoslynEmitter
         ConstructorInitializerSyntax? baseInitializer = null;
         var bodyStartIndex = 0;
 
-        if (func.Body.Count > 0 && func.Body[0] is ExpressionStatement exprStmt)
+        if (func.Body.Length > 0 && func.Body[0] is ExpressionStatement exprStmt)
         {
             // Check if it's super().__init__(...)
             if (exprStmt.Expression is FunctionCall call &&
@@ -191,7 +192,7 @@ public partial class RoslynEmitter
         // In C#, these become this.Name = name in the constructor body
         var bodyStatements = new List<StatementSyntax>();
 
-        for (int i = bodyStartIndex; i < func.Body.Count; i++)
+        for (int i = bodyStartIndex; i < func.Body.Length; i++)
         {
             var stmt = func.Body[i];
 
@@ -356,7 +357,7 @@ public partial class RoslynEmitter
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
         bool hasAbstractDecorator = func.Decorators.Any(d => d.Name == "abstract");
-        bool hasEllipsisBody = func.Body.Count == 1
+        bool hasEllipsisBody = func.Body.Length == 1
             && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
 
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
@@ -393,7 +394,7 @@ public partial class RoslynEmitter
         return method;
     }
 
-    private SyntaxTokenList GenerateMethodModifiersFromDecorators(List<Decorator> decorators)
+    private SyntaxTokenList GenerateMethodModifiersFromDecorators(IReadOnlyList<Decorator> decorators)
     {
         var tokens = new List<SyntaxToken>();
 
@@ -497,7 +498,7 @@ public partial class RoslynEmitter
             .WithModifiers(modifiers);
     }
 
-    private List<MemberDeclarationSyntax> GenerateInterfaceMembers(List<Statement> body)
+    private List<MemberDeclarationSyntax> GenerateInterfaceMembers(IReadOnlyList<Statement> body)
     {
         var members = new List<MemberDeclarationSyntax>();
 

@@ -70,7 +70,7 @@ public class OperatorSignatureValidator
             return errors;
         }
 
-        var paramCount = funcDef.Parameters.Count;
+        var paramCount = funcDef.Parameters.Length;
 
         // Determine expected parameter count based on operator type
         if (UnaryOps.Contains(methodName))
@@ -153,7 +153,7 @@ public class OperatorSignatureValidator
     /// </summary>
     private static bool IsTypeAnnotationBool(TypeAnnotation typeAnnotation)
     {
-        return typeAnnotation.Name == "bool" && typeAnnotation.TypeArguments.Count == 0 && !typeAnnotation.IsNullable;
+        return typeAnnotation.Name == "bool" && typeAnnotation.TypeArguments.Length == 0 && !typeAnnotation.IsNullable;
     }
 
     /// <summary>
@@ -161,6 +161,6 @@ public class OperatorSignatureValidator
     /// </summary>
     private static bool IsTypeAnnotationVoid(TypeAnnotation typeAnnotation)
     {
-        return typeAnnotation.Name == "None" && typeAnnotation.TypeArguments.Count == 0;
+        return typeAnnotation.Name == "None" && typeAnnotation.TypeArguments.Length == 0;
     }
 }

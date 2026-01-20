@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Xunit;
 using FluentAssertions;
 using Sharpy.Compiler.Semantic;
@@ -196,7 +197,7 @@ public class TypeResolverTests
                 TypeArguments = new List<TypeAnnotation>
                 {
                     new TypeAnnotation { Name = "str" }
-                }
+                }.ToImmutableArray()
             }
         };
         symbolTable.Define(aliasSymbol);
@@ -230,7 +231,7 @@ public class TypeResolverTests
                 {
                     new TypeAnnotation { Name = "int" },
                     new TypeAnnotation { Name = "str" }
-                },
+                }.ToImmutableArray(),
                 ReturnType = new TypeAnnotation { Name = "bool" }
             }
         };

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
@@ -53,7 +54,7 @@ public partial class Parser
             baseType = new TypeAnnotation
             {
                 Name = "array",
-                TypeArguments = new List<TypeAnnotation> { baseType },
+                TypeArguments = ImmutableArray.Create(baseType),
                 IsNullable = false,
                 LineStart = startLine,
                 ColumnStart = startColumn,
@@ -132,7 +133,7 @@ public partial class Parser
         return new TypeAnnotation
         {
             Name = name,
-            TypeArguments = typeArgs,
+            TypeArguments = typeArgs.ToImmutableArray(),
             IsNullable = false,
             LineStart = startLine,
             ColumnStart = startColumn,
@@ -165,7 +166,7 @@ public partial class Parser
         return new TypeAnnotation
         {
             Name = "list",
-            TypeArguments = new List<TypeAnnotation> { elementType },
+            TypeArguments = ImmutableArray.Create(elementType),
             IsNullable = false,
             LineStart = startLine,
             ColumnStart = startColumn,
@@ -205,7 +206,7 @@ public partial class Parser
             return new TypeAnnotation
             {
                 Name = "dict",
-                TypeArguments = new List<TypeAnnotation> { firstType, valueType },
+                TypeArguments = ImmutableArray.Create(firstType, valueType),
                 IsNullable = false,
                 LineStart = startLine,
                 ColumnStart = startColumn,
@@ -225,7 +226,7 @@ public partial class Parser
         return new TypeAnnotation
         {
             Name = "set",
-            TypeArguments = new List<TypeAnnotation> { firstType },
+            TypeArguments = ImmutableArray.Create(firstType),
             IsNullable = false,
             LineStart = startLine,
             ColumnStart = startColumn,
@@ -287,7 +288,7 @@ public partial class Parser
             return new TypeAnnotation
             {
                 Name = "function",
-                TypeArguments = funcTypeArgs,
+                TypeArguments = funcTypeArgs.ToImmutableArray(),
                 IsNullable = false,
                 LineStart = startLine,
                 ColumnStart = startColumn,
@@ -305,7 +306,7 @@ public partial class Parser
         return new TypeAnnotation
         {
             Name = "tuple",
-            TypeArguments = types,
+            TypeArguments = types.ToImmutableArray(),
             IsNullable = false,
             LineStart = startLine,
             ColumnStart = startColumn,
@@ -514,7 +515,7 @@ public partial class Parser
 
         return new FStringLiteral
         {
-            Parts = parts,
+            Parts = parts.ToImmutableArray(),
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endLine,

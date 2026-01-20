@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
@@ -28,7 +29,7 @@ public class ImportResolverNetModuleTests
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "builtins", AsName = null }
-            }
+            }.ToImmutableArray()
         };
 
         var result = resolver.ResolveImport(importStmt);
@@ -66,7 +67,7 @@ public class ImportResolverNetModuleTests
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "samplemodule", AsName = null }
-            }
+            }.ToImmutableArray()
         };
 
         var result = resolver.ResolveImport(importStmt);
@@ -94,7 +95,7 @@ public class ImportResolverNetModuleTests
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "nonexistent", AsName = null }
-            }
+            }.ToImmutableArray()
         };
 
         var result = resolver.ResolveImport(importStmt);
@@ -122,7 +123,7 @@ public class ImportResolverNetModuleTests
             {
                 new ImportAlias { Name = "print", AsName = null },
                 new ImportAlias { Name = "range", AsName = null }
-            },
+            }.ToImmutableArray(),
             ImportAll = false
         };
 
@@ -152,7 +153,7 @@ public class ImportResolverNetModuleTests
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "nonexistent_function", AsName = null }
-            },
+            }.ToImmutableArray(),
             ImportAll = false
         };
 
@@ -177,7 +178,7 @@ public class ImportResolverNetModuleTests
         var fromImport = new FromImportStatement
         {
             Module = "builtins",
-            Names = new List<ImportAlias>(),
+            Names = ImmutableArray<ImportAlias>.Empty,
             ImportAll = true
         };
 
@@ -206,7 +207,7 @@ public class ImportResolverNetModuleTests
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "builtins", AsName = null }
-            }
+            }.ToImmutableArray()
         };
 
         // First import
@@ -232,7 +233,7 @@ public class ImportResolverNetModuleTests
             Names = new List<ImportAlias>
             {
                 new ImportAlias { Name = "builtins", AsName = null }
-            }
+            }.ToImmutableArray()
         };
 
         var result = resolver.ResolveImport(importStmt);

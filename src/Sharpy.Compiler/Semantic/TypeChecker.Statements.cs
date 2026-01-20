@@ -42,15 +42,15 @@ public partial class TypeChecker
             }
 
             // Check element count matches
-            if (targetTuple.Elements.Count != tupleType.ElementTypes.Count)
+            if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
             {
-                AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Count} variables",
+                AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables",
                     assignment.LineStart, assignment.ColumnStart);
                 return;
             }
 
             // Type-check each unpacking element
-            for (int i = 0; i < targetTuple.Elements.Count; i++)
+            for (int i = 0; i < targetTuple.Elements.Length; i++)
             {
                 var targetElem = targetTuple.Elements[i];
                 var valueElemType = tupleType.ElementTypes[i];
@@ -378,7 +378,7 @@ public partial class TypeChecker
         }
 
         // Enter scope for if-else block only if there are statements
-        if (ifStmt.ElseBody.Count > 0)
+        if (ifStmt.ElseBody.Length > 0)
         {
             _symbolTable.EnterScope("if-else");
             _controlFlowDepth++;
@@ -450,15 +450,15 @@ public partial class TypeChecker
             else
             {
                 // Check element count matches
-                if (targetTuple.Elements.Count != tupleType.ElementTypes.Count)
+                if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
                 {
-                    AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Count} variables in for loop",
+                    AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables in for loop",
                         forStmt.LineStart, forStmt.ColumnStart);
                 }
                 else
                 {
                     // Define loop variables with inferred types INSIDE the for-body scope
-                    for (int i = 0; i < targetTuple.Elements.Count; i++)
+                    for (int i = 0; i < targetTuple.Elements.Length; i++)
                     {
                         var targetElem = targetTuple.Elements[i];
                         var elemType = tupleType.ElementTypes[i];
@@ -569,7 +569,7 @@ public partial class TypeChecker
         }
 
         // Finally block has its own scope
-        if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Count > 0)
+        if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Length > 0)
         {
             _symbolTable.EnterScope("finally");
             _controlFlowDepth++;

@@ -69,7 +69,7 @@ public partial class TypeChecker
         // Handle 'isinstance(x, Type)' pattern
         else if (condition is FunctionCall { Function: Identifier { Name: "isinstance" } } call)
         {
-            if (call.Arguments.Count >= 2)
+            if (call.Arguments.Length >= 2)
             {
                 if (isPositiveBranch)
                 {

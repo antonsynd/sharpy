@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
@@ -48,7 +49,7 @@ public partial class Parser
             elifClauses.Add(new ElifClause
             {
                 Test = elifTest,
-                Body = elifBody,
+                Body = elifBody.ToImmutableArray(),
                 LineStart = elifStartLine,
                 ColumnStart = elifStartColumn,
                 LineEnd = elifEndLine,
@@ -72,9 +73,9 @@ public partial class Parser
         return new IfStatement
         {
             Test = test,
-            ThenBody = thenBody,
-            ElifClauses = elifClauses,
-            ElseBody = elseBody,
+            ThenBody = thenBody.ToImmutableArray(),
+            ElifClauses = elifClauses.ToImmutableArray(),
+            ElseBody = elseBody.ToImmutableArray(),
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Previous.Line,
@@ -114,8 +115,8 @@ public partial class Parser
         return new WhileStatement
         {
             Test = test,
-            Body = body,
-            ElseBody = elseBody,
+            Body = body.ToImmutableArray(),
+            ElseBody = elseBody.ToImmutableArray(),
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Previous.Line,
@@ -162,8 +163,8 @@ public partial class Parser
         {
             Target = target,
             Iterator = iterator,
-            Body = body,
-            ElseBody = elseBody,
+            Body = body.ToImmutableArray(),
+            ElseBody = elseBody.ToImmutableArray(),
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Previous.Line,
@@ -199,7 +200,7 @@ public partial class Parser
 
             return new TupleLiteral
             {
-                Elements = elements,
+                Elements = elements.ToImmutableArray(),
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = Current.Line,
@@ -319,7 +320,7 @@ public partial class Parser
             {
                 ExceptionType = exceptionType,
                 Name = name,
-                Body = handlerBody,
+                Body = handlerBody.ToImmutableArray(),
                 LineStart = handlerStartLine,
                 ColumnStart = handlerStartColumn,
                 LineEnd = handlerEndLine,
@@ -355,10 +356,10 @@ public partial class Parser
 
         return new TryStatement
         {
-            Body = body,
-            Handlers = handlers,
-            ElseBody = elseBody,
-            FinallyBody = finallyBody,
+            Body = body.ToImmutableArray(),
+            Handlers = handlers.ToImmutableArray(),
+            ElseBody = elseBody.ToImmutableArray(),
+            FinallyBody = finallyBody.ToImmutableArray(),
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Previous.Line,
@@ -572,7 +573,7 @@ public partial class Parser
 
         return new ImportStatement
         {
-            Names = names,
+            Names = names.ToImmutableArray(),
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endToken.Line,
@@ -642,7 +643,7 @@ public partial class Parser
         return new FromImportStatement
         {
             Module = module,
-            Names = names,
+            Names = names.ToImmutableArray(),
             ImportAll = importAll,
             LineStart = startLine,
             ColumnStart = startColumn,

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -460,7 +461,7 @@ public partial class RoslynEmitter
         TypeSyntax elementType;
         if (_targetTypeContext != null &&
             _targetTypeContext.Name == "list" &&
-            _targetTypeContext.TypeArguments.Count > 0)
+            _targetTypeContext.TypeArguments.Length > 0)
         {
             // Use the declared element type from the target type annotation
             elementType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
@@ -490,7 +491,7 @@ public partial class RoslynEmitter
         TypeSyntax keyType, valueType;
         if (_targetTypeContext != null &&
             _targetTypeContext.Name == "dict" &&
-            _targetTypeContext.TypeArguments.Count >= 2)
+            _targetTypeContext.TypeArguments.Length >= 2)
         {
             keyType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
             valueType = _typeMapper.MapType(_targetTypeContext.TypeArguments[1]);
@@ -526,7 +527,7 @@ public partial class RoslynEmitter
         TypeSyntax elementType;
         if (_targetTypeContext != null &&
             _targetTypeContext.Name == "set" &&
-            _targetTypeContext.TypeArguments.Count > 0)
+            _targetTypeContext.TypeArguments.Length > 0)
         {
             elementType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
         }
@@ -566,7 +567,7 @@ public partial class RoslynEmitter
         // Example: [x * 2 for x in items if x > 0]
         // becomes: items.Where(x => x > 0).Select(x => x * 2).ToList()
 
-        if (listComp.Clauses.Count == 0 || listComp.Clauses[0] is not ForClause firstFor)
+        if (listComp.Clauses.IsEmpty || listComp.Clauses[0] is not ForClause firstFor)
         {
             throw new InvalidOperationException("List comprehension must start with a for clause");
         }
@@ -636,7 +637,7 @@ public partial class RoslynEmitter
         // Example: {x * 2 for x in items if x > 0}
         // becomes: items.Where(x => x > 0).Select(x => x * 2).ToHashSet()
 
-        if (setComp.Clauses.Count == 0 || setComp.Clauses[0] is not ForClause firstFor)
+        if (setComp.Clauses.IsEmpty || setComp.Clauses[0] is not ForClause firstFor)
         {
             throw new InvalidOperationException("Set comprehension must start with a for clause");
         }
@@ -705,7 +706,7 @@ public partial class RoslynEmitter
         // For now, only support single variable (not tuple unpacking)
         // becomes: pairs.Where(p => p.v > 0).ToDictionary(p => p.k, p => p.v)
 
-        if (dictComp.Clauses.Count == 0 || dictComp.Clauses[0] is not ForClause firstFor)
+        if (dictComp.Clauses.IsEmpty || dictComp.Clauses[0] is not ForClause firstFor)
         {
             throw new InvalidOperationException("Dict comprehension must start with a for clause");
         }
@@ -1074,14 +1075,14 @@ public partial class RoslynEmitter
         // For simplicity in v0.6, we'll allow re-evaluation
         // TODO: Store intermediate values in temp variables
 
-        if (chain.Operands.Count < 2 || chain.Operators.Count != chain.Operands.Count - 1)
+        if (chain.Operands.Length < 2 || chain.Operators.Length != chain.Operands.Length - 1)
         {
             throw new InvalidOperationException("Invalid comparison chain");
         }
 
         ExpressionSyntax? result = null;
 
-        for (int i = 0; i < chain.Operators.Count; i++)
+        for (int i = 0; i < chain.Operators.Length; i++)
         {
             var left = GenerateExpression(chain.Operands[i]);
             var right = GenerateExpression(chain.Operands[i + 1]);

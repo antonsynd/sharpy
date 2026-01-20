@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -123,7 +124,7 @@ public class TypeMapperTests
             TypeArguments = new List<TypeAnnotation>
             {
                 new TypeAnnotation { Name = "int" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -144,7 +145,7 @@ public class TypeMapperTests
             {
                 new TypeAnnotation { Name = "str" },
                 new TypeAnnotation { Name = "int" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -164,7 +165,7 @@ public class TypeMapperTests
             TypeArguments = new List<TypeAnnotation>
             {
                 new TypeAnnotation { Name = "str" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -185,7 +186,7 @@ public class TypeMapperTests
             TypeArguments = new List<TypeAnnotation>
             {
                 new TypeAnnotation { Name = "int" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -205,7 +206,7 @@ public class TypeMapperTests
         // Arrange
         var funcType = new AstFunctionType
         {
-            ParameterTypes = new List<TypeAnnotation>(),
+            ParameterTypes = ImmutableArray<TypeAnnotation>.Empty,
             ReturnType = new TypeAnnotation { Name = "int" }
         };
 
@@ -225,7 +226,7 @@ public class TypeMapperTests
             ParameterTypes = new List<TypeAnnotation>
             {
                 new TypeAnnotation { Name = "int" }
-            },
+            }.ToImmutableArray(),
             ReturnType = new TypeAnnotation { Name = "str" }
         };
 
@@ -246,7 +247,7 @@ public class TypeMapperTests
             {
                 new TypeAnnotation { Name = "int" },
                 new TypeAnnotation { Name = "str" }
-            },
+            }.ToImmutableArray(),
             ReturnType = new TypeAnnotation { Name = "void" }
         };
 
@@ -263,7 +264,7 @@ public class TypeMapperTests
         // Arrange
         var funcType = new AstFunctionType
         {
-            ParameterTypes = new List<TypeAnnotation>(),
+            ParameterTypes = ImmutableArray<TypeAnnotation>.Empty,
             ReturnType = new TypeAnnotation { Name = "void" }
         };
 
@@ -284,7 +285,7 @@ public class TypeMapperTests
         // Arrange
         var tupleType = new AstTupleType
         {
-            ElementTypes = new List<TypeAnnotation>()
+            ElementTypes = ImmutableArray<TypeAnnotation>.Empty
         };
 
         // Act
@@ -303,7 +304,7 @@ public class TypeMapperTests
             ElementTypes = new List<TypeAnnotation>
             {
                 new TypeAnnotation { Name = "int" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -323,7 +324,7 @@ public class TypeMapperTests
             {
                 new TypeAnnotation { Name = "int" },
                 new TypeAnnotation { Name = "str" }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -346,7 +347,7 @@ public class TypeMapperTests
             new IntegerLiteral { Value = "1" },
             new IntegerLiteral { Value = "2" },
             new IntegerLiteral { Value = "3" }
-        };
+        }.ToImmutableArray();
 
         // Act
         var result = _typeMapper.InferElementType(expressions);
@@ -364,7 +365,7 @@ public class TypeMapperTests
             new FloatLiteral { Value = "1.0" },
             new FloatLiteral { Value = "2.0" },
             new FloatLiteral { Value = "3.0" }
-        };
+        }.ToImmutableArray();
 
         // Act
         var result = _typeMapper.InferElementType(expressions);
@@ -382,7 +383,7 @@ public class TypeMapperTests
             new IntegerLiteral { Value = "1" },
             new StringLiteral { Value = "hello" },
             new BooleanLiteral { Value = true }
-        };
+        }.ToImmutableArray();
 
         // Act
         var result = _typeMapper.InferElementType(expressions);
@@ -395,7 +396,7 @@ public class TypeMapperTests
     public void InferElementType_EmptyList_ReturnsObject()
     {
         // Arrange
-        var expressions = new List<Expression>();
+        var expressions = ImmutableArray<Expression>.Empty;
 
         // Act
         var result = _typeMapper.InferElementType(expressions);

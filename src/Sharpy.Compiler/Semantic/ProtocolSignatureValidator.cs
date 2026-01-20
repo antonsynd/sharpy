@@ -44,7 +44,7 @@ public static class ProtocolSignatureValidator
         TypeSymbol owningType,
         List<SemanticError> errors)
     {
-        var actualCount = funcDef.Parameters.Count;
+        var actualCount = funcDef.Parameters.Length;
         var expectedCount = protocol.ExpectedParamCount;
 
         // -1 means any count (e.g., __init__ can have any number of params)
@@ -116,7 +116,7 @@ public static class ProtocolSignatureValidator
         List<SemanticError> errors)
     {
         // Check if there are any parameters to validate
-        if (funcDef.Parameters.Count == 0)
+        if (funcDef.Parameters.Length == 0)
         {
             // For protocols with fixed param count, the parameter count error is already raised.
             // Only add a 'self' error for variable-param protocols (like __init__) with 0 params.

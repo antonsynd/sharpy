@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Xunit;
 using FluentAssertions;
 using Sharpy.Compiler.Semantic;
@@ -33,9 +34,9 @@ public class ProtocolSignatureValidatorTests
         return new FunctionDef
         {
             Name = name,
-            Parameters = parameters,
+            Parameters = parameters.ToImmutableArray(),
             ReturnType = returnType,
-            Body = new(),
+            Body = ImmutableArray<Statement>.Empty,
             LineStart = lineStart,
             ColumnStart = columnStart
         };
@@ -301,8 +302,8 @@ public class ProtocolSignatureValidatorTests
             Parameters = new List<Parameter>
             {
                 new Parameter { Name = "this", Type = new TypeAnnotation { Name = "object" } }
-            },
-            Body = new(),
+            }.ToImmutableArray(),
+            Body = ImmutableArray<Statement>.Empty,
             LineStart = 1,
             ColumnStart = 1
         };

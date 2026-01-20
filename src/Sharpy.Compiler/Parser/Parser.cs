@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
@@ -64,7 +65,7 @@ public partial class Parser
 
         return new Module
         {
-            Body = statements,
+            Body = statements.ToImmutableArray(),
             DocString = docString,
             LineStart = 1,
             ColumnStart = 1,
@@ -162,9 +163,9 @@ public partial class Parser
         // Attach decorators
         return stmt switch
         {
-            FunctionDef func => func with { Decorators = decorators },
-            ClassDef cls => cls with { Decorators = decorators },
-            StructDef str => str with { Decorators = decorators },
+            FunctionDef func => func with { Decorators = decorators.ToImmutableArray() },
+            ClassDef cls => cls with { Decorators = decorators.ToImmutableArray() },
+            StructDef str => str with { Decorators = decorators.ToImmutableArray() },
             _ => throw new ParserError("Unexpected decorated statement type", Current.Line, Current.Column)
         };
     }

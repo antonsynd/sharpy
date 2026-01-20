@@ -53,7 +53,7 @@ public class TypeResolver
             result = ExpandTypeAlias(aliasSymbol, annotation.IsNullable);
         }
         // Check for generic type
-        else if (annotation.TypeArguments.Count > 0)
+        else if (annotation.TypeArguments.Length > 0)
         {
             result = ResolveGenericType(annotation);
         }

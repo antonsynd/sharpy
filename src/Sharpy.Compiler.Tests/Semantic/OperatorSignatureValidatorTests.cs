@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Xunit;
 using FluentAssertions;
 using Sharpy.Compiler.Semantic;
@@ -33,9 +34,9 @@ public class OperatorSignatureValidatorTests
         return new FunctionDef
         {
             Name = name,
-            Parameters = parameters,
+            Parameters = parameters.ToImmutableArray(),
             ReturnType = returnType,
-            Body = new(),
+            Body = ImmutableArray<Statement>.Empty,
             LineStart = lineStart,
             ColumnStart = columnStart
         };

@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Parser.Ast;
 public record TypeAnnotation
 {
     public string Name { get; init; } = "";
-    public List<TypeAnnotation> TypeArguments { get; init; } = new();
+    public ImmutableArray<TypeAnnotation> TypeArguments { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
     public bool IsNullable { get; init; }  // T? syntax
 
     // Source location
@@ -28,7 +28,7 @@ public record TypeAnnotation
 /// </summary>
 public record FunctionType
 {
-    public List<TypeAnnotation> ParameterTypes { get; init; } = new();
+    public ImmutableArray<TypeAnnotation> ParameterTypes { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
     public TypeAnnotation ReturnType { get; init; } = null!;
 
     // Source location
@@ -48,5 +48,5 @@ public record FunctionType
 /// </summary>
 public record TupleType
 {
-    public List<TypeAnnotation> ElementTypes { get; init; } = new();
+    public ImmutableArray<TypeAnnotation> ElementTypes { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
 }

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
@@ -55,7 +56,7 @@ class ClassB:
         var importStmt = new FromImportStatement
         {
             Module = "b",
-            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } },
+            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 2,
             ColumnStart = 1
@@ -102,7 +103,7 @@ class ClassC:
         var importStmt = new FromImportStatement
         {
             Module = "b",
-            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } },
+            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 2,
             ColumnStart = 1
@@ -133,7 +134,7 @@ class ClassA:
         var importStmt = new FromImportStatement
         {
             Module = "a",
-            Names = new List<ImportAlias> { new ImportAlias { Name = "something" } },
+            Names = new List<ImportAlias> { new ImportAlias { Name = "something" } }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 2,
             ColumnStart = 1
@@ -180,7 +181,7 @@ class ClassC:
         var importStmt = new FromImportStatement
         {
             Module = "b",
-            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } },
+            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 2,
             ColumnStart = 1
@@ -240,7 +241,7 @@ class ClassD:
         var importB = new FromImportStatement
         {
             Module = "b",
-            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } },
+            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 2,
             ColumnStart = 1
@@ -252,7 +253,7 @@ class ClassD:
         var importC = new FromImportStatement
         {
             Module = "c",
-            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassC" } },
+            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassC" } }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 3,
             ColumnStart = 1
@@ -290,7 +291,7 @@ class ClassB:
         var import1 = new FromImportStatement
         {
             Module = "b",
-            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } },
+            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 2,
             ColumnStart = 1
@@ -302,7 +303,7 @@ class ClassB:
         var import2 = new FromImportStatement
         {
             Module = "b",
-            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } },
+            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 2,
             ColumnStart = 1
@@ -340,7 +341,7 @@ class ClassB:
 
         var importStmt = new ImportStatement
         {
-            Names = new List<ImportAlias> { new ImportAlias { Name = "b" } },
+            Names = new List<ImportAlias> { new ImportAlias { Name = "b" } }.ToImmutableArray(),
             LineStart = 2,
             ColumnStart = 1
         };
@@ -394,7 +395,7 @@ class ClassD:
         var importStmt = new FromImportStatement
         {
             Module = "b",
-            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } },
+            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 2,
             ColumnStart = 1
@@ -453,7 +454,7 @@ class ClassD:
         var importStmt = new FromImportStatement
         {
             Module = "b",
-            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } },
+            Names = new List<ImportAlias> { new ImportAlias { Name = "ClassB" } }.ToImmutableArray(),
             ImportAll = false,
             LineStart = 2,
             ColumnStart = 1

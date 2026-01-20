@@ -127,7 +127,7 @@ public class SignatureValidatorV2 : SemanticValidatorBase
     private void ValidateOperatorSignature(FunctionDef funcDef, TypeSymbol owningType)
     {
         var methodName = funcDef.Name;
-        var paramCount = funcDef.Parameters.Count;
+        var paramCount = funcDef.Parameters.Length;
 
         // Validate parameter count based on operator type
         if (UnaryOps.Contains(methodName))
@@ -211,7 +211,7 @@ public class SignatureValidatorV2 : SemanticValidatorBase
 
     private void ValidateProtocolParameterCount(FunctionDef funcDef, ProtocolInfo protocol, TypeSymbol owningType)
     {
-        var actualCount = funcDef.Parameters.Count;
+        var actualCount = funcDef.Parameters.Length;
         var expectedCount = protocol.ExpectedParamCount;
 
         // -1 means any count (e.g., __init__ can have any number of params)
@@ -275,7 +275,7 @@ public class SignatureValidatorV2 : SemanticValidatorBase
     private void ValidateProtocolSelfParameter(FunctionDef funcDef, ProtocolInfo protocol, TypeSymbol owningType)
     {
         // Check if there are any parameters
-        if (funcDef.Parameters.Count == 0)
+        if (funcDef.Parameters.Length == 0)
         {
             // For variable-param protocols (like __init__) with 0 params, error about 'self'
             if (protocol.ExpectedParamCount == -1)
@@ -303,12 +303,12 @@ public class SignatureValidatorV2 : SemanticValidatorBase
 
     private static bool IsTypeAnnotationBool(TypeAnnotation typeAnnotation)
     {
-        return typeAnnotation.Name == "bool" && typeAnnotation.TypeArguments.Count == 0 && !typeAnnotation.IsNullable;
+        return typeAnnotation.Name == "bool" && typeAnnotation.TypeArguments.Length == 0 && !typeAnnotation.IsNullable;
     }
 
     private static bool IsTypeAnnotationVoid(TypeAnnotation typeAnnotation)
     {
-        return typeAnnotation.Name == "None" && typeAnnotation.TypeArguments.Count == 0;
+        return typeAnnotation.Name == "None" && typeAnnotation.TypeArguments.Length == 0;
     }
 
     #endregion

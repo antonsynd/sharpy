@@ -148,7 +148,7 @@ public partial class TypeChecker
         // 2. Is in an @abstract class AND has ellipsis body (implicit abstract)
         bool hasAbstractDecorator = functionDef.Decorators.Any(d => d.Name == "abstract");
         bool isInAbstractClass = _currentClass?.IsAbstract == true;
-        bool hasEllipsisBody = functionDef.Body.Count == 1
+        bool hasEllipsisBody = functionDef.Body.Length == 1
             && functionDef.Body[0] is ExpressionStatement exprStmt
             && exprStmt.Expression is EllipsisLiteral;
 
@@ -179,7 +179,7 @@ public partial class TypeChecker
             bool hasStaticDecorator = functionDef.Decorators.Any(d =>
                 d.Name == "static" || d.Name == "staticmethod");
 
-            bool hasSelfParameter = functionDef.Parameters.Count > 0 &&
+            bool hasSelfParameter = functionDef.Parameters.Length > 0 &&
                 functionDef.Parameters[0].Name == "self";
 
             // Method is static if it has decorator OR doesn't have self parameter
@@ -198,7 +198,7 @@ public partial class TypeChecker
 
         // Validate parameter ordering: non-default parameters cannot follow default parameters
         bool hasSeenDefault = false;
-        for (int i = 0; i < functionDef.Parameters.Count; i++)
+        for (int i = 0; i < functionDef.Parameters.Length; i++)
         {
             var param = functionDef.Parameters[i];
 
@@ -217,7 +217,7 @@ public partial class TypeChecker
         _defaultParameterValidator.ValidateFunctionDefaults(functionDef);
 
         // Register parameters in scope and update the function symbol's parameter types
-        for (int i = 0; i < functionDef.Parameters.Count; i++)
+        for (int i = 0; i < functionDef.Parameters.Length; i++)
         {
             var param = functionDef.Parameters[i];
             var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
@@ -490,7 +490,7 @@ public partial class TypeChecker
 
                     // Resolve parameter types
                     var updatedParameters = new List<ParameterSymbol>();
-                    for (int i = 0; i < method.Parameters.Count; i++)
+                    for (int i = 0; i < method.Parameters.Length; i++)
                     {
                         var param = method.Parameters[i];
                         var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);

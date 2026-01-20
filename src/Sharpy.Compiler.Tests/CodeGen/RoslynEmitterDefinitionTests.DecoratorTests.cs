@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -25,12 +26,12 @@ public partial class RoslynEmitterDefinitionTests
             Decorators = new List<Decorator>
             {
                 new Decorator { Name = "abstract" }
-            },
-            Body = new List<Statement> { new PassStatement() }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -48,7 +49,7 @@ public partial class RoslynEmitterDefinitionTests
             Decorators = new List<Decorator>
             {
                 new Decorator { Name = "abstract" }
-            },
+            }.ToImmutableArray(),
             Body = new List<Statement>
             {
                 new FunctionDef
@@ -57,11 +58,11 @@ public partial class RoslynEmitterDefinitionTests
                     Decorators = new List<Decorator>
                     {
                         new Decorator { Name = "abstract" }
-                    },
+                    }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
                         new Parameter { Name = "self" }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "float" },
                     Body = new List<Statement>
                     {
@@ -69,13 +70,13 @@ public partial class RoslynEmitterDefinitionTests
                         {
                             Expression = new EllipsisLiteral()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -104,7 +105,7 @@ public partial class RoslynEmitterDefinitionTests
                     Parameters = new List<Parameter>
                     {
                         new Parameter { Name = "self" }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "int" },
                     Body = new List<Statement>
                     {
@@ -112,13 +113,13 @@ public partial class RoslynEmitterDefinitionTests
                         {
                             Expression = new EllipsisLiteral()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -142,23 +143,23 @@ public partial class RoslynEmitterDefinitionTests
                     Decorators = new List<Decorator>
                     {
                         new Decorator { Name = "staticmethod" }
-                    },
+                    }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
                         new Parameter { Name = "x", Type = new TypeAnnotation { Name = "int" } },
                         new Parameter { Name = "y", Type = new TypeAnnotation { Name = "int" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "int" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new IntegerLiteral { Value = "0" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -178,23 +179,23 @@ public partial class RoslynEmitterDefinitionTests
                 new FunctionDef
                 {
                     Name = "multiply",
-                    Decorators = new List<Decorator>(), // No @static decorator needed!
+                    Decorators = ImmutableArray<Decorator>.Empty, // No @static decorator needed!
                     Parameters = new List<Parameter>
                     {
                         new Parameter { Name = "a", Type = new TypeAnnotation { Name = "int" } },
                         new Parameter { Name = "b", Type = new TypeAnnotation { Name = "int" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "int" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new IntegerLiteral { Value = "0" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -214,23 +215,23 @@ public partial class RoslynEmitterDefinitionTests
                 new FunctionDef
                 {
                     Name = "increment",
-                    Decorators = new List<Decorator>(),
+                    Decorators = ImmutableArray<Decorator>.Empty,
                     Parameters = new List<Parameter>
                     {
                         new Parameter { Name = "self", Type = null },
                         new Parameter { Name = "amount", Type = new TypeAnnotation { Name = "int" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = null,
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -249,12 +250,12 @@ public partial class RoslynEmitterDefinitionTests
             Decorators = new List<Decorator>
             {
                 new Decorator { Name = "sealed" }
-            },
-            Body = new List<Statement> { new PassStatement() }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -277,22 +278,22 @@ public partial class RoslynEmitterDefinitionTests
                     Decorators = new List<Decorator>
                     {
                         new Decorator { Name = "protected" }
-                    },
+                    }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
                         new Parameter { Name = "self" }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "int" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new IntegerLiteral { Value = "42" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -315,22 +316,22 @@ public partial class RoslynEmitterDefinitionTests
                     Decorators = new List<Decorator>
                     {
                         new Decorator { Name = "internal" }
-                    },
+                    }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
                         new Parameter { Name = "self" }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = null,
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -353,22 +354,22 @@ public partial class RoslynEmitterDefinitionTests
                     Decorators = new List<Decorator>
                     {
                         new Decorator { Name = "virtual" }
-                    },
+                    }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
                         new Parameter { Name = "self" }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "str" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new StringLiteral { Value = "base" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -391,22 +392,22 @@ public partial class RoslynEmitterDefinitionTests
                     Decorators = new List<Decorator>
                     {
                         new Decorator { Name = "override" }
-                    },
+                    }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
                         new Parameter { Name = "self" }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "str" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new StringLiteral { Value = "derived" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -424,12 +425,12 @@ public partial class RoslynEmitterDefinitionTests
             Decorators = new List<Decorator>
             {
                 new Decorator { Name = "static" }
-            },
-            Body = new List<Statement> { new PassStatement() }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -453,22 +454,22 @@ public partial class RoslynEmitterDefinitionTests
                     {
                         new Decorator { Name = "protected" },
                         new Decorator { Name = "virtual" }
-                    },
+                    }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
                         new Parameter { Name = "self" }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = null,
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -486,12 +487,12 @@ public partial class RoslynEmitterDefinitionTests
             Decorators = new List<Decorator>
             {
                 new Decorator { Name = "public" }
-            },
-            Body = new List<Statement> { new PassStatement() }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -514,22 +515,22 @@ public partial class RoslynEmitterDefinitionTests
                     Decorators = new List<Decorator>
                     {
                         new Decorator { Name = "public" }
-                    },
+                    }.ToImmutableArray(),
                     Parameters = new List<Parameter>
                     {
                         new Parameter { Name = "self" }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = null,
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -555,19 +556,19 @@ public partial class RoslynEmitterDefinitionTests
                     Constraints = new List<ConstraintClause>
                     {
                         new TypeConstraint { Type = new TypeAnnotation { Name = "IComparable" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            },
+            }.ToImmutableArray(),
             Parameters = new List<Parameter>
             {
                 new Parameter { Name = "a", Type = new TypeAnnotation { Name = "T" } },
                 new Parameter { Name = "b", Type = new TypeAnnotation { Name = "T" } }
-            },
+            }.ToImmutableArray(),
             ReturnType = new TypeAnnotation { Name = "T" },
-            Body = new List<Statement> { new ReturnStatement { Value = new Identifier { Name = "a" } } }
+            Body = new List<Statement> { new ReturnStatement { Value = new Identifier { Name = "a" } } }.ToImmutableArray()
         };
 
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -585,17 +586,17 @@ public partial class RoslynEmitterDefinitionTests
                 new TypeParameterDef
                 {
                     Name = "T",
-                    Constraints = new List<ConstraintClause> { new ClassConstraint() }
+                    Constraints = new List<ConstraintClause> { new ClassConstraint() }.ToImmutableArray()
                 }
-            },
+            }.ToImmutableArray(),
             Parameters = new List<Parameter>
             {
                 new Parameter { Name = "item", Type = new TypeAnnotation { Name = "T" } }
-            },
-            Body = new List<Statement> { new PassStatement() }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
 
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -613,17 +614,17 @@ public partial class RoslynEmitterDefinitionTests
                 new TypeParameterDef
                 {
                     Name = "T",
-                    Constraints = new List<ConstraintClause> { new StructConstraint() }
+                    Constraints = new List<ConstraintClause> { new StructConstraint() }.ToImmutableArray()
                 }
-            },
+            }.ToImmutableArray(),
             Parameters = new List<Parameter>
             {
                 new Parameter { Name = "item", Type = new TypeAnnotation { Name = "T" } }
-            },
-            Body = new List<Statement> { new PassStatement() }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
 
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -641,15 +642,15 @@ public partial class RoslynEmitterDefinitionTests
                 new TypeParameterDef
                 {
                     Name = "T",
-                    Constraints = new List<ConstraintClause> { new NewConstraint() }
+                    Constraints = new List<ConstraintClause> { new NewConstraint() }.ToImmutableArray()
                 }
-            },
-            Parameters = new List<Parameter>(),
+            }.ToImmutableArray(),
+            Parameters = ImmutableArray<Parameter>.Empty,
             ReturnType = new TypeAnnotation { Name = "T" },
-            Body = new List<Statement> { new PassStatement() }
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
 
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -671,17 +672,17 @@ public partial class RoslynEmitterDefinitionTests
                     {
                         new ClassConstraint(),
                         new TypeConstraint { Type = new TypeAnnotation { Name = "IFoo" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            },
+            }.ToImmutableArray(),
             Parameters = new List<Parameter>
             {
                 new Parameter { Name = "item", Type = new TypeAnnotation { Name = "T" } }
-            },
-            Body = new List<Statement> { new PassStatement() }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
 
-        var module = new Module { Body = new List<Statement> { func } };
+        var module = new Module { Body = new List<Statement> { func }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -702,13 +703,13 @@ public partial class RoslynEmitterDefinitionTests
                     Constraints = new List<ConstraintClause>
                     {
                         new TypeConstraint { Type = new TypeAnnotation { Name = "ISerializable" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            },
-            Body = new List<Statement> { new PassStatement() }
+            }.ToImmutableArray(),
+            Body = new List<Statement> { new PassStatement() }.ToImmutableArray()
         };
 
-        var module = new Module { Body = new List<Statement> { classDef } };
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 

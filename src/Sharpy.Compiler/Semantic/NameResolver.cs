@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -134,7 +135,7 @@ public class NameResolver
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Class,
             AccessLevel = AccessLevel.Public,
-            TypeParameters = classDef.TypeParameters,
+            TypeParameters = classDef.TypeParameters.ToList(),
             IsAbstract = isAbstract,
             DefiningFilePath = _currentFilePath,
             DeclarationLine = classDef.LineStart,
@@ -196,7 +197,7 @@ public class NameResolver
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Struct,
             AccessLevel = AccessLevel.Public,
-            TypeParameters = structDef.TypeParameters,
+            TypeParameters = structDef.TypeParameters.ToList(),
             DefiningFilePath = _currentFilePath,
             DeclarationLine = structDef.LineStart,
             DeclarationColumn = structDef.ColumnStart
@@ -255,7 +256,7 @@ public class NameResolver
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Interface,
             AccessLevel = AccessLevel.Public,
-            TypeParameters = interfaceDef.TypeParameters,
+            TypeParameters = interfaceDef.TypeParameters.ToList(),
             DefiningFilePath = _currentFilePath,
             DeclarationLine = interfaceDef.LineStart,
             DeclarationColumn = interfaceDef.ColumnStart
@@ -354,7 +355,7 @@ public class NameResolver
             Kind = SymbolKind.Function,
             AccessLevel = AccessLevel.Public,
             Parameters = parameters,
-            TypeParameters = functionDef.TypeParameters,
+            TypeParameters = functionDef.TypeParameters.ToList(),
             DeclarationLine = functionDef.LineStart,
             DeclarationColumn = functionDef.ColumnStart
         };
@@ -383,7 +384,7 @@ public class NameResolver
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an @abstract class AND has ellipsis body (implicit abstract)
         bool hasAbstractDecorator = method.Decorators.Any(d => d.Name == "abstract");
-        bool hasEllipsisBody = method.Body.Count == 1
+        bool hasEllipsisBody = method.Body.Length == 1
             && method.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
 
         bool isAbstract = hasAbstractDecorator || (owningType.IsAbstract && hasEllipsisBody);
@@ -405,7 +406,7 @@ public class NameResolver
             Kind = SymbolKind.Function,
             AccessLevel = accessLevel,
             Parameters = parameters,
-            TypeParameters = method.TypeParameters,
+            TypeParameters = method.TypeParameters.ToList(),
             IsStatic = isStatic,
             IsAbstract = isAbstract,
             IsVirtual = isVirtual,
@@ -421,7 +422,7 @@ public class NameResolver
         if (method.Name == "__init__")
         {
             owningType.Constructors.Add(funcSymbol);
-            _logger.LogDebug($"Registered constructor overload: {owningType.Name}.__init__ (params: {method.Parameters.Count})");
+            _logger.LogDebug($"Registered constructor overload: {owningType.Name}.__init__ (params: {method.Parameters.Length})");
 
             // Only register the first __init__ in the symbol table to avoid duplicate name errors
             // All overloads are tracked in the Constructors list
@@ -593,14 +594,14 @@ public class NameResolver
         // Interface methods must have only ... (ellipsis) or pass as their body
         // They cannot contain actual implementation
 
-        if (method.Body.Count == 0)
+        if (method.Body.Length == 0)
         {
             AddError($"Interface method '{method.Name}' in interface '{interfaceName}' must have a body with '...' or 'pass'",
                 method.LineStart, method.ColumnStart);
             return;
         }
 
-        if (method.Body.Count == 1)
+        if (method.Body.Length == 1)
         {
             var stmt = method.Body[0];
 
@@ -627,7 +628,7 @@ public class NameResolver
 
     private void ResolveClassInheritance(ClassDef classDef)
     {
-        if (classDef.BaseClasses.Count == 0)
+        if (classDef.BaseClasses.Length == 0)
             return;
 
         var typeSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
@@ -676,7 +677,7 @@ public class NameResolver
 
     private void ResolveStructInheritance(StructDef structDef)
     {
-        if (structDef.BaseClasses.Count == 0)
+        if (structDef.BaseClasses.Length == 0)
             return;
 
         var typeSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
@@ -707,7 +708,7 @@ public class NameResolver
 
     private void ResolveInterfaceInheritance(InterfaceDef interfaceDef)
     {
-        if (interfaceDef.BaseInterfaces.Count == 0)
+        if (interfaceDef.BaseInterfaces.Length == 0)
             return;
 
         var typeSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
@@ -40,7 +41,7 @@ public partial class Parser
                 // This is a tuple unpacking assignment
                 var tuple = new TupleLiteral
                 {
-                    Elements = elements,
+                    Elements = elements.ToImmutableArray(),
                     LineStart = startLine,
                     ColumnStart = startColumn,
                     LineEnd = Current.Line,
@@ -199,11 +200,10 @@ public partial class Parser
             return new FunctionDef
             {
                 Name = name,
-                TypeParameters = typeParams,
-                Parameters = parameters,
+                TypeParameters = typeParams.ToImmutableArray(),
+                Parameters = parameters.ToImmutableArray(),
                 ReturnType = returnType,
-                Body = new List<Statement>
-                {
+                Body = ImmutableArray.Create<Statement>(
                     new ExpressionStatement
                     {
                         Expression = new EllipsisLiteral
@@ -220,7 +220,7 @@ public partial class Parser
                         ColumnEnd = ellipsisColumn + 3,
                         Span = GetSpanFromToken(ellipsisToken)
                     }
-                },
+                ),
                 DocString = null,
                 LineStart = startLine,
                 ColumnStart = startColumn,
@@ -250,10 +250,10 @@ public partial class Parser
         return new FunctionDef
         {
             Name = name,
-            TypeParameters = typeParams,
-            Parameters = parameters,
+            TypeParameters = typeParams.ToImmutableArray(),
+            Parameters = parameters.ToImmutableArray(),
             ReturnType = returnType,
-            Body = body,
+            Body = body.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
@@ -320,9 +320,9 @@ public partial class Parser
         return new ClassDef
         {
             Name = name,
-            TypeParameters = typeParams,
-            BaseClasses = baseClasses,
-            Body = body,
+            TypeParameters = typeParams.ToImmutableArray(),
+            BaseClasses = baseClasses.ToImmutableArray(),
+            Body = body.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
@@ -389,9 +389,9 @@ public partial class Parser
         return new StructDef
         {
             Name = name,
-            TypeParameters = typeParams,
-            BaseClasses = baseInterfaces,
-            Body = body,
+            TypeParameters = typeParams.ToImmutableArray(),
+            BaseClasses = baseInterfaces.ToImmutableArray(),
+            Body = body.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
@@ -458,9 +458,9 @@ public partial class Parser
         return new InterfaceDef
         {
             Name = name,
-            TypeParameters = typeParams,
-            BaseInterfaces = baseInterfaces,
-            Body = body,
+            TypeParameters = typeParams.ToImmutableArray(),
+            BaseInterfaces = baseInterfaces.ToImmutableArray(),
+            Body = body.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
@@ -497,7 +497,7 @@ public partial class Parser
             typeParams.Add(new TypeParameterDef
             {
                 Name = paramName,
-                Constraints = constraints,
+                Constraints = constraints.ToImmutableArray(),
                 LineStart = paramStartLine,
                 ColumnStart = paramStartColumn,
                 LineEnd = paramEndToken.Line,
@@ -640,7 +640,7 @@ public partial class Parser
         return new EnumDef
         {
             Name = name,
-            Members = members,
+            Members = members.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
@@ -690,7 +690,7 @@ public partial class Parser
 
             functionType = new FunctionType
             {
-                ParameterTypes = paramTypes,
+                ParameterTypes = paramTypes.ToImmutableArray(),
                 ReturnType = returnType
             };
         }

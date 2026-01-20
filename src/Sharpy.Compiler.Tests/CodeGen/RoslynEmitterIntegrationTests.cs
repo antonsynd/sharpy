@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.CodeGen;
@@ -90,7 +91,7 @@ public class RoslynEmitterIntegrationTests
         var emitter = CreateEmitter();
         var module = new Module
         {
-            Body = new List<Statement>()
+            Body = ImmutableArray<Statement>.Empty
         };
 
         // Act
@@ -114,14 +115,14 @@ public class RoslynEmitterIntegrationTests
                 new FunctionDef
                 {
                     Name = "hello_world",
-                    Parameters = new List<Parameter>(),
+                    Parameters = ImmutableArray<Parameter>.Empty,
                     ReturnType = new TypeAnnotation { Name = "void" },
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -149,7 +150,7 @@ public class RoslynEmitterIntegrationTests
                     {
                         new Parameter { Name = "x", Type = new TypeAnnotation { Name = "int" } },
                         new Parameter { Name = "y", Type = new TypeAnnotation { Name = "int" } }
-                    },
+                    }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "int" },
                     Body = new List<Statement>
                     {
@@ -162,9 +163,9 @@ public class RoslynEmitterIntegrationTests
                                 Right = new Identifier { Name = "y" }
                             }
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -200,9 +201,9 @@ public class RoslynEmitterIntegrationTests
                             Name = "age",
                             Type = new TypeAnnotation { Name = "int" }
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -231,9 +232,9 @@ public class RoslynEmitterIntegrationTests
                         new EnumMember { Name = "RED", Value = new IntegerLiteral { Value = "1" } },
                         new EnumMember { Name = "GREEN", Value = new IntegerLiteral { Value = "2" } },
                         new EnumMember { Name = "BLUE", Value = new IntegerLiteral { Value = "3" } }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -262,16 +263,16 @@ public class RoslynEmitterIntegrationTests
                         new FunctionDef
                         {
                             Name = "draw",
-                            Parameters = new List<Parameter>(),
+                            Parameters = ImmutableArray<Parameter>.Empty,
                             ReturnType = new TypeAnnotation { Name = "void" },
                             Body = new List<Statement>
                             {
                                 new PassStatement()
-                            }
+                            }.ToImmutableArray()
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -297,19 +298,19 @@ public class RoslynEmitterIntegrationTests
                     Names = new List<ImportAlias>
                     {
                         new ImportAlias { Name = "system.text" }
-                    }
+                    }.ToImmutableArray()
                 },
                 new FunctionDef
                 {
                     Name = "test",
-                    Parameters = new List<Parameter>(),
+                    Parameters = ImmutableArray<Parameter>.Empty,
                     ReturnType = new TypeAnnotation { Name = "void" },
                     Body = new List<Statement>
                     {
                         new PassStatement()
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -351,7 +352,7 @@ public class RoslynEmitterIntegrationTests
                         Right = new IntegerLiteral { Value = "2" }
                     }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Act
@@ -389,7 +390,7 @@ public class RoslynEmitterIntegrationTests
                 new FunctionDef
                 {
                     Name = "calculate",
-                    Parameters = new List<Parameter>(),
+                    Parameters = ImmutableArray<Parameter>.Empty,
                     ReturnType = new TypeAnnotation { Name = "int" },
                     Body = new List<Statement>
                     {
@@ -402,9 +403,9 @@ public class RoslynEmitterIntegrationTests
                                 Right = new IntegerLiteral { Value = "2" }
                             }
                         }
-                    }
+                    }.ToImmutableArray()
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Create emitter with semantic analysis (required for CodeGenInfo)
@@ -445,7 +446,7 @@ public class RoslynEmitterIntegrationTests
                     Type = new TypeAnnotation { Name = "auto" },
                     InitialValue = new StringLiteral { Value = "hello" }
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Create emitter with semantic analysis (required for CodeGenInfo and execution order detection)
@@ -495,7 +496,7 @@ public class RoslynEmitterIntegrationTests
                     InitialValue = new IntegerLiteral { Value = "200" },
                     IsConst = true
                 }
-            }
+            }.ToImmutableArray()
         };
 
         // Create emitter with semantic analysis (required for CodeGenInfo)

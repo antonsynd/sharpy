@@ -76,7 +76,7 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
 
         // Skip control flow validation for abstract methods
         bool hasAbstractDecorator = funcDef.Decorators.Any(d => d.Name == "abstract");
-        bool hasEllipsisBody = funcDef.Body.Count == 1
+        bool hasEllipsisBody = funcDef.Body.Length == 1
             && funcDef.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
 
         if (hasAbstractDecorator || hasEllipsisBody)
@@ -115,7 +115,7 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
     /// Validates a block of statements.
     /// Returns (alwaysReturns, hasUnreachableCode).
     /// </summary>
-    private (bool, bool) ValidateBlock(List<Statement> statements, int loopDepth)
+    private (bool, bool) ValidateBlock(IReadOnlyList<Statement> statements, int loopDepth)
     {
         bool alwaysReturns = false;
         bool alwaysExits = false;
@@ -213,7 +213,7 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
             allBranchesReturn = allBranchesReturn && elifReturns;
         }
 
-        if (ifStmt.ElseBody != null && ifStmt.ElseBody.Count > 0)
+        if (ifStmt.ElseBody != null && ifStmt.ElseBody.Length > 0)
         {
             var (elseReturns, _) = ValidateBlock(ifStmt.ElseBody, loopDepth);
             allBranchesReturn = allBranchesReturn && elseReturns;
@@ -250,7 +250,7 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
         }
 
         bool finallyReturns = false;
-        if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Count > 0)
+        if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Length > 0)
         {
             var (finReturns, _) = ValidateBlock(tryStmt.FinallyBody, loopDepth);
             finallyReturns = finReturns;
