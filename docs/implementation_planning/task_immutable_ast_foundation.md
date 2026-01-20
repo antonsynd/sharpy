@@ -50,7 +50,7 @@ Add to `Sharpy.Compiler.csproj` if not already present:
 
 **Goal**: Establish a reliable test baseline before making changes.
 
-- [ ] **1.1.1** Run all existing tests and document pass/fail counts
+- [x] **1.1.1** Run all existing tests and document pass/fail counts
   ```bash
   cd src/Sharpy.Compiler.Tests
   dotnet test --logger "console;verbosity=detailed" > baseline_test_results.txt 2>&1
@@ -58,7 +58,7 @@ Add to `Sharpy.Compiler.csproj` if not already present:
   - Record: Total tests, Passed, Failed, Skipped
   - Save this file for comparison after each phase
 
-- [ ] **1.1.2** Create a new test file for immutability verification
+- [x] **1.1.2** Create a new test file for immutability verification
   - Create `src/Sharpy.Compiler.Tests/Ast/ImmutabilityTests.cs`
   - This file will contain tests that verify immutability guarantees
   ```csharp
@@ -100,7 +100,7 @@ Add to `Sharpy.Compiler.csproj` if not already present:
   }
   ```
 
-- [ ] **1.1.3** Add `System.Collections.Immutable` using statements to AST files
+- [x] **1.1.3** Add `System.Collections.Immutable` using statements to AST files
   - Add to `Node.cs`, `Statement.cs`, `Expression.cs`, `Types.cs`
   ```csharp
   using System.Collections.Immutable;
@@ -114,12 +114,12 @@ Add to `Sharpy.Compiler.csproj` if not already present:
 
 **Goal**: Address the `set` accessors in Symbol classes that should be `init`.
 
-- [ ] **1.2.1** Audit `Symbol.cs` for mutable properties
+- [x] **1.2.1** Audit `Symbol.cs` for mutable properties
   - `Symbol.CodeGenInfo` uses `set` - needs careful handling
   - `VariableSymbol.Type` uses `set` - needs careful handling
   - `TypeSymbol.BaseType` uses `set` - needs careful handling
 
-- [ ] **1.2.2** Create `SemanticBinding.cs` for post-AST semantic information
+- [x] **1.2.2** Create `SemanticBinding.cs` for post-AST semantic information
   ```csharp
   // src/Sharpy.Compiler/Semantic/SemanticBinding.cs
   using System.Collections.Concurrent;
@@ -161,7 +161,7 @@ Add to `Sharpy.Compiler.csproj` if not already present:
   }
   ```
 
-- [ ] **1.2.3** Update `Symbol.cs` to keep `set` but add deprecation
+- [x] **1.2.3** Update `Symbol.cs` to keep `set` but add deprecation
   - Add `[Obsolete]` attributes to mutable properties with migration guidance
   - Do NOT remove `set` yet - this would break too much
   ```csharp
@@ -175,7 +175,7 @@ Add to `Sharpy.Compiler.csproj` if not already present:
   public CodeGenInfo? CodeGenInfo { get; set; }
   ```
 
-- [ ] **1.2.4** Run tests to verify no regressions
+- [x] **1.2.4** Run tests to verify no regressions
   ```bash
   dotnet test
   ```

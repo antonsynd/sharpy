@@ -31,6 +31,9 @@ public abstract record Symbol
     /// Uses 'set' instead of 'init' to allow setting CodeGenInfo after initial symbol creation,
     /// which is necessary because symbols are created during NameResolver but CodeGenInfo
     /// is computed during/after TypeChecker.
+    ///
+    /// MIGRATION NOTE: In the future, use SemanticBinding.SetCodeGenInfo/GetCodeGenInfo instead.
+    /// The mutable setter is preserved for backward compatibility during migration.
     /// </remarks>
     public CodeGenInfo? CodeGenInfo { get; set; }
 }
@@ -40,6 +43,13 @@ public abstract record Symbol
 /// </summary>
 public record VariableSymbol : Symbol
 {
+    /// <summary>
+    /// The resolved type of this variable.
+    /// </summary>
+    /// <remarks>
+    /// MIGRATION NOTE: In the future, use SemanticBinding.SetVariableType/GetVariableType instead.
+    /// The mutable setter is preserved for backward compatibility during migration.
+    /// </remarks>
     public SemanticType Type { get; set; } = SemanticType.Unknown;
     public bool IsParameter { get; init; }
     public bool IsConstant { get; init; }
@@ -110,6 +120,13 @@ public record TypeSymbol : Symbol
     public List<FunctionSymbol> Constructors { get; init; } = new();
 
     // Inheritance
+    /// <summary>
+    /// The base type (parent class) of this type symbol.
+    /// </summary>
+    /// <remarks>
+    /// MIGRATION NOTE: In the future, use SemanticBinding.SetBaseType/GetBaseType instead.
+    /// The mutable setter is preserved for backward compatibility during migration.
+    /// </remarks>
     public TypeSymbol? BaseType { get; set; }
     public List<TypeSymbol> Interfaces { get; init; } = new();
 }
