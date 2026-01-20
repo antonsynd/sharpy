@@ -188,7 +188,7 @@ Add to `Sharpy.Compiler.csproj` if not already present:
 
 **Goal**: Create helper methods to ease the transition from `List<T>` to `ImmutableArray<T>`.
 
-- [ ] **1.3.1** Create `AstExtensions.cs` with conversion helpers
+- [x] **1.3.1** Create `AstExtensions.cs` with conversion helpers
   ```csharp
   // src/Sharpy.Compiler/Parser/Ast/AstExtensions.cs
   using System.Collections.Immutable;
@@ -221,7 +221,7 @@ Add to `Sharpy.Compiler.csproj` if not already present:
   }
   ```
 
-- [ ] **1.3.2** Run tests to verify no regressions
+- [x] **1.3.2** Run tests to verify no regressions
   ```bash
   dotnet test
   ```
