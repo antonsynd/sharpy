@@ -199,22 +199,39 @@ public partial class Parser
 
             case TokenType.Super:
                 {
+                    var startToken = Current;
                     Advance();
                     // Expect super() - must be followed by ()
                     Expect(TokenType.LeftParen);
                     Expect(TokenType.RightParen);
-                    return new SuperExpression { LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    return new SuperExpression
+                    {
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromTokens(startToken, Previous)
+                    };
                 }
 
             case TokenType.LeftParen:
                 {
+                    var startToken = Current;
                     Advance();
 
                     // Empty tuple ()
                     if (Current.Type == TokenType.RightParen)
                     {
                         Advance();
-                        return new TupleLiteral { Elements = new List<Expression>(), LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                        return new TupleLiteral
+                        {
+                            Elements = new List<Expression>(),
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = GetSpanFromTokens(startToken, Previous)
+                        };
                     }
 
                     var expr = ParseExpression();
@@ -233,22 +250,47 @@ public partial class Parser
                         }
 
                         Expect(TokenType.RightParen);
-                        return new TupleLiteral { Elements = elements, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                        return new TupleLiteral
+                        {
+                            Elements = elements,
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = GetSpanFromTokens(startToken, Previous)
+                        };
                     }
 
                     Expect(TokenType.RightParen);
-                    return new Parenthesized { Expression = expr, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    return new Parenthesized
+                    {
+                        Expression = expr,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromTokens(startToken, Previous)
+                    };
                 }
 
             case TokenType.LeftBracket:
                 {
+                    var startToken = Current;
                     Advance();
 
                     // Empty list []
                     if (Current.Type == TokenType.RightBracket)
                     {
                         Advance();
-                        return new ListLiteral { Elements = new List<Expression>(), LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                        return new ListLiteral
+                        {
+                            Elements = new List<Expression>(),
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = GetSpanFromTokens(startToken, Previous)
+                        };
                     }
 
                     var firstExpr = ParseExpression();
@@ -264,8 +306,9 @@ public partial class Parser
                             Clauses = clauses,
                             LineStart = startLine,
                             ColumnStart = startColumn,
-                            LineEnd = Current.Line,
-                            ColumnEnd = Current.Column
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = GetSpanFromTokens(startToken, Previous)
                         };
                     }
 
@@ -282,11 +325,20 @@ public partial class Parser
                     }
 
                     Expect(TokenType.RightBracket);
-                    return new ListLiteral { Elements = elements, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    return new ListLiteral
+                    {
+                        Elements = elements,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromTokens(startToken, Previous)
+                    };
                 }
 
             case TokenType.LeftBrace:
                 {
+                    var startToken = Current;
                     Advance();
 
                     // Empty set {/} - special v0.2 syntax
@@ -294,14 +346,30 @@ public partial class Parser
                     {
                         Advance();
                         Expect(TokenType.RightBrace);
-                        return new SetLiteral { Elements = new List<Expression>(), LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                        return new SetLiteral
+                        {
+                            Elements = new List<Expression>(),
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = GetSpanFromTokens(startToken, Previous)
+                        };
                     }
 
                     // Empty dict {}
                     if (Current.Type == TokenType.RightBrace)
                     {
                         Advance();
-                        return new DictLiteral { Entries = new List<DictEntry>(), LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                        return new DictLiteral
+                        {
+                            Entries = new List<DictEntry>(),
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = GetSpanFromTokens(startToken, Previous)
+                        };
                     }
 
                     var firstExpr = ParseExpression();
@@ -324,8 +392,9 @@ public partial class Parser
                                 Clauses = clauses,
                                 LineStart = startLine,
                                 ColumnStart = startColumn,
-                                LineEnd = Current.Line,
-                                ColumnEnd = Current.Column
+                                LineEnd = Previous.Line,
+                                ColumnEnd = Previous.Column + Previous.Value.Length,
+                                Span = GetSpanFromTokens(startToken, Previous)
                             };
                         }
 
@@ -345,7 +414,15 @@ public partial class Parser
                         }
 
                         Expect(TokenType.RightBrace);
-                        return new DictLiteral { Entries = entries, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                        return new DictLiteral
+                        {
+                            Entries = entries,
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = GetSpanFromTokens(startToken, Previous)
+                        };
                     }
                     // Set {elem1, elem2, ...} or set comprehension {expr for x in iterable}
                     else
@@ -361,8 +438,9 @@ public partial class Parser
                                 Clauses = clauses,
                                 LineStart = startLine,
                                 ColumnStart = startColumn,
-                                LineEnd = Current.Line,
-                                ColumnEnd = Current.Column
+                                LineEnd = Previous.Line,
+                                ColumnEnd = Previous.Column + Previous.Value.Length,
+                                Span = GetSpanFromTokens(startToken, Previous)
                             };
                         }
 
@@ -378,12 +456,21 @@ public partial class Parser
                         }
 
                         Expect(TokenType.RightBrace);
-                        return new SetLiteral { Elements = elements, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                        return new SetLiteral
+                        {
+                            Elements = elements,
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = GetSpanFromTokens(startToken, Previous)
+                        };
                     }
                 }
 
             case TokenType.Lambda:
                 {
+                    var lambdaToken = Current;
                     Advance();
                     var parameters = new List<Parameter>();
 
@@ -405,6 +492,12 @@ public partial class Parser
                     Expect(TokenType.Colon);
                     var body = ParseExpression();
 
+                    // Combine lambda token span with body span
+                    var lambdaSpan = GetSpanFromToken(lambdaToken);
+                    var combinedSpan = lambdaSpan != null && body.Span != null
+                        ? lambdaSpan.Value.Union(body.Span.Value)
+                        : (Text.TextSpan?)null;
+
                     return new LambdaExpression
                     {
                         Parameters = parameters,
@@ -412,7 +505,8 @@ public partial class Parser
                         LineStart = startLine,
                         ColumnStart = startColumn,
                         LineEnd = body.LineEnd,
-                        ColumnEnd = body.ColumnEnd
+                        ColumnEnd = body.ColumnEnd,
+                        Span = combinedSpan
                     };
                 }
 
