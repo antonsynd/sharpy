@@ -12,10 +12,10 @@
 
 This document provides a comprehensive, step-by-step task list for:
 
-1. **Part A: Source Span Migration** — Add `TextSpan` to all remaining AST nodes (high priority from architecture addendum)
-2. **Part B: Validation Pipeline Phase 1 Completion** — Remove dual-path legacy code in TypeChecker
-3. **Part C: TypeInferenceService Separation** — Extract type inference from validators
-4. **Part D: Integration Tests** — Add comprehensive tests for the validation pipeline
+1. **Part A: Source Span Migration** ✅ — Add `TextSpan` to all remaining AST nodes (high priority from architecture addendum)
+2. **Part B: Validation Pipeline Phase 1 Completion** ✅ — Remove dual-path legacy code in TypeChecker
+3. **Part C: TypeInferenceService Separation** ✅ — Extract type inference from validators
+4. **Part D: Integration Tests** ✅ — Add comprehensive tests for the validation pipeline
 
 Each part is designed to be:
 - **Incremental:** Small commits that can be reverted individually
