@@ -379,7 +379,10 @@ public class ProjectCompiler
                     {
                         // Use ReExportedSymbols which have DefiningModule set for cross-module type references
                         // This is populated by ImportResolver.ResolveFromImport via CreateReExportSymbol
-                        var symbolsToImport = fromImport.ReExportedSymbols ?? moduleInfo.ExportedSymbols;
+                        // Check SemanticBinding first, then fall back to AST property for backward compatibility
+                        var reExportedSymbols = _projectModel!.SemanticBinding?.GetReExportedSymbols(fromImport)
+                                                ?? fromImport.ReExportedSymbols;
+                        var symbolsToImport = reExportedSymbols ?? moduleInfo.ExportedSymbols;
 
                         // Add specific imported symbols (skip if already defined from project files)
                         if (fromImport.ImportAll)
