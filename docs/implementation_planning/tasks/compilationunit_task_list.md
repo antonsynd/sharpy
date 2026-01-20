@@ -30,7 +30,7 @@ If tests fail, do not proceed until they pass.
 
 ### Task 1.1: Create the CompilationUnit.cs file
 
-- [ ] Create `/src/Sharpy.Compiler/Model/CompilationUnit.cs`
+- [x] Create `/src/Sharpy.Compiler/Model/CompilationUnit.cs`
 
 ```csharp
 using System.Collections.Immutable;
@@ -248,12 +248,12 @@ public enum CompilationPhase
 
 ### Task 1.2: Create the Model directory and add to project
 
-- [ ] Create the directory `/src/Sharpy.Compiler/Model/` (if it doesn't exist)
-- [ ] Verify the file compiles: `dotnet build src/Sharpy.Compiler/Sharpy.Compiler.csproj`
+- [x] Create the directory `/src/Sharpy.Compiler/Model/` (if it doesn't exist)
+- [x] Verify the file compiles: `dotnet build src/Sharpy.Compiler/Sharpy.Compiler.csproj`
 
 ### Task 1.3: Create unit tests for CompilationUnit
 
-- [ ] Create `/src/Sharpy.Compiler.Tests/Model/CompilationUnitTests.cs`
+- [x] Create `/src/Sharpy.Compiler.Tests/Model/CompilationUnitTests.cs`
 
 ```csharp
 using Sharpy.Compiler.Model;
@@ -438,18 +438,18 @@ public class CompilationUnitTests
 
 ### Task 1.4: Verify tests pass
 
-- [ ] Run the new tests:
+- [x] Run the new tests:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj --filter "FullyQualifiedName~CompilationUnitTests"
   ```
-- [ ] Run all existing tests to ensure nothing broke:
+- [x] Run all existing tests to ensure nothing broke:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj --filter "Category!=Performance"
   ```
 
 ### Task 1.5: Commit Phase 1
 
-- [ ] Commit changes:
+- [x] Commit changes:
   ```bash
   git add .
   git commit -m "Add CompilationUnit class for unified file representation
