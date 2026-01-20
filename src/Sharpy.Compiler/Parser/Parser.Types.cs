@@ -324,6 +324,17 @@ public partial class Parser
         return Text.TextSpan.FromBounds(startSpan.Value.Start, endSpan.Value.End);
     }
 
+    /// <summary>
+    /// Combines two optional spans into a span covering both.
+    /// Returns null if either span is null.
+    /// </summary>
+    private static Text.TextSpan? CombineSpans(Text.TextSpan? first, Text.TextSpan? second)
+    {
+        if (first == null || second == null)
+            return null;
+        return first.Value.Union(second.Value);
+    }
+
     private void Expect(TokenType type)
     {
         if (Current.Type != type)
