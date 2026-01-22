@@ -9,7 +9,7 @@ public static class ValidationPipelineFactory
 {
     /// <summary>
     /// Create the default pipeline with all standard validators.
-    /// This matches the behavior of the pre-pipeline TypeChecker.
+    /// Uses CFG-based control flow analysis (V3) for more accurate results.
     /// </summary>
     public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
     {
@@ -17,10 +17,26 @@ public static class ValidationPipelineFactory
             // Order values determine execution sequence
             .AddValidator(new SignatureValidatorV2())         // Order: 150 (early, validates dunder signatures)
             .AddValidator(new DefaultParameterValidatorV2())  // Order: 250
-            .AddValidator(new ControlFlowValidatorV2())       // Order: 400
+            .AddValidator(new ControlFlowValidatorV3())       // Order: 400 (CFG-based, more accurate)
             .AddValidator(new AccessValidatorV2())            // Order: 450
             .AddValidator(new ProtocolValidatorV2())          // Order: 500
             .AddValidator(new OperatorValidatorV2())          // Order: 500
+            ;
+    }
+
+    /// <summary>
+    /// Create a pipeline using the legacy AST-walking control flow validator (V2).
+    /// Use this if you need faster compilation at the cost of accuracy.
+    /// </summary>
+    public static ValidationPipeline CreateWithLegacyControlFlow(ICompilerLogger? logger = null)
+    {
+        return new ValidationPipeline(logger)
+            .AddValidator(new SignatureValidatorV2())
+            .AddValidator(new DefaultParameterValidatorV2())
+            .AddValidator(new ControlFlowValidatorV2())       // Legacy AST-walking validator
+            .AddValidator(new AccessValidatorV2())
+            .AddValidator(new ProtocolValidatorV2())
+            .AddValidator(new OperatorValidatorV2())
             ;
     }
 
@@ -39,7 +55,7 @@ public static class ValidationPipelineFactory
     public static ValidationPipeline CreateFast(ICompilerLogger? logger = null)
     {
         return new ValidationPipeline(logger)
-            .AddValidator(new ControlFlowValidatorV2());
+            .AddValidator(new ControlFlowValidatorV2());  // V2 is faster for quick checks
         // Skip signature validators, protocol validators, etc.
     }
 }

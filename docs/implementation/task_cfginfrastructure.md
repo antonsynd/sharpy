@@ -2516,7 +2516,7 @@ Analysis utilities are ready for integration into validation pipeline."
 
 **File:** `src/Sharpy.Compiler/Semantic/Validation/ControlFlowValidatorV3.cs`
 
-- [ ] Create CFG-based validator:
+- [x] Create CFG-based validator:
 
 ```csharp
 using Sharpy.Compiler.Analysis.ControlFlow;
@@ -2651,14 +2651,14 @@ public class ControlFlowValidatorV3 : SemanticValidatorBase
 - Logs CFG building for debugging
 
 **Verification:**
-- [ ] File compiles: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
+- [x] File compiles: `dotnet build src/Sharpy.Compiler`
+- [x] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
 
 ### Task 6.2: Add V3 Validator to Pipeline Factory (Behind Feature Flag)
 
 **File:** Update `src/Sharpy.Compiler/Semantic/Validation/ValidationPipelineFactory.cs`
 
-- [ ] Add option to use V3 validator:
+- [x] Add option to use V3 validator:
 
 ```csharp
 // Add to ValidationPipelineFactory.cs
@@ -2692,8 +2692,8 @@ public class ValidationPipelineOptions
 ```
 
 **Verification:**
-- [ ] File compiles: `dotnet build src/Sharpy.Compiler`
-- [ ] All existing tests still pass: `dotnet test src/Sharpy.Compiler.Tests`
+- [x] File compiles: `dotnet build src/Sharpy.Compiler`
+- [x] All existing tests still pass: `dotnet test src/Sharpy.Compiler.Tests`
 
 ### 🔖 COMMIT POINT 6
 

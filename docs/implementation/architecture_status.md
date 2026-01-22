@@ -6,7 +6,7 @@ This document tracks the implementation status of architectural recommendations 
 
 ## Recommendation #9: Control Flow Graph Infrastructure
 
-**Status:** ✅ Implemented (Foundation)
+**Status:** ✅ Implemented (Complete)
 **Date:** 2026-01-21
 
 ### What's Done
@@ -14,6 +14,7 @@ This document tracks the implementation status of architectural recommendations 
 - Core data structures: BasicBlock, BlockTerminator, ControlFlowGraph, ControlFlowEdge
 - CFG builder for all statement types (if/while/for/try/break/continue/return/raise)
 - Analysis utilities: FindMissingReturnPaths, FindUnreachableCode, ValidateLoopControlFlow
+- ControlFlowValidatorV3: CFG-based validator now used as default in validation pipeline
 - Comprehensive unit tests (59 tests covering all components)
 
 ### What's Remaining (Future)
@@ -22,7 +23,6 @@ This document tracks the implementation status of architectural recommendations 
 - Pattern matching exhaustiveness checking (when match statement implemented)
 - Definite assignment analysis
 - Integration with LSP for real-time analysis
-- Optional CFG-based validator (ControlFlowValidatorV3) for gradual rollout
 
 ### Decision Log
 
@@ -44,6 +44,7 @@ This document tracks the implementation status of architectural recommendations 
 | `Analysis/ControlFlow/ControlFlowGraphBuilder.cs` | CFG builder from AST |
 | `Analysis/ControlFlow/ControlFlowAnalysis.cs` | Analysis utilities |
 | `Analysis/ControlFlow/README.md` | Documentation |
+| `Semantic/Validation/ControlFlowValidatorV3.cs` | CFG-based validator (default) |
 
 ### Tests Created
 
