@@ -7,70 +7,150 @@ namespace Sharpy.Compiler.Tests.Ast;
 
 /// <summary>
 /// Tests that verify AST immutability guarantees.
-/// These tests verify that AST properties are ImmutableArray after migration.
+/// These tests confirm that AST properties use ImmutableArray after migration.
 /// </summary>
 public class ImmutabilityTests
 {
-    [Fact(Skip = "Enable after Phase 2 - currently List<T>")]
+    [Fact]
     public void Module_Body_Is_Immutable()
     {
-        // This test verifies the type after migration
-        // Module.Body should be ImmutableArray<Statement>
-        var module = new Module();
-        // After migration, uncomment: module.Body.GetType().Should().Be(typeof(ImmutableArray<Statement>));
+        var module = new Module { Body = ImmutableArray<Statement>.Empty };
+        module.Body.Should().BeOfType<ImmutableArray<Statement>>();
     }
 
-    [Fact(Skip = "Enable after Phase 2 - currently List<T>")]
+    [Fact]
     public void FunctionDef_Parameters_Is_Immutable()
     {
-        // FunctionDef.Parameters should be ImmutableArray<Parameter>
-        var func = new FunctionDef { Name = "test" };
-        // After migration, uncomment: func.Parameters.GetType().Should().Be(typeof(ImmutableArray<Parameter>));
+        var func = new FunctionDef
+        {
+            Name = "test",
+            Parameters = ImmutableArray<Parameter>.Empty,
+            Body = ImmutableArray<Statement>.Empty
+        };
+        func.Parameters.Should().BeOfType<ImmutableArray<Parameter>>();
+        func.Body.Should().BeOfType<ImmutableArray<Statement>>();
     }
 
-    [Fact(Skip = "Enable after Phase 2 - currently List<T>")]
+    [Fact]
     public void ClassDef_Body_Is_Immutable()
     {
-        // ClassDef.Body should be ImmutableArray<Statement>
-        var classDef = new ClassDef { Name = "TestClass" };
-        // After migration, uncomment: classDef.Body.GetType().Should().Be(typeof(ImmutableArray<Statement>));
+        var classDef = new ClassDef
+        {
+            Name = "TestClass",
+            Body = ImmutableArray<Statement>.Empty
+        };
+        classDef.Body.Should().BeOfType<ImmutableArray<Statement>>();
     }
 
-    [Fact(Skip = "Enable after Phase 2 - currently List<T>")]
-    public void IfStatement_ElifClauses_Is_Immutable()
+    [Fact]
+    public void IfStatement_Collections_Are_Immutable()
     {
-        // IfStatement.ElifClauses should be ImmutableArray<ElifClause>
         var ifStmt = new IfStatement
         {
-            Test = new BooleanLiteral { Value = true }
+            Test = new BooleanLiteral { Value = true },
+            ThenBody = ImmutableArray<Statement>.Empty,
+            ElifClauses = ImmutableArray<ElifClause>.Empty,
+            ElseBody = ImmutableArray<Statement>.Empty
         };
-        // After migration, uncomment: ifStmt.ElifClauses.GetType().Should().Be(typeof(ImmutableArray<ElifClause>));
+        ifStmt.ThenBody.Should().BeOfType<ImmutableArray<Statement>>();
+        ifStmt.ElifClauses.Should().BeOfType<ImmutableArray<ElifClause>>();
+        ifStmt.ElseBody.Should().BeOfType<ImmutableArray<Statement>>();
     }
 
-    [Fact(Skip = "Enable after Phase 2 - currently List<T>")]
+    [Fact]
     public void ListLiteral_Elements_Is_Immutable()
     {
-        // ListLiteral.Elements should be ImmutableArray<Expression>
-        var list = new ListLiteral();
-        // After migration, uncomment: list.Elements.GetType().Should().Be(typeof(ImmutableArray<Expression>));
+        var list = new ListLiteral { Elements = ImmutableArray<Expression>.Empty };
+        list.Elements.Should().BeOfType<ImmutableArray<Expression>>();
     }
 
-    [Fact(Skip = "Enable after Phase 2 - currently List<T>")]
-    public void FunctionCall_Arguments_Is_Immutable()
+    [Fact]
+    public void FunctionCall_Arguments_Are_Immutable()
     {
-        // FunctionCall.Arguments should be ImmutableArray<Expression>
         var call = new FunctionCall
         {
-            Function = new Identifier { Name = "test" }
+            Function = new Identifier { Name = "test" },
+            Arguments = ImmutableArray<Expression>.Empty,
+            KeywordArguments = ImmutableArray<KeywordArgument>.Empty
         };
-        // After migration, uncomment: call.Arguments.GetType().Should().Be(typeof(ImmutableArray<Expression>));
+        call.Arguments.Should().BeOfType<ImmutableArray<Expression>>();
+        call.KeywordArguments.Should().BeOfType<ImmutableArray<KeywordArgument>>();
     }
 
-    [Fact(Skip = "Enable after Phase 2 - currently List<T>")]
+    [Fact]
     public void TypeAnnotation_TypeArguments_Is_Immutable()
     {
-        // TypeAnnotation.TypeArguments should be ImmutableArray<TypeAnnotation>
-        var typeAnnotation = new TypeAnnotation { Name = "list" };
-        // After migration, uncomment: typeAnnotation.TypeArguments.GetType().Should().Be(typeof(ImmutableArray<TypeAnnotation>));
+        var typeAnnotation = new TypeAnnotation
+        {
+            Name = "list",
+            TypeArguments = ImmutableArray<TypeAnnotation>.Empty
+        };
+        typeAnnotation.TypeArguments.Should().BeOfType<ImmutableArray<TypeAnnotation>>();
+    }
+
+    [Fact]
+    public void TryStatement_Collections_Are_Immutable()
+    {
+        var tryStmt = new TryStatement
+        {
+            Body = ImmutableArray<Statement>.Empty,
+            Handlers = ImmutableArray<ExceptHandler>.Empty,
+            ElseBody = ImmutableArray<Statement>.Empty,
+            FinallyBody = ImmutableArray<Statement>.Empty
+        };
+        tryStmt.Body.Should().BeOfType<ImmutableArray<Statement>>();
+        tryStmt.Handlers.Should().BeOfType<ImmutableArray<ExceptHandler>>();
+    }
+
+    [Fact]
+    public void ForStatement_Collections_Are_Immutable()
+    {
+        var forStmt = new ForStatement
+        {
+            Target = new Identifier { Name = "i" },
+            Iterator = new FunctionCall { Function = new Identifier { Name = "range" } },
+            Body = ImmutableArray<Statement>.Empty,
+            ElseBody = ImmutableArray<Statement>.Empty
+        };
+        forStmt.Body.Should().BeOfType<ImmutableArray<Statement>>();
+        forStmt.ElseBody.Should().BeOfType<ImmutableArray<Statement>>();
+    }
+
+    [Fact]
+    public void ComparisonChain_Collections_Are_Immutable()
+    {
+        var chain = new ComparisonChain
+        {
+            Operands = ImmutableArray<Expression>.Empty,
+            Operators = ImmutableArray<ComparisonOperator>.Empty
+        };
+        chain.Operands.Should().BeOfType<ImmutableArray<Expression>>();
+        chain.Operators.Should().BeOfType<ImmutableArray<ComparisonOperator>>();
+    }
+
+    [Fact]
+    public void EnumDef_Members_Is_Immutable()
+    {
+        var enumDef = new EnumDef
+        {
+            Name = "TestEnum",
+            Members = ImmutableArray<EnumMember>.Empty
+        };
+        enumDef.Members.Should().BeOfType<ImmutableArray<EnumMember>>();
+    }
+
+    [Fact]
+    public void InterfaceDef_Collections_Are_Immutable()
+    {
+        var interfaceDef = new InterfaceDef
+        {
+            Name = "ITest",
+            TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
+            BaseInterfaces = ImmutableArray<TypeAnnotation>.Empty,
+            Body = ImmutableArray<Statement>.Empty
+        };
+        interfaceDef.TypeParameters.Should().BeOfType<ImmutableArray<TypeParameterDef>>();
+        interfaceDef.BaseInterfaces.Should().BeOfType<ImmutableArray<TypeAnnotation>>();
+        interfaceDef.Body.Should().BeOfType<ImmutableArray<Statement>>();
     }
 }
