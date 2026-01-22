@@ -371,6 +371,13 @@ public record FunctionType : SemanticType
     public List<SemanticType> ParameterTypes { get; init; } = new();
     public SemanticType ReturnType { get; init; } = SemanticType.Void;
 
+    /// <summary>
+    /// When true, argument validation is skipped (used for .NET types with multiple
+    /// constructor overloads where we can't do proper overload resolution).
+    /// The C# compiler will handle overload resolution at compile time.
+    /// </summary>
+    public bool SkipArgumentValidation { get; init; } = false;
+
     public override string GetDisplayName()
     {
         var params_ = string.Join(", ", ParameterTypes.Select(p => p.GetDisplayName()));

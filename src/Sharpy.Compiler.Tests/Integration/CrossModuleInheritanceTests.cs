@@ -287,7 +287,7 @@ def main() -> None:
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
     }
 
-    [Fact(Skip = "TODO: .NET base class inheritance not yet implemented - see task_cross_module_inheritance_fix.md Phase 3")]
+    [Fact]
     public void ClassInheritance_FromNetBaseClass_Works()
     {
         // Test inheriting from .NET base classes (e.g., System.Exception)
@@ -308,7 +308,10 @@ class CustomError(Exception):
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Contains(": System.Exception", result.GeneratedCSharp ?? "");
+        // The generated C# should have CustomError inheriting from Exception
+        // (may be fully qualified as System.Exception or just Exception with a using statement)
+        Assert.Contains("class CustomError", result.GeneratedCSharp ?? "");
+        Assert.Contains(": Exception", result.GeneratedCSharp ?? "");
     }
 
     /// <summary>

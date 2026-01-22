@@ -528,6 +528,19 @@ public partial class TypeChecker
             currentType = _currentClass.BaseType;
             while (currentType != null)
             {
+                // For .NET types with multiple constructors, we can't do proper overload resolution here
+                // (we don't have access to the call arguments). Mark the type to skip validation
+                // and let C# do the overload resolution at compile time.
+                if (currentType.Constructors.Count > 1 && currentType.ClrType != null)
+                {
+                    return new FunctionType
+                    {
+                        ParameterTypes = new List<SemanticType>(),
+                        ReturnType = SemanticType.Void,
+                        SkipArgumentValidation = true
+                    };
+                }
+
                 var parentCtor = currentType.Constructors.FirstOrDefault();
                 if (parentCtor != null)
                 {

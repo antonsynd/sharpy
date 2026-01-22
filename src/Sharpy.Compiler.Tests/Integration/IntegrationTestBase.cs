@@ -67,9 +67,15 @@ public abstract class IntegrationTestBase
             var builtinRegistry = new BuiltinRegistry();
             var symbolTable = new SymbolTable(builtinRegistry);
             var semanticInfo = new SemanticInfo();
+            var moduleRegistry = new ModuleRegistry(logger);
 
             var nameResolver = new NameResolver(symbolTable, logger);
             nameResolver.ResolveDeclarations(module);
+
+            // Phase 3a: Resolve imports to register .NET types before inheritance resolution
+            var importResolver = new ImportResolver(logger, moduleRegistry);
+            ResolveImports(module, importResolver, symbolTable);
+
             nameResolver.ResolveInheritance(); // Second pass: resolve inheritance relationships
 
             if (nameResolver.Errors.Any())
@@ -78,6 +84,15 @@ public abstract class IntegrationTestBase
                 {
                     Success = false,
                     CompilationErrors = nameResolver.Errors.Select(e => e.Message).ToList()
+                };
+            }
+
+            if (importResolver.Errors.Any())
+            {
+                return new ExecutionResult
+                {
+                    Success = false,
+                    CompilationErrors = importResolver.Errors.Select(e => e.Message).ToList()
                 };
             }
 
@@ -667,6 +682,64 @@ public abstract class IntegrationTestBase
                 Exception = ex,
                 CompilationErrors = new List<string> { errorMessage }
             };
+        }
+    }
+
+    /// <summary>
+    /// Resolves imports in a module and registers imported symbols in the symbol table.
+    /// This is needed before inheritance resolution so that .NET base classes can be found.
+    /// </summary>
+    private void ResolveImports(Sharpy.Compiler.Parser.Ast.Module module, ImportResolver importResolver, SymbolTable symbolTable)
+    {
+        foreach (var statement in module.Body)
+        {
+            if (statement is Sharpy.Compiler.Parser.Ast.FromImportStatement fromImport)
+            {
+                var moduleInfo = importResolver.ResolveFromImport(fromImport);
+                if (moduleInfo != null)
+                {
+                    // Register imported symbols in the symbol table
+                    if (fromImport.ImportAll)
+                    {
+                        foreach (var (name, symbol) in moduleInfo.ExportedSymbols)
+                        {
+                            symbolTable.TryDefine(symbol);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var importAlias in fromImport.Names)
+                        {
+                            var symbolName = importAlias.AsName ?? importAlias.Name;
+                            if (moduleInfo.ExportedSymbols.TryGetValue(importAlias.Name, out var symbol))
+                            {
+                                // If aliased, create a new symbol with the alias name
+                                if (importAlias.AsName != null && symbol is TypeSymbol typeSymbol)
+                                {
+                                    symbol = typeSymbol with { Name = importAlias.AsName };
+                                }
+                                symbolTable.TryDefine(symbol);
+                            }
+                        }
+                    }
+                }
+            }
+            else if (statement is Sharpy.Compiler.Parser.Ast.ImportStatement import)
+            {
+                var modules = importResolver.ResolveImport(import);
+                foreach (var moduleInfo in modules)
+                {
+                    // For regular imports, the module itself is the symbol
+                    var moduleSymbol = new ModuleSymbol
+                    {
+                        Name = moduleInfo.Path,
+                        Kind = Sharpy.Compiler.Semantic.SymbolKind.Module,
+                        FilePath = moduleInfo.Path,
+                        Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
+                    };
+                    symbolTable.TryDefine(moduleSymbol);
+                }
+            }
         }
     }
 }

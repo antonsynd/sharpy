@@ -836,21 +836,28 @@ public class ImportResolver
     }
 
     /// <summary>
-    /// Try to resolve a module from loaded .NET assemblies through ModuleRegistry
+    /// Try to resolve a module from loaded .NET assemblies through ModuleRegistry,
+    /// or from standard .NET namespaces (e.g., "system" -> "System").
     /// </summary>
     private ModuleInfo? TryResolveNetModule(string moduleName, int? lineStart, int? columnStart)
     {
         if (_moduleRegistry == null)
             return null;
 
-        // Check if this module is loaded in the registry
-        if (!_moduleRegistry.IsModuleLoaded(moduleName))
-            return null;
-
         // Check cache first
         var cacheKey = $".net:{moduleName}";
         if (_moduleCache.TryGetValue(cacheKey, out var cached))
             return cached;
+
+        // Check if this is a .NET namespace (e.g., "system" -> "System")
+        if (_moduleRegistry.IsNetNamespace(moduleName))
+        {
+            return ResolveNetNamespaceModule(moduleName, cacheKey);
+        }
+
+        // Check if this module is loaded in the registry (for Exports classes)
+        if (!_moduleRegistry.IsModuleLoaded(moduleName))
+            return null;
 
         _logger.LogDebug($"Resolving .NET module: {moduleName}");
 
@@ -881,6 +888,47 @@ public class ImportResolver
         _loadedModules.Add(cacheKey);
 
         _logger.LogInfo($"Loaded .NET module '{moduleName}' with {functions.Count} functions");
+
+        return moduleInfo;
+    }
+
+    /// <summary>
+    /// Resolve a .NET namespace as a module (e.g., "system" -> types from System namespace).
+    /// </summary>
+    private ModuleInfo? ResolveNetNamespaceModule(string moduleName, string cacheKey)
+    {
+        _logger.LogDebug($"Resolving .NET namespace module: {moduleName}");
+
+        // Create ModuleInfo for the .NET namespace
+        var moduleInfo = new ModuleInfo
+        {
+            Path = $".net:{moduleName}",
+            Module = null!, // No AST module exists for .NET namespaces
+            ExportedSymbols = new Dictionary<string, Symbol>(),
+            IsNetModule = true
+        };
+
+        // Get all types from the namespace
+        var types = _moduleRegistry!.GetNamespaceTypes(moduleName);
+        foreach (var typeSymbol in types)
+        {
+            moduleInfo.ExportedSymbols[typeSymbol.Name] = typeSymbol;
+        }
+
+        // Also get any functions if this namespace has an Exports class
+        if (_moduleRegistry.IsModuleLoaded(moduleName))
+        {
+            var functions = _moduleRegistry.GetModuleFunctions(moduleName);
+            foreach (var function in functions)
+            {
+                moduleInfo.ExportedSymbols[function.Name] = function;
+            }
+        }
+
+        _moduleCache[cacheKey] = moduleInfo;
+        _loadedModules.Add(cacheKey);
+
+        _logger.LogInfo($"Loaded .NET namespace '{moduleName}' with {moduleInfo.ExportedSymbols.Count} exports");
 
         return moduleInfo;
     }

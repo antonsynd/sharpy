@@ -1020,21 +1020,26 @@ public partial class TypeChecker
 
         if (funcType is FunctionType ft)
         {
-            // Validate argument count (include both positional and keyword arguments)
-            if (totalArgCount != ft.ParameterTypes.Count)
+            // Skip validation for .NET types with multiple constructor overloads
+            // (C# compiler will handle overload resolution)
+            if (!ft.SkipArgumentValidation)
             {
-                AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {totalArgCount}",
-                    call.LineStart, call.ColumnStart);
-            }
-            else
-            {
-                // Validate positional argument types
-                for (int i = 0; i < argTypes.Count; i++)
+                // Validate argument count (include both positional and keyword arguments)
+                if (totalArgCount != ft.ParameterTypes.Count)
                 {
-                    if (!IsAssignable(argTypes[i], ft.ParameterTypes[i]))
+                    AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {totalArgCount}",
+                        call.LineStart, call.ColumnStart);
+                }
+                else
+                {
+                    // Validate positional argument types
+                    for (int i = 0; i < argTypes.Count; i++)
                     {
-                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{ft.ParameterTypes[i].GetDisplayName()}'",
-                            call.Arguments[i].LineStart, call.Arguments[i].ColumnStart);
+                        if (!IsAssignable(argTypes[i], ft.ParameterTypes[i]))
+                        {
+                            AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{ft.ParameterTypes[i].GetDisplayName()}'",
+                                call.Arguments[i].LineStart, call.Arguments[i].ColumnStart);
+                        }
                     }
                 }
             }
