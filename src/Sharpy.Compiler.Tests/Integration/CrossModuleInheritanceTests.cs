@@ -287,6 +287,30 @@ def main() -> None:
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
     }
 
+    [Fact(Skip = "TODO: .NET base class inheritance not yet implemented - see task_cross_module_inheritance_fix.md Phase 3")]
+    public void ClassInheritance_FromNetBaseClass_Works()
+    {
+        // Test inheriting from .NET base classes (e.g., System.Exception)
+        // This test demonstrates that .NET base class inheritance does NOT work yet.
+        // Error: "Base type 'Exception' not found" - the ImportResolver doesn't
+        // register .NET types for inheritance resolution.
+        var source = @"
+from system import Exception
+
+class CustomError(Exception):
+    code: int
+
+    def __init__(self, message: str, code: int):
+        super().__init__(message)
+        self.code = code
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Contains(": System.Exception", result.GeneratedCSharp ?? "");
+    }
+
     /// <summary>
     /// Helper method to compile a multi-file Sharpy project.
     /// </summary>
