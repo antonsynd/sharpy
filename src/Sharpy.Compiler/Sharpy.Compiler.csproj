@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Allow test assembly to access internal members -->
+    <InternalsVisibleTo Include="Sharpy.Compiler.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Reference to Sharpy runtime for metadata access -->
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj" />
 

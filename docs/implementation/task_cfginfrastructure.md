@@ -73,8 +73,8 @@ Before starting, ensure:
 
 Create the BasicBlock class that represents a sequence of statements with no internal branching:
 
-- [ ] Create directory: `src/Sharpy.Compiler/Analysis/ControlFlow/`
-- [ ] Create `BasicBlock.cs` with the following:
+- [x] Create directory: `src/Sharpy.Compiler/Analysis/ControlFlow/`
+- [x] Create `BasicBlock.cs` with the following:
 
 ```csharp
 using System.Collections.Immutable;
@@ -183,8 +183,8 @@ public sealed class BasicBlock
 - Statements list is mutable during construction, exposed as `IReadOnlyList<T>` after
 
 **Verification:**
-- [ ] File compiles: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all tests (should still pass): `dotnet test src/Sharpy.Compiler.Tests`
+- [x] File compiles: `dotnet build src/Sharpy.Compiler`
+- [x] Run all tests (should still pass): `dotnet test src/Sharpy.Compiler.Tests`
 
 ### Task 1.2: Create Block Terminator Hierarchy
 
@@ -192,7 +192,7 @@ public sealed class BasicBlock
 
 Create the terminator types that describe how a block exits:
 
-- [ ] Create `BlockTerminator.cs`:
+- [x] Create `BlockTerminator.cs`:
 
 ```csharp
 using System.Collections.Immutable;
@@ -298,8 +298,8 @@ public sealed record UnreachableTerminator() : BlockTerminator;
 - `BreakTerminator` comment clarifies handling of `BreakWithFlagStatement`
 
 **Verification:**
-- [ ] File compiles: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
+- [x] File compiles: `dotnet build src/Sharpy.Compiler`
+- [x] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
 
 ### Task 1.3: Create ControlFlowGraph Container
 
@@ -307,7 +307,7 @@ public sealed record UnreachableTerminator() : BlockTerminator;
 
 Create the main CFG container class:
 
-- [ ] Create `ControlFlowGraph.cs`:
+- [x] Create `ControlFlowGraph.cs`:
 
 ```csharp
 using System.Collections.Immutable;
@@ -460,14 +460,14 @@ public sealed class ControlFlowGraph
 - CFG is a `sealed class` because it doesn't need extension
 
 **Verification:**
-- [ ] File compiles: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
+- [x] File compiles: `dotnet build src/Sharpy.Compiler`
+- [x] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
 
 ### Task 1.4: Create ControlFlowEdge for Explicit Edge Tracking
 
 **File:** `src/Sharpy.Compiler/Analysis/ControlFlow/ControlFlowEdge.cs`
 
-- [ ] Create `ControlFlowEdge.cs`:
+- [x] Create `ControlFlowEdge.cs`:
 
 ```csharp
 namespace Sharpy.Compiler.Analysis.ControlFlow;
@@ -524,8 +524,8 @@ public record ControlFlowEdge(
 ```
 
 **Verification:**
-- [ ] File compiles: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
+- [x] File compiles: `dotnet build src/Sharpy.Compiler`
+- [x] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
 
 ### 🔖 COMMIT POINT 1
 
