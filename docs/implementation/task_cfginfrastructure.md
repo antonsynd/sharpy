@@ -1,8 +1,8 @@
 # Control Flow Graph (CFG) Infrastructure Implementation Task List
 
-**Recommendation:** #9 from architecture review addendum  
-**Target Version:** v0.2.x preparation (architectural foundation)  
-**Priority:** HIGH  
+**Recommendation:** #9 from architecture review addendum
+**Target Version:** v0.2.x preparation (architectural foundation)
+**Priority:** HIGH
 **Effort:** Large (estimated 8-12 development sessions)
 
 ---
@@ -20,12 +20,45 @@ The implementation is designed to be **additive** - all existing tests should co
 
 ---
 
+## Key Design Decisions
+
+### AST vs Bound Nodes
+
+**Decision:** Build CFG from **raw AST nodes** (`Statement`, `Expression`), not from bound nodes.
+
+**Rationale:**
+- Sharpy's AST is already immutable (C# records with `init` properties)
+- No separate "bound tree" layer currently exists in the compiler
+- Semantic information is stored externally via `SemanticInfo` class (reference-equality keyed)
+- CFG can access semantic info via the `SemanticContext` when needed
+- Aligns with current architecture where analysis happens on AST with SemanticInfo annotations
+
+**Future Consideration:** If a bound tree layer is added later, CFG can be refactored to work on bound nodes instead.
+
+### Statement Types Affecting Control Flow
+
+The following AST statement types directly affect control flow:
+- `ReturnStatement` - Function exit
+- `RaiseStatement` - Exception throw
+- `BreakStatement` - Loop exit
+- `BreakWithFlagStatement` - Loop exit with flag (internal, for loop-else)
+- `ContinueStatement` - Loop iteration skip
+- `IfStatement` with `ElifClause` - Conditional branching
+- `WhileStatement` - Pre-test loop with optional else clause
+- `ForStatement` - Iterator loop with optional else clause
+- `TryStatement` with `ExceptHandler` - Exception handling
+
+**Python-style loop else:** Both `while` and `for` support an else clause that executes if the loop completes without `break`. This requires special CFG modeling.
+
+---
+
 ## Prerequisites
 
 Before starting, ensure:
 - [ ] All existing tests pass: `dotnet test src/Sharpy.Compiler.Tests`
 - [ ] You understand the existing AST node hierarchy (`Statement.cs`, `Expression.cs`)
-- [ ] You've reviewed `ControlFlowValidator.cs` (current implementation to eventually replace)
+- [ ] You understand that AST nodes are **immutable records** with `init` properties
+- [ ] You've reviewed `ControlFlowValidatorV2.cs` (current implementation to eventually replace)
 - [ ] You've read the architecture review addendum section on CFG (Recommendation #9)
 
 ---
@@ -55,75 +88,99 @@ namespace Sharpy.Compiler.Analysis.ControlFlow;
 /// - Single exit point (only last statement can branch out)
 /// - No internal control flow (no branches within the block)
 /// </summary>
-public class BasicBlock
+/// <remarks>
+/// BasicBlock is a mutable class during CFG construction, then becomes
+/// effectively immutable once the CFG is built. It is NOT a record because
+/// we need reference identity (two blocks with same content are different blocks)
+/// and mutable predecessor/successor lists during construction.
+/// </remarks>
+public sealed class BasicBlock
 {
-    private static int _nextId = 0;
-    
     /// <summary>
     /// Unique identifier for this block within a CFG.
+    /// Assigned by the ControlFlowGraph that owns this block.
     /// </summary>
-    public int Id { get; }
-    
+    public int Id { get; internal set; }
+
     /// <summary>
     /// Human-readable label for debugging (e.g., "entry", "exit", "if_then", "loop_body").
     /// </summary>
-    public string Label { get; init; } = "";
-    
+    public string Label { get; }
+
     /// <summary>
     /// The statements in this block, in execution order.
     /// Empty for synthetic blocks (entry/exit).
     /// </summary>
-    public ImmutableArray<Statement> Statements { get; init; } = ImmutableArray<Statement>.Empty;
-    
+    public IReadOnlyList<Statement> Statements => _statements;
+    private readonly List<Statement> _statements;
+
     /// <summary>
     /// Predecessor blocks - blocks that can transfer control TO this block.
     /// </summary>
     public IReadOnlyList<BasicBlock> Predecessors => _predecessors;
     private readonly List<BasicBlock> _predecessors = new();
-    
+
     /// <summary>
     /// Successor blocks - blocks that control can transfer TO from this block.
     /// </summary>
     public IReadOnlyList<BasicBlock> Successors => _successors;
     private readonly List<BasicBlock> _successors = new();
-    
+
     /// <summary>
     /// The terminator instruction that ends this block.
     /// Null only for the exit block.
     /// </summary>
     public BlockTerminator? Terminator { get; internal set; }
-    
+
     /// <summary>
     /// For async analysis: true if any statement in this block contains an await expression.
+    /// Set during CFG construction by scanning for AwaitExpression nodes.
     /// </summary>
-    public bool ContainsAwait { get; init; }
-    
+    public bool ContainsAwait { get; internal set; }
+
     /// <summary>
     /// The source span of the first statement in this block (for diagnostics).
     /// </summary>
-    public Text.TextSpan? Span { get; init; }
-    
-    public BasicBlock()
+    public Text.TextSpan? Span => _statements.Count > 0 ? _statements[0].Span : null;
+
+    public BasicBlock(string label = "")
     {
-        Id = Interlocked.Increment(ref _nextId);
+        Label = label;
+        _statements = new List<Statement>();
     }
-    
+
+    /// <summary>
+    /// Add a statement to this block. Only valid during CFG construction.
+    /// </summary>
+    internal void AddStatement(Statement stmt)
+    {
+        _statements.Add(stmt);
+    }
+
     internal void AddPredecessor(BasicBlock block)
     {
         if (!_predecessors.Contains(block))
             _predecessors.Add(block);
     }
-    
+
     internal void AddSuccessor(BasicBlock block)
     {
         if (!_successors.Contains(block))
             _successors.Add(block);
     }
-    
-    public override string ToString() => 
+
+    public override string ToString() =>
         string.IsNullOrEmpty(Label) ? $"BB{Id}" : $"BB{Id}:{Label}";
 }
 ```
+
+**Design Notes:**
+- `BasicBlock` is a **sealed class**, not a record, because:
+  1. We need reference identity (two blocks with same statements are different blocks)
+  2. We need mutable lists during construction (predecessors, successors, statements)
+  3. Record copy semantics would be incorrect for graph nodes
+- IDs are assigned by the owning `ControlFlowGraph`, not via static counter (avoids thread-safety issues)
+- Statements list is mutable during construction, exposed as `IReadOnlyList<T>` after
 
 **Verification:**
 - [ ] File compiles: `dotnet build src/Sharpy.Compiler`
@@ -147,6 +204,10 @@ namespace Sharpy.Compiler.Analysis.ControlFlow;
 /// Describes how control flow leaves a basic block.
 /// Every basic block (except exit) has exactly one terminator.
 /// </summary>
+/// <remarks>
+/// Terminators are immutable records - they represent the computed control flow
+/// and don't change after CFG construction.
+/// </remarks>
 public abstract record BlockTerminator
 {
     /// <summary>
@@ -173,7 +234,7 @@ public sealed record ConditionalBranchTerminator(
 
 /// <summary>
 /// Multi-way branch based on a value.
-/// Generated by: match/switch statements
+/// Generated by: match/switch statements (v0.2.x)
 /// </summary>
 public sealed record SwitchTerminator(
     Expression Value,
@@ -184,7 +245,7 @@ public sealed record SwitchTerminator(
 /// <summary>
 /// A single case in a switch terminator.
 /// </summary>
-public record SwitchCase(
+public sealed record SwitchCase(
     Pattern? Pattern,  // null for default case
     Expression? Guard,
     BasicBlock Target
@@ -198,14 +259,18 @@ public sealed record ReturnTerminator(Expression? Value) : BlockTerminator;
 
 /// <summary>
 /// Throw an exception.
-/// Generated by: raise statements
+/// Generated by: raise statements (re-raise has null Exception)
 /// </summary>
-public sealed record ThrowTerminator(Expression Exception) : BlockTerminator;
+public sealed record ThrowTerminator(Expression? Exception) : BlockTerminator;
 
 /// <summary>
 /// Break out of a loop to a specific target.
-/// Generated by: break statements
+/// Generated by: break statements and BreakWithFlagStatement (internal)
 /// </summary>
+/// <remarks>
+/// For BreakWithFlagStatement (used for loop-else), the flag assignment
+/// is added as a statement before this terminator is reached.
+/// </remarks>
 public sealed record BreakTerminator(BasicBlock Target) : BlockTerminator;
 
 /// <summary>
@@ -215,11 +280,22 @@ public sealed record BreakTerminator(BasicBlock Target) : BlockTerminator;
 public sealed record ContinueTerminator(BasicBlock Target) : BlockTerminator;
 
 /// <summary>
+/// Re-raise the current exception (bare 'raise' with no expression).
+/// Can only appear inside an except handler.
+/// </summary>
+public sealed record RethrowTerminator() : BlockTerminator;
+
+/// <summary>
 /// Marker terminator for blocks that don't naturally terminate (unreachable).
 /// This should not appear in a well-formed CFG.
 /// </summary>
 public sealed record UnreachableTerminator() : BlockTerminator;
 ```
+
+**Design Notes:**
+- `ThrowTerminator` now accepts `Expression?` to handle bare `raise` (re-raise current exception)
+- Added `RethrowTerminator` as a distinct type for bare `raise` inside except handlers
+- `BreakTerminator` comment clarifies handling of `BreakWithFlagStatement`
 
 **Verification:**
 - [ ] File compiles: `dotnet build src/Sharpy.Compiler`
@@ -242,45 +318,65 @@ namespace Sharpy.Compiler.Analysis.ControlFlow;
 /// <summary>
 /// Represents the control flow graph for a function or method body.
 /// </summary>
-public class ControlFlowGraph
+/// <remarks>
+/// Once constructed, a ControlFlowGraph is effectively immutable.
+/// The blocks list and block connections don't change after construction.
+/// </remarks>
+public sealed class ControlFlowGraph
 {
+    private int _nextBlockId;
+
     /// <summary>
     /// The synthetic entry block - has no statements, just connects to the first real block.
     /// </summary>
     public BasicBlock Entry { get; }
-    
+
     /// <summary>
     /// The synthetic exit block - all return paths lead here.
     /// </summary>
     public BasicBlock Exit { get; }
-    
+
     /// <summary>
     /// All blocks in the CFG, including entry and exit.
     /// Blocks are in no particular order.
     /// </summary>
     public IReadOnlyList<BasicBlock> Blocks => _blocks;
     private readonly List<BasicBlock> _blocks;
-    
+
     /// <summary>
     /// The function or method this CFG was built from (for diagnostics).
+    /// Null for module-level CFGs.
     /// </summary>
-    public FunctionDef? SourceFunction { get; init; }
-    
-    internal ControlFlowGraph(BasicBlock entry, BasicBlock exit, List<BasicBlock> blocks)
+    public FunctionDef? SourceFunction { get; }
+
+    /// <summary>
+    /// The source file path (for diagnostics).
+    /// </summary>
+    public string? SourceFile { get; init; }
+
+    internal ControlFlowGraph(BasicBlock entry, BasicBlock exit, List<BasicBlock> blocks, FunctionDef? sourceFunction = null)
     {
         Entry = entry;
         Exit = exit;
         _blocks = blocks;
+        SourceFunction = sourceFunction;
+
+        // Assign sequential IDs to all blocks
+        foreach (var block in blocks)
+        {
+            block.Id = _nextBlockId++;
+        }
     }
-    
+
     /// <summary>
     /// Get all blocks in reverse post-order (useful for data flow analysis).
+    /// Entry block comes first, exit block typically last.
     /// </summary>
     public IReadOnlyList<BasicBlock> GetReversePostOrder()
     {
         var visited = new HashSet<BasicBlock>();
         var postOrder = new List<BasicBlock>();
-        
+
         void Visit(BasicBlock block)
         {
             if (!visited.Add(block)) return;
@@ -288,12 +384,12 @@ public class ControlFlowGraph
                 Visit(succ);
             postOrder.Add(block);
         }
-        
+
         Visit(Entry);
         postOrder.Reverse();
         return postOrder;
     }
-    
+
     /// <summary>
     /// Find all blocks that are unreachable from the entry block.
     /// </summary>
@@ -302,7 +398,7 @@ public class ControlFlowGraph
         var reachable = new HashSet<BasicBlock>();
         var worklist = new Queue<BasicBlock>();
         worklist.Enqueue(Entry);
-        
+
         while (worklist.Count > 0)
         {
             var block = worklist.Dequeue();
@@ -310,19 +406,23 @@ public class ControlFlowGraph
             foreach (var succ in block.Successors)
                 worklist.Enqueue(succ);
         }
-        
+
         return _blocks.Where(b => !reachable.Contains(b)).ToImmutableHashSet();
     }
-    
+
     /// <summary>
     /// Check if all paths through the CFG reach the exit block.
     /// Returns the blocks that don't reach exit (missing return).
     /// </summary>
+    /// <remarks>
+    /// Uses backward reachability from Exit. Blocks that can't reach Exit
+    /// either throw exceptions, loop infinitely, or have missing returns.
+    /// </remarks>
     public ImmutableHashSet<BasicBlock> FindBlocksNotReachingExit()
     {
         var reachesExit = new HashSet<BasicBlock> { Exit };
         var changed = true;
-        
+
         while (changed)
         {
             changed = false;
@@ -336,11 +436,28 @@ public class ControlFlowGraph
                 }
             }
         }
-        
+
         return _blocks.Where(b => !reachesExit.Contains(b)).ToImmutableHashSet();
+    }
+
+    /// <summary>
+    /// Find all blocks that contain exception-throwing terminators.
+    /// Useful for exception flow analysis.
+    /// </summary>
+    public ImmutableHashSet<BasicBlock> FindThrowingBlocks()
+    {
+        return _blocks
+            .Where(b => b.Terminator is ThrowTerminator or RethrowTerminator)
+            .ToImmutableHashSet();
     }
 }
 ```
+
+**Design Notes:**
+- Block IDs are assigned by the owning CFG, ensuring uniqueness within the graph
+- Added `SourceFile` property for better diagnostics
+- Added `FindThrowingBlocks()` utility for exception flow analysis
+- CFG is a `sealed class` because it doesn't need extension
 
 **Verification:**
 - [ ] File compiles: `dotnet build src/Sharpy.Compiler`
@@ -427,6 +544,50 @@ No behavioral changes - all existing tests pass."
 
 ---
 
+## Implementation Considerations
+
+### Exception Flow Modeling
+
+The initial implementation uses a **simplified exception model**:
+- Exception-throwing statements (`raise`) terminate their block
+- Try/except handlers are all conceptually reachable from the try body
+- We don't model which specific exception types go to which handlers
+
+**Why simplified:**
+1. Accurate exception flow requires tracking exception types through the CFG
+2. Python allows catching arbitrary exception types, making exhaustive analysis complex
+3. The simplified model is sufficient for return path analysis and unreachable code detection
+
+**Future enhancement:** Add `ExceptionFlowGraph` as a separate layer that refines the basic CFG with exception type information.
+
+### Short-Circuit Boolean Evaluation
+
+Expressions like `a and b` and `a or b` have implicit control flow:
+- `a and b`: if `a` is false, `b` is not evaluated
+- `a or b`: if `a` is true, `b` is not evaluated
+
+**Current approach:** Treat as single expression in CFG. The sub-expressions are not split into separate blocks.
+
+**Impact:** This is correct for most analyses. For very precise definite assignment analysis, this may need refinement.
+
+### Await Expression Detection
+
+For async/await support (v0.2.x), the CFG builder needs to detect `AwaitExpression` nodes within statements. This requires:
+1. Walking all expressions in a statement to find await
+2. Setting `BasicBlock.ContainsAwait = true` when found
+
+**Implementation note:** Add an expression visitor that scans for AwaitExpression during statement processing.
+
+### Python-Style Loop Else
+
+Both `while` and `for` loops support an else clause that runs if the loop completes normally (without `break`). The CFG models this as:
+- Normal loop exit (condition false) → else block → exit
+- `break` statement → exit (bypassing else)
+
+This is implemented via the `LoopContext` which tracks both the loop exit and else block separately.
+
+---
+
 ## Phase 2: Unit Tests for CFG Data Structures
 
 **Goal:** Create tests for the data structures before building the CFG builder. This ensures the data structures work correctly in isolation.
@@ -451,25 +612,25 @@ namespace Sharpy.Compiler.Tests.Analysis.ControlFlow;
 public static class ControlFlowTestHelpers
 {
     /// <summary>
-    /// Creates a simple linear CFG: entry -> block1 -> exit
+    /// Creates a simple linear CFG: entry -> body -> exit
     /// </summary>
     public static ControlFlowGraph CreateLinearCfg(params Statement[] statements)
     {
-        var entry = new BasicBlock { Label = "entry" };
-        var exit = new BasicBlock { Label = "exit" };
-        var body = new BasicBlock 
-        { 
-            Label = "body",
-            Statements = statements.ToImmutableArray()
-        };
-        
-        ConnectBlocks(entry, body, EdgeKind.Unconditional);
-        ConnectBlocks(body, exit, EdgeKind.Unconditional);
+        var entry = new BasicBlock("entry");
+        var exit = new BasicBlock("exit");
+        var body = new BasicBlock("body");
+
+        foreach (var stmt in statements)
+            body.AddStatement(stmt);
+
+        ConnectBlocks(entry, body);
+        ConnectBlocks(body, exit);
+        entry.Terminator = new BranchTerminator(body);
         body.Terminator = new BranchTerminator(exit);
-        
+
         return new ControlFlowGraph(entry, exit, new List<BasicBlock> { entry, body, exit });
     }
-    
+
     /// <summary>
     /// Creates a diamond-shaped CFG for if/else:
     /// entry -> condition -> {then, else} -> merge -> exit
@@ -479,37 +640,35 @@ public static class ControlFlowTestHelpers
         Statement[] thenStatements,
         Statement[] elseStatements)
     {
-        var entry = new BasicBlock { Label = "entry" };
-        var exit = new BasicBlock { Label = "exit" };
-        var condBlock = new BasicBlock { Label = "condition" };
-        var thenBlock = new BasicBlock 
-        { 
-            Label = "then", 
-            Statements = thenStatements.ToImmutableArray() 
-        };
-        var elseBlock = new BasicBlock 
-        { 
-            Label = "else", 
-            Statements = elseStatements.ToImmutableArray() 
-        };
-        var mergeBlock = new BasicBlock { Label = "merge" };
-        
-        ConnectBlocks(entry, condBlock, EdgeKind.Unconditional);
-        ConnectBlocks(condBlock, thenBlock, EdgeKind.ConditionalTrue);
-        ConnectBlocks(condBlock, elseBlock, EdgeKind.ConditionalFalse);
-        ConnectBlocks(thenBlock, mergeBlock, EdgeKind.Unconditional);
-        ConnectBlocks(elseBlock, mergeBlock, EdgeKind.Unconditional);
-        ConnectBlocks(mergeBlock, exit, EdgeKind.Unconditional);
-        
+        var entry = new BasicBlock("entry");
+        var exit = new BasicBlock("exit");
+        var condBlock = new BasicBlock("condition");
+        var thenBlock = new BasicBlock("then");
+        var elseBlock = new BasicBlock("else");
+        var mergeBlock = new BasicBlock("merge");
+
+        foreach (var stmt in thenStatements)
+            thenBlock.AddStatement(stmt);
+        foreach (var stmt in elseStatements)
+            elseBlock.AddStatement(stmt);
+
+        ConnectBlocks(entry, condBlock);
+        ConnectBlocks(condBlock, thenBlock);
+        ConnectBlocks(condBlock, elseBlock);
+        ConnectBlocks(thenBlock, mergeBlock);
+        ConnectBlocks(elseBlock, mergeBlock);
+        ConnectBlocks(mergeBlock, exit);
+
+        entry.Terminator = new BranchTerminator(condBlock);
         condBlock.Terminator = new ConditionalBranchTerminator(condition, thenBlock, elseBlock);
         thenBlock.Terminator = new BranchTerminator(mergeBlock);
         elseBlock.Terminator = new BranchTerminator(mergeBlock);
         mergeBlock.Terminator = new BranchTerminator(exit);
-        
-        return new ControlFlowGraph(entry, exit, 
+
+        return new ControlFlowGraph(entry, exit,
             new List<BasicBlock> { entry, condBlock, thenBlock, elseBlock, mergeBlock, exit });
     }
-    
+
     /// <summary>
     /// Creates a simple loop CFG:
     /// entry -> header -> {body -> header, exit}
@@ -518,52 +677,69 @@ public static class ControlFlowTestHelpers
         Expression condition,
         Statement[] bodyStatements)
     {
-        var entry = new BasicBlock { Label = "entry" };
-        var exit = new BasicBlock { Label = "exit" };
-        var header = new BasicBlock { Label = "loop_header" };
-        var body = new BasicBlock 
-        { 
-            Label = "loop_body", 
-            Statements = bodyStatements.ToImmutableArray() 
-        };
-        
-        ConnectBlocks(entry, header, EdgeKind.Unconditional);
-        ConnectBlocks(header, body, EdgeKind.ConditionalTrue);
-        ConnectBlocks(header, exit, EdgeKind.ConditionalFalse);
-        ConnectBlocks(body, header, EdgeKind.LoopBack);
-        
+        var entry = new BasicBlock("entry");
+        var exit = new BasicBlock("exit");
+        var header = new BasicBlock("loop_header");
+        var body = new BasicBlock("loop_body");
+
+        foreach (var stmt in bodyStatements)
+            body.AddStatement(stmt);
+
+        ConnectBlocks(entry, header);
+        ConnectBlocks(header, body);
+        ConnectBlocks(header, exit);
+        ConnectBlocks(body, header);
+
+        entry.Terminator = new BranchTerminator(header);
         header.Terminator = new ConditionalBranchTerminator(condition, body, exit);
         body.Terminator = new BranchTerminator(header);
-        
-        return new ControlFlowGraph(entry, exit, 
+
+        return new ControlFlowGraph(entry, exit,
             new List<BasicBlock> { entry, header, body, exit });
     }
-    
+
     /// <summary>
-    /// Connects two blocks with the specified edge kind.
+    /// Connects two blocks (adds predecessor/successor relationship).
     /// </summary>
-    public static void ConnectBlocks(BasicBlock from, BasicBlock to, EdgeKind kind)
+    public static void ConnectBlocks(BasicBlock from, BasicBlock to)
     {
         from.AddSuccessor(to);
         to.AddPredecessor(from);
     }
-    
+
     /// <summary>
     /// Creates a simple pass statement for testing.
     /// </summary>
     public static PassStatement Pass() => new PassStatement();
-    
+
     /// <summary>
     /// Creates a simple boolean literal for testing.
     /// </summary>
     public static BooleanLiteral Bool(bool value) => new BooleanLiteral { Value = value };
-    
+
     /// <summary>
     /// Creates a simple identifier for testing.
     /// </summary>
     public static Identifier Id(string name) => new Identifier { Name = name };
+
+    /// <summary>
+    /// Creates a simple integer literal for testing.
+    /// </summary>
+    public static IntegerLiteral Int(long value) => new IntegerLiteral { Value = value };
+
+    /// <summary>
+    /// Creates a return statement for testing.
+    /// </summary>
+    public static ReturnStatement Return(Expression? value = null) =>
+        new ReturnStatement { Value = value };
 }
 ```
+
+**Design Notes:**
+- Uses the new BasicBlock constructor that takes label as parameter
+- Uses `AddStatement()` method instead of init-only `Statements` property
+- Removed `EdgeKind` parameter from `ConnectBlocks` since edges are implicit in successor/predecessor lists
+- Added helper methods for common test constructs
 
 **Verification:**
 - [ ] File compiles: `dotnet build src/Sharpy.Compiler.Tests`
@@ -575,10 +751,8 @@ public static class ControlFlowTestHelpers
 - [ ] Create `BasicBlockTests.cs`:
 
 ```csharp
-using System.Collections.Immutable;
 using Xunit;
 using Sharpy.Compiler.Analysis.ControlFlow;
-using Sharpy.Compiler.Parser.Ast;
 using static Sharpy.Compiler.Tests.Analysis.ControlFlow.ControlFlowTestHelpers;
 
 namespace Sharpy.Compiler.Tests.Analysis.ControlFlow;
@@ -586,77 +760,94 @@ namespace Sharpy.Compiler.Tests.Analysis.ControlFlow;
 public class BasicBlockTests
 {
     [Fact]
-    public void BasicBlock_HasUniqueId()
-    {
-        var block1 = new BasicBlock();
-        var block2 = new BasicBlock();
-        
-        Assert.NotEqual(block1.Id, block2.Id);
-    }
-    
-    [Fact]
     public void BasicBlock_DefaultsToEmptyStatements()
     {
         var block = new BasicBlock();
-        
+
         Assert.Empty(block.Statements);
     }
-    
+
     [Fact]
-    public void BasicBlock_CanHaveStatements()
+    public void BasicBlock_CanAddStatements()
     {
-        var block = new BasicBlock 
-        { 
-            Statements = ImmutableArray.Create<Statement>(Pass(), Pass()) 
-        };
-        
-        Assert.Equal(2, block.Statements.Length);
+        var block = new BasicBlock();
+        block.AddStatement(Pass());
+        block.AddStatement(Pass());
+
+        Assert.Equal(2, block.Statements.Count);
     }
-    
+
     [Fact]
     public void BasicBlock_TracksSuccessors()
     {
-        var block1 = new BasicBlock { Label = "block1" };
-        var block2 = new BasicBlock { Label = "block2" };
-        
-        ConnectBlocks(block1, block2, EdgeKind.Unconditional);
-        
+        var block1 = new BasicBlock("block1");
+        var block2 = new BasicBlock("block2");
+
+        ConnectBlocks(block1, block2);
+
         Assert.Contains(block2, block1.Successors);
     }
-    
+
     [Fact]
     public void BasicBlock_TracksPredecessors()
     {
-        var block1 = new BasicBlock { Label = "block1" };
-        var block2 = new BasicBlock { Label = "block2" };
-        
-        ConnectBlocks(block1, block2, EdgeKind.Unconditional);
-        
+        var block1 = new BasicBlock("block1");
+        var block2 = new BasicBlock("block2");
+
+        ConnectBlocks(block1, block2);
+
         Assert.Contains(block1, block2.Predecessors);
     }
-    
+
     [Fact]
     public void BasicBlock_DoesNotDuplicateConnections()
     {
         var block1 = new BasicBlock();
         var block2 = new BasicBlock();
-        
-        ConnectBlocks(block1, block2, EdgeKind.Unconditional);
-        ConnectBlocks(block1, block2, EdgeKind.Unconditional);
-        
+
+        ConnectBlocks(block1, block2);
+        ConnectBlocks(block1, block2);
+
         Assert.Single(block1.Successors);
         Assert.Single(block2.Predecessors);
     }
-    
+
     [Fact]
     public void BasicBlock_ToStringIncludesLabel()
     {
-        var block = new BasicBlock { Label = "test_block" };
-        
+        var block = new BasicBlock("test_block");
+
         Assert.Contains("test_block", block.ToString());
+    }
+
+    [Fact]
+    public void BasicBlock_SpanFromFirstStatement()
+    {
+        var block = new BasicBlock();
+        var stmt = new Parser.Ast.PassStatement
+        {
+            Span = new Text.TextSpan(10, 5)
+        };
+        block.AddStatement(stmt);
+
+        Assert.NotNull(block.Span);
+        Assert.Equal(10, block.Span!.Value.Start);
+    }
+
+    [Fact]
+    public void BasicBlock_EmptyBlockHasNoSpan()
+    {
+        var block = new BasicBlock();
+
+        Assert.Null(block.Span);
     }
 }
 ```
+
+**Design Notes:**
+- Tests updated to use new BasicBlock constructor and `AddStatement()` method
+- Removed test for unique IDs since IDs are now assigned by ControlFlowGraph
+- Added tests for Span property behavior
 
 ### Task 2.3: Create ControlFlowGraph Tests
 
@@ -677,21 +868,31 @@ public class ControlFlowGraphTests
     public void CreateLinearCfg_HasEntryAndExit()
     {
         var cfg = CreateLinearCfg(Pass());
-        
+
         Assert.NotNull(cfg.Entry);
         Assert.NotNull(cfg.Exit);
         Assert.Equal("entry", cfg.Entry.Label);
         Assert.Equal("exit", cfg.Exit.Label);
     }
-    
+
     [Fact]
     public void CreateLinearCfg_EntryConnectsToBody()
     {
         var cfg = CreateLinearCfg(Pass());
-        
+
         Assert.Single(cfg.Entry.Successors);
     }
-    
+
+    [Fact]
+    public void CreateLinearCfg_AssignsBlockIds()
+    {
+        var cfg = CreateLinearCfg(Pass());
+
+        // All blocks should have unique IDs assigned
+        var ids = cfg.Blocks.Select(b => b.Id).ToList();
+        Assert.Equal(ids.Count, ids.Distinct().Count());
+    }
+
     [Fact]
     public void CreateDiamondCfg_HasCorrectStructure()
     {
@@ -700,68 +901,103 @@ public class ControlFlowGraphTests
             new[] { Pass() },
             new[] { Pass() }
         );
-        
+
         Assert.Equal(6, cfg.Blocks.Count); // entry, cond, then, else, merge, exit
     }
-    
+
     [Fact]
     public void CreateLoopCfg_HasBackEdge()
     {
         var cfg = CreateLoopCfg(Bool(true), new[] { Pass() });
-        
+
         var body = cfg.Blocks.First(b => b.Label == "loop_body");
         var header = cfg.Blocks.First(b => b.Label == "loop_header");
-        
+
         Assert.Contains(header, body.Successors); // back edge
     }
-    
+
     [Fact]
     public void FindUnreachableBlocks_EmptyForConnectedGraph()
     {
         var cfg = CreateLinearCfg(Pass());
-        
+
         var unreachable = cfg.FindUnreachableBlocks();
-        
+
         Assert.Empty(unreachable);
     }
-    
+
     [Fact]
     public void FindUnreachableBlocks_FindsDisconnectedBlocks()
     {
         var cfg = CreateLinearCfg(Pass());
-        var orphan = new BasicBlock { Label = "orphan" };
-        
+        var orphan = new BasicBlock("orphan");
+
         // Add orphan to blocks list without connecting it
         var blocks = cfg.Blocks.ToList();
         blocks.Add(orphan);
         var newCfg = new ControlFlowGraph(cfg.Entry, cfg.Exit, blocks);
-        
+
         var unreachable = newCfg.FindUnreachableBlocks();
-        
+
         Assert.Contains(orphan, unreachable);
     }
-    
+
     [Fact]
     public void GetReversePostOrder_EntryComesFirst()
     {
         var cfg = CreateLinearCfg(Pass());
-        
+
         var rpo = cfg.GetReversePostOrder();
-        
+
         Assert.Equal(cfg.Entry, rpo.First());
     }
-    
+
     [Fact]
     public void GetReversePostOrder_ExitComesLast()
     {
         var cfg = CreateLinearCfg(Pass());
-        
+
         var rpo = cfg.GetReversePostOrder();
-        
+
         Assert.Equal(cfg.Exit, rpo.Last());
+    }
+
+    [Fact]
+    public void FindBlocksNotReachingExit_AllReachInLinearCfg()
+    {
+        var cfg = CreateLinearCfg(Pass());
+
+        var notReaching = cfg.FindBlocksNotReachingExit();
+
+        Assert.Empty(notReaching);
+    }
+
+    [Fact]
+    public void FindThrowingBlocks_FindsThrowTerminators()
+    {
+        var entry = new BasicBlock("entry");
+        var throwing = new BasicBlock("throwing");
+        var exit = new BasicBlock("exit");
+
+        ConnectBlocks(entry, throwing);
+        entry.Terminator = new BranchTerminator(throwing);
+        throwing.Terminator = new ThrowTerminator(Id("error"));
+
+        var cfg = new ControlFlowGraph(entry, exit, new List<BasicBlock> { entry, throwing, exit });
+
+        var throwingBlocks = cfg.FindThrowingBlocks();
+
+        Assert.Single(throwingBlocks);
+        Assert.Contains(throwing, throwingBlocks);
     }
 }
 ```
+
+**Design Notes:**
+- Added test for block ID assignment
+- Added test for `FindBlocksNotReachingExit`
+- Added test for `FindThrowingBlocks`
+- Updated BasicBlock instantiation to use constructor
 
 ### Task 2.4: Create BlockTerminator Tests
 
@@ -864,104 +1100,117 @@ namespace Sharpy.Compiler.Analysis.ControlFlow;
 /// <summary>
 /// Builds a control flow graph from a function body.
 /// </summary>
+/// <remarks>
+/// The builder operates on the immutable AST nodes (Statement, Expression).
+/// It does NOT modify the AST. The resulting CFG references AST nodes
+/// but is a separate data structure.
+/// </remarks>
 public class ControlFlowGraphBuilder
 {
     private readonly List<BasicBlock> _blocks = new();
     private BasicBlock _currentBlock = null!;
     private BasicBlock _entry = null!;
     private BasicBlock _exit = null!;
-    
+
     // Loop tracking for break/continue
     private readonly Stack<LoopContext> _loopStack = new();
-    
-    private record LoopContext(BasicBlock Header, BasicBlock Exit);
-    
+
+    // Exception handler tracking for re-raise
+    private readonly Stack<BasicBlock> _handlerStack = new();
+
+    /// <summary>
+    /// Context for loop constructs, tracking where break/continue should go.
+    /// </summary>
+    private record LoopContext(
+        BasicBlock Header,        // Where continue jumps to
+        BasicBlock Exit,          // Where break jumps to
+        BasicBlock? ElseBlock     // Optional else block (runs if loop completes without break)
+    );
+
     /// <summary>
     /// Build a CFG from a function definition.
     /// </summary>
     public ControlFlowGraph Build(FunctionDef function)
     {
         Reset();
-        
+
         _entry = CreateBlock("entry");
         _exit = CreateBlock("exit");
-        
+
         var bodyStart = CreateBlock("body_start");
-        Connect(_entry, bodyStart, EdgeKind.Unconditional);
+        Connect(_entry, bodyStart);
         _currentBlock = bodyStart;
-        
+
         BuildStatements(function.Body);
-        
+
         // If we didn't explicitly return, connect to exit
         if (_currentBlock.Terminator == null)
         {
-            Connect(_currentBlock, _exit, EdgeKind.Unconditional);
+            Connect(_currentBlock, _exit);
             _currentBlock.Terminator = new BranchTerminator(_exit);
         }
-        
-        return new ControlFlowGraph(_entry, _exit, _blocks)
-        {
-            SourceFunction = function
-        };
+
+        return new ControlFlowGraph(_entry, _exit, _blocks, function);
     }
-    
+
     /// <summary>
     /// Build a CFG from a list of top-level statements (module body).
     /// </summary>
-    public ControlFlowGraph Build(ImmutableArray<Statement> statements)
+    public ControlFlowGraph Build(IReadOnlyList<Statement> statements)
     {
         Reset();
-        
+
         _entry = CreateBlock("entry");
         _exit = CreateBlock("exit");
-        
+
         var bodyStart = CreateBlock("body_start");
-        Connect(_entry, bodyStart, EdgeKind.Unconditional);
+        Connect(_entry, bodyStart);
         _currentBlock = bodyStart;
-        
+
         BuildStatements(statements);
-        
+
         if (_currentBlock.Terminator == null)
         {
-            Connect(_currentBlock, _exit, EdgeKind.Unconditional);
+            Connect(_currentBlock, _exit);
             _currentBlock.Terminator = new BranchTerminator(_exit);
         }
-        
+
         return new ControlFlowGraph(_entry, _exit, _blocks);
     }
-    
+
     private void Reset()
     {
         _blocks.Clear();
         _loopStack.Clear();
+        _handlerStack.Clear();
         _currentBlock = null!;
     }
-    
+
     private BasicBlock CreateBlock(string label = "")
     {
-        var block = new BasicBlock { Label = label };
+        var block = new BasicBlock(label);
         _blocks.Add(block);
         return block;
     }
-    
-    private void Connect(BasicBlock from, BasicBlock to, EdgeKind kind)
+
+    private void Connect(BasicBlock from, BasicBlock to)
     {
         from.AddSuccessor(to);
         to.AddPredecessor(from);
     }
-    
-    private void BuildStatements(ImmutableArray<Statement> statements)
+
+    private void BuildStatements(IReadOnlyList<Statement> statements)
     {
         foreach (var stmt in statements)
         {
             BuildStatement(stmt);
-            
+
             // If current block is terminated, remaining statements are unreachable
             if (_currentBlock.Terminator != null)
                 break;
         }
     }
-    
+
     private void BuildStatement(Statement stmt)
     {
         switch (stmt)
@@ -969,74 +1218,83 @@ public class ControlFlowGraphBuilder
             case ReturnStatement ret:
                 BuildReturn(ret);
                 break;
-                
+
             case IfStatement ifStmt:
                 BuildIf(ifStmt);
                 break;
-                
+
             case WhileStatement whileStmt:
                 BuildWhile(whileStmt);
                 break;
-                
+
             case ForStatement forStmt:
                 BuildFor(forStmt);
                 break;
-                
+
             case BreakStatement breakStmt:
                 BuildBreak(breakStmt);
                 break;
-                
+
+            case BreakWithFlagStatement breakWithFlag:
+                // BreakWithFlagStatement is an internal statement for loop-else support.
+                // It sets a flag variable then breaks. We treat it as a break for CFG purposes.
+                BuildBreakWithFlag(breakWithFlag);
+                break;
+
             case ContinueStatement contStmt:
                 BuildContinue(contStmt);
                 break;
-                
+
             case TryStatement tryStmt:
                 BuildTry(tryStmt);
                 break;
-                
+
             case RaiseStatement raiseStmt:
                 BuildRaise(raiseStmt);
                 break;
-                
+
             case FunctionDef:
             case ClassDef:
             case StructDef:
             case InterfaceDef:
             case EnumDef:
             case TypeAlias:
-                // Type/function definitions don't affect control flow
+            case ImportStatement:
+            case FromImportStatement:
+                // Type/function definitions and imports don't affect control flow
                 break;
-                
+
             default:
                 // Simple statements - add to current block
                 AddStatement(stmt);
                 break;
         }
     }
-    
+
     private void AddStatement(Statement stmt)
     {
-        // Append statement to current block
-        var current = _currentBlock.Statements.Add(stmt);
-        _currentBlock = _currentBlock with { Statements = current };
-        
-        // Update the block in our list (since we're using records with init)
-        var idx = _blocks.IndexOf(_currentBlock);
-        if (idx >= 0)
-            _blocks[idx] = _currentBlock;
+        _currentBlock.AddStatement(stmt);
     }
-    
+
     // Individual statement builders - implemented in subsequent tasks
     private void BuildReturn(ReturnStatement stmt) => throw new NotImplementedException();
     private void BuildIf(IfStatement stmt) => throw new NotImplementedException();
     private void BuildWhile(WhileStatement stmt) => throw new NotImplementedException();
     private void BuildFor(ForStatement stmt) => throw new NotImplementedException();
     private void BuildBreak(BreakStatement stmt) => throw new NotImplementedException();
+    private void BuildBreakWithFlag(BreakWithFlagStatement stmt) => throw new NotImplementedException();
     private void BuildContinue(ContinueStatement stmt) => throw new NotImplementedException();
     private void BuildTry(TryStatement stmt) => throw new NotImplementedException();
     private void BuildRaise(RaiseStatement stmt) => throw new NotImplementedException();
 }
 ```
+
+**Design Notes:**
+- Added `_handlerStack` for tracking current exception handler (needed for bare `raise`)
+- Added `BreakWithFlagStatement` handling (internal statement for loop-else semantics)
+- `LoopContext` now includes optional `ElseBlock` for Python-style loop else
+- Added `ImportStatement` and `FromImportStatement` to ignored statements
+- Simplified `AddStatement` since BasicBlock is now a mutable class during construction
 
 **Verification:**
 - [ ] File compiles: `dotnet build src/Sharpy.Compiler`
@@ -1052,7 +1310,7 @@ public class ControlFlowGraphBuilder
 private void BuildReturn(ReturnStatement stmt)
 {
     AddStatement(stmt);
-    Connect(_currentBlock, _exit, EdgeKind.Unconditional);
+    Connect(_currentBlock, _exit);
     _currentBlock.Terminator = new ReturnTerminator(stmt.Value)
     {
         SourceStatement = stmt
@@ -1065,21 +1323,27 @@ private void BuildReturn(ReturnStatement stmt)
 ```csharp
 private void BuildRaise(RaiseStatement stmt)
 {
+    AddStatement(stmt);
+
     if (stmt.Exception == null)
     {
-        // Re-raise - for now treat as terminating (TODO: exception flow)
-        AddStatement(stmt);
-        _currentBlock.Terminator = new UnreachableTerminator { SourceStatement = stmt };
-        return;
+        // Bare 'raise' - re-raises current exception
+        // Only valid inside an except handler (validated by ControlFlowValidatorV2)
+        _currentBlock.Terminator = new RethrowTerminator
+        {
+            SourceStatement = stmt
+        };
     }
-    
-    AddStatement(stmt);
-    // For now, raise terminates the block without going to exit
-    // TODO: In future, connect to exception handlers
-    _currentBlock.Terminator = new ThrowTerminator(stmt.Exception)
+    else
     {
-        SourceStatement = stmt
-    };
+        // raise Exception() or raise Exception() from cause
+        _currentBlock.Terminator = new ThrowTerminator(stmt.Exception)
+        {
+            SourceStatement = stmt
+        };
+    }
+    // Note: Exception flow modeling is simplified. Throw terminates the block
+    // but doesn't connect to handlers. Full exception flow can be added later.
 }
 ```
 
@@ -1090,14 +1354,43 @@ private void BuildBreak(BreakStatement stmt)
 {
     if (_loopStack.Count == 0)
     {
-        // Error: break outside loop (caught by ControlFlowValidator)
+        // Error: break outside loop (caught by ControlFlowValidatorV2)
+        // Add statement but don't terminate - let analysis continue
         AddStatement(stmt);
+        _currentBlock.Terminator = new UnreachableTerminator { SourceStatement = stmt };
         return;
     }
-    
+
     AddStatement(stmt);
     var loop = _loopStack.Peek();
-    Connect(_currentBlock, loop.Exit, EdgeKind.LoopExit);
+    Connect(_currentBlock, loop.Exit);
+    _currentBlock.Terminator = new BreakTerminator(loop.Exit)
+    {
+        SourceStatement = stmt
+    };
+}
+```
+
+- [ ] Implement `BuildBreakWithFlag`:
+
+```csharp
+private void BuildBreakWithFlag(BreakWithFlagStatement stmt)
+{
+    // BreakWithFlagStatement is generated internally for loop-else support.
+    // It sets a flag to false before breaking, so the else clause knows not to run.
+    // For CFG purposes, we treat it the same as a regular break.
+
+    if (_loopStack.Count == 0)
+    {
+        // Shouldn't happen with internally generated statements
+        AddStatement(stmt);
+        _currentBlock.Terminator = new UnreachableTerminator { SourceStatement = stmt };
+        return;
+    }
+
+    AddStatement(stmt);
+    var loop = _loopStack.Peek();
+    Connect(_currentBlock, loop.Exit);
     _currentBlock.Terminator = new BreakTerminator(loop.Exit)
     {
         SourceStatement = stmt
@@ -1112,20 +1405,26 @@ private void BuildContinue(ContinueStatement stmt)
 {
     if (_loopStack.Count == 0)
     {
-        // Error: continue outside loop (caught by ControlFlowValidator)
+        // Error: continue outside loop (caught by ControlFlowValidatorV2)
         AddStatement(stmt);
+        _currentBlock.Terminator = new UnreachableTerminator { SourceStatement = stmt };
         return;
     }
-    
+
     AddStatement(stmt);
     var loop = _loopStack.Peek();
-    Connect(_currentBlock, loop.Header, EdgeKind.LoopBack);
+    Connect(_currentBlock, loop.Header);
     _currentBlock.Terminator = new ContinueTerminator(loop.Header)
     {
         SourceStatement = stmt
     };
 }
 ```
+
+**Design Notes:**
+- Error cases (break/continue outside loop) now set `UnreachableTerminator` to properly terminate the block
+- Added `BuildBreakWithFlag` for internal loop-else support statement
+- `RethrowTerminator` is used for bare `raise` (re-raise current exception)
 
 **Verification:**
 - [ ] File compiles: `dotnet build src/Sharpy.Compiler`
@@ -1140,91 +1439,100 @@ private void BuildContinue(ContinueStatement stmt)
 ```csharp
 private void BuildIf(IfStatement stmt)
 {
-    // Create blocks
-    var thenBlock = CreateBlock("if_then");
     var mergeBlock = CreateBlock("if_merge");
-    
-    // Build condition test
-    var conditionBlock = _currentBlock;
-    
-    // Determine all branches
-    var branches = new List<(Expression condition, ImmutableArray<Statement> body, string label)>
+
+    // Collect all branches: if + elifs + else
+    var branches = new List<(Expression? condition, IReadOnlyList<Statement> body, string label)>
     {
-        (stmt.Test, stmt.ThenBody, "then")
+        (stmt.Test, stmt.ThenBody, "if_then")
     };
-    
-    foreach (var elif in stmt.ElifClauses)
+
+    for (int i = 0; i < stmt.ElifClauses.Length; i++)
     {
-        branches.Add((elif.Test, elif.Body, "elif"));
+        var elif = stmt.ElifClauses[i];
+        branches.Add((elif.Test, elif.Body, $"elif_{i}"));
     }
-    
-    // Build branching structure
-    BasicBlock? previousFalseTarget = null;
-    
+
+    if (stmt.ElseBody.Length > 0)
+    {
+        branches.Add((null, stmt.ElseBody, "if_else")); // null condition = unconditional else
+    }
+
+    // Process each branch
+    var currentCondBlock = _currentBlock;
+
     for (int i = 0; i < branches.Count; i++)
     {
         var (condition, body, label) = branches[i];
         var isLast = i == branches.Count - 1;
-        
-        var bodyBlock = CreateBlock($"if_{label}_{i}");
-        BasicBlock falseTarget;
-        
-        if (isLast && stmt.ElseBody.Length > 0)
+        var hasElse = stmt.ElseBody.Length > 0;
+
+        if (condition == null)
         {
-            // Has else clause
-            falseTarget = CreateBlock("if_else");
-        }
-        else if (isLast)
-        {
-            // No else - false goes to merge
-            falseTarget = mergeBlock;
-        }
-        else
-        {
-            // More elif clauses - false goes to next condition
-            falseTarget = CreateBlock($"if_elif_cond_{i + 1}");
-        }
-        
-        // Connect current condition block
-        var currentCond = previousFalseTarget ?? conditionBlock;
-        Connect(currentCond, bodyBlock, EdgeKind.ConditionalTrue);
-        Connect(currentCond, falseTarget, EdgeKind.ConditionalFalse);
-        currentCond.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, falseTarget);
-        
-        // Build body
-        _currentBlock = bodyBlock;
-        BuildStatements(body);
-        
-        // Connect body to merge (if not already terminated)
-        if (_currentBlock.Terminator == null)
-        {
-            Connect(_currentBlock, mergeBlock, EdgeKind.Unconditional);
-            _currentBlock.Terminator = new BranchTerminator(mergeBlock);
-        }
-        
-        previousFalseTarget = falseTarget == mergeBlock ? null : falseTarget;
-    }
-    
-    // Build else body if present
-    if (stmt.ElseBody.Length > 0)
-    {
-        var elseBlock = _blocks.LastOrDefault(b => b.Label == "if_else");
-        if (elseBlock != null)
-        {
-            _currentBlock = elseBlock;
-            BuildStatements(stmt.ElseBody);
-            
+            // This is the else branch - just build the body
+            _currentBlock = currentCondBlock;
+            BuildStatements(body);
+
             if (_currentBlock.Terminator == null)
             {
-                Connect(_currentBlock, mergeBlock, EdgeKind.Unconditional);
+                Connect(_currentBlock, mergeBlock);
                 _currentBlock.Terminator = new BranchTerminator(mergeBlock);
             }
         }
+        else
+        {
+            // Create block for the body
+            var bodyBlock = CreateBlock(label);
+
+            // Determine false target
+            BasicBlock falseTarget;
+            if (isLast && !hasElse)
+            {
+                // Last condition with no else - false goes to merge
+                falseTarget = mergeBlock;
+            }
+            else if (isLast && hasElse)
+            {
+                // Last condition before else - false goes to else block
+                falseTarget = CreateBlock("if_else_entry");
+            }
+            else
+            {
+                // More conditions follow - false goes to next condition block
+                falseTarget = CreateBlock($"elif_{i}_cond");
+            }
+
+            // Set up conditional branch
+            Connect(currentCondBlock, bodyBlock);
+            Connect(currentCondBlock, falseTarget);
+            currentCondBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, falseTarget);
+
+            // Build body
+            _currentBlock = bodyBlock;
+            BuildStatements(body);
+
+            if (_currentBlock.Terminator == null)
+            {
+                Connect(_currentBlock, mergeBlock);
+                _currentBlock.Terminator = new BranchTerminator(mergeBlock);
+            }
+
+            // Move to next condition block if there are more branches
+            currentCondBlock = falseTarget;
+        }
     }
-    
+
+    // If no else clause, the last false target was merge, which is correct
+    // If there was an else clause, we've already processed it above
+
     _currentBlock = mergeBlock;
 }
 ```
+
+**Design Notes:**
+- Simplified the algorithm by treating else as a branch with null condition
+- Properly handles the case where all branches return/throw (merge block may be unreachable)
+- Each branch connects to merge if it doesn't have its own terminator
 
 **Verification:**
 - [ ] File compiles: `dotnet build src/Sharpy.Compiler`
@@ -1234,6 +1542,10 @@ private void BuildIf(IfStatement stmt)
 
 **File:** Update `ControlFlowGraphBuilder.cs`
 
+**Important:** Python-style loop else semantics are complex. The else clause runs ONLY if the loop completes normally (condition becomes false), NOT if a `break` is executed. This is handled at code generation via flag variables, but for CFG analysis we model it as:
+- Loop condition false → else block (if present) → exit
+- Loop break → exit (bypassing else)
+
 - [ ] Implement `BuildWhile`:
 
 ```csharp
@@ -1242,51 +1554,62 @@ private void BuildWhile(WhileStatement stmt)
     var headerBlock = CreateBlock("while_header");
     var bodyBlock = CreateBlock("while_body");
     var exitBlock = CreateBlock("while_exit");
-    
+
     // Connect current block to header
-    Connect(_currentBlock, headerBlock, EdgeKind.Unconditional);
+    Connect(_currentBlock, headerBlock);
     _currentBlock.Terminator = new BranchTerminator(headerBlock);
-    
+
+    BasicBlock loopExitTarget;
+    BasicBlock? elseBlock = null;
+
+    if (stmt.ElseBody.Length > 0)
+    {
+        // With else clause: normal exit goes to else block, break goes to exit
+        elseBlock = CreateBlock("while_else");
+        loopExitTarget = elseBlock;
+    }
+    else
+    {
+        // No else clause: normal exit goes directly to exit
+        loopExitTarget = exitBlock;
+    }
+
     // Header: condition check
-    Connect(headerBlock, bodyBlock, EdgeKind.ConditionalTrue);
-    Connect(headerBlock, exitBlock, EdgeKind.LoopExit);
-    headerBlock.Terminator = new ConditionalBranchTerminator(stmt.Test, bodyBlock, exitBlock);
-    
+    // True → body, False → else (if present) or exit
+    Connect(headerBlock, bodyBlock);
+    Connect(headerBlock, loopExitTarget);
+    headerBlock.Terminator = new ConditionalBranchTerminator(stmt.Test, bodyBlock, loopExitTarget);
+
     // Push loop context for break/continue
-    _loopStack.Push(new LoopContext(headerBlock, exitBlock));
-    
+    // break always goes to exitBlock (bypassing else), continue goes to header
+    _loopStack.Push(new LoopContext(headerBlock, exitBlock, elseBlock));
+
     // Build body
     _currentBlock = bodyBlock;
     BuildStatements(stmt.Body);
-    
-    // Connect body back to header (if not terminated)
+
+    // Connect body back to header (if not terminated by break/return/etc.)
     if (_currentBlock.Terminator == null)
     {
-        Connect(_currentBlock, headerBlock, EdgeKind.LoopBack);
+        Connect(_currentBlock, headerBlock);
         _currentBlock.Terminator = new BranchTerminator(headerBlock);
     }
-    
+
     _loopStack.Pop();
-    
-    // Handle else clause (runs if loop completes normally)
-    if (stmt.ElseBody.Length > 0)
+
+    // Build else clause if present
+    if (elseBlock != null)
     {
-        var elseBlock = CreateBlock("while_else");
-        
-        // Reconnect header's false edge to else block
-        headerBlock.Terminator = new ConditionalBranchTerminator(stmt.Test, bodyBlock, elseBlock);
-        Connect(headerBlock, elseBlock, EdgeKind.LoopExit);
-        
         _currentBlock = elseBlock;
         BuildStatements(stmt.ElseBody);
-        
+
         if (_currentBlock.Terminator == null)
         {
-            Connect(_currentBlock, exitBlock, EdgeKind.Unconditional);
+            Connect(_currentBlock, exitBlock);
             _currentBlock.Terminator = new BranchTerminator(exitBlock);
         }
     }
-    
+
     _currentBlock = exitBlock;
 }
 ```
@@ -1296,232 +1619,224 @@ private void BuildWhile(WhileStatement stmt)
 ```csharp
 private void BuildFor(ForStatement stmt)
 {
-    // For loops have similar structure to while loops
-    // for x in iter:  becomes:  _iter = iter; while _iter.MoveNext(): x = _iter.Current
-    
+    // For loops iterate over a collection: for x in items: body
+    // The CFG models this as: header (has next?) → body → back to header
+    // We use the Iterator expression as a placeholder for the "has next" condition
+
     var headerBlock = CreateBlock("for_header");
     var bodyBlock = CreateBlock("for_body");
     var exitBlock = CreateBlock("for_exit");
-    
+
     // Connect current block to header
-    Connect(_currentBlock, headerBlock, EdgeKind.Unconditional);
+    Connect(_currentBlock, headerBlock);
     _currentBlock.Terminator = new BranchTerminator(headerBlock);
-    
-    // Header represents the "has more items?" check
-    // We use the iterator expression as a proxy for the condition
-    Connect(headerBlock, bodyBlock, EdgeKind.ConditionalTrue);
-    Connect(headerBlock, exitBlock, EdgeKind.LoopExit);
-    headerBlock.Terminator = new ConditionalBranchTerminator(stmt.Iterator, bodyBlock, exitBlock);
-    
-    // Push loop context
-    _loopStack.Push(new LoopContext(headerBlock, exitBlock));
-    
+
+    BasicBlock loopExitTarget;
+    BasicBlock? elseBlock = null;
+
+    if (stmt.ElseBody.Length > 0)
+    {
+        // With else clause: normal exit goes to else block, break goes to exit
+        elseBlock = CreateBlock("for_else");
+        loopExitTarget = elseBlock;
+    }
+    else
+    {
+        // No else clause: normal exit goes directly to exit
+        loopExitTarget = exitBlock;
+    }
+
+    // Header: "iterator has more items?" check
+    // Note: We use stmt.Iterator as the condition expression.
+    // This is a simplification - actual iteration semantics are handled at code gen.
+    Connect(headerBlock, bodyBlock);
+    Connect(headerBlock, loopExitTarget);
+    headerBlock.Terminator = new ConditionalBranchTerminator(stmt.Iterator, bodyBlock, loopExitTarget);
+
+    // Push loop context for break/continue
+    _loopStack.Push(new LoopContext(headerBlock, exitBlock, elseBlock));
+
     // Build body
     _currentBlock = bodyBlock;
     BuildStatements(stmt.Body);
-    
+
     // Connect body back to header
     if (_currentBlock.Terminator == null)
     {
-        Connect(_currentBlock, headerBlock, EdgeKind.LoopBack);
+        Connect(_currentBlock, headerBlock);
         _currentBlock.Terminator = new BranchTerminator(headerBlock);
     }
-    
+
     _loopStack.Pop();
-    
-    // Handle else clause
-    if (stmt.ElseBody.Length > 0)
+
+    // Build else clause if present
+    if (elseBlock != null)
     {
-        var elseBlock = CreateBlock("for_else");
-        headerBlock.Terminator = new ConditionalBranchTerminator(stmt.Iterator, bodyBlock, elseBlock);
-        Connect(headerBlock, elseBlock, EdgeKind.LoopExit);
-        
         _currentBlock = elseBlock;
         BuildStatements(stmt.ElseBody);
-        
+
         if (_currentBlock.Terminator == null)
         {
-            Connect(_currentBlock, exitBlock, EdgeKind.Unconditional);
+            Connect(_currentBlock, exitBlock);
             _currentBlock.Terminator = new BranchTerminator(exitBlock);
         }
     }
-    
+
     _currentBlock = exitBlock;
 }
 ```
+
+**Design Notes:**
+- The `LoopContext.Exit` field is where `break` jumps to (always bypasses else)
+- The `LoopContext.ElseBlock` field tracks whether the loop has an else clause
+- Normal loop exit (condition false, iterator exhausted) goes to else if present
+- This correctly models Python semantics where break bypasses else
 
 **Verification:**
 - [ ] File compiles: `dotnet build src/Sharpy.Compiler`
 - [ ] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
 
-### Task 3.5: Implement Try/Except Handling (Basic)
+### Task 3.5: Implement Try/Except Handling (Simplified Model)
 
 **File:** Update `ControlFlowGraphBuilder.cs`
+
+**Design Decision:** Exception flow is complex to model precisely. For the initial implementation, we use a simplified model that:
+1. Models control flow for return path analysis (all paths must return)
+2. Allows bare `raise` (re-raise) only in handlers by tracking handler context
+3. Does NOT model precise exception type routing (which handler catches what)
+
+Full exception flow modeling can be added later for more precise analysis.
 
 - [ ] Implement `BuildTry`:
 
 ```csharp
 private void BuildTry(TryStatement stmt)
 {
-    // For v0.2.x, we create a simplified model:
-    // - try body can flow to handlers or merge
-    // - handlers flow to merge
-    // - finally always runs (before merge)
-    
-    // Note: Full exception flow modeling is complex and can be enhanced later
-    // This basic model supports return path analysis and dead code detection
-    
+    // Structure:
+    // - try body: executes normally, may throw
+    // - handlers: catch exceptions (simplified - we don't model which catches what)
+    // - else: runs if try completes without exception
+    // - finally: always runs before exit
+
     var tryBlock = CreateBlock("try_body");
     var mergeBlock = CreateBlock("try_merge");
-    
+
     // Connect to try block
-    Connect(_currentBlock, tryBlock, EdgeKind.Unconditional);
+    Connect(_currentBlock, tryBlock);
     _currentBlock.Terminator = new BranchTerminator(tryBlock);
-    
+
     // Build try body
     _currentBlock = tryBlock;
     BuildStatements(stmt.Body);
-    
     var tryExitBlock = _currentBlock;
-    
+
     // Build handlers
-    var handlerBlocks = new List<BasicBlock>();
+    var handlerExitBlocks = new List<BasicBlock>();
     foreach (var handler in stmt.Handlers)
     {
-        var handlerBlock = CreateBlock($"except_{handler.ExceptionType?.ToString() ?? "all"}");
-        handlerBlocks.Add(handlerBlock);
-        
-        // Conceptually, exceptions flow from try to handlers
-        Connect(tryBlock, handlerBlock, EdgeKind.Exception);
-        
+        var typeName = handler.ExceptionType switch
+        {
+            SimpleType st => st.Name,
+            _ => "all"
+        };
+        var handlerBlock = CreateBlock($"except_{typeName}");
+
+        // Simplified: all handlers are reachable from try body (exception edges)
+        // We don't model which specific exceptions go to which handlers
+        Connect(tryBlock, handlerBlock);
+
+        // Push handler context for bare raise
+        _handlerStack.Push(handlerBlock);
+
         _currentBlock = handlerBlock;
         BuildStatements(handler.Body);
-        
-        // Handler flows to merge (or finally)
-        if (_currentBlock.Terminator == null)
-        {
-            if (stmt.FinallyBody.Length > 0)
-            {
-                // Will be connected to finally below
-            }
-            else
-            {
-                Connect(_currentBlock, mergeBlock, EdgeKind.Unconditional);
-                _currentBlock.Terminator = new BranchTerminator(mergeBlock);
-            }
-        }
+        handlerExitBlocks.Add(_currentBlock);
+
+        _handlerStack.Pop();
     }
-    
-    // Build else body (runs if no exception)
+
+    // Build else body (runs if try completes without exception)
     BasicBlock? elseExitBlock = null;
     if (stmt.ElseBody.Length > 0)
     {
         var elseBlock = CreateBlock("try_else");
-        Connect(tryExitBlock, elseBlock, EdgeKind.Unconditional);
-        
+
+        // else runs only if try completed normally (no exception)
+        if (tryExitBlock.Terminator == null)
+        {
+            Connect(tryExitBlock, elseBlock);
+            tryExitBlock.Terminator = new BranchTerminator(elseBlock);
+        }
+
         _currentBlock = elseBlock;
         BuildStatements(stmt.ElseBody);
         elseExitBlock = _currentBlock;
     }
-    
-    // Build finally body
+
+    // Build finally body (always runs)
     if (stmt.FinallyBody.Length > 0)
     {
         var finallyBlock = CreateBlock("finally");
-        
-        // Connect try exit (or else exit) to finally
+
+        // Normal path: try (or else) → finally
         var normalExit = elseExitBlock ?? tryExitBlock;
         if (normalExit.Terminator == null)
         {
-            Connect(normalExit, finallyBlock, EdgeKind.Finally);
+            Connect(normalExit, finallyBlock);
             normalExit.Terminator = new BranchTerminator(finallyBlock);
         }
-        
-        // Connect handler exits to finally
-        foreach (var handlerBlock in handlerBlocks)
+
+        // Handler paths: each handler → finally
+        foreach (var handlerExit in handlerExitBlocks)
         {
-            var handlerExit = _blocks.Last(b => b.Label.StartsWith("except_"));
             if (handlerExit.Terminator == null)
             {
-                Connect(handlerExit, finallyBlock, EdgeKind.Finally);
+                Connect(handlerExit, finallyBlock);
                 handlerExit.Terminator = new BranchTerminator(finallyBlock);
             }
         }
-        
+
         _currentBlock = finallyBlock;
         BuildStatements(stmt.FinallyBody);
-        
+
+        // finally → merge
         if (_currentBlock.Terminator == null)
         {
-            Connect(_currentBlock, mergeBlock, EdgeKind.Unconditional);
+            Connect(_currentBlock, mergeBlock);
             _currentBlock.Terminator = new BranchTerminator(mergeBlock);
         }
     }
     else
     {
-        // No finally - connect try exit to merge
+        // No finally: connect normal path to merge
         var normalExit = elseExitBlock ?? tryExitBlock;
         if (normalExit.Terminator == null)
         {
-            Connect(normalExit, mergeBlock, EdgeKind.Unconditional);
+            Connect(normalExit, mergeBlock);
             normalExit.Terminator = new BranchTerminator(mergeBlock);
         }
+
+        // Connect handler paths to merge
+        foreach (var handlerExit in handlerExitBlocks)
+        {
+            if (handlerExit.Terminator == null)
+            {
+                Connect(handlerExit, mergeBlock);
+                handlerExit.Terminator = new BranchTerminator(mergeBlock);
+            }
+        }
     }
-    
+
     _currentBlock = mergeBlock;
 }
 ```
 
-**Verification:**
-- [ ] File compiles: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
-
-### Task 3.6: Fix BasicBlock Statement Mutation Issue
-
-The current implementation has an issue with statement mutation. Let me fix that:
-
-**File:** Update `BasicBlock.cs` and `ControlFlowGraphBuilder.cs`
-
-- [ ] Update `BasicBlock.cs` to support mutable statements during construction:
-
-```csharp
-// In BasicBlock.cs, change Statements to be mutable during construction:
-
-/// <summary>
-/// The statements in this block, in execution order.
-/// </summary>
-public ImmutableArray<Statement> Statements 
-{ 
-    get => _statements.ToImmutableArray(); 
-    init => _statements = value.ToList();
-}
-private List<Statement> _statements = new();
-
-/// <summary>
-/// Add a statement to this block. Only valid during CFG construction.
-/// </summary>
-internal void AddStatement(Statement stmt)
-{
-    _statements.Add(stmt);
-}
-
-/// <summary>
-/// Seal this block, preventing further modifications.
-/// </summary>
-internal void Seal()
-{
-    // Convert to immutable - no-op currently but marks intent
-}
-```
-
-- [ ] Update `ControlFlowGraphBuilder.cs` `AddStatement`:
-
-```csharp
-private void AddStatement(Statement stmt)
-{
-    _currentBlock.AddStatement(stmt);
-}
-```
+**Design Notes:**
+- `_handlerStack` tracks whether we're inside an except handler (for bare `raise` validation)
+- Exception edges are simplified: all handlers are conceptually reachable from try body
+- The `else` clause only executes if try completes normally (no exception thrown)
+- Finally block is reached from both normal and exception paths
+- Return statements in try/handler/finally are already handled by `BuildReturn`
 
 **Verification:**
 - [ ] File compiles: `dotnet build src/Sharpy.Compiler`
@@ -2204,10 +2519,10 @@ Analysis utilities are ready for integration into validation pipeline."
 - [ ] Create CFG-based validator:
 
 ```csharp
-using System.Collections.Immutable;
 using Sharpy.Compiler.Analysis.ControlFlow;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -2215,106 +2530,125 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// Control flow validator using CFG analysis.
 /// Provides more accurate analysis than the AST-walking V2 validator.
 /// </summary>
-public class ControlFlowValidatorV3 : ISemanticValidator
+/// <remarks>
+/// This validator is OPTIONAL and behind a feature flag. It provides more
+/// accurate analysis but has higher overhead than V2. Use for:
+/// - Development/CI where accuracy matters more than speed
+/// - Debugging complex control flow issues
+/// </remarks>
+public class ControlFlowValidatorV3 : SemanticValidatorBase
 {
-    public string Name => "ControlFlowV3";
-    public int Order => 500; // After type checking
-    
+    public override string Name => "ControlFlowV3";
+    public override int Order => 400; // Same slot as V2 - use one or the other
+
     private readonly ControlFlowGraphBuilder _cfgBuilder = new();
-    
-    public void Validate(Module module, SemanticContext context)
+    private SemanticContext _context = null!;
+    private ICompilerLogger _logger = NullLogger.Instance;
+
+    public override void Validate(Module module, SemanticContext context)
     {
+        _context = context;
+        _logger = context.Logger;
+        _logger.LogDebug("Starting CFG-based control flow validation");
+
         foreach (var stmt in module.Body)
         {
-            ValidateStatement(stmt, context);
+            ValidateTopLevelStatement(stmt);
         }
     }
-    
-    private void ValidateStatement(Statement stmt, SemanticContext context)
+
+    private void ValidateTopLevelStatement(Statement stmt)
     {
         switch (stmt)
         {
             case FunctionDef func:
-                ValidateFunction(func, context);
+                ValidateFunction(func);
                 break;
-                
+
             case ClassDef cls:
                 foreach (var member in cls.Body)
-                    ValidateStatement(member, context);
+                    if (member is FunctionDef method)
+                        ValidateFunction(method);
                 break;
-                
+
             case StructDef str:
                 foreach (var member in str.Body)
-                    ValidateStatement(member, context);
+                    if (member is FunctionDef method)
+                        ValidateFunction(method);
                 break;
         }
     }
-    
-    private void ValidateFunction(FunctionDef func, SemanticContext context)
+
+    private void ValidateFunction(FunctionDef func)
     {
+        _logger.LogDebug($"Building CFG for function: {func.Name}");
+
         // Skip abstract/interface methods
         if (func.Decorators.Any(d => d.Name == "abstract"))
             return;
-            
+
+        // Skip stub bodies (ellipsis only)
         if (func.Body.Length == 1 && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral })
             return;
-        
+
         // Build CFG
         var cfg = _cfgBuilder.Build(func);
-        
-        // Check for unreachable code
-        var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
-        foreach (var info in unreachable)
+
+        // 1. Check for unreachable code
+        var unreachableBlocks = cfg.FindUnreachableBlocks();
+        foreach (var block in unreachableBlocks)
         {
-            context.Diagnostics.Add(new Diagnostic(
-                DiagnosticSeverity.Warning,
-                "SHP0301",
-                "Unreachable code detected",
-                info.FirstUnreachableStatement.LineStart,
-                info.FirstUnreachableStatement.ColumnStart
-            ));
-        }
-        
-        // Check return paths (if function has return type)
-        var returnType = GetFunctionReturnType(func, context);
-        if (returnType != null && returnType != SemanticType.Void)
-        {
-            var missingReturns = ControlFlowAnalysis.FindMissingReturnPaths(cfg);
-            if (missingReturns.Length > 0)
+            if (block.Statements.Count > 0)
             {
-                context.Diagnostics.Add(new Diagnostic(
-                    DiagnosticSeverity.Error,
-                    "SHP0302",
-                    $"Function '{func.Name}' must return a value of type '{returnType.GetDisplayName()}' in all code paths",
-                    func.LineStart,
-                    func.ColumnStart
-                ));
+                var firstStmt = block.Statements[0];
+                AddWarning(_context, "Unreachable code detected",
+                    firstStmt.LineStart, firstStmt.ColumnStart);
             }
         }
-        
-        // Validate loop control flow
+
+        // 2. Check return paths (if function has return type)
+        var returnType = GetFunctionReturnType(func);
+        if (returnType != SemanticType.Void)
+        {
+            var missingReturnBlocks = ControlFlowAnalysis.FindMissingReturnPaths(cfg);
+            if (missingReturnBlocks.Length > 0)
+            {
+                AddError(_context,
+                    $"Function '{func.Name}' must return a value of type '{returnType.GetDisplayName()}' in all code paths",
+                    func.LineStart, func.ColumnStart);
+            }
+        }
+
+        // 3. Validate loop control flow (break/continue outside loops)
         var loopErrors = ControlFlowAnalysis.ValidateLoopControlFlow(cfg);
         foreach (var error in loopErrors)
         {
-            context.Diagnostics.Add(new Diagnostic(
-                DiagnosticSeverity.Error,
-                "SHP0303",
-                error.Message,
-                error.Statement.LineStart,
-                error.Statement.ColumnStart
-            ));
+            AddError(_context, error.Message,
+                error.Statement.LineStart, error.Statement.ColumnStart);
         }
     }
-    
-    private SemanticType? GetFunctionReturnType(FunctionDef func, SemanticContext context)
+
+    private SemanticType GetFunctionReturnType(FunctionDef func)
     {
         if (func.ReturnType == null)
             return SemanticType.Void;
-            
-        return context.TypeResolver.ResolveType(func.ReturnType, context.SymbolTable.CurrentScope);
+
+        // Try cached type first
+        var cachedType = _context.SemanticInfo.GetTypeAnnotation(func.ReturnType);
+        if (cachedType != null)
+            return cachedType;
+
+        // Fall back to resolving
+        return _context.TypeResolver.ResolveTypeAnnotation(func.ReturnType);
     }
 }
 ```
+
+**Design Notes:**
+- Inherits from `SemanticValidatorBase` like other V2 validators (provides `AddError`, `AddWarning` helpers)
+- Uses same `Order` (400) as V2 - should NOT run both validators on same module
+- Uses existing `SemanticInfo.GetTypeAnnotation` and `TypeResolver.ResolveTypeAnnotation` APIs
+- Logs CFG building for debugging
 
 **Verification:**
 - [ ] File compiles: `dotnet build src/Sharpy.Compiler`
