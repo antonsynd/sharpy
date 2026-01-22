@@ -596,8 +596,8 @@ This is implemented via the `LoopContext` which tracks both the loop exit and el
 
 **File:** `src/Sharpy.Compiler.Tests/Analysis/ControlFlow/ControlFlowTestHelpers.cs`
 
-- [ ] Create directory: `src/Sharpy.Compiler.Tests/Analysis/ControlFlow/`
-- [ ] Create `ControlFlowTestHelpers.cs`:
+- [x] Create directory: `src/Sharpy.Compiler.Tests/Analysis/ControlFlow/`
+- [x] Create `ControlFlowTestHelpers.cs`:
 
 ```csharp
 using System.Collections.Immutable;
@@ -742,13 +742,13 @@ public static class ControlFlowTestHelpers
 - Added helper methods for common test constructs
 
 **Verification:**
-- [ ] File compiles: `dotnet build src/Sharpy.Compiler.Tests`
+- [x] File compiles: `dotnet build src/Sharpy.Compiler.Tests`
 
 ### Task 2.2: Create BasicBlock Tests
 
 **File:** `src/Sharpy.Compiler.Tests/Analysis/ControlFlow/BasicBlockTests.cs`
 
-- [ ] Create `BasicBlockTests.cs`:
+- [x] Create `BasicBlockTests.cs`:
 
 ```csharp
 using Xunit;
@@ -853,7 +853,7 @@ public class BasicBlockTests
 
 **File:** `src/Sharpy.Compiler.Tests/Analysis/ControlFlow/ControlFlowGraphTests.cs`
 
-- [ ] Create `ControlFlowGraphTests.cs`:
+- [x] Create `ControlFlowGraphTests.cs`:
 
 ```csharp
 using Xunit;
@@ -1003,7 +1003,7 @@ public class ControlFlowGraphTests
 
 **File:** `src/Sharpy.Compiler.Tests/Analysis/ControlFlow/BlockTerminatorTests.cs`
 
-- [ ] Create `BlockTerminatorTests.cs`:
+- [x] Create `BlockTerminatorTests.cs`:
 
 ```csharp
 using Xunit;
@@ -1062,8 +1062,8 @@ public class BlockTerminatorTests
 ```
 
 **Verification:**
-- [ ] All new tests pass: `dotnet test src/Sharpy.Compiler.Tests --filter "FullyQualifiedName~ControlFlow"`
-- [ ] All existing tests still pass: `dotnet test src/Sharpy.Compiler.Tests`
+- [x] All new tests pass: `dotnet test src/Sharpy.Compiler.Tests --filter "FullyQualifiedName~ControlFlow"`
+- [x] All existing tests still pass: `dotnet test src/Sharpy.Compiler.Tests`
 
 ### 🔖 COMMIT POINT 2
 
