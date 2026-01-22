@@ -19,9 +19,27 @@
 
 The current compiler has three gaps in cross-module inheritance:
 
-1. **NameResolver instance isolation**: Each file gets a new `NameResolver`, so `_classDefs`, `_structDefs`, `_interfaceDefs` are cleared between files
-2. **Imported types not in inheritance resolution**: `ImportResolver` adds symbols to SymbolTable but not to NameResolver's type lists
-3. **.NET base class inheritance**: Inheriting from .NET types (e.g., `System.Exception`) may not work correctly
+1. **NameResolver instance isolation**: ~~Each file gets a new `NameResolver`, so `_classDefs`, `_structDefs`, `_interfaceDefs` are cleared between files~~ **ALREADY FIXED** - `ProjectCompiler` uses a single `NameResolver` instance with `SetCurrentFilePath()`
+2. **Imported types not in inheritance resolution**: ~~`ImportResolver` adds symbols to SymbolTable but not to NameResolver's type lists~~ **ALREADY FIXED** - cross-module Sharpy type inheritance works
+3. **.NET base class inheritance**: Inheriting from .NET types (e.g., `System.Exception`) **DOES NOT WORK** - ImportResolver doesn't register .NET types for inheritance resolution
+
+**Status Update (2026-01-21):** Issues 1 and 2 have already been fixed in the current implementation. Only issue 3 (.NET base class inheritance) remains to be fixed.
+
+### Root Cause Analysis (Issue 3)
+
+The compilation phases are ordered as:
+1. **Phase 2**: CollectTypeDeclarations - parses `.spy` files and collects type definitions
+2. **Phase 2b**: ResolveInheritance - resolves base classes/interfaces using types in symbol table
+3. **Phase 3**: ResolveImports - processes import statements including .NET modules
+
+The problem is that **inheritance resolution (Phase 2b) happens BEFORE import resolution (Phase 3)**.
+When `from system import Exception` is processed in Phase 3, the inheritance resolution has already
+completed in Phase 2b and reported "Base type 'Exception' not found".
+
+**Fix approach**: Either:
+1. Run Phase 3 before Phase 2b (but this risks circular import issues)
+2. Add a "pre-import" phase that registers .NET types before inheritance resolution
+3. Re-run inheritance resolution after imports are resolved (simpler but less elegant)
 
 ---
 
