@@ -1866,7 +1866,7 @@ All existing tests pass. CFG builder is ready for integration testing."
 
 **File:** `src/Sharpy.Compiler.Tests/Analysis/ControlFlow/ControlFlowGraphBuilderTests.cs`
 
-- [ ] Create comprehensive tests:
+- [x] Create comprehensive tests:
 
 ```csharp
 using System.Collections.Immutable;
