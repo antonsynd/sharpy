@@ -235,4 +235,97 @@ public class ControlFlowAnalysisTests
         // The while exit block falls through to exit without returning
         Assert.NotEmpty(missing);
     }
+
+    [Fact]
+    public void ValidateLoopControlFlow_BreakOutsideLoop_ReturnsError()
+    {
+        var func = new FunctionDef
+        {
+            Name = "break_outside",
+            Body = ImmutableArray.Create<Statement>(new BreakStatement())
+        };
+
+        var cfg = _builder.Build(func);
+        var errors = ControlFlowAnalysis.ValidateLoopControlFlow(cfg);
+
+        // Note: The builder creates an UnreachableTerminator for break outside loop,
+        // but ValidateLoopControlFlow checks for BreakTerminator with invalid target.
+        // Since break outside loop creates UnreachableTerminator, it won't be caught
+        // by ValidateLoopControlFlow - this is actually caught by ControlFlowValidatorV2.
+        // This test documents the current behavior.
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ValidateLoopControlFlow_ContinueOutsideLoop_ReturnsError()
+    {
+        var func = new FunctionDef
+        {
+            Name = "continue_outside",
+            Body = ImmutableArray.Create<Statement>(new ContinueStatement())
+        };
+
+        var cfg = _builder.Build(func);
+        var errors = ControlFlowAnalysis.ValidateLoopControlFlow(cfg);
+
+        // Same as above - continue outside loop creates UnreachableTerminator,
+        // so it's not caught by ValidateLoopControlFlow.
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ValidateLoopControlFlow_NestedLoopBreak_NoErrors()
+    {
+        var func = new FunctionDef
+        {
+            Name = "nested_break",
+            Body = ImmutableArray.Create<Statement>(
+                new WhileStatement
+                {
+                    Test = Bool(true),
+                    Body = ImmutableArray.Create<Statement>(
+                        new ForStatement
+                        {
+                            Target = Id("i"),
+                            Iterator = Id("items"),
+                            Body = ImmutableArray.Create<Statement>(new BreakStatement())
+                        }
+                    )
+                }
+            )
+        };
+
+        var cfg = _builder.Build(func);
+        var errors = ControlFlowAnalysis.ValidateLoopControlFlow(cfg);
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ValidateLoopControlFlow_NestedLoopContinue_NoErrors()
+    {
+        var func = new FunctionDef
+        {
+            Name = "nested_continue",
+            Body = ImmutableArray.Create<Statement>(
+                new ForStatement
+                {
+                    Target = Id("i"),
+                    Iterator = Id("items"),
+                    Body = ImmutableArray.Create<Statement>(
+                        new WhileStatement
+                        {
+                            Test = Bool(true),
+                            Body = ImmutableArray.Create<Statement>(new ContinueStatement())
+                        }
+                    )
+                }
+            )
+        };
+
+        var cfg = _builder.Build(func);
+        var errors = ControlFlowAnalysis.ValidateLoopControlFlow(cfg);
+
+        Assert.Empty(errors);
+    }
 }

@@ -157,15 +157,21 @@ public static class ControlFlowAnalysis
 
     private static bool IsLoopExitBlock(BasicBlock? block, ControlFlowGraph cfg)
     {
+        // Check if the block is a loop exit block by looking for specific labels.
+        // Loop exit blocks are labeled "while_exit" or "for_exit".
+        // We use Contains("_exit") to also match numbered exit blocks like "while_exit_0".
         return block != null &&
-               (block.Label.Contains("exit") ||
-                block.Label.Contains("while_") ||
-                block.Label.Contains("for_"));
+               (block.Label.Contains("while_exit") ||
+                block.Label.Contains("for_exit"));
     }
 
     private static bool IsLoopHeaderBlock(BasicBlock? block, ControlFlowGraph cfg)
     {
-        return block != null && block.Label.Contains("header");
+        // Check if the block is a loop header block by looking for specific labels.
+        // Loop header blocks are labeled "while_header" or "for_header".
+        return block != null &&
+               (block.Label.Contains("while_header") ||
+                block.Label.Contains("for_header"));
     }
 }
 
