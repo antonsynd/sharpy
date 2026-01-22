@@ -1,5 +1,16 @@
 # Task List: Immutable AST Foundation (Recommendation #7)
 
+## Status: Phase 1-4.1 Complete ✅
+
+**Completed**: January 2026
+**Phases Complete**: 1, 2, 3, 4.1, 6
+**Phases Deferred**: 4.2 (Symbol semantic data), 5 (Symbol ImmutableArray)
+
+The core AST migration is complete. All AST nodes use record types with ImmutableArray.
+Deferred phases can be completed when LSP or parallel compilation features require full immutability.
+
+---
+
 ## Overview
 
 This document provides a comprehensive, step-by-step task list for implementing Recommendation #7 from the Architecture Review: **Immutable AST and Semantic Model**. The goal is to migrate the AST from mutable `List<T>` properties to immutable `ImmutableArray<T>`, ensure all AST nodes use `init`-only setters, and establish clear separation between syntax (AST) and semantic binding.
