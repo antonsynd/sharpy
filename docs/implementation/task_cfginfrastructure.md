@@ -1089,7 +1089,7 @@ All tests pass. No behavioral changes to existing code."
 
 **File:** `src/Sharpy.Compiler/Analysis/ControlFlow/ControlFlowGraphBuilder.cs`
 
-- [ ] Create `ControlFlowGraphBuilder.cs` with initial structure:
+- [x] Create `ControlFlowGraphBuilder.cs` with initial structure:
 
 ```csharp
 using System.Collections.Immutable;
@@ -1304,7 +1304,7 @@ public class ControlFlowGraphBuilder
 
 **File:** Update `ControlFlowGraphBuilder.cs`
 
-- [ ] Implement `BuildReturn`:
+- [x] Implement `BuildReturn`:
 
 ```csharp
 private void BuildReturn(ReturnStatement stmt)
@@ -1318,7 +1318,7 @@ private void BuildReturn(ReturnStatement stmt)
 }
 ```
 
-- [ ] Implement `BuildRaise`:
+- [x] Implement `BuildRaise`:
 
 ```csharp
 private void BuildRaise(RaiseStatement stmt)
@@ -1347,7 +1347,7 @@ private void BuildRaise(RaiseStatement stmt)
 }
 ```
 
-- [ ] Implement `BuildBreak`:
+- [x] Implement `BuildBreak`:
 
 ```csharp
 private void BuildBreak(BreakStatement stmt)
@@ -1371,7 +1371,7 @@ private void BuildBreak(BreakStatement stmt)
 }
 ```
 
-- [ ] Implement `BuildBreakWithFlag`:
+- [x] Implement `BuildBreakWithFlag`:
 
 ```csharp
 private void BuildBreakWithFlag(BreakWithFlagStatement stmt)
@@ -1398,7 +1398,7 @@ private void BuildBreakWithFlag(BreakWithFlagStatement stmt)
 }
 ```
 
-- [ ] Implement `BuildContinue`:
+- [x] Implement `BuildContinue`:
 
 ```csharp
 private void BuildContinue(ContinueStatement stmt)
@@ -1434,7 +1434,7 @@ private void BuildContinue(ContinueStatement stmt)
 
 **File:** Update `ControlFlowGraphBuilder.cs`
 
-- [ ] Implement `BuildIf`:
+- [x] Implement `BuildIf`:
 
 ```csharp
 private void BuildIf(IfStatement stmt)
@@ -1546,7 +1546,7 @@ private void BuildIf(IfStatement stmt)
 - Loop condition false → else block (if present) → exit
 - Loop break → exit (bypassing else)
 
-- [ ] Implement `BuildWhile`:
+- [x] Implement `BuildWhile`:
 
 ```csharp
 private void BuildWhile(WhileStatement stmt)
@@ -1614,7 +1614,7 @@ private void BuildWhile(WhileStatement stmt)
 }
 ```
 
-- [ ] Implement `BuildFor`:
+- [x] Implement `BuildFor`:
 
 ```csharp
 private void BuildFor(ForStatement stmt)
@@ -1707,7 +1707,7 @@ private void BuildFor(ForStatement stmt)
 
 Full exception flow modeling can be added later for more precise analysis.
 
-- [ ] Implement `BuildTry`:
+- [x] Implement `BuildTry`:
 
 ```csharp
 private void BuildTry(TryStatement stmt)
