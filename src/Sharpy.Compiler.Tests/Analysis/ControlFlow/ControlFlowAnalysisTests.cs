@@ -163,7 +163,7 @@ public class ControlFlowAnalysisTests
             Name = "void_func",
             Body = ImmutableArray.Create<Statement>(
                 Pass()
-                // No return - this is OK for void functions but our analysis flags it
+            // No return - this is OK for void functions but our analysis flags it
             )
         };
 
