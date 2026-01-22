@@ -542,6 +542,133 @@ public class ControlFlowGraphBuilderTests
 
     #endregion
 
+    #region Complex Control Flow
+
+    [Fact]
+    public void Build_IfElifElse_AllBranchesConnectToMerge()
+    {
+        var func = CreateFunction("if_elif_else", ImmutableArray.Create<Statement>(
+            new IfStatement
+            {
+                Test = Bool(true),
+                ThenBody = ImmutableArray.Create<Statement>(Pass()),
+                ElifClauses = ImmutableArray.Create(
+                    new ElifClause
+                    {
+                        Test = Bool(false),
+                        Body = ImmutableArray.Create<Statement>(Pass())
+                    },
+                    new ElifClause
+                    {
+                        Test = Bool(false),
+                        Body = ImmutableArray.Create<Statement>(Pass())
+                    }
+                ),
+                ElseBody = ImmutableArray.Create<Statement>(Pass())
+            }
+        ));
+
+        var cfg = _builder.Build(func);
+
+        // Should have conditional branches for if + 2 elifs = 3
+        var condBlocks = cfg.Blocks.Where(b => b.Terminator is ConditionalBranchTerminator).ToList();
+        Assert.True(condBlocks.Count >= 3);
+
+        // All blocks should be reachable
+        var unreachable = cfg.FindUnreachableBlocks();
+        Assert.Empty(unreachable);
+    }
+
+    [Fact]
+    public void Build_TryExceptElseFinally_AllPathsConnected()
+    {
+        var func = CreateFunction("try_full", ImmutableArray.Create<Statement>(
+            new TryStatement
+            {
+                Body = ImmutableArray.Create<Statement>(Pass()),
+                Handlers = ImmutableArray.Create(new ExceptHandler
+                {
+                    ExceptionType = new TypeAnnotation { Name = "Exception" },
+                    Body = ImmutableArray.Create<Statement>(Pass())
+                }),
+                ElseBody = ImmutableArray.Create<Statement>(Pass()),
+                FinallyBody = ImmutableArray.Create<Statement>(Pass())
+            }
+        ));
+
+        var cfg = _builder.Build(func);
+
+        // Should have try, except, else, finally, and merge blocks
+        Assert.NotNull(cfg.Blocks.FirstOrDefault(b => b.Label.Contains("try")));
+        Assert.NotNull(cfg.Blocks.FirstOrDefault(b => b.Label.Contains("except")));
+        Assert.NotNull(cfg.Blocks.FirstOrDefault(b => b.Label.Contains("else")));
+        Assert.NotNull(cfg.Blocks.FirstOrDefault(b => b.Label.Contains("finally")));
+
+        // All blocks should be reachable
+        var unreachable = cfg.FindUnreachableBlocks();
+        Assert.Empty(unreachable);
+    }
+
+    [Fact]
+    public void Build_WhileBreakElse_BreakBypassesElse()
+    {
+        // In Python, break bypasses the else clause
+        var func = CreateFunction("while_break_else", ImmutableArray.Create<Statement>(
+            new WhileStatement
+            {
+                Test = Bool(true),
+                Body = ImmutableArray.Create<Statement>(
+                    new IfStatement
+                    {
+                        Test = Bool(true),
+                        ThenBody = ImmutableArray.Create<Statement>(new BreakStatement())
+                    }
+                ),
+                ElseBody = ImmutableArray.Create<Statement>(Pass())
+            }
+        ));
+
+        var cfg = _builder.Build(func);
+
+        // Break should target while_exit, not while_else
+        var breakBlock = cfg.Blocks.FirstOrDefault(b => b.Terminator is BreakTerminator);
+        Assert.NotNull(breakBlock);
+
+        var breakTerm = (BreakTerminator)breakBlock!.Terminator!;
+        Assert.Contains("while_exit", breakTerm.Target.Label);
+        Assert.DoesNotContain("while_else", breakTerm.Target.Label);
+    }
+
+    [Fact]
+    public void Build_MultipleReturnsInIf_AllConnectToExit()
+    {
+        var func = CreateFunction("multi_return", ImmutableArray.Create<Statement>(
+            new IfStatement
+            {
+                Test = Bool(true),
+                ThenBody = ImmutableArray.Create<Statement>(
+                    new ReturnStatement { Value = Int(1) }
+                ),
+                ElseBody = ImmutableArray.Create<Statement>(
+                    new ReturnStatement { Value = Int(2) }
+                )
+            }
+        ));
+
+        var cfg = _builder.Build(func);
+
+        // Both return blocks should connect to exit
+        var returnBlocks = cfg.Blocks.Where(b => b.Terminator is ReturnTerminator).ToList();
+        Assert.Equal(2, returnBlocks.Count);
+
+        foreach (var block in returnBlocks)
+        {
+            Assert.Contains(cfg.Exit, block.Successors);
+        }
+    }
+
+    #endregion
+
     #region Helpers
 
     private static FunctionDef CreateFunction(string name, ImmutableArray<Statement> body)
