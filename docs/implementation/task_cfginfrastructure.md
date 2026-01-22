@@ -2716,7 +2716,7 @@ Existing V2 validator unchanged. All tests pass."
 
 **File:** `src/Sharpy.Compiler/Analysis/ControlFlow/README.md`
 
-- [ ] Create documentation:
+- [x] Create documentation:
 
 ```markdown
 # Control Flow Graph (CFG) Infrastructure
@@ -2802,7 +2802,7 @@ foreach (var info in unreachable)
 
 **File:** Update `docs/implementation/architecture_status.md` (or create if doesn't exist)
 
-- [ ] Document CFG implementation status:
+- [x] Document CFG implementation status:
 
 ```markdown
 ## Recommendation #9: Control Flow Graph Infrastructure
@@ -2837,9 +2837,9 @@ foreach (var info in unreachable)
 
 ### Task 7.3: Verify All Tests Pass
 
-- [ ] Run full test suite: `dotnet test src/Sharpy.Compiler.Tests`
-- [ ] Verify no test regressions from baseline
-- [ ] Run any integration tests if available
+- [x] Run full test suite: `dotnet test src/Sharpy.Compiler.Tests`
+- [x] Verify no test regressions from baseline
+- [x] Run any integration tests if available
 
 ### 🔖 FINAL COMMIT
 
