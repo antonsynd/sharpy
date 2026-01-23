@@ -14,15 +14,6 @@ public partial class TypeChecker
     private readonly SemanticInfo _semanticInfo;
     private readonly TypeResolver _typeResolver;
 
-    // DEPRECATED: Legacy validators are kept for type inference during type checking.
-    // Error reporting has been migrated to V2 pipeline validators.
-    // Once TypeInferenceService covers all type inference, these can be removed.
-    private readonly ControlFlowValidator _controlFlowValidator;
-    private readonly AccessValidator _accessValidator;
-    private readonly OperatorValidator _operatorValidator;
-    private readonly ProtocolValidator _protocolValidator;
-    private readonly DefaultParameterValidator _defaultParameterValidator;
-
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
 
@@ -71,18 +62,10 @@ public partial class TypeChecker
         _logger = logger ?? NullLogger.Instance;
         _validationPipeline = validationPipeline ?? ValidationPipelineFactory.CreateDefault(logger);
 
-        _controlFlowValidator = new ControlFlowValidator(_logger);
-        _accessValidator = new AccessValidator(_symbolTable, _semanticInfo, _logger);
-
-        // Create shared CLR member cache for efficient reflection caching across validators
+        // Create shared CLR member cache for efficient reflection caching
         var sharedClrCache = new ClrMemberCache();
 
-        _protocolValidator = new ProtocolValidator(_symbolTable, _logger, sharedClrCache);
-        // Pass ProtocolValidator to OperatorValidator for 'in' operator membership checking
-        _operatorValidator = new OperatorValidator(_symbolTable, _logger, _protocolValidator, sharedClrCache);
-        _defaultParameterValidator = new DefaultParameterValidator(_symbolTable, _typeResolver, _logger);
-
-        // Initialize type inference service (uses same CLR cache)
+        // Initialize type inference service for inferring result types during type checking
         _typeInference = new TypeInferenceService(_symbolTable, sharedClrCache);
     }
 

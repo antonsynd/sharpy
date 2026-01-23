@@ -213,8 +213,7 @@ public partial class TypeChecker
             }
         }
 
-        // Validate default parameter values (compile-time constants, no mutable defaults, None for nullable types only)
-        _defaultParameterValidator.ValidateFunctionDefaults(functionDef);
+        // Default parameter validation is handled by DefaultParameterValidatorV2 in the validation pipeline
 
         // Register parameters in scope and update the function symbol's parameter types
         for (int i = 0; i < functionDef.Parameters.Length; i++)
@@ -278,8 +277,8 @@ public partial class TypeChecker
             CheckStatement(statement);
         }
 
-        // Validate control flow
-        _controlFlowValidator.ValidateFunction(functionDef, returnType);
+        // Control flow validation (break/continue, unreachable code, missing return)
+        // is handled by ControlFlowValidatorV2 in the validation pipeline
 
         // Restore previous method context
         _currentMethodName = previousMethodName;
@@ -340,10 +339,9 @@ public partial class TypeChecker
             }
         }
 
-        // Set current class for method type checking and access validation
+        // Set current class for method type checking (used for self parameter typing)
         var previousClass = _currentClass;
         _currentClass = classSymbol;
-        _accessValidator.EnterClass(classSymbol);
 
         // Check all members
         foreach (var statement in classDef.Body)
@@ -362,7 +360,7 @@ public partial class TypeChecker
 
         // Restore previous class
         _currentClass = previousClass;
-        _accessValidator.ExitClass();
+        // Access validation is handled by AccessValidatorV2 in the validation pipeline
 
         _symbolTable.ExitScope();
     }
@@ -415,10 +413,9 @@ public partial class TypeChecker
             }
         }
 
-        // Set current class for method type checking (structs behave like classes)
+        // Set current class for method type checking (structs behave like classes for self parameter)
         var previousClass = _currentClass;
         _currentClass = structSymbol;
-        _accessValidator.EnterClass(structSymbol);
 
         // Check all members
         foreach (var statement in structDef.Body)
@@ -434,7 +431,7 @@ public partial class TypeChecker
 
         // Restore previous class
         _currentClass = previousClass;
-        _accessValidator.ExitClass();
+        // Access validation is handled by AccessValidatorV2 in the validation pipeline
 
         _symbolTable.ExitScope();
     }
