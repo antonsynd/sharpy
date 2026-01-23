@@ -252,7 +252,7 @@ For each completed task doc, add a header:
 - `task_immutable_ast_foundation.md` - Mark mostly complete
 
 **Verification:**
-- [ ] Completed tasks marked
+- [x] Completed tasks marked (files don't exist; README already tracks completed tasks)
 
 **Commit:** `docs: Mark completed task documents`
 
