@@ -117,4 +117,4 @@ $"return {value};"
 
 ## CI/CD
 
-`.github/workflows/`: `dotnet10.yml` (tests on .NET 10).
+`.github/workflows/`: `dotnet9.yml` (tests on .NET 9), `dotnet10.yml` (tests on .NET 10).

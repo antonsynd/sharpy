@@ -40,13 +40,16 @@ Each command is a Markdown file that:
 
 ## Creating New Commands
 
-1. Create a new `.md` file in this directory
+1. Create a new `.md` file in this directory (filename becomes command name)
 2. Use `$ARGUMENTS` where user input should go
 3. Include relevant patterns and guidance
 4. Test by invoking `/project:your-command`
 
 ## Related Resources
 
-- **Specialized agents**: `.github/agents/` (domain-specific guidance)
-- **Contribution guides**: `.github/instructions/` (per-directory guidance)
-- **Language spec**: `docs/language_specification/` (feature specifications)
+- **CLAUDE.md**: `CLAUDE.md` (quick reference for Claude Code)
+- **Specialized agents**: `.github/agents/` (20 domain-specific agents)
+- **Agent registry**: `.github/agents.md` (agent quick reference)
+- **Contribution guides**: `.github/instructions/` (per-component guides)
+- **Language spec**: `docs/language_specification/` (authoritative specs)
+- **Architecture**: `.github/copilot-instructions.md` (full architecture and patterns)

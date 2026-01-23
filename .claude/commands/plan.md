@@ -23,6 +23,7 @@ Identify which compiler components need changes:
 | Lexer | New tokens? | Low/Med/High | |
 | Parser | New AST nodes? | Low/Med/High | |
 | Semantic | Type rules? | Low/Med/High | |
+| Validation | Validators? | Low/Med/High | |
 | CodeGen | C# emission? | Low/Med/High | |
 | Core Library | Runtime support? | Low/Med/High | |
 | Tests | Coverage needed | Low/Med/High | |
@@ -30,7 +31,7 @@ Identify which compiler components need changes:
 ### 3. Dependency Graph
 
 ```
-Lexer → Parser → Semantic → CodeGen → Integration Tests
+Lexer → Parser → Semantic → Validation → CodeGen → Integration Tests
 ```
 
 ### 4. Create Phased Plan
@@ -47,10 +48,13 @@ Lexer → Parser → Semantic → CodeGen → Integration Tests
 ## Phase 3: Semantic Analysis
 - [ ] Task 1
 
-## Phase 4: Code Generation
+## Phase 4: Validation (if needed)
 - [ ] Task 1
 
-## Phase 5: Testing
+## Phase 5: Code Generation
+- [ ] Task 1
+
+## Phase 6: Testing
 - [ ] Unit tests per component
 - [ ] Integration tests
 - [ ] File-based test fixtures

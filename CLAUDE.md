@@ -12,17 +12,23 @@ dotnet test                                          # Run all tests
 dotnet format whitespace                             # Format before committing
 dotnet run --project src/Sharpy.Cli -- run file.spy # Compile and execute
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C#
+dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Inspect parsed AST
+dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect lexer tokens
 ```
 
 ## Architecture
 
 ```
-Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → RoslynEmitter → C# → .NET IL
+Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline → RoslynEmitter → C# → .NET IL
 ```
 
-- **Compiler**: `src/Sharpy.Compiler/` (Lexer, Parser, Semantic, CodeGen)
-- **Stdlib**: `src/Sharpy.Core/` (partial class pattern in `Partial.{Type}/`)
-- **CLI**: `src/Sharpy.Cli/`
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| Compiler | `src/Sharpy.Compiler/` | Lexer, Parser, Semantic, CodeGen |
+| Stdlib | `src/Sharpy.Core/` | Runtime library (partial class pattern in `Partial.{Type}/`) |
+| CLI | `src/Sharpy.Cli/` | Command-line interface (`sharpyc`) |
+| Tests | `src/*.Tests/` | Unit and integration tests |
+| Specs | `docs/language_specification/` | Authoritative language specification |
 
 ## Critical Rules
 
@@ -30,6 +36,7 @@ Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → RoslynEmitter
 2. **RoslynEmitter uses SyntaxFactory exclusively** — no string templating
 3. **Immutable AST** — annotations go in `SemanticInfo`, not AST nodes
 4. **Axiom precedence**: .NET > Type Safety > Python Syntax
+5. **C# 9.0 target** — no global usings, file-scoped namespaces, or record structs
 
 ## Custom Slash Commands
 
@@ -45,11 +52,41 @@ Available in `.claude/commands/`:
 | `/project:verify-python <expr>` | Verify Python behavior |
 | `/project:fix-issue <issue>` | Diagnose and fix a GitHub issue |
 | `/project:add-test-fixture <desc>` | Create file-based test |
+| `/project:check-axioms <decision>` | Verify axiom compliance |
 
 ## Specialized Agents
 
-Domain-specific guidance in `.github/agents/`:
+Domain-specific guidance in `.github/agents/` (20 agents total):
 
-- **Compiler**: `lexer-expert`, `parser-expert`, `semantic-expert`, `codegen-expert`
-- **Core**: `implementer`, `code-reviewer`, `task-planner`, `test-expert`
-- **Axiom Guardians**: `net-axiom-guardian`, `python-axiom-guardian`, `type-safety-guardian`, `axiom-arbiter`
+**Implementation Agents:**
+- `implementer` — Full implementation + PRs
+- `task-planner` — Task decomposition (read-only)
+- `code-reviewer` — PR review (read-only)
+- `test-expert` — Testing (`*Tests/` edits)
+
+**Compiler Component Experts:**
+- `lexer-expert`, `parser-expert`, `semantic-expert`, `codegen-expert`
+- `core-library-expert`, `cli-expert`
+
+**Axiom Guardians (Advisory, Read-Only):**
+- `net-axiom-guardian` — .NET/C# 9.0 compatibility
+- `python-axiom-guardian` — Python syntax fidelity
+- `type-safety-guardian` — Static typing, null safety
+- `axiom-arbiter` — Conflict resolution
+- `unity-compatibility-guardian`, `design-philosophy-guardian`
+
+**Verification Agents (Read-Only):**
+- `verification-expert`, `spec-adherence`, `hallucination-defense`, `documentation-sync`
+
+## Testing
+
+```bash
+dotnet test --filter "FullyQualifiedName~Lexer"            # By component
+dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"  # File-based tests
+dotnet test --filter "DisplayName~test_name"               # By test name
+```
+
+File-based tests in `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`:
+- `.spy` + `.expected` pairs for success tests
+- `.spy` + `.error` pairs for error tests
+- Add `.skip` file to skip a test

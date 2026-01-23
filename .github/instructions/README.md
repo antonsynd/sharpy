@@ -28,8 +28,9 @@ For new language features, touch these components in order:
 1. **Lexer** (`Lexer/`) — Add tokens if needed
 2. **Parser** (`Parser/`) — Add AST nodes and parsing rules
 3. **Semantic** (`Semantic/`) — Add type checking rules
-4. **CodeGen** (`CodeGen/`) — Emit C# via Roslyn SyntaxFactory
-5. **Tests** — Unit tests + file-based integration tests
+4. **Validation** (`Semantic/Validation/`) — Add validators if needed
+5. **CodeGen** (`CodeGen/`) — Emit C# via Roslyn SyntaxFactory
+6. **Tests** — Unit tests + file-based integration tests
 
 ## Key Specs
 

@@ -23,6 +23,9 @@ dotnet run --project src/Sharpy.Cli -- run /tmp/test.spy
 
 # Or inspect generated C#
 dotnet run --project src/Sharpy.Cli -- emit csharp /tmp/test.spy
+
+# Inspect AST for parser issues
+dotnet run --project src/Sharpy.Cli -- emit ast /tmp/test.spy
 ```
 
 ### 3. Diagnose
@@ -32,6 +35,7 @@ dotnet run --project src/Sharpy.Cli -- emit csharp /tmp/test.spy
   - **Lexer** issues: Token recognition, keywords
   - **Parser** issues: AST construction, syntax errors
   - **Semantic** issues: Type checking, name resolution
+  - **Validation** issues: Operator/protocol validators
   - **CodeGen** issues: C# emission, Roslyn API usage
 
 ### 4. Fix
