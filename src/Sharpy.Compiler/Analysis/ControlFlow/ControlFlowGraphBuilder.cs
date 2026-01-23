@@ -220,16 +220,19 @@ public class ControlFlowGraphBuilder
 
     private void BuildBreak(BreakStatement stmt)
     {
+        AddStatement(stmt);
+
         if (_loopStack.Count == 0)
         {
-            // Error: break outside loop (caught by ControlFlowValidatorV2)
-            // Add statement but don't terminate - let analysis continue
-            AddStatement(stmt);
-            _currentBlock.Terminator = new UnreachableTerminator { SourceStatement = stmt };
+            // Error: break outside loop - use BreakTerminator with null target
+            // so ControlFlowValidatorV3 can detect and report the error
+            _currentBlock.Terminator = new BreakTerminator(null!)
+            {
+                SourceStatement = stmt
+            };
             return;
         }
 
-        AddStatement(stmt);
         var loop = _loopStack.Peek();
         Connect(_currentBlock, loop.Exit);
         _currentBlock.Terminator = new BreakTerminator(loop.Exit)
@@ -244,15 +247,18 @@ public class ControlFlowGraphBuilder
         // It sets a flag to false before breaking, so the else clause knows not to run.
         // For CFG purposes, we treat it the same as a regular break.
 
+        AddStatement(stmt);
+
         if (_loopStack.Count == 0)
         {
-            // Shouldn't happen with internally generated statements
-            AddStatement(stmt);
-            _currentBlock.Terminator = new UnreachableTerminator { SourceStatement = stmt };
+            // Shouldn't happen with internally generated statements, but handle it
+            _currentBlock.Terminator = new BreakTerminator(null!)
+            {
+                SourceStatement = stmt
+            };
             return;
         }
 
-        AddStatement(stmt);
         var loop = _loopStack.Peek();
         Connect(_currentBlock, loop.Exit);
         _currentBlock.Terminator = new BreakTerminator(loop.Exit)
@@ -263,15 +269,19 @@ public class ControlFlowGraphBuilder
 
     private void BuildContinue(ContinueStatement stmt)
     {
+        AddStatement(stmt);
+
         if (_loopStack.Count == 0)
         {
-            // Error: continue outside loop (caught by ControlFlowValidatorV2)
-            AddStatement(stmt);
-            _currentBlock.Terminator = new UnreachableTerminator { SourceStatement = stmt };
+            // Error: continue outside loop - use ContinueTerminator with null target
+            // so ControlFlowValidatorV3 can detect and report the error
+            _currentBlock.Terminator = new ContinueTerminator(null!)
+            {
+                SourceStatement = stmt
+            };
             return;
         }
 
-        AddStatement(stmt);
         var loop = _loopStack.Peek();
         Connect(_currentBlock, loop.Header);
         _currentBlock.Terminator = new ContinueTerminator(loop.Header)

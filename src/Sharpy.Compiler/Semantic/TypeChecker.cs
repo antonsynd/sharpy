@@ -119,58 +119,15 @@ public partial class TypeChecker
     /// </summary>
     /// <remarks>
     /// Errors come from:
-    /// 1. Direct TypeChecker errors (_errors)
-    /// 2. TypeResolver errors (unresolved types)
-    /// 3. Legacy validators (still used for type inference during type checking)
-    /// 4. V2 validators via the ValidationPipeline (merged in CheckModule)
+    /// 1. Direct TypeChecker errors (_errors) - includes type mismatch, undefined symbols
+    /// 2. TypeResolver errors (unresolved types) - merged in CheckModule
+    /// 3. V2 validators via ValidationPipeline (control flow, access, operators, protocols) - merged in CheckModule
     ///
-    /// MIGRATION STATUS: Legacy validators are deprecated for error reporting.
-    /// They remain enabled because they provide type inference during type checking.
-    /// V2 validators duplicate many of the same validations. Deduplication is applied.
-    /// Once V2 validators cover all legacy validations AND type inference is fully
-    /// extracted to TypeInferenceService, legacy validator error collection can be removed.
+    /// Legacy validators are still instantiated but their errors are no longer collected here.
+    /// They remain for backward compatibility with code that calls their validation methods directly.
+    /// Error reporting is now handled by V2 validators and direct TypeChecker error reporting.
     /// </remarks>
-    public IReadOnlyList<SemanticError> Errors
-    {
-        get
-        {
-            // Start with errors from TypeChecker, TypeResolver, and V2 pipeline (merged in CheckModule)
-            var allErrors = new List<SemanticError>(_errors);
-
-            // Legacy validators are still called during type checking for type inference.
-            // Their errors are duplicated by V2 validators for many cases, so we deduplicate.
-            // TODO: Once V2 validators cover ALL legacy validations, remove this collection.
-            var legacyErrors = new List<SemanticError>();
-            legacyErrors.AddRange(_controlFlowValidator.Errors);
-            legacyErrors.AddRange(_accessValidator.Errors);
-            legacyErrors.AddRange(_operatorValidator.Errors);
-            legacyErrors.AddRange(_protocolValidator.Errors);
-            legacyErrors.AddRange(_defaultParameterValidator.Errors);
-
-            // Deduplicate: only add legacy errors that aren't already present.
-            // Note: Different validators may have slightly different error messages for the same issue,
-            // so we use a more lenient deduplication based on line number and error category.
-            foreach (var legacyError in legacyErrors)
-            {
-                bool isDuplicate = allErrors.Any(e =>
-                    e.Line == legacyError.Line &&
-                    (e.Message == legacyError.Message ||
-                     // Handle case where V2 error is raw and legacy is formatted
-                     e.Message.Contains(legacyError.Message) ||
-                     legacyError.Message.Contains(e.Message) ||
-                     // Handle case where messages are similar but not identical
-                     // (e.g., "with operand" vs "with right operand")
-                     (e.Message.Contains("does not support operator") &&
-                      legacyError.Message.Contains("does not support operator"))));
-                if (!isDuplicate)
-                {
-                    allErrors.Add(legacyError);
-                }
-            }
-
-            return allErrors;
-        }
-    }
+    public IReadOnlyList<SemanticError> Errors => _errors;
 
     /// <summary>
     /// Type check all statements in a module

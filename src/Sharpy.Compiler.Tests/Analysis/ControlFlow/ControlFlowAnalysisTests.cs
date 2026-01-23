@@ -248,12 +248,10 @@ public class ControlFlowAnalysisTests
         var cfg = _builder.Build(func);
         var errors = ControlFlowAnalysis.ValidateLoopControlFlow(cfg);
 
-        // Note: The builder creates an UnreachableTerminator for break outside loop,
-        // but ValidateLoopControlFlow checks for BreakTerminator with invalid target.
-        // Since break outside loop creates UnreachableTerminator, it won't be caught
-        // by ValidateLoopControlFlow - this is actually caught by ControlFlowValidatorV2.
-        // This test documents the current behavior.
-        Assert.Empty(errors);
+        // The builder creates BreakTerminator with null target for break outside loop,
+        // which ValidateLoopControlFlow detects and reports as an error.
+        Assert.Single(errors);
+        Assert.Contains("'break' statement outside loop", errors[0].Message);
     }
 
     [Fact]
@@ -268,9 +266,10 @@ public class ControlFlowAnalysisTests
         var cfg = _builder.Build(func);
         var errors = ControlFlowAnalysis.ValidateLoopControlFlow(cfg);
 
-        // Same as above - continue outside loop creates UnreachableTerminator,
-        // so it's not caught by ValidateLoopControlFlow.
-        Assert.Empty(errors);
+        // The builder creates ContinueTerminator with null target for continue outside loop,
+        // which ValidateLoopControlFlow detects and reports as an error.
+        Assert.Single(errors);
+        Assert.Contains("'continue' statement outside loop", errors[0].Message);
     }
 
     [Fact]

@@ -73,11 +73,11 @@ public class ControlFlowValidatorV3 : SemanticValidatorBase
         // Build CFG
         var cfg = _cfgBuilder.Build(func);
 
-        // 1. Check for unreachable code (warning, not error - matches Python behavior)
+        // 1. Check for unreachable code
         var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
         foreach (var info in unreachable)
         {
-            AddWarning(_context, "Unreachable code detected",
+            AddError(_context, "Unreachable code detected",
                 info.FirstUnreachableStatement.LineStart,
                 info.FirstUnreachableStatement.ColumnStart);
         }

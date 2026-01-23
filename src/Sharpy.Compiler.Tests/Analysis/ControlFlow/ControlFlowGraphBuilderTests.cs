@@ -421,7 +421,7 @@ public class ControlFlowGraphBuilderTests
     #region Break/Continue Outside Loops
 
     [Fact]
-    public void Build_BreakOutsideLoop_CreatesUnreachableTerminator()
+    public void Build_BreakOutsideLoop_CreatesBreakTerminatorWithNullTarget()
     {
         var func = CreateFunction("break_outside", ImmutableArray.Create<Statement>(
             new BreakStatement()
@@ -429,14 +429,16 @@ public class ControlFlowGraphBuilderTests
 
         var cfg = _builder.Build(func);
 
-        var unreachableBlock = cfg.Blocks.FirstOrDefault(b =>
-            b.Terminator is UnreachableTerminator);
+        // Break outside loop now creates BreakTerminator with null target
+        // so ControlFlowValidatorV3 can detect and report the error
+        var breakBlock = cfg.Blocks.FirstOrDefault(b =>
+            b.Terminator is BreakTerminator bt && bt.Target == null);
 
-        Assert.NotNull(unreachableBlock);
+        Assert.NotNull(breakBlock);
     }
 
     [Fact]
-    public void Build_ContinueOutsideLoop_CreatesUnreachableTerminator()
+    public void Build_ContinueOutsideLoop_CreatesContinueTerminatorWithNullTarget()
     {
         var func = CreateFunction("continue_outside", ImmutableArray.Create<Statement>(
             new ContinueStatement()
@@ -444,10 +446,12 @@ public class ControlFlowGraphBuilderTests
 
         var cfg = _builder.Build(func);
 
-        var unreachableBlock = cfg.Blocks.FirstOrDefault(b =>
-            b.Terminator is UnreachableTerminator);
+        // Continue outside loop now creates ContinueTerminator with null target
+        // so ControlFlowValidatorV3 can detect and report the error
+        var continueBlock = cfg.Blocks.FirstOrDefault(b =>
+            b.Terminator is ContinueTerminator ct && ct.Target == null);
 
-        Assert.NotNull(unreachableBlock);
+        Assert.NotNull(continueBlock);
     }
 
     #endregion

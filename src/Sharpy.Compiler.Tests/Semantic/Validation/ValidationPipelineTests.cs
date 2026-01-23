@@ -165,7 +165,7 @@ public class ValidationPipelineTests
         Assert.Equal(6, validators.Count);
         Assert.Contains(validators, v => v is SignatureValidatorV2);
         Assert.Contains(validators, v => v is DefaultParameterValidatorV2);
-        Assert.Contains(validators, v => v is ControlFlowValidatorV3);
+        Assert.Contains(validators, v => v is ControlFlowValidatorV2);  // V2 is default for unreachable code detection
         Assert.Contains(validators, v => v is AccessValidatorV2);
         Assert.Contains(validators, v => v is ProtocolValidatorV2);
         Assert.Contains(validators, v => v is OperatorValidatorV2);
@@ -199,7 +199,8 @@ public class ValidationPipelineTests
     public void DefaultPipeline_ControlFlowValidatorPresent()
     {
         var pipeline = ValidationPipelineFactory.CreateDefault();
-        var controlFlowValidator = pipeline.Validators.FirstOrDefault(v => v is ControlFlowValidatorV3);
+        // Default pipeline uses V2 for complete control flow validation including unreachable code
+        var controlFlowValidator = pipeline.Validators.FirstOrDefault(v => v is ControlFlowValidatorV2);
 
         Assert.NotNull(controlFlowValidator);
         Assert.Equal(400, controlFlowValidator.Order);

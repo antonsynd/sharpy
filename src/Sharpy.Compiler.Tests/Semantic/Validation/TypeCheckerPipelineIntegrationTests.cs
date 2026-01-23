@@ -89,11 +89,12 @@ def foo() -> int:
     }
 
     [Fact]
-    public void EmptyPipeline_LegacyValidatorsStillRun()
+    public void EmptyPipeline_NoControlFlowValidation()
     {
-        // NOTE: With the validation pipeline migration, legacy validators ALWAYS run
-        // during type checking (for type inference). The pipeline is ADDITIONAL validation.
-        // This test verifies that legacy validators report errors even with an empty pipeline.
+        // NOTE: With legacy validator error collection removed, an empty pipeline
+        // means no control flow validation occurs. Legacy validators are only used
+        // for type inference, not for error reporting.
+        // Use ValidationPipelineFactory.CreateDefault() to get control flow validation.
         var code = @"
 def foo() -> int:
     x = 5
@@ -107,9 +108,9 @@ def foo() -> int:
             validationPipeline: pipeline);
         typeChecker.CheckModule(module);
 
-        // Legacy validators still run during type checking, so control flow errors
-        // are still reported even with an empty V2 pipeline
-        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("must return"));
+        // With empty pipeline, control flow errors are NOT detected
+        // (missing return value won't be caught without ControlFlowValidatorV2/V3)
+        Assert.DoesNotContain(typeChecker.Errors, e => e.Message.Contains("must return"));
     }
 
     [Fact]

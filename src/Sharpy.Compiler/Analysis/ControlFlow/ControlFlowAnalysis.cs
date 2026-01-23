@@ -28,7 +28,8 @@ public static class ControlFlowAnalysis
         while (worklist.Count > 0)
         {
             var block = worklist.Dequeue();
-            if (!reachable.Add(block)) continue;
+            if (!reachable.Add(block))
+                continue;
             foreach (var succ in block.Successors)
                 worklist.Enqueue(succ);
         }
@@ -93,7 +94,7 @@ public static class ControlFlowAnalysis
                     !IsLoopExitBlock(breakTerm.Target, cfg))
                 {
                     errors.Add(new ControlFlowError(
-                        "'break' outside loop",
+                        "'break' statement outside loop",
                         breakTerm.SourceStatement
                     ));
                 }
@@ -105,7 +106,7 @@ public static class ControlFlowAnalysis
                     !IsLoopHeaderBlock(contTerm.Target, cfg))
                 {
                     errors.Add(new ControlFlowError(
-                        "'continue' outside loop",
+                        "'continue' statement outside loop",
                         contTerm.SourceStatement
                     ));
                 }
