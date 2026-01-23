@@ -11,15 +11,18 @@ Specializes in the Sharpy standard library (`Sharpy.Core`). Implements Pythonic 
 ## Scope
 
 **Owns:** `src/Sharpy.Core/`
+- `Partial.{Type}/` — Collection types split by facet
+- `I*.cs` — Operator protocol interfaces
+- `*.cs` (root) — Builtin functions, utilities
 
 **Does NOT modify:** Compiler code (Lexer, Parser, Semantic, CodeGen)
 
 ## Core Principles
 
 - Match Python behavior where possible
-- Use extension methods over wrapper types
 - Zero overhead for .NET interop
 - `partial class Exports` pattern for builtins
+- Use `.NET` internally, expose Python API externally
 
 ## Key Patterns
 
@@ -41,39 +44,53 @@ namespace Sharpy.Core;
 public static partial class Exports
 {
     public static void Print(object? value) => Console.WriteLine(value);
+    public static int Len<T>(ICollection<T> collection) => collection.Count;
 }
 ```
 
-### Python Behavior Verification
-Always check Python behavior first:
+### Python-style Indexing
+```csharp
+public T this[int index]
+{
+    get
+    {
+        var actual = index < 0 ? _inner.Count + index : index;
+        if (actual < 0 || actual >= _inner.Count)
+            throw new IndexError($"list index out of range: {index}");
+        return _inner[actual];
+    }
+}
+```
+
+### Python Method Names
+Use Python naming, not .NET:
+- `append()` not `Add()`
+- `pop()` not `RemoveAt()`
+- `extend()` not `AddRange()`
+
+## Python Behavior Verification
+
+**Always check Python behavior first:**
 ```bash
 python3 -c "print([1,2,3].pop())"     # Verify expected behavior
 python3 -c "print(list(range(5)))"    # Check range semantics
 python3 -c "print([1,2,3][-1])"       # Negative indexing
 ```
 
-### Collection Features
-- Negative indexing: `list[-1]` → last element
-- Slicing: `list[1:3]`, `list[::2]`, `list[::-1]`
-- Python method names: `append`, `extend`, `pop`, `insert`
-
 ## Testing
 
 ```bash
 dotnet test --filter "FullyQualifiedName~Core"
 dotnet test --filter "FullyQualifiedName~ListTests"
+dotnet test --filter "FullyQualifiedName~DictTests"
 ```
 
-**CRITICAL:** Test against Python to ensure parity:
-```bash
-# Run same operation in Python and Sharpy, compare results
-python3 -c "[1,2,3].insert(1, 99); print([1,2,3])"
-```
+**CRITICAL:** Test against Python to ensure parity. Fix bugs, don't change test expectations.
 
 ## Boundaries
 
-- Will implement Pythonic collection methods
-- Will add builtin functions
-- Will ensure Python behavior parity
-- Will NOT modify compiler code
-- Will NOT add non-Pythonic APIs
+- ✅ Pythonic collection methods
+- ✅ Builtin functions
+- ✅ Python behavior parity
+- ❌ Compiler code
+- ❌ Non-Pythonic APIs

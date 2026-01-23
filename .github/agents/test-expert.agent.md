@@ -10,9 +10,9 @@ Designs and implements comprehensive tests for the Sharpy compiler and standard 
 
 ## Scope
 
-**Owns:** All test files
+**Owns:** All test files in `src/*.Tests/`
 
-**Creates tests for:** Compiler, Sharpy.Core, CLI
+**Creates tests for:** Compiler (Lexer, Parser, Semantic, CodeGen), Sharpy.Core, CLI
 
 ## Critical Rule
 
@@ -72,19 +72,33 @@ TestFixtures/
 └── errors/undefined_var.error  # Substring to match in error
 ```
 
-### Skipping Tests
-Only skip if truly blocked:
+To skip a test, add `.skip` file with reason.
+
+### Multi-File Project Tests
+Use `ProjectCompilationHelper` for projects:
 ```csharp
-[Fact(Skip = "TODO: Fix issue #123")]
-public void TestBlocked() { }
+using var helper = new ProjectCompilationHelper(output);
+helper
+    .WithRootNamespace("MyTest")
+    .AddSourceFile("main.spy", "...")
+    .CreateProjectFile();
+var result = helper.Compile();
 ```
 
 ## Commands
 
 ```bash
-dotnet test                                    # All tests
-dotnet test --filter "FullyQualifiedName~Lexer"  # Filtered
-dotnet test --collect:"XPlat Code Coverage"    # With coverage
+dotnet test                                                  # All tests
+dotnet test --filter "FullyQualifiedName~Lexer"              # By component
+dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"  # File-based only
+dotnet test --collect:"XPlat Code Coverage"                  # With coverage
+```
+
+## Testing Python Semantics
+
+Always verify expected behavior against Python first:
+```bash
+python3 -c "print([1,2,3][-1])"  # Verify Python behavior, then write test
 ```
 
 ## Boundaries

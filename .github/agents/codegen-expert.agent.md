@@ -10,55 +10,71 @@ Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, lower
 
 ## Scope
 
-**Owns:** `src/Sharpy.Compiler/CodeGen/` and `src/Sharpy.Compiler/Emit/`
+**Owns:** `src/Sharpy.Compiler/CodeGen/`
+- `RoslynEmitter*.cs` — Partial classes for different AST node types
+- `TypeMapper.cs` — Sharpy types → C# types
+- `NameMangler.cs` — Name transformations (snake_case → PascalCase)
+- `CodeValidator.cs` — Validates generated code compiles
 
 **Does NOT modify:** Lexer, Parser, Semantic analysis, or Sharpy.Core
 
-## Specs to Consult
-
-- `docs/language_specification/dotnet_interop.md`
-- `docs/language_specification/operator_overloading.md`
-- `docs/language_specification/dunder_invocation_rules.md`
-
 ## Core Principle
 
-Sharpy compiles to C# AST via Roslyn, not to IL directly. This:
+Sharpy compiles to C# AST via Roslyn, **not** to IL directly. This:
 - Leverages Roslyn's optimization pipeline
 - Preserves source-level debugging
-- Enables human-readable output
+- Enables human-readable output via `emit csharp`
 
 ## Key Patterns
 
+**Always use SyntaxFactory — never string templating:**
 ```csharp
-// Use SyntaxFactory for all C# generation
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-// Type mapping: Sharpy → C#
+// ✅ Correct
+return MethodDeclaration(returnType, Identifier("MyMethod"))
+    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+    .WithBody(Block(statements));
+
+// ❌ Wrong - never do this
+$"public {returnType} MyMethod() {{ {body} }}"
+```
+
+**Type mapping:**
+```csharp
 MapType(type) => type switch {
     PrimitiveType { Name: "int" } => PredefinedType(Token(SyntaxKind.IntKeyword)),
     PrimitiveType { Name: "str" } => PredefinedType(Token(SyntaxKind.StringKeyword)),
+    GenericType { Name: "list" } => ParseTypeName("global::Sharpy.Core.List<...>"),
     NullableType { Inner: var inner } => NullableType(MapType(inner)),
-    // ...
 };
 ```
 
+**Name mangling:**
+- `snake_case` → `PascalCase`
+- `__str__` → `ToString()`
+- `__add__` → `operator+`
+
 ## C# 9.0 Constraints
 
-**Available:** Records, pattern matching, target-typed new, init-only setters
-
-**NOT available (C# 10+):** Global usings, file-scoped namespaces, record structs
+| ✅ Available | ❌ Not Available (C# 10+) |
+|-------------|-------------------------|
+| Records | File-scoped namespaces |
+| Pattern matching | Global usings |
+| Target-typed new | Record structs |
+| Init-only setters | Required members |
 
 ## Commands
 
 ```bash
 dotnet test --filter "FullyQualifiedName~CodeGen"
-dotnet run --project src/Sharpy.Cli -- emit csharp file.spy
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect output
 ```
 
 ## Boundaries
 
-- Will implement C# AST emission via Roslyn
-- Will handle lowering transformations
-- Will ensure C# 9.0 compatibility
-- Will NOT modify AST structure (→ parser-expert)
-- Will NOT implement type inference (→ semantic-expert)
+- ✅ C# AST emission via Roslyn SyntaxFactory
+- ✅ Lowering transformations
+- ✅ C# 9.0 compatibility
+- ❌ AST structure (→ parser-expert)
+- ❌ Type inference (→ semantic-expert)

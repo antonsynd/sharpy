@@ -11,7 +11,11 @@ Sharpy.Compiler.Tests/
 ├── Semantic/       # Type checking, name resolution
 ├── CodeGen/        # C# generation tests
 ├── Integration/    # End-to-end: Sharpy → C# → execute
-└── Discovery/      # Module import tests
+│   ├── TestFixtures/  # File-based tests (.spy + .expected)
+│   └── IntegrationTestBase.cs
+├── Discovery/      # Module import tests
+├── Analysis/       # Control flow analysis tests
+└── Helpers/        # Test infrastructure (ProjectCompilationHelper)
 ```
 
 ## Running Tests
@@ -22,11 +26,12 @@ dotnet test --filter "FullyQualifiedName~Parser"
 dotnet test --filter "FullyQualifiedName~Semantic"
 dotnet test --filter "FullyQualifiedName~CodeGen"
 dotnet test --filter "FullyQualifiedName~Integration"
+dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
 ```
 
 ## Test Patterns
 
-**Lexer test:**
+**Unit test:**
 ```csharp
 [Fact]
 public void TestTokenizeIdentifier()
@@ -37,47 +42,57 @@ public void TestTokenizeIdentifier()
 }
 ```
 
-**Parser test:**
-```csharp
-[Fact]
-public void TestParseIfStatement()
-{
-    var tokens = new Lexer("if x > 0:\n    print(x)", logger).TokenizeAll();
-    var parser = new Parser(tokens, logger);
-    var module = parser.ParseModule();
-    Assert.IsType<IfStmt>(module.Body[0]);
-}
-```
-
 **Integration test:**
-```csharp
-[Fact]
-public void CompileAndExecute()
-{
-    var source = "print(1 + 2)";
-    var result = CompileAndExecute(source);  // Uses IntegrationTestBase
-    Assert.Equal("3\n", result.StandardOutput);
-}
-```
-
-## CRITICAL Rules
-
-1. **Never change test expectations to match bugs** - Fix the implementation
-2. **Skip with reason if blocked:**
-   ```csharp
-   [Fact(Skip = "TODO: Implement tuple unpacking. See issue #42")]
-   ```
-3. **Test names describe behavior:** `TestParser_Parses_IfElseStatement`
-
-## Integration Test Base
-
-`IntegrationTestBase` compiles Sharpy → C# → IL → executes in-memory:
 ```csharp
 public class MyTests : IntegrationTestBase
 {
     [Fact]
-    public void MyFeature_Works()
+    public void FeatureWorks()
     {
+        var result = CompileAndExecute("print(1 + 2)");
+        Assert.True(result.Success);
+        Assert.Equal("3\n", result.StandardOutput);
+    }
+}
+```
+
+**File-based test:** Add `.spy` + `.expected` pair to `TestFixtures/`:
+```
+TestFixtures/my_category/
+├── my_test.spy       # Sharpy source
+└── my_test.expected  # Expected stdout (exact match)
+```
+
+**Multi-file project test:**
+```csharp
+using var helper = new ProjectCompilationHelper(output);
+helper.WithRootNamespace("Test")
+    .AddSourceFile("main.spy", "...")
+    .AddSourceFile("lib.spy", "...")
+    .CreateProjectFile();
+var result = helper.Compile();
+```
+
+## Critical Rules
+
+1. **Never change test expectations to match bugs** — fix the implementation
+2. **Skip with reason if blocked:**
+   ```csharp
+   [Fact(Skip = "TODO: Implement feature. See issue #42")]
+   ```
+3. **Test names describe behavior:** `TestParser_Parses_IfElseStatement`
+
+## Test Fixture Categories
+
+| Directory | Tests |
+|-----------|-------|
+| `basics/` | Hello world, simple expressions |
+| `functions/` | Function definitions, calls |
+| `classes/` | Class definitions, inheritance |
+| `control_flow/` | if/while/for/match |
+| `errors/` | Expected compilation failures (`.error` files) |
+| `imports/` | Module imports |
+| `generics/` | Generic types and functions |
         var result = CompileAndExecute("print(42)");
         Assert.True(result.Success);
         Assert.Equal("42\n", result.StandardOutput);

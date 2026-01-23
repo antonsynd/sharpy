@@ -16,26 +16,25 @@ Standard library with Pythonic APIs for .NET. Location: `src/Sharpy.Core/`
 
 ## Design Principles
 
-1. **Wrap .NET internally, expose Python API** - `list.append()` not `list.Add()`
-2. **Match Python semantics** - Negative indices, slicing, same exceptions
+1. **Wrap .NET internally, expose Python API** — `list.append()` not `list.Add()`
+2. **Match Python semantics** — Negative indices, slicing, same exceptions
 3. **Prefer .NET when zero-cost abstraction impossible**
 
 ## Adding a Builtin Function
 
+Add to `partial class Exports` (split across files):
 ```csharp
 // NewFunction.cs
 namespace Sharpy.Core;
 
 public static partial class Exports
 {
-    // C# implementation should have C#-style PascalCase name
     public static TResult NewFunction<T, TResult>(T input) => ...;
 }
 ```
 
-Test it:
+Then:
 ```bash
-# Automatic name mangling maps C# NewFunction to Sharpy's snake_case new_function
 python3 -c "print(new_function(...))"  # Verify expected behavior
 dotnet test --filter "FullyQualifiedName~NewFunctionTests"
 ```
@@ -53,6 +52,17 @@ public T this[int index]
         return _inner[actual];
     }
 }
+```
+
+## Partial Class Pattern
+
+Types split across `Partial.{Type}/` directories for organization:
+```
+Partial.List/
+├── List.cs              # Main class + constructor
+├── List.ISequence.cs    # ISequence implementation
+├── List.IEnumerable.cs  # IEnumerable implementation
+└── List.IBoolConvertible.cs
 ```
 
 ## Testing

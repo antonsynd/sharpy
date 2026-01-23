@@ -9,8 +9,11 @@ Tests for each class facet go in `Partial.*Tests/` directories:
 Sharpy.Core.Tests/
 ├── Partial.ListTests/     # List tests (Core, Mutation, Slicing, etc.)
 ├── Partial.SetTests/      # Set tests
+├── Partial.StrTests/      # String method tests
 ├── DictTests.cs           # Dictionary tests
-└── ...
+├── RangeTests.cs          # Range tests
+├── EnumerateTests.cs      # Enumerate tests
+└── BuiltinTests.cs        # General builtin tests
 ```
 
 ## Running Tests
@@ -19,6 +22,7 @@ Sharpy.Core.Tests/
 dotnet test --filter "FullyQualifiedName~ListTests"
 dotnet test --filter "FullyQualifiedName~DictTests"
 dotnet test --filter "FullyQualifiedName~RangeTests"
+dotnet test --filter "FullyQualifiedName~Core.Tests"
 ```
 
 ## Testing Workflow
@@ -29,6 +33,8 @@ $ python3
 >>> lst = [1, 2, 3]
 >>> lst.pop()
 3
+>>> lst
+[1, 2]
 ```
 
 Then write the test:
@@ -44,11 +50,12 @@ public void TestListPop_RemovesLastElement()
 
 ## Test Edge Cases
 
-Always test:
-- Empty collections: `[]`
-- Single element: `[1]`
-- Negative indices: `lst[-1]`
-- Out of range: `lst[100]` → `IndexError`
+Always test these for collection operations:
+- **Empty collections:** `[]`
+- **Single element:** `[1]`
+- **Negative indices:** `lst[-1]`, `lst[-2]`
+- **Out of range:** `lst[100]` → `IndexError`
+- **Slicing boundaries:** `lst[0:0]`, `lst[100:200]`
 
 ```csharp
 [Fact]
@@ -57,16 +64,34 @@ public void TestListPop_EmptyList_ThrowsIndexError()
     var lst = new List<int>();
     Assert.Throws<IndexError>(() => lst.Pop());
 }
+
+[Fact]
+public void TestListIndex_NegativeIndex_ReturnsFromEnd()
+{
+    var lst = new List<int> { 1, 2, 3 };
+    Assert.Equal(3, lst[-1]);
+    Assert.Equal(2, lst[-2]);
+}
 ```
 
-## CRITICAL Rules
+## Critical Rules
 
-1. **Match Python semantics** - Run `python3 -c "..."` to verify
-2. **Never change tests to match bugs** - Fix `src/Sharpy.Core/` instead
+1. **Match Python semantics** — Run `python3 -c "..."` to verify expected behavior
+2. **Never change tests to match bugs** — Fix `src/Sharpy.Core/` instead
 3. **Skip with reason if feature missing:**
    ```csharp
    [Fact(Skip = "TODO: Implement dict.fromkeys()")]
    ```
+
+## Test Categories
+
+| Category | What to Test |
+|----------|--------------|
+| Core functionality | Basic operations work |
+| Edge cases | Empty, single, boundary conditions |
+| Negative indexing | Python-style `[-1]`, `[-2]` |
+| Errors | Correct exception types (`IndexError`, `KeyError`) |
+| Performance | No unexpected allocations in hot paths |
 {
     var lst = new List<int> { 1, 2, 3 };
     Assert.Equal(2, lst.Pop(-2));  // Second to last
