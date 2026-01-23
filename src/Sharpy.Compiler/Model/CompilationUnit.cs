@@ -149,6 +149,16 @@ public class CompilationUnit
 
     #endregion
 
+    #region Metrics
+
+    /// <summary>
+    /// Compilation metrics (timing, memory) for this file.
+    /// Null until compilation begins.
+    /// </summary>
+    public CompilationMetrics? Metrics { get; internal set; }
+
+    #endregion
+
     #region Compilation State
 
     /// <summary>

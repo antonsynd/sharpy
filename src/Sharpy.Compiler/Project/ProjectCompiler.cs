@@ -19,10 +19,6 @@ public class ProjectCompiler
     private readonly ICompilerLogger _logger;
     private readonly ModuleRegistry? _moduleRegistry;
 
-
-    // Track file metrics by file path
-    private Dictionary<string, CompilationMetrics> _fileMetrics = new();
-
     // Shared symbol table and semantic info across all files
     private SymbolTable _symbolTable = null!;
     private SemanticInfo _semanticInfo = null!;
@@ -58,7 +54,6 @@ public class ProjectCompiler
         _errors = new List<string>();
         _warnings = new List<string>();
         _projectMetrics = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
-        _fileMetrics = new Dictionary<string, CompilationMetrics>();
         _projectModel = new ProjectModel(config);
 
         try
@@ -160,7 +155,8 @@ public class ProjectCompiler
                 compilationUnit.Imports = imports;
                 compilationUnit.FromImports = fromImports;
 
-                _fileMetrics[sourceFile] = fileMetrics;
+                // Store metrics in CompilationUnit
+                compilationUnit.Metrics = fileMetrics;
 
                 // Log per-file metrics at Debug level
                 if (_logger.IsEnabled(CompilerLogLevel.Debug))
@@ -482,8 +478,9 @@ public class ProjectCompiler
             var unit = _projectModel!.GetUnit(sourceFile);
             if (unit == null || unit.Phase == CompilationPhase.Failed || unit.Ast == null) continue;
 
-            // Get the file metrics we created during parsing (use unit.FilePath for original path)
-            var fileMetrics = _fileMetrics[unit.FilePath];
+            // Get the file metrics we created during parsing
+            var fileMetrics = unit.Metrics;
+            if (fileMetrics == null) continue;
 
             // Type resolution
             fileMetrics.StartPhase("Type Resolution");
@@ -502,12 +499,12 @@ public class ProjectCompiler
                 // Add to unit diagnostics
                 foreach (var error in typeChecker.Errors)
                 {
-                    unit.Diagnostics.AddError(error.Message, error.Line, error.Column, sourceFile);
+                    unit.Diagnostics.AddError(error.Message, error.Line, error.Column, unit.FilePath);
                 }
                 unit.Phase = CompilationPhase.Failed;
 
                 _errors.AddRange(typeChecker.Errors.Select(e =>
-                    $"{sourceFile}({e.Line},{e.Column}): error: {e.Message}"));
+                    $"{unit.FilePath}({e.Line},{e.Column}): error: {e.Message}"));
             }
             else
             {
@@ -517,7 +514,7 @@ public class ProjectCompiler
             // Log per-file semantic analysis metrics at Debug level
             if (_logger.IsEnabled(CompilerLogLevel.Debug))
             {
-                _logger.LogDebug($"Analyzed {Path.GetFileName(sourceFile)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
+                _logger.LogDebug($"Analyzed {Path.GetFileName(unit.FilePath)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
             }
         }
 
@@ -542,10 +539,10 @@ public class ProjectCompiler
             var sourceFile = unit.FilePath;
 
             // Get the file metrics we created during parsing
-            var fileMetrics = _fileMetrics[sourceFile];
+            var fileMetrics = unit.Metrics;
             var relativePath = Path.GetRelativePath(config.ProjectDirectory, sourceFile);
 
-            fileMetrics.StartPhase("Code Generation");
+            fileMetrics?.StartPhase("Code Generation");
 
             // Determine if this file is the entry point
             // If EntryPoint is specified in config, use that; otherwise default to main.spy
@@ -582,7 +579,7 @@ public class ProjectCompiler
             var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
             var csharpCode = roslynCompilationUnit.ToFullString();
 
-            fileMetrics.EndPhase();
+            fileMetrics?.EndPhase();
 
             // Check for code generation errors
             if (codeGenContext.HasErrors)
@@ -601,7 +598,7 @@ public class ProjectCompiler
             unit.Phase = CompilationPhase.CodeGenerated;
 
             // Log per-file code gen metrics at Debug level
-            if (_logger.IsEnabled(CompilerLogLevel.Debug))
+            if (_logger.IsEnabled(CompilerLogLevel.Debug) && fileMetrics != null)
             {
                 _logger.LogDebug($"Generated {Path.GetFileName(sourceFile)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
             }
