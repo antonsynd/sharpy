@@ -263,7 +263,8 @@ public class ProjectCompiler
         // Phase 3a: Collect all type declarations (shells only)
         foreach (var (_, unit) in _projectModel!.Units)
         {
-            if (unit.Phase == CompilationPhase.Failed || unit.Ast == null) continue;
+            if (unit.Phase == CompilationPhase.Failed || unit.Ast == null)
+                continue;
 
             // Set current file path so types know which file they're defined in
             // Use unit.FilePath for original path (Units dictionary keys are normalized)
@@ -306,7 +307,8 @@ public class ProjectCompiler
         // Resolve imports for each module
         foreach (var (_, unit) in _projectModel!.Units)
         {
-            if (unit.Phase == CompilationPhase.Failed || unit.Ast == null) continue;
+            if (unit.Phase == CompilationPhase.Failed || unit.Ast == null)
+                continue;
 
             // Use unit.FilePath for original path (Units dictionary keys are normalized)
             _importResolver.SetCurrentModule(unit.FilePath);
@@ -486,11 +488,13 @@ public class ProjectCompiler
         foreach (var sourceFile in modulesToProcess)
         {
             var unit = _projectModel!.GetUnit(sourceFile);
-            if (unit == null || unit.Phase == CompilationPhase.Failed || unit.Ast == null) continue;
+            if (unit == null || unit.Phase == CompilationPhase.Failed || unit.Ast == null)
+                continue;
 
             // Get the file metrics we created during parsing
             var fileMetrics = unit.Metrics;
-            if (fileMetrics == null) continue;
+            if (fileMetrics == null)
+                continue;
 
             // Type resolution
             fileMetrics.StartPhase("Type Resolution");
@@ -543,7 +547,8 @@ public class ProjectCompiler
         foreach (var (_, unit) in _projectModel!.Units)
         {
             // Only generate code for successfully type-checked units
-            if (unit.Phase != CompilationPhase.TypeChecked || unit.Ast == null) continue;
+            if (unit.Phase != CompilationPhase.TypeChecked || unit.Ast == null)
+                continue;
 
             // Use unit.FilePath for original path (Units dictionary keys are normalized)
             var sourceFile = unit.FilePath;
