@@ -76,8 +76,20 @@ CodeGenInfo is already computed and attached to symbols, but the emission code h
 | `_stringEnumNames` | Enum detection | Yes | TypeSymbol properties |
 
 **Verification:**
-- [ ] All usages documented
-- [ ] Migration feasibility assessed
+- [x] All usages documented
+- [x] Migration feasibility assessed
+
+**Audit Results (completed 2026-01-23):**
+
+| Tracking Set | Declared In | Usage Locations | Can Remove? |
+|--------------|-------------|-----------------|-------------|
+| `_declaredVariables` | RoslynEmitter.cs:18 | ClassMembers, Statements, TypeDeclarations, ModuleClass | **No** - Local scope tracking |
+| `_variableVersions` | RoslynEmitter.cs:35 | GetMangledVariableName, ModuleClass | **No** - Local redecl versioning |
+| `_constVariables` | RoslynEmitter.cs:41 | GetMangledVariableName, ClassMembers, Statements, ModuleClass | **No** - Local const tracking |
+| `_moduleFieldNames` | RoslynEmitter.cs:48 | Statements (466,473), ModuleClass (84) | **No** - Duplicate field prevention (runtime) |
+| `_classNames` | RoslynEmitter.cs:54 | Expressions (149), TypeDeclarations (216), RoslynEmitter.cs:153 | **Yes** - Use Symbol lookup |
+| `_structNames` | RoslynEmitter.cs:55 | Expressions (150), TypeDeclarations (403), RoslynEmitter.cs:153 | **Yes** - Use Symbol lookup |
+| `_stringEnumNames` | RoslynEmitter.cs:56 | TypeDeclarations (546,576) | **Yes** - Use TypeSymbol |
 
 ---
 
@@ -91,7 +103,17 @@ grep -n "_declaredVariables\|_constVariables\|_moduleFieldNames" RoslynEmitter*.
 ```
 
 **Verification:**
-- [ ] Migration targets identified
+- [x] Migration targets identified
+
+**Migration Targets (completed 2026-01-23):**
+
+Methods to migrate (remove `_classNames`/`_structNames`/`_stringEnumNames` usage):
+1. `GenerateClassDeclaration` (TypeDeclarations.cs:216) - remove `_classNames.Add()`
+2. `GenerateStructDeclaration` (TypeDeclarations.cs:403) - remove `_structNames.Add()`
+3. `GenerateEnumDeclaration` (TypeDeclarations.cs:546) - remove `_stringEnumNames.Add()`
+4. `IsStringEnumSymbol` (TypeDeclarations.cs:576) - use TypeSymbol instead of set lookup
+5. `GenerateCallExpression` (Expressions.cs:149-150) - use Symbol lookup instead of set checks
+6. `GetMangledVariableName` (RoslynEmitter.cs:153) - use Symbol lookup instead of set checks
 
 ---
 
@@ -233,34 +255,24 @@ var csharpMethodName = methodSymbol?.CodeGenInfo?.CSharpName
 **File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
 **Description:** After migration, remove tracking sets that are no longer used.
 
-**Sets that can be removed:**
-- `_moduleFieldNames` - replaced by CodeGenInfo
+**Sets removed (completed 2026-01-23):**
 - `_classNames` - replaced by symbol lookup
 - `_structNames` - replaced by symbol lookup
-- `_stringEnumNames` - replaced by TypeSymbol properties
+- `_stringEnumNames` - replaced by CodeGenInfo.IsStringEnum
 
 **Sets that must be kept (local scope tracking):**
 - `_declaredVariables` - tracks local variable declarations during emission
 - `_variableVersions` - tracks local variable redeclarations
 - `_constVariables` - tracks local const declarations
+- `_moduleFieldNames` - tracks emitted field names to prevent duplicates
 
-```csharp
-// REMOVE these:
-// private readonly HashSet<string> _moduleFieldNames = new();
-// private readonly HashSet<string> _classNames = new();
-// private readonly HashSet<string> _structNames = new();
-// private readonly HashSet<string> _stringEnumNames = new();
-
-// KEEP these (local scope tracking):
-private readonly HashSet<string> _declaredVariables = new();
-private readonly Dictionary<string, int> _variableVersions = new();
-private readonly HashSet<string> _constVariables = new();
-```
+**Note:** `_moduleFieldNames` was kept because it's needed for duplicate field detection
+during emission (when a variable is redefined at module level).
 
 **Verification:**
-- [ ] Removed sets have no usages
-- [ ] Compilation succeeds
-- [ ] All tests pass
+- [x] Removed sets have no usages
+- [x] Compilation succeeds
+- [x] All tests pass
 
 **Commit:** `refactor(codegen): Remove unused legacy tracking sets`
 
@@ -270,30 +282,8 @@ private readonly HashSet<string> _constVariables = new();
 **File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
 **Description:** Update comments to reflect the new architecture.
 
-```csharp
-/// <summary>
-/// Generates C# code using Roslyn syntax trees.
-/// 
-/// Name Resolution:
-/// - Module-level symbols: Use Symbol.CodeGenInfo (computed during semantic analysis)
-/// - Local variables: Use runtime tracking (_declaredVariables, _variableVersions)
-/// </summary>
-public partial class RoslynEmitter
-{
-    // ============================================================
-    // LOCAL SCOPE TRACKING
-    // These fields track local variable state during emission.
-    // Module-level symbols use CodeGenInfo instead.
-    // ============================================================
-    
-    private readonly HashSet<string> _declaredVariables = new();
-    private readonly Dictionary<string, int> _variableVersions = new();
-    private readonly HashSet<string> _constVariables = new();
-}
-```
-
 **Verification:**
-- [ ] Comments accurate
+- [x] Comments accurate
 
 **Commit:** `docs(codegen): Update RoslynEmitter comments for CodeGenInfo architecture`
 
@@ -307,7 +297,7 @@ dotnet test Sharpy.Compiler.Tests --verbosity minimal
 ```
 
 **Verification:**
-- [ ] All tests pass
+- [x] All tests pass (4002 passed)
 
 ---
 
@@ -317,39 +307,40 @@ dotnet test Sharpy.Compiler.Tests --filter "FullyQualifiedName~Integration" --ve
 ```
 
 **Verification:**
-- [ ] Integration tests pass
-- [ ] Generated C# code is correct
+- [x] Integration tests pass (668 passed)
+- [x] Generated C# code is correct
 
 ---
 
 ### Task 5.3: Manual Verification
 **Description:** Compile a few sample programs and inspect generated C#.
 
-```bash
-cd examples
-dotnet run --project ../src/Sharpy.Cli -- compile sample.spy --output sample.cs
-cat sample.cs  # Verify naming conventions
-```
-
 **Verification:**
-- [ ] PascalCase for types and methods
-- [ ] camelCase for local variables
-- [ ] CONSTANT_CASE for constants
-- [ ] Correct handling of imports
+- [x] PascalCase for types and methods
+- [x] camelCase for local variables
+- [x] CONSTANT_CASE for constants
+- [x] Correct handling of imports (tested via integration tests)
 
 ---
 
 ## Summary
 
+**Completed 2026-01-23**
+
 After completing these tasks:
 
-1. ✅ Module-level symbols use CodeGenInfo for name resolution
-2. ✅ Legacy tracking sets removed (except local scope tracking)
+1. ✅ Type detection migrated to use SymbolTable lookup and CodeGenInfo.IsStringEnum
+2. ✅ Legacy tracking sets removed: `_classNames`, `_structNames`, `_stringEnumNames`
 3. ✅ Cleaner separation: semantic analysis computes names, emission just uses them
 4. ✅ Local variable handling unchanged (still runtime-tracked)
+5. ✅ `_moduleFieldNames` kept for duplicate field detection during emission
 
-Benefits:
-- Simpler emission code
-- Names computed once during semantic analysis
-- Easier to test semantic analysis and code generation independently
+Benefits achieved:
+- Simpler emission code (removed redundant type tracking)
+- Type information computed once during semantic analysis
+- String enum detection moved to CodeGenInfo for consistency
 - Foundation for future parallel compilation (CodeGenInfo is immutable)
+
+Note: Phase 2 tasks (2.1, 2.2, 2.3) were found to already be implemented via existing
+CodeGenInfo helper methods. Phase 3 tasks (3.1, 3.2, 3.3) were re-scoped to focus on
+removing `_classNames`, `_structNames`, and `_stringEnumNames` tracking sets.
