@@ -96,6 +96,34 @@ public class ProjectModel
     /// </summary>
     public int UnitCount => _units.Count;
 
+    /// <summary>
+    /// Gets all compilation units that failed during compilation.
+    /// </summary>
+    /// <returns>List of units with Failed phase.</returns>
+    public IReadOnlyList<CompilationUnit> GetFailedUnits()
+    {
+        return _units.Values.Where(u => u.Phase == CompilationPhase.Failed).ToList();
+    }
+
+    /// <summary>
+    /// Gets all compilation units that completed code generation successfully.
+    /// </summary>
+    /// <returns>List of units with CodeGenerated phase.</returns>
+    public IReadOnlyList<CompilationUnit> GetSuccessfulUnits()
+    {
+        return _units.Values.Where(u => u.Phase == CompilationPhase.CodeGenerated).ToList();
+    }
+
+    /// <summary>
+    /// Gets all compilation units with the specified phase.
+    /// </summary>
+    /// <param name="phase">The compilation phase to filter by.</param>
+    /// <returns>List of units at the specified phase.</returns>
+    public IReadOnlyList<CompilationUnit> GetUnitsAtPhase(CompilationPhase phase)
+    {
+        return _units.Values.Where(u => u.Phase == phase).ToList();
+    }
+
     #endregion
 
     #region Global State
