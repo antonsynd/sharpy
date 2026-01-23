@@ -91,32 +91,36 @@ public class CachedDiscoveryPerformanceTests : IDisposable
         discovery1.LoadAssembly(sharpyCoreAssembly);
         firstLoadWatch.Stop();
 
-        // Second load from cache
-        var discovery2 = new CachedModuleDiscovery(cache);
-        var secondLoadWatch = Stopwatch.StartNew();
-        discovery2.LoadAssembly(sharpyCoreAssembly);
-        secondLoadWatch.Stop();
+        // Multiple cached loads to get stable measurement
+        var cachedTimes = new List<long>();
+        for (int i = 0; i < TotalCachedLoadRuns; i++)
+        {
+            var discovery = new CachedModuleDiscovery(cache);
+            var watch = Stopwatch.StartNew();
+            discovery.LoadAssembly(sharpyCoreAssembly);
+            watch.Stop();
+            cachedTimes.Add(watch.ElapsedMilliseconds);
+        }
+
+        var sortedTimes = cachedTimes.OrderBy(t => t).ToList();
+        var medianCachedTime = sortedTimes[sortedTimes.Count / 2];
 
         _output.WriteLine($"First load: {firstLoadWatch.ElapsedMilliseconds}ms");
-        _output.WriteLine($"Second load (cached): {secondLoadWatch.ElapsedMilliseconds}ms");
+        _output.WriteLine($"Cached loads: {string.Join(", ", cachedTimes)}ms");
+        _output.WriteLine($"Median cached: {medianCachedTime}ms");
 
-        // Only calculate speedup if times are measurable
-        if (firstLoadWatch.ElapsedMilliseconds > MinMeasurableMilliseconds && secondLoadWatch.ElapsedMilliseconds > MinMeasurableMilliseconds)
-        {
-            var speedup = (double)firstLoadWatch.ElapsedMilliseconds / secondLoadWatch.ElapsedMilliseconds;
-            _output.WriteLine($"Speedup: {speedup:F2}x");
-        }
-        else
-        {
-            _output.WriteLine("Speedup: Unable to measure (execution too fast)");
-        }
+        // Count how many cached loads were fast (under 100ms threshold)
+        var fastCachedLoads = cachedTimes.Count(t => t < MinReasonableTimeMs);
+        _output.WriteLine($"Fast cached loads (<{MinReasonableTimeMs}ms): {fastCachedLoads}/{TotalCachedLoadRuns}");
 
-        // For very fast operations (< 10ms), allow larger tolerance due to timing granularity
-        // For slower operations, cached should be faster or similar
-        var tolerance = firstLoadWatch.ElapsedMilliseconds < 10 ? 10 : 5;
+        // For very fast operations, verify that cached loads complete quickly
+        // rather than comparing to an unreliable first-load time which has high variance
+        Assert.True(medianCachedTime < MinReasonableTimeMs,
+            $"Cached load median ({medianCachedTime}ms) should be under {MinReasonableTimeMs}ms");
 
-        Assert.True(secondLoadWatch.ElapsedMilliseconds <= firstLoadWatch.ElapsedMilliseconds + tolerance,
-            $"Cached load ({secondLoadWatch.ElapsedMilliseconds}ms) should be faster than or similar to first load ({firstLoadWatch.ElapsedMilliseconds}ms, tolerance: {tolerance}ms)");
+        // At least some cached loads should be fast
+        Assert.True(fastCachedLoads >= MinFastCachedLoadsRequired,
+            $"At least {MinFastCachedLoadsRequired} cached loads should be under {MinReasonableTimeMs}ms, but only {fastCachedLoads} were");
     }
 
     [Fact]

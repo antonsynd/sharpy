@@ -23,7 +23,7 @@ This document summarizes the implementation status of architecture recommendatio
 
 | Rec | Name | Status | Remaining Work |
 |-----|------|--------|----------------|
-| **#1** | CompilationUnit Model | ~70% | Model exists but ProjectCompiler not fully migrated |
+| **#1** | CompilationUnit Model | ✅ Complete | ProjectCompiler uses ProjectModel |
 | **#6** | Directory Organization | ~60% | Services/, Validation/, Model/ created; some files not moved |
 | **#7** | Immutable AST | ~80% | Collections use ImmutableArray; some nodes still have setters |
 
@@ -37,33 +37,28 @@ This document summarizes the implementation status of architecture recommendatio
 
 ---
 
-## Follow-up Tasks Required
+## Follow-up Tasks Completed ✅
 
-### High Priority (Blocking Language Features)
+The following architecture improvements have been completed:
 
-1. **Cross-Module Inheritance Fix**
-   - See: `tasks/task_cross_module_inheritance_fix.md`
-   - Blocks: Phase 0.1.7 (Inheritance & Interfaces)
-   - Effort: 3-5 days
+1. **Cross-Module Inheritance** - Fixed, all tests passing
+2. **Legacy Validator Decommissioning** - TypeChecker uses TypeInferenceService, legacy validators marked [Obsolete]
+3. **RoslynEmitter CodeGenInfo Migration** - Type tracking sets removed
+4. **ProjectCompiler Model Integration** - Uses ProjectModel, legacy dictionaries removed
 
-### Medium Priority (Technical Debt)
+See `tasks/README.md` for details.
 
-2. **Legacy Validator Decommissioning**
-   - See: `tasks/task_legacy_validator_decommissioning.md`
-   - TypeChecker still uses legacy validators for type inference
-   - Effort: 1-2 days
+---
 
-3. **RoslynEmitter CodeGenInfo Migration**
-   - See: `tasks/task_emitter_codegen_info_migration.md`
-   - Emitter has helper methods but emission code not fully migrated
-   - Effort: 2-3 days
+## Remaining Work
 
-### Low Priority (Nice to Have)
+### Low Priority (Future)
 
-4. **ProjectCompiler Model Integration**
-   - See: `tasks/task_project_compiler_model_integration.md`
-   - Wire CompilationUnit/ProjectModel into compilation pipeline
-   - Effort: 3-5 days
+| Rec | Name | Priority | Notes |
+|-----|------|----------|-------|
+| **#2** | Unified Type System | Low | Would be large refactor, defer to future |
+| **#11** | Error Recovery Parser | Low | LSP work (v0.2.x) |
+| **#12** | Symbol Index | Low | LSP work (v0.2.x) |
 
 ---
 
@@ -103,7 +98,7 @@ Used by `ControlFlowValidatorV3` for accurate missing-return and unreachable-cod
 
 ## Test Coverage
 
-Current test count: **3,979 tests** (all passing)
+Current test count: **4,015 tests** (4002 passed, 13 skipped)
 
 Test organization:
 - `Analysis/ControlFlow/` - CFG unit tests
@@ -117,7 +112,9 @@ Test organization:
 
 ## Next Steps
 
-1. Complete cross-module inheritance fix (HIGH - blocks 0.1.7)
-2. Remove legacy validators from TypeChecker (MEDIUM)
-3. Complete emitter migration to CodeGenInfo (LOW)
-4. Integrate CompilationUnit into ProjectCompiler (LOW)
+All high and medium priority architecture tasks are complete. Future work:
+
+1. **Unified Type System** - Large refactor, consider for v0.2.x
+2. **Error Recovery Parser** - For LSP integration (v0.2.x)
+3. **Symbol Index** - For LSP integration (v0.2.x)
+4. **Directory Organization** - Move remaining files to proper locations
