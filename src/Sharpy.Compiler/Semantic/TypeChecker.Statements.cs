@@ -163,17 +163,23 @@ public partial class TypeChecker
                 }
             }
 
-            // For augmented assignments, delegate to OperatorValidator which handles:
+            // For augmented assignments, use TypeInferenceService (errors reported by V2 validator in pipeline)
+            // This handles:
             // - Preferring in-place dunder methods (e.g., __iadd__) when available
             // - Falling back to binary operators (e.g., __add__) otherwise
-            // - Verifying result type is assignable to target type
-            // - Logging appropriate errors when operators are not supported
-            _operatorValidator.ValidateAugmentedAssignment(
+            var resultType = _typeInference.InferAugmentedAssignmentType(
                 assignment.Operator,
                 targetType,
-                valueType,
-                assignment.LineStart,
-                assignment.ColumnStart);
+                valueType);
+
+            // Verify result type is assignable to target type (if inference succeeded)
+            if (resultType != null && !resultType.IsAssignableTo(targetType))
+            {
+                AddError(
+                    $"Result type '{resultType.GetDisplayName()}' of augmented assignment is not assignable to target type '{targetType.GetDisplayName()}'",
+                    assignment.LineStart,
+                    assignment.ColumnStart);
+            }
             return;
         }
 
@@ -428,11 +434,7 @@ public partial class TypeChecker
         var iterType = CheckExpression(forStmt.Iterator);
 
         // Infer element type from the iterator (errors reported by V2 validator in pipeline)
-        var elementType = _typeInference.InferIterableElementType(iterType)
-            ?? _protocolValidator.ValidateIteration(
-                iterType,
-                forStmt.Iterator.LineStart,
-                forStmt.Iterator.ColumnStart);
+        var elementType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
         // Enter scope for for-body block FIRST
         // This ensures loop variables are scoped to the loop

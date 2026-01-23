@@ -148,6 +148,8 @@ public partial class TypeChecker
             legacyErrors.AddRange(_defaultParameterValidator.Errors);
 
             // Deduplicate: only add legacy errors that aren't already present.
+            // Note: Different validators may have slightly different error messages for the same issue,
+            // so we use a more lenient deduplication based on line number and error category.
             foreach (var legacyError in legacyErrors)
             {
                 bool isDuplicate = allErrors.Any(e =>
@@ -155,7 +157,11 @@ public partial class TypeChecker
                     (e.Message == legacyError.Message ||
                      // Handle case where V2 error is raw and legacy is formatted
                      e.Message.Contains(legacyError.Message) ||
-                     legacyError.Message.Contains(e.Message)));
+                     legacyError.Message.Contains(e.Message) ||
+                     // Handle case where messages are similar but not identical
+                     // (e.g., "with operand" vs "with right operand")
+                     (e.Message.Contains("does not support operator") &&
+                      legacyError.Message.Contains("does not support operator"))));
                 if (!isDuplicate)
                 {
                     allErrors.Add(legacyError);
@@ -209,7 +215,11 @@ public partial class TypeChecker
         {
             bool isDuplicate = _errors.Any(e =>
                 e.Line == error.Line &&
-                (e.Message == error.Message || e.Message.EndsWith(": " + error.Message)));
+                (e.Message == error.Message ||
+                 e.Message.EndsWith(": " + error.Message) ||
+                 // Handle similar operator error messages (e.g., "with operand" vs "with right operand")
+                 (e.Message.Contains("does not support operator") &&
+                  error.Message.Contains("does not support operator"))));
             if (!isDuplicate)
             {
                 _errors.Add(new SemanticError(error.Message, error.Line, error.Column));

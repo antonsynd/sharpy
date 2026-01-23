@@ -112,19 +112,18 @@ public partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // Use TypeInferenceService for type inference (errors reported by V2 validator in pipeline)
+        // Use TypeInferenceService for type inference
         var resultType = _typeInference.InferBinaryOpType(binOp.Operator, leftType, rightType);
 
-        // Fall back to legacy validator for error reporting and edge cases not yet in TypeInferenceService
-        // TODO: Remove this fallback once TypeInferenceService covers all cases
+        // If type inference fails, report the error directly
+        // (V2 validators may not catch all type incompatibilities)
         if (resultType == null)
         {
-            return _operatorValidator.ValidateBinaryOp(
-                binOp.Operator,
-                leftType,
-                rightType,
+            AddError(
+                $"Type '{leftType.GetDisplayName()}' does not support operator '{GetOperatorSymbol(binOp.Operator)}' with operand of type '{rightType.GetDisplayName()}'",
                 binOp.LineStart,
                 binOp.ColumnStart);
+            return SemanticType.Unknown;
         }
 
         return resultType;
@@ -394,18 +393,17 @@ public partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // Use TypeInferenceService for type inference (errors reported by V2 validator in pipeline)
+        // Use TypeInferenceService for type inference
         var resultType = _typeInference.InferUnaryOpType(unOp.Operator, operandType);
 
-        // Fall back to legacy validator for error reporting and edge cases
-        // TODO: Remove this fallback once TypeInferenceService covers all cases
+        // If type inference fails, report the error directly
         if (resultType == null)
         {
-            return _operatorValidator.ValidateUnaryOp(
-                unOp.Operator,
-                operandType,
+            AddError(
+                $"Type '{operandType.GetDisplayName()}' does not support unary operator '{GetOperatorSymbol(unOp.Operator)}'",
                 unOp.LineStart,
                 unOp.ColumnStart);
+            return SemanticType.Unknown;
         }
 
         return resultType;
@@ -445,18 +443,18 @@ public partial class TypeChecker
                 continue;
             }
 
-            // Map ComparisonOperator to BinaryOperator
+            // Map ComparisonOperator to BinaryOperator and validate
             var binaryOp = OperatorValidator.ComparisonOperatorToBinaryOperator(chain.Operators[i]);
+            var resultType = _typeInference.InferBinaryOpType(binaryOp, leftType, rightType);
 
-            // Validate the comparison using OperatorValidator
-            // We discard the result type since comparison operators always return bool,
-            // and ValidateBinaryOp already reports errors for invalid operations.
-            _ = _operatorValidator.ValidateBinaryOp(
-                binaryOp,
-                leftType,
-                rightType,
-                chain.Operands[i].LineStart,
-                chain.Operands[i].ColumnStart);
+            // If type inference fails, report the error directly
+            if (resultType == null)
+            {
+                AddError(
+                    $"Type '{leftType.GetDisplayName()}' does not support operator '{GetOperatorSymbol(binaryOp)}' with operand of type '{rightType.GetDisplayName()}'",
+                    chain.Operands[i].LineStart,
+                    chain.Operands[i].ColumnStart);
+            }
         }
 
         // All comparison chains return bool
@@ -673,18 +671,8 @@ public partial class TypeChecker
         // Use TypeInferenceService for type inference (errors reported by V2 validator in pipeline)
         var resultType = _typeInference.InferIndexAccessType(objectType, indexType);
 
-        // Fall back to legacy validator for error reporting and edge cases
-        // TODO: Remove this fallback once TypeInferenceService covers all cases
-        if (resultType == null)
-        {
-            return _protocolValidator.ValidateIndexAccess(
-                objectType,
-                indexType,
-                indexAccess.LineStart,
-                indexAccess.ColumnStart);
-        }
-
-        return resultType;
+        // TypeInferenceService covers all supported operations - return Unknown for unsupported
+        return resultType ?? SemanticType.Unknown;
     }
 
     private SemanticType CheckFunctionCall(FunctionCall call)
@@ -773,17 +761,8 @@ public partial class TypeChecker
                 // Use TypeInferenceService for type inference (errors reported by V2 validator in pipeline)
                 var lenType = _typeInference.InferLenType(argTypes[0]);
 
-                // Fall back to legacy validator for error reporting
-                // TODO: Remove this fallback once TypeInferenceService covers all cases
-                if (lenType == null)
-                {
-                    return _protocolValidator.ValidateLen(
-                        argTypes[0],
-                        call.LineStart,
-                        call.ColumnStart);
-                }
-
-                return lenType;
+                // TypeInferenceService always returns Int for len() - return Unknown only if completely unsupported
+                return lenType ?? SemanticType.Unknown;
             }
 
             var symbol = _symbolTable.Lookup(id.Name);
@@ -1221,13 +1200,9 @@ public partial class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type and infer element type
+                // Check iterator type and infer element type (errors reported by V2 validator in pipeline)
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = _typeInference.InferIterableElementType(iterType)
-                    ?? _protocolValidator.ValidateIteration(
-                        iterType,
-                        forClause.Iterator.LineStart,
-                        forClause.Iterator.ColumnStart);
+                var elemType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)
@@ -1287,13 +1262,9 @@ public partial class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type and infer element type
+                // Check iterator type and infer element type (errors reported by V2 validator in pipeline)
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = _typeInference.InferIterableElementType(iterType)
-                    ?? _protocolValidator.ValidateIteration(
-                        iterType,
-                        forClause.Iterator.LineStart,
-                        forClause.Iterator.ColumnStart);
+                var elemType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)
@@ -1352,13 +1323,9 @@ public partial class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type and infer element type
+                // Check iterator type and infer element type (errors reported by V2 validator in pipeline)
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = _typeInference.InferIterableElementType(iterType)
-                    ?? _protocolValidator.ValidateIteration(
-                        iterType,
-                        forClause.Iterator.LineStart,
-                        forClause.Iterator.ColumnStart);
+                var elemType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)
@@ -1647,4 +1614,50 @@ public partial class TypeChecker
     /// <summary>
     /// Extract narrowed types from a conditional expression
     /// </summary>
+
+    /// <summary>
+    /// Gets the human-readable symbol for a binary operator.
+    /// </summary>
+    private static string GetOperatorSymbol(BinaryOperator op) => op switch
+    {
+        BinaryOperator.Add => "+",
+        BinaryOperator.Subtract => "-",
+        BinaryOperator.Multiply => "*",
+        BinaryOperator.Divide => "/",
+        BinaryOperator.FloorDivide => "//",
+        BinaryOperator.Modulo => "%",
+        BinaryOperator.Power => "**",
+        BinaryOperator.BitwiseAnd => "&",
+        BinaryOperator.BitwiseOr => "|",
+        BinaryOperator.BitwiseXor => "^",
+        BinaryOperator.LeftShift => "<<",
+        BinaryOperator.RightShift => ">>",
+        BinaryOperator.LessThan => "<",
+        BinaryOperator.LessThanOrEqual => "<=",
+        BinaryOperator.GreaterThan => ">",
+        BinaryOperator.GreaterThanOrEqual => ">=",
+        BinaryOperator.Equal => "==",
+        BinaryOperator.NotEqual => "!=",
+        BinaryOperator.And => "and",
+        BinaryOperator.Or => "or",
+        BinaryOperator.Is => "is",
+        BinaryOperator.IsNot => "is not",
+        BinaryOperator.In => "in",
+        BinaryOperator.NotIn => "not in",
+        BinaryOperator.NullCoalesce => "??",
+        BinaryOperator.PipeForward => "|>",
+        _ => op.ToString()
+    };
+
+    /// <summary>
+    /// Gets the human-readable symbol for a unary operator.
+    /// </summary>
+    private static string GetOperatorSymbol(UnaryOperator op) => op switch
+    {
+        UnaryOperator.Minus => "-",
+        UnaryOperator.Plus => "+",
+        UnaryOperator.Not => "not",
+        UnaryOperator.BitwiseNot => "~",
+        _ => op.ToString()
+    };
 }

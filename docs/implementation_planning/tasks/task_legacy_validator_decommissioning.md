@@ -253,7 +253,19 @@ Look for:
 - Collection type inference (e.g., `__iter__` returns `Iterator[T]`)
 
 **Verification:**
-- [ ] Protocol type inference identified
+- [x] Protocol type inference identified
+
+**Audit Result:** All protocol type inference methods are already in TypeInferenceService:
+
+| ProtocolValidator Method | Returns | TypeInferenceService Method | Status |
+|--------------------------|---------|----------------------------|--------|
+| `ValidateLen` | `Int` | `InferLenType` | ✅ Already covered |
+| `ValidateIteration` | Element type | `InferIterableElementType` | ✅ Already covered |
+| `ValidateMembership` | `Bool` | `InferMembershipType` | ✅ Already covered |
+| `ValidateIndexAccess` | Element type | `InferIndexAccessType` | ✅ Already covered |
+| `ValidateBoolConversion` | `Bool` | N/A (trivial, always bool) | ✅ No migration needed |
+
+**Conclusion:** No additional migration required - TypeInferenceService already has complete protocol type inference coverage.
 
 ---
 
@@ -282,10 +294,16 @@ public SemanticType? InferProtocolMethodResult(string protocolMethod, SemanticTy
 ```
 
 **Verification:**
-- [ ] Protocol type inference works
-- [ ] Tests added
+- [x] Protocol type inference works (already in TypeInferenceService)
+- [x] Tests added (existing tests cover all protocol methods)
 
-**Commit:** `feat(semantic): Add protocol type inference to TypeInferenceService`
+**Note:** Task 1.4 is complete without code changes - TypeInferenceService already has all protocol type inference methods:
+- `InferIterableElementType` - for iteration
+- `InferIndexAccessType` - for indexing
+- `InferMembershipType` - for `in` operator
+- `InferLenType` - for `len()`
+
+**Commit:** No commit needed - existing implementation is complete.
 
 ---
 
@@ -305,10 +323,17 @@ var resultType = _typeInference.InferBinaryOperatorResult(op, leftType, rightTyp
 ```
 
 **Verification:**
-- [ ] All inference calls replaced
-- [ ] Tests pass
+- [x] All inference calls replaced
+- [x] Tests pass
 
-**Commit:** `refactor(semantic): Use TypeInferenceService for operator inference`
+**Implementation Notes:**
+- Removed fallback calls to `_operatorValidator.ValidateBinaryOp/ValidateUnaryOp`
+- Removed fallback calls to `_protocolValidator.ValidateIteration/ValidateIndexAccess/ValidateLen`
+- Added direct error reporting in TypeChecker when TypeInferenceService returns null
+- Updated deduplication logic to handle similar operator error messages from different validators
+- Added `GetOperatorSymbol` helper methods for error message formatting
+
+**Commit:** `refactor(semantic): Use TypeInferenceService for operator/protocol inference`
 
 ---
 
