@@ -444,7 +444,10 @@ public partial class TypeChecker
             }
 
             // Map ComparisonOperator to BinaryOperator and validate
+            // TODO: Move ComparisonOperatorToBinaryOperator to a utility class
+#pragma warning disable CS0618 // Using obsolete OperatorValidator for static utility method
             var binaryOp = OperatorValidator.ComparisonOperatorToBinaryOperator(chain.Operators[i]);
+#pragma warning restore CS0618
             var resultType = _typeInference.InferBinaryOpType(binaryOp, leftType, rightType);
 
             // If type inference fails, report the error directly

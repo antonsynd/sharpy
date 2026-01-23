@@ -10,11 +10,12 @@ namespace Sharpy.Compiler.Semantic;
 /// - Public members accessible everywhere
 /// </summary>
 /// <remarks>
-/// MIGRATION NOTE: This validator should be migrated to the new validation pipeline
-/// by implementing ISemanticValidator (see ControlFlowValidatorV2 as reference).
+/// DEPRECATED: This validator has been replaced by AccessValidatorV2 which
+/// implements the ISemanticValidator interface for the new validation pipeline.
 /// New code should use ValidationPipelineFactory.CreateDefault() instead of
 /// instantiating this class directly.
 /// </remarks>
+[Obsolete("Use AccessValidatorV2 via ValidationPipelineFactory.CreateDefault() instead")]
 public class AccessValidator
 {
     private readonly SymbolTable _symbolTable;

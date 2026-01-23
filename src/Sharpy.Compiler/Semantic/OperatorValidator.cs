@@ -12,11 +12,16 @@ namespace Sharpy.Compiler.Semantic;
 /// The internal caches are not protected by locks for performance reasons.
 /// </summary>
 /// <remarks>
-/// MIGRATION NOTE: This validator should be migrated to the new validation pipeline
-/// by implementing ISemanticValidator (see ControlFlowValidatorV2 as reference).
+/// DEPRECATED: This validator has been replaced by OperatorValidatorV2 which
+/// implements the ISemanticValidator interface for the new validation pipeline.
+/// Type inference has been moved to TypeInferenceService.
 /// New code should use ValidationPipelineFactory.CreateDefault() instead of
 /// instantiating this class directly.
+///
+/// NOTE: Some static utility methods like ComparisonOperatorToBinaryOperator are
+/// still used and should be moved to a separate utility class in the future.
 /// </remarks>
+[Obsolete("Use OperatorValidatorV2 via ValidationPipelineFactory.CreateDefault() and TypeInferenceService for type inference")]
 public class OperatorValidator
 {
     private readonly SymbolTable _symbolTable;
@@ -820,13 +825,20 @@ public class OperatorValidator
     private SemanticType MapClrTypeToSemanticType(Type clrType)
     {
         // Map common CLR types to Sharpy types
-        if (clrType == typeof(int)) return SemanticType.Int;
-        if (clrType == typeof(long)) return SemanticType.Long;
-        if (clrType == typeof(float)) return SemanticType.Float32;  // C# float -> Sharpy float32
-        if (clrType == typeof(double)) return SemanticType.Double;  // C# double -> Sharpy float/double
-        if (clrType == typeof(bool)) return SemanticType.Bool;
-        if (clrType == typeof(string)) return SemanticType.Str;
-        if (clrType == typeof(void)) return SemanticType.Void;
+        if (clrType == typeof(int))
+            return SemanticType.Int;
+        if (clrType == typeof(long))
+            return SemanticType.Long;
+        if (clrType == typeof(float))
+            return SemanticType.Float32;  // C# float -> Sharpy float32
+        if (clrType == typeof(double))
+            return SemanticType.Double;  // C# double -> Sharpy float/double
+        if (clrType == typeof(bool))
+            return SemanticType.Bool;
+        if (clrType == typeof(string))
+            return SemanticType.Str;
+        if (clrType == typeof(void))
+            return SemanticType.Void;
 
         // For other types, create a UserDefinedType
         // TODO: Look up the symbol in the symbol table when SymbolTable.LookupByClrType() is implemented

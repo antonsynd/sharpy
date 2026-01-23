@@ -10,11 +10,13 @@ namespace Sharpy.Compiler.Semantic;
 /// NOTE: This class is NOT thread-safe (same as OperatorValidator).
 /// </summary>
 /// <remarks>
-/// MIGRATION NOTE: This validator should be migrated to the new validation pipeline
-/// by implementing ISemanticValidator (see ControlFlowValidatorV2 as reference).
+/// DEPRECATED: This validator has been replaced by ProtocolValidatorV2 which
+/// implements the ISemanticValidator interface for the new validation pipeline.
+/// Type inference has been moved to TypeInferenceService.
 /// New code should use ValidationPipelineFactory.CreateDefault() instead of
 /// instantiating this class directly.
 /// </remarks>
+[Obsolete("Use ProtocolValidatorV2 via ValidationPipelineFactory.CreateDefault() and TypeInferenceService for type inference")]
 public class ProtocolValidator
 {
     private readonly SymbolTable _symbolTable;
@@ -299,12 +301,18 @@ public class ProtocolValidator
     /// </remarks>
     private SemanticType MapClrTypeToSemanticType(Type clrType)
     {
-        if (clrType == typeof(int)) return SemanticType.Int;
-        if (clrType == typeof(long)) return SemanticType.Long;
-        if (clrType == typeof(float)) return SemanticType.Float32;  // C# float -> Sharpy float32
-        if (clrType == typeof(double)) return SemanticType.Double;  // C# double -> Sharpy float/double
-        if (clrType == typeof(bool)) return SemanticType.Bool;
-        if (clrType == typeof(string)) return SemanticType.Str;
+        if (clrType == typeof(int))
+            return SemanticType.Int;
+        if (clrType == typeof(long))
+            return SemanticType.Long;
+        if (clrType == typeof(float))
+            return SemanticType.Float32;  // C# float -> Sharpy float32
+        if (clrType == typeof(double))
+            return SemanticType.Double;  // C# double -> Sharpy float/double
+        if (clrType == typeof(bool))
+            return SemanticType.Bool;
+        if (clrType == typeof(string))
+            return SemanticType.Str;
         return SemanticType.Object;
     }
 

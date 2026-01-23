@@ -7,6 +7,11 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// Adapter that wraps a legacy validator action to work with the new pipeline.
 /// This enables gradual migration of existing validators.
 /// </summary>
+/// <remarks>
+/// DEPRECATED: This adapter is for legacy code that hasn't migrated to V2 validators.
+/// New code should use ValidationPipelineFactory.CreateDefault() with V2 validators.
+/// </remarks>
+#pragma warning disable CS0618 // Intentionally using obsolete legacy validators for backward compatibility
 public class LegacyValidatorAdapter : ISemanticValidator
 {
     private readonly Action<Module, SemanticContext> _validateAction;
@@ -125,3 +130,4 @@ public class LegacyValidatorAdapter : ISemanticValidator
         );
     }
 }
+#pragma warning restore CS0618

@@ -15,6 +15,7 @@ namespace Sharpy.Compiler.Semantic;
 /// New code should use ValidationPipelineFactory.CreateDefault() instead of
 /// instantiating this class directly.
 /// </remarks>
+[Obsolete("Use ControlFlowValidatorV2 via ValidationPipelineFactory.CreateDefault() instead")]
 public class ControlFlowValidator
 {
     private readonly ICompilerLogger _logger;
