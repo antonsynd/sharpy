@@ -469,7 +469,8 @@ public partial class RoslynEmitter
     /// </summary>
     private void CollectReferencedIdentifiers(Expression? expr, HashSet<string> identifiers)
     {
-        if (expr == null) return;
+        if (expr == null)
+            return;
 
         switch (expr)
         {

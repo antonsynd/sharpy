@@ -54,7 +54,8 @@ public partial class Parser
         while (!IsAtEnd)
         {
             SkipNewlines();
-            if (IsAtEnd) break;
+            if (IsAtEnd)
+                break;
 
             var stmt = ParseStatement();
             statements.Add(stmt);

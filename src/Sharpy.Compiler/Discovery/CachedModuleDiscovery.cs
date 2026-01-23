@@ -150,16 +150,26 @@ public class CachedModuleDiscovery
     private SemanticType ConvertTypeSignature(TypeSignature signature)
     {
         // Handle primitive types
-        if (signature.Name == "int") return SemanticType.Int;
-        if (signature.Name == "long") return SemanticType.Long;
-        if (signature.Name == "float") return SemanticType.Float;       // float -> double (per spec)
-        if (signature.Name == "float32") return SemanticType.Float32;   // float32 -> C# float
-        if (signature.Name == "float64") return SemanticType.Double;    // float64 -> double
-        if (signature.Name == "double") return SemanticType.Double;
-        if (signature.Name == "bool") return SemanticType.Bool;
-        if (signature.Name == "str") return SemanticType.Str;
-        if (signature.Name == "None") return SemanticType.Void;
-        if (signature.Name == "object") return SemanticType.Object;
+        if (signature.Name == "int")
+            return SemanticType.Int;
+        if (signature.Name == "long")
+            return SemanticType.Long;
+        if (signature.Name == "float")
+            return SemanticType.Float;       // float -> double (per spec)
+        if (signature.Name == "float32")
+            return SemanticType.Float32;   // float32 -> C# float
+        if (signature.Name == "float64")
+            return SemanticType.Double;    // float64 -> double
+        if (signature.Name == "double")
+            return SemanticType.Double;
+        if (signature.Name == "bool")
+            return SemanticType.Bool;
+        if (signature.Name == "str")
+            return SemanticType.Str;
+        if (signature.Name == "None")
+            return SemanticType.Void;
+        if (signature.Name == "object")
+            return SemanticType.Object;
 
         // Handle generic types
         if (signature.IsGeneric)

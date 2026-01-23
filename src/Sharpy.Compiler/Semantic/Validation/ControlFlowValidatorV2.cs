@@ -138,8 +138,10 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
 
             var (stmtReturns, stmtExits) = ValidateStatement(statement, loopDepth);
 
-            if (stmtReturns) alwaysReturns = true;
-            if (stmtExits) alwaysExits = true;
+            if (stmtReturns)
+                alwaysReturns = true;
+            if (stmtExits)
+                alwaysExits = true;
         }
 
         return (alwaysReturns, hasUnreachableCode);

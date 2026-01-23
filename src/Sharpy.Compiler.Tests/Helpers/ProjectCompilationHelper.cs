@@ -394,7 +394,8 @@ public class ProjectCompilationHelper : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         try
         {

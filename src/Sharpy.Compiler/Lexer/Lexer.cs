@@ -1073,18 +1073,30 @@ public class Lexer
 
         switch (escaped)
         {
-            case 'n': return '\n';
-            case 'r': return '\r';
-            case 't': return '\t';
-            case 'b': return '\b';
-            case 'f': return '\f';
-            case '0': return '\0';
-            case '\\': return '\\';
-            case '\'': return '\'';
-            case '"': return '"';
-            case '/': return '/';
-            case 'a': return '\a';
-            case 'v': return '\v';
+            case 'n':
+                return '\n';
+            case 'r':
+                return '\r';
+            case 't':
+                return '\t';
+            case 'b':
+                return '\b';
+            case 'f':
+                return '\f';
+            case '0':
+                return '\0';
+            case '\\':
+                return '\\';
+            case '\'':
+                return '\'';
+            case '"':
+                return '"';
+            case '/':
+                return '/';
+            case 'a':
+                return '\a';
+            case 'v':
+                return '\v';
 
             // Hex escape: \xhh (2 hex digits)
             case 'x':
@@ -1139,7 +1151,8 @@ public class Lexer
                     for (int i = 0; i < 2 && _position < _source.Length; i++)
                     {
                         var nextChar = _source[_position];
-                        if (nextChar < '0' || nextChar > '7') break;
+                        if (nextChar < '0' || nextChar > '7')
+                            break;
 
                         octal += nextChar;
                         _position++;

@@ -167,7 +167,8 @@ public record BuiltinType : SemanticType
 
     public override bool IsAssignableTo(SemanticType other)
     {
-        if (base.IsAssignableTo(other)) return true;
+        if (base.IsAssignableTo(other))
+            return true;
 
         // Use PrimitiveCatalog for implicit conversion rules
         var thisInfo = PrimitiveCatalog.GetPrimitiveInfo(this);
@@ -220,8 +221,10 @@ public record GenericType : SemanticType
     // This improves cache effectiveness in OperatorValidator
     public virtual bool Equals(GenericType? other)
     {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
+        if (other is null)
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
 
         if (Name != other.Name || TypeArguments.Count != other.TypeArguments.Count)
             return false;
@@ -269,7 +272,8 @@ public record UserDefinedType : SemanticType
 
     public override bool IsAssignableTo(SemanticType other)
     {
-        if (base.IsAssignableTo(other)) return true;
+        if (base.IsAssignableTo(other))
+            return true;
 
         if (other is UserDefinedType otherUdt && Symbol != null)
         {
@@ -415,8 +419,10 @@ public record TupleType : SemanticType
     // Override Equals and GetHashCode to compare ElementTypes by content
     public virtual bool Equals(TupleType? other)
     {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
+        if (other is null)
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
 
         if (ElementTypes.Count != other.ElementTypes.Count)
             return false;

@@ -63,7 +63,8 @@ public class TypeMappingConsistencyTests
         foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
         {
             // Skip void: not a mappable value type in Sharpy (void is not user-expressible)
-            if (info.ClrType == typeof(void)) continue;
+            if (info.ClrType == typeof(void))
+                continue;
 
             // Discovery mapper: CLR -> SemanticType
             var semanticType = discoveryMapper.MapClrTypeToSemanticType(info.ClrType);

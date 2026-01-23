@@ -172,7 +172,8 @@ public readonly partial struct Str
     public int Count(Str sub, int start = 0, int? end = null)
     {
         var (actualStart, actualEnd) = NormalizeSliceIndices(start, end);
-        if (actualStart >= actualEnd) return 0;
+        if (actualStart >= actualEnd)
+            return 0;
 
         var substring = _s.Substring(actualStart, actualEnd - actualStart);
         var subStr = (string)sub;
@@ -250,7 +251,8 @@ public readonly partial struct Str
     public bool EndsWith(Str suffix, int start = 0, int? end = null)
     {
         var (actualStart, actualEnd) = NormalizeSliceIndices(start, end);
-        if (actualStart >= actualEnd) return false;
+        if (actualStart >= actualEnd)
+            return false;
 
         var substring = _s.Substring(actualStart, actualEnd - actualStart);
         return substring.EndsWith((string)suffix);
@@ -312,7 +314,8 @@ public readonly partial struct Str
     public int Find(Str sub, int start = 0, int? end = null)
     {
         var (actualStart, actualEnd) = NormalizeSliceIndices(start, end);
-        if (actualStart >= actualEnd) return -1;
+        if (actualStart >= actualEnd)
+            return -1;
 
         var substring = _s.Substring(actualStart, actualEnd - actualStart);
         var index = substring.IndexOf((string)sub);
@@ -901,7 +904,8 @@ public readonly partial struct Str
         }
 
         var (actualStart, actualEnd) = NormalizeSliceIndices(start, end);
-        if (actualStart >= actualEnd) return -1;
+        if (actualStart >= actualEnd)
+            return -1;
 
         var substring = _s.Substring(actualStart, actualEnd - actualStart);
         var index = substring.LastIndexOf((string)sub);
@@ -1181,7 +1185,8 @@ public readonly partial struct Str
     public bool StartsWith(Str prefix, int start = 0, int? end = null)
     {
         var (actualStart, actualEnd) = NormalizeSliceIndices(start, end);
-        if (actualStart >= actualEnd) return false;
+        if (actualStart >= actualEnd)
+            return false;
 
         var substring = _s.Substring(actualStart, actualEnd - actualStart);
         return substring.StartsWith((string)prefix);
@@ -1193,9 +1198,12 @@ public readonly partial struct Str
     private (int start, int end) NormalizeSliceIndices(int start, int? end)
     {
         var actualEnd = end ?? _s.Length;
-        if (start < 0) start = 0;
-        if (actualEnd > _s.Length) actualEnd = _s.Length;
-        if (actualEnd < 0) actualEnd = 0;
+        if (start < 0)
+            start = 0;
+        if (actualEnd > _s.Length)
+            actualEnd = _s.Length;
+        if (actualEnd < 0)
+            actualEnd = 0;
         return (start, actualEnd);
     }
 

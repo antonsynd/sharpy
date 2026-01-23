@@ -35,14 +35,22 @@ public class ClrTypeMapperAdapter : IClrTypeMapper
     public SemanticType GetSemanticType(Type clrType)
     {
         // Map common CLR types to semantic types
-        if (clrType == typeof(int)) return SemanticType.Int;
-        if (clrType == typeof(long)) return SemanticType.Long;
-        if (clrType == typeof(float)) return SemanticType.Float32;
-        if (clrType == typeof(double)) return SemanticType.Double;
-        if (clrType == typeof(bool)) return SemanticType.Bool;
-        if (clrType == typeof(string)) return SemanticType.Str;
-        if (clrType == typeof(void)) return SemanticType.Void;
-        if (clrType == typeof(object)) return SemanticType.Object;
+        if (clrType == typeof(int))
+            return SemanticType.Int;
+        if (clrType == typeof(long))
+            return SemanticType.Long;
+        if (clrType == typeof(float))
+            return SemanticType.Float32;
+        if (clrType == typeof(double))
+            return SemanticType.Double;
+        if (clrType == typeof(bool))
+            return SemanticType.Bool;
+        if (clrType == typeof(string))
+            return SemanticType.Str;
+        if (clrType == typeof(void))
+            return SemanticType.Void;
+        if (clrType == typeof(object))
+            return SemanticType.Object;
 
         // For other types, return unknown (caller should handle)
         return SemanticType.Unknown;
@@ -61,17 +69,20 @@ public class ClrTypeMapperAdapter : IClrTypeMapper
 
             // Try property first (properties are usually the most targeted lookup)
             var property = type.GetProperty(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
-            if (property != null) return property;
+            if (property != null)
+                return property;
 
             // Try field
             var field = type.GetField(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
-            if (field != null) return field;
+            if (field != null)
+                return field;
 
             // Try methods (use GetMethods to handle overloads - just return the first match)
             var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                 .Where(m => m.Name == name)
                 .ToArray();
-            if (methods.Length > 0) return methods[0];
+            if (methods.Length > 0)
+                return methods[0];
 
             return null;
         });
@@ -110,7 +121,8 @@ public class ClrTypeMapperAdapter : IClrTypeMapper
     private Type? GetNullableClrType(NullableType nt)
     {
         var underlyingClr = GetClrType(nt.UnderlyingType);
-        if (underlyingClr == null) return null;
+        if (underlyingClr == null)
+            return null;
 
         // For value types, wrap in Nullable<T>
         if (underlyingClr.IsValueType)

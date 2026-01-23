@@ -281,9 +281,12 @@ def b_func(): pass
         int cIndex = -1, bIndex = -1, aIndex = -1;
         for (int i = 0; i < order.Count; i++)
         {
-            if (order[i] == normCPath) cIndex = i;
-            if (order[i] == normBPath) bIndex = i;
-            if (order[i] == normAPath) aIndex = i;
+            if (order[i] == normCPath)
+                cIndex = i;
+            if (order[i] == normBPath)
+                bIndex = i;
+            if (order[i] == normAPath)
+                aIndex = i;
         }
 
         Assert.True(cIndex < bIndex, "c should be built before b");

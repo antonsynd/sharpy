@@ -1,4 +1,4 @@
-﻿using System.CommandLine;
+using System.CommandLine;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;

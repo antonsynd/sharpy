@@ -336,7 +336,8 @@ public class TypeMapper
 
     private static string SimpleToPascalCase(string name)
     {
-        if (string.IsNullOrEmpty(name)) return name;
+        if (string.IsNullOrEmpty(name))
+            return name;
         // Use NameMangler for proper snake_case to PascalCase conversion
         return NameMangler.ToPascalCase(name);
     }

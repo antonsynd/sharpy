@@ -15,7 +15,8 @@ public class DependencyGraphTests
     {
         for (int i = 0; i < list.Count; i++)
         {
-            if (list[i] == item) return i;
+            if (list[i] == item)
+                return i;
         }
         return -1;
     }

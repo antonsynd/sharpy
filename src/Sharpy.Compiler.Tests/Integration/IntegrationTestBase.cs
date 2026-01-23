@@ -283,7 +283,9 @@ public abstract class IntegrationTestBase
                 if (!process.WaitForExit(timeout))
                 {
                     timedOut = true;
-                    try { process.Kill(entireProcessTree: true); } catch { }
+                    try
+                    { process.Kill(entireProcessTree: true); }
+                    catch { }
                 }
 
                 // Ensure async output handlers complete
@@ -614,7 +616,9 @@ public abstract class IntegrationTestBase
                 if (!process.WaitForExit(timeout))
                 {
                     timedOut = true;
-                    try { process.Kill(entireProcessTree: true); } catch { }
+                    try
+                    { process.Kill(entireProcessTree: true); }
+                    catch { }
                 }
 
                 // Ensure async output handlers complete

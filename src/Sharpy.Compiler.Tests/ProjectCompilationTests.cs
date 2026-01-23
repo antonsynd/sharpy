@@ -873,9 +873,12 @@ def main():
             int baseIndex = -1, utilsIndex = -1, mainIndex = -1;
             for (int i = 0; i < buildOrder.Count; i++)
             {
-                if (buildOrder[i].EndsWith("base.spy", StringComparison.OrdinalIgnoreCase)) baseIndex = i;
-                if (buildOrder[i].EndsWith("utils.spy", StringComparison.OrdinalIgnoreCase)) utilsIndex = i;
-                if (buildOrder[i].EndsWith("main.spy", StringComparison.OrdinalIgnoreCase)) mainIndex = i;
+                if (buildOrder[i].EndsWith("base.spy", StringComparison.OrdinalIgnoreCase))
+                    baseIndex = i;
+                if (buildOrder[i].EndsWith("utils.spy", StringComparison.OrdinalIgnoreCase))
+                    utilsIndex = i;
+                if (buildOrder[i].EndsWith("main.spy", StringComparison.OrdinalIgnoreCase))
+                    mainIndex = i;
             }
 
             Assert.True(baseIndex >= 0, "base.spy should be in build order");

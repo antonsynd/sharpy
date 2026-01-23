@@ -263,7 +263,8 @@ public partial class RoslynEmitter
             foreach (var interfaceMethod in interfaceMethods)
             {
                 // Skip if method is already defined in the class
-                if (definedMethods.Contains(interfaceMethod.Name)) continue;
+                if (definedMethods.Contains(interfaceMethod.Name))
+                    continue;
 
                 // Generate abstract stub
                 var stub = GenerateAbstractMethodStub(interfaceMethod);
@@ -303,7 +304,8 @@ public partial class RoslynEmitter
 
         void CollectFromInterface(string interfaceName)
         {
-            if (visited.Contains(interfaceName)) return;
+            if (visited.Contains(interfaceName))
+                return;
             visited.Add(interfaceName);
 
             // Look up the interface definition
@@ -316,7 +318,8 @@ public partial class RoslynEmitter
                 if (stmt is FunctionDef funcDef)
                 {
                     // Skip if we've already seen a method with this name
-                    if (seenMethods.Contains(funcDef.Name)) continue;
+                    if (seenMethods.Contains(funcDef.Name))
+                        continue;
                     seenMethods.Add(funcDef.Name);
                     result.Add(funcDef);
                 }
@@ -336,7 +339,8 @@ public partial class RoslynEmitter
         foreach (var baseType in baseTypes)
         {
             var typeName = baseType.Name;
-            if (string.IsNullOrEmpty(typeName)) continue;
+            if (string.IsNullOrEmpty(typeName))
+                continue;
 
             // Check if this is an interface (exists in our interface definitions)
             if (_interfaceDefinitions.ContainsKey(typeName))

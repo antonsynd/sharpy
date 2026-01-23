@@ -102,9 +102,12 @@ public class CompilerServices
     /// </summary>
     public bool CanAssign(SemanticType from, SemanticType to)
     {
-        if (from == null || to == null) return false;
-        if (from == SemanticType.Unknown || to == SemanticType.Unknown) return true;
-        if (from.Equals(to)) return true;
+        if (from == null || to == null)
+            return false;
+        if (from == SemanticType.Unknown || to == SemanticType.Unknown)
+            return true;
+        if (from.Equals(to))
+            return true;
 
         // Handle nullable assignment (T can be assigned to T?)
         if (to is NullableType nullableTo)
@@ -176,8 +179,10 @@ public class CompilerServices
 
     private bool IsSubtypeOf(TypeSymbol? derived, TypeSymbol? baseType)
     {
-        if (derived == null || baseType == null) return false;
-        if (derived == baseType) return true;
+        if (derived == null || baseType == null)
+            return false;
+        if (derived == baseType)
+            return true;
 
         // Check direct base type
         if (derived.BaseType != null && IsSubtypeOf(derived.BaseType, baseType))
@@ -196,11 +201,14 @@ public class CompilerServices
     private bool IsNumericWidening(SemanticType from, SemanticType to)
     {
         // int -> long
-        if (from == SemanticType.Int && to == SemanticType.Long) return true;
+        if (from == SemanticType.Int && to == SemanticType.Long)
+            return true;
         // float32 -> float64/double
-        if (from == SemanticType.Float32 && (to == SemanticType.Double || to == SemanticType.Float)) return true;
+        if (from == SemanticType.Float32 && (to == SemanticType.Double || to == SemanticType.Float))
+            return true;
         // int -> float64/double
-        if (from == SemanticType.Int && (to == SemanticType.Double || to == SemanticType.Float)) return true;
+        if (from == SemanticType.Int && (to == SemanticType.Double || to == SemanticType.Float))
+            return true;
 
         return false;
     }

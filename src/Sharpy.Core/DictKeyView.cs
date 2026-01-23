@@ -19,13 +19,16 @@ public sealed partial class DictKeyView<K, V> : IKeysView<K> where K : notnull
 
     public int CompareTo(Set<K>? other)
     {
-        if (other == null) return 1;
+        if (other == null)
+            return 1;
 
         var thisCount = __Len__();
         var otherCount = other.__Len__();
 
-        if (thisCount < otherCount) return -1;
-        if (thisCount > otherCount) return 1;
+        if (thisCount < otherCount)
+            return -1;
+        if (thisCount > otherCount)
+            return 1;
         return 0;
     }
 

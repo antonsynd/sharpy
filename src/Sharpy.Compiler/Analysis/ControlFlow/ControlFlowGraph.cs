@@ -67,7 +67,8 @@ public sealed class ControlFlowGraph
 
         void Visit(BasicBlock block)
         {
-            if (!visited.Add(block)) return;
+            if (!visited.Add(block))
+                return;
             foreach (var succ in block.Successors)
                 Visit(succ);
             postOrder.Add(block);
@@ -90,7 +91,8 @@ public sealed class ControlFlowGraph
         while (worklist.Count > 0)
         {
             var block = worklist.Dequeue();
-            if (!reachable.Add(block)) continue;
+            if (!reachable.Add(block))
+                continue;
             foreach (var succ in block.Successors)
                 worklist.Enqueue(succ);
         }
@@ -116,7 +118,8 @@ public sealed class ControlFlowGraph
             changed = false;
             foreach (var block in _blocks)
             {
-                if (reachesExit.Contains(block)) continue;
+                if (reachesExit.Contains(block))
+                    continue;
                 if (block.Successors.Any(reachesExit.Contains))
                 {
                     reachesExit.Add(block);

@@ -155,8 +155,10 @@ public class ProjectCompiler
                 var fromImports = new List<FromImportStatement>();
                 foreach (var stmt in module.Body)
                 {
-                    if (stmt is ImportStatement import) imports.Add(import);
-                    else if (stmt is FromImportStatement fromImport) fromImports.Add(fromImport);
+                    if (stmt is ImportStatement import)
+                        imports.Add(import);
+                    else if (stmt is FromImportStatement fromImport)
+                        fromImports.Add(fromImport);
                 }
                 compilationUnit.Imports = imports;
                 compilationUnit.FromImports = fromImports;
