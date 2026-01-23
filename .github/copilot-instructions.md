@@ -29,7 +29,7 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 ```bash
 dotnet build sharpy.sln                              # Build all
 dotnet test                                          # Run all tests
-dotnet format                                        # Format before committing
+dotnet format whitespace                             # Format before committing
 dotnet run --project src/Sharpy.Cli -- run file.spy # Compile and execute
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
 dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser
@@ -117,4 +117,4 @@ $"return {value};"
 
 ## CI/CD
 
-`.github/workflows/`: `dotnet9.yml`, `dotnet10.yml` (tests on both .NET 9 and 10).
+`.github/workflows/`: `dotnet10.yml` (tests on .NET 10).

@@ -21,7 +21,7 @@ Keeps documentation synchronized with implementation.
 ```bash
 # Test code blocks from docs
 for file in examples/*.spy; do
-    dotnet run --project src/Sharpy.Cli -- check "$file"
+    dotnet run --project src/Sharpy.Cli -- build "$file"
 done
 ```
 

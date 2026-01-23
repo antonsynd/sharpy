@@ -10,11 +10,11 @@ Validates factual accuracy of claims. **Read-only.**
 
 ## Verification Categories
 
-1. **.NET API** — dotnet script -e "..." to verify behavior
-2. **Roslyn API** — Check SyntaxFactory method exists
-3. **Python semantics** — python3 -c "..." to verify
+1. **.NET API** — Create test program or use `csharp` REPL to verify behavior
+2. **Roslyn API** — Check SyntaxFactory method exists in docs or via test
+3. **Python semantics** — `python3 -c "..."` to verify
 4. **C# 9.0 availability** — Records yes, file-scoped namespaces no
-5. **Sharpy implementation** — grep -r "feature" src/
+5. **Sharpy implementation** — `grep -r "feature" src/`
 
 ## Output Format
 

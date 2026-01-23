@@ -37,7 +37,7 @@ For new language features:
 
 ```bash
 dotnet build sharpy.sln && dotnet test   # Build + test
-dotnet format                             # Format before commit
+dotnet format whitespace                 # Format before commit
 python3 -c "..."                         # Verify Python behavior
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
 ```

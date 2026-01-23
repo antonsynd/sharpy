@@ -1,3 +1,4 @@
+````instructions
 # Sharpy.Compiler.Tests
 
 Compiler test suite. Location: `src/Sharpy.Compiler.Tests/`
@@ -93,12 +94,6 @@ var result = helper.Compile();
 | `errors/` | Expected compilation failures (`.error` files) |
 | `imports/` | Module imports |
 | `generics/` | Generic types and functions |
-        var result = CompileAndExecute("print(42)");
-        Assert.True(result.Success);
-        Assert.Equal("42\n", result.StandardOutput);
-    }
-}
-```
 
 ## File-Based Tests
 
@@ -115,3 +110,5 @@ TestFixtures/
 ```bash
 dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
 ```
+
+````

@@ -57,7 +57,7 @@ Specialized agents for Sharpy development. Each agent has domain expertise and c
 
 ```bash
 dotnet build sharpy.sln && dotnet test               # Build + test
-dotnet format                                         # Format before commit
+dotnet format whitespace                             # Format before commit
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
 python3 -c "..."                                     # Verify Python behavior
 ```

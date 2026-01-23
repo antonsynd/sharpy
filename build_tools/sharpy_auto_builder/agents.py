@@ -100,9 +100,9 @@ Implement tasks and features for the Sharpy compiler and standard library, follo
 
 ## Available Commands
 ```bash
-dotnet build sharpy.sln      # Build
+dotnet build sharpy.sln       # Build
 dotnet test                   # Test
-dotnet format                 # Format before committing
+dotnet format whitespace      # Format before committing
 dotnet test --filter "FullyQualifiedName~{component}"  # Filtered tests
 ```
 

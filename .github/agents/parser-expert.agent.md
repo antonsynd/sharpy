@@ -10,7 +10,7 @@ Specializes in the Sharpy parser. Handles EBNF grammar translation, AST node con
 
 ## Scope
 
-**Owns:** `src/Sharpy.Compiler/Parser/` and `src/Sharpy.Compiler/Ast/`
+**Owns:** `src/Sharpy.Compiler/Parser/` (including `Parser/Ast/`)
 
 **Does NOT modify:** Lexer, Semantic, CodeGen, or Sharpy.Core
 

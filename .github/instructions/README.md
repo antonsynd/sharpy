@@ -35,4 +35,4 @@ For new language features, touch these components in order:
 
 Language specification lives in `docs/language_specification/`. Always check specs before implementing.
 
-See [../.github/copilot-instructions.md](../copilot-instructions.md) for repository-wide guidance.
+See [copilot-instructions.md](../copilot-instructions.md) for repository-wide guidance.

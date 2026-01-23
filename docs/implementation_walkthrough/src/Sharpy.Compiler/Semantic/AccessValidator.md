@@ -31,7 +31,7 @@ public class AccessValidator
     private readonly SemanticInfo _semanticInfo;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
-    
+
     private TypeSymbol? _currentClass = null;
 }
 ```
@@ -170,10 +170,10 @@ private AccessLevel DetermineAccessLevel(string name)
 {
     if (name.StartsWith("__") && !name.EndsWith("__"))
         return AccessLevel.Private;
-    
+
     if (name.StartsWith("_") && !name.StartsWith("__"))
         return AccessLevel.Protected;
-    
+
     return AccessLevel.Public;
 }
 ```
@@ -414,8 +414,8 @@ Current errors are functional but could be more helpful:
 "Cannot access private member '__secret' of 'MyClass' from outside the class"
 
 // Enhanced:
-"Cannot access private member '__secret' of 'MyClass' from 'OtherClass'. 
-Private members are only accessible within the defining class. 
+"Cannot access private member '__secret' of 'MyClass' from 'OtherClass'.
+Private members are only accessible within the defining class.
 Did you mean to make this protected (rename to '_secret')?"
 ```
 
@@ -481,7 +481,7 @@ print(obj.__private)  # Should error
 ### Before Submitting
 
 1. **Run all tests**: `dotnet test --filter "FullyQualifiedName~Semantic"`
-2. **Format code**: `dotnet format`
+2. **Format code**: `dotnet format whitespace`
 3. **Check error messages**: Are they clear and actionable?
 4. **Add tests**: Cover new functionality and edge cases
 5. **Update documentation**: If behavior changes, update this walkthrough

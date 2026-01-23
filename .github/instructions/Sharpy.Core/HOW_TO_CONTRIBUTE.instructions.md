@@ -1,3 +1,4 @@
+````instructions
 # Sharpy.Core
 
 Standard library with Pythonic APIs for .NET. Location: `src/Sharpy.Core/`
@@ -22,22 +23,23 @@ Standard library with Pythonic APIs for .NET. Location: `src/Sharpy.Core/`
 
 ## Adding a Builtin Function
 
-Add to `partial class Exports` (split across files):
-```csharp
-// NewFunction.cs
-namespace Sharpy.Core;
+1. **Add to `partial class Exports`** (split across files):
+   ```csharp
+   // NewFunction.cs
+   namespace Sharpy.Core;
 
-public static partial class Exports
-{
-    public static TResult NewFunction<T, TResult>(T input) => ...;
-}
-```
-
-Then:
-```bash
-python3 -c "print(new_function(...))"  # Verify expected behavior
-dotnet test --filter "FullyQualifiedName~NewFunctionTests"
-```
+   public static partial class Exports
+   {
+       public static TResult NewFunction<T, TResult>(T input) => ...;
+   }
+   ```
+2. **Verify expected behavior against Python:**
+   ```bash
+   python3 -c "print(new_function(...))"
+   ```
+3. **Add tests** in `Sharpy.Core.Tests/NewFunctionTests.cs`
+4. **Test against Python** to verify behavior matches
+5. **Document** in language reference if needed
 
 ## Python-style Indexing Pattern
 
@@ -73,20 +75,16 @@ dotnet test --filter "FullyQualifiedName~DictTests"
 ```
 
 **CRITICAL:** Always verify behavior against `python3 -c "..."` first. Fix bugs, don't change test expectations.
-   ```
-3. **Add tests** in `Sharpy.Core.Tests/NewFunctionTests.cs`
-4. **Test against Python** to verify behavior matches
-5. **Document** in language reference if needed
 
-### Adding a New Collection Method
+## Adding a New Collection Method
 
 1. **Add method to partial class** (e.g., in `Partial.List/`)
-2. **Follow Python semantics** - check Python documentation
+2. **Follow Python semantics** — check Python documentation
 3. **Add comprehensive tests**
 4. **Test edge cases** (empty, single-element, etc.)
 5. **Update documentation** if it's a public API
 
-### Implementing an Operator Protocol
+## Implementing an Operator Protocol
 
 1. **Define interface** (e.g., `INewOperator.cs`)
 2. **Implement on relevant types**
@@ -94,7 +92,7 @@ dotnet test --filter "FullyQualifiedName~DictTests"
 4. **Test with multiple types**
 5. **Document protocol** in specs
 
-### Fixing a Bug
+## Fixing a Bug
 
 1. **Write a test that reproduces the bug:**
    ```csharp
@@ -114,77 +112,15 @@ dotnet test --filter "FullyQualifiedName~DictTests"
 
 ## Performance Considerations
 
-- **Minimize allocations** - Reuse collections where possible
-- **Use struct for small value types** - `Index`, `Slice`
-- **Lazy evaluation** - Use iterators instead of materializing lists
-- **Leverage .NET BCL** - Don't reinvent optimized data structures
-
-## Dependencies
-
-- **.NET 9.0/10.0** - BCL and runtime
-- **System.Collections.Generic** - Underlying collection types
-- **System.Linq** - Query operations
+- **Minimize allocations** — Reuse collections where possible
+- **Use struct for small value types** — `Index`, `Slice`
+- **Lazy evaluation** — Use iterators instead of materializing lists
+- **Leverage .NET BCL** — Don't reinvent optimized data structures
 
 ## Related Documentation
 
 - **Main README:** `README.md` (repository root)
 - **Core Tests Guide:** `.github/instructions/Sharpy.Core.Tests/HOW_TO_CONTRIBUTE.instructions.md`
-- **Type System Spec:** `docs/specs/type_system.md`
-- **Builtins Reference:** `docs/specs/builtins.md`
+- **Language Specification:** `docs/language_specification/`
 
-## Example: Adding a New List Method
-
-Let's add `list.insert_all(index, items)` to insert multiple items at once:
-
-### 1. Implementation
-```csharp
-// In Partial.List/List.Mutation.cs
-public void InsertAll(int index, IEnumerable<T> items)
-{
-    var actualIndex = index < 0 ? _inner.Count + index : index;
-    if (actualIndex < 0) actualIndex = 0;
-    if (actualIndex > _inner.Count) actualIndex = _inner.Count;
-
-    _inner.InsertRange(actualIndex, items);
-}
-```
-
-### 2. Tests
-```csharp
-// In Sharpy.Core.Tests/Partial.ListTests/ListTests.Mutation.cs
-[Fact]
-public void TestInsertAll_InMiddle()
-{
-    var list = new List<int> { 1, 2, 5, 6 };
-    list.InsertAll(2, new[] { 3, 4 });
-    Assert.Equal(new[] { 1, 2, 3, 4, 5, 6 }, list);
-}
-
-[Fact]
-public void TestInsertAll_NegativeIndex()
-{
-    var list = new List<int> { 1, 4, 5 };
-    list.InsertAll(-2, new[] { 2, 3 });
-    Assert.Equal(new[] { 1, 2, 3, 4, 5 }, list);
-}
-
-[Fact]
-public void TestInsertAll_Empty()
-{
-    var list = new List<int> { 1, 2 };
-    list.InsertAll(1, Array.Empty<int>());
-    Assert.Equal(new[] { 1, 2 }, list);
-}
-```
-
-### 3. Verify
-```bash
-dotnet test --filter "FullyQualifiedName~TestInsertAll"
-```
-
-## Getting Help
-
-- Check Python documentation for expected behavior
-- Review existing implementations for patterns
-- Run tests frequently to catch issues early
-- Consult type system documentation for type-related questions
+````

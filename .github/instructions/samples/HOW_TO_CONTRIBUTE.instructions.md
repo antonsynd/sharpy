@@ -100,10 +100,13 @@ dotnet test --filter "FullyQualifiedName~Integration"
 
 ```bash
 # Emit tokens to debug lexer issues
-dotnet run --project src/Sharpy.Cli -- samples/problem.spy --emit-tokens
+dotnet run --project src/Sharpy.Cli -- emit tokens samples/problem.spy
+
+# Emit AST to debug parser issues
+dotnet run --project src/Sharpy.Cli -- emit ast samples/problem.spy
 
 # Check for detailed error messages
-dotnet run --project src/Sharpy.Cli -- samples/problem.spy 2>&1 | less
+dotnet run --project src/Sharpy.Cli -- build samples/problem.spy 2>&1 | less
 ```
 
 ## Sample Categories
