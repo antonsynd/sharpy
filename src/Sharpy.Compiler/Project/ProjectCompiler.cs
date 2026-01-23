@@ -19,8 +19,6 @@ public class ProjectCompiler
     private readonly ICompilerLogger _logger;
     private readonly ModuleRegistry? _moduleRegistry;
 
-    // Track parsed modules by file path
-    private Dictionary<string, Module> _parsedModules = new();
 
     // Track file metrics by file path
     private Dictionary<string, CompilationMetrics> _fileMetrics = new();
@@ -60,7 +58,6 @@ public class ProjectCompiler
         _errors = new List<string>();
         _warnings = new List<string>();
         _projectMetrics = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
-        _parsedModules = new Dictionary<string, Module>();
         _fileMetrics = new Dictionary<string, CompilationMetrics>();
         _projectModel = new ProjectModel(config);
 
@@ -163,7 +160,6 @@ public class ProjectCompiler
                 compilationUnit.Imports = imports;
                 compilationUnit.FromImports = fromImports;
 
-                _parsedModules[sourceFile] = module;
                 _fileMetrics[sourceFile] = fileMetrics;
 
                 // Log per-file metrics at Debug level
@@ -244,7 +240,7 @@ public class ProjectCompiler
         _importResolver.SetSemanticBinding(semanticBinding);
 
         // Register all parsed files in the dependency graph
-        foreach (var sourceFile in _parsedModules.Keys)
+        foreach (var sourceFile in _projectModel!.Units.Keys)
         {
             _graphBuilder.AddFile(sourceFile);
         }
@@ -269,15 +265,21 @@ public class ProjectCompiler
         var nameResolver = new NameResolver(_symbolTable, _logger);
 
         // Phase 3a: Collect all type declarations (shells only)
-        foreach (var (sourceFile, module) in _parsedModules)
+        foreach (var (_, unit) in _projectModel!.Units)
         {
+            if (unit.Phase == CompilationPhase.Failed || unit.Ast == null) continue;
+
             // Set current file path so types know which file they're defined in
-            nameResolver.SetCurrentFilePath(sourceFile);
+            // Use unit.FilePath for original path (Units dictionary keys are normalized)
+            nameResolver.SetCurrentFilePath(unit.FilePath);
 
             // Only collect declarations - don't resolve inheritance yet
             // The NameResolver.ResolveDeclarations() method registers type names
             // and stores ClassDef/StructDef/InterfaceDef in internal lists
-            nameResolver.ResolveDeclarations(module);
+            nameResolver.ResolveDeclarations(unit.Ast);
+
+            // Update phase
+            unit.Phase = CompilationPhase.NamesResolved;
         }
 
         // Phase 3b: Resolve inheritance (using the SAME NameResolver instance)
@@ -302,11 +304,14 @@ public class ProjectCompiler
         _logger.LogInfo("Phase 3: Resolving imports and building symbol table");
 
         // Resolve imports for each module
-        foreach (var (sourceFile, module) in _parsedModules)
+        foreach (var (_, unit) in _projectModel!.Units)
         {
-            _importResolver.SetCurrentModule(sourceFile);
+            if (unit.Phase == CompilationPhase.Failed || unit.Ast == null) continue;
 
-            foreach (var statement in module.Body)
+            // Use unit.FilePath for original path (Units dictionary keys are normalized)
+            _importResolver.SetCurrentModule(unit.FilePath);
+
+            foreach (var statement in unit.Ast.Body)
             {
                 if (statement is ImportStatement import)
                 {
@@ -455,7 +460,7 @@ public class ProjectCompiler
         {
             // Build a mapping from normalized paths to original paths
             var normalizedToOriginal = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var path in _parsedModules.Keys)
+            foreach (var path in _projectModel!.Units.Keys)
             {
                 var normalized = NormalizePath(path);
                 normalizedToOriginal[normalized] = path;
@@ -469,16 +474,16 @@ public class ProjectCompiler
         }
         else
         {
-            modulesToProcess = _parsedModules.Keys;
+            modulesToProcess = _projectModel!.Units.Keys;
         }
 
         foreach (var sourceFile in modulesToProcess)
         {
-            var module = _parsedModules[sourceFile];
             var unit = _projectModel!.GetUnit(sourceFile);
+            if (unit == null || unit.Phase == CompilationPhase.Failed || unit.Ast == null) continue;
 
-            // Get the file metrics we created during parsing
-            var fileMetrics = _fileMetrics[sourceFile];
+            // Get the file metrics we created during parsing (use unit.FilePath for original path)
+            var fileMetrics = _fileMetrics[unit.FilePath];
 
             // Type resolution
             fileMetrics.StartPhase("Type Resolution");
@@ -489,7 +494,7 @@ public class ProjectCompiler
             fileMetrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
             var typeChecker = new TypeChecker(_symbolTable, _semanticInfo, typeResolver, _logger, pipeline);
-            typeChecker.CheckModule(module, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo);
+            typeChecker.CheckModule(unit.Ast, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo);
             fileMetrics.EndPhase();
 
             if (typeChecker.Errors.Any())
@@ -497,22 +502,16 @@ public class ProjectCompiler
                 // Add to unit diagnostics
                 foreach (var error in typeChecker.Errors)
                 {
-                    unit?.Diagnostics.AddError(error.Message, error.Line, error.Column, sourceFile);
+                    unit.Diagnostics.AddError(error.Message, error.Line, error.Column, sourceFile);
                 }
-                if (unit != null)
-                {
-                    unit.Phase = CompilationPhase.Failed;
-                }
+                unit.Phase = CompilationPhase.Failed;
 
                 _errors.AddRange(typeChecker.Errors.Select(e =>
                     $"{sourceFile}({e.Line},{e.Column}): error: {e.Message}"));
             }
             else
             {
-                if (unit != null)
-                {
-                    unit.Phase = CompilationPhase.TypeChecked;
-                }
+                unit.Phase = CompilationPhase.TypeChecked;
             }
 
             // Log per-file semantic analysis metrics at Debug level
@@ -534,9 +533,13 @@ public class ProjectCompiler
         var generatedCSharp = new Dictionary<string, string>();
         var builtinRegistry = new BuiltinRegistry();
 
-        foreach (var (sourceFile, module) in _parsedModules)
+        foreach (var (_, unit) in _projectModel!.Units)
         {
-            var unit = _projectModel!.GetUnit(sourceFile);
+            // Only generate code for successfully type-checked units
+            if (unit.Phase != CompilationPhase.TypeChecked || unit.Ast == null) continue;
+
+            // Use unit.FilePath for original path (Units dictionary keys are normalized)
+            var sourceFile = unit.FilePath;
 
             // Get the file metrics we created during parsing
             var fileMetrics = _fileMetrics[sourceFile];
@@ -576,7 +579,7 @@ public class ProjectCompiler
             };
 
             var emitter = new RoslynEmitter(codeGenContext);
-            var roslynCompilationUnit = emitter.GenerateCompilationUnit(module);
+            var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
             var csharpCode = roslynCompilationUnit.ToFullString();
 
             fileMetrics.EndPhase();
@@ -586,22 +589,16 @@ public class ProjectCompiler
             {
                 foreach (var error in codeGenContext.Errors)
                 {
-                    unit?.Diagnostics.AddError(error, filePath: sourceFile);
+                    unit.Diagnostics.AddError(error, filePath: sourceFile);
                     _errors.Add($"{sourceFile}: error: {error}");
                 }
-                if (unit != null)
-                {
-                    unit.Phase = CompilationPhase.Failed;
-                }
+                unit.Phase = CompilationPhase.Failed;
                 continue;
             }
 
             // Store generated C# in CompilationUnit
-            if (unit != null)
-            {
-                unit.GeneratedCSharp = csharpCode;
-                unit.Phase = CompilationPhase.CodeGenerated;
-            }
+            unit.GeneratedCSharp = csharpCode;
+            unit.Phase = CompilationPhase.CodeGenerated;
 
             // Log per-file code gen metrics at Debug level
             if (_logger.IsEnabled(CompilerLogLevel.Debug))
