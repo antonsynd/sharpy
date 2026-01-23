@@ -140,17 +140,14 @@ public partial class RoslynEmitter
             var isBuiltinFunc = _context.IsBuiltinFunction(funcName.Name);
 
             // Check if this is a type instantiation (calling a class or struct constructor)
-            // We check both:
-            // 1. The _classNames and _structNames sets (populated during type declaration generation)
-            // 2. The symbol table (for testing and imported types)
-            // BUT: If it's a builtin function, it's NOT a type instantiation (e.g., int(x) is a conversion function)
+            // We use the symbol table which is populated during semantic analysis.
+            // This handles both local type definitions and imported types.
+            // NOTE: Builtin functions are NOT type instantiations (e.g., int(x) is a conversion function)
             var symbol = _context.LookupSymbol(funcName.Name);
             var isTypeInstantiation = !isBuiltinFunc &&
-                                     (_classNames.Contains(funcName.Name) ||
-                                      _structNames.Contains(funcName.Name) ||
-                                      (symbol is TypeSymbol typeSymbol &&
-                                       (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
-                                        typeSymbol.TypeKind == Semantic.TypeKind.Struct)));
+                                      symbol is TypeSymbol typeSymbol &&
+                                      (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
+                                       typeSymbol.TypeKind == Semantic.TypeKind.Struct);
 
             string name;
             if (isBuiltinFunc)

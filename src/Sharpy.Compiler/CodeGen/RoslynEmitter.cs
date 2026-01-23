@@ -9,7 +9,15 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 namespace Sharpy.Compiler.CodeGen;
 
 /// <summary>
-/// Generates C# code using Roslyn syntax trees
+/// Generates C# code using Roslyn syntax trees.
+///
+/// Name Resolution:
+/// - Module-level symbols (variables, constants, functions, types, imports):
+///   Use Symbol.CodeGenInfo which is computed during semantic analysis
+/// - Local variables: Use runtime tracking (_declaredVariables, _variableVersions)
+///   because local variable redeclarations happen during emission
+/// - Type detection (class/struct instantiation): Use SymbolTable lookup
+/// - String enum detection: Use CodeGenInfo.IsStringEnum
 /// </summary>
 public partial class RoslynEmitter
 {
@@ -51,9 +59,10 @@ public partial class RoslynEmitter
     // END LOCAL SCOPE TRACKING FIELDS
     // ============================================================
 
-    private readonly HashSet<string> _classNames = new(); // Track class names defined in the current module
-    private readonly HashSet<string> _structNames = new(); // Track struct names defined in the current module
-    private readonly HashSet<string> _stringEnumNames = new(); // Track string enum names (enums with string values)
+    // Note: _classNames, _structNames, and _stringEnumNames tracking sets were removed.
+    // Type detection is now done via SymbolTable lookup (for classes/structs) and
+    // CodeGenInfo.IsStringEnum (for string enums). This information is populated
+    // during semantic analysis.
 
     private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions = new(); // Track interface definitions for abstract class stub generation
     private int _tempVarCounter = 0;
@@ -149,15 +158,20 @@ public partial class RoslynEmitter
             return NameMangler.ToConstantCase(name);
         }
 
+        // Look up the symbol to check its kind
+        var symbol = _context.LookupSymbol(name);
+
         // Check if this is a reference to a class or struct name - preserve PascalCase
-        if (_classNames.Contains(name) || _structNames.Contains(name))
+        // Uses symbol table lookup instead of legacy tracking sets
+        if (symbol is TypeSymbol typeSymbol &&
+            (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
+             typeSymbol.TypeKind == Semantic.TypeKind.Struct))
         {
             return NameMangler.ToPascalCase(name);
         }
 
         // Check if this is a module symbol - preserve the exact name (with sanitization)
         // This ensures imported module names match their using alias (e.g., math_ops stays math_ops)
-        var symbol = _context.LookupSymbol(name);
         if (symbol is ModuleSymbol)
         {
             // Use the same sanitization as in GenerateImportUsings

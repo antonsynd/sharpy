@@ -46,6 +46,12 @@ public sealed record CodeGenInfo
     public bool HasExecutionOrderIssues { get; init; }
 
     /// <summary>
+    /// For enum types, indicates if this is a string enum (has string values).
+    /// String enums are generated as classes with static readonly fields instead of C# enums.
+    /// </summary>
+    public bool IsStringEnum { get; init; }
+
+    /// <summary>
     /// For imported symbols, indicates how the symbol was imported.
     /// </summary>
     public ImportKind ImportKind { get; init; } = ImportKind.None;

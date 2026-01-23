@@ -212,8 +212,9 @@ public partial class RoslynEmitter
 
     private ClassDeclarationSyntax GenerateClassDeclaration(ClassDef classDef)
     {
-        // Track this class name for instantiation detection
-        _classNames.Add(classDef.Name);
+        // Note: Class type detection is now done via SymbolTable lookup during expression generation.
+        // The _classNames tracking set was used for instantiation detection but is no longer needed
+        // since the symbol table is populated during semantic analysis.
 
         // Check if this is an abstract class (for implicit abstract method detection)
         var wasInAbstractClass = _isInAbstractClass;
@@ -399,8 +400,9 @@ public partial class RoslynEmitter
 
     private StructDeclarationSyntax GenerateStructDeclaration(StructDef structDef)
     {
-        // Track this struct name for instantiation detection
-        _structNames.Add(structDef.Name);
+        // Note: Struct type detection is now done via SymbolTable lookup during expression generation.
+        // The _structNames tracking set was used for instantiation detection but is no longer needed
+        // since the symbol table is populated during semantic analysis.
 
         // Transform struct name
         var structName = NameMangler.Transform(structDef.Name, NameContext.Type);
@@ -538,12 +540,12 @@ public partial class RoslynEmitter
     private SyntaxNode GenerateEnumDeclaration(EnumDef enumDef)
     {
         // Determine if this is a string enum or integer enum
+        // Note: String enum detection during expression generation now uses CodeGenInfo.IsStringEnum
+        // which is computed during semantic analysis, so we no longer need the _stringEnumNames tracking set.
         bool isStringEnum = IsStringEnum(enumDef);
 
-        // Track string enums for proper code generation of enum member access
         if (isStringEnum)
         {
-            _stringEnumNames.Add(enumDef.Name);
             return GenerateStringEnumClass(enumDef);
         }
         else
@@ -569,11 +571,12 @@ public partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Checks if a TypeSymbol represents a string enum
+    /// Checks if a TypeSymbol represents a string enum using CodeGenInfo.
+    /// String enums are detected during semantic analysis and stored in CodeGenInfo.IsStringEnum.
     /// </summary>
     private bool IsStringEnumSymbol(TypeSymbol enumSymbol)
     {
-        return _stringEnumNames.Contains(enumSymbol.Name);
+        return enumSymbol.CodeGenInfo?.IsStringEnum == true;
     }
 
     /// <summary>

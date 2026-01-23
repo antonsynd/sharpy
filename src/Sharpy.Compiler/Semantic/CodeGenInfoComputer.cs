@@ -234,10 +234,14 @@ public class CodeGenInfoComputer
         var typeSymbol = _symbolTable.Lookup(enumDef.Name) as TypeSymbol;
         if (typeSymbol != null)
         {
+            // Determine if this is a string enum (has at least one string literal value)
+            var isStringEnum = enumDef.Members.Any(m => m.Value is StringLiteral);
+
             typeSymbol.CodeGenInfo = new CodeGenInfo
             {
                 CSharpName = NameMangler.ToPascalCase(enumDef.Name),
-                OriginalName = enumDef.Name
+                OriginalName = enumDef.Name,
+                IsStringEnum = isStringEnum
             };
 
             // Enum members keep their exact names - no CodeGenInfo needed
