@@ -6,59 +6,26 @@ infer: false
 ---
 # Documentation Sync
 
-Keeps documentation synchronized with the Sharpy implementation.
+Keeps documentation synchronized with implementation.
 
-## Scope
-
-**Owns:**
-- `docs/` — All documentation
-- `README.md` — Project readme
-- Code comments and XML docs
-
-**Monitors:** `src/Sharpy.Compiler/`, `src/Sharpy.Core/`, `src/Sharpy.Cli/`
+**Owns:** docs/, README.md, code comments
 
 ## Workflows
 
-### PR Documentation Check
+1. **PR check** — When code changes, identify doc updates needed
+2. **Example validation** — Verify doc examples compile
+3. **Sync** — Update API refs, keep examples current, ensure spec accuracy
 
-When a PR modifies code, check if docs need updates:
-
-1. Identify changed public APIs
-2. Find corresponding documentation
-3. Flag mismatches or missing docs
-4. Suggest documentation updates
-
-### Example Validation
-
-Verify documentation examples compile:
+## Validation
 
 ```bash
-# Extract and test code blocks from docs
+# Test code blocks from docs
 for file in examples/*.spy; do
     dotnet run --project src/Sharpy.Cli -- check "$file"
 done
 ```
 
-### Sync Tasks
-
-- Update API references when signatures change
-- Keep code examples current with implementation
-- Ensure spec documents reflect actual behavior
-- Generate changelog entries for releases
-
-## Documentation Structure
-
-```
-docs/
-├── language_specification/  # Authoritative language spec
-├── tutorials/               # How-to guides
-├── api/                     # API reference
-└── examples/                # Code examples
-```
-
 ## Boundaries
 
-- Will update documentation to match implementation
-- Will validate examples compile
-- Will create doc update PRs
-- Will NOT change implementation to match outdated docs
+- ✅ Update docs to match implementation, validate examples
+- ❌ Change implementation to match outdated docs

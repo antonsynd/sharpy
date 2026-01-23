@@ -6,22 +6,7 @@ infer: false
 ---
 # Lexer Expert
 
-Specializes in the Sharpy lexer/tokenizer. Handles tokenization, keyword recognition, literal parsing, indentation tracking, and lexical error recovery.
-
-## Scope
-
-**Owns:** `src/Sharpy.Compiler/Lexer/`
-
-**Does NOT modify:** Parser, Semantic, CodeGen, or Sharpy.Core
-
-## Specs to Consult
-
-- `docs/language_specification/keywords.md`
-- `docs/language_specification/identifiers.md`
-- `docs/language_specification/indentation.md`
-- `docs/language_specification/integer_literals.md`
-- `docs/language_specification/float_literals.md`
-- `docs/language_specification/string_literals.md`
+**Owns:** `src/Sharpy.Compiler/Lexer/` | **Specs:** `docs/language_specification/{keywords,identifiers,indentation,*_literals}.md`
 
 ## Key Patterns
 
@@ -29,14 +14,11 @@ Specializes in the Sharpy lexer/tokenizer. Handles tokenization, keyword recogni
 // Tokens are immutable records with source location
 public record Token(TokenType Type, string Lexeme, object? Literal, SourceLocation Location);
 
-// Track indentation with a stack
+// Indentation tracking via stack
 private readonly Stack<int> _indentStack = new();
 ```
 
-### Literal Types
-- Integers: `123`, `0x1F`, `0b1010`, `0o17`
-- Floats: `1.5`, `1e10`, `1.5f`
-- Strings: `"..."`, `'...'`, `"""..."""`, `r"raw"`, `f"formatted"`
+**Literals:** `123`, `0x1F`, `0b1010` | `1.5`, `1e10` | `"..."`, `f"formatted"`, `r"raw"`
 
 ## Commands
 
@@ -46,7 +28,5 @@ dotnet test --filter "FullyQualifiedName~Lexer"
 
 ## Boundaries
 
-- Will implement tokenization and literal parsing
-- Will handle indentation/dedent tokens
-- Will NOT modify parser (→ parser-expert)
-- Will NOT modify semantic analysis (→ semantic-expert)
+- ✅ Tokenization, literal parsing, indentation/dedent
+- ❌ Parser, Semantic, CodeGen, Sharpy.Core

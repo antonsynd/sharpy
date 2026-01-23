@@ -2,58 +2,47 @@
 
 Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files compile to C# via Roslyn.
 
-## Architecture Overview
+## Architecture
 
 ```
 Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → RoslynEmitter → C# → .NET IL
 ```
 
 ### Compiler Pipeline (`src/Sharpy.Compiler/`)
-1. **Lexer/** - Tokenization (`Lexer.cs` → `Token.cs`)
-2. **Parser/** - Recursive descent → AST nodes in `Parser/Ast/` (records with `LineStart`/`ColumnStart` location)
-3. **Semantic/** - Multi-pass analysis:
-   - `NameResolver` (pass 1: declarations, pass 2: inheritance)
-   - `TypeResolver` (resolve type annotations)
-   - `TypeChecker` (type validation, narrowing for `is None`/`isinstance`)
-4. **CodeGen/** - Roslyn C# generation:
-   - `RoslynEmitter*.cs` (split by concern: Expressions, Statements, ClassMembers, etc.)
-   - `TypeMapper.cs` (Sharpy types → C# types)
-   - `NameMangler.cs` (`snake_case` → `PascalCase`, dunder method mappings)
+| Stage | Key Files | Purpose |
+|-------|-----------|---------|
+| Lexer | `Lexer/Lexer.cs` | Tokenization |
+| Parser | `Parser/Parser.cs`, `Parser/Ast/` | Recursive descent → immutable AST records |
+| Semantic | `Semantic/NameResolver.cs`, `TypeResolver.cs`, `TypeChecker*.cs` | Multi-pass: declarations → inheritance → types → validation |
+| CodeGen | `CodeGen/RoslynEmitter*.cs`, `TypeMapper.cs`, `NameMangler.cs` | Roslyn `SyntaxFactory` → C# AST |
 
 ### Standard Library (`src/Sharpy.Core/`)
-- **Partial class pattern**: Types split across `Partial.{Type}/` directories (e.g., `Partial.List/List.ISequence.cs`)
-- **Builtins via `partial class Exports`**: Distributed across files (`Print.cs`, `Len.cs`, `Range.cs`, etc.)
-- **Python semantics**: Slicing, negative indices, truthiness—verify behavior with `python3 -c "..."` when unsure
+- **Partial class pattern**: `Partial.{Type}/` directories (e.g., `Partial.List/List.ISequence.cs`)
+- **Builtins**: `partial class Exports` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
+- **Python semantics**: Verify behavior with `python3 -c "..."` when unsure
 
-## Essential Commands
+## Commands
 
 ```bash
 dotnet build sharpy.sln                              # Build all
 dotnet test                                          # Run all tests
 dotnet format                                        # Format before committing
 dotnet run --project src/Sharpy.Cli -- run file.spy # Compile and execute
-```
-
-**Debugging codegen:** To inspect generated C# when troubleshooting code emission:
-```bash
-dotnet run --project src/Sharpy.Cli -- emit csharp file.spy
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C#
 ```
 
 **Filtered tests:**
 ```bash
-dotnet test --filter "FullyQualifiedName~Lexer"           # Component tests
-dotnet test --filter "FullyQualifiedName~BasicProgram"    # Integration tests
-dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"  # File-based tests
+dotnet test --filter "FullyQualifiedName~Lexer"                  # Component
+dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"  # File-based
 ```
 
-## Testing Patterns
+## Testing
 
 **CRITICAL**: Never modify expected values to make tests pass. Fix the implementation.
 
 ### Integration Tests
-- Inherit from `IntegrationTestBase` (`Integration/IntegrationTestBase.cs`)
-- Use `CompileAndExecute(source)` → returns `ExecutionResult` with `Success`, `StandardOutput`, `CompilationErrors`
-- Full pipeline: Lex → Parse → NameResolver → TypeChecker → RoslynEmitter → Roslyn compile → Execute in-memory
+Inherit `IntegrationTestBase`, use `CompileAndExecute(source)` → `ExecutionResult` with `Success`, `StandardOutput`, `CompilationErrors`.
 
 ### File-Based Tests (`Integration/TestFixtures/`)
 ```
@@ -61,58 +50,54 @@ TestFixtures/
 ├── basics/hello_world.spy      # Source
 ├── basics/hello_world.expected # Expected stdout (exact match)
 ├── errors/undefined_var.spy    # Error case
-└── errors/undefined_var.error  # Substring to match in error
+└── errors/undefined_var.error  # Substring in error message
 ```
-Add new tests by creating `.spy` + `.expected` (or `.error`) pairs—auto-discovered at runtime.
-
-**Skip flaky/broken tests:**
-```csharp
-[Fact(Skip = "TODO: Fix <specific issue>. See issue #123")]
-```
+Add `.spy` + `.expected` (or `.error`) pairs—auto-discovered. Skip with `.skip` file.
 
 ## Code Patterns
 
-**AST nodes** are immutable C# records:
+**AST nodes** are immutable records with location info:
 ```csharp
 public record FunctionDef : Statement { public string Name { get; init; } ... }
 ```
 
-**Semantic info** stored separately from AST in `SemanticInfo` class (not mutating AST nodes).
+**Semantic info** stored in `SemanticInfo` class, never mutate AST nodes.
 
 **RoslynEmitter** uses `SyntaxFactory` exclusively—no string templating:
 ```csharp
-// Good: Use SyntaxFactory
+// ✅ Good
 ReturnStatement(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(42)))
-// Bad: String interpolation
+// ❌ Bad
 $"return {value};"
 ```
 
-**Type mappings** in `TypeMapper.cs`:
-- `list[T]` → `global::Sharpy.Core.List<T>`
-- `dict[K,V]` → `global::Sharpy.Core.Dict<K,V>`
-- Nullable: `int?` stays `int?`
+**Type mappings** (`TypeMapper.cs`): `list[T]` → `global::Sharpy.Core.List<T>`, `dict[K,V]` → `global::Sharpy.Core.Dict<K,V>`
 
-## Project Structure
+**Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__str__` → `ToString()`, `__add__` → `operator+`
+
+## Design Principles
+
+1. **.NET-first**: When Python and .NET conflict, prefer .NET unless zero-cost
+2. **Immutable AST**: Annotations in `SemanticInfo`, not on AST nodes
+3. **C# 9.0 target**: No global usings, file-scoped namespaces, or record structs
+4. **Type narrowing**: `TypeChecker._narrowedTypes` tracks types after `is None`/`isinstance`
+
+## Axiom Precedence (when conflicts arise)
+
+**Axiom 1 (.NET) > Axiom 3 (Type Safety) > Axiom 2 (Python Syntax)**
+
+## Project Layout
 
 | Path | Purpose |
 |------|---------|
-| `src/Sharpy.Compiler/` | Compiler (Lexer, Parser, Semantic, CodeGen) |
-| `src/Sharpy.Core/` | Runtime standard library |
-| `src/Sharpy.Cli/` | CLI tool |
+| `src/Sharpy.Compiler/` | Compiler pipeline |
+| `src/Sharpy.Core/` | Runtime stdlib |
+| `src/Sharpy.Cli/` | CLI entry point |
 | `src/*.Tests/` | Test projects |
 | `snippets/*.spy` | Quick test programs |
-| `samples/` | Example projects |
-| `docs/language_specification/` | Language spec docs |
-| `build_tools/` | Auxiliary tooling (dogfood, auto-builder)—separate from core compiler work |
-
-## Key Design Principles
-
-1. **.NET-first**: When Python and .NET conflict, prefer .NET unless zero-cost abstraction is possible
-2. **Immutable AST**: All semantic annotations go in `SemanticInfo`, not on AST nodes
-3. **Roslyn codegen**: Use `SyntaxFactory`, never string templates
-4. **Type narrowing**: `TypeChecker._narrowedTypes` dictionary tracks narrowed types after `is None` checks
-5. **Name mangling**: `NameMangler` handles `snake_case` → `PascalCase` and dunder methods (`__str__` → `ToString`)
+| `docs/language_specification/` | Language spec |
+| `.github/agents/` | Domain-specific agent guidance |
 
 ## CI/CD
 
-Workflows in `.github/workflows/`: `dotnet9.yml`, `dotnet10.yml` (tests on both .NET 9 and 10).
+`.github/workflows/`: `dotnet9.yml`, `dotnet10.yml` (tests on both .NET 9 and 10).

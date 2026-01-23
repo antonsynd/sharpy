@@ -4,7 +4,7 @@ You are working on the Sharpy compiler project.
 
 Execute the tasks in this document:
 ```
-docs/implementation_planning/tasks/task_legacy_validator_decommissioning.md
+docs/implementation_planning/tasks/task_project_compiler_model_integration.md
 ```
 
 ### Workflow
@@ -87,8 +87,6 @@ I'll create detailed task documents for each task group. Let me start by checkin
 
 | Document | Priority | Effort | Purpose |
 |----------|----------|--------|---------|
-| **`task_legacy_validator_decommissioning.md`** | 🟡 Medium | 1-2 days | Remove dual validator paths, extract type inference |
-| **`task_emitter_codegen_info_migration.md`** | 🟢 Low | 2-3 days | Complete emitter migration to CodeGenInfo |
 | **`task_project_compiler_model_integration.md`** | 🟢 Low | 3-5 days | Wire CompilationUnit/ProjectModel into pipeline |
 
 Plus a **`README.md`** index that explains the task system and recommended execution order.
