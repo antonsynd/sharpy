@@ -428,6 +428,100 @@ public class TypeInferenceService
 
     #endregion
 
+    #region Augmented Assignment Inference
+
+    /// <summary>
+    /// Infers the result type of an augmented assignment operation (+=, -=, *=, etc.).
+    /// Returns null if the operation is not supported for the given types.
+    /// </summary>
+    /// <remarks>
+    /// This method prioritizes in-place operators (__iadd__, __isub__, etc.) over
+    /// binary operators (__add__, __sub__, etc.) per Python semantics.
+    /// </remarks>
+    public SemanticType? InferAugmentedAssignmentType(
+        AssignmentOperator op,
+        SemanticType targetType,
+        SemanticType valueType)
+    {
+        // Simple assignment doesn't need type inference
+        if (op == AssignmentOperator.Assign)
+        {
+            return valueType;
+        }
+
+        // Special case for ??=: result type is the target type (nullable)
+        if (op == AssignmentOperator.NullCoalesceAssign)
+        {
+            return InferNullCoalesceType(targetType, valueType) != null ? targetType : null;
+        }
+
+        // Try in-place operator first (e.g., __iadd__)
+        var inPlaceDunder = AssignmentOperatorToInPlaceDunder(op);
+        if (inPlaceDunder != null && targetType is UserDefinedType udt && udt.Symbol != null)
+        {
+            if (udt.Symbol.OperatorMethods.TryGetValue(inPlaceDunder, out var methods))
+            {
+                var bestOverload = FindBestOverload(methods, valueType);
+                if (bestOverload != null)
+                {
+                    return bestOverload.ReturnType;
+                }
+            }
+        }
+
+        // Fall back to binary operator (e.g., __add__ for +=)
+        var binaryOp = AssignmentOperatorToBinaryOperator(op);
+        if (binaryOp != null)
+        {
+            return InferBinaryOpType(binaryOp.Value, targetType, valueType);
+        }
+
+        return null;
+    }
+
+    private static string? AssignmentOperatorToInPlaceDunder(AssignmentOperator op)
+    {
+        return op switch
+        {
+            AssignmentOperator.PlusAssign => "__iadd__",
+            AssignmentOperator.MinusAssign => "__isub__",
+            AssignmentOperator.StarAssign => "__imul__",
+            AssignmentOperator.SlashAssign => "__itruediv__",
+            AssignmentOperator.DoubleSlashAssign => "__ifloordiv__",
+            AssignmentOperator.PercentAssign => "__imod__",
+            AssignmentOperator.PowerAssign => "__ipow__",
+            AssignmentOperator.AndAssign => "__iand__",
+            AssignmentOperator.OrAssign => "__ior__",
+            AssignmentOperator.XorAssign => "__ixor__",
+            AssignmentOperator.LeftShiftAssign => "__ilshift__",
+            AssignmentOperator.RightShiftAssign => "__irshift__",
+            _ => null
+        };
+    }
+
+    private static BinaryOperator? AssignmentOperatorToBinaryOperator(AssignmentOperator op)
+    {
+        return op switch
+        {
+            AssignmentOperator.PlusAssign => BinaryOperator.Add,
+            AssignmentOperator.MinusAssign => BinaryOperator.Subtract,
+            AssignmentOperator.StarAssign => BinaryOperator.Multiply,
+            AssignmentOperator.SlashAssign => BinaryOperator.Divide,
+            AssignmentOperator.DoubleSlashAssign => BinaryOperator.FloorDivide,
+            AssignmentOperator.PercentAssign => BinaryOperator.Modulo,
+            AssignmentOperator.PowerAssign => BinaryOperator.Power,
+            AssignmentOperator.AndAssign => BinaryOperator.BitwiseAnd,
+            AssignmentOperator.OrAssign => BinaryOperator.BitwiseOr,
+            AssignmentOperator.XorAssign => BinaryOperator.BitwiseXor,
+            AssignmentOperator.LeftShiftAssign => BinaryOperator.LeftShift,
+            AssignmentOperator.RightShiftAssign => BinaryOperator.RightShift,
+            AssignmentOperator.NullCoalesceAssign => BinaryOperator.NullCoalesce,
+            _ => null
+        };
+    }
+
+    #endregion
+
     #region Protocol Type Inference
 
     /// <summary>

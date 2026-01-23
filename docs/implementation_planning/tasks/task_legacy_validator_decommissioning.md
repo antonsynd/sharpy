@@ -65,8 +65,32 @@ Document each usage site and categorize:
 - **Side effects**: Must be preserved somehow
 
 **Verification:**
-- [ ] All usages documented
-- [ ] Categorization complete
+- [x] All usages documented
+- [x] Categorization complete
+
+**Audit Results:**
+
+| Validator | Location | Usage Type | Action |
+|-----------|----------|------------|--------|
+| `_controlFlowValidator` | TypeChecker.cs:144 | Error collection | Remove (V2 covers) |
+| `_controlFlowValidator` | TypeChecker.Definitions.cs:282 | `ValidateFunction` | V2 covers (ControlFlowValidatorV3) |
+| `_accessValidator` | TypeChecker.cs:145 | Error collection | Remove (V2 covers) |
+| `_accessValidator` | TypeChecker.Definitions.cs:346,365,421,437 | `EnterClass/ExitClass` | Side effect - remove (V2 handles via AST traversal) |
+| `_accessValidator` | TypeChecker.Expressions.cs:524,541 | `ValidateFieldAccess/ValidateMethodAccess` | V2 covers (AccessValidatorV2) |
+| `_operatorValidator` | TypeChecker.cs:146 | Error collection | Remove (V2 covers) |
+| `_operatorValidator` | TypeChecker.Statements.cs:171 | `ValidateAugmentedAssignment` | **Type inference** - needs migration |
+| `_operatorValidator` | TypeChecker.Expressions.cs:122,404,454 | `ValidateBinaryOp/ValidateUnaryOp` | Fallback for type inference |
+| `_protocolValidator` | TypeChecker.cs:147 | Error collection | Remove (V2 covers) |
+| `_protocolValidator` | TypeChecker.Statements.cs:432 | `ValidateIteration` | Fallback for type inference |
+| `_protocolValidator` | TypeChecker.Expressions.cs:680,780,1227,1293,1358 | Protocol methods | Fallback for type inference |
+| `_defaultParameterValidator` | TypeChecker.cs:148 | Error collection | Remove (V2 covers) |
+| `_defaultParameterValidator` | TypeChecker.Definitions.cs:217 | `ValidateFunctionDefaults` | V2 covers (DefaultParameterValidatorV2) |
+
+**Categories Summary:**
+- **Error Reporting (remove):** Error collection in `Errors` getter - V2 validators cover
+- **Side Effects (remove):** `EnterClass/ExitClass` - V2 uses AST traversal, no need for state tracking
+- **Type Inference (migrate):** `ValidateAugmentedAssignment` needs `InferAugmentedAssignmentType` in TypeInferenceService
+- **Fallbacks (remove):** All other usages are fallbacks when TypeInferenceService returns null - TypeInferenceService already covers these cases adequately
 
 ---
 
@@ -86,8 +110,28 @@ Create a comparison matrix:
 | Invalid default | DefaultParameterValidator | DefaultParameterValidatorV2 | ✅ Covered |
 
 **Verification:**
-- [ ] All legacy error cases have V2 equivalents
-- [ ] No gaps identified
+- [x] All legacy error cases have V2 equivalents
+- [x] No gaps identified
+
+**Comparison Result:** All error cases are covered by V2 validators:
+
+| Legacy Error | Legacy Validator | V2/V3 Validator | Confirmed |
+|--------------|-----------------|-----------------|-----------|
+| Break outside loop | ControlFlowValidator | ControlFlowValidatorV2/V3 | ✅ |
+| Continue outside loop | ControlFlowValidator | ControlFlowValidatorV2/V3 | ✅ |
+| Unreachable code | ControlFlowValidator | ControlFlowValidatorV2/V3 | ✅ |
+| Missing return | ControlFlowValidator | ControlFlowValidatorV3 | ✅ CFG-based |
+| Private member access | AccessValidator | AccessValidatorV2 | ✅ |
+| Protected member access | AccessValidator | AccessValidatorV2 | ✅ |
+| Invalid binary operator | OperatorValidator | OperatorValidatorV2 | ✅ |
+| Invalid unary operator | OperatorValidator | OperatorValidatorV2 | ✅ |
+| Invalid in/not in | ProtocolValidator | ProtocolValidatorV2 | ✅ |
+| Invalid indexing | ProtocolValidator | ProtocolValidatorV2 | ✅ |
+| Invalid iteration | ProtocolValidator | ProtocolValidatorV2 | ✅ |
+| Invalid len() | ProtocolValidator | ProtocolValidatorV2 | ✅ |
+| Invalid default value | DefaultParameterValidator | DefaultParameterValidatorV2 | ✅ |
+| Non-constant default | DefaultParameterValidator | DefaultParameterValidatorV2 | ✅ |
+| Mutable default | DefaultParameterValidator | DefaultParameterValidatorV2 | ✅ |
 
 ---
 
@@ -111,8 +155,22 @@ public SemanticType? InferBinaryOperatorResultType(string op, SemanticType left,
 ```
 
 **Verification:**
-- [ ] Type inference methods identified
-- [ ] Dependencies mapped
+- [x] Type inference methods identified
+- [x] Dependencies mapped
+
+**Audit Result:**
+
+| Method | Purpose | In TypeInferenceService? | Action |
+|--------|---------|--------------------------|--------|
+| `ValidateBinaryOp` | Binary op result type | ✅ `InferBinaryOpType` | Remove fallback |
+| `ValidateUnaryOp` | Unary op result type | ✅ `InferUnaryOpType` | Remove fallback |
+| `ValidateAugmentedAssignment` | Augmented assignment type | ❌ Missing | Add `InferAugmentedAssignmentType` |
+| `TryResolveOperatorOverloadWithoutLogging` | Internal helper | ✅ Logic duplicated in TypeInferenceService | Remove |
+
+**Key Method to Migrate:** `ValidateAugmentedAssignment` handles:
+- In-place operators (`__iadd__`, `__isub__`, etc.)
+- Fallback to binary operators (`__add__`, `__sub__`, etc.)
+- Null coalesce assignment (`??=`)
 
 ---
 
@@ -179,10 +237,10 @@ public class TypeInferenceService
 ```
 
 **Verification:**
-- [ ] TypeInferenceService methods work
-- [ ] Unit tests added
+- [x] TypeInferenceService methods work
+- [x] Unit tests added (18 tests for `InferAugmentedAssignmentType`)
 
-**Commit:** `feat(semantic): Add operator type inference to TypeInferenceService`
+**Commit:** `feat(semantic): Add augmented assignment type inference to TypeInferenceService`
 
 ---
 

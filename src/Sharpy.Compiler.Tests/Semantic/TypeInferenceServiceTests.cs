@@ -444,4 +444,158 @@ public class TypeInferenceServiceTests
     }
 
     #endregion
+
+    #region Augmented Assignment Inference
+
+    [Fact]
+    public void InferAugmentedAssignmentType_SimpleAssign_ReturnsValueType()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.Assign, SemanticType.Int, SemanticType.Int);
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_PlusAssignIntInt_ReturnsInt()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.PlusAssign, SemanticType.Int, SemanticType.Int);
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_MinusAssignLongLong_ReturnsLong()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.MinusAssign, SemanticType.Long, SemanticType.Long);
+        result.Should().Be(SemanticType.Long);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_StarAssignDoubleInt_ReturnsDouble()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.StarAssign, SemanticType.Double, SemanticType.Int);
+        result.Should().Be(SemanticType.Double);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_SlashAssignIntInt_ReturnsDouble()
+    {
+        // Division always returns double (Python semantics)
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.SlashAssign, SemanticType.Int, SemanticType.Int);
+        result.Should().Be(SemanticType.Double);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_DoubleSlashAssignIntInt_ReturnsInt()
+    {
+        // Floor division preserves integer type
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.DoubleSlashAssign, SemanticType.Int, SemanticType.Int);
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_PercentAssignIntInt_ReturnsInt()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.PercentAssign, SemanticType.Int, SemanticType.Int);
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_PowerAssignIntInt_ReturnsDouble()
+    {
+        // Power always returns double (Math.Pow)
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.PowerAssign, SemanticType.Int, SemanticType.Int);
+        result.Should().Be(SemanticType.Double);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_AndAssignIntInt_ReturnsInt()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.AndAssign, SemanticType.Int, SemanticType.Int);
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_OrAssignLongLong_ReturnsLong()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.OrAssign, SemanticType.Long, SemanticType.Long);
+        result.Should().Be(SemanticType.Long);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_XorAssignIntInt_ReturnsInt()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.XorAssign, SemanticType.Int, SemanticType.Int);
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_LeftShiftAssignIntInt_ReturnsInt()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.LeftShiftAssign, SemanticType.Int, SemanticType.Int);
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_RightShiftAssignIntInt_ReturnsInt()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.RightShiftAssign, SemanticType.Int, SemanticType.Int);
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_NullCoalesceAssign_ValidTypes_ReturnsTargetType()
+    {
+        var nullableInt = new NullableType { UnderlyingType = SemanticType.Int };
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.NullCoalesceAssign, nullableInt, SemanticType.Int);
+        result.Should().Be(nullableInt);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_NullCoalesceAssign_NonNullableTarget_ReturnsNull()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.NullCoalesceAssign, SemanticType.Int, SemanticType.Int);
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_PlusAssignStringString_ReturnsString()
+    {
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.PlusAssign, SemanticType.Str, SemanticType.Str);
+        result.Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_PlusAssignListList_ReturnsList()
+    {
+        var listInt = new GenericType { Name = "list", TypeArguments = { SemanticType.Int } };
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.PlusAssign, listInt, listInt);
+        result.Should().BeEquivalentTo(listInt);
+    }
+
+    [Fact]
+    public void InferAugmentedAssignmentType_UnsupportedOperation_ReturnsNull()
+    {
+        // String doesn't support -=
+        var result = _service.InferAugmentedAssignmentType(
+            AssignmentOperator.MinusAssign, SemanticType.Str, SemanticType.Str);
+        result.Should().BeNull();
+    }
+
+    #endregion
 }
