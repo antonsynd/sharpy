@@ -2,7 +2,7 @@
 
 This directory contains detailed task lists for architecture improvements, technical debt cleanup, and follow-up work identified during architecture reviews.
 
-**Last Updated:** January 2025
+**Last Updated:** 2026-01-23
 
 ---
 
@@ -31,7 +31,7 @@ This directory contains detailed task lists for architecture improvements, techn
 
 | Document | Description | Effort | Status |
 |----------|-------------|--------|--------|
-| [`task_documentation_updates.md`](task_documentation_updates.md) | Update architecture docs to reflect current state | 30-60 min | Not Started |
+| [`task_documentation_updates.md`](task_documentation_updates.md) | Update architecture docs to reflect current state | 30-60 min | In Progress |
 | [`task_quick_wins_cleanup.md`](task_quick_wins_cleanup.md) | Remove warnings, add tests, clean up skipped tests | 1-2 hours | Not Started |
 
 ---

@@ -1,5 +1,7 @@
 # Cross-Module Inheritance & Multi-File Compilation Investigation
 
+> **Task Document:** See `tasks/task_cross_module_inheritance_fix.md` for implementation tasks.
+
 ## Executive Summary
 
 This document investigates the current support for multi-file/module compilation and inheritance/interface implementation across module boundaries in the Sharpy compiler. It identifies gaps and proposes remediation tasks.

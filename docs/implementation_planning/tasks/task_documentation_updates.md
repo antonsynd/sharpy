@@ -183,7 +183,7 @@ Add at the top:
 ```
 
 **Verification:**
-- [ ] Cross-reference added
+- [x] Cross-reference added
 
 ---
 
@@ -226,8 +226,8 @@ This directory contains detailed task lists for architecture improvements and te
 ```
 
 **Verification:**
-- [ ] Index created
-- [ ] All tasks listed
+- [x] Index created (already existed, updated date and status)
+- [x] All tasks listed
 
 **Commit:** `docs: Create task documents index`
 
