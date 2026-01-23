@@ -287,8 +287,12 @@ public class ProjectCompiler
         // Collect all errors from both declaration and inheritance phases
         if (nameResolver.Errors.Any())
         {
-            _errors.AddRange(nameResolver.Errors.Select(e =>
-                $"({e.Line},{e.Column}): error: {e.Message}"));
+            foreach (var error in nameResolver.Errors)
+            {
+                var errorMsg = $"({error.Line},{error.Column}): error: {error.Message}";
+                _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column);
+                _errors.Add(errorMsg);
+            }
         }
     }
 
@@ -425,7 +429,9 @@ public class ProjectCompiler
             {
                 var cycleFiles = cycle.Select(Path.GetFileName).ToList();
                 var cycleDescription = string.Join(" → ", cycleFiles);
-                _errors.Add($"Circular dependency detected: {cycleDescription}");
+                var errorMsg = $"Circular dependency detected: {cycleDescription}";
+                _projectModel!.GlobalDiagnostics.AddError(errorMsg);
+                _errors.Add(errorMsg);
             }
             // Don't add import resolver errors when we have circular dependencies
             // as they would be redundant/confusing (e.g., "module not found" errors
@@ -436,7 +442,11 @@ public class ProjectCompiler
         // Add import resolver errors only if no circular dependencies were detected
         if (_importResolver.Errors.Any())
         {
-            _errors.AddRange(_importResolver.Errors.Select(e => e.Message));
+            foreach (var error in _importResolver.Errors)
+            {
+                _projectModel!.GlobalDiagnostics.AddError(error.Message);
+                _errors.Add(error.Message);
+            }
         }
 
         return !_errors.Any();
@@ -628,6 +638,11 @@ public class ProjectCompiler
 
         if (!assemblyResult.Success)
         {
+            // Add assembly errors to global diagnostics
+            foreach (var error in assemblyResult.Errors)
+            {
+                _projectModel!.GlobalDiagnostics.AddError(error);
+            }
             _errors.AddRange(assemblyResult.Errors);
             return new ProjectCompilationResult
             {

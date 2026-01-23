@@ -226,6 +226,40 @@ public class ProjectModel
     public int TotalErrorCount =>
         GlobalDiagnostics.ErrorCount + _units.Values.Sum(u => u.Diagnostics.ErrorCount);
 
+    /// <summary>
+    /// Gets all error messages formatted as strings for reporting.
+    /// </summary>
+    /// <returns>List of formatted error messages with file paths and locations.</returns>
+    public IReadOnlyList<string> GetAllErrorMessages()
+    {
+        var messages = new List<string>();
+
+        // Add global errors (no file context)
+        foreach (var error in GlobalDiagnostics.GetErrors())
+        {
+            if (!string.IsNullOrEmpty(error.FilePath))
+            {
+                messages.Add($"{error.FilePath}({error.Line},{error.Column}): error: {error.Message}");
+            }
+            else
+            {
+                messages.Add($"error: {error.Message}");
+            }
+        }
+
+        // Add per-file errors
+        foreach (var unit in _units.Values)
+        {
+            foreach (var error in unit.Diagnostics.GetErrors())
+            {
+                var filePath = error.FilePath ?? unit.FilePath;
+                messages.Add($"{filePath}({error.Line},{error.Column}): error: {error.Message}");
+            }
+        }
+
+        return messages;
+    }
+
     #endregion
 
     #region Incremental Compilation Support
