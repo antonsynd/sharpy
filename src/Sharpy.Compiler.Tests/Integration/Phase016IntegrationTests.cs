@@ -29,8 +29,9 @@ public class Phase016IntegrationTests : IntegrationTestBase
 class Empty:
     pass
 
-e = Empty()
-print(""created"")
+def main():
+    e = Empty()
+    print(""created"")
 ";
 
         var result = CompileAndExecute(source);
@@ -47,8 +48,9 @@ print(""created"")
 class Counter:
     count: int = 0
 
-c = Counter()
-print(c.count)
+def main():
+    c = Counter()
+    print(c.count)
 ";
 
         var result = CompileAndExecute(source);
@@ -67,10 +69,11 @@ class Person:
     age: int = 0
     active: bool = True
 
-p = Person()
-print(p.name)
-print(p.age)
-print(p.active)
+def main():
+    p = Person()
+    print(p.name)
+    print(p.age)
+    print(p.active)
 ";
 
         var result = CompileAndExecute(source);
@@ -96,9 +99,10 @@ class Point:
         self.x = x
         self.y = y
 
-p = Point(3, 4)
-print(p.x)
-print(p.y)
+def main():
+    p = Point(3, 4)
+    print(p.x)
+    print(p.y)
 ";
 
         var result = CompileAndExecute(source);
@@ -120,9 +124,10 @@ class Origin:
         self.x = 0
         self.y = 0
 
-o = Origin()
-print(o.x)
-print(o.y)
+def main():
+    o = Origin()
+    print(o.x)
+    print(o.y)
 ";
 
         var result = CompileAndExecute(source);
@@ -148,12 +153,13 @@ class Point:
         self.x = x
         self.y = y
 
-p1 = Point()
-p2 = Point(5, 10)
-print(p1.x)
-print(p1.y)
-print(p2.x)
-print(p2.y)
+def main():
+    p1 = Point()
+    p2 = Point(5, 10)
+    print(p1.x)
+    print(p1.y)
+    print(p2.x)
+    print(p2.y)
 ";
 
         var result = CompileAndExecute(source);
@@ -183,15 +189,16 @@ class Rectangle:
         self.width = width
         self.height = height
 
-r1 = Rectangle()
-r2 = Rectangle(5)
-r3 = Rectangle(10, 20)
-print(r1.width)
-print(r1.height)
-print(r2.width)
-print(r2.height)
-print(r3.width)
-print(r3.height)
+def main():
+    r1 = Rectangle()
+    r2 = Rectangle(5)
+    r3 = Rectangle(10, 20)
+    print(r1.width)
+    print(r1.height)
+    print(r2.width)
+    print(r2.height)
+    print(r3.width)
+    print(r3.height)
 ";
 
         var result = CompileAndExecute(source);
@@ -213,9 +220,10 @@ class Circle:
         self.radius = radius
         self.diameter = radius * 2
 
-c = Circle(5)
-print(c.radius)
-print(c.diameter)
+def main():
+    c = Circle(5)
+    print(c.radius)
+    print(c.diameter)
 ";
 
         var result = CompileAndExecute(source);
@@ -242,8 +250,9 @@ class Greeter:
     def greet(self):
         print(f""Hello, {self.name}!"")
 
-g = Greeter(""World"")
-g.greet()
+def main():
+    g = Greeter(""World"")
+    g.greet()
 ";
 
         var result = CompileAndExecute(source);
@@ -269,11 +278,12 @@ class Calculator:
     def get_value(self) -> int:
         return self.value
 
-calc = Calculator(10)
-calc.add(5)
-print(calc.get_value())
-calc.add(3)
-print(calc.get_value())
+def main():
+    calc = Calculator(10)
+    calc.add(5)
+    print(calc.get_value())
+    calc.add(3)
+    print(calc.get_value())
 ";
 
         var result = CompileAndExecute(source);
@@ -298,8 +308,9 @@ class Point:
     def distance_from_origin(self) -> int:
         return self.x * self.x + self.y * self.y
 
-p = Point(3, 4)
-print(p.distance_from_origin())
+def main():
+    p = Point(3, 4)
+    print(p.distance_from_origin())
 ";
 
         var result = CompileAndExecute(source);
@@ -325,12 +336,13 @@ class Vector:
         self.x = new_x
         self.y = new_y
 
-v = Vector(1, 2)
-print(v.x)
-print(v.y)
-v.set(10, 20)
-print(v.x)
-print(v.y)
+def main():
+    v = Vector(1, 2)
+    print(v.x)
+    print(v.y)
+    v.set(10, 20)
+    print(v.x)
+    print(v.y)
 ";
 
         var result = CompileAndExecute(source);
@@ -359,11 +371,12 @@ class Counter:
             self.increment()
             i = i + 1
 
-c = Counter()
-c.increment()
-print(c.count)
-c.increment_by(5)
-print(c.count)
+def main():
+    c = Counter()
+    c.increment()
+    print(c.count)
+    c.increment_by(5)
+    print(c.count)
 ";
 
         var result = CompileAndExecute(source);
@@ -385,8 +398,9 @@ class MathHelper:
     def add(a: int, b: int) -> int:
         return a + b
 
-result = MathHelper.add(3, 4)
-print(result)
+def main():
+    result = MathHelper.add(3, 4)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -405,8 +419,9 @@ class MathHelper:
     def multiply(a: int, b: int) -> int:
         return a * b
 
-result = MathHelper.multiply(5, 6)
-print(result)
+def main():
+    result = MathHelper.multiply(5, 6)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -430,9 +445,10 @@ class Calculator:
     def multiply(a: int, b: int) -> int:
         return a * b
 
-print(Calculator.add(10, 5))
-print(Calculator.subtract(10, 5))
-print(Calculator.multiply(10, 5))
+def main():
+    print(Calculator.add(10, 5))
+    print(Calculator.subtract(10, 5))
+    print(Calculator.multiply(10, 5))
 ";
 
         var result = CompileAndExecute(source);
@@ -460,9 +476,10 @@ class Point:
     def square_sum(a: int, b: int) -> int:
         return a * a + b * b
 
-p = Point(3, 4)
-print(p.distance_from_origin())
-print(Point.square_sum(5, 12))
+def main():
+    p = Point(3, 4)
+    print(p.distance_from_origin())
+    print(Point.square_sum(5, 12))
 ";
 
         var result = CompileAndExecute(source);
@@ -484,9 +501,10 @@ class Settings:
     user_count: int = 0
     max_connections: int = 100
 
-s = Settings()
-print(s.user_count)
-print(s.max_connections)
+def main():
+    s = Settings()
+    print(s.user_count)
+    print(s.max_connections)
 ";
 
         var result = CompileAndExecute(source);
@@ -509,8 +527,9 @@ class Account:
     def get_balance(self) -> int:
         return self._balance
 
-a = Account(100)
-print(a.get_balance())
+def main():
+    a = Account(100)
+    print(a.get_balance())
 ";
 
         var result = CompileAndExecute(source);
@@ -528,8 +547,9 @@ class Formatter:
     def format_name(self, name: str) -> str:
         return f""Name: {name}""
 
-f = Formatter()
-print(f.format_name(""Alice""))
+def main():
+    f = Formatter()
+    print(f.format_name(""Alice""))
 ";
 
         var result = CompileAndExecute(source);
@@ -547,8 +567,9 @@ class StringHelper:
     def to_upper_case(s: str) -> str:
         return s
 
-result = StringHelper.to_upper_case(""hello"")
-print(result)
+def main():
+    result = StringHelper.to_upper_case(""hello"")
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -566,8 +587,9 @@ class Processor:
     def process_data(self, input_value: int, scale_factor: int) -> int:
         return input_value * scale_factor
 
-p = Processor()
-print(p.process_data(10, 3))
+def main():
+    p = Processor()
+    print(p.process_data(10, 3))
 ";
 
         var result = CompileAndExecute(source);
@@ -607,20 +629,21 @@ class Point:
     def create_origin() -> Point:
         return Point()
 
-p1 = Point()
-p2 = Point(3, 4)
-print(p1.x)
-print(p1.y)
-print(p2.x)
-print(p2.y)
-print(p2.distance_squared())
-p2.move(1, 1)
-print(p2.x)
-print(p2.y)
-print(p2.distance_squared())
-p3 = Point.create_origin()
-print(p3.x)
-print(p3.y)
+def main():
+    p1 = Point()
+    p2 = Point(3, 4)
+    print(p1.x)
+    print(p1.y)
+    print(p2.x)
+    print(p2.y)
+    print(p2.distance_squared())
+    p2.move(1, 1)
+    print(p2.x)
+    print(p2.y)
+    print(p2.distance_squared())
+    p3 = Point.create_origin()
+    print(p3.x)
+    print(p3.y)
 ";
 
         var result = CompileAndExecute(source);
@@ -652,12 +675,13 @@ class Rectangle:
         self.width = self.width * factor
         self.height = self.height * factor
 
-r = Rectangle(10, 20)
-print(r.area())
-print(r.perimeter())
-r.scale(2)
-print(r.area())
-print(r.perimeter())
+def main():
+    r = Rectangle(10, 20)
+    print(r.area())
+    print(r.perimeter())
+    r.scale(2)
+    print(r.area())
+    print(r.perimeter())
 ";
 
         var result = CompileAndExecute(source);
@@ -691,17 +715,18 @@ class BankAccount:
     def get_balance(self) -> int:
         return self.balance
 
-account = BankAccount(""12345"")
-account.deposit(1000)
-print(account.get_balance())
-success = account.withdraw(300)
-print(success)
-print(account.get_balance())
-success = account.withdraw(800)
-print(success)
-print(account.get_balance())
-account.deposit(500)
-print(account.get_balance())
+def main():
+    account = BankAccount(""12345"")
+    account.deposit(1000)
+    print(account.get_balance())
+    success = account.withdraw(300)
+    print(success)
+    print(account.get_balance())
+    success = account.withdraw(800)
+    print(success)
+    print(account.get_balance())
+    account.deposit(500)
+    print(account.get_balance())
 ";
 
         var result = CompileAndExecute(source);
@@ -736,15 +761,16 @@ class Calculator:
     def get_result(self) -> int:
         return self.result
 
-calc = Calculator()
-calc.add(10)
-print(calc.get_result())
-calc.multiply(5)
-print(calc.get_result())
-calc.subtract(20)
-print(calc.get_result())
-calc.reset()
-print(calc.get_result())
+def main():
+    calc = Calculator()
+    calc.add(10)
+    print(calc.get_result())
+    calc.multiply(5)
+    print(calc.get_result())
+    calc.subtract(20)
+    print(calc.get_result())
+    calc.reset()
+    print(calc.get_result())
 ";
 
         var result = CompileAndExecute(source);
@@ -770,16 +796,17 @@ class Counter:
     def get_count(self) -> int:
         return self.count
 
-c1 = Counter()
-c2 = Counter()
-c1.increment()
-c1.increment()
-c2.increment()
-print(c1.get_count())
-print(c2.get_count())
-c1.increment()
-print(c1.get_count())
-print(c2.get_count())
+def main():
+    c1 = Counter()
+    c2 = Counter()
+    c1.increment()
+    c1.increment()
+    c2.increment()
+    print(c1.get_count())
+    print(c2.get_count())
+    c1.increment()
+    print(c1.get_count())
+    print(c2.get_count())
 ";
 
         var result = CompileAndExecute(source);
@@ -796,7 +823,8 @@ print(c2.get_count())
     public void Error_UndefinedClass_ReportsError()
     {
         var source = @"
-obj = UndefinedClass()
+def main():
+    obj = UndefinedClass()
 ";
 
         var result = CompileAndExecute(source);
@@ -817,7 +845,8 @@ class Point:
         self.x = x
         self.y = y
 
-p = Point(1)
+def main():
+    p = Point(1)
 ";
 
         var result = CompileAndExecute(source);
@@ -834,8 +863,9 @@ class Calculator:
     def add(self, a: int, b: int) -> int:
         return a + b
 
-calc = Calculator()
-result = calc.add(1)
+def main():
+    calc = Calculator()
+    result = calc.add(1)
 ";
 
         var result = CompileAndExecute(source);
@@ -852,8 +882,9 @@ class Point:
     x: int
     y: int
 
-p = Point()
-print(p.z)
+def main():
+    p = Point()
+    print(p.z)
 ";
 
         var result = CompileAndExecute(source);
@@ -870,8 +901,9 @@ class Point:
     x: int
     y: int
 
-p = Point()
-p.undefined_method()
+def main():
+    p = Point()
+    p.undefined_method()
 ";
 
         var result = CompileAndExecute(source);
@@ -888,8 +920,9 @@ class MathHelper:
     def add(a: int, b: int) -> int:
         return a + b
 
-helper = MathHelper()
-result = helper.add(1, 2)
+def main():
+    helper = MathHelper()
+    result = helper.add(1, 2)
 ";
 
         var result = CompileAndExecute(source);
@@ -912,7 +945,8 @@ class Point:
     def get_x(self) -> int:
         return self.x
 
-result = Point.get_x()
+def main():
+    result = Point.get_x()
 ";
 
         var result = CompileAndExecute(source);
@@ -936,8 +970,9 @@ class Simple:
     def __init__(self, value: int):
         self.value = value
 
-s = Simple(42)
-print(s.value)
+def main():
+    s = Simple(42)
+    print(s.value)
 ";
 
         var result = CompileAndExecute(source);
@@ -957,9 +992,10 @@ class Utility:
     def helper_two(self) -> int:
         return 2
 
-u = Utility()
-print(u.helper_one())
-print(u.helper_two())
+def main():
+    u = Utility()
+    print(u.helper_one())
+    print(u.helper_two())
 ";
 
         var result = CompileAndExecute(source);
@@ -982,8 +1018,9 @@ class Math:
     def combo(self, x: int) -> int:
         return self.double_value(self.triple(x))
 
-m = Math()
-print(m.combo(5))
+def main():
+    m = Math()
+    print(m.combo(5))
 ";
 
         var result = CompileAndExecute(source);
@@ -1002,8 +1039,9 @@ class Container:
     def __init__(self, value: int):
         self.value = value
 
-c = Container(100)
-print(c.value)
+def main():
+    c = Container(100)
+    print(c.value)
 ";
 
         var result = CompileAndExecute(source);
@@ -1034,13 +1072,14 @@ class DataProcessor:
     def get_processing_count(self) -> int:
         return self.processing_count
 
-dp = DataProcessor()
-dp.process_single_item(10)
-print(dp.output_data)
-print(dp.get_processing_count())
-dp.process_single_item(20)
-print(dp.output_data)
-print(dp.get_processing_count())
+def main():
+    dp = DataProcessor()
+    dp.process_single_item(10)
+    print(dp.output_data)
+    print(dp.get_processing_count())
+    dp.process_single_item(20)
+    print(dp.output_data)
+    print(dp.get_processing_count())
 ";
 
         var result = CompileAndExecute(source);
