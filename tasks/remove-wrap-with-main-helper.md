@@ -14,61 +14,43 @@ Remove the brittle `WrapWithMainIfNeeded` helper and ensure all Sharpy test code
 
 ## Phase 2: Integration Test Files
 
-### BasicProgramTests.cs (~19 methods)
-- [ ] HelloWorld_PrintsCorrectly - print only
-- [ ] Fibonacci_Recursive_ComputesCorrectly - function + calls
-- [ ] Fibonacci_Iterative_ComputesCorrectly - function + calls
-- [ ] SimpleArithmetic_WorksCorrectly - vars + prints
-- [ ] TypeInference_WorksCorrectly - vars + prints
-- [ ] VariableAssignment_WorksCorrectly - vars + prints
-- [ ] AugmentedAssignment_WorksCorrectly - vars + augmented ops
-- [ ] Comments_AreIgnored - vars + prints
-- [ ] MultipleStatements_ExecuteInOrder - prints
-- [ ] FunctionWithIfBlockAndAssignment_NoReturn_CompilesAndExecutes - function + calls
-- [ ] FunctionWithIfElseBlocksAndAssignments_NoReturn_CompilesAndExecutes - function + calls
-- [ ] FunctionWithNestedIfAndAssignment_NoReturn_CompilesAndExecutes - function + calls
-- [ ] FunctionWithIfBlockWithInlineComment_CompilesAndExecutes - function + calls
-- [ ] FunctionWithMultipleIfBlocksAndComments_CompilesAndExecutes - function + calls
-- [ ] FunctionWithWhileLoopAndComments_CompilesAndExecutes - function + calls
-- [ ] FunctionWithForLoopAndComments_CompilesAndExecutes - function + calls
-- [ ] FunctionWithComplexNestedStructuresAndComments_CompilesAndExecutes - function + calls
-- [ ] FunctionWithIfBlockAndMultipleAssignments_NoReturn_CompilesAndExecutes - function + calls
+### BasicProgramTests.cs (~19 methods) ✅ COMPLETED
+- [x] HelloWorld_PrintsCorrectly - print only
+- [x] Fibonacci_Recursive_ComputesCorrectly - function + calls
+- [x] Fibonacci_Iterative_ComputesCorrectly - function + calls
+- [x] SimpleArithmetic_WorksCorrectly - vars + prints
+- [x] TypeInference_WorksCorrectly - vars + prints
+- [x] VariableAssignment_WorksCorrectly - vars + prints
+- [x] AugmentedAssignment_WorksCorrectly - vars + augmented ops
+- [x] Comments_AreIgnored - vars + prints
+- [x] MultipleStatements_ExecuteInOrder - prints
+- [x] FunctionWithIfBlockAndAssignment_NoReturn_CompilesAndExecutes - function + calls
+- [x] FunctionWithIfElseBlocksAndAssignments_NoReturn_CompilesAndExecutes - function + calls
+- [x] FunctionWithNestedIfAndAssignment_NoReturn_CompilesAndExecutes - function + calls
+- [x] FunctionWithIfBlockWithInlineComment_CompilesAndExecutes - function + calls
+- [x] FunctionWithMultipleIfBlocksAndComments_CompilesAndExecutes - function + calls
+- [x] FunctionWithWhileLoopAndComments_CompilesAndExecutes - function + calls
+- [x] FunctionWithForLoopAndComments_CompilesAndExecutes - function + calls
+- [x] FunctionWithComplexNestedStructuresAndComments_CompilesAndExecutes - function + calls
+- [x] FunctionWithIfBlockAndMultipleAssignments_NoReturn_CompilesAndExecutes - function + calls
 
-### FunctionTests.cs (~5 methods)
-- [ ] SimpleFunction_WithReturn_WorksCorrectly - function + calls
-- [ ] VoidFunction_PrintsCorrectly - function + calls
-- [ ] RecursiveFunction_Factorial_WorksCorrectly - function + calls
-- [ ] FunctionWithDefaultParameter_WorksCorrectly - function + calls
-- [ ] MultipleFunctions_CallEachOther_WorksCorrectly - function + calls
+### FunctionTests.cs (~5 methods) ✅ COMPLETED
+- [x] SimpleFunction_WithReturn_WorksCorrectly - function + calls
+- [x] VoidFunction_PrintsCorrectly - function + calls
+- [x] RecursiveFunction_Factorial_WorksCorrectly - function + calls
+- [x] FunctionWithDefaultParameter_WorksCorrectly - function + calls
+- [x] MultipleFunctions_CallEachOther_WorksCorrectly - function + calls
 
-### ControlFlowTests.cs (~39 methods)
-- [ ] IfStatement_SimpleCondition_WorksCorrectly
-- [ ] IfStatement_WithElse_WorksCorrectly
-- [ ] IfStatement_WithElif_WorksCorrectly
-- [ ] IfStatement_NestedConditions_WorksCorrectly
-- [ ] WhileLoop_SimpleCount_WorksCorrectly
-- [ ] WhileLoop_WithBreak_WorksCorrectly
-- [ ] WhileLoop_WithContinue_WorksCorrectly
-- [ ] ForLoop_WithRange_WorksCorrectly
-- [ ] ForLoop_WithList_WorksCorrectly
-- [ ] ForLoop_WithBreak_WorksCorrectly
-- [ ] ForLoop_WithContinue_WorksCorrectly
-- [ ] ForLoop_NestedLoops_WorksCorrectly
-- [ ] (review file for complete list - ~25+ more methods)
+### ControlFlowTests.cs (~39 methods) ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
 
-### PipeOperatorTests.cs (~9 methods)
-- [ ] PipeOperator_SinglePipe_WorksCorrectly
-- [ ] PipeOperator_ChainedPipes_WorksCorrectly
-- [ ] PipeOperator_WithLambda_WorksCorrectly
-- [ ] (review file for complete list)
+### PipeOperatorTests.cs (~9 methods) ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
 
-### DivisionDeviationTests.cs (~10 methods)
-- [ ] IntegerDivision_TruncatesTowardZero_WorksCorrectly
-- [ ] FloorDivision_TruncatesTowardNegativeInfinity_WorksCorrectly
-- [ ] (review file for complete list)
+### DivisionDeviationTests.cs - FILE DOES NOT EXIST (task list was incorrect)
 
-### VariableAssignmentNegativeTests.cs (~16 methods)
-- [ ] (review file for complete list)
+### VariableAssignmentNegativeTests.cs (~16 methods) ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
 
 ### Phase012IntegrationTests.cs (~46 methods)
 - [ ] (review file for complete list - minimal program tests)
