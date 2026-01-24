@@ -104,10 +104,12 @@ public class ProjectCompilationHelper : IDisposable
 
     /// <summary>
     /// Adds a Sharpy source file to the project.
+    /// Entry point files are automatically wrapped in a main() function if needed.
     /// </summary>
     /// <param name="relativePath">Relative path from source directory (e.g., "main.spy" or "utils/helpers.spy")</param>
     /// <param name="content">Source code content</param>
-    public ProjectCompilationHelper AddSourceFile(string relativePath, string content)
+    /// <param name="isEntryPoint">Whether this file is the entry point (defaults to checking if it matches Options.EntryPoint)</param>
+    public ProjectCompilationHelper AddSourceFile(string relativePath, string content, bool? isEntryPoint = null)
     {
         var fullPath = Path.Combine(SourceDirectory, relativePath);
         var directory = Path.GetDirectoryName(fullPath);
@@ -115,6 +117,13 @@ public class ProjectCompilationHelper : IDisposable
         if (!string.IsNullOrEmpty(directory))
         {
             Directory.CreateDirectory(directory);
+        }
+
+        // Wrap entry point files in main() if needed
+        var isEntry = isEntryPoint ?? (Options.EntryPoint == relativePath || relativePath == "main.spy");
+        if (isEntry)
+        {
+            content = TestHelpers.WrapWithMainIfNeeded(content);
         }
 
         File.WriteAllText(fullPath, content);

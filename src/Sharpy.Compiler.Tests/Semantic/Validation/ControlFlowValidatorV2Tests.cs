@@ -26,7 +26,7 @@ public class ControlFlowValidatorV2Tests
 
         // Run type checking to populate semantic info
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         var context = new SemanticContext(symbolTable, semanticInfo, typeResolver);
         return (module, context);

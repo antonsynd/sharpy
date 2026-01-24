@@ -528,12 +528,13 @@ print(absolute_value(3))
     public void Variable_FirstAssignmentThenRedefinition_WorksCorrectly()
     {
         var source = @"
-x = 5
-print(x)
-x: auto = 10
-print(x)
-x: auto = ""hello""
-print(x)
+def main():
+    x = 5
+    print(x)
+    x: auto = 10
+    print(x)
+    x: auto = ""hello""
+    print(x)
 ";
 
         var result = CompileAndExecute(source);

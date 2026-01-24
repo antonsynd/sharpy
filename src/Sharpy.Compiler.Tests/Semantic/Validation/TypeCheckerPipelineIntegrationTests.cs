@@ -38,7 +38,7 @@ def foo() -> int:
 
         // No pipeline (legacy mode)
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Legacy mode still works - control flow errors should be present
         Assert.Contains(typeChecker.Errors, e => e.Message.Contains("must return"));
@@ -58,7 +58,7 @@ def foo() -> int:
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,
             validationPipeline: pipeline);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Pipeline mode should also report control flow errors
         Assert.Contains(typeChecker.Errors, e => e.Message.Contains("must return"));
@@ -78,7 +78,7 @@ def foo() -> int:
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,
             validationPipeline: pipeline);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have both type error AND control flow error
         var errors = typeChecker.Errors;
@@ -106,7 +106,7 @@ def foo() -> int:
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,
             validationPipeline: pipeline);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         // With empty pipeline, control flow errors are NOT detected
         // (missing return value won't be caught without ControlFlowValidatorV2/V3)
@@ -146,7 +146,7 @@ def foo() -> int:
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,
             validationPipeline: pipeline);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         Assert.Empty(typeChecker.Errors);
     }
@@ -166,7 +166,7 @@ def foo() -> int:
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,
             validationPipeline: pipeline);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should detect break outside loop
         var errors = typeChecker.Errors;
@@ -187,7 +187,7 @@ def foo() -> int:
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,
             validationPipeline: pipeline);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         var controlFlowError = typeChecker.Errors.FirstOrDefault(e => e.Message.Contains("must return"));
         Assert.NotNull(controlFlowError);

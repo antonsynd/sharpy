@@ -40,7 +40,7 @@ class Foo:
         return ""Foo""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("__str__");
@@ -57,7 +57,7 @@ class Bar:
         return True
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("__eq__");
@@ -74,7 +74,7 @@ class Baz:
         return 42
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("__hash__");
@@ -92,7 +92,7 @@ class FooGood:
         return ""FooGood""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -107,7 +107,7 @@ class BarGood:
         return True
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -122,7 +122,7 @@ class BazGood:
         return 42
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -137,7 +137,7 @@ class MyList:
         return 0
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -152,7 +152,7 @@ class MyClass:
         return ""MyClass()""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -167,7 +167,7 @@ class MyNum:
         return MyNum()
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -187,7 +187,7 @@ class MultiDunder:
         return 42
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().HaveCount(3);
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("__str__"));
@@ -204,7 +204,7 @@ def __str__() -> str:
     return ""top level""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
     }

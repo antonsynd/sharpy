@@ -49,6 +49,9 @@ public abstract class IntegrationTestBase
     /// <param name="executionTimeoutMs">Optional timeout in milliseconds for execution. Default is no timeout (0). Use for tests that may have infinite loops.</param>
     protected ExecutionResult CompileAndExecute(string sharpySource, string fileName = "test.spy", int executionTimeoutMs = 0)
     {
+        // Wrap source in main() if needed for entry point compliance
+        sharpySource = TestHelpers.WrapWithMainIfNeeded(sharpySource);
+
         // Track path to Sharpy.Core for copying to temp execution directory
         string? runtimePath = null;
 

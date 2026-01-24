@@ -53,11 +53,9 @@ def main():
     }
 
     [Fact]
-    public void EntryPointWithoutMain_NoErrorForBackwardCompatibility()
+    public void EntryPointWithoutMain_ReportsError()
     {
-        // Note: The spec says entry points MUST have main(), but for backward compatibility
-        // we currently don't enforce this as an error. The code generator will synthesize
-        // a Main() method. This test documents the current (transitional) behavior.
+        // Entry point files MUST have a main() function per the language specification
         var code = @"
 def helper() -> int:
     return 42
@@ -67,8 +65,29 @@ def helper() -> int:
         var validator = new ModuleLevelValidatorV2();
         validator.Validate(module, context);
 
-        // Currently no error for backward compatibility
-        Assert.False(context.Diagnostics.HasErrors);
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetErrors(),
+            e => e.Message.Contains("Entry point file requires a 'main()' function"));
+    }
+
+    [Fact]
+    public void EntryPointWithOnlyTypedVariables_ReportsError()
+    {
+        // Entry point files MUST have a main() function even if they only have declarations
+        var code = @"
+counter: int = 0
+
+def helper() -> int:
+    return 42
+";
+        var (module, context) = Parse(code, isEntryPoint: true);
+
+        var validator = new ModuleLevelValidatorV2();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetErrors(),
+            e => e.Message.Contains("Entry point file requires a 'main()' function"));
     }
 
     [Fact]

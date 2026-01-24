@@ -642,10 +642,12 @@ f: auto = 200
     {
         var source = @"
 const BASE: int = 10
-x: int = BASE
-y = x + 5
-z: auto = y * 2
-z += BASE
+
+def main():
+    x: int = BASE
+    y = x + 5
+    z: auto = y * 2
+    z += BASE
 ";
 
         var result = CompileAndExecute(source);

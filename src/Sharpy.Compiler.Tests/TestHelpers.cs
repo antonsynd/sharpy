@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.RegularExpressions;
 using Sharpy.Compiler.Logging;
 using Xunit.Abstractions;
 
@@ -8,6 +10,122 @@ namespace Sharpy.Compiler.Tests;
 /// </summary>
 public static class TestHelpers
 {
+    /// <summary>
+    /// Wraps Sharpy source code in a main() function if it doesn't already have one.
+    /// This is used to make test code compliant with the entry point rules
+    /// that require a main() function in entry point files.
+    /// </summary>
+    /// <param name="source">The Sharpy source code.</param>
+    /// <returns>The source code with a main() wrapper if needed.</returns>
+    public static string WrapWithMainIfNeeded(string source)
+    {
+        // Check if source already has a main function definition
+        if (Regex.IsMatch(source, @"^\s*def\s+main\s*\(", RegexOptions.Multiline))
+        {
+            return source;
+        }
+
+        // Separate declarations (at top level, unindented) from executable code
+        var lines = source.Split('\n');
+        var declarations = new StringBuilder();
+        var executable = new StringBuilder();
+        bool inDeclaration = false;
+        int declarationIndent = 0;
+
+        foreach (var line in lines)
+        {
+            var trimmed = line.TrimStart();
+            var currentIndent = line.Length - line.TrimStart().Length;
+
+            // Check if this line starts a declaration (or module-level statement that stays at module level)
+            bool isDeclarationStart = trimmed.StartsWith("def ") ||
+                                       trimmed.StartsWith("class ") ||
+                                       trimmed.StartsWith("struct ") ||
+                                       trimmed.StartsWith("interface ") ||
+                                       trimmed.StartsWith("enum ") ||
+                                       trimmed.StartsWith("const ") ||
+                                       trimmed.StartsWith("import ") ||
+                                       trimmed.StartsWith("from ") ||
+                                       trimmed.StartsWith("@") || // Decorators stay with their declarations
+                                       (trimmed.Contains(": ") && !trimmed.StartsWith("#") && currentIndent == 0 && !trimmed.Contains("("));
+
+            // Handle continuation of declarations (indented body)
+            if (inDeclaration && currentIndent > declarationIndent)
+            {
+                declarations.AppendLine(line);
+                continue;
+            }
+
+            // End of declaration body when we return to original indent level
+            if (inDeclaration && currentIndent <= declarationIndent && !string.IsNullOrWhiteSpace(trimmed))
+            {
+                inDeclaration = false;
+            }
+
+            if (isDeclarationStart && currentIndent == 0)
+            {
+                inDeclaration = true;
+                declarationIndent = currentIndent;
+                declarations.AppendLine(line);
+            }
+            else if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("#"))
+            {
+                // Comments and blank lines go to both (context-dependent, but simplest to duplicate)
+                if (inDeclaration)
+                    declarations.AppendLine(line);
+                else
+                    executable.AppendLine(line);
+            }
+            else if (currentIndent == 0 && !inDeclaration)
+            {
+                // Top-level executable code
+                executable.AppendLine(line);
+            }
+            else
+            {
+                // Indented code (part of declaration body or other)
+                if (inDeclaration)
+                    declarations.AppendLine(line);
+                else
+                    executable.AppendLine(line);
+            }
+        }
+
+        // Build the wrapped source
+        var result = new StringBuilder();
+        if (declarations.Length > 0)
+        {
+            result.Append(declarations);
+            result.AppendLine();
+        }
+
+        var executableCode = executable.ToString().TrimEnd();
+        // Check if there's any actual executable code (not just comments and whitespace)
+        var hasExecutableCode = executableCode.Split('\n')
+            .Any(line => !string.IsNullOrWhiteSpace(line) && !line.TrimStart().StartsWith("#"));
+
+        if (hasExecutableCode)
+        {
+            result.AppendLine("def main():");
+            // Indent each line of executable code
+            foreach (var line in executableCode.Split('\n'))
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                    result.AppendLine();
+                else
+                    result.AppendLine("    " + line);
+            }
+        }
+        else
+        {
+            // If there's no executable code, just add an empty main
+            result.AppendLine("def main():");
+            result.AppendLine("    pass");
+        }
+
+        return result.ToString();
+    }
+
     /// <summary>
     /// Global lock for console I/O operations during test execution.
     /// Tests that redirect Console.Out/Console.Error should acquire this lock

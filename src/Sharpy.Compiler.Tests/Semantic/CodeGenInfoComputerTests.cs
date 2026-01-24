@@ -26,7 +26,7 @@ public class CodeGenInfoComputerTests
         // Run type checker to fully populate symbols
         var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         return (module, symbolTable);
     }

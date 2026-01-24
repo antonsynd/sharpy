@@ -108,18 +108,12 @@ public class ModuleLevelValidatorV2 : SemanticValidatorBase
             }
         }
 
-        // Entry point files should have a main() function (warning-level guidance)
-        // Note: We only provide guidance for entry point files (context.IsEntryPoint = true)
-        // For now, this is not a hard error for backward compatibility
-        // Uncomment below to enable strict enforcement:
-        // if (_context.IsEntryPoint && !hasMainFunction)
-        // {
-        //     if (executableStatements.Count == 0 && untypedVariables.Count == 0)
-        //     {
-        //         AddError(_context,
-        //             "Entry point file requires a 'main()' function",
-        //             module.LineStart, module.ColumnStart);
-        //     }
-        // }
+        // Entry point files must have a main() function
+        if (_context.IsEntryPoint && !hasMainFunction)
+        {
+            AddError(_context,
+                "Entry point file requires a 'main()' function",
+                module.LineStart, module.ColumnStart);
+        }
     }
 }
