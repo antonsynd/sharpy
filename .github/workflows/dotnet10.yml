@@ -6,8 +6,26 @@ name: .NET 10
 on:
   push:
     branches: [ "mainline" ]
+    paths-ignore:
+      - 'docs/**'
+      - 'examples/**'
+      - 'samples/**'
+      - 'snippets/**'
+      - 'build_tools/**'
+      - 'dogfood_output/**'
+      - '*.md'
+      - 'LICENSE'
   pull_request:
     branches: [ "mainline" ]
+    paths-ignore:
+      - 'docs/**'
+      - 'examples/**'
+      - 'samples/**'
+      - 'snippets/**'
+      - 'build_tools/**'
+      - 'dogfood_output/**'
+      - '*.md'
+      - 'LICENSE'
 
 jobs:
   build:
