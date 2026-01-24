@@ -19,10 +19,11 @@ public class Phase013IntegrationTests : IntegrationTestBase
     public void SpecExample_TypedVariablesWithOperations_CompilesAndRuns()
     {
         var source = @"
-x: int = 10
-y: int = 20
-z = x + y
-z += 5
+def main():
+    x: int = 10
+    y: int = 20
+    z = x + y
+    z += 5
 ";
 
         var result = CompileAndExecute(source);
@@ -33,7 +34,10 @@ z += 5
     [Fact]
     public void SpecExample_ConstDeclaration_CompilesAndRuns()
     {
-        var source = @"const MAX: int = 100";
+        var source = @"
+def main():
+    const MAX: int = 100
+";
 
         var result = CompileAndExecute(source);
 
@@ -44,8 +48,9 @@ z += 5
     public void SpecExample_ConstCannotBeReassigned_ReportsError()
     {
         var source = @"
-const MAX: int = 100
-# MAX = 50  # This would error - testing below
+def main():
+    const MAX: int = 100
+    # MAX = 50  # This would error - testing below
 ";
 
         var result = CompileAndExecute(source);
@@ -61,7 +66,10 @@ const MAX: int = 100
     [Fact]
     public void TypeInference_IntegerLiteral_InferredAsInt32_CompilesAndRuns()
     {
-        var source = @"x = 42";  // Inferred as int32
+        var source = @"
+def main():
+    x = 42  # Inferred as int32
+";
 
         var result = CompileAndExecute(source);
 
@@ -71,7 +79,10 @@ const MAX: int = 100
     [Fact]
     public void TypeInference_FloatLiteral_InferredAsFloat64_CompilesAndRuns()
     {
-        var source = @"y = 3.14";  // Inferred as float64
+        var source = @"
+def main():
+    y = 3.14  # Inferred as float64
+";
 
         var result = CompileAndExecute(source);
 
@@ -81,7 +92,10 @@ const MAX: int = 100
     [Fact]
     public void TypeInference_StringLiteral_InferredAsStr_CompilesAndRuns()
     {
-        var source = @"s = ""hello world""";
+        var source = @"
+def main():
+    s = ""hello world""
+";
 
         var result = CompileAndExecute(source);
 
@@ -92,8 +106,9 @@ const MAX: int = 100
     public void TypeInference_BooleanLiterals_InferredAsBool_CompilesAndRuns()
     {
         var source = @"
-flag = True
-other = False
+def main():
+    flag = True
+    other = False
 ";
 
         var result = CompileAndExecute(source);
@@ -104,7 +119,10 @@ other = False
     [Fact]
     public void TypeInference_AutoKeyword_Integer_CompilesAndRuns()
     {
-        var source = @"x: auto = 42";
+        var source = @"
+def main():
+    x: auto = 42
+";
 
         var result = CompileAndExecute(source);
 
@@ -114,7 +132,10 @@ other = False
     [Fact]
     public void TypeInference_AutoKeyword_Float_CompilesAndRuns()
     {
-        var source = @"y: auto = 3.14";
+        var source = @"
+def main():
+    y: auto = 3.14
+";
 
         var result = CompileAndExecute(source);
 
@@ -124,7 +145,10 @@ other = False
     [Fact]
     public void TypeInference_AutoKeyword_String_CompilesAndRuns()
     {
-        var source = @"z: auto = ""hello""";
+        var source = @"
+def main():
+    z: auto = ""hello""
+";
 
         var result = CompileAndExecute(source);
 
@@ -135,10 +159,11 @@ other = False
     public void TypeInference_AutoKeyword_AllTypes_CompilesAndRuns()
     {
         var source = @"
-x: auto = 42
-y: auto = 3.14
-z: auto = ""hello""
-w: auto = True
+def main():
+    x: auto = 42
+    y: auto = 3.14
+    z: auto = ""hello""
+    w: auto = True
 ";
 
         var result = CompileAndExecute(source);
@@ -150,9 +175,10 @@ w: auto = True
     public void TypeInference_FromExpression_CompilesAndRuns()
     {
         var source = @"
-a = 10
-b = 20
-c = a + b
+def main():
+    a = 10
+    b = 20
+    c = a + b
 ";
 
         var result = CompileAndExecute(source);
@@ -167,7 +193,10 @@ c = a + b
     [Fact]
     public void Const_IntegerDeclaration_CompilesAndRuns()
     {
-        var source = @"const MAX: int = 100";
+        var source = @"
+def main():
+    const MAX: int = 100
+";
 
         var result = CompileAndExecute(source);
 
@@ -177,7 +206,10 @@ c = a + b
     [Fact]
     public void Const_FloatDeclaration_CompilesAndRuns()
     {
-        var source = @"const PI: float = 3.14159";
+        var source = @"
+def main():
+    const PI: float = 3.14159
+";
 
         var result = CompileAndExecute(source);
 
@@ -187,7 +219,10 @@ c = a + b
     [Fact]
     public void Const_StringDeclaration_CompilesAndRuns()
     {
-        var source = @"const NAME: str = ""Sharpy""";
+        var source = @"
+def main():
+    const NAME: str = ""Sharpy""
+";
 
         var result = CompileAndExecute(source);
 
@@ -197,7 +232,10 @@ c = a + b
     [Fact]
     public void Const_BoolDeclaration_CompilesAndRuns()
     {
-        var source = @"const DEBUG: bool = True";
+        var source = @"
+def main():
+    const DEBUG: bool = True
+";
 
         var result = CompileAndExecute(source);
 
@@ -208,11 +246,12 @@ c = a + b
     public void Const_MultipleDeclarations_CompilesAndRuns()
     {
         var source = @"
-const MAX: int = 100
-const MIN: int = 0
-const PI: float = 3.14159
-const NAME: str = ""App""
-const DEBUG: bool = False
+def main():
+    const MAX: int = 100
+    const MIN: int = 0
+    const PI: float = 3.14159
+    const NAME: str = ""App""
+    const DEBUG: bool = False
 ";
 
         var result = CompileAndExecute(source);
@@ -224,8 +263,9 @@ const DEBUG: bool = False
     public void Const_UsedInExpression_CompilesAndRuns()
     {
         var source = @"
-const BASE: int = 10
-x = BASE * 2
+def main():
+    const BASE: int = 10
+    x = BASE * 2
 ";
 
         var result = CompileAndExecute(source);
@@ -237,10 +277,11 @@ x = BASE * 2
     public void Const_UsedInMultipleExpressions_CompilesAndRuns()
     {
         var source = @"
-const FACTOR: int = 5
-a = FACTOR * 2
-b = FACTOR + 10
-c = a + b + FACTOR
+def main():
+    const FACTOR: int = 5
+    a = FACTOR * 2
+    b = FACTOR + 10
+    c = a + b + FACTOR
 ";
 
         var result = CompileAndExecute(source);
@@ -251,7 +292,10 @@ c = a + b + FACTOR
     [Fact]
     public void Const_NegativeIntValue_CompilesAndRuns()
     {
-        var source = @"const MIN_VALUE: int = -100";
+        var source = @"
+def main():
+    const MIN_VALUE: int = -100
+";
 
         var result = CompileAndExecute(source);
 
@@ -261,7 +305,10 @@ c = a + b + FACTOR
     [Fact]
     public void Const_NegativeFloatValue_CompilesAndRuns()
     {
-        var source = @"const OFFSET: float = -1.5";
+        var source = @"
+def main():
+    const OFFSET: float = -1.5
+";
 
         var result = CompileAndExecute(source);
 
@@ -275,7 +322,10 @@ c = a + b + FACTOR
     [Fact]
     public void Error_UndefinedVariable_ReportsError()
     {
-        var source = @"y = x";  // x not defined
+        var source = @"
+def main():
+    y = x  # x not defined
+";
 
         var result = CompileAndExecute(source);
 
@@ -294,9 +344,10 @@ c = a + b + FACTOR
     public void Error_UndefinedVariableInExpression_ReportsError()
     {
         var source = @"
-x: int = 10
-z = x + y
-";  // y not defined
+def main():
+    x: int = 10
+    z = x + y  # y not defined
+";
 
         var result = CompileAndExecute(source);
 
@@ -307,7 +358,10 @@ z = x + y
     [Fact]
     public void Error_UndefinedVariableInAugmentedAssignment_ReportsError()
     {
-        var source = @"x += 5";  // x not defined
+        var source = @"
+def main():
+    x += 5  # x not defined
+";
 
         var result = CompileAndExecute(source);
 
@@ -323,8 +377,9 @@ z = x + y
     public void Error_ConstReassignment_SimpleAssignment_ReportsError()
     {
         var source = @"
-const MAX: int = 100
-MAX = 50
+def main():
+    const MAX: int = 100
+    MAX = 50
 ";
 
         var result = CompileAndExecute(source);
@@ -343,8 +398,9 @@ MAX = 50
     public void Error_ConstReassignment_AugmentedAssignment_ReportsError()
     {
         var source = @"
-const MAX: int = 100
-MAX += 10
+def main():
+    const MAX: int = 100
+    MAX += 10
 ";
 
         var result = CompileAndExecute(source);
@@ -363,8 +419,9 @@ MAX += 10
     public void Error_ConstReassignment_SubtractAssignment_ReportsError()
     {
         var source = @"
-const VALUE: int = 100
-VALUE -= 10
+def main():
+    const VALUE: int = 100
+    VALUE -= 10
 ";
 
         var result = CompileAndExecute(source);
@@ -377,8 +434,9 @@ VALUE -= 10
     public void Error_ConstReassignment_MultiplyAssignment_ReportsError()
     {
         var source = @"
-const VALUE: int = 100
-VALUE *= 2
+def main():
+    const VALUE: int = 100
+    VALUE *= 2
 ";
 
         var result = CompileAndExecute(source);
@@ -394,7 +452,10 @@ VALUE *= 2
     [Fact]
     public void Error_TypeMismatch_StringToInt_ReportsError()
     {
-        var source = @"x: int = ""hello""";
+        var source = @"
+def main():
+    x: int = ""hello""
+";
 
         var result = CompileAndExecute(source);
 
@@ -411,7 +472,10 @@ VALUE *= 2
     [Fact]
     public void Error_TypeMismatch_IntToStr_ReportsError()
     {
-        var source = @"x: str = 42";
+        var source = @"
+def main():
+    x: str = 42
+";
 
         var result = CompileAndExecute(source);
 
@@ -422,7 +486,10 @@ VALUE *= 2
     [Fact]
     public void Error_TypeMismatch_BoolToInt_ReportsError()
     {
-        var source = @"x: int = True";
+        var source = @"
+def main():
+    x: int = True
+";
 
         var result = CompileAndExecute(source);
 
@@ -433,7 +500,10 @@ VALUE *= 2
     [Fact]
     public void Error_TypeMismatch_IntToBool_ReportsError()
     {
-        var source = @"x: bool = 42";
+        var source = @"
+def main():
+    x: bool = 42
+";
 
         var result = CompileAndExecute(source);
 
@@ -445,8 +515,9 @@ VALUE *= 2
     public void Error_TypeMismatch_ReassignmentWithWrongType_ReportsError()
     {
         var source = @"
-x: int = 10
-x = ""hello""
+def main():
+    x: int = 10
+    x = ""hello""
 ";
 
         var result = CompileAndExecute(source);
@@ -464,8 +535,9 @@ x = ""hello""
     public void VariableRedefinition_SameType_CompilesAndRuns()
     {
         var source = @"
-x: int = 1
-x: int = 2
+def main():
+    x: int = 1
+    x: int = 2
 ";
 
         var result = CompileAndExecute(source);
@@ -477,8 +549,9 @@ x: int = 2
     public void VariableRedefinition_DifferentType_WithAuto_CompilesAndRuns()
     {
         var source = @"
-x: int = 1
-x: auto = ""hello""
+def main():
+    x: int = 1
+    x: auto = ""hello""
 ";
 
         var result = CompileAndExecute(source);
@@ -490,9 +563,10 @@ x: auto = ""hello""
     public void VariableReassignment_AfterDeclaration_CompilesAndRuns()
     {
         var source = @"
-x: int = 1
-x = 2
-x = 3
+def main():
+    x: int = 1
+    x = 2
+    x = 3
 ";
 
         var result = CompileAndExecute(source);
@@ -504,9 +578,10 @@ x = 3
     public void VariableReassignment_WithExpression_CompilesAndRuns()
     {
         var source = @"
-x: int = 1
-x = x + 1
-x = x * 2
+def main():
+    x: int = 1
+    x = x + 1
+    x = x * 2
 ";
 
         var result = CompileAndExecute(source);
@@ -522,8 +597,9 @@ x = x * 2
     public void AugmentedAssignment_AddEquals_CompilesAndRuns()
     {
         var source = @"
-x: int = 10
-x += 5
+def main():
+    x: int = 10
+    x += 5
 ";
 
         var result = CompileAndExecute(source);
@@ -535,8 +611,9 @@ x += 5
     public void AugmentedAssignment_SubtractEquals_CompilesAndRuns()
     {
         var source = @"
-x: int = 10
-x -= 3
+def main():
+    x: int = 10
+    x -= 3
 ";
 
         var result = CompileAndExecute(source);
@@ -548,8 +625,9 @@ x -= 3
     public void AugmentedAssignment_MultiplyEquals_CompilesAndRuns()
     {
         var source = @"
-x: int = 10
-x *= 2
+def main():
+    x: int = 10
+    x *= 2
 ";
 
         var result = CompileAndExecute(source);
@@ -561,8 +639,9 @@ x *= 2
     public void AugmentedAssignment_DivideEquals_CompilesAndRuns()
     {
         var source = @"
-x: int = 20
-x //= 4
+def main():
+    x: int = 20
+    x //= 4
 ";
 
         var result = CompileAndExecute(source);
@@ -574,11 +653,12 @@ x //= 4
     public void AugmentedAssignment_AllOperators_CompilesAndRuns()
     {
         var source = @"
-x: int = 10
-x += 5
-x -= 3
-x *= 2
-x //= 4
+def main():
+    x: int = 10
+    x += 5
+    x -= 3
+    x *= 2
+    x //= 4
 ";
 
         var result = CompileAndExecute(source);
@@ -590,9 +670,10 @@ x //= 4
     public void AugmentedAssignment_WithExpression_CompilesAndRuns()
     {
         var source = @"
-x: int = 10
-y: int = 5
-x += y
+def main():
+    x: int = 10
+    y: int = 5
+    x += y
 ";
 
         var result = CompileAndExecute(source);
@@ -608,11 +689,12 @@ x += y
     public void MixedDeclarations_VariablesAndConsts_CompilesAndRuns()
     {
         var source = @"
-const MAX: int = 100
-x: int = 10
-y = 20
-z = x + y
-const MIN: int = 0
+def main():
+    const MAX: int = 100
+    x: int = 10
+    y = 20
+    z = x + y
+    const MIN: int = 0
 ";
 
         var result = CompileAndExecute(source);
@@ -624,12 +706,13 @@ const MIN: int = 0
     public void MixedDeclarations_AllTypeAnnotations_CompilesAndRuns()
     {
         var source = @"
-a: int = 42
-b: float = 3.14
-c: str = ""hello""
-d: bool = True
-e = 100
-f: auto = 200
+def main():
+    a: int = 42
+    b: float = 3.14
+    c: str = ""hello""
+    d: bool = True
+    e = 100
+    f: auto = 200
 ";
 
         var result = CompileAndExecute(source);
@@ -659,18 +742,19 @@ def main():
     public void MixedDeclarations_CommentsInterspersed_CompilesAndRuns()
     {
         var source = @"
-# Define constants
-const MAX: int = 100
+def main():
+    # Define constants
+    const MAX: int = 100
 
-# Initialize variables
-x: int = 10  # First value
-y: int = 20  # Second value
+    # Initialize variables
+    x: int = 10  # First value
+    y: int = 20  # Second value
 
-# Calculate result
-z = x + y  # Sum
+    # Calculate result
+    z = x + y  # Sum
 
-# Update with augmented assignment
-z += 5  # Final value
+    # Update with augmented assignment
+    z += 5  # Final value
 ";
 
         var result = CompileAndExecute(source);
@@ -686,8 +770,9 @@ z += 5  # Final value
     public void EdgeCase_ZeroValueAssignment_CompilesAndRuns()
     {
         var source = @"
-x: int = 0
-y: float = 0.0
+def main():
+    x: int = 0
+    y: float = 0.0
 ";
 
         var result = CompileAndExecute(source);
@@ -698,7 +783,10 @@ y: float = 0.0
     [Fact]
     public void EdgeCase_EmptyStringAssignment_CompilesAndRuns()
     {
-        var source = @"s: str = """"";
+        var source = @"
+def main():
+    s: str = """"
+";
 
         var result = CompileAndExecute(source);
 
@@ -708,7 +796,10 @@ y: float = 0.0
     [Fact]
     public void EdgeCase_LargeIntegerValue_CompilesAndRuns()
     {
-        var source = @"x: int = 2147483647";  // Max int32
+        var source = @"
+def main():
+    x: int = 2147483647  # Max int32
+";
 
         var result = CompileAndExecute(source);
 
@@ -718,7 +809,10 @@ y: float = 0.0
     [Fact]
     public void EdgeCase_ScientificNotationFloat_CompilesAndRuns()
     {
-        var source = @"x = 1.23e10";
+        var source = @"
+def main():
+    x = 1.23e10
+";
 
         var result = CompileAndExecute(source);
 
@@ -729,8 +823,9 @@ y: float = 0.0
     public void EdgeCase_SelfReferentialExpression_CompilesAndRuns()
     {
         var source = @"
-x: int = 5
-x = x + x
+def main():
+    x: int = 5
+    x = x + x
 ";
 
         var result = CompileAndExecute(source);
@@ -741,7 +836,10 @@ x = x + x
     [Fact]
     public void EdgeCase_VariableNameStartsWithUnderscore_CompilesAndRuns()
     {
-        var source = @"_private: int = 42";
+        var source = @"
+def main():
+    _private: int = 42
+";
 
         var result = CompileAndExecute(source);
 
@@ -751,7 +849,10 @@ x = x + x
     [Fact]
     public void EdgeCase_VariableNameWithNumbers_CompilesAndRuns()
     {
-        var source = @"var123: int = 42";
+        var source = @"
+def main():
+    var123: int = 42
+";
 
         var result = CompileAndExecute(source);
 

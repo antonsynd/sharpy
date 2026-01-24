@@ -18,7 +18,10 @@ public class Phase012IntegrationTests : IntegrationTestBase
     [Fact]
     public void MinimalProgram_Pass_CompilesAndRuns()
     {
-        var source = @"pass";
+        var source = @"
+def main():
+    pass
+";
 
         var result = CompileAndExecute(source);
 
@@ -31,7 +34,8 @@ public class Phase012IntegrationTests : IntegrationTestBase
     public void MinimalProgram_PassWithNewline_CompilesAndRuns()
     {
         var source = @"
-pass
+def main():
+    pass
 ";
 
         var result = CompileAndExecute(source);
@@ -44,9 +48,10 @@ pass
     public void MinimalProgram_MultiplePassStatements_CompilesAndRuns()
     {
         var source = @"
-pass
-pass
-pass
+def main():
+    pass
+    pass
+    pass
 ";
 
         var result = CompileAndExecute(source);
@@ -62,7 +67,10 @@ pass
     [Fact]
     public void MinimalProgram_IntegerLiteral_CompilesAndRuns()
     {
-        var source = @"42";
+        var source = @"
+def main():
+    42
+";
 
         var result = CompileAndExecute(source);
 
@@ -73,7 +81,10 @@ pass
     [Fact]
     public void MinimalProgram_SimpleAddition_CompilesAndRuns()
     {
-        var source = @"42 + 8";
+        var source = @"
+def main():
+    42 + 8
+";
 
         var result = CompileAndExecute(source);
 
@@ -84,7 +95,10 @@ pass
     [Fact]
     public void MinimalProgram_SimpleSubtraction_CompilesAndRuns()
     {
-        var source = @"100 - 42";
+        var source = @"
+def main():
+    100 - 42
+";
 
         var result = CompileAndExecute(source);
 
@@ -95,7 +109,10 @@ pass
     [Fact]
     public void MinimalProgram_SimpleMultiplication_CompilesAndRuns()
     {
-        var source = @"6 * 7";
+        var source = @"
+def main():
+    6 * 7
+";
 
         var result = CompileAndExecute(source);
 
@@ -106,7 +123,10 @@ pass
     [Fact]
     public void MinimalProgram_SimpleDivision_CompilesAndRuns()
     {
-        var source = @"84 // 2";
+        var source = @"
+def main():
+    84 // 2
+";
 
         var result = CompileAndExecute(source);
 
@@ -117,7 +137,10 @@ pass
     [Fact]
     public void MinimalProgram_ComplexExpression_CompilesAndRuns()
     {
-        var source = @"(10 + 20) * 3 - 5";
+        var source = @"
+def main():
+    (10 + 20) * 3 - 5
+";
 
         var result = CompileAndExecute(source);
 
@@ -129,9 +152,10 @@ pass
     public void MinimalProgram_MultipleExpressionStatements_CompilesAndRuns()
     {
         var source = @"
-42
-100 - 58
-6 * 7
+def main():
+    42
+    100 - 58
+    6 * 7
 ";
 
         var result = CompileAndExecute(source);
@@ -148,12 +172,13 @@ pass
     public void MinimalProgram_AllArithmeticOperators_CompilesAndRuns()
     {
         var source = @"
-10 + 5
-10 - 5
-10 * 5
-10 // 5
-10 % 3
-2 ** 8
+def main():
+    10 + 5
+    10 - 5
+    10 * 5
+    10 // 5
+    10 % 3
+    2 ** 8
 ";
 
         var result = CompileAndExecute(source);
@@ -166,12 +191,13 @@ pass
     public void MinimalProgram_ComparisonOperators_CompilesAndRuns()
     {
         var source = @"
-5 < 10
-5 <= 10
-5 > 10
-5 >= 10
-5 == 5
-5 != 10
+def main():
+    5 < 10
+    5 <= 10
+    5 > 10
+    5 >= 10
+    5 == 5
+    5 != 10
 ";
 
         var result = CompileAndExecute(source);
@@ -184,9 +210,10 @@ pass
     public void MinimalProgram_LogicalOperators_CompilesAndRuns()
     {
         var source = @"
-True and False
-True or False
-not True
+def main():
+    True and False
+    True or False
+    not True
 ";
 
         var result = CompileAndExecute(source);
@@ -202,7 +229,10 @@ not True
     [Fact]
     public void MinimalProgram_SimpleAssignment_CompilesAndRuns()
     {
-        var source = @"x = 42";
+        var source = @"
+def main():
+    x = 42
+";
 
         var result = CompileAndExecute(source);
 
@@ -213,7 +243,10 @@ not True
     [Fact]
     public void MinimalProgram_TypedAssignment_CompilesAndRuns()
     {
-        var source = @"x: int = 42";
+        var source = @"
+def main():
+    x: int = 42
+";
 
         var result = CompileAndExecute(source);
 
@@ -225,9 +258,10 @@ not True
     public void MinimalProgram_MultipleAssignments_CompilesAndRuns()
     {
         var source = @"
-x = 10
-y = 20
-z = x + y
+def main():
+    x = 10
+    y = 20
+    z = x + y
 ";
 
         var result = CompileAndExecute(source);
@@ -240,11 +274,12 @@ z = x + y
     public void MinimalProgram_AugmentedAssignment_CompilesAndRuns()
     {
         var source = @"
-x = 10
-x += 5
-x -= 3
-x *= 2
-x //= 4
+def main():
+    x = 10
+    x += 5
+    x -= 3
+    x *= 2
+    x //= 4
 ";
 
         var result = CompileAndExecute(source);
@@ -261,11 +296,12 @@ x //= 4
     public void MinimalProgram_PassAndExpressions_CompilesAndRuns()
     {
         var source = @"
-pass
-42
-pass
-100 - 58
-pass
+def main():
+    pass
+    42
+    pass
+    100 - 58
+    pass
 ";
 
         var result = CompileAndExecute(source);
@@ -278,10 +314,11 @@ pass
     public void MinimalProgram_AssignmentAndExpressions_CompilesAndRuns()
     {
         var source = @"
-x = 10
-x + 5
-y = x * 2
-y - 10
+def main():
+    x = 10
+    x + 5
+    y = x * 2
+    y - 10
 ";
 
         var result = CompileAndExecute(source);
@@ -294,14 +331,15 @@ y - 10
     public void MinimalProgram_AllStatementTypes_CompilesAndRuns()
     {
         var source = @"
-pass
-42
-x = 10
-x + 5
-pass
-y: int = 20
-y * 2
-pass
+def main():
+    pass
+    42
+    x = 10
+    x + 5
+    pass
+    y: int = 20
+    y * 2
+    pass
 ";
 
         var result = CompileAndExecute(source);
@@ -317,7 +355,11 @@ pass
     [Fact]
     public void MinimalProgram_OnlyComment_CompilesAndRuns()
     {
-        var source = @"# This is a comment";
+        var source = @"
+def main():
+    # This is a comment
+    pass
+";
 
         var result = CompileAndExecute(source);
 
@@ -329,8 +371,9 @@ pass
     public void MinimalProgram_PassWithComment_CompilesAndRuns()
     {
         var source = @"
-# This does nothing
-pass
+def main():
+    # This does nothing
+    pass
 ";
 
         var result = CompileAndExecute(source);
@@ -342,7 +385,10 @@ pass
     [Fact]
     public void MinimalProgram_ExpressionWithInlineComment_CompilesAndRuns()
     {
-        var source = @"42 + 8  # The answer plus eight";
+        var source = @"
+def main():
+    42 + 8  # The answer plus eight
+";
 
         var result = CompileAndExecute(source);
 
@@ -354,10 +400,11 @@ pass
     public void MinimalProgram_AssignmentWithComments_CompilesAndRuns()
     {
         var source = @"
-# Initialize x
-x = 10  # Set to 10
-# Add 5
-x += 5  # Now x is 15
+def main():
+    # Initialize x
+    x = 10  # Set to 10
+    # Add 5
+    x += 5  # Now x is 15
 ";
 
         var result = CompileAndExecute(source);
@@ -374,10 +421,11 @@ x += 5  # Now x is 15
     public void MinimalProgram_IntegerLiterals_CompilesAndRuns()
     {
         var source = @"
-0
-42
--17
-1000000
+def main():
+    0
+    42
+    -17
+    1000000
 ";
 
         var result = CompileAndExecute(source);
@@ -390,10 +438,11 @@ x += 5  # Now x is 15
     public void MinimalProgram_FloatLiterals_CompilesAndRuns()
     {
         var source = @"
-3.14
--2.5
-0.0
-1.23e10
+def main():
+    3.14
+    -2.5
+    0.0
+    1.23e10
 ";
 
         var result = CompileAndExecute(source);
@@ -406,10 +455,11 @@ x += 5  # Now x is 15
     public void MinimalProgram_BooleanLiterals_CompilesAndRuns()
     {
         var source = @"
-True
-False
-True and False
-True or False
+def main():
+    True
+    False
+    True and False
+    True or False
 ";
 
         var result = CompileAndExecute(source);
@@ -422,10 +472,11 @@ True or False
     public void MinimalProgram_StringLiterals_CompilesAndRuns()
     {
         var source = @"
-""hello""
-'world'
-""""
-''
+def main():
+    ""hello""
+    'world'
+    """"
+    ''
 ";
 
         var result = CompileAndExecute(source);
@@ -437,7 +488,10 @@ True or False
     [Fact]
     public void MinimalProgram_NoneLiteral_CompilesAndRuns()
     {
-        var source = @"None";
+        var source = @"
+def main():
+    None
+";
 
         var result = CompileAndExecute(source);
 
@@ -449,12 +503,13 @@ True or False
     public void MinimalProgram_AllLiteralTypes_CompilesAndRuns()
     {
         var source = @"
-42
-3.14
-True
-False
-""hello""
-None
+def main():
+    42
+    3.14
+    True
+    False
+    ""hello""
+    None
 ";
 
         var result = CompileAndExecute(source);
@@ -510,7 +565,10 @@ None
     [Fact]
     public void MinimalProgram_IntTypeAnnotation_CompilesAndRuns()
     {
-        var source = @"x: int = 42";
+        var source = @"
+def main():
+    x: int = 42
+";
 
         var result = CompileAndExecute(source);
 
@@ -521,7 +579,10 @@ None
     [Fact]
     public void MinimalProgram_FloatTypeAnnotation_CompilesAndRuns()
     {
-        var source = @"x: float = 3.14";
+        var source = @"
+def main():
+    x: float = 3.14
+";
 
         var result = CompileAndExecute(source);
 
@@ -532,7 +593,10 @@ None
     [Fact]
     public void MinimalProgram_StrTypeAnnotation_CompilesAndRuns()
     {
-        var source = @"x: str = ""hello""";
+        var source = @"
+def main():
+    x: str = ""hello""
+";
 
         var result = CompileAndExecute(source);
 
@@ -543,7 +607,10 @@ None
     [Fact]
     public void MinimalProgram_BoolTypeAnnotation_CompilesAndRuns()
     {
-        var source = @"x: bool = True";
+        var source = @"
+def main():
+    x: bool = True
+";
 
         var result = CompileAndExecute(source);
 
@@ -555,10 +622,11 @@ None
     public void MinimalProgram_MultipleTypedAssignments_CompilesAndRuns()
     {
         var source = @"
-a: int = 42
-b: float = 3.14
-c: str = ""hello""
-d: bool = True
+def main():
+    a: int = 42
+    b: float = 3.14
+    c: str = ""hello""
+    d: bool = True
 ";
 
         var result = CompileAndExecute(source);
@@ -574,7 +642,10 @@ d: bool = True
     [Fact]
     public void MinimalProgram_OperatorPrecedence_AdditionMultiplication_CompilesAndRuns()
     {
-        var source = @"2 + 3 * 4";
+        var source = @"
+def main():
+    2 + 3 * 4
+";
 
         var result = CompileAndExecute(source);
 
@@ -585,7 +656,10 @@ d: bool = True
     [Fact]
     public void MinimalProgram_OperatorPrecedence_WithParentheses_CompilesAndRuns()
     {
-        var source = @"(2 + 3) * 4";
+        var source = @"
+def main():
+    (2 + 3) * 4
+";
 
         var result = CompileAndExecute(source);
 
@@ -596,7 +670,10 @@ d: bool = True
     [Fact]
     public void MinimalProgram_OperatorPrecedence_Complex_CompilesAndRuns()
     {
-        var source = @"2 + 3 * 4 - 5 // 2";
+        var source = @"
+def main():
+    2 + 3 * 4 - 5 // 2
+";
 
         var result = CompileAndExecute(source);
 
@@ -607,7 +684,10 @@ d: bool = True
     [Fact]
     public void MinimalProgram_OperatorPrecedence_NestedParentheses_CompilesAndRuns()
     {
-        var source = @"((2 + 3) * (4 - 1)) // 5";
+        var source = @"
+def main():
+    ((2 + 3) * (4 - 1)) // 5
+";
 
         var result = CompileAndExecute(source);
 
@@ -622,7 +702,10 @@ d: bool = True
     [Fact]
     public void MinimalProgram_UnaryMinus_CompilesAndRuns()
     {
-        var source = @"-42";
+        var source = @"
+def main():
+    -42
+";
 
         var result = CompileAndExecute(source);
 
@@ -633,7 +716,10 @@ d: bool = True
     [Fact]
     public void MinimalProgram_UnaryPlus_CompilesAndRuns()
     {
-        var source = @"+42";
+        var source = @"
+def main():
+    +42
+";
 
         var result = CompileAndExecute(source);
 
@@ -644,7 +730,10 @@ d: bool = True
     [Fact]
     public void MinimalProgram_UnaryNot_CompilesAndRuns()
     {
-        var source = @"not True";
+        var source = @"
+def main():
+    not True
+";
 
         var result = CompileAndExecute(source);
 
@@ -656,10 +745,11 @@ d: bool = True
     public void MinimalProgram_MultipleUnaryOperators_CompilesAndRuns()
     {
         var source = @"
--42
-+17
-not False
-not not True
+def main():
+    -42
+    +17
+    not False
+    not not True
 ";
 
         var result = CompileAndExecute(source);
