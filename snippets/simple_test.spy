@@ -1,2 +1,3 @@
-public def test():
-    pass
+def main():
+    public def test():
+        pass

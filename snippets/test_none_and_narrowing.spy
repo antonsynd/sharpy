@@ -3,24 +3,26 @@
 # Test 1: None assignment to nullable types
 x: int? = None
 y: str? = None
-print(f"x={x}, y={y}")
-
-# Test 2: Type narrowing with 'is not None'
 value: str? = "hello"
-if value is not None:
-    upper: str = value.upper()
-    print(f"Upper: {upper}")
-
-# Test 3: Type narrowing with 'is None' (else branch)
 maybe_num: int? = 42
-if maybe_num is None:
-    print("It was None")
-else:
-    doubled: int = maybe_num * 2
-    print(f"Doubled: {doubled}")
-
-# Test 4: Using narrowed type in assignments
 name: str? = "Alice"
-if name is not None:
-    greeting: str = "Hello, " + name
-    print(greeting)
+
+def main():
+    print(f"x={x}, y={y}")
+
+    # Test 2: Type narrowing with 'is not None'
+    if value is not None:
+        upper: str = value.upper()
+        print(f"Upper: {upper}")
+
+    # Test 3: Type narrowing with 'is None' (else branch)
+    if maybe_num is None:
+        print("It was None")
+    else:
+        doubled: int = maybe_num * 2
+        print(f"Doubled: {doubled}")
+
+    # Test 4: Using narrowed type in assignments
+    if name is not None:
+        greeting: str = "Hello, " + name
+        print(greeting)

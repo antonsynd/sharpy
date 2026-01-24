@@ -292,5 +292,3 @@ def main() -> None:
     print("║  Type System Demo Complete!                               ║")
     print("╚════════════════════════════════════════════════════════════╝")
 
-# Run the main function
-main()

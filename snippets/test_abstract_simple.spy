@@ -13,6 +13,7 @@ class Derived(Base):
     def abstract_method(self) -> int:
         return 42
 
-d = Derived()
-print(d.abstract_method())
-print(d.concrete_method())
+def main():
+    d = Derived()
+    print(d.abstract_method())
+    print(d.concrete_method())

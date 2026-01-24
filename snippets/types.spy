@@ -1,6 +1,7 @@
-type Int = int
-type IntList = list[int]
-type StringMap = dict[str, str]
-type OptionalInt = int?
-type NestedDict = dict[str, dict[str, int?]?]
-type SomeCallable = Callable[[int, str], bool]
+def main():
+    type Int = int
+    type IntList = list[int]
+    type StringMap = dict[str, str]
+    type OptionalInt = int?
+    type NestedDict = dict[str, dict[str, int?]?]
+    type SomeCallable = Callable[[int, str], bool]

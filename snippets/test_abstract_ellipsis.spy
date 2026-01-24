@@ -39,7 +39,9 @@ interface IDrawable:
     def get_bounds(self) -> tuple[float, float, float, float]: ...
 
 # Test the classes
-c = Circle(5.0)
-print(c.area())
-print(c.perimeter())
-print(c.describe())
+
+def main():
+    c = Circle(5.0)
+    print(c.area())
+    print(c.perimeter())
+    print(c.describe())

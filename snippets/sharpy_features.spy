@@ -2,23 +2,25 @@ struct Point:
     x: float
     y: float
 
-protocol Drawable:
-    def draw(self) -> None: ...
-
 class _Circle(Drawable):
     property radius: float:
         get(self):
             return self.__radius
-
         set(self, value: float):
             self.__radius = value
-
     def __init__(self, radius: float):
         self.__radius = radius
-
     def draw(self) -> None:
         pass
 
-obj?.method()
-result = x ?? 0
-numbers = [1j+2j, 3.14J, 42]
+def main():
+    protocol Drawable:
+        def draw(self) -> None: ...
+
+
+
+
+
+    obj?.method()
+    result = x ?? 0
+    numbers = [1j+2j, 3.14J, 42]

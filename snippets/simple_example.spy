@@ -6,11 +6,12 @@ class Person:
     def greet(self) -> str:
         return "Hello, I'm " + self.name
 
-for i in range(10):
-    if i % 2 == 0:
-        print("Even: ", i)
-    else:
-        print("Odd: ", i)
+def main():
+    for i in range(10):
+        if i % 2 == 0:
+            print("Even: ", i)
+        else:
+            print("Odd: ", i)
 
-result = lambda x, y: x ** 2 + y ** 2
-numbers = [1j + 2, 3.14, 42]
+    result = lambda x, y: x ** 2 + y ** 2
+    numbers = [1j + 2, 3.14, 42]

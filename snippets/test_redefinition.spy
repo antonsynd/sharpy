@@ -14,4 +14,5 @@ def demo():
     x = "world"
     print(x)
 
-demo()
+def main():
+    demo()

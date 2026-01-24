@@ -1,15 +1,16 @@
-pass
+def main():
+    pass
 
-return
+    return
 
-return 42
+    return 42
 
-return x + y
+    return x + y
 
-not True
+    not True
 
--42
+    -42
 
-+7
+    +7
 
-~8
+    ~8

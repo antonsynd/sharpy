@@ -48,4 +48,6 @@ def process_optional(value: str?) -> str:
 # Main execution
 calc: auto = Calculator("MyCalc")
 result: int = calc.add(5, 3)
-greet("Alice", 30)
+
+def main():
+    greet("Alice", 30)

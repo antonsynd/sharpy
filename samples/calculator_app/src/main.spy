@@ -28,5 +28,3 @@ def main():
     print("")
     print("Calculator demo complete!")
 
-# Entry point
-main()

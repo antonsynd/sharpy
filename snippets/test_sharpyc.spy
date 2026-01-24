@@ -3,4 +3,6 @@ def greet(name: str) -> None:
     print(message)
 
 x: auto = 42
-greet("World")
+
+def main():
+    greet("World")

@@ -179,5 +179,3 @@ def main() -> None:
     print("║  Demo Complete!                                           ║")
     print("╚════════════════════════════════════════════════════════════╝")
 
-# Run the main function
-main()

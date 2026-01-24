@@ -59,7 +59,8 @@ def test_error_non_nullable():
     # This should cause a compile error
     # age = p?.age  # ERROR: Person is not nullable
 
-test_field_access()
-test_method_call()
-test_chained()
-test_with_coalesce()
+def main():
+    test_field_access()
+    test_method_call()
+    test_chained()
+    test_with_coalesce()
