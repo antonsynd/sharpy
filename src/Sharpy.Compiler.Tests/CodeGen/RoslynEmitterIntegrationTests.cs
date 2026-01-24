@@ -45,7 +45,7 @@ public class RoslynEmitterIntegrationTests
         // Run type checking with CodeGenInfo computation
         var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
-        typeChecker.CheckModule(module, computeCodeGenInfo: true);
+        typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: isEntryPoint);
 
         var context = new CodeGenContext(symbolTable, builtins)
         {

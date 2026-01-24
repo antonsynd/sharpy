@@ -45,7 +45,7 @@ x: int = 42
 s = x to str
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("Cannot cast");
@@ -62,7 +62,7 @@ x: long = 42
 s = x to str
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("Cannot cast");
@@ -77,7 +77,7 @@ x: float = 3.14
 s = x to str
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("Cannot cast");
@@ -92,7 +92,7 @@ x: bool = True
 s = x to str
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("Cannot cast");
@@ -109,7 +109,7 @@ x: long = 42
 y = x to int
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -122,7 +122,7 @@ x: int = 42
 y = x to long
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -135,7 +135,7 @@ x: float = 3.14
 y = x to int
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -148,7 +148,7 @@ x: int = 42
 y = x to float
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -163,7 +163,7 @@ x: object = 42
 y = x to int
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -176,7 +176,7 @@ x: object = ""hello""
 y = x to str
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -197,7 +197,7 @@ a: Animal = Dog()
 d = a to Dog
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -216,7 +216,7 @@ d: Dog = Dog()
 a = d to Animal
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -231,7 +231,7 @@ x: int = 42
 s = x to str?
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("Cannot cast");
@@ -248,7 +248,7 @@ x: int = 42
 s = str(x)
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }

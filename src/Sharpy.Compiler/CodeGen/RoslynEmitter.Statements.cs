@@ -430,8 +430,9 @@ public partial class RoslynEmitter
     {
         // Check if this variable has execution order issues (assigned before declared, or multiple declarations)
         // If so, skip generating a field - it will be handled as a local variable in Main()
+        // UNLESS _forceModuleLevelFields is true (when there's a user-defined main function)
         var symbol = _context.LookupSymbol(varDecl.Name);
-        if (symbol != null && HasExecutionOrderIssues(symbol))
+        if (symbol != null && HasExecutionOrderIssues(symbol) && !_forceModuleLevelFields)
         {
             return null;
         }

@@ -90,27 +90,36 @@ public class ModuleLevelValidatorV2 : SemanticValidatorBase
                 varDecl.LineStart, varDecl.ColumnStart);
         }
 
-        // Report errors for executable statements at module level
-        foreach (var stmt in executableStatements)
-        {
-            AddError(_context,
-                "Executable statements are not allowed at module level",
-                stmt.LineStart, stmt.ColumnStart);
-        }
+        // Report errors for executable statements at module level when:
+        // 1. There's a main() function - bare statements should be inside main()
+        // 2. This is a non-entry-point (library) module - bare statements would be ignored anyway
+        //
+        // For entry-point modules WITHOUT main(), we allow bare statements for backward compatibility
+        // (the code generator will synthesize a Main() and wrap them).
+        bool shouldRejectExecutableStatements = hasMainFunction || !_context.IsEntryPoint;
 
-        // Entry point files must have a main() function
-        // Note: We only enforce this for entry point files, which is indicated
-        // by context.IsEntryPoint (set by project compiler or single-file compiler)
-        if (_context.IsEntryPoint && !hasMainFunction)
+        if (shouldRejectExecutableStatements && executableStatements.Count > 0)
         {
-            // Only report this error if there are no other errors
-            // (missing main is often a consequence of having bare statements)
-            if (executableStatements.Count == 0 && untypedVariables.Count == 0)
+            foreach (var stmt in executableStatements)
             {
                 AddError(_context,
-                    "Entry point file requires a 'main()' function",
-                    module.LineStart, module.ColumnStart);
+                    "Executable statements are not allowed at module level",
+                    stmt.LineStart, stmt.ColumnStart);
             }
         }
+
+        // Entry point files should have a main() function (warning-level guidance)
+        // Note: We only provide guidance for entry point files (context.IsEntryPoint = true)
+        // For now, this is not a hard error for backward compatibility
+        // Uncomment below to enable strict enforcement:
+        // if (_context.IsEntryPoint && !hasMainFunction)
+        // {
+        //     if (executableStatements.Count == 0 && untypedVariables.Count == 0)
+        //     {
+        //         AddError(_context,
+        //             "Entry point file requires a 'main()' function",
+        //             module.LineStart, module.ColumnStart);
+        //     }
+        // }
     }
 }

@@ -55,6 +55,13 @@ public partial class RoslynEmitter
     /// </summary>
     private readonly HashSet<string> _moduleFieldNames = new();
 
+    /// <summary>
+    /// When true, forces module-level variable declarations to be generated as static fields
+    /// even if they have execution order issues. This is set when there's a user-defined main()
+    /// function, because in that case the user is responsible for execution order.
+    /// </summary>
+    private bool _forceModuleLevelFields;
+
     // ============================================================
     // END LOCAL SCOPE TRACKING FIELDS
     // ============================================================
@@ -103,9 +110,20 @@ public partial class RoslynEmitter
         // For new declarations, check if this is a local redeclaration
         // Local variable redeclarations still need runtime tracking via _variableVersions
         // because they happen during emission, not semantic analysis
-        if (isNewDeclaration && !info.IsModuleLevel)
+        // Exception: when _forceModuleLevelFields is true, variables with execution order issues
+        // are still generated as static fields
+        if (isNewDeclaration && !info.IsModuleLevel && !_forceModuleLevelFields)
         {
             return null; // Let GetMangledVariableName handle local redeclarations
+        }
+
+        // When _forceModuleLevelFields is true and this symbol has execution order issues,
+        // the CodeGenInfo name was computed as camelCase (for a local) but we need PascalCase
+        // (for a static field). Override the name in this case.
+        if (_forceModuleLevelFields && info.HasExecutionOrderIssues && symbol is VariableSymbol)
+        {
+            // Use PascalCase for module-level fields
+            return NameMangler.ToPascalCase(sharpyName);
         }
 
         var csharpName = info.GetVersionedCSharpName();

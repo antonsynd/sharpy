@@ -53,7 +53,7 @@ class Person:
         return self.name
 ";
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors
         typeChecker.Errors.Should().BeEmpty();
@@ -76,7 +76,7 @@ class Point:
         return self.x * self.x + self.y * self.y
 ";
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors
         typeChecker.Errors.Should().BeEmpty();
@@ -101,7 +101,7 @@ class Calculator:
         return self.add(a, b) + c
 ";
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors
         typeChecker.Errors.Should().BeEmpty();
@@ -125,7 +125,7 @@ class Person:
         self.age = age
 ";
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors
         typeChecker.Errors.Should().BeEmpty();
@@ -155,7 +155,7 @@ class Rectangle:
         return self.width == self.height
 ";
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors
         typeChecker.Errors.Should().BeEmpty();
@@ -184,7 +184,7 @@ class Builder:
         return self.get_value()
 ";
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors
         typeChecker.Errors.Should().BeEmpty();
@@ -202,7 +202,7 @@ def greet() -> str:
     return self.name
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should produce error about self outside class
         typeChecker.Errors.Should().NotBeEmpty();
@@ -221,7 +221,7 @@ class Person:
         self = Person()
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should produce error about reassigning self
         typeChecker.Errors.Should().NotBeEmpty();
@@ -240,7 +240,7 @@ class Person:
         return self.age
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should produce error about non-existent field
         typeChecker.Errors.Should().NotBeEmpty();
@@ -259,7 +259,7 @@ class Person:
         self.say_hello()
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should produce error about non-existent method
         typeChecker.Errors.Should().NotBeEmpty();
@@ -277,7 +277,7 @@ class Person:
         pass
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // No error - this is treated as a valid static method
         typeChecker.Errors.Should().BeEmpty();
@@ -293,7 +293,7 @@ class Person:
         pass
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // No error - this is treated as a valid static method
         typeChecker.Errors.Should().BeEmpty();
@@ -306,7 +306,7 @@ class Person:
 x: int = self.value
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should produce error about self outside class
         typeChecker.Errors.Should().NotBeEmpty();
@@ -329,7 +329,7 @@ class Counter:
         self.count = self.count + 1
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors
         typeChecker.Errors.Should().BeEmpty();
@@ -346,7 +346,7 @@ class Builder:
         self.value = v
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors (void return is fine)
         typeChecker.Errors.Should().BeEmpty();
@@ -366,7 +366,7 @@ class Person:
             return False
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors
         typeChecker.Errors.Should().BeEmpty();
@@ -384,7 +384,7 @@ class Counter:
             self.count = self.count + 1
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors
         typeChecker.Errors.Should().BeEmpty();
@@ -407,7 +407,7 @@ class Person:
         return ""error""
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should produce type error (can't assign str to int)
         typeChecker.Errors.Should().NotBeEmpty();
@@ -428,7 +428,7 @@ class Calculator:
         return result
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors when argument types are correct
         typeChecker.Errors.Should().BeEmpty();
@@ -446,7 +446,7 @@ class Calculator:
         return self.add(1, 2)
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         // Should have no errors when return type matches
         typeChecker.Errors.Should().BeEmpty();

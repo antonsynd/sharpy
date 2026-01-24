@@ -162,7 +162,8 @@ public class ValidationPipelineTests
         var pipeline = ValidationPipelineFactory.CreateDefault();
         var validators = pipeline.Validators.ToList();
 
-        Assert.Equal(6, validators.Count);
+        Assert.Equal(7, validators.Count);  // Now includes ModuleLevelValidatorV2
+        Assert.Contains(validators, v => v is ModuleLevelValidatorV2);
         Assert.Contains(validators, v => v is SignatureValidatorV2);
         Assert.Contains(validators, v => v is DefaultParameterValidatorV2);
         Assert.Contains(validators, v => v is ControlFlowValidatorV2);  // V2 is default for unreachable code detection
@@ -180,19 +181,19 @@ public class ValidationPipelineTests
         // Should be sorted
         Assert.Equal(orders.OrderBy(o => o).ToList(), orders);
 
-        // Signature validator should be first (Order 150)
-        Assert.Equal(150, orders[0]);
+        // ModuleLevelValidator should be first (Order 50)
+        Assert.Equal(50, orders[0]);
     }
 
     [Fact]
-    public void DefaultPipeline_SignatureValidatorFirst()
+    public void DefaultPipeline_ModuleLevelValidatorFirst()
     {
         var pipeline = ValidationPipelineFactory.CreateDefault();
         var firstValidator = pipeline.Validators.FirstOrDefault();
 
         Assert.NotNull(firstValidator);
-        Assert.IsType<SignatureValidatorV2>(firstValidator);
-        Assert.Equal("SignatureValidator", firstValidator.Name);
+        Assert.IsType<ModuleLevelValidatorV2>(firstValidator);
+        Assert.Equal("ModuleLevelValidator", firstValidator.Name);
     }
 
     [Fact]

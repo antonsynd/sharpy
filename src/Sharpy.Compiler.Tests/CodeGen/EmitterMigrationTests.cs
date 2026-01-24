@@ -41,7 +41,7 @@ public class EmitterMigrationTests
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger, pipeline);
 
         // Enable CodeGenInfo computation (simulates UsePrecomputedCodeGenInfo = true)
-        typeChecker.CheckModule(module, computeCodeGenInfo: true);
+        typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: isEntryPoint);
 
         var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
         {

@@ -98,7 +98,8 @@ public abstract class IntegrationTestBase
 
             var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
-            typeChecker.CheckModule(module, computeCodeGenInfo: true);
+            // Integration tests are executable programs, so they're entry points
+            typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
 
             if (typeChecker.Errors.Any())
             {

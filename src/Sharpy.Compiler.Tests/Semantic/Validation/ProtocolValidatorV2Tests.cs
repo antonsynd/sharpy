@@ -26,7 +26,7 @@ public class ProtocolValidatorV2Tests
 
         // Run type checking to populate semantic info
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         var context = new SemanticContext(symbolTable, semanticInfo, typeResolver);
         return (module, context);

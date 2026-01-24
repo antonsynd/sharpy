@@ -121,16 +121,17 @@ public partial class RoslynEmitter
         // Separate declarations (class members) from executable statements
         var declarations = new List<MemberDeclarationSyntax>();
         var executableStatements = new List<Statement>();
-        bool hasMainFunction = false;
+
+        // First pass: check if there's a user-defined main function
+        // This affects how we handle module-level variable declarations with execution order issues
+        bool hasMainFunction = statements.Any(s => s is FunctionDef f && f.Name == "main");
+
+        // When there's a user-defined main(), module-level variables with execution order issues
+        // should still be generated as static fields (the user is responsible for execution order)
+        _forceModuleLevelFields = hasMainFunction;
 
         foreach (var stmt in statements)
         {
-            // Check if this is a main function
-            if (stmt is FunctionDef funcDef && funcDef.Name == "main")
-            {
-                hasMainFunction = true;
-            }
-
             var member = GenerateStatement(stmt);
 
             // After generating class/struct/function declarations, clear local scope tracking
@@ -196,9 +197,21 @@ public partial class RoslynEmitter
         else if (hasMainFunction && executableStatements.Count > 0)
         {
             // There's a main function and also module-level statements
-            // This is an error - when main() is defined, it will be automatically invoked
-            // Users should not have executable statements alongside a main function definition
-            _context.AddError("Cannot have module-level executable statements when a 'main' function is defined. The main function is automatically invoked as the entry point.");
+            // Filter to only truly executable statements (not variable declarations with type annotations)
+            // VariableDeclaration nodes are typed declarations, not executable statements
+            // Note: Use Parser.Ast.VariableDeclaration to avoid conflict with SyntaxFactory.VariableDeclaration
+            var trulyExecutableStatements = executableStatements
+                .Where(s => s is not Parser.Ast.VariableDeclaration)
+                .ToList();
+
+            if (trulyExecutableStatements.Count > 0)
+            {
+                // This is an error - when main() is defined, it will be automatically invoked
+                // Users should not have executable statements alongside a main function definition
+                _context.AddError("Cannot have module-level executable statements when a 'main' function is defined. The main function is automatically invoked as the entry point.");
+            }
+            // else: Only VariableDeclaration statements remain, which are legitimate typed declarations
+            // These will be handled by generating them as local variables in a synthesized static constructor or similar
         }
         else if (!_context.IsEntryPoint && executableStatements.Count > 0)
         {

@@ -51,7 +51,7 @@ class Derived(Base):
         return ""derived""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("Cannot override");
@@ -72,7 +72,7 @@ class Derived(Base):
         return ""derived""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("method");
@@ -90,7 +90,7 @@ class Standalone:
         return ""standalone""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("@override");
@@ -114,7 +114,7 @@ class Derived(Base):
         return ""derived""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -135,7 +135,7 @@ class Derived(Base):
         return ""derived""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -161,7 +161,7 @@ class Derived(Base):
         return ""derived""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -182,7 +182,7 @@ class Derived(Base):
         return ""derived""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().ContainSingle();
         typeChecker.Errors[0].Message.Should().Contain("method");
@@ -205,7 +205,7 @@ class Derived(Base):
         return ""derived""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -224,7 +224,7 @@ class Derived(Base):
         return ""derived""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Errors.Should().BeEmpty();
     }

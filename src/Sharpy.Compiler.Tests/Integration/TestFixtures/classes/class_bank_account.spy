@@ -26,8 +26,6 @@ class BankAccount:
     def get_balance(self) -> int:
         return self.balance
 
-success: bool = account.withdraw(300)
-
 def main():
     account = BankAccount("Alice", 1000)
     print(account.get_balance())
@@ -35,6 +33,7 @@ def main():
     account.deposit(500)
     print(account.get_balance())
 
+    success: bool = account.withdraw(300)
     print(success)
     print(account.get_balance())
 
