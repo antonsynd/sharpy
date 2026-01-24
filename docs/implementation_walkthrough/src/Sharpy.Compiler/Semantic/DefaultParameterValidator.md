@@ -14,6 +14,20 @@ The `DefaultParameterValidator` is a semantic analysis component responsible for
 
 This validator runs during the semantic analysis phase, after the AST has been constructed but before code generation. It's a focused, single-responsibility component that catches common programming errors early.
 
+### ⚠️ Deprecation Notice
+
+**This class is marked as `[Obsolete]`** and has been replaced by `DefaultParameterValidatorV2` which implements the `ISemanticValidator` interface for the new validation pipeline architecture.
+
+```csharp
+[Obsolete("Use DefaultParameterValidatorV2 via ValidationPipelineFactory.CreateDefault() instead")]
+public class DefaultParameterValidator
+```
+
+- **Old pattern** (deprecated): Direct instantiation of `DefaultParameterValidator`
+- **New pattern**: Use `ValidationPipelineFactory.CreateDefault()` which includes `DefaultParameterValidatorV2`
+- **Migration guide**: See [Validation Pipeline README](./Validation/README.md)
+- **Related file**: [`Validation/DefaultParameterValidatorV2.cs`](./Validation/DefaultParameterValidatorV2.md)
+
 **Pipeline Position**: Parser (AST) → **Semantic Analysis** (Name Resolution → Type Resolution → **Default Parameter Validation**) → CodeGen (RoslynEmitter)
 
 **Why This Matters**: In Python, this code creates a subtle bug:
@@ -882,7 +896,26 @@ This shows the exact AST structure, helping identify:
 
 ## Contribution Guidelines
 
+### ⚠️ Important: This File is Deprecated
+
+**Before making changes**, consider whether you should be modifying `DefaultParameterValidatorV2` instead:
+
+- **Bug fix needed in validation logic?** → Fix in `DefaultParameterValidatorV2` (and potentially backport if necessary)
+- **Adding new constant expression support?** → Add to `DefaultParameterValidatorV2`
+- **Test failing here?** → Consider updating tests to use `ValidationPipelineFactory`
+
+This validator is kept for backward compatibility during the migration to the new validation pipeline.
+
 ### When to Modify This File
+
+Only modify this file if:
+- Critical bug fix affecting current code still using the legacy validator
+- Documentation improvements (like this walkthrough)
+- Maintaining backward compatibility during the migration period
+
+### Legacy Modification Guidelines
+
+If you must modify this deprecated validator:
 
 1. **Adding New Mutable Types**:
    - If Sharpy adds new mutable collection types, update `IsMutableDefault`
@@ -983,6 +1016,13 @@ Test file location (expected): `tests/Sharpy.Compiler.Tests/Semantic/DefaultPara
 ---
 
 ## Cross-References
+
+### Successor and Migration
+
+- **⭐ [Validation/DefaultParameterValidatorV2.md](./Validation/DefaultParameterValidatorV2.md)**: Modern pipeline-compatible replacement (RECOMMENDED)
+- **[Validation/ValidationPipeline.md](./Validation/ValidationPipeline.md)**: New validation architecture
+- **[Validation/ValidationPipelineFactory.md](./Validation/ValidationPipelineFactory.md)**: Factory for creating validators
+- **[Validation/ISemanticValidator.md](./Validation/ISemanticValidator.md)**: Interface implemented by V2
 
 ### Related Semantic Analysis Files
 

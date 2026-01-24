@@ -6,48 +6,68 @@
 
 ## Overview
 
-This file contains the **type definition checking** logic for the Sharpy compiler's type checker. It's a partial class file that handles the semantic analysis of top-level type definitions including:
+This file contains the **type definition checking** logic for the Sharpy compiler's semantic analyzer. It's a partial class that handles the validation and type resolution for all user-defined type declarations:
 
-- **Functions** (both standalone and methods)
-- **Classes** (including abstract classes and inheritance)
-- **Structs** (value types)
-- **Interfaces** (contracts)
+- **Functions** (standalone functions and methods, including generics)
+- **Classes** (including abstract classes, inheritance, and interface implementation)
+- **Structs** (value types with special validation rules)
+- **Interfaces** (contract definitions)
 - **Enums** (enumeration types)
 
-This component is part of the **Semantic Analysis** phase of the compiler pipeline, operating on the Abstract Syntax Tree (AST) produced by the Parser and feeding validated semantic information to the Code Generation phase (RoslynEmitter).
+### Pipeline Position
+
+```
+Parser (AST) → [NameResolver] → [TypeResolver] → **[TypeChecker.Definitions]** → ValidationPipeline → CodeGen
+```
+
+This component operates in the **Semantic Analysis** phase, after names and inheritance have been resolved, but concurrent with type checking of statements and expressions. It ensures that all type definitions are semantically valid before code generation.
 
 ### Key Responsibilities
 
-1. **Type Resolution**: Resolves type annotations for parameters, return types, and fields using the `TypeResolver`
-2. **Symbol Registration**: Registers type parameters, parameters, and fields in the symbol table
-3. **Validation**: Enforces language rules for decorators (`@override`, `@abstract`, `@static`), parameter ordering, abstract methods, etc.
-4. **Scope Management**: Manages entering/exiting scopes for functions, classes, structs, and interfaces
-5. **Context Tracking**: Tracks current class, function return type, and method context for validation rules
+1. **Type Parameter Registration**: Registers generic type parameters in scope so they can be referenced in member signatures
+2. **Type Resolution**: Resolves type annotations for parameters, return types, and fields using `TypeResolver`
+3. **Decorator Validation**: Enforces rules for `@override`, `@abstract`, `@virtual`, `@static`, etc.
+4. **Method Validation**: Validates method signatures, parameter ordering, self parameters, and override compatibility
+5. **Interface Implementation**: Ensures classes/structs properly implement all interface methods
+6. **Abstract Class Rules**: Validates abstract methods have ellipsis bodies, only exist in abstract classes
+7. **Struct-Specific Rules**: Enforces struct constraints (e.g., no parameterless constructors)
+8. **Constructor Overload Validation**: Validates multiple `__init__` overloads
 
 ---
 
 ## Class/Type Structure
 
-This is a **partial class** that extends `TypeChecker`. The main class definition is in `TypeChecker.cs` with additional partial files:
+This is a **partial class** extending `TypeChecker`. The type checker is split across multiple files:
 
-- `TypeChecker.cs` - Main class definition, constructor, fields, `CheckStatement()` dispatcher
-- **`TypeChecker.Definitions.cs`** - This file (type definitions)
-- `TypeChecker.Statements.cs` - Statement checking (if/while/for/try/etc.)
-- `TypeChecker.Expressions.cs` - Expression checking
-- `TypeChecker.Utilities.cs` - Helper methods and validation utilities
+| File | Purpose |
+|------|---------|
+| `TypeChecker.cs` | Main class definition, constructor, fields, entry point |
+| **`TypeChecker.Definitions.cs`** | **This file** - Type definition checking |
+| `TypeChecker.Statements.cs` | Statement checking (if/while/for/try/match/etc.) |
+| `TypeChecker.Expressions.cs` | Expression checking and type inference |
+| `TypeChecker.Utilities.cs` | Helper methods (validation, hierarchy traversal, error handling) |
 
 ### Important Fields (from TypeChecker.cs)
 
 ```csharp
-private readonly SymbolTable _symbolTable;              // Symbol lookup and scope management
-private readonly SemanticInfo _semanticInfo;            // Stores type info for AST nodes
-private readonly TypeResolver _typeResolver;            // Resolves type annotations
-private readonly ControlFlowValidator _controlFlowValidator;
-private readonly AccessValidator _accessValidator;
-private readonly DefaultParameterValidator _defaultParameterValidator;
+// Core dependencies
+private readonly SymbolTable _symbolTable;          // Symbol lookup and scope management
+private readonly SemanticInfo _semanticInfo;        // Stores type info for AST nodes
+private readonly TypeResolver _typeResolver;        // Resolves type annotations
+private readonly ICompilerLogger _logger;           // Debug/error logging
+private readonly ValidationPipeline _validationPipeline;  // Pluggable validators
 
-private SemanticType? _currentFunctionReturnType;      // For return statement validation
-private TypeSymbol? _currentClass;                     // Current class being checked
+// Context tracking for validation
+private SemanticType? _currentFunctionReturnType;   // Current function's return type
+private TypeSymbol? _currentClass;                  // Current class being checked
+private string? _currentMethodName;                 // Current method name (for super() validation)
+private bool _currentMethodIsOverride;              // Whether current method has @override
+private bool _currentMethodIsDunder;                // Whether current method is dunder (__)
+private int _controlFlowDepth;                      // Nesting level of control flow
+private bool _superInitCalled;                      // Whether super().__init__() was called
+
+// Type narrowing
+private Dictionary<string, SemanticType> _narrowedTypes;  // Type narrowing in conditionals
 private string? _currentMethodName;                    // For super() validation
 private bool _currentMethodIsOverride;                 // @override decorator present
 private bool _currentMethodIsDunder;                   // Is dunder method (__init__, __str__, etc.)

@@ -243,7 +243,7 @@ private static void ValidateSelfParameter(
 
 1. **Handle zero-parameter edge case:**
    ```csharp
-   if (funcDef.Parameters.Count == 0)
+   if (funcDef.Parameters.Length == 0)
    {
        if (protocol.ExpectedParamCount == -1)
        {
@@ -324,10 +324,10 @@ The AST node for function definitions:
 ```csharp
 public record FunctionDef : Statement
 {
-    public string Name { get; init; }                  // e.g., "__len__"
-    public List<Parameter> Parameters { get; init; }   // e.g., [Parameter("self", ...)]
-    public TypeAnnotation? ReturnType { get; init; }   // e.g., "int" annotation
-    public int LineStart { get; init; }                // For error messages
+    public string Name { get; init; }                      // e.g., "__len__"
+    public ImmutableArray<Parameter> Parameters { get; init; }  // e.g., [Parameter("self", ...)]
+    public TypeAnnotation? ReturnType { get; init; }       // e.g., "int" annotation
+    public int LineStart { get; init; }                    // For error messages
     public int ColumnStart { get; init; }
     // ... other fields
 }
@@ -473,7 +473,7 @@ public static List<SemanticError> ValidateDunderSignature(FunctionDef funcDef, T
     var methodName = funcDef.Name;
     
     // DEBUG: What are we validating?
-    Console.WriteLine($"Validating {owningType.Name}.{methodName} with {funcDef.Parameters.Count} params");
+    Console.WriteLine($"Validating {owningType.Name}.{methodName} with {funcDef.Parameters.Length} params");
 
     var protocol = ProtocolRegistry.GetProtocol(methodName);
     if (protocol == null)

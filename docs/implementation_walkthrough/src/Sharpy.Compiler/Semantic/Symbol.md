@@ -82,6 +82,9 @@ public abstract record Symbol
     // Re-export tracking (for module imports)
     public bool IsReExport { get; init; }
     public string? OriginalModule { get; init; }
+    
+    // Code generation metadata (computed during semantic analysis)
+    public CodeGenInfo? CodeGenInfo { get; set; }
 }
 ```
 
@@ -92,6 +95,15 @@ public abstract record Symbol
 - **`DeclarationLine/Column`**: Source location for error messages and IDE features
 - **`IsReExport`**: True if this symbol is re-exported from another module (e.g., via `from .submodule import func`)
 - **`OriginalModule`**: For re-exported symbols, the original module name where the symbol was defined
+- **`CodeGenInfo`**: Metadata for C# code generation (C# name, version, etc.). Null until `CodeGenInfoComputer` pass runs
+
+**Important: CodeGenInfo Migration Note:**
+The `CodeGenInfo` property uses a mutable `set` accessor instead of `init` because:
+1. Symbols are created during the `NameResolver` pass
+2. `CodeGenInfo` is computed later during/after the `TypeChecker` pass
+3. This allows populating codegen data without recreating symbol instances
+
+**Future Migration:** New code should use `SemanticBinding.SetCodeGenInfo/GetCodeGenInfo` instead of direct mutation. The mutable setter is preserved for backward compatibility during migration
 
 **Design Note:** All symbols have location info for diagnostics. When the compiler says "error at line 42," it's using these fields.
 
@@ -129,7 +141,7 @@ public record VariableSymbol : Symbol
 - Module-level variables
 
 **Key Properties:**
-- **`Type`**: The resolved type (e.g., `int`, `str`, `List[int]`) - Note this is mutable (`set`) to allow multi-pass type inference
+- **`Type`**: The resolved type (e.g., `int`, `str`, `List[int]`). Initially `SemanticType.Unknown`, resolved by `TypeResolver`/`TypeChecker`. Uses mutable `set` accessor for backward compatibility during migration (future code should use `SemanticBinding.SetVariableType/GetVariableType`)
 - **`IsParameter`**: True if this is a function parameter (could use `ParameterSymbol` instead, but this dual-purpose design exists)
 - **`IsConstant`**: True for `const` declarations (immutable values)
 - **`HasDefaultValue`**: Whether the variable has an initializer
@@ -367,7 +379,7 @@ public TypeSymbol? BaseType { get; set; }           // Single inheritance
 public List<TypeSymbol> Interfaces { get; init; }   // Multiple interface impl
 ```
 
-**Note:** `BaseType` is `{ get; set; }` (mutable!) while others are `{ get; init; }` (immutable). This is because inheritance chains are resolved in multiple passes, and circular references need to be handled carefully.
+**Note:** `BaseType` is `{ get; set; }` (mutable!) while others are `{ get; init; }` (immutable). This is because inheritance chains are resolved in multiple passes (after all type declarations are processed), and circular references need to be handled carefully. **Migration note:** Future code should use `SemanticBinding.SetBaseType/GetBaseType` instead of direct mutation.
 
 ---
 
@@ -380,6 +392,7 @@ public record ParameterSymbol
     public SemanticType Type { get; init; } = SemanticType.Unknown;
     public bool HasDefault { get; init; }
     public Expression? DefaultValue { get; init; }
+    public bool IsVariadic { get; init; }
 }
 ```
 
@@ -388,6 +401,26 @@ public record ParameterSymbol
 **Key Properties:**
 - **`HasDefault`**: Whether parameter is optional
 - **`DefaultValue`**: The AST expression for the default (e.g., `None`, `42`, `[]`)
+- **`IsVariadic`**: True for variadic parameters (`*args`). When true, `Type` contains the **element type**, not the array type
+
+**Variadic Parameters:**
+```python
+def print_all(*args: str) -> None:
+    for arg in args:
+        print(arg)
+```
+
+Creates:
+```csharp
+new ParameterSymbol 
+{ 
+    Name = "args", 
+    Type = SemanticType.Str,  // Element type, not array!
+    IsVariadic = true 
+}
+```
+
+When `IsVariadic = true`, the code generator wraps the type in a `params` array.
 
 **Example:**
 ```python
@@ -664,6 +697,65 @@ Symbol.cs
 - **`System.Type`**: For `TypeSymbol.ClrType`
 
 These are critical for bridging Sharpy ↔ .NET interop.
+
+---
+
+## 5.1 Symbol Lifecycle in the Compiler Pipeline
+
+Understanding when symbol properties are populated is crucial for debugging:
+
+**Multi-Pass Semantic Analysis:**
+
+```
+Pass 1: NameResolver.ResolveDeclarations()
+├── Create Symbol instances
+├── Set: Name, Kind, AccessLevel, DeclarationLine/Column
+└── Add to SymbolTable
+
+Pass 2: NameResolver.ResolveInheritance()
+├── Set: TypeSymbol.BaseType
+└── Set: TypeSymbol.Interfaces
+
+Pass 3: TypeResolver.ResolveTypes()
+├── Resolve type annotations
+└── Set preliminary types on symbols
+
+Pass 4: TypeChecker.CheckModule()
+├── Infer types (e.g., x = 5 → int)
+├── Set: VariableSymbol.Type (via mutation or SemanticBinding)
+└── Validate type consistency
+
+Pass 5: CodeGenInfoComputer.Compute()
+├── Compute C# names (PascalCase, camelCase, etc.)
+├── Set: Symbol.CodeGenInfo
+└── Handle variable versioning (x, x_1, x_2 for shadowing)
+
+Code Generation: RoslynEmitter
+└── Read symbols with complete information
+```
+
+**Why Multiple Passes?**
+
+1. **Forward References:** Class `Dog` can reference class `Cat` defined later
+2. **Circular Dependencies:** Class `A` inherits from `B`, `B` contains field of type `A`
+3. **Type Inference:** Need all declarations before inferring types
+4. **Name Mangling:** Need types resolved before computing C# names
+
+**Example Timeline:**
+
+```python
+class Dog:
+    def chase(self, target: Cat) -> None:  # Forward reference to Cat
+        pass
+
+class Cat:
+    pass
+```
+
+- **Pass 1:** Create `TypeSymbol` for `Dog` and `Cat` (both exist now)
+- **Pass 3:** Resolve `Cat` type annotation in `chase` parameter (now possible)
+- **Pass 4:** Validate the method signature
+- **Pass 5:** Compute C# names: `Dog` (PascalCase), `Chase` (PascalCase)
 
 ---
 
@@ -1177,9 +1269,12 @@ If you need to deprecate a symbol property:
 | [`SymbolTable.md`](SymbolTable.md) | Stores symbols, scoped lookup | Uses `Symbol` as data |
 | [`Scope.md`](Scope.md) | Manages lexical scopes | Contains `Symbol` instances |
 | [`SemanticType.md`](SemanticType.md) | Type representation | Stored in `Symbol.Type` |
+| [`CodeGenInfo.md`](CodeGenInfo.md) | Code generation metadata | Stored in `Symbol.CodeGenInfo` |
+| [`SemanticBinding.md`](SemanticBinding.md) | Future API for symbol data | Replacement for mutable properties |
 | [`NameResolver.md`](NameResolver.md) | AST → Symbol conversion | Creates `Symbol` instances |
 | [`TypeResolver.md`](TypeResolver.md) | Resolves types | Populates `Symbol.Type` |
 | [`TypeChecker.md`](TypeChecker.md) | Validates semantics | Reads `Symbol` metadata |
+| [`CodeGenInfoComputer.md`](CodeGenInfoComputer.md) | Computes C# names | Populates `Symbol.CodeGenInfo` |
 | [`SemanticInfo.md`](SemanticInfo.md) | AST ↔ Symbol mapping | Maps `Node` → `Symbol` |
 
 **Code Generation:**

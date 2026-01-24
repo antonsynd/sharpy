@@ -173,7 +173,8 @@ private ModuleOverloads DiscoverModuleFunctions(Type exportType)
         .Where(m => !m.Name.StartsWith("set_"))        // Skip property setters
         .Where(m => !m.IsSpecialName)                  // Skip operators, events
         .Where(m => !m.IsGenericMethodDefinition)      // Skip generics (for now)
-        .Where(m => !IsTypeConstructor(m))             // Skip Bool(), Int(), etc.
+                                                       // Note: Type constructors (Int, Bool, Str, etc.) are included as they are
+                                                       // valid builtin functions that can be called for type conversion.
         .ToList();
     
     // Step 3: Group by function name (handles overloads)
@@ -213,7 +214,8 @@ private ModuleOverloads DiscoverModuleFunctions(Type exportType)
 2. **`StartsWith("get_"/"set_")`**: C# property accessors aren't functions in Sharpy
 3. **`IsSpecialName`**: Filters out compiler-generated methods (operators, event handlers)
 4. **`IsGenericMethodDefinition`**: Generic methods like `Foo<T>()` are skipped (future work)
-5. **`IsTypeConstructor`**: Functions like `Int()`, `Bool()` are type conversions, not builtins
+
+**Note**: Type constructors (like `Int()`, `Bool()`, `Str()`) are **included** as they are valid builtin functions for type conversion, matching Python's behavior where `int()`, `bool()`, `str()` are callable builtins.
 
 **Error Handling Philosophy**: 
 - Graceful degradation: If one method can't be mapped (e.g., uses an unsupported type), log a warning and continue
@@ -222,28 +224,7 @@ private ModuleOverloads DiscoverModuleFunctions(Type exportType)
 
 ---
 
-### 4. `IsTypeConstructor(MethodInfo method)` - Type Constructor Detection
-
-**Purpose**: Identifies and filters out type constructor functions that shouldn't be exposed as regular functions.
-
-```csharp
-private bool IsTypeConstructor(MethodInfo method)
-{
-    var typeConstructors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        "Bool", "Int", "Long", "Float", "Double", "Str", 
-        "List", "Dict", "Set", "Tuple"
-    };
-    
-    return typeConstructors.Contains(method.Name);
-}
-```
-
-**Why?** Type constructors like `Int("123")` or `Bool(true)` are handled specially by the compiler's semantic analyzer, not as regular function calls. Including them in the index would create confusion and duplicate type conversion paths.
-
----
-
-### 5. `GetFunctionName(MethodInfo method)` - Name Mangling (C# → Python)
+### 4. `GetFunctionName(MethodInfo method)` - Name Mangling (C# → Python)
 
 **Purpose**: Converts C# `PascalCase` method names to Python `snake_case` conventions.
 
@@ -279,7 +260,7 @@ private string GetFunctionName(MethodInfo method)
 
 ---
 
-### 6. `CreateFunctionSignature(MethodInfo method)` - Signature Extraction
+### 5. `CreateFunctionSignature(MethodInfo method)` - Signature Extraction
 
 **Purpose**: Converts a .NET `MethodInfo` into a serializable `FunctionSignature`.
 
@@ -307,7 +288,7 @@ private FunctionSignature CreateFunctionSignature(MethodInfo method)
 
 ---
 
-### 7. `CreateParameterSignature(ParameterInfo param)` - Parameter Details
+### 6. `CreateParameterSignature(ParameterInfo param)` - Parameter Details
 
 **Purpose**: Captures everything about a parameter: name, type, default value, variadic flag.
 
@@ -337,7 +318,7 @@ private ParameterSignature CreateParameterSignature(ParameterInfo param)
 
 ---
 
-### 8. `CreateTypeSignature(Type clrType)` - Type Translation
+### 7. `CreateTypeSignature(Type clrType)` - Type Translation
 
 **Purpose**: Translates CLR types to Sharpy's type system using the `TypeMapper`.
 
@@ -379,7 +360,7 @@ private TypeSignature CreateTypeSignature(Type clrType)
 
 ---
 
-### 9. `CreateMethodToken(MethodInfo method)` - Unique Identifier
+### 8. `CreateMethodToken(MethodInfo method)` - Unique Identifier
 
 **Purpose**: Generate a unique, stable identifier for a method that can be used to find it later via reflection.
 
@@ -422,7 +403,7 @@ Both would have `|Foo|1`. The current design assumes the cache system will store
 
 ---
 
-### 10. `ConvertDefaultValue(object? value)` - Default Value Serialization
+### 9. `ConvertDefaultValue(object? value)` - Default Value Serialization
 
 **Purpose**: Convert .NET default parameter values into string representations suitable for caching.
 
@@ -763,26 +744,7 @@ def max(items: list[T]) -> T where T: IComparable[T]: ...
 
 ---
 
-#### 2. **Improve Type Constructor Detection**
-
-**Current**: Hardcoded list of type names.
-
-**Better**: Check if return type matches name (e.g., `Int()` returns `int`).
-
-```csharp
-private bool IsTypeConstructor(MethodInfo method)
-{
-    var typeConstructors = new HashSet<string> { "Bool", "Int", ... };
-    
-    // Enhanced check: Does return type match name?
-    return typeConstructors.Contains(method.Name) &&
-           method.ReturnType.Name.Equals(method.Name, StringComparison.OrdinalIgnoreCase);
-}
-```
-
----
-
-#### 3. **Support Instance Methods on Sharpy Types**
+#### 2. **Support Instance Methods on Sharpy Types**
 
 **Current**: Only static methods in `Exports` classes.
 
@@ -795,7 +757,7 @@ private bool IsTypeConstructor(MethodInfo method)
 
 ---
 
-#### 4. **Better Default Value Serialization**
+#### 3. **Better Default Value Serialization**
 
 **Current**: Unsupported types return `null`, making parameter required.
 
@@ -820,7 +782,7 @@ private string? ConvertDefaultValue(object? value)
 
 ---
 
-#### 5. **Optimize Discovery Performance**
+#### 4. **Optimize Discovery Performance**
 
 **Current**: Sequential processing of methods.
 
@@ -836,7 +798,7 @@ var methodGroups = eligibleMethods
 
 ---
 
-#### 6. **Add Diagnostic Metadata**
+#### 5. **Add Diagnostic Metadata**
 
 **Enhancement**: Include more information for IDE support (doc comments, attributes).
 

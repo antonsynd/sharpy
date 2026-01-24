@@ -4,6 +4,57 @@
 
 ---
 
+## Quick Reference
+
+| Aspect | Detail |
+|--------|--------|
+| **Purpose** | Discover and cache .NET assembly function signatures for import resolution |
+| **Pipeline Stage** | Semantic Analysis (Import Resolution) |
+| **Cache Location** | `~/.sharpy/cache/overload-index/*.json.gz` |
+| **Cache Invalidation** | Automatic via SHA256 content hash |
+| **Thread Safety** | Yes (`ConcurrentDictionary` + atomic operations) |
+| **Performance Impact** | 150ms → <1ms for subsequent loads |
+| **Key Pattern** | Cache-Aside with two-tier caching (memory + disk) |
+| **Dependencies** | `OverloadIndexCache`, `OverloadIndexBuilder`, `TypeMapper` |
+
+---
+
+## Architecture Diagram
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│                       CachedModuleDiscovery                            │
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │           In-Memory Cache (ConcurrentDictionary)              │   │
+│  │      Key: Assembly Name → Value: OverloadIndex                │   │
+│  └────────────────────────────┬──────────────────────────────────┘   │
+│                                │                                       │
+│                                ↓ (cache miss)                          │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │        Persistent Cache (OverloadIndexCache)                  │   │
+│  │   Location: ~/.sharpy/cache/overload-index/*.json.gz          │   │
+│  │   Format: gzipped JSON with camelCase naming                  │   │
+│  └────────────────────────────┬──────────────────────────────────┘   │
+│                                │                                       │
+│                                ↓ (cache miss)                          │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │     Reflection Discovery (OverloadIndexBuilder)               │   │
+│  │   • Scan for "Exports" classes                                │   │
+│  │   • Reflect public static methods                             │   │
+│  │   • Convert PascalCase → snake_case                           │   │
+│  │   • Build FunctionSignature objects                           │   │
+│  └───────────────────────────────────────────────────────────────┘   │
+└───────────────────────────────────────────────────────────────────────┘
+                                   ↓
+                        ┌──────────────────────┐
+                        │  FunctionSymbol[]     │
+                        │  (for type checker)   │
+                        └──────────────────────┘
+```
+
+---
+
 ## Overview
 
 The `CachedModuleDiscovery.cs` file implements a **performance-optimized module discovery system** that finds and indexes function overloads from .NET assemblies. It sits at the boundary between the Sharpy compiler and external .NET libraries, enabling Sharpy code to call functions from compiled assemblies.
@@ -57,7 +108,9 @@ The parameterized constructor enables **dependency injection** for testing - you
 
 ## Key Methods
 
-### 1. `LoadAssembly(Assembly assembly)`
+### Public API
+
+#### 1. `LoadAssembly(Assembly assembly)`
 
 **Purpose**: Main entry point for loading an assembly and discovering its exported functions.
 
@@ -100,7 +153,7 @@ This ensures that if you recompile `Sharpy.Core` or update a dependency, the cac
 
 ---
 
-### 2. `GetModuleFunctions(string moduleName)`
+#### 2. `GetModuleFunctions(string moduleName)`
 
 **Purpose**: Retrieve all function symbols available in a specific module (e.g., "builtins").
 
@@ -145,7 +198,7 @@ Then `GetModuleFunctions("builtins")` returns two `FunctionSymbol` objects, both
 
 ---
 
-### 3. `GetLoadedModules()`
+#### 3. `GetLoadedModules()`
 
 **Purpose**: Query all module names available across all loaded assemblies.
 
@@ -163,9 +216,31 @@ public IEnumerable<string> GetLoadedModules()
 
 **Performance Note**: Uses LINQ deferred execution - the enumeration only happens when consumed.
 
+#### 4. `ClearCache()`
+
+**Purpose**: Clear all cached overload indices from disk.
+
+**Implementation**:
+```csharp
+public void ClearCache()
+{
+    _cache.ClearAll();
+}
+```
+
+**Use Cases**:
+- Debugging cache corruption issues
+- Forcing a full rebuild of function indices
+- CI/CD pipelines that want clean builds
+- CLI commands like `sharpyc cache clear`
+
+**Note**: This only clears the persistent disk cache. The in-memory `_loadedIndices` dictionary remains unchanged until the process restarts. If you need to clear both, you must create a new `CachedModuleDiscovery` instance.
+
 ---
 
-### 4. `ConvertToFunctionSymbol(FunctionSignature signature, string moduleName)` (Private)
+### Private Implementation Methods
+
+#### 5. `ConvertToFunctionSymbol(FunctionSignature signature, string moduleName)` (Private)
 
 **Purpose**: Rehydrate cached function signatures back into live `FunctionSymbol` objects that the semantic analyzer can use.
 
@@ -182,9 +257,11 @@ private FunctionSymbol ConvertToFunctionSymbol(FunctionSignature signature, stri
             .Select(p => new ParameterSymbol
             {
                 Name = p.Name,
-                Type = ConvertTypeSignature(p.Type),
+                // Special handling for variadic parameters
+                Type = p.IsVariadic ? GetVariadicElementType(p.Type) : ConvertTypeSignature(p.Type),
                 HasDefault = p.HasDefault,
-                DefaultValue = null  // TODO: Reconstruct from cached string
+                DefaultValue = null,  // TODO: Reconstruct from cached string
+                IsVariadic = p.IsVariadic
             })
             .ToList(),
         AccessLevel = AccessLevel.Public
@@ -192,13 +269,77 @@ private FunctionSymbol ConvertToFunctionSymbol(FunctionSignature signature, stri
 }
 ```
 
+**Variadic Parameter Handling**: The `GetVariadicElementType()` call is critical - variadic parameters (C#'s `params T[]`) are stored in cache as `list[T]` but must be unpacked to just `T` for type checking. For example:
+- C# signature: `void Print(params object[] values)`
+- Cached as: `values: list[object]`
+- Type checker needs: `values: object` (with `IsVariadic = true`)
+
 **Known Limitation**: The `DefaultValue = null` line indicates incomplete default parameter support. Default values are serialized as strings (e.g., `"42"`, `"true"`) but not reconstructed back into AST `Expression` nodes. This is noted as a TODO for future enhancement.
 
 **Why This Matters**: Without proper default value reconstruction, the compiler might not correctly emit default parameters when generating C# code for imported functions.
 
 ---
 
-### 5. `ConvertTypeSignature(TypeSignature signature)` (Private)
+#### 6. `GetVariadicElementType(TypeSignature typeSignature)` (Private)
+
+**Purpose**: Extract the element type from variadic parameters that are stored as `list[T]` in the cache.
+
+**Implementation**:
+```csharp
+private SemanticType GetVariadicElementType(TypeSignature typeSignature)
+{
+    // Variadic parameters are stored as list[T] (mapped from T[])
+    // We need to extract T
+    if (typeSignature.IsGeneric && 
+        typeSignature.Name.StartsWith("list") && 
+        typeSignature.TypeArguments.Count == 1)
+    {
+        return ConvertTypeSignature(typeSignature.TypeArguments[0]);
+    }
+    // Fallback to the full type if not a list
+    return ConvertTypeSignature(typeSignature);
+}
+```
+
+**Why This Exists**: C# variadic parameters use `params T[]` syntax, but Sharpy's type system maps arrays to `list[T]`. During caching, `params object[]` becomes `list[object]`. However, for type checking and code generation, we need to know:
+1. The parameter is variadic (`IsVariadic = true`)
+2. The element type (`object`, not `list[object]`)
+
+**Example Transformation**:
+```csharp
+// C# in Sharpy.Core:
+public static void Print(params object[] values) { ... }
+
+// After OverloadIndexBuilder caching:
+FunctionSignature { 
+    Name = "print",
+    Parameters = [
+        ParameterSignature { 
+            Name = "values", 
+            Type = TypeSignature { Name = "list", TypeArguments = [TypeSignature { Name = "object" }] },
+            IsVariadic = true 
+        }
+    ]
+}
+
+// After ConvertToFunctionSymbol + GetVariadicElementType:
+FunctionSymbol {
+    Name = "print",
+    Parameters = [
+        ParameterSymbol { 
+            Name = "values",
+            Type = SemanticType.Object,  // ← Unpacked from list[object] to object
+            IsVariadic = true 
+        }
+    ]
+}
+```
+
+**Fallback Behavior**: If the type isn't a generic `list`, returns the full type. This handles edge cases where variadic parameters might have non-standard type signatures.
+
+---
+
+#### 7. `ConvertTypeSignature(TypeSignature signature)` (Private)
 
 **Purpose**: Convert cached type metadata back into `SemanticType` objects used by the type checker.
 
@@ -461,6 +602,18 @@ If `GetModuleFunctions()` returns empty list:
   - `MyCompany.MyLib.Exports` → `"mycompany_mylib"`
 - Look for errors in `OverloadIndexBuilder` that might have skipped methods
 
+**Debug Snippet**:
+```csharp
+var loadedModules = discovery.GetLoadedModules().ToList();
+Console.WriteLine($"Loaded modules: {string.Join(", ", loadedModules)}");
+
+foreach (var moduleName in loadedModules)
+{
+    var funcs = discovery.GetModuleFunctions(moduleName);
+    Console.WriteLine($"  {moduleName}: {funcs.Count} functions");
+}
+```
+
 ### 3. **Type Conversion Issues**
 
 If types aren't resolving correctly in `ConvertTypeSignature()`:
@@ -591,6 +744,7 @@ When adding features:
 3. **Property Discovery**: Extend to discover public static properties from `Exports` classes
 4. **Assembly Watching**: Automatically reload when referenced assemblies change on disk
 5. **Lazy Loading**: Only discover functions when module is first imported (saves startup time)
+6. **CLR Type Lookup Caching**: Cache `AppDomain.GetAssemblies()` results in `ConvertTypeSignature()` if profiling shows it as a bottleneck
 
 ---
 

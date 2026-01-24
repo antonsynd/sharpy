@@ -6,521 +6,565 @@
 
 ## Overview
 
-The `ControlFlowValidator` is a critical component in Sharpy's semantic analysis phase that ensures code has valid control flow patterns. It operates on the AST (Abstract Syntax Tree) produced by the parser and validates three main aspects:
+`ControlFlowValidator` is a **deprecated** semantic analysis component that validates control flow correctness in Sharpy code. It performs three critical checks:
 
-1. **Unreachable Code Detection**: Identifies code that can never be executed
-2. **Return Path Validation**: Ensures non-void functions return values in all code paths
-3. **Loop Context Validation**: Verifies `break` and `continue` statements only appear inside loops
+1. **Unreachable code detection** - Identifies statements that can never execute
+2. **Return path validation** - Ensures functions with non-void return types return values on all code paths
+3. **Loop context validation** - Verifies `break` and `continue` statements only appear inside loops
 
-This validator runs after the parser produces an AST but before code generation begins. It's a pure validation pass—it doesn't modify the AST, just collects semantic errors.
+**⚠️ Deprecation Notice**: This class is being replaced by `ControlFlowValidatorV2` (located in `Semantic/Validation/`), which integrates with the new `ValidationPipeline` architecture. New code should use `ValidationPipelineFactory.CreateDefault()` instead of instantiating this class directly.
 
-**Pipeline Position**: Parser (AST) → **ControlFlowValidator** → Type Checker → RoslynEmitter
+### Role in the Compiler Pipeline
 
-## Class/Type Structure
+```
+Parser (AST) → Semantic Analysis → [THIS FILE] → CodeGen (RoslynEmitter)
+                    ↓
+         NameResolver → TypeResolver → TypeChecker → ControlFlowValidator
+```
+
+The validator runs **after type checking** completes, ensuring all control flow patterns are valid before code generation begins.
+
+---
+
+## Class Structure
 
 ### Main Class: `ControlFlowValidator`
 
 ```csharp
+[Obsolete("Use ControlFlowValidatorV2 via ValidationPipelineFactory.CreateDefault() instead")]
 public class ControlFlowValidator
-{
-    private readonly ICompilerLogger _logger;
-    private readonly List<SemanticError> _errors = new();
-
-    private int _loopDepth = 0;
-    private bool _inFunction = false;
-
-    public IReadOnlyList<SemanticError> Errors => _errors;
-}
 ```
 
-**State Management**:
-- `_loopDepth`: Tracks how deeply nested we are in loops (for validating break/continue)
-- `_inFunction`: Indicates whether we're currently inside a function body
-- `_errors`: Accumulates all validation errors found during analysis
-- `_logger`: Optional logger for debugging (uses `NullLogger` if none provided)
+**Key Fields:**
 
-The validator is **stateful** during analysis but designed to be used once per function. After validating a function, you read the `Errors` property to get all issues found.
+- `ICompilerLogger _logger` - Logs debug information during validation
+- `List<SemanticError> _errors` - Accumulates validation errors
+- `int _loopDepth` - Tracks nesting level of loops (0 = not in a loop)
+- `bool _inFunction` - Tracks whether currently validating inside a function
 
-## Key Functions/Methods
+**Public API:**
 
-### 1. `ValidateFunction(FunctionDef, SemanticType)` - Entry Point
+- `ControlFlowValidator(ICompilerLogger? logger = null)` - Constructor with optional logger
+- `IReadOnlyList<SemanticError> Errors` - Read-only access to collected errors
+- `ValidateFunction(FunctionDef, SemanticType)` - Entry point for function validation
 
-**Purpose**: Main entry point for validating control flow in a function definition.
+---
 
-**Key Parameters**:
-- `functionDef`: The AST node representing the function
-- `returnType`: The expected return type (from semantic analysis)
+## Key Methods
 
-**Important Logic**:
+### 1. ValidateFunction (Entry Point)
 
 ```csharp
-bool hasAbstractDecorator = functionDef.Decorators.Any(d => d.Name == "abstract");
-bool hasEllipsisBody = functionDef.Body.Count == 1
-    && functionDef.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+public void ValidateFunction(FunctionDef functionDef, SemanticType returnType)
 ```
 
-The validator **skips** two special cases:
-- Functions with `@abstract` decorator (just declarations)
-- Functions with ellipsis-only bodies (`...`) which become `NotImplementedException` in C#
+**Purpose**: Main entry point for validating control flow within a function definition.
 
-**Return Validation**:
-After analyzing the function body, if the return type is non-void but not all paths return a value, an error is added:
+**Key Logic:**
+
+1. **Skip abstract methods** - Functions with `@abstract` decorator or ellipsis-only bodies (`...`) don't need validation
+2. **Validate the function body** - Analyzes all statements in the function
+3. **Check return path coverage** - For non-void functions, ensures all code paths return a value
+
+**Important Edge Cases:**
+
+- **Ellipsis bodies** (`def foo(): ...`) are skipped because they either:
+  - Generate `NotImplementedException` in concrete classes (no return needed)
+  - Are abstract method declarations (no implementation to validate)
+- **Void functions** don't require explicit returns on all paths
+
+**Example:**
+
+```python
+# This will trigger an error:
+def get_value() -> int:
+    if condition:
+        return 42
+    # Missing return in else branch!
+```
+
+### 2. ValidateBlock (Core Analysis)
 
 ```csharp
-if (returnType != SemanticType.Void && !alwaysReturns)
-{
-    AddError($"Function '{functionDef.Name}' must return a value...");
-}
+private (bool, bool) ValidateBlock(IReadOnlyList<Statement> statements)
 ```
 
-**Source Reference**: Lines 30-58 in `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs:30-58`
+**Returns**: `(alwaysReturns, hasUnreachableCode)`
 
-### 2. `ValidateBlock(List<Statement>)` - Core Block Analysis
+**Purpose**: Analyzes a sequence of statements to determine control flow properties.
 
-**Purpose**: Validates a sequence of statements (used for function bodies, if branches, loop bodies, etc.)
+**Algorithm:**
 
-**Return Value**: `(bool alwaysReturns, bool hasUnreachableCode)`
-- `alwaysReturns`: True if all execution paths through this block end with a return statement
-- `hasUnreachableCode`: True if unreachable code was detected (for avoiding duplicate errors)
+1. Iterate through each statement in order
+2. Track whether the block:
+   - **Always returns** - Every code path leads to a return statement
+   - **Always exits** - Every code path exits (return, raise, break, continue)
+3. Detect unreachable code - statements after an "always exits" statement
+4. Once unreachable code is detected, report it only once (not for every subsequent statement)
 
-**Algorithm**:
+**Key Insight**: The distinction between `alwaysReturns` and `alwaysExits`:
+- `alwaysReturns` = function execution completes with a return value
+- `alwaysExits` = control flow leaves the block (includes break/continue which don't return)
+
+**Example:**
+
+```python
+def example():
+    return 42      # alwaysExits = true, alwaysReturns = true
+    print("never") # UNREACHABLE CODE (error reported here)
+    print("never") # Still unreachable, but no duplicate error
+```
+
+### 3. ValidateStatement (Dispatcher)
 
 ```csharp
-bool alwaysExits = false; // returns, raises, break, continue
-
-for (int i = 0; i < statements.Count; i++)
-{
-    // Check for unreachable code
-    if (alwaysExits && i < statements.Count)
-    {
-        // Report error once, then skip remaining statements
-    }
-
-    var (stmtReturns, stmtExits) = ValidateStatement(statement);
-    // Track whether we've hit an exit point
-}
+private (bool, bool) ValidateStatement(Statement statement)
 ```
 
-**Key Insight**: The validator distinguishes between "returns" (function exit) and "exits" (any control flow terminator). A statement that always exits means subsequent statements are unreachable.
+**Returns**: `(alwaysReturns, alwaysExits)`
 
-**Source Reference**: `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs:64-96`
+**Purpose**: Dispatches to appropriate validation logic based on statement type.
 
-### 3. `ValidateStatement(Statement)` - Statement Dispatcher
+**Statement Handling:**
 
-**Purpose**: Routes validation to appropriate handler based on statement type.
+| Statement Type | Always Returns | Always Exits | Special Validation |
+|----------------|----------------|--------------|-------------------|
+| `ReturnStatement` | ✅ | ✅ | None |
+| `RaiseStatement` | ❌ | ✅ | None |
+| `BreakStatement` | ❌ | ✅ | Must be in loop (`_loopDepth > 0`) |
+| `ContinueStatement` | ❌ | ✅ | Must be in loop (`_loopDepth > 0`) |
+| `IfStatement` | Conditional | Conditional | Analyzed in `ValidateIf` |
+| `WhileStatement` | ❌ | ❌ | Body analyzed with `_loopDepth++` |
+| `ForStatement` | ❌ | ❌ | Body analyzed with `_loopDepth++` |
+| `TryStatement` | Conditional | Conditional | Analyzed in `ValidateTry` |
+| `FunctionDef` | ❌ | ❌ | Nested functions validated separately |
+| Type definitions | ❌ | ❌ | Don't affect control flow |
 
-**Return Value**: `(bool alwaysReturns, bool alwaysExits)`
+**Design Decision**: Why loops don't "always return":
+```python
+# Even if loop body returns, the loop might not execute
+for item in potentially_empty_list:
+    return item  # Might never run if list is empty!
+# Control flow continues here
+```
 
-**Statement Categories**:
-
-**Terminators** (always exit):
-- `ReturnStatement`: Returns `(true, true)` - exits AND returns
-- `RaiseStatement`: Returns `(false, true)` - exits but doesn't return normally
-- `BreakStatement`: Exits loop (validates loop context)
-- `ContinueStatement`: Exits iteration (validates loop context)
-
-**Control Flow**:
-- `IfStatement`: Analyzed via `ValidateIf()`
-- `WhileStatement`: Analyzed via `ValidateWhile()`
-- `ForStatement`: Analyzed via `ValidateFor()`
-- `TryStatement`: Analyzed via `ValidateTry()`
-
-**Ignored**:
-- Nested `FunctionDef`: Validated separately, doesn't affect outer control flow
-- Type definitions (`ClassDef`, `StructDef`, etc.): Don't affect control flow
-
-**Source Reference**: `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs:102-154`
-
-### 4. `ValidateIf(IfStatement)` - Conditional Branch Logic
-
-**Purpose**: Determines if an if/elif/else chain always returns.
-
-**Algorithm**:
+### 4. ValidateIf (Conditional Logic)
 
 ```csharp
-var (thenReturns, _) = ValidateBlock(ifStmt.ThenBody);
-bool allBranchesReturn = thenReturns;
-
-// Check all elif branches
-foreach (var elifClause in ifStmt.ElifClauses)
-{
-    var (elifReturns, _) = ValidateBlock(elifClause.Body);
-    allBranchesReturn = allBranchesReturn && elifReturns;
-}
-
-// Must have an else branch for ALL paths to return
-if (ifStmt.ElseBody != null && ifStmt.ElseBody.Count > 0)
-{
-    var (elseReturns, _) = ValidateBlock(ifStmt.ElseBody);
-    allBranchesReturn = allBranchesReturn && elseReturns;
-}
-else
-{
-    allBranchesReturn = false; // No else = not all paths covered
-}
+private (bool, bool) ValidateIf(IfStatement ifStmt)
 ```
 
-**Key Design Decision**: An if/elif chain only "always returns" if:
-1. Every branch (if, all elifs, else) always returns
-2. There IS an else branch (otherwise there's a path that skips all branches)
+**Purpose**: Determines if an if/elif/else chain guarantees a return on all paths.
 
-This is a conservative analysis—it doesn't consider conditions like `if true: return 1`.
+**Algorithm:**
 
-**Source Reference**: `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs:156-182`
+1. Validate the `then` branch
+2. Validate all `elif` branches
+3. Validate the `else` branch (if present)
+4. Return true **only if**:
+   - There IS an `else` branch, AND
+   - Every branch (then, all elifs, else) returns
 
-### 5. `ValidateWhile(WhileStatement)` and `ValidateFor(ForStatement)`
+**Critical Rule**: Without an `else`, not all code paths are covered:
 
-**Purpose**: Validate loop bodies and track loop context.
+```python
+# Does NOT always return:
+def example(x: int) -> int:
+    if x > 0:
+        return 1
+    elif x < 0:
+        return -1
+    # Missing else! What if x == 0?
 
-**Implementation Pattern**:
-```csharp
-_loopDepth++;
-var (bodyReturns, _) = ValidateBlock(whileStmt.Body);
-_loopDepth--;
-
-return (false, false); // Loops don't guarantee execution
+# DOES always return:
+def example2(x: int) -> int:
+    if x > 0:
+        return 1
+    elif x < 0:
+        return -1
+    else:
+        return 0  # All paths covered!
 ```
 
-**Why Loops Don't "Always Return"**:
-- `while` loops: Condition might be false on first check
-- `for` loops: Iterator might be empty
-
-Even if the loop body always returns, the loop itself might never execute, so we return `(false, false)`.
-
-**Loop Depth Tracking**: The `_loopDepth` counter enables validation of `break`/`continue`:
+### 5. ValidateWhile & ValidateFor (Loop Validation)
 
 ```csharp
-case BreakStatement:
-    if (_loopDepth == 0)
-    {
-        AddError("'break' statement outside loop", ...);
-    }
+private (bool, bool) ValidateWhile(WhileStatement whileStmt)
+private (bool, bool) ValidateFor(ForStatement forStmt)
 ```
 
-**Source Reference**:
-- `ValidateWhile`: `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs:184-192`
-- `ValidateFor`: `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs:194-202`
+**Purpose**: Validate loop bodies while tracking loop context.
 
-### 6. `ValidateTry(TryStatement)` - Exception Handling Analysis
+**Key Pattern**:
+```csharp
+_loopDepth++;                     // Enter loop context
+var (bodyReturns, _) = ValidateBlock(loop.Body);
+_loopDepth--;                     // Exit loop context
+return (false, false);            // Loops never guarantee execution
+```
 
-**Purpose**: Determines if try/except/finally blocks always return.
+**Why `_loopDepth` matters**:
+- `break` and `continue` are only valid when `_loopDepth > 0`
+- Allows nested loops (each increments the counter)
+- Prevents errors like this:
+
+```python
+def invalid():
+    break  # ERROR: 'break' statement outside loop (_loopDepth == 0)
+```
+
+### 6. ValidateTry (Exception Handling)
+
+```csharp
+private (bool, bool) ValidateTry(TryStatement tryStmt)
+```
+
+**Purpose**: Determines if a try/except/finally block guarantees returns on all paths.
 
 **Complex Logic**:
 
 ```csharp
-var (tryReturns, _) = ValidateBlock(tryStmt.Body);
-
-bool allHandlersReturn = true;
-foreach (var handler in tryStmt.Handlers)
-{
-    var (handlerReturns, _) = ValidateBlock(handler.Body);
-    allHandlersReturn = allHandlersReturn && handlerReturns;
-}
-
-bool finallyReturns = false;
-if (tryStmt.FinallyBody != null)
-{
-    var (finReturns, _) = ValidateBlock(tryStmt.FinallyBody);
-    finallyReturns = finReturns;
-}
-
-// All paths return if:
-// - Finally returns (overrides everything), OR
-// - Try returns AND all handlers return
 bool allPathsReturn = finallyReturns || (tryReturns && allHandlersReturn);
 ```
 
-**Key Insight**:
-- If `finally` returns, it overrides any other return (this is how Python/C# work)
-- Otherwise, both the try block AND all exception handlers must return
-- If there's no handler for a possible exception, execution might not return through this block
+**Cases:**
 
-**Source Reference**: `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs:204-228`
+1. **Finally returns** → Always returns (finally always executes, overrides everything)
+2. **No finally** → Returns if BOTH:
+   - Try block returns, AND
+   - Every exception handler returns
+
+**Example:**
+
+```python
+# Always returns (finally overrides):
+def example1():
+    try:
+        return 1
+    except:
+        return 2
+    finally:
+        return 3  # This is what actually returns
+
+# Does NOT always return:
+def example2():
+    try:
+        return 1
+    except ValueError:
+        return 2
+    # No handler for other exceptions! Might not return.
+
+# DOES always return:
+def example3():
+    try:
+        return 1
+    except:
+        return 2  # Catch-all handler covers all paths
+```
+
+---
 
 ## Dependencies
 
 ### Internal Sharpy Dependencies
 
-**From `Sharpy.Compiler.Logging`**:
-- `ICompilerLogger`: Logging interface
-- `NullLogger`: No-op logger implementation
+1. **`Sharpy.Compiler.Parser.Ast`** - All AST node types:
+   - `Statement` base class and subclasses
+   - `FunctionDef`, `IfStatement`, `WhileStatement`, etc.
+   - Location information (`LineStart`, `ColumnStart`)
 
-**From `Sharpy.Compiler.Parser.Ast`**:
-All statement and expression AST node types:
-- `Statement` (base class)
-- `ReturnStatement`, `RaiseStatement`, `BreakStatement`, `ContinueStatement`
-- `IfStatement` (with `ElifClauses`, `ElseBody`)
-- `WhileStatement`, `ForStatement`, `TryStatement`
-- `FunctionDef`, `ClassDef`, `StructDef`, `InterfaceDef`, `EnumDef`
-- `ExpressionStatement`, `EllipsisLiteral`
+2. **`Sharpy.Compiler.Logging`** - Compiler logging infrastructure:
+   - `ICompilerLogger` interface
+   - `NullLogger.Instance` for optional logger pattern
 
-**Semantic Types**:
-- `SemanticType`: Type representation from semantic analysis
-- `SemanticError`: Error structure for reporting issues
+3. **`SemanticError`** - Error data structure (defined in same namespace)
 
-### Cross-References
+4. **`SemanticType`** - Type system representation:
+   - `SemanticType.Void` constant
+   - `GetDisplayName()` method for error messages
 
-This validator works closely with:
-- **[Parser](../Parser/Parser.md)**: Consumes AST produced by parser
-- **[Statement AST Nodes](../Parser/Ast/Statement.md)**: All statement types referenced
-- **[SemanticError](./SemanticError.md)**: Error reporting structure
-- **[SemanticType](./SemanticType.md)**: Type representation
+### Upstream Dependencies
 
-## Patterns and Design Decisions
+**Parser (AST)** → Provides immutable AST nodes with location info
 
-### 1. **Recursive Descent Validation**
+### Downstream Dependencies
 
-The validator mirrors the structure of the AST with recursive methods:
-- `ValidateBlock` → `ValidateStatement` → `ValidateIf/While/For/Try` → `ValidateBlock`
+**CodeGen** ← Assumes control flow validation has passed (no unreachable code, valid returns)
 
-This makes the code easy to understand and maintain—each AST construct has a corresponding validation method.
+---
 
-### 2. **Conservative Analysis**
+## Design Patterns and Decisions
 
-The validator uses **conservative static analysis**:
-- Doesn't evaluate conditions (`if true: return 1` doesn't count as "always returns")
-- Treats loops as possibly never executing
-- Requires explicit `else` clause for if-statements to "always return"
+### 1. Visitor-Style Pattern
 
-**Why Conservative?**: It's better to occasionally require an extra `return` statement than to miss a case where a return is truly missing.
+The validator uses a **modified visitor pattern** without explicit visitor interfaces:
 
-### 3. **Dual Return Values: `(alwaysReturns, alwaysExits)`**
-
-Methods return two booleans:
-- `alwaysReturns`: For checking function return requirements
-- `alwaysExits`: For detecting unreachable code
-
-Example: `raise` exits but doesn't return:
-```python
-def foo() -> int:
-    raise ValueError("error")  # alwaysExits=true, alwaysReturns=false
-    print("unreachable")       # Would be detected
-```
-
-### 4. **Stateful Validation with Depth Tracking**
-
-The `_loopDepth` counter is incremented/decremented as we enter/exit loops:
 ```csharp
-_loopDepth++;
-ValidateBlock(loopBody);
-_loopDepth--;
+ValidateStatement(stmt) → switch (stmt) { case IfStatement: ..., case WhileStatement: ... }
 ```
 
-This is simpler than threading loop context through all method calls.
+**Why not a full visitor?**
+- Simpler for single-purpose validation
+- Easier to understand for newcomers
+- Less boilerplate than formal visitor pattern
 
-### 5. **Error Accumulation**
+### 2. Tuple Return Values
 
-Instead of throwing on first error, the validator:
-- Collects all errors in `_errors` list
-- Continues validation to find multiple issues
-- Exposes errors via read-only `Errors` property
+Methods return `(bool, bool)` tuples for dual properties:
 
-This gives better developer experience (fix multiple issues at once).
-
-### 6. **Special Case Handling for Abstract Methods**
-
-The validator recognizes two patterns for abstract methods:
-
-**Explicit decorator**:
-```python
-@abstract
-def method(self) -> int:
-    ...
+```csharp
+(bool alwaysReturns, bool alwaysExits) = ValidateStatement(stmt);
 ```
 
-**Ellipsis body** (implicit in `@abstract` class):
-```python
-class Foo:
-    def method(self) -> int:
-        ...
+**Benefits:**
+- Compact representation of two related flags
+- Natural composition (combine results from multiple branches)
+- Self-documenting variable names at call sites
+
+### 3. State Tracking via Mutable Fields
+
+The validator uses instance fields (`_loopDepth`, `_inFunction`) rather than passing state through parameters.
+
+**Trade-offs:**
+- ✅ Simpler method signatures
+- ✅ Easier to add new context tracking
+- ⚠️ Requires careful increment/decrement pairing (e.g., `_loopDepth++` / `_loopDepth--`)
+- ⚠️ Not thread-safe (but validators are single-threaded by design)
+
+### 4. Error Accumulation
+
+Errors are collected in `_errors` list rather than throwing immediately:
+
+**Rationale:**
+- Reports ALL errors in one pass (better UX)
+- Allows validation to continue after first error
+- Caller can inspect all errors via `Errors` property
+
+### 5. Conservative Analysis
+
+When uncertain, the validator is **conservative** (assumes no guarantee):
+
+```csharp
+// Loops: might not execute → (false, false)
+// If without else: might skip → false
+// Try without catch-all: might not handle → false
 ```
 
-Both are skipped because they're not real implementations. The ellipsis pattern is also used in concrete classes to generate `NotImplementedException` at runtime, which also doesn't need return validation.
+This prevents false negatives (missing errors) at the cost of potential false positives (overly strict).
+
+---
 
 ## Debugging Tips
 
-### Common Issues and How to Debug Them
+### 1. Enable Debug Logging
 
-**1. False "missing return" errors**
-
-If users report functions that clearly return in all paths but still get errors:
-
-- Check `ValidateIf()` logic: Does the if-chain have an `else` clause?
-- Check loop handling: Remember loops are treated as "might not execute"
-- Add debug logging to see what `alwaysReturns` values are computed:
+Pass a logger to see validation flow:
 
 ```csharp
-_logger.LogDebug($"Block returns: {alwaysReturns}, exits: {alwaysExits}");
+var logger = new ConsoleLogger(LogLevel.Debug);
+var validator = new ControlFlowValidator(logger);
+validator.ValidateFunction(functionDef, returnType);
+// Output: "Validating control flow for function: myFunction"
 ```
 
-**2. Unreachable code not detected**
+### 2. Check `_loopDepth` State
 
-If unreachable code isn't being flagged:
+If seeing "break/continue outside loop" errors incorrectly:
 
-- Verify `alwaysExits` is being set correctly in `ValidateStatement()`
-- Check if the unreachable code is in a different block (each block validates separately)
-- Look for edge cases in control flow combinators (try/finally, nested loops)
+1. Add breakpoint in `ValidateWhile`/`ValidateFor`
+2. Verify `_loopDepth++` and `_loopDepth--` are balanced
+3. Check that nested functions don't inherit parent's loop depth (they don't - correct behavior)
 
-**3. Break/continue validation issues**
+### 3. Trace Return Path Analysis
 
-If `break`/`continue` errors are wrong:
+For "function must return" errors:
 
-- Check `_loopDepth` tracking: Is it incremented before validating loop body?
-- Verify `_loopDepth--` happens even if validation throws
-- Consider switch statements (Sharpy might add these in future)
+1. Breakpoint at `ValidateBlock` exit
+2. Inspect `alwaysReturns` for each branch
+3. For `if` statements, verify:
+   - All branches including `else` are analyzed
+   - `elseBody != null` check works correctly
+   - `allBranchesReturn` logic combines correctly
 
-**4. Abstract method validation bugs**
+### 4. Test Edge Cases
 
-If abstract methods are being validated when they shouldn't:
+Common bugs to watch for:
 
-- Check both the decorator check AND ellipsis check (lines 37-43)
-- Verify `Decorators` collection is populated correctly by parser
-- Test edge case: `@abstract` with non-ellipsis body (should still be skipped)
+```python
+# Edge case 1: Empty else
+if condition:
+    return 1
+else:
+    pass  # Empty else body - should return false
 
-### Debugging Workflow
+# Edge case 2: Nested loops
+for i in range(10):
+    for j in range(10):
+        break  # Should be valid (loopDepth == 2)
 
-1. **Enable debug logging**:
-   ```csharp
-   var validator = new ControlFlowValidator(logger: myLogger);
-   ```
+# Edge case 3: Finally with no return
+try:
+    return 1
+finally:
+    print("cleanup")  # Finally exists but doesn't return
+```
 
-2. **Check error details**:
-   ```csharp
-   foreach (var error in validator.Errors)
-   {
-       Console.WriteLine($"Line {error.Line}, Col {error.Column}: {error.Message}");
-   }
-   ```
+### 5. Unreachable Code Detection
 
-3. **Test with minimal examples**:
-   Create the smallest Sharpy code that reproduces the issue, then step through validation.
+If unreachable code isn't detected:
 
-4. **AST inspection**:
-   Use `AstDumper` (see [Parser documentation](../Parser/AstDumper.md)) to verify the AST structure matches expectations.
+1. Check `alwaysExits` is set correctly
+2. Verify loop at line 82: `if (alwaysExits && i < statements.Count)`
+3. Note: Only reports unreachable code once per block (by design)
+
+---
 
 ## Contribution Guidelines
 
-### Kinds of Changes You Might Make
+### What Kinds of Changes?
 
-**1. New Statement Types**
+**⚠️ WARNING**: This file is deprecated! Changes should go to `ControlFlowValidatorV2` instead.
 
-When adding new control flow statements (e.g., `match`, `switch`):
+However, if maintaining this legacy code:
 
+#### 1. Bug Fixes
+
+**Safe changes:**
+- Fix incorrect `alwaysReturns` / `alwaysExits` logic
+- Correct loop depth tracking
+- Fix unreachable code detection
+
+**Example bug fix:**
+```csharp
+// Bug: Empty list check is wrong
+if (ifStmt.ElseBody != null && ifStmt.ElseBody.Length > 0)
+    // Should also check that statements aren't all pass/empty
+```
+
+#### 2. New Statement Types
+
+If parser adds new statement types:
+
+1. Add case to `ValidateStatement` switch
+2. Determine return/exit semantics
+3. Add tests for new statement type
+4. Document behavior
+
+**Example:**
 ```csharp
 case MatchStatement matchStmt:
-    return ValidateMatch(matchStmt);
+    return ValidateMatch(matchStmt);  // Similar to if/elif/else
 ```
 
-Add a new validator method following the pattern:
+#### 3. Enhanced Error Messages
+
+Improve error clarity:
+
 ```csharp
-private (bool, bool) ValidateMatch(MatchStatement matchStmt)
-{
-    // Validate each case/pattern
-    // Return true only if ALL cases covered AND all return
-}
+// Before:
+AddError("'break' statement outside loop", ...)
+
+// After:
+AddError("'break' statement can only be used inside 'for' or 'while' loops", ...)
 ```
 
-**2. New Control Flow Terminators**
+### Testing Requirements
 
-If adding statements that exit (like `yield`, `goto`):
-- Return `(false, true)` for non-returning exits
-- Update `alwaysExits` tracking in `ValidateBlock()`
-- Add context validation if needed (like `_loopDepth` for loops)
+When making changes:
 
-**3. Enhanced Analysis**
+1. **Unit tests** - Add to `Sharpy.Compiler.Tests/Semantic/ControlFlowValidatorTests.cs`
+2. **Integration tests** - Add `.spy` + `.expected` or `.error` files to `TestFixtures/`
+3. **Verify against Python** - Ensure behavior matches Python semantics
 
-Potential improvements:
-- **Constant folding**: Recognize `if true:` as always-taken
-- **Type-based analysis**: `if x is None: return` followed by code treating `x` as non-None
-- **Infinite loop detection**: `while true:` with return inside could count as "always returns"
-
-**4. Better Error Messages**
-
-Current errors are generic. You could:
-- Add suggestions: "Did you forget to add an 'else' branch?"
-- Show which branch is missing a return
-- Highlight the specific path that doesn't return
-
-**5. Testing**
-
-When modifying this file:
-- Add unit tests for new statement types
-- Test edge cases (deeply nested loops, complex try/except)
-- Verify error messages are helpful
-- Test with real Sharpy code examples
-
-### Code Style Guidelines
-
-**Follow existing patterns**:
-- Use tuple returns `(bool, bool)` for dual return values
-- Increment/decrement depth counters immediately around block validation
-- Use pattern matching in switch statements
-- Add XML documentation comments for public methods
-
-**Error reporting**:
-- Always include line/column information
-- Make messages user-friendly (avoid compiler jargon)
-- Be specific about what's wrong and where
-
-**Performance**:
-- This is a single-pass analysis, keep it efficient
-- Don't create unnecessary allocations
-- Consider using `readonly` for fields that don't change
-
-### Testing Your Changes
-
-Create test cases in the semantic analysis test suite:
-
+**Example test:**
 ```csharp
 [Fact]
-public void DetectsUnreachableAfterReturn()
+public void BreakOutsideLoop_ReportsError()
 {
-    var code = @"
-def foo() -> int:
-    return 42
-    print('unreachable')  # Should error
-";
-    // Validate and check errors
+    var validator = new ControlFlowValidator();
+    var breakStmt = new BreakStatement { LineStart = 1, ColumnStart = 0 };
+    var funcDef = new FunctionDef 
+    { 
+        Name = "test",
+        Body = new[] { breakStmt }
+    };
+    
+    validator.ValidateFunction(funcDef, SemanticType.Void);
+    
+    Assert.Single(validator.Errors);
+    Assert.Contains("outside loop", validator.Errors[0].Message);
 }
 ```
 
-Test both positive cases (valid code) and negative cases (should produce errors).
+### Code Style
+
+Follow existing patterns:
+
+- Use tuple returns for dual boolean properties
+- Increment/decrement depth counters symmetrically
+- Add debug logging for major decisions
+- Keep method sizes reasonable (< 50 lines)
+
+---
 
 ## Cross-References
 
-### Related Files in Semantic Analysis
+### Related Files
 
-**Core Semantic Components**:
-- **[SemanticError](./SemanticError.md)**: Error reporting structure used by this validator
-- **[SemanticType](./SemanticType.md)**: Type representation, used for return type checking
-- **[TypeChecker](./TypeChecker.md)**: Provides `returnType` parameter to `ValidateFunction()`
-- **[SymbolTable](./SymbolTable.md)**: Manages scopes and function definitions
-- **[NameResolver](./NameResolver.md)**: Resolves names before control flow validation
+1. **`Semantic/Validation/ControlFlowValidatorV2.cs`** - Modern replacement implementing `ISemanticValidator`
+   - Located in `Validation/` subdirectory
+   - Integrates with `ValidationPipeline`
+   - Should be used for new code
 
-**Other Validators**:
-- **[AccessValidator](./AccessValidator.md)**: Validates access modifiers
-- **[ProtocolValidator](./ProtocolValidator.md)**: Validates protocol implementations
-- **[OperatorValidator](./OperatorValidator.md)**: Validates operator overloading
+2. **`Semantic/ValidationPipeline.cs`** - Orchestrates V2 validators
+   - Manages validator ordering
+   - Provides unified error collection
+   - Entry point for all semantic validation
 
-**Upstream**:
-- **[Parser](../Parser/Parser.md)**: Produces the AST this validator consumes
-- **[Statement Nodes](../Parser/Ast/Statement.md)**: Statement types validated here
-- **[Expression Nodes](../Parser/Ast/Expression.md)**: Expression types (like `EllipsisLiteral`)
+3. **`Semantic/SemanticInfo.cs`** - Stores type and symbol information
+   - Used by V2 but not this legacy validator
+   - Contains `_narrowedTypes` for type narrowing
 
-**Downstream**:
-- **[RoslynEmitter](../CodeGen/RoslynEmitter.md)**: Code generation (assumes valid control flow)
-- **[Compiler](../Compiler.md)**: Orchestrates all compilation phases
+4. **`Semantic/TypeChecker.cs`** - Runs before control flow validation
+   - Provides `SemanticType` information
+   - Ensures expressions are type-correct
+
+5. **`Parser/Ast/*.cs`** - AST node definitions
+   - All statement types validated here
+   - Contains location information for errors
+
+### Migration Path
+
+To migrate from V1 to V2:
+
+```csharp
+// OLD (deprecated):
+var validator = new ControlFlowValidator(logger);
+validator.ValidateFunction(funcDef, returnType);
+var errors = validator.Errors;
+
+// NEW (recommended):
+var pipeline = ValidationPipelineFactory.CreateDefault();
+var context = new SemanticContext(semanticInfo, logger, errors);
+pipeline.Validate(module, context);
+// Errors automatically added to context.Errors
+```
 
 ---
 
 ## Summary
 
-The `ControlFlowValidator` is a straightforward but essential component that ensures Sharpy code has valid control flow before code generation. Its recursive-descent design mirrors the AST structure, making it easy to understand and extend. The conservative analysis approach prioritizes correctness over cleverness, which is appropriate for a compiler validation pass.
+`ControlFlowValidator` is a straightforward but critical compiler component that ensures:
 
-Key takeaways for newcomers:
-- **Stateful but single-use**: Create new validator for each function
-- **Conservative**: Doesn't try to be too clever about analysis
-- **Accumulates errors**: Finds all issues, doesn't stop at first error
-- **Context-aware**: Tracks loop depth for break/continue validation
-- **Pure validation**: Doesn't modify AST, just reports errors
-- **Special handling**: Abstract methods and ellipsis bodies are skipped
+1. ✅ Functions return values on all code paths (when required)
+2. ✅ No unreachable code exists
+3. ✅ Loop control statements (`break`/`continue`) only appear in loops
+
+**Key takeaways:**
+
+- **Conservative analysis**: When uncertain, assumes no guarantee (safe default)
+- **Depth tracking**: Uses `_loopDepth` counter for loop context validation
+- **Tuple returns**: Methods return `(alwaysReturns, alwaysExits)` for composable analysis
+- **Deprecated**: Use `ControlFlowValidatorV2` for new code
+
+The validator's simple recursive descent over the AST makes it easy to understand and maintain, though the newer V2 architecture provides better integration with the broader validation pipeline.

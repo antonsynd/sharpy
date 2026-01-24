@@ -42,6 +42,7 @@ A configuration object with **init-only properties** (immutable after constructi
 | `References` | `List<string>` | External .NET assemblies to reference |
 | `ModulePaths` | `List<string>` | Search paths for resolving module imports |
 | `Configuration` | `string` | Build configuration: `"Debug"` or `"Release"` |
+| `UsePrecomputedCodeGenInfo` | `bool` | Whether to compute `CodeGenInfo` during semantic analysis (default: `true`) |
 
 **Computed Properties**:
 
@@ -56,6 +57,13 @@ public virtual string OutputAssemblyPath { get; }
 ```
 
 The `virtual` keyword on `OutputAssemblyPath` suggests this class may be subclassed in tests or other contexts.
+
+**Special Property - UsePrecomputedCodeGenInfo**:
+```csharp
+public bool UsePrecomputedCodeGenInfo { get; set; } = true;
+```
+
+This property controls whether the semantic analyzer pre-computes C# names and other code generation metadata during type checking. **This must be `true`** for code generation to work, as legacy tracking has been removed. This is one of the only mutable properties in `ProjectConfig` because it's a compiler flag that might be toggled for debugging purposes.
 
 ---
 
@@ -254,9 +262,22 @@ public string OutputPath
         return binPath;
     }
 }
+
+public virtual string OutputAssemblyPath
+{
+    get
+    {
+        var assemblyName = AssemblyName ?? RootNamespace;
+        var extension = OutputType.ToLowerInvariant() == "exe" ? ".exe" : ".dll";
+        return Path.Combine(OutputPath, assemblyName + extension);
+    }
+}
 ```
 
-**Benefit**: Ensures these paths stay consistent with `Configuration` and `TargetFramework` without manual sync.
+**Benefits**: 
+- Ensures these paths stay consistent with `Configuration` and `TargetFramework` without manual sync
+- The `OutputAssemblyPath` logic automatically determines the correct extension (`.exe` vs `.dll`) based on `OutputType`
+- Being `virtual` allows subclasses (like `SingleFileProjectConfig` in the CLI) to override the output location
 
 ### 3. **Static Parser Class**
 
@@ -401,15 +422,21 @@ When changing the `.spyproj` format:
   - See how single-file compilation works
   - `ProjectConfig` is for multi-file projects; single-file uses different path
 
-- **Program.md** (`docs/implementation_walkthrough/src/Sharpy.Cli/Program.md`):
+- **AssemblyCompiler.md** (`docs/implementation_walkthrough/src/Sharpy.Compiler/AssemblyCompiler.md`):
+  - Shows how `ProjectConfig` is consumed to compile multiple files into a .NET assembly
+  - The `AssemblyCompiler` constructor accepts a `ProjectConfig` parameter
+
+- **Program.cs** (in `src/Sharpy.Cli/`):
   - CLI commands that load and use `ProjectConfig`
-  - Example: `build`, `run`, `test` commands
+  - Contains `SingleFileProjectConfig` subclass that overrides `OutputAssemblyPath`
+  - Uses `ProjectFileParser.FindProjectFile()` for auto-discovery
 
 ### Example Project Files
 
 Look for sample `.spyproj` files in:
-- `examples/` directory for sample Sharpy projects
-- Integration tests may have test project files in `tests/` directory
+- **`samples/calculator_app/calculator.spyproj`**: A real working example of an executable project
+- **`samples/SampleModule/`**: Example of a library module structure
+- Integration tests may have test project files in the tests directories
 
 ### Design Philosophy
 

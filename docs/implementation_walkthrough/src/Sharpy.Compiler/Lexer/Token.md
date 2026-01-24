@@ -214,17 +214,19 @@ def foo():      # ← Newline
 
 ---
 
-### `Token` Record (Lines 167-181)
+### `Token` Record (Lines 169-221)
 
-A lightweight immutable data structure representing a single token instance.
+A lightweight immutable data structure representing a single token instance. Implements the `ILocatable` interface to provide standardized source location tracking across the compiler.
 
 ```csharp
-public record Token
+public record Token : ILocatable
 {
     public TokenType Type { get; init; }
     public string Value { get; init; } = string.Empty;
     public int Line { get; init; }
     public int Column { get; init; }
+    public int Position { get; init; } = -1;
+    public int Length => Value.Length;
 
     public Token(TokenType type, string value, int line, int column)
     {
@@ -233,6 +235,24 @@ public record Token
         Line = line;
         Column = column;
     }
+
+    public Token(TokenType type, string value, int line, int column, int position)
+    {
+        Type = type;
+        Value = value;
+        Line = line;
+        Column = column;
+        Position = position;
+    }
+
+    public TextSpan? GetSpan()
+    {
+        if (Position < 0)
+            return null;
+        return new TextSpan(Position, Length);
+    }
+
+    TextSpan? ILocatable.Span => GetSpan();
 }
 ```
 
@@ -244,6 +264,8 @@ The `Token` record is an **immutable data container** representing a single toke
 | `Value` | The actual text from source code | `"myVariable"`, `"+"`, `"42"` |
 | `Line` | 1-indexed line number in source | `42` |
 | `Column` | 1-indexed column position | `10` |
+| `Position` | 0-based character offset in source (optional) | `347` |
+| `Length` | Length of token in characters (computed from `Value`) | `11` |
 
 #### Why a `record`?
 
@@ -263,21 +285,52 @@ This is perfect for compiler tokens, which should never change once created.
   - For keywords/operators: Usually the literal text (`"if"`, `"+"`)
   - For identifiers: The variable/function name
   - For literals: The string representation (`"42"`, `"3.14"`, `"hello"`)
-- **`Line`** and **`Column`**: Source location for error reporting
+- **`Line`** and **`Column`**: Human-readable source location for error reporting (1-based)
+- **`Position`**: Zero-based character offset in the source text (optional, defaults to -1)
+- **`Length`**: Length of the token in characters (computed property, returns `Value.Length`)
 
-**Important**: Line and column numbers are **1-based** (not 0-based), which is conventional for human-readable error messages.
+**Important Location Tracking Details:**
+- **Line and Column** are **1-based** (conventional for human-readable error messages)
+- **Position** is **0-based** (conventional for programmatic access to source text)
+- Position tracking is optional—if not enabled during lexing, `Position` will be -1
+- The combination of Position + Length defines a `TextSpan` for precise source mapping
+
+#### ILocatable Interface
+
+The `Token` record implements `ILocatable`, a compiler-wide interface for elements that have source locations. This allows:
+- Consistent location handling across tokens, AST nodes, and symbols
+- Unified error reporting infrastructure
+- Source mapping for code transformations
+
+```csharp
+public interface ILocatable
+{
+    TextSpan? Span { get; }
+}
+```
+
+The `GetSpan()` method converts the token's position and length into a `TextSpan`:
+```csharp
+var token = new Token(TokenType.Identifier, "myVar", 1, 5, 10);
+TextSpan? span = token.GetSpan();  // Returns TextSpan(10, 5) - starts at char 10, length 5
+```
+
+If position tracking wasn't enabled (`Position == -1`), `GetSpan()` returns `null`.
 
 ---
 
 ## Key Functions/Methods
 
-### Constructor
+### Constructors
 
+There are two constructor overloads, depending on whether position tracking is enabled:
+
+#### Basic Constructor (Line/Column Only)
 ```csharp
 public Token(TokenType type, string value, int line, int column)
 ```
 
-Creates a new token instance. This is the only way to create tokens (no factory methods or builders).
+Creates a token with 1-based line/column information only. `Position` defaults to -1.
 
 **Usage in Lexer.cs:**
 ```csharp
@@ -288,7 +341,45 @@ return new Token(TokenType.Def, "def", _line, _column);
 return new Token(TokenType.Identifier, identifierText, startLine, startColumn);
 ```
 
-**Design Note:** The constructor is intentionally simple because tokens are pure data carriers. All intelligence lives in the lexer that creates them.
+#### Full Constructor (with Position Tracking)
+```csharp
+public Token(TokenType type, string value, int line, int column, int position)
+```
+
+Creates a token with both line/column and the 0-based character offset in the source.
+
+**Usage for advanced scenarios:**
+```csharp
+// When precise source mapping is needed
+return new Token(TokenType.Identifier, identifierText, _line, _column, _position);
+```
+
+**Design Note:** The constructors are intentionally simple because tokens are pure data carriers. All intelligence lives in the lexer that creates them.
+
+### GetSpan() Method
+
+```csharp
+public TextSpan? GetSpan()
+```
+
+Converts the token's position and length into a `TextSpan` for precise source location operations. Returns `null` if position tracking wasn't enabled.
+
+**Usage:**
+```csharp
+Token token = lexer.NextToken();
+TextSpan? span = token.GetSpan();
+if (span.HasValue)
+{
+    string tokenText = sourceText.Substring(span.Value.Start, span.Value.Length);
+    // Use span for error highlighting, refactoring, etc.
+}
+```
+
+**When is this useful?**
+- **Error highlighting**: Show exactly which characters caused an error
+- **Code refactoring**: Replace token text at precise locations
+- **Source mapping**: Track transformations from Sharpy to C# code
+- **IDE features**: Syntax highlighting, go-to-definition, find references
 
 ---
 
@@ -308,7 +399,11 @@ This file is **foundational**—many parts of the compiler depend on it:
 
 ### Outbound Dependencies (What This File Needs)
 
-**None.** This file is completely self-contained—no imports beyond the `namespace` declaration. This is intentional for a foundational data structure.
+This file depends on:
+- **`Sharpy.Compiler.Text.ILocatable`**: Interface for elements with source locations
+- **`Sharpy.Compiler.Text.TextSpan`**: Value type representing a source code span
+
+These are foundational types in the `Text` namespace that provide consistent location tracking across the entire compiler.
 
 ---
 
@@ -437,6 +532,39 @@ Error: Undefined variable 'x' at line 42, column 10
 - Value semantics make testing easy
 - Once created, tokens are snapshots that never change
 
+### 9. Dual Position Tracking System
+
+**Decision:** Store both human-readable (Line/Column) and programmatic (Position) locations.
+
+**Benefits:**
+- **Line/Column**: Perfect for error messages users will read
+- **Position**: Efficient for programmatic operations (no need to re-scan source to find offsets)
+- **Optional Position**: Keeps memory overhead low when precise tracking isn't needed
+
+**Trade-off:** An extra 4 bytes per token (for Position), but this is negligible and Position is optional.
+
+### 10. ILocatable Interface
+
+**Decision:** Implement a shared `ILocatable` interface across tokens, AST nodes, and symbols.
+
+**Benefits:**
+- **Polymorphism**: Write location-aware code once, works with any locatable element
+- **Consistency**: All compiler elements report locations the same way
+- **Tooling**: IDE features (go-to-definition, error highlighting) work uniformly
+
+**Example:**
+```csharp
+void ReportError(ILocatable element, string message)
+{
+    if (element.Span is TextSpan span)
+    {
+        // Highlight the exact source range
+        HighlightError(span, message);
+    }
+}
+// Works with tokens, AST nodes, symbols, etc.
+```
+
 ---
 
 ## Common Patterns and Usage
@@ -563,11 +691,29 @@ var actual = lexer.NextToken();
 Assert.Equal(expected, actual);  // Works!
 ```
 
-### 7. Common Issues
+### 7. TextSpan vs Line/Column
+
+When working with source locations, understand the two systems:
+
+```csharp
+// Human-readable (1-based)
+Console.WriteLine($"Error at line {token.Line}, column {token.Column}");
+// Output: "Error at line 10, column 15"
+
+// Programmatic (0-based)
+if (token.Position >= 0)
+{
+    TextSpan? span = token.GetSpan();
+    string text = source.Substring(span.Value.Start, span.Value.Length);
+}
+```
+
+### 8. Common Issues
 
 | Issue | Check | Solution |
 |-------|-------|----------|
-| Token positions off by one | Are Line/Column 0-indexed or 1-indexed? | They should be 1-indexed |
+| Token positions off by one | Are Line/Column 0-indexed or 1-indexed? | Line/Column are 1-indexed, Position is 0-indexed |
+| GetSpan() returns null | Was position tracking enabled? | Position defaults to -1 if not tracked |
 | F-string parsing fails | Is lexer tracking state correctly? | Add logging for state transitions |
 | Indentation errors | Are Indent/Dedent tokens generated correctly? | Print the indentation stack |
 | Operator vs. keyword confusion | Is `is` treated as keyword or identifier? | `is` is `TokenType.Is` (keyword) |
@@ -683,6 +829,11 @@ When modifying this file:
 - **`docs/language_specification/keywords.md`**: Official list of all keywords
 - **`docs/language_specification/lexer_implementation.md`**: Lexical analysis rules
 - **`docs/language_specification/string_literals.md`**: String and f-string tokenization
+
+### Related Source Files
+- **`src/Sharpy.Compiler/Text/ILocatable.cs`**: Interface implemented by Token
+- **`src/Sharpy.Compiler/Text/TextSpan.cs`**: Value type for representing source spans
+- **`src/Sharpy.Compiler/Text/SourceText.cs`**: Source text management
 
 ### Testing
 - Look for lexer tests in the test suite that verify token generation

@@ -803,6 +803,122 @@ Sharpy.Core.Exports.Print(x + 1);
 
 ---
 
+## Cross-References
+
+### Core Semantic Analysis Files
+
+**Note**: `SemanticInfo` is a standalone class (not a partial class), but it works closely with several other components in the semantic analysis pipeline.
+
+#### 1. **Type System** (`SemanticType.cs`)
+- Defines the `SemanticType` hierarchy stored in `_expressionTypes` and `_typeAnnotations`
+- Immutable record hierarchy: `BuiltinType`, `GenericType`, `UserDefinedType`, `NullableType`, etc.
+- **Key relationship**: `SemanticInfo` stores these types, doesn't create them
+
+#### 2. **Symbol Table** (`Symbol.cs`, `SymbolTable.cs`)
+- `Symbol.cs`: Defines the symbol hierarchy stored in `_identifierSymbols` and `_callTargets`
+  - Record hierarchy: `VariableSymbol`, `FunctionSymbol`, `TypeSymbol`, `ParameterSymbol`, etc.
+- `SymbolTable.cs`: Manages symbol scopes and lookups
+- **Key relationship**: `SymbolTable` creates symbols, `SemanticInfo` links them to AST nodes
+
+#### 3. **Type Checking** (`TypeChecker.cs` - **Partial Class**)
+Split across multiple files:
+- `TypeChecker.cs` - Main class, module-level entry point, field declarations
+- `TypeChecker.Definitions.cs` - Type checking for function/class/method definitions
+- `TypeChecker.Expressions.cs` - Type checking and inference for all expression types
+- `TypeChecker.Statements.cs` - Type checking for statements (assignments, returns, etc.)
+- `TypeChecker.Utilities.cs` - Helper methods, type narrowing, generic instantiation
+
+**Primary populator** of `SemanticInfo`:
+- Populates `_expressionTypes` during expression type checking
+- Populates `_callTargets` during function call resolution
+- Queries `_identifierSymbols` and `_typeAnnotations` populated by earlier passes
+
+#### 4. **Name Resolution** (`NameResolver.cs`)
+- **First pass** of semantic analysis
+- Populates `_identifierSymbols` during name resolution
+- Creates and registers symbols in `SymbolTable`
+- **Flow**: Identifier in code → look up in SymbolTable → store mapping in SemanticInfo
+
+#### 5. **Type Resolution** (`TypeResolver.cs`)
+- **Second pass** of semantic analysis
+- Populates `_typeAnnotations` by resolving type syntax to semantic types
+- Handles generic type instantiation, nullable types, etc.
+- **Flow**: `TypeAnnotation` (AST) → resolve names → create `SemanticType` → store in SemanticInfo
+
+### Code Generation Files
+
+#### 6. **Roslyn Emitter** (`CodeGen/RoslynEmitter*.cs` - **Partial Class**)
+Split across multiple files for C# code generation:
+- `RoslynEmitter.cs` - Main class, module/class structure
+- `RoslynEmitter.Expressions.cs` - Expression code generation
+- `RoslynEmitter.Statements.cs` - Statement code generation
+- Other emission-related files
+
+**Primary consumer** of `SemanticInfo`:
+- Queries `GetExpressionType()` for every expression to generate correct C# types
+- Queries `GetIdentifierSymbol()` for name resolution and mangling
+- Queries `GetCallTarget()` for method invocation generation
+- Queries `GetTypeAnnotation()` for type declarations
+
+#### 7. **Type Mapping** (`CodeGen/TypeMapper.cs`)
+- Maps `SemanticType` → C# type syntax (Roslyn `TypeSyntax`)
+- Examples: `SemanticType.Int` → `int`, `List[str]` → `List<string>`
+- **Indirect use**: Uses types retrieved from `SemanticInfo`
+
+### Validation and Analysis Files
+
+#### 8. **Validation Pipeline** (`Semantic/Validation/`)
+- `ValidationPipeline.cs` - Orchestrates validators
+- `SemanticContext.cs` - Wraps `SemanticInfo` + `SymbolTable` for validators
+- Individual validators:
+  - `OperatorValidator.cs` - Validates operator usage
+  - `ProtocolValidator.cs` - Validates protocol implementations
+  - `AccessValidator.cs` - Validates access levels
+  - `ControlFlowValidator.cs` - Validates control flow (returns, unreachable code)
+
+**Usage**: Validators query `SemanticInfo` through `SemanticContext` to check semantic correctness
+
+#### 9. **Other Semantic Utilities**
+- `TypeUtils.cs` - Type compatibility checks, uses types from SemanticInfo
+- `TypeInferenceService.cs` - Helper for type inference
+- `CodeGenInfo.cs` / `CodeGenInfoComputer.cs` - Computes additional codegen metadata
+- `BuiltinRegistry.cs` / `PrimitiveCatalog.cs` - Built-in type definitions
+
+### AST Definitions (Upstream)
+
+#### 10. **Parser AST** (`Parser/Ast/`)
+- `Expression.cs` - Base `Expression` class and expression node types
+  - Includes: `Identifier`, `FunctionCall`, `BinaryOp`, `Literal`, etc.
+- `Types.cs` - `TypeAnnotation` AST node definition
+- `Statement.cs` - Statement nodes (indirect, via expressions they contain)
+- `Node.cs` - Base AST node with source location tracking
+
+**Key relationship**: These are the dictionary keys in `SemanticInfo`
+
+### Pipeline Integration
+
+#### 11. **Compiler Entry Points**
+- `Compiler.cs` - Single-file compilation, creates `SemanticInfo` instance
+- `AssemblyCompiler.cs` - Multi-file project compilation
+- `Project/ProjectCompiler.cs` - Project-level compilation orchestration
+
+**Pattern**: Create `SemanticInfo()` → pass through pipeline → query in codegen
+
+#### 12. **Services and Configuration**
+- `Services/CompilerServices.cs` - Dependency injection container
+- `Services/CompilerServicesBuilder.cs` - Builder for compiler services
+- Allows sharing `SemanticInfo` across compilation units in multi-file projects
+
+### Related Documentation
+
+If walkthrough documents exist for these files, they provide deeper context:
+- **Semantic Analysis Overview**: Understanding the multi-pass architecture
+- **TypeChecker Deep Dive**: How type inference and checking populate SemanticInfo
+- **Code Generation Guide**: How RoslynEmitter queries SemanticInfo
+- **Symbol Tables and Scopes**: How symbols are created and managed
+
+---
+
 ## Summary
 
 `SemanticInfo` is a **simple but essential** component of the Sharpy compiler:

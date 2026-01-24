@@ -4,9 +4,41 @@
 
 ---
 
+## ⚠️ DEPRECATION NOTICE
+
+**This class is marked as `[Obsolete]` and is being phased out.**
+
+The `ProtocolValidator` class has been replaced by a new validation architecture:
+
+- **Type inference** has been extracted to `TypeInferenceService` (see `Semantic/TypeInferenceService.cs`)
+- **Validation** has been migrated to `ProtocolValidatorV2` implementing `ISemanticValidator` (see `Semantic/Validation/ProtocolValidatorV2.cs`)
+- **New code** should use `ValidationPipelineFactory.CreateDefault()` instead of directly instantiating validators
+
+**Migration Path**:
+```csharp
+// ❌ Old (deprecated)
+var validator = new ProtocolValidator(symbolTable, logger);
+var elementType = validator.ValidateIteration(iterableType, line, col);
+
+// ✅ New
+var inferenceService = new TypeInferenceService(symbolTable);
+var elementType = inferenceService.InferIterableElementType(iterableType);
+// Validation happens separately through ValidationPipeline
+```
+
+**Why This Change?**
+- Separation of concerns: type inference vs. error reporting
+- Pluggable validation architecture via `ISemanticValidator`
+- Better testability and composability
+- Consistent with the new `ValidationPipeline` architecture
+
+**For New Contributors**: Read this document to understand protocol validation concepts, but refer to `ProtocolValidatorV2.cs` and `TypeInferenceService.cs` for the current implementation.
+
+---
+
 ## Overview
 
-`ProtocolValidator` is a key component of Sharpy's semantic analysis phase that validates **protocol usage** in Sharpy code. In Python (and Sharpy), protocols define how objects behave with certain operations through "dunder methods" (double-underscore methods like `__len__`, `__iter__`, `__getitem__`).
+`ProtocolValidator` is a **legacy** component of Sharpy's semantic analysis phase that validates **protocol usage** in Sharpy code. In Python (and Sharpy), protocols define how objects behave with certain operations through "dunder methods" (double-underscore methods like `__len__`, `__iter__`, `__getitem__`).
 
 ### What Are Protocols?
 
@@ -66,7 +98,18 @@ public class ProtocolValidator
 
 ### Thread Safety Note
 
-**CRITICAL**: This class is **NOT thread-safe**. This is intentional and consistent with other semantic analyzers (`OperatorValidator`, `TypeChecker`). Each compilation runs in a single thread with its own validator instances.
+**CRITICAL**: This class is **NOT thread-safe**. This is intentional and documented in the source code:
+
+```csharp
+/// <summary>
+/// Validates protocol usage in Sharpy code, supporting both Sharpy dunder methods
+/// and CLR interface implementations for .NET interop.
+///
+/// NOTE: This class is NOT thread-safe (same as OperatorValidator).
+/// </summary>
+```
+
+This design is consistent with other semantic analyzers (`OperatorValidator`, `TypeChecker`). Each compilation runs in a single thread with its own validator instances. The internal caches (`_clrProtocolCache`, `_errors`) are not protected by locks.
 
 ---
 
@@ -191,13 +234,16 @@ This handles cases where a class **extends** `Iterator<T>` rather than implement
 
 ---
 
-### 4. `ValidateLen(SemanticType, int, int)` - len() Builtin
+### 4. `ValidateLen(SemanticType, int, int)` - len() Builtin ⚠️ DEPRECATED
 
 ```csharp
+[Obsolete("Use TypeInferenceService for type inference. This method will be removed in v0.2.")]
 public SemanticType ValidateLen(SemanticType containerType, int line, int column)
 ```
 
 **Purpose**: Validates that a type can be used with `len()` builtin.
+
+**MIGRATION NOTE**: Use `TypeInferenceService.InferLenType()` for type inference. This method combines type inference with error reporting, which violates separation of concerns.
 
 **Example Usage in Compiler**:
 ```python
@@ -222,13 +268,16 @@ Consider implementing ISized interface.
 
 ---
 
-### 5. `ValidateIteration(SemanticType, int, int)` - For Loops
+### 5. `ValidateIteration(SemanticType, int, int)` - For Loops ⚠️ DEPRECATED
 
 ```csharp
+[Obsolete("Use TypeInferenceService for type inference. This method will be removed in v0.2.")]
 public SemanticType ValidateIteration(SemanticType iterableType, int line, int column)
 ```
 
 **Purpose**: Validates that a type is iterable and infers the element type.
+
+**MIGRATION NOTE**: Use `TypeInferenceService.InferIterableElementType()` for type inference. This method combines type inference with error reporting, which violates separation of concerns.
 
 **Why Element Type Matters**:
 ```python
@@ -283,9 +332,10 @@ The code correctly returns the **first** type argument for dicts (the key type).
 
 ---
 
-### 6. `ValidateIndexAccess(SemanticType, SemanticType, int, int)` - Subscripting
+### 6. `ValidateIndexAccess(SemanticType, SemanticType, int, int)` - Subscripting ⚠️ DEPRECATED
 
 ```csharp
+[Obsolete("Use TypeInferenceService for type inference. This method will be removed in v0.2.")]
 public SemanticType ValidateIndexAccess(
     SemanticType containerType,
     SemanticType indexType,
@@ -294,6 +344,8 @@ public SemanticType ValidateIndexAccess(
 ```
 
 **Purpose**: Validates `obj[index]` syntax and infers the result type.
+
+**MIGRATION NOTE**: Use `TypeInferenceService.InferIndexAccessType()` for type inference. This method combines type inference with error reporting, which violates separation of concerns.
 
 **Example Scenarios**:
 
@@ -343,9 +395,10 @@ This means currently you could write `[1,2,3]["invalid"]` and it wouldn't be cau
 
 ---
 
-### 7. `ValidateMembership(SemanticType, SemanticType, int, int)` - 'in' Operator
+### 7. `ValidateMembership(SemanticType, SemanticType, int, int)` - 'in' Operator ⚠️ DEPRECATED
 
 ```csharp
+[Obsolete("Use TypeInferenceService for type inference. This method will be removed in v0.2.")]
 public SemanticType ValidateMembership(
     SemanticType containerType,
     SemanticType itemType,
@@ -354,6 +407,8 @@ public SemanticType ValidateMembership(
 ```
 
 **Purpose**: Validates the `in` operator (membership testing).
+
+**MIGRATION NOTE**: Use `TypeInferenceService.InferMembershipType()` for type inference. This method combines type inference with error reporting, which violates separation of concerns.
 
 **Example**:
 ```python
@@ -642,9 +697,47 @@ if (elementType == SemanticType.Unknown)
 
 ---
 
+## Cross-References
+
+### Related Files (New Architecture)
+
+This legacy validator has been superseded by:
+
+- **`Semantic/TypeInferenceService.cs`** - Pure type inference without error reporting ([See Walkthrough](../TypeInferenceService.md))
+- **`Semantic/Validation/ProtocolValidatorV2.cs`** - Protocol validation implementing `ISemanticValidator` ([See Walkthrough](../Validation/ProtocolValidatorV2.md))
+- **`Semantic/Validation/ValidationPipeline.cs`** - Orchestrates all validators ([See Walkthrough](../Validation/ValidationPipeline.md))
+- **`Semantic/Validation/ISemanticValidator.cs`** - Validator interface for pluggable validation
+
+### Related Files (Supporting Infrastructure)
+
+- **`Semantic/ClrMemberCache.cs`** - Caches CLR reflection data ([See Walkthrough](ClrMemberCache.md))
+- **`Semantic/SemanticType.cs`** - Type hierarchy during semantic analysis ([See Walkthrough](SemanticType.md))
+- **`Semantic/Symbol.cs`** - Symbol table entries including ProtocolMethods ([See Walkthrough](Symbol.md))
+- **`Semantic/ProtocolRegistry.cs`** - Registry of protocol definitions ([See Walkthrough](ProtocolRegistry.md))
+
+---
+
 ## Contribution Guidelines
 
-### Adding New Protocol Support
+### ⚠️ Important: Do Not Extend This Class
+
+**This class is deprecated and should not receive new features.** If you need to add protocol support:
+
+1. **Add to `ProtocolValidatorV2`** in `Semantic/Validation/` directory
+2. **Add type inference to `TypeInferenceService`** if needed
+3. **Update `ProtocolRegistry`** to register the new protocol
+4. **Do NOT modify this legacy class** unless fixing a critical bug
+
+### Legacy Maintenance Only
+
+If you must fix a bug in this class:
+- Mark changes with comments explaining they're temporary
+- Create an issue to port the fix to the new architecture
+- Test both the legacy and new code paths
+
+### Adding New Protocol Support (Legacy Reference Only)
+
+**Note**: This section is retained for historical reference. **Do not add protocols here - use ProtocolValidatorV2 instead.**
 
 **Example**: Adding `__reversed__` protocol for reverse iteration
 
@@ -860,24 +953,47 @@ If `my_list` is a .NET `List<T>`, generates the same code due to protocol mappin
 
 ## Conclusion
 
-`ProtocolValidator` is a sophisticated component that:
+`ProtocolValidator` is a **legacy** component that served as the foundation for Sharpy's protocol validation system. It:
 
-1. **Validates protocol usage** ensuring operations like `len()`, `for` loops, and indexing are type-safe
-2. **Bridges Python and .NET** by mapping CLR interfaces to Python protocols
-3. **Optimizes with caching** to minimize expensive reflection calls
-4. **Provides helpful errors** to guide users toward correct protocol implementations
+1. **Validated protocol usage** ensuring operations like `len()`, `for` loops, and indexing are type-safe
+2. **Bridged Python and .NET** by mapping CLR interfaces to Python protocols
+3. **Optimized with caching** to minimize expensive reflection calls
+4. **Provided helpful errors** to guide users toward correct protocol implementations
 
-Understanding this file is key to:
-- Working on Sharpy's semantic analysis phase
-- Adding new protocol support
-- Improving .NET interoperability
-- Debugging type system issues
+**Historical Significance**: This class established the patterns and infrastructure that the new validation architecture builds upon. The core concepts (protocol detection, CLR mapping, caching strategies) remain relevant in `ProtocolValidatorV2` and `TypeInferenceService`.
 
-**Key Takeaways for Newcomers**:
+### For Newcomers: What You Should Do
+
+**✅ DO**:
+- Read this document to understand protocol validation concepts
+- Study the `HasProtocol` method to understand protocol detection logic
+- Understand the CLR-to-Python protocol mapping strategy
+- Learn from the caching patterns used here
+- **Then move to `ProtocolValidatorV2.cs` and `TypeInferenceService.cs` for current code**
+
+**❌ DON'T**:
+- Add new features to this class
+- Use this class in new code
+- Instantiate this class directly (use `ValidationPipelineFactory` instead)
+- Rely on this implementation for production code after migration completes
+
+**Key Concepts to Understand** (still relevant in new architecture):
 - Protocols are Sharpy's way of defining object capabilities
 - The validator checks both Sharpy dunder methods and .NET interfaces
 - Caching is critical for performance with reflection
-- Always check `validator.Errors` after validation
-- This class is NOT thread-safe by design
+- Separation of concerns: type inference vs. validation
+- Not thread-safe by design (per-compilation instance)
 
-When in doubt, look at the tests in `Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs` for concrete usage examples!
+### Migration Timeline
+
+- **v0.1.x** (Current): Both old and new validators coexist
+- **v0.2.x** (Planned): Legacy validator removed, all code uses new architecture
+- **Target**: Complete migration by Q2 2026
+
+### Further Reading
+
+- **New Validation Architecture**: See `Semantic/Validation/README.md`
+- **Type Inference**: See `TypeInferenceService.cs` walkthrough
+- **Tests**: Look at `Sharpy.Compiler.Tests/Semantic/Validation/ProtocolValidatorV2Tests.cs` for current usage patterns
+
+When debugging issues, check if they're in the legacy path (this class) or the new path (`ProtocolValidatorV2`). The new architecture is the source of truth going forward.

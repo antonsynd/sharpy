@@ -4,606 +4,527 @@
 
 ---
 
-## Overview
+## 1. Overview
 
-The `OperatorSignatureValidator` class is a critical component of Sharpy's semantic analysis phase that validates operator overloading methods (known as "dunder methods" in Python, e.g., `__add__`, `__eq__`). 
+`OperatorSignatureValidator` is a **compile-time validation utility** that ensures operator methods (dunder methods like `__add__`, `__eq__`, `__neg__`) in Sharpy classes have **correct signatures**. This validator sits in the semantic analysis phase of the compiler pipeline and acts as a gatekeeper to prevent invalid operator definitions from being compiled to C#.
 
-**Primary Responsibilities:**
-- Ensures operator methods have the correct number of parameters
-- Validates return types match .NET operator semantics
-- Enforces consistency between Python-style operator overloading and .NET's operator requirements
+### Role in the Compiler Pipeline
 
-**When It Runs:** During the semantic analysis phase, specifically when the `NameResolver` processes class method definitions and encounters methods with dunder names.
+```
+Parser → AST → [Semantic Analysis] → ValidationPipeline → CodeGen
+                      ↑
+              OperatorSignatureValidator validates dunder signatures here
+```
 
-**Why It Matters:** Sharpy compiles to C# via Roslyn, which has strict requirements for operator overloads. This validator catches mismatches early in the compilation pipeline before code generation, providing clear error messages to developers.
+The validator runs **after** the parser creates the AST but **before** code generation. It checks:
+- **Parameter count**: Does the operator have the right number of parameters?
+- **Return type**: Does the operator return the correct type (e.g., `bool` for comparisons)?
+- **Type constraints**: Is the return type non-void for arithmetic operations?
+
+**Key Design Philosophy**: Catch errors early. Better to fail at compile-time with a clear error message than generate invalid C# code or produce runtime errors.
 
 ---
 
-## Class/Type Structure
+## 2. Class/Type Structure
 
 ### Main Class: `OperatorSignatureValidator`
 
-This is a static utility class (all methods are `public static`) that serves as a centralized validator for operator method signatures. It doesn't maintain state—all validation logic is stateless.
+This is a **static utility class** with no instance state. All methods are static because validation is a pure function: given a `FunctionDef` and its owning type, return a list of errors.
 
-### Key Data Structures
-
-The class defines several `HashSet<string>` collections that categorize operator methods by their semantic meaning:
-
-#### 1. **BinaryArithmeticOps** (Lines 12-15)
 ```csharp
-private static readonly HashSet<string> BinaryArithmeticOps = new()
+public class OperatorSignatureValidator
 {
-    "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__"
-};
-```
-- Mathematical operators that take two operands
-- Maps to C# operators: `+`, `-`, `*`, `/`, `//` (floor division), `%`, `**` (power)
-- Expected signature: `def __add__(self, other) -> T`
-
-#### 2. **BinaryBitwiseOps** (Lines 17-20)
-```csharp
-private static readonly HashSet<string> BinaryBitwiseOps = new()
-{
-    "__and__", "__or__", "__xor__", "__lshift__", "__rshift__"
-};
-```
-- Bitwise/logical operators
-- Maps to C# operators: `&`, `|`, `^`, `<<`, `>>`
-- Expected signature: `def __and__(self, other) -> T`
-
-#### 3. **InPlaceOps** (Lines 22-26)
-```csharp
-private static readonly HashSet<string> InPlaceOps = new()
-{
-    "__iadd__", "__isub__", "__imul__", "__itruediv__", "__ifloordiv__", "__imod__", "__ipow__",
-    "__iand__", "__ior__", "__ixor__", "__ilshift__", "__irshift__"
-};
-```
-- In-place/augmented assignment operators (e.g., `+=`, `-=`)
-- These modify the object in place and return it
-- Expected signature: `def __iadd__(self, other) -> T`
-
-#### 4. **ComparisonOps** (Lines 28-31)
-```csharp
-private static readonly HashSet<string> ComparisonOps = new()
-{
-    "__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"
-};
-```
-- Comparison operators: `==`, `!=`, `<`, `<=`, `>`, `>=`
-- **Special requirement**: Must return `bool` (enforced by .NET)
-- Expected signature: `def __eq__(self, other) -> bool`
-
-#### 5. **UnaryOps** (Lines 33-36)
-```csharp
-private static readonly HashSet<string> UnaryOps = new()
-{
-    "__pos__", "__neg__", "__invert__"
-};
-```
-- Single-operand operators: `+x`, `-x`, `~x`
-- Expected signature: `def __neg__(self) -> T` (only `self` parameter)
-
-#### 6. **AllOperatorDunders** (Lines 38, 40-48)
-A unified collection of all recognized operator methods, built in the static constructor by merging all the above sets. Used for quick lookup to determine if a method name is an operator dunder.
-
----
-
-## Key Functions/Methods
-
-### 1. `IsOperatorDunder(string methodName)` (Lines 53-56)
-
-**Purpose:** Quick check to determine if a method name corresponds to a recognized operator overload.
-
-**Signature:**
-```csharp
-public static bool IsOperatorDunder(string methodName)
-```
-
-**Parameters:**
-- `methodName`: The name of the method to check (e.g., `__add__`, `myMethod`)
-
-**Returns:** `true` if the method is a recognized operator dunder, `false` otherwise
-
-**Implementation:**
-```csharp
-return AllOperatorDunders.Contains(methodName);
-```
-
-**Usage Pattern:** Called by `NameResolver` when processing method definitions to decide if validation is needed:
-```csharp
-if (OperatorSignatureValidator.IsOperatorDunder(method.Name))
-{
-    var validationErrors = OperatorSignatureValidator.ValidateDunderSignature(method, owningType);
-    // ... handle errors
+    // Static collections categorizing operator types
+    private static readonly HashSet<string> BinaryArithmeticOps;
+    private static readonly HashSet<string> BinaryBitwiseOps;
+    private static readonly HashSet<string> InPlaceOps;
+    private static readonly HashSet<string> ComparisonOps;
+    private static readonly HashSet<string> UnaryOps;
+    private static readonly HashSet<string> AllOperatorDunders;
 }
 ```
 
-**Performance Note:** Uses `HashSet.Contains()` for O(1) lookup—efficient even with many methods.
+### Operator Categories
+
+The validator organizes operators into five categories:
+
+| Category | Examples | Parameter Count |
+|----------|----------|----------------|
+| **BinaryArithmeticOps** | `__add__`, `__sub__`, `__mul__`, `__truediv__` | 2 (self + other) |
+| **BinaryBitwiseOps** | `__and__`, `__or__`, `__xor__`, `__lshift__` | 2 (self + other) |
+| **InPlaceOps** | `__iadd__`, `__isub__`, `__imul__` | 2 (self + other) |
+| **ComparisonOps** | `__eq__`, `__ne__`, `__lt__`, `__le__` | 2 (self + other) |
+| **UnaryOps** | `__pos__`, `__neg__`, `__invert__` | 1 (self only) |
+
+**Why these categories?** Each category has different validation rules. Comparison operators must return `bool`, while arithmetic operators can return any non-void type.
 
 ---
 
-### 2. `ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType)` (Lines 62-109)
+## 3. Key Functions/Methods
 
-**Purpose:** The main validation entry point. Checks that an operator method has the correct parameter count and return type.
+### 3.1 Static Constructor
 
-**Signature:**
 ```csharp
-public static List<SemanticError> ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType)
-```
-
-**Parameters:**
-- `funcDef`: AST node representing the function definition (from the parser)
-  - Contains: `Name`, `Parameters` (list), `ReturnType` (nullable TypeAnnotation), location info
-- `owningType`: The `TypeSymbol` representing the class that defines this method
-  - Used for error messages to show which type has the invalid operator
-
-**Returns:** `List<SemanticError>` - may be empty (valid signature) or contain errors
-
-**Algorithm Flow:**
-
-1. **Early Exit** (Lines 67-71): If not an operator dunder, return empty list
-   ```csharp
-   if (!IsOperatorDunder(methodName))
-       return errors;
-   ```
-
-2. **Parameter Count Validation** (Lines 73-100):
-   - **Unary operators** (Lines 76-86): Must have exactly 1 parameter (`self`)
-     - If not: Add error like `"Unary operator method '__neg__' on 'MyClass' must have exactly 1 parameter (self), got 2"`
-   
-   - **Binary operators** (Lines 87-100): Must have exactly 2 parameters (`self`, `other`)
-     - Applies to arithmetic, bitwise, in-place, and comparison operators
-     - If not: Add error like `"Binary operator method '__add__' on 'MyClass' must have exactly 2 parameters (self, other), got 3"`
-
-3. **Return Type Validation** (Lines 102-106): If a return type annotation exists, validate it
-   ```csharp
-   if (funcDef.ReturnType != null)
-   {
-       ValidateReturnType(funcDef, methodName, owningType.Name, errors);
-   }
-   ```
-
-**Design Decision:** Validation is permissive about missing type annotations—only validates if present. This aligns with Sharpy's gradual typing philosophy.
-
----
-
-### 3. `ValidateReturnType(FunctionDef funcDef, string methodName, string owningTypeName, List<SemanticError> errors)` (Lines 114-149)
-
-**Purpose:** Enforces return type requirements specific to .NET operator semantics.
-
-**Signature:**
-```csharp
-private static void ValidateReturnType(FunctionDef funcDef, string methodName, 
-                                        string owningTypeName, List<SemanticError> errors)
-```
-
-**Parameters:**
-- `funcDef`: The function definition (to access return type annotation and location)
-- `methodName`: Name of the operator method
-- `owningTypeName`: Name of the type (for error messages)
-- `errors`: List to append errors to (mutated in place)
-
-**Validation Rules:**
-
-#### Comparison Operators (Lines 123-133)
-Must return `bool` (non-nullable):
-```csharp
-if (ComparisonOps.Contains(methodName))
+static OperatorSignatureValidator()
 {
-    if (!IsTypeAnnotationBool(returnType))
+    AllOperatorDunders = new HashSet<string>();
+    AllOperatorDunders.UnionWith(BinaryArithmeticOps);
+    AllOperatorDunders.UnionWith(BinaryBitwiseOps);
+    AllOperatorDunders.UnionWith(InPlaceOps);
+    AllOperatorDunders.UnionWith(ComparisonOps);
+    AllOperatorDunders.UnionWith(UnaryOps);
+}
+```
+
+**Purpose**: Combines all operator categories into a single lookup set `AllOperatorDunders` for fast `O(1)` membership testing.
+
+**Design Decision**: Using `HashSet.UnionWith` is more efficient than repeatedly adding individual strings. This runs once when the class is first loaded.
+
+---
+
+### 3.2 `IsOperatorDunder(string methodName)`
+
+```csharp
+public static bool IsOperatorDunder(string methodName)
+{
+    return AllOperatorDunders.Contains(methodName);
+}
+```
+
+**Purpose**: Quick check to determine if a method name represents an operator dunder.
+
+**Parameters**:
+- `methodName`: The method name to check (e.g., `"__add__"`, `"my_method"`)
+
+**Returns**: `true` if it's a recognized operator dunder, `false` otherwise
+
+**Usage Context**: Called by the validation pipeline to decide whether a method needs operator signature validation. Regular methods bypass this validator.
+
+**Example**:
+```csharp
+IsOperatorDunder("__add__")    // true
+IsOperatorDunder("__eq__")     // true
+IsOperatorDunder("my_method")  // false
+```
+
+---
+
+### 3.3 `ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType)`
+
+This is the **main entry point** for validation.
+
+```csharp
+public static List<SemanticError> ValidateDunderSignature(
+    FunctionDef funcDef, 
+    TypeSymbol owningType)
+```
+
+**Purpose**: Validates that a dunder method has the correct signature according to Sharpy's operator protocol.
+
+**Parameters**:
+- `funcDef`: The AST node representing the function definition (from the parser)
+- `owningType`: The class/struct that owns this method (for error messages)
+
+**Returns**: A list of `SemanticError` objects. Empty list means validation passed.
+
+**Algorithm**:
+
+1. **Early exit**: If not an operator dunder, return empty error list
+2. **Parameter count validation**: 
+   - Unary operators → must have 1 parameter (self)
+   - Binary operators → must have 2 parameters (self, other)
+3. **Return type validation**: If a return type annotation exists, validate it
+
+**Key Implementation Details**:
+
+```csharp
+var paramCount = funcDef.Parameters.Length;
+
+if (UnaryOps.Contains(methodName))
+{
+    if (paramCount != 1)
     {
         errors.Add(new SemanticError(
-            $"Comparison operator method '{methodName}' on '{owningTypeName}' must return 'bool', got '{TypeAnnotationHelper.GetName(returnType)}'",
+            $"Unary operator method '{methodName}' on '{owningType.Name}' must have exactly 1 parameter (self), got {paramCount}",
+            funcDef.LineStart,
+            funcDef.ColumnStart));
+    }
+}
+else if (BinaryArithmeticOps.Contains(methodName) ||
+         BinaryBitwiseOps.Contains(methodName) ||
+         InPlaceOps.Contains(methodName) ||
+         ComparisonOps.Contains(methodName))
+{
+    if (paramCount != 2)
+    {
+        errors.Add(new SemanticError(
+            $"Binary operator method '{methodName}' on '{owningType.Name}' must have exactly 2 parameters (self, other), got {paramCount}",
             funcDef.LineStart,
             funcDef.ColumnStart));
     }
 }
 ```
 
-**Why:** .NET's `==`, `!=`, `<`, etc. operators must return `bool`. This is a CLR requirement.
-
-**Example Error:**
-```
-Semantic error at line 10, column 5: Comparison operator method '__eq__' on 'Point' must return 'bool', got 'int'
-```
-
-#### Arithmetic/Bitwise/Unary Operators (Lines 136-148)
-Must return a non-void type:
-```csharp
-if (IsTypeAnnotationVoid(returnType))
-{
-    errors.Add(new SemanticError(
-        $"Operator method '{methodName}' on '{owningTypeName}' must return a non-void type",
-        funcDef.LineStart,
-        funcDef.ColumnStart));
-}
-```
-
-**Why:** Operators like `+`, `-`, `&`, etc. must produce a value. A void-returning operator makes no sense semantically.
-
-**Example Error:**
-```
-Semantic error at line 15, column 5: Operator method '__add__' on 'Vector' must return a non-void type
-```
+**Why check parameter count first?** Because a method with the wrong number of parameters can't be a valid operator, regardless of its return type.
 
 ---
 
-### 4. Helper Methods
+### 3.4 `ValidateReturnType(FunctionDef funcDef, string methodName, string owningTypeName, List<SemanticError> errors)`
 
-#### `IsTypeAnnotationBool(TypeAnnotation typeAnnotation)` (Lines 154-157)
-
-Checks if a type annotation is exactly `bool` (not `bool?` or generic):
 ```csharp
-return typeAnnotation.Name == "bool" 
-    && typeAnnotation.TypeArguments.Count == 0 
-    && !typeAnnotation.IsNullable;
+private static void ValidateReturnType(
+    FunctionDef funcDef, 
+    string methodName, 
+    string owningTypeName, 
+    List<SemanticError> errors)
 ```
 
-**Strict Checking:** Rejects `bool?` for comparison operators since .NET doesn't allow nullable comparison results.
+**Purpose**: Enforces return type constraints for operator methods based on .NET operator semantics.
 
-#### `IsTypeAnnotationVoid(TypeAnnotation typeAnnotation)` (Lines 162-165)
+**Key Rules**:
 
-Checks if a type annotation represents `None` (Python's equivalent of void):
-```csharp
-return typeAnnotation.Name == "None" 
-    && typeAnnotation.TypeArguments.Count == 0;
-```
-
-**Note:** `None` is not nullable (`None?` doesn't make sense), so no nullability check needed.
-
----
-
-## Dependencies
-
-### Internal Dependencies
-
-1. **`Sharpy.Compiler.Parser.Ast`** (Line 1)
-   - `FunctionDef`: AST node representing function definitions
-   - `TypeAnnotation`: Represents type annotations in the AST
-   - Provides location information (`LineStart`, `ColumnStart`) for error reporting
-
-2. **`SemanticError`** (`Semantic/SemanticError.cs`)
-   - Exception type for semantic analysis errors
-   - Contains line/column information for precise error locations
-   - Used to report validation failures back to the compiler
-
-3. **`TypeSymbol`** (implied from `Semantic/Symbol.cs`)
-   - Represents a type in the symbol table
-   - Provides the type's name for error messages
-   - Passed in from `NameResolver` during method validation
-
-4. **`TypeAnnotationHelper`** (`Semantic/TypeAnnotationHelper.cs`)
-   - `GetName(TypeAnnotation)`: Converts type annotations to readable strings
-   - Handles generic types (e.g., `list[int]`), nullable types (e.g., `str?`)
-   - Shared utility used in error messages
-
-### External Dependencies
-
-None—this is a pure C# utility class with no external library dependencies beyond .NET BCL (`System.Collections.Generic` for `HashSet` and `List`).
-
----
-
-## Patterns and Design Decisions
-
-### 1. **Static Utility Class Pattern**
-All methods are static with no instance state. This makes sense because validation logic is stateless—it operates purely on input parameters.
-
-**Benefits:**
-- No need to instantiate validators
-- Thread-safe by design
-- Clear that no state is carried between validations
-- Easy to test in isolation
-
-### 2. **Category-Based Validation**
-Operators are grouped by semantic category (arithmetic, bitwise, comparison, etc.) rather than individual switch cases.
-
-**Benefits:**
-- Easy to add new operators—just add to the appropriate `HashSet`
-- Single point of truth for each category's requirements
-- More maintainable than a giant switch statement
-
-**Example:** Adding `__matmul__` (matrix multiplication `@` operator) would just require adding it to `BinaryArithmeticOps`.
-
-### 3. **Error Accumulation**
-Errors are collected in a list rather than thrown immediately:
-```csharp
-var errors = new List<SemanticError>();
-// ... validation logic adds to errors
-return errors;
-```
-
-**Benefits:**
-- Multiple errors can be reported in a single compilation pass
-- Caller decides how to handle errors (add to diagnostic list, throw, etc.)
-- Aligns with compiler best practices (show all errors, don't stop at first)
-
-### 4. **Gradual Typing Philosophy**
-Return type validation only occurs if a type annotation exists:
-```csharp
-if (funcDef.ReturnType != null)
-{
-    ValidateReturnType(...);
-}
-```
-
-This respects Sharpy's design as a gradually-typed language—type annotations are optional, but when provided, they're strictly enforced.
-
-### 5. **Immutable AST Pattern**
-The validator never modifies the AST (`FunctionDef` is a record)—it only reads and validates. This aligns with Sharpy's architecture where semantic information is stored separately in `SemanticInfo` rather than mutating AST nodes.
-
-### 6. **Precise Error Location Tracking**
-Every error includes `LineStart` and `ColumnStart` from the AST node:
-```csharp
-errors.Add(new SemanticError(message, funcDef.LineStart, funcDef.ColumnStart));
-```
-
-This ensures developers get precise error locations in their IDE or terminal.
-
----
-
-## Debugging Tips
-
-### 1. **Adding Debug Logging**
-
-If validation isn't working as expected, add temporary logging:
-```csharp
-public static List<SemanticError> ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType)
-{
-    var errors = new List<SemanticError>();
-    var methodName = funcDef.Name;
-    
-    Console.WriteLine($"Validating {methodName} on {owningType.Name}");  // DEBUG
-    Console.WriteLine($"Param count: {funcDef.Parameters.Count}");       // DEBUG
-    
-    // ... rest of validation
-}
-```
-
-### 2. **Testing Individual Operators**
-
-Create minimal Sharpy test files:
-```python
-# test_add.spy
-class Point:
-    x: int
-    y: int
-    
-    def __add__(self, other: Point) -> Point:  # Valid
-        return Point(self.x + other.x, self.y + other.y)
-```
-
-Compile and check for expected errors.
-
-### 3. **Checking Which Category an Operator Falls Into**
-
-If uncertain about classification, check the static collections:
-```csharp
-Console.WriteLine($"Is __eq__ comparison? {ComparisonOps.Contains("__eq__")}");
-Console.WriteLine($"Is __add__ arithmetic? {BinaryArithmeticOps.Contains("__add__")}");
-```
-
-### 4. **Understanding Error Flow**
-
-Set breakpoints in:
-1. `IsOperatorDunder()` - to see which methods are being checked
-2. `ValidateDunderSignature()` - to see parameter count validation
-3. `ValidateReturnType()` - to see return type validation
-4. Error creation points - to understand why specific errors are generated
-
-### 5. **Common Issues**
-
-**Issue:** Comparison operator accepts `bool?` when it shouldn't
-- **Check:** `IsTypeAnnotationBool()` - ensure `!typeAnnotation.IsNullable` is present
-
-**Issue:** New operator not recognized
-- **Check:** Is it added to the appropriate `HashSet` and is `AllOperatorDunders` rebuilt in the static constructor?
-
-**Issue:** Wrong parameter count accepted
-- **Check:** Is the operator correctly categorized (unary vs binary)?
-
-### 6. **Integration with NameResolver**
-
-If validation seems to not run, check `NameResolver.cs`:
-```csharp
-if (OperatorSignatureValidator.IsOperatorDunder(method.Name))
-{
-    var validationErrors = OperatorSignatureValidator.ValidateDunderSignature(method, owningType);
-    // Are errors being handled correctly here?
-}
-```
-
----
-
-## Contribution Guidelines
-
-### Adding New Operators
-
-**Example:** Adding the matrix multiplication operator `@` (`__matmul__`)
-
-1. **Determine the category**: Matrix multiplication is binary arithmetic
-2. **Add to appropriate HashSet**:
+1. **Comparison operators must return `bool`**:
    ```csharp
-   private static readonly HashSet<string> BinaryArithmeticOps = new()
+   if (ComparisonOps.Contains(methodName))
    {
-       "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__",
-       "__matmul__"  // NEW
-   };
-   ```
-3. **Add in-place variant** if applicable:
-   ```csharp
-   private static readonly HashSet<string> InPlaceOps = new()
-   {
-       // ... existing operators
-       "__imatmul__"  // NEW
-   };
-   ```
-4. **No other changes needed** - the static constructor automatically includes it in `AllOperatorDunders`
-
-5. **Add tests** in `Sharpy.Compiler.Tests/Semantic/OperatorSignatureValidatorTests.cs`:
-   ```csharp
-   [Fact]
-   public void TestMatMulOperator_ValidSignature()
-   {
-       var funcDef = CreateFunctionDef("__matmul__", parameterCount: 2, returnType: "Matrix");
-       var errors = OperatorSignatureValidator.ValidateDunderSignature(funcDef, mockType);
-       Assert.Empty(errors);
-   }
-   ```
-
-### Adding New Validation Rules
-
-**Example:** Enforce that in-place operators return the same type as `self`
-
-1. **Add new validation logic** to `ValidateReturnType()`:
-   ```csharp
-   else if (InPlaceOps.Contains(methodName))
-   {
-       // Verify return type matches owning type
-       if (returnType.Name != owningTypeName)
+       if (!IsTypeAnnotationBool(returnType))
        {
            errors.Add(new SemanticError(
-               $"In-place operator '{methodName}' on '{owningTypeName}' must return '{owningTypeName}', got '{TypeAnnotationHelper.GetName(returnType)}'",
-               funcDef.LineStart,
-               funcDef.ColumnStart));
+               $"Comparison operator method '{methodName}' on '{owningTypeName}' must return 'bool', got '{TypeAnnotationHelper.GetName(returnType)}'",
+               ...));
        }
    }
    ```
 
-2. **Add tests** for the new rule
-3. **Update documentation** in comments and this walkthrough
-
-### Performance Improvements
-
-If validation becomes a bottleneck (unlikely with current design):
-
-1. **Profile first** - use a profiler to confirm this is the bottleneck
-2. **Consider caching** - cache validation results if the same operators are validated multiple times
-3. **Optimize HashSet lookups** - currently O(1), hard to improve further
-
-### Code Quality
-
-When contributing:
-
-1. **Follow existing patterns** - use the same error message format, validation style
-2. **Add XML documentation** - all public methods should have `/// <summary>` comments
-3. **Keep it stateless** - don't add instance state
-4. **Test edge cases**:
-   - Methods with 0 parameters
-   - Methods with 10+ parameters
-   - Generic return types
-   - Nullable types
-5. **Run tests** before submitting:
-   ```bash
-   dotnet test --filter "FullyQualifiedName~OperatorSignatureValidator"
+2. **Arithmetic/bitwise/unary operators must return non-void**:
+   ```csharp
+   if (IsTypeAnnotationVoid(returnType))
+   {
+       errors.Add(new SemanticError(
+           $"Operator method '{methodName}' on '{owningTypeName}' must return a non-void type",
+           ...));
+   }
    ```
 
-### Integration Points to Consider
-
-When modifying this validator, consider impact on:
-
-1. **NameResolver** - calls this during method processing
-2. **RoslynEmitter** - generates C# operators; ensure validation aligns with codegen
-3. **TypeChecker** - may have additional type checking for operators
-4. **Error messages** - should be clear and actionable for users
-
-### Related Files to Review
-
-When working on operator validation, also review:
-
-- `Semantic/OperatorValidator.cs` - Higher-level operator validation
-- `Semantic/ProtocolSignatureValidator.cs` - Similar validator for protocol methods
-- `CodeGen/RoslynEmitter.cs` - Code generation for operators
-- `Parser/Ast/Statement.cs` - `FunctionDef` structure
-- `Semantic/NameResolver.cs` - Where this validator is called
+**Why these rules?**
+- C# requires comparison operators (`==`, `<`, etc.) to return `bool`
+- Arithmetic operators (`+`, `-`, etc.) must return a value (can't be void)
+- This ensures generated C# code will compile
 
 ---
 
-## Example Validation Scenarios
+### 3.5 Helper Methods
 
-### Scenario 1: Valid Binary Operator
+#### `IsTypeAnnotationBool(TypeAnnotation typeAnnotation)`
 
-**Sharpy Code:**
-```python
-class Vector:
-    def __add__(self, other: Vector) -> Vector:
-        return Vector(self.x + other.x, self.y + other.y)
+```csharp
+private static bool IsTypeAnnotationBool(TypeAnnotation typeAnnotation)
+{
+    return typeAnnotation.Name == "bool" 
+        && typeAnnotation.TypeArguments.Length == 0 
+        && !typeAnnotation.IsNullable;
+}
 ```
 
-**Validation:**
-- ✅ `__add__` recognized as binary arithmetic operator
-- ✅ Parameter count: 2 (`self`, `other`)
-- ✅ Return type: `Vector` (non-void)
-- **Result:** No errors
+**Purpose**: Checks if a type annotation represents exactly `bool` (not `bool?`, not `bool[int]`).
 
-### Scenario 2: Invalid Comparison Return Type
+**Three-part check**:
+1. Name must be `"bool"`
+2. No type arguments (not a generic like `bool[T]`)
+3. Not nullable (not `bool?`)
 
-**Sharpy Code:**
-```python
-class Point:
-    def __eq__(self, other: Point) -> int:  # ERROR: should return bool
-        return 0
+#### `IsTypeAnnotationVoid(TypeAnnotation typeAnnotation)`
+
+```csharp
+private static bool IsTypeAnnotationVoid(TypeAnnotation typeAnnotation)
+{
+    return typeAnnotation.Name == "None" 
+        && typeAnnotation.TypeArguments.Length == 0;
+}
 ```
 
-**Validation:**
-- ✅ `__eq__` recognized as comparison operator
-- ✅ Parameter count: 2
-- ❌ Return type: `int` (should be `bool`)
-- **Result:** Error generated:
-  ```
-  Semantic error at line 2, column 5: Comparison operator method '__eq__' on 'Point' must return 'bool', got 'int'
-  ```
+**Purpose**: Checks if a type annotation represents `None` (Sharpy's void/no-return type).
 
-### Scenario 3: Invalid Unary Parameter Count
+**Why "None" instead of "void"?** Sharpy follows Python convention where functions without a return value have type `None`.
 
-**Sharpy Code:**
-```python
-class Number:
-    def __neg__(self, other: Number) -> Number:  # ERROR: unary should have 1 param
-        return Number(-self.value)
+---
+
+## 4. Dependencies
+
+### Upstream Dependencies (What This File Uses)
+
+1. **`Sharpy.Compiler.Parser.Ast`**:
+   - `FunctionDef`: AST node representing function definitions
+   - `TypeAnnotation`: Represents type annotations in the source code
+
+2. **`Sharpy.Compiler.Semantic`**:
+   - `SemanticError`: Error objects with file location info
+   - `TypeSymbol`: Represents the class/struct owning the operator method
+   - `TypeAnnotationHelper`: Utility for formatting type names in error messages
+
+### Downstream Dependencies (What Uses This File)
+
+1. **Validation Pipeline**:
+   - The new V2 validation pipeline uses this validator through wrapper classes
+   - Called during semantic analysis phase
+
+2. **Type Checkers**:
+   - Type checking logic consults operator signatures to validate usage
+   - Ensures operators are called with compatible types
+
+### Related Files
+
+- **`OperatorValidator.cs`** (deprecated): Legacy validator that combined signature checking with type inference
+- **`ProtocolSignatureValidator.cs`**: Similar validator for protocol methods (like `__iter__`, `__len__`)
+- **`Validation/SignatureValidatorV2.cs`**: New V2 wrapper that uses this validator in the modern pipeline
+
+---
+
+## 5. Patterns and Design Decisions
+
+### 5.1 Static Utility Pattern
+
+**Design**: All methods are static, no instance state.
+
+**Rationale**:
+- Validation is a pure function (no side effects)
+- No need to carry state between validations
+- Can be called from anywhere without instantiation
+- Thread-safe by design (no mutable state)
+
+### 5.2 Early Exit Optimization
+
+```csharp
+if (!IsOperatorDunder(methodName))
+{
+    return errors;  // Empty list
+}
 ```
 
-**Validation:**
-- ✅ `__neg__` recognized as unary operator
-- ❌ Parameter count: 2 (should be 1)
-- **Result:** Error generated:
-  ```
-  Semantic error at line 2, column 5: Unary operator method '__neg__' on 'Number' must have exactly 1 parameter (self), got 2
-  ```
+**Rationale**: Skip validation for regular methods. Most methods in a class aren't operators, so this avoids unnecessary work.
 
-### Scenario 4: Void-Returning Arithmetic Operator
+### 5.3 Error Collection Pattern
 
-**Sharpy Code:**
-```python
-class Matrix:
-    def __add__(self, other: Matrix) -> None:  # ERROR: can't return void
-        pass
+```csharp
+var errors = new List<SemanticError>();
+// ... collect errors ...
+return errors;
 ```
 
-**Validation:**
-- ✅ `__add__` recognized as binary arithmetic operator
-- ✅ Parameter count: 2
-- ❌ Return type: `None` (void not allowed)
-- **Result:** Error generated:
-  ```
-  Semantic error at line 2, column 5: Operator method '__add__' on 'Matrix' must return a non-void type
-  ```
+**Rationale**:
+- Report all errors at once (better developer experience)
+- Don't fail fast - let developers see all issues
+- Caller decides whether to treat errors as fatal
+
+### 5.4 Category-Based Validation
+
+Operators are grouped into categories with shared validation rules.
+
+**Benefits**:
+- Clear organization
+- Easy to extend (add new operator → add to appropriate category)
+- Performance: `O(1)` category membership check via HashSet
+
+### 5.5 Separation of Concerns
+
+This validator **only checks signatures**, not:
+- Type compatibility (handled by `TypeChecker`)
+- Operator usage validation (handled by `OperatorValidator`)
+- Code generation (handled by `RoslynEmitter`)
+
+**Why?** Single Responsibility Principle. Each validator does one thing well.
+
+---
+
+## 6. Debugging Tips
+
+### 6.1 When Adding New Operators
+
+If you're adding a new operator to Sharpy:
+
+1. **Add to appropriate category**:
+   ```csharp
+   private static readonly HashSet<string> BinaryArithmeticOps = new()
+   {
+       "__add__", "__sub__", "__my_new_op__"  // Add here
+   };
+   ```
+
+2. **Update the static constructor**: It automatically picks up new operators via `UnionWith`.
+
+3. **Test with invalid signatures**:
+   ```python
+   class MyClass:
+       # Should fail: wrong parameter count
+       def __my_new_op__(self) -> int:
+           return 42
+   ```
+
+### 6.2 Common Error Scenarios
+
+**Error**: "Unary operator method `__neg__` must have exactly 1 parameter"
+- **Cause**: Developer added extra parameters to unary operator
+- **Fix**: Remove extra parameters; unary operators only take `self`
+
+**Error**: "Comparison operator method `__eq__` must return 'bool', got 'int'"
+- **Cause**: Wrong return type annotation
+- **Fix**: Change return type to `bool`
+
+**Error**: "Operator method `__add__` must return a non-void type"
+- **Cause**: Return type is `None` or missing
+- **Fix**: Add explicit return type annotation
+
+### 6.3 Debugging Workflow
+
+1. **Set breakpoint in `ValidateDunderSignature`**
+2. **Inspect `funcDef.Parameters.Length`** - is it what you expect?
+3. **Check `funcDef.ReturnType`** - is it null or has wrong annotation?
+4. **Print error messages** - they include line/column info for tracing
+
+### 6.4 Testing the Validator
+
+```csharp
+var funcDef = new FunctionDef
+{
+    Name = "__add__",
+    Parameters = new[] { /* ... */ },
+    ReturnType = new TypeAnnotation { Name = "int" },
+    LineStart = 10,
+    ColumnStart = 5
+};
+
+var errors = OperatorSignatureValidator.ValidateDunderSignature(
+    funcDef, 
+    myTypeSymbol);
+
+// Should be empty for valid signature
+Assert.Empty(errors);
+```
+
+---
+
+## 7. Contribution Guidelines
+
+### 7.1 Adding Support for New Operators
+
+**Steps**:
+
+1. **Add operator name to appropriate category**:
+   ```csharp
+   private static readonly HashSet<string> UnaryOps = new()
+   {
+       "__pos__", "__neg__", "__invert__", "__my_new_unary_op__"
+   };
+   ```
+
+2. **Update language specification** in `docs/language_specification/operator_overloading.md`
+
+3. **Add tests** in `Sharpy.Compiler.Tests/Semantic/OperatorSignatureValidatorTests.cs`
+
+4. **Verify C# mapping** - ensure the operator can be mapped to valid C# code
+
+### 7.2 Modifying Validation Rules
+
+**Example**: Make comparison operators allow nullable bool (`bool?`)
+
+```csharp
+private static bool IsTypeAnnotationBool(TypeAnnotation typeAnnotation)
+{
+    // Original: strict bool only
+    return typeAnnotation.Name == "bool" 
+        && typeAnnotation.TypeArguments.Length == 0 
+        && !typeAnnotation.IsNullable;
+
+    // Modified: allow bool?
+    return typeAnnotation.Name == "bool" 
+        && typeAnnotation.TypeArguments.Length == 0;
+        // Removed nullable check
+}
+```
+
+**Testing checklist**:
+- ✅ Add test with `bool?` return type
+- ✅ Verify C# code generation works
+- ✅ Update spec documentation
+- ✅ Run full test suite
+
+### 7.3 Error Message Guidelines
+
+**Good error messages**:
+- Include method name, type name, and location
+- State what was expected vs. what was found
+- Use consistent terminology
+
+**Example**:
+```csharp
+$"Binary operator method '{methodName}' on '{owningType.Name}' must have exactly 2 parameters (self, other), got {paramCount}"
+```
+
+**Poor error message**:
+```csharp
+"Wrong parameter count"  // ❌ Too vague
+```
+
+### 7.4 Common Pitfall: In-Place Operators
+
+In-place operators (`__iadd__`, `__isub__`, etc.) follow the same rules as binary operators:
+- Must have 2 parameters (self, other)
+- Must return non-void (typically return `self` for chaining)
+
+**Don't confuse with**:
+- Python's in-place semantics (modify self)
+- These still need proper return types in Sharpy for .NET interop
+
+---
+
+## 8. Cross-References
+
+### Related Documentation Files
+
+- **[Symbol.md](./Symbol.md)**: Explains `TypeSymbol` structure used in validation
+- **[SemanticError.md](./SemanticError.md)**: Error reporting conventions
+- **[ProtocolSignatureValidator.md](./ProtocolSignatureValidator.md)**: Similar validator for protocol methods
+- **[Validation Pipeline](./Validation/README.md)**: How validators are orchestrated
+
+### Related Source Files
+
+- **`src/Sharpy.Compiler/Semantic/OperatorValidator.cs`** (deprecated): Legacy validator - being phased out
+- **`src/Sharpy.Compiler/Semantic/Validation/SignatureValidatorV2.cs`**: V2 wrapper that uses this validator
+- **`src/Sharpy.Compiler/Semantic/TypeAnnotationHelper.cs`**: Shared utility for type name formatting
+- **`src/Sharpy.Compiler/CodeGen/RoslynEmitter*.cs`**: Consumes validated operators to generate C# code
+
+### Related Specifications
+
+- **`docs/language_specification/operator_overloading.md`**: Authoritative spec for operator signatures
+- **`docs/language_specification/dunder_invocation_rules.md`**: When and how operators are invoked
+- **`docs/language_specification/arithmetic_operators.md`**: Arithmetic operator semantics
+
+---
+
+## 9. Future Enhancements
+
+### 9.1 Planned Features
+
+1. **More detailed error messages**: Suggest fixes (e.g., "Did you mean to add a parameter?")
+2. **Protocol integration**: Validate operators implement corresponding protocols (`IAddable`, etc.)
+3. **Generic constraints**: Validate type parameters on generic operators
+4. **Overload resolution**: Validate multiple overloads don't conflict
+
+### 9.2 Known Limitations
+
+- **No parameter type validation**: Only checks count, not types (handled by `TypeChecker`)
+- **No body validation**: Doesn't check if implementation matches signature
+- **No reflection support**: Doesn't validate operators imported from .NET assemblies
 
 ---
 
 ## Summary
 
-The `OperatorSignatureValidator` is a focused, well-designed validator that bridges Python's operator overloading syntax with .NET's operator requirements. Its strength lies in:
+`OperatorSignatureValidator` is a focused, efficient validator that:
+- ✅ Ensures operator methods have correct signatures
+- ✅ Catches errors early in compilation
+- ✅ Provides clear error messages with location info
+- ✅ Integrates with the modern validation pipeline
+- ✅ Follows single-responsibility principle
 
-- **Clear categorization** of operators by semantic type
-- **Precise error messages** with location information
-- **Maintainability** through static, stateless design
-- **Extensibility** for adding new operators
-- **Alignment** with Sharpy's gradual typing philosophy
-
-As a newcomer, understanding this file helps you grasp:
-1. How Sharpy enforces .NET interop requirements
-2. The semantic analysis phase's error reporting patterns
-3. The relationship between Python-style syntax and C# codegen constraints
-
-When debugging operator-related issues, this is the first place to check for signature validation logic.
+**Key Takeaway**: This validator is the first line of defense against invalid operator definitions, ensuring Sharpy code can be reliably compiled to valid C# that matches .NET operator semantics.

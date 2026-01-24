@@ -19,6 +19,8 @@
 
 This file is one of several partial class files that together form the complete `Parser` class. Each partial file focuses on a specific aspect of parsing (statements, expressions, definitions, types, etc.).
 
+**Important**: All AST collections use `ImmutableArray<T>` for immutability. Parser methods build statements using `List<T>` internally, then convert to `ImmutableArray<T>` via `.ToImmutableArray()` when constructing AST nodes.
+
 ---
 
 ## Class/Type Structure
@@ -537,7 +539,14 @@ When encountering unexpected tokens, parser throws `ParserError`:
 - Halts parsing (no error recovery currently)
 - Clear error messages for users
 
-### 7. **Python Compatibility**
+### 7. **Immutable Collections in AST**
+All collection properties in AST nodes use `ImmutableArray<T>`:
+- Ensures AST immutability at the collection level
+- Parser converts `List<T>` to `ImmutableArray<T>` via `.ToImmutableArray()`
+- Supports future LSP, parallel compilation, and incremental compilation
+- Example: `ThenBody = thenBody.ToImmutableArray()`
+
+### 8. **Python Compatibility**
 Sharpy aims for Python syntax compatibility:
 - If/elif/else chains
 - While/for with else clauses

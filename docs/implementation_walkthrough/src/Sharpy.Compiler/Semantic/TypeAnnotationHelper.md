@@ -95,7 +95,7 @@ Before diving into the implementation, you need to understand what a `TypeAnnota
 public record TypeAnnotation
 {
     public string Name { get; init; } = "";                    // e.g., "int", "list", "dict"
-    public List<TypeAnnotation> TypeArguments { get; init; } = new();  // Recursive!
+    public ImmutableArray<TypeAnnotation> TypeArguments { get; init; } = ImmutableArray<TypeAnnotation>.Empty;  // Recursive!
     public bool IsNullable { get; init; }                      // T? syntax
     
     // Source location (for error messages)
@@ -112,10 +112,9 @@ public record TypeAnnotation
 
 For nested generics like `dict[str, list[int]]`:
 - `Name = "dict"`
-- `TypeArguments = [
-    TypeAnnotation { Name = "str" },
-    TypeAnnotation { Name = "list", TypeArguments = [TypeAnnotation { Name = "int" }] }
-  ]`
+- `TypeArguments = ImmutableArray containing:
+    [0] TypeAnnotation { Name = "str" }
+    [1] TypeAnnotation { Name = "list", TypeArguments = ImmutableArray containing [TypeAnnotation { Name = "int" }] }`
 
 ---
 
@@ -140,14 +139,14 @@ public static string GetName(TypeAnnotation? typeAnnotation)
 
 ```csharp
     // Step 2: Build the base name (handling generics)
-    var baseName = typeAnnotation.TypeArguments.Count > 0
+    var baseName = typeAnnotation.TypeArguments.Length > 0
         ? $"{typeAnnotation.Name}[{string.Join(", ", typeAnnotation.TypeArguments.Select(GetName))}]"
         : typeAnnotation.Name;
 ```
 
 **What's happening here:**
 
-1. **Check if generic:** `typeAnnotation.TypeArguments.Count > 0`
+1. **Check if generic:** `typeAnnotation.TypeArguments.Length > 0`
    - If empty → simple type like `int`
    - If has arguments → generic type like `list[int]`
 
@@ -203,7 +202,7 @@ GetName(type);
 
 **Execution:**
 1. `typeAnnotation == null`? No, skip
-2. `TypeArguments.Count > 0`? No (count is 0)
+2. `TypeArguments.Length > 0`? No (length is 0)
 3. `baseName = "int"`
 4. `IsNullable`? No
 5. Return `"int"`
@@ -216,17 +215,16 @@ GetName(type);
 var type = new TypeAnnotation 
 { 
     Name = "list",
-    TypeArguments = new List<TypeAnnotation>
-    {
+    TypeArguments = ImmutableArray.Create(
         new TypeAnnotation { Name = "str" }
-    }
+    )
 };
 GetName(type);
 ```
 
 **Execution:**
 1. `typeAnnotation == null`? No
-2. `TypeArguments.Count > 0`? Yes (count is 1)
+2. `TypeArguments.Length > 0`? Yes (length is 1)
 3. Build generic string:
    - `typeAnnotation.Name` = `"list"`
    - Recursive call: `GetName(TypeAnnotation { Name = "str" })`
@@ -245,11 +243,10 @@ GetName(type);
 var type = new TypeAnnotation 
 { 
     Name = "dict",
-    TypeArguments = new List<TypeAnnotation>
-    {
+    TypeArguments = ImmutableArray.Create(
         new TypeAnnotation { Name = "str" },
         new TypeAnnotation { Name = "int" }
-    },
+    ),
     IsNullable = true
 };
 GetName(type);
@@ -257,7 +254,7 @@ GetName(type);
 
 **Execution:**
 1. `typeAnnotation == null`? No
-2. `TypeArguments.Count > 0`? Yes (count is 2)
+2. `TypeArguments.Length > 0`? Yes (length is 2)
 3. Build generic string:
    - `typeAnnotation.Name` = `"dict"`
    - Recursive calls:
@@ -277,18 +274,16 @@ GetName(type);
 var type = new TypeAnnotation 
 { 
     Name = "list",
-    TypeArguments = new List<TypeAnnotation>
-    {
+    TypeArguments = ImmutableArray.Create(
         new TypeAnnotation 
         { 
             Name = "dict",
-            TypeArguments = new List<TypeAnnotation>
-            {
+            TypeArguments = ImmutableArray.Create(
                 new TypeAnnotation { Name = "str" },
                 new TypeAnnotation { Name = "int" }
-            }
+            )
         }
-    }
+    )
 };
 GetName(type);
 ```
@@ -296,11 +291,11 @@ GetName(type);
 **Execution (with recursion depth):**
 
 **Level 1:**
-1. `TypeArguments.Count > 0`? Yes
+1. `TypeArguments.Length > 0`? Yes
 2. Recursive call on `dict` type argument:
 
 **Level 2 (inside recursive call):**
-3. `TypeArguments.Count > 0`? Yes
+3. `TypeArguments.Length > 0`? Yes
 4. Recursive calls on `str` and `int`:
    - **Level 3:** `GetName(str)` → `"str"`
    - **Level 3:** `GetName(int)` → `"int"`
@@ -475,8 +470,8 @@ string.Join(", ", typeAnnotation.TypeArguments.Select(GetName))
 **Symptom:** `NullReferenceException` when calling `GetName()`
 
 **Possible causes:**
-1. `TypeArguments` list is `null` (shouldn't happen with default initialization)
-2. Individual type arguments in the list are `null`
+1. `TypeArguments` is an empty `ImmutableArray` (shouldn't happen with default initialization)
+2. Individual type arguments in the array contain invalid data
 3. `Name` property is `null`
 
 **Debug:**
@@ -487,8 +482,8 @@ if (typeAnnotation == null)
 if (typeAnnotation.Name == null)
     throw new InvalidOperationException("TypeAnnotation.Name cannot be null");
 
-if (typeAnnotation.TypeArguments == null)
-    throw new InvalidOperationException("TypeAnnotation.TypeArguments cannot be null");
+if (typeAnnotation.TypeArguments.IsDefault)
+    throw new InvalidOperationException("TypeAnnotation.TypeArguments is uninitialized");
 ```
 
 ---
@@ -530,8 +525,8 @@ var typeName = TypeAnnotationHelper.GetName(funcDef.ReturnType);
    public record TypeAnnotation
    {
        public string Name { get; init; } = "";
-       public List<TypeAnnotation> TypeArguments { get; init; } = new();
-       public List<TypeAnnotation>? UnionTypes { get; init; }  // NEW
+       public ImmutableArray<TypeAnnotation> TypeArguments { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
+       public ImmutableArray<TypeAnnotation>? UnionTypes { get; init; }  // NEW
        public bool IsNullable { get; init; }
    }
    ```
@@ -544,14 +539,14 @@ var typeName = TypeAnnotationHelper.GetName(funcDef.ReturnType);
            return "void";
 
        // NEW: Handle union types
-       if (typeAnnotation.UnionTypes != null && typeAnnotation.UnionTypes.Count > 0)
+       if (typeAnnotation.UnionTypes != null && typeAnnotation.UnionTypes.Value.Length > 0)
        {
-           var unionStr = string.Join(" | ", typeAnnotation.UnionTypes.Select(GetName));
+           var unionStr = string.Join(" | ", typeAnnotation.UnionTypes.Value.Select(GetName));
            return typeAnnotation.IsNullable ? $"({unionStr})?" : unionStr;
        }
 
        // Existing logic...
-       var baseName = typeAnnotation.TypeArguments.Count > 0
+       var baseName = typeAnnotation.TypeArguments.Length > 0
            ? $"{typeAnnotation.Name}[{string.Join(", ", typeAnnotation.TypeArguments.Select(GetName))}]"
            : typeAnnotation.Name;
 
@@ -657,10 +652,9 @@ public class TypeAnnotationHelperTests
         var type = new TypeAnnotation 
         { 
             Name = "list",
-            TypeArguments = new List<TypeAnnotation>
-            {
+            TypeArguments = ImmutableArray.Create(
                 new TypeAnnotation { Name = "str" }
-            }
+            )
         };
         Assert.Equal("list[str]", TypeAnnotationHelper.GetName(type));
     }
@@ -688,18 +682,16 @@ public class TypeAnnotationHelperTests
         var type = new TypeAnnotation 
         { 
             Name = "list",
-            TypeArguments = new List<TypeAnnotation>
-            {
+            TypeArguments = ImmutableArray.Create(
                 new TypeAnnotation 
                 { 
                     Name = "dict",
-                    TypeArguments = new List<TypeAnnotation>
-                    {
+                    TypeArguments = ImmutableArray.Create(
                         new TypeAnnotation { Name = "str" },
                         new TypeAnnotation { Name = "int" }
-                    }
+                    )
                 }
-            }
+            )
         };
         Assert.Equal("list[dict[str, int]]", TypeAnnotationHelper.GetName(type));
     }
@@ -710,10 +702,9 @@ public class TypeAnnotationHelperTests
         var type = new TypeAnnotation 
         { 
             Name = "list",
-            TypeArguments = new List<TypeAnnotation>
-            {
+            TypeArguments = ImmutableArray.Create(
                 new TypeAnnotation { Name = "int" }
-            },
+            ),
             IsNullable = true
         };
         Assert.Equal("list[int]?", TypeAnnotationHelper.GetName(type));
@@ -915,6 +906,6 @@ It's a small but crucial piece that makes error messages understandable!
 
 ---
 
-**Last Updated:** 2025-12-27  
+**Last Updated:** 2026-01-24  
 **Maintainer:** Sharpy Compiler Team  
 **Feedback:** Report issues or suggest improvements in the project repository

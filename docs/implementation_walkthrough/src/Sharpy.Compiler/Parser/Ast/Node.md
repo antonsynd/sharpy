@@ -29,12 +29,19 @@ This file is minimal by design—it establishes the contract for what all AST no
 ### 2.1 `Node` (Abstract Record)
 
 ```csharp
-public abstract record Node
+public abstract record Node : ILocatable
 {
     public int LineStart { get; init; }
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+    
+    /// <summary>
+    /// Character offset-based span. May be null if not tracked.
+    /// This is optional for backward compatibility - existing code that only
+    /// sets Line/Column properties will continue to work.
+    /// </summary>
+    public TextSpan? Span { get; init; }
 }
 ```
 
@@ -48,11 +55,38 @@ public abstract record Node
 **Properties:**
 - `LineStart` / `ColumnStart`: 1-based indices marking where this syntactic element begins in source code
 - `LineEnd` / `ColumnEnd`: 1-based indices marking where this element ends
+- `Span` (nullable): Character offset-based span from `Sharpy.Compiler.Text`. Optional for backward compatibility.
+
+**Why Track Location Two Ways?**
+
+Sharpy uses a **dual location tracking system**:
+
+1. **Line/Column** (1-based): Traditional, human-readable coordinates
+   - Used in error messages: `"error.spy:5:10: Type mismatch"`
+   - Easy to communicate to developers
+   - Matches most text editors' coordinate systems
+
+2. **TextSpan** (0-based character offsets): Efficient for programmatic operations
+   - Used for precise range queries: "What's at character 142?"
+   - Faster for IDE features (go-to-definition, highlighting)
+   - Enables efficient text slicing and manipulation
+
+**The `ILocatable` Interface**:
+```csharp
+// From Sharpy.Compiler.Text.ILocatable
+public interface ILocatable
+{
+    TextSpan? Span { get; }
+}
+```
+
+This interface is shared across AST nodes, tokens, and symbols, providing a uniform way to query source locations throughout the compiler.
 
 **Why Track Location?**
 - **Error Reporting**: When semantic analysis or codegen finds issues, precise error messages need line/column info
 - **IDE Features**: Future language server protocol (LSP) support needs location data for go-to-definition, hover, etc.
 - **Debugging**: `AstDumper` uses these coordinates to create human-readable AST dumps
+- **Refactoring Tools**: TextSpan enables precise code transformations
 
 **Important Pattern**: The `init` keyword means these properties can only be set during object initialization (constructor or object initializer), enforcing immutability.
 
@@ -61,7 +95,7 @@ public abstract record Node
 ```csharp
 public record Module : Node
 {
-    public List<Statement> Body { get; init; } = new();
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public string? DocString { get; init; }
 }
 ```
@@ -69,11 +103,18 @@ public record Module : Node
 **Purpose**: Represents a complete Sharpy source file (`.spy` file) after parsing.
 
 **Properties:**
-- `Body`: A list of top-level statements/declarations (functions, classes, imports, variables, etc.)
+- `Body`: An immutable array of top-level statements/declarations (functions, classes, imports, variables, etc.)
 - `DocString`: Optional module-level documentation string (if the first statement is a string literal)
 
-**Why `List<Statement>` Not `IReadOnlyList`?**
-The list itself is mutable (can add/remove items), but the `Module` record is immutable (can't replace the entire list reference). This is a pragmatic choice for the parser, which builds the list incrementally.
+**Why `ImmutableArray<Statement>`?**
+
+This uses `System.Collections.Immutable.ImmutableArray<T>`, providing:
+- **True immutability**: Once created, the array contents cannot be changed
+- **Performance**: More efficient than `List<T>` for read-heavy workloads (no bounds checking overhead after construction)
+- **Consistency**: Aligns with the immutable design philosophy of record types
+- **Thread-safety**: Can be safely shared across threads without locking
+
+The parser builds up a regular list during parsing, then converts it to an `ImmutableArray` when constructing the `Module`.
 
 **Typical Structure:**
 ```python
@@ -169,7 +210,8 @@ var expr = new BinaryOp {
     LineStart = leftExpr.LineStart,      // Start of left operand
     ColumnStart = leftExpr.ColumnStart,
     LineEnd = rightExpr.LineEnd,         // End of right operand
-    ColumnEnd = rightExpr.ColumnEnd
+    ColumnEnd = rightExpr.ColumnEnd,
+    Span = TextSpan.FromBounds(leftExpr.Span.Start, rightExpr.Span.End)
 };
 ```
 
@@ -184,6 +226,75 @@ AddError(
 // Produces: "error.spy:5:10: Cannot assign type 'str' to variable of type 'int'"
 ```
 
+**Usage with TextSpan for IDE Features:**
+```csharp
+// Finding what symbol is at cursor position:
+public Symbol? GetSymbolAtPosition(int characterOffset)
+{
+    foreach (var node in GetAllNodes())
+    {
+        if (node.Span?.Contains(characterOffset) == true)
+        {
+            return _semanticInfo.GetSymbol(node);
+        }
+    }
+    return null;
+}
+```
+
+### 3.4 Understanding TextSpan
+
+The `TextSpan` struct from `Sharpy.Compiler.Text` provides efficient character-based location tracking:
+
+```csharp
+public readonly struct TextSpan : IEquatable<TextSpan>
+{
+    public int Start { get; }    // Zero-based character offset
+    public int Length { get; }   // Number of characters
+    public int End => Start + Length;
+    public bool IsEmpty => Length == 0;
+    
+    // Methods: Contains(), OverlapsWith(), Intersection(), Union()
+}
+```
+
+**Creating TextSpans:**
+```csharp
+// Constructor form:
+var span1 = new TextSpan(start: 10, length: 5);  // Characters 10-14
+
+// From bounds:
+var span2 = TextSpan.FromBounds(start: 10, end: 15);  // Characters 10-14
+
+// Empty span:
+var span3 = TextSpan.Empty;  // Start=0, Length=0
+```
+
+**Common Operations:**
+```csharp
+var code = "def foo(): pass";
+var funcSpan = new TextSpan(0, 15);   // Entire function
+var nameSpan = new TextSpan(4, 3);    // "foo"
+
+// Extract text:
+string funcText = code.Substring(funcSpan.Start, funcSpan.Length);
+
+// Check containment:
+bool contains = funcSpan.Contains(nameSpan);  // true
+
+// Check overlap:
+var bodySpan = new TextSpan(11, 4);  // "pass"
+bool overlaps = nameSpan.OverlapsWith(bodySpan);  // false
+
+// Find intersection:
+var unionSpan = nameSpan.Union(bodySpan);  // Covers "foo(): pass"
+```
+
+**Why Zero-Based Offsets?**
+- Matches C#'s `string.Substring(start, length)` conventions
+- Efficient for array/string indexing
+- Standard in most programming language tooling
+
 ---
 
 ## 4. Dependencies
@@ -191,10 +302,10 @@ AddError(
 ### 4.1 Outbound Dependencies
 
 `Node.cs` has **minimal dependencies**:
-- `System.Collections.Generic` (for `List<>`)
-- That's it! No other Sharpy compiler components
+- `System.Collections.Immutable` (for `ImmutableArray<T>`)
+- `Sharpy.Compiler.Text` (for `ILocatable` interface and `TextSpan` struct)
 
-This is intentional—AST nodes are data structures that should stand alone.
+This is intentional—AST nodes are data structures that should stand alone with minimal coupling.
 
 ### 4.2 Inbound Dependencies (Who Uses Node?)
 
@@ -258,6 +369,57 @@ public Expression Expression { get; init; } = null!;
 ```
 
 This tells the C# null-checking analyzer "trust me, this will be initialized"—it's always set by the parser through object initializers. The default is null for compiler happiness, but it's never actually null in practice.
+
+### 5.1.1 ImmutableArray Collections Pattern
+
+**Pattern:**
+```csharp
+public record SomeNode : Node
+{
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+}
+```
+
+**Why `ImmutableArray<T>` instead of `List<T>`?**
+- **True immutability**: Aligns with record design philosophy
+- **Performance**: No bounds checking after construction, more efficient for read-heavy workloads
+- **Thread-safety**: Safe to share across threads
+- **Memory efficiency**: No extra capacity buffer like `List<T>`
+
+**Parser Pattern for Building ImmutableArray:**
+```csharp
+// In Parser.cs:
+var statements = new List<Statement>();  // Mutable builder
+while (!IsAtEnd())
+{
+    statements.Add(ParseStatement());
+}
+
+return new Module
+{
+    Body = statements.ToImmutableArray(),  // Convert to immutable
+    LineStart = start.Line,
+    // ...
+};
+```
+
+**Common Operations:**
+```csharp
+// Iteration (efficient):
+foreach (var stmt in module.Body)
+{
+    ProcessStatement(stmt);
+}
+
+// Indexing (efficient, no bounds check overhead):
+var firstStmt = module.Body[0];
+
+// Checking emptiness:
+bool isEmpty = module.Body.IsEmpty;  // Use IsEmpty, not .Length == 0
+
+// LINQ works:
+var functions = module.Body.OfType<FunctionDef>().ToList();
+```
 
 ### 5.2 Separation of Syntax and Semantics
 
@@ -328,6 +490,11 @@ Module @ L1:C1
 - **Debug**: Print the node's location; compare to actual source code position
 - **Common mistake**: Using current token instead of start/end tokens
 
+**Problem: "TextSpan is null when expected"**
+- **Cause**: Parser didn't set the optional `Span` property
+- **Debug**: Check if code relies on `Span` being non-null; add null checks or ensure parser sets it
+- **Fix**: Either make code handle `Span` nullability or update parser to always set `Span`
+
 **Problem: "Pattern matching not exhaustive"**
 - **Cause**: Added a new statement/expression type but didn't handle it everywhere
 - **Fix**: Search codebase for `switch (stmt)` or `switch (expr)` and add your case
@@ -358,16 +525,22 @@ grep -r "\.LineStart.*\.ColumnStart" src/Sharpy.Compiler/Semantic/
 **Rarely!** This file should be very stable. Consider modifying if:
 
 1. **Adding universal metadata to all nodes**
-   - Example: Adding `public string? SourceText { get; init; }` to preserve original text
+   - Example: Adding `public SourceText? Source { get; init; }` to preserve reference to source file
    - Requires updating Parser, AstDumper, and potentially tests
 
-2. **Adding a new root-level AST concept** (unlikely)
+2. **Changing location tracking**
+   - Example: Making `TextSpan` required instead of optional (breaking change)
+   - Example: Adding byte offsets in addition to character offsets
+   - Impacts parser and all error reporting
+
+3. **Adding a new root-level AST concept** (very unlikely)
    - Example: If Sharpy adds "notebook cells" as a concept above modules
    - Would require extensive changes across the compiler
 
-3. **Changing location tracking granularity**
-   - Example: Adding byte offsets in addition to line/column
-   - Impacts parser and all error reporting
+**Recent Changes:**
+- Added `TextSpan? Span` property for character offset tracking
+- Added `ILocatable` interface implementation for unified location queries
+- Changed `Module.Body` from `List<Statement>` to `ImmutableArray<Statement>` for true immutability
 
 ### 7.2 What NOT to Do
 
@@ -495,24 +668,52 @@ This would be added to `Statement.cs`, not `Node.cs`.
 
 - Records are allocated on the heap (they're reference types)
 - Large source files = many node instances (tens of thousands)
-- Parser should reuse lists where possible (but currently doesn't aggressively optimize)
+- `ImmutableArray<T>` has zero-overhead after construction (no bounds checking)
 - GC pressure is generally not a problem for typical compilation workloads
 
-**Micro-optimization opportunity** (not implemented):
+**Location Tracking Performance:**
+- `TextSpan` is a lightweight struct (two ints: Start and Length)
+- The nullable `TextSpan?` becomes a `Nullable<TextSpan>` (12 bytes on 64-bit)
+- Line/column integers (4 ints × 4 bytes = 16 bytes per node)
+- Total location overhead: ~28 bytes per node (acceptable for compiler workloads)
+
+**Memory Layout Example** (approximate):
+```
+Module node allocation:
+- Object header: 16 bytes
+- Location data: 28 bytes (4 ints + nullable TextSpan)
+- Body reference: 8 bytes
+- DocString reference: 8 bytes
+- ImmutableArray internal: varies with statement count
+Total: ~60 bytes + statements
+```
+
+**Micro-optimization opportunities** (not currently implemented):
 - Use `ArrayPool<T>` for temporary collections during parsing
 - Use structs for very small nodes (like `Identifier`), but this complicates the hierarchy
+- Implement AST node interning for common patterns (probably not worth the complexity)
 
 ---
 
 ## 9. Related Files and Further Reading
 
 ### Key Related Files:
-- **`Statement.cs`**: All statement node types (30+ records)
-- **`Expression.cs`**: All expression node types (20+ records)
-- **`Types.cs`**: Type annotation nodes (`List[int]`, `Dict[str, str]`, etc.)
-- **`Parser/Parser.cs`**: Creates these nodes via recursive descent parsing
-- **`Parser/AstDumper.cs`**: Debugging tool that pretty-prints AST
+- **`Statement.cs`**: All statement node types (30+ records) - [See walkthrough](Statement.md)
+- **`Expression.cs`**: All expression node types (20+ records) - [See walkthrough](Expression.md)
+- **`Types.cs`**: Type annotation nodes (`List[int]`, `Dict[str, str]`, etc.) - [See walkthrough](Types.md)
+- **`Parser/Parser.cs`**: Creates these nodes via recursive descent parsing - [See walkthrough](../Parser.md)
+- **`Parser/AstDumper.cs`**: Debugging tool that pretty-prints AST - [See walkthrough](../AstDumper.md)
 - **`Semantic/SemanticInfo.cs`**: Where type/symbol info is stored (separate from AST)
+- **`Text/TextSpan.cs`**: Character offset-based location tracking
+- **`Text/ILocatable.cs`**: Interface for source-located elements
+
+### Cross-References in Sharpy.Compiler.Text:
+The `Text` namespace contains utilities for source location tracking:
+- **`ILocatable`**: Interface implemented by `Node` for uniform location queries
+- **`TextSpan`**: Efficient character offset-based spans
+- **`SourceText`**: Represents source file contents with line/column mapping
+
+These types work together to enable precise error reporting and IDE features.
 
 ### Documentation:
 - **Project README**: `README.md` (root) - Architecture overview

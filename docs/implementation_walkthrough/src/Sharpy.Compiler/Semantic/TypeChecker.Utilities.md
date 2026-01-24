@@ -14,6 +14,7 @@ This file contains the utility and validation methods for the `TypeChecker` part
 - Type parameter substitution (for generics)
 - Assignment target validation
 - Constructor/struct/enum validation rules
+- Interface implementation validation
 - super() expression validation
 - Error reporting utilities
 
@@ -333,7 +334,60 @@ class Child(Parent):
 
 ---
 
-### 10. Type Checking Helpers
+### 10. Interface Implementation Validation
+
+#### `ValidateInterfaceImplementations(TypeSymbol typeSymbol, int? declarationLine, int? declarationColumn)`
+
+**Purpose**: Ensures that a class or struct implements all methods required by its interfaces (including inherited interfaces).
+
+**Validation checks:**
+1. Collects all interfaces (direct + base interfaces + interfaces from base classes)
+2. Collects all methods implemented by the type and its base classes
+3. For each interface method:
+   - Verifies a method with the same name exists
+   - Verifies parameter count matches (excluding `self`)
+
+**Why it exists**: Enforces the interface contract - classes/structs must implement all methods they promise to implement.
+
+**Example error:**
+```python
+interface Drawable:
+    def draw(self) -> None: ...
+
+class Circle(Drawable):  # ❌ Error: missing draw() implementation
+    pass
+```
+
+#### `CollectAllInterfaces(TypeSymbol type)`
+
+**Purpose**: Gathers all interfaces that a type must implement.
+
+**Collection strategy:**
+1. Start with directly implemented interfaces
+2. Add interfaces from base class hierarchy (with cycle detection)
+3. BFS through interface inheritance to get base interfaces
+4. Return deduplicated set
+
+**Why breadth-first search?** Ensures all interface hierarchy levels are covered without getting stuck in cycles.
+
+**Design note**: Uses `HashSet` to prevent duplicates and a `visited` set to prevent infinite loops in case of circular dependencies.
+
+#### `CollectImplementedMethodsByName(TypeSymbol type)`
+
+**Purpose**: Builds a name-to-method dictionary of all methods available in a type's hierarchy.
+
+**Algorithm:**
+1. Walk up the inheritance chain (with cycle detection)
+2. For each class, add methods to dictionary (if not already present)
+3. Prefer most-derived implementations (child methods shadow parent methods)
+
+**Returns**: `Dictionary<string, FunctionSymbol>` - Maps method name to its symbol
+
+**Why name-based?** Interface validation matches by name first, then validates signature compatibility.
+
+---
+
+### 11. Type Checking Helpers
 
 #### `IsDunderMethod(string name)`
 
@@ -365,7 +419,7 @@ class Child(Parent):
 
 ---
 
-### 11. Error Reporting
+### 12. Error Reporting
 
 #### `AddError(string message, int? line = null, int? column = null)`
 
@@ -495,6 +549,17 @@ If struct constructor validation is incorrectly reporting missing initialization
 
 **Common issue**: Field initialized inside an `if` block - move initialization to top level of constructor.
 
+### Interface Implementation Debugging
+
+If interface validation is reporting missing methods that are actually implemented:
+
+1. **Check** that method names match exactly (case-sensitive)
+2. **Verify** the method is in the type's `Methods` collection (not just in AST)
+3. **Set breakpoint** in `CollectImplementedMethodsByName` to see what methods are found
+4. **Check** if the method might be inherited from a base class
+
+**Common issue**: Method implemented but not registered in `TypeSymbol.Methods` during name resolution phase.
+
 ### Generic Type Substitution Issues
 
 If generic types aren't being substituted correctly:
@@ -521,6 +586,7 @@ If generic types aren't being substituted correctly:
 - Implementing contravariance checks for function types
 - Adding tuple unpacking validation for match statements
 - Supporting type guards beyond `isinstance` and `is not None`
+- Enhancing interface validation to check method signatures (not just names)
 
 ### Code Style Conventions
 
@@ -580,11 +646,12 @@ Relevant specification documents:
 
 `TypeChecker.Utilities.cs` is the **toolbox** for the Sharpy type checker. It provides:
 
-✅ **Type narrowing** - Flow-sensitive typing for conditionals
-✅ **Type compatibility** - Advanced assignability with variance
-✅ **Generic support** - Type parameter substitution
-✅ **Validation** - Constructor overloading, struct initialization, enum rules
-✅ **super() semantics** - Complex context-sensitive validation
+✅ **Type narrowing** - Flow-sensitive typing for conditionals  
+✅ **Type compatibility** - Advanced assignability with variance  
+✅ **Generic support** - Type parameter substitution  
+✅ **Validation** - Constructor overloading, struct initialization, enum rules  
+✅ **Interface contracts** - Ensures classes implement all required methods  
+✅ **super() semantics** - Complex context-sensitive validation  
 ✅ **Error management** - Centralized reporting with recovery
 
 **Key insight**: This file implements the **policy** of the type system (what's allowed, what isn't), while other TypeChecker files implement the **mechanism** (traversing AST and applying rules).
