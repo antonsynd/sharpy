@@ -34,9 +34,10 @@ struct Point:
         self.x = x
         self.y = y
 
-p = Point(10, 20)
-print(p.x)
-print(p.y)
+def main():
+    p = Point(10, 20)
+    print(p.x)
+    print(p.y)
 ";
 
         // Act
@@ -60,9 +61,10 @@ struct Origin:
         self.x = 0
         self.y = 0
 
-o = Origin()
-print(o.x)
-print(o.y)
+def main():
+    o = Origin()
+    print(o.x)
+    print(o.y)
 ";
 
         // Act
@@ -86,12 +88,13 @@ struct Vector2:
         self.x = x
         self.y = y
 
-v1 = Vector2(1.0, 2.0)
-v2 = Vector2(3.0, 4.0)
-print(v1.x)
-print(v1.y)
-print(v2.x)
-print(v2.y)
+def main():
+    v1 = Vector2(1.0, 2.0)
+    v2 = Vector2(3.0, 4.0)
+    print(v1.x)
+    print(v1.y)
+    print(v2.x)
+    print(v2.y)
 ";
 
         // Act
@@ -118,8 +121,9 @@ struct Rectangle:
     def area(self) -> int:
         return self.width * self.height
 
-r = Rectangle(5, 10)
-print(r.area())
+def main():
+    r = Rectangle(5, 10)
+    print(r.area())
 ";
 
         // Act
@@ -147,12 +151,13 @@ struct Point:
         self.x = x
         self.y = y
 
-p1 = Point()
-p2 = Point(5, 7)
-print(p1.x)
-print(p1.y)
-print(p2.x)
-print(p2.y)
+def main():
+    p1 = Point()
+    p2 = Point(5, 7)
+    print(p1.x)
+    print(p1.y)
+    print(p2.x)
+    print(p2.y)
 ";
 
         // Act
@@ -176,9 +181,10 @@ struct GameState:
         self.score = score
         self.level = level
 
-state = GameState(100, 1)
-print(state.score)
-print(state.level)
+def main():
+    state = GameState(100, 1)
+    print(state.score)
+    print(state.level)
 ";
 
         // Act
@@ -203,8 +209,9 @@ struct Circle:
     def area(self) -> float:
         return 3.14159 * self.radius * self.radius
 
-c = Circle(5.0)
-print(c.radius)
+def main():
+    c = Circle(5.0)
+    print(c.radius)
 ";
 
         // Act
@@ -231,9 +238,10 @@ struct Point:
     def get_x(self) -> int:
         return self.x
 
-# Instantiate and immediately call method
-x = Point(3, 4).get_x()
-print(x)
+def main():
+    # Instantiate and immediately call method
+    x = Point(3, 4).get_x()
+    print(x)
 ";
 
         // Act
@@ -252,11 +260,12 @@ struct Point:
     x: int
     y: int
 
-p = Point()
-p.x = 10
-p.y = 20
-print(p.x)
-print(p.y)
+def main():
+    p = Point()
+    p.x = 10
+    p.y = 20
+    print(p.x)
+    print(p.y)
 ";
         var result = CompileAndExecute(source);
 
@@ -280,11 +289,12 @@ struct Person:
         self.height = height
         self.active = active
 
-p = Person(""Alice"", 30, 5.5, True)
-print(p.name)
-print(p.age)
-print(p.height)
-print(p.active)
+def main():
+    p = Person(""Alice"", 30, 5.5, True)
+    print(p.name)
+    print(p.age)
+    print(p.height)
+    print(p.active)
 ";
         var result = CompileAndExecute(source);
 
@@ -304,11 +314,12 @@ struct Point:
         self.x = x
         self.y = y
 
-p = Point(100, 200)
-x_val = p.x
-y_val = p.y
-print(x_val)
-print(y_val)
+def main():
+    p = Point(100, 200)
+    x_val = p.x
+    y_val = p.y
+    print(x_val)
+    print(y_val)
 ";
         var result = CompileAndExecute(source);
 
@@ -330,10 +341,11 @@ struct Vector2:
         self.y = y
         self.length = (x * x + y * y) ** 0.5
 
-v = Vector2(3.0, 4.0)
-print(v.x)
-print(v.y)
-print(v.length)
+def main():
+    v = Vector2(3.0, 4.0)
+    print(v.x)
+    print(v.y)
+    print(v.length)
 ";
         var result = CompileAndExecute(source);
 
@@ -358,11 +370,12 @@ struct Point:
         self.x = x
         self.y = y
 
-p1 = Point(10, 20)
-p2 = p1
-p2.x = 100
-print(p1.x)
-print(p2.x)
+def main():
+    p1 = Point(10, 20)
+    p2 = p1
+    p2.x = 100
+    print(p1.x)
+    print(p2.x)
 ";
         var result = CompileAndExecute(source);
 
@@ -383,10 +396,11 @@ struct Point:
         self.x = x
         self.y = y
 
-p = Point(1, 2)
-print(p.x)
-p = Point(3, 4)
-print(p.x)
+def main():
+    p = Point(1, 2)
+    print(p.x)
+    p = Point(3, 4)
+    print(p.x)
 ";
         var result = CompileAndExecute(source);
 
@@ -407,12 +421,13 @@ struct Counter:
     def increment(self) -> None:
         self.count = self.count + 1
 
-c = Counter()
-print(c.count)
-c.increment()
-print(c.count)
-c.increment()
-print(c.count)
+def main():
+    c = Counter()
+    print(c.count)
+    c.increment()
+    print(c.count)
+    c.increment()
+    print(c.count)
 ";
         var result = CompileAndExecute(source);
 
@@ -439,8 +454,9 @@ struct Point:
     def distance_from_origin(self) -> float:
         return (self.x ** 2 + self.y ** 2) ** 0.5
 
-p = Point(3, 4)
-print(p.distance_from_origin())
+def main():
+    p = Point(3, 4)
+    print(p.distance_from_origin())
 ";
         var result = CompileAndExecute(source);
 
@@ -464,12 +480,13 @@ struct Point:
         self.x = self.x + dx
         self.y = self.y + dy
 
-p = Point(10, 20)
-print(p.x)
-print(p.y)
-p.move(5, 3)
-print(p.x)
-print(p.y)
+def main():
+    p = Point(10, 20)
+    print(p.x)
+    print(p.y)
+    p.move(5, 3)
+    print(p.x)
+    print(p.y)
 ";
         var result = CompileAndExecute(source);
 
@@ -495,11 +512,12 @@ struct Calculator:
         self.result = a * b
         return self.result
 
-calc = Calculator()
-print(calc.add(5, 3))
-print(calc.result)
-print(calc.multiply(4, 7))
-print(calc.result)
+def main():
+    calc = Calculator()
+    print(calc.add(5, 3))
+    print(calc.result)
+    print(calc.multiply(4, 7))
+    print(calc.result)
 ";
         var result = CompileAndExecute(source);
 
@@ -525,9 +543,10 @@ struct Rectangle:
     def perimeter(self) -> int:
         return 2 * (self.width + self.height)
 
-r = Rectangle(5, 10)
-print(r.area())
-print(r.perimeter())
+def main():
+    r = Rectangle(5, 10)
+    print(r.area())
+    print(r.perimeter())
 ";
         var result = CompileAndExecute(source);
 
@@ -549,8 +568,9 @@ enum Status:
     ACTIVE = 1
     INACTIVE = 2
 
-s = Status.ACTIVE
-print(s)
+def main():
+    s = Status.ACTIVE
+    print(s)
 ";
         var result = CompileAndExecute(source);
 
@@ -567,8 +587,9 @@ enum Color:
     GREEN = ""green""
     BLUE = ""blue""
 
-c = Color.RED
-print(c)
+def main():
+    c = Color.RED
+    print(c)
 ";
         var result = CompileAndExecute(source);
 
@@ -587,9 +608,10 @@ enum Status:
     ACTIVE = 1
     INACTIVE = 2
 
-print(Status.PENDING)
-print(Status.ACTIVE)
-print(Status.INACTIVE)
+def main():
+    print(Status.PENDING)
+    print(Status.ACTIVE)
+    print(Status.INACTIVE)
 ";
         var result = CompileAndExecute(source);
 
@@ -608,12 +630,13 @@ enum Status:
     ACTIVE = 1
     INACTIVE = 2
 
-s1 = Status.PENDING
-print(s1)
-s1 = Status.ACTIVE
-print(s1)
-s1 = Status.INACTIVE
-print(s1)
+def main():
+    s1 = Status.PENDING
+    print(s1)
+    s1 = Status.ACTIVE
+    print(s1)
+    s1 = Status.INACTIVE
+    print(s1)
 ";
         var result = CompileAndExecute(source);
 
@@ -631,10 +654,11 @@ enum LogLevel:
     WARNING = ""warning""
     ERROR = ""error""
 
-print(LogLevel.DEBUG)
-print(LogLevel.INFO)
-print(LogLevel.WARNING)
-print(LogLevel.ERROR)
+def main():
+    print(LogLevel.DEBUG)
+    print(LogLevel.INFO)
+    print(LogLevel.WARNING)
+    print(LogLevel.ERROR)
 ";
         var result = CompileAndExecute(source);
 
@@ -652,9 +676,10 @@ enum Direction:
     NEUTRAL = 0
     DOWN = 1
 
-print(Direction.UP)
-print(Direction.NEUTRAL)
-print(Direction.DOWN)
+def main():
+    print(Direction.UP)
+    print(Direction.NEUTRAL)
+    print(Direction.DOWN)
 ";
         var result = CompileAndExecute(source);
 
@@ -672,9 +697,10 @@ enum Flags:
     FLAG_B = 2000000
     FLAG_C = 3000000
 
-print(Flags.FLAG_A)
-print(Flags.FLAG_B)
-print(Flags.FLAG_C)
+def main():
+    print(Flags.FLAG_A)
+    print(Flags.FLAG_B)
+    print(Flags.FLAG_C)
 ";
         var result = CompileAndExecute(source);
 
@@ -695,11 +721,12 @@ enum Status:
     ACTIVE = 1
     INACTIVE = 2
 
-s = Status.ACTIVE
-if s == Status.ACTIVE:
-    print(""Active"")
-else:
-    print(""Not Active"")
+def main():
+    s = Status.ACTIVE
+    if s == Status.ACTIVE:
+        print(""Active"")
+    else:
+        print(""Not Active"")
 ";
         var result = CompileAndExecute(source);
 
@@ -716,13 +743,14 @@ enum Status:
     ACTIVE = 1
     INACTIVE = 2
 
-s = Status.PENDING
-if s == Status.PENDING:
-    print(""Pending"")
-elif s == Status.ACTIVE:
-    print(""Active"")
-else:
-    print(""Inactive"")
+def main():
+    s = Status.PENDING
+    if s == Status.PENDING:
+        print(""Pending"")
+    elif s == Status.ACTIVE:
+        print(""Active"")
+    else:
+        print(""Inactive"")
 ";
         var result = CompileAndExecute(source);
 
@@ -753,9 +781,10 @@ struct Task:
         self.name = name
         self.status = status
 
-t = Task(""My Task"", Status.ACTIVE)
-print(t.name)
-print(t.status)
+def main():
+    t = Task(""My Task"", Status.ACTIVE)
+    print(t.name)
+    print(t.status)
 ";
         var result = CompileAndExecute(source);
 
@@ -786,12 +815,13 @@ struct Task:
     def complete(self) -> None:
         self.status = Status.COMPLETE
 
-t = Task()
-print(t.status)
-t.activate()
-print(t.status)
-t.complete()
-print(t.status)
+def main():
+    t = Task()
+    print(t.status)
+    t.activate()
+    print(t.status)
+    t.complete()
+    print(t.status)
 ";
         var result = CompileAndExecute(source);
 
@@ -826,12 +856,13 @@ struct Project:
         self.title = title
         self.default_priority = Priority.MEDIUM
 
-p = Project(""My Project"")
-t = Task(""Important Task"", Priority.HIGH)
-print(p.title)
-print(p.default_priority)
-print(t.name)
-print(t.priority)
+def main():
+    p = Project(""My Project"")
+    t = Task(""Important Task"", Priority.HIGH)
+    print(p.title)
+    print(p.default_priority)
+    print(t.name)
+    print(t.priority)
 ";
         var result = CompileAndExecute(source);
 
@@ -872,10 +903,11 @@ struct Line:
         dy = self.end_y - self.start_y
         return (dx * dx + dy * dy) ** 0.5
 
-p1 = Point(0, 0)
-p2 = Point(3, 4)
-line = Line(p1.x, p1.y, p2.x, p2.y)
-print(line.length())
+def main():
+    p1 = Point(0, 0)
+    p2 = Point(3, 4)
+    line = Line(p1.x, p1.y, p2.x, p2.y)
+    print(line.length())
 ";
         var result = CompileAndExecute(source);
 
@@ -908,12 +940,13 @@ struct Rectangle:
         self.width = self.width * factor
         self.height = self.height * factor
 
-r = Rectangle(4, 4)
-print(r.is_square())
-print(r.area())
-r.scale(2)
-print(r.area())
-print(r.perimeter())
+def main():
+    r = Rectangle(4, 4)
+    print(r.is_square())
+    print(r.area())
+    r.scale(2)
+    print(r.area())
+    print(r.perimeter())
 ";
         var result = CompileAndExecute(source);
 
@@ -938,10 +971,11 @@ enum Priority:
     LOW = 10
     HIGH = 20
 
-s = Status.ACTIVE
-p = Priority.HIGH
-print(s)
-print(p)
+def main():
+    s = Status.ACTIVE
+    p = Priority.HIGH
+    print(s)
+    print(p)
 ";
         var result = CompileAndExecute(source);
 
@@ -962,10 +996,11 @@ enum StrEnum:
     X = ""x""
     Y = ""y""
 
-i = IntEnum.A
-s = StrEnum.X
-print(i)
-print(s)
+def main():
+    i = IntEnum.A
+    s = StrEnum.X
+    print(i)
+    print(s)
 ";
         var result = CompileAndExecute(source);
 
@@ -1057,8 +1092,9 @@ struct Empty:
     def __init__(self):
         pass
 
-e = Empty()
-print(""Created"")
+def main():
+    e = Empty()
+    print(""Created"")
 ";
         var result = CompileAndExecute(source);
 
@@ -1074,8 +1110,9 @@ print(""Created"")
 enum Single:
     ONLY = 42
 
-s = Single.ONLY
-print(s)
+def main():
+    s = Single.ONLY
+    print(s)
 ";
         var result = CompileAndExecute(source);
 
@@ -1097,10 +1134,11 @@ struct Point:
         self.x = a
         self.y = b
 
-p = Point(1, 2, 3)
-print(p.x)
-print(p.y)
-print(p.z)
+def main():
+    p = Point(1, 2, 3)
+    print(p.x)
+    print(p.y)
+    print(p.z)
 ";
         var result = CompileAndExecute(source);
 
@@ -1151,17 +1189,18 @@ struct Task:
         if self.priority == Priority.MEDIUM:
             self.priority = Priority.HIGH
 
-t = Task(""Build feature"")
-print(t.title)
-print(t.priority)
-print(t.status)
-t.start()
-print(t.status)
-t.escalate()
-print(t.priority)
-t.complete(5)
-print(t.status)
-print(t.points)
+def main():
+    t = Task(""Build feature"")
+    print(t.title)
+    print(t.priority)
+    print(t.status)
+    t.start()
+    print(t.status)
+    t.escalate()
+    print(t.priority)
+    t.complete(5)
+    print(t.status)
+    print(t.points)
 ";
         var result = CompileAndExecute(source);
 
@@ -1200,10 +1239,11 @@ struct Circle:
         distance_squared = dx * dx + dy * dy
         return distance_squared <= self.radius * self.radius
 
-p = Point(5, 5)
-c = Circle(0, 0, 10)
-print(c.area())
-print(c.contains_point(p.x, p.y))
+def main():
+    p = Point(5, 5)
+    c = Circle(0, 0, 10)
+    print(c.area())
+    print(c.contains_point(p.x, p.y))
 ";
         var result = CompileAndExecute(source);
 
@@ -1235,8 +1275,9 @@ struct LogEntry:
     def format(self) -> str:
         return f""[{self.level}] {self.message}""
 
-log = LogEntry(""System started"", LogLevel.INFO)
-print(log.format())
+def main():
+    log = LogEntry(""System started"", LogLevel.INFO)
+    print(log.format())
 ";
         var result = CompileAndExecute(source);
 
