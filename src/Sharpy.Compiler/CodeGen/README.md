@@ -26,9 +26,10 @@ The emitter uses Roslyn's `SyntaxFactory` exclusively (no string templating):
    - Creates namespace and using directives
    - Wraps module in an `Exports` class
 
-2. **Top-level statements → Module class with Main method**
-   - Entry point files get a `Main` method
-   - Top-level variables become static fields
+2. **Module-Level Declarations**
+   - Entry point files require `main()` function
+   - Module-level variables require type annotations
+   - Top-level declarations become static fields/methods
 
 3. **Type definitions → C# classes/structs/interfaces/enums**
    - Preserves inheritance hierarchies

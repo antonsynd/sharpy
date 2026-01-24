@@ -20,10 +20,14 @@ TODO
 ## Language Highlights
 
 ```python
-# Static typing with inference
-x: int = 42           # Explicit type
-y = 42                # Inferred as int
-pi = 3.14159          # Inferred as double
+# Static typing with inference inside functions
+def main():
+    x: int = 42           # Explicit type
+    y = 42                # Inferred as int inside functions
+    pi = 3.14159          # Inferred as double
+
+# Module-level requires type annotation
+counter: int = 0          # Static field
 
 # Null-safe operations
 def process_value(calc: Calculator?, a: int, b: int) -> int:
@@ -31,19 +35,23 @@ def process_value(calc: Calculator?, a: int, b: int) -> int:
     return result ?? 0              # Null coalescing
 
 # Nullable types and type narrowing
-result: int? = get_optional_value()
-if result is not None:
-    print(result + 10)  # Narrowed to int
+def check_value() -> None:
+    result: int? = get_optional_value()
+    if result is not None:
+        print(result + 10)  # Narrowed to int
 
 # Generic collections
-numbers: list[int] = [1, 2, 3, 4, 5]
-mapping: dict[str, float] = {"pi": 3.14, "e": 2.718}
-unique: set[str] = {"x", "y", "z"}
+def work_with_collections() -> None:
+    numbers: list[int] = [1, 2, 3, 4, 5]
+    mapping: dict[str, float] = {"pi": 3.14, "e": 2.718}
+    unique: set[str] = {"x", "y", "z"}
 
 # C# interop with Pythonic naming
 from system.collections.generic import hash_set
-numbers = hash_set[int]()
-numbers.add(1)
+
+def use_dotnet() -> None:
+    numbers = hash_set[int]()
+    numbers.add(1)
 ```
 
 ## Getting Started
