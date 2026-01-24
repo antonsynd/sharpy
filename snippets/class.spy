@@ -1,3 +1,6 @@
+# Parser test file - contains syntax not yet fully supported
+# This file is for AST/parser testing, not execution
+
 class Foo:
     x: int
     y: str

@@ -203,9 +203,20 @@ Generate COMPLEX code:
 
     return f"""You are generating Sharpy code for compiler testing (dogfooding).
 
+## CRITICAL: Program Entry Point Requirement
+
+Every executable Sharpy program MUST have a `main()` function as its entry point:
+- All executable statements (print, variable assignments, function calls) must be inside `main()`
+- Only declarations (classes, functions, type aliases, static fields with type annotations) can be at module level
+- Module-level variables require explicit type annotations: `counter: int = 0`
+
 ## CRITICAL: Allowed Features (Phases 0.1.0-0.1.10 ONLY)
 
 ### ✅ ALLOWED - Use these features:
+
+#### Program Structure
+- **Entry point**: `def main():` is REQUIRED for all executable code
+- **Module-level declarations**: classes, functions, constants, static fields (with type annotation)
 
 #### Variables & Types (0.1.3)
 - **Variables**: `x: int = 42` or `x = 42` (type inference)
@@ -326,9 +337,10 @@ class Counter:
     def get(self) -> int:
         return self.value
 
-c = Counter(10)
-c.increment()
-print(c.get())
+def main():
+    c = Counter(10)
+    c.increment()
+    print(c.get())
 
 # EXPECTED OUTPUT:
 # 11
@@ -393,6 +405,13 @@ Generate a COMPLEX multi-file project:
 
     return f"""You are generating a MULTI-FILE Sharpy project for compiler testing (dogfooding).
 
+## CRITICAL: Program Entry Point Requirement
+
+The `main.spy` file MUST have a `main()` function as its entry point:
+- All executable statements (print, variable assignments, function calls) must be inside `main()`
+- Library modules (non-main.spy files) do NOT need a `main()` function
+- Only declarations (classes, functions, type aliases, static fields) can be at module level
+
 ## CRITICAL: Module System Rules (Phase 0.1.10)
 
 ### Import Syntax
@@ -406,6 +425,7 @@ Generate a COMPLEX multi-file project:
 - Module name = filename without `.spy` extension
 - No `__init__.py` needed (not Python!)
 - Modules in same directory can import each other
+- The entry point file (`main.spy`) MUST have a `main()` function
 
 ### Allowed Features (same as single-file, phases 0.1.0-0.1.10)
 - Variables, functions, classes, structs, enums, interfaces
@@ -451,11 +471,12 @@ class UtilityClass:
 # Main entry point - imports from module_name
 from module_name import helper_function, UtilityClass
 
-result: int = helper_function(5)
-print(result)
+def main():
+    result: int = helper_function(5)
+    print(result)
 
-obj = UtilityClass(10)
-print(obj.value)
+    obj = UtilityClass(10)
+    print(obj.value)
 
 # EXPECTED OUTPUT:
 # 10
@@ -533,9 +554,16 @@ Your previous code FAILED validation. You must fix the issue and regenerate.
 3. REMOVE or REPLACE the forbidden features
 4. Keep the same general logic/intent but use only allowed features
 
+## CRITICAL: Program Entry Point Requirement
+
+Every executable Sharpy program MUST have a `main()` function:
+- All executable statements (print, assignments, function calls) must be inside `main()`
+- Only declarations (classes, functions, constants) can be at module level
+
 ## CRITICAL: Allowed Features (Phases 0.1.0-0.1.10 ONLY)
 
 ### ✅ ALLOWED:
+- Entry point: `def main():` is REQUIRED for executable code
 - Variables: `x: int = 42`
 - Types: `int`, `str`, `bool`, `float`, nullable `int?`
 - Operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
@@ -553,6 +581,7 @@ Your previous code FAILED validation. You must fix the issue and regenerate.
 - Built-ins: `print(value)` - SINGLE ARGUMENT ONLY, `range()` in for loops
 
 ### ❌ FORBIDDEN (DO NOT USE):
+- NO bare executable statements at module level - wrap in `def main():`
 - NO f-strings: `f"hello {{x}}"`
 - NO multi-argument print: `print(a, b)` - use multiple print() calls instead
 - NO string concatenation: `"a" + "b"`
@@ -595,7 +624,19 @@ def get_spec_validation_prompt(code: str, spec_context: str) -> str:
 
     return f"""You are a STRICT Sharpy language specification validator for phases 0.1.0-0.1.10.
 
+## Program Entry Point Requirement
+
+Every executable Sharpy program MUST have a `main()` function:
+- All executable statements (print, assignments without type annotation, function calls) must be inside `main()`
+- Only declarations are allowed at module level: classes, functions, constants, static fields (with type annotation)
+- Example of valid module-level: `counter: int = 0` (static field with type annotation)
+- Example of INVALID module-level: `x = 5` (no type annotation, or bare statement)
+
 ## ALLOWED Features (Phases 0.1.0-0.1.10):
+
+### Program Structure
+- Entry point: `def main():` is REQUIRED for executable code
+- Module-level declarations: classes, functions, constants, static fields (with type annotation)
 
 ### Variables & Types (0.1.3)
 - Variable declaration: `x: int = 42` or `x = 42` (inference)
@@ -674,6 +715,7 @@ def get_spec_validation_prompt(code: str, spec_context: str) -> str:
 
 ## FORBIDDEN Features (NOT in phases 0.1.0-0.1.10):
 
+❌ Bare executable statements at module level (must be in `main()`) - REJECT
 ❌ f-strings: `f"text {{var}}"` - REJECT
 ❌ Multi-argument print: `print(a, b, c)` - REJECT (use multiple print calls)
 ❌ Lists/dicts/sets literals: `[]`, `{{}}`, `set()` - REJECT (v0.1.11)
