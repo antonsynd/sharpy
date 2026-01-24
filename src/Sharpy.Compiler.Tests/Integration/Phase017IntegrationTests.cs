@@ -47,10 +47,11 @@ class Dog(Animal):
     def speak(self) -> str:
         return ""Woof!""
 
-dog = Dog(""Rex"", ""German Shepherd"")
-print(dog.name)
-print(dog.breed)
-print(dog.speak())
+def main():
+    dog = Dog(""Rex"", ""German Shepherd"")
+    print(dog.name)
+    print(dog.breed)
+    print(dog.speak())
 ";
 
         var result = CompileAndExecute(source);
@@ -77,8 +78,9 @@ class Car(Vehicle):
     def get_speed(self) -> int:
         return self.speed
 
-car = Car(100)
-print(car.get_speed())
+def main():
+    car = Car(100)
+    print(car.get_speed())
 ";
 
         var result = CompileAndExecute(source);
@@ -105,8 +107,9 @@ class Derived(Base):
     def __init__(self, value: int):
         super().__init__(value)
 
-d = Derived(42)
-print(d.get_value())
+def main():
+    d = Derived(42)
+    print(d.get_value())
 ";
 
         var result = CompileAndExecute(source);
@@ -135,10 +138,11 @@ class Child(Parent):
         super().__init__(x, y)
         self.z = z
 
-c = Child(1, 2, 3)
-print(c.x)
-print(c.y)
-print(c.z)
+def main():
+    c = Child(1, 2, 3)
+    print(c.x)
+    print(c.y)
+    print(c.z)
 ";
 
         var result = CompileAndExecute(source);
@@ -172,10 +176,11 @@ class Level3(Level2):
         super().__init__(val1, val2)
         self.val3 = val3
 
-obj = Level3(10, 20, 30)
-print(obj.val1)
-print(obj.val2)
-print(obj.val3)
+def main():
+    obj = Level3(10, 20, 30)
+    print(obj.val1)
+    print(obj.val2)
+    print(obj.val3)
 ";
 
         var result = CompileAndExecute(source);
@@ -204,8 +209,9 @@ class Square(Shape):
     def area(self) -> int:
         return self.side * self.side
 
-s = Square(5)
-print(s.area())
+def main():
+    s = Square(5)
+    print(s.area())
 ";
 
         var result = CompileAndExecute(source);
@@ -228,8 +234,9 @@ class MathUtils:
     def add(a: int, b: int) -> int:
         return a + b
 
-result = MathUtils.add(10, 20)
-print(result)
+def main():
+    result = MathUtils.add(10, 20)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -253,8 +260,9 @@ class Derived(Base):
     def greet(self) -> str:
         return ""Hello from Derived""
 
-d = Derived()
-print(d.greet())
+def main():
+    d = Derived()
+    print(d.greet())
 ";
 
         var result = CompileAndExecute(source);
@@ -278,8 +286,9 @@ class Child(Parent):
     def method(self) -> str:
         return ""child""
 
-c = Child()
-print(c.method())
+def main():
+    c = Child()
+    print(c.method())
 ";
 
         var result = CompileAndExecute(source);
@@ -303,8 +312,9 @@ class Derived(Base):
     def compute(self) -> int:
         return 42
 
-d = Derived()
-print(d.compute())
+def main():
+    d = Derived()
+    print(d.compute())
 ";
 
         var result = CompileAndExecute(source);
@@ -346,9 +356,10 @@ class Rectangle(Shape):
     def area(self) -> int:
         return self.width * self.height
 
-rect = Rectangle(10, 5)
-print(rect.name)
-print(rect.area())
+def main():
+    rect = Rectangle(10, 5)
+    print(rect.name)
+    print(rect.area())
 ";
 
         var result = CompileAndExecute(source);
@@ -373,8 +384,9 @@ class Cat(Animal):
     def make_sound(self) -> str:
         return ""Meow""
 
-cat = Cat()
-print(cat.make_sound())
+def main():
+    cat = Cat()
+    print(cat.make_sound())
 ";
 
         var result = CompileAndExecute(source);
@@ -407,9 +419,10 @@ class Car(Vehicle):
     def stop(self) -> str:
         return ""Engine stopped""
 
-car = Car()
-print(car.start())
-print(car.stop())
+def main():
+    car = Car()
+    print(car.start())
+    print(car.stop())
 ";
 
         var result = CompileAndExecute(source);
@@ -437,9 +450,10 @@ class Derived(Base):
     def abstract_method(self) -> int:
         return 42
 
-d = Derived()
-print(d.abstract_method())
-print(d.concrete_method())
+def main():
+    d = Derived()
+    print(d.abstract_method())
+    print(d.concrete_method())
 ";
 
         var result = CompileAndExecute(source);
@@ -470,8 +484,9 @@ class Circle(IDrawable):
     def draw(self) -> str:
         return f""Circle with radius {self.radius}""
 
-c = Circle(5)
-print(c.draw())
+def main():
+    c = Circle(5)
+    print(c.draw())
 ";
 
         var result = CompileAndExecute(source);
@@ -502,10 +517,11 @@ class Number(IComparable):
             return -1
         return 0
 
-n = Number(10)
-print(n.compare_to(5))
-print(n.compare_to(10))
-print(n.compare_to(15))
+def main():
+    n = Number(10)
+    print(n.compare_to(5))
+    print(n.compare_to(10))
+    print(n.compare_to(15))
 ";
 
         var result = CompileAndExecute(source);
@@ -540,10 +556,11 @@ class Shape(IDrawable, IResizable):
         self.size = self.size * factor
         return f""Resized to {self.size}""
 
-s = Shape(10)
-print(s.draw())
-print(s.resize(2))
-print(s.draw())
+def main():
+    s = Shape(10)
+    print(s.draw())
+    print(s.resize(2))
+    print(s.draw())
 ";
 
         var result = CompileAndExecute(source);
@@ -572,9 +589,10 @@ class Implementation(IExtended):
     def extended_method(self) -> str:
         return ""extended""
 
-obj = Implementation()
-print(obj.basic_method())
-print(obj.extended_method())
+def main():
+    obj = Implementation()
+    print(obj.basic_method())
+    print(obj.extended_method())
 ";
 
         var result = CompileAndExecute(source);
@@ -605,8 +623,9 @@ class Dog(Animal, ISpeakable):
     def speak(self) -> str:
         return f""{self.name} says Woof!""
 
-dog = Dog(""Rex"")
-print(dog.speak())
+def main():
+    dog = Dog(""Rex"")
+    print(dog.speak())
 ";
 
         var result = CompileAndExecute(source);
@@ -636,8 +655,9 @@ class Person:
     def __str__(self) -> str:
         return f""Person({self.name}, {self.age})""
 
-p = Person(""Alice"", 30)
-print(str(p))
+def main():
+    p = Person(""Alice"", 30)
+    print(str(p))
 ";
 
         var result = CompileAndExecute(source);
@@ -663,8 +683,9 @@ class Point:
     def __repr__(self) -> str:
         return f""Point({self.x}, {self.y})""
 
-p = Point(3, 4)
-print(repr(p))
+def main():
+    p = Point(3, 4)
+    print(repr(p))
 ";
 
         var result = CompileAndExecute(source);
@@ -690,8 +711,9 @@ class Point:
     def __str__(self) -> str:
         return f""Point({self.x}, {self.y})""
 
-p = Point(3, 4)
-print(str(p))
+def main():
+    p = Point(3, 4)
+    print(str(p))
 ";
 
         var result = CompileAndExecute(source);
@@ -717,8 +739,9 @@ class Point:
     def __hash__(self) -> int:
         return self.x * 31 + self.y
 
-p = Point(3, 4)
-print(p.__hash__())
+def main():
+    p = Point(3, 4)
+    print(p.__hash__())
 ";
 
         var result = CompileAndExecute(source);
@@ -744,8 +767,9 @@ class Point:
     def __repr__(self) -> str:
         return f""Point({self.x}, {self.y})""
 
-p = Point(5, 6)
-print(repr(p))
+def main():
+    p = Point(5, 6)
+    print(repr(p))
 ";
 
         var result = CompileAndExecute(source);
@@ -783,8 +807,9 @@ class Derived(Base):
     def __str__(self) -> str:
         return f""Derived({super().__str__()}, {self.value})""
 
-d = Derived(""test"", 42)
-print(str(d))
+def main():
+    d = Derived(""test"", 42)
+    print(str(d))
 ";
 
         var result = CompileAndExecute(source);
@@ -847,12 +872,13 @@ class Cat(Mammal):
     def make_sound(self) -> str:
         return ""Meow!""
 
-dog = Dog(""Rex"", ""Labrador"")
-cat = Cat(""Whiskers"", True)
-print(dog.make_sound())
-print(cat.make_sound())
-print(dog.warm_blooded)
-print(cat.warm_blooded)
+def main():
+    dog = Dog(""Rex"", ""Labrador"")
+    cat = Cat(""Whiskers"", True)
+    print(dog.make_sound())
+    print(cat.make_sound())
+    print(dog.warm_blooded)
+    print(cat.warm_blooded)
 ";
 
         var result = CompileAndExecute(source);
@@ -895,9 +921,10 @@ class Circle(Shape):
     def area(self) -> int:
         return 3 * self.radius * self.radius
 
-c = Circle(5)
-print(c.draw())
-print(c.area())
+def main():
+    c = Circle(5)
+    print(c.draw())
+    print(c.area())
 ";
 
         var result = CompileAndExecute(source);
@@ -932,9 +959,10 @@ class File(IReader, IWriter):
         self.content = data
         return ""Written""
 
-f = File()
-print(f.write(""Hello""))
-print(f.read())
+def main():
+    f = File()
+    print(f.write(""Hello""))
+    print(f.read())
 ";
 
         var result = CompileAndExecute(source);
@@ -975,10 +1003,11 @@ class Square(Shape):
     def area(self) -> int:
         return self.side * self.side
 
-rect = Rectangle(10, 5)
-sq = Square(7)
-print(rect.area())
-print(sq.area())
+def main():
+    rect = Rectangle(10, 5)
+    sq = Square(7)
+    print(rect.area())
+    print(sq.area())
 ";
 
         var result = CompileAndExecute(source);
@@ -1001,7 +1030,8 @@ class Shape:
     def area(self) -> int:
         ...
 
-s = Shape()
+def main():
+    s = Shape()
 ";
 
         var result = CompileAndExecute(source);
@@ -1026,7 +1056,8 @@ class Circle(Shape):
     def __init__(self, radius: int):
         self.radius = radius
 
-c = Circle(5)
+def main():
+    c = Circle(5)
 ";
 
         var result = CompileAndExecute(source);
@@ -1046,7 +1077,8 @@ interface IDrawable:
 class Shape(IDrawable):
     ...
 
-s = Shape()
+def main():
+    s = Shape()
 ";
 
         var result = CompileAndExecute(source);
@@ -1155,8 +1187,9 @@ class MyClass(IMarker):
     def __init__(self, value: int):
         self.value = value
 
-obj = MyClass(42)
-print(obj.value)
+def main():
+    obj = MyClass(42)
+    print(obj.value)
 ";
 
         var result = CompileAndExecute(source);
@@ -1181,8 +1214,9 @@ class Derived(Base):
     def __init__(self, value: int):
         super().__init__(value)
 
-d = Derived(100)
-print(d.value)
+def main():
+    d = Derived(100)
+    print(d.value)
 ";
 
         var result = CompileAndExecute(source);
@@ -1230,12 +1264,13 @@ class L5(L4):
         super().__init__()
         self.v5 = 5
 
-obj = L5()
-print(obj.v1)
-print(obj.v2)
-print(obj.v3)
-print(obj.v4)
-print(obj.v5)
+def main():
+    obj = L5()
+    print(obj.v1)
+    print(obj.v2)
+    print(obj.v3)
+    print(obj.v4)
+    print(obj.v5)
 ";
 
         var result = CompileAndExecute(source);
@@ -1285,12 +1320,13 @@ class MultiImpl(I1, I2, I3, I4, I5):
     def m5(self) -> int:
         return 5
 
-obj = MultiImpl()
-print(obj.m1())
-print(obj.m2())
-print(obj.m3())
-print(obj.m4())
-print(obj.m5())
+def main():
+    obj = MultiImpl()
+    print(obj.m1())
+    print(obj.m2())
+    print(obj.m3())
+    print(obj.m4())
+    print(obj.m5())
 ";
 
         var result = CompileAndExecute(source);
@@ -1325,9 +1361,10 @@ class User(IEntity):
     def get_name(self) -> str:
         return self.name
 
-u = User(123, ""Alice"")
-print(u.get_id())
-print(u.get_name())
+def main():
+    u = User(123, ""Alice"")
+    print(u.get_id())
+    print(u.get_name())
 ";
 
         var result = CompileAndExecute(source);
