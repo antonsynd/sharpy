@@ -4,258 +4,186 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-`RoslynEmitter.ClassMembers.cs` is a **partial class file** that handles the generation of C# class and interface members from Sharpy's typed AST. This file is specifically responsible for transforming Sharpy class bodies—constructors, methods, fields, and interface declarations—into their C# equivalents using the Roslyn Syntax API.
+This file is part of the **RoslynEmitter** partial class, responsible for generating C# class and interface members from Sharpy's typed AST. It handles the transformation of:
 
-### Position in the Pipeline
+- Class fields (instance variables)
+- Constructors (`__init__` methods)
+- Instance and static methods
+- Special Python dunder methods (e.g., `__str__`, `__eq__`, `__add__`)
+- Operator overloads synthesized from dunder methods
+- Interface methods and properties
 
-```
-Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → RoslynEmitter → C#
-                                                               ↓
-                                                    RoslynEmitter.ClassMembers.cs
-                                                    (Class body transformation)
-```
+**Position in Pipeline**: This is the final compiler phase. It takes validated, typed AST nodes and emits Roslyn `SyntaxNode` objects representing C# code.
 
-**Upstream Input:**
-- `ClassDef.Body` / `StructDef.Body` / `InterfaceDef.Body` (lists of statements from the Parser)
-- `SemanticInfo` with resolved types (from Semantic Analysis)
-- `_typeMapper` for converting Sharpy types to C# types
-
-**Downstream Output:**
-- `List<MemberDeclarationSyntax>` containing:
-  - `FieldDeclarationSyntax` (class fields)
-  - `ConstructorDeclarationSyntax` (from `__init__` methods)
-  - `MethodDeclarationSyntax` (instance and static methods)
-  - `OperatorDeclarationSyntax` (from dunder methods, generated in `RoslynEmitter.Operators.cs`)
-  - `PropertyDeclarationSyntax` (for interface properties)
-
-### Key Responsibilities
-
-- Transform Python-style `__init__` methods into C# constructors
-- Handle `super().__init__()` calls as constructor initializers (`: base(...)`)
-- Generate class fields with proper type annotations and PascalCase naming
-- Generate class methods with appropriate modifiers (static, abstract, override, etc.)
-- Determine method staticness based on presence of `self` parameter (Pythonic style)
-- Generate interface method signatures (no body)
-- Generate interface properties with get/set accessors
+**Key Principle**: All code generation uses Roslyn's `SyntaxFactory` API exclusively—no string templates or concatenation. This ensures syntactically correct C# every time.
 
 ---
 
-## 2. Class/Type Structure
+## Class/Type Structure
 
-This file is a **partial class** that extends `RoslynEmitter`. It doesn't define new types but adds methods to handle class member generation.
+This file extends the `RoslynEmitter` partial class (defined in `RoslynEmitter.cs`) with member generation capabilities. The partial class pattern allows the emitter to be logically separated across multiple files:
 
-### Region: Class Member Generation
+- **RoslynEmitter.cs** - Core emitter with type mapper and scope tracking
+- **RoslynEmitter.ClassMembers.cs** (this file) - Class/interface member generation
+- **RoslynEmitter.Expressions.cs** - Expression generation
+- **RoslynEmitter.Statements.cs** - Statement generation
+- **RoslynEmitter.Operators.cs** - Operator overload synthesis
+- **RoslynEmitter.TypeDeclarations.cs** - Class/struct/interface declarations
+- **RoslynEmitter.CompilationUnit.cs** - Top-level compilation unit generation
+- **RoslynEmitter.ModuleClass.cs** - Module wrapper class generation
 
-All methods are defined within a `#region Class Member Generation` block, making it easy to navigate.
+### Key Dependencies
 
-```csharp
-public partial class RoslynEmitter
-{
-    #region Class Member Generation
+The file relies on several compiler components:
 
-    private List<MemberDeclarationSyntax> GenerateClassMembers(...)
-    private ConstructorDeclarationSyntax GenerateConstructor(...)
-    private MethodDeclarationSyntax GenerateClassMethod(...)
-    private SyntaxTokenList GenerateMethodModifiersFromDecorators(...)
-    private FieldDeclarationSyntax GenerateField(...)
-    private List<MemberDeclarationSyntax> GenerateInterfaceMembers(...)
-    private MethodDeclarationSyntax GenerateInterfaceMethod(...)
-    private PropertyDeclarationSyntax GenerateInterfaceProperty(...)
+1. **NameMangler** (`src/Sharpy.Compiler/CodeGen/NameMangler.cs`)
+   - Transforms Python naming conventions to C# conventions
+   - `snake_case` → `PascalCase` (methods, fields)
+   - `snake_case` → `camelCase` (parameters, local variables)
+   - Handles dunder method mappings: `__str__` → `ToString`, `__eq__` → `Equals`
 
-    #endregion
-}
-```
+2. **TypeMapper** (referenced via `_typeMapper` field)
+   - Maps Sharpy type annotations to C# types
+   - Infers types from expressions when annotations are missing
 
-### Fields Used (from main RoslynEmitter.cs)
+3. **ProtocolRegistry** (`src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs`)
+   - Defines protocol dunder methods and their C# equivalents
+   - Provides expected return types (e.g., `__len__` → `int`, `__str__` → `string`)
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `_declaredVariables` | `HashSet<string>` | Tracks variables declared in current scope |
-| `_variableVersions` | `Dictionary<string, int>` | Supports variable shadowing with versioned names |
-| `_constVariables` | `HashSet<string>` | Tracks const variable names |
-| `_isInAbstractClass` | `bool` | Context flag for implicit abstract method detection |
-| `_typeMapper` | `TypeMapper` | Converts Sharpy types to C# syntax |
+4. **AST Nodes** (`Sharpy.Compiler.Parser.Ast`)
+   - `Statement`, `FunctionDef`, `VariableDeclaration`, `Assignment`, etc.
+   - Immutable AST nodes produced by the parser
 
----
-
-## 3. Key Functions/Methods
-
-### 3.1 `GenerateClassMembers` — Main Entry Point
-
-```csharp
-private List<MemberDeclarationSyntax> GenerateClassMembers(
-    List<Statement> body,
-    string className)
-```
-
-**What it does:** Orchestrates the generation of all members for a class or struct body.
-
-**Two-Pass Architecture:**
-
-The method uses a deliberate two-pass approach:
-
-```csharp
-// First pass: Generate fields and build name mapping
-foreach (var stmt in body.Where(s => s is VariableDeclaration))
-{
-    var varDecl = (VariableDeclaration)stmt;
-    var fieldDecl = GenerateField(varDecl);
-    fieldMembers.Add(fieldDecl);
-    fieldMapping[varDecl.Name] = fieldName; // Original → Mangled
-}
-
-// Second pass: Generate methods, constructors, operators
-foreach (var stmt in body)
-{
-    switch (stmt)
-    {
-        case FunctionDef funcDef:
-            // Handle __init__, dunder methods, regular methods
-            break;
-        // ...
-    }
-}
-```
-
-**Why Two Passes?**
-
-The field mapping dictionary built in the first pass ensures that constructor assignments like `self.name = name` correctly reference the generated field name (`Name`), even if the field declaration appears after the constructor in the source.
-
-**Key Behaviors:**
-
-1. **`__init__` Collection:** All `__init__` methods are collected, then generated as constructors (supports overloading)
-
-2. **Dunder Method Handling:** For dunder methods like `__add__`:
-   - Generates the method itself (e.g., `__Add__`)
-   - Delegates to `TryGenerateOperatorOverload()` to synthesize the C# operator
-
-3. **Complementary Operator Generation:** Tracks which comparison operators are defined and generates missing pairs:
-   ```csharp
-   // If __eq__ exists but not __ne__:
-   if (dunders.Contains("__eq__") && !dunders.Contains("__ne__"))
-   {
-       members.Add(GenerateComplementaryNotEqualsOperator(className));
-   }
-   ```
-
-**Statement Filtering:**
-
-| Statement Type | Action |
-|---------------|--------|
-| `FunctionDef` | Generate method/constructor/operator |
-| `VariableDeclaration` | Already processed in first pass |
-| `PassStatement` | Ignored (placeholder) |
-| `EllipsisLiteral` (in `ExpressionStatement`) | Ignored (abstract method body marker) |
+5. **Roslyn SyntaxFactory** (`Microsoft.CodeAnalysis.CSharp.SyntaxFactory`)
+   - Factory methods for creating C# syntax nodes
+   - Used exclusively for code generation (no string templates)
 
 ---
 
-### 3.2 `GenerateConstructor` — `__init__` to C# Constructor
+## Key Functions/Methods
 
-```csharp
-private ConstructorDeclarationSyntax GenerateConstructor(
-    FunctionDef func,
-    string className,
-    Dictionary<string, string> fieldMapping)
+### 1. `GenerateClassMembers(IReadOnlyList<Statement> body, string className)`
+
+**Purpose**: Orchestrates the generation of all class members from a class body.
+
+**Algorithm**:
+```
+1. First pass: Generate fields
+   - Extract field declarations from class body
+   - Build field mapping (Sharpy name → C# name) for use in constructor
+
+2. Second pass: Generate methods and constructors
+   - Collect all __init__ methods (supports overloading)
+   - Track dunder methods for complementary operator generation
+   - Generate class methods and operator overloads
+
+3. Third pass: Generate constructors
+   - Use field mapping to emit proper field assignments
+
+4. Fourth pass: Generate complementary operators
+   - If __eq__ exists but not __ne__, synthesize operator !=
+   - If __ne__ exists but not __eq__, synthesize operator ==
 ```
 
-**What it does:** Transforms a Sharpy `__init__` method into a C# constructor.
+**Why the multi-pass approach?**
+- Field mapping must be built before constructors (constructors need to know mangled field names)
+- Dunder method tracking must complete before complementary operator generation
+- C# requires both `==` and `!=` operators if either is defined
 
-**Example Transformation:**
-
+**Example Flow**:
 ```python
-# Sharpy
-class Dog(Animal):
-    breed: str
+# Sharpy source
+class Point:
+    x: int
+    y: int
 
-    def __init__(self, name: str, breed: str):
-        super().__init__(name)
-        self.breed = breed
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
 ```
 
+Generates:
 ```csharp
-// Generated C#
-public class Dog : Animal
+public class Point
 {
-    public string Breed;
+    public int X;  // Field pass: x → X (PascalCase)
+    public int Y;
 
-    public Dog(string name, string breed) : base(name)
+    public Point(int x, int y)  // Constructor pass: uses field mapping
     {
-        this.Breed = breed;
+        this.X = x;  // Maps to mangled field name
+        this.Y = y;
     }
 }
 ```
 
-**Key Steps:**
+---
 
-1. **Scope Reset:** Clears `_declaredVariables`, `_variableVersions`, `_constVariables` for fresh scope
+### 2. `GenerateConstructor(FunctionDef func, string className, Dictionary<string, string> fieldMapping)`
 
-2. **Parameter Processing:** Skips `self` parameter, tracks remaining parameters as declared variables
+**Purpose**: Transforms a Sharpy `__init__` method into a C# constructor.
 
-3. **`super().__init__()` Detection:** Checks if the first statement is a `super().__init__()` call:
+**Key Parameters**:
+- `func`: The `__init__` FunctionDef AST node
+- `className`: The C# class name (for constructor declaration)
+- `fieldMapping`: Maps Sharpy field names to C# field names
+
+**Implementation Details**:
+
+1. **Scope Tracking Reset**: Clears local variable tracking for new method scope
    ```csharp
-   if (exprStmt.Expression is FunctionCall call &&
-       call.Function is MemberAccess memberAccess &&
-       memberAccess.Object is SuperExpression &&
-       memberAccess.Member == "__init__")
+   _declaredVariables.Clear();
+   _variableVersions.Clear();
+   _constVariables.Clear();
+   ```
+
+2. **Parameter Handling**:
+   - Skips `self` parameter (implicit in C#)
+   - Mangles parameter names to camelCase
+   - Tracks parameters as declared variables
+
+3. **Base Constructor Detection**:
+   ```python
+   # Sharpy
+   def __init__(self, x: int):
+       super().__init__()  # First statement
+       self.x = x
+   ```
+
+   Transforms to:
+   ```csharp
+   public Derived(int x) : base()  // Constructor initializer
    {
-       // Generate `: base(...)` initializer
-       baseInitializer = ConstructorInitializer(
-           SyntaxKind.BaseConstructorInitializer,
-           ArgumentList(SeparatedList(baseArgs)));
-       bodyStartIndex = 1; // Skip this statement in body
+       this.X = x;  // Body starts from second statement
    }
    ```
 
-4. **`self.field = value` Translation:** Converts field assignments:
-   ```csharp
-   // self.breed = breed → this.Breed = breed
-   var fieldName = fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName)
-       ? mappedFieldName
-       : NameMangler.ToPascalCase(memberAccess.Member);
-   ```
+4. **Field Assignment Transformation**:
+   - Detects `self.field = value` patterns
+   - Uses field mapping to ensure correct C# field names
+   - Handles inherited fields not in mapping (falls back to PascalCase)
 
-5. **XML Documentation:** Adds docstring as `/// <summary>` comment if present
+5. **Parameter Reference Mapping**:
+   - If RHS of assignment is a parameter, uses mangled parameter name
+   - Otherwise generates expression normally
 
-**Important Design Note:**
-
-The `fieldMapping` parameter is crucial for maintaining consistency between field declarations and constructor assignments. Without it, you might have `Breed` as a field but `breed` in the assignment.
+**Debugging Insight**: If constructor field assignments aren't working, check:
+- Field mapping was built correctly in `GenerateClassMembers` first pass
+- Parameter names are being tracked in `_declaredVariables`
+- `self.field` pattern is being detected correctly
 
 ---
 
-### 3.3 `GenerateClassMethod` — Instance and Static Methods
+### 3. `GenerateClassMethod(FunctionDef func)`
 
-```csharp
-private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)
-```
+**Purpose**: Generates instance or static methods from Sharpy function definitions.
 
-**What it does:** Transforms a Sharpy method into a C# method declaration.
+**Key Features**:
 
-**Key Features:**
-
-1. **Name Mangling:**
+1. **Automatic Static Detection** (lines 318-325):
    ```csharp
-   var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
-   // calculate_sum → CalculateSum
-   // __add__ → __Add__ (preserved dunder with capitalized middle)
-   ```
-
-2. **Return Type Resolution (Priority Order):**
-   - Explicit type annotation: `func.ReturnType`
-   - Protocol registry (for dunders like `__str__`): `ProtocolRegistry.GetProtocol(func.Name)`
-   - Default: `void`
-
-3. **Automatic `override` Detection:**
-   ```csharp
-   var shouldAddOverride = protocol?.ClrMethodName is "ToString" or "GetHashCode"
-       || func.Name == "__repr__"
-       || func.Name == "__eq__";
-   ```
-
-4. **Static Method Detection (Pythonic Style):**
-   ```csharp
-   // Primary mechanism: No 'self' parameter = static method
    bool hasSelfParameter = func.Parameters.Any(p =>
        string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
 
@@ -264,439 +192,498 @@ private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)
        modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
    }
    ```
+   - Methods without `self` parameter are automatically `static`
+   - `@static` decorator is optional/redundant
 
-5. **Abstract Method Detection:**
-   ```csharp
-   bool hasAbstractDecorator = func.Decorators.Any(d => d.Name == "abstract");
-   bool hasEllipsisBody = func.Body.Count == 1
-       && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
-
-   // Implicit: ellipsis body in abstract class = abstract method
-   bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
+2. **Dunder Method Handling**:
+   ```python
+   # Sharpy
+   def __str__(self) -> str:
+       return "Point"
    ```
 
-6. **Special `__eq__` Handling:**
+   Generates:
    ```csharp
-   // Equals() must take object parameter for proper override
-   if (func.Name == "__eq__" && parameters.Length > 0)
+   public override string ToString()  // __str__ → ToString, override keyword added
    {
-       var objParam = Parameter(Identifier(parameters[0].Identifier.Text))
-           .WithType(PredefinedType(Token(SyntaxKind.ObjectKeyword)));
-       parameters = new[] { objParam };
+       return "Point";
    }
    ```
 
-**Example Transformation:**
+3. **Protocol Return Type Inference** (lines 287-299):
+   - Uses `ProtocolRegistry` to determine correct return types
+   - Overrides user annotations if protocol specifies a type
+   - Example: `__len__` always returns `int`, `__str__` always returns `string`
 
-```python
-# Sharpy
-@virtual
-def greet(self) -> str:
-    """Say hello."""
-    return f"Hello, I'm {self.name}"
-```
+4. **Override Detection** (lines 305-315):
+   - Adds `override` keyword for methods that override `Object` methods
+   - Handles: `ToString()`, `GetHashCode()`, `Equals()`
 
-```csharp
-// Generated C#
-/// <summary>
-/// Say hello.
-/// </summary>
-public virtual string Greet()
-{
-    return $"Hello, I'm {this.Name}";
-}
-```
-
----
-
-### 3.4 `GenerateMethodModifiersFromDecorators`
-
-```csharp
-private SyntaxTokenList GenerateMethodModifiersFromDecorators(List<Decorator> decorators)
-```
-
-**What it does:** Maps Sharpy decorators to C# method modifiers.
-
-**Modifier Mapping Table:**
-
-| Sharpy Decorator | C# Modifier | Notes |
-|-----------------|-------------|-------|
-| `@public` | `public` | Default if none specified |
-| `@private` | `private` | — |
-| `@protected` | `protected` | — |
-| `@internal` | `internal` | — |
-| `@staticmethod` / `@static` | `static` | Redundant if no `self` param |
-| `@abstract` | `abstract` | — |
-| `@virtual` | `virtual` | — |
-| `@override` | `override` | — |
-
-**Default Behavior:**
-- If no access modifier: defaults to `public`
-- Methods are **not** static by default (unlike module-level functions)
-
----
-
-### 3.5 `GenerateField` — Variable Declarations to Fields
-
-```csharp
-private FieldDeclarationSyntax GenerateField(VariableDeclaration varDecl)
-```
-
-**What it does:** Transforms Sharpy class variable declarations into C# fields.
-
-**Key Behaviors:**
-
-1. **Name Transformation:**
+5. **Special Equals() Handling** (lines 335-341):
+   - `__eq__` parameter type forced to `object` (C# requirement)
    ```csharp
-   var fieldName = NameMangler.ToPascalCase(varDecl.Name);
-   // first_name → FirstName
-   ```
-
-2. **Type Resolution (Priority Order):**
-   - Explicit type annotation
-   - Type inference from initializer (for `const` declarations)
-   - Fallback: `object`
-
-3. **Const Handling:**
-   ```csharp
-   if (varDecl.IsConst)
+   public override bool Equals(object other)  // Not Point other
    {
-       modifiers = modifiers.Add(Token(SyntaxKind.ConstKeyword));
+       // ...
    }
    ```
 
-**Example Transformation:**
+6. **Abstract Method Detection** (lines 356-369):
+   - Explicit: `@abstract` decorator
+   - Implicit: Ellipsis body in abstract class
+   ```python
+   @abstract
+   class Shape:
+       def area(self) -> float: ...  # Abstract (ellipsis + abstract class)
+   ```
+
+---
+
+### 4. `GenerateMethodModifiersFromDecorators(IReadOnlyList<Decorator> decorators)`
+
+**Purpose**: Converts Sharpy decorators to C# modifiers.
+
+**Decorator Mappings**:
+
+| Sharpy Decorator | C# Modifier |
+|------------------|-------------|
+| `@private` | `private` |
+| `@protected` | `protected` |
+| `@internal` | `internal` |
+| `@public` | `public` (default if none specified) |
+| `@static` or `@staticmethod` | `static` |
+| `@abstract` | `abstract` |
+| `@virtual` | `virtual` |
+| `@override` | `override` |
+
+**Default Behavior**: Methods without access modifiers default to `public` (line 427-430).
+
+---
+
+### 5. `GenerateField(VariableDeclaration varDecl)`
+
+**Purpose**: Generates C# field declarations from class-level variable declarations.
+
+**Name Mangling**: Uses `PascalCase` for fields (C# property-like convention)
+```python
+# Sharpy
+class Point:
+    x: int  # Instance variable
+```
+
+Generates:
+```csharp
+public class Point
+{
+    public int X;  // x → X (PascalCase)
+}
+```
+
+**Type Inference**:
+- Uses type annotation if present
+- For `const` declarations without annotations, infers from initializer
+- Falls back to `object` if no type information available
+
+**Const Handling**:
+```python
+# Sharpy
+class Config:
+    MAX_SIZE: int = 100  # Const field
+```
+
+Generates:
+```csharp
+public class Config
+{
+    public const int MAX_SIZE = 100;  // const modifier added
+}
+```
+
+---
+
+### 6. Interface Member Generation
+
+#### `GenerateInterfaceMembers(IReadOnlyList<Statement> body)`
+
+**Purpose**: Generates interface members (methods and properties).
+
+**Behavior**:
+- Methods: No body, no modifiers (line 510-511)
+- Properties: Get/set accessors with no body (line 580-589)
+- Ignores: `pass` statements, ellipsis, other statements
+
+#### `GenerateInterfaceMethod(FunctionDef func)`
+
+**C# Interface Requirements**:
+```python
+# Sharpy
+interface IDrawable:
+    def draw(self) -> None: ...
+```
+
+Generates:
+```csharp
+interface IDrawable
+{
+    void Draw();  // No modifiers, no body, semicolon terminator
+}
+```
+
+#### `GenerateInterfaceProperty(VariableDeclaration varDecl)`
+
+**Type Annotation Requirement**: Interface properties MUST have type annotations (throws exception otherwise, line 571-574).
 
 ```python
 # Sharpy
-class Circle:
-    PI: float = 3.14159
-    radius: float
+interface IPoint:
+    x: int  # Type annotation required
 ```
 
+Generates:
 ```csharp
-// Generated C#
-public class Circle
+interface IPoint
 {
-    public float Pi = 3.14159F;
-    public float Radius;
+    int X { get; set; }  // Get/set accessors, no body
 }
 ```
 
 ---
 
-### 3.6 Interface Member Generation
+## Patterns and Design Decisions
 
-```csharp
-private List<MemberDeclarationSyntax> GenerateInterfaceMembers(List<Statement> body)
-private MethodDeclarationSyntax GenerateInterfaceMethod(FunctionDef func)
-private PropertyDeclarationSyntax GenerateInterfaceProperty(VariableDeclaration varDecl)
-```
+### 1. Multi-Pass Member Generation
 
-**What these do:** Transform Sharpy interface definitions into C# interface members.
+**Why?** Dependencies between members require ordering:
+- Fields must be generated before constructors (field mapping needed)
+- Dunder methods must be scanned before complementary operators generated
+- Constructor overloads collected before generation
 
-**Key Differences from Classes:**
+### 2. Field Mapping for Constructor Correctness
 
-| Aspect | Class | Interface |
-|--------|-------|-----------|
-| Methods | Have body | No body (semicolon only) |
-| Properties | Fields with initializers | `{ get; set; }` accessors |
-| Modifiers | `public static virtual` etc. | None (implicitly public) |
-| Type annotations | Optional | Required for properties |
-
-**Example Transformation:**
+The `fieldMapping` dictionary (line 24) ensures constructors reference the correct C# field names:
 
 ```python
 # Sharpy
-interface IShape:
-    name: str
+class Point:
+    user_x: int
 
-    def area(self) -> float:
-        ...
+    def __init__(self, user_x: int):
+        self.user_x = user_x  # Must map to correct C# field
 ```
 
+Without mapping, constructor might generate `this.UserX = user_x` when field is actually `this.User_x`.
+
+### 3. Scope Tracking Per Method
+
+Every method generation clears scope tracking (lines 132-134, 273-275):
 ```csharp
-// Generated C#
-public interface IShape
-{
-    string Name { get; set; }
-
-    float Area();
-}
+_declaredVariables.Clear();
+_variableVersions.Clear();
+_constVariables.Clear();
 ```
 
-**Error Handling:**
-```csharp
-// Interface properties must have type annotations
-if (varDecl.Type == null)
-{
-    throw new InvalidOperationException(
-        $"Interface property '{varDecl.Name}' must have a type annotation " +
-        $"at {varDecl.LineStart}:{varDecl.ColumnStart}");
-}
-```
-
----
-
-## 4. Dependencies
-
-### Internal Dependencies
-
-| Dependency | Location | Purpose |
-|------------|----------|---------|
-| `NameMangler` | `CodeGen/NameMangler.cs` | Name convention transformation |
-| `TypeMapper` | `CodeGen/TypeMapper.cs` | Sharpy → C# type conversion |
-| `ProtocolRegistry` | `Semantic/ProtocolRegistry.cs` | Dunder method metadata |
-| `CodeGenContext` | `CodeGen/CodeGenContext.cs` | Compilation state |
-
-### Partial Class Dependencies
-
-This file is part of `RoslynEmitter` which is split across:
-
-| File | Responsibility |
-|------|---------------|
-| `RoslynEmitter.cs` | Core state, variable name mangling, helpers |
-| **`RoslynEmitter.ClassMembers.cs`** | **Class/interface member generation (this file)** |
-| `RoslynEmitter.CompilationUnit.cs` | Module → CompilationUnit, using directives |
-| `RoslynEmitter.Expressions.cs` | Expression generation |
-| `RoslynEmitter.ModuleClass.cs` | Exports class generation |
-| `RoslynEmitter.Operators.cs` | Operator overload generation |
-| `RoslynEmitter.Statements.cs` | Statement generation |
-| `RoslynEmitter.TypeDeclarations.cs` | Class/struct/interface/enum declarations |
-
-### AST Node Types (from `Sharpy.Compiler.Parser.Ast`)
-
-| Node | C# Equivalent |
-|------|---------------|
-| `FunctionDef` | `MethodDeclarationSyntax` or `ConstructorDeclarationSyntax` |
-| `VariableDeclaration` | `FieldDeclarationSyntax` or `PropertyDeclarationSyntax` |
-| `Decorator` | Modifiers (`public`, `static`, `virtual`, etc.) |
-| `SuperExpression` | `base` keyword |
-| `MemberAccess` | `MemberAccessExpression` |
-
----
-
-## 5. Patterns and Design Decisions
-
-### Pattern: Two-Pass Member Generation
-
-**Problem:** Field names are needed when generating constructor assignments, but fields may be declared after the constructor in source order.
-
-**Solution:** First pass collects all fields and builds a name mapping dictionary. Second pass generates methods/constructors using this mapping.
-
-```csharp
-// Phase 1: Build mapping
-fieldMapping["first_name"] = "FirstName";
-
-// Phase 2: Use mapping in constructor
-self.first_name = name  →  this.FirstName = name
-                                    ↑
-                         Looked up from fieldMapping
-```
-
-### Pattern: Dunder Tracking for Complementary Operators
-
-**Problem:** C# requires both `==` and `!=` if either is defined, but Sharpy only requires `__eq__`.
-
-**Solution:** Track which dunder methods are present, then generate missing counterparts:
-
-```csharp
-var dunders = new HashSet<string>();
-foreach (var stmt in body)
-{
-    if (stmt is FunctionDef fd && NameMangler.IsDunderMethod(fd.Name))
-        dunders.Add(fd.Name);
-}
-
-// After generating all methods, add missing operators
-if (dunders.Contains("__eq__") && !dunders.Contains("__ne__"))
-    members.Add(GenerateComplementaryNotEqualsOperator(className));
-```
-
-### Design Decision: Pythonic Static Detection
-
-**Problem:** Python uses absence of `self` to indicate static methods. Should Sharpy require `@staticmethod`?
-
-**Decision:** Follow Python semantics—no `self` parameter automatically means static method. The `@staticmethod` decorator is supported but redundant.
-
+**Why?** Local variable redeclarations are method-scoped in Sharpy:
 ```python
-# Both equivalent in Sharpy:
-def utility():          # Static (no self)
-    pass
+def foo():
+    x = 1    # x
+    x = "a"  # x_1 (type change requires new variable)
 
-@staticmethod
-def utility():          # Explicitly static (redundant but valid)
-    pass
+def bar():
+    x = 1    # x (fresh scope, no version number)
 ```
 
-### Design Decision: `super().__init__()` as Constructor Initializer
+### 4. Parameter Mapping in Constructors
 
-**Problem:** In Python, `super().__init__()` can appear anywhere in `__init__`. In C#, base constructor calls must be in the initializer (`: base(...)`).
-
-**Decision:** Only the **first statement** is checked. If it's `super().__init__()`, it becomes `: base(...)`. Otherwise, it's left as a method call (which would be a compile error in C# if the base class requires constructor arguments).
-
+Parameters are mangled and tracked separately (lines 146-162) to handle:
 ```python
-def __init__(self, name: str, age: int):
-    super().__init__(name)   # FIRST statement → : base(name)
-    self.age = age
+def __init__(self, my_value: int):
+    self.my_value = my_value  # RHS is parameter, LHS is field
 ```
 
-### Design Decision: Implicit Abstract Methods
+Generates:
+```csharp
+public MyClass(int myValue)  // Parameter: camelCase
+{
+    this.MyValue = myValue;  // Field: PascalCase, parameter reference
+}
+```
 
-**Problem:** Marking every abstract method with `@abstract` is verbose.
+### 5. Complementary Operator Generation
 
-**Decision:** In an abstract class, methods with an ellipsis body (`...`) are implicitly abstract:
+C# requires paired operators (lines 114-124):
+- If `operator ==` is defined, `operator !=` must also be defined
+- If `operator !=` is defined, `operator ==` must also be defined
 
+This is handled by tracking dunder methods and auto-generating the missing operator.
+
+### 6. Abstract Method Implicit Detection
+
+Methods in abstract classes with ellipsis bodies are implicitly abstract (lines 360-363):
 ```python
 @abstract
 class Shape:
-    def area(self) -> float:
-        ...  # Implicitly abstract (no @abstract needed)
+    def area(self) -> float: ...  # Implicit abstract
 ```
 
-Checked via `_isInAbstractClass` flag set by `RoslynEmitter.TypeDeclarations.cs`.
+This matches Python's `abc` module conventions.
 
----
+### 7. SyntaxFactory Exclusive Usage
 
-## 6. Debugging Tips
-
-### Inspecting Generated Members
-
-Add this after `GenerateClassMembers()`:
-
+**No String Templates**: All C# code generation uses Roslyn's `SyntaxFactory`:
 ```csharp
-foreach (var member in members)
-{
-    Console.WriteLine(member.NormalizeWhitespace().ToFullString());
-    Console.WriteLine("---");
-}
+// Good
+var assignment = AssignmentExpression(
+    SyntaxKind.SimpleAssignmentExpression,
+    MemberAccessExpression(
+        SyntaxKind.SimpleMemberAccessExpression,
+        ThisExpression(),
+        IdentifierName(fieldName)),
+    assignValue);
+
+// Bad (forbidden)
+var assignment = $"this.{fieldName} = {value};";
 ```
 
-### Key Breakpoint Locations
-
-| Method | What to Inspect |
-|--------|-----------------|
-| `GenerateClassMembers()` | Entry point, field mapping construction |
-| `GenerateConstructor()` | `super()` detection, `self.field` translation |
-| `GenerateClassMethod()` | Modifier determination, override detection |
-| `GenerateField()` | Name mangling, type inference |
-
-### Common Issues and Solutions
-
-| Issue | Symptom | Cause | Fix |
-|-------|---------|-------|-----|
-| Wrong field name in constructor | `this.firstName` instead of `this.FirstName` | Field mapping not used | Check `fieldMapping.TryGetValue()` |
-| Missing `static` keyword | Instance method error on method with no `self` | `hasSelfParameter` check failed | Verify parameter parsing |
-| Missing `: base(...)` | Base constructor not called | `super().__init__()` not first statement | Reorder source or update detection logic |
-| Abstract method has body | Compile error | `isAbstract` not detected | Check `_isInAbstractClass` flag |
-| Missing `override` on `Equals` | Hiding warning | `shouldAddOverride` not triggering | Verify `func.Name == "__eq__"` check |
-
-### Verifying Operator Generation
-
-Dunder methods should generate **two** members. Check for both:
-
-```csharp
-// Expected for __add__:
-// 1. public Point __Add__(Point other) { ... }
-// 2. public static Point operator +(Point left, Point right) { ... }
-
-var methods = members.OfType<MethodDeclarationSyntax>();
-var operators = members.OfType<OperatorDeclarationSyntax>();
-Debug.Assert(methods.Any(m => m.Identifier.Text == "__Add__"));
-Debug.Assert(operators.Any(o => o.OperatorToken.IsKind(SyntaxKind.PlusToken)));
-```
+**Benefits**:
+- Syntactically guaranteed correct
+- Proper escaping/quoting
+- Refactoring-safe
+- IDE support for Roslyn APIs
 
 ---
 
-## 7. Contribution Guidelines
+## Dependencies on Other Components
 
-### Adding Support for a New Decorator
+### Upstream: Semantic Analysis
 
-1. **Add case to `GenerateMethodModifiersFromDecorators()`:**
-   ```csharp
-   case "new_modifier":
-       tokens.Add(Token(SyntaxKind.NewModifierKeyword));
-       break;
-   ```
+The emitter expects:
+- **Validated AST**: No semantic errors remain
+- **Type Annotations**: Resolved and validated
+- **SemanticInfo**: Populated on AST nodes (used in expression/statement generation)
+- **SymbolTable**: Available via `CodeGenContext` for symbol lookups
 
-2. **Document in language spec:** Update `docs/language_specification/class_methods.md`
+### Peer Components (Other RoslynEmitter Partials)
 
-### Adding a New Dunder-to-Method Mapping
+- **RoslynEmitter.Operators.cs**:
+  - `TryGenerateOperatorOverload()` - Called for dunder methods (line 78)
+  - `GenerateComplementaryEqualsOperator()` - Synthesizes `==` (line 123)
+  - `GenerateComplementaryNotEqualsOperator()` - Synthesizes `!=` (line 118)
 
-1. **Update `NameMangler._dunderMethodMap`** in `NameMangler.cs`:
-   ```csharp
-   { "__new_dunder__", "ClrMethodName" },
-   ```
+- **RoslynEmitter.Statements.cs**:
+  - `GenerateBodyStatement()` - Called for method/constructor bodies (line 234, 384)
 
-2. **Add protocol to `ProtocolRegistry`** if it needs special return type handling
+- **RoslynEmitter.Expressions.cs**:
+  - `GenerateExpression()` - Called for field initializers, assignments (line 223, 482)
+  - `GenerateParameter()` - Called for method parameters (line 142, 332)
 
-3. **Update `shouldAddOverride`** if it overrides an Object method
+### External Dependencies
 
-### Extending Constructor Chaining
-
-Currently only `super().__init__()` is supported. To add `self.__init__()` (for chaining to another overload):
-
-1. Detect `self.__init__()` pattern in `GenerateConstructor()`
-2. Generate `: this(...)` instead of `: base(...)`
-3. Update constructor detection logic
-
-### Adding Property Generation (Instead of Fields)
-
-Currently class variables become public fields. To generate properties instead:
-
-1. Replace `GenerateField()` with `GenerateProperty()`
-2. Generate `{ get; set; }` accessors
-3. Consider backing field for complex cases
+- **NameMangler**: All identifier transformations
+- **TypeMapper**: All type conversions
+- **ProtocolRegistry**: Dunder method semantics
+- **Roslyn**: Syntax tree construction
 
 ---
 
-## 8. Cross-References
+## Debugging Tips
+
+### 1. Constructor Field Assignments Not Working
+
+**Symptom**: Generated constructor assigns to wrong field name or fails to compile.
+
+**Debug Steps**:
+1. Check field mapping in `GenerateClassMembers` first pass (line 24-39)
+2. Verify field name extraction from `FieldDeclarationSyntax` (line 36-38)
+3. Confirm constructor uses field mapping (line 210-212)
+4. Look for inherited fields not in mapping (falls back to PascalCase, line 212)
+
+### 2. Method Not Being Generated
+
+**Symptom**: Method appears in Sharpy source but not in C# output.
+
+**Debug Steps**:
+1. Check if method name is `__init__` (handled separately as constructor)
+2. Verify method isn't filtered in `GenerateClassMembers` switch (line 60-106)
+3. Check if abstract method without `@abstract` in non-abstract class (won't have body)
+
+### 3. Wrong Method Modifiers
+
+**Symptom**: Method is `public` when it should be `private`, or `instance` when it should be `static`.
+
+**Debug Steps**:
+1. Check decorator processing in `GenerateMethodModifiersFromDecorators` (line 397-454)
+2. Verify static detection logic (line 318-325): methods without `self` are static
+3. Check override detection for `ToString`, `GetHashCode`, `Equals` (line 305-315)
+
+### 4. Dunder Method Not Mapping Correctly
+
+**Symptom**: `__str__` generates `__Str__` instead of `ToString()`.
+
+**Debug Steps**:
+1. Check `NameMangler._dunderMethodMap` for mapping (line 30-46 in NameMangler.cs)
+2. Verify `NameMangler.Transform(func.Name, NameContext.Method)` is called (line 279)
+3. Confirm protocol registry entry exists for the dunder method
+
+### 5. Operator Overload Not Generated
+
+**Symptom**: `__add__` method exists but no `operator +` in C# output.
+
+**Debug Steps**:
+1. Verify `TryGenerateOperatorOverload` is called (line 78)
+2. Check `RoslynEmitter.Operators.cs` for operator mapping
+3. Confirm dunder method signature matches expected signature
+
+### 6. Interface Property Missing Type Annotation
+
+**Symptom**: Exception thrown during interface property generation.
+
+**Debug Steps**:
+1. Check source Sharpy file for type annotation: `x: int` (required)
+2. Error message shows line/column of problematic property (line 573-574)
+3. Add type annotation to interface property
+
+### 7. Scope Tracking Issues
+
+**Symptom**: Variables declared in wrong scope or duplicate declarations.
+
+**Debug Steps**:
+1. Verify scope clearing at method entry (lines 132-134, 273-275)
+2. Check parameter tracking (line 153-162, 344-354)
+3. Confirm `_declaredVariables` is being updated correctly
+
+---
+
+## Contribution Guidelines
+
+### When to Modify This File
+
+**Add new class member types**:
+- New statement types in class bodies
+- New decorator types that affect member generation
+- New dunder method protocols
+
+**Extend constructor handling**:
+- Support for constructor chaining beyond `super().__init__()`
+- Field initialization improvements
+- Constructor overload resolution
+
+**Improve interface generation**:
+- Support for indexed properties
+- Event declarations
+- Generic constraints
+
+**Fix bugs in**:
+- Field/parameter name mapping
+- Scope tracking
+- Modifier generation
+- Dunder method transformation
+
+### What NOT to Change
+
+**DO NOT**:
+- Use string templates for code generation (violates SyntaxFactory exclusive usage)
+- Modify AST nodes (they are immutable)
+- Add semantic validation (belongs in Semantic phase)
+- Bypass NameMangler (all naming must go through it)
+
+### Testing Strategy
+
+When modifying this file:
+
+1. **Unit tests** in `Sharpy.Compiler.Tests/CodeGen/`:
+   - Test individual method generation
+   - Test modifier combinations
+   - Test name mangling edge cases
+
+2. **Integration tests** in `Sharpy.Compiler.Tests/Integration/`:
+   - Full class generation from source to C#
+   - Dunder method roundtrips
+   - Constructor variations
+
+3. **File-based tests** in `Sharpy.Compiler.Tests/Integration/TestFixtures/`:
+   - Add `.spy` + `.expected` pairs
+   - Cover real-world class patterns
+
+4. **Emit verification**:
+   ```bash
+   dotnet run --project src/Sharpy.Cli -- emit csharp test.spy
+   ```
+   - Visually inspect generated C#
+   - Ensure proper formatting and readability
+
+### Code Style
+
+**Follow existing patterns**:
+- Use Roslyn `SyntaxFactory` exclusively
+- Clear variables at method scope entry
+- Build modifiers as `SyntaxTokenList`, not individual tokens
+- Use LINQ for collections when readable
+- Comment complex transformations (e.g., base constructor detection)
+
+**Naming conventions**:
+- Private fields: `_camelCase`
+- Local variables: `camelCase`
+- Parameters: `camelCase`
+- Methods: `PascalCase`
+
+---
+
+## Cross-References
 
 ### Related Partial Class Files
 
-- **[RoslynEmitter.cs](./RoslynEmitter.md)** — Core class definition, variable name mangling, entry points
-- **[RoslynEmitter.TypeDeclarations.cs](./RoslynEmitter.TypeDeclarations.md)** — Calls `GenerateClassMembers()` from `GenerateClassDeclaration()`
-- **[RoslynEmitter.Operators.cs](./RoslynEmitter.Operators.md)** — `TryGenerateOperatorOverload()`, complementary operator generation
-- **[RoslynEmitter.Expressions.cs](./RoslynEmitter.Expressions.md)** — Expression generation used in method bodies
-- **[RoslynEmitter.Statements.cs](./RoslynEmitter.Statements.md)** — Statement generation for method bodies
+This file is part of the `RoslynEmitter` partial class. Understanding the complete emitter requires reviewing:
 
-### Supporting Modules
+1. **[RoslynEmitter.md](RoslynEmitter.md)**
+   - Core emitter initialization
+   - Scope tracking fields (`_declaredVariables`, `_variableVersions`, etc.)
+   - `TypeMapper` initialization
 
-- **[NameMangler.md](./NameMangler.md)** — Name convention transformation details
-- **[TypeMapper.md](./TypeMapper.md)** — Type conversion rules
-- **[CodeGenContext.md](./CodeGenContext.md)** — Compilation context and symbol lookup
+2. **[RoslynEmitter.Operators.md](RoslynEmitter.Operators.md)**
+   - `TryGenerateOperatorOverload()` - Called from this file (line 78)
+   - Complementary operator generation methods (lines 118, 123)
+   - Operator dunder method mappings
 
-### Language Specification
+3. **[RoslynEmitter.Statements.md](RoslynEmitter.Statements.md)**
+   - `GenerateBodyStatement()` - Called for method bodies (line 234, 240, 384)
 
-- `docs/language_specification/classes.md` — Class syntax and semantics
-- `docs/language_specification/class_methods.md` — Method types (instance, static, dunder)
-- `docs/language_specification/constructors.md` — `__init__`, overloading, chaining
-- `docs/language_specification/inheritance.md` — `super()` usage and constraints
-- `docs/language_specification/dotnet_interop.md` — .NET integration patterns
+4. **[RoslynEmitter.Expressions.md](RoslynEmitter.Expressions.md)**
+   - `GenerateExpression()` - Called for initializers and assignments (line 223, 482)
+   - `GenerateParameter()` - Called for method parameters (line 142, 332)
+
+5. **[RoslynEmitter.TypeDeclarations.md](RoslynEmitter.TypeDeclarations.md)**
+   - Class/interface/struct declaration generation
+   - Calls back to `GenerateClassMembers()` from this file
+
+### Related Supporting Files
+
+- **[NameMangler.md](NameMangler.md)**
+   - Name transformation logic
+   - Dunder method mappings
+
+- **[TypeMapper.md](TypeMapper.md)**
+   - Type annotation to C# type conversion
+   - Type inference from expressions
+
+### Relevant Specifications
+
+See the following language specification documents for details:
+- `docs/language_specification/class_methods.md` - Method declaration semantics
+- `docs/language_specification/classes.md` - Class structure and members
+- `docs/language_specification/constructors.md` - Constructor behavior and initialization
+- `docs/language_specification/dotnet_interop.md` - .NET interop including dunder mappings
+- `docs/language_specification/inheritance.md` - Base class constructors and method overriding
 
 ---
 
 ## Summary
 
-`RoslynEmitter.ClassMembers.cs` is the **class body transformation engine** of the Sharpy compiler. It bridges the gap between Python's class semantics and C#'s member declarations:
+This file is the heart of class member code generation in the Sharpy compiler. It orchestrates the transformation of Sharpy's Pythonic class syntax into C#'s class member model, handling:
 
-| Sharpy Concept | C# Output |
-|----------------|-----------|
-| `__init__` method | Constructor |
-| `super().__init__()` | `: base(...)` initializer |
-| `self.field = value` | `this.Field = value` |
-| No `self` parameter | `static` method |
-| Ellipsis body in abstract class | Abstract method |
-| Dunder methods | Method + operator overload |
-| Interface variables | Properties with accessors |
+- Name mangling (Python conventions → C# conventions)
+- Dunder method mappings (Python protocols → C# overrides/operators)
+- Scope tracking (method-local variable versioning)
+- Field/parameter disambiguation (constructor body generation)
+- Interface contract generation (abstract methods and properties)
 
-The key insight is the **two-pass design** for consistent field naming and the **Pythonic static detection** based on `self` parameter presence. When debugging, focus on the field mapping construction and the modifier determination logic.
-
----
-
-**Next Steps for Newcomers:**
-1. Read the main `RoslynEmitter.cs` walkthrough for overall context
-2. Trace through `GenerateClassMembers()` with a simple class example
-3. Understand how `NameMangler` transforms identifiers
-4. Explore `RoslynEmitter.Operators.cs` for operator synthesis details
-5. Run integration tests with `--emit-csharp` to see actual output
+**Key Takeaway**: The multi-pass generation strategy ensures all dependencies between members are satisfied, while exclusive use of Roslyn's SyntaxFactory guarantees syntactically correct C# output every time.

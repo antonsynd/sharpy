@@ -6,59 +6,63 @@
 
 ## Overview
 
-The `SymbolTable` is the **central hub for all symbol storage and lookup** during semantic analysis in the Sharpy compiler. It manages a stack of nested scopes and provides a clean interface for defining, looking up, and updating symbols (variables, functions, types, etc.) as the compiler analyzes your code.
+`SymbolTable` is the central registry for managing all symbols (variables, functions, types, etc.) and their scopes during semantic analysis. It acts as the compiler's "phone book"—tracking what names are defined and where they're visible throughout the code.
 
-Think of it as the compiler's "phonebook" - it keeps track of what names mean in different parts of your code, handling both global declarations and local scopes (like function bodies or nested blocks).
-
-### Role in the Compiler Pipeline
-
+**Role in the Compiler Pipeline:**
 ```
-Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → CodeGen
+Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → RoslynEmitter → C#
                                            ↓
                                       SymbolTable
                                       (used by NameResolver,
                                        TypeResolver, TypeChecker)
 ```
 
-The `SymbolTable` is created once at the start of semantic analysis and is used throughout all semantic passes:
+The `SymbolTable` is created once at the start of semantic analysis and used throughout all semantic passes:
 - **NameResolver**: Populates the symbol table with declarations
 - **TypeResolver**: Looks up type symbols when resolving type annotations
 - **TypeChecker**: Looks up variables, functions, and types during type checking
 
-It persists across all these passes, maintaining the complete symbol database.
+Think of `SymbolTable` as managing a stack of dictionaries—each dictionary is a scope (global, function, block), and the stack represents the nesting structure of your code. When you reference a variable, the SymbolTable searches from the top of the stack (current scope) down to the bottom (global scope).
 
 ---
 
-## Class Structure
+## Class/Type Structure
 
 ### Main Class: `SymbolTable`
 
 ```csharp
 public class SymbolTable
 {
-    private readonly Stack<Scope> _scopeStack = new();
-    private readonly Scope _globalScope;
-    private readonly BuiltinRegistry _builtins;
+    private readonly Stack<Scope> _scopeStack = new();      // Stack of active scopes
+    private readonly Scope _globalScope;                     // Root global scope
+    private readonly BuiltinRegistry _builtins;              // Builtin types/functions
+
+    public Scope CurrentScope => _scopeStack.Peek();
+    public Scope GlobalScope => _globalScope;
+    public int ScopeDepth => _scopeStack.Count;
+    public BuiltinRegistry BuiltinRegistry => _builtins;
 }
 ```
 
-**Key Fields:**
+**Key Design Decisions:**
+- **Stack-based scope management**: Mirrors the natural nesting structure of code blocks
+- **Immutable global scope**: Always at the bottom of the stack, never popped
+- **Separation of concerns**: Builtins come from `BuiltinRegistry`, user symbols tracked separately
 
-- **`_scopeStack`**: A stack that tracks the current scope hierarchy. The top of the stack is the "current scope" - where new symbols are defined and lookups start.
-- **`_globalScope`**: A permanent reference to the global (module-level) scope. This is always at the bottom of the stack.
-- **`_builtins`**: Reference to the builtin type and function registry (contains `int`, `str`, `list`, `print()`, `len()`, etc.)
+**Properties:**
 
-**Design Pattern**: The `SymbolTable` uses a **scope stack** pattern common in compilers. As the semantic analyzer enters nested blocks (functions, classes, if-statements), it pushes new scopes onto the stack. When exiting, it pops them off. This naturally handles variable shadowing and scoping rules.
+| Property | Type | Purpose |
+|----------|------|---------|
+| `CurrentScope` | `Scope` | The top of the scope stack (where new symbols are defined and lookups start) |
+| `GlobalScope` | `Scope` | Direct access to the global scope (always at bottom of stack) |
+| `ScopeDepth` | `int` | Number of nested scopes (1 = global only, 2+ = nested) |
+| `BuiltinRegistry` | `BuiltinRegistry` | Access to builtin types/functions for overload resolution |
 
 ---
 
-## Key Methods
+## Key Functions/Methods
 
-### Constructor
-
-#### `SymbolTable(BuiltinRegistry builtins)`
-
-**Purpose**: Initializes the symbol table with a global scope pre-populated with builtin types and functions.
+### 1. Constructor: Initialization and Builtin Population
 
 ```csharp
 public SymbolTable(BuiltinRegistry builtins)
@@ -66,85 +70,163 @@ public SymbolTable(BuiltinRegistry builtins)
     _builtins = builtins;
     _globalScope = new Scope("global");
     _scopeStack.Push(_globalScope);
-
-    // Populate global scope with builtins
     PopulateBuiltins();
 }
 ```
 
-**What it does:**
-1. Creates and pushes the global scope onto the stack
-2. Calls `PopulateBuiltins()` to register all builtin types (`int`, `str`, `list`, etc.) and functions (`print`, `len`, etc.) into the global scope
-3. After construction, the symbol table is ready to use - all Python-like builtins are immediately available
+**What happens during construction:**
+1. Stores reference to `BuiltinRegistry`
+2. Creates the global scope and pushes it onto the stack
+3. Populates global scope with built-in types (int, str, list, etc.) and functions (print, len, range, etc.)
 
-**Important Detail**: The global scope is never popped from the stack. Attempting to exit the global scope throws an exception (see `ExitScope()`).
+**Parameters:**
+- `builtins`: The `BuiltinRegistry` containing all Sharpy.Core types and functions
+
+**Connection to Pipeline:** This is called early in semantic analysis (typically in the constructor of `NameResolver` or `TypeChecker`) to initialize the symbol environment before processing any user code.
 
 ---
 
-### Scope Management
+### 2. `PopulateBuiltins()` - Critical Initialization Logic
+
+```csharp
+private void PopulateBuiltins()
+{
+    // Add builtin types
+    var typeNames = new HashSet<string>();
+    foreach (var (name, typeSymbol) in _builtins.GetAllTypes())
+    {
+        _globalScope.Define(typeSymbol);
+        typeNames.Add(name);  // Track type names
+    }
+
+    // Add builtin functions (only one symbol per function name)
+    var addedFunctions = new HashSet<string>();
+    foreach (var (name, funcSymbol) in _builtins.GetAllFunctions())
+    {
+        // Skip if already added OR same name as type
+        if (!addedFunctions.Contains(name) && !typeNames.Contains(name))
+        {
+            _globalScope.Define(funcSymbol);
+            addedFunctions.Add(name);
+        }
+    }
+}
+```
+
+**Implementation Details:**
+
+1. **Type registration first**: All builtin types (int, str, bool, list, dict, etc.) are registered
+2. **Track type names**: Stored in `typeNames` HashSet to avoid function collision
+3. **Function registration with deduplication**: Only one function symbol per name, even with overloads
+4. **Skip type-named functions**: Functions like `int()`, `str()`, `bool()` are NOT added to prevent collision
+
+**Why skip functions with type names?**
+
+In Python (and Sharpy), `int()`, `str()`, `bool()` look like function calls but are actually type constructors:
+
+```python
+x: int = 42        # 'int' resolved as TypeSymbol
+y = int("123")     # TypeChecker routes to builtin int() function
+```
+
+The SymbolTable only adds the *type* symbol to avoid collision. The TypeChecker handles routing these "constructor calls" to the appropriate builtin function overloads via `BuiltinRegistry.GetFunctionOverloads()`.
+
+**Overload Handling Philosophy:**
+
+Only one `FunctionSymbol` per name is stored in the symbol table (the first overload encountered). This is intentional:
+- Symbol table's job: **Name resolution** ("does this name exist?")
+- TypeChecker's job: **Overload resolution** ("which overload matches these arguments?")
+
+During type checking, the analyzer calls `BuiltinRegistry.GetFunctionOverloads()` to get all overloads and select the best match.
+
+**Example:**
+```python
+# Builtin print() has multiple overloads:
+# print(value: object) -> None
+# print(*values: object) -> None
+```
+
+Symbol table stores one; TypeChecker gets all overloads from BuiltinRegistry for proper resolution.
+
+---
+
+### 3. Scope Management Methods
 
 #### `EnterScope(string name)`
-
-**Purpose**: Pushes a new nested scope onto the stack.
 
 ```csharp
 public void EnterScope(string name)
 {
-    var newScope = new Scope(name, CurrentScope);
+    var newScope = new Scope(name, CurrentScope);  // Parent = current scope
     _scopeStack.Push(newScope);
 }
 ```
 
 **What it does:**
-- Creates a new `Scope` with the current scope as its parent
+- Creates a new `Scope` with the current scope as its parent (for lookup chain)
 - Pushes it onto the stack, making it the new current scope
-- The `name` parameter is for debugging/diagnostics (e.g., "function:my_func", "if-block")
+- The `name` parameter is for debugging/diagnostics (e.g., "function foo", "class Bar")
 
-**Usage Example:**
-When the semantic analyzer processes a function definition like:
-```python
-def greet(name: str):
-    message = "Hello " + name
-    print(message)
+**When used:**
+- Function definitions: `EnterScope("function foo")`
+- Class bodies: `EnterScope("class Bar")`
+- Block scopes (if/while/for) when block-level scoping is needed
+
+**Example call sequence during analysis:**
+```csharp
+// Analyzing: def foo(name: str):
+//                message = "Hello " + name
+
+NameResolver.VisitFunctionDef(node):
+    1. Define function symbol in current scope
+    2. EnterScope("function foo")
+    3. Define parameter 'name' in new scope
+    4. Analyze function body (defines 'message')
+    5. ExitScope()
 ```
 
-The analyzer will:
-1. Call `EnterScope("function:greet")` when entering the function body
-2. Define `name` and `message` variables in this new scope
-3. Call `ExitScope()` after processing the function body
-
-This ensures `message` is only visible inside the function.
+**Connection to Upstream/Downstream:**
+- **Upstream**: Parser provides AST with function/class definitions
+- **Downstream**: Ensures variables defined in function scope don't leak to outer scopes
 
 ---
 
 #### `ExitScope()`
 
-**Purpose**: Pops the current scope from the stack, returning to the parent scope.
-
 ```csharp
 public void ExitScope()
 {
     if (_scopeStack.Count <= 1)
-    {
         throw new InvalidOperationException("Cannot exit global scope");
-    }
     _scopeStack.Pop();
 }
 ```
 
 **What it does:**
-- Removes the topmost scope from the stack
-- **Safety Check**: Prevents popping the global scope (which should always remain on the stack)
+- Removes the topmost scope from the stack, returning to parent scope
+- **Safety check**: Prevents popping the global scope (which must always remain)
 
-**Important**: This is called in symmetric pairs with `EnterScope()`. Missing an `ExitScope()` call will leave "ghost scopes" on the stack, causing subsequent lookups to behave incorrectly.
+**Important:** Must be called in symmetric pairs with `EnterScope()`. Missing an `ExitScope()` call will leave "ghost scopes" on the stack, causing subsequent lookups to behave incorrectly.
+
+**Error Handling Pattern:**
+```csharp
+// Good pattern - ensures ExitScope is always called
+_symbolTable.EnterScope("function foo");
+try
+{
+    // Analyze function body
+}
+finally
+{
+    _symbolTable.ExitScope();
+}
+```
 
 ---
 
-### Symbol Definition
+### 4. Symbol Definition Methods
 
 #### `Define(Symbol symbol)`
-
-**Purpose**: Adds a symbol to the current scope.
 
 ```csharp
 public void Define(Symbol symbol)
@@ -154,20 +236,43 @@ public void Define(Symbol symbol)
 ```
 
 **What it does:**
-- Delegates to the current scope's `Define()` method
-- The `Scope.Define()` implementation handles:
-  - Redefinition rules (variables can be reassigned, constants cannot)
-  - Shadowing builtins (allowed)
-  - Duplicate definition errors (for functions, types, etc.)
+- Adds a symbol to the current scope
+- Delegates to `Scope.Define()` which handles:
+  - Redefinition rules (variables can be redefined, constants cannot)
+  - Builtin shadowing (allowed—user code can shadow builtins like `print`)
+  - Duplicate definition errors (for functions, types, constants)
 
 **Usage Example:**
-When processing `x: int = 5`, the semantic analyzer creates a `VariableSymbol` and calls `Define()` to register it.
+```csharp
+// Processing: x: int = 5
+var varSymbol = new VariableSymbol
+{
+    Name = "x",
+    Type = SemanticType.Int,
+    Kind = SymbolKind.Variable
+};
+symbolTable.Define(varSymbol);
+```
+
+**Redefinition Behavior (implemented in Scope.cs:19-45):**
+```python
+# Variables can be redefined (Python-like)
+x = 10
+x = "hello"  # OK - redefines x
+
+# But constants cannot
+MAX: int = 100
+MAX = 200  # ERROR - cannot redefine constant
+
+# User code can shadow builtins
+print = 42  # OK - shadows builtin print function
+```
+
+**Connection to Downstream:** Symbol information flows to CodeGen via `SemanticInfo` annotations on AST nodes.
 
 ---
 
 #### `TryDefine(Symbol symbol)`
-
-**Purpose**: Conditionally defines a symbol only if it doesn't already exist in the current scope.
 
 ```csharp
 public bool TryDefine(Symbol symbol)
@@ -182,16 +287,31 @@ public bool TryDefine(Symbol symbol)
 **What it does:**
 - Checks if the name already exists in the **current scope only** (not parent scopes)
 - Returns `false` if it exists, `true` if successfully defined
+- Does NOT throw error on duplicate (unlike `Define()`)
 
-**When to use**: This is useful for "soft" definitions where you want to avoid errors if the symbol already exists. For example, when importing modules - if a module is already imported, you can skip re-importing it.
+**When to use:**
+- "Soft" definitions where duplicates should be silently ignored
+- Module imports (avoid re-importing already loaded modules)
+- Conditional symbol registration
+
+**Example:**
+```csharp
+// Import module only if not already imported
+if (symbolTable.TryDefine(moduleSymbol))
+{
+    // Successfully imported - load module contents
+}
+else
+{
+    // Already imported - skip
+}
+```
 
 ---
 
-### Symbol Lookup
+### 5. Symbol Lookup Methods
 
 #### `Lookup(string name, bool searchParents = true)`
-
-**Purpose**: The core lookup method that searches for a symbol by name.
 
 ```csharp
 public Symbol? Lookup(string name, bool searchParents = true)
@@ -200,74 +320,96 @@ public Symbol? Lookup(string name, bool searchParents = true)
 }
 ```
 
-**What it does:**
-- Searches the current scope first
-- If not found and `searchParents` is `true`, recursively searches parent scopes up to the global scope
-- Returns `null` if the symbol is not found anywhere
+**Core lookup algorithm** (implemented in Scope.cs:48-61):
+1. Check current scope's symbol dictionary
+2. If not found and `searchParents == true`, recursively check parent scopes
+3. Return `null` if not found anywhere
 
-**The `searchParents` Parameter:**
-- **`true` (default)**: Normal lookup - search up the scope chain (used 99% of the time)
-- **`false`**: Only search the current scope - used for checking if a symbol is local
+**Parameters:**
+- `name`: Symbol name to look up
+- `searchParents`:
+  - `true` (default): Search up the scope chain (normal lexical scoping)
+  - `false`: Only search current scope (used for checking local-only existence)
 
-**Lookup Order Example:**
+**Return Value:** `Symbol?` (null if not found)
+
+**Lexical Scoping Example:**
 ```python
 x = 10  # Global scope
 
 def foo():
-    x = 20  # Function scope
-    print(x)  # Lookup finds function-scope x (= 20), not global x
+    x = 20  # Function scope (shadows global)
+    print(x)  # Lookup finds function-scope x (= 20)
 ```
 
-When looking up `x` inside `foo()`, the algorithm:
-1. Checks the function scope → finds `x = 20` → returns it immediately
-2. Never checks the global scope (because it found a match)
+**Lookup sequence:**
+1. Check function scope → finds `x = 20` → returns immediately (shadowing)
+2. Never checks global scope (already found a match)
 
-This implements **variable shadowing** - inner scopes can hide outer scopes.
+**When `searchParents = false`:**
+```csharp
+// Check if symbol is defined locally (not inherited from parent)
+var localSymbol = Lookup("x", searchParents: false);
+```
+
+**Connection to Upstream:** Called extensively during TypeChecker to resolve variable references, function calls, type annotations.
 
 ---
 
-#### `LookupType(string name)`, `LookupFunction(string name)`, `LookupVariable(string name)`, `LookupTypeAlias(string name)`
+#### Typed Lookup Helpers
 
-**Purpose**: Typed convenience methods that cast the lookup result to specific symbol types.
+Convenience methods that cast lookup results to specific symbol types:
 
 ```csharp
 public TypeSymbol? LookupType(string name)
-{
-    return Lookup(name) as TypeSymbol;
-}
+    => Lookup(name) as TypeSymbol;
 
 public FunctionSymbol? LookupFunction(string name)
-{
-    return Lookup(name) as FunctionSymbol;
-}
+    => Lookup(name) as FunctionSymbol;
 
 public VariableSymbol? LookupVariable(string name)
-{
-    return Lookup(name) as VariableSymbol;
-}
+    => Lookup(name) as VariableSymbol;
 
 public TypeAliasSymbol? LookupTypeAlias(string name)
-{
-    return Lookup(name) as TypeAliasSymbol;
-}
+    => Lookup(name) as TypeAliasSymbol;
 ```
 
 **What they do:**
-- Call `Lookup()` and cast the result to the expected symbol type
+- Call `Lookup()` and cast to expected symbol type
 - Return `null` if either:
-  - The symbol doesn't exist
-  - The symbol exists but is the wrong type (e.g., looking up "int" as a function when it's actually a type)
+  - Symbol doesn't exist, OR
+  - Symbol exists but is wrong type (e.g., `LookupType("print")` returns null because `print` is a FunctionSymbol)
 
-**Usage Example:**
-When processing `x: int`, the type resolver calls `LookupType("int")` to find the `int` type symbol. If someone defined a variable named `int`, this would return `null` (because the variable symbol can't be cast to `TypeSymbol`).
+**Usage Examples:**
+
+```csharp
+// Type resolution: x: int
+var intType = symbolTable.LookupType("int");
+if (intType == null)
+    throw new SemanticError("Type 'int' not found");
+
+// Function call: print("hello")
+var printFunc = symbolTable.LookupFunction("print");
+if (printFunc == null)
+    throw new SemanticError("Function 'print' not found");
+
+// Variable reference: y = x + 1
+var varX = symbolTable.LookupVariable("x");
+if (varX == null)
+    throw new SemanticError("Variable 'x' not defined");
+```
+
+**When to use each:**
+- `LookupType`: Parsing type annotations (`def foo() -> int:`)
+- `LookupFunction`: Analyzing function calls, method resolution
+- `LookupVariable`: Variable reference expressions
+- `LookupTypeAlias`: Type alias resolution (e.g., `type MyList = list[int]`)
 
 ---
 
-### Symbol Updates
+### 6. Symbol Updating
 
 #### `UpdateSymbol(Symbol symbol)`
-
-**Purpose**: Replaces an existing symbol in the scope chain with a new version.
 
 ```csharp
 public bool UpdateSymbol(Symbol symbol)
@@ -277,101 +419,35 @@ public bool UpdateSymbol(Symbol symbol)
 ```
 
 **What it does:**
-- Searches for a symbol with the same name in the current scope or any parent scope
-- If found, replaces it with the new symbol
+- Searches for a symbol with the same name in current scope or parent scopes
+- If found, replaces it with the new symbol (using C# record immutability patterns)
 - Returns `true` if updated, `false` if not found
 
-**When to use**: This is primarily used during **type checking** to update function symbols with their resolved return types. Here's why:
+**Primary use case:** Updating function return types during type checking
 
-During the first pass (NameResolver), a function might be registered with an `Unknown` return type:
-```csharp
-// First pass: return type not yet known
-FunctionSymbol { Name = "calculate", ReturnType = SemanticType.Unknown }
-```
-
-Later, during type checking, the analyzer infers the return type and updates the symbol:
-```csharp
-// Type checking pass: update with inferred return type
-UpdateSymbol(new FunctionSymbol { Name = "calculate", ReturnType = SemanticType.Int })
-```
-
-This allows the symbol table to evolve as more information becomes available.
-
----
-
-### Properties
-
-```csharp
-public Scope CurrentScope => _scopeStack.Peek();
-public Scope GlobalScope => _globalScope;
-public int ScopeDepth => _scopeStack.Count;
-public BuiltinRegistry BuiltinRegistry => _builtins;
-```
-
-**`CurrentScope`**: Returns the top of the scope stack (where new symbols are defined and lookups start).
-
-**`GlobalScope`**: Direct access to the global scope (useful for checking if something is globally defined).
-
-**`ScopeDepth`**: The number of nested scopes (1 = global only, 2 = one nested scope, etc.). Useful for diagnostics.
-
-**`BuiltinRegistry`**: Access to the builtin registry (used by type checker for overload resolution).
-
----
-
-## Private Methods
-
-### `PopulateBuiltins()`
-
-**Purpose**: Pre-populates the global scope with all builtin types and functions from the `BuiltinRegistry`.
-
-```csharp
-private void PopulateBuiltins()
-{
-    // Add builtin types
-    foreach (var (name, typeSymbol) in _builtins.GetAllTypes())
-    {
-        _globalScope.Define(typeSymbol);
-    }
-
-    // Add builtin functions (only add one symbol per function name, overload resolution happens later)
-    // For functions with multiple overloads, only the first overload is added to the global scope.
-    // The TypeChecker uses BuiltinRegistry.GetFunctionOverloads() for proper overload resolution.
-    var addedFunctions = new HashSet<string>();
-    foreach (var (name, funcSymbol) in _builtins.GetAllFunctions())
-    {
-        if (!addedFunctions.Contains(name))
-        {
-            _globalScope.Define(funcSymbol);
-            addedFunctions.Add(name);
-        }
-    }
-}
-```
-
-**What it does:**
-
-1. **Types**: Registers all builtin types (`int`, `str`, `list`, `dict`, `bool`, etc.) directly into the global scope
-2. **Functions**: Registers only **one function symbol per name**, even if there are multiple overloads
-
-**Important Design Decision - Function Overload Handling:**
-
-The symbol table only stores **one** `FunctionSymbol` per function name (the first overload encountered). This is intentional because:
-
-- The symbol table's job is **name resolution** ("does this name exist?")
-- **Overload resolution** ("which overload should I call?") is handled later by the `TypeChecker`
-- During type checking, the analyzer calls `BuiltinRegistry.GetFunctionOverloads()` to get all overloads and select the best match
-
-**Example:**
+**Example scenario:**
 ```python
-# Builtin print() has multiple overloads:
-# print(value: object) -> None
-# print(*values: object) -> None
+def calculate():    # Initially: ReturnType = Unknown
+    return 42       # TypeChecker infers: ReturnType = int
 ```
 
-The symbol table only stores one of these. When type checking a call to `print()`, the type checker:
-1. Uses `SymbolTable.LookupFunction("print")` to verify the name exists
-2. Uses `BuiltinRegistry.GetFunctionOverloads("print")` to get all overloads
-3. Selects the best overload based on argument types
+```csharp
+// NameResolver pass - initial registration
+var funcSymbol = new FunctionSymbol
+{
+    Name = "calculate",
+    ReturnType = SemanticType.Unknown
+};
+symbolTable.Define(funcSymbol);
+
+// TypeChecker pass - update with inferred return type
+var updatedSymbol = funcSymbol with { ReturnType = SemanticType.Int };
+symbolTable.UpdateSymbol(updatedSymbol);
+```
+
+**Implementation Detail:** The `Scope.Update()` method (Scope.cs:72-86) searches current and parent scopes recursively, updating the first match found.
+
+**Connection to Multi-Pass Analysis:** Allows semantic analysis to progressively refine symbol information across multiple passes without re-creating the entire symbol table.
 
 ---
 
@@ -379,42 +455,24 @@ The symbol table only stores one of these. When type checking a call to `print()
 
 ### Internal Dependencies
 
-The `SymbolTable` depends on these other semantic analysis components:
+| File | Relationship |
+|------|--------------|
+| **Scope.cs** | Individual scope management—implements symbol storage, lookup, and redefinition logic |
+| **Symbol.cs** | All symbol type definitions (VariableSymbol, FunctionSymbol, TypeSymbol, etc.) |
+| **BuiltinRegistry.cs** | Provides builtin types/functions to populate global scope |
+| **SemanticType.cs** | Type system used in symbol type annotations |
 
-- **`Scope`** ([Scope.md](Scope.md)): Manages individual scope instances and implements the actual symbol storage/lookup logic. `SymbolTable` orchestrates scopes; `Scope` does the heavy lifting.
+### External Consumers
 
-- **`Symbol`** ([Symbol.md](Symbol.md)): All symbol types (`VariableSymbol`, `FunctionSymbol`, `TypeSymbol`, etc.). The symbol table is generic over these types.
+SymbolTable is used throughout semantic analysis:
 
-- **`BuiltinRegistry`** ([BuiltinRegistry.md](BuiltinRegistry.md)): Provides the initial set of builtin types and functions. Injected via constructor.
-
-### External Dependencies
-
-- **None** - `SymbolTable` is a pure data structure with no external dependencies beyond the semantic analysis namespace.
-
-### Used By (Consumers)
-
-The `SymbolTable` is used throughout semantic analysis:
-
-- **[NameResolver.md](NameResolver.md)**: Populates the symbol table during the first semantic pass
-- **[ImportResolver.md](ImportResolver.md)**: Uses the symbol table to register imported modules and symbols
-- Type checking passes: Look up symbols to verify correctness
-
----
-
-## Cross-References
-
-### Related Documentation
-
-- **[Scope.md](Scope.md)**: Explains how individual scopes work, including redefinition rules and shadowing behavior
-- **[Symbol.md](Symbol.md)**: Documents all symbol types and their properties
-- **[BuiltinRegistry.md](BuiltinRegistry.md)**: How builtin types and functions are loaded and managed
-- **[NameResolver.md](NameResolver.md)**: Shows how the symbol table is populated during the first semantic pass
-- **[ImportResolver.md](ImportResolver.md)**: Uses the symbol table to register imported modules and symbols
-
-### Language Specification
-
-- **`docs/language_specification/identifiers.md`**: Defines identifier naming rules
-- **`docs/language_specification/variable_scoping.md`**: Specifies scoping rules that the symbol table implements
+| Component | Usage |
+|-----------|-------|
+| **NameResolver** | Populates symbol table during first semantic pass |
+| **TypeResolver** | Looks up type symbols when resolving type annotations |
+| **TypeChecker** | Resolves variable/function references, performs type checking |
+| **ImportResolver** | Registers imported modules and symbols |
+| **CodeGenInfoComputer** | Queries symbols for code generation metadata |
 
 ---
 
@@ -422,124 +480,150 @@ The `SymbolTable` is used throughout semantic analysis:
 
 ### 1. **Scope Stack Pattern**
 
-The symbol table uses a **stack-based scope management** pattern, which is standard in most compilers:
+Standard compiler pattern for managing nested scopes:
 
 ```
-[Global Scope] ← bottom of stack
-[Function Scope]
-[If-Block Scope] ← top of stack (current scope)
+Stack representation:
+┌─────────────────────┐ ← Top (CurrentScope)
+│  If-Block Scope     │
+├─────────────────────┤
+│  Function Scope     │
+├─────────────────────┤
+│  Global Scope       │ ← Bottom (never popped)
+└─────────────────────┘
 ```
 
 **Why a stack?**
-- Natural representation of nested scopes
-- Efficient push/pop operations (O(1))
-- Easy to implement shadowing (inner scopes checked first)
+- Natural representation of nested code structures
+- Efficient O(1) push/pop operations
+- Automatic shadowing (inner scopes checked first during lookup)
 - Automatic cleanup when exiting scopes
 
-### 2. **Separation of Concerns**
+### 2. **Delegation Pattern**
 
-The `SymbolTable` is the **orchestrator**, while `Scope` is the **worker**:
+SymbolTable is a thin wrapper around `Scope`:
+```csharp
+public void Define(Symbol symbol) => CurrentScope.Define(symbol);
+public Symbol? Lookup(string name) => CurrentScope.Lookup(name);
+```
 
-- **`SymbolTable`**: Manages scope lifecycle (push/pop), provides high-level API
-- **`Scope`**: Implements actual symbol storage and lookup logic
+**Rationale:**
+- **SymbolTable**: Manages the *stack* of scopes (orchestration)
+- **Scope**: Manages the *contents* of a single scope (implementation)
+- Clean separation of concerns, easier testing
 
-This separation makes the code easier to test and reason about. You can test `Scope` logic independently of scope stack management.
+### 3. **Lexical Scoping (Static Scoping)**
 
-### 3. **Builtin Injection via Constructor**
+Scope lookup follows syntactic structure, not runtime call stack:
 
-Builtins are **injected** rather than hardcoded:
+```python
+x = "global"
+
+def outer():
+    x = "outer"
+    def inner():
+        print(x)  # Resolves to "outer" (lexical parent), not globals
+    return inner
+```
+
+The `_scopeStack` mirrors syntactic nesting, ensuring correct lexical resolution.
+
+### 4. **Builtin Injection via Constructor**
 
 ```csharp
 public SymbolTable(BuiltinRegistry builtins)
 ```
 
 **Benefits:**
-- Testability: Unit tests can inject a mock/minimal builtin registry
-- Flexibility: Could support different builtin sets for different language versions
-- Clear dependency: Explicit that `SymbolTable` depends on `BuiltinRegistry`
+- **Testability**: Unit tests can inject mock/minimal builtin registry
+- **Flexibility**: Could support different builtin sets for language versions
+- **Explicit dependency**: Clear that SymbolTable depends on BuiltinRegistry
 
-### 4. **Overload Simplification**
+### 5. **Separation of Name Resolution vs. Overload Resolution**
 
-Only one function symbol per name in the symbol table, even with multiple overloads. This keeps the symbol table simple and focused on **name existence**, delegating **overload resolution** to the type checker.
+- **Symbol Table**: Answers "Does this name exist?" (stores one FunctionSymbol per name)
+- **TypeChecker + BuiltinRegistry**: Answers "Which overload matches these arguments?"
 
-**Tradeoff**: This means you can't get all overloads directly from the symbol table - you need to go through `BuiltinRegistry` or other mechanisms. But it simplifies the symbol table's API and responsibility.
-
-### 5. **Typed Lookup Helpers**
-
-Instead of forcing callers to cast lookup results:
-
-```csharp
-// Without helpers (verbose)
-var typeSymbol = Lookup("int") as TypeSymbol;
-
-// With helpers (clean)
-var typeSymbol = LookupType("int");
-```
-
-These helpers make calling code more readable and reduce casting clutter.
+This keeps the symbol table simple and focused on name existence, delegating the complex logic of overload resolution to the type checker.
 
 ---
 
 ## Debugging Tips
 
-### 1. **Inspect Scope Depth**
+### 1. **"Symbol not found" errors**
 
-If symbols aren't being found when they should be:
+**Check:**
+- Was `EnterScope()` called without matching `ExitScope()`? Use `ScopeDepth` property
+- Is the symbol defined in a sibling scope instead of parent? (Common with nested functions)
+- Did you call `Lookup` with `searchParents: false` by accident?
+
+**Debug technique:**
+```csharp
+var sym = _symbolTable.Lookup("x");
+if (sym == null)
+{
+    Console.WriteLine($"Current scope: {_symbolTable.CurrentScope.Name}");
+    Console.WriteLine($"Scope depth: {_symbolTable.ScopeDepth}");
+    // Add breakpoint here and inspect _scopeStack
+}
+```
+
+### 2. **"Symbol already defined" errors**
+
+**Check `Scope.Define()` logic** (delegates from SymbolTable.cs to Scope.cs:19-45):
+- Are you trying to redefine a constant? (`IsConstant = true`)
+- Are you redefining a function or type? (Not allowed, unlike variables)
+- Is the symbol a builtin? (Shadowing is allowed; check `DeclarationLine == null`)
+
+### 3. **Wrong symbol type returned**
+
+```csharp
+var typeSym = _symbolTable.LookupType("foo");
+if (typeSym == null)
+{
+    // Either not found, OR found but not a TypeSymbol
+    var anySymbol = _symbolTable.Lookup("foo");
+    if (anySymbol != null)
+    {
+        // Found but wrong type!
+        Console.WriteLine($"Expected TypeSymbol, got {anySymbol.GetType().Name}");
+    }
+}
+```
+
+### 4. **Scope stack corruption**
+
+If you see `InvalidOperationException: Cannot exit global scope`:
+- Mismatched `EnterScope`/`ExitScope` calls
+- Exception thrown during analysis before `ExitScope` (use try-finally!)
+
+```csharp
+// Good pattern
+_symbolTable.EnterScope("function foo");
+try
+{
+    // Analyze function body
+}
+finally
+{
+    _symbolTable.ExitScope();  // Always called, even on exception
+}
+```
+
+### 5. **Inspect Scope Depth**
 
 ```csharp
 Console.WriteLine($"Current scope depth: {symbolTable.ScopeDepth}");
+// Depth = 1: Global scope
+// Depth > 1: Nested scopes
 ```
 
-- Depth = 1 means you're at global scope
-- Depth > 1 means you're in nested scopes
-- Unexpected depth often indicates missing `EnterScope()` or `ExitScope()` calls
+Unexpected depth indicates missing `EnterScope()`/`ExitScope()` calls.
 
-### 2. **Trace Scope Names**
-
-Scopes have debug names:
+### 6. **Verify Builtin Population**
 
 ```csharp
-Console.WriteLine($"Current scope: {symbolTable.CurrentScope.Name}");
-```
-
-This helps identify where you are in the code structure (e.g., "function:calculate", "class:MyClass").
-
-### 3. **Check Symbol Existence vs. Type**
-
-If `LookupType("x")` returns `null`, check if it's defined as a different symbol type:
-
-```csharp
-var symbol = Lookup("x");
-if (symbol != null)
-{
-    Console.WriteLine($"Found 'x' but it's a {symbol.GetType().Name}, not a type");
-}
-```
-
-This catches bugs where you're looking up the right name but expecting the wrong symbol kind.
-
-### 4. **Global vs. Local Lookups**
-
-To debug shadowing issues:
-
-```csharp
-// Check if a symbol is defined locally
-var local = Lookup("x", searchParents: false);
-
-// Check if a symbol is defined globally
-var global = GlobalScope.Lookup("x", searchParents: false);
-
-if (local != null && global != null && local != global)
-{
-    Console.WriteLine("Variable 'x' is shadowing a global");
-}
-```
-
-### 5. **Builtin Verification**
-
-After construction, verify builtins were loaded:
-
-```csharp
+// After SymbolTable construction
 var intType = symbolTable.LookupType("int");
 var printFunc = symbolTable.LookupFunction("print");
 
@@ -549,168 +633,108 @@ if (intType == null || printFunc == null)
 }
 ```
 
-This catches issues with `BuiltinRegistry` initialization.
-
-### 6. **Scope Stack Balance**
-
-If you suspect scope mismatches:
+### 7. **Debug Shadowing Issues**
 
 ```csharp
-int depthBefore = symbolTable.ScopeDepth;
-// ... process some code ...
-int depthAfter = symbolTable.ScopeDepth;
+// Check if symbol is defined locally vs. globally
+var local = Lookup("x", searchParents: false);
+var global = GlobalScope.Lookup("x", searchParents: false);
 
-if (depthBefore != depthAfter)
+if (local != null && global != null && local != global)
 {
-    Console.WriteLine($"WARNING: Scope stack imbalance! Before={depthBefore}, After={depthAfter}");
+    Console.WriteLine("Variable 'x' is shadowing a global");
 }
 ```
-
-Each `EnterScope()` should be paired with exactly one `ExitScope()`.
 
 ---
 
 ## Contribution Guidelines
 
-### When to Modify This File
+### When to Modify SymbolTable
 
-You might need to modify `SymbolTable.cs` if:
+**DO modify when:**
+- Adding new symbol lookup strategies (e.g., namespace-qualified lookup)
+- Changing scope management behavior (e.g., adding block-level scoping for `let`)
+- Adding new typed lookup helpers (e.g., `LookupNamespace`, `LookupProperty`)
+- Enhancing diagnostics (e.g., exporting scope hierarchy for debugging)
 
-1. **Adding New Symbol Types**: If you add a new symbol type (e.g., `NamespaceSymbol`), add a typed lookup helper:
-   ```csharp
-   public NamespaceSymbol? LookupNamespace(string name)
-   {
-       return Lookup(name) as NamespaceSymbol;
-   }
-   ```
-
-2. **Changing Scope Semantics**: If the language adds new scoping constructs (e.g., block-level scoping for `let` variables), you might need additional scope management methods.
-
-3. **Performance Optimizations**: If symbol lookups become a bottleneck, you might add caching or indexing (though premature optimization should be avoided).
-
-4. **Enhanced Diagnostics**: Adding methods to dump the symbol table state or export scope hierarchies for debugging.
-
-### What NOT to Change
-
-**Do not modify**:
-
-1. The core scope stack mechanism - this is a fundamental compiler pattern
-2. The builtin population logic - this should remain in `PopulateBuiltins()` for clarity
-3. The separation between name existence (symbol table) and overload resolution (type checker)
+**DON'T modify when:**
+- Adding new symbol types → Modify `Symbol.cs` instead
+- Changing builtin registration → Modify `BuiltinRegistry.cs`
+- Changing scope lookup/redefinition rules → Modify `Scope.cs`
 
 ### Testing Considerations
 
-When modifying `SymbolTable`, ensure:
+When adding features to SymbolTable:
 
-1. **Scope Balance**: Every code path that calls `EnterScope()` must call `ExitScope()` (even in error cases)
-2. **Builtin Integrity**: Verify that all expected builtins are still registered after changes
-3. **Shadowing Behavior**: Test that local variables correctly shadow globals
-4. **Error Cases**: Verify that attempting to exit the global scope throws an exception
+1. **Test scope nesting**: Verify symbols resolve correctly through multiple levels
+2. **Test shadowing**: Ensure builtins can be shadowed, but constants cannot
+3. **Test scope isolation**: Symbols in sibling scopes should not be visible to each other
+4. **Test edge cases**: Empty scopes, global-only lookups, etc.
 
-### Code Style
+**Example test structure:**
+```csharp
+[Fact]
+public void Lookup_NestedScopes_ResolvesFromParent()
+{
+    var builtins = new BuiltinRegistry();
+    var table = new SymbolTable(builtins);
 
-- Keep methods short and focused (single responsibility)
-- Delegate actual work to `Scope` - `SymbolTable` should orchestrate, not implement
-- Maintain symmetry (e.g., `EnterScope`/`ExitScope`, `Define`/`Lookup`)
-- Add XML documentation comments for public methods
+    // Define in global scope
+    var globalVar = new VariableSymbol { Name = "x", Type = SemanticType.Int };
+    table.Define(globalVar);
+
+    // Enter nested scope
+    table.EnterScope("function foo");
+
+    // Should find in parent
+    var found = table.LookupVariable("x");
+    Assert.NotNull(found);
+    Assert.Equal("x", found.Name);
+}
+```
+
+### API Stability
+
+**Public API (stable):**
+- `Define`, `TryDefine`, `Lookup`, typed lookup methods
+- `EnterScope`, `ExitScope`, `UpdateSymbol`
+- `CurrentScope`, `GlobalScope`, `ScopeDepth`, `BuiltinRegistry` properties
+
+**Internal implementation (may change):**
+- `PopulateBuiltins` logic (driven by BuiltinRegistry evolution)
+- Scope stack data structure (could switch to List or custom structure)
 
 ---
 
-## Common Usage Patterns
+## Cross-References
 
-### Pattern 1: Processing a Function Definition
+### Related Documentation
 
-```csharp
-// In semantic analyzer when visiting a function definition
+- **[Scope.md](Scope.md)** - Individual scope implementation: symbol storage, lookup logic, redefinition rules
+- **[Symbol.md](Symbol.md)** - Symbol type hierarchy: VariableSymbol, FunctionSymbol, TypeSymbol, etc.
+- **[BuiltinRegistry.md](BuiltinRegistry.md)** - How builtin types/functions are loaded and managed
+- **[NameResolver.md](NameResolver.md)** - First semantic pass: populates SymbolTable with declarations
+- **[TypeChecker.md](TypeChecker.md)** - Uses SymbolTable for type resolution and validation
+- **[ImportResolver.md](ImportResolver.md)** - Registers imported modules and symbols
 
-// 1. Define the function in the current scope
-var funcSymbol = new FunctionSymbol { Name = "greet", ... };
-symbolTable.Define(funcSymbol);
+### Language Specification
 
-// 2. Enter a new scope for the function body
-symbolTable.EnterScope("function:greet");
-
-// 3. Define parameters as local variables
-foreach (var param in funcSymbol.Parameters)
-{
-    var paramSymbol = new VariableSymbol { Name = param.Name, Type = param.Type };
-    symbolTable.Define(paramSymbol);
-}
-
-// 4. Process function body statements
-// ... (lookups here will search function scope, then global scope)
-
-// 5. Exit the function scope
-symbolTable.ExitScope();
-```
-
-### Pattern 2: Checking for Duplicate Definitions
-
-```csharp
-// Before defining a new symbol, check if it already exists
-
-var existing = symbolTable.Lookup(symbolName, searchParents: false);
-if (existing != null)
-{
-    throw new SemanticError($"'{symbolName}' is already defined in this scope");
-}
-else
-{
-    symbolTable.Define(newSymbol);
-}
-```
-
-Note: This logic is actually handled inside `Scope.Define()`, so you usually don't need to do this check manually.
-
-### Pattern 3: Type Resolution
-
-```csharp
-// When resolving a type annotation like "list[int]"
-
-var listType = symbolTable.LookupType("list");
-if (listType == null)
-{
-    throw new SemanticError("Type 'list' not found");
-}
-
-var intType = symbolTable.LookupType("int");
-if (intType == null)
-{
-    throw new SemanticError("Type 'int' not found");
-}
-
-// Create a specialized generic type
-var listOfInt = new SemanticType.Generic(listType, new[] { intType });
-```
-
-### Pattern 4: Conditional Import
-
-```csharp
-// When importing a module, avoid re-importing
-
-var existingModule = symbolTable.Lookup(moduleName);
-if (existingModule is ModuleSymbol)
-{
-    // Already imported, skip
-    return;
-}
-
-// Not imported yet, load it
-var moduleSymbol = LoadModule(modulePath);
-symbolTable.Define(moduleSymbol);
-```
+- **`docs/language_specification/identifiers.md`** - Identifier naming rules
+- **`docs/language_specification/variable_scoping.md`** - Scoping rules implemented by SymbolTable
 
 ---
 
 ## Summary
 
-The `SymbolTable` is a straightforward but critical component of the Sharpy compiler. Its responsibilities are clear:
+`SymbolTable` is the foundational data structure for semantic analysis, providing:
 
-1. **Manage scope hierarchy** via a stack
-2. **Store symbols** as they're defined
-3. **Look up symbols** when referenced
-4. **Pre-populate builtins** so they're always available
+✓ **Scope management**: Stack-based tracking of nested scopes
+✓ **Name resolution**: Lexical scoping with parent chain lookup
+✓ **Builtin integration**: Seamless inclusion of Sharpy.Core types/functions
+✓ **Type-safe lookups**: Convenience methods for common symbol types
+✓ **Multi-pass support**: UpdateSymbol allows progressive refinement
 
-It's designed to be simple, focused, and efficient - doing one thing well. The actual complexity of symbol handling (redefinition rules, shadowing, etc.) is delegated to the `Scope` class, keeping the `SymbolTable` clean and maintainable.
+**Design Philosophy:** Simple, predictable, and Python-compatible—forming the backbone of Sharpy's multi-pass semantic analysis pipeline.
 
-As a newcomer to the Sharpy compiler, understanding the `SymbolTable` is essential because almost every other semantic analysis component depends on it. Master this, and you'll have a solid foundation for understanding name resolution, type checking, and code generation.
+**Key Takeaway:** SymbolTable manages the *what* and *where* of symbols (scope orchestration), while delegating the *how* (lookup/redefinition logic) to `Scope`. This separation keeps the codebase clean, testable, and maintainable.

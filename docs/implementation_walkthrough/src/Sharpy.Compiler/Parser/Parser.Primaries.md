@@ -4,572 +4,1279 @@
 
 ---
 
-## Overview
+## 1. Overview
 
-This file is a partial class extension of the `Parser` class that handles **primary expression parsing** — the fundamental building blocks of expressions in Sharpy. Primary expressions are the atomic units that can't be broken down further: literals (integers, strings, booleans), identifiers, collection literals (lists, dictionaries, sets, tuples), and special constructs like lambda expressions and comprehensions.
+This is a **partial class** of the main `Parser` class, responsible for parsing **primary expressions** - the fundamental building blocks of Sharpy expressions. Primary expressions are the highest-precedence expressions in the operator precedence hierarchy.
 
-**Role in the Compiler Pipeline**:
-- **Upstream**: Receives tokens from the Lexer (via the `Current` token cursor)
-- **Downstream**: Returns `Expression` AST nodes to higher-level expression parsers
-- **Position**: Bottom layer of the recursive descent expression parser (called by operator precedence methods in `Parser.Expressions.cs`)
+**Key responsibilities:**
+- Parse all literal values (integers, floats, strings, booleans, None, ellipsis)
+- Parse identifiers and variable references
+- Parse collection literals (lists, dicts, sets, tuples)
+- Parse comprehensions (list/set/dict comprehensions)
+- Parse lambda expressions
+- Parse the `super()` expression
+- Parse parenthesized expressions
+- Handle f-strings (formatted string literals)
 
-This file implements the foundational layer of the [Recursive Descent Parser](https://en.wikipedia.org/wiki/Recursive_descent_parser) pattern, where `ParsePrimary()` is the base case that all other expression parsing methods eventually bottom out to.
+**Pipeline position:**
+```
+Lexer → [TOKENS] → Parser.Primaries → [Primary Expression AST Nodes] → Parser.Expressions → Semantic Analysis
+```
+
+This is the **bottom of the precedence climbing chain** - all other expression parsing methods eventually call `ParsePrimary()` to get the base operands.
+
+**Relationship to other Parser files:**
+- Called by: `Parser.Expressions.ParsePostfix()` (for base expressions)
+- Calls: Helper methods in `Parser.cs` and `Parser.Types.cs`
+- Works with: `Parser.Statements.ParseComprehensionClauses()` for comprehension syntax
 
 ---
 
-## Class/Type Structure
+## 2. Class Structure
 
-### Partial Class: `Parser`
+### This is a Partial Class
 
-This file extends the main `Parser` class with primary expression parsing logic. The `Parser` class is split across multiple files:
-- `Parser.cs` - Core parser infrastructure (token management, error handling)
-- `Parser.Expressions.cs` - Operator precedence and compound expressions
-- `Parser.Primaries.cs` - **This file** - Literal and atomic expressions
-- `Parser.Statements.cs` - Statement parsing (for, if, while, etc.)
-- `Parser.Definitions.cs` - Top-level definitions (classes, functions)
-- `Parser.Types.cs` - Type annotations and f-string parsing
+```csharp
+public partial class Parser
+{
+    private Expression ParsePrimary()
+    {
+        // Main entry point - switches on token type
+    }
+}
+```
 
-### Main Method
+The `Parser` class is split across multiple files:
+- `Parser.cs` - Core infrastructure (token navigation, error handling)
+- `Parser.Expressions.cs` - Operator precedence and binary/unary expressions
+- `Parser.Primaries.cs` - **This file** - Literal and primary expressions
+- `Parser.Statements.cs` - Statement parsing
+- `Parser.Types.cs` - Type annotations and helper methods
+- `Parser.Definitions.cs` - Function/class/struct definitions
+
+**See also:**
+- [Parser.md](Parser.md) - Main Parser class documentation
+- [Parser.Expressions.md](Parser.Expressions.md) - Operator precedence and expression parsing
+- [Parser.Statements.md](Parser.Statements.md) - Statement parsing
+
+---
+
+## 3. The ParsePrimary() Method
+
+### 3.1 Overview
+
+`ParsePrimary()` is the **entry point** for this file and serves as the **terminus** of the operator precedence chain. It uses a large `switch` statement to dispatch based on the current token type.
 
 ```csharp
 private Expression ParsePrimary()
+{
+    var startLine = Current.Line;
+    var startColumn = Current.Column;
+
+    switch (Current.Type)
+    {
+        case TokenType.Integer: /* ... */
+        case TokenType.Float: /* ... */
+        case TokenType.String: /* ... */
+        // ... many more cases
+        default:
+            throw new ParserError($"Unexpected token: {Current.Type}", Current.Line, Current.Column);
+    }
+}
 ```
 
-This is the **single entry point** for primary expression parsing. It uses a large `switch` statement on `Current.Type` (the current token) to determine which type of primary expression to parse.
+**Key design pattern:**
+1. Capture start position (line/column) at the beginning
+2. Switch on token type to determine what kind of primary expression to parse
+3. For each case:
+   - Save the relevant token(s)
+   - Advance the token stream
+   - Extract any necessary values
+   - Build and return an appropriate AST node with location info
 
 ---
 
-## Key Functions/Methods
+## 4. Literal Parsing
 
-### ParsePrimary() - The Core Dispatcher
+### 4.1 Integer Literals
 
-**Purpose**: Dispatches to the appropriate parsing logic based on the current token type.
+**Tokens**: `TokenType.Integer`
 
-**Algorithm**:
-1. Capture current position (`startLine`, `startColumn`) for AST node location tracking
-2. Switch on `Current.Type` to determine expression type
-3. Parse the specific primary expression
-4. Return an AST node with location information attached
+**Handles**: `42`, `1_000_000`, `0xFF`, `42L`, `42UL`
 
-**Return Value**: An `Expression` AST node (one of ~15 different expression types)
-
-**Connection to Pipeline**:
-- Called by higher precedence parsers (e.g., `ParsePostfix()`, `ParseUnary()` in `Parser.Expressions.cs`)
-- Calls back to `ParseExpression()` for nested expressions (recursive descent)
-
----
-
-### Numeric Literals: Integer and Float
-
-#### Integer Parsing (lines 20-45)
-
-**Handles**: `TokenType.Integer` tokens (e.g., `42`, `100L`, `0xFF`)
-
-**Key Logic**:
 ```csharp
-// Extract suffix if present (L, U, UL, etc.)
-if (tokenValue.Length > 0 && char.IsLetter(tokenValue[tokenValue.Length - 1]))
+case TokenType.Integer:
 {
-    // Check for two-letter suffix
-    if (tokenValue.Length > 1 && char.IsLetter(tokenValue[tokenValue.Length - 2]))
+    var token = Current;
+    var tokenValue = token.Value;
+    Advance();
+
+    // Extract suffix if present (L, U, UL, etc.)
+    string value = tokenValue;
+    string? suffix = null;
+
+    if (tokenValue.Length > 0 && char.IsLetter(tokenValue[tokenValue.Length - 1]))
     {
-        suffix = tokenValue.Substring(tokenValue.Length - 2);  // "UL"
-        value = tokenValue.Substring(0, tokenValue.Length - 2);
+        // Check for two-letter suffix (UL, ul, etc.)
+        if (tokenValue.Length > 1 && char.IsLetter(tokenValue[tokenValue.Length - 2]))
+        {
+            suffix = tokenValue.Substring(tokenValue.Length - 2);
+            value = tokenValue.Substring(0, tokenValue.Length - 2);
+        }
+        else
+        {
+            suffix = tokenValue.Substring(tokenValue.Length - 1);
+            value = tokenValue.Substring(0, tokenValue.Length - 1);
+        }
     }
-    else
+
+    return new IntegerLiteral
     {
-        suffix = tokenValue.Substring(tokenValue.Length - 1);  // "L"
+        Value = value,
+        Suffix = suffix,
+        // ... location info ...
+    };
+}
+```
+
+**Key implementation details:**
+- The lexer has already validated the integer format
+- Parser extracts C#-style type suffixes (L, U, UL) for .NET interop
+- Suffix is stored separately so semantic analysis can determine the actual type
+- Value preserves underscores and base prefixes (handled by semantic analysis later)
+
+**Examples:**
+- `42` → `Value="42"`, `Suffix=null`
+- `42L` → `Value="42"`, `Suffix="L"`
+- `0xFFUL` → `Value="0xFF"`, `Suffix="UL"`
+
+### 4.2 Float Literals
+
+**Tokens**: `TokenType.Float`
+
+**Handles**: `3.14`, `1e-10`, `3.14f`, `2.5m`
+
+```csharp
+case TokenType.Float:
+{
+    var token = Current;
+    var tokenValue = token.Value;
+    Advance();
+
+    // Extract suffix if present (f, F, d, D, m, M)
+    string value = tokenValue;
+    string? suffix = null;
+
+    if (tokenValue.Length > 0 && char.IsLetter(tokenValue[tokenValue.Length - 1]))
+    {
+        suffix = tokenValue.Substring(tokenValue.Length - 1);
         value = tokenValue.Substring(0, tokenValue.Length - 1);
     }
+
+    return new FloatLiteral { Value = value, Suffix = suffix, /* ... */ };
 }
 ```
 
-**Returns**: `IntegerLiteral` with:
-- `Value`: The numeric portion (as string, to preserve exact representation)
-- `Suffix`: Type suffix like `"L"` (long), `"U"` (unsigned), `"UL"` (unsigned long)
+**Key implementation details:**
+- Similar to integer literals, but only single-letter suffixes
+- Common suffixes: `f`/`F` (float), `d`/`D` (double), `m`/`M` (decimal)
+- Scientific notation is preserved in the value string
 
-**Design Note**: Suffixes enable C#-like type hints (e.g., `42L` for long integers).
+### 4.3 String Literals
 
-#### Float Parsing (lines 47-63)
+**Tokens**: `TokenType.String`, `TokenType.RawString`
 
-**Handles**: `TokenType.Float` tokens (e.g., `3.14`, `2.5f`, `1.0m`)
+**Handles**: `"hello"`, `'world'`, `r"C:\path"`, `"""multi-line"""`
 
-**Similar to Integer**: Extracts single-letter suffix (`f`, `F`, `d`, `D`, `m`, `M`)
+```csharp
+case TokenType.String:
+{
+    var token = Current;
+    var value = token.Value;
+    Advance();
+    return new StringLiteral
+    {
+        Value = value,
+        IsRaw = false,
+        // ... location info ...
+    };
+}
 
-**Returns**: `FloatLiteral` with:
-- `Value`: The numeric portion
-- `Suffix`: Type suffix like `"f"` (float), `"d"` (double), `"m"` (decimal)
+case TokenType.RawString:
+{
+    var token = Current;
+    var value = token.Value;
+    Advance();
+    return new StringLiteral
+    {
+        Value = value,
+        IsRaw = true,  // Escape sequences NOT processed
+        // ... location info ...
+    };
+}
+```
 
----
+**Key implementation details:**
+- Lexer has already extracted the string content (removed quotes, handled escapes)
+- `IsRaw` flag indicates whether escape sequences should be processed
+- Multi-line strings and triple-quoted strings are handled by the lexer
 
-### String Literals
+### 4.4 F-Strings (Formatted Strings)
 
-#### Regular Strings (lines 65-70)
+**Tokens**: `TokenType.FStringStart`
 
-**Handles**: `TokenType.String` tokens (e.g., `"hello"`)
+**Handles**: `f"Hello {name}"`, `f"Value: {x:.2f}"`
 
-**Returns**: `StringLiteral` with `IsRaw = false`
+```csharp
+case TokenType.FStringStart:
+{
+    var startToken = Current;
+    // Segmented f-string lexing
+    return ParseSegmentedFString(startLine, startColumn, startToken);
+}
+```
 
-**Note**: The lexer has already processed escape sequences (e.g., `\n`, `\t`), so the parser receives the processed string value.
+**Key implementation details:**
+- F-strings use a **segmented lexing** approach (lexer and parser collaborate)
+- The lexer emits `FStringStart`, then alternates between `FStringText` and expression tokens
+- `ParseSegmentedFString()` is defined in `Parser.Types.cs` and handles the complex logic
+- This allows embedded expressions to be parsed recursively
 
-#### Raw Strings (lines 72-77)
+**Why segmented?** F-strings can contain arbitrary expressions: `f"{obj.method(x, y)}"` requires full expression parsing inside the string.
 
-**Handles**: `TokenType.RawString` tokens (e.g., `r"C:\path\to\file"`)
+### 4.5 Boolean and Special Literals
 
-**Returns**: `StringLiteral` with `IsRaw = true`
+**Tokens**: `TokenType.True`, `TokenType.False`, `TokenType.None`, `TokenType.Ellipsis`
 
-**Use Case**: Raw strings preserve backslashes literally (useful for regex, file paths).
+**Handles**: `True`, `False`, `None`, `...`
 
-#### F-Strings (lines 79-83)
+```csharp
+case TokenType.True:
+{
+    var token = Current;
+    Advance();
+    return new BooleanLiteral { Value = true, /* ... */ };
+}
 
-**Handles**: `TokenType.FStringStart` tokens (e.g., `f"Hello {name}"`)
+case TokenType.False:
+{
+    var token = Current;
+    Advance();
+    return new BooleanLiteral { Value = false, /* ... */ };
+}
 
-**Delegates to**: `ParseSegmentedFString()` in `Parser.Types.cs:414`
+case TokenType.None:
+{
+    var token = Current;
+    Advance();
+    return new NoneLiteral { /* ... */ };
+}
 
-**Returns**: `FStringLiteral` with interpolated expressions
+case TokenType.Ellipsis:
+{
+    var token = Current;
+    Advance();
+    return new EllipsisLiteral { /* ... */ };
+}
+```
 
-**Complex Logic**: F-strings require special lexer/parser coordination:
-- Lexer emits `FStringStart`, `FStringText`, `FStringExprStart`, expression tokens, `FStringExprEnd`, `FStringEnd`
-- Parser reconstructs the f-string from these segments
-
----
-
-### Boolean and Special Literals
-
-#### Boolean Literals (lines 85-91)
-
-**Handles**: `TokenType.True` and `TokenType.False`
-
-**Returns**: `BooleanLiteral { Value = true/false }`
-
-**Simple**: Just consumes the token and wraps it in an AST node.
-
-#### None Literal (lines 93-95)
-
-**Handles**: `TokenType.None` (Python's `None`, similar to C#'s `null`)
-
-**Returns**: `NoneLiteral`
-
-**Code Gen Note**: Later translated to `null` in C# code generation.
-
-#### Ellipsis Literal (lines 97-99)
-
-**Handles**: `TokenType.Ellipsis` (`...` token)
-
-**Returns**: `EllipsisLiteral`
-
-**Use Cases**:
-- Placeholder in type annotations (e.g., `Callable[..., int]`)
-- Slicing (e.g., `arr[..., 0]`)
-
----
-
-### Identifiers and Special Keywords
-
-#### Identifier (lines 101-106)
-
-**Handles**: `TokenType.Identifier` (e.g., `x`, `my_variable`)
-
-**Returns**: `Identifier { Name = "x" }`
-
-**Important**: This is the primary expression for variable references, function names, etc.
-
-#### Super Expression (lines 108-115)
-
-**Handles**: `TokenType.Super` (calls parent class constructor)
-
-**Syntax**: Must be followed by `()` (i.e., `super()`)
-
-**Returns**: `SuperExpression`
-
-**Validation**: Enforces that `super` can only be called as `super()`, not as a standalone identifier.
-
----
-
-### Parenthesized Expressions and Tuples
-
-#### Parentheses: `(expr)` or Tuple (lines 117-149)
-
-**Handles**: `TokenType.LeftParen`
-
-**Three Cases**:
-
-1. **Empty Tuple**: `()` → `TupleLiteral { Elements = [] }`
-
-2. **Tuple with Trailing Comma**: `(expr,)` or `(a, b, c)` → `TupleLiteral`
-   ```csharp
-   if (Current.Type == TokenType.Comma) {
-       var elements = new List<Expression> { expr };
-       while (Current.Type == TokenType.Comma) {
-           Advance();
-           if (Current.Type == TokenType.RightParen) break;  // Trailing comma
-           elements.Add(ParseExpression());
-       }
-       return new TupleLiteral { Elements = elements };
-   }
-   ```
-
-3. **Parenthesized Expression**: `(expr)` → `Parenthesized { Expression = expr }`
-
-**Design Decision**: The comma determines if it's a tuple:
-- `(x)` is parenthesized
-- `(x,)` is a 1-element tuple
-- `(x, y)` is a 2-element tuple
-
-**Why Parenthesized?**: Preserves grouping for precedence (e.g., `(a + b) * c`)
+**Key implementation details:**
+- These are simple token-to-AST conversions
+- `None` maps to C# `null` (handled by RoslynEmitter)
+- `Ellipsis` (`...`) is used in type annotations and as a placeholder expression
+- All include proper location tracking for error messages
 
 ---
 
-### List Literals and Comprehensions
+## 5. Identifiers and Variables
 
-#### Lists: `[...]` (lines 151-194)
+### 5.1 Identifier Parsing
 
-**Handles**: `TokenType.LeftBracket`
+**Tokens**: `TokenType.Identifier`
 
-**Three Cases**:
+**Handles**: `x`, `my_variable`, `UserAccount`
 
-1. **Empty List**: `[]` → `ListLiteral { Elements = [] }`
+```csharp
+case TokenType.Identifier:
+{
+    var identToken = Current;
+    var name = identToken.Value;
+    Advance();
+    return new Identifier
+    {
+        Name = name,
+        // ... location info ...
+    };
+}
+```
 
-2. **List Comprehension**: `[expr for x in iterable]`
-   ```csharp
-   if (Current.Type == TokenType.For) {
-       var clauses = ParseComprehensionClauses();  // Defined in Parser.Statements.cs:202
-       return new ListComprehension {
-           Element = firstExpr,
-           Clauses = clauses
-       };
-   }
-   ```
+**Key implementation details:**
+- Simple capture of the identifier name
+- Semantic analysis will later resolve whether this is a local variable, parameter, class member, etc.
+- No distinction between Pascal case, snake_case, etc. at parse time
 
-3. **Regular List**: `[a, b, c]` → `ListLiteral { Elements = [...] }`
-   - Supports trailing commas: `[1, 2, 3,]`
+**Resolution happens later:**
+- The `Identifier` AST node is decorated with semantic info during semantic analysis
+- Type information, scope, and binding are not available at parse time
 
-**Comprehension Example**:
+---
+
+## 6. Super Expression
+
+### 6.1 Super() Parsing
+
+**Tokens**: `TokenType.Super`
+
+**Handles**: `super()`
+
+```csharp
+case TokenType.Super:
+{
+    var startToken = Current;
+    Advance();
+    // Expect super() - must be followed by ()
+    Expect(TokenType.LeftParen);
+    Expect(TokenType.RightParen);
+    return new SuperExpression
+    {
+        // ... location info ...
+    };
+}
+```
+
+**Key implementation details:**
+- Python-style `super()` requires empty parentheses (unlike some languages)
+- Parser enforces this syntax requirement
+- `super()` can only be used in specific contexts (validated during semantic analysis):
+  - `__init__` methods to call `super().__init__(...)`
+  - Dunder methods to call `super().__dunder__(...)`
+  - `@override` methods to call `super().method(...)`
+
+**Example usage:**
 ```python
-# Sharpy code
-squares = [x * x for x in range(10) if x % 2 == 0]
-
-# AST: ListComprehension {
-#   Element = BinaryOp(x * x),
-#   Clauses = [
-#     ForClause(x, range(10)),
-#     IfClause(x % 2 == 0)
-#   ]
-# }
+class Child(Parent):
+    def __init__(self, name: str):
+        super().__init__()
+        self.name = name
 ```
 
 ---
 
-### Dictionary and Set Literals
+## 7. Parentheses and Tuples
 
-#### Braces: `{...}` - Dict, Set, or Comprehensions (lines 196-291)
+### 7.1 Disambiguating Parenthesized vs Tuple
 
-**Handles**: `TokenType.LeftBrace`
+**Tokens**: `TokenType.LeftParen`
 
-**Complex Disambiguation**: Braces can represent:
-- Empty dict: `{}`
-- Empty set: `{/}` (special Sharpy v0.2 syntax)
-- Dict literal: `{key: value, ...}`
-- Set literal: `{a, b, c}`
-- Dict comprehension: `{k: v for x in iter}`
-- Set comprehension: `{expr for x in iter}`
+**Handles**: `()`, `(x)`, `(x,)`, `(x, y, z)`
 
-**Algorithm**:
+This is one of the most complex cases because parentheses serve multiple purposes:
+
 ```csharp
-if (Current.Type == TokenType.Slash) {
-    // Empty set: {/}
-    return new SetLiteral { Elements = [] };
-}
+case TokenType.LeftParen:
+{
+    var startToken = Current;
+    Advance();
 
-if (Current.Type == TokenType.RightBrace) {
-    // Empty dict: {}
-    return new DictLiteral { Entries = [] };
-}
+    // Empty tuple ()
+    if (Current.Type == TokenType.RightParen)
+    {
+        Advance();
+        return new TupleLiteral
+        {
+            Elements = ImmutableArray<Expression>.Empty,
+            // ... location info ...
+        };
+    }
 
-var firstExpr = ParseExpression();
+    var expr = ParseExpression();
 
-if (Current.Type == TokenType.Colon) {
-    // Dictionary: {key: value, ...}
-    // or Dict comprehension: {key: value for x in iter}
-} else {
-    // Set: {a, b, c}
-    // or Set comprehension: {expr for x in iter}
-}
-```
+    // Tuple (expr,) or (expr, expr2, ...)
+    if (Current.Type == TokenType.Comma)
+    {
+        var elements = new List<Expression> { expr };
 
-**Empty Set Syntax**: Python has an ambiguity where `{}` is an empty dict (not set). Sharpy introduces `{/}` as unambiguous empty set syntax.
-
-**Dict Entry Parsing** (lines 249-252):
-```csharp
-var key = ParseExpression();
-Expect(TokenType.Colon);
-var value = ParseExpression();
-entries.Add(new DictEntry { Key = key, Value = value });
-```
-
----
-
-### Lambda Expressions
-
-#### Lambda: `lambda x, y: x + y` (lines 293-325)
-
-**Handles**: `TokenType.Lambda`
-
-**Syntax**:
-- `lambda: expr` (no parameters)
-- `lambda x: expr` (single parameter)
-- `lambda x, y, z: expr` (multiple parameters)
-
-**Parsing Logic**:
-```csharp
-Advance(); // Skip 'lambda' keyword
-var parameters = new List<Parameter>();
-
-if (Current.Type != TokenType.Colon) {
-    do {
-        var name = ExpectIdentifier();
-        parameters.Add(new Parameter { Name = name });
-
-        if (Current.Type == TokenType.Comma)
+        while (Current.Type == TokenType.Comma)
+        {
             Advance();
-        else
-            break;
-    } while (true);
+            if (Current.Type == TokenType.RightParen)
+                break;
+            elements.Add(ParseExpression());
+        }
+
+        Expect(TokenType.RightParen);
+        return new TupleLiteral
+        {
+            Elements = elements.ToImmutableArray(),
+            // ... location info ...
+        };
+    }
+
+    Expect(TokenType.RightParen);
+    return new Parenthesized
+    {
+        Expression = expr,
+        // ... location info ...
+    };
 }
-
-Expect(TokenType.Colon);
-var body = ParseExpression();  // Recursive call
-
-return new LambdaExpression { Parameters = parameters, Body = body };
 ```
 
-**Returns**: `LambdaExpression` with:
-- `Parameters`: List of parameter names (no type annotations in lambdas)
-- `Body`: Single expression (not a statement block)
+**Disambiguation rules:**
+1. `()` → Empty tuple
+2. `(x,)` → Single-element tuple (trailing comma is required!)
+3. `(x, y)` → Multi-element tuple
+4. `(x)` → Parenthesized expression (NOT a tuple)
 
-**Limitation**: Lambdas in Sharpy are expression-only (like Python), not statement lambdas.
+**Why the distinction?**
+- Tuples are immutable value types in Sharpy (map to C# ValueTuple)
+- Parenthesized expressions affect precedence but don't create a value
+- `(x)` and `x` are semantically identical
+- `(x,)` creates a `(T,)` tuple type
 
----
-
-## Dependencies
-
-### Internal Sharpy Namespaces
-
-- **`Sharpy.Compiler.Lexer`**: Token types (`TokenType.Integer`, etc.)
-- **`Sharpy.Compiler.Parser.Ast`**: AST node types (`Expression`, `IntegerLiteral`, `ListComprehension`, etc.)
-- **`Sharpy.Compiler.Logging`**: Error reporting (via `ParserError`)
-
-### Parser Infrastructure (from other partial files)
-
-- **`Current`**: Property holding the current token (from `Parser.cs`)
-- **`Advance()`**: Move to next token (from `Parser.cs`)
-- **`Expect(TokenType)`**: Consume token or throw error (from `Parser.cs`)
-- **`ExpectIdentifier()`**: Consume identifier token and return name (from `Parser.cs`)
-- **`ParseExpression()`**: Entry point for expression parsing (from `Parser.Expressions.cs`)
-- **`ParseComprehensionClauses()`**: Parse `for`/`if` clauses in comprehensions (from `Parser.Statements.cs:202`)
-- **`ParseSegmentedFString()`**: Parse f-string segments (from `Parser.Types.cs:414`)
+**Trailing comma handling:**
+```python
+(1, 2, 3)   # 3-element tuple
+(1, 2, 3,)  # Also 3-element tuple (trailing comma allowed)
+(1,)        # 1-element tuple (comma required!)
+(1)         # Just the number 1 in parentheses
+```
 
 ---
 
-## Patterns and Design Decisions
+## 8. Collection Literals
 
-### 1. **Token-Driven Dispatch Pattern**
+### 8.1 List Literals and List Comprehensions
 
-The `switch (Current.Type)` pattern is classic recursive descent parsing:
-- Each token type maps to exactly one primary expression type
-- No lookahead needed (LL(1) grammar for primaries)
+**Tokens**: `TokenType.LeftBracket`
 
-### 2. **Location Tracking**
+**Handles**: `[]`, `[1, 2, 3]`, `[x for x in range(10)]`, `[x for x in items if x > 0]`
 
-Every AST node captures source location:
+```csharp
+case TokenType.LeftBracket:
+{
+    var startToken = Current;
+    Advance();
+
+    // Empty list []
+    if (Current.Type == TokenType.RightBracket)
+    {
+        Advance();
+        return new ListLiteral
+        {
+            Elements = ImmutableArray<Expression>.Empty,
+            // ... location info ...
+        };
+    }
+
+    var firstExpr = ParseExpression();
+
+    // Check for list comprehension: [expr for x in iterable]
+    if (Current.Type == TokenType.For)
+    {
+        var clauses = ParseComprehensionClauses();
+        Expect(TokenType.RightBracket);
+        return new ListComprehension
+        {
+            Element = firstExpr,
+            Clauses = clauses.ToImmutableArray(),
+            // ... location info ...
+        };
+    }
+
+    // Regular list literal [elem1, elem2, ...]
+    var elements = new List<Expression> { firstExpr };
+
+    while (Current.Type == TokenType.Comma)
+    {
+        Advance();
+        // Allow trailing comma: [1, 2, 3,]
+        if (Current.Type == TokenType.RightBracket)
+            break;
+        elements.Add(ParseExpression());
+    }
+
+    Expect(TokenType.RightBracket);
+    return new ListLiteral
+    {
+        Elements = elements.ToImmutableArray(),
+        // ... location info ...
+    };
+}
+```
+
+**Key implementation details:**
+- **Lookahead**: After parsing first expression, check for `for` keyword to detect comprehension
+- Trailing commas are allowed in list literals: `[1, 2, 3,]`
+- List comprehensions are parsed by `ParseComprehensionClauses()` (in `Parser.Statements.cs`)
+
+**Comprehension syntax:**
+```python
+[x * 2 for x in range(10)]                    # Simple comprehension
+[x for x in items if x > 0]                   # With condition
+[x for x in items for y in x if y > 0]        # Nested (not yet fully supported)
+```
+
+### 8.2 Dict Literals and Dict Comprehensions
+
+**Tokens**: `TokenType.LeftBrace`
+
+**Handles**: `{}`, `{"a": 1}`, `{k: v for k, v in pairs}`, `{/}` (empty set)
+
+This is the most complex case because `{}` can mean:
+- Empty dict
+- Dict literal
+- Dict comprehension
+- Set literal (if no colons)
+- Set comprehension
+- Empty set (special `{/}` syntax in v0.2)
+
+```csharp
+case TokenType.LeftBrace:
+{
+    var startToken = Current;
+    Advance();
+
+    // Empty set {/} - special v0.2 syntax
+    if (Current.Type == TokenType.Slash)
+    {
+        Advance();
+        Expect(TokenType.RightBrace);
+        return new SetLiteral
+        {
+            Elements = ImmutableArray<Expression>.Empty,
+            // ... location info ...
+        };
+    }
+
+    // Empty dict {}
+    if (Current.Type == TokenType.RightBrace)
+    {
+        Advance();
+        return new DictLiteral
+        {
+            Entries = ImmutableArray<DictEntry>.Empty,
+            // ... location info ...
+        };
+    }
+
+    var firstExpr = ParseExpression();
+
+    // Dict {key: value, ...} or dict comprehension {key: value for x in iterable}
+    if (Current.Type == TokenType.Colon)
+    {
+        Advance();
+        var firstValue = ParseExpression();
+
+        // Check for dict comprehension: {key: value for x in iterable}
+        if (Current.Type == TokenType.For)
+        {
+            var clauses = ParseComprehensionClauses();
+            Expect(TokenType.RightBrace);
+            return new DictComprehension
+            {
+                Key = firstExpr,
+                Value = firstValue,
+                Clauses = clauses.ToImmutableArray(),
+                // ... location info ...
+            };
+        }
+
+        // Regular dict literal
+        var entries = new List<DictEntry> { new DictEntry { Key = firstExpr, Value = firstValue } };
+
+        while (Current.Type == TokenType.Comma)
+        {
+            Advance();
+            if (Current.Type == TokenType.RightBrace)
+                break;
+
+            var key = ParseExpression();
+            Expect(TokenType.Colon);
+            var value = ParseExpression();
+            entries.Add(new DictEntry { Key = key, Value = value });
+        }
+
+        Expect(TokenType.RightBrace);
+        return new DictLiteral
+        {
+            Entries = entries.ToImmutableArray(),
+            // ... location info ...
+        };
+    }
+    // Set {elem1, elem2, ...} or set comprehension {expr for x in iterable}
+    else
+    {
+        // Check for set comprehension: {expr for x in iterable}
+        if (Current.Type == TokenType.For)
+        {
+            var clauses = ParseComprehensionClauses();
+            Expect(TokenType.RightBrace);
+            return new SetComprehension
+            {
+                Element = firstExpr,
+                Clauses = clauses.ToImmutableArray(),
+                // ... location info ...
+            };
+        }
+
+        // Regular set literal
+        var elements = new List<Expression> { firstExpr };
+
+        while (Current.Type == TokenType.Comma)
+        {
+            Advance();
+            if (Current.Type == TokenType.RightBrace)
+                break;
+            elements.Add(ParseExpression());
+        }
+
+        Expect(TokenType.RightBrace);
+        return new SetLiteral
+        {
+            Elements = elements.ToImmutableArray(),
+            // ... location info ...
+        };
+    }
+}
+```
+
+**Disambiguation logic:**
+
+| Syntax | Result | Reasoning |
+|--------|--------|-----------|
+| `{}` | Empty dict | Default interpretation |
+| `{/}` | Empty set | Special syntax (Python doesn't have this) |
+| `{expr}` | Set with one element | No colon |
+| `{expr, ...}` | Set literal | No colons |
+| `{expr: value}` | Dict with one entry | Colon present |
+| `{expr: value, ...}` | Dict literal | Colons present |
+| `{expr for x in y}` | Set comprehension | No colon, `for` keyword |
+| `{k: v for x in y}` | Dict comprehension | Colon, `for` keyword |
+
+**Design decision - Why `{/}` for empty set?**
+- Python uses `set()` for empty set because `{}` is ambiguous
+- Sharpy chose `{/}` as a more concise literal syntax
+- Matches the "empty" concept (slash often means "nothing" or "none")
+
+### 8.3 Set Literals and Set Comprehensions
+
+Handled in the same `TokenType.LeftBrace` case as dicts (see above). The distinction is made by the absence of colons.
+
+**Examples:**
+```python
+{1, 2, 3}              # Set literal
+{x for x in range(10)} # Set comprehension
+{/}                    # Empty set
+```
+
+---
+
+## 9. Lambda Expressions
+
+### 9.1 Lambda Parsing
+
+**Tokens**: `TokenType.Lambda`
+
+**Handles**: `lambda: 42`, `lambda x: x * 2`, `lambda x, y: x + y`
+
+```csharp
+case TokenType.Lambda:
+{
+    var lambdaToken = Current;
+    Advance();
+    var parameters = new List<Parameter>();
+
+    // Parse lambda parameters
+    if (Current.Type != TokenType.Colon)
+    {
+        do
+        {
+            var name = ExpectIdentifier();
+            parameters.Add(new Parameter { Name = name });
+
+            if (Current.Type == TokenType.Comma)
+                Advance();
+            else
+                break;
+        } while (true);
+    }
+
+    Expect(TokenType.Colon);
+    var body = ParseExpression();
+
+    // Combine lambda token span with body span
+    var lambdaSpan = GetSpanFromToken(lambdaToken);
+    var combinedSpan = lambdaSpan != null && body.Span != null
+        ? lambdaSpan.Value.Union(body.Span.Value)
+        : (Text.TextSpan?)null;
+
+    return new LambdaExpression
+    {
+        Parameters = parameters.ToImmutableArray(),
+        Body = body,
+        LineStart = startLine,
+        ColumnStart = startColumn,
+        LineEnd = body.LineEnd,
+        ColumnEnd = body.ColumnEnd,
+        Span = combinedSpan
+    };
+}
+```
+
+**Key implementation details:**
+- Lambda body is a **single expression**, not a statement block
+- Parameters are comma-separated, no parentheses: `lambda x, y: x + y`
+- No type annotations on lambda parameters (inferred by semantic analysis)
+- Colon separates parameters from body
+- Span calculation unions the lambda token with the body span for better error messages
+
+**Examples:**
+```python
+lambda: 42                    # No parameters
+lambda x: x * 2               # One parameter
+lambda x, y: x + y            # Multiple parameters
+lambda x: lambda y: x + y     # Nested lambdas (currying)
+```
+
+**Limitations:**
+- No default parameter values
+- No `*args` or `**kwargs`
+- No type annotations (unlike function definitions)
+
+These are intentional design decisions to keep lambdas simple and lightweight.
+
+---
+
+## 10. Helper Methods and Dependencies
+
+### 10.1 Token Navigation
+
+These methods are defined in the main `Parser.cs`:
+
+```csharp
+private Token Current => _position < _tokens.Count ? _tokens[_position] : _tokens[^1];
+private Token Previous => _position > 0 ? _tokens[_position - 1] : _tokens[0];
+private Token Peek(int offset = 1) => _position + offset < _tokens.Count ? _tokens[_position + offset] : _tokens[^1];
+private void Advance() => _position++;
+```
+
+**Usage in Parser.Primaries:**
+- `Current` - Get the current token to inspect its type
+- `Previous` - Get the previous token (for end location info)
+- `Advance()` - Move to the next token
+
+### 10.2 Expect Methods
+
+Defined in `Parser.Types.cs`:
+
+```csharp
+private void Expect(TokenType type)
+{
+    if (Current.Type != type)
+        throw new ParserError($"Expected {type}, got {Current.Type}", Current.Line, Current.Column);
+    Advance();
+}
+
+private string ExpectIdentifier()
+{
+    if (Current.Type != TokenType.Identifier)
+        throw new ParserError("Expected identifier", Current.Line, Current.Column);
+    var name = Current.Value;
+    Advance();
+    return name;
+}
+```
+
+**Usage in Parser.Primaries:**
+- `Expect(TokenType.RightParen)` - Ensure closing parenthesis exists
+- `ExpectIdentifier()` - Get and validate an identifier name
+
+### 10.3 Span Calculation
+
+Defined in `Parser.Types.cs`:
+
+```csharp
+private static Text.TextSpan? GetSpanFromToken(Token token)
+{
+    // Returns a TextSpan covering the token's source location
+}
+
+private static Text.TextSpan? GetSpanFromTokens(Token start, Token end)
+{
+    // Returns a TextSpan from start token to end token
+}
+```
+
+**Purpose:**
+- Tracks exact source code locations for error messages
+- Used by IDE features (hover, go-to-definition)
+- Enables precise diagnostics
+
+**Pattern in Parser.Primaries:**
+```csharp
+return new SomeExpression
+{
+    // ... properties ...
+    LineStart = startLine,
+    ColumnStart = startColumn,
+    LineEnd = Previous.Line,
+    ColumnEnd = Previous.Column + Previous.Value.Length,
+    Span = GetSpanFromTokens(startToken, Previous)
+};
+```
+
+### 10.4 Expression Parsing
+
+Defined in `Parser.Expressions.cs`:
+
+```csharp
+private Expression ParseExpression() => ParseWalrusExpression();
+```
+
+**Called from Parser.Primaries:**
+- Used to recursively parse sub-expressions
+- Examples:
+  - List elements: `[expr1, expr2, expr3]`
+  - Dict keys/values: `{key: value}`
+  - Tuple elements: `(expr1, expr2)`
+  - Comprehension bodies: `[expr for x in iterable]`
+  - Lambda bodies: `lambda x: expr`
+
+This creates the recursive structure of the parser.
+
+### 10.5 Comprehension Parsing
+
+Defined in `Parser.Statements.cs`:
+
+```csharp
+private List<ComprehensionClause> ParseComprehensionClauses()
+{
+    // Parses: for x in iterable [if condition] [for y in iterable2] [if condition2] ...
+}
+```
+
+**Comprehension clause types:**
+- `ForClause` - `for x in iterable`
+- `IfClause` - `if condition`
+
+**Example:**
+```python
+[x for x in range(10) if x % 2 == 0 for y in range(x)]
+```
+Produces:
+1. `ForClause(x, range(10))`
+2. `IfClause(x % 2 == 0)`
+3. `ForClause(y, range(x))`
+
+### 10.6 F-String Parsing
+
+Defined in `Parser.Types.cs`:
+
+```csharp
+private FStringLiteral ParseSegmentedFString(int startLine, int startColumn, Token startToken)
+{
+    // Complex logic to handle f-string segments and embedded expressions
+}
+```
+
+**Why segmented?**
+- F-strings can contain arbitrary expressions: `f"{obj.method(x + y)}"`
+- Lexer and parser collaborate:
+  1. Lexer emits `FStringStart`
+  2. Lexer emits `FStringText` for literal parts
+  3. Lexer switches to expression mode for `{...}` parts
+  4. Parser parses the expression recursively
+  5. Repeat until `FStringEnd`
+
+---
+
+## 11. AST Node Types
+
+All AST nodes returned by `ParsePrimary()` are defined in `src/Sharpy.Compiler/Parser/Ast/Expression.cs`:
+
+### 11.1 Literal Nodes
+
+| AST Type | Properties | Example |
+|----------|-----------|---------|
+| `IntegerLiteral` | `Value`, `Suffix` | `42L` |
+| `FloatLiteral` | `Value`, `Suffix` | `3.14f` |
+| `StringLiteral` | `Value`, `IsRaw` | `"hello"` |
+| `FStringLiteral` | `Parts` | `f"x={x}"` |
+| `BooleanLiteral` | `Value` | `True` |
+| `NoneLiteral` | - | `None` |
+| `EllipsisLiteral` | - | `...` |
+
+### 11.2 Collection Nodes
+
+| AST Type | Properties | Example |
+|----------|-----------|---------|
+| `ListLiteral` | `Elements` | `[1, 2, 3]` |
+| `DictLiteral` | `Entries` (key-value pairs) | `{"a": 1}` |
+| `SetLiteral` | `Elements` | `{1, 2, 3}` |
+| `TupleLiteral` | `Elements` | `(1, 2, 3)` |
+
+### 11.3 Comprehension Nodes
+
+| AST Type | Properties | Example |
+|----------|-----------|---------|
+| `ListComprehension` | `Element`, `Clauses` | `[x for x in items]` |
+| `SetComprehension` | `Element`, `Clauses` | `{x for x in items}` |
+| `DictComprehension` | `Key`, `Value`, `Clauses` | `{k: v for k, v in pairs}` |
+
+### 11.4 Other Primary Nodes
+
+| AST Type | Properties | Example |
+|----------|-----------|---------|
+| `Identifier` | `Name` | `my_var` |
+| `LambdaExpression` | `Parameters`, `Body` | `lambda x: x * 2` |
+| `Parenthesized` | `Expression` | `(x + y)` |
+| `SuperExpression` | - | `super()` |
+
+All nodes inherit from `Expression` which inherits from `Node`, and all include location tracking:
+- `LineStart`, `ColumnStart`, `LineEnd`, `ColumnEnd`
+- `Span` (optional `TextSpan` for precise source mapping)
+
+---
+
+## 12. Patterns and Design Decisions
+
+### 12.1 Immutability
+
+All AST nodes use C# **record types** with `init` properties:
+
+```csharp
+public record IntegerLiteral : Expression
+{
+    public string Value { get; init; } = "";
+    public string? Suffix { get; init; }
+}
+```
+
+**Benefits:**
+- Immutable AST (can't be accidentally modified)
+- Structural equality (useful for testing)
+- Easy to create modified copies with `with` syntax
+
+**Critical rule from CLAUDE.md:**
+> **Immutable AST** — annotations go in `SemanticInfo`, not AST nodes
+
+### 12.2 Location Tracking
+
+Every AST node includes source location:
+
+```csharp
+public abstract record Node
+{
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
+    public Text.TextSpan? Span { get; init; }
+}
+```
+
+**Used for:**
+- Error messages: "Type error at line 42, column 15"
+- IDE features: hover tooltips, go-to-definition
+- Debugging: precise source mapping
+
+**Pattern:**
 ```csharp
 var startLine = Current.Line;
 var startColumn = Current.Column;
 // ... parse expression ...
-return new SomeExpression {
+return new SomeExpression
+{
+    // ... properties ...
     LineStart = startLine,
     ColumnStart = startColumn,
-    LineEnd = Current.Line,    // After parsing
-    ColumnEnd = Current.Column
+    LineEnd = Previous.Line,
+    ColumnEnd = Previous.Column + Previous.Value.Length,
+    Span = GetSpanFromTokens(startToken, Previous)
 };
 ```
 
-**Purpose**: Enables precise error messages and IDE integration (e.g., "Error at line 42, column 10").
+### 12.3 Suffix Extraction Pattern
 
-### 3. **Suffix Extraction for Numeric Literals**
+Numeric literals support C#-style type suffixes:
 
-Rather than handling suffixes in the lexer, the parser extracts them:
-- **Lexer**: Emits `"42L"` as a single `TokenType.Integer` token
-- **Parser**: Splits into `Value = "42"` and `Suffix = "L"`
-
-**Rationale**: Keeps lexer simple; parser knows semantic meaning of suffixes.
-
-### 4. **Recursive Calls for Nested Expressions**
-
-The parser calls back to `ParseExpression()` for nested structures:
-- List elements: `elements.Add(ParseExpression())`
-- Dict values: `var value = ParseExpression()`
-- Lambda body: `var body = ParseExpression()`
-
-**Why `ParseExpression()` not `ParsePrimary()`?** Because nested expressions can be complex (e.g., `[a + b, c * d]`), so we need full expression parsing with operator precedence.
-
-### 5. **Trailing Comma Support**
-
-Lists, tuples, dicts, and sets all allow trailing commas:
 ```csharp
-while (Current.Type == TokenType.Comma) {
-    Advance();
-    if (Current.Type == TokenType.RightBracket)
-        break;  // Trailing comma detected
-    elements.Add(ParseExpression());
+string value = tokenValue;
+string? suffix = null;
+
+if (tokenValue.Length > 0 && char.IsLetter(tokenValue[tokenValue.Length - 1]))
+{
+    // Extract suffix (1 or 2 characters)
+    // ...
 }
 ```
 
-**Benefit**: Cleaner diffs in version control (adding elements doesn't modify previous line).
+**Why extract suffixes?**
+- Allows Python-like syntax with .NET types: `42L` → `long`
+- Semantic analysis uses suffix to determine exact type
+- Supports: `L` (long), `U` (uint), `UL` (ulong), `f` (float), `d` (double), `m` (decimal)
 
-### 6. **Comprehension Detection**
+### 12.4 Lookahead for Disambiguation
 
-After parsing the first expression in `[...]` or `{...}`, check for `TokenType.For`:
+Several cases use lookahead to distinguish between similar syntaxes:
+
+**Example 1: List literal vs comprehension**
 ```csharp
-if (Current.Type == TokenType.For) {
-    // It's a comprehension!
-    var clauses = ParseComprehensionClauses();
-    return new ListComprehension { ... };
+var firstExpr = ParseExpression();
+
+if (Current.Type == TokenType.For)
+{
+    // It's a comprehension
+}
+else
+{
+    // It's a regular list
 }
 ```
 
-**Insight**: Comprehensions are syntactically identical to regular collections until the `for` keyword appears.
+**Example 2: Dict vs Set**
+```csharp
+var firstExpr = ParseExpression();
+
+if (Current.Type == TokenType.Colon)
+{
+    // It's a dict
+}
+else
+{
+    // It's a set
+}
+```
+
+This **minimal lookahead** keeps the parser efficient while handling Python's flexible syntax.
+
+### 12.5 Error Handling
+
+The parser uses **exceptions** for error reporting:
+
+```csharp
+default:
+    throw new ParserError($"Unexpected token: {Current.Type}", Current.Line, Current.Column);
+```
+
+**ParserError** includes:
+- Error message
+- Line and column numbers
+- Token context
+
+**No error recovery:** The parser stops at the first error. This is acceptable for:
+- Compiler use case (fix error, re-compile)
+- Fast feedback loop
+- Clear error messages
+
+**Future enhancement:** LSP/IDE mode might add error recovery for better IDE experience.
 
 ---
 
-## Debugging Tips
+## 13. Debugging Tips
 
-### 1. **Token Stream Inspection**
+### 13.1 Use the `emit ast` Command
 
-If parsing fails unexpectedly, examine the token stream:
-- Add breakpoint at line 18 (`switch (Current.Type)`)
-- Check `Current.Type`, `Current.Value`, `Current.Line`, `Current.Column`
-- Verify lexer emitted expected tokens
+To see the AST produced by the parser:
 
-### 2. **Common Error: Missing `Advance()` Call**
+```bash
+dotnet run --project src/Sharpy.Cli -- emit ast file.spy
+```
 
-If the parser hangs in infinite loop:
-- Ensure every token consumption path calls `Advance()`
-- Example bug: Forgetting `Advance()` after `TokenType.Integer` would cause `Current` to never progress
+This shows the full AST tree including all primary expressions.
 
-### 3. **Comprehension Parsing Issues**
+### 13.2 Add Logging
 
-If comprehensions fail to parse:
-- Check that `ParseComprehensionClauses()` in `Parser.Statements.cs:202` is working
-- Verify lexer emits `TokenType.For` and `TokenType.In` correctly
+The parser supports logging via `ICompilerLogger`:
 
-### 4. **F-String Debugging**
+```csharp
+_logger.LogInfo($"Parsing primary: {Current.Type}");
+```
 
-F-strings involve complex lexer/parser interaction:
-- Lexer must emit `FStringStart`, `FStringText`, `FStringExprStart`, etc.
-- Check `ParseSegmentedFString()` in `Parser.Types.cs:414` for segment reconstruction
-- Common issue: Unbalanced braces in f-string expressions
+Enable verbose logging to trace parser execution.
 
-### 5. **Location Tracking Bugs**
+### 13.3 Inspect Token Stream
 
-If error messages show wrong line numbers:
-- Ensure `startLine/startColumn` are captured **before** `Advance()`
-- Ensure `LineEnd/ColumnEnd` are captured **after** parsing completes
+If parsing produces unexpected results:
 
-### 6. **Tuple vs. Parenthesized Ambiguity**
+```bash
+dotnet run --project src/Sharpy.Cli -- emit tokens file.spy
+```
 
-If `(x)` is incorrectly parsed as tuple:
-- Check comma detection logic at line 131: `if (Current.Type == TokenType.Comma)`
-- `(x)` should become `Parenthesized`, not `TupleLiteral`
+This shows what tokens the lexer produced, helping identify lexer vs parser issues.
 
----
+### 13.4 Common Issues
 
-## Contribution Guidelines
+**Issue: "Unexpected token" errors**
+- Check that the lexer is producing the expected token types
+- Verify the token stream with `emit tokens`
+- Ensure the grammar is unambiguous
 
-### What Kinds of Changes Might Be Made
+**Issue: Wrong AST node type**
+- Check lookahead logic (e.g., dict vs set disambiguation)
+- Verify `Current.Type` checks
+- Look for missing cases in switch statement
 
-1. **Adding New Literal Types**
-   - Example: Binary literals (`0b1010`), complex numbers (`3+4j`)
-   - Add new `case TokenType.Binary:` branch to `ParsePrimary()`
-   - Define corresponding AST node in `Sharpy.Compiler.Parser.Ast`
+**Issue: Location info is wrong**
+- Ensure `startLine` and `startColumn` are captured **before** any `Advance()` calls
+- Use `Previous` token for end location (after advancing)
+- Check `GetSpanFromTokens()` arguments
 
-2. **Extending Comprehension Syntax**
-   - Example: Add walrus operator (`:=`) in comprehensions
-   - Modify comprehension detection logic (lines 165, 224, 262)
-   - Update `ParseComprehensionClauses()` in `Parser.Statements.cs`
+### 13.5 Test-Driven Debugging
 
-3. **New Collection Syntax**
-   - Example: Frozen sets (`frozenset{1, 2, 3}`)
-   - Add keyword detection before `{` parsing
-   - Create new `FrozenSetLiteral` AST node
+File-based tests are in `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`:
 
-4. **Improving Error Messages**
-   - Replace generic `throw new ParserError(...)` with specific messages
-   - Example: Line 328 could say "Expected expression but found {Current.Type}"
+**To add a test:**
+1. Create `your_test.spy` with the code to parse
+2. Create `your_test.expected` with expected output
+3. Run: `dotnet test --filter "FileBasedIntegrationTests"`
 
-5. **Performance Optimizations**
-   - Use `StringBuilder` for suffix extraction (lines 26-42)
-   - Cache `Current.Type` to avoid repeated property access
-
-### Testing Considerations
-
-When modifying this file:
-- **Add unit tests** for new literal types or syntax
-- **Test edge cases**: Empty collections, trailing commas, nested structures
-- **Test error cases**: Missing closing bracket, invalid suffix, etc.
-- **Integration tests**: Ensure code generation works for new AST nodes
-
-### Style Guidelines
-
-- **Maintain consistency**: Follow existing pattern of `startLine/startColumn` capture
-- **Add comments**: Explain non-obvious logic (e.g., why `{/}` is empty set)
-- **Keep switch exhaustive**: Cover all possible `TokenType` values or have default error
+**For parser-specific tests:**
+Look at `src/Sharpy.Compiler.Tests/Parser/` for unit tests of specific parsing scenarios.
 
 ---
 
-## Cross-References
+## 14. Contribution Guidelines
 
-### Related Parser Partial Files
+### 14.1 When to Modify This File
 
-This file is part of the `Parser` partial class split. Related files:
+Add to `Parser.Primaries.cs` when:
+- Adding a new literal type (e.g., complex numbers, raw bytes)
+- Adding a new collection syntax
+- Adding a new primary expression keyword
+- Modifying comprehension syntax
 
-- **[Parser.cs](./Parser.md)** - Core parser infrastructure (token management, `Advance()`, `Expect()`)
-- **[Parser.Expressions.cs](./Parser.Expressions.md)** - Operator precedence, binary/unary operators (calls `ParsePrimary()`)
-- **[Parser.Statements.cs](./Parser.Statements.md)** - Contains `ParseComprehensionClauses()` (lines 202+)
-- **Parser.Types.cs** - Contains `ParseSegmentedFString()` (line 414), type annotation parsing
-- **[Parser.Definitions.cs](./Parser.Definitions.md)** - Top-level definitions (classes, functions)
+**Don't modify for:**
+- Binary/unary operators (those go in `Parser.Expressions.cs`)
+- Statements (those go in `Parser.Statements.cs`)
+- Type annotations (those go in `Parser.Types.cs`)
 
-### AST Nodes Defined in This File
+### 14.2 Adding a New Literal Type
 
-All AST nodes are defined in `Sharpy.Compiler.Parser.Ast.Expression`:
-- `IntegerLiteral`, `FloatLiteral`, `StringLiteral`, `BooleanLiteral`
-- `NoneLiteral`, `EllipsisLiteral`, `Identifier`
-- `ListLiteral`, `DictLiteral`, `SetLiteral`, `TupleLiteral`
-- `ListComprehension`, `DictComprehension`, `SetComprehension`
-- `LambdaExpression`, `SuperExpression`, `Parenthesized`, `FStringLiteral`
+**Example: Adding hexadecimal float literals**
 
-### Code Generation
+1. Ensure the lexer produces the appropriate token (e.g., `TokenType.HexFloat`)
+2. Add a case in `ParsePrimary()`:
+   ```csharp
+   case TokenType.HexFloat:
+   {
+       var token = Current;
+       var value = token.Value;
+       Advance();
+       return new HexFloatLiteral
+       {
+           Value = value,
+           LineStart = startLine,
+           ColumnStart = startColumn,
+           LineEnd = Previous.Line,
+           ColumnEnd = Previous.Column + Previous.Value.Length,
+           Span = GetSpanFromToken(token)
+       };
+   }
+   ```
+3. Define the AST node in `Expression.cs`
+4. Add semantic analysis for the new type
+5. Add RoslynEmitter code to generate C#
 
-The AST nodes produced by this file are consumed by:
-- **RoslynEmitter.Expressions.cs** - Converts expression AST to C# Roslyn syntax trees
+### 14.3 Code Style
+
+Follow the existing patterns:
+- Capture `startLine`/`startColumn` at the beginning
+- Use `var` for local variables
+- Include XML doc comments for public APIs
+- Add comprehensive location tracking
+- Use `ImmutableArray` for collections in AST nodes
+
+### 14.4 Testing Requirements
+
+**For any changes to Parser.Primaries.cs:**
+
+1. Add unit tests in `src/Sharpy.Compiler.Tests/Parser/`
+2. Add file-based integration tests if the feature interacts with other components
+3. Test edge cases:
+   - Empty collections
+   - Single-element collections
+   - Trailing commas
+   - Nested structures
+   - Error cases (malformed syntax)
+
+**Run tests:**
+```bash
+dotnet test --filter "FullyQualifiedName~Parser"
+```
+
+### 14.5 Critical Rules (from CLAUDE.md)
+
+1. **Never modify expected values to make tests pass** — fix the implementation
+2. **Immutable AST** — annotations go in `SemanticInfo`, not AST nodes
+3. **C# 9.0 target** — no newer language features
 
 ---
 
-## Summary
+## 15. Cross-References
 
-`Parser.Primaries.cs` is the **foundation of expression parsing** in Sharpy. It handles:
-- ✅ All literal types (numbers, strings, booleans, None, ellipsis)
-- ✅ Identifiers and special keywords (super)
-- ✅ Collection literals (lists, dicts, sets, tuples)
-- ✅ Comprehensions (list/dict/set comprehensions)
-- ✅ Lambda expressions
-- ✅ Parenthesized expressions
+### 15.1 Related Partial Classes
 
-**Key Takeaways**:
-1. Uses **token-driven dispatch** (switch on `Current.Type`)
-2. **Recursive descent**: Calls back to `ParseExpression()` for nested structures
-3. **Location tracking**: Every AST node captures source position for errors
-4. **Comprehensive syntax**: Handles Python-like literals + C#-style type suffixes
-5. **Smart disambiguation**: Distinguishes dicts from sets, tuples from parentheses, comprehensions from literals
+This file is part of the `Parser` partial class. See also:
 
-For newcomers: Start by reading `Parser.cs` to understand the token stream infrastructure, then study this file to see how individual expressions are built. Next, explore `Parser.Expressions.cs` to see how primaries combine into complex expressions.
+- [Parser.md](Parser.md) - Main parser class and architecture
+- [Parser.Expressions.md](Parser.Expressions.md) - Operator precedence and expression parsing
+- [Parser.Statements.md](Parser.Statements.md) - Statement parsing (comprehension clauses are here)
+- [Parser.Types.md](Parser.Types.md) - Type annotations and helper methods
+- [Parser.Definitions.md](Parser.Definitions.md) - Function/class/struct definitions
+
+### 15.2 Dependencies
+
+**Upstream (this file depends on):**
+- `Sharpy.Compiler.Lexer` - Token types and lexer output
+- `Sharpy.Compiler.Logging` - Logging infrastructure
+- `Sharpy.Compiler.Parser.Ast` - AST node definitions
+
+**Downstream (depends on this file):**
+- `Parser.Expressions.cs` - Calls `ParsePrimary()` to get operands
+- Semantic analysis - Processes the AST nodes produced here
+- RoslynEmitter - Converts AST to C# Roslyn syntax trees
+
+### 15.3 Key Files to Review
+
+**For understanding primary expressions:**
+1. `src/Sharpy.Compiler/Parser/Ast/Expression.cs` - AST node definitions
+2. `src/Sharpy.Compiler/Parser/Parser.Expressions.cs` - How primaries fit into operator precedence
+3. `src/Sharpy.Compiler/Lexer/Lexer.cs` - How tokens are produced
+
+**For understanding the full pipeline:**
+1. `src/Sharpy.Compiler/Parser/Parser.cs` - Entry point and infrastructure
+2. `src/Sharpy.Compiler/SemanticAnalysis/` - What happens after parsing
+3. `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs` - How primaries become C#
+
+---
+
+## 16. Summary
+
+`Parser.Primaries.cs` is the **foundation** of expression parsing in Sharpy. It handles the most fundamental syntactic constructs:
+
+**What it does:**
+✅ Parses all literal values
+✅ Parses identifiers and `super()`
+✅ Parses collection literals and comprehensions
+✅ Handles complex disambiguation (tuples, dicts, sets)
+✅ Supports lambda expressions
+✅ Provides precise source location tracking
+
+**What it doesn't do:**
+❌ Doesn't handle operators (that's `Parser.Expressions.cs`)
+❌ Doesn't handle statements (that's `Parser.Statements.cs`)
+❌ Doesn't do semantic analysis (that comes later)
+❌ Doesn't generate code (that's `RoslynEmitter`)
+
+**Key takeaways for newcomers:**
+1. This is a **partial class** - many helpers are in other files
+2. The `ParsePrimary()` switch is the **bottom of the precedence chain**
+3. **Lookahead** is used sparingly for disambiguation
+4. All AST nodes are **immutable records** with full location tracking
+5. The parser is **error-intolerant** (stops at first error)
+
+**To explore further:**
+- Read `Parser.Expressions.md` to understand how primaries fit into operator precedence
+- Inspect the AST nodes in `src/Sharpy.Compiler/Parser/Ast/Expression.cs`
+- Run `dotnet run --project src/Sharpy.Cli -- emit ast your_file.spy` to see the parser in action

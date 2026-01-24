@@ -4,1102 +4,650 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-This is a **partial class** of the main `Parser` class, containing all expression parsing methods. It implements Sharpy's operator precedence hierarchy using a technique called **precedence climbing** (also known as **recursive descent with precedence**).
+`Parser.Expressions.cs` is a partial class file implementing the **expression parsing** logic for the Sharpy compiler. This file uses **recursive descent parsing with operator precedence climbing** to transform a token stream from the Lexer into a structured Abstract Syntax Tree (AST) of expression nodes.
 
-**Key responsibilities:**
-- Parse all expression types (literals, operators, function calls, etc.)
-- Enforce correct operator precedence (from walrus `:=` to postfix operators)
-- Support operator chaining (e.g., `a < b < c`)
-- Handle special expressions: `try`, `maybe`, conditional expressions
-- Create appropriate AST nodes for each expression type
-
-**Pipeline position:**
+**Role in Pipeline:**
 ```
-Lexer → [TOKENS] → Parser.Expressions → [Expression AST Nodes] → Semantic Analysis
+Source (.spy) → Lexer (tokens) → [Parser.Expressions] → AST → Semantic Analysis
 ```
 
-This file works hand-in-hand with other Parser partial classes:
-- `Parser.Primaries.cs` - Handles literals, identifiers, collection syntax
-- `Parser.Statements.cs` - Handles statements (assignments, loops, etc.)
-- `Parser.Types.cs` - Handles type annotations
-- `Parser.Definitions.cs` - Handles function/class definitions
+This file handles all expression parsing, including:
+- Binary operators (arithmetic, logical, bitwise, comparison)
+- Unary operators (+, -, not, ~)
+- Postfix operations (member access, indexing, function calls, type casts)
+- Special expressions (walrus `:=`, try/maybe, conditional ternary)
+- Comparison chains (`a < b < c`)
+- Operator precedence enforcement
 
 ---
 
-## 2. Class Structure
+## Class/Type Structure
 
-### This is a Partial Class
+### Partial Class: `Parser`
 
+This file is part of the `Parser` partial class, which is split across multiple files:
+- **Parser.cs**: Core parser infrastructure and statement parsing entry
+- **Parser.Expressions.cs**: Expression parsing (this file)
+- **Parser.Primaries.cs**: Primary expressions (literals, identifiers, comprehensions)
+- **Parser.Statements.cs**: Statement parsing (if, while, for, etc.)
+- **Parser.Definitions.cs**: Definition parsing (functions, classes, structs)
+- **Parser.Types.cs**: Type annotation parsing and utility methods
+
+The parser maintains three key fields (from `Parser.cs`):
 ```csharp
-public partial class Parser
-{
-    private Expression ParseExpression() => ParseWalrusExpression();
-    // ... all expression parsing methods
-}
+private readonly List<Token> _tokens;  // Input token stream
+private int _position;                 // Current position in token stream
+private readonly ICompilerLogger _logger;
 ```
-
-The `Parser` class is split across multiple files for maintainability. The main `Parser.cs` file contains:
-- Token stream navigation (`Current`, `Peek()`, `Advance()`)
-- Error handling (`Expect()`, `ExpectIdentifierOrKeyword()`)
-- Module parsing entry point
-
-**See also:**
-- [Parser.md](Parser.md) - Main Parser class documentation
-- [Parser.Primaries.md](Parser.Primaries.md) - Primary expression parsing
-- [Parser.Statements.md](Parser.Statements.md) - Statement parsing
 
 ---
 
-## 3. Key Concepts
+## Key Functions/Methods
 
-### 3.1 Precedence Climbing
+Expression parsing follows the **precedence hierarchy** defined in `docs/language_specification/operator_precedence.md`. Each parsing method handles operators at a specific precedence level and delegates to the next higher precedence level for its operands.
 
-The parser implements operator precedence through a **chain of method calls**, where each method handles one precedence level:
+### Entry Point
 
-```
-ParseExpression()                    ← Entry point
-  └─> ParseWalrusExpression()        ← Lowest precedence (:=)
-      └─> ParseTryMaybeExpression()  ← try/maybe
-          └─> ParseConditionalExpression()  ← x if c else y
-              └─> ParseNullCoalesce()       ← ??
-                  └─> ParseLogicalOr()      ← or
-                      └─> ParseLogicalAnd() ← and
-                          └─> ParseLogicalNot() ← not
-                              └─> ParseComparison() ← ==, <, >, in, is
-                                  └─> ParsePipe() ← |>
-                                      └─> ParseBitwiseOr() ← |
-                                          └─> ParseBitwiseXor() ← ^
-                                              └─> ParseBitwiseAnd() ← &
-                                                  └─> ParseShift() ← <<, >>
-                                                      └─> ParseAdditive() ← +, -
-                                                          └─> ParseMultiplicative() ← *, /, //, %
-                                                              └─> ParseUnary() ← +x, -x, ~x
-                                                                  └─> ParsePower() ← **
-                                                                      └─> ParsePostfix() ← ., [], ()
-                                                                          └─> ParsePrimary() ← literals, identifiers
-```
-
-**How it works:**
-1. Each method parses its left operand by calling the **next higher precedence** method
-2. Then it loops, consuming operators at its precedence level
-3. For each operator, it parses the right operand at the **same** level (for left-associative) or **higher** level (for right-associative)
-4. It builds a `BinaryOp` AST node and continues the loop
-
-**Example** - Parsing `2 + 3 * 4`:
-```
-ParseExpression()
-  ParseWalrusExpression()  (no := operator)
-    ParseTryMaybeExpression()  (no try/maybe)
-      ParseConditionalExpression()  (no if/else)
-        ParseNullCoalesce()  (no ??)
-          ...continuing down...
-            ParseAdditive()
-              left = ParseMultiplicative()
-                left = ParseUnary()
-                  ParsePower()
-                    ParsePostfix()
-                      ParsePrimary() → IntegerLiteral(2)
-                return IntegerLiteral(2)
-
-              See '+' token → Advance()
-              right = ParseMultiplicative()
-                left = ParseUnary()
-                  ParsePower()
-                    ParsePostfix()
-                      ParsePrimary() → IntegerLiteral(3)
-
-                See '*' token → Advance()
-                right = ParseUnary()
-                  ParsePower()
-                    ParsePostfix()
-                      ParsePrimary() → IntegerLiteral(4)
-
-                return BinaryOp(Multiply, 3, 4)
-
-              return BinaryOp(Add, 2, BinaryOp(Multiply, 3, 4))
-```
-
-The result: `2 + (3 * 4)` - multiplication binds tighter because `ParseMultiplicative()` is called recursively before returning to `ParseAdditive()`.
-
-### 3.2 Left vs. Right Associativity
-
-**Left-associative** operators (most operators):
-```csharp
-while (Current.Type == TokenType.Plus || Current.Type == TokenType.Minus)
-{
-    var op = ...;
-    Advance();
-    var right = ParseMultiplicative();  // Same level
-    left = new BinaryOp { Operator = op, Left = left, Right = right };
-}
-```
-Loop structure creates left-to-right chaining: `a + b + c` → `(a + b) + c`
-
-**Right-associative** operators (power `**`, walrus `:=`, conditionals):
-```csharp
-if (Current.Type == TokenType.DoubleStar)
-{
-    Advance();
-    var right = ParseUnary();  // Recursive call to higher level
-    return new BinaryOp { Operator = Power, Left = left, Right = right };
-}
-```
-Recursion creates right-to-left chaining: `a ** b ** c` → `a ** (b ** c)`
-
-### 3.3 Comparison Chaining
-
-Python-style comparison chains (`a < b < c`) are handled specially:
-
-```python
-# Instead of left-to-right: (a < b) < c (which would be bool < int)
-# We want: (a < b) and (b < c)
-```
-
-The `ParseComparison()` method (lines 233-320):
-1. Collects **all** comparison operators and operands in lists
-2. If there's only one operator → creates a simple `BinaryOp`
-3. If there are multiple → creates a `ComparisonChain` node
-
-```csharp
-var operators = new List<ComparisonOperator>();
-var operands = new List<Expression> { left };
-
-while (IsComparisonOperator(Current.Type))
-{
-    operators.Add(...);
-    operands.Add(ParsePipe());
-}
-
-if (operators.Count > 1)
-    return new ComparisonChain { Operands = operands, Operators = operators };
-```
-
-The code generator later transforms this into AND-chained comparisons.
-
----
-
-## 4. Key Methods
-
-### 4.1 Entry Point
-
-#### `ParseExpression()` (line 13)
-
+#### `ParseExpression()` (Line 14)
 ```csharp
 private Expression ParseExpression() => ParseWalrusExpression();
 ```
-
-The main entry point for parsing any expression. Simply delegates to the lowest-precedence operator (walrus).
-
-**Called by:**
-- Statement parsers (assignment, return, etc.)
-- Other expression parsers (function arguments, list elements, etc.)
+The main entry point for expression parsing. Delegates to the lowest-precedence operator (walrus).
 
 ---
 
-### 4.2 Lowest Precedence Operators
+### Operator Precedence Ladder (Lowest to Highest)
 
-#### `ParseWalrusExpression()` (lines 15-40)
+The parsing methods are organized by precedence, from lowest (binds weakest) to highest (binds strongest):
 
-Handles the walrus operator `:=` (assignment expression).
+#### 1. **ParseWalrusExpression()** (Lines 16-43) — Precedence 20
+**Operator**: `:=` (walrus/assignment expression)
+- **Associativity**: Right-to-left
+- **Pattern**: `identifier := value`
+- **AST Node**: `WalrusExpression`
 
-**Syntax:** `name := value`
-
-**Example:**
-```python
-if (match := pattern.match(text)):
-    print(match.group(1))
-```
-
-**Algorithm:**
-1. Look ahead for `identifier :=` pattern
-2. If found:
-   - Capture identifier name
-   - Recursively parse the value (right-associative)
-   - Return `WalrusExpression` node
-3. Otherwise, delegate to next precedence level
-
-**Important:** Right-associative, so `a := b := 5` parses as `a := (b := 5)`.
-
----
-
-#### `ParseTryMaybeExpression()` (lines 42-97)
-
-Handles `try` and `maybe` prefix expressions for error/null handling.
-
-**Syntax:**
-- `try expr` or `try[ExceptionType] expr`
-- `maybe expr`
-
-**Examples:**
-```python
-# Wrap potentially-throwing expression in Result[T, E]
-result = try int(user_input)              # Result[int, Exception]
-result = try[ValueError] int(user_input)  # Result[int, ValueError]
-
-# Wrap nullable expression in Optional[T]
-value = maybe dict.get("key")  # Optional[T]
-```
-
-**Algorithm:**
-1. Check for `try` keyword:
-   - Check for optional `[ExceptionType]` bracket syntax
-   - Parse the operand expression
-   - Return `TryExpression` node
-2. Check for `maybe` keyword:
-   - Parse the operand expression
-   - Return `MaybeExpression` node
-3. Otherwise, delegate to conditional expression parsing
-
-**Design note:** These expressions capture everything up to (but not including) conditional expressions, giving them very low precedence. See `ParseConditionalOperand()`.
-
----
-
-#### `ParseConditionalOperand()` (lines 104-109)
-
+**Key Logic:**
 ```csharp
-private Expression ParseConditionalOperand()
+if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.ColonAssign)
 {
-    return ParseNullCoalesce();
+    var name = Current.Value;
+    Advance();  // Skip identifier
+    Advance();  // Skip :=
+    var value = ParseWalrusExpression();  // Right-associative recursion!
+    return new WalrusExpression { Target = name, Value = value, ... };
 }
 ```
 
-Helper method that defines what `try`/`maybe` expressions should capture. They bind to everything except conditional expressions (`x if c else y`).
-
-**Why this exists:**
-```python
-# try captures null coalesce and everything higher
-result = try foo() ?? default  # try (foo() ?? default)
-
-# try does NOT capture conditionals
-result = try foo() if cond else bar()  # (try foo()) if cond else bar()
-```
+**Important**: Uses right-associative recursion (calls itself for the right operand) to support chains like `a := b := 5`.
 
 ---
 
-#### `ParseConditionalExpression()` (lines 111-136)
+#### 2. **ParseTryMaybeExpression()** (Lines 45-104) — Precedence 17
+**Operators**: `try`, `maybe` (Result/Optional wrapping)
+- **Associativity**: Prefix operators (right-to-left)
+- **AST Nodes**: `TryExpression`, `MaybeExpression`
 
-Handles Python-style ternary expressions: `value if condition else other`.
-
-**Example:**
+**Try Expression:**
 ```python
-x = "positive" if num > 0 else "negative"
+try some_func(4) + 5           # Wraps entire expression in Result[T, E]
+try[ValueError] parse_int(s)   # Specifies exception type
 ```
 
-**Algorithm:**
-1. Parse the "then" value first (this is Python's unusual order)
-2. If we see `if` keyword:
-   - Parse the condition
-   - Expect `else` keyword
-   - Recursively parse the "else" value (right-associative)
-   - Return `ConditionalExpression` with: `Test`, `ThenValue`, `ElseValue`
-3. Otherwise, return the expression as-is
-
-**Right-associative chaining:**
+**Maybe Expression:**
 ```python
-a if x else b if y else c
-# Parses as: a if x else (b if y else c)
+maybe get_value() + default    # Wraps nullable expression in Optional[T]
 ```
 
----
+**Key Implementation Detail:**
+Both `try` and `maybe` call `ParseConditionalOperand()` instead of continuing down the precedence chain. This is intentional — they capture everything **except** conditional expressions (`x if c else y`):
 
-### 4.3 Null Coalescing
-
-#### `ParseNullCoalesce()` (lines 138-160)
-
-Handles the `??` null coalescing operator.
-
-**Syntax:** `a ?? b` returns `a` if not null, otherwise `b`.
-
-**Example:**
-```python
-name = user.name ?? "Anonymous"
-```
-
-**Left-associative loop:**
 ```csharp
+var operand = ParseConditionalOperand();  // Skips conditionals!
+```
+
+This matches the spec: `try foo() if cond else bar()` is parsed as `(try foo()) if cond else bar()`, not `try (foo() if cond else bar())`.
+
+---
+
+#### 3. **ParseConditionalExpression()** (Lines 118-144) — Precedence 18
+**Operator**: `if ... else` (ternary conditional)
+- **Syntax**: `value if test else other`
+- **Associativity**: Right-to-left
+- **AST Node**: `ConditionalExpression`
+
+**Unique Syntax**: Python's conditional expression has an unusual order — the "then" value comes **before** the test:
+```python
+x if condition else y  # Not "if condition then x else y"
+```
+
+**Implementation:**
+```csharp
+var expr = ParseNullCoalesce();  // Parse the "then" value first
+if (Current.Type == TokenType.If)
+{
+    Advance();
+    var test = ParseNullCoalesce();
+    Expect(TokenType.Else);
+    var elseValue = ParseConditionalExpression();  // Right-associative!
+    return new ConditionalExpression { Test = test, ThenValue = expr, ElseValue = elseValue };
+}
+```
+
+Right-associativity enables chaining: `a if x else b if y else c` → `a if x else (b if y else c)`
+
+---
+
+#### 4. **ParseNullCoalesce()** (Lines 146-169) — Precedence 16
+**Operator**: `??` (null coalescing)
+- **Behavior**: Returns left operand if non-null, otherwise right
+- **Associativity**: Left-to-right
+
+Standard left-associative binary operator pattern using a `while` loop:
+```csharp
+var left = ParseLogicalOr();
 while (Current.Type == TokenType.NullCoalesce)
 {
     Advance();
     var right = ParseLogicalOr();
-    left = new BinaryOp { Operator = NullCoalesce, Left = left, Right = right };
+    left = new BinaryOp { Operator = BinaryOperator.NullCoalesce, Left = left, Right = right };
 }
 ```
 
 ---
 
-### 4.4 Logical Operators
+#### 5-7. **Logical Operators** (Lines 171-244) — Precedence 13-15
 
-#### `ParseLogicalOr()`, `ParseLogicalAnd()`, `ParseLogicalNot()` (lines 162-231)
+These follow the standard pattern, implementing short-circuit evaluation via AST structure:
 
-Handle boolean logic operators with correct precedence.
+- **ParseLogicalOr()** (Precedence 15): `or` operator
+- **ParseLogicalAnd()** (Precedence 14): `and` operator
+- **ParseLogicalNot()** (Precedence 13): `not` operator (unary prefix)
 
-**Precedence:** `not` > `and` > `or`
+**Note**: `not` is right-associative as a unary operator, allowing `not not x`.
 
-**Examples:**
+---
+
+#### 8. **ParseComparison()** (Lines 246-337) — Precedence 12
+**Operators**: `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `not in`, `is`, `is not`
+- **Associativity**: **Chained** (neither left nor right)
+- **AST Nodes**: `BinaryOp` (single comparison) or `ComparisonChain` (multiple)
+
+**Special Feature**: Python-style comparison chaining:
 ```python
-a or b and c        # a or (b and c)
-not a and b         # (not a) and b
-a and b or c and d  # (a and b) or (c and d)
+a < b < c  # Equivalent to: (a < b) and (b < c)
 ```
 
-**Implementation pattern:**
-- `ParseLogicalOr()` - Left-associative loop for `or`
-- `ParseLogicalAnd()` - Left-associative loop for `and`
-- `ParseLogicalNot()` - Prefix operator (checks for `not`, then recurses)
+**Implementation Strategy:**
 
-**Unary `not` handling:**
-```csharp
-if (Current.Type == TokenType.Not)
-{
-    Advance();
-    var operand = ParseLogicalNot();  // Right-associative recursion
-    return new UnaryOp { Operator = Not, Operand = operand };
-}
-```
-
----
-
-### 4.5 Comparison Operators
-
-#### `ParseComparison()` (lines 233-320)
-
-Handles all comparison operators: `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `not in`, `is`, `is not`.
-
-**Special cases:**
-
-1. **Type checking:** `value is TypeName`
+1. **Type Check Special Case** (Lines 251-277):
    ```csharp
    if (Current.Type == TokenType.Is && Peek(1).Type == TokenType.Identifier)
    {
        if (IsTypeName(nextTokenValue))
+       {
+           // Parse as TypeCheck: value is Type
+           var typeAnnotation = ParseTypeAnnotation();
            return new TypeCheck { Value = left, CheckType = typeAnnotation };
+       }
    }
    ```
+   Disambiguates `x is Dog` (type check) from `x is y` (identity comparison).
 
-2. **Multi-token operators:** `is not` and `not in`
+2. **Comparison Chain Parsing** (Lines 279-336):
    ```csharp
-   if (op == TokenType.Is && Current.Type == TokenType.Not)
-   {
-       Advance();
-       operators.Add(ComparisonOperator.IsNot);
-   }
-   ```
+   var operators = new List<ComparisonOperator>();
+   var operands = new List<Expression> { left };
 
-3. **Comparison chains:** `a < b < c`
-   ```csharp
    while (IsComparisonOperator(Current.Type))
    {
+       // Handle multi-token operators: "is not" and "not in"
+       if (op == TokenType.Is && Current.Type == TokenType.Not) { ... }
+       else if (op == TokenType.Not && Current.Type == TokenType.In) { ... }
+
        operators.Add(...);
        operands.Add(ParsePipe());
    }
 
-   if (operators.Count > 1)
-       return new ComparisonChain { Operands = operands, Operators = operators };
+   if (operators.Count == 1)
+       return new BinaryOp { ... };  // Single comparison
+   else
+       return new ComparisonChain { Operands = ..., Operators = ... };
    ```
 
-**Helper methods:**
-- `IsComparisonOperator()` - Checks if token is a comparison operator
-- `TokenTypeToComparisonOperator()` - Converts token to enum
-- `ComparisonOperatorToBinary()` - Converts for single comparisons
+**Important**: Multi-token operators (`is not`, `not in`) require special handling to consume both tokens.
 
 ---
 
-### 4.6 Pipe Operator
+#### 9-13. **Arithmetic and Bitwise Operators** (Lines 376-500)
 
-#### `ParsePipe()` (lines 359-381)
+Standard left-associative binary operators, each following the pattern:
 
-Handles the pipe-forward operator `|>` for functional-style data flow.
+- **ParsePipe()** (Precedence 10): `|>` pipe forward operator
+- **ParseBitwiseOr()** (Precedence 9): `|` bitwise OR
+- **ParseBitwiseXor()** (Precedence 8): `^` bitwise XOR
+- **ParseBitwiseAnd()** (Precedence 7): `&` bitwise AND
+- **ParseShift()** (Precedence 6): `<<`, `>>` bit shifts
+- **ParseAdditive()** (Precedence 5): `+`, `-`
+- **ParseMultiplicative()** (Precedence 4): `*`, `/`, `//`, `%`
 
-**Example:**
-```python
-result = data |> filter(is_positive) |> map(square) |> sum
-```
-
-**Left-associative loop** - pipes chain left-to-right:
-```python
-a |> f |> g  # (a |> f) |> g
-```
-
-This allows natural data transformation pipelines.
-
----
-
-### 4.7 Bitwise Operators
-
-#### `ParseBitwiseOr()`, `ParseBitwiseXor()`, `ParseBitwiseAnd()` (lines 383-453)
-
-Handle bitwise operators with correct precedence.
-
-**Precedence:** `&` > `^` > `|`
-
-**Examples:**
-```python
-a | b ^ c & d  # a | (b ^ (c & d))
-```
-
-All are left-associative with standard loop pattern.
-
----
-
-#### `ParseShift()` (lines 455-478)
-
-Handles left shift `<<` and right shift `>>` operators.
-
-**Example:**
-```python
-x << 2   # Multiply by 4
-y >> 1   # Divide by 2
-```
-
-**Both operators handled in same method:**
+**Pattern:**
 ```csharp
-while (Current.Type == TokenType.LeftShift || Current.Type == TokenType.RightShift)
+private Expression ParseX()
 {
-    var op = Current.Type == TokenType.LeftShift ? BinaryOperator.LeftShift : BinaryOperator.RightShift;
-    // ...
-}
-```
-
----
-
-### 4.8 Arithmetic Operators
-
-#### `ParseAdditive()` (lines 480-503)
-
-Handles `+` and `-` operators.
-
-**Standard left-associative pattern:**
-```csharp
-while (Current.Type == TokenType.Plus || Current.Type == TokenType.Minus)
-{
-    var op = Current.Type == TokenType.Plus ? BinaryOperator.Add : BinaryOperator.Subtract;
-    Advance();
-    var right = ParseMultiplicative();
-    left = new BinaryOp { Operator = op, Left = left, Right = right };
-}
-```
-
----
-
-#### `ParseMultiplicative()` (lines 505-536)
-
-Handles `*`, `/`, `//` (floor division), and `%` (modulo).
-
-**All four operators handled together:**
-```csharp
-while (Current.Type == TokenType.Star || Current.Type == TokenType.Slash ||
-       Current.Type == TokenType.DoubleSlash || Current.Type == TokenType.Percent)
-{
-    var op = Current.Type switch
+    var left = ParseY();  // Higher precedence
+    while (Current.Type == TokenType.XOperator)
     {
-        TokenType.Star => BinaryOperator.Multiply,
-        TokenType.Slash => BinaryOperator.Divide,
-        TokenType.DoubleSlash => BinaryOperator.FloorDivide,
-        TokenType.Percent => BinaryOperator.Modulo,
-        _ => throw new ParserError(...)
-    };
-    // ...
+        Advance();
+        var right = ParseY();
+        left = new BinaryOp { Operator = ..., Left = left, Right = right };
+    }
+    return left;
 }
 ```
 
 ---
 
-### 4.9 Unary Operators
+#### 14. **ParseUnary()** (Lines 562-592) — Precedence 3
+**Operators**: `+x`, `-x`, `~x` (unary plus, minus, bitwise NOT)
+- **Associativity**: Right-to-left (unary)
+- **AST Node**: `UnaryOp`
 
-#### `ParseUnary()` (lines 538-566)
-
-Handles unary prefix operators: `+x`, `-x`, `~x` (bitwise not).
-
-**Right-associative recursion:**
+**Right-associativity via recursion:**
 ```csharp
 if (Current.Type == TokenType.Plus || Current.Type == TokenType.Minus || Current.Type == TokenType.Tilde)
 {
-    var op = Current.Type switch
-    {
-        TokenType.Plus => UnaryOperator.Plus,
-        TokenType.Minus => UnaryOperator.Minus,
-        TokenType.Tilde => UnaryOperator.BitwiseNot,
-        _ => throw new ParserError(...)
-    };
+    var op = Current.Type switch { ... };
     Advance();
-    var operand = ParseUnary();  // Recursive - allows stacking: --x, +-x
+    var operand = ParseUnary();  // Recursive call enables --x, ~~x
     return new UnaryOp { Operator = op, Operand = operand };
 }
 ```
 
-**Allows stacking:**
-```python
---x   # Parses as: -(-(x))
-+-5   # Parses as: +(-(5))
-```
-
 ---
 
-### 4.10 Power Operator
+#### 15. **ParsePower()** (Lines 594-617) — Precedence 2
+**Operator**: `**` (exponentiation)
+- **Associativity**: Right-to-left
+- **Important**: Unlike other binary operators, uses `ParseUnary()` for right operand!
 
-#### `ParsePower()` (lines 568-590)
-
-Handles exponentiation `**` operator.
-
-**Right-associative:**
 ```csharp
 if (Current.Type == TokenType.DoubleStar)
 {
     Advance();
-    var right = ParseUnary();  // Right-associative: parse higher precedence
-    return new BinaryOp { Operator = Power, Left = left, Right = right };
+    var right = ParseUnary();  // Right-associative: 2**3**2 = 2**(3**2)
+    return new BinaryOp { Operator = BinaryOperator.Power, Left = left, Right = right };
 }
 ```
 
-**Example:**
-```python
-2 ** 3 ** 2  # 2 ** (3 ** 2) = 2 ** 9 = 512
-```
-
-Unlike `ParseAdditive()` which loops, this uses a single `if` statement and recursion to achieve right-associativity.
+**Why right-associative?** Mathematical convention: `2**3**2` = 2^(3^2) = 2^9 = 512, not (2^3)^2 = 8^2 = 64.
 
 ---
 
-### 4.11 Postfix Operators
+#### 16. **ParsePostfix()** (Lines 619-788) — Precedence 1 (Highest)
+**Operators**: `.`, `?.`, `[]`, `()`, `as`, `to`
+- **Associativity**: Left-to-right
+- **AST Nodes**: `MemberAccess`, `IndexAccess`, `SliceAccess`, `FunctionCall`, `TypeCast`, `TypeCoercion`
 
-#### `ParsePostfix()` (lines 592-735)
+This is the **most complex** parsing method because it handles multiple postfix operations in a loop:
 
-Handles the highest-precedence operators that appear **after** a primary expression:
-- `.` - Member access: `obj.member`
-- `?.` - Null-conditional access: `obj?.member`
-- `[]` - Indexing/slicing: `list[0]`, `list[1:5]`
-- `()` - Function calls: `func(args)`
-- `as` - Type cast: `value as Type`
-- `to` - Type coercion: `value to Type`
-
-**Infinite loop pattern** (continues until no more postfix operators):
 ```csharp
-while (true)
+private Expression ParsePostfix()
 {
-    if (Current.Type == TokenType.Dot || Current.Type == TokenType.NullConditional)
+    var expr = ParsePrimary();  // Start with highest precedence (literals, identifiers, etc.)
+
+    while (true)
     {
-        // Handle member access
+        if (Current.Type == TokenType.Dot || Current.Type == TokenType.NullConditional)
+            expr = /* MemberAccess */;
+        else if (Current.Type == TokenType.LeftBracket)
+            expr = /* IndexAccess or SliceAccess */;
+        else if (Current.Type == TokenType.LeftParen)
+            expr = /* FunctionCall */;
+        else if (Current.Type == TokenType.As)
+            expr = /* TypeCast */;
+        else if (Current.Type == TokenType.To)
+            expr = /* TypeCoercion */;
+        else
+            break;
     }
-    else if (Current.Type == TokenType.LeftBracket)
-    {
-        // Handle indexing/slicing
-    }
-    else if (Current.Type == TokenType.LeftParen)
-    {
-        // Handle function call
-    }
-    else if (Current.Type == TokenType.As)
-    {
-        // Handle type cast
-    }
-    else if (Current.Type == TokenType.To)
-    {
-        // Handle type coercion
-    }
-    else
-    {
-        break;  // No more postfix operators
-    }
+    return expr;
 }
 ```
 
-**Member Access** (lines 598-615):
-```csharp
-if (Current.Type == TokenType.Dot || Current.Type == TokenType.NullConditional)
-{
-    var isNullConditional = Current.Type == TokenType.NullConditional;
-    Advance();
-    var member = ExpectIdentifierOrKeyword();
+**Key Operations:**
 
-    expr = new MemberAccess
-    {
-        Object = expr,
-        Member = member,
-        IsNullConditional = isNullConditional,
-        // Location info...
-    };
-}
-```
+1. **Member Access** (Lines 625-644):
+   ```csharp
+   var isNullConditional = Current.Type == TokenType.NullConditional;
+   Advance();
+   var member = ExpectIdentifierOrKeyword();  // Allows keywords as members!
+   expr = new MemberAccess { Object = expr, Member = member, IsNullConditional = ... };
+   ```
+   Supports both `obj.member` and `obj?.member` (null-conditional).
 
-**Allows chaining:**
-```python
-obj.foo.bar?.baz()  # (((obj.foo).bar)?.baz)()
-```
+2. **Indexing/Slicing** (Lines 645-673):
+   ```csharp
+   Advance();  // Skip '['
+   var index = ParseSliceOrIndex();  // Returns IndexAccess or SliceAccess
+   Expect(TokenType.RightBracket);
 
-**Indexing/Slicing** (lines 616-626):
-```csharp
-else if (Current.Type == TokenType.LeftBracket)
-{
-    Advance();
-    var index = ParseSliceOrIndex();  // Helper method
-    Expect(TokenType.RightBracket);
+   // Update the Object property with current expression
+   if (index is IndexAccess ia)
+       expr = ia with { Object = expr, ... };
+   else if (index is SliceAccess sa)
+       expr = sa with { Object = expr, ... };
+   ```
+   Uses C# 9.0 `with` expressions to update record properties.
 
-    if (index is IndexAccess ia)
-        expr = ia with { Object = expr, LineStart = expr.LineStart, ColumnStart = expr.ColumnStart };
-    else if (index is SliceAccess sa)
-        expr = sa with { Object = expr, LineStart = expr.LineStart, ColumnStart = expr.ColumnStart };
-}
-```
+3. **Function Calls** (Lines 674-743):
+   ```csharp
+   var args = new List<Expression>();
+   var kwargs = new List<KeywordArgument>();
+   var seenKeywordArg = false;
 
-Uses C# 9 `with` expressions to update record properties.
+   // Parse arguments
+   do {
+       if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
+       {
+           // Keyword argument: name=value
+           seenKeywordArg = true;
+           kwargs.Add(new KeywordArgument { Name = ..., Value = ParseExpression() });
+       }
+       else
+       {
+           if (seenKeywordArg)
+               throw new ParserError("Positional argument cannot follow keyword argument", ...);
+           args.Add(ParseExpression());
+       }
+   } while (...);
+   ```
+   **Important**: Enforces Python's rule that keyword arguments must come after positional arguments.
 
-**Function Calls** (lines 627-694):
+4. **Type Cast** (Lines 744-761):
+   ```python
+   value as Type  # Safe cast, returns None on failure
+   ```
 
-The most complex postfix operation - handles both positional and keyword arguments.
-
-```csharp
-else if (Current.Type == TokenType.LeftParen)
-{
-    Advance();
-    var args = new List<Expression>();
-    var kwargs = new List<KeywordArgument>();
-    var seenKeywordArg = false;
-
-    if (Current.Type != TokenType.RightParen)
-    {
-        do
-        {
-            // Check for keyword argument: name=value
-            if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
-            {
-                seenKeywordArg = true;
-                var name = Current.Value;
-                Advance();  // Skip name
-                Advance();  // Skip =
-                var value = ParseExpression();
-                kwargs.Add(new KeywordArgument { Name = name, Value = value });
-            }
-            else
-            {
-                if (seenKeywordArg)
-                    throw new ParserError("Positional argument cannot follow keyword argument", ...);
-                args.Add(ParseExpression());
-            }
-
-            // Handle comma separation and trailing commas
-            if (Current.Type == TokenType.Comma)
-            {
-                Advance();
-                if (Current.Type == TokenType.RightParen)  // Trailing comma: foo(1, 2,)
-                    break;
-            }
-            else
-                break;
-        } while (true);
-    }
-
-    Expect(TokenType.RightParen);
-    expr = new FunctionCall { Function = expr, Arguments = args, KeywordArguments = kwargs };
-}
-```
-
-**Important rules:**
-1. Positional arguments must come before keyword arguments
-2. Trailing commas are allowed: `foo(1, 2, 3,)`
-3. Each argument is a full expression (recursively parsed)
-
-**Type Cast** (`as`) (lines 695-710):
-```python
-x as float  # Soft cast - returns None if cast fails
-```
-
-**Type Coercion** (`to`) (lines 711-727):
-```python
-x to int    # Hard cast - throws InvalidCastException if fails
-x to int?   # Soft coercion - returns None if fails
-```
+5. **Type Coercion** (Lines 762-780):
+   ```python
+   value to Type   # Throws InvalidCastException on failure
+   value to Type?  # Returns None on failure for nullable types
+   ```
 
 ---
 
-### 4.12 Slice and Index Parsing
+#### 17. **ParseSliceOrIndex()** (Lines 790-879)
+**Helper method** for `[]` operations. Determines whether it's an index, slice, or tuple (for generics):
 
-#### `ParseSliceOrIndex()` (lines 737-826)
+- **Simple Index**: `arr[5]` → `IndexAccess`
+- **Slice**: `arr[1:10:2]` → `SliceAccess` (start:stop:step)
+- **Tuple (Generic Type Args)**: `Dict[int, str]` → `IndexAccess` with `TupleLiteral`
 
-Complex helper that disambiguates between:
-1. Simple index: `list[5]`
-2. Slice: `list[1:10]`, `list[:5]`, `list[::2]`
-3. Multiple type arguments for generics: `Dict[str, int]`
-
-**Algorithm:**
-
+**Implementation Logic:**
 ```csharp
-Expression? start = null, stop = null, step = null;
-var isSlice = false;
-
-// Parse first expression (unless we start with ':')
-if (Current.Type != TokenType.Colon)
-    start = ParseExpression();
-
-// Check for multiple type arguments: Dict[int, str, bool]
 if (Current.Type == TokenType.Comma)
 {
+    // Multiple type arguments: Dict[int, str, bool]
     var elements = new List<Expression> { start! };
-    while (Current.Type == TokenType.Comma)
-    {
+    while (Current.Type == TokenType.Comma) {
         Advance();
-        if (Current.Type == TokenType.RightBracket)  // Trailing comma
-            break;
+        if (Current.Type == TokenType.RightBracket) break;  // Trailing comma
         elements.Add(ParseExpression());
     }
-
-    // Return TupleLiteral wrapped in IndexAccess for generic type args
-    return new IndexAccess { Index = new TupleLiteral { Elements = elements } };
+    return new IndexAccess { Index = new TupleLiteral { Elements = ... } };
 }
 
-// Check for slice syntax: ':'
 if (Current.Type == TokenType.Colon)
 {
+    // Slice: [start:stop:step]
     isSlice = true;
-    Advance();
-
-    // Parse stop (if present)
-    if (Current.Type != TokenType.Colon && Current.Type != TokenType.RightBracket)
-        stop = ParseExpression();
-
-    // Parse step (if second ':' present)
-    if (Current.Type == TokenType.Colon)
-    {
-        Advance();
-        if (Current.Type != TokenType.RightBracket)
-            step = ParseExpression();
-    }
+    // Parse stop and optional step...
+    return new SliceAccess { Start = start, Stop = stop, Step = step };
 }
 
-if (isSlice)
-    return new SliceAccess { Start = start, Stop = stop, Step = step };
-else
-    return new IndexAccess { Index = start! };
+// Simple index
+return new IndexAccess { Index = start! };
 ```
 
-**Examples:**
-```python
-list[5]           # IndexAccess(5)
-list[1:10]        # SliceAccess(1, 10, None)
-list[:5]          # SliceAccess(None, 5, None)
-list[::2]         # SliceAccess(None, None, 2)
-list[1:10:2]      # SliceAccess(1, 10, 2)
-Dict[str, int]    # IndexAccess(TupleLiteral([str, int]))
-```
+**Note**: The returned `IndexAccess`/`SliceAccess` has `Object = null!` — the caller fills this in.
 
 ---
 
-## 5. Dependencies
+## Dependencies
 
-### Internal Dependencies
+### Internal Sharpy Dependencies
 
 **From `Sharpy.Compiler.Lexer`:**
-- `Token` - Token data structure with `Type`, `Value`, `Line`, `Column`
-- `TokenType` - Enum of all token types (keywords, operators, literals)
+- `Token`: Token type with `Type`, `Value`, `Line`, `Column`
+- `TokenType` enum: All token types (operators, keywords, literals)
 
 **From `Sharpy.Compiler.Parser.Ast`:**
-- `Expression` - Base class for all expression AST nodes
-- `BinaryOp`, `UnaryOp` - Operator expressions
-- `WalrusExpression`, `TryExpression`, `MaybeExpression` - Special expressions
-- `ConditionalExpression` - Ternary expressions
-- `ComparisonChain` - Multi-comparison chains
-- `MemberAccess`, `IndexAccess`, `SliceAccess` - Postfix operations
-- `FunctionCall`, `KeywordArgument` - Function call syntax
-- `TypeCast`, `TypeCoercion`, `TypeCheck` - Type operations
-- `TupleLiteral` - Used for multi-type-argument generics
+- Expression types: `BinaryOp`, `UnaryOp`, `ConditionalExpression`, `WalrusExpression`, etc.
+- Operator enums: `BinaryOperator`, `UnaryOperator`, `ComparisonOperator`
 
-**From `Sharpy.Compiler.Logging`:**
-- `ICompilerLogger` - For diagnostics (accessed via parent `Parser` class)
+**From Other Parser Files:**
+- `ParsePrimary()` (Parser.Primaries.cs): Parses literals, identifiers, parenthesized expressions
+- `ParseTypeAnnotation()` (Parser.Types.cs): Parses type annotations for casts/checks
+- Helper methods (Parser.Types.cs):
+  - `Advance()`: Move to next token
+  - `Expect(TokenType)`: Consume expected token or throw error
+  - `ExpectIdentifier()`: Consume and return identifier value
+  - `ExpectIdentifierOrKeyword()`: Consume identifier or keyword (for member access)
+  - `IsTypeName(string)`: Check if identifier is a type name
+  - `CombineSpans()`, `GetSpanFromToken()`: Source location tracking
 
 ### External Dependencies
-
-**From Main Parser Class (`Parser.cs`):**
-- `Current`, `Previous`, `Peek()` - Token navigation
-- `Advance()` - Consume current token
-- `Expect()` - Consume and verify token type
-- `ExpectIdentifierOrKeyword()` - Flexible identifier parsing
-- `IsTypeName()` - Check if identifier is a type name
-- `ParseTypeAnnotation()` - Parse type syntax (delegated to `Parser.Types.cs`)
-- `ParsePrimary()` - Parse primary expressions (delegated to `Parser.Primaries.cs`)
+- `System.Collections.Immutable`: For `ImmutableArray<T>` in AST nodes
 
 ---
 
-## 6. Patterns and Design Decisions
+## Patterns and Design Decisions
 
-### 6.1 Precedence Climbing Pattern
+### 1. **Recursive Descent with Precedence Climbing**
+Each method handles one precedence level. Lower precedence methods call higher precedence methods to build the tree bottom-up.
 
-Instead of a single monolithic expression parser, precedence is encoded in the **call stack depth**:
-- Lowest precedence = earliest function call
-- Highest precedence = deepest function call
+**Visualization:**
+```
+ParseExpression (lowest precedence)
+  ↓
+ParseWalrusExpression (:=)
+  ↓
+ParseTryMaybeExpression (try/maybe)
+  ↓
+ParseConditionalExpression (if/else)
+  ↓
+ParseNullCoalesce (??)
+  ↓
+... (logical, comparison, arithmetic) ...
+  ↓
+ParsePostfix (., [], ())
+  ↓
+ParsePrimary (highest precedence - literals/identifiers)
+```
 
-**Benefits:**
-- Natural encoding of precedence rules
-- Easy to understand and modify
-- No precedence table needed
-- Compiler optimizations work well with deep call stacks
+### 2. **Left vs. Right Associativity**
 
-### 6.2 Loop vs. Recursion for Associativity
-
-**Left-associative** (most operators):
+**Left-associative** (most operators): Use `while` loop, accumulate left:
 ```csharp
-while (Current.Type == ...)
-{
-    left = new BinaryOp { Left = left, Right = ParseHigherPrecedence() };
+var left = ParseNext();
+while (IsOperator) {
+    var right = ParseNext();
+    left = new BinaryOp { Left = left, Right = right };  // left becomes LHS
 }
 ```
-Loop builds left-to-right chain without deep recursion.
 
-**Right-associative** (power, walrus, conditionals):
+**Right-associative** (`:=`, `**`, `if/else`): Use recursion:
 ```csharp
-if (Current.Type == ...)
-{
-    return new BinaryOp { Left = left, Right = ParseSamePrecedence() };
+var left = ParseNext();
+if (IsOperator) {
+    var right = ParseSelf();  // Recursive call!
+    return new Op { Left = left, Right = right };
 }
 ```
-Recursion builds right-to-left chain naturally.
 
-### 6.3 Location Tracking
-
-Every AST node captures source location:
+### 3. **Immutable AST with Records**
+All AST nodes are C# 9.0 `record` types (immutable). The `with` expression is used to create modified copies:
 ```csharp
-return new BinaryOp
-{
-    Operator = op,
-    Left = left,
-    Right = right,
-    LineStart = left.LineStart,      // Start of left operand
-    ColumnStart = left.ColumnStart,
-    LineEnd = right.LineEnd,         // End of right operand
-    ColumnEnd = right.ColumnEnd
-};
+expr = ia with { Object = expr, LineStart = ..., ... };
 ```
 
-**Why:** Enables precise error messages in later compiler phases.
+### 4. **Source Location Tracking**
+Every AST node includes:
+- `LineStart`, `ColumnStart`, `LineEnd`, `ColumnEnd`: Position in source file
+- `Span`: `TextSpan?` for IDE integration (go-to-definition, errors)
 
-### 6.4 Multi-Token Operators
+These are populated from token positions using helpers like `CombineSpans()`.
 
-Some operators span multiple tokens: `is not`, `not in`.
-
-**Handled by lookahead:**
+### 5. **Multi-Token Operators**
+`is not` and `not in` are single logical operators but tokenized as two tokens. Special handling:
 ```csharp
 if (op == TokenType.Is && Current.Type == TokenType.Not)
 {
-    Advance();  // Consume 'not'
+    Advance();  // Consume the second token
     operators.Add(ComparisonOperator.IsNot);
 }
 ```
 
-### 6.5 Comparison Chains as Special Syntax
-
-Rather than treating `a < b < c` as `(a < b) < c`, we capture the entire chain:
-
+### 6. **Null-Conditional Operator** (`?.`)
+Sharpy extends Python with C#-style null-conditional access:
 ```csharp
-var operators = new List<ComparisonOperator>();
-var operands = new List<Expression> { left };
-
-while (IsComparisonOperator(Current.Type))
-{
-    operators.Add(...);
-    operands.Add(ParsePipe());
-}
-
-if (operators.Count > 1)
-    return new ComparisonChain { Operands = operands, Operators = operators };
+obj?.method()  # Returns None if obj is None
 ```
 
-**Why:** Matches Python semantics where `a < b < c` means `a < b AND b < c`, and `b` is only evaluated once.
+Represented by `IsNullConditional` flag on `MemberAccess`.
 
-### 6.6 Null-Conditional Chaining
-
-The `?.` operator is handled the same as `.` but with a flag:
-
-```csharp
-var isNullConditional = Current.Type == TokenType.NullConditional;
-```
-
-**Later phases** use this flag to generate appropriate null-checking code.
-
-### 6.7 Postfix Operator Greedy Parsing
-
-The `ParsePostfix()` method uses an **infinite loop** that breaks when no more postfix operators are found. This allows unlimited chaining:
-
-```python
-obj.method()[0].field?.nested(arg1, arg2)[5:10] as List[int]
-```
-
-All parsed in one `ParsePostfix()` call.
+### 7. **Error Recovery**
+Parser uses **fail-fast** approach: `ParserError` exception on any syntax error. No error recovery or synchronization.
 
 ---
 
-## 7. Debugging Tips
+## Debugging Tips
 
-### 7.1 Tracing Precedence
+### 1. **Understanding Parse Errors**
+When you get "Expected X, got Y", the error occurs in a precedence level. Trace the call stack:
+```
+ParseExpression → ... → ParsePostfix → ParsePrimary
+```
+The error location tells you which precedence level failed.
 
-If an expression parses incorrectly, trace the call stack:
+### 2. **Operator Precedence Issues**
+If an expression parses incorrectly, check the precedence table (docs/language_specification/operator_precedence.md).
 
-1. Start at `ParseExpression()`
-2. Follow the chain down to see which method handles the problematic operator
-3. Check if it's calling the correct precedence level for its operands
+**Example:** If `a + b * c` parses as `(a + b) * c` instead of `a + (b * c)`, it means `ParseMultiplicative` should be called by `ParseAdditive`, not the reverse.
 
-**Example bug:** If `a + b * c` parses as `(a + b) * c`:
-- Check `ParseAdditive()` - it should call `ParseMultiplicative()` for the right operand
-- If it calls `ParseAdditive()` instead, multiplication won't bind tighter
-
-### 7.2 Location Info Issues
-
-If error messages point to wrong locations:
-- Check that `LineStart`/`ColumnStart` use the **left** operand's start
-- Check that `LineEnd`/`ColumnEnd` use the **right** operand's end
-- For prefix operators, use the operator's location as start
-- For postfix operators, use the operator's location as end
-
-### 7.3 Associativity Problems
-
-If `a op b op c` groups incorrectly:
-- **Left-associative should loop:** `while (Current.Type == ...)`
-- **Right-associative should use recursion/single if:** `if (Current.Type == ...)`
-
-### 7.4 Precedence Issues
-
-If `a op1 b op2 c` groups incorrectly:
-- Higher precedence should be **deeper** in the call chain
-- Check the method calling order matches the precedence table
-
-### 7.5 Using the AST Dumper
-
-The Parser namespace includes an `AstDumper` class for debugging:
-
-```csharp
-var module = parser.ParseModule();
-var dumper = new AstDumper();
-Console.WriteLine(dumper.Dump(module));
+### 3. **Inspecting the AST**
+Use the CLI to dump the parsed AST:
+```bash
+dotnet run --project src/Sharpy.Cli -- emit ast file.spy
 ```
 
-This shows the AST structure to verify parsing is correct.
+### 4. **Comparison Chain Debugging**
+For `a < b < c`, check:
+- Are all operands parsed correctly?
+- Are operators collected in the right order?
+- Does `operators.Count` match `operands.Count - 1`?
+
+### 5. **Postfix Operation Ordering**
+For `obj.method()[0].field`:
+1. Parse `obj` (Primary)
+2. Apply `.method` → `MemberAccess`
+3. Apply `()` → `FunctionCall` wrapping MemberAccess
+4. Apply `[0]` → `IndexAccess` wrapping FunctionCall
+5. Apply `.field` → `MemberAccess` wrapping IndexAccess
+
+The loop builds left-to-right, each iteration wrapping the previous result.
+
+### 6. **Right-Associative Recursion**
+For `a := b := 5`:
+- First call: `left = Identifier("a")`, sees `:=`, recurses
+- Second call: `left = Identifier("b")`, sees `:=`, recurses
+- Third call: `left = IntegerLiteral(5)`, no `:=`, returns
+- Unwind: `b := 5`, then `a := (b := 5)`
+
+### 7. **Null Span Warnings**
+If you see `Span = expr.Span` with a comment "// TypeAnnotation doesn't have Span yet (A.12)":
+- This is a known limitation tracked in the codebase
+- TypeAnnotation nodes don't yet have proper span tracking
+- Uses operand span as fallback
 
 ---
 
-## 8. Contribution Guidelines
+## Contribution Guidelines
 
-### 8.1 Adding a New Operator
+### What Changes Might Be Made to This File
 
-**Steps:**
+1. **Adding New Operators**
+   - Determine precedence level (consult language spec)
+   - Add token type to appropriate `ParseX()` method
+   - Update operator enum in `Ast/Expression.cs`
+   - Add tests in `Sharpy.Compiler.Tests`
 
-1. **Add token type** in `Lexer/TokenType.cs`:
-   ```csharp
-   MyNewOperator,
-   ```
+2. **Fixing Precedence Issues**
+   - Reorder method calls to match intended precedence
+   - Update operator_precedence.md if spec changes
 
-2. **Add to lexer** in `Lexer/Lexer.cs`:
-   ```csharp
-   case "~>": return new Token(TokenType.MyNewOperator, "~>", line, column);
-   ```
+3. **Improving Error Messages**
+   - Add context to `ParserError` exceptions
+   - Consider adding "Did you mean...?" suggestions
 
-3. **Add to BinaryOperator enum** in `Parser/Ast/Expression.cs`:
-   ```csharp
-   public enum BinaryOperator
-   {
-       // ...
-       MyNewOperator,
-   }
-   ```
+4. **Performance Optimization**
+   - This is a hot path — avoid allocations in tight loops
+   - Consider using `Span<T>` for temporary lists
 
-4. **Add parsing method** in this file at the correct precedence level:
-   ```csharp
-   private Expression ParseMyOperatorLevel()
-   {
-       var left = ParseNextHigherPrecedence();
+5. **Adding Source Location Tracking**
+   - When TypeAnnotation gains `Span` support, update lines 274, 759, 778
 
-       while (Current.Type == TokenType.MyNewOperator)
-       {
-           Advance();
-           var right = ParseNextHigherPrecedence();  // Or same level for left-assoc
-           left = new BinaryOp { Operator = MyNewOperator, Left = left, Right = right };
-       }
+### Testing Changes
 
-       return left;
-   }
-   ```
+After modifying this file:
+```bash
+# Run parser tests
+dotnet test --filter "FullyQualifiedName~Parser"
 
-5. **Wire it into the precedence chain** by having the next-lower precedence method call it.
+# Run expression-specific tests
+dotnet test --filter "DisplayName~Expression"
 
-6. **Add code generation** in `CodeGen/RoslynEmitter.Expressions.cs`.
+# Test specific operators
+dotnet test --filter "DisplayName~Walrus"
+dotnet test --filter "DisplayName~Comparison"
+```
 
-7. **Add tests** in `Sharpy.Compiler.Tests/Parser/`.
+### Code Style
 
-### 8.2 Modifying Precedence
+- **Maintain consistency**: Follow existing patterns for new operators
+- **Use object initializers**: All AST nodes use initializer syntax
+- **Keep methods short**: Each method handles one precedence level
+- **Comment multi-token operators**: `is not`, `not in` are easy to miss
+- **Document associativity**: Add comments for right-associative operators
 
-To change where an operator sits in the precedence hierarchy:
+### Common Pitfalls
 
-1. Move the parsing logic to a different method
-2. Update the call chain to reflect the new precedence
-3. Update `docs/language_specification/operator_precedence.md`
-4. Check all tests still pass
-
-### 8.3 Adding Special Expression Types
-
-For new expression types (like `try`, `maybe`, `walrus`):
-
-1. Define AST node in `Parser/Ast/Expression.cs`
-2. Add parsing method in this file
-3. Add to the precedence chain at appropriate level
-4. Implement code generation in `CodeGen/RoslynEmitter.Expressions.cs`
-5. Add semantic analysis if needed
-6. Add comprehensive tests
-
-### 8.4 Code Style
-
-Follow existing patterns:
-- One operator precedence level per method
-- Method names: `Parse<OperatorName>()`
-- Use `while` loops for left-associative
-- Use `if` + recursion for right-associative
-- Always track source locations
-- Comment unusual precedence decisions
-
-### 8.5 Testing
-
-Test files are in `Sharpy.Compiler.Tests/Parser/`:
-- Add tests for new operators
-- Test precedence: `a op1 b op2 c`
-- Test associativity: `a op b op c`
-- Test edge cases: empty operands, trailing commas, etc.
+1. **Don't forget `Advance()`**: Every token consumed must advance the position
+2. **Check for null**: `ParseSliceOrIndex()` returns `Object = null!` — caller must fill it
+3. **Validate argument order**: Keyword args must follow positional args
+4. **Handle trailing commas**: Function calls and tuples allow trailing commas
+5. **Test edge cases**: Empty argument lists, single-element tuples, etc.
 
 ---
 
-## 9. Cross-References
+## Cross-References
 
-### Related Parser Files
-- **[Parser.md](Parser.md)** - Main Parser class (token navigation, entry points)
-- **[Parser.Primaries.md](Parser.Primaries.md)** - Primary expressions (literals, identifiers, collections)
-- **[Parser.Statements.md](Parser.Statements.md)** - Statement parsing
-- **[Parser.Types.md](Parser.Types.md)** - Type annotation parsing
-- **[Parser.Definitions.md](Parser.Definitions.md)** - Function and class definitions
+### Related Parser Files (Partial Classes)
+- [Parser.cs](Parser.md) — Core infrastructure and entry points
+- [Parser.Primaries.cs](Parser.Primaries.md) — Literal and primary expression parsing
+- [Parser.Statements.cs](Parser.Statements.md) — Statement parsing
+- [Parser.Definitions.cs](Parser.Definitions.md) — Function/class/struct definitions
+- [Parser.Types.cs](Parser.Types.md) — Type annotation parsing and utility methods
 
-### Related AST Files
-- **[Expression.md](../Parser/Ast/Expression.md)** - AST node definitions
-- **[Statement.md](../Parser/Ast/Statement.md)** - Statement AST nodes
+### Related AST Definitions
+- `src/Sharpy.Compiler/Parser/Ast/Expression.cs` — All expression node types and operator enums
+
+### Specification Documents
+- `docs/language_specification/expressions.md` — Expression semantics
+- `docs/language_specification/operator_precedence.md` — **Critical reference** for understanding the parsing order
 
 ### Downstream Components
-- **[RoslynEmitter.Expressions.md](../CodeGen/RoslynEmitter.Expressions.md)** - Converts expression AST to C# code
-
-### Language Specifications
-- **`docs/language_specification/operator_precedence.md`** - Formal precedence rules
-- **`docs/language_specification/expressions.md`** - Expression syntax reference
-
----
-
-## 10. Summary
-
-`Parser.Expressions.cs` is the core of Sharpy's expression parsing, implementing a clean precedence-climbing algorithm that mirrors the language's operator precedence hierarchy. Each method handles one precedence level, making the code easy to understand and maintain.
-
-**Key takeaways:**
-- **Precedence = call depth** - Lower precedence operators call higher precedence
-- **Loop = left-associative** - `while` loops build left-to-right chains
-- **Recursion = right-associative** - Recursive calls build right-to-left chains
-- **Special cases** - Comparison chains, postfix operators, multi-token operators handled explicitly
-- **Location tracking** - Every node captures precise source location for error reporting
-
-When working with this file, always verify:
-1. Precedence matches the specification
-2. Associativity is correct (loop vs. recursion)
-3. Location info is accurate
-4. AST nodes are correctly constructed
-
-For questions or issues, refer to the [main Parser documentation](Parser.md) or the [language specification](../../language_specification/).
+- `Sharpy.Compiler.Semantic` — Consumes AST for type checking and semantic analysis
+- `Sharpy.Compiler.CodeGen.RoslynEmitter` — Converts AST to Roslyn C# syntax trees

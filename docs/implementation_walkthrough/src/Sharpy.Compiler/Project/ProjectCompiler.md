@@ -6,352 +6,674 @@
 
 ## Overview
 
-`ProjectCompiler` is the **orchestrator** for compiling multi-file Sharpy projects into .NET assemblies. Think of it as the "conductor" that coordinates all the different phases of compilation in the correct order.
+`ProjectCompiler` is the orchestrator for **multi-file Sharpy project compilation**. It coordinates the entire compilation pipeline from parsing multiple `.spy` files through semantic analysis and C# code generation, finally producing a .NET assembly. This is distinct from the single-file `Compiler` class—`ProjectCompiler` handles cross-file dependencies, import resolution, and proper build ordering.
 
-**Role in the Pipeline**: This class sits at the highest level of abstraction in the compiler. It takes a project configuration (list of `.spy` files, output settings, etc.) and orchestrates the entire compilation process from raw source text to executable assembly.
-
-**Key Responsibility**: Managing the complex multi-file compilation pipeline with proper dependency resolution and shared state across files.
+**Key Responsibilities**:
+- Manage compilation phases across multiple source files
+- Handle cross-file type visibility through two-phase name resolution
+- Resolve imports and build dependency graphs
+- Orchestrate semantic analysis in dependency order
+- Generate C# code and compile to a .NET assembly
+- Track per-file and project-wide metrics/diagnostics
 
 ---
 
-## Architecture: The Seven-Phase Compilation Pipeline
-
-The `ProjectCompiler.Compile()` method implements a **seven-phase pipeline** that transforms multiple `.spy` source files into a compiled .NET assembly:
+## Architecture Position
 
 ```
-Phase 1: Parse All Files          → AST modules
-Phase 2: Initialize Shared State   → Symbol table, semantic info
-Phase 3: Collect Type Declarations → Cross-file type visibility
-Phase 4: Resolve Imports           → Build module dependencies
-Phase 5: Semantic Analysis         → Type checking
-Phase 6: Code Generation           → Generate C# code
-Phase 7: Assembly Compilation      → Compile to .NET assembly
+CLI (sharpyc) → Compiler.CompileProject() → ProjectCompiler.Compile()
+                                              ↓
+                       [Multi-file Pipeline - 7 Phases]
+                                              ↓
+                                     ProjectCompilationResult
+                                     (assembly + diagnostics)
 ```
 
-Each phase builds on the previous one, and **failure in any phase halts the entire compilation**.
+The `ProjectCompiler` sits between the high-level `Compiler` facade and the individual compilation components (Lexer, Parser, SemanticAnalyzer, etc.).
 
 ---
 
 ## Class Structure
 
-### Core Data Members
+### Main Class: `ProjectCompiler`
 
-The `ProjectCompiler` maintains several categories of state:
-
-#### **Shared Compilation State** (used across all files)
 ```csharp
-private SymbolTable _symbolTable = null!;
-private SemanticInfo _semanticInfo = null!;
-private ImportResolver _importResolver = null!;
-```
-These are initialized **once** and shared across all source files, enabling cross-file references and type resolution.
+public class ProjectCompiler
+{
+    private readonly ICompilerLogger _logger;
+    private readonly ModuleRegistry? _moduleRegistry;
 
-#### **Per-File Tracking**
-```csharp
-private Dictionary<string, Module> _parsedModules = new();
-private Dictionary<string, CompilationMetrics> _fileMetrics = new();
-```
-Maps file paths to their parsed AST representations and performance metrics.
+    // Shared across all files
+    private SymbolTable _symbolTable;
+    private SemanticInfo _semanticInfo;
+    private ImportResolver _importResolver;
 
-#### **Error Aggregation**
-```csharp
-private List<string> _errors = new();
-private List<string> _warnings = new();
-```
-Collects errors/warnings from all phases and files into a unified report.
+    // Error tracking
+    private List<string> _errors;
+    private List<string> _warnings;
 
-#### **Services**
-```csharp
-private readonly ICompilerLogger _logger;
-private readonly ModuleRegistry? _moduleRegistry;
+    // Metrics and dependency analysis
+    private ProjectCompilationMetrics _projectMetrics;
+    private DependencyGraphBuilder _graphBuilder;
+    private DependencyGraph? _dependencyGraph;
+
+    // Unified project model (central data structure)
+    private ProjectModel? _projectModel;
+}
 ```
-- `_logger`: Diagnostic output throughout compilation
-- `_moduleRegistry`: Optional external module registry for resolving imports to compiled assemblies
+
+**Design Highlights**:
+- **Shared State**: A single `SymbolTable` and `SemanticInfo` are used across all files, enabling cross-file symbol resolution
+- **ProjectModel**: Central data structure containing all `CompilationUnit` instances, each representing one `.spy` file with its tokens, AST, diagnostics, and generated C#
+- **Dependency Graph**: Tracks import relationships for proper build ordering and incremental compilation support
 
 ---
 
-## Key Methods: The Seven Phases
+## The 7-Phase Compilation Pipeline
 
-### Phase 1: `ParseAllFiles()` - Lexing & Parsing
+The `Compile(ProjectConfig config)` method orchestrates seven sequential phases:
 
-**What it does**: Reads each `.spy` file, tokenizes it, and parses it into an AST.
+### Phase 1: Parse All Files
 
-**Key Implementation Details**:
-- Uses `Lexer.Lexer` to tokenize source text
-- Uses `Parser.Parser` to build AST `Module` objects
-- **Error handling**: Catches `LexerError` and `ParserError`, converting them to human-readable error messages with file locations
-- **Metrics tracking**: Records timing for lexical and syntax analysis phases per file
+**Method**: `ParseAllFiles(ProjectConfig config)` (lines 108-211)
 
+**What it does**:
+1. Iterates over all source files in `config.SourceFiles`
+2. For each file:
+   - Creates a `CompilationUnit` via `ProjectModel.CreateUnit()`
+   - Lexes source → stores tokens in unit
+   - Parses tokens → stores AST in unit
+   - Extracts import statements (for later dependency resolution)
+   - Creates per-file `CompilationMetrics`
+3. Catches and records `LexerError` / `ParserError` exceptions per file
+
+**Key Details**:
+- Each file gets its own `CompilationUnit` stored in `_projectModel.Units`
+- Errors in one file don't prevent parsing others (fail-fast is deferred)
+- Import statements are extracted early to prepare for Phase 4
+
+**Error Handling**:
 ```csharp
-fileMetrics.StartPhase("Lexical Analysis");
-var lexer = new Lexer.Lexer(source, _logger);
-var tokens = lexer.TokenizeAll();
-fileMetrics.EndPhase();
-
-fileMetrics.StartPhase("Syntax Analysis");
-var parser = new Parser.Parser(tokens, _logger);
-var module = parser.ParseModule();
-fileMetrics.EndPhase();
+catch (LexerError ex)
+{
+    var unit = _projectModel.GetUnit(sourceFile);
+    unit.Diagnostics.AddError(ex.Message, ex.Line, ex.Column, sourceFile);
+    unit.Phase = CompilationPhase.Failed;
+    _errors.Add($"{sourceFile}({ex.Line},{ex.Column}): error: {ex.Message}");
+}
 ```
-
-**Outcome**: `_parsedModules` dictionary is populated with all successfully parsed modules.
 
 ---
 
-### Phase 2: `InitializeSharedState()` - Symbol Table Setup
+### Phase 2: Initialize Shared State
 
-**What it does**: Creates the global symbol table and semantic info structures that will be shared across all files.
+**Method**: `InitializeSharedState()` (lines 213-243)
+
+**What it does**:
+1. Creates the global `SymbolTable` with builtin types (int, str, list, etc.)
+2. Initializes `SemanticInfo` (stores type annotations separate from AST)
+3. Creates `ImportResolver` with the optional `ModuleRegistry`
+4. Initializes `DependencyGraphBuilder` and connects it to the import resolver
+5. Registers all parsed files in the dependency graph
+
+**Why this matters**:
+- **Single Symbol Table**: Enables cross-file type references (e.g., `from module_a import MyClass`)
+- **SemanticBinding**: Maintains immutable AST principle—semantic data goes in `SemanticBinding`, not AST nodes
 
 ```csharp
 var builtinRegistry = new BuiltinRegistry();
 _symbolTable = new SymbolTable(builtinRegistry);
 _semanticInfo = new SemanticInfo();
 _importResolver = new ImportResolver(_logger, _moduleRegistry);
+
+// Create SemanticBinding for storing semantic data separate from AST
+var semanticBinding = new SemanticBinding();
+_projectModel!.SemanticBinding = semanticBinding;
+
+// Initialize dependency graph builder
+_graphBuilder = new DependencyGraphBuilder();
+_importResolver.SetDependencyGraphBuilder(_graphBuilder);
 ```
 
-**Why this matters**: The shared symbol table enables cross-file references. A class defined in `models.spy` can be referenced in `main.spy` because both files contribute to the same symbol table.
-
 ---
 
-### Phase 3: `CollectTypeDeclarations()` - Cross-File Type Visibility
+### Phase 3: Collect Type Declarations
 
-**What it does**: This is a **two-pass type declaration phase** that enables forward references and cross-file type usage.
+**Method**: `CollectTypeDeclarations(ProjectConfig config)` (lines 245-298)
 
-**The Two Sub-Phases**:
+**Critical Design Decision**: This is a **two-phase process** to enable cross-file inheritance:
 
-1. **Pass 1 - Register Type Names** (lines 183-201):
-   ```csharp
-   var nameResolver = new NameResolver(_symbolTable, _logger);
-   nameResolver.ResolveDeclarations(module);
-   ```
-   - Registers all class, interface, enum names in the symbol table
-   - Does NOT resolve members or inheritance yet
-   - This allows `class A` in file1.spy to reference `class B` from file2.spy
+#### Phase 3a: Collect Type Shells (lines 259-280)
+- Creates a **single** `NameResolver` instance for all files (not one per file!)
+- Calls `NameResolver.ResolveDeclarations(unit.Ast)` for each file
+- This registers type **names** (classes, structs, interfaces) in the symbol table WITHOUT resolving their base classes or members yet
 
-2. **Pass 2 - Resolve Inheritance** (lines 204-216):
-   ```csharp
-   nameResolver.ResolveInheritance();
-   ```
-   - Now that all type names are known, resolve base classes and interfaces
-   - Errors here (e.g., `class A extends NonExistentClass`) are collected
+#### Phase 3b: Resolve Inheritance (lines 282-286)
+- Calls `NameResolver.ResolveInheritance()` once after all types are declared
+- Now that all types from all files are in the symbol table, cross-file inheritance can be resolved
 
-**Design Pattern**: This is a classic **forward declaration** pattern from C/C++, adapted for cross-file compilation.
-
----
-
-### Phase 4: `ResolveImports()` - Build Module Dependencies
-
-**What it does**: Processes `import` and `from ... import` statements, loading external modules and adding their symbols to the current symbol table.
-
-**Key Logic**:
-
-#### **Import Statement Handling** (lines 232-296)
-Handles both:
-- **Aliased imports**: `import lib.math as m` → creates a `ModuleSymbol` named "m"
-- **Nested imports**: `import lib.math` → creates nested structure: `lib.Exports["math"]`
-
+**Why a single NameResolver?**
 ```csharp
-// For "import lib.math", build: lib -> math -> (exports)
-var parts = importAlias.Name.Split('.');
-var leafModule = new ModuleSymbol {
-    Name = parts[^1],  // "math"
-    Exports = moduleInfo.ExportedSymbols
+// IMPORTANT: We use a SINGLE NameResolver instance across all files so that the
+// _classDefs, _structDefs, and _interfaceDefs lists are populated with ALL type
+// definitions before resolving inheritance. This is critical for cross-module
+// inheritance to work correctly.
+var nameResolver = new NameResolver(_symbolTable, _logger);
+
+// Phase 3a: Collect all type declarations (shells only)
+foreach (var (_, unit) in _projectModel!.Units)
+{
+    nameResolver.SetCurrentFilePath(unit.FilePath);
+    nameResolver.ResolveDeclarations(unit.Ast);
+    unit.Phase = CompilationPhase.NamesResolved;
+}
+
+// Phase 3b: Resolve inheritance (using the SAME NameResolver instance)
+nameResolver.ResolveInheritance();
+```
+
+**Example Scenario**:
+```python
+# file_a.spy
+class Animal:
+    pass
+
+# file_b.spy
+from file_a import Animal
+
+class Dog(Animal):  # Needs Animal to already exist in symbol table
+    pass
+```
+
+Without the two-phase approach, `Dog` might be processed before `Animal` is declared, causing a "base class not found" error.
+
+---
+
+### Phase 4: Resolve Imports
+
+**Method**: `ResolveImports(ProjectConfig config)` (lines 300-455)
+
+**What it does**:
+1. For each file's import statements:
+   - Calls `ImportResolver.ResolveImport()` or `ResolveFromImport()`
+   - Adds imported symbols to the global symbol table
+   - Records dependencies in `DependencyGraphBuilder`
+2. Builds the final `DependencyGraph` from collected dependencies
+3. Detects circular dependencies (e.g., `a.spy` imports `b.spy`, `b.spy` imports `a.spy`)
+
+**Import Handling Details**:
+
+- **Module Imports** (`import lib.math`): Creates nested `ModuleSymbol` structure (lines 343-382)
+  ```csharp
+  // For "import lib.math", creates:
+  // lib (ModuleSymbol) -> math (ModuleSymbol) -> (exports from lib/math.spy)
+  var parts = importAlias.Name.Split('.');
+  var leafModule = new ModuleSymbol { Name = parts[^1], ... };
+
+  // Build nested structure from inside out
+  ModuleSymbol currentModule = leafModule;
+  for (int j = parts.Length - 2; j >= 0; j--)
+  {
+      var parentModule = new ModuleSymbol {
+          Name = parts[j],
+          Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } }
+      };
+      currentModule = parentModule;
+  }
+  ```
+
+- **From Imports** (`from lib.math import sqrt`): Directly imports symbols into current scope (lines 384-417)
+  ```csharp
+  // Adds sqrt directly to symbol table (no lib.math prefix needed)
+  var reExportedSymbols = _projectModel.SemanticBinding?.GetReExportedSymbols(fromImport)
+                          ?? fromImport.ReExportedSymbols;
+  foreach (var (name, symbol) in reExportedSymbols)
+  {
+      _symbolTable.TryDefine(symbol);
+  }
+  ```
+
+- **Aliased Imports** (`import numpy as np`): Symbol gets the alias name (lines 328-341)
+  ```csharp
+  if (importAlias.AsName != null)
+  {
+      var aliasedModule = new ModuleSymbol {
+          Name = importAlias.AsName,
+          FilePath = moduleInfo.Path,
+          Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
+      };
+      _symbolTable.TryDefine(aliasedModule);
+  }
+  ```
+
+**Circular Dependency Detection** (lines 427-442):
+```csharp
+var cycles = _dependencyGraph.DetectCycles();
+if (cycles.Count > 0)
+{
+    foreach (var cycle in cycles)
+    {
+        var cycleFiles = cycle.Select(Path.GetFileName).ToList();
+        var cycleDescription = string.Join(" → ", cycleFiles);
+        var errorMsg = $"Circular dependency detected: {cycleDescription}";
+        _projectModel!.GlobalDiagnostics.AddError(errorMsg);
+        _errors.Add(errorMsg);
+    }
+    return false;  // Stop compilation
+}
+```
+
+---
+
+### Phase 5: Semantic Analysis
+
+**Method**: `PerformSemanticAnalysis(ProjectConfig config)` (lines 457-536)
+
+**What it does**:
+1. Processes files in **dependency order** (dependencies before dependents)
+2. For each file:
+   - Creates `TypeResolver` (resolves type expressions like `list[int]`)
+   - Creates `TypeChecker` with validation pipeline
+   - Calls `TypeChecker.CheckModule()` to type-check all statements/expressions
+3. Records type errors in per-file diagnostics
+
+**Build Order Example**:
+```
+If file_c.spy imports file_b.spy, and file_b.spy imports file_a.spy:
+Build order: [file_a.spy, file_b.spy, file_c.spy]
+```
+
+This ensures that when type-checking `file_c`, all symbols from `file_a` and `file_b` are already resolved.
+
+**Implementation** (lines 464-533):
+```csharp
+// Process modules in dependency order (dependencies before dependents)
+IEnumerable<string> modulesToProcess;
+if (_dependencyGraph != null)
+{
+    // Build a mapping from normalized paths to original paths
+    var normalizedToOriginal = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var path in _projectModel!.Units.Keys)
+    {
+        var normalized = NormalizePath(path);
+        normalizedToOriginal[normalized] = path;
+    }
+
+    // Get build order and map back to original paths
+    var buildOrder = _dependencyGraph.GetBuildOrder();
+    modulesToProcess = buildOrder
+        .Select(normalized => normalizedToOriginal.TryGetValue(normalized, out var original) ? original : null)
+        .Where(path => path != null)!;
+}
+else
+{
+    modulesToProcess = _projectModel!.Units.Keys;
+}
+
+foreach (var sourceFile in modulesToProcess)
+{
+    var unit = _projectModel!.GetUnit(sourceFile);
+
+    // Type resolution
+    var typeResolver = new TypeResolver(_symbolTable, _semanticInfo, _logger);
+
+    // Type checking
+    var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
+    var typeChecker = new TypeChecker(_symbolTable, _semanticInfo, typeResolver, _logger, pipeline);
+    typeChecker.CheckModule(unit.Ast, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo);
+
+    if (typeChecker.Errors.Any())
+    {
+        unit.Phase = CompilationPhase.Failed;
+        _errors.AddRange(typeChecker.Errors);
+    }
+    else
+    {
+        unit.Phase = CompilationPhase.TypeChecked;
+    }
+}
+```
+
+**CodeGenInfo Precomputation**:
+- If `config.UsePrecomputedCodeGenInfo = true`, type checker annotates symbols with C# code generation metadata (method version numbers, mangled names, etc.)
+- This is required for code generation to work (legacy approach removed)
+
+---
+
+### Phase 6: Code Generation
+
+**Method**: `GenerateCode(ProjectConfig config)` (lines 538-627)
+
+**What it does**:
+1. For each successfully type-checked file:
+   - Creates `CodeGenContext` with symbol table and project namespace
+   - Instantiates `RoslynEmitter` (uses Roslyn's `SyntaxFactory` to build C# AST)
+   - Calls `GenerateCompilationUnit()` to produce C# code
+   - Stores generated C# in `unit.GeneratedCSharp`
+2. Returns a dictionary mapping file paths to C# code
+
+**Entry Point Detection** (lines 564-581):
+```csharp
+// Determine if this file is the entry point
+var isEntryPoint = IsEntryPointFile(sourceFile, config);
+
+bool IsEntryPointFile(string file, ProjectConfig cfg)
+{
+    var fileName = Path.GetFileName(file);
+
+    // If EntryPoint is specified in config, check against it
+    if (!string.IsNullOrWhiteSpace(cfg.EntryPoint))
+    {
+        return fileName.Equals(cfg.EntryPoint, StringComparison.OrdinalIgnoreCase) ||
+               fileName.Equals(Path.GetFileName(cfg.EntryPoint), StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Otherwise, default to main.spy for executable projects
+    var fileNameNoExt = Path.GetFileNameWithoutExtension(file);
+    return fileNameNoExt.Equals("main", StringComparison.OrdinalIgnoreCase);
+}
+```
+
+The entry point file gets special treatment—the emitter generates a `Main()` method for executable projects.
+
+**CodeGenContext Setup** (lines 583-591):
+```csharp
+var codeGenContext = new CodeGenContext(_symbolTable, builtinRegistry)
+{
+    SourceFilePath = sourceFile,
+    ProjectNamespace = config.RootNamespace,  // e.g., "MyProject"
+    ProjectRootPath = ComputeSourceRootPath(config),
+    IsEntryPoint = isEntryPoint,
+    Logger = _logger,
+    SemanticBinding = _projectModel.SemanticBinding  // For retrieving semantic data
+};
+
+var emitter = new RoslynEmitter(codeGenContext);
+var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
+var csharpCode = roslynCompilationUnit.ToFullString();
+```
+
+---
+
+### Phase 7: Assembly Compilation
+
+**Method**: `CompileAssembly(ProjectConfig config, Dictionary<string, string> generatedCSharp)` (lines 629-675)
+
+**What it does**:
+1. Delegates to `AssemblyCompiler.CompileToAssembly()`
+2. The assembly compiler:
+   - Uses Roslyn's `CSharpCompilation` API
+   - References required .NET assemblies (Sharpy.Core, System.Runtime, etc.)
+   - Emits a `.dll` or `.exe` to `bin/{Configuration}/{TargetFramework}/`
+3. Returns `ProjectCompilationResult` with success/failure and diagnostics
+
+**Result Construction** (lines 665-674):
+```csharp
+return new ProjectCompilationResult
+{
+    Success = true,
+    OutputAssemblyPath = assemblyResult.OutputAssemblyPath,  // e.g., bin/Debug/net8.0/MyProject.dll
+    Warnings = _warnings,
+    GeneratedCSharpFiles = generatedCSharp,  // For debugging/inspection
+    Metrics = _projectMetrics,  // Timing data for each phase
+    DependencyGraph = _dependencyGraph,  // For tooling (LSP, incremental builds)
+    ProjectModel = _projectModel  // All CompilationUnits with full state
 };
 ```
 
-**Module Merging** (lines 286-295):
-If you import `lib.math` and `lib.collections` separately, the compiler **merges** them into a single `lib` module with both `math` and `collections` as exports.
+---
 
-#### **From-Import Statement Handling** (lines 298-333)
-- `from lib.math import sin, cos` → adds `sin` and `cos` directly to the symbol table
-- `from lib.math import *` → imports all exported symbols
-- Supports aliasing: `from lib.math import sin as sine`
+## Key Data Structures
 
-**Outcome**: `_symbolTable` now contains all imported symbols, enabling the type checker to resolve references to external modules.
+### 1. `ProjectModel` (src/Sharpy.Compiler/Model/ProjectModel.cs)
+
+Central container for all compilation state:
+
+```csharp
+public class ProjectModel
+{
+    // All source files being compiled
+    public IReadOnlyDictionary<string, CompilationUnit> Units { get; }
+
+    // Shared symbol table across all files
+    public SymbolTable? GlobalSymbols { get; internal set; }
+
+    // Shared semantic info (type annotations)
+    public SemanticInfo? SemanticInfo { get; internal set; }
+
+    // Immutable AST annotations
+    public SemanticBinding? SemanticBinding { get; internal set; }
+
+    // Import dependency graph
+    public DependencyGraph? DependencyGraph { get; internal set; }
+
+    // Project-level diagnostics (e.g., circular dependency errors)
+    public DiagnosticBag GlobalDiagnostics { get; }
+}
+```
+
+**Key Methods**:
+- `GetBuildOrder()`: Returns files in dependency order
+- `GetParallelizableGroups()`: Groups files that can be compiled concurrently (future optimization)
+- `GetAllDiagnostics()`: Combines global + per-file errors/warnings
+
+### 2. `CompilationUnit` (src/Sharpy.Compiler/Model/CompilationUnit.cs)
+
+Represents a single `.spy` file's compilation artifacts:
+
+```csharp
+public class CompilationUnit
+{
+    // Source information
+    public string FilePath { get; }           // e.g., /path/to/myapp/src/utils.spy
+    public string ModulePath { get; }         // e.g., "myapp.utils"
+    public string SourceText { get; }         // Raw source code
+    public string ContentHash { get; }        // SHA-256 (for incremental compilation)
+
+    // Compilation artifacts
+    public IReadOnlyList<Token>? Tokens { get; }
+    public Module? Ast { get; }
+    public string? GeneratedCSharp { get; set; }
+
+    // Semantic data
+    public IReadOnlyList<ImportStatement> Imports { get; }
+    public IReadOnlyList<FromImportStatement> FromImports { get; }
+
+    // Diagnostics and metrics
+    public DiagnosticBag Diagnostics { get; }
+    public CompilationMetrics? Metrics { get; }
+    public CompilationPhase Phase { get; internal set; }  // Created → Lexed → Parsed → ...
+}
+```
+
+**Compilation Phases**:
+```csharp
+public enum CompilationPhase
+{
+    Created,          // Unit created, not processed
+    Lexed,            // Tokenization complete
+    Parsed,           // AST built
+    NamesResolved,    // Type declarations registered
+    TypeChecked,      // Semantic analysis complete
+    CodeGenerated,    // C# code emitted
+    Failed            // Compilation error
+}
+```
+
+### 3. `ProjectConfig` (src/Sharpy.Compiler/ProjectConfig.cs)
+
+Loaded from `.spyproj` files (XML format similar to MSBuild):
+
+```csharp
+public class ProjectConfig
+{
+    public string RootNamespace { get; }       // e.g., "MyGame"
+    public string OutputType { get; }          // "exe" or "library"
+    public string TargetFramework { get; }     // e.g., "net8.0"
+    public string? EntryPoint { get; }         // e.g., "main.spy"
+    public List<string> SourceFiles { get; }   // Resolved from glob patterns
+    public List<string> References { get; }    // .NET assembly references
+    public List<string> ModulePaths { get; }   // Paths to search for .spy modules
+    public string Configuration { get; }       // "Debug" or "Release"
+}
+```
+
+**Example .spyproj**:
+```xml
+<Project>
+  <PropertyGroup>
+    <RootNamespace>MyGame</RootNamespace>
+    <OutputType>exe</OutputType>
+    <EntryPoint>main.spy</EntryPoint>
+  </PropertyGroup>
+  <ItemGroup>
+    <SpyFile Include="**/*.spy" Exclude="tests/**/*.spy" />
+    <Reference Include="UnityEngine.dll" />
+  </ItemGroup>
+</Project>
+```
 
 ---
 
-### Phase 5: `PerformSemanticAnalysis()` - Type Checking
+## Important Design Patterns
 
-**What it does**: Runs semantic analysis (type checking) on all modules.
+### 1. **Fail-Slow Error Accumulation**
 
-**Key Steps**:
-1. **Type Resolution**: Resolves type annotations and type expressions
-2. **Type Checking**: Validates that operations are type-safe
+Unlike single-file compilation (which stops at first error), `ProjectCompiler` tries to compile as many files as possible:
 
 ```csharp
-var typeResolver = new TypeResolver(_symbolTable, _semanticInfo, _logger);
-var typeChecker = new TypeChecker(_symbolTable, _semanticInfo, typeResolver, _logger);
-typeChecker.CheckModule(module);
+// Errors don't throw exceptions - they're accumulated in lists
+foreach (var sourceFile in config.SourceFiles)
+{
+    try { /* parse */ }
+    catch (ParserError ex)
+    {
+        _errors.Add(ex.Message);
+        // Continue to next file
+    }
+}
+
+// Check errors at phase boundaries
+if (_errors.Any())
+    return CreateFailureResult();
 ```
 
-**Error Handling**: All type errors are collected and reported with file/line/column information.
+**Why?** Better developer experience—see all errors at once instead of fixing one at a time.
 
----
+### 2. **Single Shared Symbol Table**
 
-### Phase 6: `GenerateCode()` - C# Code Generation
-
-**What it does**: Translates each Sharpy AST module into equivalent C# source code.
-
-**Entry Point Detection** (lines 406-420):
-The compiler needs to know which file contains the program's entry point (`Main()` method):
-- If `config.EntryPoint` is specified, use that file
-- Otherwise, default to `main.spy` for executable projects
+One `SymbolTable` across all files, unlike some compilers that use per-file scopes:
 
 ```csharp
-var isEntryPoint = IsEntryPointFile(sourceFile, config);
+// Phase 2: Create ONCE
+_symbolTable = new SymbolTable(builtinRegistry);
+
+// Phase 3: ALL files add to it
+foreach (var unit in _projectModel.Units)
+{
+    nameResolver.ResolveDeclarations(unit.Ast);  // Mutates shared _symbolTable
+}
+
+// Phase 5: ALL files read from it
+foreach (var unit in buildOrder)
+{
+    var typeChecker = new TypeChecker(_symbolTable, ...);  // Reads symbols from other files
+}
 ```
 
-**CodeGenContext Setup** (lines 422-429):
-Each file gets its own context with:
-- Reference to the shared symbol table
-- Source file path for debugging info
-- Project namespace for generated C# namespaces
-- **`ProjectRootPath`**: Critical for computing relative namespaces (see `ComputeSourceRootPath()`)
+**Trade-off**: Simpler cross-file resolution, but requires careful ordering (hence dependency graph).
 
-**Source Root Path Computation** (lines 517-556):
-This is a **key algorithm** for determining how to map file paths to C# namespaces.
+### 3. **Immutable AST + Separate Semantic Data**
 
-Example:
-```
-Project structure:
-  src/models/user.spy    → namespace MyProject.Models
-  src/services/auth.spy  → namespace MyProject.Services
-```
-
-The algorithm finds the **common directory prefix** (`src/`) and uses it to compute relative namespaces.
-
-**Outcome**: `generatedCSharp` dictionary maps C# file names to their generated source code.
-
----
-
-### Phase 7: `CompileAssembly()` - .NET Assembly Compilation
-
-**What it does**: Invokes the `AssemblyCompiler` to compile generated C# code into a .NET assembly using Roslyn.
+AST nodes (from `Parser.Ast` namespace) are immutable. Semantic annotations go in `SemanticBinding`:
 
 ```csharp
-var assemblyCompiler = new AssemblyCompiler(_logger);
-var assemblyResult = assemblyCompiler.CompileToAssembly(generatedCSharp, config);
+// BAD: Modifying AST node (violates immutability)
+myFunctionDef.ResolvedType = intType;
+
+// GOOD: Store in SemanticBinding
+_projectModel.SemanticBinding.SetResolvedType(myFunctionDef, intType);
 ```
 
-**Outcome**: A compiled `.dll` or `.exe` file, or compilation errors from the C# compiler.
+**Why?** Enables parallel compilation (future), easier caching for LSP, cleaner separation of concerns.
+
+### 4. **Path Normalization**
+
+Cross-platform path handling (lines 767-775):
+
+```csharp
+private static string NormalizePath(string path)
+{
+    var normalized = path.Replace('\\', '/');  // Unix-style separators
+    if (!OperatingSystem.IsLinux())
+    {
+        normalized = normalized.ToLowerInvariant();  // Case-insensitive on Windows/macOS
+    }
+    return normalized;
+}
+```
+
+Used when comparing file paths in dictionaries (e.g., `ProjectModel.Units` keys).
 
 ---
 
 ## Helper Methods
 
-### `ComputeSourceRootPath()` - Namespace Mapping
+### `ComputeSourceRootPath(ProjectConfig config)` (lines 693-735)
 
-**Purpose**: Determines the "root" directory for computing relative namespaces.
-
-**Algorithm**:
-1. If no source files, return project directory
-2. If all files in same directory, return that directory
-3. Otherwise, find the **longest common path prefix** of all source file directories
-
-**Example**:
-```
-Files:
-  /proj/src/models/user.spy
-  /proj/src/services/auth.spy
-
-Result: /proj/src
-```
-
-This is used by `CodeGenContext` to compute namespaces:
-- `user.spy` → `MyProject.Models` (relative to `src/`)
-- `auth.spy` → `MyProject.Services` (relative to `src/`)
-
----
-
-### `GetLongestCommonPath()` - Path Prefix Calculation
-
-**Purpose**: Utility to find the common directory prefix between two paths.
-
-**Algorithm**: Split paths by directory separators, compare parts one-by-one until they differ.
+Finds the common directory prefix of all source files:
 
 ```csharp
-var parts1 = "/proj/src/models".Split('/');  // ["", "proj", "src", "models"]
-var parts2 = "/proj/src/services".Split('/'); // ["", "proj", "src", "services"]
-
-// Common: ["", "proj", "src"] → "/proj/src"
+// If all files are in /path/to/project/src/, returns "/path/to/project/src"
+// Used for computing relative module paths in generated C#
 ```
 
----
+### `GetLongestCommonPath(string path1, string path2)` (lines 737-761)
 
-### `MergeModuleExports()` - Module Symbol Merging
+Compares two paths component-by-component:
 
-**Purpose**: Combines exports from multiple import statements into a single module symbol.
-
-**Use Case**:
-```python
-import lib.math
-import lib.collections
-```
-
-Both imports need to contribute to the same `lib` module:
-```
-lib.Exports["math"] = MathModule
-lib.Exports["collections"] = CollectionsModule
-```
-
-**Recursive Merging**: If both modules have nested children, merge recursively. Otherwise, first import wins.
-
----
-
-## Dependencies
-
-### Internal Dependencies
-- **Lexer**: Tokenization (`Lexer.Lexer`)
-- **Parser**: AST construction (`Parser.Parser`)
-- **Semantic**: Type checking (`NameResolver`, `TypeResolver`, `TypeChecker`)
-- **CodeGen**: C# generation (`RoslynEmitter`, `CodeGenContext`)
-- **Logging**: Diagnostics (`ICompilerLogger`)
-- **Project**: Assembly compilation (`AssemblyCompiler`)
-
-### Key Data Structures
-- `SymbolTable`: Global symbol registry (from `Sharpy.Compiler.Semantic`)
-- `Module`: AST root node (from `Sharpy.Compiler.Parser.Ast`)
-- `ProjectConfig`: Input configuration with file list, output settings
-- `ProjectCompilationResult`: Output with success status, errors, warnings, metrics
-
----
-
-## Patterns and Design Decisions
-
-### 1. **Pipeline Pattern**
-The seven-phase design is a classic **pipeline architecture**. Each phase:
-- Has a clear input/output contract
-- Is isolated from other phases
-- Can fail independently with detailed error reporting
-
-### 2. **Shared State for Cross-File Compilation**
-Unlike single-file compilers, this uses **shared mutable state** (`_symbolTable`, `_semanticInfo`) to enable cross-file references. This is necessary for features like:
-- Importing classes from other files
-- Inheriting from classes defined in other files
-- Calling functions defined in other modules
-
-### 3. **Early Bailout on Errors**
-Each phase returns `bool` or checks `_errors.Any()`. If any phase fails, compilation stops immediately rather than continuing with corrupted state.
-
-### 4. **Metrics Collection**
-The compiler tracks detailed timing metrics for each file and each phase:
 ```csharp
-fileMetrics.StartPhase("Lexical Analysis");
-// ... do work ...
-fileMetrics.EndPhase();
+// "/a/b/c" and "/a/b/d" → "/a/b"
 ```
-This enables performance profiling and optimization.
 
-### 5. **Entry Point Detection**
-The compiler automatically detects entry points (`main.spy` by default) to generate appropriate `Main()` methods in C#.
+### `MergeModuleExports(ModuleSymbol target, ModuleSymbol source)` (lines 777-799)
+
+Handles multiple imports of the same root module:
+
+```csharp
+// import lib.math
+// import lib.random
+// → Merges lib.math and lib.random into single "lib" module
+```
+
+---
+
+## Dependencies on Other Components
+
+### Upstream (Inputs)
+- **`ProjectConfig`**: Defines what to compile (source files, references, namespaces)
+- **`ModuleRegistry`**: Resolves imports to external .NET assemblies (optional)
+
+### Internal (Used During Compilation)
+- **`Lexer`**: Tokenizes source code (Phase 1)
+- **`Parser`**: Builds AST from tokens (Phase 1)
+- **`NameResolver`**: Collects type declarations (Phase 3)
+- **`ImportResolver`**: Resolves import statements to modules (Phase 4)
+- **`TypeChecker`**: Semantic analysis (Phase 5)
+- **`RoslynEmitter`**: Generates C# code (Phase 6)
+- **`AssemblyCompiler`**: Compiles C# to .NET assembly (Phase 7)
+
+### Downstream (Outputs)
+- **`ProjectCompilationResult`**: Contains success/failure, assembly path, diagnostics, and introspection data (`ProjectModel`, `DependencyGraph`)
 
 ---
 
 ## Debugging Tips
 
 ### 1. **Enable Debug Logging**
-Set logger to `Debug` level to see per-file timing metrics:
+
+Per-file metrics are logged at `Debug` level:
+
 ```csharp
 if (_logger.IsEnabled(CompilerLogLevel.Debug))
 {
@@ -359,94 +681,149 @@ if (_logger.IsEnabled(CompilerLogLevel.Debug))
 }
 ```
 
-### 2. **Check Phase Transition**
-If compilation fails, look at the error messages to identify which phase failed:
-- **Phase 1 errors**: Syntax/lexer errors (check `LexerError`, `ParserError` catches)
-- **Phase 3 errors**: Type declaration issues (undefined types, inheritance cycles)
-- **Phase 4 errors**: Import resolution failures (missing modules)
-- **Phase 5 errors**: Type checking failures (type mismatches)
-- **Phase 7 errors**: C# compilation errors (code generation bugs)
+**How to use**:
+```bash
+# Set logger level to Debug when creating Compiler
+var logger = new ConsoleLogger(CompilerLogLevel.Debug);
+var compiler = new Compiler(logger: logger);
+```
 
-### 3. **Inspect Intermediate State**
-After each phase, you can inspect:
-- `_parsedModules`: The parsed AST for each file
-- `_symbolTable.Dump()`: All registered symbols
-- `generatedCSharp`: The generated C# code
+### 2. **Inspect CompilationUnits**
 
-### 4. **Common Issues**
+After compilation, examine `ProjectModel`:
 
-**Import resolution fails**: Check `_importResolver.Errors`. Often caused by:
-- Incorrect module paths
-- Missing `.spy` files
-- Circular imports
+```csharp
+var result = projectCompiler.Compile(config);
+foreach (var unit in result.ProjectModel.Units.Values)
+{
+    Console.WriteLine($"{unit.FilePath}: Phase={unit.Phase}, Errors={unit.Diagnostics.ErrorCount}");
 
-**Type not found in cross-file reference**: Likely issue in Phase 3 (type declaration collection). Verify that `NameResolver.ResolveDeclarations()` ran successfully for all files.
+    // Inspect generated C#
+    if (unit.GeneratedCSharp != null)
+    {
+        Console.WriteLine(unit.GeneratedCSharp);
+    }
+}
+```
 
-**Namespace mismatches in generated C#**: Check `ComputeSourceRootPath()` output. If files aren't organized as expected, the namespace computation may be wrong.
+### 3. **Visualize Dependency Graph**
+
+```csharp
+var graph = result.DependencyGraph;
+var buildOrder = graph.GetBuildOrder();
+Console.WriteLine("Build order: " + string.Join(" → ", buildOrder.Select(Path.GetFileName)));
+
+// Check for circular dependencies
+var cycles = graph.DetectCycles();
+if (cycles.Any())
+{
+    foreach (var cycle in cycles)
+    {
+        Console.WriteLine("Cycle: " + string.Join(" → ", cycle));
+    }
+}
+```
+
+### 4. **Common Failure Points**
+
+| Phase | Common Issue | How to Debug |
+|-------|-------------|--------------|
+| **Phase 1** | `ParserError` | Check `unit.Diagnostics` for syntax errors; inspect `unit.Tokens` |
+| **Phase 3** | Cross-file inheritance fails | Verify `NameResolver.ResolveInheritance()` is called AFTER all files' declarations are collected |
+| **Phase 4** | `ImportError` "module not found" | Check `ImportResolver.Errors`; verify `ModulePaths` in config |
+| **Phase 4** | Circular dependencies | Inspect `DependencyGraph.DetectCycles()` output |
+| **Phase 5** | `TypeError` in cross-file reference | Ensure dependency order is correct (`GetBuildOrder()`); check if imported type was actually exported |
+| **Phase 7** | C# compilation errors | Inspect `generatedCSharp` dictionary; look for malformed C# syntax |
+
+### 5. **Use CLI Emit Commands**
+
+```bash
+# See generated C# for a specific file
+dotnet run --project src/Sharpy.Cli -- emit csharp myproject/src/utils.spy
+
+# See AST structure
+dotnet run --project src/Sharpy.Cli -- emit ast myproject/src/utils.spy
+```
 
 ---
 
 ## Contribution Guidelines
 
-### When to Modify This File
+### When You Might Modify This File
 
-1. **Adding new compilation phases**: If you need to add analysis/transformation steps (e.g., optimization passes), you'd insert new phases in the pipeline.
+1. **Adding New Compilation Phases**:
+   - Example: Add "Phase 3.5: Constant Folding"
+   - Insert between existing phases in `Compile()` method
+   - Update `CompilationPhase` enum in `CompilationUnit.cs`
 
-2. **Changing import semantics**: Modifications to `ResolveImports()` if Sharpy's import system changes.
+2. **Changing Import Resolution**:
+   - Modify `ResolveImports()` method
+   - May need to update `ImportResolver` class (separate file)
+   - Test with circular dependencies and cross-file type references
 
-3. **Adjusting entry point detection**: Modify `IsEntryPointFile()` if entry point conventions change.
+3. **Optimizing Build Performance**:
+   - Investigate `GetParallelizableGroups()` for parallel type-checking
+   - Currently sequential—could parallelize independent files
+   - Requires thread-safe `SymbolTable` modifications
 
-4. **Performance improvements**: Add parallelization (currently sequential) or caching.
+4. **Incremental Compilation Support**:
+   - Use `CompilationUnit.ContentHash` to detect stale files
+   - Use `DependencyGraph.GetAffectedFiles()` to minimize recompilation
+   - Cache type-checked units between builds
 
-### Code Style Conventions
+### Critical Rules
 
-- **Phase methods**: Name as `Phase{Number}: {Description}` in comments
-- **Helper methods**: Use descriptive names with XML doc comments
-- **Error handling**: Always add file/line/column context to error messages
-- **Metrics**: Wrap significant operations in `StartPhase()`/`EndPhase()` calls
+- **Never break two-phase name resolution**: Types must be declared (Phase 3a) before inheritance is resolved (Phase 3b)
+- **Preserve immutable AST**: Use `SemanticBinding` for annotations, never mutate AST nodes
+- **Maintain dependency order**: Semantic analysis MUST use `GetBuildOrder()` to avoid "symbol not found" errors
+- **Handle errors gracefully**: Accumulate errors across files; don't stop at first failure
 
-### Testing Considerations
+### Testing
 
-When modifying this file, ensure tests cover:
-- Single-file projects (simple case)
-- Multi-file projects with cross-file references
-- Import statements (both `import` and `from ... import`)
-- Error scenarios in each phase
-- Entry point detection edge cases
+When modifying `ProjectCompiler`, test with:
+
+```bash
+# Multi-file test fixtures
+dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
+
+# Specific cross-file scenarios
+dotnet test --filter "DisplayName~cross_module_inheritance"
+dotnet test --filter "DisplayName~circular_import"
+```
 
 ---
 
 ## Cross-References
 
-### Related Files
+### Related Documentation
+- **[Compiler.md](../Compiler.md)**: High-level single-file compiler (delegates to `ProjectCompiler` for projects)
+- **[ProjectModel.md](../Model/ProjectModel.md)**: Central data structure holding all `CompilationUnit` instances
+- **[CompilationUnit.md](../Model/CompilationUnit.md)**: Per-file compilation state
+- **[DependencyGraph.md](./DependencyGraph.md)**: Import dependency analysis and build ordering
+- **[DependencyGraphBuilder.md](./DependencyGraphBuilder.md)**: Builder for constructing dependency graphs
+- **[AssemblyCompiler.md](../AssemblyCompiler.md)**: Roslyn-based C# → .NET assembly compiler
 
-This file orchestrates components documented in:
-- **Lexer**: `docs/implementation_walkthrough/src/Sharpy.Compiler/Lexer/Lexer.md`
-- **Parser**: `docs/implementation_walkthrough/src/Sharpy.Compiler/Parser/Parser.*.md`
-- **Semantic Analysis**:
-  - Name Resolution (not yet documented)
-  - Type Resolution (not yet documented)
-  - Type Checking (not yet documented)
-- **Code Generation**:
-  - `docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/RoslynEmitter.*.md`
-  - `docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/CodeGenContext.md`
-
-### Data Structures
-
-- **ProjectConfig**: Configuration object with source files, output settings
-- **ProjectCompilationResult**: Result object with success/failure, errors, warnings, metrics
-- **CompilationMetrics**: Per-file performance tracking
-- **ProjectCompilationMetrics**: Aggregate project-level metrics
+### Related Source Files
+- `src/Sharpy.Compiler/Compiler.cs`: Entry point that calls `ProjectCompiler`
+- `src/Sharpy.Compiler/Model/ProjectModel.cs`: Container for all `CompilationUnit` instances
+- `src/Sharpy.Compiler/Model/CompilationUnit.cs`: Per-file state machine
+- `src/Sharpy.Compiler/ProjectConfig.cs`: .spyproj file parser and configuration
+- `src/Sharpy.Compiler/Project/DependencyGraph.cs`: Build order and cycle detection
+- `src/Sharpy.Compiler/Project/AssemblyCompiler.cs`: Roslyn-based C# → .NET assembly compiler
 
 ---
 
-## Summary
+## Summary for Newcomers
 
-`ProjectCompiler` is the **central orchestrator** of the Sharpy compilation pipeline. It:
-- Manages the seven-phase compilation process
-- Coordinates shared state across multiple source files
-- Handles error aggregation and reporting
-- Tracks performance metrics
-- Ensures proper dependency resolution and cross-file visibility
+**TL;DR**: `ProjectCompiler` is the "build system" for Sharpy projects. It:
 
-Understanding this file is crucial for anyone working on the compiler's architecture, adding new compilation phases, or debugging multi-file compilation issues.
+1. Parses all `.spy` files in parallel (conceptually—currently sequential)
+2. Builds a shared symbol table so types can reference each other across files
+3. Resolves imports and detects circular dependencies
+4. Type-checks files in dependency order (dependencies first)
+5. Generates C# code for each file
+6. Compiles all C# into a single .NET assembly
+
+**Mental Model**: Think of it like MSBuild for Sharpy—it's responsible for the whole-project view, while individual compiler components (Lexer, Parser, TypeChecker) operate on single files.
+
+**Most Important Insight**: The two-phase name resolution (Phase 3a + 3b) is critical for cross-file type references. Without it, you'd hit "type not found" errors when file B imports a type from file A that hasn't been processed yet.

@@ -6,889 +6,668 @@
 
 ## Overview
 
-This file is a **partial class** of `RoslynEmitter` responsible for:
+This partial class file contains operator-related code generation logic for the Sharpy compiler's code generation phase. It's responsible for:
 
-1. **Operator Overload Generation**: Converting Python dunder methods (`__add__`, `__eq__`, etc.) into C# operator overloads
-2. **Special Expression Handling**: Generating code for `try` expressions, `maybe` expressions, and floor division
-3. **Loop Else Support**: Transforming break statements for Python's `for/else` and `while/else` constructs
-4. **Utility Functions**: Helper methods for expression analysis, temporary variable naming, and identifier collection
+1. **Operator Overloading**: Translating Python dunder methods (`__add__`, `__eq__`, etc.) into C# operator overloads (`operator +`, `operator ==`, etc.)
+2. **Special Expression Forms**: Generating code for Sharpy-specific constructs like `try` expressions and `maybe` expressions
+3. **Utility Methods**: Helper functions for loop transformations, dependency analysis, and type checking
 
-This partial class handles the "glue" between Python's operator semantics and C#'s operator overloading system, ensuring that Sharpy classes can use Python-style operators naturally while generating idiomatic C# code.
+This file bridges the gap between Python's operator protocol (dunder methods) and C#'s static operator overloading system, ensuring that Sharpy classes can use natural operator syntax while maintaining Python semantics.
 
-**Compiler Pipeline Position**: Code Generation (final phase)
-- **Input**: Typed AST with `FunctionDef` nodes representing dunder methods
-- **Output**: Roslyn `OperatorDeclarationSyntax` nodes for C# operator overloads
+### Role in the Compiler Pipeline
+
+**Position**: Final code generation phase
+**Input**: Typed AST nodes from semantic analysis
+**Output**: Roslyn `OperatorDeclarationSyntax` and related C# constructs
+**Upstream**: Receives validated AST with type information from `SemanticAnalyzer`
+**Downstream**: Produces C# syntax trees that get compiled to .NET IL
 
 ---
 
 ## Class Structure
 
-This file extends the partial class `RoslynEmitter` with the following categories of methods:
+This is a **partial class** extending `RoslynEmitter`. The main `RoslynEmitter` class is defined in `RoslynEmitter.cs`, with functionality split across multiple files:
 
-### Operator Generation Methods
-- `TryGenerateOperatorOverload()` - Dispatcher for dunder-to-operator conversion
-- `GenerateBinaryOperator()` - Creates `operator +`, `operator *`, etc.
-- `GenerateComparisonOperator()` - Creates `operator ==`, `operator <`, etc.
-- `GenerateUnaryOperator()` - Creates `operator -`, `operator ~`, etc.
-- `GenerateComplementaryEqualsOperator()` - Auto-generates `==` when `!=` exists
-- `GenerateComplementaryNotEqualsOperator()` - Auto-generates `!=` when `==` exists
+- `RoslynEmitter.cs` - Core class definition, constructor, shared state
+- `RoslynEmitter.Operators.cs` - **This file** - Operator overloads and special expressions
+- `RoslynEmitter.Expressions.cs` - General expression generation
+- `RoslynEmitter.Statements.cs` - Statement generation
+- `RoslynEmitter.ClassMembers.cs` - Class member generation
+- `RoslynEmitter.TypeDeclarations.cs` - Type declaration generation
+- And others...
 
-### Special Expression Methods
-- `GenerateTryExpression()` - Wraps expressions in `Result[T, E]` for exception handling
-- `GenerateMaybeExpression()` - Wraps nullable expressions in `Optional[T]`
-- `GenerateFloorDivision()` - Implements Python floor division semantics
+### Key Dependencies
 
-### Analysis and Utility Methods
-- `ShouldGenerateDunderMethod()` - Determines if a dunder should become a C# method
-- `IsFloatExpression()` - Detects if an expression evaluates to float (for division semantics)
-- `IsEnumTypeExpression()` - Checks if an expression is an enum (for `.value` translation)
-- `CollectReferencedIdentifiers()` - Recursively finds all identifiers in an expression
+```csharp
+private readonly CodeGenContext _context;      // Semantic information lookup
+private readonly TypeMapper _typeMapper;       // Python → C# type mapping
+private int _tempVarCounter;                    // Unique temp variable generation
+```
 
-### Loop Transformation Methods
-- `TransformLoopBodyForElse()` - Wraps break statements with flag assignment
-- `TransformStatementForLoopElse()` - Recursively transforms individual statements
-- `GenerateTempVarName()` - Creates unique temporary variable names
+These fields are defined in the main `RoslynEmitter.cs` file and shared across all partial class files.
 
 ---
 
 ## Key Functions and Methods
 
-### 1. Operator Overload Dispatcher
+### 1. Dunder Method Detection
 
-#### `TryGenerateOperatorOverload(FunctionDef funcDef, string className)`
+#### `ShouldGenerateDunderMethod(string dunderName)` (lines 21-30)
 
-**Purpose**: Maps Python dunder methods to C# operator overloads.
+**Purpose**: Determines whether a Python dunder method should generate a corresponding C# method.
 
-**How It Works**:
+**Key Logic**:
+- `__init__` always generates a method (becomes a constructor elsewhere)
+- Protocol dunders registered in `ProtocolRegistry` generate methods (e.g., `__str__`, `__len__`, `__iter__`)
+- Most other dunders do NOT generate methods to avoid conflicts with user-defined methods
+
+**Why This Matters**: Python allows both `def __add__(self, other)` as a method AND operator usage `a + b`. In C#, operator overloads are separate from methods. This function decides which dunders become methods vs. operators.
+
 ```csharp
-return funcDef.Name switch
-{
-    "__add__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.PlusToken),
-    "__eq__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.EqualsEqualsToken),
-    "__neg__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.MinusToken),
-    "__getitem__" => null,  // Requires indexer syntax, not operator
-    _ => null
-};
+// Example:
+// __add__ → Generates operator+ (TryGenerateOperatorOverload)
+// __str__ → Generates ToString() method (ProtocolRegistry mapping)
+// __custom__ → No generation (user-defined dunder)
 ```
+
+---
+
+### 2. Operator Overload Generation
+
+#### `TryGenerateOperatorOverload(FunctionDef funcDef, string className)` (lines 35-73)
+
+**Purpose**: Main dispatcher that routes dunder methods to their corresponding C# operator overload generators.
 
 **Supported Operators**:
-- **Arithmetic**: `__add__`, `__sub__`, `__mul__`, `__truediv__`, `__mod__`
-- **Bitwise**: `__and__`, `__or__`, `__xor__`, `__lshift__`, `__rshift__`
-- **Comparison**: `__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__`
-- **Unary**: `__neg__`, `__pos__`, `__invert__`
+
+| Python Dunder | C# Operator | Generator Method |
+|---------------|-------------|------------------|
+| `__add__` | `operator +` | `GenerateBinaryOperator` |
+| `__sub__` | `operator -` | `GenerateBinaryOperator` |
+| `__mul__` | `operator *` | `GenerateBinaryOperator` |
+| `__truediv__` | `operator /` | `GenerateBinaryOperator` |
+| `__mod__` | `operator %` | `GenerateBinaryOperator` |
+| `__and__` | `operator &` | `GenerateBinaryOperator` |
+| `__or__` | `operator \|` | `GenerateBinaryOperator` |
+| `__xor__` | `operator ^` | `GenerateBinaryOperator` |
+| `__lshift__` | `operator <<` | `GenerateBinaryOperator` |
+| `__rshift__` | `operator >>` | `GenerateBinaryOperator` |
+| `__eq__` | `operator ==` | `GenerateComparisonOperator` |
+| `__ne__` | `operator !=` | `GenerateComparisonOperator` |
+| `__lt__` | `operator <` | `GenerateComparisonOperator` |
+| `__le__` | `operator <=` | `GenerateComparisonOperator` |
+| `__gt__` | `operator >` | `GenerateComparisonOperator` |
+| `__ge__` | `operator >=` | `GenerateComparisonOperator` |
+| `__neg__` | `operator -` (unary) | `GenerateUnaryOperator` |
+| `__pos__` | `operator +` (unary) | `GenerateUnaryOperator` |
+| `__invert__` | `operator ~` | `GenerateUnaryOperator` |
 
 **Not Supported as Operators**:
-- `__pow__`: No `**` operator in C# (use `Math.Pow()` method)
-- `__getitem__`/`__setitem__`: Require indexer syntax, handled elsewhere
+- `__pow__` - No `**` operator in C#, use `Math.Pow()` method instead
+- `__getitem__` / `__setitem__` - Require indexer syntax, not operator syntax
 
-**Connection to Upstream**: Called from `RoslynEmitter.ClassMembers.cs` when processing class methods.
+**Return Value**: `MemberDeclarationSyntax?` - Returns `null` if the dunder cannot be represented as an operator.
 
 ---
 
-### 2. Binary Operator Generation
+#### `GenerateBinaryOperator(...)` (lines 78-123)
 
-#### `GenerateBinaryOperator(FunctionDef funcDef, string className, SyntaxKind operatorToken)`
-
-**Purpose**: Creates a C# operator overload that delegates to the dunder method.
+**Purpose**: Generates C# operator overloads for binary operators (`+`, `-`, `*`, `/`, etc.)
 
 **Generated Pattern**:
 ```csharp
-// Python:
-class Vector:
-    def __add__(self, other: Vector) -> Vector:
-        return Vector(self.x + other.x, self.y + other.y)
+// From Python:
+// class Vector:
+//     def __add__(self, other: Vector) -> Vector:
+//         # ... implementation
 
-// Generated C#:
+// Generates C#:
 public static Vector operator +(Vector left, Vector right)
 {
-    return left.Add(right);  // Calls the Add() method (mangled __add__)
+    return left.Add(right);
 }
 ```
 
-**Key Implementation Details**:
-- **Parameter Filtering**: Skips the `self` parameter (case-insensitive)
-- **Type Mapping**: Uses `_typeMapper.MapType()` to convert Python types to C# types
-- **Return Type**: Defaults to the class type if no return type annotation exists
-- **Name Mangling**: Converts `__add__` → `Add` using `NameMangler.Transform()`
-- **Delegation Pattern**: Operator calls the instance method, allowing user override
+**Key Details**:
+1. **Parameter Handling**: Filters out `self` parameter, uses the second parameter for `right` type
+2. **Name Mangling**: Transforms `__add__` → `Add` using `NameMangler.Transform(funcDef.Name, NameContext.Method)`
+3. **Type Resolution**:
+   - Return type defaults to class type if not specified
+   - Right operand type comes from parameter annotation or defaults to class type
+4. **Delegation Pattern**: The operator overload **delegates** to the actual method implementation (`left.Add(right)`)
 
-**Why Delegation?**
-The operator doesn't duplicate the implementation—it calls the transformed dunder method. This means:
-1. Users can override the method in derived classes
-2. The implementation exists in one place (the method)
-3. Operators provide syntactic sugar for the method call
-
-**Example with Custom Type**:
-```python
-# Python
-def __mul__(self, scalar: int) -> Vector:
-    ...
-
-# Generated C#
-public static Vector operator *(Vector left, int right)
-{
-    return left.Mul(right);
-}
-```
+**Why Delegation?** This keeps the actual implementation logic in the method, making it accessible both via operators and explicit method calls if needed.
 
 ---
 
-### 3. Comparison Operator Generation
+#### `GenerateComparisonOperator(...)` (lines 128-169)
 
-#### `GenerateComparisonOperator(FunctionDef funcDef, string className, SyntaxKind operatorToken)`
+**Purpose**: Generates comparison operators (`==`, `!=`, `<`, `<=`, `>`, `>=`)
 
-**Purpose**: Creates comparison operators that always return `bool`.
+**Key Difference from Binary Operators**: Always returns `bool`, regardless of what the Python method's return type annotation says.
 
-**Key Difference from Binary Operators**:
 ```csharp
-// Binary operators can return any type
-var returnType = funcDef.ReturnType != null
-    ? _typeMapper.MapType(funcDef.ReturnType)
-    : IdentifierName(className);
+// From Python:
+// def __eq__(self, other: Point) -> bool:
+//     return self.x == other.x and self.y == other.y
 
-// Comparison operators ALWAYS return bool
-var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
-```
-
-**Generated Pattern**:
-```csharp
-public static bool operator ==(Vector left, Vector right)
+// Generates C#:
+public static bool operator ==(Point left, Point right)
 {
-    return left.Eq(right);  // Calls Eq() method
+    return left.Eq(right);
 }
 ```
 
-**C# Requirement**: If you define `==`, you must define `!=` (and vice versa). See complementary operators below.
+**Important**: C# requires comparison operators to return `bool`, so this overrides any other return type annotation.
 
 ---
 
-### 4. Unary Operator Generation
+#### `GenerateUnaryOperator(...)` (lines 174-202)
 
-#### `GenerateUnaryOperator(FunctionDef funcDef, string className, SyntaxKind operatorToken)`
-
-**Purpose**: Creates single-operand operators like negation or bitwise NOT.
+**Purpose**: Generates unary operators (`-`, `+`, `~`)
 
 **Generated Pattern**:
 ```csharp
-// Python:
-def __neg__(self) -> Vector:
-    return Vector(-self.x, -self.y)
+// From Python:
+// def __neg__(self) -> Vector:
+//     return Vector(-self.x, -self.y)
 
-// Generated C#:
+// Generates C#:
 public static Vector operator -(Vector value)
 {
-    return value.Neg();  // Calls Neg() method
+    return value.Neg();
 }
 ```
 
-**Supported Unary Operators**:
-- `__neg__` → `operator -` (negation)
-- `__pos__` → `operator +` (unary plus)
-- `__invert__` → `operator ~` (bitwise NOT)
+**Parameter Handling**: Only has `self`, which becomes the `value` parameter in C#.
 
 ---
 
-### 5. Complementary Operators
+### 3. Complementary Equality Operators
 
-#### `GenerateComplementaryEqualsOperator(string className)`
-#### `GenerateComplementaryNotEqualsOperator(string className)`
+C# has a strict requirement: if you define `operator ==`, you **must** also define `operator !=`, and vice versa. The compiler will issue a warning (CS0660/CS0661) otherwise.
 
-**Purpose**: C# requires paired definition of `==` and `!=`. These methods auto-generate the missing operator.
+#### `GenerateComplementaryEqualsOperator(string className)` (lines 207-229)
 
-**Why This Exists**: C# compiler error CS0216 requires both operators to be defined together.
+Generates `operator ==` when only `__ne__` is defined in Python.
 
-**Implementation**:
-```csharp
-// If user defines __eq__, generate __ne__ automatically:
-public static bool operator !=(ClassName left, ClassName right)
-{
-    return !(left == right);  // Delegate to ==
-}
+**Implementation**: `operator == → !(left != right)`
 
-// If user defines __ne__, generate __eq__ automatically:
-public static bool operator ==(ClassName left, ClassName right)
-{
-    return !(left != right);  // Delegate to !=
-}
-```
+#### `GenerateComplementaryNotEqualsOperator(string className)` (lines 234-256)
 
-**Note**: These are likely called from `RoslynEmitter.ClassMembers.cs` when it detects only one of the pair is defined.
+Generates `operator !=` when only `__eq__` is defined in Python.
+
+**Implementation**: `operator != → !(left == right)`
+
+**Usage Context**: These methods are called from `RoslynEmitter.ClassMembers.cs` when processing class definitions to ensure C# requirements are met.
 
 ---
 
-### 6. Try Expression Support
+### 4. Special Sharpy Expression Forms
 
-#### `GenerateTryExpression(TryExpression tryExpr)`
+#### `GenerateTryExpression(TryExpression tryExpr)` (lines 262-300)
 
-**Purpose**: Implements Sharpy's `try` operator for safe exception handling.
+**Purpose**: Generates code for Sharpy's `try` expression syntax, which wraps risky operations in a `Result<T, E>` type.
 
-**Python-to-C# Translation**:
+**Sharpy Syntax**:
 ```python
-# Sharpy code:
-result = try read_file("data.txt")
-result_specific = try[FileNotFoundError] read_file("data.txt")
+# Simple try expression (catches all exceptions)
+result = try risky_operation()
 
-# Generated C#:
-var result = global::Sharpy.Core.Result.Try(() => ReadFile("data.txt"));
-var resultSpecific = global::Sharpy.Core.Result.Try<FileNotFoundError>(() => ReadFile("data.txt"));
+# Typed try expression (catches specific exception)
+result = try[ValueError] parse_int(input)
 ```
 
-**Return Type**: `Result[T, Exception]` where `T` is the expression's type.
-
-**Key Features**:
-- Wraps expression in a lambda: `() => operand`
-- Uses fully-qualified name: `global::Sharpy.Core.Result` to avoid namespace collisions
-- Supports generic exception types: `try[ExceptionType]` → `Result.Try<ExceptionType>()`
-- Defaults to catching all exceptions: `try expr` → catches `Exception`
-
-**Connection to Standard Library**: Relies on `Sharpy.Core.Result` type (likely a discriminated union).
-
----
-
-### 7. Maybe Expression Support
-
-#### `GenerateMaybeExpression(MaybeExpression maybeExpr)`
-
-**Purpose**: Converts nullable C# values to Sharpy's `Optional[T]` type.
-
-**Translation**:
-```python
-# Sharpy code:
-opt = maybe nullable_value
-
-# Generated C#:
-var opt = global::Sharpy.Core.Optional.From(nullableValue);
-```
-
-**Use Case**: Bridges C# nullable references (`string?`) with Sharpy's type-safe option type.
-
-**Connection to Standard Library**: Uses `Sharpy.Core.Optional.From()` static method.
-
----
-
-### 8. Floor Division Implementation
-
-#### `GenerateFloorDivision(ExpressionSyntax left, ExpressionSyntax right, bool hasFloatOperand)`
-
-**Purpose**: Implements Python's `//` operator with correct floor-toward-negative-infinity semantics.
-
-**Critical Difference from C# `/` Operator**:
-```python
-# Python floor division
--7 // 2  # → -4 (floors toward -∞)
-
-# C# integer division
--7 / 2   # → -3 (truncates toward 0)
-```
-
-**Implementation Strategy**:
+**Generated C# Code**:
 ```csharp
-// For integer operands: (int)Math.Floor((double)a / b)
-// For float operands: Math.Floor((double)(a / b))
+// Simple form:
+var result = global::Sharpy.Core.Result.Try(() => risky_operation());
+
+// Typed form:
+var result = global::Sharpy.Core.Result.Try<ValueError>(() => parse_int(input));
 ```
 
-**Generated Code Example**:
-```csharp
-// x // y where both are int
-(int)System.Math.Floor((double)((double)x / y))
+**Key Details**:
+1. Wraps the operand in a parameterless lambda `() => expr`
+2. Uses fully qualified `global::Sharpy.Core.Result` to avoid namespace conflicts
+3. Exception type defaults to `Exception` if not specified
+4. Returns a `Result<T, E>` that must be pattern-matched or unwrapped
 
-// x // y where either is float
-System.Math.Floor((double)(x / y))
-```
-
-**Design Decisions**:
-1. **Always cast to `double`**: Avoids CS0121 ambiguity between `Math.Floor(double)` and `Math.Floor(decimal)`
-2. **Fully-qualified `System.Math`**: Prevents conflicts with `Sharpy.Math` namespace
-3. **Pragmatic int32 return**: Spec says return `int64`, but uses `int32` for .NET compatibility
-4. **Float detection**: Uses `IsFloatExpression()` to determine if result should be `double`
-
-**See Also**: `docs/language_specification/arithmetic_operators.md` for floor division semantics.
+**Design Philosophy**: This follows Sharpy's "railway-oriented programming" approach, making error handling explicit without try/catch boilerplate.
 
 ---
 
-### 9. Loop Else Support
+#### `GenerateMaybeExpression(MaybeExpression maybeExpr)` (lines 306-319)
 
-#### `TransformLoopBodyForElse(List<Statement> body, string flagName)`
-#### `TransformStatementForLoopElse(Statement stmt, string flagName)`
+**Purpose**: Converts nullable expressions into Sharpy's `Optional<T>` type.
 
-**Purpose**: Implements Python's `for/else` and `while/else` constructs where the `else` block runs only if the loop completes without `break`.
+**Sharpy Syntax**:
+```python
+# Convert nullable to Optional
+maybe_value = maybe get_nullable_string()
+```
 
-**Python Semantics**:
+**Generated C# Code**:
+```csharp
+var maybe_value = global::Sharpy.Core.Optional.From(get_nullable_string());
+```
+
+**Purpose**: Bridges between .NET's nullable reference types (`T?`) and Sharpy's explicit `Optional<T>` type for safer null handling.
+
+---
+
+### 5. Utility Methods
+
+#### `GenerateTempVarName(string prefix)` (lines 324-327)
+
+**Purpose**: Generates unique temporary variable names to avoid collisions.
+
+**Pattern**: `__{prefix}_{counter++}`
+
+**Example**: `__temp_0`, `__temp_1`, `__loopFlag_0`
+
+---
+
+#### Loop Else Support (lines 333-379)
+
+Python's `for`/`while` loops support an `else` clause that executes only if the loop completes naturally (no `break`):
+
 ```python
 for item in items:
     if item == target:
         break
 else:
-    print("Not found")  # Runs only if break was NOT hit
+    print("Not found")  # Only runs if no break occurred
 ```
+
+**Challenge**: C# has no equivalent construct.
+
+**Solution**: Transform the loop body to track whether a `break` occurred using a flag.
+
+##### `TransformLoopBodyForElse(...)` (lines 333-341)
+
+Transforms all statements in a loop body to support else clause tracking.
+
+##### `TransformStatementForLoopElse(Statement stmt, string flagName)` (lines 347-379)
 
 **Transformation Strategy**:
-1. Create a boolean flag (initialized to `true`)
-2. Transform `break` statements to set flag to `false` before breaking
-3. Check flag after loop to determine if `else` block should run
+1. **Break Statements**: Transform `break` → `{ flag = false; break; }`
+2. **If Statements**: Recursively transform nested if/elif/else bodies
+3. **Nested Loops**: Do NOT transform (nested loops have their own break semantics)
+4. **Other Statements**: Pass through unchanged
 
-**AST Transformation**:
+**Generated Pattern**:
 ```csharp
-// Original AST:
-BreakStatement
-
-// Transformed AST:
-BreakWithFlagStatement { FlagName = "loopCompleted_1" }
-```
-
-**Recursive Handling**:
-- **Transforms**: `if` statements (recursively processes branches)
-- **Preserves**: Nested loops (their breaks apply to their own loop, not the outer one)
-- **Passes through**: All other statements unchanged
-
-**Generated C# Pattern** (conceptual):
-```csharp
-bool loopCompleted_1 = true;
-foreach (var item in items)
+bool __loopCompleted_0 = true;
+while (condition)
 {
-    if (item == target)
+    if (should_break)
     {
-        loopCompleted_1 = false;
+        __loopCompleted_0 = false;
         break;
     }
 }
-if (loopCompleted_1)
+if (__loopCompleted_0)
 {
-    Console.WriteLine("Not found");
+    // else clause code
 }
 ```
 
-**Note**: The actual C# generation likely happens in `RoslynEmitter.Statements.cs`.
+**Special AST Node**: Uses `BreakWithFlagStatement` (defined elsewhere) to represent the transformed break.
 
 ---
 
-### 10. Expression Analysis Utilities
+#### `IsFloatExpression(Expression expr)` (lines 385-407)
 
-#### `IsFloatExpression(Expression expr)`
+**Purpose**: Determines if an expression evaluates to a floating-point type at compile time.
 
-**Purpose**: Determines if an expression will evaluate to a floating-point type.
+**Why This Matters**: Floor division (`//`) has different semantics and return types depending on operand types:
+- Integer operands: `(int)Math.Floor((double)a / b)` → returns `int32`
+- Float operands: `Math.Floor(a / b)` → returns `double`
 
-**Why This Matters**: Python's division semantics differ for int vs. float:
-- `10 / 3` → `3.333...` (always float in Python 3)
-- `10 // 3` → `3` (floor division, result type depends on operands)
+**Detection Logic**:
+1. **Literal**: `FloatLiteral` → `true`
+2. **Division/Power**: Always produces float (Python semantics)
+3. **Floor Division**: Recursive check on operands
+4. **Other Binary Ops**: Float if either operand is float
+5. **Unary/Parenthesized**: Recursive check
+6. **Default**: Assumes integer (conservative for static analysis)
 
-**Detection Strategy**:
-```csharp
-return expr switch
-{
-    FloatLiteral => true,
-    UnaryOp unary => IsFloatExpression(unary.Operand),
-    BinaryOp binOp => binOp.Operator switch
-    {
-        BinaryOperator.Divide => true,        // Always produces float
-        BinaryOperator.Power => true,         // Math.Pow returns double
-        BinaryOperator.FloorDivide => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right),
-        _ => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right)
-    },
-    Parenthesized paren => IsFloatExpression(paren.Expression),
-    _ => false  // Conservative: assume int for unknowns
-};
-```
-
-**Limitations**:
-- Assumes variables and function calls are integers (conservative)
-- A full implementation would query the semantic analyzer's type information
-
-**Use Case**: Called by `GenerateFloorDivision()` and likely `GenerateDivision()` in `RoslynEmitter.Expressions.cs`.
+**Limitation**: This is a static, syntactic analysis. It doesn't use full type inference, so complex expressions (variables, function calls) default to integer. The semantic analysis phase would have more accurate type information.
 
 ---
 
-#### `IsEnumTypeExpression(Expression expr)`
+#### `GenerateFloorDivision(...)` (lines 417-444)
 
-**Purpose**: Checks if an expression evaluates to an enum type.
+**Purpose**: Implements Python's floor division (`//`) with correct semantics.
 
-**Why This Matters**: Sharpy allows `.value` access on enums:
+**Python Floor Division Semantics**: Rounds toward **negative infinity**, not toward zero (truncation).
+
 ```python
+# Python:
+7 // 2   →  3
+-7 // 2  → -4  (not -3!)
+```
+
+**C# Implementation Strategy**:
+```csharp
+// Integer operands:
+(int)System.Math.Floor((double)(left / right))
+
+// Float operands:
+System.Math.Floor((double)(left / right))
+```
+
+**Important Details**:
+
+1. **Double Cast**: Always casts to `double` to avoid `CS0121` ambiguity between `Math.Floor(double)` and `Math.Floor(decimal)`
+2. **Fully Qualified Name**: Uses `System.Math` not `Math` to avoid conflicts with potential `Sharpy.Math` namespace
+3. **Pragmatic Return Type**:
+   - Integer operands → `int32` (spec says `int64`, but `int32` is more .NET-idiomatic)
+   - Float operands → `double`
+4. **Comments in Code**: Extensive comments explain the deviation from spec for pragmatic .NET compatibility
+
+**Design Trade-off**: The spec calls for `int64` return type for integer floor division, but this implementation returns `int32` for better .NET interop (most variables are `int`, augmented assignment works naturally).
+
+---
+
+#### `IsEnumTypeExpression(Expression expr)` (lines 450-463)
+
+**Purpose**: Determines if an expression refers to an enum type variable.
+
+**Use Case**: When accessing `.value` on an enum, should translate to an `int` cast in C#:
+
+```python
+# Sharpy:
 color = Color.RED
-numeric_value = color.value  # Access underlying int value
+value = color.value  # Get underlying int value
+
+# C#:
+var color = Color.RED;
+var value = (int)color;
 ```
 
 **Implementation**:
-```csharp
-if (expr is Identifier id)
-{
-    var symbol = _context.LookupSymbol(id.Name);
-    if (symbol is VariableSymbol varSymbol &&
-        varSymbol.Type is UserDefinedType udt &&
-        udt.Symbol?.TypeKind == TypeKind.Enum)
-    {
-        return true;
-    }
-}
-return false;
-```
+1. Checks if expression is an `Identifier`
+2. Looks up symbol in semantic context
+3. Checks if symbol is a variable with `UserDefinedType` of `TypeKind.Enum`
 
-**Connection to Semantic Analysis**: Queries `_context` (the `CodeGenContext`) which wraps `SemanticInfo` from the semantic analyzer.
-
-**Use Case**: Likely used in member access generation to translate `.value` → `(int)enumVar`.
+**Limitation**: Only handles simple identifier expressions, not complex enum expressions.
 
 ---
 
-#### `CollectReferencedIdentifiers(Expression? expr, HashSet<string> identifiers)`
+#### `CollectReferencedIdentifiers(...)` (lines 470-585)
 
-**Purpose**: Recursively finds all identifiers referenced in an expression.
+**Purpose**: Recursively walks an expression tree to collect all identifier names referenced.
 
-**Why This Matters**: Determines whether a module-level variable declaration should be:
-- A **field** (if referenced by other fields)
-- A **local in Main** (if only used in imperative code)
+**Use Case**: **Module-level variable dependency analysis**. Determines whether a variable declaration should be:
+- A **module-level field** (if it references other module-level variables)
+- A **local variable in Main** (if it only uses local values)
 
-**Recursive Traversal**:
-```csharp
-switch (expr)
-{
-    case Identifier id:
-        identifiers.Add(id.Name);  // Base case
-        break;
-    case BinaryOp binOp:
-        CollectReferencedIdentifiers(binOp.Left, identifiers);
-        CollectReferencedIdentifiers(binOp.Right, identifiers);
-        break;
-    case FunctionCall call:
-        CollectReferencedIdentifiers(call.Function, identifiers);
-        foreach (var arg in call.Arguments)
-            CollectReferencedIdentifiers(arg, identifiers);
-        // ... keyword args
-        break;
-    // ... 20+ more cases
-}
+**Coverage**: Handles all expression types:
+- Simple: `Identifier`, literals
+- Compound: `BinaryOp`, `UnaryOp`, `FunctionCall`
+- Collections: `ListLiteral`, `DictLiteral`, `SetLiteral`, `TupleLiteral`
+- Advanced: Comprehensions, f-strings, lambda expressions, conditionals
+- Access: `MemberAccess`, `IndexAccess`, `SliceAccess`
+
+**Example**:
+```python
+# Module level:
+PI = 3.14159
+radius = 5
+area = PI * radius * radius  # References PI and radius
+
+# CollectReferencedIdentifiers(area's initializer) → {"PI", "radius"}
+# Conclusion: area must be a field, not a local in Main
 ```
 
-**Handles**:
-- Binary/unary operators
-- Function calls (function expression + arguments)
-- Member access (recurse on object)
-- Collection literals (lists, dicts, sets, tuples)
-- Comprehensions (element expression + iterator/condition clauses)
-- Lambda expressions (body may reference outer scope)
-- F-strings (interpolated expressions)
-- Conditional expressions
-
-**Use Case**: Called during module initialization to build dependency graph for variable ordering.
-
----
-
-### 11. Utility Methods
-
-#### `GenerateTempVarName(string prefix)`
-
-**Purpose**: Creates unique temporary variable names.
-
-**Implementation**:
-```csharp
-private string GenerateTempVarName(string prefix)
-{
-    return $"__{prefix}_{_tempVarCounter++}";
-}
-```
-
-**Generated Names**: `__loopCompleted_1`, `__temp_2`, `__result_3`, etc.
-
-**Design**: Double underscore prefix avoids collision with user variables (Python convention).
-
----
-
-#### `ShouldGenerateDunderMethod(string dunderName)`
-
-**Purpose**: Determines if a dunder method should generate a C# method (vs. just an operator).
-
-**Decision Logic**:
-```csharp
-if (dunderName == "__init__")
-    return true;  // Special constructor handling
-
-return ProtocolRegistry.IsProtocolDunder(dunderName);
-```
-
-**Protocol Dunders**: Methods that map to .NET protocols (e.g., `__str__` → `ToString()`, `__iter__` → `GetEnumerator()`).
-
-**Why This Matters**:
-- Some dunders become **only operators** (`__add__` → `operator +`)
-- Some dunders become **only methods** (`__str__` → `ToString()`)
-- Some dunders become **both** (e.g., `__eq__` → both `operator ==` and `Equals()` method)
-
-**Avoids Conflicts**: Prevents generating redundant methods that clash with user-defined methods.
-
-**Connection**: Likely used in `RoslynEmitter.ClassMembers.cs` when deciding which members to emit.
+**Recursive Strategy**: Each expression type handler recursively calls itself on sub-expressions, building up a set of all referenced identifiers.
 
 ---
 
 ## Dependencies
 
-### Internal Dependencies (Sharpy Codebase)
+### Internal Sharpy Dependencies
 
-1. **`Sharpy.Compiler.Parser.Ast`**
-   - All expression types: `BinaryOp`, `UnaryOp`, `FunctionCall`, etc.
-   - Statement types: `IfStatement`, `WhileStatement`, `ForStatement`, `BreakStatement`
-   - Literals: `IntegerLiteral`, `FloatLiteral`, etc.
-   - Special expressions: `TryExpression`, `MaybeExpression`
+1. **Sharpy.Compiler.Parser.Ast**: All AST node types (`FunctionDef`, `Expression`, `Statement`, etc.)
+2. **Sharpy.Compiler.Semantic**:
+   - `CodeGenContext` - Symbol table lookup
+   - `ProtocolRegistry` - Dunder method protocol mappings
+   - `TypeKind`, `VariableSymbol`, `UserDefinedType` - Type information
+3. **Sharpy.Compiler.CodeGen.NameMangler**: Transforms Python names to C# names (`__add__` → `Add`)
+4. **Sharpy.Compiler.CodeGen.TypeMapper**: Maps Python type annotations to C# types
 
-2. **`Sharpy.Compiler.Semantic`**
-   - `SemanticInfo`: Type information and symbol tables
-   - `VariableSymbol`: Variable type information
-   - `UserDefinedType`: Custom class/enum types
-   - `TypeKind`: Enum distinguishing class vs. enum vs. interface
+### External Dependencies
 
-3. **`CodeGenContext`** (from `RoslynEmitter.cs`)
-   - `_context`: Wraps `SemanticInfo` for symbol lookup
-   - `LookupSymbol()`: Resolves identifier names to symbols
-
-4. **`TypeMapper`** (from `RoslynEmitter.cs`)
-   - `_typeMapper.MapType()`: Converts Python type annotations to C# `TypeSyntax`
-   - Handles primitives, generics, and user-defined types
-
-5. **`NameMangler`** (likely in `CodeGen` namespace)
-   - `NameMangler.Transform(name, NameContext.Method)`: Converts `__add__` → `Add`, `__init__` → constructor, etc.
-
-6. **`ProtocolRegistry`** (likely in `CodeGen` or `Semantic`)
-   - `IsProtocolDunder()`: Checks if a dunder implements a .NET protocol
-
-### External Dependencies (Roslyn)
-
-All from **`Microsoft.CodeAnalysis.CSharp`** and **`Microsoft.CodeAnalysis.CSharp.Syntax`**:
-
-- **Syntax Factory** (imported as `using static SyntaxFactory`):
-  - `OperatorDeclaration()`: Creates operator overload syntax
-  - `Parameter()`, `ParameterList()`: Creates parameter lists
-  - `IdentifierName()`, `GenericName()`: Creates type references
-  - `BinaryExpression()`, `PrefixUnaryExpression()`: Creates expressions
-  - `InvocationExpression()`, `MemberAccessExpression()`: Creates method calls
-  - `Block()`, `ReturnStatement()`: Creates statement blocks
-
-- **Syntax Kinds**:
-  - Operator tokens: `SyntaxKind.PlusToken`, `SyntaxKind.EqualsEqualsToken`, etc.
-  - Expression kinds: `SyntaxKind.SimpleMemberAccessExpression`, etc.
-  - Keyword tokens: `SyntaxKind.PublicKeyword`, `SyntaxKind.StaticKeyword`, etc.
+1. **Microsoft.CodeAnalysis.CSharp**: Roslyn API for building C# syntax trees
+   - `SyntaxFactory` static methods for creating nodes
+   - `OperatorDeclarationSyntax`, `ExpressionSyntax`, etc.
+2. **System.Collections.Immutable**: `ImmutableArray` for immutable collections
 
 ---
 
 ## Patterns and Design Decisions
 
-### 1. Delegation Pattern for Operators
+### 1. **SyntaxFactory Exclusively**
 
-**Decision**: Operators delegate to instance methods rather than duplicating implementation.
+**Critical Rule**: RoslynEmitter uses `SyntaxFactory` methods exclusively, **never** string templating.
 
 ```csharp
-// Operator delegates to method:
+// CORRECT:
+var expr = BinaryExpression(
+    SyntaxKind.AddExpression,
+    IdentifierName("left"),
+    IdentifierName("right"));
+
+// WRONG (not used in Sharpy):
+var code = $"{left} + {right}";
+```
+
+**Why**: SyntaxFactory produces properly structured, type-safe syntax trees that Roslyn can analyze and transform. String templating is brittle and error-prone.
+
+---
+
+### 2. **Delegation Pattern for Operators**
+
+Generated operator overloads **delegate** to the actual method implementation:
+
+```csharp
+// Operator overload (generated):
 public static Vector operator +(Vector left, Vector right)
 {
-    return left.Add(right);  // Calls the Add() method
+    return left.Add(right);  // Delegates to method
 }
 
-// The method contains the actual implementation:
-public Vector Add(Vector other)
+// Method implementation (generated from __add__ body):
+public Vector Add(Vector right)
 {
-    return new Vector(this.x + other.x, this.y + other.y);
+    // Actual implementation here
 }
 ```
 
 **Benefits**:
-- Single source of truth for implementation
-- Enables polymorphism (derived classes can override the method)
-- Separation of concerns (syntax sugar vs. logic)
-
-**Tradeoff**: Slight performance overhead (extra method call), but JIT inlining likely eliminates this.
+- Keeps implementation in one place
+- Allows explicit method calls: `v1.Add(v2)` if needed
+- Follows C# best practices for operator overloading
 
 ---
 
-### 2. Conservative Type Inference
+### 3. **Immutable AST with Transformations**
 
-**Decision**: When type information is unavailable, assume safe defaults.
+**Axiom**: The AST is immutable. Annotations go in `SemanticInfo`, not AST nodes.
 
-**Examples**:
-- `IsFloatExpression()`: Returns `false` for unknown expressions (assumes int)
-- `IsEnumTypeExpression()`: Returns `false` unless proven to be an enum
-- Return types: Defaults to class type if no annotation exists
+However, loop else support requires AST transformation. How is this reconciled?
 
-**Rationale**: Better to generate slightly less optimal code than to crash or produce incorrect semantics.
-
----
-
-### 3. Fully-Qualified Names for Standard Library
-
-**Decision**: Use `global::Sharpy.Core.Result` instead of `Result`.
-
-**Why**:
-- Avoids namespace collision (user might have a `Result` class)
-- Makes code generation deterministic (doesn't depend on `using` statements)
-- Clearer dependency on standard library
-
-**Applied To**:
-- `global::Sharpy.Core.Result.Try()`
-- `global::Sharpy.Core.Optional.From()`
-- `System.Math.Floor()` (avoids conflict with `Sharpy.Math`)
-
----
-
-### 4. AST Transformation for Loop Else
-
-**Decision**: Transform AST nodes (`BreakStatement` → `BreakWithFlagStatement`) rather than generating C# directly.
-
-**Benefits**:
-- Separation of concerns: This file transforms AST, `RoslynEmitter.Statements.cs` generates C#
-- Easier testing: Can verify transformation without generating full C# code
-- Reusability: Transformed AST can be analyzed by other passes
-
-**Note**: `BreakWithFlagStatement` is likely a custom AST node type.
-
----
-
-### 5. Pattern Matching for Operator Dispatch
-
-**Decision**: Use C# switch expressions for clean, extensible operator mapping.
+**Solution**: Use `with` expressions (C# record syntax) to create modified copies:
 
 ```csharp
-return funcDef.Name switch
+IfStatement ifStmt => ifStmt with
 {
-    "__add__" => GenerateBinaryOperator(...),
-    "__eq__" => GenerateComparisonOperator(...),
-    "__neg__" => GenerateUnaryOperator(...),
-    _ => null
-};
+    ThenBody = TransformLoopBodyForElse(ifStmt.ThenBody, flagName),
+    // ... creates a new IfStatement with modified bodies
+}
 ```
 
-**Benefits**:
-- Exhaustiveness checking (compiler warns on missing cases)
-- Easy to add new operators
-- Self-documenting (all mappings in one place)
+This preserves immutability while allowing transformations during code generation.
 
 ---
 
-### 6. Pragmatic Floor Division Semantics
+### 4. **Pragmatic .NET Axiom Over Spec Purity**
 
-**Decision**: Return `int32` for integer floor division instead of spec-mandated `int64`.
+**Example**: Floor division return type
 
-**Rationale** (from code comments):
-> Spec says integer floor division should return int64, but we return int32 for .NET compatibility with most use cases (augmented assignment, common variables).
+- **Spec says**: Integer floor division should return `int64`
+- **Implementation returns**: `int32`
+- **Reason**: Most .NET code uses `int` (alias for `int32`), so returning `int32` enables smoother interop, augmented assignment, and variable declarations without constant type conflicts
 
-**Tradeoff**: Technically non-compliant with spec, but more ergonomic for .NET developers.
+**Axiom Hierarchy** (from CLAUDE.md):
+1. .NET Compatibility (highest priority)
+2. Type Safety
+3. Python Syntax Fidelity (lowest priority)
 
-**See Also**: `docs/language_specification/arithmetic_operators.md` for official specification.
+When these conflict, .NET wins.
+
+---
+
+### 5. **Fully Qualified Names for Runtime Support**
+
+Always uses `global::Sharpy.Core.Result` not just `Result`:
+
+```csharp
+IdentifierName("global::Sharpy.Core.Result")  // Safe
+IdentifierName("Result")                       // Risky - could conflict with user types
+```
+
+**Why**: User code might define their own `Result` type. Fully qualified names avoid ambiguity.
+
+---
+
+### 6. **Temporary Variable Naming Convention**
+
+Pattern: `__{purpose}_{counter}`
+
+**Examples**: `__temp_0`, `__loopCompleted_1`, `__flagName_2`
+
+**Why Double Underscore**: Python reserves single underscore prefixes for weak internal symbols. Double underscore is Sharpy's convention for compiler-generated identifiers, making them obviously non-user-defined.
 
 ---
 
 ## Debugging Tips
 
-### 1. Operator Not Generated
+### 1. **Use the `/emit` Command**
 
-**Symptom**: Python class with `__add__` but C# code doesn't have `operator +`.
+When debugging operator generation issues:
 
-**Debug Steps**:
-1. Check if `TryGenerateOperatorOverload()` is called (likely in `RoslynEmitter.ClassMembers.cs`)
-2. Verify dunder name matches exactly (case-sensitive)
-3. Check parameter count (binary operators need 2 params including `self`)
-4. Ensure return type is mappable by `TypeMapper`
-
-**Common Gotcha**: If the method has wrong parameter count, it throws `InvalidOperationException` in `GenerateBinaryOperator()`:
-```csharp
-if (otherParam == null)
-{
-    throw new InvalidOperationException($"Binary operator {funcDef.Name} must have at least 2 parameters");
-}
+```bash
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy
 ```
+
+This shows the generated C# code, letting you see exactly what operator overloads were created.
 
 ---
 
-### 2. Floor Division Generates Wrong Result
+### 2. **Common Operator Issues**
 
-**Symptom**: `x // y` produces wrong value (e.g., truncates instead of floors).
+**Problem**: Operator not being generated
 
-**Debug Steps**:
-1. Check if `hasFloatOperand` is computed correctly
-2. Verify `IsFloatExpression()` handles your expression type
-3. Add debug output to see the generated C# expression
-
-**Example**:
-```python
-x = -7
-y = 2
-result = x // y  # Should be -4, not -3
-```
-
-**Check Generated C#**:
-```csharp
-// Should generate:
-(int)System.Math.Floor((double)((double)x / y))
-
-// NOT just:
-x / y  // This would give -3 (truncation)
-```
+**Checks**:
+1. Is the dunder method name spelled correctly? (`__add__` not `__Add__`)
+2. Is it in the `TryGenerateOperatorOverload` switch statement?
+3. Does it have the right parameter count?
+4. Check if it's excluded (like `__pow__`, `__getitem__`)
 
 ---
 
-### 3. Wrong Method Called from Operator
+### 3. **Floor Division Confusion**
 
-**Symptom**: `a + b` calls wrong method or method doesn't exist.
+**Symptom**: Floor division produces unexpected results
 
 **Debug Steps**:
-1. Check name mangling: `__add__` should become `Add`
-2. Verify `NameMangler.Transform()` is using `NameContext.Method`
-3. Ensure the method was actually generated in the class (check `RoslynEmitter.ClassMembers.cs`)
-
-**Debugging Trick**: Add a breakpoint in `GenerateBinaryOperator()` at line 108:
-```csharp
-var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
-// Check methodName value here
-```
+1. Check `IsFloatExpression` result - is it detecting float/int correctly?
+2. Verify the generated C# uses `System.Math.Floor`
+3. Confirm the division is happening in `double` space before flooring
+4. Test with negative numbers: `-7 // 2` should be `-4` not `-3`
 
 ---
 
-### 4. Loop Else Block Doesn't Execute
+### 4. **Loop Else Not Working**
 
-**Symptom**: Python `for/else` generates C# code but `else` block always/never runs.
+**Symptom**: Else clause executes when it shouldn't (or vice versa)
 
 **Debug Steps**:
-1. Check if `TransformLoopBodyForElse()` was called
-2. Verify break statements were transformed to `BreakWithFlagStatement`
-3. Ensure nested `if` statements had their bodies transformed recursively
-4. Check that nested loops were NOT transformed (they should be skipped)
-
-**Common Issue**: Forgetting to transform `elif` clauses:
-```csharp
-ElifClauses = ifStmt.ElifClauses.Select(e => e with
-{
-    Body = TransformLoopBodyForElse(e.Body, flagName)  // Must transform!
-}).ToList(),
-```
+1. Check that `TransformLoopBodyForElse` is being called
+2. Verify `BreakWithFlagStatement` nodes are generated
+3. Look for nested loops - are they being skipped correctly?
+4. Check flag variable naming - are there collisions?
 
 ---
 
-### 5. Try/Maybe Expression Type Errors
+### 5. **Complementary Operators Missing**
 
-**Symptom**: Generated C# has type mismatch when using `try` or `maybe`.
+**Symptom**: C# compiler warning CS0660/CS0661
 
-**Debug Steps**:
-1. Verify `Sharpy.Core.Result` and `Sharpy.Core.Optional` types exist
-2. Check if fully-qualified names resolve correctly
-3. Ensure lambda expression body is generated correctly
+**Issue**: Defined `operator ==` without `operator !=` (or vice versa)
 
-**Check Standard Library**:
-```csharp
-// These must exist in Sharpy.Core:
-Result.Try<TException>(Func<T> fn)
-Optional.From<T>(T? value)
-```
+**Fix**: Ensure `GenerateComplementaryEqualsOperator` or `GenerateComplementaryNotEqualsOperator` is called when processing class members.
 
 ---
 
-### 6. Missing Identifier in Collected References
+### 6. **Setting Breakpoints**
 
-**Symptom**: `CollectReferencedIdentifiers()` doesn't find an identifier.
+Key breakpoints for debugging:
 
-**Debug Steps**:
-1. Check if the expression type has a case in the switch statement
-2. Verify recursive calls for composite expressions
-3. Add your expression type if it's missing
-
-**Example**: If lambda expressions weren't handled:
-```csharp
-case LambdaExpression lambda:
-    CollectReferencedIdentifiers(lambda.Body, identifiers);  // Must recurse!
-    break;
-```
+- `TryGenerateOperatorOverload:37` - Entry point for all operators
+- `GenerateBinaryOperator:78` - Binary operator generation
+- `GenerateFloorDivision:417` - Floor division logic
+- `TransformStatementForLoopElse:347` - Loop else transformation
+- `CollectReferencedIdentifiers:470` - Dependency analysis
 
 ---
 
 ## Contribution Guidelines
 
-### When to Modify This File
-
-You should edit `RoslynEmitter.Operators.cs` when:
+### What Changes Might Be Made to This File?
 
 1. **Adding New Operator Support**
-   - Example: Adding `__matmul__` for matrix multiplication (`@` operator)
-   - Add case to `TryGenerateOperatorOverload()` switch
-   - Create generator method if needed (likely reuse `GenerateBinaryOperator()`)
+   - Add case to `TryGenerateOperatorOverload` switch
+   - Call appropriate generator (`GenerateBinaryOperator`, etc.)
+   - Update operator documentation
 
-2. **Implementing New Special Expressions**
-   - Example: Adding `await` expressions or `with` expressions
-   - Create new `Generate*Expression()` method
-   - Call it from `GenerateExpression()` in `RoslynEmitter.Expressions.cs`
+2. **Fixing Operator Semantics**
+   - Modify generator methods to adjust parameter types, return types, or delegation patterns
+   - Ensure delegation still calls the correct mangled method name
 
-3. **Fixing Operator Semantics**
-   - Example: Correcting floor division behavior
-   - Modify `GenerateFloorDivision()` or `IsFloatExpression()`
+3. **Adding New Special Expression Forms**
+   - Add new `GenerateXxxExpression` methods
+   - Call from `GenerateExpression` in `RoslynEmitter.Expressions.cs`
+   - Follow the pattern of wrapping in Sharpy.Core runtime types
 
-4. **Adding Expression Analysis**
-   - Example: Detecting string expressions for concatenation optimization
-   - Add new `Is*Expression()` helper method
-   - Call it from relevant code generation methods
+4. **Improving Type Detection**
+   - Enhance `IsFloatExpression` to use semantic type information instead of syntactic patterns
+   - Similar improvements to `IsEnumTypeExpression`
 
-5. **Improving Loop Else Support**
-   - Example: Handling `try/except` blocks within loops
-   - Modify `TransformStatementForLoopElse()` to add new statement type
-
-### Code Style Guidelines
-
-**Follow Existing Patterns**:
-```csharp
-// Use switch expressions for dispatching
-return funcDef.Name switch
-{
-    "__new_op__" => GenerateNewOperator(...),
-    _ => null
-};
-
-// Use Roslyn SyntaxFactory fluent API
-return OperatorDeclaration(returnType, Token(operatorToken))
-    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
-    .WithParameterList(...)
-    .WithBody(...);
-
-// Document complex logic with XML comments
-/// <summary>
-/// Brief description
-/// </summary>
-private SomeReturnType SomeMethod(...)
-```
-
-**Naming Conventions**:
-- Private methods: `GenerateXyz()`, `TransformXyz()`, `IsXyz()`, `CollectXyz()`
-- Temp variables: `__prefix_N` with counter
-- Method parameters: `left`/`right` for operators, `value` for unary
-
-**Error Handling**:
-- Throw `InvalidOperationException` for malformed AST (indicates compiler bug)
-- Use conservative defaults when type info is missing (don't crash)
+5. **Optimizing Generated Code**
+   - Example: Inline simple operator implementations instead of delegating
+   - Trade-off: Complexity vs. performance
 
 ### Testing Your Changes
 
-**Manual Testing**:
-1. Write Sharpy code using your new feature
-2. Compile with `sharpy compile test.spy`
-3. Inspect generated C# code
-4. Run compiled program to verify semantics
+When modifying this file:
 
-**Unit Testing**:
-- Add tests to `tests/Sharpy.Compiler.Tests/CodeGen/`
-- Test both operator generation and semantics
-- Include edge cases (missing types, nested structures, etc.)
+1. **Unit Tests**: Look in `src/Sharpy.Compiler.Tests/CodeGen/`
+2. **Integration Tests**: File-based tests in `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
+3. **Run Operator Tests**:
+   ```bash
+   dotnet test --filter "FullyQualifiedName~Operator"
+   ```
 
-**Integration Testing**:
-- Add to `tests/integration/` with `.spy` source and expected output
-- Verify end-to-end compilation and execution
+4. **Check Generated C#**:
+   ```bash
+   dotnet run --project src/Sharpy.Cli -- emit csharp test.spy
+   ```
 
-**Example Test Cases**:
-```python
-# Test floor division with mixed types
-assert 10 // 3 == 3
-assert -7 // 2 == -4
-assert 10.0 // 3 == 3.0
-
-# Test operator overloading
-v1 = Vector(1, 2)
-v2 = Vector(3, 4)
-v3 = v1 + v2  # Calls operator +
-assert v3.x == 4
-
-# Test try expression
-result = try risky_operation()
-assert result.is_ok or result.is_err
-```
+5. **Verify Axiom Compliance**: Use `/project:check-axioms` for major changes
 
 ---
 
@@ -896,49 +675,42 @@ assert result.is_ok or result.is_err
 
 ### Related Partial Class Files
 
-This file is part of the `RoslynEmitter` partial class. Other related files:
+This file is part of the `RoslynEmitter` partial class. Related files:
 
-- **[RoslynEmitter.cs](RoslynEmitter.md)** - Main class definition, fields, constructor, entry point
-- **[RoslynEmitter.Expressions.cs](RoslynEmitter.Expressions.md)** - Expression generation (calls methods from this file)
-- **[RoslynEmitter.Statements.cs]** *(not yet documented)* - Statement generation (uses loop transformation from this file)
-- **[RoslynEmitter.ClassMembers.cs](RoslynEmitter.ClassMembers.md)** - Method/field generation (calls `TryGenerateOperatorOverload()`)
-- **[RoslynEmitter.TypeDeclarations.cs]** *(not yet documented)* - Class/enum/interface generation
-- **[RoslynEmitter.CompilationUnit.cs](RoslynEmitter.CompilationUnit.md)** - Top-level file structure
-- **[RoslynEmitter.ModuleClass.cs](RoslynEmitter.ModuleClass.md)** - Module initialization (uses `CollectReferencedIdentifiers()`)
+- [RoslynEmitter.cs](RoslynEmitter.md) - Main class definition and shared state
+- [RoslynEmitter.Expressions.md](RoslynEmitter.Expressions.md) - General expression generation (calls methods from this file)
+- [RoslynEmitter.ClassMembers.md](RoslynEmitter.ClassMembers.md) - Processes dunder methods in classes, calls `TryGenerateOperatorOverload`
+- [RoslynEmitter.Statements.md](RoslynEmitter.Statements.md) - Statement generation, uses loop transformation utilities
 
-### Dependencies on Other Modules
+### Dependencies
 
-- **`NameMangler`** - Name transformation (dunder → PascalCase)
-- **`TypeMapper`** - Type annotation mapping (Python → C#)
-- **`CodeGenContext`** - Symbol lookup and semantic info access
-- **`ProtocolRegistry`** - Dunder-to-protocol mapping
+- `NameMangler.cs` - Transforms `__add__` → `Add`, `snake_case` → `PascalCase`
+- `TypeMapper.cs` - Maps Python type annotations to C# types
+- `ProtocolRegistry.cs` - Defines which dunders map to .NET protocols (`__str__` → `ToString()`)
+- `CodeGenContext.cs` - Provides symbol table access for semantic lookups
 
-### Language Specification References
+### Language Specifications
 
-- **[docs/language_specification/arithmetic_operators.md]** - Floor division semantics, operator precedence
-- **[docs/language_specification/operator_overloading.md]** - Dunder method conventions
-- **[docs/language_specification/operator_precedence.md]** - Operator associativity and precedence
-- **[docs/language_specification/dotnet_interop.md]** - How Sharpy operators map to .NET
-
-### Standard Library Dependencies
-
-- **`Sharpy.Core.Result`** - Used by `try` expressions
-- **`Sharpy.Core.Optional`** - Used by `maybe` expressions
-- **`System.Math`** - Used for floor division
+- `docs/language_specification/operator_overloading.md` - Operator overloading rules
+- `docs/language_specification/arithmetic_operators.md` - Arithmetic operator semantics
+- `docs/language_specification/operator_precedence.md` - Operator precedence rules
+- `docs/language_specification/dotnet_interop.md` - .NET interop guidelines
 
 ---
 
 ## Summary
 
-This file is the **operator translation layer** of the Sharpy compiler, bridging Python's operator semantics with C#'s operator overloading system. It handles:
+`RoslynEmitter.Operators.cs` is a critical bridge between Python's dynamic operator protocol and C#'s static operator overloading system. It:
 
-1. **26 operator overloads** (binary, unary, comparison)
-2. **Special Python features** (`try`, `maybe`, floor division, loop else)
-3. **Type-aware code generation** (float detection, enum detection)
-4. **Dependency analysis** (identifier collection)
+- Translates dunder methods into C# operator overloads using a delegation pattern
+- Handles special Sharpy constructs like `try` and `maybe` expressions
+- Provides utilities for loop transformation (else clause support) and dependency analysis
+- Makes pragmatic decisions favoring .NET compatibility over spec purity when necessary
 
-**Key Insight**: Operators delegate to methods, keeping implementation in one place while providing syntactic sugar. This design enables polymorphism and follows C# best practices.
+Understanding this file is essential for:
+- Adding new operator support to Sharpy
+- Debugging operator-related code generation issues
+- Understanding how Python operator protocols map to .NET
+- Working with Sharpy's error handling and optional value features
 
-**When debugging**: Check parameter counts, verify name mangling, inspect type mapping, and ensure semantic info is available.
-
-**When contributing**: Follow the switch-expression dispatch pattern, use Roslyn fluent API, document complex logic, and add comprehensive tests.
+The code demonstrates careful attention to C# requirements (complementary operators), Python semantics (floor division), and practical .NET compatibility (int32 over int64).

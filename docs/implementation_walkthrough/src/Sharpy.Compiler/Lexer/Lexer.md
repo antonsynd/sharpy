@@ -4,74 +4,65 @@
 
 ---
 
-## Overview
+## 1. Overview
 
-The Lexer is the **first phase** of the Sharpy compiler pipeline. It transforms raw source code text (`.spy` files) into a stream of tokens that can be consumed by the Parser. Think of it as reading a sentence and breaking it into individual words, punctuation marks, and whitespace—except for code.
+The `Lexer` class is the first phase of the Sharpy compiler pipeline. It converts raw source text (`.spy` files) into a stream of tokens that the Parser can understand. This process is called **lexical analysis** or **tokenization**.
 
 **Key Responsibilities:**
-- Convert character stream into structured tokens (identifiers, keywords, numbers, strings, operators)
-- Track source location (line and column) for error reporting
-- Handle Python-style **indentation-based syntax** (INDENT/DEDENT tokens)
-- Support advanced string literals (f-strings, raw strings, triple-quoted strings)
-- Manage implicit line continuation inside brackets `()`, `[]`, `{}`
-- Validate syntax rules (proper indentation, valid escape sequences, number formats)
+- Convert source characters into tokens (keywords, identifiers, literals, operators, etc.)
+- Track Python-style indentation and emit INDENT/DEDENT tokens
+- Handle f-string interpolation with nested expressions
+- Manage bracket depth for implicit line continuation
+- Track line/column positions for error reporting
+- Skip comments and blank lines appropriately
 
 **Pipeline Position:**
 ```
 Source (.spy) → [LEXER] → Token Stream → Parser → AST → Semantic Analysis → RoslynEmitter → C#
 ```
 
-**Upstream Component:** Raw .spy source files
-**Downstream Component:** Parser (consumes token stream to build AST)
+## 2. Class Structure
 
----
-
-## Class/Type Structure
-
-### Main Class: `Lexer`
-
-The `Lexer` class is a **stateful scanner** that maintains position and context as it processes source code character by character.
-
-#### Core State Fields
+### Core State Fields
 
 ```csharp
-private readonly string _source;          // The complete source code
-private int _position;                     // Current character position (index into _source)
-private int _line = 1;                     // Current line number (1-based)
-private int _column = 1;                   // Current column number (1-based)
-private readonly Stack<int> _indentStack;  // Stack of indentation levels
-private readonly Queue<Token> _pendingTokens; // Buffered tokens (for DEDENT cascades)
+private readonly string _source;           // The complete source text being lexed
+private int _position;                     // Current position in _source
+private int _line = 1;                     // Current line number (1-indexed)
+private int _column = 1;                   // Current column number (1-indexed)
+private readonly Stack<int> _indentStack;  // Tracks indentation levels
+private readonly Queue<Token> _pendingTokens; // Buffered tokens (for multiple DEDENTs)
 private bool _atLineStart = true;          // Are we at the beginning of a line?
-private int _bracketDepth = 0;             // Depth inside (), [], or {}
-private readonly ICompilerLogger _logger;  // Optional diagnostic logger
+private int _bracketDepth = 0;             // Track nesting inside (), [], or {}
+private readonly ICompilerLogger _logger;  // Optional logger for debugging
+private readonly Stack<FStringContext> _fstringStack; // F-string state stack
 ```
 
-**Why these matter:**
-- `_position`, `_line`, `_column`: Track exact source location for every token (critical for error messages)
-- `_indentStack`: Implements Python-style indentation tracking (base is 0, pushed/popped as indentation changes)
-- `_pendingTokens`: When dedenting multiple levels at once, we queue extra DEDENT tokens
-- `_atLineStart`: Tells us when to measure indentation (only at line start, not inside brackets)
-- `_bracketDepth`: Enables implicit line continuation—newlines inside `()`, `[]`, `{}` are ignored
+**Important Design Decisions:**
 
-#### F-String State
+1. **Indentation Stack**: Uses a stack to track nested indentation levels. Starts with `[0]` representing column 0. When indentation increases, push the new level and emit INDENT. When decreasing, pop levels and emit DEDENT for each.
 
-F-strings (interpolated strings like `f"Hello {name}"`) require complex state management:
+2. **Pending Tokens Queue**: When dedenting multiple levels (e.g., from 8 spaces to 0), we need to emit multiple DEDENT tokens. Since `NextToken()` returns one token at a time, we queue the extras here.
+
+3. **Bracket Depth**: Python allows implicit line continuation inside brackets. When `_bracketDepth > 0`, newlines are treated as whitespace, not NEWLINE tokens.
+
+4. **F-String Stack**: F-strings can be nested (e.g., `f"outer {f'inner {x}'}"`) and contain complex expressions. The stack tracks each f-string context including its quote character, brace depth, and format spec state.
+
+### F-String Context
 
 ```csharp
-private readonly Stack<FStringContext> _fstringStack;
-
 private class FStringContext
 {
     public char QuoteChar { get; set; }      // ' or "
-    public bool IsTriple { get; set; }        // """ or '''
-    public int BraceDepth { get; set; }       // Track nested { } in expressions
-    public bool InFormatSpec { get; set; }    // Inside format spec after ':'
+    public bool IsTriple { get; set; }       // Triple-quoted?
+    public int BraceDepth { get; set; }      // Nesting level of { } inside expressions
+    public bool InFormatSpec { get; set; }   // Are we processing :format_spec?
 }
 ```
 
-**Why a stack?** Nested f-strings are possible: `f"outer {f'inner {x}'}"`. Each level needs its own context.
+This nested class tracks the state of an f-string being lexed. The `BraceDepth` is crucial for handling nested dict literals inside interpolations: `f"{{'key': value}}"`.
 
-#### Keyword Mapping
+### Keyword Dictionary
 
 ```csharp
 private static readonly Dictionary<string, TokenType> Keywords = new()
@@ -79,96 +70,99 @@ private static readonly Dictionary<string, TokenType> Keywords = new()
     { "def", TokenType.Def },
     { "class", TokenType.Class },
     { "if", TokenType.If },
-    { "True", TokenType.True },
-    { "False", TokenType.False },
-    { "None", TokenType.None },
-    { "and", TokenType.And },
-    { "or", TokenType.Or },
-    { "not", TokenType.Not },
-    // ... ~50 total keywords
+    // ... ~50 keywords total
 };
 ```
 
-This static dictionary enables O(1) keyword lookup after reading an identifier. See `docs/language_specification/keywords.md` for the complete keyword list.
+Maps string keywords to their token types. This is consulted in `ReadIdentifierOrKeyword()` to distinguish keywords from identifiers.
 
----
+## 3. Key Methods
 
-## Key Functions/Methods
-
-### 1. `NextToken()` - The Heart of the Lexer
-
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs:142`
-
-**What it does:** Returns the next token from the source stream. This is the core method that orchestrates all tokenization.
-
-**Key parameters:** None (uses internal state)
-**Returns:** `Token` - The next token in the stream
-
-**Flow:**
+### 3.1 Constructor
 
 ```csharp
-public Token NextToken()
-{
-    // 1. Return pending tokens first (DEDENT cascade)
-    if (_pendingTokens.Count > 0)
-        return _pendingTokens.Dequeue();
-
-    // 2. F-string mode takes priority
-    if (_fstringStack.Count > 0)
-        return NextFStringToken();
-
-    // 3. Handle EOF (and generate remaining DEDENTs)
-    if (_position >= _source.Length)
-    {
-        if (_indentStack.Count > 1)
-        {
-            _indentStack.Pop();
-            return new Token(TokenType.Dedent, "", _line, _column);
-        }
-        return new Token(TokenType.Eof, "", _line, _column);
-    }
-
-    // 4. Handle indentation at line start
-    if (_atLineStart && _bracketDepth == 0)
-    {
-        // [Indentation logic - see MeasureIndentation()]
-    }
-
-    // 5. Skip whitespace
-    SkipWhitespace();
-
-    // 6. Dispatch based on current character
-    var current = _source[_position];
-
-    if (current == '#') return ReadComment();
-    if (current == '\\') /* Handle line continuation */;
-    if (current == '\n' || current == '\r') /* Handle newline */;
-    if (current == '"' || current == '\'') return ReadString();
-    if (current == 'f' && /*...*/) return ReadFStringStart();
-    if (char.IsDigit(current)) return ReadNumber();
-    if (char.IsLetter(current) || current == '_') return ReadIdentifierOrKeyword();
-
-    return ReadOperatorOrDelimiter();
-}
+public Lexer(string source, ICompilerLogger? logger = null, int startLine = 1, int startColumn = 1)
 ```
 
-**Key insight:** The method is a **dispatcher**—it peeks at the current character and routes to specialized readers.
+**Purpose**: Initialize the lexer with source text and optional logging.
 
-**Connects to upstream:** Reads from `_source` (raw source text)
-**Connects to downstream:** Returns tokens consumed by the Parser
+**Key Details:**
+- Starts with indentation stack containing `[0]` (base level)
+- If `startLine != 1` or `startColumn != 1`, sets `_atLineStart = false`
+  - This is used when lexing fragments (e.g., expressions inside f-strings)
+  - Fragment lexing skips indentation measurement
 
----
+**Why it matters**: The constructor sets up the initial state machine. The fragment detection is crucial for f-string expression lexing, where we need to tokenize Python expressions without treating their indentation as significant.
 
-### 2. Indentation Handling - The Python Difference
+### 3.2 `NextToken()` - The Main State Machine
 
-One of Sharpy's most distinctive features is Python-style indentation instead of braces. The lexer generates **synthetic tokens** (`INDENT` and `DEDENT`) that the parser uses to determine block structure. See `docs/language_specification/indentation.md` for the full specification.
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:142`
 
-#### `MeasureIndentation()`
+This is the heart of the lexer. It's a state machine that returns one token each time it's called.
 
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs:402`
+**Control Flow:**
 
-**What it does:** Measures leading whitespace at line start and validates indentation rules.
+```
+1. Return pending tokens (DEDENT queue)
+   ↓
+2. If inside f-string, call NextFStringToken()
+   ↓
+3. If EOF, emit remaining DEDENTs, then EOF token
+   ↓
+4. If at line start (and not in brackets), handle indentation
+   ↓
+5. Skip whitespace
+   ↓
+6. Dispatch based on current character:
+   - '#' → ReadComment()
+   - '\' → Handle line continuation or treat as operator
+   - '\n'/'\r' → Emit NEWLINE or skip if in brackets
+   - '"'/"'" → ReadString()
+   - 'f"'/'f\'' → ReadFStringStart()
+   - 'r"'/'r\'' → ReadRawString()
+   - '`' → ReadLiteralName()
+   - digit → ReadNumber()
+   - letter/'_' → ReadIdentifierOrKeyword()
+   - operator/delimiter → ReadOperatorOrDelimiter()
+```
 
+**Indentation Handling** (lines 167-247):
+
+This is the most complex part. When `_atLineStart` is true and we're not inside brackets:
+
+1. **Skip blank/comment lines**: Peek ahead to see if the line is blank or contains only a comment. If so, skip the entire line recursively without emitting NEWLINE.
+
+2. **Measure indentation**: Call `MeasureIndentation()` to count leading spaces.
+
+3. **Compare with stack**:
+   - **Indent**: `indentLevel > currentIndent` → Push new level, emit INDENT
+   - **Dedent**: `indentLevel < currentIndent` → Pop levels until match, emit DEDENT(s)
+   - **Same**: No token emitted
+
+**Why blank lines are special**: Python (and Sharpy) ignores blank lines and comment-only lines for indentation purposes. This prevents spurious DEDENT tokens from empty lines inside functions.
+
+**Connects to upstream**: Reads from `_source` (raw source text)
+**Connects to downstream**: Returns tokens consumed by the Parser
+
+### 3.3 `MeasureIndentation()`
+
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:411`
+
+**Purpose**: Count leading spaces and validate indentation rules.
+
+**Validation Rules:**
+1. **No tabs**: Throws `LexerError` if any tabs found
+2. **No mixed tabs/spaces**: Throws `LexerError` if both detected
+3. **Multiple of 4**: Throws `LexerError` if indent count is not divisible by 4
+4. **Must match previous level on dedent**: When dedenting, the new indent level must match some previously seen level in the stack
+
+**Why these rules**: Sharpy enforces strict 4-space indentation (unlike Python which is more permissive). This prevents subtle bugs from inconsistent indentation. See `docs/language_specification/indentation.md` for details.
+
+**Side Effects:**
+- Advances `_position` past the whitespace
+- Updates `_column` to reflect the new position
+
+**Algorithm:**
 ```csharp
 private int MeasureIndentation()
 {
@@ -189,10 +183,8 @@ private int MeasureIndentation()
     // Strict validation
     if (hasSpaces && hasTabs)
         throw new LexerError("Mixed tabs and spaces in indentation", _line, 1);
-
     if (hasTabs)
         throw new LexerError("Tabs are not allowed for indentation. Use 4 spaces.", _line, 1);
-
     if (indent % 4 != 0)
         throw new LexerError($"Indentation must be multiple of 4 spaces (found {indent})", _line, 1);
 
@@ -209,121 +201,42 @@ private int MeasureIndentation()
 }
 ```
 
-**Why so strict?** Mixing tabs/spaces or inconsistent indentation leads to hard-to-debug errors. Sharpy enforces 4-space indentation by design.
+### 3.4 `ReadString()`
 
-#### Generating INDENT/DEDENT Tokens
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:519`
 
-In `NextToken()`, after measuring indentation (lines 214-244):
+**Purpose**: Lex a regular string literal (`"hello"` or `'world'`).
 
-```csharp
-var indentLevel = MeasureIndentation();
-var currentIndent = _indentStack.Peek();
+**Algorithm:**
+1. Remember the opening quote character
+2. Check if it's a triple-quoted string (`"""` or `'''`)
+   - If yes, delegate to `ReadTripleQuotedString()`
+3. For single-line strings, read until:
+   - Closing quote → success
+   - Newline → error (unterminated string)
+   - Backslash → call `ProcessEscapeSequence()`
+   - EOF → error
 
-if (indentLevel > currentIndent)
-{
-    // Indenting deeper - push new level
-    _indentStack.Push(indentLevel);
-    _atLineStart = false;
-    return new Token(TokenType.Indent, "", _line, 1);
-}
-else if (indentLevel < currentIndent)
-{
-    // Dedenting - may need multiple DEDENT tokens
-    var dedents = new List<Token>();
-    while (_indentStack.Count > 1 && _indentStack.Peek() > indentLevel)
-    {
-        _indentStack.Pop();
-        dedents.Add(new Token(TokenType.Dedent, "", _line, 1));
-    }
+**Escape Sequences**: Supports `\n`, `\t`, `\r`, `\\`, `\'`, `\"`, `\xhh`, `\uhhhh`, `\Uhhhhhhhh`, and octal escapes.
 
-    // Return first DEDENT, queue the rest
-    for (int i = 1; i < dedents.Count; i++)
-        _pendingTokens.Enqueue(dedents[i]);
+**Why split triple-quoted**: Triple-quoted strings can span multiple lines, requiring different handling for line tracking.
 
-    return dedents[0];
-}
-```
+### 3.5 `ReadFStringStart()`
 
-**Example:**
-```python
-if x:
-    if y:
-        print("deep")
-print("back to top")  # Generates 2 DEDENT tokens
-```
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:634`
 
-**Important implementation detail:** When dedenting multiple levels, we generate multiple DEDENT tokens but can only return one per call. The extras are queued in `_pendingTokens` and returned on subsequent calls.
+**Purpose**: Begin lexing an f-string.
 
----
+**Algorithm:**
+1. Skip the `f` prefix
+2. Read the quote character (`'` or `"`)
+3. Check for triple-quoted f-strings
+4. Push a new `FStringContext` onto the stack
+5. Return `FStringStart` token
 
-### 3. String Literal Handling
+**Why use a stack**: F-strings can be nested inside each other's interpolation expressions, requiring a stack to track each level's context.
 
-Sharpy supports multiple string literal types, following Python conventions.
-
-#### Regular Strings (`ReadString()`)
-
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs:510`
-
-```csharp
-private Token ReadString()
-{
-    var quote = _source[_position];  // ' or "
-    _position++; _column++;
-
-    // Check for triple-quoted strings
-    var isTriple = _position + 1 < _source.Length &&
-                   _source[_position] == quote &&
-                   _source[_position + 1] == quote;
-
-    if (isTriple) return ReadTripleQuotedString(quote, startLine, startColumn);
-
-    // Single-line string
-    var sb = new StringBuilder();
-    while (_position < _source.Length)
-    {
-        var c = _source[_position];
-
-        if (c == quote) { /*...*/ return new Token(TokenType.String, sb.ToString(), ...); }
-        if (c == '\\') { sb.Append(ProcessEscapeSequence()); }
-        else if (c == '\n' || c == '\r') throw new LexerError("Unterminated string literal", ...);
-        else { sb.Append(c); _position++; _column++; }
-    }
-
-    throw new LexerError("Unterminated string literal", ...);
-}
-```
-
-**Key features:**
-- Single vs. triple-quoted detection
-- Escape sequence processing (`\n`, `\t`, `\xHH`, `\uHHHH`, etc.)
-- No newlines in single-quoted strings (throws error)
-
-#### F-Strings (`ReadFStringStart()` and `NextFStringToken()`)
-
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs:624` (start), `src/Sharpy.Compiler/Lexer/Lexer.cs:662` (content)
-
-F-strings are **the most complex feature** in the lexer. They require:
-1. Switching to a special "f-string mode"
-2. Alternating between literal text and embedded expressions
-3. Handling nested braces and format specifications
-
-**Entry point:**
-```csharp
-private Token ReadFStringStart()
-{
-    _position++;  // Skip 'f'
-    var quote = _source[_position];
-    _position++;  // Skip quote
-
-    var isTriple = /* check for triple quote */;
-    if (isTriple) { _position += 2; }
-
-    _fstringStack.Push(new FStringContext { QuoteChar = quote, IsTriple = isTriple });
-    return new Token(TokenType.FStringStart, ..., ...);
-}
-```
-
-**Token stream example:**
+**Example token stream:**
 ```python
 f"Hello {name:>10}"
 ```
@@ -338,502 +251,495 @@ FStringExprEnd("}")
 FStringEnd("\"")
 ```
 
-**The `NextFStringToken()` method** (~300 lines) handles:
-- Reading literal text until `{` or closing quote
-- Switching to expression mode (tokenize normally)
-- Detecting format specs (`:` at brace depth 1)
-- Escaped braces (`{{` → `{`, `}}` → `}`)
-- Nested braces in expressions
+### 3.6 `NextFStringToken()` - F-String State Machine
 
-**Algorithm for expression mode:** When `BraceDepth > 0`, the lexer tokenizes normally but tracks brace nesting. When a `:` is encountered at depth 1, it switches to format spec mode and reads the format specification as a single token until the closing `}`.
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:673`
 
----
+This is a mini state machine for lexing inside f-strings. It's called automatically by `NextToken()` when `_fstringStack.Count > 0`.
 
-### 4. Number Parsing (`ReadNumber()`)
+**Two Modes:**
 
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs:1146`
+1. **Inside Expression** (`BraceDepth > 0`):
+   - Tokenize normally (identifiers, operators, etc.)
+   - `{` → Increase depth (nested dict/set)
+   - `}` → Decrease depth; if zero, emit `FStringExprEnd`
+   - `:` at depth 1 → Begin format spec reading
 
-Supports multiple number formats:
+2. **Outside Expression** (`BraceDepth == 0`):
+   - Read literal text until:
+     - `{` → Start interpolation (emit `FStringExprStart`)
+     - `{{` → Escaped brace (emit literal `{`)
+     - `}}` → Escaped brace (emit literal `}`)
+     - Quote match → End f-string (emit `FStringEnd`)
+     - Backslash → Process escape sequence
 
-```csharp
-private Token ReadNumber()
-{
-    // Check for special prefixes
-    if (_source[_position] == '0' && _position + 1 < _source.Length)
-    {
-        var next = _source[_position + 1];
-        if (next == 'x' || next == 'X') return ReadHexNumber(...);      // 0x1A2F
-        if (next == 'b' || next == 'B') return ReadBinaryNumber(...);   // 0b1010
-        if (next == 'o' || next == 'O') return ReadOctalNumber(...);    // 0o755
-    }
+**Format Spec Handling** (lines 758-822):
 
-    // Regular decimal number
-    // Read integer part (allowing underscores: 1_000_000)
-    // Check for decimal point
-    // Check for exponent (e or E)
-    // Check for suffix (f, d, m, l, ul, etc.)
+When we encounter `:` at brace depth 1, we enter "format spec mode". We read everything until the closing `}` as a single `FStringFormatSpec` token. This handles cases like:
 
-    return new Token(isFloat ? TokenType.Float : TokenType.Integer, sb.ToString(), ...);
-}
+```python
+f"{value:>10.2f}"  # Format spec is ">10.2f"
 ```
+
+Nested braces inside format specs are tracked separately to handle edge cases.
+
+**Important implementation detail**: The format spec reader has its own nested brace tracking to handle cases where the format spec itself contains braces.
+
+### 3.7 `ReadNumber()`
+
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:1174`
+
+**Purpose**: Lex numeric literals (integers and floats).
 
 **Features:**
-- Underscore separators for readability: `1_000_000`
-- Hex (`0x`), binary (`0b`), octal (`0o`) literals
-- Scientific notation: `1.23e-4`
-- Type suffixes: `3.14f`, `42L`, `100ul`
+- **Prefixes**: `0x` (hex), `0b` (binary), `0o` (octal)
+- **Underscores**: Allows `1_000_000` for readability
+  - Validates: no consecutive underscores, no trailing underscore
+- **Decimal points**: `3.14` (must have digit after `.`)
+- **Scientific notation**: `1e10`, `2.5e-3`
+- **Suffixes**: `f`/`F`, `d`/`D`, `m`/`M`, `l`/`L`, `u`/`U`, `ul`/`UL`
 
-**Validation:**
-- No consecutive underscores (lines 1181-1182, 1211-1213, 1253-1255)
-- No trailing underscores (lines 1193-1194, 1224-1225, 1266-1267)
-- Proper hex/binary/octal digits (enforced in `ReadHexNumber`, `ReadBinaryNumber`, `ReadOctalNumber`)
+**Token Type Decision:**
+- Returns `TokenType.Float` if:
+  - Has decimal point, OR
+  - Has exponent (e/E), OR
+  - Has float suffix (f, d, m)
+- Otherwise returns `TokenType.Integer`
 
-**Important implementation detail:** The underscore validation is spread across integer part, fractional part, and exponent. Each section independently validates underscore usage.
+**Delegated Methods:**
+- `ReadHexNumber()`: Handles `0xDEADBEEF`
+- `ReadBinaryNumber()`: Handles `0b1010`
+- `ReadOctalNumber()`: Handles `0o755`
 
----
-
-### 5. Operator and Delimiter Handling (`ReadOperatorOrDelimiter()`)
-
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs:1510`
-
-Handles all operators and punctuation. The tricky part: **multi-character operators**.
-
+**Validation Examples:**
 ```csharp
-private Token ReadOperatorOrDelimiter()
-{
-    // Try 3-character operators first
-    if (_position + 2 < _source.Length)
-    {
-        var threeChar = _source.Substring(_position, 3);
-        switch (threeChar)
-        {
-            case "...": return new Token(TokenType.Ellipsis, ..., ...);
-            case "<<=": return new Token(TokenType.LeftShiftAssign, ..., ...);
-            case ">>=": return new Token(TokenType.RightShiftAssign, ..., ...);
-            // ...
-        }
-    }
+// Valid:
+1_000_000  // Underscores for readability
+0xFF_AA_BB // Hex with underscores
+3.14e-10   // Scientific notation
 
-    // Then 2-character operators
-    if (_position + 1 < _source.Length)
-    {
-        var twoChar = _source.Substring(_position, 2);
-        switch (twoChar)
-        {
-            case "==": return new Token(TokenType.Equal, ..., ...);
-            case "!=": return new Token(TokenType.NotEqual, ..., ...);
-            case "->": return new Token(TokenType.Arrow, ..., ...);
-            // ... ~30 two-char operators
-        }
-    }
-
-    // Finally, single-character
-    var token = c switch
-    {
-        '+' => new Token(TokenType.Plus, "+", ...),
-        '(' => new Token(TokenType.LeftParen, "(", ...),
-        // ... all single-char operators
-        _ => throw new LexerError($"Unexpected character: '{c}'", ...)
-    };
-
-    // Track bracket depth for implicit line continuation
-    if (c == '(' || c == '[' || c == '{') _bracketDepth++;
-    else if (c == ')' || c == ']' || c == '}') _bracketDepth--;
-
-    return token;
-}
+// Invalid:
+1__000     // Consecutive underscores - ERROR
+1000_      // Trailing underscore - ERROR
 ```
 
-**Key insight:** Longest match wins. Always check 3-char, then 2-char, then 1-char operators.
+### 3.8 `ReadIdentifierOrKeyword()`
 
-**Important for bracket tracking:** Lines 1682-1692 track `_bracketDepth`, which is crucial for implicit line continuation. When `_bracketDepth > 0`, newlines are ignored.
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:1481`
 
----
+**Purpose**: Lex identifiers and keywords.
 
-### 6. Helper Methods
+**Algorithm:**
+1. Read characters while `IsLetterOrDigit` or `_`
+2. Look up the result in the `Keywords` dictionary
+3. If found, return the keyword token type
+4. Otherwise, return `TokenType.Identifier`
 
-#### `SkipWhitespace()`
+**Why simple**: Python/Sharpy identifiers follow simple rules compared to some languages. No need for complex Unicode handling in v0.1.
 
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs:466`
+See `docs/language_specification/identifiers.md` for identifier naming rules.
 
-Skips spaces and tabs (but **not** newlines):
-```csharp
-private void SkipWhitespace()
-{
-    while (_position < _source.Length)
-    {
-        var c = _source[_position];
-        if (c == ' ' || c == '\t')
-        {
-            _position++;
-            _column++;
-        }
-        else break;
-    }
-}
-```
+### 3.9 `ReadLiteralName()`
 
-#### `Peek(int offset = 1)`
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:1505`
 
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs:483`
+**Purpose**: Lex backtick-delimited identifiers (`` `class` ``).
 
-Looks ahead without advancing position:
-```csharp
-private char Peek(int offset = 1)
-{
-    var pos = _position + offset;
-    return pos < _source.Length ? _source[pos] : '\0';
-}
-```
-
-Useful for checking multi-character operators: `=` vs `==`.
-
-#### `ProcessEscapeSequence()`
-
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs:1053`
-
-Handles all escape sequences in strings:
-- Simple escapes: `\n`, `\t`, `\\`, `\"`, `\'`
-- Hex escapes: `\xHH` (2 digits)
-- Unicode escapes: `\uHHHH` (4 digits), `\UHHHHHHHH` (8 digits)
-- Octal escapes: `\ooo` (1-3 digits)
-
----
-
-## Special Features
-
-### Implicit Line Continuation
-
-Python allows multi-line expressions inside brackets without backslashes:
-
+**Use Case**: Allows using reserved keywords as identifiers when escaped:
 ```python
-result = (
-    very_long_function_name(
-        argument1,
-        argument2
-    )
-)
+`class` = "my-class"  # 'class' is a keyword, but `class` is an identifier
 ```
 
-The lexer tracks `_bracketDepth` and **skips newlines** when `_bracketDepth > 0` (lines 322-343):
+**Algorithm:**
+1. Skip opening `` ` ``
+2. Read until closing `` ` `` or newline
+3. If newline/EOF before closing, throw error
+4. Return `TokenType.Identifier` with the inner text
 
+### 3.10 `ReadOperatorOrDelimiter()`
+
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:1541`
+
+**Purpose**: Lex operators and delimiters.
+
+**Strategy**: Greedy longest-match
+1. Try 3-character operators first (`...`, `<<=`, `>>=`, `**=`, `//=`, `??=`)
+2. Try 2-character operators (`==`, `!=`, `<=`, `>=`, `<<`, `>>`, `**`, `//`, `->`, `?.`, `??`, `+=`, `-=`, etc.)
+3. Fall back to single-character operators (`+`, `-`, `*`, `/`, `=`, `<`, `>`, `(`, `)`, `[`, `]`, `{`, `}`, `,`, `:`, `.`, etc.)
+
+**Bracket Depth Tracking** (lines 1714-1724):
+- Increments `_bracketDepth` for `(`, `[`, `{`
+- Decrements `_bracketDepth` for `)`, `]`, `}`
+- Prevents negative depth (unmatched closing brackets set to 0)
+
+**Special Case**: Rejects float literals starting with `.` (e.g., `.5`):
 ```csharp
-// In NextToken(), handling newlines:
-if (current == '\n' || current == '\r')
-{
-    if (_bracketDepth > 0)
-    {
-        // Inside brackets - skip newline, don't produce token
-        _position++;
-        _line++;
-        _column = 1;
-        _atLineStart = true;
-        return NextToken();  // Recurse to get next real token
-    }
-
-    // Normal newline token
-    return new Token(TokenType.Newline, "\n", ...);
-}
+if (c == '.' && _position + 1 < _source.Length && char.IsDigit(_source[_position + 1]))
+    throw new LexerError("Float literals must have at least one digit before the decimal point...");
 ```
 
-### Explicit Line Continuation (Backslash)
+This is a v0.1 restriction for simplicity.
 
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs:263-317`
+**Important for implicit line continuation**: The bracket depth tracking is essential for allowing multi-line expressions inside parentheses, brackets, and braces without explicit line continuation characters.
 
-```python
-x = very_long_expression + \
-    continuation_on_next_line
-```
+### 3.11 `ProcessEscapeSequence()`
 
-The lexer detects `\` followed immediately by newline (no trailing spaces allowed):
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:1068`
 
-```csharp
-if (current == '\\')
-{
-    // Skip whitespace after backslash
-    var tempPos = nextPos;
-    while (tempPos < _source.Length && (_source[tempPos] == ' ' || _source[tempPos] == '\t'))
-        tempPos++;
+**Purpose**: Convert escape sequences to their character equivalents.
 
-    // Must be immediately followed by newline
-    if (tempPos != nextPos && /* has newline */)
-        throw new LexerError("Backslash line continuation cannot have trailing whitespace", ...);
+**Supported Escapes:**
+- Simple: `\n`, `\r`, `\t`, `\b`, `\f`, `\0`, `\\`, `\'`, `\"`, `\/`, `\a`, `\v`
+- Hex: `\xhh` (2 hex digits)
+- Unicode: `\uhhhh` (4 hex digits), `\Uhhhhhhhh` (8 hex digits)
+- Octal: `\ooo` (1-3 octal digits, max 377 = 255)
 
-    // Valid continuation - skip backslash and newline
-    _position = tempPos;
-    if (_source[_position] == '\r') _position++;
-    if (_source[_position] == '\n') _position++;
-    _line++;
-    _column = 1;
-    return NextToken();
-}
-```
+**Error Handling**: Throws `LexerError` for invalid escape sequences.
 
-### Blank Line and Comment Handling
+**Why return char**: Escape sequences are processed during lexing and the resulting character is added to the string value. The token value contains the processed string, not the raw source.
 
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs:167-208`
+### 3.12 `ReadComment()`
 
-Blank lines and comment-only lines **do not** produce NEWLINE tokens or affect indentation:
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:498`
 
-```csharp
-if (_atLineStart && _bracketDepth == 0)
-{
-    // Peek ahead to check if this is a blank or comment line
-    var savedPos = _position;
-    SkipWhitespace();
+**Purpose**: Skip comments from `#` to end of line.
 
-    if (_position >= _source.Length || _source[_position] == '\n' || _source[_position] == '#')
-    {
-        // Skip comment if present
-        if (_source[_position] == '#') { /* skip to newline */ }
+**Behavior**: Reads until newline, then recursively calls `NextToken()` to get the next real token. Comments are not returned to the parser.
 
-        // Skip newline
-        // ... advance line counter
+**Note**: The `TokenType.Comment` exists for potential documentation tool support, but currently comments are skipped.
 
-        // Recursively get next token (don't produce NEWLINE)
-        return NextToken();
-    }
+### 3.13 `SkipWhitespace()`
 
-    // Restore position to measure indentation properly
-    _position = savedPos;
-    var indentLevel = MeasureIndentation();
-    // ...
-}
-```
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:475`
 
-**Why this matters:** This ensures that comments and blank lines don't affect the indentation logic, making the language more flexible for documentation.
+**Purpose**: Advance past spaces and tabs (but not newlines).
 
----
+**Why not newlines**: Newlines are significant in Python/Sharpy syntax. They're only skipped when inside brackets (handled elsewhere).
 
-## Dependencies
+### 3.14 `Peek(int offset = 1)`
+
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:492`
+
+**Purpose**: Look ahead at future characters without advancing position.
+
+**Returns**: The character at `_position + offset`, or `'\0'` if out of bounds.
+
+**Use Cases**: Checking for multi-character operators, escape sequences, triple-quotes, etc.
+
+### 3.15 `CreateToken()`
+
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:406`
+
+**Purpose**: Factory method for creating tokens with position tracking.
+
+**Why static**: It's a pure helper that doesn't need instance state.
+
+### 3.16 `LogAndReturn()`
+
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:397`
+
+**Purpose**: Log token creation (if logger enabled) and return the token.
+
+**Why exists**: Keeps logging code out of the main tokenization logic, making it cleaner and easier to disable.
+
+### 3.17 `TokenizeAll()`
+
+**Location**: `src/Sharpy.Compiler/Lexer/Lexer.cs:123`
+
+**Purpose**: Convenience method to lex the entire source into a list.
+
+**Algorithm**: Repeatedly call `NextToken()` until `TokenType.Eof` is encountered.
+
+**Use Case**: Useful for testing and for compiler phases that want all tokens upfront (vs. streaming).
+
+## 4. Dependencies
 
 ### Internal Dependencies
 
-- **`Sharpy.Compiler.Logging.ICompilerLogger`**: Used for diagnostic logging (token reads, indentation changes)
-- **`Token` struct** (defined in `Token.cs`): The output type containing `TokenType`, value, and position
-- **`TokenType` enum** (defined in `TokenType.cs`): All possible token types (~100+ types)
-- **`LexerError` class** (defined in `LexerError.cs`): Custom exception for lexical errors
-
-See the [Token documentation](Token.md) for details on the Token structure.
+- **`Token` class** (`Token.cs`): Represents a single token with type, value, and position
+- **`TokenType` enum** (`Token.cs`): Defines all token types (~160 values)
+- **`LexerError` class** (`LexerError.cs`): Exception type for lexer errors
+- **`ICompilerLogger`** (`Sharpy.Compiler.Logging`): Logging interface for diagnostics
 
 ### External Dependencies
 
-- **`System.Text.StringBuilder`**: Efficient string building for tokens
-- **`System.Collections.Generic`**: Stack, Queue, Dictionary
+- `System.Text.StringBuilder`: Used for efficient string building during tokenization
+- `System.Collections.Generic.Stack<T>`: For indentation and f-string context stacks
+- `System.Collections.Generic.Queue<T>`: For pending token buffer
+- `System.Collections.Generic.Dictionary<TKey, TValue>`: For keyword lookup
 
----
+## 5. Patterns and Design Decisions
 
-## Patterns and Design Decisions
+### 5.1 State Machine Design
 
-### 1. **State Machine Pattern**
+The lexer is implemented as a **hand-written finite state machine** rather than using a lexer generator (like Lex/Flex). This provides:
+- Full control over error messages
+- Easy debugging
+- No external tool dependencies
+- Better performance (no indirection through generated tables)
 
-The lexer is a finite state machine with multiple modes:
-- **Normal mode**: Reading top-level code
-- **Indentation mode**: At line start, measuring indents
-- **F-string mode**: Inside f-string (text vs. expression)
-- **Expression mode** (in f-string): Tokenizing normally
+### 5.2 Indentation Stack Pattern
 
-State transitions happen via flags (`_atLineStart`, `_fstringStack.Count > 0`, `context.BraceDepth`).
+The indentation stack is a classic solution for Python-style indentation:
 
-### 2. **Lookahead Pattern**
+```
+Source:           Stack:           Tokens:
+def foo():        [0]
+    x = 1         [0, 4]           INDENT
+    if y:         [0, 4]
+        z = 2     [0, 4, 8]        INDENT
+    return        [0, 4]           DEDENT
+# EOF             [0]              DEDENT
+```
 
-Many decisions require peeking ahead:
-- Triple-quoted strings: Check next 2 chars
-- F-strings: Check for `f` followed by quote
-- Multi-char operators: Try 3-char, 2-char, 1-char
+**Key Insight**: DEDENT tokens can "cascade" when dedenting multiple levels. The pending tokens queue handles this elegantly.
 
-The `Peek(int offset)` helper method simplifies lookahead.
+### 5.3 Bracket Depth for Line Continuation
 
-### 3. **Queue for Token Buffering**
+Python allows implicit line continuation inside brackets:
 
-When dedenting multiple levels, we need to emit multiple DEDENT tokens but can only return one per call. Solution: queue the extras in `_pendingTokens` and return them on subsequent calls.
+```python
+result = (1 +
+          2 +
+          3)
+```
 
-**Design rationale:** This keeps the `NextToken()` interface simple—it always returns exactly one token per call.
+The lexer tracks this via `_bracketDepth` and skips NEWLINEs when depth > 0. This is simpler than explicit line continuation with `\`.
 
-### 4. **Strict Error Reporting**
+### 5.4 F-String Context Stack
 
-Every error includes precise location (`_line`, `_column`). This makes debugging much easier for users.
+F-strings are complex because:
+1. They can be nested: `f"outer {f'inner {x}'} more"`
+2. Expressions can contain braces: `f"{{'key': value}}"`
+3. Format specs exist: `f"{x:>10.2f}"`
 
-### 5. **Logging for Observability**
+The stack-based approach naturally handles nesting, and brace depth tracking handles nested braces.
 
-Optional logging via `ICompilerLogger` allows tracing:
-- Every token read (`LogTokenRead`)
-- Indentation changes (`LogIndentChange`)
-- Lexer initialization
+### 5.5 Error Recovery
 
-This is invaluable for debugging the compiler itself.
+The lexer uses **exceptions for error handling** rather than error recovery. When a lexical error is encountered (unterminated string, invalid character), it throws `LexerError` immediately.
 
-### 6. **Recursive Descent Reading**
+**Rationale**: For v0.1, simplicity is preferred. A production compiler might accumulate errors and continue lexing, but that adds complexity.
 
-Each token type has a dedicated `ReadXxx()` method that knows how to parse that specific construct. This makes the lexer easy to extend and debug.
+### 5.6 Token Value Semantics
 
----
+Token values contain **processed content**, not raw source:
+- String tokens contain the string with escape sequences resolved
+- Number tokens contain the normalized number representation
+- Keywords contain the keyword text
 
-## Debugging Tips
+**Exception**: F-string tokens contain the raw delimiters (e.g., `f"`, `{`, `}`).
 
-### 1. **Understanding Token Streams**
+### 5.7 Position Tracking
 
-To debug parsing issues, first verify the token stream is correct. Use `TokenizeAll()`:
+Every token tracks:
+- `Line`: 1-indexed line number
+- `Column`: 1-indexed column number
+- `Position`: 0-indexed byte offset in source
+
+This enables high-quality error messages pointing to exact locations.
+
+## 6. Debugging Tips
+
+### 6.1 Enable Logging
+
+Pass an `ICompilerLogger` to the constructor to see detailed token generation:
 
 ```csharp
+var logger = new ConsoleLogger();
 var lexer = new Lexer(source, logger);
+```
+
+This will log every token read with its position and value.
+
+### 6.2 Use `TokenizeAll()` for Testing
+
+For unit tests, call `TokenizeAll()` and inspect the resulting list:
+
+```csharp
 var tokens = lexer.TokenizeAll();
-foreach (var token in tokens)
-{
-    Console.WriteLine($"{token.Type,-20} '{token.Value}' at {token.Line}:{token.Column}");
-}
+Assert.Equal(TokenType.Def, tokens[0].Type);
+Assert.Equal("foo", tokens[1].Value);
 ```
 
-### 2. **Indentation Issues**
+### 6.3 Inspect Indentation Stack
 
-Common problems:
-- **Mixed tabs/spaces**: The lexer throws an error, but check your editor settings
-- **Wrong multiple**: Sharpy requires 4-space indents (not 2 or 3)
-- **Dedent mismatch**: Dedenting to a level that was never indented to
+Add debug breakpoints in `MeasureIndentation()` and examine `_indentStack.ToArray()` to understand indentation issues.
 
-Enable logging to see indentation changes:
+### 6.4 F-String Debugging
 
-```csharp
-_logger.LogIndentChange(currentIndent, indentLevel);
+F-string bugs are common. Add breakpoints in `NextFStringToken()` and inspect:
+- `_fstringStack.Peek().BraceDepth`
+- `_fstringStack.Peek().InFormatSpec`
+- `_fstringStack.Count` (nesting level)
+
+### 6.5 Bracket Depth Issues
+
+If newlines are incorrectly skipped/emitted, check `_bracketDepth`:
+- Should be 0 at top level
+- Incremented by `(`, `[`, `{`
+- Decremented by `)`, `]`, `}`
+
+Watch for unmatched brackets causing incorrect depth.
+
+### 6.6 Common Error Messages
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| "Tabs are not allowed for indentation" | Tab character in indentation | Use 4 spaces |
+| "Indentation must be multiple of 4" | Wrong indent (e.g., 2 or 6 spaces) | Use 4, 8, 12, etc. |
+| "Indentation mismatch" | Dedented to invalid level | Match a previous indent level |
+| "Unterminated string literal" | Missing closing quote or newline in string | Close string or use triple-quotes for multiline |
+| "Unterminated f-string" | Missing closing quote in f-string | Close f-string properly |
+| "Unmatched '}' in f-string" | Extra `}` without matching `{` | Use `}}` for literal `}` |
+| "Invalid character: '...'" | Character not recognized by lexer | Remove or escape the character |
+
+### 6.7 Testing Strategy
+
+**Unit Tests**: Test individual methods with known inputs:
+- `ReadString()` with various escape sequences
+- `ReadNumber()` with hex, binary, octal, floats
+- `MeasureIndentation()` with valid/invalid indents
+
+**Integration Tests**: Test `TokenizeAll()` with complete source files to ensure the state machine transitions work correctly.
+
+**File-Based Tests**: Use the file-based test fixtures in `src/Sharpy.Compiler.Tests/Integration/TestFixtures/` (`.spy` + `.expected` pairs) to test real-world code.
+
+## 7. Contribution Guidelines
+
+### 7.1 When to Modify This File
+
+Modify `Lexer.cs` when:
+- **Adding new token types**: Update `Keywords` dictionary and add to `TokenType` enum
+- **Adding new operators**: Update `ReadOperatorOrDelimiter()` with new cases
+- **Changing indentation rules**: Modify `MeasureIndentation()` validation
+- **Fixing lexer bugs**: Correct logic in appropriate methods
+- **Adding new literal types**: Add new `ReadXxx()` methods and dispatch in `NextToken()`
+
+### 7.2 When NOT to Modify
+
+Do NOT modify `Lexer.cs` for:
+- **Syntax changes**: Those belong in the Parser
+- **Semantic rules**: Those belong in Semantic Analysis
+- **Code generation**: That's in RoslynEmitter
+- **Runtime behavior**: That's in Sharpy.Core
+
+### 7.3 Testing Requirements
+
+Any change to `Lexer.cs` MUST include:
+1. **Unit tests**: Test the specific method changed
+2. **Integration tests**: Test full tokenization of source snippets
+3. **Error tests**: Ensure invalid input throws appropriate `LexerError`
+
+Run tests with:
+```bash
+dotnet test --filter "FullyQualifiedName~Lexer"
 ```
 
-### 3. **F-String Debugging**
+### 7.4 Code Style
 
-F-strings have the most complex logic. To debug:
-1. Check `_fstringStack` depth (should match nesting level)
-2. Verify `BraceDepth` tracking (should be 0 outside expressions)
-3. Look for unmatched `{` or `}` (common source of errors)
+Follow existing patterns:
+- Use `_camelCase` for private fields
+- Use `PascalCase` for public methods
+- Keep methods focused (Single Responsibility)
+- Document complex logic with comments
+- Use descriptive variable names (`startLine` not `sl`)
 
-Set breakpoints at:
-- Line 674: Expression mode detection
-- Line 745: Format spec handling
-- Line 834: Quote character detection
+### 7.5 Performance Considerations
 
-### 4. **Bracket Depth Tracking**
+The lexer is performance-critical (runs on every compilation). Consider:
+- **Avoid allocations**: Reuse `StringBuilder` when possible
+- **Minimize string operations**: Use character comparisons over string comparisons
+- **Avoid redundant work**: Don't re-parse the same content
+- **Profile before optimizing**: Use benchmarks to identify bottlenecks
 
-If newlines are unexpectedly ignored or not ignored, check `_bracketDepth`. Add assertions:
+### 7.6 Backward Compatibility
 
-```csharp
-if (_bracketDepth < 0)
-    throw new InvalidOperationException("Bracket depth went negative!");
-```
+When adding features:
+- **Don't break existing tokens**: Ensure old code still lexes correctly
+- **Add, don't change**: Prefer adding new token types over changing existing ones
+- **Document breaking changes**: If unavoidable, document in release notes
 
-The lexer already has defensive code for this at line 1690-1691.
+### 7.7 Common Modifications
 
-### 5. **Position Tracking**
+**Adding a Keyword:**
+1. Add to `TokenType` enum in `Token.cs`
+2. Add to `Keywords` dictionary (line 34)
+3. Add tests for the new keyword
+4. Update `docs/language_specification/keywords.md`
 
-If error locations seem wrong, verify `_position`, `_line`, `_column` are incremented correctly after every character read. Common mistake: forgetting to increment after multi-char operators.
+**Adding an Operator:**
+1. Add to `TokenType` enum in `Token.cs`
+2. Add case in `ReadOperatorOrDelimiter()` (appropriate 1/2/3 char section)
+3. Add tests for the operator
+4. Update language specification docs
 
-**Tip:** The `LogAndReturn` method (line 396) logs every token with its position, which helps verify tracking accuracy.
+**Changing Indentation Rules:**
+1. Modify `MeasureIndentation()` validation
+2. Update error messages
+3. Add tests for new rules
+4. Update `docs/language_specification/indentation.md`
 
----
+## 8. Cross-References
 
-## Contribution Guidelines
+### Related Files
 
-### When to Modify This File
+- **`Token.cs`** (`src/Sharpy.Compiler/Lexer/Token.cs`): Token and TokenType definitions
+- **`LexerError.cs`** (`src/Sharpy.Compiler/Lexer/LexerError.cs`): Lexer exception type
+- **Parser** (`src/Sharpy.Compiler/Parser/`): Consumes tokens from lexer
+- **Semantic Analysis** (`src/Sharpy.Compiler/Semantic/`): Works with AST, not tokens
 
-1. **Adding new keywords**: Update the `Keywords` dictionary (lines 34-101) and add corresponding `TokenType` enum values
-2. **New operators**: Add cases to `ReadOperatorOrDelimiter()` (longest match first!)
-3. **New string literal types**: Add a new `Read*String()` method and dispatcher case
-4. **Bug fixes**: Especially around edge cases (empty files, lone characters, unusual indentation)
+### Related Documentation
 
-### What NOT to Change
-
-1. **Indentation rules**: The 4-space requirement is by design (don't make it configurable)
-2. **Token output format**: Parsers depend on the exact token stream structure
-3. **Position tracking logic**: Extremely delicate—any change can break error reporting
-
-### Testing Your Changes
-
-After modifying the lexer:
-
-1. **Run lexer unit tests**: `dotnet test --filter "FullyQualifiedName~Lexer"`
-2. **Test edge cases**: Empty files, single characters, deeply nested structures
-3. **Check error messages**: Ensure they're still helpful and accurate
-4. **Run integration tests**: Verify parser and downstream components still work
-
-### Common Pitfalls
-
-- **Off-by-one errors**: Position tracking is 0-based, but line/column are 1-based
-- **Forgetting to update column**: Every `_position++` usually needs `_column++`
-- **Not handling `\r\n`**: Always check for both `\r` and `\n` (Windows vs. Unix)
-- **Breaking lookahead**: When adding new token types, ensure longest match still wins
-
-### Adding New Features
-
-**Example: Adding a new keyword**
-
-1. Add to `TokenType` enum in `Token.cs`:
-   ```csharp
-   NewKeyword,
-   ```
-
-2. Add to `Keywords` dictionary (line 34):
-   ```csharp
-   { "newkeyword", TokenType.NewKeyword },
-   ```
-
-3. Add tests in lexer test file:
-   ```csharp
-   [Fact]
-   public void TestNewKeyword()
-   {
-       var lexer = new Lexer("newkeyword");
-       var token = lexer.NextToken();
-       Assert.Equal(TokenType.NewKeyword, token.Type);
-   }
-   ```
-
----
-
-## Cross-References
-
-### Related Files (Same Component)
-
-- **`Token.cs`** ([Token.md](Token.md)): Token data structure and TokenType enum
-- **`LexerError.cs`** ([LexerError.md](LexerError.md)): Lexical error exceptions
-
-### Downstream Consumers
-
-- **`Parser.cs`** ([../../Parser/Parser.md](../../Parser/Parser.md)): Consumes token stream to build AST
-- **`Compiler.cs`** ([../../Compiler.md](../../Compiler.md)): Orchestrates lexer → parser → code gen pipeline
-
-### Language Specifications
-
-Reference these specifications for detailed behavior:
-- **`docs/language_specification/lexer_implementation.md`**: Detailed lexer behavior specification
+- **`docs/language_specification/lexer_implementation.md`**: Lexer specification and state machine details
 - **`docs/language_specification/indentation.md`**: Indentation rules and INDENT/DEDENT semantics
-- **`docs/language_specification/keywords.md`**: Complete keyword list and reserved words
+- **`docs/language_specification/keywords.md`**: Complete keyword list
 - **`docs/language_specification/identifiers.md`**: Identifier naming rules
 
+### Test Files
+
+- **`src/Sharpy.Compiler.Tests/Lexer/`**: Unit tests for lexer
+- **`src/Sharpy.Compiler.Tests/Integration/TestFixtures/`**: File-based integration tests
+
+### Usage Example
+
+```csharp
+// Basic usage
+var source = @"
+def greet(name: str) -> str:
+    return f""Hello, {name}!""
+";
+
+var lexer = new Lexer(source);
+var tokens = lexer.TokenizeAll();
+
+// First few tokens:
+// [0] = NEWLINE (blank line)
+// [1] = Def ("def")
+// [2] = Identifier ("greet")
+// [3] = LeftParen ("(")
+// [4] = Identifier ("name")
+// [5] = Colon (":")
+// [6] = Identifier ("str")
+// [7] = RightParen (")")
+// [8] = Arrow ("->")
+// [9] = Identifier ("str")
+// [10] = Colon (":")
+// [11] = NEWLINE
+// [12] = INDENT
+// [13] = Return ("return")
+// [14] = FStringStart ("f\"")
+// [15] = FStringText ("Hello, ")
+// [16] = FStringExprStart ("{")
+// [17] = Identifier ("name")
+// [18] = FStringExprEnd ("}")
+// [19] = FStringText ("!")
+// [20] = FStringEnd ("\"")
+// [21] = NEWLINE
+// [22] = DEDENT
+// [23] = EOF
+```
+
 ---
 
-## Summary
-
-The Lexer is the **gateway** to the Sharpy compiler. It transforms raw text into structured tokens, handling:
-
-- **Indentation-based syntax** (INDENT/DEDENT tokens)
-- **Complex string literals** (f-strings, raw strings, triple-quoted)
-- **Multiple number formats** (hex, binary, octal, floats with exponents)
-- **Multi-character operators** (longest match)
-- **Implicit line continuation** (inside brackets)
-
-Understanding the lexer is crucial for:
-- Debugging syntax errors
-- Adding new language features
-- Understanding how Sharpy code is parsed
-
-**Key takeaways:**
-1. The lexer is a **character-by-character state machine**
-2. **Indentation handling** is the most Python-specific feature
-3. **F-strings** are the most complex feature
-4. **Position tracking** is critical for error reporting
-5. **Token buffering** handles multi-token scenarios cleanly
-
-The code is well-structured but dense—take time to trace through example inputs to build intuition for the state machine behavior. Start with simple cases (keywords, operators) before diving into complex features (f-strings, indentation).
-
-**Next steps for newcomers:**
-1. Read the [Token documentation](Token.md) to understand the output structure
-2. Study test files to see example token sequences
-3. Trace through `NextToken()` with a debugger on simple input
-4. Try the Parser walkthrough to see how tokens are consumed
+**Key Takeaway**: The Lexer is a carefully crafted state machine that handles Python's complex indentation rules, f-string interpolation, and various literal formats. Understanding its state (indentation stack, bracket depth, f-string stack) is crucial for debugging and extending it.

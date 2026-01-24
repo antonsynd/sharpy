@@ -4,68 +4,62 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-`Statement.cs` is a fundamental component of the Sharpy compiler's Abstract Syntax Tree (AST). It defines all the statement node types that can appear in a Sharpy program, from simple assignments and returns to complex control flow like `if`, `for`, and `try-except` blocks.
+`Statement.cs` defines all statement node types for the Sharpy Abstract Syntax Tree (AST). It sits at the heart of the parser output, representing the executable actions of Sharpy programs—from simple assignments and control flow to complex type definitions and imports.
 
-**Role in the Compiler Pipeline:**
-```
-Source Code (.spy) → Lexer (Tokens) → Parser (AST) → Semantic Analysis → Code Generation
-                                           ↑
-                                    Statement.cs lives here
-```
+**Role in Pipeline**:
+- **Upstream**: Parser constructs these nodes when parsing `.spy` source files
+- **Downstream**: Semantic analysis enriches them with type information; RoslynEmitter converts them to C# code
+- **Design Philosophy**: Immutable record types that follow the visitor pattern for traversal
 
-This file is a **pure data model** - it contains no logic or behavior. Each statement type is represented as an immutable C# record that captures the syntactic structure of the source code. These AST nodes are then:
-- Validated by the semantic analyzer
-- Type-checked by the type checker
-- Transformed into C# code by the code generator
+This file is organized into four major regions: Simple Statements, Compound Statements, Definitions, and Import Statements.
 
 ---
 
-## 2. Class/Type Structure
+## Class/Type Structure
 
-### Base Class Hierarchy
+### Base Type Hierarchy
 
 ```csharp
-Node (base for all AST nodes)
-  ↓
-Statement (base for all statements)
-  ↓
-  ├── Simple Statements (ExpressionStatement, Assignment, Return, etc.)
-  ├── Compound Statements (IfStatement, WhileStatement, ForStatement, etc.)
-  ├── Definitions (FunctionDef, ClassDef, StructDef, InterfaceDef, EnumDef)
-  └── Import Statements (ImportStatement, FromImportStatement)
+abstract record Node : ILocatable           // src/Sharpy.Compiler/Parser/Ast/Node.cs
+    └── abstract record Statement : Node
 ```
 
-All statement classes inherit from `Statement`, which in turn inherits from `Node`. The `Node` base class (defined in `Node.cs`) provides source location tracking:
+All statement nodes inherit from `Statement`, which inherits from `Node`. This gives every statement:
+- Source location tracking (line/column start/end)
+- Optional `TextSpan` for character-level offsets
+- Immutability via C# record types
+
+### The Four Regions
+
+| Region | Purpose | Examples |
+|--------|---------|----------|
+| **Simple Statements** | Single-line actions | `Assignment`, `ReturnStatement`, `BreakStatement` |
+| **Compound Statements** | Multi-block control flow | `IfStatement`, `WhileStatement`, `TryStatement` |
+| **Definitions** | Type and function declarations | `FunctionDef`, `ClassDef`, `StructDef`, `EnumDef` |
+| **Import Statements** | Module imports | `ImportStatement`, `FromImportStatement` |
+
+---
+
+## Key Classes and Design Patterns
+
+### 1. Simple Statements
+
+#### ExpressionStatement
+Wraps an expression used as a statement (e.g., `print("hello")`, `foo.bar()`).
 
 ```csharp
-public abstract record Node
+public record ExpressionStatement : Statement
 {
-    public int LineStart { get; init; }
-    public int ColumnStart { get; init; }
-    public int LineEnd { get; init; }
-    public int ColumnEnd { get; init; }
+    public Expression Expression { get; init; } = null!;
 }
 ```
 
-### Categories of Statements
+**Design Note**: The `null!` pattern tells the compiler "this will be initialized by the parser, trust me." This is standard for AST nodes where initialization is guaranteed externally.
 
-The file organizes statements into four logical regions:
-
-1. **Simple Statements** - Single-line operations (assignment, return, break, etc.)
-2. **Compound Statements** - Control flow with bodies (if, while, for, try-except)
-3. **Definitions** - Type and function declarations
-4. **Import Statements** - Module and name imports
-
----
-
-## 3. Key Classes and Their Purpose
-
-### 3.1 Simple Statements
-
-#### `Assignment`
-Represents assignment operations with various operators.
+#### Assignment
+Handles all assignment operators, from simple `=` to compound assignments like `+=` and `//=`.
 
 ```csharp
 public record Assignment : Statement
@@ -76,23 +70,16 @@ public record Assignment : Statement
 }
 ```
 
-**Key Points:**
-- `Target` can be any assignable expression (variable, property, index)
-- Supports compound assignments (`+=`, `-=`, `*=`, etc.) via the `Operator` enum
-- The `null!` syntax is a C# feature that suppresses null warnings - the parser ensures these are always set
-- The `AssignmentOperator` enum includes 14 different operators, including Python-style operators like `//=` (integer division assign) and `**=` (power assign), plus C#-specific ones like `??=` (null coalesce assign)
+**Key Operators**:
+- `Assign` (`=`) — Direct assignment
+- `PlusAssign` (`+=`), `MinusAssign` (`-=`) — Arithmetic compound
+- `DoubleSlashAssign` (`//=`) — Integer division (Python-style)
+- `NullCoalesceAssign` (`??=`) — .NET-style null-coalescing assignment
 
-**Example Sharpy Code:**
-```python
-x = 5           # Simple assignment
-y += 10         # Compound assignment
-items[0] = "a"  # Index assignment
-z **= 2         # Power assignment
-w ??= default   # Null coalesce assignment
-```
+**Downstream Impact**: The semantic analyzer validates that `Target` is assignable (lvalue check). CodeGen translates compound operators to their C# equivalents.
 
-#### `VariableDeclaration`
-Represents typed variable declarations, distinct from assignments.
+#### VariableDeclaration
+Declares a new variable with optional type annotation and initialization.
 
 ```csharp
 public record VariableDeclaration : Statement
@@ -104,50 +91,22 @@ public record VariableDeclaration : Statement
 }
 ```
 
-**Why separate from Assignment?**
-- Sharpy requires type annotations on first declaration: `x: int = 5`
-- Plain assignment like `x = 5` requires prior declaration
-- This distinction helps catch undeclared variable errors early
-- **Note**: `Type` is nullable to support type inference when an initial value is provided
+**Key Scenarios**:
+- `x = 5` — Type inferred from `InitialValue` (Type is null)
+- `x: int = 5` — Explicit type annotation
+- `const PI = 3.14` — `IsConst` = true
 
-**Example Sharpy Code:**
-```python
-x: int = 10           # Declaration with initialization
-y: str                # Declaration without initialization
-const MAX: int = 100  # Constant declaration
-z = 5                 # Type inferred from initial value
-```
+**Semantic Analysis**: If `Type` is null, the analyzer infers the type from `InitialValue`. Const variables receive special handling to ensure immutability.
 
-#### `ReturnStatement`
-Exits from a function, optionally with a value.
+#### Control Flow Statements
 
-```csharp
-public record ReturnStatement : Statement
-{
-    public Expression? Value { get; init; }
-}
-```
+Simple one-liners for flow control:
+- **PassStatement** — Python's no-op placeholder (`pass`)
+- **BreakStatement** — Exit a loop
+- **ContinueStatement** — Skip to next loop iteration
+- **ReturnStatement** — Exit function with optional value
 
-**Note:** `Value` is nullable because Python-style functions can `return` without a value (equivalent to `return None`).
-
-#### `RaiseStatement`
-Throws exceptions, mirroring Python's `raise` syntax.
-
-```csharp
-public record RaiseStatement : Statement
-{
-    public Expression? Exception { get; init; }
-    public Expression? Cause { get; init; }  // raise ... from cause
-}
-```
-
-**Supports:**
-- `raise` - re-raises current exception
-- `raise Exception("message")` - raises new exception
-- `raise NewError() from original_error` - exception chaining
-
-#### `BreakWithFlagStatement`
-A specialized break statement used internally for loop-else clause support.
+**Special Case: BreakWithFlagStatement**
 
 ```csharp
 public record BreakWithFlagStatement : Statement
@@ -156,267 +115,193 @@ public record BreakWithFlagStatement : Statement
 }
 ```
 
-**Important Implementation Detail:**
-- This is an **internal/generated statement** type, not directly written by users
-- Generated by the compiler to support Python-style `for...else` and `while...else` clauses
-- Sets a boolean flag to false before breaking, allowing the else clause to detect whether the loop completed normally or was broken out of
-- Example: A `for` loop with an `else` clause generates a flag variable, and any `break` statements are transformed to `BreakWithFlagStatement` nodes
+This is an **internal compiler node** generated to support Python's loop-else semantics:
 
-### 3.2 Compound Statements
+```python
+for item in items:
+    if should_break(item):
+        break
+else:
+    print("completed")  # Only runs if no break occurred
+```
 
-#### `IfStatement`
-Represents if-elif-else control flow.
+The compiler transforms this into:
+1. A boolean flag initialized to `true`
+2. `BreakWithFlagStatement` that sets the flag to `false` before breaking
+3. An `if (flag)` check around the else block
+
+### 2. Compound Statements
+
+These statements contain bodies (blocks of sub-statements).
+
+#### IfStatement
+Python-style if-elif-else chains.
 
 ```csharp
 public record IfStatement : Statement
 {
     public Expression Test { get; init; } = null!;
-    public List<Statement> ThenBody { get; init; } = new();
-    public List<ElifClause> ElifClauses { get; init; } = new();
-    public List<Statement> ElseBody { get; init; } = new();
+    public ImmutableArray<Statement> ThenBody { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<ElifClause> ElifClauses { get; init; } = ImmutableArray<ElifClause>.Empty;
+    public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
 }
 ```
 
-**Design Decision:**
-- `elif` clauses are separate `ElifClause` records, not nested `IfStatement` nodes
-- This makes code generation simpler and preserves the source structure
-- Empty lists represent missing branches (no elif/else)
+**Design Decision**: `elif` is modeled as an array of `ElifClause` rather than nesting `IfStatement` nodes. This preserves Python's syntax structure and simplifies code generation.
 
-**Example Sharpy Code:**
-```python
-if x > 0:
-    print("positive")
-elif x < 0:
-    print("negative")
-else:
-    print("zero")
+**ElifClause Structure**:
+```csharp
+public record ElifClause
+{
+    public Expression Test { get; init; } = null!;
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    // ... source location tracking ...
+}
 ```
 
-#### `WhileStatement`
-Represents while loops with optional else clause.
+Notice `ElifClause` is NOT a `Statement`—it's a helper record. It includes its own source location tracking for error reporting.
+
+#### WhileStatement & ForStatement
+Both support Python's optional `else` clause (executed if loop completes without `break`).
 
 ```csharp
 public record WhileStatement : Statement
 {
     public Expression Test { get; init; } = null!;
-    public List<Statement> Body { get; init; } = new();
-    public List<Statement> ElseBody { get; init; } = new();
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
 }
 ```
 
-**Python-style Else Clause:**
-- `ElseBody` executes if the loop completes **without** encountering a `break`
-- If empty, no else clause was present in the source
-- This is a Python feature that Sharpy supports
-
-**Example Sharpy Code:**
-```python
-while x < 10:
-    if found(x):
-        break
-    x += 1
-else:
-    print("Not found")  # Runs only if break was never executed
-```
-
-#### `ForStatement`
-Represents for-in loops over iterables with optional else clause.
-
+**ForStatement Nuance**:
 ```csharp
 public record ForStatement : Statement
 {
     public Expression Target { get; init; } = null!;  // Loop variable(s)
     public Expression Iterator { get; init; } = null!;
-    public List<Statement> Body { get; init; } = new();
-    public List<Statement> ElseBody { get; init; } = new();
+    // ...
 }
 ```
 
-**Key Points:**
-- `Target` can be a simple name (`x`) or tuple pattern (`x, y`) for destructuring
-- `Iterator` is any expression that implements the iterable protocol
-- `ElseBody` supports Python-style for-else (runs if loop completes without break)
+`Target` can be:
+- Simple identifier: `for x in range(10)`
+- Tuple unpacking: `for (a, b) in pairs`
 
-**Example Sharpy Code:**
-```python
-for item in items:
-    print(item)
+The semantic analyzer handles type checking and unpacking validation.
 
-for key, value in dict.items():
-    print(f"{key}: {value}")
-
-for x in range(10):
-    if is_prime(x):
-        break
-else:
-    print("No primes found")
-```
-
-#### `TryStatement`
-Represents exception handling blocks.
+#### TryStatement
+Comprehensive exception handling with try-except-else-finally.
 
 ```csharp
 public record TryStatement : Statement
 {
-    public List<Statement> Body { get; init; } = new();
-    public List<ExceptHandler> Handlers { get; init; } = new();
-    public List<Statement> ElseBody { get; init; } = new();
-    public List<Statement> FinallyBody { get; init; } = new();
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<ExceptHandler> Handlers { get; init; } = ImmutableArray<ExceptHandler>.Empty;
+    public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<Statement> FinallyBody { get; init; } = ImmutableArray<Statement>.Empty;
 }
 ```
 
-**Design Notes:**
-- Can have multiple `except` handlers (stored in `Handlers` list)
-- `ElseBody` is a Python feature - runs if no exception was raised in the try block
-- `FinallyBody` is optional (empty list means no finally clause)
-- Each handler can specify an exception type and optional binding name
-
-**Example Sharpy Code:**
-```python
-try:
-    risky_operation()
-except ValueError as e:
-    handle_value_error(e)
-except Exception:
-    handle_any_error()
-else:
-    print("No errors!")  # Runs if no exception was raised
-finally:
-    cleanup()
+**ExceptHandler**:
+```csharp
+public record ExceptHandler
+{
+    public TypeAnnotation? ExceptionType { get; init; }
+    public string? Name { get; init; }  // except Exception as e:
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+}
 ```
 
-### 3.3 Definitions
+**Key Cases**:
+- `except:` — Bare except (catches all), `ExceptionType` = null
+- `except ValueError:` — Catch specific type, `Name` = null
+- `except ValueError as e:` — Catch with binding
 
-#### `FunctionDef`
-Defines functions and methods.
+**Code Generation**: Maps to C# `try-catch-finally` with careful scoping of the exception variable (`Name`).
+
+### 3. Definitions
+
+Type and function definitions that create new symbols in the scope.
+
+#### FunctionDef
 
 ```csharp
 public record FunctionDef : Statement
 {
     public string Name { get; init; } = "";
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
-    public List<Parameter> Parameters { get; init; } = new();
+    public ImmutableArray<TypeParameterDef> TypeParameters { get; init; } = ImmutableArray<TypeParameterDef>.Empty;
+    public ImmutableArray<Parameter> Parameters { get; init; } = ImmutableArray<Parameter>.Empty;
     public TypeAnnotation? ReturnType { get; init; }
-    public List<Statement> Body { get; init; } = new();
-    public List<Decorator> Decorators { get; init; } = new();
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
     public string? DocString { get; init; }
 }
 ```
 
-**Important Details:**
-- `TypeParameters` support generic functions: `def swap[T](a: T, b: T) -> tuple[T, T]:`
-- `ReturnType` is optional - if omitted, type inference will attempt to determine it
-- `DocString` captures the first string literal in the body (Python convention)
-- `Decorators` are applied before the function (e.g., `@staticmethod`)
-- Parameters can have default values and type annotations
-
-**Example Sharpy Code:**
+**Type Parameters**: Supports generics with constraints:
 ```python
-@decorator
-def greet[T](name: str, greeting: str = "Hello") -> str:
-    """Greet someone with a custom greeting."""
-    return f"{greeting}, {name}!"
+def sort[T: IComparable](items: list[T]) -> list[T]:
+    pass
 ```
 
-#### `ClassDef`
-Defines reference types (classes).
-
+**Parameter Details**:
 ```csharp
-public record ClassDef : Statement
+public record Parameter
 {
     public string Name { get; init; } = "";
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
-    public List<TypeAnnotation> BaseClasses { get; init; } = new();
-    public List<Statement> Body { get; init; } = new();
-    public List<Decorator> Decorators { get; init; } = new();
-    public string? DocString { get; init; }
+    public TypeAnnotation? Type { get; init; }
+    public Expression? DefaultValue { get; init; }
+    public bool IsVariadic { get; init; }  // *args -> params T[]
 }
 ```
 
-**Key Features:**
-- `TypeParameters` support generics: `class Container[T]:`
-- `BaseClasses` allows inheritance and interface implementation
-- `Body` contains methods, fields, and nested type definitions
-
-**Example Sharpy Code:**
+**Variadic Parameters**: `IsVariadic = true` maps to C# `params` arrays:
 ```python
-class Animal:
-    """Base animal class."""
-
-    def __init__(self, name: str):
-        self.name: str = name
-
-    def speak(self) -> str:
-        pass
+def foo(*args: int):  # Becomes: void Foo(params int[] args)
 ```
 
-#### `StructDef`
-Defines value types (structs).
+#### ClassDef vs StructDef vs InterfaceDef
+
+All three share similar structure but map to different .NET types:
+
+| Sharpy | C# Target | Semantics |
+|--------|-----------|-----------|
+| `class` | `class` | Reference type, heap-allocated |
+| `struct` | `struct` | Value type, stack/inline allocation |
+| `interface` | `interface` | Contract definition only |
 
 ```csharp
 public record StructDef : Statement
 {
-    public string Name { get; init; } = "";
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
-    public List<TypeAnnotation> BaseClasses { get; init; } = new();  // Interfaces only
-    public List<Statement> Body { get; init; } = new();
-    public List<Decorator> Decorators { get; init; } = new();
-    public string? DocString { get; init; }
+    public ImmutableArray<TypeAnnotation> BaseClasses { get; init; } = ...;  // Interfaces only
 }
 ```
 
-**Struct vs Class:**
-- Structs compile to C# value types (`struct` in C#)
-- Can only implement interfaces, not inherit from classes (comment on line 217 clarifies this)
-- Useful for small, immutable data types
+**Design Constraint**: Structs can only inherit interfaces, not classes. This is enforced during semantic analysis (see comment at src/Sharpy.Compiler/Parser/Ast/Statement.cs:229).
 
-#### `InterfaceDef`
-Defines interface types.
-
-```csharp
-public record InterfaceDef : Statement
-{
-    public string Name { get; init; } = "";
-    public List<TypeParameterDef> TypeParameters { get; init; } = new();
-    public List<TypeAnnotation> BaseInterfaces { get; init; } = new();
-    public List<Statement> Body { get; init; } = new();
-    public string? DocString { get; init; }
-}
-```
-
-**Note:** Unlike classes and structs, interfaces use `BaseInterfaces` instead of `BaseClasses`, making the intent clearer (interfaces can only extend other interfaces).
-
-#### `EnumDef`
-Defines enumerations.
+#### EnumDef
 
 ```csharp
 public record EnumDef : Statement
 {
     public string Name { get; init; } = "";
-    public List<EnumMember> Members { get; init; } = new();
-    public string? DocString { get; init; }
+    public ImmutableArray<EnumMember> Members { get; init; } = ImmutableArray<EnumMember>.Empty;
 }
 
 public record EnumMember
 {
     public string Name { get; init; } = "";
     public Expression? Value { get; init; }  // Optional explicit value
-    // ... source location fields
 }
 ```
 
-**Version Note:** The comment on line 236 indicates this is for "simple enums only in v0.5" - more complex enum features may be added in future versions.
+**v0.5 Limitation**: Only simple enums supported (no associated data, no methods) as noted at src/Sharpy.Compiler/Parser/Ast/Statement.cs:248.
 
-**Example Sharpy Code:**
-```python
-enum Color:
-    RED = 1
-    GREEN = 2
-    BLUE = 3
-```
+**Code Generation**:
+- If all `Value` properties are null, auto-number from 0
+- Otherwise, use explicit values
 
-#### `TypeAlias`
-Declares type aliases for both simple types and function types.
+#### TypeAlias
 
 ```csharp
 public record TypeAlias : Statement
@@ -427,620 +312,335 @@ public record TypeAlias : Statement
 }
 ```
 
-**Important Constraint:**
-- The comment on line 259 states: "Exactly one of Type or FunctionType must be set"
-- This means you use `Type` for regular type aliases OR `FunctionType` for callable/function type aliases, but never both
+**Invariant**: Exactly one of `Type` or `FunctionType` must be set (see src/Sharpy.Compiler/Parser/Ast/Statement.cs:276).
 
-**Example Sharpy Code:**
-```python
-type UserId = int
-type Callback = (int, str) -> bool
-```
+**Examples**:
+- `type UserId = int` — `Type` is set
+- `type Callback = (int, str) -> bool` — `FunctionType` is set
 
-#### Generic Type Constraints
-Sharpy supports C#-style generic constraints through a set of constraint clause types:
+**Semantic Role**: Introduces a type synonym in the symbol table. Unlike C# `using` aliases, these are first-class type names in Sharpy.
+
+#### Type Parameters & Constraints
 
 ```csharp
 public record TypeParameterDef
 {
     public string Name { get; init; } = "";
-    public List<ConstraintClause> Constraints { get; init; } = new();
+    public ImmutableArray<ConstraintClause> Constraints { get; init; } = ...;
 }
 
-// Base type for all constraints
 public abstract record ConstraintClause;
-
-// Specific constraint types
-public record TypeConstraint : ConstraintClause        // T: IComparable
-public record ClassConstraint : ConstraintClause       // T: class
-public record StructConstraint : ConstraintClause      // T: struct
-public record NewConstraint : ConstraintClause         // T: new()
+public record TypeConstraint : ConstraintClause { ... }       // T: IComparable
+public record ClassConstraint : ConstraintClause;              // T: class
+public record StructConstraint : ConstraintClause;             // T: struct
+public record NewConstraint : ConstraintClause;                // T: new()
 ```
 
-**Example Usage:**
+**C# Mapping**:
 ```python
-def sort[T: IComparable](items: list[T]) -> list[T]:
-    # T must implement IComparable
-    ...
-
-class Factory[T: new()]:
-    # T must have a parameterless constructor
-    def create(self) -> T:
-        return T()
+def foo[T: class, T: new()](x: T):  # where T : class, new()
 ```
 
-#### `Decorator`
-Represents decorators applied to functions, classes, or structs.
+Maps directly to C# generic constraints.
+
+#### Decorator
 
 ```csharp
 public record Decorator
 {
     public string Name { get; init; } = "";
     // Note: v0.3 only supports simple identifier decorators
-    // No arguments or dotted names in v0.3
-
-    // Source location
-    public int LineStart { get; init; }
-    public int ColumnStart { get; init; }
-    public int LineEnd { get; init; }
-    public int ColumnEnd { get; init; }
 }
 ```
 
-**Version Limitation:** Currently only simple identifier decorators are supported (e.g., `@staticmethod`), not decorators with arguments (e.g., `@decorator(arg)`) or dotted names (e.g., `@module.decorator`).
+**Current Limitation**: Only simple names like `@override` or `@staticmethod`. No arguments or dotted paths in v0.3 (see src/Sharpy.Compiler/Parser/Ast/Statement.cs:339-340).
 
-#### `Parameter`
-Represents function/method parameters with support for variadic parameters.
+**Semantic Handling**: Decorators are validated against a known set (e.g., `@override`, `@staticmethod`, `@property`). Unknown decorators emit warnings.
 
-```csharp
-public record Parameter
-{
-    public string Name { get; init; } = "";
-    public TypeAnnotation? Type { get; init; }
-    public Expression? DefaultValue { get; init; }
-    /// <summary>
-    /// True if this parameter is variadic (*args). Maps to C# params T[].
-    /// </summary>
-    public bool IsVariadic { get; init; }
+### 4. Import Statements
 
-    // Source location
-    public int LineStart { get; init; }
-    public int ColumnStart { get; init; }
-    public int LineEnd { get; init; }
-    public int ColumnEnd { get; init; }
-}
-```
-
-**Variadic Parameters:**
-- `IsVariadic` flag indicates Python-style `*args` parameters
-- Maps to C# `params T[]` arrays
-- Allows functions to accept variable numbers of arguments
-
-### 3.4 Import Statements
-
-#### `ImportStatement`
-Standard module imports.
+#### ImportStatement
 
 ```csharp
 public record ImportStatement : Statement
 {
-    public List<ImportAlias> Names { get; init; } = new();
+    public ImmutableArray<ImportAlias> Names { get; init; } = ...;
 }
 
 public record ImportAlias
 {
-    public string Name { get; init; } = "";  // module.submodule
-    public string? AsName { get; init; }  // Optional alias
-    // ... source location fields
+    public string Name { get; init; } = "";       // module.submodule
+    public string? AsName { get; init; }          // Optional alias
 }
 ```
 
-**Example Sharpy Code:**
-```python
-import sys
-import os.path as ospath
-import collections, itertools
-```
+**Examples**:
+- `import sys` — `Names = [ImportAlias("sys", null)]`
+- `import sys as s` — `Names = [ImportAlias("sys", "s")]`
+- `import sys, os` — `Names = [ImportAlias("sys", null), ImportAlias("os", null)]`
 
-#### `FromImportStatement`
-From-import style imports with semantic analysis support.
+#### FromImportStatement
 
 ```csharp
 public record FromImportStatement : Statement
 {
     public string Module { get; init; } = "";
-    public List<ImportAlias> Names { get; init; } = new();
+    public ImmutableArray<ImportAlias> Names { get; init; } = ...;
     public bool ImportAll { get; init; }  // from module import *
 
-    /// <summary>
-    /// The resolved module path relative to the project root, set during semantic analysis.
-    /// For example, ".helpers" in package "mypackage" resolves to "mypackage.helpers".
-    /// This is used during code generation to generate correct namespace references.
-    /// </summary>
+    // Semantic analysis enrichment:
     public string? ResolvedModulePath { get; set; }
-
-    /// <summary>
-    /// Symbols that are re-exported from this from-import statement, set during semantic analysis.
-    /// Maps the local name (possibly aliased) to the symbol information.
-    /// This is used during code generation to generate delegating members in the Exports class.
-    /// </summary>
     public Dictionary<string, Semantic.Symbol>? ReExportedSymbols { get; set; }
 }
 ```
 
-**Important Design Point:**
-- This is one of the **few mutable AST nodes** - notice the `get; set;` on the last two properties
-- `ResolvedModulePath` and `ReExportedSymbols` are populated during semantic analysis
-- This mutation is acceptable because it happens in a single, well-defined phase
-- These properties are essential for cross-module code generation
+**Key Mutable Properties**:
 
-**Example Sharpy Code:**
-```python
-from typing import List, Dict
-from collections import *
-from .local_module import helper
-```
+This is one of the few places where the AST is **mutated** after parsing:
 
----
-
-## 4. Dependencies
-
-### Direct Dependencies
-
-**Within the Parser.Ast namespace:**
-- `Node.cs` - Base class for all AST nodes
-- `Expression.cs` - All expression types (used in `Test`, `Target`, `Value` properties)
-- `Types.cs` - Type annotation nodes (used in `TypeAnnotation` properties)
-
-**Key Relationship:**
-```
-Statement (this file)
-    ↓ uses
-Expression (Expression.cs) - for conditions, values, targets
-    ↓ uses
-TypeAnnotation (Types.cs) - for type declarations
-```
-
-**External Dependencies:**
-- `Sharpy.Compiler.Semantic` namespace - for the `Symbol` type used in `FromImportStatement.ReExportedSymbols`
-
-### Downstream Consumers
-
-These parts of the compiler depend on Statement.cs:
-
-1. **Parser (`Parser.cs`)** - Creates instances of these statement records
-2. **Semantic Analyzer** - Validates statements, resolves names, checks types
-3. **Code Generator (`RoslynEmitter.cs`)** - Transforms statements into C# syntax trees
-4. **AST Visitors** - Any code that walks the AST tree (e.g., for analysis or transformation)
-
----
-
-## 5. Patterns and Design Decisions
-
-### 5.1 Immutable Records
-
-All AST nodes use C# 9's `record` types with `init` properties:
-
-```csharp
-public record Assignment : Statement
-{
-    public Expression Target { get; init; } = null!;
-    public Expression Value { get; init; } = null!;
-}
-```
-
-**Why records?**
-- **Immutability**: Once created, AST nodes cannot be modified (thread-safe, easier to reason about)
-- **Value semantics**: Two nodes with identical properties are considered equal
-- **Concise syntax**: Reduces boilerplate compared to traditional classes
-- **Pattern matching**: Enables clean switch expressions and patterns
-
-**Exception:** `FromImportStatement` has two mutable properties (`ResolvedModulePath` and `ReExportedSymbols`) that are populated during semantic analysis. This is a pragmatic choice to avoid creating new AST nodes after parsing.
-
-### 5.2 Location Tracking
-
-Every statement inherits source location from `Node`:
-
-```csharp
-public int LineStart { get; init; }
-public int ColumnStart { get; init; }
-public int LineEnd { get; init; }
-public int ColumnEnd { get; init; }
-```
-
-**Used for:**
-- Error messages: "Error at line 15, column 8: ..."
-- IDE features: Jump to definition, hover info
-- Debugging: Source mapping for stack traces
-
-**Note:** Some helper records (like `ElifClause`, `ExceptHandler`, `Parameter`, `EnumMember`, `Decorator`, `ImportAlias`) include their own location fields since they don't inherit from `Node`.
-
-### 5.3 Nullable vs Non-Nullable Properties
-
-The file carefully distinguishes optional and required properties:
-
-```csharp
-// Required (will never be null after parsing)
-public Expression Test { get; init; } = null!;
-
-// Optional (may be absent in valid code)
-public Expression? Value { get; init; }
-```
-
-**Pattern:**
-- `null!` - Required property, parser ensures it's set
-- `?` - Optional property, represents absence in source code
-
-### 5.4 Empty Lists vs Null
-
-For collections, empty lists represent absence, not null:
-
-```csharp
-public List<Statement> Body { get; init; } = new();
-```
-
-**Why not `List<Statement>?`?**
-- Simplifies consumer code (no null checks needed)
-- Makes intent clear: a list that may be empty
-- Consistent with how the parser works
-
-### 5.5 Helper Records
-
-Several helper types (`ElifClause`, `ExceptHandler`, `Parameter`, etc.) don't inherit from `Statement`:
-
-```csharp
-public record ElifClause  // NOT : Statement
-{
-    public Expression Test { get; init; } = null!;
-    public List<Statement> Body { get; init; } = new();
-    // ... location fields
-}
-```
-
-**Rationale:**
-- These aren't standalone statements
-- They're components of compound statements
-- This prevents them from appearing where they shouldn't
-
-### 5.6 Enum-Based Operators
-
-The `AssignmentOperator` enum provides a type-safe way to represent the 14 different assignment operators:
-
-```csharp
-public enum AssignmentOperator
-{
-    Assign,        // =
-    PlusAssign,    // +=
-    MinusAssign,   // -=
-    StarAssign,    // *=
-    SlashAssign,   // /=
-    DoubleSlashAssign,  // //=  (integer division)
-    PercentAssign, // %=
-    PowerAssign,   // **=  (exponentiation)
-    AndAssign,     // &=
-    OrAssign,      // |=
-    XorAssign,     // ^=
-    LeftShiftAssign,  // <<=
-    RightShiftAssign,  // >>=
-    NullCoalesceAssign // ??=
-}
-```
-
-This approach is cleaner than storing operator strings and enables exhaustive pattern matching.
-
----
-
-## 6. Debugging Tips
-
-### 6.1 Inspecting AST Structures
-
-When debugging parser issues, use the `AstDumper` utility:
-
-```csharp
-var module = parser.Parse();
-var dumper = new AstDumper();
-Console.WriteLine(dumper.Dump(module));
-```
-
-This prints a tree representation showing all statement nodes.
-
-### 6.2 Common Issues
-
-**Problem:** `NullReferenceException` when accessing statement properties
-- **Cause:** Parser bug that didn't initialize a required property
-- **Fix:** Check parser code for the statement type, ensure all required fields are set
-
-**Problem:** Missing source locations in error messages
-- **Cause:** Forgot to set `LineStart`, `ColumnStart`, etc. when constructing the node
-- **Fix:** Ensure parser's `CurrentToken` position is captured before advancing
-
-**Problem:** Statements appearing in wrong contexts
-- **Cause:** Parser accepts statements that should only be in specific contexts (e.g., `return` outside function)
-- **Fix:** This is typically caught by semantic analysis, not in the AST itself
-
-**Problem:** Loop-else clauses not working correctly
-- **Cause:** `BreakWithFlagStatement` nodes not being generated properly
-- **Fix:** Check the desugaring logic that transforms `BreakStatement` to `BreakWithFlagStatement` for loops with else clauses
-
-### 6.3 Type System Integration
-
-When debugging type-checking issues:
-
-1. **Check `SemanticInfo`** - Types are NOT stored on AST nodes (except for the special mutable properties in `FromImportStatement`)
-2. **Look at `TypeChecker.cs`** - Validates statement semantics
-3. **Trace narrowing** - `if x is not None:` narrows types in the then-branch
-
-```csharp
-// In TypeChecker
-var ifStmt = (IfStatement)stmt;
-CheckExpression(ifStmt.Test);  // Check condition type
-
-// Apply type narrowing in ThenBody
-foreach (var thenStmt in ifStmt.ThenBody)
-    CheckStatement(thenStmt);
-```
-
-### 6.4 Code Generation Debugging
-
-When generated C# is wrong:
-
-1. **Check `RoslynEmitter.cs`** - Find the `Visit*` method for your statement type
-2. **Verify property access** - Ensure all statement properties are being read correctly
-3. **Check name mangling** - Python `snake_case` → C# `PascalCase` conversion
-
-Example for debugging assignment code generation:
-
-```csharp
-// In RoslynEmitter.cs
-private StatementSyntax EmitAssignment(Assignment assignment)
-{
-    var left = EmitExpression(assignment.Target);   // Check this
-    var right = EmitExpression(assignment.Value);   // And this
-    return SyntaxFactory.AssignmentExpression(...);
-}
-```
-
-### 6.5 Import Resolution Debugging
-
-When debugging import issues:
-
-1. **Check `ResolvedModulePath`** - Was the module path resolved correctly during semantic analysis?
-2. **Inspect `ReExportedSymbols`** - Do the re-exported symbols have the correct mappings?
-3. **Trace module discovery** - Use the `CachedModuleDiscovery` to understand how modules are found
-
----
-
-## 7. Contribution Guidelines
-
-### 7.1 Adding a New Statement Type
-
-When adding a new statement to Sharpy:
-
-1. **Define the record** in the appropriate region of this file:
-   ```csharp
-   /// <summary>
-   /// With statement for context management
-   /// </summary>
-   public record WithStatement : Statement
-   {
-       public Expression ContextManager { get; init; } = null!;
-       public string? TargetName { get; init; }
-       public List<Statement> Body { get; init; } = new();
-   }
+1. **ResolvedModulePath**: Set during semantic analysis when resolving relative imports (src/Sharpy.Compiler/Parser/Ast/Statement.cs:418-421):
+   ```python
+   from .helpers import foo  # Resolves to "mypackage.helpers"
    ```
 
-2. **Update the parser** (`Parser.cs`) to recognize and construct the node
+2. **ReExportedSymbols**: Tracks symbols re-exported for module's public API (src/Sharpy.Compiler/Parser/Ast/Statement.cs:423-429):
+   ```python
+   from .internal import Thing  # Thing is now part of this module's exports
+   ```
 
-3. **Add semantic checks** (`TypeChecker.cs`, `NameResolver.cs`)
+**Design Justification**: While AST is generally immutable, import resolution requires cross-module information only available during semantic analysis. Storing this in the AST node simplifies code generation.
 
-4. **Implement code generation** (`RoslynEmitter.cs`)
+---
 
-5. **Write tests**:
-   - Lexer tests (if new keywords)
-   - Parser tests (AST construction)
-   - Semantic tests (type checking, scoping)
-   - Integration tests (end-to-end)
+## Dependencies
 
-### 7.2 Modifying Existing Statements
+### Internal Dependencies
 
-**DON'T:**
-- Change the meaning of existing properties
-- Remove properties (breaks backward compatibility)
-- Make required properties optional
-- Add mutable properties (except in very rare cases like `FromImportStatement`)
+- **`Expression.cs`**: All `Expression` properties reference this sibling file
+- **`Types.cs`**: `TypeAnnotation`, `FunctionType` definitions
+- **`Node.cs`**: Base `Node` class and `ILocatable` interface
+- **`Semantic/Symbol.cs`**: Used in `FromImportStatement.ReExportedSymbols`
 
-**DO:**
-- Add new optional properties
-- Add helper methods (but consider if they belong elsewhere)
-- Improve documentation comments
-- Add new constraint types or enum values
+### External Dependencies
 
-### 7.3 Code Style
+- **`System.Collections.Immutable`**: All collections use `ImmutableArray<T>` for safety and performance
+- **`Sharpy.Compiler.Text`**: `TextSpan` for character-level source spans
 
-Follow these conventions:
+---
+
+## Patterns and Design Decisions
+
+### 1. Immutable Record Types
+
+All AST nodes use C# 9.0 `record` types with `init` properties:
+
+```csharp
+public record IfStatement : Statement
+{
+    public Expression Test { get; init; } = null!;
+    // ...
+}
+```
+
+**Benefits**:
+- Structural equality (useful for testing and AST comparison)
+- Immutability by default (prevents accidental mutation during traversal)
+- Concise syntax with automatic `ToString()` implementations
+
+**Exception**: `FromImportStatement` has mutable `ResolvedModulePath` and `ReExportedSymbols` for semantic enrichment.
+
+### 2. ImmutableArray for Collections
+
+Every collection uses `ImmutableArray<T>`:
+- **Performance**: Faster iteration than `List<T>`, no bounds checking overhead
+- **Safety**: Cannot be modified after creation
+- **Default Values**: Empty arrays via `ImmutableArray<T>.Empty`
+
+### 3. Source Location Tracking
+
+Every AST node and helper record (like `ElifClause`, `Parameter`) tracks source location:
+- Line/column (1-indexed, for error messages)
+- Optional `TextSpan` (character offsets, for editor integrations)
+
+This enables high-quality error diagnostics throughout the pipeline.
+
+### 4. Helper Records vs. Statement Subclasses
+
+Some constructs are **not** statements themselves:
+- `ElifClause` — part of `IfStatement`
+- `ExceptHandler` — part of `TryStatement`
+- `EnumMember` — part of `EnumDef`
+- `ImportAlias`, `Parameter`, `Decorator`, etc.
+
+These are plain records, not `Statement` subclasses, because they don't stand alone in the AST.
+
+### 5. null! vs. Optional Types
+
+Pattern usage:
+- `= null!` — Required property that parser guarantees to initialize
+- `= null` or `?` — Optional property that may be absent
+
+Example:
+```csharp
+public Expression Test { get; init; } = null!;      // Always present
+public Expression? Value { get; init; }             // May be null
+```
+
+### 6. Python Fidelity vs. .NET Semantics
+
+**Loop Else Clauses**: Python's `for-else` and `while-else` are preserved in the AST, then compiled using `BreakWithFlagStatement` lowering.
+
+**Compound Assignments**: Python's `//=` (floor division) is preserved as `DoubleSlashAssign`, then mapped to the correct C# operation.
+
+**Exception Handling**: Python's `else` clause in try-except (runs if no exception) is supported natively.
+
+---
+
+## Debugging Tips
+
+### 1. Inspecting the AST
+
+Use the `emit ast` command to visualize parsed AST:
+```bash
+dotnet run --project src/Sharpy.Cli -- emit ast file.spy
+```
+
+This shows the full AST structure, including all properties and nested nodes.
+
+### 2. Common Pitfalls
+
+**Null Reference Exceptions**: If a required property like `Test` or `Body` is null, the parser likely has a bug. Check the parser's statement parsing methods.
+
+**Empty Bodies**: Statements with empty bodies (`ImmutableArray<Statement>.Empty`) are valid (e.g., `pass` as the only statement), but may indicate incomplete parsing.
+
+**Missing Source Locations**: If `LineStart` is 0, the parser didn't set location info. This breaks error reporting.
+
+### 3. Tracing Semantic Changes
+
+For `FromImportStatement`, set breakpoints where `ResolvedModulePath` and `ReExportedSymbols` are assigned:
+- Module resolution phase in `SemanticAnalyzer`
+- Symbol table population
+
+### 4. Immutable Array Gotchas
+
+```csharp
+var arr = ImmutableArray<Statement>.Empty;
+arr.Add(stmt);  // WRONG! Returns new array, doesn't modify arr
+arr = arr.Add(stmt);  // Correct
+```
+
+When building ASTs in tests or tools, remember to reassign immutable collections.
+
+---
+
+## Contribution Guidelines
+
+### When to Modify This File
+
+1. **Adding New Statement Types**: New language features (e.g., `match` statement, `with` statement)
+2. **Extending Existing Statements**: Adding properties to support new semantic info
+3. **Constraints**: Adding new constraint types for generics
+
+### When NOT to Modify This File
+
+1. **Type Annotations**: Those belong in `Types.cs`
+2. **Expression Nodes**: Those belong in `Expression.cs`
+3. **Semantic Metadata**: Add to `SemanticInfo` class, not AST nodes (except for import resolution)
+
+### Adding a New Statement Type
+
+1. Choose the appropriate region (Simple, Compound, Definitions, Imports)
+2. Inherit from `Statement`
+3. Add necessary properties with `init` accessors
+4. Use `ImmutableArray<T>` for collections
+5. Set default values (`= null!`, `= ImmutableArray<T>.Empty`, etc.)
+6. Add XML doc comment explaining the statement's purpose
+7. Update parser to construct the new node type
+8. Update RoslynEmitter to generate C# code for it
+9. Add tests in `Sharpy.Compiler.Tests`
+
+### Example: Adding a `WithStatement`
 
 ```csharp
 /// <summary>
-/// Clear, concise description of what this statement represents
+/// With statement for context managers (with resource as r:)
 /// </summary>
-public record MyStatement : Statement
+public record WithStatement : Statement
 {
-    // Required properties first (non-nullable)
-    public Expression Target { get; init; } = null!;
-
-    // Optional properties second (nullable)
-    public Expression? OptionalValue { get; init; }
-
-    // Collections last
-    public List<Statement> Body { get; init; } = new();
+    public Expression ContextManager { get; init; } = null!;
+    public string? TargetName { get; init; }  // Optional 'as' binding
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
 }
 ```
 
-### 7.4 Testing Requirements
+Then:
+1. Update `Parser.cs` to parse `with` keyword
+2. Update `RoslynEmitter.cs` to generate `using` statement
+3. Update semantic analyzer for scope handling
+4. Add integration tests
 
-Every statement type should have:
+### Code Style
 
-1. **Parser tests** - Verify AST structure is created correctly
-2. **Semantic tests** - Test error detection (e.g., `break` outside loop)
-3. **Code generation tests** - Verify C# output
-4. **Integration tests** - Compile and run real Sharpy code
+- Match existing formatting (4-space indent, K&R braces)
+- XML doc comments for all public types
+- Group related types (e.g., `IfStatement` and `ElifClause`)
+- Use `#region` markers for organization
 
-Example test structure:
+### Backwards Compatibility
 
-```csharp
-[Fact]
-public void TestParseWithStatement()
-{
-    var source = """
-        with open("file.txt") as f:
-            print(f.read())
-        """;
-
-    var module = Parse(source);
-    Assert.IsType<WithStatement>(module.Body[0]);
-}
-```
-
-### 7.5 Documentation
-
-Update these documents when modifying statements:
-
-- **This walkthrough** (if structure changes significantly)
-- **Language spec** (`docs/language_specification/`) for user-facing changes
-- **Semantic analyzer architecture** if validation changes
-- **Code samples** (`samples/`) to demonstrate new features
+AST nodes are serialization boundaries. Changing property names or removing properties is **breaking**. When making changes:
+- Add new optional properties (`= null`)
+- Deprecate old properties with `[Obsolete]`
+- Coordinate with serialization code if AST is persisted
 
 ---
 
-## 8. Cross-References
-
-Understanding Statement.cs is easier with context from these related files:
+## Cross-References
 
 ### Related AST Files
-- [Node.md](Node.md) - Base class documentation, source location tracking
-- [Expression.md](Expression.md) - Expression nodes used within statements
-- [Types.md](Types.md) - Type annotation nodes
+- **[Node.md](Node.md)** — Base `Node` class and `ILocatable` interface
+- **[Expression.md](Expression.md)** — Expression node types referenced by statements
+- **[Types.md](Types.md)** — `TypeAnnotation` and type system nodes
+- **[Pattern.md](Pattern.md)** — Pattern matching nodes (for future `match` statement)
+- **[Statement.Future.md](Statement.Future.md)** — Planned future statement types
 
-### Compiler Pipeline Files
-- **Parser.cs** - Creates these statement instances
-- **Semantic Analyzer** - Validates statement semantics
-- [RoslynEmitter.md](../../CodeGen/RoslynEmitter.md) - Converts statements to C#
-- [TypeMapper.md](../../CodeGen/TypeMapper.md) - Maps Sharpy types to C# types
+### Parser Integration
+- **Parser.cs** — Constructs these statement nodes from tokens
+- **ParserStatements.cs** — Specific parsing logic for each statement type
 
-### Related Modules
-For a better understanding of how statements flow through the compiler:
-- [Compiler.md](../../Compiler.md) - Overall compilation pipeline
-- [Lexer.md](../../Lexer/Lexer.md) - Tokenization before parsing
+### Semantic Analysis
+- **SemanticAnalyzer.cs** — Enriches AST with type info
+- **SymbolTable.cs** — Stores symbols from definitions
 
----
+### Code Generation
+- **[RoslynEmitter.md](../../CodeGen/RoslynEmitter.md)** — Converts statements to C# syntax trees
+- **RoslynEmitter.Statements.cs** — Statement-specific emission logic
 
-## 9. Quick Reference
-
-### Statement Categories
-
-```
-Simple Statements:
-  - ExpressionStatement    (expr as statement)
-  - Assignment            (x = value, x += value, x **= value, etc.)
-  - VariableDeclaration   (x: int = 5, const MAX = 100)
-  - AssertStatement       (assert condition, message)
-  - PassStatement         (pass)
-  - BreakStatement        (break)
-  - BreakWithFlagStatement (internal - for loop-else support)
-  - ContinueStatement     (continue)
-  - ReturnStatement       (return value)
-  - RaiseStatement        (raise exception, raise ... from cause)
-
-Compound Statements:
-  - IfStatement           (if-elif-else)
-  - WhileStatement        (while loop with optional else)
-  - ForStatement          (for-in loop with optional else)
-  - TryStatement          (try-except-else-finally)
-
-Definitions:
-  - FunctionDef           (def name[T](...): with generics)
-  - ClassDef              (class Name[T]:)
-  - StructDef             (struct Name[T]:)
-  - InterfaceDef          (interface IName[T]:)
-  - EnumDef               (enum Name:)
-  - TypeAlias             (type UserId = int)
-
-Imports:
-  - ImportStatement       (import module, import module as alias)
-  - FromImportStatement   (from module import name, from module import *)
-```
-
-### Common Patterns
-
-**Checking statement type:**
-```csharp
-if (stmt is Assignment assignment)
-{
-    // Work with assignment
-}
-```
-
-**Visiting all statements:**
-```csharp
-foreach (var stmt in functionDef.Body)
-{
-    ProcessStatement(stmt);
-}
-```
-
-**Creating a statement (in parser):**
-```csharp
-return new ReturnStatement
-{
-    Value = valueExpr,
-    LineStart = startToken.Line,
-    ColumnStart = startToken.Column,
-    LineEnd = currentToken.Line,
-    ColumnEnd = currentToken.Column
-};
-```
-
-**Handling loop-else:**
-```csharp
-// In semantic analyzer or code gen
-if (forStmt.ElseBody.Count > 0)
-{
-    // Transform break statements to BreakWithFlagStatement
-    var flagName = GenerateUniqueFlagName();
-    // ... transformation logic
-}
-```
+### Testing
+- **ParserTests.cs** — Unit tests for statement parsing
+- **FileBasedIntegrationTests.cs** — End-to-end tests using `.spy` files
 
 ---
 
-## 10. FAQ
+## Quick Reference Table
 
-**Q: Why are statements immutable?**
-A: Immutability prevents bugs from unexpected modifications, enables safe concurrent processing, and supports functional-style transformations. The exception is `FromImportStatement`, which has mutable properties set during semantic analysis.
-
-**Q: Where are statement types stored?**
-A: Types are resolved by the semantic analyzer and stored in `SemanticInfo`, not on the AST nodes themselves (except for import resolution data on `FromImportStatement`).
-
-**Q: Can I add methods to statement records?**
-A: Technically yes, but avoid it. AST nodes should be pure data. Put behavior in visitors, analyzers, or emitters.
-
-**Q: Why not use inheritance for similar statements?**
-A: Each statement type has unique properties. Flattening the hierarchy keeps the design simple and explicit.
-
-**Q: How do I add a new statement type?**
-A: Follow the pattern: define the record here → update parser → add semantic checks → implement code generation → write tests.
-
-**Q: Where's the logic for executing statements?**
-A: Sharpy is a compiled language. Statements are transformed to C# by `RoslynEmitter`, then .NET executes the resulting IL.
-
-**Q: What's the difference between `BreakStatement` and `BreakWithFlagStatement`?**
-A: `BreakStatement` is the standard break. `BreakWithFlagStatement` is an internal/generated statement used to implement Python-style loop-else clauses, setting a flag before breaking so the else clause can detect whether the loop completed normally.
-
-**Q: Why does `FromImportStatement` have mutable properties?**
-A: `ResolvedModulePath` and `ReExportedSymbols` are set during semantic analysis to avoid creating new AST nodes. This is a pragmatic trade-off between immutability and practicality.
-
-**Q: Can type parameters have multiple constraints?**
-A: Yes! The `TypeParameterDef.Constraints` property is a list, allowing multiple constraints like `T: class, IComparable, new()`.
+| Statement Type | Python Example | Key Properties | Special Notes |
+|----------------|----------------|----------------|---------------|
+| `ExpressionStatement` | `print("hi")` | `Expression` | Wraps any expression |
+| `Assignment` | `x += 5` | `Target`, `Value`, `Operator` | 14 operator types |
+| `VariableDeclaration` | `x: int = 5` | `Name`, `Type`, `InitialValue`, `IsConst` | Type inference if `Type` is null |
+| `IfStatement` | `if x:\n  pass\nelif y:\n  pass` | `Test`, `ThenBody`, `ElifClauses`, `ElseBody` | Elif is array, not nested ifs |
+| `WhileStatement` | `while x:\n  pass\nelse:\n  pass` | `Test`, `Body`, `ElseBody` | Else runs if no break |
+| `ForStatement` | `for x in y:\n  pass` | `Target`, `Iterator`, `Body`, `ElseBody` | Target can be tuple |
+| `TryStatement` | `try:\n  pass\nexcept E as e:\n  pass` | `Body`, `Handlers`, `ElseBody`, `FinallyBody` | Full Python semantics |
+| `FunctionDef` | `def foo[T](x: T) -> T:\n  pass` | `Name`, `TypeParameters`, `Parameters`, `ReturnType`, `Body` | Supports generics |
+| `ClassDef` | `class Foo(Bar):\n  pass` | `Name`, `TypeParameters`, `BaseClasses`, `Body` | Reference type |
+| `StructDef` | `struct Point:\n  pass` | `Name`, `BaseClasses`, `Body` | Value type, interfaces only |
+| `InterfaceDef` | `interface IFoo:\n  pass` | `Name`, `BaseInterfaces`, `Body` | Contract only |
+| `EnumDef` | `enum Color:\n  Red\n  Green` | `Name`, `Members` | Simple enums only |
+| `TypeAlias` | `type UserId = int` | `Name`, `Type`, `FunctionType` | Exactly one type set |
+| `ImportStatement` | `import sys as s` | `Names` (array of `ImportAlias`) | Multi-import support |
+| `FromImportStatement` | `from os import path` | `Module`, `Names`, `ImportAll`, `ResolvedModulePath` | Mutable resolution fields |
 
 ---
 
@@ -1053,7 +653,7 @@ A: Yes! The `TypeParameterDef.Constraints` property is a list, allowing multiple
 3. **Extend this** carefully, following the established patterns
 4. **Remember**: This is just data - the interesting logic happens in the components that consume these nodes
 
-**Key Takeaways:**
+**Key Takeaways**:
 - 30+ statement types organized into 4 categories
 - Immutable records with `init` properties (except for import resolution)
 - Source location tracking on all nodes
@@ -1061,3 +661,7 @@ A: Yes! The `TypeParameterDef.Constraints` property is a list, allowing multiple
 - Clean separation between AST (structure) and semantic info (types, symbols)
 
 For deeper understanding, explore the related files (Parser.cs, TypeChecker.cs, RoslynEmitter.cs) to see how these statement nodes are created, validated, and transformed.
+
+---
+
+**Last Updated**: 2026-01-23

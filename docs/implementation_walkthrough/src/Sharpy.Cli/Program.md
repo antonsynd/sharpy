@@ -6,473 +6,460 @@
 
 ## Overview
 
-`Program.cs` is the entry point for the Sharpy compiler command-line interface (CLI). It implements a modern CLI application using the **System.CommandLine** library, providing developers with a git-like command structure for compiling Sharpy source files to .NET assemblies.
+`Program.cs` is the entry point for the **Sharpy Compiler CLI** (`sharpyc`). This file implements a command-line interface that exposes all compiler functionality to users, from basic compilation to advanced debugging and introspection tools.
 
-**Core Responsibilities:**
-- Define CLI commands and options (build, run, project, emit, cache)
-- Parse command-line arguments
-- Orchestrate the compilation pipeline (Lexer → Parser → Semantic Analysis → Code Generation → Assembly Compilation)
-- Handle errors gracefully with user-friendly messages
-- Support debugging features (token/AST emission, C# code generation)
-- Manage compilation metrics and logging
+**Role in the Compiler Pipeline:**
+- Serves as the **user-facing interface** to the entire Sharpy compiler
+- Orchestrates the compilation pipeline: Source → Lexer → Parser → Semantic Analysis → Code Generation → .NET Assembly
+- Provides diagnostic tools for inspecting intermediate representations (tokens, AST, generated C#)
+- Manages project-based compilation via `.spyproj` files
+- Handles the "compile and run" workflow for quick iteration
 
-**Execution Flow:**
-```
-User Command → System.CommandLine Parser → Command Handler → Compiler API → Assembly Output
-```
+This is the first file a developer will interact with when using Sharpy, and it's structured around the [System.CommandLine](https://github.com/dotnet/command-line-api) library for robust CLI argument parsing.
 
 ---
 
-## Class/Type Structure
+## Architecture: Command Structure
+
+The CLI is organized into **5 main commands**, each with specific responsibilities:
+
+| Command | Purpose | Example Usage |
+|---------|---------|---------------|
+| `build` | Compile `.spy` files to `.dll` or `.exe` | `sharpyc build main.spy --type exe -o app.exe` |
+| `run` | Compile and immediately execute a `.spy` file | `sharpyc run script.spy --args arg1 arg2` |
+| `project` | Build multi-file projects from `.spyproj` | `sharpyc project MyApp.spyproj --configuration Release` |
+| `emit` | Output intermediate representations | `sharpyc emit csharp main.spy` (see tokens, AST, or C#) |
+| `cache` | Manage the overload discovery cache | `sharpyc cache clear` |
+
+### Global Options
+
+Four global options apply across all commands:
+
+```csharp
+--log-level <None|Error|Warning|Info|Debug>  // Control compiler diagnostic output
+--log-file <path>                            // Redirect logs to file
+--metrics-format <text|json>                 // Output compilation performance metrics
+--metrics-output <path>                      // Write metrics to file
+```
+
+These are configured in lines 20-28 and parsed by each command handler.
+
+---
+
+## Class Structure
 
 ### Main Class: `Program`
 
-A single static class containing the CLI implementation. No instance state is maintained—all operations are stateless and driven by command-line arguments.
+A single static class with:
+- **`Main(string[] args)`** - Entry point that builds the command tree
+- **Command Handlers** - Methods like `HandleBuildCommand`, `HandleRunCommand`, etc.
+- **Compiler Pipeline Helpers** - `EmitTokens`, `EmitAst`, `EmitCSharp`, `CompileToBinary`
+- **Utilities** - `CreateLogger`, `OutputMetrics`, `ValidateInputFile`, etc.
 
-### Nested Class: `SingleFileProjectConfig`
+### Inner Class: `SingleFileProjectConfig`
 
-**Location:** Lines 997-1030
+A wrapper class (lines 997-1030) that extends `ProjectConfig` to handle single-file compilation scenarios. This allows the `build` and `run` commands to reuse the same compilation infrastructure as full projects.
+
+**Why this exists:**
+- The `Sharpy.Compiler.Compiler` class expects a `ProjectConfig` object
+- Single-file builds don't have a `.spyproj` file, so we synthesize a minimal config
+- Overrides `OutputAssemblyPath` to respect the user's `--output` flag
+
+---
+
+## Key Functions and Workflows
+
+### 1. `Main(string[] args)` - Command Tree Construction
+
+**Lines 15-215**
+
+This method constructs the entire CLI structure using the builder pattern from `System.CommandLine`:
 
 ```csharp
-private class SingleFileProjectConfig : ProjectConfig
+var rootCommand = new RootCommand("sharpyc - Sharpy Compiler");
+
+// Add global options
+rootCommand.Options.Add(logLevelOption);
+rootCommand.Options.Add(logFileOption);
+// ... etc
+
+// Add subcommands
+rootCommand.Subcommands.Add(buildCommand);
+rootCommand.Subcommands.Add(runCommand);
+// ... etc
+
+return rootCommand.Parse(args).Invoke();
 ```
 
-**Purpose:** Adapts the project-oriented `ProjectConfig` class for single-file compilation scenarios. This is necessary because the compiler's `AssemblyCompiler` expects a `ProjectConfig`, but single-file builds (via `sharpyc build file.spy`) don't have a project file.
-
-**Key Override:**
-- `OutputAssemblyPath` property is overridden to provide a custom output path instead of calculating it from project structure.
-
----
-
-## Key Functions/Methods
-
-### 1. `Main(string[] args)` - Entry Point
-
-**Lines:** 15-215
-
-**Purpose:** Constructs the command tree using System.CommandLine and parses user input.
-
-**Command Structure:**
-```
-sharpyc
-├── build       - Compile a single .spy file
-├── run         - Compile and execute a .spy file
-├── project     - Build a .spyproj project
-├── emit        - Emit intermediate representations
-│   ├── tokens  - Show tokenized output
-│   ├── ast     - Show abstract syntax tree
-│   └── csharp  - Show generated C# code
-└── cache       - Manage overload discovery cache
-    ├── clear   - Clear the cache
-    └── info    - Display cache information
-```
-
-**Global Options:**
-- `--log-level` - Control compiler verbosity (None, Error, Warning, Info, Debug)
-- `--log-file` - Redirect logs to a file
-- `--metrics-format` - Output compilation metrics (text or json)
-- `--metrics-output` - Write metrics to a file
-
-**Design Pattern:** Command pattern via lambda-based action handlers. Each command uses `SetAction()` to define its behavior inline.
-
-**Return Value:** Exit code from the invoked command (0 for success, 1 for errors).
-
----
-
-### 2. `CreateLogger(CompilerLogLevel, FileInfo?)` - Logger Factory
-
-**Lines:** 217-232
-
-**Purpose:** Creates the appropriate logger implementation based on user preferences.
-
-**Logic:**
-- **No logging:** Returns `NullLogger.Instance` (singleton pattern)
-- **File logging:** Creates `ConsoleCompilerLogger` with `StreamWriter` redirected to the file
-- **Console logging:** Creates standard `ConsoleCompilerLogger`
-
-**Note:** Despite the name, `ConsoleCompilerLogger` can write to any `TextWriter`, making it reusable for both console and file output.
-
----
-
-### 3. `HandleBuildCommand()` - Single File Compilation
-
-**Lines:** 302-315
-
-**Purpose:** Compiles a single `.spy` file to a .NET assembly (DLL or EXE).
-
-**Parameters:**
-- `inputFile` - Source file path
-- `outputType` - "exe" or "library" (defaults to "library")
-- `output` - Optional output path (auto-generated if not provided)
-- `references` - External .NET assemblies to reference
-- `projectReferences` - .NET project references
-- `modulePaths` - Paths to search for Sharpy modules
-- `logger` - Compiler logger instance
-- `metricsFormat/metricsOutput` - Metrics configuration
-
-**Delegates to:** `CompileToBinary()` after validating the input file exists.
-
-**Example Usage:**
-```bash
-sharpyc build hello.spy --type exe --output ./bin/hello.exe
-```
-
----
-
-### 4. `HandleRunCommand()` - Compile and Execute
-
-**Lines:** 317-431
-
-**Purpose:** Compiles a Sharpy source file to an executable and immediately runs it.
-
-**Key Behavior:**
-1. **Temporary Output:** If no output path is specified, creates a temp file with a GUID-based name
-2. **Compilation:** Delegates to `CompileToBinary()` with `outputType="exe"`
-3. **Runtime Dependency:** Copies `Sharpy.Core.dll` to the output directory so the executable can find it
-4. **Execution:** Launches the compiled EXE via `dotnet <path>`
-5. **Cleanup:** Deletes temporary files after execution (`.exe`, `.runtimeconfig.json`, `.deps.json`, `.pdb`, `Sharpy.Core.dll`)
-
-**TODO Comment (Line 356):** The current approach manually copies dependencies. A future improvement would be to use .NET's self-contained publish mode to bundle the runtime and all dependencies into a standalone executable.
-
-**Error Handling:** Cleanup happens even if execution fails (try/catch in lines 404-430).
-
-**Example Usage:**
-```bash
-sharpyc run script.spy --args "arg1" "arg2"
-```
-
----
-
-### 5. `HandleProjectCommand()` - Multi-File Project Compilation
-
-**Lines:** 433-464
-
-**Purpose:** Builds a `.spyproj` project containing multiple source files.
-
-**Auto-Discovery:** If no project file is specified, searches the current directory for a `.spyproj` file using `ProjectFileParser.FindProjectFile()`.
-
-**Delegates to:** `CompileProject()` with the resolved project file path.
-
-**Example Usage:**
-```bash
-sharpyc project                           # Auto-discover
-sharpyc project samples/calculator.spyproj  # Explicit path
-```
-
----
-
-### 6. `EmitTokens()` - Lexer Debugging
-
-**Lines:** 480-512
-
-**Purpose:** Displays the token stream produced by the lexer for debugging lexical analysis issues.
-
-**Output Format:**
-```
-Tokens for hello.spy:
-================================================================================
-   0: Identifier        @ L1:C1 = 'print'
-   1: LeftParen         @ L1:C6
-   2: StringLiteral     @ L1:C7 = 'Hello, World!'
-   3: RightParen        @ L1:C22
-   4: Newline           @ L1:C23
-   5: EndOfFile         @ L2:C1
-================================================================================
-Total tokens: 6
-```
-
-**Use Case:** When a file fails to parse, run this to verify tokens are being recognized correctly.
-
-**Example Usage:**
-```bash
-sharpyc emit tokens hello.spy
-```
-
----
-
-### 7. `EmitAst()` - Parser Debugging
-
-**Lines:** 514-550
-
-**Purpose:** Displays the abstract syntax tree (AST) generated by the parser.
-
-**Key Component:** Uses `AstDumper` to pretty-print the AST hierarchy.
-
-**Output Example:**
-```
-AST for hello.spy:
-================================================================================
-Module
-  Body:
-    - ExprStmt
-      - Call
-        Func: Name(print)
-        Args: [StringLiteral("Hello, World!")]
-================================================================================
-```
-
-**Use Case:** When semantic analysis fails, check the AST to verify the parser correctly understood the code structure.
-
-**Example Usage:**
-```bash
-sharpyc emit ast hello.spy
-```
-
----
-
-### 8. `EmitCSharp()` - Code Generation Debugging
-
-**Lines:** 552-646
-
-**Purpose:** Generates and saves the C# code that would be produced by the Sharpy compiler without compiling it to an assembly.
-
-**Pipeline:**
-1. Lex and parse the Sharpy source
-2. Run semantic analysis:
-   - Create `SymbolTable` and `SemanticInfo`
-   - Run `NameResolver` to register type aliases, classes, functions
-   - Run `TypeChecker` to verify types
-3. Create `CodeGenContext` with the analyzed symbol table
-4. Use `RoslynEmitter` to generate a Roslyn `CompilationUnit`
-5. Convert to C# source string via `ToFullString()`
-6. Write to file (defaults to `<input>.cs`)
-
-**Key Implementation Details (Lines 564-596):**
-```csharp
-// Run semantic analysis to register type aliases and resolve types
-var builtins = new BuiltinRegistry();
-var symbolTable = new SymbolTable(builtins);
-var semanticInfo = new SemanticInfo();
-
-// Name resolution pass (registers type aliases, classes, functions, etc.)
-var nameResolver = new NameResolver(symbolTable, logger);
-nameResolver.ResolveDeclarations(module);
-nameResolver.ResolveInheritance();
-
-// Type checking pass
-var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
-typeChecker.CheckModule(module);
-```
-
-**Use Case:** Debugging code generation issues or understanding how Sharpy constructs map to C#.
-
-**Example Usage:**
-```bash
-sharpyc emit csharp hello.spy --output hello_generated.cs
-```
-
----
-
-### 9. `CompileToBinary()` - Core Compilation Logic
-
-**Lines:** 863-992
-
-**Purpose:** The workhorse method that performs full Sharpy → C# → .NET Assembly compilation.
-
-**Compilation Pipeline:**
-
-```
-┌─────────────┐
-│ Read Source │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────┐
-│ Create Compiler │ (with options: references, module paths)
-└──────┬──────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Compile to C# Code   │ (Compiler.Compile)
-└──────┬───────────────┘
-       │
-       ├─ Lexer.TokenizeAll()
-       ├─ Parser.ParseModule()
-       ├─ Semantic Analysis
-       └─ RoslynEmitter.Generate()
-       │
-       ▼
-┌─────────────────────────┐
-│ Create ProjectConfig    │ (SingleFileProjectConfig wrapper)
-└──────┬──────────────────┘
-       │
-       ▼
-┌──────────────────────────┐
-│ AssemblyCompiler.Compile │ (C# → IL)
-└──────┬───────────────────┘
-       │
-       ▼
-┌─────────────────┐
-│ Write Assembly  │ (.dll or .exe)
-└─────────────────┘
-```
-
-**Output Path Resolution (Lines 901-914):**
-- If `output` is provided, use it directly
-- Otherwise, use current directory with input filename + appropriate extension
-
-**SingleFileProjectConfig Usage (Lines 924-936):**
-Creates a minimal project configuration to satisfy `AssemblyCompiler`'s expectations. Key properties:
-- `assemblyName` - Derived from input filename
-- `targetFramework` - Hardcoded to "net8.0" (could be made configurable)
-- `outputAssemblyPath` - Explicit output path
-
-**Error Handling:**
-- Lexer errors → Exit code 1, display line/column
-- Parser errors → Exit code 1, display line/column
-- Semantic errors → Exit code 1, display compiler errors
-- Assembly compilation errors → Exit code 1, display Roslyn diagnostics
-
----
-
-### 10. `CompileProject()` - Project Build Orchestration
-
-**Lines:** 667-759
-
-**Purpose:** Builds a multi-file Sharpy project from a `.spyproj` file.
-
-**Key Steps:**
-
-1. **Load Project:** Parse `.spyproj` XML using `ProjectFileParser.Load()`
-2. **Clean (Optional):** Delete `bin/` and `obj/` directories if `--clean` flag is set
-3. **Create Compiler:** Initialize with project's references and module paths
-4. **Compile:** Call `Compiler.CompileProject()` which handles multi-file compilation
-5. **Save C# (Optional):** If `--emit-cs-to` is specified, save generated C# files
-6. **Display Results:** Show warnings, errors, and output path
-
-**Project Config Properties Displayed:**
-```
-Project: MyApp
-Configuration: Debug
-Output: exe
-Source files: 5
-```
-
-**Metrics Support:** Outputs `ProjectCompilationMetrics` which includes per-file timing and totals.
-
-**Example Usage:**
-```bash
-sharpyc project --configuration Release --emit-cs-to ./generated
-```
-
----
-
-### 11. Cache Management Commands
-
-#### `ClearCache(string?)` - Lines 648-665
-
-**Purpose:** Clears the overload discovery cache to force reindexing of .NET assemblies.
-
-**Use Case:** When .NET assemblies change (e.g., package updates), stale cache entries can cause incorrect overload resolution.
-
-**Implementation:** Uses `OverloadIndexCache.ClearAll()`
-
-#### `ShowCacheInfo(string?)` - Lines 761-780
-
-**Purpose:** Displays cache statistics (location, number of assemblies, total size).
-
-**Helper:** `FormatBytes()` (lines 782-795) converts byte counts to human-readable format (B, KB, MB, GB).
-
----
-
-### 12. Utility Methods
-
-#### `ValidateInputFile()` - Lines 466-478
-
-**Purpose:** Ensures the input file exists before compilation.
-
-**Behavior:**
-- Non-existent file → Error message + exit code 1
-- Missing `.spy` extension → Warning (but continues)
-
-#### `OutputMetrics()` - Lines 234-266
-
-**Purpose:** Formats and outputs compilation metrics in text or JSON format.
-
-**Output Targets:**
-- File → Write to specified path
-- Console → Print to stdout
-
-#### `OutputProjectMetrics()` - Lines 268-300
-
-**Purpose:** Similar to `OutputMetrics()` but for `ProjectCompilationMetrics` (includes per-file breakdowns).
-
-#### `CleanProject()` - Lines 797-831
-
-**Purpose:** Deletes `bin/` and `obj/` directories for a clean build.
-
-**Error Handling:** Warnings if deletion fails, but doesn't abort the build.
-
-#### `SaveGeneratedCSharp()` - Lines 833-861
-
-**Purpose:** Saves generated C# code to a directory when `--emit-cs-to` is used.
-
-**Filename Strategy:** Uses the module path's base name + `.cs` extension.
-
----
-
-## Dependencies
-
-### External Libraries
-
-**System.CommandLine:**
-- Modern CLI parsing library (successor to `System.CommandLine.DragonFruit`)
-- Provides `Command`, `Option`, `Argument` types
-- Handles help text generation automatically
-- Validates argument types and counts
-
-### Compiler Pipeline
+**Key Design Pattern:**
+Each command follows a consistent structure:
+1. Create the command object with description
+2. Define arguments (required positional parameters)
+3. Define options (optional flags like `--output`)
+4. Call `SetAction()` with a lambda that extracts values and delegates to a handler
+
+**Example - Build Command (lines 30-67):**
 
 ```csharp
-using Sharpy.Compiler;              // Main Compiler class
-using Sharpy.Compiler.Lexer;        // Lexer, Token types
-using Sharpy.Compiler.Parser;       // Parser, AST nodes
-using Sharpy.Compiler.Semantic;     // SymbolTable, BuiltinRegistry, NameResolver, TypeChecker
-using Sharpy.Compiler.CodeGen;      // RoslynEmitter, CodeGenContext
-using Sharpy.Compiler.Discovery.Caching;  // OverloadIndexCache
-using Sharpy.Compiler.Diagnostics;  // CompilationMetrics
-using Sharpy.Compiler.Logging;      // ICompilerLogger, ConsoleCompilerLogger
-```
+var buildCommand = new Command("build", "Compile a Sharpy source file to a binary or library");
+var buildInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file to compile" };
+var buildTypeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library'" };
 
-### Standard Library
+buildCommand.Arguments.Add(buildInputArg);
+buildCommand.Options.Add(buildTypeOpt);
+// ... more options
 
-- `Sharpy.Core.Exports` - Used to locate `Sharpy.Core.dll` for the `run` command (line 350)
-
----
-
-## Patterns and Design Decisions
-
-### 1. Command Pattern via Lambdas
-
-**Location:** Throughout `Main()` method
-
-Instead of separate handler classes, each command's logic is defined inline using lambda expressions passed to `SetAction()`:
-
-```csharp
-buildCommand.SetAction((parseResult) =>
-{
-    // Extract values from parseResult
+buildCommand.SetAction((parseResult) => {
     var input = parseResult.GetValue(buildInputArg)!;
     var type = parseResult.GetValue(buildTypeOpt) ?? "library";
-
-    // Invoke handler
-    HandleBuildCommand(input, type, ...);
+    // ... extract all parameters
+    HandleBuildCommand(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput);
 });
 ```
 
-**Rationale:**
-- Keeps related code together
-- Avoids ceremony of separate handler classes
-- Still delegates to focused methods for complex logic
+---
 
-### 2. Error Handling Strategy
+### 2. `HandleBuildCommand` - Single-File Compilation
 
-**Exit Codes:**
-- **0** - Success
-- **1** - Any error (lexer, parser, semantic, assembly, IO)
+**Lines 302-315**
 
-**Error Display Pattern:**
+The simplest workflow: compile a single `.spy` file to a `.dll` or `.exe`.
+
+```csharp
+static void HandleBuildCommand(FileInfo inputFile, string outputType, FileInfo? output, ...)
+{
+    ValidateInputFile(inputFile);
+    CompileToBinary(inputFile, outputType, output, references, projectReferences, modulePaths, logger, ...);
+}
+```
+
+**Flow:**
+1. Validate the input file exists and has `.spy` extension (warning only)
+2. Delegate to `CompileToBinary` which runs the full pipeline
+
+---
+
+### 3. `CompileToBinary` - The Core Compilation Pipeline
+
+**Lines 863-992**
+
+This is where the **magic happens**. It orchestrates the entire compilation from source to executable assembly:
+
+#### Step 1: Read Source File
+```csharp
+var source = File.ReadAllText(inputFile.FullName);
+```
+
+#### Step 2: Create Compiler with Options
+```csharp
+var compilerOptions = new CompilerOptions
+{
+    References = references,      // .NET assembly references (-r)
+    ModulePaths = modulePaths      // Sharpy module search paths (-m)
+};
+var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
+```
+
+#### Step 3: Compile to C#
+```csharp
+var result = compiler.Compile(source, inputFile.FullName);
+if (!result.Success)
+{
+    // Display errors and exit with code 1
+    Console.Error.WriteLine("Compilation failed:");
+    foreach (var error in result.Errors)
+        Console.Error.WriteLine($"  {error}");
+    Environment.Exit(1);
+}
+```
+
+The `Compiler.Compile()` method internally runs:
+- Lexical analysis (tokenization)
+- Parsing (AST construction)
+- Semantic analysis (name resolution, type checking)
+- Code generation (Roslyn emission to C#)
+
+#### Step 4: Configure Output Path
+```csharp
+var inputFileName = Path.GetFileNameWithoutExtension(inputFile.Name);
+var assemblyName = output != null
+    ? Path.GetFileNameWithoutExtension(output.Name)
+    : inputFileName;
+
+var extension = outputType.ToLowerInvariant() == "exe" ? ".exe" : ".dll";
+var finalOutputPath = output != null
+    ? output.FullName
+    : Path.Combine(outputDir, assemblyName + extension);
+```
+
+**Important:** If no `--output` is specified, defaults to `{input_name}.dll` in the current directory.
+
+#### Step 5: Create Synthetic Project Config
+```csharp
+var projectConfig = new SingleFileProjectConfig(
+    projectFilePath: inputFile.FullName,
+    projectDirectory: Path.GetDirectoryName(inputFile.FullName) ?? Directory.GetCurrentDirectory(),
+    rootNamespace: inputFileName,
+    assemblyName: assemblyName,
+    outputType: outputType,
+    targetFramework: "net8.0",
+    configuration: "Debug",
+    sourceFiles: new List<string> { inputFile.FullName },
+    references: references.ToList(),
+    modulePaths: modulePaths.ToList(),
+    outputAssemblyPath: finalOutputPath
+);
+```
+
+This allows single-file compilation to reuse the same `AssemblyCompiler` infrastructure as multi-file projects.
+
+#### Step 6: Compile C# to .NET Assembly
+```csharp
+var csharpSources = new Dictionary<string, string>
+{
+    { Path.ChangeExtension(inputFile.FullName, ".cs"), result.GeneratedCSharpCode! }
+};
+
+var assemblyCompiler = new AssemblyCompiler(logger);
+var assemblyResult = assemblyCompiler.CompileToAssembly(csharpSources, projectConfig);
+```
+
+The `AssemblyCompiler` uses the Roslyn `CSharpCompilation` API to:
+- Parse the generated C# code
+- Add references to required assemblies (including `Sharpy.Core.dll`)
+- Emit the final `.dll` or `.exe` binary
+
+#### Step 7: Display Results
+```csharp
+if (assemblyResult.Warnings.Any())
+{
+    Console.WriteLine("Warnings:");
+    foreach (var warning in assemblyResult.Warnings)
+        Console.WriteLine($"  {warning}");
+}
+
+Console.WriteLine($"Successfully compiled to: {assemblyResult.OutputAssemblyPath}");
+OutputMetrics(assemblyResult.Metrics, metricsFormat, metricsOutput);
+```
+
+---
+
+### 4. `HandleRunCommand` - Compile and Execute
+
+**Lines 317-431**
+
+This command provides a **rapid iteration workflow**: compile to a temporary executable and run it immediately.
+
+#### Key Differences from `build`:
+
+1. **Temporary Output Handling:**
+   ```csharp
+   if (outputPath == null)
+   {
+       var tempDir = Path.GetTempPath();
+       var inputFileName = Path.GetFileNameWithoutExtension(inputFile.Name);
+       tempBaseName = $"{inputFileName}_{Guid.NewGuid():N}";
+       outputPath = Path.Combine(tempDir, tempBaseName + ".exe");
+       isTempOutput = true;
+   }
+   ```
+
+2. **Always Compiles to Executable:**
+   ```csharp
+   CompileToBinary(inputFile, "exe", new FileInfo(outputPath), ...);
+   ```
+
+3. **Copies `Sharpy.Core.dll` to Output Directory:**
+   ```csharp
+   var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
+   var sharpyCorePath = sharpyCoreAssembly.Location;
+   var outputDir = Path.GetDirectoryName(outputPath)!;
+   var sharpyCoreDestPath = Path.Combine(outputDir, "Sharpy.Core.dll");
+   File.Copy(sharpyCorePath, sharpyCoreDestPath, overwrite: true);
+   ```
+
+   **Why?** The compiled executable depends on `Sharpy.Core.dll` at runtime. For temporary builds in `/tmp`, we can't rely on the assembly being in the same directory as the CLI tool.
+
+   **TODO (line 356-358):** Replace this manual copy with a self-contained publish mode that bundles the .NET runtime and all dependencies.
+
+4. **Executes via `dotnet` Process:**
+   ```csharp
+   var startInfo = new System.Diagnostics.ProcessStartInfo
+   {
+       FileName = "dotnet",
+       ArgumentList = { outputPath },  // Pass the .exe as first argument
+       UseShellExecute = false
+   };
+
+   // Add user-provided arguments
+   foreach (var arg in args)
+       startInfo.ArgumentList.Add(arg);
+
+   var process = System.Diagnostics.Process.Start(startInfo);
+   process.WaitForExit();
+   Environment.Exit(process.ExitCode);  // Propagate exit code
+   ```
+
+5. **Cleanup Temporary Files:**
+   ```csharp
+   if (isTempOutput)
+   {
+       try
+       {
+           File.Delete(outputPath);
+           File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
+           File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
+           File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
+           File.Delete(sharpyCoreDestPath);
+       }
+       catch { /* Ignore cleanup errors */ }
+   }
+   ```
+
+   This happens both on success (lines 384-399) and on error (lines 406-428).
+
+---
+
+### 5. `HandleProjectCommand` - Multi-File Compilation
+
+**Lines 433-464**
+
+Handles `.spyproj` files that define multi-file Sharpy projects with dependencies, module paths, and configuration.
+
+#### Project File Auto-Discovery:
+```csharp
+if (resolvedProjectFile == null)
+{
+    // Auto-discover .spyproj file in current directory
+    var currentDir = Directory.GetCurrentDirectory();
+    var discoveredPath = ProjectFileParser.FindProjectFile(currentDir);
+
+    if (discoveredPath == null)
+    {
+        Console.Error.WriteLine("Error: No .spyproj file found in current directory.");
+        Environment.Exit(1);
+    }
+
+    resolvedProjectFile = new FileInfo(discoveredPath);
+    Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
+}
+```
+
+This allows the common workflow: `cd MyProject && sharpyc project`
+
+#### Delegates to `CompileProject`:
+```csharp
+CompileProject(resolvedProjectFile, configuration, clean, emitCsTo, logger, logLevel, metricsFormat, metricsOutput);
+```
+
+---
+
+### 6. `CompileProject` - Full Project Build
+
+**Lines 667-759**
+
+The most complex build workflow, supporting multiple source files, configurations, and incremental builds.
+
+#### Step 1: Load Project Configuration
+```csharp
+var projectConfig = ProjectFileParser.Load(projectFile.FullName, configuration);
+```
+
+The `ProjectFileParser` reads the XML `.spyproj` file and extracts:
+- `RootNamespace`, `AssemblyName`, `OutputType`
+- List of source files (e.g., `<Compile Include="src/**/*.spy" />`)
+- References to .NET assemblies
+- Module search paths
+- Configuration-specific settings (Debug vs Release)
+
+#### Step 2: Handle Clean Flag
+```csharp
+if (clean)
+{
+    CleanProject(projectConfig);  // Deletes bin/ and obj/ directories
+}
+```
+
+#### Step 3: Create Compiler and Compile
+```csharp
+var compilerOptions = new CompilerOptions
+{
+    References = projectConfig.References.ToArray(),
+    ModulePaths = projectConfig.ModulePaths.ToArray()
+};
+
+var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
+var result = compiler.CompileProject(projectConfig);
+```
+
+The `Compiler.CompileProject()` method:
+1. Compiles each `.spy` file to C# in dependency order
+2. Resolves `import` statements across modules
+3. Generates a single .NET assembly containing all modules
+
+#### Step 4: Save Generated C# (Optional)
+```csharp
+if (emitCsTo != null && result.GeneratedCSharpFiles.Any())
+{
+    SaveGeneratedCSharp(emitCsTo, result.GeneratedCSharpFiles);
+}
+```
+
+This is useful for debugging code generation issues.
+
+#### Step 5: Display Results
+```csharp
+if (!result.Success)
+{
+    Console.Error.WriteLine("Build FAILED.");
+    foreach (var error in result.Errors)
+        Console.Error.WriteLine($"  {error}");
+    Environment.Exit(1);
+}
+
+Console.WriteLine("Build succeeded.");
+Console.WriteLine($"Output: {result.OutputAssemblyPath}");
+OutputProjectMetrics(result.Metrics, metricsFormat, metricsOutput);
+```
+
+---
+
+### 7. `EmitTokens` - Lexer Debugging
+
+**Lines 480-512**
+
+Outputs the raw token stream from the lexer, useful for debugging parsing issues.
+
+#### Example Output:
+```
+Tokens for test.spy:
+================================================================================
+   0: DEF                @ L1:C1
+   1: IDENTIFIER         @ L1:C5 = 'greet'
+   2: LEFT_PAREN         @ L1:C10
+   3: IDENTIFIER         @ L1:C11 = 'name'
+   4: COLON              @ L1:C15
+   5: IDENTIFIER         @ L1:C17 = 'str'
+   ...
+================================================================================
+Total tokens: 15
+```
+
+#### Implementation:
+```csharp
+var source = File.ReadAllText(inputFile.FullName);
+var lexer = new Lexer(source, logger);
+var tokens = lexer.TokenizeAll();
+
+for (int i = 0; i < tokens.Count; i++)
+{
+    var token = tokens[i];
+    var value = string.IsNullOrEmpty(token.Value) ? "" : $" = '{token.Value}'";
+    Console.WriteLine($"{i,4}: {token.Type,-20} @ L{token.Line}:C{token.Column}{value}");
+}
+```
+
+**Error Handling:** Catches `LexerError` exceptions and displays the line/column information:
 ```csharp
 catch (LexerError ex)
 {
@@ -482,442 +469,573 @@ catch (LexerError ex)
 }
 ```
 
-**Characteristics:**
-- Specific error types caught separately
-- Location information included when available
-- Errors written to `stderr`, success messages to `stdout`
-- Immediate exit on error (fail-fast)
+---
 
-### 3. Global Options Pattern
+### 8. `EmitAst` - Parser Debugging
 
-**Lines:** 20-28
+**Lines 514-550**
 
-Global options are defined once and attached to the root command. They're then retrieved in each subcommand's handler:
+Outputs the abstract syntax tree (AST) after parsing, showing the hierarchical structure of the program.
 
-```csharp
-var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+#### Example Output:
+```
+AST for test.spy:
+================================================================================
+Module
+  FunctionDef(name='greet', params=[Parameter(name='name', type='str')], return_type='None')
+    ExpressionStatement
+      Call(function='print', args=[BinaryOp(left='Hello, ', op='+', right=name)])
+================================================================================
 ```
 
-**Benefits:**
-- DRY - Options defined once
-- Consistent behavior across all commands
-- Easy to add new global options
+#### Implementation:
+```csharp
+var source = File.ReadAllText(inputFile.FullName);
+var lexer = new Lexer(source, logger);
+var tokens = lexer.TokenizeAll();
+var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
+var module = parser.ParseModule();
+
+var dumper = new AstDumper();
+var ast = dumper.Dump(module);
+Console.Write(ast);
+```
+
+The `AstDumper` class (in `Sharpy.Compiler.Parser`) recursively walks the AST and formats it as indented text.
+
+---
+
+### 9. `EmitCSharp` - Code Generation Debugging
+
+**Lines 552-646**
+
+The most complex of the `emit` subcommands. This runs the **full compilation pipeline** (lexer, parser, semantic analysis, code generation) but stops before creating a binary.
+
+#### Why This Is Critical for Development:
+
+When debugging compiler issues, you often need to see:
+1. What C# code is being generated?
+2. Is the problem in semantic analysis or code generation?
+3. How are Sharpy constructs being translated to C#?
+
+#### Full Pipeline Execution:
+
+**Lexing and Parsing:**
+```csharp
+var source = File.ReadAllText(inputFile.FullName);
+var lexer = new Lexer(source, logger);
+var tokens = lexer.TokenizeAll();
+var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
+var module = parser.ParseModule();
+```
+
+**Semantic Analysis - Name Resolution:**
+```csharp
+var builtins = new BuiltinRegistry();
+var symbolTable = new SymbolTable(builtins);
+var semanticInfo = new SemanticInfo();
+
+var nameResolver = new NameResolver(symbolTable, logger);
+nameResolver.ResolveDeclarations(module);
+nameResolver.ResolveInheritance();
+
+if (nameResolver.Errors.Any())
+{
+    Console.Error.WriteLine("Name resolution errors:");
+    foreach (var error in nameResolver.Errors)
+        Console.Error.WriteLine($"  {error.Message}");
+    Environment.Exit(1);
+}
+```
+
+The `NameResolver` walks the AST and:
+- Registers type aliases, classes, functions, variables in the symbol table
+- Resolves class inheritance hierarchies
+- Detects duplicate declarations
+
+**Semantic Analysis - Type Checking:**
+```csharp
+var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
+var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
+typeChecker.CheckModule(module, computeCodeGenInfo: true);
+
+if (typeChecker.Errors.Any())
+{
+    Console.Error.WriteLine("Type checking errors:");
+    foreach (var error in typeChecker.Errors)
+        Console.Error.WriteLine($"  {error.Message}");
+    Environment.Exit(1);
+}
+```
+
+The `TypeChecker`:
+- Resolves all type references
+- Checks assignment compatibility
+- Validates function calls and overload resolution
+- Computes code generation metadata (stored in `SemanticInfo`)
+
+**Code Generation:**
+```csharp
+var context = new CodeGenContext(symbolTable, builtins)
+{
+    SourceFilePath = inputFile.FullName,
+    IsEntryPoint = true,  // Single-file emit is treated as entry point
+    Logger = logger
+};
+
+var emitter = new RoslynEmitter(context);
+var compilationUnit = emitter.GenerateCompilationUnit(module);
+var csharpCode = compilationUnit.ToFullString();
+```
+
+**Important Detail (line 603):** `IsEntryPoint = true` ensures the generated C# includes a `Main` method. This matches the behavior of `build` and `run` commands.
+
+**Output:**
+```csharp
+FileInfo outputFile;
+if (output != null)
+{
+    outputFile = output;
+}
+else
+{
+    // Default: replace .spy extension with .cs
+    var outputPath = Path.ChangeExtension(inputFile.FullName, ".cs");
+    outputFile = new FileInfo(outputPath);
+}
+
+File.WriteAllText(outputFile.FullName, csharpCode);
+Console.WriteLine($"Generated C# code written to: {outputFile.FullName}");
+```
+
+---
+
+### 10. `CreateLogger` - Logging Configuration
+
+**Lines 217-232**
+
+A factory method that creates the appropriate logger based on CLI flags:
+
+```csharp
+static ICompilerLogger CreateLogger(CompilerLogLevel logLevel, FileInfo? logFile)
+{
+    if (logLevel == CompilerLogLevel.None)
+    {
+        return NullLogger.Instance;  // No-op logger (default)
+    }
+    else if (logFile != null)
+    {
+        var stream = new StreamWriter(logFile.FullName, append: false);
+        return new ConsoleCompilerLogger(logLevel, stream, stream);
+    }
+    else
+    {
+        return new ConsoleCompilerLogger(logLevel);  // Logs to stderr
+    }
+}
+```
+
+**Design Pattern:** Strategy pattern - the compiler doesn't know or care which logger implementation it's using. This allows easy testing with mock loggers.
+
+---
+
+### 11. `OutputMetrics` - Performance Tracking
+
+**Lines 234-266**
+
+Outputs compilation performance metrics in either text or JSON format:
+
+```csharp
+static void OutputMetrics(CompilationMetrics? metrics, string? metricsFormat, FileInfo? metricsOutput)
+{
+    if (metrics == null || metricsFormat == null)
+        return;
+
+    var format = metricsFormat.ToLowerInvariant();
+    if (format != "text" && format != "json")
+    {
+        Console.Error.WriteLine($"Invalid metrics format: {metricsFormat}. Use 'text' or 'json'.");
+        return;
+    }
+
+    var output = format == "json" ? metrics.FormatAsJson() : metrics.FormatAsText();
+
+    if (metricsOutput != null)
+    {
+        File.WriteAllText(metricsOutput.FullName, output);
+        Console.WriteLine($"Metrics written to: {metricsOutput.FullName}");
+    }
+    else
+    {
+        Console.WriteLine();
+        Console.WriteLine(output);
+    }
+}
+```
+
+**Use Case:** Tracking compiler performance over time, identifying bottlenecks in large projects.
+
+**Example Text Output:**
+```
+=== Compilation Metrics ===
+Lexing:          42ms
+Parsing:         156ms
+Semantic:        234ms
+Code Gen:        89ms
+Assembly:        1,234ms
+Total:           1,755ms
+```
+
+**JSON Output:** Structured data suitable for automated analysis or CI integration.
+
+---
+
+### 12. Cache Management Commands
+
+#### `ClearCache` (lines 648-665)
+```csharp
+static void ClearCache(string? cacheDir)
+{
+    var cache = new OverloadIndexCache(cacheDir);
+    cache.ClearAll();
+    Console.WriteLine("Overload discovery cache cleared successfully.");
+}
+```
+
+#### `ShowCacheInfo` (lines 761-780)
+```csharp
+static void ShowCacheInfo(string? cacheDir)
+{
+    var cache = new OverloadIndexCache(cacheDir);
+    var info = cache.GetInfo();
+
+    Console.WriteLine("Overload Discovery Cache Information:");
+    Console.WriteLine($"Cache Directory: {info.CacheDirectory}");
+    Console.WriteLine($"Cached Assemblies: {info.CachedAssemblies}");
+    Console.WriteLine($"Total Size: {FormatBytes(info.TotalSizeBytes)}");
+}
+```
+
+**What Is the Overload Index Cache?**
+
+The Sharpy compiler needs to resolve .NET method overloads when calling standard library functions. Reflecting over all methods in an assembly (like `System.dll`) is expensive. The cache stores pre-computed overload metadata to speed up subsequent compilations.
+
+**Example Usage:**
+```bash
+sharpyc cache info                    # Show cache stats
+sharpyc cache clear                   # Delete all cached data
+sharpyc cache clear --cache-dir /tmp  # Use custom cache location
+```
+
+---
+
+## Dependencies
+
+### Internal Dependencies (Sharpy.Compiler Namespace)
+
+| Namespace | Components Used | Purpose |
+|-----------|----------------|---------|
+| `Sharpy.Compiler` | `Compiler`, `CompilerOptions`, `ProjectConfig`, `ProjectFileParser` | Core compilation logic |
+| `Sharpy.Compiler.Lexer` | `Lexer`, `LexerError` | Tokenization |
+| `Sharpy.Compiler.Parser` | `Parser`, `ParserError`, `AstDumper` | Parsing and AST |
+| `Sharpy.Compiler.Semantic` | `NameResolver`, `TypeChecker`, `TypeResolver`, `BuiltinRegistry`, `SymbolTable`, `SemanticInfo` | Semantic analysis |
+| `Sharpy.Compiler.CodeGen` | `RoslynEmitter`, `CodeGenContext`, `AssemblyCompiler` | C# generation and compilation |
+| `Sharpy.Compiler.Logging` | `ICompilerLogger`, `ConsoleCompilerLogger`, `NullLogger`, `CompilerLogLevel` | Logging infrastructure |
+| `Sharpy.Compiler.Discovery.Caching` | `OverloadIndexCache` | Performance optimization |
+| `Sharpy.Compiler.Diagnostics` | `CompilationMetrics`, `ProjectCompilationMetrics` | Performance tracking |
+
+### External Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `System.CommandLine` | Modern CLI argument parsing with subcommands, options, and help generation |
+| `System.Diagnostics` | Process launching for `run` command |
+| `System.IO` | File I/O operations |
+
+### Runtime Dependency
+
+| Assembly | Purpose |
+|----------|---------|
+| `Sharpy.Core.dll` | Standard library implementation (lists, strings, math, etc.) - must be deployed with compiled executables |
+
+---
+
+## Patterns and Design Decisions
+
+### 1. Command Pattern via `System.CommandLine`
+
+Each CLI command is configured declaratively with its arguments, options, and action handler. This provides:
+- Automatic help text generation (`sharpyc --help`, `sharpyc build --help`)
+- Type-safe argument parsing
+- Consistent error handling for invalid inputs
+
+### 2. Error Exit Codes
+
+All error paths call `Environment.Exit(1)`, ensuring shell scripts can detect failures:
+
+```bash
+if ! sharpyc build main.spy; then
+    echo "Compilation failed!"
+    exit 1
+fi
+```
+
+### 3. Consistent Error Reporting Format
+
+All compiler errors follow the same pattern:
+
+```csharp
+Console.Error.WriteLine($"<Phase> error at line {ex.Line}, column {ex.Column}:");
+Console.Error.WriteLine($"  {ex.Message}");
+Environment.Exit(1);
+```
+
+This makes errors machine-parseable for IDE integration.
 
 ### 4. Separation of Concerns
 
-The CLI doesn't contain compilation logic—it orchestrates components:
+- **Program.cs** handles CLI parsing and user interaction
+- **Sharpy.Compiler** handles the actual compilation logic
+- This allows the compiler to be used as a library (e.g., for an IDE plugin) without CLI dependencies
 
-```
-Program.cs (Orchestration)
-    ↓
-Compiler (High-level API)
-    ↓
-Lexer → Parser → Semantic → CodeGen
-    ↓
-AssemblyCompiler (Roslyn)
-```
+### 5. Dependency Injection for Loggers
 
-**Rationale:** Program.cs focuses on user interaction, not compilation details.
+Loggers are created once in each command handler and passed down through the compiler. This avoids global state and makes testing easier.
 
-### 5. Temporary File Management
+### 6. Temporary File Cleanup
 
-**Run Command Pattern (Lines 335-342, 384-398, 406-428):**
+The `run` command carefully manages temporary files with try/catch blocks in two places:
+1. After successful execution (lines 384-399)
+2. In the exception handler (lines 406-428)
 
-```csharp
-var isTempOutput = false;
-if (outputPath == null)
-{
-    var tempBaseName = $"{inputFileName}_{Guid.NewGuid():N}";
-    outputPath = Path.Combine(Path.GetTempPath(), tempBaseName + ".exe");
-    isTempOutput = true;
-}
-
-// ... compilation ...
-
-// Cleanup in finally/catch
-if (isTempOutput)
-{
-    File.Delete(outputPath);
-    File.Delete(runtimeConfigPath);
-    // etc.
-}
-```
-
-**Characteristics:**
-- GUID prevents collisions with concurrent runs
-- Cleanup happens even on errors
-- Multiple related files tracked (`.exe`, `.pdb`, `.deps.json`, etc.)
+This ensures no temp file leaks even if the compiled program crashes.
 
 ---
 
 ## Debugging Tips
 
-### 1. Tracing Compilation Pipeline
+### 1. Use `emit` Commands to Inspect Compilation Stages
 
-**Add `--log-level Debug` to any command:**
-```bash
-sharpyc build hello.spy --log-level Debug
-```
-
-This enables verbose logging from the compiler, showing:
-- Which phases are executing
-- Symbol resolution details
-- Type inference steps
-- Code generation decisions
-
-### 2. Isolating Failures
-
-**Use `emit` commands to isolate pipeline stages:**
+When a bug occurs, narrow down which phase is failing:
 
 ```bash
-# Does it lex correctly?
-sharpyc emit tokens problematic.spy
-
-# Does it parse correctly?
-sharpyc emit ast problematic.spy
-
-# Does it generate valid C#?
-sharpyc emit csharp problematic.spy -o output.cs
+sharpyc emit tokens file.spy   # Does lexing work?
+sharpyc emit ast file.spy      # Does parsing work?
+sharpyc emit csharp file.spy   # Does semantic analysis work?
+sharpyc build file.spy         # Does C# compilation work?
 ```
 
-### 3. Inspecting Generated C#
-
-**Two approaches:**
-
-1. **Via emit command:**
-   ```bash
-   sharpyc emit csharp file.spy -o output.cs
-   ```
-
-2. **Via project compilation:**
-   ```bash
-   sharpyc project --emit-cs-to ./generated
-   ```
-
-**Then:** Open the generated C# in an IDE to check for errors or unexpected patterns.
-
-### 4. Metrics Analysis
-
-**Enable metrics to identify performance bottlenecks:**
+### 2. Enable Debug Logging
 
 ```bash
-sharpyc build file.spy --metrics-format text
+sharpyc build file.spy --log-level Debug --log-file compiler.log
 ```
 
-**Output includes:**
-- Lexing time
-- Parsing time
-- Semantic analysis time
-- Code generation time
-- Assembly compilation time
+This outputs verbose information about:
+- Symbol table construction
+- Type resolution decisions
+- Code generation choices
 
-### 5. Cache Issues
+### 3. Inspect Generated C# Code
 
-**If overload resolution behaves incorrectly:**
+When you suspect a code generation bug:
 
 ```bash
-# Check cache state
-sharpyc cache info
-
-# Clear and rebuild
-sharpyc cache clear
-sharpyc build file.spy
+sharpyc emit csharp file.spy -o generated.cs
+cat generated.cs  # Review the actual C# code
 ```
 
-### 6. Debugging Run Command
+Compare this with what you expect based on the Sharpy source.
 
-**The run command does several things:**
-1. Compiles to EXE
-2. Copies dependencies
-3. Executes via `dotnet`
-
-**To debug execution failures:**
+### 4. Use `--metrics-format` for Performance Issues
 
 ```bash
-# Compile without running
-sharpyc build script.spy --type exe --output ./debug.exe
-
-# Copy Sharpy.Core.dll manually
-cp /path/to/Sharpy.Core.dll .
-
-# Run directly
-dotnet ./debug.exe
+sharpyc project MyApp.spyproj --metrics-format text
 ```
 
-### 7. Stack Traces on Unexpected Errors
+This will show which compilation phase is slow (lexing, parsing, semantic analysis, code generation, or .NET compilation).
 
-**Notice the pattern (lines 752-758):**
+### 5. Check the Overload Cache
 
-```csharp
-catch (Exception ex)
-{
-    Console.Error.WriteLine($"Unexpected error: {ex.Message}");
-    if (logLevel == CompilerLogLevel.Debug)
-    {
-        Console.Error.WriteLine(ex.StackTrace);
-    }
-    Environment.Exit(1);
-}
+If you're seeing unexpected overload resolution errors:
+
+```bash
+sharpyc cache info    # See what's cached
+sharpyc cache clear   # Force re-indexing
 ```
 
-**Stack traces only shown with `--log-level Debug` to avoid overwhelming users.**
+### 6. Validate Project File Structure
+
+For multi-file compilation issues:
+
+```bash
+# Try building each file individually first
+sharpyc build src/module1.spy
+sharpyc build src/module2.spy
+
+# Then try the full project
+sharpyc project MyApp.spyproj --log-level Debug
+```
+
+### 7. Debugging `run` Command Issues
+
+The `run` command has multiple failure points:
+
+1. **Compilation fails:** Check with `build` command first
+2. **Runtime assembly not found:** Verify `Sharpy.Core.dll` is copied (lines 350-354)
+3. **Runtime crash:** Check that the `dotnet` command is in PATH
+4. **Wrong exit code:** The process exit code is propagated (line 401)
+
+Add `--log-level Debug` to see what's happening:
+
+```bash
+sharpyc run script.spy --log-level Debug
+```
 
 ---
 
 ## Contribution Guidelines
 
-### Adding a New Command
+### When to Modify This File
 
-**Template:**
+**Add a new CLI command when:**
+- You need to expose new compiler functionality (e.g., a `lint` command)
+- You want to add a new diagnostic tool (e.g., `emit cfg` for control flow graphs)
 
-```csharp
-// 1. Define the command
-var myCommand = new Command("mycommand", "Description of what it does");
+**Add a new global option when:**
+- The option applies to all commands (like `--log-level`)
+- Avoid command-specific global options
 
-// 2. Add arguments
-var inputArg = new Argument<FileInfo>("input") { Description = "Input file" };
-myCommand.Arguments.Add(inputArg);
+**Modify error handling when:**
+- You need more specific error messages
+- You want to add structured error output (e.g., JSON for IDE integration)
 
-// 3. Add options
-var myOption = new Option<string?>("--my-option") { Description = "An option" };
-myOption.Aliases.Add("-m");
-myCommand.Options.Add(myOption);
+### Coding Conventions
 
-// 4. Set the action handler
-myCommand.SetAction((parseResult) =>
-{
-    var input = parseResult.GetValue(inputArg)!;
-    var option = parseResult.GetValue(myOption);
-    var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
-    var logFile = parseResult.GetValue(logFileOption);
+1. **Keep command handlers simple:** Delegate complex logic to helper methods
+2. **Use consistent parameter ordering:** Input file first, output second, then options
+3. **Validate inputs early:** Call `ValidateInputFile` before doing expensive work
+4. **Propagate exit codes:** Always call `Environment.Exit(1)` on errors
+5. **Clean up resources:** Use try/catch for temporary file cleanup
 
-    var logger = CreateLogger(logLevel, logFile);
-    HandleMyCommand(input, option, logger);
-});
+### Testing This File
 
-// 5. Add to root command
-rootCommand.Subcommands.Add(myCommand);
-```
+While `Program.cs` doesn't have unit tests (it's an entry point), test it manually:
 
-**Don't forget:**
-- Support global options (log level, log file, metrics)
-- Write errors to `stderr`, success messages to `stdout`
-- Use exit code 1 for failures, 0 for success
-- Add input validation
-
-### Adding a New Emit Subcommand
-
-**Example: Emit semantic info**
-
-```csharp
-var emitSemanticCommand = new Command("semantic", "Emit semantic analysis results");
-var emitSemanticInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
-emitSemanticCommand.Arguments.Add(emitSemanticInputArg);
-emitSemanticCommand.SetAction((parseResult) =>
-{
-    var input = parseResult.GetValue(emitSemanticInputArg)!;
-    var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
-    var logFile = parseResult.GetValue(logFileOption);
-    var logger = CreateLogger(logLevel, logFile);
-    EmitSemantic(input, logger);
-});
-
-emitCommand.Subcommands.Add(emitSemanticCommand);
-```
-
-### Adding a New Global Option
-
-**Example: Add `--optimize` flag**
-
-```csharp
-// 1. Define near other global options (line ~20)
-var optimizeOption = new Option<bool>("--optimize") { Description = "Enable optimizations" };
-rootCommand.Options.Add(optimizeOption);
-
-// 2. Retrieve in command handlers
-var optimize = parseResult.GetValue(optimizeOption);
-
-// 3. Pass to compiler
-var compilerOptions = new CompilerOptions
-{
-    References = references,
-    ModulePaths = modulePaths,
-    Optimize = optimize  // Add to CompilerOptions class
-};
-```
-
-### Adding Metrics to a New Command
-
-**Follow the pattern from existing commands:**
-
-```csharp
-var myCommand = new Command("mycommand", "...");
-// ... setup ...
-
-myCommand.SetAction((parseResult) =>
-{
-    // ... other values ...
-    var metricsFormat = parseResult.GetValue(metricsFormatOption);
-    var metricsOutput = parseResult.GetValue(metricsOutputOption);
-
-    HandleMyCommand(..., metricsFormat, metricsOutput);
-});
-
-// In handler:
-void HandleMyCommand(..., string? metricsFormat, FileInfo? metricsOutput)
-{
-    var result = DoWork();
-    OutputMetrics(result.Metrics, metricsFormat, metricsOutput);
-}
-```
-
-### Improving Error Messages
-
-**Current pattern:**
-```csharp
-Console.Error.WriteLine($"Error: {ex.Message}");
-```
-
-**Better pattern:**
-```csharp
-Console.Error.WriteLine($"Error: Failed to compile '{inputFile.Name}'");
-Console.Error.WriteLine($"  {ex.Message}");
-if (logLevel == CompilerLogLevel.Debug)
-{
-    Console.Error.WriteLine();
-    Console.Error.WriteLine("Stack trace:");
-    Console.Error.WriteLine(ex.StackTrace);
-}
-```
-
-**Guidelines:**
-- Include context (what operation failed)
-- Add indentation for secondary information
-- Show stack traces only in debug mode
-- Use colors for different message types (requires library like `Spectre.Console`)
-
-### Testing CLI Commands
-
-**Manual testing checklist:**
-
-1. **Happy path:** Does it work with valid input?
-2. **Missing required args:** Does it show helpful error?
-3. **Invalid option values:** Does it validate and reject?
-4. **File not found:** Does it show clear error?
-5. **Help text:** Does `--help` show accurate info?
-6. **Global options:** Do log level/file/metrics work?
-7. **Exit codes:** Does it return 0 on success, 1 on failure?
-
-**Example test script:**
 ```bash
-#!/bin/bash
+# Test each command
+sharpyc build test.spy
+sharpyc run test.spy
+sharpyc project test.spyproj
+sharpyc emit tokens test.spy
+sharpyc emit ast test.spy
+sharpyc emit csharp test.spy
+sharpyc cache info
+sharpyc cache clear
 
-# Test build command
-sharpyc build samples/hello.spy --type exe -o test.exe
-if [ $? -ne 0 ]; then echo "Build failed"; exit 1; fi
+# Test error cases
+sharpyc build nonexistent.spy          # File not found
+sharpyc build invalid.spy              # Compilation errors
+sharpyc run crashing.spy               # Runtime errors
 
-# Test run command
-sharpyc run samples/hello.spy
-if [ $? -ne 0 ]; then echo "Run failed"; exit 1; fi
-
-# Test invalid file
-sharpyc build nonexistent.spy 2>&1 | grep -q "does not exist"
-if [ $? -ne 0 ]; then echo "Missing file error check failed"; exit 1; fi
-
-echo "All tests passed"
+# Test options
+sharpyc build test.spy --type exe -o app.exe
+sharpyc run test.spy --args arg1 arg2
+sharpyc build test.spy --log-level Debug --log-file log.txt
+sharpyc project test.spyproj --configuration Release --clean
 ```
 
-### Performance Considerations
+### Adding a New `emit` Subcommand
 
-**Current bottlenecks:**
-1. **Assembly compilation (Roslyn)** - Slowest part of pipeline
-2. **Overload discovery** - Mitigated by caching
-3. **Module resolution** - Could benefit from caching
+**Example: Add `emit bytecode` to show IL disassembly**
 
-**Potential improvements:**
-- Parallel compilation of multiple files in projects
-- Incremental compilation (only recompile changed files)
-- Ahead-of-time overload indexing during package installation
-- Persistent symbol table cache
+1. Create the command object:
+   ```csharp
+   var emitBytecodeCommand = new Command("bytecode", "Emit IL bytecode disassembly");
+   var emitBytecodeInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
+   emitBytecodeCommand.Arguments.Add(emitBytecodeInputArg);
+   ```
 
-**Measurement:**
-- Use `--metrics-format json` for machine-readable timing data
-- Add timing to new features
-- Profile with `dotnet-trace` for detailed analysis
+2. Add the action handler:
+   ```csharp
+   emitBytecodeCommand.SetAction((parseResult) =>
+   {
+       var input = parseResult.GetValue(emitBytecodeInputArg)!;
+       var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+       var logFile = parseResult.GetValue(logFileOption);
+       var logger = CreateLogger(logLevel, logFile);
+       EmitBytecode(input, logger);  // Implement this method
+   });
+   ```
+
+3. Add to the `emit` command:
+   ```csharp
+   emitCommand.Subcommands.Add(emitBytecodeCommand);
+   ```
+
+4. Implement the handler method:
+   ```csharp
+   static void EmitBytecode(FileInfo inputFile, ICompilerLogger logger)
+   {
+       // 1. Compile to binary in memory
+       // 2. Load the assembly with reflection
+       // 3. Disassemble the IL
+       // 4. Output to console
+   }
+   ```
+
+### Adding a New Top-Level Command
+
+Follow the pattern of existing commands (build, run, project):
+
+1. Define arguments and options
+2. Create the command with `new Command(...)`
+3. Set the action handler with `SetAction(...)`
+4. Add to root command: `rootCommand.Subcommands.Add(myCommand)`
+5. Implement the handler method (e.g., `HandleMyCommand`)
 
 ---
 
 ## Cross-References
 
-This file integrates with several key components of the Sharpy compiler. For deeper understanding, see these related walkthrough documents:
+### Related Files in `Sharpy.Cli`
 
-### Core Compiler Components
+This is the only source file in the `Sharpy.Cli` project. The CLI is intentionally kept minimal.
 
-- **[Compiler.md](../Sharpy.Compiler/Compiler.md)** - The main `Compiler` class that orchestrates the compilation pipeline. Called by `CompileToBinary()` and `CompileProject()`.
+### Upstream Dependencies (Compiler Components)
 
-- **[AssemblyCompiler.md](../Sharpy.Compiler/AssemblyCompiler.md)** - Handles the final C# → .NET assembly compilation using Roslyn. Used in `CompileToBinary()`.
+For deep dives into how compilation actually works, see:
 
-- **[ProjectConfig.md](../Sharpy.Compiler/ProjectConfig.md)** - Base class that `SingleFileProjectConfig` extends for single-file builds.
+- **Lexical Analysis:** `docs/implementation_walkthrough/src/Sharpy.Compiler/Lexer/Lexer.md`
+- **Parsing:** `docs/implementation_walkthrough/src/Sharpy.Compiler/Parser/Parser.md`
+- **Semantic Analysis:**
+  - `docs/implementation_walkthrough/src/Sharpy.Compiler/Semantic/NameResolver.md`
+  - `docs/implementation_walkthrough/src/Sharpy.Compiler/Semantic/TypeChecker.md`
+- **Code Generation:** `docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/RoslynEmitter.md`
+- **Project System:** `docs/implementation_walkthrough/src/Sharpy.Compiler/ProjectFileParser.md`
 
-### Lexer and Parser
+### Downstream Consumers
 
-- **[Lexer.md](../Sharpy.Compiler/Lexer/Lexer.md)** - Tokenizes Sharpy source code. Used by `EmitTokens()`.
-
-- **[Parser.md](../Sharpy.Compiler/Parser/Parser.md)** - Parses tokens into an AST. Used by `EmitAst()`.
-
-- **[AstDumper.md](../Sharpy.Compiler/Parser/AstDumper.md)** - Pretty-prints the AST. Used by `EmitAst()`.
-
-### Semantic Analysis
-
-- **[SymbolTable.md](../Sharpy.Compiler/Semantic/SymbolTable.md)** - Manages symbol declarations and lookups. Created in `EmitCSharp()`.
-
-- **[NameResolver.md](../Sharpy.Compiler/Semantic/NameResolver.md)** - Registers type aliases, classes, and functions. Used in `EmitCSharp()`.
-
-- **[TypeChecker.md](../Sharpy.Compiler/Semantic/TypeChecker.md)** - Validates types in the AST. Used in `EmitCSharp()`.
-
-- **[BuiltinRegistry.md](../Sharpy.Compiler/Semantic/BuiltinRegistry.md)** - Provides built-in type definitions. Created in `EmitCSharp()`.
-
-### Code Generation
-
-- **[RoslynEmitter.md](../Sharpy.Compiler/CodeGen/RoslynEmitter.md)** - Generates C# code from the AST using Roslyn syntax trees. Used in `EmitCSharp()`.
-
-- **[CodeGenContext.md](../Sharpy.Compiler/CodeGen/CodeGenContext.md)** - Configuration for code generation. Created in `EmitCSharp()`.
-
-### Caching and Performance
-
-- **[OverloadIndexCache.md](../Sharpy.Compiler/Discovery/Caching/OverloadIndexCache.md)** - Manages the cache for .NET method overloads. Used by cache commands.
-
-- **[CompilationMetrics.md](../Sharpy.Compiler/Diagnostics/CompilationMetrics.md)** - Tracks timing for compilation phases. Used by metrics output functions.
-
-### Logging
-
-- **[ICompilerLogger.md](../Sharpy.Compiler/Logging/ICompilerLogger.md)** - Logger interface used throughout the CLI.
-
-- **[ConsoleCompilerLogger.md](../Sharpy.Compiler/Logging/ConsoleCompilerLogger.md)** - Default console logger implementation.
-
-- **[NullLogger.md](../Sharpy.Compiler/Logging/NullLogger.md)** - No-op logger for when logging is disabled.
+- **End Users:** Developers writing `.spy` code interact with this CLI
+- **Build Tools:** CI/CD scripts and build systems invoke `sharpyc` commands
+- **IDEs:** Future IDE plugins might invoke `sharpyc emit csharp` for diagnostics
 
 ---
 
-## Summary
+## Summary: The Big Picture
 
-`Program.cs` is a well-structured CLI application that follows modern C# conventions. Key strengths:
+`Program.cs` is the **public face** of the Sharpy compiler. It:
 
-- **Clear separation of concerns** - Orchestration vs. compilation logic
-- **Consistent error handling** - Structured catches, exit codes, stderr usage
-- **Debuggability** - Emit commands for each pipeline stage
-- **Extensibility** - Easy to add new commands/options
-- **User-friendly** - Helpful error messages, auto-discovery, metrics
+1. **Provides a clean interface** to all compiler functionality via subcommands
+2. **Orchestrates the compilation pipeline** from source to binary
+3. **Supports multiple workflows**: single-file builds, multi-file projects, compile-and-run, diagnostics
+4. **Handles all user-facing concerns**: error reporting, logging, metrics, help text
+5. **Delegates the hard work** to specialized components in `Sharpy.Compiler`
 
-**Areas for improvement:**
-- Add integration tests for CLI commands
-- Implement self-contained publish for `run` command
-- Make target framework configurable (currently hardcoded to "net8.0")
-- Add colorized output for better UX
-- Support incremental/parallel compilation
+When in doubt, the workflow is:
+- **User runs** `sharpyc <command> <args>`
+- **Program.cs parses** arguments and creates appropriate compiler objects
+- **Compiler components** do the actual work (lex, parse, analyze, generate)
+- **Program.cs reports** results back to the user
 
-**Next steps for new contributors:**
-1. Build the project: `dotnet build`
-2. Try commands: `sharpyc build samples/hello.spy`
-3. Test emit commands to understand pipeline stages
-4. Read related files: `src/Sharpy.Compiler/Compiler.cs`, `AssemblyCompiler.cs`
+This separation of concerns makes the compiler maintainable, testable, and embeddable in other tools (like IDEs) that don't need the CLI layer.
