@@ -6,193 +6,151 @@
 
 ## Overview
 
-`RoslynEmitter.cs` is the main entry point for the **Code Generation** phase of the Sharpy compiler. It transforms a typed Abstract Syntax Tree (AST) produced by semantic analysis into valid C# code using Microsoft's Roslyn compiler API. This is the final phase in the Sharpy compilation pipeline.
+`RoslynEmitter.cs` is the **core infrastructure file** for the code generation phase of the Sharpy compiler. This file defines the `RoslynEmitter` partial class, which orchestrates the transformation of validated Sharpy AST nodes into C# Roslyn syntax trees.
 
-**Pipeline Position:**
+**Role in Compiler Pipeline:**
 ```
-Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → RoslynEmitter → C# Code
+Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → RoslynEmitter → C# Code → .NET IL
+                                                                  ↑
+                                                          You are here
 ```
 
-**Key Responsibility:** Bridge the gap between Sharpy's Python-like syntax and C#/.NET semantics by:
-- Converting snake_case identifiers to appropriate C# naming conventions (PascalCase, camelCase, CONSTANT_CASE)
-- Managing variable shadowing and redefinition through name versioning
-- Tracking module-level vs. local scope for proper name resolution
-- Coordinating with `TypeMapper` for type conversions and `NameMangler` for identifier transformations
-- Using pre-computed `CodeGenInfo` from semantic analysis for module-level symbols
-- Runtime tracking of local variable redeclarations during emission
+This file specifically handles:
+- **Class initialization** and dependency injection (CodeGenContext, TypeMapper)
+- **Name resolution** for variables, functions, types, and modules
+- **State tracking** for local variable redeclarations and module-level symbols
+- **Helper methods** for accessing semantic metadata (CodeGenInfo, SemanticBinding)
 
-## Important: Partial Class Architecture
+**What this file does NOT do:**
+The actual AST-to-C# transformations are split across other partial class files:
+- `RoslynEmitter.CompilationUnit.cs` - Top-level module structure
+- `RoslynEmitter.Statements.cs` - Statement emission (if, while, for, etc.)
+- `RoslynEmitter.Expressions.cs` - Expression emission (literals, operators, calls)
+- `RoslynEmitter.TypeDeclarations.cs` - Type definitions (class, struct, enum, interface)
+- `RoslynEmitter.ClassMembers.cs` - Class member generation (methods, fields, properties)
+- `RoslynEmitter.ModuleClass.cs` - Module-level code organization
+- `RoslynEmitter.Operators.cs` - Operator overloading
 
-`RoslynEmitter` is split across **multiple partial class files** for maintainability:
+---
 
-- **`RoslynEmitter.cs`** (this file): Core state, initialization, and name resolution logic
-- **`RoslynEmitter.CompilationUnit.cs`**: Top-level compilation unit, namespace, and import generation
-- **`RoslynEmitter.Expressions.cs`**: Expression generation (literals, operators, calls, comprehensions)
-- **`RoslynEmitter.Statements.cs`**: Statement generation (control flow, assignments, try/catch)
-- **`RoslynEmitter.TypeDeclarations.cs`**: Type declarations (classes, structs, enums, interfaces)
-- **`RoslynEmitter.ClassMembers.cs`**: Class member generation (methods, properties, fields)
-- **`RoslynEmitter.ModuleClass.cs`**: Module-level code wrapping and exports
-- **`RoslynEmitter.Operators.cs`**: Operator expression generation
+## Architecture: The Partial Class Strategy
 
-**When reading this file, remember:** You're only seeing the "control center" - the actual code generation logic is distributed across these companion files.
-
-## Class Structure
-
-### Main Class: `RoslynEmitter` (partial)
+`RoslynEmitter` uses C#'s **partial class** feature to split a large emitter (~8000+ lines) into focused, maintainable files. Think of this main file as the "spine" that holds:
+- Constructor and dependencies
+- Shared state (fields)
+- Core naming resolution logic
+- Helper methods used across all partial files
 
 ```csharp
 public partial class RoslynEmitter
 {
-    // Core dependencies
+    // Dependencies (injected)
     private readonly CodeGenContext _context;
     private readonly TypeMapper _typeMapper;
 
-    // Local scope tracking (mutable during emission)
+    // Mutable state (tracked during emission)
     private readonly HashSet<string> _declaredVariables;
     private readonly Dictionary<string, int> _variableVersions;
-    private readonly HashSet<string> _constVariables;
-    private readonly HashSet<string> _moduleFieldNames;
-
-    // Type and interface tracking
-    private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions;
-
-    // Context flags
-    private int _tempVarCounter = 0;
-    private TypeAnnotation? _targetTypeContext;
-    private bool _isInAbstractClass;
+    // ... more state fields
 }
 ```
 
-The class is intentionally **stateful** - it accumulates information during code generation to make context-aware decisions about naming and scoping.
+---
 
-## Architectural Shift: CodeGenInfo vs. Runtime Tracking
+## Class Structure
 
-**Key Design Principle (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:14-20):**
+### Dependencies
 
-The emitter uses a **hybrid approach** for name resolution:
+#### `CodeGenContext _context`
+The central state container for code generation. Provides:
+- **SymbolTable**: Symbol lookup for module-level and imported symbols
+- **BuiltinRegistry**: Builtin functions and types
+- **SemanticBinding**: Semantic metadata (import resolutions, etc.)
+- **Logger**: Diagnostic output
+- **Project configuration**: Namespace, root path, entry point status
 
-1. **Module-level symbols** (variables, constants, functions, types, imports):
-   - Use `Symbol.CodeGenInfo` which is pre-computed during semantic analysis
-   - Provides: C# names, versioning, constant flags, import metadata
-   - Read-only during emission (no mutation needed)
+See `CodeGenContext.cs` (src/Sharpy.Compiler/CodeGen/CodeGenContext.cs:9) for implementation details.
 
-2. **Local variables**:
-   - Use runtime tracking (`_declaredVariables`, `_variableVersions`)
-   - Why? Local variable redeclarations happen during emission, not semantic analysis
-   - Mutable state that evolves as we generate method bodies
+#### `TypeMapper _typeMapper`
+Handles all Sharpy-to-C# type mappings:
+- Primitives: `int` → `int`, `str` → `string`, `float` → `double`
+- Collections: `list` → `global::Sharpy.Core.List`, `dict` → `global::Sharpy.Core.Dict`
+- Generics: `list[int]` → `global::Sharpy.Core.List<int>`
+- Function types: `(int, str) -> bool` → `System.Func<int, string, bool>`
+- User-defined types: `UserProfile` → `UserProfile` (with namespace qualification)
 
-This separation clarifies responsibility: **semantic analysis computes module-level metadata, emitter tracks local scope mutations**.
+See `TypeMapper.cs` for implementation details.
 
-### Why This Matters
+---
 
-**Old approach (removed):** Many HashSets tracking module constants, variables, class names, etc.
+### State Tracking Fields
 
-**New approach:** CodeGenInfo consolidates that metadata in the symbol table, reducing duplication and making the emitter simpler.
+The emitter maintains **mutable state** during code generation. Understanding these fields is crucial for debugging emission issues.
 
-**What remains in emitter:** Only truly runtime concerns like local variable redeclarations within function bodies.
-
-## Key Dependencies
-
-### 1. `CodeGenContext`
-
-Maintains state during code generation (src/Sharpy.Compiler/CodeGen/CodeGenContext.cs:9):
-- **Symbol table** for name resolution
-- **Builtin registry** for recognizing built-in types/functions
-- **Error collection** for reporting code generation issues
-- **Project namespace information** for multi-file compilation
-- **SemanticBinding** for accessing semantic data separate from AST nodes
-
-Located at: `src/Sharpy.Compiler/CodeGen/CodeGenContext.cs`
-
-### 2. `TypeMapper`
-
-Handles all type conversions from Sharpy to C#:
-- Maps Sharpy primitives (`int`, `str`, `bool`) to C# types
-- Converts generic types (`list[int]` → `global::Sharpy.Core.List<int>`)
-- Handles nullable types, tuples, and function types (`Func<>`, `Action<>`)
-
-Located at: `src/Sharpy.Compiler/CodeGen/TypeMapper.cs`
-
-### 3. `NameMangler`
-
-Static utility for name transformations (src/Sharpy.Compiler/CodeGen/NameMangler.cs:8):
-- `ToPascalCase()`: Functions, methods, types
-- `ToCamelCase()`: Variables, parameters
-- `ToConstantCase()`: Constants (preserves CAPS_SNAKE_CASE)
-- Handles C# keyword escaping (`@base`, `@object`)
-- Maps dunder methods (`__str__` → `ToString`)
-
-Located at: `src/Sharpy.Compiler/CodeGen/NameMangler.cs`
-
-## Core State: Tracking Collections
-
-The `RoslynEmitter` maintains a **minimal set** of tracking collections for local scope concerns. Most module-level tracking has been moved to `CodeGenInfo`.
-
-### Local Scope Tracking (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:28-60)
+#### Local Variable Tracking (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:26-49)
 
 ```csharp
-// Track which variables have been declared (for shadowing detection)
 private readonly HashSet<string> _declaredVariables = new();
-
-// Track variable version numbers for handling redeclarations
-// E.g., x = 1; x = "hello" produces x then x_1
 private readonly Dictionary<string, int> _variableVersions = new();
-
-// Track local const variables (original Sharpy names)
 private readonly HashSet<string> _constVariables = new();
-
-// Track module-level field names (C# names) to prevent duplicate declarations
-private readonly HashSet<string> _moduleFieldNames = new();
 ```
 
-**Purpose:** Handle Sharpy's variable shadowing and redefinition semantics in C# where redeclaration is not allowed.
+**Why track locally?** Local variable redeclarations happen **during emission**, not during semantic analysis. Sharpy allows:
 
-**Example:**
 ```python
-# Sharpy code
-x = 10
-x = 20  # Redeclaration allowed in Sharpy
+x: int = 5      # → var x = 5;
+x: str = "hi"   # → var x_1 = "hi";
+x: bool = True  # → var x_2 = true;
 ```
 
-Generated C#:
+The emitter assigns version suffixes incrementally:
+- First `x` → version 0 → no suffix → `x`
+- Second `x` → version 1 → `x_1`
+- Third `x` → version 2 → `x_2`
+
+**`_declaredVariables`**: Tracks which variables (base names) have been declared in the current scope.
+
+**`_variableVersions`**: Maps variable base names (camelCase) to their current version number (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:39-43).
+
+**`_constVariables`**: Tracks local const variable names (original Sharpy names) so they can be emitted in `CONSTANT_CASE` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:45-49).
+
+#### Module-Level Symbol Tracking (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:51-63)
+
 ```csharp
-var x = 10;
-var x_1 = 20;  // Versioned to avoid conflict
+private readonly HashSet<string> _moduleFieldNames = new();
+private bool _forceModuleLevelFields;
 ```
 
-**Key Insight:** Local variable tracking happens at emission time because redeclarations occur as we generate the function body. We don't know ahead of time how many versions we'll need.
+**`_moduleFieldNames`**: Tracks which C# field names have already been emitted to prevent duplicate static field declarations. Even though `CodeGenInfo` pre-computes names, we still need to track what's been emitted.
 
-### Type Detection (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:62-65)
+**`_forceModuleLevelFields`**: A flag that changes emission behavior when the user defines a `main()` function. When `true`:
+- Variables with execution order issues are **forced to be static fields** instead of local variables in `Main()`
+- The user takes responsibility for initialization order
+- The emitter switches from camelCase (local var) to PascalCase (static field) for these variables
 
-**Removed tracking sets:** `_classNames`, `_structNames`, `_stringEnumNames`
-
-**New approach:**
-- **Class/struct detection**: Use `SymbolTable.Lookup()` and check `TypeSymbol.TypeKind`
-- **String enum detection**: Use `CodeGenInfo.IsStringEnum` flag
-
-**Rationale:** Type information is already in the symbol table from semantic analysis. No need to duplicate it.
-
-### Interface Tracking
+#### Interface and Type Tracking
 
 ```csharp
 private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions = new();
 ```
 
-**Purpose:** Track interface definitions for generating abstract class stubs. Used when an abstract class implements an interface with default methods.
+**`_interfaceDefinitions`**: Tracks interface AST nodes so that abstract classes can generate stub implementations. Used for abstract class generation (ellipsis body `...` in abstract class = abstract method) (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:74).
 
-### Context Flags (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:68-76)
+#### Context and Temporary Tracking (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:75-83)
 
 ```csharp
-private int _tempVarCounter = 0;                   // Generates unique temp variable names
-private TypeAnnotation? _targetTypeContext;        // For collection literal type inference
-private bool _isInAbstractClass;                   // Tracks if in abstract class (for ellipsis handling)
+private int _tempVarCounter = 0;
+private TypeAnnotation? _targetTypeContext;
+private bool _isInAbstractClass;
 ```
 
-- **`_targetTypeContext`**: Used for C# collection literal type inference (e.g., `List<int> items = [1, 2, 3]`)
-- **`_isInAbstractClass`**: Tracks whether we're generating methods inside an abstract class (affects how `...` ellipsis bodies are interpreted - they become abstract methods)
-- **`_tempVarCounter`**: Generates unique temporary variable names
+**`_tempVarCounter`**: Generates unique temporary variable names for complex expressions (e.g., `__temp0`, `__temp1`).
 
-### Static Data: Upper Case Acronyms (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:78-83)
+**`_targetTypeContext`**: Set before generating expressions that need target type information (e.g., collection literal type inference).
+
+**`_isInAbstractClass`**: Tracks whether we're currently emitting methods for an abstract class (affects implicit abstract method detection).
+
+#### Common .NET Acronyms (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:86-90)
 
 ```csharp
 private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
@@ -202,11 +160,36 @@ private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.O
 };
 ```
 
-**Purpose:** Recognize common .NET acronyms that should be fully uppercase in PascalCase (e.g., `HttpClient`, `ApiResponse`, `JsonData`).
+Used for namespace naming: `io_utils` → `IOUtils` (not `IoUtils`).
 
-**Usage:** Used during namespace and type name generation to ensure .NET naming conventions are followed.
+---
 
-## Constructor
+## Key Design Principle: Hybrid Name Resolution (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:14-22)
+
+The emitter uses a **hybrid approach** for name resolution:
+
+### Module-Level Symbols (Pre-computed)
+Use `Symbol.CodeGenInfo` computed during semantic analysis:
+- Variables, constants, functions, types, imports
+- C# names, versioning, constant flags, import metadata
+- Read-only during emission (no mutation needed)
+
+### Local Variables (Runtime Tracking)
+Use `_declaredVariables`, `_variableVersions`:
+- Why? Local variable redeclarations happen during emission
+- Mutable state that evolves as we generate method bodies
+
+**Rationale:** This separation clarifies responsibility:
+- **Semantic analysis** computes module-level metadata
+- **Emitter** tracks local scope mutations
+
+This is explicitly a **"TWO-WAY DOOR" decision** (see CodeGenInfo.cs comments) — purely additive and can be removed if needed.
+
+---
+
+## Key Methods
+
+### Constructor (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:92-96)
 
 ```csharp
 public RoslynEmitter(CodeGenContext context)
@@ -216,172 +199,45 @@ public RoslynEmitter(CodeGenContext context)
 }
 ```
 
-Simple initialization - the emitter delegates most of the complex state to `CodeGenContext`.
+Simple dependency injection. The `CodeGenContext` contains everything needed for emission.
 
-## CodeGenInfo Helper Methods (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:204-276)
+---
 
-These methods provide a **clean interface** for accessing `Symbol.CodeGenInfo` data. They encapsulate the logic for reading pre-computed semantic information.
+### Name Resolution: The Core Logic
 
-### `GetCSharpNameForSymbol()` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:215-234)
+The emitter needs to resolve **Sharpy names** to **C# names** following different conventions. This is the most complex part of the infrastructure.
 
-```csharp
-private string GetCSharpNameForSymbol(Symbol symbol, bool isNewDeclaration = false)
-{
-    if (symbol.CodeGenInfo != null)
-    {
-        return symbol.CodeGenInfo.GetVersionedCSharpName();
-    }
+#### `TryGetCSharpNameFromCodeGenInfo(string sharpyName, bool isNewDeclaration)` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:98-138)
 
-    // Fallback for local variables during emission
-    return symbol.Kind switch
-    {
-        SymbolKind.Variable => GetMangledVariableName(symbol.Name, isNewDeclaration),
-        SymbolKind.Function => NameMangler.ToPascalCase(symbol.Name),
-        SymbolKind.Type => NameMangler.ToPascalCase(symbol.Name),
-        SymbolKind.Module => EscapeCSharpKeyword(symbol.Name.Replace(".", "_")),
-        SymbolKind.Parameter => NameMangler.ToCamelCase(symbol.Name),
-        _ => symbol.Name
-    };
-}
-```
+**Purpose:** Resolve module-level symbols using pre-computed `CodeGenInfo` from semantic analysis.
 
-**Purpose:** Get the final C# name for any symbol, preferring CodeGenInfo when available.
+**What is CodeGenInfo?**
+`CodeGenInfo` is metadata attached to symbols during semantic analysis. It pre-computes:
+- C# name (with proper casing)
+- Version number for redeclarations
+- Module-level vs. local status
+- Constant vs. variable status
+- Execution order issues
+- Import metadata (aliases, from-imports)
 
-**Fallback:** For local variables (which don't have CodeGenInfo), delegates to `GetMangledVariableName()`.
+**Algorithm:**
+1. Look up symbol in symbol table
+2. If no `CodeGenInfo`, return `null` (use fallback logic)
+3. For **new local declarations**: return `null` unless `_forceModuleLevelFields` is set
+   - Local redeclarations need runtime tracking via `_variableVersions`
+4. **Special case:** When `_forceModuleLevelFields = true` and variable has execution order issues:
+   - Override the camelCase name with PascalCase (for static fields)
+5. Get versioned C# name from `CodeGenInfo`
+6. **Module imports**: Escape C# keywords (e.g., `base` → `@base`)
 
-### `IsModuleLevelConstant()` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:239-242)
+**Why return null for local redeclarations?**
+Local variable redeclarations happen **during emission**, so `CodeGenInfo` can't pre-compute them. The emitter uses `_variableVersions` to track versions dynamically.
 
-```csharp
-private bool IsModuleLevelConstant(Symbol symbol)
-{
-    return symbol.CodeGenInfo?.IsModuleLevel == true && symbol.CodeGenInfo.IsConstant;
-}
-```
+---
 
-**Purpose:** Check if a symbol is a module-level constant using pre-computed flags.
-
-**Old approach:** Check if name is in `_moduleConstVariables` HashSet.
-
-**New approach:** Read flag from CodeGenInfo.
-
-### `IsModuleLevelVariable()` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:247-250)
-
-Similar to above, but checks for non-constant module-level variables.
-
-### `HasExecutionOrderIssues()` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:255-258)
-
-```csharp
-private bool HasExecutionOrderIssues(Symbol symbol)
-{
-    return symbol.CodeGenInfo?.HasExecutionOrderIssues == true;
-}
-```
-
-**Purpose:** Identify variables that shouldn't become static fields due to initialization order dependencies.
-
-**Example:** A module variable that references another module variable in its initializer.
-
-### `IsFromImportSymbol()` / `GetOriginalImportName()` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:263-275)
-
-```csharp
-private bool IsFromImportSymbol(Symbol symbol)
-{
-    return symbol.CodeGenInfo?.ImportKind == ImportKind.FromImport ||
-           symbol.CodeGenInfo?.ImportKind == ImportKind.FromImportWithAlias;
-}
-
-private string? GetOriginalImportName(Symbol symbol)
-{
-    return symbol.CodeGenInfo?.OriginalImportName;
-}
-```
-
-**Purpose:** Handle `from module import symbol as alias` statements.
-
-**Example:**
-```python
-from config import MAX_RETRIES as max_retries
-```
-
-`CodeGenInfo` stores:
-- `ImportKind = FromImportWithAlias`
-- `OriginalImportName = "MAX_RETRIES"`
-
-## SemanticBinding Helper Methods (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:277-316)
-
-These methods read from `SemanticBinding` when available, falling back to direct AST properties for backward compatibility.
-
-### `GetResolvedModulePath()` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:287-294)
-
-```csharp
-private string? GetResolvedModulePath(FromImportStatement fromImport)
-{
-    if (_context.SemanticBinding != null)
-    {
-        return _context.SemanticBinding.GetResolvedModulePath(fromImport);
-    }
-    return fromImport.ResolvedModulePath;
-}
-```
-
-**Purpose:** Get the resolved module path for a `from ... import` statement.
-
-**Why SemanticBinding?** Avoids storing mutable semantic data directly in AST nodes, keeping AST immutable.
-
-### `GetReExportedSymbols()` / `HasReExportedSymbols()` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:299-315)
-
-Similar pattern for accessing re-exported symbols (symbols imported from one module and re-exported from another).
-
-## Key Method: `TryGetCSharpNameFromCodeGenInfo()` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:95-120)
-
-This method attempts to resolve a C# name using `CodeGenInfo` before falling back to runtime tracking.
-
-```csharp
-private string? TryGetCSharpNameFromCodeGenInfo(string sharpyName, bool isNewDeclaration)
-{
-    var symbol = _context.LookupSymbol(sharpyName);
-    if (symbol?.CodeGenInfo == null)
-        return null;
-
-    var info = symbol.CodeGenInfo;
-
-    // For new declarations, check if this is a local redeclaration
-    // Local variable redeclarations still need runtime tracking via _variableVersions
-    if (isNewDeclaration && !info.IsModuleLevel)
-    {
-        return null; // Let GetMangledVariableName handle local redeclarations
-    }
-
-    var csharpName = info.GetVersionedCSharpName();
-
-    // Module imports need C# keyword escaping (e.g., "base" -> "@base")
-    if (symbol is ModuleSymbol)
-    {
-        return EscapeCSharpKeyword(csharpName);
-    }
-
-    return csharpName;
-}
-```
-
-**Key Logic:**
-1. Lookup symbol in symbol table
-2. If no CodeGenInfo, return null (fall back to runtime tracking)
-3. If this is a local redeclaration, return null (CodeGenInfo doesn't track local versions)
-4. Otherwise, use the pre-computed C# name from CodeGenInfo
-5. Apply C# keyword escaping for module imports
-
-**Why return null?** Signals to the caller that runtime tracking should handle this name.
-
-## Key Method: `GetMangledVariableName()` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:128-202)
+#### `GetMangledVariableName(string name, bool isNewDeclaration)` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:140-220)
 
 This is the **heart of name resolution** in RoslynEmitter. It's called whenever the emitter needs to generate a C# identifier from a Sharpy name.
-
-### Method Signature
-
-```csharp
-private string GetMangledVariableName(string name, bool isNewDeclaration)
-```
 
 **Parameters:**
 - `name`: The original Sharpy identifier (e.g., `my_variable`, `MAX_VALUE`, `MyClass`)
@@ -389,423 +245,433 @@ private string GetMangledVariableName(string name, bool isNewDeclaration)
 
 **Returns:** The C# identifier with appropriate casing and versioning (e.g., `myVariable`, `myVariable_1`, `MAX_VALUE`, `MyClass`)
 
-### Resolution Strategy (Priority Order)
+**Resolution Strategy (Priority Order):**
 
-The method implements a **priority-based resolution strategy**. It checks conditions in this exact order:
+1. **Local Variable Versioning** (Highest Priority)
+   ```csharp
+   if (_variableVersions.ContainsKey(baseName))
+   {
+       if (isNewDeclaration)
+       {
+           var newVersion = _variableVersions[baseName] + 1;
+           _variableVersions[baseName] = newVersion;
+           return $"{baseName}_{newVersion}";
+       }
+       else
+       {
+           var currentVersion = _variableVersions[baseName];
+           return currentVersion == 0 ? baseName : $"{baseName}_{currentVersion}";
+       }
+   }
+   ```
+   **Why first?** Local variables shadow module-level names (matches Python's LEGB rule).
 
-#### 1. Local Variable Versioning (Highest Priority) (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:132-152)
+2. **Local Const Variables**
+   ```csharp
+   if (_constVariables.Contains(name))
+       return NameMangler.ToConstantCase(name);
+   ```
 
-```csharp
-if (_variableVersions.ContainsKey(baseName))
-{
-    // There's a local variable with this name - use local resolution
-    if (isNewDeclaration)
-    {
-        // This is a redefinition of an existing local variable
-        var currentVersion = _variableVersions[baseName];
-        var newVersion = currentVersion + 1;
-        _variableVersions[baseName] = newVersion;
-        return $"{baseName}_{newVersion}";
-    }
-    else
-    {
-        // This is a reference to the local variable
-        var currentVersion = _variableVersions[baseName];
-        return currentVersion == 0 ? baseName : $"{baseName}_{currentVersion}";
-    }
-}
-```
+3. **Type Symbols** (Classes/Structs)
+   ```csharp
+   if (symbol is TypeSymbol typeSymbol &&
+       (typeSymbol.TypeKind == TypeKind.Class || typeSymbol.TypeKind == TypeKind.Struct))
+       return NameMangler.ToPascalCase(name);
+   ```
+   **New approach:** Query symbol table instead of maintaining `_classNames` / `_structNames` sets.
 
-**Why first?** Local variables shadow module-level names, so we check local scope before anything else. This matches Python's LEGB scoping.
+4. **Module Symbols**
+   ```csharp
+   if (symbol is ModuleSymbol)
+       return EscapeCSharpKeyword(name.Replace(".", "_"));
+   ```
 
-**Key insight:** This handles Sharpy's Python-like variable redefinition semantics where you can reassign a variable with a different type.
+5. **CodeGenInfo-Based Resolution**
+   ```csharp
+   var codeGenName = TryGetCSharpNameFromCodeGenInfo(name, isNewDeclaration);
+   if (codeGenName != null)
+       return codeGenName;
+   ```
+   **Handles:** Module-level variables, constants, from-imports (with aliases).
+
+6. **Default: New Local Variable**
+   ```csharp
+   if (isNewDeclaration)
+   {
+       _variableVersions[baseName] = 0;
+       return baseName;
+   }
+   ```
 
 **Example:**
 ```python
-x = 10
-x = "hello"  # Redeclaration with different type
+# Sharpy code
+user_name: str = "Alice"     # First declaration
+print(user_name)             # Reference
+user_name: int = 42          # Redeclaration
 ```
-
-Generated C#:
-```csharp
-var x = 10;
-var x_1 = "hello";
-```
-
-#### 2. Local Constant Check (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:154-159)
 
 ```csharp
-if (_constVariables.Contains(name))
-{
-    return NameMangler.ToConstantCase(name);
-}
+// Generated C#
+var userName = "Alice";      // version 0
+Console.WriteLine(userName); // reference to version 0
+var userName_1 = 42;         // version 1
 ```
 
-**Example:** `MAX_RETRIES` in local scope stays as `MAX_RETRIES`.
+---
 
-#### 3. Type Name Check (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:161-171)
+#### `GetCSharpNameForSymbol(Symbol symbol, bool isNewDeclaration = false)` (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:230-252)
+
+**Purpose:** High-level helper to get the C# name for any symbol.
+
+**Algorithm:**
+1. If `CodeGenInfo` exists: use `GetVersionedCSharpName()`
+2. Otherwise, fallback based on symbol kind:
+   - Variable → `GetMangledVariableName()`
+   - Function → `PascalCase`
+   - Type → `PascalCase`
+   - Module → Sanitized name with keyword escaping
+   - Parameter → `camelCase`
+
+**When is CodeGenInfo unavailable?**
+- Local variables during emission (tracked via `_variableVersions`)
+- Symbols not processed by `CodeGenInfoComputer` (rare edge cases)
+
+---
+
+### CodeGenInfo Helper Methods (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:222-293)
+
+These methods provide a **clean interface** for accessing `Symbol.CodeGenInfo` data. They encapsulate null-safety and abstraction.
 
 ```csharp
-var symbol = _context.LookupSymbol(name);
+private bool IsModuleLevelConstant(Symbol symbol)
+    → symbol.CodeGenInfo?.IsModuleLevel == true && symbol.CodeGenInfo.IsConstant
 
-// Uses symbol table lookup instead of legacy tracking sets
-if (symbol is TypeSymbol typeSymbol &&
-    (typeSymbol.TypeKind == TypeKind.Class ||
-     typeSymbol.TypeKind == TypeKind.Struct))
-{
-    return NameMangler.ToPascalCase(name);
-}
+private bool IsModuleLevelVariable(Symbol symbol)
+    → symbol.CodeGenInfo?.IsModuleLevel == true && !symbol.CodeGenInfo.IsConstant
+
+private bool HasExecutionOrderIssues(Symbol symbol)
+    → symbol.CodeGenInfo?.HasExecutionOrderIssues == true
+
+private bool IsFromImportSymbol(Symbol symbol)
+    → symbol.CodeGenInfo?.ImportKind is FromImport or FromImportWithAlias
+
+private string? GetOriginalImportName(Symbol symbol)
+    → symbol.CodeGenInfo?.OriginalImportName
 ```
 
-**New approach:** Query symbol table for type information instead of maintaining `_classNames` / `_structNames` sets.
+**Why use helper methods?**
+- **Null safety**: Graceful handling when `CodeGenInfo` is missing
+- **Abstraction**: Hides the internal structure of `CodeGenInfo`
+- **Readability**: `IsModuleLevelConstant(symbol)` is clearer than `symbol.CodeGenInfo?.IsModuleLevel == true && symbol.CodeGenInfo.IsConstant`
 
-**Example:** Class `user_profile` becomes `UserProfile`.
+---
 
-#### 4. Module Symbol Check (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:173-180)
+### SemanticBinding Helper Methods (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:295-333)
+
+These methods read from `SemanticBinding` when available, falling back to direct AST properties for backward compatibility.
 
 ```csharp
-if (symbol is ModuleSymbol)
-{
-    // Use the same sanitization as in GenerateImportUsings
-    // Also escape C# keywords like "base" -> "@base"
-    return EscapeCSharpKeyword(name.Replace(".", "_"));
-}
+private string? GetResolvedModulePath(FromImportStatement fromImport)
+private Dictionary<string, Symbol>? GetReExportedSymbols(FromImportStatement fromImport)
+private bool HasReExportedSymbols(FromImportStatement fromImport)
 ```
 
-**Example:** `import math.utils` becomes `math_utils` or `@base` if keyword.
+**Why use SemanticBinding?**
+The compiler is transitioning from **mutable AST** (where semantic data is stored in AST node properties) to **immutable AST + SemanticBinding** (where semantic data is stored separately). These helpers support both approaches during the transition.
 
-#### 5. CodeGenInfo-Based Resolution (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:182-187)
-
+**Example:**
 ```csharp
-var codeGenName = TryGetCSharpNameFromCodeGenInfo(name, isNewDeclaration);
-if (codeGenName != null)
-    return codeGenName;
+// Old approach (mutable AST)
+var modulePath = fromImport.ResolvedModulePath;
+
+// New approach (immutable AST + SemanticBinding)
+var modulePath = _context.SemanticBinding?.GetResolvedModulePath(fromImport);
+
+// Helper (supports both)
+var modulePath = GetResolvedModulePath(fromImport);
 ```
 
-**Purpose:** Use pre-computed module-level symbol names from semantic analysis.
+---
 
-**Handles:**
-- Module-level variables and constants
-- From-import symbols (with aliases)
-- Functions and types
+## Name Resolution Strategy: Priority Order
 
-**Why after local checks?** Parameters should shadow globals correctly (parameter `x` shadows global `x`).
+Understanding the **priority order** of name resolution is critical for debugging. When resolving a Sharpy name, the emitter checks in this order:
 
-#### 6. Default: New Local Variable (src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:189-202)
+1. **Local variables** (`_variableVersions`)
+   - Includes parameters (they shadow globals)
+   - Highest priority (local shadows global)
 
-```csharp
-if (isNewDeclaration)
-{
-    // First declaration of this local variable
-    _variableVersions[baseName] = 0;
-    return baseName;
-}
-else
-{
-    // Reference to a variable not yet declared (shouldn't happen in valid code)
-    // Fall back to just returning the base name
-    return baseName;
-}
-```
+2. **Local const variables** (`_constVariables`)
+   - Use `CONSTANT_CASE`
 
-**Fallback case:** For variables that don't match any of the above categories, treat them as new local variables with camelCase naming.
+3. **Type symbols** (classes/structs)
+   - Use `PascalCase`
+   - Checked via `SymbolTable.LookupType()`
 
-### Common Patterns and Edge Cases
+4. **Module symbols**
+   - Preserve sanitized name
+   - Escape C# keywords
 
-#### Example 1: Parameter Shadowing Module Variable
+5. **CodeGenInfo** (module-level symbols, from-imports)
+   - Pre-computed names from semantic analysis
+   - Handles aliases, versioning, etc.
 
-**Sharpy:**
+6. **Fallback: new local variable**
+   - Add to `_variableVersions` with version 0
+   - Use `camelCase`
+
+**Why does order matter?**
+
 ```python
-global_var = "module"
+# Sharpy code
+MAX_SIZE = 100  # Module-level constant
 
-def my_function(global_var):  # Parameter shadows module variable
-    print(global_var)
+def foo(MAX_SIZE: int):  # Parameter shadows global
+    print(MAX_SIZE)      # Refers to parameter, not global
 ```
 
-**Generated C#:**
 ```csharp
-public static string GlobalVar = "module";
+// Generated C#
+public static readonly int MAX_SIZE = 100;
 
-public static void MyFunction(string globalVar)  // Different from GlobalVar
+public static void Foo(int maxSize)  // Parameter uses camelCase
 {
-    Console.WriteLine(globalVar);
+    Console.WriteLine(maxSize);      // Refers to local parameter
 }
 ```
 
-**Resolution path:**
-1. `global_var` lookup in local scope → found in `_variableVersions` (added as parameter)
-2. Returns `globalVar` (camelCase)
+The parameter `MAX_SIZE` is added to `_variableVersions` during parameter emission, so when the print statement references `MAX_SIZE`, the emitter finds it in local variables first (camelCase → `maxSize`) before checking module-level constants.
 
-#### Example 2: Variable Redefinition with Versioning
-
-**Sharpy:**
-```python
-x = 10
-x = 20
-x = x + 1
-```
-
-**Generated C#:**
-```csharp
-var x = 10;
-var x_1 = 20;
-var x_2 = x_1 + 1;  // References the current version
-```
-
-**Resolution path:**
-1. First `x = 10`: New declaration → `_variableVersions[x] = 0` → returns `x`
-2. Second `x = 20`: Redeclaration → increments version → `_variableVersions[x] = 1` → returns `x_1`
-3. Third `x = x + 1`: Reference to `x` → returns `x_1`, then redeclaration → returns `x_2`
-
-#### Example 3: From-Import with Alias (via CodeGenInfo)
-
-**Sharpy:**
-```python
-from config import MAX_RETRIES as max_retries, get_settings
-print(max_retries)  # Uses alias
-get_settings()      # Uses original name
-```
-
-**Generated C#:**
-```csharp
-using static Config.Exports;
-
-Console.WriteLine(MAX_RETRIES);  // Alias resolves to original via CodeGenInfo
-GetSettings();                    // Direct use
-```
-
-**Resolution path:**
-1. Lookup `max_retries` in symbol table
-2. Find `CodeGenInfo` with `ImportKind = FromImportWithAlias`
-3. `CodeGenInfo.OriginalImportName = "MAX_RETRIES"`
-4. `CodeGenInfo.GetVersionedCSharpName()` returns `MAX_RETRIES`
-
-## Patterns and Design Decisions
-
-### 1. Hybrid Name Resolution: CodeGenInfo + Runtime Tracking
-
-**Decision:** Use CodeGenInfo for module-level symbols, runtime tracking for local variables.
-
-**Rationale:**
-- **Module-level symbols**: Known at semantic analysis time, can pre-compute C# names and metadata
-- **Local variables**: Redeclarations happen during emission (can't know version count ahead of time)
-- Separation of concerns: semantic analysis computes static info, emitter handles dynamic scope
-
-**Trade-off:** More complex than pure runtime tracking, but enables better semantic analysis and clearer boundaries.
-
-### 2. Priority-Based Name Resolution
-
-**Decision:** Check scopes in a specific order (local → types → modules → CodeGenInfo → default).
-
-**Rationale:** Matches Python's LEGB (Local, Enclosing, Global, Built-in) scoping rules adapted for Sharpy's semantics.
-
-**Implementation:** The `GetMangledVariableName()` method implements this as an explicit sequence of if-checks, making the priority order clear and debuggable.
-
-### 3. Minimal Tracking Collections
-
-**Decision:** Remove most tracking sets in favor of symbol table queries and CodeGenInfo.
-
-**Rationale:**
-- **Eliminates duplication**: Type information already exists in symbol table
-- **Single source of truth**: CodeGenInfo is the authoritative metadata source
-- **Simpler emitter**: Fewer HashSets to maintain and synchronize
-- **Better encapsulation**: Semantic analysis owns the logic for computing C# names
-
-**What remains:** Only truly runtime concerns (local variable versions, module field names to prevent duplicates).
-
-### 4. Separation via Partial Classes
-
-**Decision:** Split `RoslynEmitter` into 7+ partial class files.
-
-**Rationale:**
-- Original single file was too large (thousands of lines)
-- Each partial file has a cohesive responsibility (expressions, statements, types, etc.)
-- Easier to navigate and maintain
-- Enables parallel development on different aspects
-
-**Trade-off:** Must coordinate state across files, but the shared fields make this manageable.
-
-### 5. Version Suffix Strategy
-
-**Decision:** Use numeric suffixes for variable versioning (`x`, `x_1`, `x_2`).
-
-**Rationale:**
-- Simple and predictable
-- Easy to debug (version number in the name)
-- Doesn't conflict with user identifiers (assuming they don't use numeric suffixes)
-- Preserves semantic information about redefinition
-
-**Alternative considered:** Mangled names like `x_v1`, `x_shadow1` - rejected for being too verbose.
-
-### 6. Immutable AST with SemanticBinding
-
-**Decision:** Store semantic data (import resolution, re-exported symbols) in `SemanticBinding` instead of AST nodes.
-
-**Rationale:**
-- **Immutable AST**: AST nodes remain pure parse-time structures
-- **Clean separation**: Parsing vs. semantic analysis responsibilities
-- **Reusable AST**: Same AST can be analyzed with different semantic contexts
-
-**Implementation:** Helper methods like `GetResolvedModulePath()` abstract away the choice between SemanticBinding and AST properties.
+---
 
 ## Debugging Tips
 
-### Tip 1: Name Resolution Issues
+### Name Resolution Issues
 
-**Symptom:** Variable has wrong casing or wrong version suffix.
+**Symptom:** Generated C# uses wrong name or casing.
 
-**Debug approach:**
-1. Set a breakpoint in `GetMangledVariableName()` at line 128
-2. Check which branch the code takes (step through the priority checks)
-3. Inspect the tracking collections:
-   - `_variableVersions` - should contain local variables with their version numbers
-   - `_constVariables` - should contain local constants
-4. Check if symbol has `CodeGenInfo`:
-   ```csharp
-   var symbol = _context.LookupSymbol(name);
-   var info = symbol?.CodeGenInfo;
-   // Inspect info properties
-   ```
-5. Verify `isNewDeclaration` is set correctly at the call site
-6. Check the `baseName` after `ToCamelCase()` transformation
+**Debug steps:**
+1. Check symbol table: Is the symbol registered?
+2. Check `CodeGenInfo`: What's the pre-computed name?
+3. Check `_variableVersions`: Is it tracked as a local?
+4. Add logging in `GetMangledVariableName()` to see the resolution path
 
-**Common issue:** Local variable shadowing module variable not working - likely the local variable wasn't added to `_variableVersions`.
+**Example issue:** Module-level variable emitted as `camelCase` instead of `PascalCase`.
+- **Likely cause:** `CodeGenInfo` not populated (semantic analysis skipped)
+- **Fix:** Ensure `TypeChecker.CheckModule()` is called with `computeCodeGenInfo: true`
 
-### Tip 2: CodeGenInfo Missing or Incorrect
+### Variable Version Issues
 
-**Symptom:** Module-level symbol not using CodeGenInfo, falling back to runtime resolution.
+**Symptom:** Variable redeclaration doesn't get version suffix (or gets wrong version).
 
-**Debug approach:**
-1. Check if semantic analysis was run with `computeCodeGenInfo: true`
-2. Verify the symbol exists in the symbol table: `_context.LookupSymbol(name)`
-3. Check if `symbol.CodeGenInfo` is non-null
-4. Inspect CodeGenInfo properties:
-   - `IsModuleLevel` - should be true for module symbols
-   - `IsConstant` - for constants
-   - `ImportKind` - for from-imports
-   - `OriginalImportName` - for aliased imports
-5. Look at `CodeGenInfoComputer` in semantic analysis to see how it's populated
+**Debug steps:**
+1. Check `_variableVersions` dictionary state
+2. Ensure `isNewDeclaration = true` for new declarations
+3. Verify that `_variableVersions` isn't being cleared between declarations
 
-### Tip 3: Variable Shadowing Problems
+**Example issue:** Second `x` declaration generates `x` instead of `x_1`.
+- **Likely cause:** `isNewDeclaration` passed as `false`
+- **Fix:** Check call sites in `RoslynEmitter.Statements.cs` (variable declaration emission)
 
-**Symptom:** Local variable incorrectly references module-level variable or vice versa.
+### Execution Order Issues
 
-**Debug approach:**
-1. Verify `isNewDeclaration` is set correctly at call sites (assignment vs. reference)
-2. Check that `_variableVersions` is cleared between function scopes (should be in `GenerateFunctionDeclaration()`)
-3. Ensure priority order in `GetMangledVariableName()` is being followed
-4. Check if parameter was added to `_variableVersions` during parameter processing
+**Symptom:** Module-level variables generate compilation errors about initialization order.
 
-### Tip 4: Import Resolution Issues
+**Debug steps:**
+1. Check `HasExecutionOrderIssues()` for the symbol
+2. Verify `_forceModuleLevelFields` flag state
+3. Check if user-defined `main()` exists
 
-**Symptom:** From-import symbols have wrong names or aliases not working.
+**Example issue:** Variable with execution order issues emitted as static field instead of local in `Main()`.
+- **Likely cause:** `_forceModuleLevelFields = true` but no user-defined `main()`
+- **Fix:** Check `Main()` detection logic in `RoslynEmitter.CompilationUnit.cs`
 
-**Debug approach:**
-1. Check `symbol.CodeGenInfo.ImportKind` - should be `FromImport` or `FromImportWithAlias`
-2. Check `symbol.CodeGenInfo.OriginalImportName` for aliased imports
-3. Verify `GetResolvedModulePath()` returns correct module path
-4. Look at `RoslynEmitter.CompilationUnit.cs` → `GenerateUsingDirectives()` method
-5. Check if SemanticBinding has correct import resolution data
+### Import Resolution Issues
 
-### Tip 5: Inspect Generated Roslyn Syntax Trees
+**Symptom:** Imported symbols not found or have wrong names.
 
-**Useful technique:**
-```csharp
-// In any Generate* method
-var generatedSyntax = /* ... your generation code ... */;
-Console.WriteLine(generatedSyntax.NormalizeWhitespace().ToFullString());
-```
+**Debug steps:**
+1. Check `SemanticBinding.GetResolvedModulePath()`
+2. Verify `CodeGenInfo.ImportKind` (FromImport vs. ModuleImport)
+3. Check `CodeGenInfo.OriginalImportName` for aliases
 
-The `ToFullString()` method shows the exact C# code that will be emitted, with proper formatting.
+**Example issue:** `from math import sqrt as square_root` generates reference to `sqrt` instead of `squareRoot`.
+- **Likely cause:** `CodeGenInfo.CSharpName` not set correctly
+- **Fix:** Check `CodeGenInfoComputer` from-import handling
 
-### Tip 6: Version Number Mismatches
+---
 
-**Symptom:** Variable reference uses wrong version (e.g., `x` instead of `x_1`).
+## Patterns and Design Decisions
 
-**Debug approach:**
-1. Check that `isNewDeclaration = false` for references
-2. Verify `_variableVersions[baseName]` contains the expected version number
-3. Ensure the assignment that created the version came before the reference
-4. Check that the version counter isn't being reset unexpectedly
+### 1. **Partial Classes for Maintainability**
+
+**Why?** A single 8000+ line file is unmaintainable. Partial classes allow logical separation:
+- **This file**: Infrastructure (state, naming, helpers)
+- **CompilationUnit**: Top-level structure
+- **Statements**: Control flow emission
+- **Expressions**: Value emission
+- **TypeDeclarations**: Type definitions
+- **ClassMembers**: Member definitions
+- **ModuleClass**: Module organization
+- **Operators**: Operator overloading
+
+**Trade-off:** Context switching between files, but better than scrolling thousands of lines.
+
+### 2. **CodeGenInfo: Pre-computed vs. Runtime Resolution**
+
+**Decision:** Move name resolution from emission time to semantic analysis time.
+
+**Pros:**
+- Single source of truth for names
+- Faster emission (no recomputation)
+- Easier debugging (names computed once)
+
+**Cons:**
+- Can't handle local redeclarations (still need runtime tracking)
+- Adds complexity to semantic analysis phase
+
+**Result:** Hybrid approach:
+- **Module-level symbols**: Use `CodeGenInfo` (pre-computed)
+- **Local variables**: Use `_variableVersions` (runtime tracking)
+
+### 3. **Immutable AST + SemanticBinding**
+
+**Decision:** Transition from mutable AST (semantic data in AST nodes) to immutable AST (semantic data in separate binding).
+
+**Why?**
+- **Parallelization**: Immutable AST can be shared across threads
+- **Caching**: AST can be cached without invalidation concerns
+- **Clarity**: Separation of parsing and semantic concerns
+
+**Current state:** Transitional (supports both approaches via helper methods).
+
+### 4. **Priority-Based Name Resolution**
+
+**Decision:** Local variables shadow globals, types have priority over variables, etc.
+
+**Why?** Matches Python's LEGB rule (Local, Enclosing, Global, Builtin) for name resolution.
+
+**Implementation:** Explicit priority ordering in `GetMangledVariableName()`.
+
+### 5. **Keyword Escaping**
+
+C# keywords need `@` prefix when used as identifiers. The emitter handles this transparently:
+- Module import `base` → `@base`
+- Variable `class` → `@class`
+
+**Why not just forbid keywords?** Sharpy aims for Python compatibility. Python allows `class` as a variable name (though discouraged).
+
+---
 
 ## Contribution Guidelines
 
 ### When to Modify This File
 
-**Add new tracking collections when:**
-- You introduce a new category of symbols that needs special name resolution
-- You need to track new runtime state during emission (not pre-computable)
-- Example: Tracking async/await contexts for method generation
+**Add state tracking fields when:**
+- Introducing new symbol kinds that need emission-time tracking
+- Adding new context flags (like `_isInAbstractClass`)
 
-**Modify `GetMangledVariableName()` when:**
-- Changing the priority order of name resolution
-- Adding new special cases for naming (e.g., property names)
-- Fixing bugs in variable shadowing or versioning
+**Add helper methods when:**
+- Accessing `CodeGenInfo` or `SemanticBinding` properties
+- Performing common name resolution tasks used across partial files
 
-**Add CodeGenInfo helper methods when:**
-- You need to access new CodeGenInfo fields from multiple places
-- You want to encapsulate CodeGenInfo logic (keep it DRY)
+**Modify name resolution when:**
+- Changing naming conventions (e.g., different casing rules)
+- Adding new symbol types (e.g., traits, protocols)
+- Fixing shadowing or priority bugs
 
-**Don't modify this file when:**
-- Adding new expression types (go to `RoslynEmitter.Expressions.cs`)
-- Adding new statement types (go to `RoslynEmitter.Statements.cs`)
-- Changing type mapping logic (go to `TypeMapper.cs`)
-- Changing name mangling rules (go to `NameMangler.cs`)
-- Adding new CodeGenInfo fields (go to `Sharpy.Compiler.Semantic.CodeGenInfo`)
+### When NOT to Modify This File
 
-### Testing Considerations
+**Don't add emission logic here.** This file is **infrastructure only**. Emission logic belongs in:
+- `RoslynEmitter.Statements.cs` - Statement emission
+- `RoslynEmitter.Expressions.cs` - Expression emission
+- `RoslynEmitter.TypeDeclarations.cs` - Type emission
+- etc.
 
-When modifying name resolution:
-1. **Test variable shadowing** (module-level vs. local, parameter shadowing)
-2. **Test variable redefinition** (versioning with multiple assignments)
-3. **Test constant preservation** (CONSTANT_CASE vs. PascalCase)
-4. **Test from-import aliasing** (alias → original name mapping)
-5. **Test CodeGenInfo integration** (module-level symbols use pre-computed names)
-6. **Test edge cases** (keywords, dunder methods, special characters)
-7. **Test cross-references** (variable used before/after redefinition)
+**Don't add type mapping logic here.** That belongs in `TypeMapper.cs`.
 
-### Code Style
+**Don't add name mangling logic here.** That belongs in `NameMangler.cs`.
 
-**Follow existing patterns:**
-- Use descriptive collection names (`_moduleFieldNames` not `_modFields`)
-- Add XML doc comments for new public/internal methods
-- Keep `GetMangledVariableName()` priority order well-commented
-- Use `readonly` for collections that are initialized once
-- Initialize collections inline when possible (`new()` syntax)
-- Prefer CodeGenInfo queries over new tracking collections
+### Testing Changes
 
-### Performance Considerations
+When modifying name resolution or state tracking:
 
-- **HashSet lookups are O(1)**: Adding more tracking collections doesn't significantly impact performance
-- **Avoid LINQ in hot paths**: `GetMangledVariableName()` is called for every identifier - keep it efficient
-- **Symbol table lookups are fast**: Use `_context.LookupSymbol()` freely, it's optimized
-- **CodeGenInfo is pre-computed**: No performance penalty for using it (already paid during semantic analysis)
+1. **Unit tests**: Add tests in `RoslynEmitterTests.cs`
+2. **Integration tests**: Add file-based tests in `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
+3. **Manual testing**: Use `dotnet run --project src/Sharpy.Cli -- emit csharp file.spy` to inspect generated C#
+
+**Example test case for variable versioning:**
+```python
+# file: test_variable_redeclaration.spy
+x: int = 5
+x: str = "hello"
+x: bool = True
+```
+
+Expected C#:
+```csharp
+var x = 5;
+var x_1 = "hello";
+var x_2 = true;
+```
+
+### Code Review Checklist
+
+When reviewing changes to this file:
+
+- [ ] Are new state fields documented with XML comments?
+- [ ] Are helper methods named clearly (verb + object)?
+- [ ] Does name resolution preserve priority order?
+- [ ] Are C# keywords escaped?
+- [ ] Are edge cases handled (null symbols, missing CodeGenInfo)?
+- [ ] Are tests added for new behavior?
+
+---
 
 ## Cross-References
 
-This file is part of a larger partial class. For complete understanding, see:
+### Related Partial Class Files
 
-- **[RoslynEmitter.CompilationUnit.md](./RoslynEmitter.CompilationUnit.md)**: Top-level module structure and imports
-- **[RoslynEmitter.Expressions.md](./RoslynEmitter.Expressions.md)**: How expressions are converted to Roslyn syntax
-- **[RoslynEmitter.Statements.md](./RoslynEmitter.Statements.md)**: Control flow and statement generation
-- **[RoslynEmitter.TypeDeclarations.md](./RoslynEmitter.TypeDeclarations.md)**: Class, struct, enum, interface generation
-- **[RoslynEmitter.ClassMembers.md](./RoslynEmitter.ClassMembers.md)**: Method and property generation
-- **[RoslynEmitter.ModuleClass.md](./RoslynEmitter.ModuleClass.md)**: Module wrapping and exports
-- **[RoslynEmitter.Operators.md](./RoslynEmitter.Operators.md)**: Operator expression handling
+This is the **main file** in a partial class split. See related files for emission logic:
 
-**Related core files:**
-- **[CodeGenContext.md](./CodeGenContext.md)**: State container for code generation
-- **[TypeMapper.md](./TypeMapper.md)**: Type conversion Sharpy → C#
-- **[NameMangler.md](./NameMangler.md)**: Identifier transformation utilities
+- **[RoslynEmitter.CompilationUnit.md](RoslynEmitter.CompilationUnit.md)** - Top-level module structure, using statements, namespace generation
+- **[RoslynEmitter.ModuleClass.md](RoslynEmitter.ModuleClass.md)** - Module class generation, entry point detection, static field emission
+- **[RoslynEmitter.Statements.md](RoslynEmitter.Statements.md)** - Statement emission (if, while, for, return, etc.)
+- **[RoslynEmitter.Expressions.md](RoslynEmitter.Expressions.md)** - Expression emission (literals, operators, calls, etc.)
+- **[RoslynEmitter.TypeDeclarations.md](RoslynEmitter.TypeDeclarations.md)** - Type definitions (class, struct, enum, interface)
+- **[RoslynEmitter.ClassMembers.md](RoslynEmitter.ClassMembers.md)** - Class member generation (methods, fields, properties)
+- **[RoslynEmitter.Operators.md](RoslynEmitter.Operators.md)** - Operator overloading
 
-**Upstream dependencies:**
-- `Sharpy.Compiler.Parser.Ast`: AST node definitions
-- `Sharpy.Compiler.Semantic`: Semantic analysis (symbol tables, type checking, CodeGenInfo)
+### Related Infrastructure Files
 
-**Key semantic analysis integration:**
-- `Symbol.CodeGenInfo`: Pre-computed code generation metadata (C# names, import info, constant flags)
-- `CodeGenInfoComputer`: Populates CodeGenInfo during semantic analysis
-- `SemanticBinding`: Stores semantic data separate from AST nodes
+- **`CodeGenContext.cs`** - State container for code generation (src/Sharpy.Compiler/CodeGen/CodeGenContext.cs:9)
+- **`TypeMapper.cs`** - Sharpy-to-C# type mapping (src/Sharpy.Compiler/CodeGen/TypeMapper.cs:14)
+- **`NameMangler.cs`** - Naming convention transformations (src/Sharpy.Compiler/CodeGen/NameMangler.cs:8)
+- **`CodeGenInfo.cs`** - Semantic metadata for name resolution (see [CodeGenInfo.md](../Semantic/CodeGenInfo.md))
+- **`CodeGenInfoComputer.cs`** - Computes CodeGenInfo during semantic analysis (see [CodeGenInfoComputer.md](../Semantic/CodeGenInfoComputer.md))
+- **`SemanticBinding.cs`** - Immutable semantic data storage (see [SemanticBinding.md](../Semantic/SemanticBinding.md))
 
-**Specifications:**
-- `docs/language_specification/dotnet_interop.md`: .NET interop rules that affect code generation
+### Upstream Dependencies
+
+- **`Parser.Ast`** - AST node definitions (statements, expressions, types)
+- **`Semantic.Symbol`** - Symbol definitions (VariableSymbol, FunctionSymbol, TypeSymbol, etc.)
+- **`Semantic.SymbolTable`** - Symbol lookup and scoping
+
+### Downstream Usage
+
+- **`Sharpy.Cli`** - Command-line interface uses `RoslynEmitter.Emit()` to generate C# from AST
+- **`Sharpy.Compiler.Tests`** - Integration tests verify emitted C# compiles and executes correctly
+
+---
+
+## Summary
+
+`RoslynEmitter.cs` is the **spine** of the code generation phase. It:
+- Initializes dependencies (`CodeGenContext`, `TypeMapper`)
+- Tracks mutable state during emission (variable versions, declared symbols)
+- Resolves Sharpy names to C# names with proper casing and versioning
+- Provides helper methods for accessing semantic metadata
+- Coordinates with other partial class files for actual AST-to-C# emission
+
+**Key takeaway:** This file is **infrastructure, not implementation**. When debugging emission issues, start here to understand name resolution, then follow the trail to the appropriate partial file (Statements, Expressions, etc.) for the actual emission logic.

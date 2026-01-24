@@ -6,452 +6,196 @@
 
 ## Overview
 
-The `Compiler.cs` file is the **main orchestrator** of the Sharpy compilation pipeline. It acts as the entry point that coordinates all compilation phases from source code (.spy files) to generated C# code. This file implements the classic compiler frontend pattern, executing a series of well-defined phases: lexical analysis, syntax analysis, semantic analysis, validation, and code generation.
+`Compiler.cs` is the **main orchestrator** of the Sharpy compilation pipeline. It acts as the entry point that coordinates all compilation phases, from tokenization through code generation. Think of it as the conductor of an orchestra—it doesn't implement the individual instruments (lexer, parser, semantic analyzer), but it ensures they all play together in the right order.
 
-**Role in Pipeline**: This is the conductor that brings together all the specialized compiler components (Lexer, Parser, NameResolver, TypeChecker, ValidationPipeline, RoslynEmitter) and ensures they execute in the correct order with proper error handling and logging.
-
-**Key Responsibilities**:
-- Orchestrating the multi-phase compilation pipeline
-- Managing compilation options and module registries
-- Collecting and reporting errors from each phase
-- Tracking compilation metrics for performance analysis
-- Supporting both single-file and multi-file project compilation
-- Generating appropriate namespaces and entry points for compiled code
+**Role in the Pipeline**: This is the top-level API that consumers (like the CLI or IDE tooling) use to compile Sharpy source code into C#. It manages the flow: **Source (.spy) → Lexer → Parser → Semantic Analysis → Code Generation → C#**.
 
 ---
 
 ## Class/Type Structure
 
-### Main Classes
+### 1. `Compiler` Class
 
-#### 1. `Compiler` Class
-
-The primary compiler driver with two distinct modes:
+The main driver class with two key responsibilities:
+- **Single-file compilation**: `Compile(string sourceCode, string filePath)`
+- **Project compilation**: `CompileProject(ProjectConfig projectConfig)`
 
 **Fields**:
-- `_logger`: ICompilerLogger - Handles diagnostic output throughout compilation
-- `_moduleRegistry`: ModuleRegistry? - Optional registry for resolving cross-module imports and .NET assembly references
+- `_logger`: An `ICompilerLogger` for diagnostic output (defaults to `NullLogger` if not provided)
+- `_moduleRegistry`: Optional `ModuleRegistry` for managing multi-module projects and external assembly references
 
 **Constructors**:
-
 ```csharp
-// Simple constructor for single-file compilation without module dependencies
 public Compiler(ICompilerLogger? logger = null)
-
-// Advanced constructor for multi-file projects with module paths and assembly references
 public Compiler(CompilerOptions options, ICompilerLogger? logger = null)
 ```
 
-The constructor choice determines compilation mode:
-- **Null registry**: Single-file, standalone compilation
-- **With registry**: Multi-file project compilation with module resolution
+The parameterless constructor is used for simple single-file compilation. The second constructor initializes module support, loading module search paths and assembly references from `CompilerOptions`.
 
-#### 2. `CompilationResult` Class
+### 2. `CompilationResult` Class
 
-Immutable record of single-file compilation outcome:
+A data transfer object (DTO) that captures the outcome of compiling a single file. It's immutable (`init`-only properties).
 
-```csharp
-public class CompilationResult
-{
-    public bool Success { get; init; }
-    public List<string> Errors { get; init; }
-    public Module? Module { get; init; }                    // Parsed AST
-    public SymbolTable? SymbolTable { get; init; }          // Symbol resolution data
-    public SemanticInfo? SemanticInfo { get; init; }        // Type information
-    public ModuleRegistry? ModuleRegistry { get; init; }    // Import resolution
-    public string? GeneratedCSharpCode { get; init; }       // Final C# output
-    public CompilationMetrics? Metrics { get; init; }       // Performance data
-}
-```
+**Key Properties**:
+- `Success`: Did the compilation succeed?
+- `Errors`: List of error messages (empty if successful)
+- `Module`: The parsed AST (Abstract Syntax Tree)
+- `SymbolTable`: All declared symbols (variables, functions, classes)
+- `SemanticInfo`: Type annotations and semantic metadata attached to AST nodes
+- `GeneratedCSharpCode`: The final C# code generated
+- `Metrics`: Performance timing for each compilation phase
 
-**Design Decision**: Uses init-only properties for immutability, making compilation results thread-safe and preventing accidental modification.
+### 3. `ProjectCompilationResult` Class
 
-#### 3. `ProjectCompilationResult` Class
+Similar to `CompilationResult`, but for multi-file projects.
 
-Specialized result for multi-file project compilation:
+**Additional Properties**:
+- `Warnings`: Non-fatal diagnostics
+- `OutputAssemblyPath`: Path to the compiled .NET assembly
+- `GeneratedCSharpFiles`: Map of `.spy` file paths to generated C# code
+- `DependencyGraph`: Topological ordering of module dependencies
+- `ProjectModel`: Complete project structure with all compilation units
 
-```csharp
-public class ProjectCompilationResult
-{
-    public bool Success { get; init; }
-    public List<string> Errors { get; init; }
-    public List<string> Warnings { get; init; }
-    public string? OutputAssemblyPath { get; init; }
-    public Dictionary<string, string> GeneratedCSharpFiles { get; init; }  // File path -> C# code
-    public ProjectCompilationMetrics? Metrics { get; init; }
-    public DependencyGraph? DependencyGraph { get; init; }                 // Build order analysis
-    public ProjectModel? ProjectModel { get; init; }                       // All CompilationUnits
-}
-```
+### 4. `CompilerOptions` Class
 
-**Key Differences**: 
-- Includes `Warnings` and maps multiple source files to their generated C# counterparts
-- Provides `DependencyGraph` for tooling (incremental compilation, build visualization)
-- Exposes `ProjectModel` with all CompilationUnits for analysis tools
+Configuration for compiler initialization.
 
-#### 4. `CompilerOptions` Class
-
-Configuration container for advanced compilation scenarios:
-
-```csharp
-public class CompilerOptions
-{
-    public string[]? ModulePaths { get; set; }   // Where to find .spy modules
-    public string[]? References { get; set; }    // .NET assemblies to reference
-}
-```
+**Properties**:
+- `ModulePaths`: Directories to search for Sharpy module assemblies
+- `References`: Paths to .NET DLLs to reference during compilation
 
 ---
 
 ## Key Methods
 
-### Constructor with Options (Lines 27-58)
+### `Compile(string sourceCode, string filePath)`
 
-```csharp
-public Compiler(CompilerOptions options, ICompilerLogger? logger = null)
-```
+**Purpose**: Orchestrates the four-phase compilation pipeline for a single source file.
 
-**Purpose**: Initialize the compiler for multi-file project compilation with external dependencies.
+**Parameters**:
+- `sourceCode`: The raw `.spy` file content as a string
+- `filePath`: Path to the source file (used for diagnostics and namespace generation)
+
+**Return Value**: `CompilationResult` with success status and generated artifacts.
 
 **Implementation Details**:
-1. Creates a `ModuleRegistry` to manage module imports
-2. Registers all module search paths from options
-3. Pre-loads referenced .NET assemblies
-4. Logs success/failure for each reference
 
-**Why This Matters**: Module resolution must happen **before** compilation starts. If a Sharpy file imports another module, the compiler needs to know where to find it. This constructor front-loads that discovery.
+The method executes four sequential phases, wrapping each with metrics tracking:
 
-**Error Handling**: Reference loading failures are logged as warnings but don't fail the constructor. The actual compilation will fail later during semantic analysis if a required module is missing.
-
----
-
-### CompileProject Method (Lines 63-67)
-
-```csharp
-public ProjectCompilationResult CompileProject(ProjectConfig projectConfig)
-```
-
-**Purpose**: Entry point for compiling an entire Sharpy project (.spyproj file).
-
-**Architecture Decision**: Delegates to a specialized `ProjectCompiler` rather than implementing multi-file logic directly. This keeps `Compiler.cs` focused on single-file orchestration while `ProjectCompiler` handles file discovery, dependency ordering, and assembly generation.
-
-**Usage Pattern**:
-```csharp
-var options = new CompilerOptions { ModulePaths = new[] { "./lib" } };
-var compiler = new Compiler(options, logger);
-var result = compiler.CompileProject(projectConfig);
-```
-
----
-
-### Compile Method - The Main Pipeline (Lines 69-204)
-
-```csharp
-public CompilationResult Compile(string sourceCode, string filePath)
-```
-
-This is the **heart of the compiler**. Let's break down each phase:
-
-#### Phase 1: Lexical Analysis (Lines 76-81)
-
+#### **Phase 1: Lexical Analysis** (lines 78-83)
 ```csharp
 var lexer = new Lexer.Lexer(sourceCode, _logger);
 var tokens = lexer.TokenizeAll();
 ```
+Converts raw source text into a stream of tokens (e.g., `IDENTIFIER`, `NUMBER`, `INDENT`).
 
-**What Happens**: Source code string is converted into a sequence of tokens (keywords, identifiers, operators, literals).
-
-**Output**: `List<Token>` where each token knows its type, value, and source position.
-
-**Debugging Tip**: If you see "unexpected token" errors, add logging here to inspect the token stream. The lexer might be misinterpreting certain character sequences.
-
----
-
-#### Phase 2: Syntax Analysis (Lines 84-88)
-
+#### **Phase 2: Syntax Analysis** (lines 85-90)
 ```csharp
 var parser = new Parser.Parser(tokens, _logger);
 var module = parser.ParseModule();
 ```
+Builds an Abstract Syntax Tree (AST) from tokens. The `Module` object represents the top-level container for all declarations and statements in the file.
 
-**What Happens**: Token stream is transformed into an Abstract Syntax Tree (AST) representing the program structure.
+#### **Phase 3: Semantic Analysis** (lines 92-146)
 
-**Output**: `Module` AST node containing all top-level declarations (functions, classes, imports).
+This is the most complex phase with multiple sub-passes:
 
-**Connection Point**: The `Module` AST is passed to all subsequent phases. If parsing fails, compilation halts here.
+1. **Setup** (lines 94-107):
+   - Initialize `BuiltinRegistry` (contains Python built-in functions like `print`, `len`)
+   - Create `SymbolTable` (tracks all user-defined symbols)
+   - Create `SemanticInfo` (stores type information for AST nodes)
+   - Check for module registry errors
 
----
+2. **Name Resolution** (lines 109-124):
+   ```csharp
+   var nameResolver = new NameResolver(symbolTable, _logger);
+   nameResolver.ResolveDeclarations(module);
+   nameResolver.ResolveInheritance();
+   ```
+   - First pass: Register all declarations (functions, classes, variables) in the symbol table
+   - Second pass: Resolve class inheritance chains
+   - Early exit if errors occur (e.g., duplicate declarations, circular inheritance)
 
-#### Phase 3: Semantic Analysis (Lines 91-142)
+3. **Type Resolution and Checking** (lines 126-146):
+   ```csharp
+   var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger);
+   var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
+   var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline);
+   typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
+   ```
+   - Type resolution: Map Sharpy types to .NET types
+   - Type checking: Verify expressions have compatible types, function calls match signatures
+   - `computeCodeGenInfo: true` tells the checker to prepare metadata for code generation
+   - `isEntryPoint: true` indicates this file can define a `main()` function as the program entry point
 
-This phase has **three sub-passes** - a critical design decision for handling forward references and circular dependencies:
-
-##### Module Registry Check (Lines 97-105)
-
-```csharp
-if (_moduleRegistry != null && _moduleRegistry.Errors.Any())
-{
-    return new CompilationResult
-    {
-        Success = false,
-        Errors = _moduleRegistry.Errors.Select(e => e.Message).ToList(),
-        Metrics = metrics
-    };
-}
-```
-
-**Purpose**: Before proceeding with semantic analysis, verify that all external module references were loaded successfully.
-
-**Early Exit**: If module loading failed during construction, we catch it here before attempting name resolution.
-
----
-
-##### Sub-Pass 1: Name Resolution (Lines 107-122)
-
-```csharp
-var nameResolver = new NameResolver(symbolTable, _logger);
-nameResolver.ResolveDeclarations(module);
-nameResolver.ResolveInheritance();  // Second pass for inheritance
-```
-
-**Purpose**: Build the symbol table by discovering all declarations.
-
-**Two-Phase Design**:
-1. **ResolveDeclarations**: Registers all top-level names (classes, functions, variables)
-2. **ResolveInheritance**: Resolves base classes now that all types are known
-
-**Why Two Phases?** Handles forward references:
-```python
-class Child(Parent):  # Parent not declared yet
-    pass
-
-class Parent:
-    pass
-```
-
-**Early Exit**: If name resolution errors occur (duplicate names, undefined base classes), compilation stops. Type checking cannot proceed without a valid symbol table.
-
----
-
-##### Sub-Pass 2: Type Resolution and Type Checking (Lines 125-142)
+#### **Phase 4: Code Generation** (lines 150-185)
 
 ```csharp
-var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger);
-var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
-var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline);
-typeChecker.CheckModule(module, computeCodeGenInfo: true);
-```
-
-**Type Resolution**: Maps type names to their definitions (e.g., "List[int]" → generic instantiation).
-
-**Validation Pipeline**: A pluggable system of validators that check various semantic properties:
-- Operator validation (ensuring operators are implemented correctly)
-- Protocol validation (checking interface implementations)
-- Access control validation (public/private/protected)
-
-**Type Checking**: Validates that expressions have compatible types (e.g., can't add a string to an integer).
-
-**SemanticInfo**: Accumulates type annotations for every expression in the AST. The code generator uses this to emit correctly-typed C# code.
-
-**CodeGenInfo Parameter**: Setting `computeCodeGenInfo: true` tells the type checker to compute additional metadata needed for code generation (e.g., which methods need special handling).
-
-**Critical Dependency**: TypeChecker depends on TypeResolver and ValidationPipeline. If you modify type resolution logic or add validators, verify type checking still works correctly.
-
----
-
-##### Sub-Pass 3: Semantic Validation
-
-**Current Status**: Validation is now integrated into the TypeChecker via the ValidationPipeline (see Sub-Pass 2 above).
-
-The ValidationPipeline pattern allows for:
-- **Pluggable validators**: New semantic checks can be added without modifying TypeChecker
-- **Ordered execution**: Validators run in a specific order (operator → protocol → access)
-- **Error accumulation**: All validation errors are collected before reporting
-
-**Available Validators**:
-- `OperatorValidatorV2`: Ensures operators follow protocol rules
-- `ProtocolValidator`: Verifies protocol implementations
-- `AccessValidator`: Checks visibility rules
-
-**Future Enhancements** could include:
-- Unreachable code detection
-- Unused variable warnings
-- Exhaustiveness checking for match statements
-- Control flow analysis (e.g., return statement coverage)
-
----
-
-#### Phase 4: Code Generation (Lines 147-181)
-
-```csharp
-// Derive namespace from filename for single-file compilation
-var defaultNamespace = !string.IsNullOrEmpty(filePath)
-    ? Path.GetFileNameWithoutExtension(filePath)
-    : null;
-
 var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
 {
     SourceFilePath = filePath,
-    // Single-file: use file-based namespace
-    ProjectNamespace = !string.IsNullOrEmpty(defaultNamespace)
-        ? $"Sharpy.{ToPascalCase(defaultNamespace)}"
-        : null,
-    IsEntryPoint = true,  // Generate Main method
+    ProjectNamespace = $"Sharpy.{ToPascalCase(defaultNamespace)}",
+    IsEntryPoint = true,
     Logger = _logger
 };
-
 var emitter = new RoslynEmitter(codeGenContext);
 var compilationUnit = emitter.GenerateCompilationUnit(module);
 var csharpCode = compilationUnit.ToFullString();
 ```
 
-**Namespace Generation Strategy**: 
-- Single-file: `filename.spy` → `Sharpy.{PascalCaseName}` namespace
-- Multi-file: Uses project root path and calculates relative namespacing
-- The distinction is determined by whether `ProjectRootPath` is set in context
+**Key Design Decisions**:
+- **Namespace Generation** (lines 154-166): For single-file compilation, the namespace is derived from the filename. For example, `hello_world.spy` becomes `Sharpy.HelloWorld`.
+- **Entry Point Handling** (line 168): Single-file scripts always generate a `Main` method, allowing them to be executed directly.
+- **RoslynEmitter**: Uses Microsoft's Roslyn `SyntaxFactory` API to generate syntactically correct C# code (no string templating).
 
-**Entry Point Flag**: Single-file compilation always sets `IsEntryPoint = true`, which tells RoslynEmitter to:
-- Generate a `Main` method that calls module-level code
-- Mark the class as `static` if appropriate
-- Handle command-line arguments if needed
+**Error Handling**:
+- After each phase, the method checks for errors and returns early with `Success = false` if any are found.
+- A top-level try-catch (lines 198-207) handles unexpected exceptions.
 
-**RoslynEmitter Architecture**: 
-- Uses Microsoft.CodeAnalysis.CSharp (Roslyn) to construct C# syntax trees
-- **Exclusively uses `SyntaxFactory` methods** - no string templating
-- Converts syntax tree to string using `ToFullString()`
-- This ensures generated code is syntactically valid C# by construction
-
-**Error Collection**: 
-- `CodeGenContext` accumulates errors during emission
-- Unlike earlier phases, errors are collected in the context rather than thrown
-- Check `codeGenContext.HasErrors` after emission completes
-
-**Performance Note**: `ToFullString()` includes all trivia (whitespace, comments), making generated code more readable but slightly slower than `ToString()`.
+**Performance Tracking**:
+- `CompilationMetrics` tracks the duration of each phase, useful for profiling compiler performance.
 
 ---
 
-#### Error Handling Strategy (Lines 97-105, 114-122, 134-142, 173-181)
+### `CompileProject(ProjectConfig projectConfig)`
 
-**Pattern**: After each major phase, check for errors and return early:
+**Purpose**: Delegates to `ProjectCompiler` for multi-file project compilation.
 
 ```csharp
-if (typeChecker.Errors.Any())
+public ProjectCompilationResult CompileProject(ProjectConfig projectConfig)
 {
-    return new CompilationResult
-    {
-        Success = false,
-        Errors = typeChecker.Errors.Select(e => e.Message).ToList(),
-        Metrics = metrics
-    };
+    var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry);
+    return projectCompiler.Compile(projectConfig);
 }
 ```
 
-**Why This Design?**
-- **Fail-fast**: No point running code generation if type checking failed
-- **Clear error attribution**: Each phase's errors are reported separately
-- **Performance**: Skips expensive phases when earlier ones fail
+**Why delegate?** Project compilation is significantly more complex (dependency resolution, topological sorting, incremental compilation hints). Separating it into `ProjectCompiler` keeps this class focused on single-file orchestration.
 
 ---
 
-#### Exception Handling (Lines 194-203)
+### `ToPascalCase(string name)` (Private Helper)
 
-```csharp
-catch (Exception ex)
-{
-    _logger.LogError($"Compilation failed with exception: {ex.Message}", 0, 0);
-    return new CompilationResult
-    {
-        Success = false,
-        Errors = new List<string> { $"Compilation failed: {ex.Message}" },
-        Metrics = metrics
-    };
-}
-```
-
-**Defensive Programming**: Catches unexpected exceptions (e.g., file I/O errors, null reference bugs) and converts them to compilation errors rather than crashing.
-
-**Logging**: Exceptions are logged before being converted to errors, helping with post-mortem debugging.
-
----
-
-### CreateServices Method (Lines 210-225)
-
-```csharp
-private CompilerServices CreateServices(
-    SymbolTable symbolTable,
-    SemanticInfo semanticInfo,
-    TypeResolver typeResolver,
-    ClrMemberCache? clrCache = null)
-{
-    return new CompilerServicesBuilder()
-        .WithLogger(_logger)
-        .WithSymbolTable(symbolTable)
-        .WithSemanticInfo(semanticInfo)
-        .WithTypeResolver(typeResolver)
-        .WithClrCache(clrCache ?? new ClrMemberCache())
-        .Build();
-}
-```
-
-**Purpose**: Factory method for creating a unified service container that bundles compiler services.
-
-**Builder Pattern**: Uses `CompilerServicesBuilder` for fluent configuration of services.
-
-**Components**:
-- **Logger**: Diagnostic output
-- **SymbolTable**: Name bindings and declarations
-- **SemanticInfo**: Type annotations
-- **TypeResolver**: Type name resolution
-- **ClrMemberCache**: Caches .NET CLR member lookups for performance
-
-**Usage Context**: This method isn't currently called in the main compilation flow but is available for tooling that needs to access compiler services (e.g., IDE integrations, language servers).
-
-**Design Note**: The services pattern provides a clean interface for external tools to interact with compiler internals without directly coupling to implementation details.
-
----
-
-### ToPascalCase Utility Method (Lines 210-241)
-
-```csharp
-private static string ToPascalCase(string name)
-```
-
-**Purpose**: Convert file names to valid C# namespace identifiers.
-
-**Transformations**:
-- `hello_world` → `HelloWorld` (snake_case)
-- `my-module` → `MyModule` (kebab-case)
-- `123abc` → `_123abc` (prefixes digits)
-- `file@name` → `FileName` (sanitizes special chars)
+**Purpose**: Converts file names like `hello_world` or `my-module` into valid C# namespace components like `HelloWorld` or `MyModule`.
 
 **Algorithm**:
-1. Replace non-alphanumeric characters (except `_`) with underscores
-2. Split by underscore
-3. Capitalize first letter of each part
-4. Join parts together
-5. Prefix with `_` if result starts with a digit
+1. Sanitize: Replace non-alphanumeric characters (except `_`) with underscores
+2. Split by `_` and capitalize each part
+3. Prefix with `_` if the result starts with a digit (C# identifiers can't start with digits)
 
-**Why This Matters**: C# namespaces must be valid identifiers. User-provided filenames might contain spaces, hyphens, or other invalid characters.
-
-**Example Edge Cases**:
+**Example**:
 ```csharp
-ToPascalCase("test-file.spy") → "TestFile"    // Extension removed before calling
-ToPascalCase("2fast2furious") → "_2fast2furious"
-ToPascalCase("___") → "_"                      // Degenerate case
+ToPascalCase("hello_world")     // → "HelloWorld"
+ToPascalCase("my-module-2")     // → "MyModule2"
+ToPascalCase("42_answer")       // → "_42Answer"
 ```
 
-**Real-World Examples**:
-```csharp
-ToPascalCase("hello_world")      → "HelloWorld"
-ToPascalCase("my-module")        → "MyModule"
-ToPascalCase("test_file_2")      → "TestFile2"
-ToPascalCase("@special#chars$")  → "SpecialChars"
-```
+---
 
-**Why This Matters**: 
-- C# namespaces must be valid identifiers
-- User-provided filenames might contain spaces, hyphens, or other invalid characters
-- Consistent naming helps developers predict generated namespace names
+### `CreateServices(...)` (Private Helper)
+
+**Purpose**: Factory method for creating a `CompilerServices` instance using the builder pattern.
+
+**Note**: This method is currently defined but **not used** in the codebase. It appears to be infrastructure for future features (possibly IDE integration or incremental compilation).
 
 ---
 
@@ -459,450 +203,240 @@ ToPascalCase("@special#chars$")  → "SpecialChars"
 
 ### Internal Sharpy Dependencies
 
-This file depends on **all major compiler subsystems**:
-
-1. **Sharpy.Compiler.Lexer** (`Lexer` class)
-   - Converts source code to tokens
-   - See: `src/Sharpy.Compiler/Lexer/Lexer.cs`
-
-2. **Sharpy.Compiler.Parser** (`Parser` class, `Ast` namespace)
-   - Converts tokens to AST
-   - See: `src/Sharpy.Compiler/Parser/Parser.cs`
-   - AST node types: `src/Sharpy.Compiler/Parser/Ast/*.cs`
-
-3. **Sharpy.Compiler.Semantic**
-   - `NameResolver`: Symbol table construction
-   - `TypeResolver`: Type name resolution
-   - `TypeChecker`: Type validation
-   - `SymbolTable`, `SemanticInfo`: Data structures
-   - `BuiltinRegistry`: Built-in type definitions
-   - See: `src/Sharpy.Compiler/Semantic/*.cs`
-
-4. **Sharpy.Compiler.Semantic.Validation**
-   - `ValidationPipeline`: Pluggable validator orchestration
-   - `ValidationPipelineFactory`: Creates default validator chains
-   - `OperatorValidatorV2`: Validates operator implementations
-   - `ProtocolValidator`: Checks protocol/interface conformance
-   - `AccessValidator`: Enforces visibility rules
-   - See: `src/Sharpy.Compiler/Semantic/Validation/*.cs`
-
-5. **Sharpy.Compiler.CodeGen** (`RoslynEmitter`, `CodeGenContext`)
-   - C# code generation from AST
-   - See: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.*.cs` (partial classes)
-
-6. **Sharpy.Compiler.Project** (`ProjectCompiler`, `ProjectConfig`)
-   - Multi-file project compilation
-   - `DependencyGraph`: Build order analysis
-   - `ProjectModel`: Compilation unit management
-   - See: `src/Sharpy.Compiler/Project/*.cs`
-
-7. **Sharpy.Compiler.Discovery** (`ModuleRegistry`)
-   - Module import resolution
-   - .NET assembly reference loading
-   - Module path management
-   - See: `src/Sharpy.Compiler/Discovery/*.cs`
-
-8. **Sharpy.Compiler.Services**
-   - `CompilerServices`: Service container
-   - `CompilerServicesBuilder`: Fluent builder for services
-   - `ClrMemberCache`: Performance optimization for .NET member lookups
-   - See: `src/Sharpy.Compiler/Services/*.cs`
-
-9. **Sharpy.Compiler.Logging** (`ICompilerLogger`, `NullLogger`)
-   - Diagnostic output abstraction
-   - See: `src/Sharpy.Compiler/Logging/ICompilerLogger.cs`
-
-10. **Sharpy.Compiler.Diagnostics** (`CompilationMetrics`)
-   - Performance tracking
-   - See: `src/Sharpy.Compiler/Diagnostics/*.cs`
+| Namespace | Purpose |
+|-----------|---------|
+| `Sharpy.Compiler.Lexer` | Tokenization (`Lexer` class) |
+| `Sharpy.Compiler.Parser` | AST generation (`Parser` class, `Module` type) |
+| `Sharpy.Compiler.Semantic` | Symbol table, type resolution (`SymbolTable`, `NameResolver`, `TypeResolver`, `TypeChecker`) |
+| `Sharpy.Compiler.Semantic.Validation` | Validation pipeline (e.g., null safety checks) |
+| `Sharpy.Compiler.CodeGen` | C# code generation (`RoslynEmitter`, `CodeGenContext`) |
+| `Sharpy.Compiler.Logging` | Diagnostic output (`ICompilerLogger`, `NullLogger`) |
+| `Sharpy.Compiler.Diagnostics` | Compilation metrics (`CompilationMetrics`) |
+| `Sharpy.Compiler.Project` | Multi-file project support (`ProjectCompiler`, `ProjectConfig`, `ModuleRegistry`) |
+| `Sharpy.Compiler.Services` | Compiler services infrastructure (`CompilerServices`, `ClrMemberCache`) |
 
 ### External Dependencies
 
-- **Microsoft.CodeAnalysis.CSharp**: Used by RoslynEmitter for generating C# syntax trees (Roslyn compiler API)
+- **Microsoft.CodeAnalysis.CSharp**: Roslyn API for C# syntax tree generation (used in `RoslynEmitter`)
 
 ---
 
 ## Patterns and Design Decisions
 
-### 1. **Pipeline Pattern**
+### 1. **Pipeline Architecture**
 
-The compiler implements a classic **staged pipeline**:
+The compiler follows a classic **sequential pipeline** pattern where each phase consumes the output of the previous phase:
+
 ```
-Source → Tokens → AST → Semantics → Validation → C# Code
+Source Text → Tokens → AST → Annotated AST → C# Code
 ```
 
-Each stage is independent and can be tested in isolation. This is a textbook compiler architecture (see "Dragon Book").
-
-**Key Improvement**: The addition of the ValidationPipeline as a separate stage allows for pluggable semantic checks without coupling them to the type checker.
+This design:
+- **Separates concerns**: Each phase has a single responsibility
+- **Enables testing**: You can test the lexer independently of the parser
+- **Supports tooling**: IDEs can run just the parser to get AST for syntax highlighting
 
 ### 2. **Fail-Fast Error Handling**
 
-Each phase checks for errors before proceeding. This prevents cascading errors where one phase's failures cause confusing errors in subsequent phases.
+After each phase, the method checks for errors and returns immediately:
 
-**Alternative Considered**: Collect all errors from all phases. **Rejected** because semantic errors without a valid AST are often nonsensical.
+```csharp
+if (nameResolver.Errors.Any())
+{
+    return new CompilationResult { Success = false, Errors = ... };
+}
+```
 
-### 3. **Logging Abstraction**
+**Why?** No point in running type checking if name resolution failed—the symbol table would be incomplete.
 
-Uses `ICompilerLogger` interface with a `NullLogger` default. This enables:
-- Unit testing without console spam
-- IDE integration with custom loggers
-- Performance analysis by swapping logger implementations
+### 3. **Immutable Result Objects**
 
-### 4. **Immutable Results**
+`CompilationResult` and `ProjectCompilationResult` use `init`-only properties:
 
-`CompilationResult` uses `init` properties. Once created, it cannot be modified. This prevents bugs where compilation results are accidentally altered after being returned.
+```csharp
+public bool Success { get; init; }
+```
 
-### 5. **Metrics Tracking**
+This makes results **immutable after construction**, preventing accidental modification and making them safe to share across threads.
 
-Every phase is timed using `CompilationMetrics`. This helps identify performance bottlenecks:
+### 4. **Dependency Injection for Logging**
+
+The constructor accepts an optional `ICompilerLogger`:
+
+```csharp
+public Compiler(ICompilerLogger? logger = null)
+{
+    _logger = logger ?? NullLogger.Instance;
+}
+```
+
+**Benefits**:
+- Testing: Inject a mock logger to verify diagnostic messages
+- Flexibility: Console apps use `ConsoleLogger`, IDEs use custom loggers
+
+### 5. **Null-Object Pattern**
+
+Instead of null-checking `_logger` everywhere, the code uses `NullLogger.Instance` (a no-op logger) as a default. This eliminates conditional logic:
+
+```csharp
+_logger.LogInfo("Phase 1: Lexical Analysis"); // Safe even if no logger provided
+```
+
+### 6. **Metrics Collection**
+
+`CompilationMetrics` wraps each phase with `StartPhase` / `EndPhase` calls:
+
 ```csharp
 metrics.StartPhase("Lexical Analysis");
-// ... work ...
+var tokens = lexer.TokenizeAll();
 metrics.EndPhase();
 ```
 
-**Usage**: CLI tools can display timing information to users. Build systems can track compilation speed regressions.
-
-### 6. **Optional Module Registry**
-
-The module registry is nullable. This design supports two modes:
-- **Standalone**: Compile a single file without imports
-- **Project**: Compile multiple files with cross-module dependencies
-
-**Alternative Considered**: Always create a registry. **Rejected** because it adds complexity for simple single-file scenarios.
-
-### 7. **Pluggable Validation**
-
-The `ValidationPipeline` pattern decouples semantic validation from type checking:
-- **Extensibility**: New validators can be added without modifying TypeChecker
-- **Composition**: Different validator combinations for different contexts
-- **Testing**: Each validator can be tested independently
-
-This follows the Open/Closed Principle: open for extension, closed for modification.
-
-### 8. **Namespace Derivation Strategy**
-
-Single-file compilation derives namespace from filename, while multi-file uses project structure:
-- Simplifies single-file usage (no project config needed)
-- Provides flexibility for complex projects
-- Uses `ToPascalCase` to ensure valid C# identifiers
+This provides **observability** into which phases are slow, crucial for performance optimization.
 
 ---
 
 ## Debugging Tips
 
-### Debugging Compilation Failures
+### 1. **Inspecting Compilation Phases**
 
-1. **Enable Verbose Logging**:
-   ```csharp
-   var logger = new ConsoleLogger(LogLevel.Debug);
-   var compiler = new Compiler(logger);
-   ```
-   This shows which phase failed and internal details.
+When debugging compilation failures, check which phase produced the error:
 
-2. **Inspect Intermediate Results**:
-   ```csharp
-   var result = compiler.Compile(source, filePath);
-   if (!result.Success)
-   {
-       // Inspect result.Module (AST)
-       // Inspect result.SymbolTable (name bindings)
-       // Inspect result.SemanticInfo (type annotations)
-   }
-   ```
+```bash
+# Use the CLI to emit intermediate representations
+dotnet run --project src/Sharpy.Cli -- emit tokens file.spy   # Lexer output
+dotnet run --project src/Sharpy.Cli -- emit ast file.spy      # Parser output
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy   # Code generator output
+```
 
-3. **Check Error Phase**:
-   - Lexer errors → Usually syntax issues (unclosed strings, invalid characters)
-   - Parser errors → Malformed code structure (missing colons, unbalanced parens)
-   - NameResolver errors → Undefined names, duplicate declarations
-   - TypeChecker errors → Type mismatches, invalid operations
-   - Validation errors → Operator/protocol violations, access control issues
-   - CodeGen errors → Usually compiler bugs, not user code issues
+### 2. **Logging Configuration**
 
-4. **Module Registry Issues**:
-   ```csharp
-   if (result.ModuleRegistry != null && result.ModuleRegistry.Errors.Any())
-   {
-       // Import resolution failed - check module paths
-   }
-   ```
+Set breakpoints in `Compiler.Compile` and inspect `_logger` calls to see what phase failed:
 
-### Common Pitfalls
+```csharp
+_logger.LogInfo($"Starting compilation of {filePath}");  // Line 73
+_logger.LogInfo("Phase 1: Lexical Analysis");            // Line 79
+_logger.LogInfo("Phase 2: Syntax Analysis");             // Line 86
+_logger.LogInfo("Phase 3: Semantic Analysis");           // Line 93
+_logger.LogInfo("Phase 4: Code Generation");             // Line 151
+```
 
-1. **Null Logger**: If logger is null, you won't see any diagnostic output. Always provide a logger during debugging.
+### 3. **Common Error Patterns**
 
-2. **Module Path Confusion**: If imports fail, verify:
-   - ModulePaths in CompilerOptions are correct
-   - Referenced assemblies exist at specified paths
-   - File extensions are correct (.dll for assemblies, .spy for Sharpy modules)
+| Error Location | Likely Cause |
+|----------------|--------------|
+| Lines 99-107 (module registry) | Missing assembly reference or invalid module path |
+| Lines 116-124 (name resolver) | Duplicate declaration, circular inheritance, undefined type |
+| Lines 138-146 (type checker) | Type mismatch, incompatible assignment, invalid function call |
+| Lines 177-185 (code gen context) | Internal compiler bug (code generator couldn't map AST to C#) |
 
-3. **Metrics Not Started**: If you add a new phase, remember to call `StartPhase`/`EndPhase`. Forgetting this will cause timing data to be incorrect or throw exceptions.
+### 4. **Inspecting Generated C#**
+
+The `GeneratedCSharpCode` property contains the final output. You can write it to a file and inspect with a C# IDE:
+
+```csharp
+var result = compiler.Compile(sourceCode, "test.spy");
+if (result.Success)
+{
+    File.WriteAllText("test.generated.cs", result.GeneratedCSharpCode);
+}
+```
+
+### 5. **Metrics Analysis**
+
+Check `result.Metrics` to identify performance bottlenecks:
+
+```csharp
+foreach (var phase in result.Metrics.Phases)
+{
+    Console.WriteLine($"{phase.Name}: {phase.Duration.TotalMilliseconds}ms");
+}
+```
 
 ---
 
 ## Contribution Guidelines
 
-### When to Modify This File
+### What Kinds of Changes Might Be Made?
 
-**Add Code Here**:
-- Adding a new compilation phase (e.g., optimization pass, additional semantic checks)
-- Changing the order of compilation phases
-- Adding new configuration options to `CompilerOptions`
-- Extending `CompilationResult` with new artifacts
-- Modifying namespace generation logic for single-file compilation
-- Adding new validators to the ValidationPipeline
+#### 1. **Adding New Compilation Phases**
 
-**Don't Add Code Here**:
-- Lexer logic → Modify `Lexer.cs`
-- Parser logic → Modify `Parser.cs`
-- Type checking logic → Modify `TypeChecker.cs`
-- Validation logic → Create new validator in `Semantic/Validation/`
-- Code generation logic → Modify `RoslynEmitter.*.cs`
-- Project-specific logic → Modify `ProjectCompiler.cs`
+If Sharpy adds a new analysis phase (e.g., optimization, dead code elimination), you would:
+1. Add a new phase after type checking (around line 148)
+2. Create the analyzer class (e.g., `Optimizer`)
+3. Check for errors and return early if needed
+4. Update `CompilationResult` to include optimization metadata
 
-### Adding a New Compilation Phase
+#### 2. **Enhancing Error Recovery**
 
-**Example**: Adding a "constant folding" optimization phase:
+Currently, the compiler stops at the first phase with errors. You might extend it to:
+- Continue compilation and collect errors from multiple phases
+- Provide better error messages with source location context
 
+#### 3. **Supporting Incremental Compilation**
+
+For IDE integration, you might add:
+- Caching of intermediate results (AST, symbol table)
+- Detection of which phases need to re-run based on file changes
+
+#### 4. **Improving Namespace Generation**
+
+The `ToPascalCase` method is simple. You might enhance it to:
+- Respect a custom namespace from a configuration file
+- Handle Unicode characters in file names
+- Detect and warn about namespace collisions
+
+#### 5. **Extending Compiler Options**
+
+Add new properties to `CompilerOptions`:
 ```csharp
-// Phase 3.5: Constant Folding (after type checking, before code gen)
-_logger.LogInfo("Phase 3.5: Constant Folding");
-metrics.StartPhase("Constant Folding");
-var optimizer = new ConstantFolder(semanticInfo, _logger);
-optimizer.OptimizeModule(module);
-metrics.EndPhase();
-
-if (optimizer.Errors.Any())
-{
-    return new CompilationResult
-    {
-        Success = false,
-        Errors = optimizer.Errors.Select(e => e.Message).ToList(),
-        Metrics = metrics
-    };
-}
+public bool EnableOptimizations { get; set; }
+public string? TargetFramework { get; set; }  // e.g., "net9.0"
 ```
 
-**Checklist**:
-- [ ] Add phase logging
-- [ ] Add metrics tracking
-- [ ] Add error handling with early return
-- [ ] Update `CompilationResult` if new data is produced
-- [ ] Update tests to cover new phase
+Then consume them in the `Compile` method or pass them to `CodeGenContext`.
 
-### Adding a New Validator
+### Guidelines When Modifying This File
 
-**Example**: Adding a validator for checking unused variables:
-
-1. **Create the validator class**:
-```csharp
-// src/Sharpy.Compiler/Semantic/Validation/UnusedVariableValidator.cs
-public class UnusedVariableValidator : IValidator
-{
-    public void Validate(Module module, ValidationContext context)
-    {
-        // Implementation
-    }
-}
-```
-
-2. **Register in ValidationPipelineFactory**:
-```csharp
-public static ValidationPipeline CreateDefault(ICompilerLogger logger)
-{
-    return new ValidationPipeline(logger)
-        .AddValidator(new OperatorValidatorV2())
-        .AddValidator(new ProtocolValidator())
-        .AddValidator(new AccessValidator())
-        .AddValidator(new UnusedVariableValidator());  // New validator
-}
-```
-
-3. **No changes needed to Compiler.cs** - the pipeline automatically runs all validators!
-
----
-
-### Modifying CompilationResult
-
-**When Adding Fields**:
-1. Use `init` for immutability
-2. Make fields nullable if they might not always be available
-3. Update all return statements in `Compile()` that create `CompilationResult`
-4. Add corresponding tests
-
-**Example**:
-```csharp
-public class CompilationResult
-{
-    // ... existing fields ...
-    public OptimizationReport? OptimizationReport { get; init; }  // New field
-}
-```
-
-### Testing Changes
-
-When modifying this file, ensure:
-1. **Unit tests** pass for each individual phase (Lexer, Parser, etc.)
-2. **Integration tests** pass for end-to-end compilation
-3. **Error path tests** verify correct failure handling
-4. **Performance tests** check that metrics are tracked correctly
-
-**Test File Locations**:
-- Unit tests: `src/Sharpy.Compiler.Tests/CompilerTests.cs`
-- Integration tests: `src/Sharpy.Compiler.Tests/Integration/`
-- File-based integration tests: `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
+1. **Preserve the pipeline order**: Lexer → Parser → Semantic → CodeGen. Don't skip phases.
+2. **Maintain fail-fast semantics**: Always return early if a phase produces errors.
+3. **Update metrics tracking**: Wrap new phases with `StartPhase` / `EndPhase`.
+4. **Don't modify `CompilationResult` lightly**: It's a public API that tests and tools depend on. Adding properties is safe; removing them is a breaking change.
+5. **Test with both single-file and project compilation**: Changes to `Compiler` may affect `ProjectCompiler` indirectly.
 
 ---
 
 ## Cross-References
 
+### Related Partial Classes
+This file is **not** a partial class, but it heavily coordinates with components that may be split across files:
+
+- **RoslynEmitter**: See `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (and its partial class files for specific AST node types)
+- **NameResolver**: See `src/Sharpy.Compiler/Semantic/NameResolver.cs`
+- **TypeChecker**: See `src/Sharpy.Compiler/Semantic/TypeChecker.cs`
+- **ProjectCompiler**: See `src/Sharpy.Compiler/Project/ProjectCompiler.cs` for the multi-file compilation logic
+
 ### Related Documentation
+- For code generation details, refer to `docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/RoslynEmitter.md`
+- For symbol table and semantic analysis, look for documentation in `docs/implementation_walkthrough/src/Sharpy.Compiler/Semantic/`
+- For the overall architecture, see `.github/copilot-instructions.md`
 
-- **RoslynEmitter Documentation**: See `docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/RoslynEmitter.*.md` for code generation details
-  - `RoslynEmitter.CompilationUnit.md` - Overall structure generation
-  - `RoslynEmitter.ClassMembers.md` - Member generation details
-  - `RoslynEmitter.Expressions.md` - Expression translation
-  - `RoslynEmitter.Statements.md` - Statement translation
-
-- **CodeGenContext Documentation**: See `docs/implementation_walkthrough/src/Sharpy.Compiler/CodeGen/CodeGenContext.md` for configuration options
-
-- **Program.cs CLI Integration**: See `docs/implementation_walkthrough/src/Sharpy.Cli/Program.md` for how the CLI invokes the compiler
-
-### Component Dependencies Graph
-
-```
-Compiler.cs (THIS FILE)
-    ├─> Lexer.Lexer
-    ├─> Parser.Parser
-    │       └─> Parser.Ast.Module
-    ├─> Semantic.NameResolver
-    │       └─> Semantic.SymbolTable
-    ├─> Semantic.TypeResolver
-    ├─> Semantic.TypeChecker
-    │       ├─> Semantic.SemanticInfo
-    │       └─> Semantic.Validation.ValidationPipeline
-    │               ├─> OperatorValidatorV2
-    │               ├─> ProtocolValidator
-    │               └─> AccessValidator
-    ├─> CodeGen.RoslynEmitter
-    │       └─> CodeGen.CodeGenContext
-    ├─> Project.ProjectCompiler
-    │       ├─> Project.ProjectConfig
-    │       ├─> Project.DependencyGraph
-    │       └─> Model.ProjectModel
-    ├─> Discovery.ModuleRegistry
-    ├─> Services.CompilerServices
-    │       └─> Services.CompilerServicesBuilder
-    └─> Diagnostics.CompilationMetrics
-```
-
-### Files You'll Likely Edit Together
-
-When making changes to compilation orchestration, you'll often modify:
-1. `Compiler.cs` (this file) - Pipeline orchestration
-2. `ProjectCompiler.cs` - Multi-file compilation logic
-3. `ValidationPipelineFactory.cs` - Validator registration
-4. `CompilationMetrics.cs` - Performance tracking
-5. `ICompilerLogger.cs` - Logging interface
-6. Test files in `src/Sharpy.Compiler.Tests/`
-
-### Partial Class Architecture
-
-While `Compiler.cs` itself is not a partial class, it heavily interacts with components that are:
-- **RoslynEmitter**: Split across `RoslynEmitter.CompilationUnit.cs`, `RoslynEmitter.ClassMembers.cs`, `RoslynEmitter.Expressions.cs`, `RoslynEmitter.Statements.cs`, etc.
-- **Sharpy.Core**: Standard library split across `Partial.List/`, `Partial.Str/`, `Partial.Dict/`, etc.
-
-When debugging code generation issues, you may need to explore multiple RoslynEmitter partial class files.
+### Testing
+- Unit tests: `src/Sharpy.Compiler.Tests/`
+- Integration tests: `src/Sharpy.Compiler.Tests/Integration/CompilerTests.cs`
+- File-based tests: `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
 
 ---
 
 ## Summary
 
-The `Compiler.cs` file is the **orchestration layer** that ties together all compiler subsystems into a cohesive pipeline. It's designed to be:
+`Compiler.cs` is the **control center** of the Sharpy compiler. It doesn't implement the heavy lifting (that's delegated to specialized classes like `Lexer`, `Parser`, `TypeChecker`, and `RoslynEmitter`), but it ensures they work together correctly. Understanding this file gives you a high-level map of how Sharpy source code becomes executable .NET code.
 
-- **Simple**: Each phase is clearly delineated with explicit error handling
-- **Extensible**: New phases can be inserted between existing ones
-- **Debuggable**: Extensive logging and metrics tracking
-- **Maintainable**: Delegates complex logic to specialized components
+**Key Takeaways**:
+- The compilation pipeline is **sequential and fail-fast**
+- Each phase produces artifacts consumed by the next (tokens → AST → annotated AST → C#)
+- Single-file compilation is **always treated as an entry point** (`Main` method generated)
+- Namespaces are **derived from file names** for single-file scripts
+- Errors from any phase **halt compilation immediately** (no recovery)
 
-**Key Takeaway**: This file doesn't implement compiler logic itself - it **coordinates** other components. When debugging, determine which phase failed, then dive into that phase's implementation (Lexer, Parser, TypeChecker, etc.) for the actual bug.
-
----
-
-## Recent Enhancements
-
-### ValidationPipeline Integration (Current)
-
-The most significant recent addition is the integration of the `ValidationPipeline` into the type checking phase:
-
-**Benefits**:
-- **Separation of Concerns**: Validation logic is decoupled from type checking
-- **Extensibility**: New validators can be added via factory pattern
-- **Maintainability**: Each validator is an independent, testable unit
-
-**Current Validators**:
-1. `OperatorValidatorV2`: Ensures operators follow protocol-based design
-2. `ProtocolValidator`: Verifies protocol/interface implementations
-3. `AccessValidator`: Enforces visibility and access control rules
-
-### CodeGenInfo Computation
-
-The `TypeChecker.CheckModule` now accepts a `computeCodeGenInfo` parameter that, when true, pre-computes metadata needed for code generation:
-- Method resolution information
-- Operator implementation details  
-- Protocol conformance data
-
-This optimization reduces work during the code generation phase.
-
-### Enhanced Project Compilation Results
-
-`ProjectCompilationResult` now includes:
-- `DependencyGraph`: Enables incremental compilation and build order analysis
-- `ProjectModel`: Provides full compilation unit structure for tooling
-- `Warnings`: Separate from errors for better diagnostics
-
-These additions support advanced IDE features and build system integration.
-
----
-
-## Quick Reference
-
-**Compilation Success Check**:
-```csharp
-var result = compiler.Compile(sourceCode, filePath);
-if (!result.Success)
-{
-    foreach (var error in result.Errors)
-        Console.Error.WriteLine(error);
-}
-```
-
-**Accessing Generated Code**:
-```csharp
-if (result.Success)
-{
-    string csharpCode = result.GeneratedCSharpCode;
-    File.WriteAllText("output.cs", csharpCode);
-}
-```
-
-**Performance Analysis**:
-```csharp
-if (result.Metrics != null)
-{
-    Console.WriteLine($"Lexing: {result.Metrics.GetPhaseTime("Lexical Analysis")}ms");
-    Console.WriteLine($"Parsing: {result.Metrics.GetPhaseTime("Syntax Analysis")}ms");
-    Console.WriteLine($"Total: {result.Metrics.TotalTime}ms");
-}
-```
-
-**Module Compilation with References**:
-```csharp
-var options = new CompilerOptions
-{
-    ModulePaths = new[] { "./libs", "./modules" },
-    References = new[] { "MyAssembly.dll", "System.Collections.dll" }
-};
-var compiler = new Compiler(options, logger);
-var result = compiler.Compile(sourceCode, filePath);
-```
+When debugging compilation issues, start here to identify which phase failed, then dive into the specific component (lexer, parser, etc.) for detailed investigation.
