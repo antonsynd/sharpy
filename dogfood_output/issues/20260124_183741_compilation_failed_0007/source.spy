@@ -1,0 +1,22 @@
+def test_nullable_narrowing(x: int?) -> int:
+    if x is not None:
+        return x * 2
+    else:
+        return 0
+
+def main():
+    result1 = test_nullable_narrowing(5)
+    print(result1)
+    
+    result2 = test_nullable_narrowing(None)
+    print(result2)
+    
+    y: int? = 10
+    if y is not None:
+        doubled = y * 2
+        print(doubled)
+
+# EXPECTED OUTPUT:
+# 10
+# 0
+# 20

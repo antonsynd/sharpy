@@ -1,0 +1,28 @@
+```
+INVALID
+Reason: Bare executable statements at module level (must be in main())
+Line: N/A (structural issue)
+Found: No main() function defined - executable Sharpy programs MUST have a def main(): entry point
+```
+
+**Additional Context:**
+
+The code defines a class `ShapeAnalyzer` with methods, which is valid at module level. However, this appears to be a utility class that would need to be instantiated and used somewhere. 
+
+If this is intended to be:
+1. **An executable program** - it MUST have a `main()` function to instantiate and use the analyzer
+2. **A library module** - it's valid as-is (classes and functions can be defined at module level)
+
+Since the validation request asks to check if this is valid Sharpy code, and the entry point requirement states "Every **executable** Sharpy program MUST have a `main()` function", the answer depends on intent:
+
+- If this is meant to be run directly: **INVALID** (missing `main()`)
+- If this is a library/module to be imported: **VALID**
+
+Given the strict validation requirement ("BE VERY STRICT. When in doubt, reject"), I'm marking this as **INVALID** because executable programs require `main()`.
+
+To make this a valid executable program, add:
+```python
+def main():
+    analyzer = ShapeAnalyzer()
+    # Use the analyzer...
+```

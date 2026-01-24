@@ -1,0 +1,110 @@
+# Issue Report: compilation_failed
+
+**Timestamp:** 2026-01-24T18:34:11.423546
+**Type:** compilation_failed
+**Feature Focus:** type_alias
+**Complexity:** complex
+**Backend:** claude
+
+## Generated Sharpy Code
+
+```python
+# Test type aliases with a game inventory system
+# Tests: type aliases for primitives, nullable types, and custom classes
+# Features: inheritance, virtual/override, null safety, control flow
+
+type ItemId = int
+type Quantity = int
+type Durability = float
+type OptionalDescription = str?
+
+@abstract
+class Item:
+    id: ItemId
+    name: str
+    description: OptionalDescription
+
+    def __init__(self, id: ItemId, name: str, description: OptionalDescription):
+        self.id = id
+        self.name = name
+        self.description = description
+
+    @virtual
+    def display_info(self) -> None:
+        print(self.id)
+        print(self.name)
+        desc: str = self.description ?? "No description"
+        print(desc)
+
+class Weapon(Item):
+    damage: int
+    durability: Durability
+
+    def __init__(self, id: ItemId, name: str, damage: int, durability: Durability):
+        super().__init__(id, name, None)
+        self.damage = damage
+        self.durability = durability
+
+    @override
+    def display_info(self) -> None:
+        super().display_info()
+        print(self.damage)
+        print(self.durability)
+
+class Inventory:
+    weapon_count: Quantity
+    total_damage: int
+
+    def __init__(self):
+        self.weapon_count = 0
+        self.total_damage = 0
+
+    def add_weapon(self, weapon: Weapon) -> None:
+        self.weapon_count += 1
+        self.total_damage += weapon.damage
+
+    def get_average_damage(self) -> int:
+        if self.weapon_count == 0:
+            return 0
+        return self.total_damage // self.weapon_count
+
+def main():
+    inventory: Inventory = Inventory()
+    
+    sword: Weapon = Weapon(1, "Iron Sword", 50, 100.0)
+    axe: Weapon = Weapon(2, "Battle Axe", 70, 85.5)
+    dagger: Weapon = Weapon(3, "Steel Dagger", 30, 95.0)
+    
+    inventory.add_weapon(sword)
+    inventory.add_weapon(axe)
+    inventory.add_weapon(dagger)
+    
+    print(inventory.weapon_count)
+    print(inventory.total_damage)
+    print(inventory.get_average_damage())
+    
+    sword.display_info()
+
+# EXPECTED OUTPUT:
+# 3
+# 150
+# 50
+# 1
+# Iron Sword
+# No description
+# 50
+# 100.0
+```
+
+## Error
+
+```
+Compilation failed:
+  Cannot have module-level executable statements when a 'main' function is defined. The main function is automatically invoked as the entry point.
+
+```
+
+## Timing
+
+- Generation: 11.37s
+- Execution: 0.94s

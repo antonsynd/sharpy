@@ -1,0 +1,18 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-24T18:33:47.644016",
+  "generated_code": "# Simple if-else test with temperature check\n\ndef main():\n    temp: int = 25\n    \n    if temp > 30:\n        print(1)\n    else:\n        print(0)\n\nmain()\n\n# EXPECTED OUTPUT:\n# 0",
+  "expected_output": "0\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 11, column 1: Executable statements are not allowed at module level\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "if_else_simple",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 16.15467858314514,
+  "compilation_duration": null,
+  "execution_duration": 0.8600897789001465,
+  "source_files": null
+}

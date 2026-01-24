@@ -1,0 +1,21 @@
+# Test type narrowing with nullable types
+def process_value(x: int?) -> int:
+    if x is not None:
+        # Type narrowed to int here
+        return x * 2
+    else:
+        return 0
+
+def main():
+    value1: int? = 5
+    value2: int? = None
+    
+    result1 = process_value(value1)
+    result2 = process_value(value2)
+    
+    print(result1)
+    print(result2)
+
+# EXPECTED OUTPUT:
+# 10
+# 0

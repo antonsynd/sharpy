@@ -1,0 +1,18 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-24T18:31:19.295840",
+  "generated_code": "# Test if/elif/else with weather recommendation system\nclass WeatherAdvisor:\n    temperature: int\n    is_raining: bool\n    wind_speed: int\n\n    def __init__(self, temp: int, rain: bool, wind: int):\n        self.temperature = temp\n        self.is_raining = rain\n        self.wind_speed = wind\n\n    def get_activity_recommendation(self) -> str:\n        if self.temperature < 0:\n            return \"Stay inside\"\n        elif self.temperature < 10:\n            if self.is_raining:\n                return \"Warm clothing needed\"\n            else:\n                return \"Bundle up\"\n        elif self.temperature < 20:\n            return \"Light jacket recommended\"\n        elif self.temperature < 30:\n            if self.wind_speed > 20:\n                return \"Nice but windy\"\n            else:\n                return \"Perfect outdoor weather\"\n        else:\n            return \"Very hot\"\n\n    def should_bring_umbrella(self) -> bool:\n        if self.is_raining:\n            return True\n        elif self.temperature > 25 and self.wind_speed < 10:\n            return False\n        else:\n            return False\n\ndef main():\n    advisor1: WeatherAdvisor = WeatherAdvisor(5, True, 15)\n    print(advisor1.get_activity_recommendation())\n    \n    advisor2: WeatherAdvisor = WeatherAdvisor(25, False, 5)\n    print(advisor2.get_activity_recommendation())\n    \n    advisor3: WeatherAdvisor = WeatherAdvisor(35, False, 10)\n    print(advisor3.get_activity_recommendation())\n    \n    advisor4: WeatherAdvisor = WeatherAdvisor(15, False, 8)\n    print(advisor4.get_activity_recommendation())\n\nmain()\n\n# EXPECTED OUTPUT:\n# Warm clothing needed\n# Perfect outdoor weather\n# Very hot\n# Light jacket recommended",
+  "expected_output": "Warm clothing needed\nPerfect outdoor weather\nVery hot\nLight jacket recommended\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 51, column 1: Executable statements are not allowed at module level\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "if_elif_else",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 17.648340940475464,
+  "compilation_duration": null,
+  "execution_duration": 0.873356819152832,
+  "source_files": null
+}

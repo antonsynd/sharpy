@@ -1,0 +1,26 @@
+# Shape analyzer utility
+from shapes import Rectangle, Circle
+from geometry import Point
+
+class ShapeAnalyzer:
+    total_shapes: int
+    
+    def __init__(self):
+        self.total_shapes = 0
+    
+    def analyze_rectangle(self, rect: Rectangle) -> None:
+        self.total_shapes += 1
+        area: float = rect.get_area()
+        perimeter: float = rect.get_perimeter()
+        print(area)
+        print(perimeter)
+    
+    def analyze_circle(self, circ: Circle) -> None:
+        self.total_shapes += 1
+        area: float = circ.get_area()
+        circumference: float = circ.get_perimeter()
+        print(area)
+        print(circumference)
+    
+    def get_total(self) -> int:
+        return self.total_shapes
