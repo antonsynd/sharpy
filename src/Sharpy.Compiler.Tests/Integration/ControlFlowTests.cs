@@ -16,10 +16,11 @@ public class ControlFlowTests : IntegrationTestBase
     public void IfStatement_SimpleCondition_WorksCorrectly()
     {
         var source = @"
-x: int = 10
+def main():
+    x: int = 10
 
-if x > 5:
-    print(""x is greater than 5"")
+    if x > 5:
+        print(""x is greater than 5"")
 ";
 
         var result = CompileAndExecute(source);
@@ -38,9 +39,10 @@ def check_number(x: int):
     else:
         print(""non-positive"")
 
-check_number(5)
-check_number(-3)
-check_number(0)
+def main():
+    check_number(5)
+    check_number(-3)
+    check_number(0)
 ";
 
         var result = CompileAndExecute(source);
@@ -61,9 +63,10 @@ def classify_number(x: int):
     else:
         print(""zero"")
 
-classify_number(5)
-classify_number(-3)
-classify_number(0)
+def main():
+    classify_number(5)
+    classify_number(-3)
+    classify_number(0)
 ";
 
         var result = CompileAndExecute(source);
@@ -88,11 +91,12 @@ def grade(score: int):
     else:
         print(""F"")
 
-grade(95)
-grade(85)
-grade(75)
-grade(65)
-grade(55)
+def main():
+    grade(95)
+    grade(85)
+    grade(75)
+    grade(65)
+    grade(55)
 ";
 
         var result = CompileAndExecute(source);
@@ -114,9 +118,10 @@ def check_range(x: int):
     else:
         print(""non-positive"")
 
-check_range(5)
-check_range(15)
-check_range(-5)
+def main():
+    check_range(5)
+    check_range(15)
+    check_range(-5)
 ";
 
         var result = CompileAndExecute(source);
@@ -129,10 +134,11 @@ check_range(-5)
     public void WhileLoop_SimpleCount_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-while i < 5:
-    print(i)
-    i = i + 1
+def main():
+    i: int = 0
+    while i < 5:
+        print(i)
+        i = i + 1
 ";
 
         var result = CompileAndExecute(source);
@@ -145,12 +151,13 @@ while i < 5:
     public void WhileLoop_WithBreak_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-while True:
-    if i >= 3:
-        break
-    print(i)
-    i = i + 1
+def main():
+    i: int = 0
+    while True:
+        if i >= 3:
+            break
+        print(i)
+        i = i + 1
 ";
 
         var result = CompileAndExecute(source);
@@ -163,12 +170,13 @@ while True:
     public void WhileLoop_WithContinue_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-while i < 5:
-    i = i + 1
-    if i == 3:
-        continue
-    print(i)
+def main():
+    i: int = 0
+    while i < 5:
+        i = i + 1
+        if i == 3:
+            continue
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -181,8 +189,9 @@ while i < 5:
     public void ForLoop_WithRange_WorksCorrectly()
     {
         var source = @"
-for i in range(5):
-    print(i)
+def main():
+    for i in range(5):
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -195,8 +204,9 @@ for i in range(5):
     public void ForLoop_WithRangeStartStop_WorksCorrectly()
     {
         var source = @"
-for i in range(2, 7):
-    print(i)
+def main():
+    for i in range(2, 7):
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -209,8 +219,9 @@ for i in range(2, 7):
     public void ForLoop_WithRangeStep_WorksCorrectly()
     {
         var source = @"
-for i in range(0, 10, 2):
-    print(i)
+def main():
+    for i in range(0, 10, 2):
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -223,10 +234,11 @@ for i in range(0, 10, 2):
     public void ForLoop_WithBreak_WorksCorrectly()
     {
         var source = @"
-for i in range(10):
-    if i == 5:
-        break
-    print(i)
+def main():
+    for i in range(10):
+        if i == 5:
+            break
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -239,10 +251,11 @@ for i in range(10):
     public void ForLoop_WithContinue_WorksCorrectly()
     {
         var source = @"
-for i in range(6):
-    if i == 3:
-        continue
-    print(i)
+def main():
+    for i in range(6):
+        if i == 3:
+            continue
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -255,9 +268,10 @@ for i in range(6):
     public void NestedLoops_WorkCorrectly()
     {
         var source = @"
-for i in range(3):
-    for j in range(2):
-        print(f""{i},{j}"")
+def main():
+    for i in range(3):
+        for j in range(2):
+            print(f""{i},{j}"")
 ";
 
         var result = CompileAndExecute(source);
@@ -278,10 +292,11 @@ def test_logical(x: int, y: int):
     else:
         print(""none positive"")
 
-test_logical(5, 3)
-test_logical(5, -3)
-test_logical(-5, 3)
-test_logical(-5, -3)
+def main():
+    test_logical(5, 3)
+    test_logical(5, -3)
+    test_logical(-5, 3)
+    test_logical(-5, -3)
 ";
 
         var result = CompileAndExecute(source);
@@ -294,15 +309,16 @@ test_logical(-5, -3)
     public void NotOperator_WorksCorrectly()
     {
         var source = @"
-flag: bool = False
-if not flag:
-    print(""flag is false"")
+def main():
+    flag: bool = False
+    if not flag:
+        print(""flag is false"")
 
-flag = True
-if not flag:
-    print(""this should not print"")
-else:
-    print(""flag is true"")
+    flag = True
+    if not flag:
+        print(""this should not print"")
+    else:
+        print(""flag is true"")
 ";
 
         var result = CompileAndExecute(source);
@@ -317,13 +333,14 @@ else:
     public void WhileLoop_MultipleVariableUpdates_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-j: int = 10
-while i < 5:
-    i = i + 1
-    j = j - 1
-    print(i)
-    print(j)
+def main():
+    i: int = 0
+    j: int = 10
+    while i < 5:
+        i = i + 1
+        j = j - 1
+        print(i)
+        print(j)
 ";
 
         var result = CompileAndExecute(source);
@@ -336,14 +353,15 @@ while i < 5:
     public void WhileLoop_NestedLoops_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-while i < 3:
-    j: int = 0
-    while j < 2:
-        print(i)
-        print(j)
-        j = j + 1
-    i = i + 1
+def main():
+    i: int = 0
+    while i < 3:
+        j: int = 0
+        while j < 2:
+            print(i)
+            print(j)
+            j = j + 1
+        i = i + 1
 ";
 
         var result = CompileAndExecute(source);
@@ -362,7 +380,8 @@ def countdown(n: int):
         n = n - 1
     print(""done"")
 
-countdown(3)
+def main():
+    countdown(3)
 ";
 
         var result = CompileAndExecute(source);
@@ -375,10 +394,11 @@ countdown(3)
     public void WhileLoop_AugmentedAssignment_WorksCorrectly()
     {
         var source = @"
-i: int = 1
-while i < 100:
-    print(i)
-    i += i  # Double each iteration
+def main():
+    i: int = 1
+    while i < 100:
+        print(i)
+        i += i  # Double each iteration
 ";
 
         var result = CompileAndExecute(source);
@@ -391,13 +411,14 @@ while i < 100:
     public void WhileLoop_ComplexCondition_WithMultipleUpdates_WorksCorrectly()
     {
         var source = @"
-x: int = 0
-y: int = 10
-while x < 5 and y > 0:
-    x = x + 1
-    y = y - 2
-    print(x)
-    print(y)
+def main():
+    x: int = 0
+    y: int = 10
+    while x < 5 and y > 0:
+        x = x + 1
+        y = y - 2
+        print(x)
+        print(y)
 ";
 
         var result = CompileAndExecute(source);
@@ -410,14 +431,15 @@ while x < 5 and y > 0:
     public void WhileLoop_BreakWithCondition_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-sum: int = 0
-while True:
-    i = i + 1
-    sum = sum + i
-    if sum > 10:
-        break
-print(sum)
+def main():
+    i: int = 0
+    sum: int = 0
+    while True:
+        i = i + 1
+        sum = sum + i
+        if sum > 10:
+            break
+    print(sum)
 ";
 
         var result = CompileAndExecute(source);
@@ -430,12 +452,13 @@ print(sum)
     public void WhileLoop_ContinueSkipsRemainingIterations_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-while i < 5:
-    i = i + 1
-    if i == 2 or i == 4:
-        continue
-    print(i)
+def main():
+    i: int = 0
+    while i < 5:
+        i = i + 1
+        if i == 2 or i == 4:
+            continue
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -448,13 +471,14 @@ while i < 5:
     public void WhileLoop_VariableRedefinitionWithTypeChange_InsideLoop_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-while i < 3:
-    x: auto = i
-    print(x)
-    x: auto = ""iteration""
-    print(x)
-    i = i + 1
+def main():
+    i: int = 0
+    while i < 3:
+        x: auto = i
+        print(x)
+        x: auto = ""iteration""
+        print(x)
+        i = i + 1
 ";
 
         var result = CompileAndExecute(source);
@@ -467,10 +491,11 @@ while i < 3:
     public void ForLoop_VariableUpdateInsideLoop_WorksCorrectly()
     {
         var source = @"
-sum: int = 0
-for i in range(5):
-    sum = sum + i
-print(sum)
+def main():
+    sum: int = 0
+    for i in range(5):
+        sum = sum + i
+    print(sum)
 ";
 
         var result = CompileAndExecute(source);
@@ -491,8 +516,9 @@ def modify_param(x: int) -> int:
     print(x)
     return x
 
-result: int = modify_param(5)
-print(result)
+def main():
+    result: int = modify_param(5)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -510,8 +536,9 @@ def absolute_value(x: int) -> int:
         x = -x
     return x
 
-print(absolute_value(-5))
-print(absolute_value(3))
+def main():
+    print(absolute_value(-5))
+    print(absolute_value(3))
 ";
 
         var result = CompileAndExecute(source);
@@ -557,7 +584,8 @@ def outer():
 
     print(x)
 
-outer()
+def main():
+    outer()
 ";
 
         var result = CompileAndExecute(source);
@@ -576,7 +604,8 @@ def swap_and_add(a: int, b: int) -> int:
     b = temp
     return a + b
 
-print(swap_and_add(3, 7))
+def main():
+    print(swap_and_add(3, 7))
 ";
 
         var result = CompileAndExecute(source);
@@ -589,15 +618,16 @@ print(swap_and_add(3, 7))
     public void Variable_UpdateInWhileWithIfElse_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-count: int = 0
-while i < 10:
-    i = i + 1
-    if i % 2 == 0:
-        count = count + 1
-    else:
-        count = count + 2
-print(count)
+def main():
+    i: int = 0
+    count: int = 0
+    while i < 10:
+        i = i + 1
+        if i % 2 == 0:
+            count = count + 1
+        else:
+            count = count + 2
+    print(count)
 ";
 
         var result = CompileAndExecute(source);
@@ -614,12 +644,13 @@ print(count)
     public void ForElse_NoBreak_ElseExecutes()
     {
         var source = @"
-items: list[int] = [1, 2, 3]
+def main():
+    items: list[int] = [1, 2, 3]
 
-for item in items:
-    print(item)
-else:
-    print(""completed"")
+    for item in items:
+        print(item)
+    else:
+        print(""completed"")
 ";
 
         var result = CompileAndExecute(source);
@@ -632,15 +663,16 @@ else:
     public void ForElse_WithBreak_ElseSkipped()
     {
         var source = @"
-items: list[int] = [1, 2, 3, 4, 5]
+def main():
+    items: list[int] = [1, 2, 3, 4, 5]
 
-for item in items:
-    if item == 3:
-        print(""found"")
-        break
-    print(item)
-else:
-    print(""not found"")
+    for item in items:
+        if item == 3:
+            print(""found"")
+            break
+        print(item)
+    else:
+        print(""not found"")
 ";
 
         var result = CompileAndExecute(source);
@@ -653,13 +685,14 @@ else:
     public void WhileElse_NoBreak_ElseExecutes()
     {
         var source = @"
-i: int = 0
+def main():
+    i: int = 0
 
-while i < 3:
-    print(i)
-    i += 1
-else:
-    print(""completed"")
+    while i < 3:
+        print(i)
+        i += 1
+    else:
+        print(""completed"")
 ";
 
         var result = CompileAndExecute(source);
@@ -672,16 +705,17 @@ else:
     public void WhileElse_WithBreak_ElseSkipped()
     {
         var source = @"
-i: int = 0
+def main():
+    i: int = 0
 
-while i < 10:
-    if i == 3:
-        print(""found"")
-        break
-    print(i)
-    i += 1
-else:
-    print(""not found"")
+    while i < 10:
+        if i == 3:
+            print(""found"")
+            break
+        print(i)
+        i += 1
+    else:
+        print(""not found"")
 ";
 
         var result = CompileAndExecute(source);
@@ -695,10 +729,11 @@ else:
     {
         // Use a range that produces zero iterations
         var source = @"
-for item in range(0):
-    print(item)
-else:
-    print(""empty range"")
+def main():
+    for item in range(0):
+        print(item)
+    else:
+        print(""empty range"")
 ";
 
         var result = CompileAndExecute(source);
@@ -711,13 +746,14 @@ else:
     public void WhileElse_FalseCondition_ElseExecutes()
     {
         var source = @"
-x: int = 10
+def main():
+    x: int = 10
 
-while x < 5:
-    print(x)
-    x += 1
-else:
-    print(""never entered"")
+    while x < 5:
+        print(x)
+        x += 1
+    else:
+        print(""never entered"")
 ";
 
         var result = CompileAndExecute(source);
@@ -739,8 +775,9 @@ def find_target(items: list[int], target: int) -> str:
         return ""not found""
     return ""exited via break""
 
-print(find_target([1, 2, 3], 2))
-print(find_target([1, 2, 3], 5))
+def main():
+    print(find_target([1, 2, 3], 2))
+    print(find_target([1, 2, 3], 5))
 ";
 
         var result = CompileAndExecute(source);
@@ -754,18 +791,19 @@ print(find_target([1, 2, 3], 5))
     {
         // Inner loop's break should not affect outer loop's else
         var source = @"
-outer_items: list[int] = [1, 2]
-inner_items: list[int] = [10, 20]
+def main():
+    outer_items: list[int] = [1, 2]
+    inner_items: list[int] = [10, 20]
 
-for outer in outer_items:
-    for inner in inner_items:
-        if inner == 10:
-            break
+    for outer in outer_items:
+        for inner in inner_items:
+            if inner == 10:
+                break
+        else:
+            print(""inner else"")
+        print(outer)
     else:
-        print(""inner else"")
-    print(outer)
-else:
-    print(""outer else"")
+        print(""outer else"")
 ";
 
         var result = CompileAndExecute(source);

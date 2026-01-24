@@ -16,7 +16,8 @@ public class BasicProgramTests : IntegrationTestBase
     public void HelloWorld_PrintsCorrectly()
     {
         var source = @"
-print(""Hello, World!"")
+def main():
+    print(""Hello, World!"")
 ";
 
         var result = CompileAndExecute(source);
@@ -50,8 +51,9 @@ def fibonacci(n: int) -> int:
         return n
     return fibonacci(n - 1) + fibonacci(n - 2)
 
-result: int = fibonacci(10)
-print(result)
+def main():
+    result: int = fibonacci(10)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -80,8 +82,9 @@ def fibonacci(n: int) -> int:
 
     return b
 
-result: int = fibonacci(10)
-print(result)
+def main():
+    result: int = fibonacci(10)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -94,14 +97,15 @@ print(result)
     public void SimpleArithmetic_WorksCorrectly()
     {
         var source = @"
-x: int = 10
-y: int = 5
+def main():
+    x: int = 10
+    y: int = 5
 
-print(x + y)
-print(x - y)
-print(x * y)
-print(x // y)
-print(x % y)
+    print(x + y)
+    print(x - y)
+    print(x * y)
+    print(x // y)
+    print(x % y)
 ";
 
         var result = CompileAndExecute(source);
@@ -115,15 +119,16 @@ print(x % y)
     public void TypeInference_WorksCorrectly()
     {
         var source = @"
-x = 42
-y = 3.14
-z = ""hello""
-flag = True
+def main():
+    x = 42
+    y = 3.14
+    z = ""hello""
+    flag = True
 
-print(x)
-print(y)
-print(z)
-print(flag)
+    print(x)
+    print(y)
+    print(z)
+    print(flag)
 ";
 
         var result = CompileAndExecute(source);
@@ -137,14 +142,15 @@ print(flag)
     public void VariableAssignment_WorksCorrectly()
     {
         var source = @"
-x: int = 10
-print(x)
+def main():
+    x: int = 10
+    print(x)
 
-x = 20
-print(x)
+    x = 20
+    print(x)
 
-x = x + 5
-print(x)
+    x = x + 5
+    print(x)
 ";
 
         var result = CompileAndExecute(source);
@@ -158,19 +164,20 @@ print(x)
     public void AugmentedAssignment_WorksCorrectly()
     {
         var source = @"
-x: int = 10
+def main():
+    x: int = 10
 
-x += 5
-print(x)
+    x += 5
+    print(x)
 
-x -= 3
-print(x)
+    x -= 3
+    print(x)
 
-x *= 2
-print(x)
+    x *= 2
+    print(x)
 
-x //= 4
-print(x)
+    x //= 4
+    print(x)
 ";
 
         var result = CompileAndExecute(source);
@@ -184,10 +191,11 @@ print(x)
     public void Comments_AreIgnored()
     {
         var source = @"
-# This is a comment
-x: int = 42  # inline comment
-# Another comment
-print(x)
+def main():
+    # This is a comment
+    x: int = 42  # inline comment
+    # Another comment
+    print(x)
 ";
 
         var result = CompileAndExecute(source);
@@ -200,9 +208,10 @@ print(x)
     public void MultipleStatements_ExecuteInOrder()
     {
         var source = @"
-print(""First"")
-print(""Second"")
-print(""Third"")
+def main():
+    print(""First"")
+    print(""Second"")
+    print(""Third"")
 ";
 
         var result = CompileAndExecute(source);
@@ -220,8 +229,9 @@ def process(x: int):
         y = x * 2
         print(y)
 
-process(5)
-process(-1)
+def main():
+    process(5)
+    process(-1)
 ";
 
         var result = CompileAndExecute(source);
@@ -240,9 +250,10 @@ def categorize(x: int):
     else:
         print(""non-positive"")
 
-categorize(5)
-categorize(-3)
-categorize(0)
+def main():
+    categorize(5)
+    categorize(-3)
+    categorize(0)
 ";
 
         var result = CompileAndExecute(source);
@@ -265,9 +276,10 @@ def nested_check(x: int, y: int):
     else:
         print(""x not positive"")
 
-nested_check(3, 4)
-nested_check(3, -1)
-nested_check(-1, 4)
+def main():
+    nested_check(3, 4)
+    nested_check(3, -1)
+    nested_check(-1, 4)
 ";
 
         var result = CompileAndExecute(source);
@@ -285,7 +297,8 @@ def compute(x: int):
         result = x * 2  # double the value
         print(result)  # output result
 
-compute(7)
+def main():
+    compute(7)
 ";
 
         var result = CompileAndExecute(source);
@@ -306,9 +319,10 @@ def analyze(x: int):  # analyze function
     else:  # zero case
         print(""zero"")  # output
 
-analyze(5)
-analyze(-3)
-analyze(0)
+def main():
+    analyze(5)
+    analyze(-3)
+    analyze(0)
 ";
 
         var result = CompileAndExecute(source);
@@ -326,7 +340,8 @@ def countdown(n: int):  # countdown function
         print(n)  # output value
         n = n - 1  # decrement
 
-countdown(3)
+def main():
+    countdown(3)
 ";
 
         var result = CompileAndExecute(source);
@@ -343,7 +358,8 @@ def iterate():  # iterate function
     for i in range(3):  # loop through range
         print(i)  # output value
 
-iterate()
+def main():
+    iterate()
 ";
 
         var result = CompileAndExecute(source);
@@ -362,7 +378,8 @@ def complex(x: int):  # main function
             if i % 2 == 0:  # even check
                 print(i)  # output even numbers
 
-complex(5)
+def main():
+    complex(5)
 ";
 
         var result = CompileAndExecute(source);
@@ -382,8 +399,9 @@ def process_data(value: int):
         z = y - 3
         print(z)
 
-process_data(15)
-process_data(5)
+def main():
+    process_data(15)
+    process_data(5)
 ";
 
         var result = CompileAndExecute(source);

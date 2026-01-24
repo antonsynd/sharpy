@@ -21,8 +21,9 @@ public class PipeOperatorTests : IntegrationTestBase
 def double_value(x: int) -> int:
     return x * 2
 
-result: int = 5 |> double_value
-print(result)
+def main():
+    result: int = 5 |> double_value
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -39,8 +40,9 @@ print(result)
 def add(a: int, b: int) -> int:
     return a + b
 
-result: int = 3 |> add(7)
-print(result)
+def main():
+    result: int = 3 |> add(7)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -60,8 +62,9 @@ def double_value(x: int) -> int:
 def add_one(x: int) -> int:
     return x + 1
 
-result: int = 5 |> double_value |> add_one
-print(result)
+def main():
+    result: int = 5 |> double_value |> add_one
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -82,8 +85,9 @@ def add(a: int, b: int) -> int:
 def multiply(a: int, b: int) -> int:
     return a * b
 
-result: int = 2 |> add(3) |> multiply(4)
-print(result)
+def main():
+    result: int = 2 |> add(3) |> multiply(4)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -102,8 +106,9 @@ print(result)
 def sum_three(a: int, b: int, c: int) -> int:
     return a + b + c
 
-result: int = 1 |> sum_three(2, 3)
-print(result)
+def main():
+    result: int = 1 |> sum_three(2, 3)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -122,8 +127,9 @@ def greet(name: str) -> str:
 def exclaim(text: str) -> str:
     return text + ""!!""
 
-message: str = ""World"" |> greet |> exclaim
-print(message)
+def main():
+    message: str = ""World"" |> greet |> exclaim
+    print(message)
 ";
 
         var result = CompileAndExecute(source);
@@ -139,8 +145,9 @@ print(message)
 def double_value(x: int) -> int:
     return x * 2
 
-result: int = (5 |> double_value) + 3
-print(result)
+def main():
+    result: int = (5 |> double_value) + 3
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -156,9 +163,10 @@ print(result)
 def square(x: int) -> int:
     return x * x
 
-value: int = 7
-result: int = value |> square
-print(result)
+def main():
+    value: int = 7
+    result: int = value |> square
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -180,8 +188,9 @@ def double_value(x: int) -> int:
 def square(x: int) -> int:
     return x * x
 
-result: int = 1 |> add_one |> double_value |> square |> add_one
-print(result)
+def main():
+    result: int = 1 |> add_one |> double_value |> square |> add_one
+    print(result)
 ";
 
         var result = CompileAndExecute(source);

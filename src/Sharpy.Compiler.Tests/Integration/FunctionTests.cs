@@ -19,8 +19,9 @@ public class FunctionTests : IntegrationTestBase
 def add(a: int, b: int) -> int:
     return a + b
 
-result: int = add(5, 3)
-print(result)
+def main():
+    result: int = add(5, 3)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -36,7 +37,8 @@ print(result)
 def greet(name: str):
     print(f""Hello, {name}!"")
 
-greet(""World"")
+def main():
+    greet(""World"")
 ";
 
         var result = CompileAndExecute(source);
@@ -54,8 +56,9 @@ def factorial(n: int) -> int:
         return 1
     return n * factorial(n - 1)
 
-result: int = factorial(5)
-print(result)
+def main():
+    result: int = factorial(5)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -71,8 +74,9 @@ print(result)
 def greet(name: str, greeting: str = ""Hello""):
     print(f""{greeting}, {name}!"")
 
-greet(""Alice"")
-greet(""Bob"", ""Hi"")
+def main():
+    greet(""Alice"")
+    greet(""Bob"", ""Hi"")
 ";
 
         var result = CompileAndExecute(source);
@@ -96,8 +100,9 @@ def process(x: int) -> int:
     tripled: int = triple_value(x)
     return doubled + tripled
 
-result: int = process(4)
-print(result)
+def main():
+    result: int = process(4)
+    print(result)
 ";
 
         var result = CompileAndExecute(source);

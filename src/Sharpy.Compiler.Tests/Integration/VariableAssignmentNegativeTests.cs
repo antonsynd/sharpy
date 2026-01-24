@@ -35,8 +35,9 @@ def test():
     public void Assignment_TypeMismatch_WithoutRedefinition_ShouldFail()
     {
         var source = @"
-x: int = 5
-x = ""hello""  # Type mismatch without redefinition
+def main():
+    x: int = 5
+    x = ""hello""  # Type mismatch without redefinition
 ";
 
         var result = CompileAndExecute(source);
@@ -54,8 +55,9 @@ x = ""hello""  # Type mismatch without redefinition
     public void Assignment_ToConstant_ShouldFail()
     {
         var source = @"
-const PI: float = 3.14159
-PI = 3.14  # Cannot reassign constant
+def main():
+    const PI: float = 3.14159
+    PI = 3.14  # Cannot reassign constant
 ";
 
         var result = CompileAndExecute(source);
@@ -75,7 +77,8 @@ def test(x: int):
     x: auto = ""changed""  # Redefine with new type
     print(x)
 
-test(5)
+def main():
+    test(5)
 ";
 
         var result = CompileAndExecute(source);
@@ -90,11 +93,12 @@ test(5)
         // This test verifies that infinite loops don't hang the test suite
         // Uses a 2000ms timeout to detect the infinite loop (increased from 500ms for CI runners)
         var source = @"
-# This would create an infinite loop if variable updates don't work
-i: int = 0
-while i < 5:
-    print(i)
-    # Missing: i = i + 1
+def main():
+    # This would create an infinite loop if variable updates don't work
+    i: int = 0
+    while i < 5:
+        print(i)
+        # Missing: i = i + 1
 ";
 
         var result = CompileAndExecute(source, executionTimeoutMs: 2000);
@@ -150,7 +154,6 @@ def test():
     {
         var source = @"
 x: int = 1
-print(x)
 
 def test():
     x: int = 2  # Different scope
@@ -158,8 +161,10 @@ def test():
     x = 3
     print(x)
 
-test()
-print(x)  # Should still be 1
+def main():
+    print(x)
+    test()
+    print(x)  # Should still be 1
 ";
 
         var result = CompileAndExecute(source);
@@ -174,10 +179,11 @@ print(x)  # Should still be 1
         // In Python, modifying the loop variable doesn't affect the iteration
         // but we should handle it correctly in Sharpy
         var source = @"
-for i in range(3):
-    print(i)
-    i = i + 10  # This shouldn't affect the next iteration
-    print(i)
+def main():
+    for i in range(3):
+        print(i)
+        i = i + 10  # This shouldn't affect the next iteration
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -191,13 +197,14 @@ for i in range(3):
     public void Assignment_ChainedAssignments_WorkCorrectly()
     {
         var source = @"
-a: int = 1
-b: int = 2
-c: int = 3
-a = b = c = 10
-print(a)
-print(b)
-print(c)
+def main():
+    a: int = 1
+    b: int = 2
+    c: int = 3
+    a = b = c = 10
+    print(a)
+    print(b)
+    print(c)
 ";
 
         var result = CompileAndExecute(source);
@@ -213,11 +220,12 @@ print(c)
     public void WhileLoop_EmptyBody_ShouldCompile()
     {
         var source = @"
-i: int = 0
-while i < 5:
-    i = i + 1
-# No additional statements in loop body
-print(i)
+def main():
+    i: int = 0
+    while i < 5:
+        i = i + 1
+    # No additional statements in loop body
+    print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -230,11 +238,12 @@ print(i)
     public void Assignment_OperatorPrecedence_InUpdate_WorksCorrectly()
     {
         var source = @"
-x: int = 1
-x = x * 2 + 3
-print(x)
-x = (x + 1) * 2
-print(x)
+def main():
+    x: int = 1
+    x = x * 2 + 3
+    print(x)
+    x = (x + 1) * 2
+    print(x)
 ";
 
         var result = CompileAndExecute(source);
@@ -252,11 +261,12 @@ print(x)
 def double_value(x: int) -> int:
     return x * 2
 
-i: int = 5
-i = double_value(i)
-print(i)
-i = double_value(i) + 1
-print(i)
+def main():
+    i: int = 5
+    i = double_value(i)
+    print(i)
+    i = double_value(i) + 1
+    print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -269,15 +279,16 @@ print(i)
     public void WhileLoop_MultipleBreakConditions_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-while True:
-    i = i + 1
-    if i == 3:
-        print(""skip 3"")
-        continue
-    if i > 5:
-        break
-    print(i)
+def main():
+    i: int = 0
+    while True:
+        i = i + 1
+        if i == 3:
+            print(""skip 3"")
+            continue
+        if i > 5:
+            break
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -290,13 +301,14 @@ while True:
     public void Assignment_SelfReferentialExpression_WorksCorrectly()
     {
         var source = @"
-x: int = 1
-x = x + x
-print(x)
-x = x * x
-print(x)
-x = x - x
-print(x)
+def main():
+    x: int = 1
+    x = x + x
+    print(x)
+    x = x * x
+    print(x)
+    x = x - x
+    print(x)
 ";
 
         var result = CompileAndExecute(source);
@@ -309,14 +321,15 @@ print(x)
     public void WhileLoop_NestedWithSameVariableName_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-while i < 2:
-    print(i)
-    j: int = 0
-    while j < 2:
-        print(j)
-        j = j + 1
-    i = i + 1
+def main():
+    i: int = 0
+    while i < 2:
+        print(i)
+        j: int = 0
+        while j < 2:
+            print(j)
+            j = j + 1
+        i = i + 1
 ";
 
         var result = CompileAndExecute(source);
