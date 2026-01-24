@@ -46,6 +46,9 @@ public partial class TypeChecker
     public bool ContinueAfterError { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
 
+    // Whether the current module is an entry point file
+    private bool _isEntryPoint = false;
+
     // Optional CompilerServices for centralized access
     private readonly CompilerServices? _services;
 
@@ -89,12 +92,21 @@ public partial class TypeChecker
     /// </summary>
     public SemanticContext CreateSemanticContext()
     {
+        SemanticContext context;
+
         // Prefer using CompilerServices if available
         if (_services != null)
         {
-            return new SemanticContext(_services);
+            context = new SemanticContext(_services);
         }
-        return new SemanticContext(_symbolTable, _semanticInfo, _typeResolver, _logger);
+        else
+        {
+            context = new SemanticContext(_symbolTable, _semanticInfo, _typeResolver, _logger);
+        }
+
+        // Set entry point flag for module-level validation
+        context.IsEntryPoint = _isEntryPoint;
+        return context;
     }
 
     /// <summary>
@@ -120,9 +132,14 @@ public partial class TypeChecker
     /// If true, compute CodeGenInfo for all symbols after type checking.
     /// This is required for code generation to work correctly.
     /// </param>
-    public void CheckModule(Module module, bool computeCodeGenInfo = false)
+    /// <param name="isEntryPoint">
+    /// If true, this module is the entry point (main executable file).
+    /// Entry point files require a main() function.
+    /// </param>
+    public void CheckModule(Module module, bool computeCodeGenInfo = false, bool isEntryPoint = false)
     {
         _logger.LogInfo("Type checking module");
+        _isEntryPoint = isEntryPoint;
 
         foreach (var statement in module.Body)
         {

@@ -37,6 +37,12 @@ public class SemanticContext
     public int MaxErrors { get; set; } = 100;
 
     /// <summary>
+    /// Whether this file is the entry point (main executable file).
+    /// Entry point files require a main() function.
+    /// </summary>
+    public bool IsEntryPoint { get; set; } = false;
+
+    /// <summary>
     /// Optional CompilerServices for centralized service access.
     /// When set, provides access to all compiler services.
     /// </summary>

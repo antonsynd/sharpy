@@ -505,7 +505,10 @@ public class ProjectCompiler
             fileMetrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
             var typeChecker = new TypeChecker(_symbolTable, _semanticInfo, typeResolver, _logger, pipeline);
-            typeChecker.CheckModule(unit.Ast, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo);
+
+            // Determine if this file is the entry point for module-level validation
+            var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
+            typeChecker.CheckModule(unit.Ast, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo, isEntryPoint: isEntryPoint);
             fileMetrics.EndPhase();
 
             if (typeChecker.Errors.Any())
@@ -560,25 +563,7 @@ public class ProjectCompiler
             fileMetrics?.StartPhase("Code Generation");
 
             // Determine if this file is the entry point
-            // If EntryPoint is specified in config, use that; otherwise default to main.spy
-            var isEntryPoint = IsEntryPointFile(sourceFile, config);
-
-            // Helper method to determine entry point
-            bool IsEntryPointFile(string file, ProjectConfig cfg)
-            {
-                var fileName = Path.GetFileName(file);
-
-                // If EntryPoint is specified in config, check against it
-                if (!string.IsNullOrWhiteSpace(cfg.EntryPoint))
-                {
-                    return fileName.Equals(cfg.EntryPoint, StringComparison.OrdinalIgnoreCase) ||
-                           fileName.Equals(Path.GetFileName(cfg.EntryPoint), StringComparison.OrdinalIgnoreCase);
-                }
-
-                // Otherwise, default to main.spy for executable projects
-                var fileNameNoExt = Path.GetFileNameWithoutExtension(file);
-                return fileNameNoExt.Equals("main", StringComparison.OrdinalIgnoreCase);
-            }
+            var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
 
             var codeGenContext = new CodeGenContext(_symbolTable, builtinRegistry)
             {
@@ -672,6 +657,26 @@ public class ProjectCompiler
             DependencyGraph = _dependencyGraph,
             ProjectModel = _projectModel
         };
+    }
+
+    /// <summary>
+    /// Determine if a file is the entry point for validation and code generation.
+    /// Used during type checking and code generation phases.
+    /// </summary>
+    private static bool IsEntryPointFileForTypeCheck(string file, ProjectConfig config)
+    {
+        var fileName = Path.GetFileName(file);
+
+        // If EntryPoint is specified in config, check against it
+        if (!string.IsNullOrWhiteSpace(config.EntryPoint))
+        {
+            return fileName.Equals(config.EntryPoint, StringComparison.OrdinalIgnoreCase) ||
+                   fileName.Equals(Path.GetFileName(config.EntryPoint), StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Otherwise, default to main.spy for executable projects
+        var fileNameNoExt = Path.GetFileNameWithoutExtension(file);
+        return fileNameNoExt.Equals("main", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

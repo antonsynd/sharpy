@@ -131,7 +131,8 @@ public class Compiler
             metrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline);
-            typeChecker.CheckModule(module, computeCodeGenInfo: true);
+            // Single-file compilation is always an entry point
+            typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
             metrics.EndPhase();
 
             if (typeChecker.Errors.Any())
