@@ -78,7 +78,18 @@ public partial class RoslynEmitter
         return string.IsNullOrEmpty(result) ? "_" : result;
     }
 
-    private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements, List<FromImportStatement>? reExportImports = null)
+    /// <summary>
+    /// Generates the module class and namespace-level type declarations.
+    /// Types (classes, structs, interfaces, enums) are placed at namespace level as siblings to the module class,
+    /// matching C# conventions for top-level type declarations.
+    /// </summary>
+    /// <returns>
+    /// A tuple containing:
+    /// - The module class (static class with fields, functions, Main)
+    /// - List of type declarations to place at namespace level
+    /// </returns>
+    private (ClassDeclarationSyntax moduleClass, List<MemberDeclarationSyntax> namespaceTypes)
+        GenerateModuleMembers(List<Statement> statements, List<FromImportStatement>? reExportImports = null)
     {
         // Clear tracking field for module field names (still needed to prevent duplicate field declarations)
         _moduleFieldNames.Clear();
@@ -118,8 +129,12 @@ public partial class RoslynEmitter
             }
         }
 
-        // Separate declarations (class members) from executable statements
-        var declarations = new List<MemberDeclarationSyntax>();
+        // Separate declarations into:
+        // - moduleDeclarations: fields, methods, constants (go in module class)
+        // - namespaceTypes: classes, structs, interfaces, enums (go at namespace level)
+        // - executableStatements: bare statements (wrapped in Main)
+        var moduleDeclarations = new List<MemberDeclarationSyntax>();
+        var namespaceTypes = new List<MemberDeclarationSyntax>();
         var executableStatements = new List<Statement>();
 
         // First pass: check if there's a user-defined main function
@@ -145,7 +160,16 @@ public partial class RoslynEmitter
 
             if (member is MemberDeclarationSyntax memberDecl)
             {
-                declarations.Add(memberDecl);
+                // Route type declarations to namespace level
+                if (stmt is ClassDef or StructDef or InterfaceDef or EnumDef)
+                {
+                    namespaceTypes.Add(memberDecl);
+                }
+                else
+                {
+                    // Functions, fields, constants stay in module class
+                    moduleDeclarations.Add(memberDecl);
+                }
             }
             else if (member == null && stmt is VariableDeclaration varRedefinition)
             {
@@ -192,7 +216,7 @@ public partial class RoslynEmitter
                     Token(SyntaxKind.StaticKeyword)))
                 .WithBody(mainBody);
 
-            declarations.Add(mainMethod);
+            moduleDeclarations.Add(mainMethod);
         }
         else if (hasMainFunction && executableStatements.Count > 0)
         {
@@ -239,18 +263,30 @@ public partial class RoslynEmitter
             foreach (var fromImport in reExportImports)
             {
                 var reExportMembers = GenerateReExportMembers(fromImport);
-                declarations.AddRange(reExportMembers);
+                moduleDeclarations.AddRange(reExportMembers);
             }
         }
 
         // Generate module class name from source file name
         var moduleClassName = GetModuleClassName(willHaveMainMethod, functionNames);
 
-        return ClassDeclaration(moduleClassName)
+        var moduleClass = ClassDeclaration(moduleClassName)
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.StaticKeyword)))
-            .WithMembers(List(declarations));
+            .WithMembers(List(moduleDeclarations));
+
+        return (moduleClass, namespaceTypes);
+    }
+
+    /// <summary>
+    /// Generates only the module class (legacy method for backward compatibility).
+    /// For new code, prefer GenerateModuleMembers which also returns namespace-level types.
+    /// </summary>
+    private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements, List<FromImportStatement>? reExportImports = null)
+    {
+        var (moduleClass, _) = GenerateModuleMembers(statements, reExportImports);
+        return moduleClass;
     }
 
     private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)

@@ -39,14 +39,22 @@ public partial class RoslynEmitter
                 .ToList();
         }
 
-        // Generate module class wrapper with non-import statements and re-exports
-        var moduleClass = GenerateModuleClass(nonImportStatements, fromImports);
+        // Generate module members: module class (with fields, methods) + namespace-level types
+        // Types (classes, structs, interfaces, enums) are placed at namespace level as siblings,
+        // matching C# conventions. This gives cleaner qualified names like MyProject.Geometry.Point
+        // instead of MyProject.Geometry.Exports.Point.
+        var (moduleClass, namespaceTypes) = GenerateModuleMembers(nonImportStatements, fromImports);
+
+        // Combine module class with namespace-level types
+        // Module class comes first, followed by type declarations
+        var namespaceMembers = new List<MemberDeclarationSyntax> { moduleClass };
+        namespaceMembers.AddRange(namespaceTypes);
 
         // Generate namespace from source file path (if available)
         // Use block-scoped namespace for C# 9.0 compatibility (Unity)
         var namespaceName = GenerateNamespaceName();
         var namespaceDecl = NamespaceDeclaration(namespaceName)
-            .WithMembers(SingletonList<MemberDeclarationSyntax>(moduleClass));
+            .WithMembers(List(namespaceMembers));
 
         // Build compilation unit first
         var compilationUnit = CompilationUnit()

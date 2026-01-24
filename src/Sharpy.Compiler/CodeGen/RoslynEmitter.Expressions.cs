@@ -781,16 +781,13 @@ public partial class RoslynEmitter
             // If this is an enum type, handle member access specially
             if (symbol is TypeSymbol enumSymbol && enumSymbol.TypeKind == Semantic.TypeKind.Enum)
             {
-                // Enum member access: Color.RED -> (int)Program.Color.Red
-                // We fully qualify with "Program." to avoid shadowing by local variables/fields with the same name
-                // This makes the enum value resolve to its underlying int value (Python semantics)
+                // Enum member access: Color.RED -> Color.Red
+                // Types are at namespace level (siblings to module class), so we use unqualified names
+                // The C# using static directive for the module class doesn't affect type access
                 var enumTypeName = NameMangler.ToPascalCase(enumTypeIdentifier.Name);
 
-                // Build qualified enum type: Program.EnumName
-                var qualifiedEnumType = MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName("Program"),
-                    IdentifierName(enumTypeName));
+                // Use the enum type directly (it's at namespace level, not nested in module class)
+                var enumType = IdentifierName(enumTypeName);
 
                 // Check if this is a string enum (string enums are generated as classes, not C# enums)
                 if (IsStringEnumSymbol(enumSymbol))
@@ -799,7 +796,7 @@ public partial class RoslynEmitter
                     var fieldName = NameMangler.Transform(memberAccess.Member, NameContext.Constant);
                     var enumMemberAccess = MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
-                        qualifiedEnumType,
+                        enumType,
                         IdentifierName(fieldName));
                     // String enums: Color.RED already returns the string value from the static field
                     return enumMemberAccess;
@@ -810,7 +807,7 @@ public partial class RoslynEmitter
                     var enumMemberName = TransformEnumMemberName(memberAccess.Member);
                     var enumMemberAccess = MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
-                        qualifiedEnumType,
+                        enumType,
                         IdentifierName(enumMemberName));
                     // Return the enum member directly (not cast to int)
                     // The .value property is used to get the underlying int value
@@ -1255,6 +1252,8 @@ public partial class RoslynEmitter
 
     /// <summary>
     /// Gets the fully qualified C# type name for a type, handling cross-file references.
+    /// Types are placed at namespace level (siblings to the module class), so we use
+    /// Namespace.TypeName, not Namespace.Exports.TypeName.
     /// </summary>
     private string GetFullyQualifiedTypeName(TypeSymbol typeSymbol, string sharpyTypeName)
     {
@@ -1263,15 +1262,15 @@ public partial class RoslynEmitter
             !string.IsNullOrEmpty(_context.SourceFilePath) &&
             !string.Equals(typeSymbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
         {
-            // Type from another file - use fully qualified name
+            // Type from another file - use fully qualified name (at namespace level)
             var moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath);
             var typeName = NameMangler.ToPascalCase(sharpyTypeName);
 
             if (!string.IsNullOrEmpty(_context.ProjectNamespace))
             {
-                return $"{_context.ProjectNamespace}.{moduleNamespace}.Exports.{typeName}";
+                return $"{_context.ProjectNamespace}.{moduleNamespace}.{typeName}";
             }
-            return $"{moduleNamespace}.Exports.{typeName}";
+            return $"{moduleNamespace}.{typeName}";
         }
 
         // Check if type is from an external module (imported via DefiningModule)
@@ -1282,9 +1281,9 @@ public partial class RoslynEmitter
 
             if (!string.IsNullOrEmpty(_context.ProjectNamespace))
             {
-                return $"{_context.ProjectNamespace}.{moduleNamespace}.Exports.{typeName}";
+                return $"{_context.ProjectNamespace}.{moduleNamespace}.{typeName}";
             }
-            return $"{moduleNamespace}.Exports.{typeName}";
+            return $"{moduleNamespace}.{typeName}";
         }
 
         // Type is in current file - use simple name

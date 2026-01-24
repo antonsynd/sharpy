@@ -259,6 +259,8 @@ public class TypeMapper
 
     /// <summary>
     /// Gets the fully qualified C# type name for a type from another file/module.
+    /// Types are placed at namespace level (siblings to the module class), so
+    /// we use Namespace.TypeName, not Namespace.Exports.TypeName.
     /// </summary>
     private string GetFullyQualifiedTypeName(TypeSymbol typeSymbol, string sharpyTypeName)
     {
@@ -282,11 +284,13 @@ public class TypeMapper
 
         var typeName = NameMangler.ToPascalCase(sharpyTypeName);
 
+        // Types are at namespace level (not nested in Exports), so we use:
+        // ProjectNamespace.ModuleNamespace.TypeName
         if (!string.IsNullOrEmpty(_context.ProjectNamespace))
         {
-            return $"{_context.ProjectNamespace}.{moduleNamespace}.Exports.{typeName}";
+            return $"{_context.ProjectNamespace}.{moduleNamespace}.{typeName}";
         }
-        return $"{moduleNamespace}.Exports.{typeName}";
+        return $"{moduleNamespace}.{typeName}";
     }
 
     /// <summary>
