@@ -9,14 +9,8 @@ namespace Sharpy.Compiler.Tests.Semantic;
 
 public class TypeCheckerTests
 {
-    private (Module, SymbolTable, SemanticInfo, TypeChecker) CompileAndCheck(string source, bool wrapInFunction = true)
+    private (Module, SymbolTable, SemanticInfo, TypeChecker) CompileAndCheck(string source)
     {
-        // Wrap source in a function to comply with module-level rules
-        if (wrapInFunction)
-        {
-            source = TestHelpers.WrapWithMainIfNeeded(source);
-        }
-
         var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
         var tokens = lexer.TokenizeAll();
         var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
@@ -38,14 +32,8 @@ public class TypeCheckerTests
         return (module, symbolTable, semanticInfo, typeChecker);
     }
 
-    private (Module, SymbolTable, SemanticInfo, TypeChecker, NameResolver) CompileAndCheckWithNameResolver(string source, bool wrapInFunction = true)
+    private (Module, SymbolTable, SemanticInfo, TypeChecker, NameResolver) CompileAndCheckWithNameResolver(string source)
     {
-        // Wrap source in a function to comply with module-level rules
-        if (wrapInFunction)
-        {
-            source = TestHelpers.WrapWithMainIfNeeded(source);
-        }
-
         var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
         var tokens = lexer.TokenizeAll();
         var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
@@ -100,7 +88,7 @@ y: str = x
         var source = @"
 x: auto = 42
 ";
-        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source, wrapInFunction: false);
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Filter out module-level errors since we're testing type inference specifically
@@ -158,8 +146,9 @@ def get_name() -> str:
     public void ChecksIfConditionIsBoolean()
     {
         var source = @"
-if True:
-    x: int = 1
+def main():
+    if True:
+        x: int = 1
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -188,7 +177,7 @@ if 42:
         var source = @"
 numbers: auto = [1, 2, 3]
 ";
-        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source, wrapInFunction: false);
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Filter out module-level errors since we're testing type inference specifically
@@ -243,7 +232,7 @@ y: bool = 10 > 5
         var source = @"
 add: auto = lambda a, b: a + b
 ";
-        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source, wrapInFunction: false);
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Filter out module-level errors since we're testing type inference specifically
@@ -323,9 +312,10 @@ x: int = None
     public void InfersNullableTypeFromNone()
     {
         var source = @"
-value: str? = None
-if value is not None:
-    x: str = value
+def main():
+    value: str? = None
+    if value is not None:
+        x: str = value
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -442,9 +432,10 @@ class Animal:
 class Dog(Animal):
     ...
 
-animal: Animal = Dog()
-if isinstance(animal, Dog):
-    result: Dog = animal
+def main():
+    animal: Animal = Dog()
+    if isinstance(animal, Dog):
+        result: Dog = animal
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -463,11 +454,12 @@ class Animal:
 class Dog(Animal):
     ...
 
-animal: Animal = Dog()
-if isinstance(animal, Dog):
-    d: Dog = animal
-else:
-    a: Animal = animal
+def main():
+    animal: Animal = Dog()
+    if isinstance(animal, Dog):
+        d: Dog = animal
+    else:
+        a: Animal = animal
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -485,11 +477,12 @@ class Animal:
 class Dog(Animal):
     ...
 
-animals: list[Animal] = [Dog(), Dog()]
-i: int = 0
-while i < len(animals) and isinstance(animals[i], Dog):
-    dog: Dog = animals[i]
-    i = i + 1
+def main():
+    animals: list[Animal] = [Dog(), Dog()]
+    i: int = 0
+    while i < len(animals) and isinstance(animals[i], Dog):
+        dog: Dog = animals[i]
+        i = i + 1
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -510,11 +503,12 @@ class Dog(Animal):
 class Cat(Animal):
     ...
 
-pet: Animal = Dog()
-if isinstance(pet, Dog):
-    d: Dog = pet
-if isinstance(pet, Cat):
-    c: Cat = pet
+def main():
+    pet: Animal = Dog()
+    if isinstance(pet, Dog):
+        d: Dog = pet
+    if isinstance(pet, Cat):
+        c: Cat = pet
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -532,9 +526,10 @@ class Animal:
 class Dog(Animal):
     ...
 
-animal: Animal? = Dog()
-if animal is not None and isinstance(animal, Dog):
-    d: Dog = animal
+def main():
+    animal: Animal? = Dog()
+    if animal is not None and isinstance(animal, Dog):
+        d: Dog = animal
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -619,7 +614,8 @@ class Person:
 def print_message(msg: str) -> None:
     print(msg)
 
-print_message('hello')
+def main():
+    print_message('hello')
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -648,7 +644,8 @@ def get_value() -> None:
 def do_something():
     print('doing something')
 
-do_something()
+def main():
+    do_something()
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -936,8 +933,9 @@ def foo():
     public void AugmentedAssignment_IntPlusAssignInt_Succeeds()
     {
         var source = @"
-x: int = 5
-x += 3
+def main():
+    x: int = 5
+    x += 3
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -949,8 +947,9 @@ x += 3
     public void AugmentedAssignment_IntMinusAssignInt_Succeeds()
     {
         var source = @"
-x: int = 10
-x -= 3
+def main():
+    x: int = 10
+    x -= 3
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -962,8 +961,9 @@ x -= 3
     public void AugmentedAssignment_IntStarAssignInt_Succeeds()
     {
         var source = @"
-x: int = 5
-x *= 2
+def main():
+    x: int = 5
+    x *= 2
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -991,8 +991,9 @@ x /= 2
     public void AugmentedAssignment_IntFloorDivAssignInt_Succeeds()
     {
         var source = @"
-x: int = 10
-x //= 3
+def main():
+    x: int = 10
+    x //= 3
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1004,8 +1005,9 @@ x //= 3
     public void AugmentedAssignment_IntModuloAssignInt_Succeeds()
     {
         var source = @"
-x: int = 10
-x %= 3
+def main():
+    x: int = 10
+    x %= 3
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1032,8 +1034,9 @@ x **= 3
     public void AugmentedAssignment_IntBitwiseAndAssignInt_Succeeds()
     {
         var source = @"
-x: int = 15
-x &= 7
+def main():
+    x: int = 15
+    x &= 7
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1045,8 +1048,9 @@ x &= 7
     public void AugmentedAssignment_IntBitwiseOrAssignInt_Succeeds()
     {
         var source = @"
-x: int = 8
-x |= 1
+def main():
+    x: int = 8
+    x |= 1
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1058,8 +1062,9 @@ x |= 1
     public void AugmentedAssignment_IntBitwiseXorAssignInt_Succeeds()
     {
         var source = @"
-x: int = 5
-x ^= 3
+def main():
+    x: int = 5
+    x ^= 3
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1071,8 +1076,9 @@ x ^= 3
     public void AugmentedAssignment_IntLeftShiftAssignInt_Succeeds()
     {
         var source = @"
-x: int = 4
-x <<= 2
+def main():
+    x: int = 4
+    x <<= 2
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1084,8 +1090,9 @@ x <<= 2
     public void AugmentedAssignment_IntRightShiftAssignInt_Succeeds()
     {
         var source = @"
-x: int = 16
-x >>= 2
+def main():
+    x: int = 16
+    x >>= 2
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1097,8 +1104,9 @@ x >>= 2
     public void AugmentedAssignment_StrPlusAssignStr_Succeeds()
     {
         var source = @"
-s: str = ""hello""
-s += "" world""
+def main():
+    s: str = ""hello""
+    s += "" world""
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1110,8 +1118,9 @@ s += "" world""
     public void AugmentedAssignment_DoublePlusAssignInt_Succeeds()
     {
         var source = @"
-x: double = 1.5
-x += 2
+def main():
+    x: double = 1.5
+    x += 2
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1123,8 +1132,9 @@ x += 2
     public void AugmentedAssignment_UnsupportedOperatorOnString_ReportsError()
     {
         var source = @"
-s: str = ""hello""
-s -= "" world""
+def main():
+    s: str = ""hello""
+    s -= "" world""
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1140,8 +1150,9 @@ s -= "" world""
     public void AugmentedAssignment_BitwiseOnDouble_ReportsError()
     {
         var source = @"
-x: double = 1.5
-x &= 2
+def main():
+    x: double = 1.5
+    x &= 2
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1171,10 +1182,11 @@ def increment(x: int) -> int:
     public void AugmentedAssignment_InLoop_Succeeds()
     {
         var source = @"
-total: int = 0
-items: list[int] = [1, 2, 3]
-for i in items:
-    total += i
+def main():
+    total: int = 0
+    items: list[int] = [1, 2, 3]
+    for i in items:
+        total += i
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -1186,9 +1198,10 @@ for i in items:
     public void AugmentedAssignment_WithExpression_Succeeds()
     {
         var source = @"
-x: int = 5
-y: int = 3
-x += y * 2
+def main():
+    x: int = 5
+    y: int = 3
+    x += y * 2
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
