@@ -3,12 +3,12 @@
 ## Goal
 Remove the brittle `WrapWithMainIfNeeded` helper and ensure all Sharpy test code explicitly includes proper `main()` functions where required.
 
-## Phase 1: Infrastructure Changes (do last, after all tests fixed)
+## Phase 1: Infrastructure Changes ✅ COMPLETED
 
-- [ ] `src/Sharpy.Compiler.Tests/Integration/IntegrationTestBase.cs:53` - Remove `WrapWithMainIfNeeded` call
-- [ ] `src/Sharpy.Compiler.Tests/Helpers/ProjectCompilationHelper.cs:126` - Remove `WrapWithMainIfNeeded` call
-- [ ] `src/Sharpy.Compiler.Tests/Semantic/TypeCheckerTests.cs:17,46` - Remove `wrapInFunction` parameter and calls
-- [ ] `src/Sharpy.Compiler.Tests/TestHelpers.cs` - Delete `WrapWithMainIfNeeded` method (lines 20-127)
+- [x] `src/Sharpy.Compiler.Tests/Integration/IntegrationTestBase.cs:53` - Removed `WrapWithMainIfNeeded` call
+- [x] `src/Sharpy.Compiler.Tests/Helpers/ProjectCompilationHelper.cs:126` - Removed `WrapWithMainIfNeeded` call
+- [x] `src/Sharpy.Compiler.Tests/Semantic/TypeCheckerTests.cs:17,46` - Removed `wrapInFunction` parameter and calls
+- [x] `src/Sharpy.Compiler.Tests/TestHelpers.cs` - Deleted `WrapWithMainIfNeeded` method
 
 ---
 
@@ -47,54 +47,62 @@ Remove the brittle `WrapWithMainIfNeeded` helper and ensure all Sharpy test code
 ### PipeOperatorTests.cs (~9 methods) ✅ COMPLETED
 - [x] All tests updated with explicit main() functions
 
-### DivisionDeviationTests.cs - FILE DOES NOT EXIST (task list was incorrect)
+### DivisionDeviationTests.cs ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
 
 ### VariableAssignmentNegativeTests.cs (~16 methods) ✅ COMPLETED
 - [x] All tests updated with explicit main() functions
 
-### Phase012IntegrationTests.cs (~46 methods)
-- [ ] (review file for complete list - minimal program tests)
+### Phase012IntegrationTests.cs (~46 methods) ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
+- [x] Edge case tests (empty/whitespace files) updated to expect failure without main()
 
-### Phase013IntegrationTests.cs (~54 methods)
-- [ ] (review file for complete list - variable declarations, type inference)
+### Phase013IntegrationTests.cs (~54 methods) ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
 
-### Phase014IntegrationTests.cs (~38 methods)
-- [ ] (review file for complete list)
+### Phase014IntegrationTests.cs (~38 methods) ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
 
-### Phase015IntegrationTests.cs (~52 methods)
-- [ ] (review file for complete list - spec examples, recursive functions)
+### Phase015IntegrationTests.cs (~52 methods) ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
 
-### Phase016IntegrationTests.cs (~39 methods)
-- [ ] (review file for complete list - classes and methods)
+### Phase016IntegrationTests.cs (~39 methods) ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
 
-### Phase017IntegrationTests.cs (~42 methods)
-- [ ] (review file for complete list)
+### Phase017IntegrationTests.cs (~42 methods) ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
 
-### Phase018IntegrationTests.cs (~45 methods)
-- [ ] (review file for complete list)
+### Phase018IntegrationTests.cs (~45 methods) ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
 
-### Phase019IntegrationTests.cs (~31 methods)
-- [ ] (review file for complete list)
+### Phase019IntegrationTests.cs (~31 methods) ✅ COMPLETED
+- [x] All tests updated with explicit main() functions
 
-### CrossModuleInheritanceTests.cs (~1 method)
-- [ ] (review file)
+### CrossModuleInheritanceTests.cs ✅ COMPLETED
+- [x] Uses ProjectCompiler - inline test files already have main() functions
+- [x] Fixed ClassInheritance_FromNetBaseClass_Works test to include main()
 
-### DependencyGraphIntegrationTests.cs
-- [ ] (review file - uses ProjectCompilationHelper)
+### DependencyGraphIntegrationTests.cs ✅ COMPLETED
+- [x] Uses ProjectCompiler - inline test files already have main() functions
 
 ---
 
-## Phase 3: File-Based Test Fixtures
+## Phase 3: File-Based Test Fixtures ✅ COMPLETED
 
 Check `.spy` files in `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`:
-- [ ] Review all `.spy` entry point test files for explicit `main()`
+- [x] Review all `.spy` entry point test files for explicit `main()` - all already have main()
 
 ---
 
-## Phase 4: TypeCheckerTests.cs
+## Phase 4: TypeCheckerTests.cs ✅ COMPLETED
 
 Tests using `wrapInFunction: false` need special handling:
-- [ ] Review which tests need `isEntryPoint: false` vs explicit `main()`
+- [x] Removed wrapInFunction parameter from CompileAndCheck helper methods
+- [x] Tests with executable statements now have explicit main() functions
+- [x] All tests use isEntryPoint: false (semantic tests don't need execution)
+
+### Phase0110IntegrationTests.cs ✅ COMPLETED
+- [x] All tests updated with explicit main() functions in entry point files
 
 ---
 

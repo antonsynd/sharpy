@@ -523,39 +523,42 @@ def main():
     #region Empty/Whitespace Tests
 
     [Fact]
-    public void MinimalProgram_EmptyFile_CompilesAndRuns()
+    public void MinimalProgram_EmptyFile_RequiresMain()
     {
+        // Entry point files require a main() function
         var source = @"";
 
         var result = CompileAndExecute(source);
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Empty(result.StandardOutput);
+        Assert.False(result.Success, "Empty file should fail compilation as entry point");
+        Assert.Contains(result.CompilationErrors, e => e.Contains("main"));
     }
 
     [Fact]
-    public void MinimalProgram_OnlyWhitespace_CompilesAndRuns()
+    public void MinimalProgram_OnlyWhitespace_RequiresMain()
     {
+        // Entry point files require a main() function
         var source = @"
-    
-    
+
+
 ";
 
         var result = CompileAndExecute(source);
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Empty(result.StandardOutput);
+        Assert.False(result.Success, "Whitespace-only file should fail compilation as entry point");
+        Assert.Contains(result.CompilationErrors, e => e.Contains("main"));
     }
 
     [Fact]
-    public void MinimalProgram_OnlyNewlines_CompilesAndRuns()
+    public void MinimalProgram_OnlyNewlines_RequiresMain()
     {
+        // Entry point files require a main() function
         var source = "\n\n\n\n";
 
         var result = CompileAndExecute(source);
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Empty(result.StandardOutput);
+        Assert.False(result.Success, "Newlines-only file should fail compilation as entry point");
+        Assert.Contains(result.CompilationErrors, e => e.Contains("main"));
     }
 
     #endregion

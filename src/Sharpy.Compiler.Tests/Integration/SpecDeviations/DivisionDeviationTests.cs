@@ -25,8 +25,9 @@ public class DivisionDeviationTests : IntegrationTestBase
     public void IntegerDivision_ShouldProduceFloat64Value()
     {
         var source = @"
-result = 5 / 2
-print(result)
+def main():
+    result = 5 / 2
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -44,10 +45,11 @@ print(result)
     public void IntegerDivision_TenDividedByFour_ShouldBeTwoPointFive()
     {
         var source = @"
-x: int = 10
-y: int = 4
-result = x / y
-print(result)
+def main():
+    x: int = 10
+    y: int = 4
+    result = x / y
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -63,8 +65,9 @@ print(result)
     public void IntegerDivision_TenDividedByThree_ShouldProduceRepeatingDecimal()
     {
         var source = @"
-result = 10 / 3
-print(result)
+def main():
+    result = 10 / 3
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -82,8 +85,9 @@ print(result)
     public void IntegerDivision_NegativeSeven_DividedByTwo_ShouldBeNegativeThreePointFive()
     {
         var source = @"
-result = -7 / 2
-print(result)
+def main():
+    result = -7 / 2
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -101,10 +105,11 @@ print(result)
     public void IntegerDivision_ShouldBeAssignableToFloat()
     {
         var source = @"
-x: int = 5
-y: int = 2
-result: float = x / y
-print(result)
+def main():
+    x: int = 5
+    y: int = 2
+    result: float = x / y
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -122,8 +127,9 @@ print(result)
     public void FloorDivision_ShouldReturnInteger()
     {
         var source = @"
-result = 5 // 2
-print(result)
+def main():
+    result = 5 // 2
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -141,8 +147,9 @@ print(result)
     public void FloorDivision_NegativeSeven_DividedByTwo_ShouldBeNegativeFour()
     {
         var source = @"
-result = -7 // 2
-print(result)
+def main():
+    result = -7 // 2
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -160,10 +167,11 @@ print(result)
     public void FloatDivision_ShouldProduceFloat()
     {
         var source = @"
-x: float = 5.0
-y: int = 2
-result = x / y
-print(result)
+def main():
+    x: float = 5.0
+    y: int = 2
+    result = x / y
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -180,10 +188,11 @@ print(result)
     public void FloatDivision_IntDividedByFloat_ShouldProduceFloat()
     {
         var source = @"
-x: int = 5
-y: float = 2.0
-result = x / y
-print(result)
+def main():
+    x: int = 5
+    y: float = 2.0
+    result = x / y
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -200,10 +209,11 @@ print(result)
     public void FloatFloorDivision_ShouldNotCauseAmbiguity()
     {
         var source = @"
-x: float = 7.0
-y: float = 2.0
-result: float = x // y
-print(result)
+def main():
+    x: float = 7.0
+    y: float = 2.0
+    result: float = x // y
+    print(result)
 ";
 
         var result = CompileAndExecute(source);

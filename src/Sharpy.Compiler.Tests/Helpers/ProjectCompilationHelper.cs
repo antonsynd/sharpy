@@ -119,13 +119,6 @@ public class ProjectCompilationHelper : IDisposable
             Directory.CreateDirectory(directory);
         }
 
-        // Wrap entry point files in main() if needed
-        var isEntry = isEntryPoint ?? (Options.EntryPoint == relativePath || relativePath == "main.spy");
-        if (isEntry)
-        {
-            content = TestHelpers.WrapWithMainIfNeeded(content);
-        }
-
         File.WriteAllText(fullPath, content);
         _sourceFiles.Add(fullPath);
 

@@ -50,7 +50,8 @@ def helper() -> str:
         helper.AddSourceFile("main.spy", @"
 import utils
 
-result = utils.helper()
+def main():
+    result = utils.helper()
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -72,7 +73,8 @@ def add(x: int, y: int) -> int:
         helper.AddSourceFile("main.spy", @"
 import lib.math
 
-result = lib.math.add(5, 3)
+def main():
+    result = lib.math.add(5, 3)
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -100,8 +102,9 @@ def concat(a: str, b: str) -> str:
 import math_ops
 import string_ops
 
-num = math_ops.add(5, 3)
-text = string_ops.concat('hello', 'world')
+def main():
+    num = math_ops.add(5, 3)
+    text = string_ops.concat('hello', 'world')
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -123,8 +126,9 @@ APP_NAME: str = 'MyApp'
         helper.AddSourceFile("main.spy", @"
 import config
 
-size = config.MAX_SIZE
-name = config.APP_NAME
+def main():
+    size = config.MAX_SIZE
+    name = config.APP_NAME
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -154,6 +158,9 @@ def func_b() -> int:
 
         helper.AddSourceFile("main.spy", @"
 import module_a
+
+def main():
+    pass
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -172,7 +179,8 @@ import module_a
         helper.AddSourceFile("main.spy", @"
 import nonexistent_module
 
-x = nonexistent_module.func()
+def main():
+    x = nonexistent_module.func()
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -200,7 +208,8 @@ def helper() -> str:
         helper.AddSourceFile("main.spy", @"
 import mypackage.module
 
-result = mypackage.module.helper()
+def main():
+    result = mypackage.module.helper()
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -232,8 +241,9 @@ DATA_VALUE: int = 42
         helper.AddSourceFile("main.spy", @"
 import mypackage
 
-result = mypackage.utility_func()
-value = mypackage.DATA_VALUE
+def main():
+    result = mypackage.utility_func()
+    value = mypackage.DATA_VALUE
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -255,8 +265,9 @@ DEBUG: bool = True
         helper.AddSourceFile("main.spy", @"
 import mypackage
 
-version = mypackage.VERSION
-debug = mypackage.DEBUG
+def main():
+    version = mypackage.VERSION
+    debug = mypackage.DEBUG
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -281,8 +292,9 @@ def helper() -> int:
         helper.AddSourceFile("main.spy", @"
 import mypackage
 
-result = mypackage.package_function()
-value = mypackage.helper()
+def main():
+    result = mypackage.package_function()
+    value = mypackage.helper()
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -305,7 +317,8 @@ def child_func() -> str:
         helper.AddSourceFile("main.spy", @"
 import parent.child
 
-result = parent.child.child_func()
+def main():
+    result = parent.child.child_func()
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -327,7 +340,8 @@ def format_string(s: str) -> str:
         helper.AddSourceFile("main.spy", @"
 from utils import format_string
 
-result = format_string('test')
+def main():
+    result = format_string('test')
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -350,7 +364,8 @@ result = format_string('test')
               .WithEntryPoint("main.spy");
 
         helper.AddSourceFile("main.spy", @"
-x: int = 42
+def main():
+    x: int = 42
 ");
 
         helper.CreateProjectFile();
@@ -399,8 +414,9 @@ VERSION: str = '1.0.0'
 import utils
 import config
 
-result = utils.helper()
-version = config.VERSION
+def main():
+    result = utils.helper()
+    version = config.VERSION
 ");
 
         helper.CreateProjectFile();
@@ -418,7 +434,8 @@ version = config.VERSION
               .WithEntryPoint("app.spy");
 
         helper.AddSourceFile("app.spy", @"
-x: int = 100
+def main():
+    x: int = 100
 ");
 
         helper.CreateProjectFile();
@@ -444,7 +461,8 @@ def compute() -> int:
         helper.AddSourceFile("main.spy", @"
 import dependency
 
-result = dependency.compute()
+def main():
+    result = dependency.compute()
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -473,7 +491,8 @@ def middle_func() -> int:
         helper.AddSourceFile("main.spy", @"
 import middle
 
-result = middle.middle_func()
+def main():
+    result = middle.middle_func()
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -509,8 +528,9 @@ def get_value_b() -> int:
 import module_a
 import module_b
 
-a = module_a.get_value_a()
-b = module_b.get_value_b()
+def main():
+    a = module_a.get_value_a()
+    b = module_b.get_value_b()
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -565,7 +585,8 @@ def func_b() -> int:
 import a
 import b
 
-result = a.func_a() + b.func_b()
+def main():
+    result = a.func_a() + b.func_b()
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -590,8 +611,9 @@ def subtract(x: int, y: int) -> int:
         helper.AddSourceFile("main.spy", @"
 import calculator
 
-sum = calculator.add(10, 5)
-diff = calculator.subtract(10, 5)
+def main():
+    sum = calculator.add(10, 5)
+    diff = calculator.subtract(10, 5)
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -613,8 +635,9 @@ def expects_int(x: int) -> int:
         helper.AddSourceFile("main.spy", @"
 import typed_module
 
-# Should fail: passing string to int parameter
-result = typed_module.expects_int('not an int')
+def main():
+    # Should fail: passing string to int parameter
+    result = typed_module.expects_int('not an int')
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -659,9 +682,10 @@ def divide(x: int, y: int) -> int:
         helper.AddSourceFile("main.spy", @"
 import math_lib
 
-sum = math_lib.add(10, 5)
-product = math_lib.multiply(10, 5)
-version = math_lib.VERSION
+def main():
+    sum = math_lib.add(10, 5)
+    product = math_lib.multiply(10, 5)
+    version = math_lib.VERSION
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -689,8 +713,9 @@ CONFIG: int = 100
 import app.utils
 import app.data
 
-text = app.utils.format_text('test')
-config = app.data.CONFIG
+def main():
+    text = app.utils.format_text('test')
+    config = app.data.CONFIG
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -717,7 +742,8 @@ def func_b() -> int:
 import module_a
 from module_b import func_b
 
-total = module_a.VALUE_A + func_b()
+def main():
+    total = module_a.VALUE_A + func_b()
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -753,8 +779,9 @@ DEBUG: bool = True
 import lib
 import config
 
-result = lib.utility()
-debug = config.DEBUG
+def main():
+    result = lib.utility()
+    debug = config.DEBUG
 ");
 
         helper.CreateProjectFile();
@@ -782,11 +809,12 @@ def func_{i}() -> int:
 
         // Create main that imports all
         var imports = string.Join("\n", Enumerable.Range(0, 10).Select(i => $"import util_{i}"));
-        var calls = string.Join("\n", Enumerable.Range(0, 10).Select(i => $"val_{i} = util_{i}.func_{i}()"));
+        var calls = string.Join("\n", Enumerable.Range(0, 10).Select(i => $"    val_{i} = util_{i}.func_{i}()"));
 
         helper.AddSourceFile("main.spy", $@"
 {imports}
 
+def main():
 {calls}
 ");
 
@@ -814,7 +842,8 @@ CHILD_VALUE: int = PARENT_VALUE + 50
         helper.AddSourceFile("main.spy", @"
 import parent.child
 
-value = parent.child.CHILD_VALUE
+def main():
+    value = parent.child.CHILD_VALUE
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -835,6 +864,9 @@ value = parent.child.CHILD_VALUE
         helper.AddSourceFile("empty.spy", "");
         helper.AddSourceFile("main.spy", @"
 import empty
+
+def main():
+    pass
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -855,6 +887,9 @@ import empty
 
         helper.AddSourceFile("main.spy", @"
 import comments
+
+def main():
+    pass
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -884,8 +919,9 @@ def func() -> int:
 import package_a.helper
 import package_b.helper
 
-val_a = package_a.helper.func()
-val_b = package_b.helper.func()
+def main():
+    val_a = package_a.helper.func()
+    val_b = package_b.helper.func()
 ");
 
         helper.WithEntryPoint("main.spy");
@@ -909,7 +945,8 @@ def deep_func() -> str:
         helper.AddSourceFile("main.spy", @"
 import level1.level2.level3
 
-result = level1.level2.level3.deep_func()
+def main():
+    result = level1.level2.level3.deep_func()
 ");
 
         helper.WithEntryPoint("main.spy");
