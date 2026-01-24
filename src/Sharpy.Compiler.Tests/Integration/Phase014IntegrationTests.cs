@@ -20,12 +20,13 @@ public class Phase014IntegrationTests : IntegrationTestBase
     {
         // From spec: factorial calculation using while loop
         var source = @"
-n: int = 5
-result: int = 1
-while n > 1:
-    result *= n
-    n -= 1
-print(result)
+def main():
+    n: int = 5
+    result: int = 1
+    while n > 1:
+        result *= n
+        n -= 1
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -46,10 +47,11 @@ def factorial(n: int) -> int:
         n -= 1
     return result
 
-print(factorial(5))
-print(factorial(0))
-print(factorial(1))
-print(factorial(6))
+def main():
+    print(factorial(5))
+    print(factorial(0))
+    print(factorial(1))
+    print(factorial(6))
 ";
 
         var result = CompileAndExecute(source);
@@ -63,15 +65,16 @@ print(factorial(6))
     {
         // FizzBuzz-style logic using if/elif/else
         var source = @"
-for i in range(1, 16):
-    if i % 15 == 0:
-        print(""FizzBuzz"")
-    elif i % 3 == 0:
-        print(""Fizz"")
-    elif i % 5 == 0:
-        print(""Buzz"")
-    else:
-        print(i)
+def main():
+    for i in range(1, 16):
+        if i % 15 == 0:
+            print(""FizzBuzz"")
+        elif i % 3 == 0:
+            print(""Fizz"")
+        elif i % 5 == 0:
+            print(""Buzz"")
+        else:
+            print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -97,7 +100,8 @@ def fizzbuzz(n: int):
         else:
             print(i)
 
-fizzbuzz(15)
+def main():
+    fizzbuzz(15)
 ";
 
         var result = CompileAndExecute(source);
@@ -115,11 +119,12 @@ fizzbuzz(15)
     public void WhileLoop_CountDown_WorksCorrectly()
     {
         var source = @"
-n: int = 5
-while n > 0:
-    print(n)
-    n -= 1
-print(""Liftoff!"")
+def main():
+    n: int = 5
+    while n > 0:
+        print(n)
+        n -= 1
+    print(""Liftoff!"")
 ";
 
         var result = CompileAndExecute(source);
@@ -132,12 +137,13 @@ print(""Liftoff!"")
     public void WhileLoop_SumOfNumbers_WorksCorrectly()
     {
         var source = @"
-n: int = 10
-sum: int = 0
-while n > 0:
-    sum += n
-    n -= 1
-print(sum)
+def main():
+    n: int = 10
+    sum: int = 0
+    while n > 0:
+        sum += n
+        n -= 1
+    print(sum)
 ";
 
         var result = CompileAndExecute(source);
@@ -151,13 +157,14 @@ print(sum)
     {
         // Calculate 2^10 using while loop
         var source = @"
-base: int = 2
-exp: int = 10
-result: int = 1
-while exp > 0:
-    result *= base
-    exp -= 1
-print(result)
+def main():
+    base: int = 2
+    exp: int = 10
+    result: int = 1
+    while exp > 0:
+        result *= base
+        exp -= 1
+    print(result)
 ";
 
         var result = CompileAndExecute(source);
@@ -177,9 +184,10 @@ def gcd(a: int, b: int) -> int:
         a = temp
     return a
 
-print(gcd(48, 18))
-print(gcd(100, 35))
-print(gcd(17, 13))
+def main():
+    print(gcd(48, 18))
+    print(gcd(100, 35))
+    print(gcd(17, 13))
 ";
 
         var result = CompileAndExecute(source);
@@ -196,10 +204,11 @@ print(gcd(17, 13))
     public void ForLoop_Sum1ToN_WorksCorrectly()
     {
         var source = @"
-sum: int = 0
-for i in range(1, 11):
-    sum += i
-print(sum)
+def main():
+    sum: int = 0
+    for i in range(1, 11):
+        sum += i
+    print(sum)
 ";
 
         var result = CompileAndExecute(source);
@@ -212,10 +221,11 @@ print(sum)
     public void ForLoop_Multiplication_WorksCorrectly()
     {
         var source = @"
-product: int = 1
-for i in range(1, 6):
-    product *= i
-print(product)
+def main():
+    product: int = 1
+    for i in range(1, 6):
+        product *= i
+    print(product)
 ";
 
         var result = CompileAndExecute(source);
@@ -228,8 +238,9 @@ print(product)
     public void ForLoop_EvenNumbers_WorksCorrectly()
     {
         var source = @"
-for i in range(0, 10, 2):
-    print(i)
+def main():
+    for i in range(0, 10, 2):
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -242,8 +253,9 @@ for i in range(0, 10, 2):
     public void ForLoop_OddNumbers_WorksCorrectly()
     {
         var source = @"
-for i in range(1, 10, 2):
-    print(i)
+def main():
+    for i in range(1, 10, 2):
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -256,8 +268,9 @@ for i in range(1, 10, 2):
     public void ForLoop_CountSquares_WorksCorrectly()
     {
         var source = @"
-for i in range(1, 6):
-    print(i * i)
+def main():
+    for i in range(1, 6):
+        print(i * i)
 ";
 
         var result = CompileAndExecute(source);
@@ -280,9 +293,10 @@ def abs_val(x: int) -> int:
     else:
         return x
 
-print(abs_val(5))
-print(abs_val(-5))
-print(abs_val(0))
+def main():
+    print(abs_val(5))
+    print(abs_val(-5))
+    print(abs_val(0))
 ";
 
         var result = CompileAndExecute(source);
@@ -303,9 +317,10 @@ def sign(x: int) -> int:
     else:
         return 0
 
-print(sign(10))
-print(sign(-10))
-print(sign(0))
+def main():
+    print(sign(10))
+    print(sign(-10))
+    print(sign(0))
 ";
 
         var result = CompileAndExecute(source);
@@ -326,10 +341,11 @@ def max3(a: int, b: int, c: int) -> int:
     else:
         return c
 
-print(max3(1, 2, 3))
-print(max3(3, 2, 1))
-print(max3(2, 3, 1))
-print(max3(5, 5, 5))
+def main():
+    print(max3(1, 2, 3))
+    print(max3(3, 2, 1))
+    print(max3(2, 3, 1))
+    print(max3(5, 5, 5))
 ";
 
         var result = CompileAndExecute(source);
@@ -350,10 +366,11 @@ def min3(a: int, b: int, c: int) -> int:
     else:
         return c
 
-print(min3(1, 2, 3))
-print(min3(3, 2, 1))
-print(min3(2, 3, 1))
-print(min3(5, 5, 5))
+def main():
+    print(min3(1, 2, 3))
+    print(min3(3, 2, 1))
+    print(min3(2, 3, 1))
+    print(min3(5, 5, 5))
 ";
 
         var result = CompileAndExecute(source);
@@ -376,9 +393,10 @@ def first_multiple_of(target: int, divisor: int) -> int:
             return i
     return -1
 
-print(first_multiple_of(10, 3))
-print(first_multiple_of(20, 7))
-print(first_multiple_of(5, 10))
+def main():
+    print(first_multiple_of(10, 3))
+    print(first_multiple_of(20, 7))
+    print(first_multiple_of(5, 10))
 ";
 
         var result = CompileAndExecute(source);
@@ -391,19 +409,20 @@ print(first_multiple_of(5, 10))
     public void Break_SearchInRange_WorksCorrectly()
     {
         var source = @"
-target: int = 7
-found: bool = False
-i: int = 0
-while i < 10:
-    if i == target:
-        found = True
-        break
-    i += 1
+def main():
+    target: int = 7
+    found: bool = False
+    i: int = 0
+    while i < 10:
+        if i == target:
+            found = True
+            break
+        i += 1
 
-if found:
-    print(""Found"")
-else:
-    print(""Not found"")
+    if found:
+        print(""Found"")
+    else:
+        print(""Not found"")
 ";
 
         var result = CompileAndExecute(source);
@@ -416,10 +435,11 @@ else:
     public void Continue_SkipMultiples_WorksCorrectly()
     {
         var source = @"
-for i in range(1, 11):
-    if i % 3 == 0:
-        continue
-    print(i)
+def main():
+    for i in range(1, 11):
+        if i % 3 == 0:
+            continue
+        print(i)
 ";
 
         var result = CompileAndExecute(source);
@@ -432,12 +452,13 @@ for i in range(1, 11):
     public void Continue_SumNonMultiples_WorksCorrectly()
     {
         var source = @"
-sum: int = 0
-for i in range(1, 11):
-    if i % 2 == 0:
-        continue
-    sum += i
-print(sum)
+def main():
+    sum: int = 0
+    for i in range(1, 11):
+        if i % 2 == 0:
+            continue
+        sum += i
+    print(sum)
 ";
 
         var result = CompileAndExecute(source);
@@ -454,9 +475,10 @@ print(sum)
     public void NestedLoops_MultiplicationTable_WorksCorrectly()
     {
         var source = @"
-for i in range(1, 4):
-    for j in range(1, 4):
-        print(i * j)
+def main():
+    for i in range(1, 4):
+        for j in range(1, 4):
+            print(i * j)
 ";
 
         var result = CompileAndExecute(source);
@@ -469,11 +491,12 @@ for i in range(1, 4):
     public void NestedLoops_TrianglePattern_WorksCorrectly()
     {
         var source = @"
-for i in range(1, 5):
-    count: int = 0
-    while count < i:
-        print(""*"")
-        count += 1
+def main():
+    for i in range(1, 5):
+        count: int = 0
+        while count < i:
+            print(""*"")
+            count += 1
 ";
 
         var result = CompileAndExecute(source);
@@ -486,13 +509,14 @@ for i in range(1, 5):
     public void NestedIfInLoop_ClassifyNumbers_WorksCorrectly()
     {
         var source = @"
-for i in range(-2, 3):
-    if i > 0:
-        print(""positive"")
-    elif i < 0:
-        print(""negative"")
-    else:
-        print(""zero"")
+def main():
+    for i in range(-2, 3):
+        if i > 0:
+            print(""positive"")
+        elif i < 0:
+            print(""negative"")
+        else:
+            print(""zero"")
 ";
 
         var result = CompileAndExecute(source);
@@ -505,16 +529,17 @@ for i in range(-2, 3):
     public void NestedWhileLoops_CountPairs_WorksCorrectly()
     {
         var source = @"
-count: int = 0
-i: int = 1
-while i <= 3:
-    j: int = 1
-    while j <= 3:
-        if i != j:
-            count += 1
-        j += 1
-    i += 1
-print(count)
+def main():
+    count: int = 0
+    i: int = 1
+    while i <= 3:
+        j: int = 1
+        while j <= 3:
+            if i != j:
+                count += 1
+            j += 1
+        i += 1
+    print(count)
 ";
 
         var result = CompileAndExecute(source);
@@ -545,9 +570,10 @@ def is_prime(n: int) -> bool:
         i += 2
     return True
 
-for n in range(1, 20):
-    if is_prime(n):
-        print(n)
+def main():
+    for n in range(1, 20):
+        if is_prime(n):
+            print(n)
 ";
 
         var result = CompileAndExecute(source);
@@ -573,8 +599,9 @@ def fib(n: int) -> int:
         i += 1
     return b
 
-for i in range(10):
-    print(fib(i))
+def main():
+    for i in range(10):
+        print(fib(i))
 ";
 
         var result = CompileAndExecute(source);
@@ -597,9 +624,10 @@ def collatz_length(n: int) -> int:
         steps += 1
     return steps
 
-print(collatz_length(6))
-print(collatz_length(7))
-print(collatz_length(27))
+def main():
+    print(collatz_length(6))
+    print(collatz_length(7))
+    print(collatz_length(27))
 ";
 
         var result = CompileAndExecute(source);
@@ -623,10 +651,11 @@ def count_digits(n: int) -> int:
         n //= 10
     return count
 
-print(count_digits(0))
-print(count_digits(5))
-print(count_digits(123))
-print(count_digits(-9876))
+def main():
+    print(count_digits(0))
+    print(count_digits(5))
+    print(count_digits(123))
+    print(count_digits(-9876))
 ";
 
         var result = CompileAndExecute(source);
@@ -648,9 +677,10 @@ def sum_digits(n: int) -> int:
         n //= 10
     return sum
 
-print(sum_digits(123))
-print(sum_digits(9999))
-print(sum_digits(-456))
+def main():
+    print(sum_digits(123))
+    print(sum_digits(9999))
+    print(sum_digits(-456))
 ";
 
         var result = CompileAndExecute(source);
@@ -675,9 +705,10 @@ def reverse_num(n: int) -> int:
         return -reversed
     return reversed
 
-print(reverse_num(123))
-print(reverse_num(9876))
-print(reverse_num(-456))
+def main():
+    print(reverse_num(123))
+    print(reverse_num(9876))
+    print(reverse_num(-456))
 ";
 
         var result = CompileAndExecute(source);
@@ -694,11 +725,12 @@ print(reverse_num(-456))
     public void EdgeCase_WhileLoopNeverExecutes_WorksCorrectly()
     {
         var source = @"
-i: int = 10
-while i < 5:
-    print(""should not print"")
-    i += 1
-print(""done"")
+def main():
+    i: int = 10
+    while i < 5:
+        print(""should not print"")
+        i += 1
+    print(""done"")
 ";
 
         var result = CompileAndExecute(source);
@@ -711,9 +743,10 @@ print(""done"")
     public void EdgeCase_ForLoopEmptyRange_WorksCorrectly()
     {
         var source = @"
-for i in range(5, 5):
-    print(""should not print"")
-print(""done"")
+def main():
+    for i in range(5, 5):
+        print(""should not print"")
+    print(""done"")
 ";
 
         var result = CompileAndExecute(source);
@@ -726,10 +759,11 @@ print(""done"")
     public void EdgeCase_SingleIterationWhile_WorksCorrectly()
     {
         var source = @"
-i: int = 0
-while i < 1:
-    print(""once"")
-    i += 1
+def main():
+    i: int = 0
+    while i < 1:
+        print(""once"")
+        i += 1
 ";
 
         var result = CompileAndExecute(source);
@@ -742,8 +776,9 @@ while i < 1:
     public void EdgeCase_SingleIterationFor_WorksCorrectly()
     {
         var source = @"
-for i in range(1):
-    print(""once"")
+def main():
+    for i in range(1):
+        print(""once"")
 ";
 
         var result = CompileAndExecute(source);
@@ -756,20 +791,21 @@ for i in range(1):
     public void EdgeCase_DeeplyNestedIf_WorksCorrectly()
     {
         var source = @"
-x: int = 5
-if x > 0:
-    if x > 2:
-        if x > 4:
-            if x > 6:
-                print(""greater than 6"")
+def main():
+    x: int = 5
+    if x > 0:
+        if x > 2:
+            if x > 4:
+                if x > 6:
+                    print(""greater than 6"")
+                else:
+                    print(""between 5 and 6"")
             else:
-                print(""between 5 and 6"")
+                print(""between 3 and 4"")
         else:
-            print(""between 3 and 4"")
+            print(""between 1 and 2"")
     else:
-        print(""between 1 and 2"")
-else:
-    print(""non-positive"")
+        print(""non-positive"")
 ";
 
         var result = CompileAndExecute(source);
@@ -782,9 +818,10 @@ else:
     public void EdgeCase_ImmediateBreak_WorksCorrectly()
     {
         var source = @"
-for i in range(10):
-    break
-print(""done"")
+def main():
+    for i in range(10):
+        break
+    print(""done"")
 ";
 
         var result = CompileAndExecute(source);
@@ -797,11 +834,12 @@ print(""done"")
     public void EdgeCase_ImmediateContinue_WorksCorrectly()
     {
         var source = @"
-count: int = 0
-for i in range(5):
-    count += 1
-    continue
-print(count)
+def main():
+    count: int = 0
+    for i in range(5):
+        count += 1
+        continue
+    print(count)
 ";
 
         var result = CompileAndExecute(source);
