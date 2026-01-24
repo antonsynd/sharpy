@@ -106,7 +106,7 @@ def foo():
 
 1. **Module Structure**
    - Module as top-level container
-   - Support for top-level statements
+   - Support for top-level declarations
 
 2. **AST Node Types**
    - `Module`: root node containing statements
@@ -170,7 +170,8 @@ pass
 ### Features
 
 1. **Entry Point Generation**
-   - Top-level statements wrapped in `Main()` method
+   - `main()` function required in entry point files
+   - Module-level declarations become static fields
    - Generated class structure for module
 
 2. **Type Mapping (Primitives)**

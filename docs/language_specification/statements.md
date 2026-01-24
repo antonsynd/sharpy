@@ -63,6 +63,67 @@ x: str = "hello"       # Shadowing: new variable of type str
 x: auto = [1, 2, 3]    # Shadowing: new variable, type inferred as list[int]
 ```
 
+## Module-Level Declaration Rules
+
+At module level (outside any function or class), variable declarations have additional constraints:
+
+### Type Annotation Required
+
+Module-level variables MUST have explicit type annotations:
+
+```python
+# ✅ Valid module-level declarations
+counter: int = 0
+name: str = "default"
+items: list[int] = []
+data: Config? = None
+
+# ❌ Invalid - no type annotation at module level
+x = 42                  # ERROR: requires type annotation
+name = "hello"          # ERROR: requires type annotation
+```
+
+**Rationale:** This rule eliminates ambiguity between static field declarations and executable statements, which would otherwise look identical syntactically.
+
+### No Executable Statements
+
+Bare expression statements are not allowed at module level:
+
+```python
+# ❌ NOT allowed at module level
+print("hello")          # ERROR: executable statement not allowed
+my_function()           # ERROR: executable statement not allowed
+obj.method()            # ERROR: executable statement not allowed
+1 + 2                   # ERROR: executable statement not allowed
+
+# ✅ Move into main() or another function
+def main():
+    print("hello")      # OK inside function
+    my_function()       # OK inside function
+```
+
+### Function Calls in Initializers
+
+Function calls ARE allowed as part of a variable initializer:
+
+```python
+# ✅ Valid - function call is part of initialization
+config: Config = load_config()
+data: list[int] = generate_data()
+timestamp: int = get_current_time()
+```
+
+### Inside Functions
+
+Inside functions (including `main()`), type inference works normally:
+
+```python
+def main():
+    x = 42              # ✅ OK - inferred as int
+    name = "hello"      # ✅ OK - inferred as str
+    result = compute()  # ✅ OK - inferred from return type
+```
+
 ## No Declaration Without Assignment
 
 Unlike some languages, Sharpy does not allow variable declarations without initialization:
