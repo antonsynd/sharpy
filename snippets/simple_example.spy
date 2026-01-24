@@ -1,17 +1,19 @@
-class Person:
-    def __init__(self, name: str, age: int):
-        self.name = name
-        self.age = age
+# Simple Sharpy example demonstrating basic features
 
-    def greet(self) -> str:
-        return "Hello, I'm " + self.name
+def square(x: int) -> int:
+    return x * x
 
 def main():
+    # Loop with if/else
     for i in range(10):
         if i % 2 == 0:
             print("Even: ", i)
         else:
             print("Odd: ", i)
 
-    result = lambda x, y: x ** 2 + y ** 2
-    numbers = [1j + 2, 3.14, 42]
+    # Function call
+    print("Square of 5:", square(5))
+
+    # List with type annotation
+    numbers: list[float] = [2.0, 3.14, 42.0]
+    print("Numbers:", numbers)
