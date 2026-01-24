@@ -47,8 +47,9 @@ class Box[T]:
     def get(self) -> T:
         return self.value
 
-box = Box[int](42)
-print(box.get())
+def main():
+    box = Box[int](42)
+    print(box.get())
 ";
 
         // Act
@@ -78,9 +79,10 @@ class Pair[T, U]:
     def get_second(self) -> U:
         return self.second
 
-p = Pair[int, str](42, ""hello"")
-print(p.get_first())
-print(p.get_second())
+def main():
+    p = Pair[int, str](42, ""hello"")
+    print(p.get_first())
+    print(p.get_second())
 ";
 
         // Act
@@ -105,8 +107,9 @@ class Container[T]:
     def display(self) -> None:
         print(self.item)
 
-c = Container[str](""test"")
-c.display()
+def main():
+    c = Container[str](""test"")
+    c.display()
 ";
 
         // Act
@@ -131,8 +134,9 @@ class Wrapper[T]:
     def get_data(self) -> T:
         return self.data
 
-w = Wrapper[bool](True)
-print(w.get_data())
+def main():
+    w = Wrapper[bool](True)
+    print(w.get_data())
 ";
 
         // Act
@@ -157,10 +161,11 @@ class Box[T]:
     def get(self) -> T:
         return self.value
 
-int_box = Box[int](100)
-str_box = Box[str](""data"")
-print(int_box.get())
-print(str_box.get())
+def main():
+    int_box = Box[int](100)
+    str_box = Box[str](""data"")
+    print(int_box.get())
+    print(str_box.get())
 ";
 
         // Act
@@ -183,10 +188,11 @@ print(str_box.get())
 def identity[T](value: T) -> T:
     return value
 
-x = identity[int](42)
-y = identity[str](""test"")
-print(x)
-print(y)
+def main():
+    x = identity[int](42)
+    y = identity[str](""test"")
+    print(x)
+    print(y)
 ";
 
         // Act
@@ -205,8 +211,9 @@ print(y)
 def create_pair[T, U](first: T, second: U) -> str:
     return f""{first}, {second}""
 
-result = create_pair[int, str](10, ""value"")
-print(result)
+def main():
+    result = create_pair[int, str](10, ""value"")
+    print(result)
 ";
 
         // Act
@@ -225,10 +232,11 @@ print(result)
 def get_default[T](value: T) -> T:
     return value
 
-val1 = get_default[int](0)
-val2 = get_default[str](""empty"")
-print(val1)
-print(val2)
+def main():
+    val1 = get_default[int](0)
+    val2 = get_default[str](""empty"")
+    print(val1)
+    print(val2)
 ";
 
         // Act
@@ -256,9 +264,10 @@ struct Point[T]:
         self.x = x
         self.y = y
 
-p = Point[int](10, 20)
-print(p.x)
-print(p.y)
+def main():
+    p = Point[int](10, 20)
+    print(p.x)
+    print(p.y)
 ";
 
         // Act
@@ -282,9 +291,10 @@ struct Vector[T]:
         self.x = x
         self.y = y
 
-v = Vector[float](3.5, 4.5)
-print(v.x)
-print(v.y)
+def main():
+    v = Vector[float](3.5, 4.5)
+    print(v.x)
+    print(v.y)
 ";
 
         // Act
@@ -308,9 +318,10 @@ struct Tuple[T, U]:
         self.first = first
         self.second = second
 
-t = Tuple[int, str](42, ""answer"")
-print(t.first)
-print(t.second)
+def main():
+    t = Tuple[int, str](42, ""answer"")
+    print(t.first)
+    print(t.second)
 ";
 
         // Act
@@ -346,7 +357,8 @@ class Comparer[T: IComparable]:
 # Note: We can't easily test interface implementation in this simple test,
 # but we can verify the constraint is parsed and generated correctly.
 # The C# compilation will fail if the constraint syntax is wrong.
-print(""OK"")
+def main():
+    print(""OK"")
 ";
 
         // Act
@@ -371,8 +383,9 @@ class Container[T: class]:
     def get(self) -> T:
         return self.value
 
-c = Container[str](""test"")
-print(c.get())
+def main():
+    c = Container[str](""test"")
+    print(c.get())
 ";
 
         // Act
@@ -394,8 +407,9 @@ struct Wrapper[T: struct]:
     def __init__(self, value: T):
         self.value = value
 
-w = Wrapper[int](100)
-print(w.value)
+def main():
+    w = Wrapper[int](100)
+    print(w.value)
 ";
 
         // Act
@@ -425,7 +439,8 @@ class Manager[T: class, IDisposable]:
         return self.resource
 
 # Just verify compilation succeeds with multiple constraints
-print(""OK"")
+def main():
+    print(""OK"")
 ";
 
         // Act
@@ -450,7 +465,8 @@ def find_max[T: IComparable](a: T, b: T) -> T:
     return a
 
 # Verify compilation succeeds
-print(""OK"")
+def main():
+    print(""OK"")
 ";
 
         // Act
@@ -488,9 +504,10 @@ class Container[T]:
     def get_item(self) -> T:
         return self.item
 
-inner = Box[int](42)
-outer = Container[Box[int]](inner)
-print(outer.get_item().get())
+def main():
+    inner = Box[int](42)
+    outer = Container[Box[int]](inner)
+    print(outer.get_item().get())
 ";
 
         // Act
@@ -515,9 +532,10 @@ class Factory[T]:
     def create(self) -> T:
         return self.default_value
 
-f = Factory[str](""default"")
-result = f.create()
-print(result)
+def main():
+    f = Factory[str](""default"")
+    result = f.create()
+    print(result)
 ";
 
         // Act
@@ -543,10 +561,11 @@ class Triple[T, U, V]:
         self.second = second
         self.third = third
 
-t = Triple[int, str, bool](1, ""two"", True)
-print(t.first)
-print(t.second)
-print(t.third)
+def main():
+    t = Triple[int, str, bool](1, ""two"", True)
+    print(t.first)
+    print(t.second)
+    print(t.third)
 ";
 
         // Act
@@ -574,9 +593,10 @@ class Box[T]:
 def extract[T](box: Box[T]) -> T:
     return box.get()
 
-b = Box[int](99)
-result = extract[int](b)
-print(result)
+def main():
+    b = Box[int](99)
+    result = extract[int](b)
+    print(result)
 ";
 
         // Act
@@ -607,10 +627,11 @@ class Repository[T]:
     def display(self) -> None:
         print(self.data)
 
-repo = Repository[str](""initial"")
-repo.display()
-repo.set_data(""updated"")
-repo.display()
+def main():
+    repo = Repository[str](""initial"")
+    repo.display()
+    repo.set_data(""updated"")
+    repo.display()
 ";
 
         // Act
@@ -637,7 +658,8 @@ interface IContainer[T]:
         pass
 
 # Just verify the interface compiles
-print(""OK"")
+def main():
+    print(""OK"")
 ";
 
         // Act
@@ -658,7 +680,8 @@ interface IMapper[T, U]:
         pass
 
 # Just verify the interface compiles
-print(""OK"")
+def main():
+    print(""OK"")
 ";
 
         // Act
@@ -682,9 +705,10 @@ class Transformer[T]:
     def transform(self, input: T) -> T:
         return input
 
-t = Transformer[int]()
-result = t.transform(55)
-print(result)
+def main():
+    t = Transformer[int]()
+    result = t.transform(55)
+    print(result)
 ";
 
         // Act
@@ -711,11 +735,12 @@ struct Cell[T]:
         self.value = new_value
         return old
 
-c = Cell[int](10)
-print(c.value)
-old = c.swap(20)
-print(old)
-print(c.value)
+def main():
+    c = Cell[int](10)
+    print(c.value)
+    old = c.swap(20)
+    print(old)
+    print(c.value)
 ";
 
         // Act
@@ -734,8 +759,9 @@ print(c.value)
 def combine[T, U, V](a: T, b: U, c: V) -> str:
     return f""{a}, {b}, {c}""
 
-result = combine[int, str, bool](1, ""test"", False)
-print(result)
+def main():
+    result = combine[int, str, bool](1, ""test"", False)
+    print(result)
 ";
 
         // Act
@@ -764,12 +790,13 @@ class Pair[T]:
         self.first = self.second
         self.second = temp
 
-p = Pair[str](""A"", ""B"")
-print(p.first)
-print(p.second)
-p.swap()
-print(p.first)
-print(p.second)
+def main():
+    p = Pair[str](""A"", ""B"")
+    print(p.first)
+    print(p.second)
+    p.swap()
+    print(p.first)
+    print(p.second)
 ";
 
         // Act
@@ -801,11 +828,12 @@ class Box[T]:
 def unwrap[T](box: Box[T]) -> T:
     return box.get()
 
-int_box = Box[int](42)
-str_box = Box[str](""hello"")
+def main():
+    int_box = Box[int](42)
+    str_box = Box[str](""hello"")
 
-print(unwrap[int](int_box))
-print(unwrap[str](str_box))
+    print(unwrap[int](int_box))
+    print(unwrap[str](str_box))
 ";
 
         // Act
@@ -832,11 +860,12 @@ struct ValueWrapper[T: struct]:
     def invalidate(self) -> None:
         self.is_valid = False
 
-w = ValueWrapper[int](100)
-print(w.data)
-print(w.is_valid)
-w.invalidate()
-print(w.is_valid)
+def main():
+    w = ValueWrapper[int](100)
+    print(w.data)
+    print(w.is_valid)
+    w.invalidate()
+    print(w.is_valid)
 ";
 
         // Act
@@ -865,10 +894,11 @@ class Processor[T]:
     def process(self, container: Container[T]) -> T:
         return container.get()
 
-c = Container[int](99)
-p = Processor[int]()
-result = p.process(c)
-print(result)
+def main():
+    c = Container[int](99)
+    p = Processor[int]()
+    result = p.process(c)
+    print(result)
 ";
 
         // Act
@@ -901,10 +931,11 @@ class Cache[TKey, TValue]:
     def display(self) -> None:
         print(f""{self.key}: {self.value}"")
 
-cache = Cache[str, int](""count"", 42)
-cache.display()
-print(cache.get_key())
-print(cache.get_value())
+def main():
+    cache = Cache[str, int](""count"", 42)
+    cache.display()
+    print(cache.get_key())
+    print(cache.get_value())
 ";
 
         // Act
