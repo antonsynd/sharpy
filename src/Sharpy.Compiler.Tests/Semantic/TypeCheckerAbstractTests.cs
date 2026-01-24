@@ -46,7 +46,7 @@ class Shape:
     def area(self) -> float: ...
 ";
         var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
 
@@ -68,7 +68,7 @@ class Shape:
         ...
 ";
         var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
 
@@ -88,7 +88,7 @@ class Shape:
     def contains(self, x: float, y: float) -> bool: ...
 ";
         var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
 
@@ -111,7 +111,7 @@ class Shape:
     def area(self) -> float: ...
 ";
         var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
 
@@ -136,7 +136,7 @@ class Shape:
         return ""shape""
 ";
         var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
 
@@ -160,7 +160,7 @@ class TodoService:
     def not_done_yet(self) -> int: ...
 ";
         var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should NOT error - ellipsis in concrete class is valid (generates NotImplementedException)
         typeChecker.Errors.Should().BeEmpty();
@@ -183,7 +183,7 @@ class Shape:
     def area(self) -> float: ...
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().NotBeEmpty();
         typeChecker.Errors[0].Message.Should().Contain("abstract class",
@@ -201,7 +201,7 @@ class Shape:
         return 0.0
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: true);
+        typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().NotBeEmpty();
         typeChecker.Errors[0].Message.Should().Contain("...",
