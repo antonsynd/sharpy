@@ -1,9 +1,10 @@
-x = 42
-y = 3.14
-z = "hello"
-flag = True
+def main():
+    x = 42
+    y = 3.14
+    z = "hello"
+    flag = True
 
-print(x)
-print(y)
-print(z)
-print(flag)
+    print(x)
+    print(y)
+    print(z)
+    print(flag)

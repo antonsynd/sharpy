@@ -48,12 +48,13 @@ class Square(Shape):
     def perimeter(self) -> float:
         return 4.0 * self.side
 
-rect = Rectangle(4.0, 5.0)
-sq = Square(3.0)
+def main():
+    rect = Rectangle(4.0, 5.0)
+    sq = Square(3.0)
 
-print(rect.describe())
-print(rect.area())
-print(rect.perimeter())
-print(sq.describe())
-print(sq.area())
-print(sq.perimeter())
+    print(rect.describe())
+    print(rect.area())
+    print(rect.perimeter())
+    print(sq.describe())
+    print(sq.area())
+    print(sq.perimeter())

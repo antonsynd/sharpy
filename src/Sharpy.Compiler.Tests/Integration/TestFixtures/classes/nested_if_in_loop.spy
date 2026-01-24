@@ -99,4 +99,6 @@ def simulate_combat(p: Player, e: Enemy, rounds: int) -> None:
 
 p1: Player = Player(100, 25, 50)
 e1: Enemy = Enemy(120, 30, 5)
-simulate_combat(p1, e1, 5)
+
+def main():
+    simulate_combat(p1, e1, 5)

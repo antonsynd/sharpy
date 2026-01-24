@@ -28,16 +28,18 @@ def can_cancel(status: OrderStatus) -> bool:
 
 # Test enum values and functions
 current_status: OrderStatus = OrderStatus.PENDING
-print(get_status_description(current_status))
-print(can_cancel(current_status))
 
-current_status = OrderStatus.PROCESSING
-print(get_status_description(current_status))
-print(can_cancel(current_status))
+def main():
+    print(get_status_description(current_status))
+    print(can_cancel(current_status))
 
-current_status = OrderStatus.SHIPPED
-print(get_status_description(current_status))
-print(can_cancel(current_status))
+    current_status = OrderStatus.PROCESSING
+    print(get_status_description(current_status))
+    print(can_cancel(current_status))
 
-current_status = OrderStatus.DELIVERED
-print(get_status_description(current_status))
+    current_status = OrderStatus.SHIPPED
+    print(get_status_description(current_status))
+    print(can_cancel(current_status))
+
+    current_status = OrderStatus.DELIVERED
+    print(get_status_description(current_status))

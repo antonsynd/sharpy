@@ -11,11 +11,12 @@ class Accumulator:
             self.total += i
         return self.total
 
-acc = Accumulator()
-result = acc.sum_to(5)
-print(result)
-print(acc.total)
+def main():
+    acc = Accumulator()
+    result = acc.sum_to(5)
+    print(result)
+    print(acc.total)
 
-# EXPECTED OUTPUT:
-# 15
-# 15
+    # EXPECTED OUTPUT:
+    # 15
+    # 15

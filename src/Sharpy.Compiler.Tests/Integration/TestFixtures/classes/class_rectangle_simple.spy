@@ -13,6 +13,7 @@ class Rectangle:
     def perimeter(self) -> int:
         return 2 * (self.width + self.height)
 
-rect = Rectangle(5, 3)
-print(rect.area())
-print(rect.perimeter())
+def main():
+    rect = Rectangle(5, 3)
+    print(rect.area())
+    print(rect.perimeter())

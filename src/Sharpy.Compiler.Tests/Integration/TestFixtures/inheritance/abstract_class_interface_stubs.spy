@@ -62,19 +62,21 @@ class Circle(Shape):
         print(self.radius)
 
 rect: Rectangle = Rectangle(5, 3)
-rect.display()
-print(rect.calculate())
-print(rect.describe())
-
 circ: Circle = Circle(4)
-circ.display()
-print(circ.describe())
 
-# EXPECTED OUTPUT:
-# Rectangle
-# 15
-# 8
-# Rectangle
-# Circle with radius:
-# 4
-# Circle
+def main():
+    rect.display()
+    print(rect.calculate())
+    print(rect.describe())
+
+    circ.display()
+    print(circ.describe())
+
+    # EXPECTED OUTPUT:
+    # Rectangle
+    # 15
+    # 8
+    # Rectangle
+    # Circle with radius:
+    # 4
+    # Circle

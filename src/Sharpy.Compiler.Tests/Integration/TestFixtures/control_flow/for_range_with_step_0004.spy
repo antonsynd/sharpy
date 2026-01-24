@@ -13,32 +13,33 @@ class StepCounter:
         for i in range(start, 0, -3):
             print(i)
 
-counter = StepCounter()
+def main():
+    counter = StepCounter()
 
-counter.count_by_twos(10)
-print(999)
+    counter.count_by_twos(10)
+    print(999)
 
-counter.count_by_fives(10, 30)
-print(888)
+    counter.count_by_fives(10, 30)
+    print(888)
 
-counter.countdown_by_threes(20)
+    counter.countdown_by_threes(20)
 
-# EXPECTED OUTPUT:
-# 0
-# 2
-# 4
-# 6
-# 8
-# 999
-# 10
-# 15
-# 20
-# 25
-# 888
-# 20
-# 17
-# 14
-# 11
-# 8
-# 5
-# 2
+    # EXPECTED OUTPUT:
+    # 0
+    # 2
+    # 4
+    # 6
+    # 8
+    # 999
+    # 10
+    # 15
+    # 20
+    # 25
+    # 888
+    # 20
+    # 17
+    # 14
+    # 11
+    # 8
+    # 5
+    # 2

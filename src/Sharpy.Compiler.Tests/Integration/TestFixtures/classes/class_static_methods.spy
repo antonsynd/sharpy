@@ -6,11 +6,12 @@ class MathHelper:
     def square(x: int) -> int:
         return x * x
 
-result1 = MathHelper.add(3, 7)
-print(result1)
+def main():
+    result1 = MathHelper.add(3, 7)
+    print(result1)
 
-result2 = MathHelper.square(5)
-print(result2)
+    result2 = MathHelper.square(5)
+    print(result2)
 
-result3 = MathHelper.add(result2, 10)
-print(result3)
+    result3 = MathHelper.add(result2, 10)
+    print(result3)

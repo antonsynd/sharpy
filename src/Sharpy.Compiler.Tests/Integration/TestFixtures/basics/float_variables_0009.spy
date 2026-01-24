@@ -13,48 +13,50 @@ def convert_temperature(celsius: float) -> float:
 # Test basic float operations
 x: float = 10.5
 y: float = 3.2
-print(x)
-print(y)
-
-# Arithmetic operations
 sum_val: float = x + y
 diff_val: float = x - y
 prod_val: float = x * y
 quot_val: float = x / y
-
-print(sum_val)
-print(diff_val)
-print(prod_val)
-print(quot_val)
-
-# Function calls with floats
 circle_area: float = compute_area(2.0)
-print(circle_area)
-
 temp_f: float = convert_temperature(25.0)
-print(temp_f)
-
-# Float comparisons with control flow
 threshold: float = 50.0
-if temp_f > threshold:
-    print(True)
-else:
-    print(False)
-
-# Augmented assignment with floats
 accumulator: float = 1.0
-accumulator *= 2.5
-accumulator += 0.5
-print(accumulator)
 
-# EXPECTED OUTPUT:
-# 10.5
-# 3.2
-# 13.7
-# 7.3
-# 33.6
-# 3.28125
-# 12.56636
-# 77
-# True
-# 3
+def main():
+    print(x)
+    print(y)
+
+    # Arithmetic operations
+
+    print(sum_val)
+    print(diff_val)
+    print(prod_val)
+    print(quot_val)
+
+    # Function calls with floats
+    print(circle_area)
+
+    print(temp_f)
+
+    # Float comparisons with control flow
+    if temp_f > threshold:
+        print(True)
+    else:
+        print(False)
+
+    # Augmented assignment with floats
+    accumulator *= 2.5
+    accumulator += 0.5
+    print(accumulator)
+
+    # EXPECTED OUTPUT:
+    # 10.5
+    # 3.2
+    # 13.7
+    # 7.3
+    # 33.6
+    # 3.28125
+    # 12.56636
+    # 77
+    # True
+    # 3

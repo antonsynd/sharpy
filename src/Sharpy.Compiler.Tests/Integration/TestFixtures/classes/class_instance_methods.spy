@@ -12,7 +12,8 @@ class Calculator:
     def get_result(self) -> int:
         return self.result
 
-calc = Calculator(5)
-print(calc.get_result())
-print(calc.add(7))
-print(calc.get_result())
+def main():
+    calc = Calculator(5)
+    print(calc.get_result())
+    print(calc.add(7))
+    print(calc.get_result())

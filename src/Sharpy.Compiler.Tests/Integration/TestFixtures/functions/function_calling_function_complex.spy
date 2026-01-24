@@ -68,4 +68,5 @@ def run_demo() -> None:
 
     print(300)
 
-run_demo()
+def main():
+    run_demo()

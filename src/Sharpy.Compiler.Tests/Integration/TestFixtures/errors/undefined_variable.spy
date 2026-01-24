@@ -1,1 +1,2 @@
-print(undefined_var)
+def main():
+    print(undefined_var)

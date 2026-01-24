@@ -16,14 +16,15 @@ class Calculator:
     def get_value(self) -> int:
         return self.current_value
 
-calc = Calculator(20)
-print(calc.get_value())
-print(calc.add(15))
-print(calc.subtract(10))
-print(calc.get_value())
+def main():
+    calc = Calculator(20)
+    print(calc.get_value())
+    print(calc.add(15))
+    print(calc.subtract(10))
+    print(calc.get_value())
 
-# EXPECTED OUTPUT:
-# 20
-# 35
-# 25
-# 25
+    # EXPECTED OUTPUT:
+    # 20
+    # 35
+    # 25
+    # 25

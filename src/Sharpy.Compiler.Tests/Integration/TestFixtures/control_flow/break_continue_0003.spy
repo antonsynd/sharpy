@@ -20,28 +20,30 @@ def sum_odd_numbers(max_val: int) -> int:
 
 # Test break: find first multiple of 7 up to 50
 first_mult: int = find_first_multiple(7, 50)
-print(first_mult)
-
-# Test continue: sum odd numbers from 1 to 10
 odd_sum: int = sum_odd_numbers(10)
-print(odd_sum)
-
-# Nested loop with break
 outer: int = 0
-while outer < 5:
-    inner: int = 0
-    while inner < 5:
-        if inner == 3:
-            break
-        inner += 1
-    print(inner)
-    outer += 1
 
-# EXPECTED OUTPUT:
-# 7
-# 25
-# 3
-# 3
-# 3
-# 3
-# 3
+def main():
+    print(first_mult)
+
+    # Test continue: sum odd numbers from 1 to 10
+    print(odd_sum)
+
+    # Nested loop with break
+    while outer < 5:
+        inner: int = 0
+        while inner < 5:
+            if inner == 3:
+                break
+            inner += 1
+        print(inner)
+        outer += 1
+
+    # EXPECTED OUTPUT:
+    # 7
+    # 25
+    # 3
+    # 3
+    # 3
+    # 3
+    # 3

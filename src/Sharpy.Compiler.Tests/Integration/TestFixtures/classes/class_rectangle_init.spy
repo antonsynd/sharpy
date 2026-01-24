@@ -10,7 +10,8 @@ class Rectangle:
     def area(self) -> int:
         return self.width * self.height
 
-r = Rectangle(5, 3)
-print(r.width)
-print(r.height)
-print(r.area())
+def main():
+    r = Rectangle(5, 3)
+    print(r.width)
+    print(r.height)
+    print(r.area())

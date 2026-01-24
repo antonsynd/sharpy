@@ -1,0 +1,6 @@
+# Error test: Module-level variable without type annotation
+
+x = 42  # ERROR: requires type annotation
+
+def main():
+    print(x)

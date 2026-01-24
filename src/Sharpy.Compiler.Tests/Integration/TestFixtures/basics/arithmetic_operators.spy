@@ -9,8 +9,9 @@ prod_result: int = a * b
 div_result: int = a // b
 mod_result: int = a % b
 
-print(sum_result)
-print(diff_result)
-print(prod_result)
-print(div_result)
-print(mod_result)
+def main():
+    print(sum_result)
+    print(diff_result)
+    print(prod_result)
+    print(div_result)
+    print(mod_result)

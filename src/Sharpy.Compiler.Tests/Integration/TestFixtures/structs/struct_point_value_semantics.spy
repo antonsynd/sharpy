@@ -12,11 +12,12 @@ struct Point:
         self.x += dx
         self.y += dy
 
-p1 = Point(10, 20)
-p2 = p1
-p2.move(5, 5)
+def main():
+    p1 = Point(10, 20)
+    p2 = p1
+    p2.move(5, 5)
 
-print(p1.x)
-print(p1.y)
-print(p2.x)
-print(p2.y)
+    print(p1.x)
+    print(p1.y)
+    print(p2.x)
+    print(p2.y)

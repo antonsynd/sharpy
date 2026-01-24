@@ -23,21 +23,23 @@ class Accumulator:
     def get_multiplier(self) -> float:
         return self.multiplier
 
-acc = Accumulator(100)
-print(acc.get_total())
-
-acc.add(25)
-print(acc.get_total())
-
-acc.subtract(10)
-print(acc.get_total())
-
-acc.scale(2.0)
-acc.scale(1.5)
-print(acc.get_multiplier())
-
 counter: int = 0
-for i in range(5):
-    counter += i * 2
 
-print(counter)
+def main():
+    acc = Accumulator(100)
+    print(acc.get_total())
+
+    acc.add(25)
+    print(acc.get_total())
+
+    acc.subtract(10)
+    print(acc.get_total())
+
+    acc.scale(2.0)
+    acc.scale(1.5)
+    print(acc.get_multiplier())
+
+    for i in range(5):
+        counter += i * 2
+
+    print(counter)

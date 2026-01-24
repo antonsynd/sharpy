@@ -8,12 +8,13 @@ class Box[T]:
     def get(self) -> T:
         return self.item
 
-int_box = Box[int](42)
-print(int_box.get())
+def main():
+    int_box = Box[int](42)
+    print(int_box.get())
 
-str_box = Box[str]("hello")
-print(str_box.get())
+    str_box = Box[str]("hello")
+    print(str_box.get())
 
-# EXPECTED OUTPUT:
-# 42
-# hello
+    # EXPECTED OUTPUT:
+    # 42
+    # hello

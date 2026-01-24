@@ -53,7 +53,9 @@ class Circle(Shape):
         return 2.0 * 3.14 * self.radius
 
 rect: Rectangle = Rectangle(5.0, 3.0)
-rect.describe()
-
 circ: Circle = Circle(4.0)
-circ.describe()
+
+def main():
+    rect.describe()
+
+    circ.describe()

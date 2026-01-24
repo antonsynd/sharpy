@@ -1,11 +1,12 @@
 # Test augmented assignment with division and modulo
 value: int = 100
 
-value //= 3
-print(value)
+def main():
+    value //= 3
+    print(value)
 
-value %= 10
-print(value)
+    value %= 10
+    print(value)
 
-value *= 4
-print(value)
+    value *= 4
+    print(value)

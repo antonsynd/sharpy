@@ -1,7 +1,6 @@
-# Error test: main() function defined and also explicitly called
-# This should be an error because main() is automatically invoked
+# Error test: main() cannot be called at module level
 
 def main() -> None:
     print("Hello from main")
 
-main()  # This explicit call is not allowed when main is defined
+main()  # ERROR: executable statement not allowed at module level

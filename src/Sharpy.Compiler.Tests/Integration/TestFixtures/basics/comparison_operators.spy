@@ -4,16 +4,18 @@ y: int = 20
 z: int = 10
 
 # Test equality and inequality
-print(x == z)
-print(x == y)
-print(x != y)
 
-# Test less than and greater than
-print(x < y)
-print(y > x)
-print(x > y)
+def main():
+    print(x == z)
+    print(x == y)
+    print(x != y)
 
-# Test less than or equal, greater than or equal
-print(x <= z)
-print(x >= z)
-print(y <= x)
+    # Test less than and greater than
+    print(x < y)
+    print(y > x)
+    print(x > y)
+
+    # Test less than or equal, greater than or equal
+    print(x <= z)
+    print(x >= z)
+    print(y <= x)

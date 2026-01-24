@@ -31,34 +31,36 @@ def calculate_rank(score: int) -> int:
         return 1
 
 # Initialize game with starting points
-game = GameScore(10)
-print(game.player_points)
 
-# Player gets first kill
-game.add_kill(15)
-print(game.get_final_score())
+def main():
+    game = GameScore(10)
+    print(game.player_points)
 
-# Player gets bonus multiplier
-game.add_bonus_multiplier()
-print(game.bonus_multiplier)
+    # Player gets first kill
+    game.add_kill(15)
+    print(game.get_final_score())
 
-# Player gets second kill with multiplier
-game.add_kill(20)
-print(game.get_final_score())
+    # Player gets bonus multiplier
+    game.add_bonus_multiplier()
+    print(game.bonus_multiplier)
 
-# Apply death penalty
-game.apply_penalty(10)
-final = game.get_final_score()
-print(final)
+    # Player gets second kill with multiplier
+    game.add_kill(20)
+    print(game.get_final_score())
 
-# Calculate player rank
-rank = calculate_rank(final)
-print(rank)
+    # Apply death penalty
+    game.apply_penalty(10)
+    final = game.get_final_score()
+    print(final)
 
-# EXPECTED OUTPUT:
-# 10
-# 25
-# 2
-# 65
-# 55
-# 2
+    # Calculate player rank
+    rank = calculate_rank(final)
+    print(rank)
+
+    # EXPECTED OUTPUT:
+    # 10
+    # 25
+    # 2
+    # 65
+    # 55
+    # 2

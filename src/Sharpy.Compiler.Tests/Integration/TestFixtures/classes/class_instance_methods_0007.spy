@@ -26,30 +26,31 @@ class BankAccount:
             return True
         return False
 
-account1 = BankAccount(101, 500)
-account2 = BankAccount(102, 200)
+def main():
+    account1 = BankAccount(101, 500)
+    account2 = BankAccount(102, 200)
 
-print(account1.get_balance())
-print(account2.get_balance())
+    print(account1.get_balance())
+    print(account2.get_balance())
 
-account1.deposit(100)
-print(account1.get_balance())
+    account1.deposit(100)
+    print(account1.get_balance())
 
-success = account1.withdraw(150)
-print(success)
-print(account1.get_balance())
+    success = account1.withdraw(150)
+    print(success)
+    print(account1.get_balance())
 
-transferred = account1.transfer_to(account2, 200)
-print(transferred)
-print(account1.get_balance())
-print(account2.get_balance())
+    transferred = account1.transfer_to(account2, 200)
+    print(transferred)
+    print(account1.get_balance())
+    print(account2.get_balance())
 
-# EXPECTED OUTPUT:
-# 500
-# 200
-# 600
-# True
-# 450
-# True
-# 250
-# 400
+    # EXPECTED OUTPUT:
+    # 500
+    # 200
+    # 600
+    # True
+    # 450
+    # True
+    # 250
+    # 400

@@ -4,27 +4,29 @@ b: int = 20
 c: int = 10
 
 # Test equality and inequality
-print(a == c)
-print(a == b)
-print(a != b)
 
-# Test less than and greater than
-print(a < b)
-print(b > a)
-print(a > b)
+def main():
+    print(a == c)
+    print(a == b)
+    print(a != b)
 
-# Test less/greater than or equal
-print(a <= c)
-print(a >= c)
-print(b <= a)
+    # Test less than and greater than
+    print(a < b)
+    print(b > a)
+    print(a > b)
 
-# EXPECTED OUTPUT:
-# True
-# False
-# True
-# True
-# True
-# False
-# True
-# True
-# False
+    # Test less/greater than or equal
+    print(a <= c)
+    print(a >= c)
+    print(b <= a)
+
+    # EXPECTED OUTPUT:
+    # True
+    # False
+    # True
+    # True
+    # True
+    # False
+    # True
+    # True
+    # False

@@ -20,10 +20,11 @@ class Dog(Animal):
     def get_years_in_dog_years(self) -> int:
         return self.age * 7
 
-d = Dog("Buddy", 3, "Labrador")
-print(d.get_age())
-print(d.get_years_in_dog_years())
+def main():
+    d = Dog("Buddy", 3, "Labrador")
+    print(d.get_age())
+    print(d.get_years_in_dog_years())
 
-# EXPECTED OUTPUT:
-# 3
-# 21
+    # EXPECTED OUTPUT:
+    # 3
+    # 21

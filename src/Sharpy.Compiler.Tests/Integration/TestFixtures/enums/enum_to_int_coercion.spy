@@ -11,10 +11,11 @@ def get_color_value(c: Color) -> int:
 primary: Color = Color.RED
 secondary: Color = Color.BLUE
 
-print(get_color_value(primary))
-print(get_color_value(secondary))
+def main():
+    print(get_color_value(primary))
+    print(get_color_value(secondary))
 
-if primary == Color.RED:
-    print(1)
-else:
-    print(0)
+    if primary == Color.RED:
+        print(1)
+    else:
+        print(0)

@@ -13,7 +13,9 @@ class FriendlyGreeter(IGreeter):
         return self.value + 10
 
 g: IGreeter = FriendlyGreeter(5)
-print(g.greet())
 
-# EXPECTED OUTPUT:
-# 15
+def main():
+    print(g.greet())
+
+    # EXPECTED OUTPUT:
+    # 15

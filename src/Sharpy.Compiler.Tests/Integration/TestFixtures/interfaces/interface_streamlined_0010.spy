@@ -24,7 +24,8 @@ class Widget(IDrawable, ISizable):
     def get_size(self) -> int:
         return self.size
 
-w = Widget("Button", 42)
-print(w.draw())
-print(w.get_name())
-print(w.get_size())
+def main():
+    w = Widget("Button", 42)
+    print(w.draw())
+    print(w.get_name())
+    print(w.get_size())

@@ -38,12 +38,14 @@ class Subtractor(Calculator):
         return self.base_value - operand
 
 calc1: Calculator = Calculator(10)
-print(calc1.calculate(5))
-print(calc1.get_operation_name())
-
 calc2: Calculator = Multiplier(3, 2)
-print(calc2.calculate(4))
-print(calc2.get_operation_name())
-
 calc3: Calculator = Subtractor(20)
-print(calc3.calculate(7))
+
+def main():
+    print(calc1.calculate(5))
+    print(calc1.get_operation_name())
+
+    print(calc2.calculate(4))
+    print(calc2.get_operation_name())
+
+    print(calc3.calculate(7))

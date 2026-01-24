@@ -9,15 +9,17 @@ class MathHelper:
 
 # Call static methods directly on class
 result: int = MathHelper.multiply(6, 7)
-print(result)
-
 check: bool = MathHelper.is_even(result)
-print(check)
-
 check2: bool = MathHelper.is_even(10)
-print(check2)
 
-# EXPECTED OUTPUT:
-# 42
-# True
-# True
+def main():
+    print(result)
+
+    print(check)
+
+    print(check2)
+
+    # EXPECTED OUTPUT:
+    # 42
+    # True
+    # True

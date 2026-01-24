@@ -24,28 +24,30 @@ def power(base: int, exponent: int = 2) -> int:
 
 # Test with all defaults
 price1: int = calculate_price(100)
-print(price1)
-
-# Test with one override (20% tax)
 price2: int = calculate_price(100, 0.2)
-print(price2)
-
-# Test with all parameters specified (15% tax, $10 discount)
 price3: int = calculate_price(100, 0.15, 10)
-print(price3)
-
-# Test power with default exponent (square)
 squared: int = power(5)
-print(squared)
-
-# Test power with custom exponent
 cubed: int = power(3, 3)
-print(cubed)
-
-# Test with positional arguments only
 price4: int = calculate_price(50, 0.1, 5)
-print(price4)
-
-# Test with positional arguments
 price5: int = calculate_price(200, 0.1, 20)
-print(price5)
+
+def main():
+    print(price1)
+
+    # Test with one override (20% tax)
+    print(price2)
+
+    # Test with all parameters specified (15% tax, $10 discount)
+    print(price3)
+
+    # Test power with default exponent (square)
+    print(squared)
+
+    # Test power with custom exponent
+    print(cubed)
+
+    # Test with positional arguments only
+    print(price4)
+
+    # Test with positional arguments
+    print(price5)

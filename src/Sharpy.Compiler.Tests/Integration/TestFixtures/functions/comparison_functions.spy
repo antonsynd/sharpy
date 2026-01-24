@@ -14,29 +14,31 @@ def check_range(value: int, low: int, high: int) -> bool:
     return value >= low and value <= high
 
 # Test basic comparisons
-result1 = compare_integers(10, 5)
-print(result1)
-
-result2 = compare_integers(3, 7)
-print(result2)
-
-result3 = compare_integers(4, 4)
-print(result3)
-
-# Test range checking
-in_range = check_range(15, 10, 20)
-print(in_range)
-
-out_of_range = check_range(5, 10, 20)
-print(out_of_range)
-
-# Test equality and inequality with booleans
 x: int = 42
 y: int = 42
 z: int = 99
 
-equals_check = x == y
-print(equals_check)
+def main():
+    result1 = compare_integers(10, 5)
+    print(result1)
 
-not_equals_check = x != z
-print(not_equals_check)
+    result2 = compare_integers(3, 7)
+    print(result2)
+
+    result3 = compare_integers(4, 4)
+    print(result3)
+
+    # Test range checking
+    in_range = check_range(15, 10, 20)
+    print(in_range)
+
+    out_of_range = check_range(5, 10, 20)
+    print(out_of_range)
+
+    # Test equality and inequality with booleans
+
+    equals_check = x == y
+    print(equals_check)
+
+    not_equals_check = x != z
+    print(not_equals_check)

@@ -10,8 +10,9 @@ def combined_operation(x: int, y: int) -> int:
     product_result = calculate_product(x, y)
     return sum_result + product_result
 
-result = combined_operation(3, 7)
-print(result)
+def main():
+    result = combined_operation(3, 7)
+    print(result)
 
-# EXPECTED OUTPUT:
-# 31
+    # EXPECTED OUTPUT:
+    # 31

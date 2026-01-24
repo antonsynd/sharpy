@@ -32,18 +32,19 @@ class Point:
         # Simplified: using abs for Manhattan distance
         return self.x + self.y if self.x >= 0 and self.y >= 0 else 0
 
-rect = Rectangle(5, 3, "MyRect")
-print(rect.width)
-print(rect.height)
-print(rect.area())
-print(rect.perimeter())
+def main():
+    rect = Rectangle(5, 3, "MyRect")
+    print(rect.width)
+    print(rect.height)
+    print(rect.area())
+    print(rect.perimeter())
 
-rect.scale(2)
-print(rect.width)
-print(rect.height)
-print(rect.area())
+    rect.scale(2)
+    print(rect.width)
+    print(rect.height)
+    print(rect.area())
 
-point = Point(4, 6)
-print(point.x)
-print(point.y)
-print(point.distance_from_origin())
+    point = Point(4, 6)
+    print(point.x)
+    print(point.y)
+    print(point.distance_from_origin())

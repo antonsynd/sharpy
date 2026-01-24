@@ -15,4 +15,6 @@ def fibonacci(n: int) -> int:
     return b
 
 result: int = fibonacci(10)
-print(result)
+
+def main():
+    print(result)

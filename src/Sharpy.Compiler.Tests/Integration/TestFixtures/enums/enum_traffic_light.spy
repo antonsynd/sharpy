@@ -6,9 +6,11 @@ enum TrafficLight:
 
 # Test enum assignment and access
 current: TrafficLight = TrafficLight.RED
-print(current == TrafficLight.RED)
-print(current == TrafficLight.GREEN)
 
-# Change state
-current = TrafficLight.YELLOW
-print(current == TrafficLight.YELLOW)
+def main():
+    print(current == TrafficLight.RED)
+    print(current == TrafficLight.GREEN)
+
+    # Change state
+    current = TrafficLight.YELLOW
+    print(current == TrafficLight.YELLOW)

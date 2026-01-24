@@ -22,15 +22,16 @@ class TemperatureConverter:
         return self.celsius
 
 
-converter = TemperatureConverter(0.0, "Water freezing point")
-print(converter.get_celsius())
-print(converter.to_fahrenheit())
-print(converter.to_kelvin())
+def main():
+    converter = TemperatureConverter(0.0, "Water freezing point")
+    print(converter.get_celsius())
+    print(converter.to_fahrenheit())
+    print(converter.to_kelvin())
 
-converter.adjust(100.0)
-print(converter.get_celsius())
-print(converter.to_fahrenheit())
+    converter.adjust(100.0)
+    print(converter.get_celsius())
+    print(converter.to_fahrenheit())
 
-second = TemperatureConverter(25.0, "Room temperature")
-print(second.get_celsius())
-print(second.to_kelvin())
+    second = TemperatureConverter(25.0, "Room temperature")
+    print(second.get_celsius())
+    print(second.to_kelvin())

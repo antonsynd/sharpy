@@ -13,10 +13,11 @@ class Dog(Animal):
         super().__init__(age)
         self.name = name
 
-dog = Dog("Buddy", 5)
-print(dog.age)
-print(dog.name)
+def main():
+    dog = Dog("Buddy", 5)
+    print(dog.age)
+    print(dog.name)
 
-# EXPECTED OUTPUT:
-# 5
-# Buddy
+    # EXPECTED OUTPUT:
+    # 5
+    # Buddy

@@ -1,0 +1,8 @@
+# Error test: Bare executable statement at module level
+
+counter: int = 0
+
+print("initializing")  # ERROR: not allowed
+
+def main():
+    print("running")

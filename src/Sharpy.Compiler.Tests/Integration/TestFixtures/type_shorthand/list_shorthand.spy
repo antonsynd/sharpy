@@ -5,5 +5,6 @@ def sum_list(items: [int]) -> int:
         total = total + item
     return total
 
-numbers: [int] = [1, 2, 3, 4, 5]
-print(sum_list(numbers))
+def main():
+    numbers: [int] = [1, 2, 3, 4, 5]
+    print(sum_list(numbers))

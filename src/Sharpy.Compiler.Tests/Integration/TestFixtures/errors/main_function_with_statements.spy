@@ -1,17 +1,12 @@
-# Error test: main() function defined with other executable statements
-# This should be an error because main() is automatically invoked
+# Error test: Module-level executable statements are not allowed
 
 x: int = 42
-print(x)  # This is an executable statement
+print(x)  # ERROR: executable statement not allowed at module level
 
 def helper() -> int:
     return 10
 
-y = helper()  # This is also an executable statement
-print(y)
+y = helper()  # ERROR: requires type annotation at module level
 
 def main() -> None:
     print("In main")
-
-# The above executable statements (print(x), y = helper(), print(y))
-# are not allowed when main() is defined

@@ -8,5 +8,6 @@ def add_squares(a: int, b: int) -> int:
 result1: int = square(7)
 result2: int = add_squares(3, 4)
 
-print(result1)
-print(result2)
+def main():
+    print(result1)
+    print(result2)

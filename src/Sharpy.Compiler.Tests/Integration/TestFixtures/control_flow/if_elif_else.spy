@@ -6,6 +6,7 @@ def categorize(x: int):
     else:
         print("zero")
 
-categorize(5)
-categorize(-3)
-categorize(0)
+def main():
+    categorize(5)
+    categorize(-3)
+    categorize(0)

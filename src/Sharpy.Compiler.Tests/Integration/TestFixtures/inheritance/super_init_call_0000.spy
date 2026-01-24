@@ -36,13 +36,14 @@ class ElectricCar(Car):
         print(self.battery_capacity)
         print(self.charge_level)
 
-tesla = ElectricCar("Tesla", 2024, 4, 85)
-tesla.drive(150)
-tesla.display_info()
+def main():
+    tesla = ElectricCar("Tesla", 2024, 4, 85)
+    tesla.drive(150)
+    tesla.display_info()
 
-# EXPECTED OUTPUT:
-# 2024
-# 4
-# 150
-# 85
-# 100
+    # EXPECTED OUTPUT:
+    # 2024
+    # 4
+    # 150
+    # 85
+    # 100

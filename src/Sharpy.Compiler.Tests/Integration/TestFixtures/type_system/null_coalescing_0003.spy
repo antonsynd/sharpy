@@ -3,27 +3,29 @@
 # Basic null coalescing with int
 x: int? = None
 y: int = x ?? 42
-print(y)
-
-# Null coalescing with non-null value
 a: int? = 100
 b: int = a ?? 999
-print(b)
-
-# Null coalescing with str
 name: str? = None
 default_name: str = name ?? "Guest"
-print(default_name)
-
-# Chain of null coalescing
 first: int? = None
 second: int? = None
 third: int = 77
 result: int = first ?? second ?? third
-print(result)
 
-# EXPECTED OUTPUT:
-# 42
-# 100
-# Guest
-# 77
+def main():
+    print(y)
+
+    # Null coalescing with non-null value
+    print(b)
+
+    # Null coalescing with str
+    print(default_name)
+
+    # Chain of null coalescing
+    print(result)
+
+    # EXPECTED OUTPUT:
+    # 42
+    # 100
+    # Guest
+    # 77

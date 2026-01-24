@@ -16,8 +16,9 @@ class Square(Shape):
     def area(self) -> int:
         return self.side * self.side
 
-sq = Square(5)
-print(sq.area())
+def main():
+    sq = Square(5)
+    print(sq.area())
 
-# EXPECTED OUTPUT:
-# 25
+    # EXPECTED OUTPUT:
+    # 25

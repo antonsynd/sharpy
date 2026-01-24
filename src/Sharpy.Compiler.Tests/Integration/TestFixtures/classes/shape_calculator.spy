@@ -73,21 +73,23 @@ def compare_shapes(s1: Shape, s2: Shape) -> str:
 
 # Create shapes
 p1: Point = Point(3.0, 4.0)
-print(p1.distance_from_origin())
-
 c1: Circle = Circle("MyCircle", p1, 5.0)
 r1: Rectangle = Rectangle("MyRect", 10.0, 7.0)
-
-print(c1.area())
-print(r1.area())
-
-# Use calculator
 calc: ShapeCalculator = ShapeCalculator()
-calc.add_shape(c1)
-calc.add_shape(r1)
-
-print(calc.get_total())
-
-# Compare shapes
 winner: str = compare_shapes(c1, r1)
-print(winner)
+
+def main():
+    print(p1.distance_from_origin())
+
+
+    print(c1.area())
+    print(r1.area())
+
+    # Use calculator
+    calc.add_shape(c1)
+    calc.add_shape(r1)
+
+    print(calc.get_total())
+
+    # Compare shapes
+    print(winner)

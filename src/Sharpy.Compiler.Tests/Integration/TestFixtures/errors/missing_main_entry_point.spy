@@ -1,0 +1,8 @@
+# Error test: Entry point file without main() function
+
+x: int = 42
+
+def helper() -> int:
+    return x
+
+# ERROR: Entry point file requires a 'main()' function

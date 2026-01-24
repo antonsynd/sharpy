@@ -41,12 +41,13 @@ def compare_shapes() -> None:
     print(circ.diameter())
     print(circ.approximate_area())
 
-compare_shapes()
+def main():
+    compare_shapes()
 
-# EXPECTED OUTPUT:
-# 40
-# 26
-# True
-# False
-# 8
-# 48
+    # EXPECTED OUTPUT:
+    # 40
+    # 26
+    # True
+    # False
+    # 8
+    # 48

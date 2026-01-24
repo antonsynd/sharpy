@@ -39,12 +39,14 @@ class Cat(Animal):
         return 2
 
 # Test the classes
-dog = Dog("Rex", "Shepherd")
-cat = Cat("Whiskers", True)
-animal = Animal("Generic")
 
-animal.speak()
-dog.speak()
-cat.speak()
-print(dog.get_legs())
-print(cat.get_legs())
+def main():
+    dog = Dog("Rex", "Shepherd")
+    cat = Cat("Whiskers", True)
+    animal = Animal("Generic")
+
+    animal.speak()
+    dog.speak()
+    cat.speak()
+    print(dog.get_legs())
+    print(cat.get_legs())

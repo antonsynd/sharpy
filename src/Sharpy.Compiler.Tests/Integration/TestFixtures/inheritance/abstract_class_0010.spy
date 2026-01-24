@@ -38,17 +38,18 @@ class Circle(Shape):
     def area(self) -> float:
         return 3.14 * self.radius * self.radius
 
-rect = Rectangle(4.0, 5.0)
-circ = Circle(3.0)
+def main():
+    rect = Rectangle(4.0, 5.0)
+    circ = Circle(3.0)
 
-rect.describe()
-print(rect.area())
+    rect.describe()
+    print(rect.area())
 
-circ.describe()
-print(circ.area())
+    circ.describe()
+    print(circ.area())
 
-# EXPECTED OUTPUT:
-# Rectangle
-# 20
-# Circle
-# 28.26
+    # EXPECTED OUTPUT:
+    # Rectangle
+    # 20
+    # Circle
+    # 28.26

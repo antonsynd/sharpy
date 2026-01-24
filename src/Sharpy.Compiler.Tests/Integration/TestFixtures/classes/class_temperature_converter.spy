@@ -26,8 +26,9 @@ temp2: int = 100
 temp3: int = 25
 temp4: int = -10
 
-print(TemperatureConverter.celsius_to_fahrenheit(temp1))
-print(TemperatureConverter.celsius_to_fahrenheit(temp2))
-print(TemperatureConverter.fahrenheit_to_celsius(77))
-print(TemperatureConverter.is_freezing(temp3))
-print(TemperatureConverter.is_boiling(temp4))
+def main():
+    print(TemperatureConverter.celsius_to_fahrenheit(temp1))
+    print(TemperatureConverter.celsius_to_fahrenheit(temp2))
+    print(TemperatureConverter.fahrenheit_to_celsius(77))
+    print(TemperatureConverter.is_freezing(temp3))
+    print(TemperatureConverter.is_boiling(temp4))

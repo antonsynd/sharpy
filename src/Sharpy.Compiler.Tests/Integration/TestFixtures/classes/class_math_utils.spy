@@ -7,7 +7,9 @@ class MathUtils:
         return a + b + c
 
 result1: int = MathUtils.square(7)
-print(result1)
-
 result2: int = MathUtils.add_three(2, 5, 8)
-print(result2)
+
+def main():
+    print(result1)
+
+    print(result2)

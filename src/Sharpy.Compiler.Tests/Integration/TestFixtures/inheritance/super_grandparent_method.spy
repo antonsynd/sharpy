@@ -38,10 +38,11 @@ class Square(Rectangle):
         super().describe()
         print(self.width)
 
-rect = Rectangle("MyRectangle", 5.0, 3.0)
-rect.describe()
-print(rect.area())
+def main():
+    rect = Rectangle("MyRectangle", 5.0, 3.0)
+    rect.describe()
+    print(rect.area())
 
-square = Square("MySquare", 4.0)
-square.describe()
-print(square.area())
+    square = Square("MySquare", 4.0)
+    square.describe()
+    print(square.area())

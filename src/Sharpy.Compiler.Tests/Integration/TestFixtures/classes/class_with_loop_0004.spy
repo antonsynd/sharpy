@@ -11,9 +11,10 @@ class Counter:
             self.count += 1
             i += 1
 
-c = Counter(5)
-c.increment_times(3)
-print(c.count)
+def main():
+    c = Counter(5)
+    c.increment_times(3)
+    print(c.count)
 
-# EXPECTED OUTPUT:
-# 8
+    # EXPECTED OUTPUT:
+    # 8

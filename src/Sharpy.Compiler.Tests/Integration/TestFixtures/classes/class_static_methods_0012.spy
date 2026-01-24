@@ -8,11 +8,12 @@ class MathHelper:
     def cube(n: int) -> int:
         return n * n * n
 
-result1 = MathHelper.square(4)
-result2 = MathHelper.cube(3)
-print(result1)
-print(result2)
+def main():
+    result1 = MathHelper.square(4)
+    result2 = MathHelper.cube(3)
+    print(result1)
+    print(result2)
 
-# EXPECTED OUTPUT:
-# 16
-# 27
+    # EXPECTED OUTPUT:
+    # 16
+    # 27

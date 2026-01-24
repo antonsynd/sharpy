@@ -38,21 +38,22 @@ class CashProcessor(IPaymentProcessor):
     def get_fee(self) -> int:
         return self.fee
 
-cc = CreditCardProcessor()
-cash = CashProcessor()
+def main():
+    cc = CreditCardProcessor()
+    cash = CashProcessor()
 
-cc.process_payment(100)
-print(cc.total_processed)
-print(cc.get_fee())
+    cc.process_payment(100)
+    print(cc.total_processed)
+    print(cc.get_fee())
 
-cc.process_refund(25)
-print(cc.total_processed)
+    cc.process_refund(25)
+    print(cc.total_processed)
 
-cash.process_payment(50)
-print(cash.get_fee())
+    cash.process_payment(50)
+    print(cash.get_fee())
 
-# EXPECTED OUTPUT:
-# 100
-# 3
-# 75
-# 0
+    # EXPECTED OUTPUT:
+    # 100
+    # 3
+    # 75
+    # 0

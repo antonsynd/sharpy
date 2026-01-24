@@ -16,8 +16,9 @@ class Dog(Animal):
     def get_age(self) -> int:
         return self.age
 
-d = Dog("Buddy", 3)
-print(d.get_age())
+def main():
+    d = Dog("Buddy", 3)
+    print(d.get_age())
 
-# EXPECTED OUTPUT:
-# 3
+    # EXPECTED OUTPUT:
+    # 3
