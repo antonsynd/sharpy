@@ -4,6 +4,12 @@
 **Priority:** High
 **Estimated Effort:** 3-5 days
 
+> **⚠️ Addendum:** Before implementing Part 5 (Compiler Implementation), complete the 
+> companion task [`task_namespace_level_types.md`](task_namespace_level_types.md) which 
+> restructures how types are placed in generated C# code. This architectural change 
+> moves classes, structs, interfaces, and enums from being nested inside the module 
+> class to being siblings at namespace level, matching C# conventions.
+
 ## Summary
 
 This task implements new entry point rules to resolve the syntactic ambiguity between module-level static members and executable statements. The key changes are:
