@@ -133,7 +133,9 @@ z: int = x
         tempDir.CreateFile("main.spy", @"
 from b import y
 from c import z
-result: int = y + z
+
+def main():
+    result: int = y + z
 ");
 
         var result = CompileProject(tempDir.Path, "main.spy");

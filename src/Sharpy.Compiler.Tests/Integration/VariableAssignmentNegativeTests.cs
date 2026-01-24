@@ -116,11 +116,12 @@ while i < 5:
     public void Assignment_ReferenceToOldVersion_AfterRedefinition_ShouldUseNewVersion()
     {
         var source = @"
-x = 1
-x: auto = 2
-print(x)  # Should print 2, not 1
-x: auto = 3
-print(x)  # Should print 3, not 2
+def main():
+    x = 1
+    x: auto = 2
+    print(x)  # Should print 2, not 1
+    x: auto = 3
+    print(x)  # Should print 3, not 2
 ";
 
         var result = CompileAndExecute(source);

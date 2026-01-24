@@ -83,7 +83,8 @@ x: int = ""not an int""
 def add(a: int, b: int) -> int:
     return a + b
 
-result: int = add(1, 2)
+def main():
+    result: int = add(1, 2)
 ";
 
         // Act
@@ -91,7 +92,7 @@ result: int = add(1, 2)
         var result = compiler.Compile(source, "test.spy");
 
         // Assert
-        Assert.True(result.Success);
+        Assert.True(result.Success, string.Join("; ", result.Errors));
         Assert.NotNull(result.GeneratedCSharpCode);
         Assert.Contains("public static int Add", result.GeneratedCSharpCode);
     }

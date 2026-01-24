@@ -13,14 +13,15 @@ public class CompilerIntegrationTests
     public void Compiler_WithDefaultConstructor_CompilesSuccessfully()
     {
         var code = @"
-x = 5
-y = 10
-z = x + y
+def main():
+    x = 5
+    y = 10
+    z = x + y
 ";
         var compiler = new Compiler();
         var result = compiler.Compile(code, "test.spy");
 
-        Assert.True(result.Success);
+        Assert.True(result.Success, string.Join("; ", result.Errors));
         Assert.Empty(result.Errors);
         Assert.NotNull(result.Module);
     }
@@ -29,7 +30,8 @@ z = x + y
     public void Compiler_WithCompilerOptions_LoadsBuiltins()
     {
         var code = @"
-result = range(5)
+def main():
+    result = range(5)
 ";
         var options = new CompilerOptions
         {
@@ -49,7 +51,8 @@ result = range(5)
     public void Compiler_WithSampleModule_LoadsSuccessfully()
     {
         var code = @"
-x = 5
+def main():
+    x = 5
 ";
         // Get the path to SampleModule.dll
         var sampleModulePath = "../../../../build/modules/SampleModule.dll";
@@ -88,7 +91,8 @@ x = 5
     public void Compiler_WithInvalidReference_ReportsError()
     {
         var code = @"
-x = 5
+def main():
+    x = 5
 ";
         var options = new CompilerOptions
         {
@@ -107,7 +111,8 @@ x = 5
     public void Compiler_WithModulePath_AddsSuccessfully()
     {
         var code = @"
-x = 5
+def main():
+    x = 5
 ";
         var tempPath = Path.GetTempPath();
         var options = new CompilerOptions
@@ -126,7 +131,8 @@ x = 5
     public void Compiler_WithMultipleReferences_LoadsAll()
     {
         var code = @"
-x = 5
+def main():
+    x = 5
 ";
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
         var sampleModulePath = "../../../../build/modules/SampleModule.dll";
@@ -159,7 +165,8 @@ x = 5
     public void Compiler_WithLogger_LogsModuleLoading()
     {
         var code = @"
-x = 5
+def main():
+    x = 5
 ";
         var logOutput = new StringWriter();
         var logger = new ConsoleCompilerLogger(CompilerLogLevel.Debug, logOutput, logOutput);
