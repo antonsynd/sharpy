@@ -320,14 +320,17 @@ def main():
     {
         // Find the first opening brace
         int openBracePos = code.IndexOf('{', startPos);
-        if (openBracePos < 0) return -1;
+        if (openBracePos < 0)
+            return -1;
 
         int depth = 1;
         int pos = openBracePos + 1;
         while (pos < code.Length && depth > 0)
         {
-            if (code[pos] == '{') depth++;
-            else if (code[pos] == '}') depth--;
+            if (code[pos] == '{')
+                depth++;
+            else if (code[pos] == '}')
+                depth--;
             pos++;
         }
         return pos - 1; // Position of closing brace
