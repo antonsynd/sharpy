@@ -6,629 +6,1182 @@
 
 ## Overview
 
-This file is part of the **RoslynEmitter** partial class and handles the generation of **type declarations** from Sharpy AST nodes into C# Roslyn syntax trees. It's responsible for transforming Python-like type declarations (functions, classes, structs, interfaces, and enums) into their C# equivalents.
+This file is a **partial class** component of `RoslynEmitter` that transforms Python-style type declarations (functions, classes, structs, interfaces, enums) into C# using Roslyn's `SyntaxFactory` API. It's the final stage of the compiler pipeline that handles **type-level constructs**.
 
-**Role in the Compiler Pipeline:**
-- **Input**: Typed AST nodes (FunctionDef, ClassDef, StructDef, InterfaceDef, EnumDef) from Semantic Analysis
-- **Output**: Roslyn SyntaxNodes representing C# type declarations
-- **Responsibility**: Bridge the gap between Python-style declarations and C#'s type system
+### Role in the Compiler Pipeline
 
-This is one of several partial class files that together implement the complete RoslynEmitter. TypeDeclarations specifically handles **top-level type constructs**, while other partial files handle expressions, statements, class members, etc.
+```
+Semantic Analysis (Typed AST) → RoslynEmitter.TypeDeclarations → C# Type Declarations → .NET IL
+```
 
----
+**Inputs:**
+- Typed AST nodes: `FunctionDef`, `ClassDef`, `StructDef`, `InterfaceDef`, `EnumDef`
+- `SemanticInfo`: Type annotations, symbol table lookups
+- `CodeGenContext`: Module-level metadata, symbol resolution
 
-## Class Structure
+**Outputs:**
+- Roslyn syntax nodes: `MethodDeclarationSyntax`, `ClassDeclarationSyntax`, etc.
+- Valid C# 9.0 code that compiles to .NET IL
 
-This file extends the `RoslynEmitter` partial class and contains methods organized into two main categories:
-
-1. **Function Declaration Generation** (lines 16-208)
-   - `GenerateFunctionDeclaration()` - Main entry point for function generation
-   - `GenerateParameter()` - Parameter conversion (including variadic `*args`)
-   - `GenerateModifiersFromDecorators()` - Decorator → C# modifier mapping
-   - `GenerateXmlDocComment()` - Docstring → XML documentation
-
-2. **Type Declaration Generation** (lines 210-764, marked with `#region`)
-   - `GenerateClassDeclaration()` - Class generation with inheritance
-   - `GenerateStructDeclaration()` - Value type generation
-   - `GenerateInterfaceDeclaration()` - Interface contracts
-   - `GenerateEnumDeclaration()` - Enum handling (both integer and string enums)
-   - Supporting methods for constraints, abstract stubs, and modifiers
+**Key Responsibilities:**
+- Transform snake_case → PascalCase (via `NameMangler`)
+- Map Python type annotations → C# types (via `TypeMapper`)
+- Convert Python decorators → C# modifiers (`@staticmethod` → `static`)
+- Generate XML documentation from docstrings
+- Handle special cases: generic constraints, abstract stubs, string enums
 
 ---
 
-## Key Methods
+## Partial Class Architecture
 
-### 1. GenerateFunctionDeclaration() - Lines 16-78
+`RoslynEmitter` is split across multiple files for maintainability:
 
-**Purpose**: Converts a Sharpy function definition into a C# method declaration.
+- **RoslynEmitter.cs** - Core infrastructure, fields, symbol resolution
+- **RoslynEmitter.TypeDeclarations.cs** ← This file (functions, classes, interfaces, enums)
+- **RoslynEmitter.ClassMembers.cs** - Methods, properties, fields within classes
+- **RoslynEmitter.Expressions.cs** - Expression code generation
+- **RoslynEmitter.Statements.cs** - Statement code generation
+- **RoslynEmitter.CompilationUnit.cs** - Top-level module generation
 
-**Key Steps**:
+### Related Documentation
+- [RoslynEmitter.md](./RoslynEmitter.md) - Main emitter overview
+- [RoslynEmitter.ClassMembers.md](./RoslynEmitter.ClassMembers.md) - Class member generation
+- [TypeMapper.md](./TypeMapper.md) - Type mapping logic
+- [NameMangler.md](./NameMangler.md) - Naming convention transformations
+
+---
+
+## Important Fields (from RoslynEmitter.cs)
+
+This partial class uses fields defined in the main `RoslynEmitter.cs`:
+
+```csharp
+private readonly CodeGenContext _context;           // Module context, symbol lookup
+private readonly TypeMapper _typeMapper;             // Type annotation → C# type mapping
+private readonly HashSet<string> _declaredVariables; // Track declared variables in scope
+private readonly Dictionary<string, int> _variableVersions;  // Version tracking for redeclarations
+private readonly HashSet<string> _constVariables;    // Track const variables
+private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions; // For abstract stubs
+private bool _isInAbstractClass;                     // Context flag for abstract class generation
+```
+
+**Design Note:** The compiler previously tracked `_classNames`, `_structNames`, and `_stringEnumNames` in HashSets. These have been **removed** and replaced with:
+- **SymbolTable lookups** for class/struct detection (populated during semantic analysis)
+- **CodeGenInfo.IsStringEnum** for string enum detection (computed during semantic analysis)
+
+This shift moves complexity upstream to semantic analysis where it belongs.
+
+---
+
+## Class/Type Structure
+
+This file defines no new types—it extends `RoslynEmitter` with methods organized into two main groups:
+
+### 1. Function Generation (Lines 17-209)
+| Method | Purpose |
+|--------|---------|
+| `GenerateFunctionDeclaration()` | Main entry point: FunctionDef → MethodDeclarationSyntax |
+| `GenerateParameter()` | Convert function parameters, handle variadic `*args` |
+| `GenerateModifiersFromDecorators()` | `@staticmethod` → `static`, etc. |
+| `GenerateXmlDocComment()` | Python docstring → C# XML `<summary>` |
+
+### 2. Type Declaration Generation (Lines 211-773, `#region`)
+| Method | Purpose |
+|--------|---------|
+| `GenerateClassDeclaration()` | ClassDef → ClassDeclarationSyntax (with inheritance) |
+| `GenerateStructDeclaration()` | StructDef → StructDeclarationSyntax (value types) |
+| `GenerateInterfaceDeclaration()` | InterfaceDef → InterfaceDeclarationSyntax |
+| `GenerateEnumDeclaration()` | Dispatcher for integer vs. string enums |
+| `GenerateIntegerEnum()` | Standard C# enum declarations |
+| `GenerateStringEnumClass()` | Sealed class with `public static readonly string` fields |
+| `CollectInterfaceMethodDefs()` | Recursively collect interface methods for abstract stubs |
+| `GenerateAbstractMethodStub()` | Generate abstract method for unimplemented interface methods |
+| `GenerateConstraintClauses()` | Generic type constraints (`where T : class, new()`) |
+| `GenerateTypeModifiersFromDecorators()` | Type-level decorators → modifiers |
+
+---
+
+## Key Functions/Methods Deep Dive
+
+### 1. GenerateFunctionDeclaration() (Lines 17-79)
+
+**Purpose:** Transforms a Sharpy function into a C# method, handling the entry point (`main` → `Main`), parameters, generics, and decorators.
+
+**Algorithm:**
 
 ```csharp
 private MethodDeclarationSyntax GenerateFunctionDeclaration(FunctionDef func)
+{
+    // 1. Clear local scope tracking (new function = new scope)
+    _declaredVariables.Clear();
+    _variableVersions.Clear();
+    _constVariables.Clear();
+
+    // 2. Name transformation: snake_case → PascalCase
+    //    Special case: "main" → "Main" only for entry point files
+    var mangledName = func.Name == "main" && !_context.IsEntryPoint
+        ? "MainFunc"  // Avoid C# entry point conflict in non-entry files
+        : NameMangler.Transform(func.Name, NameContext.Method);
+
+    // 3. Return type mapping
+    TypeSyntax returnType = func.ReturnType != null
+        ? _typeMapper.MapType(func.ReturnType)
+        : PredefinedType(Token(SyntaxKind.VoidKeyword));  // Default to void
+
+    // 4. Generate modifiers from decorators
+    var modifiers = GenerateModifiersFromDecorators(func.Decorators);
+
+    // 5. Generate parameters (including variadic *args)
+    var parameters = func.Parameters.Select(GenerateParameter).ToArray();
+
+    // 6. Track parameters as declared variables
+    foreach (var param in func.Parameters)
+    {
+        var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+        _declaredVariables.Add(paramName);
+        _variableVersions[NameMangler.ToCamelCase(param.Name)] = 0;
+    }
+
+    // 7. Generate method body
+    var body = Block(func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+    // 8. Build method declaration
+    var method = MethodDeclaration(returnType, mangledName)
+        .WithModifiers(modifiers)
+        .WithParameterList(ParameterList(SeparatedList(parameters)))
+        .WithBody(body);
+
+    // 9. Add generic type parameters if present
+    if (func.TypeParameters.Length > 0)
+    {
+        var typeParams = func.TypeParameters
+            .Select(tp => TypeParameter(tp.Name))
+            .ToArray();
+        method = method
+            .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+            .WithConstraintClauses(GenerateConstraintClauses(func.TypeParameters));
+    }
+
+    // 10. Add XML documentation from docstring
+    if (!string.IsNullOrEmpty(func.DocString))
+    {
+        method = method.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+    }
+
+    return method;
+}
 ```
 
-1. **Scope Management** (lines 18-21): Clears tracking dictionaries for the new function scope:
-   - `_declaredVariables` - Track variables declared in this function
-   - `_variableVersions` - Track variable redefinition versions (for SSA-style renaming)
-   - `_constVariables` - Track const declarations
+**Important Details:**
 
-2. **Name Mangling** (lines 23-27): Transforms Python naming to C# conventions
-   - Special case: `main` → `Main` if entry point, `MainFunc` otherwise
-   - Uses `NameMangler.Transform()` with `NameContext.Method` context
+- **Scope Clearing (Lines 20-22):** Each function gets a fresh scope. Local variables tracked in `_declaredVariables` don't leak between functions.
+  
+- **Main Function Handling (Lines 26-28):** In Sharpy, every module can have a `main()` function. To avoid conflicts when compiling non-entry modules:
+  - Entry point file: `main` → `Main` (C# convention)
+  - Other files: `main` → `MainFunc` (avoid multiple entry points)
+  
+- **Parameter Tracking (Lines 44-51):** Parameters are pre-registered as "declared" to enable correct variable versioning if they're reassigned in the function body.
 
-3. **Return Type Resolution** (lines 29-32):
-   - If annotated: Use `TypeMapper` to convert Sharpy type → C# type
-   - If not annotated: Default to `void`
+**Example Transformation:**
 
-4. **Modifier Generation** (lines 34-35): Process decorators like `@static`, `@private`, etc.
+```python
+# Sharpy input
+def calculate_sum(values: list[int]) -> int:
+    """Calculate the sum of a list."""
+    total = 0
+    for v in values:
+        total += v
+    return total
+```
 
-5. **Parameter Processing** (lines 38-50):
-   - Convert each parameter with type annotations
-   - Track parameters as declared variables (important for scoping!)
-   - Initialize version tracking for parameters (enables assignments to params)
-
-6. **Body Generation** (line 53): Transform function body statements to C# statements
-
-7. **Generic Support** (lines 61-69): Handle type parameters and constraints if present
-
-8. **Documentation** (lines 72-75): Convert Python docstrings to XML doc comments
-
-**Design Decision**: The function clears scope-tracking state at the start, ensuring each function is independent. This is critical for correctness in variable scoping.
-
----
-
-### 2. GenerateParameter() - Lines 80-113
-
-**Purpose**: Converts a Sharpy parameter to a C# parameter, handling special cases.
-
-**Key Features**:
-
-- **Type Mapping**: Uses `TypeMapper` to convert type annotations, defaults to `object` if untyped
-- **Variadic Parameters** (lines 89-103):
-  ```csharp
-  // For *args parameters in Sharpy
-  if (param.IsVariadic)
-  {
-      paramType = ArrayType(paramType)  // Wrap in array
-      parameter = parameter.WithModifiers(Token(SyntaxKind.ParamsKeyword))  // Add 'params'
-  }
-  ```
-  This allows Python-style `def foo(*args)` to become C# `void Foo(params object[] args)`
-
-- **Default Values** (lines 106-110): Translates Sharpy default values to C# default expressions
+```csharp
+// C# output
+/// <summary>
+/// Calculate the sum of a list.
+/// </summary>
+public static int CalculateSum(global::Sharpy.Core.List<int> values)
+{
+    int total = 0;
+    foreach (var v in values)
+    {
+        total += v;
+    }
+    return total;
+}
+```
 
 ---
 
-### 3. GenerateModifiersFromDecorators() - Lines 115-182
+### 2. GenerateParameter() (Lines 81-114)
 
-**Purpose**: Maps Sharpy decorators to C# access/behavior modifiers.
+**Purpose:** Converts a Sharpy parameter to a C# parameter, handling variadic arguments (`*args`), default values, and type annotations.
 
-**Decorator Mapping**:
+**Key Logic:**
 
-| Sharpy Decorator | C# Modifier |
-|------------------|-------------|
+```csharp
+private ParameterSyntax GenerateParameter(Parameter param)
+{
+    // 1. Transform parameter name (snake_case → camelCase)
+    var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+
+    // 2. Map type or default to object
+    TypeSyntax paramType = param.Type != null
+        ? _typeMapper.MapType(param.Type)
+        : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+    // 3. Handle variadic parameters: *args → params T[]
+    if (param.IsVariadic)
+    {
+        paramType = ArrayType(paramType)
+            .WithRankSpecifiers(SingletonList(ArrayRankSpecifier()));
+    }
+
+    var parameter = Parameter(Identifier(paramName)).WithType(paramType);
+
+    // 4. Add 'params' modifier for variadic parameters
+    if (param.IsVariadic)
+    {
+        parameter = parameter.WithModifiers(TokenList(Token(SyntaxKind.ParamsKeyword)));
+    }
+
+    // 5. Add default value if present
+    if (param.DefaultValue != null)
+    {
+        var defaultExpr = GenerateExpression(param.DefaultValue);
+        parameter = parameter.WithDefault(EqualsValueClause(defaultExpr));
+    }
+
+    return parameter;
+}
+```
+
+**Variadic Parameter Handling:**
+
+Python's `*args` becomes C#'s `params T[]`:
+
+```python
+def print_all(*values: int):
+    for v in values:
+        print(v)
+```
+
+```csharp
+public static void PrintAll(params int[] values)
+{
+    foreach (var v in values)
+    {
+        global::Sharpy.Core.Exports.Print(v);
+    }
+}
+```
+
+**Default Values:**
+
+```python
+def greet(name: str = "World"):
+    print(f"Hello, {name}!")
+```
+
+```csharp
+public static void Greet(string name = "World")
+{
+    global::Sharpy.Core.Exports.Print($"Hello, {name}!");
+}
+```
+
+---
+
+### 3. GenerateModifiersFromDecorators() (Lines 116-183)
+
+**Purpose:** Converts Python decorators to C# method modifiers.
+
+**Decorator Mappings:**
+
+| Python Decorator | C# Modifier |
+|-----------------|-------------|
 | `@private` | `private` |
 | `@protected` | `protected` |
 | `@internal` | `internal` |
-| `@public` | `public` |
-| `@staticmethod`, `@static` | `static` |
+| `@public` | `public` (default) |
+| `@staticmethod` or `@static` | `static` |
 | `@abstract` | `abstract` |
 | `@virtual` | `virtual` |
 | `@override` | `override` |
 
-**Important Behavior** (lines 144-179):
-- Defaults to `public` if no access modifier specified (C# class default is private, but Sharpy uses public)
-- **Automatically adds `static`** for module-level functions (lines 171-179)
-  - Unless the function already has instance modifiers (`abstract`, `virtual`, `override`)
+**Key Design Decision (Lines 174-181):**
 
-This automatic `static` injection is crucial because Sharpy's module-level functions are placed in a static `Exports` class.
+Module-level functions automatically get `static` unless they already have a modifier that makes them non-static (`abstract`, `virtual`, `override`). This is because module-level functions in Sharpy are effectively static methods in a generated module class.
 
----
+```python
+# Sharpy module
+def helper_function():
+    pass
 
-### 4. GenerateClassDeclaration() - Lines 212-291
-
-**Purpose**: Converts a Sharpy class into a C# class declaration.
-
-**Workflow**:
-
-1. **Tracking** (line 215): Add class name to `_classNames` for later instantiation detection
-2. **Abstract Class Context** (lines 218-219): Set `_isInAbstractClass` flag for method processing
-3. **Name Transformation**: Use `NameContext.Type` for PascalCase conversion
-4. **Generic Support** (lines 232-240): Handle type parameters with constraints
-5. **Inheritance** (lines 243-249): Map base classes/interfaces via `TypeMapper`
-6. **Member Generation** (line 252): Delegate to `GenerateClassMembers()` (in ClassMembers.cs)
-7. **Abstract Interface Stubs** (lines 255-277):
-   ```csharp
-   if (_isInAbstractClass && classDef.BaseClasses.Count > 0)
-   {
-       var interfaceMethods = CollectInterfaceMethodDefs(classDef.BaseClasses);
-       var definedMethods = GetDefinedMethodNames(classDef.Body);
-       // Generate abstract stubs for missing interface methods
-   }
-   ```
-   **Why?** In C#, abstract classes implementing interfaces can provide abstract stubs instead of concrete implementations. This auto-generates those stubs.
-
-8. **Cleanup** (line 288): Restore previous `_isInAbstractClass` state
-
----
-
-### 5. CollectInterfaceMethodDefs() - Lines 297-348
-
-**Purpose**: Recursively collect all method signatures from interfaces (including inherited ones).
-
-**Algorithm**:
-- Uses **visited tracking** to avoid infinite recursion on circular interface inheritance
-- Uses **seenMethods** to avoid duplicate method definitions
-- Recursively walks base interfaces via `_interfaceDefinitions` dictionary
-- Returns a flattened list of all interface method signatures
-
-**Why needed?** When an abstract class implements an interface but doesn't implement all methods, C# requires abstract stub declarations. This method finds which methods need stubs.
-
----
-
-### 6. GenerateAbstractMethodStub() - Lines 371-393
-
-**Purpose**: Create an abstract method declaration for unimplemented interface methods.
-
-**Generated Code**:
-```csharp
-public abstract ReturnType MethodName(params);  // Note the semicolon!
+@staticmethod
+def explicit_static():
+    pass
 ```
 
-**Important Details**:
-- Skips `self` parameter (line 382) - C# doesn't have explicit `self`
-- Always `public abstract` modifiers
-- Ends with semicolon token (no body) - line 392
-
----
-
-### 7. GenerateEnumDeclaration() - Lines 533-548
-
-**Purpose**: Route enum generation based on whether it's an integer or string enum.
-
-**Key Design**: Sharpy supports **two kinds of enums**:
-
-1. **Integer Enums**: Standard C# enums
-   ```python
-   enum Status:
-       PENDING = 0
-       ACTIVE = 1
-   ```
-   → C# `enum Status { Pending = 0, Active = 1 }`
-
-2. **String Enums**: Generated as sealed classes with static readonly fields
-   ```python
-   enum LogLevel:
-       DEBUG = "debug"
-       INFO = "info"
-   ```
-   → C# sealed class with `public static readonly string` fields
-
-**Detection** (lines 553-564): Enum is "string" if any member has a `StringLiteral` value.
-
-**Tracking**: String enum names are added to `_stringEnumNames` (line 541) for proper member access generation elsewhere in the compiler.
-
----
-
-### 8. GenerateStringEnumClass() - Lines 606-671
-
-**Purpose**: Generate a sealed class pattern for string enums (since C# enums must be integral types).
-
-**Generated Pattern**:
 ```csharp
-public sealed class LogLevel
+// Generated C# (inside a module class)
+public static void HelperFunction() { }
+
+public static void ExplicitStatic() { }
+```
+
+---
+
+### 4. GenerateXmlDocComment() (Lines 185-209)
+
+**Purpose:** Converts Python docstrings to C# XML documentation comments.
+
+**Implementation:**
+
+```csharp
+private SyntaxTriviaList GenerateXmlDocComment(string docString)
 {
-    public static readonly string DEBUG = "debug";
-    public static readonly string INFO = "info";
+    // 1. Split docstring into lines
+    var lines = docString.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+    // 2. Build trivia list
+    var triviaList = new List<SyntaxTrivia>
+    {
+        Comment("/// <summary>"),
+        EndOfLine("\n")
+    };
+
+    // 3. Add each non-empty line as a comment
+    triviaList.AddRange(lines
+        .Select(line => line.Trim())
+        .Where(trimmedLine => !string.IsNullOrEmpty(trimmedLine))
+        .SelectMany(trimmedLine => new[]
+        {
+            Comment($"/// {trimmedLine}"),
+            EndOfLine("\n")
+        }));
+
+    // 4. Close summary tag
+    triviaList.Add(Comment("/// </summary>"));
+    triviaList.Add(EndOfLine("\n"));
+
+    return TriviaList(triviaList);
 }
 ```
 
-**Field Name Transformation** (line 625):
-- Uses `NameContext.Constant` for field names (UPPER_CASE → UPPER_CASE)
-- This preserves C# constant naming conventions
+**Example:**
 
-**Default Values** (lines 628-640):
-- If member has explicit string value: use it
-- If no value: use the original member name as the string value
+```python
+def process_data(items: list[str]) -> int:
+    """
+    Process a list of items.
+    Returns the count of processed items.
+    """
+    return len(items)
+```
+
+```csharp
+/// <summary>
+/// Process a list of items.
+/// Returns the count of processed items.
+/// </summary>
+public static int ProcessData(global::Sharpy.Core.List<string> items)
+{
+    return global::Sharpy.Core.Exports.Len(items);
+}
+```
 
 ---
 
-### 9. GenerateConstraintClauses() - Lines 488-531
+### 5. GenerateClassDeclaration() (Lines 213-294)
 
-**Purpose**: Convert Sharpy generic constraints to C# `where` clauses.
+**Purpose:** Transforms a Sharpy class definition into a C# class, handling inheritance, generics, and abstract stub generation.
 
-**Constraint Types Supported**:
+**Key Steps:**
 
-| Sharpy Constraint | C# Syntax |
-|-------------------|-----------|
+1. **Track Abstract Context (Lines 220-222):** Set `_isInAbstractClass` flag to enable implicit abstract method detection
+2. **Name Transformation (Line 224):** `snake_case` → `PascalCase`
+3. **Generate Modifiers (Line 227):** Process decorators (`@abstract`, `@sealed`, etc.)
+4. **Generic Type Parameters (Lines 234-242):** Handle `class MyClass[T]:` syntax
+5. **Base Classes/Interfaces (Lines 245-251):** Map inheritance chain
+6. **Generate Members (Line 254):** Delegate to `GenerateClassMembers()`
+7. **Abstract Stub Generation (Lines 257-280):** For abstract classes implementing interfaces, generate abstract methods for missing interface methods
+8. **Docstring (Lines 285-288):** Add XML documentation
+
+**Abstract Stub Generation (Lines 257-280):**
+
+This is a sophisticated feature. When an abstract class implements an interface but doesn't provide all method implementations, the compiler generates abstract method stubs:
+
+```python
+@abstract
+class BaseProcessor(IProcessor):
+    """Abstract base class"""
+    pass
+
+# IProcessor has methods: process(item: str) -> None
+```
+
+```csharp
+public abstract class BaseProcessor : IProcessor
+{
+    // Generated abstract stub because process() wasn't implemented
+    public abstract void Process(string item);
+}
+```
+
+**Algorithm:**
+
+```csharp
+if (_isInAbstractClass && classDef.BaseClasses.Length > 0)
+{
+    // Collect all interface methods recursively
+    var interfaceMethods = CollectInterfaceMethodDefs(classDef.BaseClasses);
+    
+    // Get methods already defined in this class
+    var definedMethods = GetDefinedMethodNames(classDef.Body);
+    
+    // Generate stubs for missing methods
+    foreach (var interfaceMethod in interfaceMethods)
+    {
+        if (!definedMethods.Contains(interfaceMethod.Name))
+        {
+            var stub = GenerateAbstractMethodStub(interfaceMethod);
+            members.Add(stub);
+        }
+    }
+}
+```
+
+---
+
+### 6. CollectInterfaceMethodDefs() (Lines 296-354)
+
+**Purpose:** Recursively collect all method definitions from interfaces (including inherited interfaces) to generate abstract stubs.
+
+**Why This Is Needed:**
+
+In C#, an abstract class implementing an interface must still declare abstract methods for unimplemented interface members. Sharpy automates this.
+
+**Algorithm:**
+
+```csharp
+private List<FunctionDef> CollectInterfaceMethodDefs(IReadOnlyList<TypeAnnotation> baseTypes)
+{
+    var result = new List<FunctionDef>();
+    var visited = new HashSet<string>();  // Prevent infinite recursion
+    var seenMethods = new HashSet<string>();  // Deduplicate methods
+
+    void CollectFromInterface(string interfaceName)
+    {
+        if (visited.Contains(interfaceName))
+            return;
+        visited.Add(interfaceName);
+
+        // Look up interface definition
+        if (!_interfaceDefinitions.TryGetValue(interfaceName, out var interfaceDef))
+            return;
+
+        // Collect methods from this interface
+        foreach (var stmt in interfaceDef.Body)
+        {
+            if (stmt is FunctionDef funcDef)
+            {
+                if (!seenMethods.Contains(funcDef.Name))
+                {
+                    seenMethods.Add(funcDef.Name);
+                    result.Add(funcDef);
+                }
+            }
+        }
+
+        // Recursively collect from base interfaces
+        foreach (var baseInterface in interfaceDef.BaseInterfaces)
+        {
+            CollectFromInterface(baseInterface.Name);
+        }
+    }
+
+    // Process all base types
+    foreach (var baseType in baseTypes)
+    {
+        if (_interfaceDefinitions.ContainsKey(baseType.Name))
+        {
+            CollectFromInterface(baseType.Name);
+        }
+    }
+
+    return result;
+}
+```
+
+**Example:**
+
+```python
+# Sharpy
+interface IDrawable:
+    def draw() -> None: ...
+
+interface IResizable(IDrawable):
+    def resize(factor: float) -> None: ...
+
+@abstract
+class Shape(IResizable):
+    pass
+```
+
+```csharp
+// Generated C#
+public interface IDrawable
+{
+    void Draw();
+}
+
+public interface IResizable : IDrawable
+{
+    void Resize(float factor);
+}
+
+public abstract class Shape : IResizable
+{
+    // Auto-generated stubs from both interfaces
+    public abstract void Draw();
+    public abstract void Resize(float factor);
+}
+```
+
+---
+
+### 7. GenerateEnumDeclaration() (Lines 540-555)
+
+**Purpose:** Dispatcher that determines whether to generate an integer enum or a string enum class.
+
+**Design Decision:**
+
+Sharpy supports two types of enums:
+1. **Integer enums** → Standard C# `enum`
+2. **String enums** → Sealed class with `public static readonly string` fields
+
+**Detection Logic:**
+
+```csharp
+private bool IsStringEnum(EnumDef enumDef)
+{
+    // Check if any member has a string literal value
+    foreach (var member in enumDef.Members)
+    {
+        if (member.Value is StringLiteral)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+```
+
+**Why String Enums Need Special Handling:**
+
+C# doesn't support string enums natively. Sharpy emulates them using the pattern:
+
+```csharp
+public sealed class Status
+{
+    public static readonly string Pending = "pending";
+    public static readonly string Active = "active";
+    public static readonly string Complete = "complete";
+}
+```
+
+This allows code like:
+
+```python
+# Sharpy
+status: Status = Status.PENDING
+```
+
+```csharp
+// C#
+Status status = Status.Pending;
+```
+
+---
+
+### 8. GenerateIntegerEnum() (Lines 583-609)
+
+**Purpose:** Generate a standard C# enum for integer enums.
+
+```csharp
+private EnumDeclarationSyntax GenerateIntegerEnum(EnumDef enumDef)
+{
+    // 1. Transform name
+    var enumName = NameMangler.Transform(enumDef.Name, NameContext.Type);
+
+    // 2. Enums are always public
+    var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
+
+    // 3. Generate members
+    var members = enumDef.Members
+        .Select(GenerateEnumMember)
+        .ToArray();
+
+    // 4. Create enum declaration
+    var enumDecl = EnumDeclaration(enumName)
+        .WithModifiers(modifiers)
+        .WithMembers(SeparatedList(members));
+
+    // 5. Add documentation
+    if (!string.IsNullOrEmpty(enumDef.DocString))
+    {
+        enumDecl = enumDecl.WithLeadingTrivia(GenerateXmlDocComment(enumDef.DocString));
+    }
+
+    return enumDecl;
+}
+```
+
+**Example:**
+
+```python
+# Sharpy
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+```
+
+```csharp
+// C#
+public enum Color
+{
+    Red = 1,
+    Green = 2,
+    Blue = 3
+}
+```
+
+Note the name transformation: `RED` → `Red` (handled by `TransformEnumMemberName()`).
+
+---
+
+### 9. GenerateStringEnumClass() (Lines 611-679)
+
+**Purpose:** Generate a sealed class with static readonly string fields to emulate string enums.
+
+**Implementation:**
+
+```csharp
+private ClassDeclarationSyntax GenerateStringEnumClass(EnumDef enumDef)
+{
+    var className = NameMangler.Transform(enumDef.Name, NameContext.Type);
+
+    // Create public sealed class
+    var modifiers = TokenList(
+        Token(SyntaxKind.PublicKeyword),
+        Token(SyntaxKind.SealedKeyword)
+    );
+
+    var classDecl = ClassDeclaration(className).WithModifiers(modifiers);
+
+    // Generate public static readonly string fields
+    var members = new List<MemberDeclarationSyntax>();
+
+    foreach (var member in enumDef.Members)
+    {
+        var fieldName = NameMangler.Transform(member.Name, NameContext.Constant);
+
+        // Determine value: explicit value or member name as default
+        ExpressionSyntax valueExpr;
+        if (member.Value is StringLiteral strLit)
+        {
+            valueExpr = GenerateExpression(strLit);
+        }
+        else
+        {
+            // Default to original member name
+            valueExpr = LiteralExpression(
+                SyntaxKind.StringLiteralExpression,
+                Literal(member.Name)
+            );
+        }
+
+        var field = FieldDeclaration(
+            VariableDeclaration(PredefinedType(Token(SyntaxKind.StringKeyword)))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(fieldName))
+                        .WithInitializer(EqualsValueClause(valueExpr))
+                ))
+        )
+        .WithModifiers(TokenList(
+            Token(SyntaxKind.PublicKeyword),
+            Token(SyntaxKind.StaticKeyword),
+            Token(SyntaxKind.ReadOnlyKeyword)
+        ));
+
+        members.Add(field);
+    }
+
+    return classDecl.WithMembers(List(members));
+}
+```
+
+**Example:**
+
+```python
+# Sharpy
+enum HttpMethod:
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    DELETE = "DELETE"
+```
+
+```csharp
+// C#
+public sealed class HttpMethod
+{
+    public static readonly string Get = "GET";
+    public static readonly string Post = "POST";
+    public static readonly string Put = "PUT";
+    public static readonly string Delete = "DELETE";
+}
+```
+
+---
+
+### 10. GenerateConstraintClauses() (Lines 495-538)
+
+**Purpose:** Generate C# generic type constraints from Sharpy type parameters.
+
+**Constraint Types:**
+
+| Sharpy Constraint | C# Constraint |
+|-------------------|---------------|
 | `ClassConstraint` | `where T : class` |
 | `StructConstraint` | `where T : struct` |
-| `TypeConstraint` | `where T : IInterface` |
+| `TypeConstraint` | `where T : BaseType` |
 | `NewConstraint` | `where T : new()` |
 
-**Critical Detail** (lines 501-509): Constraints are **ordered** according to C# rules:
-1. `class`/`struct` constraints first (order 0)
-2. Type constraints second (order 1)
-3. `new()` constraint last (order 2)
+**Ordering Matters:**
 
-This ordering is **required by C#** - violating it causes compilation errors.
+C# requires constraints in a specific order:
+1. `class` or `struct` (reference/value type constraint)
+2. Base type constraints
+3. `new()` constructor constraint
+
+The code enforces this (lines 508-516):
+
+```csharp
+var ordered = typeParam.Constraints
+    .OrderBy(c => c switch
+    {
+        ClassConstraint => 0,
+        StructConstraint => 0,
+        Parser.Ast.TypeConstraint => 1,
+        NewConstraint => 2,
+        _ => 3
+    });
+```
+
+**Example:**
+
+```python
+# Sharpy
+def create_instance[T: class, new()](factory_data: dict[str, object]) -> T:
+    return T()
+```
+
+```csharp
+// C#
+public static T CreateInstance<T>(global::Sharpy.Core.Dict<string, object> factoryData)
+    where T : class, new()
+{
+    return new T();
+}
+```
 
 ---
 
-### 10. TransformEnumMemberName() - Lines 691-707
+### 11. TransformEnumMemberName() (Lines 699-715)
 
-**Purpose**: Convert Python-style enum member names to C# PascalCase.
+**Purpose:** Transform enum member names following Python → C# conventions.
 
-**Examples**:
-- `RED` → `Red`
-- `DARK_BLUE` → `DarkBlue`
-- `very_long_name` → `VeryLongName`
+**Rules:**
 
-**Special Case** (lines 697-698): Backtick-escaped names are preserved literally
-- `` `CustomName` `` → `CustomName`
+1. **Backtick-escaped names:** Preserve as-is (strip backticks)
+2. **SCREAMING_SNAKE_CASE:** Convert to PascalCase
+   - `RED` → `Red`
+   - `DARK_BLUE` → `DarkBlue`
+   - `HTTP_ERROR` → `HttpError`
 
-**Algorithm** (lines 701-706):
-1. Split by underscores
-2. Capitalize first letter of each part
-3. Lowercase the rest
-4. Join together
+**Implementation:**
 
-**Why not use NameMangler?** The comment on line 676 explains: `NameMangler.ToPascalCase` preserves all-caps words as-is, but enum members need proper capitalization.
+```csharp
+private static string TransformEnumMemberName(string name)
+{
+    if (string.IsNullOrEmpty(name))
+        return name;
+
+    // Handle literal names (backtick-escaped)
+    if (name.StartsWith("`") && name.EndsWith("`"))
+        return name[1..^1];
+
+    // Split by underscores and capitalize each part
+    var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
+    var capitalizedParts = parts.Select(part =>
+        string.IsNullOrEmpty(part) ? part :
+        char.ToUpperInvariant(part[0]) + part.Substring(1).ToLowerInvariant());
+
+    return string.Join("", capitalizedParts);
+}
+```
+
+**Why Not Use NameMangler?**
+
+`NameMangler.ToPascalCase()` preserves all-caps words (e.g., `HTTP` stays `HTTP`). For enum members, we want friendlier C# naming (`Http` not `HTTP`).
 
 ---
 
 ## Dependencies
 
-### Internal Dependencies (imported from Sharpy)
+### Internal (Sharpy Codebase)
 
-1. **Sharpy.Compiler.Parser.Ast**: AST node types
-   - `FunctionDef`, `ClassDef`, `StructDef`, `InterfaceDef`, `EnumDef`
-   - `Parameter`, `Decorator`, `TypeParameterDef`
-   - `Statement`, `Expression` base types
-   - Constraint types: `ClassConstraint`, `StructConstraint`, `TypeConstraint`, `NewConstraint`
+| Dependency | Purpose |
+|------------|---------|
+| `TypeMapper` | Maps Sharpy type annotations → C# types (`list[T]` → `List<T>`) |
+| `NameMangler` | Transforms names (`snake_case` → `PascalCase`, `__str__` → `ToString()`) |
+| `CodeGenContext` | Provides symbol table, module metadata, entry point detection |
+| `SemanticInfo` | Type information from semantic analysis |
+| `Parser.Ast.*` | AST node definitions (`FunctionDef`, `ClassDef`, etc.) |
 
-2. **Sharpy.Compiler.Semantic**: Semantic analysis results
-   - `TypeSymbol`, `ModuleSymbol` (referenced in main RoslynEmitter.cs)
-   - `SemanticInfo` (used for type resolution)
+### External (Roslyn)
 
-### External Dependencies (Roslyn)
+```csharp
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+```
 
-1. **Microsoft.CodeAnalysis.CSharp.Syntax**: All the `*Syntax` types
-   - `MethodDeclarationSyntax`, `ClassDeclarationSyntax`, etc.
-
-2. **Microsoft.CodeAnalysis.CSharp.SyntaxFactory**: Factory methods (imported as `static`)
-   - `MethodDeclaration()`, `ClassDeclaration()`, `Token()`, etc.
-
-### Cross-Partial Dependencies
-
-This file calls methods defined in other RoslynEmitter partial files:
-
-- `GenerateExpression()` - from **RoslynEmitter.Expressions.cs** (line 108, 631, 684)
-- `GenerateBodyStatement()` - from **RoslynEmitter.Statements.cs** (line 53)
-- `GenerateClassMembers()` - from **RoslynEmitter.ClassMembers.cs** (lines 252, 431)
-- `GenerateInterfaceMembers()` - from **RoslynEmitter.ClassMembers.cs** (line 476)
-
-### Shared State (from RoslynEmitter.cs)
-
-This file uses numerous private fields defined in the main partial class:
-
-**Context and Mapping**:
-- `_context` - CodeGenContext with symbol tables and module info
-- `_typeMapper` - TypeMapper for converting Sharpy types to C# types
-
-**Tracking Sets** (populated by this file):
-- `_classNames` - Track defined classes (line 215)
-- `_structNames` - Track defined structs (line 398)
-- `_stringEnumNames` - Track string enums (line 541)
-- `_interfaceDefinitions` - Interface definitions for stub generation
-
-**Scoping State** (managed by GenerateFunctionDeclaration):
-- `_declaredVariables` - Variables in current scope
-- `_variableVersions` - SSA-style versioning for redefinitions
-- `_constVariables` - Const declarations in current scope
-
-**Context Flags**:
-- `_isInAbstractClass` - Whether currently generating an abstract class
+All C# code generation uses Roslyn's `SyntaxFactory` API. **Never** use string concatenation or interpolation for code generation.
 
 ---
 
 ## Patterns and Design Decisions
 
-### 1. Partial Class Organization
+### 1. Immutability: Roslyn Syntax Trees Are Immutable
 
-**Decision**: Split RoslynEmitter into multiple files by responsibility.
+All Roslyn syntax nodes are immutable. Modifications create new instances:
 
-**Rationale**: The full emitter would be several thousand lines. Splitting by concern (TypeDeclarations, Expressions, Statements, etc.) improves maintainability.
-
-**Pattern**: Each partial file focuses on a specific AST node category:
-- TypeDeclarations.cs ← You are here
-- Expressions.cs - Expression evaluation
-- Statements.cs - Statement generation
-- ClassMembers.cs - Class/interface member generation
-- etc.
-
-### 2. Visitor Pattern (Implicit)
-
-While not using explicit Visitor interfaces, the methods follow a **visitor-like pattern**:
-- Each AST node type has a corresponding `Generate*` method
-- Methods dispatch to appropriate generators based on node type
-- Example: `GenerateEnumDeclaration()` dispatches to either `GenerateIntegerEnum()` or `GenerateStringEnumClass()`
-
-### 3. Name Mangling Strategy
-
-**Critical Pattern**: Different contexts use different casing:
-
-| Context | Sharpy Name | C# Name | Example |
-|---------|-------------|---------|---------|
-| Type | `my_class` | `MyClass` | `NameContext.Type` |
-| Method | `get_value` | `GetValue` | `NameContext.Method` |
-| Parameter | `user_id` | `userId` | `NameContext.Parameter` |
-| Constant | `MAX_SIZE` | `MAX_SIZE` | `NameContext.Constant` |
-| Interface | `i_logger` | `ILogger` | `NameContext.Interface` |
-
-**Why?** Sharpy uses Python's snake_case conventions, but generated C# should follow .NET conventions for interop.
-
-### 4. Decorator-Based Modifiers
-
-**Pattern**: Use decorators for access control and behavior modification.
-
-**Rationale**: Python uses decorators, C# uses modifiers. The mapping is straightforward:
-- `@public def foo()` → `public void Foo()`
-- `@staticmethod` → `static`
-- `@abstract` → `abstract`
-
-**Default Behavior**: Module-level functions get `static` unless they have instance modifiers.
-
-### 5. String Enum Emulation
-
-**Pattern**: Since C# enums must be integral types, string enums become sealed classes.
-
-**Implementation**:
 ```csharp
-// Sharpy:
-enum LogLevel:
-    DEBUG = "debug"
+// ❌ Wrong - this doesn't work
+var method = MethodDeclaration(returnType, name);
+method.WithModifiers(modifiers);  // Returns new instance, doesn't mutate
+method.WithBody(body);            // 'method' is unchanged
 
-// Generated C#:
-public sealed class LogLevel
-{
-    public static readonly string DEBUG = "debug";
-}
+// ✅ Correct - chain modifications
+var method = MethodDeclaration(returnType, name)
+    .WithModifiers(modifiers)
+    .WithBody(body);
 ```
 
-**Rationale**: This provides compile-time checking while supporting string values. The `sealed` modifier prevents inheritance, making it behave more like an enum.
+### 2. SyntaxFactory Only - No String Templating
 
-### 6. Abstract Interface Stub Generation
+**Critical Rule:** Never generate C# code using strings. Always use `SyntaxFactory`:
 
-**Pattern**: Auto-generate abstract method stubs when an abstract class implements an interface.
+```csharp
+// ❌ NEVER DO THIS
+var code = $"public static {returnType} {methodName}() {{ return {value}; }}";
 
-**Why?** C# allows abstract classes to defer interface implementation to derived classes. The compiler automatically generates stubs for unimplemented interface methods, saving boilerplate.
+// ✅ ALWAYS DO THIS
+return MethodDeclaration(
+    PredefinedType(Token(SyntaxKind.IntKeyword)),
+    Identifier("GetValue")
+)
+.WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+.WithBody(Block(
+    ReturnStatement(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(42)))
+));
+```
 
-**Example**:
+**Why?** String templating leads to:
+- Syntax errors
+- Injection vulnerabilities
+- Unmaintainable code
+- No compiler guarantees
+
+### 3. Context Flags for Nested Semantics
+
+The `_isInAbstractClass` flag (line 76 in main RoslynEmitter.cs) tracks context:
+
+```csharp
+// Set flag when generating abstract class
+_isInAbstractClass = classDef.Decorators.Any(d => d.Name == "abstract");
+
+// Use flag to change behavior
+if (_isInAbstractClass && methodBody is EllipsisExpression)
+{
+    // In abstract class, ellipsis means abstract method
+    return GenerateAbstractMethod(method);
+}
+
+// Restore previous context
+_isInAbstractClass = wasInAbstractClass;
+```
+
+This pattern avoids threading context through every method call.
+
+### 4. Decorator → Modifier Mapping
+
+Sharpy uses Python-style decorators; C# uses keywords. The mapping is intentional:
+
 ```python
-# Sharpy
-@abstract
-class BaseHandler(IHandler):
-    pass  # Doesn't implement IHandler methods
+@staticmethod    # Python decorator
+@abstract        # Python decorator
+@override        # Python decorator
+```
 
-# Generated C#
-public abstract class BaseHandler : IHandler
+```csharp
+static           // C# keyword
+abstract         // C# keyword
+override         // C# keyword
+```
+
+Default behavior:
+- **Module-level functions:** Automatically `static` (they're in a generated module class)
+- **Class members:** No automatic `static` (instance methods by default)
+- **Types:** Automatically `public` if no access modifier specified
+
+### 5. String Enums as Sealed Classes
+
+C# doesn't have native string enums. Sharpy emulates them:
+
+```csharp
+public sealed class MyEnum
 {
-    public abstract void Handle();  // Auto-generated stub
+    public static readonly string Value1 = "value1";
+    public static readonly string Value2 = "value2";
 }
 ```
 
-### 7. Scope Isolation
+This design:
+- ✅ Provides type safety (can't pass arbitrary strings)
+- ✅ Works with switch statements (pattern matching)
+- ✅ Maintains Python-like ergonomics
+- ❌ Can't be used in attributes (C# limitation)
+- ❌ Not a "real" enum (can't use `Enum.GetValues()`)
 
-**Pattern**: Each `GenerateFunctionDeclaration()` clears scope-tracking dictionaries.
+### 6. Symbol Resolution: CodeGenInfo vs. Runtime Tracking
 
-**Rationale**: Functions are independent scopes. Clearing ensures variables from one function don't leak into another.
-
-**Implementation** (lines 18-21):
+**Before (Old Design):**
 ```csharp
-_declaredVariables.Clear();
-_variableVersions.Clear();
-_constVariables.Clear();
+// Track everything in HashSets during emission
+_classNames.Add(className);
+_structNames.Add(structName);
+_stringEnumNames.Add(enumName);
 ```
+
+**After (Current Design):**
+```csharp
+// Use CodeGenInfo computed during semantic analysis
+var symbol = _context.LookupSymbol(name);
+if (symbol?.CodeGenInfo?.IsStringEnum == true)
+{
+    // Handle string enum
+}
+```
+
+**Why?** Moves complexity upstream to semantic analysis where it belongs. Emission should be a pure transformation with minimal state.
+
+**Exception:** Local variables still use runtime tracking (`_declaredVariables`, `_variableVersions`) because local redeclarations happen during emission.
 
 ---
 
 ## Debugging Tips
 
-### Problem: Generated method has wrong modifiers
+### 1. Inspect Generated C# Code
 
-**Check**:
-1. The decorators on the Sharpy function (e.g., `@static`, `@public`)
-2. `GenerateModifiersFromDecorators()` - is the decorator name being recognized?
-3. Whether the function is module-level (should auto-add `static`)
+Use the CLI to emit C# before compilation:
 
-**Common Issue**: Forgetting that module-level functions automatically become `static` (lines 171-179).
+```bash
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy
+```
 
----
+This shows the exact C# code generated, making issues obvious.
 
-### Problem: Enum member has wrong casing
+### 2. Verify Type Mappings
 
-**For Integer Enums**:
-- Check `TransformEnumMemberName()` (lines 691-707)
-- Verify the underscore-splitting logic
+Check that type annotations are correctly mapped:
 
-**For String Enums**:
-- Check `GenerateStringEnumClass()` (lines 606-671)
-- Field names use `NameContext.Constant` (line 625)
-- Remember: String enum fields preserve UPPER_CASE
+```bash
+dotnet run --project src/Sharpy.Cli -- emit ast file.spy
+```
 
----
+Look at the `TypeAnnotation` nodes in the AST. If they're wrong, the issue is in the parser or semantic analysis, not code generation.
 
-### Problem: Generic constraints in wrong order
+### 3. Breakpoint Strategy
 
-**Symptom**: C# compiler error about constraint ordering.
+When debugging this file, set breakpoints at:
+- **Line 17** (`GenerateFunctionDeclaration`): Catch all function generation
+- **Line 213** (`GenerateClassDeclaration`): Catch all class generation
+- **Line 540** (`GenerateEnumDeclaration`): Catch enum type detection
+- **Line 296** (`CollectInterfaceMethodDefs`): Debug abstract stub generation
 
-**Check**: `GenerateConstraintClauses()` lines 501-509. The ordering MUST be:
-1. `class`/`struct` first
-2. Type constraints second
-3. `new()` last
+### 4. Common Issues and Fixes
 
-**Fix**: Ensure the `OrderBy` clause (lines 501-509) is working correctly.
+| Symptom | Likely Cause | Fix |
+|---------|--------------|-----|
+| "Duplicate method definition" | Variable versioning not cleared | Ensure `_declaredVariables.Clear()` at function start (line 20) |
+| "Cannot convert type" | Type mapping error | Check `TypeMapper.MapType()` for the specific type |
+| "Main method conflict" | Multiple entry points | Check `_context.IsEntryPoint` logic (line 26) |
+| "Abstract method not generated" | Interface not in `_interfaceDefinitions` | Verify interface was visited earlier in pipeline |
+| Missing XML documentation | Docstring not extracted | Check parser extracted `DocString` from AST |
 
----
+### 5. Test File-Based Integration Tests
 
-### Problem: Abstract class missing interface implementations
+The best way to verify correctness:
 
-**Check**:
-1. Is `_isInAbstractClass` being set correctly? (line 219)
-2. Is `_interfaceDefinitions` populated? (Check where interfaces are registered)
-3. `CollectInterfaceMethodDefs()` - is it finding the interface methods?
-4. `GetDefinedMethodNames()` - is it correctly identifying already-implemented methods?
+```bash
+# Run file-based tests that cover type declarations
+dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
+```
 
-**Debugging**: Add breakpoints in lines 255-277 to see which stubs are being generated.
-
----
-
-### Problem: Parameter tracking issues in function body
-
-**Symptom**: Parameters aren't recognized as declared variables, causing scope errors.
-
-**Check**: Lines 43-50 in `GenerateFunctionDeclaration()`. Parameters must be:
-1. Added to `_declaredVariables` (line 46)
-2. Added to `_variableVersions` with initial version 0 (line 49)
-
-**Why?** The body generation code checks these dictionaries to determine if a name is a parameter vs. a variable.
-
----
-
-### Problem: Variadic parameters not working
-
-**Check**:
-1. Is `param.IsVariadic` being set correctly by the parser?
-2. `GenerateParameter()` lines 89-103 - is the array wrapping happening?
-3. Is the `params` keyword being added? (line 102)
-
-**Expected Output**: `void Foo(params object[] args)`
-
----
-
-### Problem: Docstrings not appearing in generated code
-
-**Check**:
-1. Is `func.DocString` non-empty?
-2. `GenerateXmlDocComment()` lines 184-208 - is it processing the string correctly?
-3. Is the trivia being attached? (line 74)
-
-**Note**: XML doc comments are leading trivia, so they must be attached before the declaration is finalized.
+Add new `.spy` + `.expected` pairs in `Integration/TestFixtures/` to test new features.
 
 ---
 
 ## Contribution Guidelines
 
-### When to Modify This File
+### What Changes Might Be Made to This File?
 
-You'll work in this file when:
+1. **New Decorator Support**
+   - Add mapping in `GenerateModifiersFromDecorators()` or `GenerateTypeModifiersFromDecorators()`
+   - Example: `@readonly` → `readonly` for structs
 
-1. **Adding support for new type declarations**
-   - Example: Supporting records, delegates, or other C# type constructs
-   - Pattern: Add a new `Generate*Declaration()` method
+2. **Enhanced Generic Constraints**
+   - Extend `GenerateConstraintClauses()` to support new constraint types
+   - Example: `unmanaged` constraint for native interop
 
-2. **Changing decorator behavior**
-   - Example: Adding new decorators like `@sealed`, `@readonly`
-   - Modify: `GenerateModifiersFromDecorators()` or `GenerateTypeModifiersFromDecorators()`
+3. **New Type Kinds**
+   - Add new `Generate*Declaration()` method
+   - Example: Records, delegates, etc.
 
-3. **Enhancing generic constraints**
-   - Example: Supporting `where T : unmanaged` or `notnull`
-   - Modify: `GenerateConstraintClauses()`
+4. **Improved Name Mangling**
+   - Modify `NameMangler` calls or add special cases
+   - Example: Preserve certain naming patterns
 
-4. **Improving name mangling**
-   - Example: Better handling of special names or abbreviations
-   - Modify: Calls to `NameMangler.Transform()` with appropriate contexts
+5. **Better Docstring Handling**
+   - Enhance `GenerateXmlDocComment()` to parse Python docstring formats
+   - Example: Parse parameter descriptions, return types, raises sections
 
-5. **Extending enum support**
-   - Example: Supporting different enum base types (byte, long, etc.)
-   - Modify: `GenerateEnumDeclaration()` and related methods
+### Rules for Changes
 
-### Code Style Guidelines
+1. **Always Use SyntaxFactory**
+   - Never use string interpolation for code generation
+   - Build syntax trees using Roslyn APIs
 
-1. **Use Roslyn SyntaxFactory**: Always use factory methods like `MethodDeclaration()`, `ClassDeclaration()`, etc.
-   - Don't construct syntax nodes manually
+2. **Test with Python First**
+   - Verify expected behavior: `python3 -c "..."`
+   - Match Python semantics, not what "feels right"
 
-2. **Maintain separation of concerns**:
-   - Type declarations → This file
-   - Type members → ClassMembers.cs
-   - Expressions → Expressions.cs
-   - Statements → Statements.cs
+3. **Maintain Immutability**
+   - Don't mutate syntax nodes
+   - Chain `.With*()` calls to build up nodes
 
-3. **Track state carefully**:
-   - Use appropriate tracking sets (`_classNames`, `_stringEnumNames`, etc.)
-   - Clear scope-local state in `GenerateFunctionDeclaration()`
-   - Restore context flags (like `_isInAbstractClass`) after nested processing
+4. **Add Integration Tests**
+   - Create `.spy` + `.expected` pairs in `TestFixtures/`
+   - Verify the full pipeline (not just code generation)
 
-4. **Handle edge cases**:
-   - Check for null/empty (docstrings, type annotations, base classes)
-   - Provide sensible defaults (void for untyped returns, object for untyped params)
+5. **Update Documentation**
+   - If you add new behavior, update this walkthrough
+   - Add comments explaining non-obvious design decisions
 
-5. **Preserve docstrings**:
-   - Always convert Sharpy docstrings to XML doc comments when present
-   - Use `GenerateXmlDocComment()` helper
+### Example: Adding a New Decorator
 
-### Testing Additions
+**Task:** Support `@sealed` decorator on methods (prevent overriding).
 
-When adding features to this file:
+**Step 1:** Add to `GenerateModifiersFromDecorators()`:
 
-1. **Add integration tests** in `Sharpy.Tests.Integration`:
-   - Write a `.spy` file with your feature
-   - Verify it compiles to correct C#
-   - Verify the C# compiles and runs correctly
+```csharp
+case "sealed":
+    tokens.Add(Token(SyntaxKind.SealedKeyword));
+    break;
+```
 
-2. **Add unit tests** if appropriate:
-   - For complex logic like constraint ordering
-   - For name transformation edge cases
+**Step 2:** Test it:
 
-3. **Test interop scenarios**:
-   - Ensure generated C# is idiomatic and usable from other C# code
-   - Test with .NET libraries
+```python
+# test_sealed_method.spy
+class Base:
+    @sealed
+    @virtual
+    def process(self) -> None:
+        pass
+```
 
-### Common Pitfalls to Avoid
+Expected C#:
 
-1. **Don't break name mangling consistency**
-   - Always use the appropriate `NameContext` enum value
-   - Match naming conventions used elsewhere in the compiler
+```csharp
+public class Base
+{
+    public virtual sealed void Process() { }
+}
+```
 
-2. **Don't forget to track new type kinds**
-   - If adding a new type declaration, update tracking sets appropriately
-   - Update other partial files that need to know about the new type
+**Step 3:** Add integration test:
 
-3. **Don't violate C# syntax rules**
-   - Example: Constraint ordering MUST follow C# rules
-   - Example: Enum base types must be integral
+```bash
+# Create test files
+echo "class Base:\n    @sealed\n    @virtual\n    def process(self) -> None:\n        pass" > \
+    test_sealed_method.spy
 
-4. **Don't leak scope state**
-   - Always clear/restore state that's function-scoped
-   - Use try/finally if needed to guarantee cleanup
-
-5. **Don't break the Roslyn API**
-   - Roslyn syntax nodes are immutable - use `.With*()` methods
-   - Chain modifications: `node.WithModifiers(...).WithBody(...)`
+echo "" > test_sealed_method.expected  # Or expected output if run
+```
 
 ---
 
 ## Cross-References
 
-This file is part of the **RoslynEmitter partial class**. Related files:
+### Related Partial Class Files
 
-- **RoslynEmitter.cs** - Main partial file with shared state and fields
-- **[RoslynEmitter.ClassMembers.md](RoslynEmitter.ClassMembers.md)** - Generates class/interface members (fields, properties, methods)
-- **[RoslynEmitter.Expressions.md](RoslynEmitter.Expressions.md)** - Expression generation (called from parameter defaults, enum values)
-- **[RoslynEmitter.Statements.md](RoslynEmitter.Statements.md)** - Statement generation (called for function bodies)
-- **RoslynEmitter.CompilationUnit.md** - Top-level file generation
-- **RoslynEmitter.ModuleClass.md** - Module-level code organization
+This file is part of the `RoslynEmitter` partial class split across multiple files:
 
-### Related Documentation
+- **[RoslynEmitter.cs](./RoslynEmitter.md)** - Core emitter, field definitions, symbol resolution
+- **[RoslynEmitter.ClassMembers.cs](./RoslynEmitter.ClassMembers.md)** - Generating members within classes (methods, properties, fields)
+- **[RoslynEmitter.Expressions.cs](./RoslynEmitter.Expressions.md)** - Expression code generation
+- **[RoslynEmitter.Statements.cs](./RoslynEmitter.Statements.md)** - Statement code generation (if/while/for/match)
+- **[RoslynEmitter.CompilationUnit.cs](./RoslynEmitter.CompilationUnit.md)** - Top-level module generation
+- **[RoslynEmitter.Operators.cs](./RoslynEmitter.Operators.md)** - Operator overload generation
 
-- **Language Specs**:
-  - `docs/language_specification/type_annotations.md` - Type annotation syntax
-  - `docs/language_specification/type_hierarchy.md` - Class/interface hierarchy
-  - `docs/language_specification/dotnet_interop.md` - .NET interop rules
+### Key Dependencies
 
-- **Architecture**:
-  - CodeGenContext.md - Code generation context and symbol resolution
-  - TypeMapper.md - Type mapping from Sharpy to C#
-  - NameMangler.md - Name transformation logic
+- **[TypeMapper.md](./TypeMapper.md)** - Understanding how types are mapped
+- **[NameMangler.md](./NameMangler.md)** - Understanding name transformations
+- **[CodeGenContext.md](./CodeGenContext.md)** - Understanding the compilation context
+
+### Upstream Components
+
+- **[Semantic/TypeChecker.md](../Semantic/TypeChecker.md)** - Produces typed AST consumed by this file
+- **[Semantic/NameResolver.md](../Semantic/NameResolver.md)** - Resolves symbols used during code generation
+- **[Parser/Parser.md](../Parser/Parser.md)** - Produces AST nodes transformed here
+
+### Language Specification
+
+- **[docs/language_specification/type_annotations.md](../../../../language_specification/type_annotations.md)** - Type annotation syntax
+- **[docs/language_specification/type_hierarchy.md](../../../../language_specification/type_hierarchy.md)** - Inheritance rules
+- **[docs/language_specification/dotnet_interop.md](../../../../language_specification/dotnet_interop.md)** - .NET integration
+
+---
+
+## Summary
+
+`RoslynEmitter.TypeDeclarations.cs` is the bridge between Python-style type declarations and C# type system. It demonstrates:
+
+- **Roslyn mastery**: Exclusive use of `SyntaxFactory` for syntactically correct C# generation
+- **Semantic awareness**: Leverages `CodeGenInfo` from upstream semantic analysis
+- **Python fidelity**: Carefully maps Python conventions to idiomatic C#
+- **Compiler craftsmanship**: Handles edge cases (entry points, abstract stubs, string enums)
+
+Understanding this file requires knowledge of:
+1. **Roslyn syntax APIs** - How C# syntax trees are constructed
+2. **Sharpy semantics** - What Python-like features mean in .NET context
+3. **Compiler pipeline** - How this fits between semantic analysis and final compilation
+
+When working on this file, always verify against real Python behavior and ensure generated C# is idiomatic and efficient.

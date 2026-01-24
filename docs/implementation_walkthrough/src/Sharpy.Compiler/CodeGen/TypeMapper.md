@@ -6,24 +6,30 @@
 
 ## Overview
 
-TypeMapper is the **type translation bridge** between Sharpy's type system and C#'s type system. It sits at the heart of the code generation phase, converting every type representation—whether from the AST's `TypeAnnotation` or from semantic analysis's `SemanticType`—into Roslyn's `TypeSyntax` nodes that can be emitted as C# source code.
+`TypeMapper` is the **type translation bridge** in the Sharpy compiler's code generation phase. It converts Sharpy type representations into C# Roslyn `TypeSyntax` nodes, enabling the final emission of valid C# code. Think of it as a sophisticated dictionary lookup combined with structural transformation—it knows how `list[int]` becomes `global::Sharpy.Core.List<int>` and how `float` becomes C# `double`.
 
-**Key Responsibilities:**
-- Translate Sharpy primitive types (int, str, bool) to C# equivalents
-- Map Sharpy collections (list, dict, set) to runtime types in `Sharpy.Core`
-- Handle generic types, nullable types, and type parameters
-- Convert function types to C# delegates (Func/Action)
-- Support type aliases and type inference for literals
-- Provide helper methods for creating collection and array types
+### Key Responsibilities
 
-**Pipeline Position:**
+1. **Primitive Type Mapping**: `int` → C# `int`, `float` → C# `double`, `str` → C# `string`
+2. **Collection Type Mapping**: `list[T]` → `global::Sharpy.Core.List<T>`, `dict[K,V]` → `global::Sharpy.Core.Dict<K,V>`
+3. **Generic Type Translation**: Handle type parameters and type arguments
+4. **Nullable Types**: `int?` → C# `int?`
+5. **Function Types**: Map to C# `Func<>`/`Action<>` delegates
+6. **Tuple Types**: Convert to C# `ValueTuple<>`
+7. **Type Inference**: Infer types from literal expressions when annotations are missing
+8. **Module-Qualified Types**: Handle cross-file and cross-module type references
+
+### Pipeline Position
+
 ```
-Semantic Analysis (SemanticType) ──┐
-                                   ├──> TypeMapper ──> TypeSyntax ──> RoslynEmitter ──> C# Code
-Parser AST (TypeAnnotation) ───────┘
+Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → CodeGen (TypeMapper) → C#
+                                ↓                              ↓
+                         TypeAnnotation                  TypeSyntax
+                         SemanticType                  (Roslyn nodes)
 ```
 
-TypeMapper doesn't perform type checking—that's semantic analysis's job. It assumes types are already validated and focuses purely on **syntactic translation**.
+**Upstream**: Receives `TypeAnnotation` (from AST) and `SemanticType` (from semantic analysis)  
+**Downstream**: Produces `TypeSyntax` consumed by `RoslynEmitter` to generate C# code
 
 ---
 
@@ -36,426 +42,320 @@ public class TypeMapper
 {
     private readonly CodeGenContext _context;
     private static readonly Dictionary<string, string> _builtinTypeMap;
-
-    // Constructor, mapping methods...
+    
+    public TypeMapper(CodeGenContext context) { ... }
 }
 ```
 
-**Architecture:**
-- **Instance-based**: Each `TypeMapper` instance is tied to a `CodeGenContext` for symbol table access
-- **Static type catalog**: Built-in type mappings are shared across all instances via `_builtinTypeMap`
-- **Stateless translation**: All methods are side-effect-free transformations
+**Design Characteristics:**
+- **Instance-based**: Each mapper is tied to a specific `CodeGenContext` for accessing:
+  - `SymbolTable` (for type lookups)
+  - `BuiltinRegistry` (for builtin type checks)
+  - `SourceFilePath` (for cross-file reference resolution)
+  - `ProjectNamespace` (for multi-file compilation namespacing)
+- **Static Type Catalog**: `_builtinTypeMap` is populated once at startup from `PrimitiveCatalog`
+- **Stateless**: All public methods are pure transformations—no side effects
+
+### Built-in Type Map
+
+The static constructor initializes `_builtinTypeMap` with two categories:
+
+1. **Primitives** (from `PrimitiveCatalog`):
+   - `int` → `int`
+   - `long` → `long`
+   - `float` → `double` (Sharpy's 64-bit float)
+   - `float32` → `float` (C# 32-bit)
+   - `bool` → `bool`
+   - `str` → `string`
+
+2. **Runtime Collections**:
+   - `list` → `global::Sharpy.Core.List`
+   - `dict` → `global::Sharpy.Core.Dict`
+   - `set` → `global::Sharpy.Core.Set`
+   - `tuple` → `System.ValueTuple`
+
+**Why `global::`?** Prevents name collisions when the output namespace contains "Sharpy" (e.g., a user creates `namespace Sharpy.MyApp`).
 
 ---
 
 ## Key Functions/Methods
 
-### 1. Static Initialization: Populating Built-in Types
+### 1. `MapSemanticType(SemanticType type)` → `TypeSyntax`
 
+**Purpose**: The primary workhorse for translating semantic analysis types to Roslyn syntax.
+
+**When Called**: After type checking, when the compiler has fully resolved types and needs to generate C# code.
+
+**Logic Flow**:
 ```csharp
-static TypeMapper()
+return type switch
 {
-    _builtinTypeMap = new Dictionary<string, string>();
-
-    // Add all primitives from PrimitiveCatalog
-    foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
-    {
-        _builtinTypeMap.TryAdd(name, info.CSharpName);
-    }
-
-    // Add non-primitive type mappings (collections, etc.)
-    _builtinTypeMap["list"] = "global::Sharpy.Core.List";
-    _builtinTypeMap["dict"] = "global::Sharpy.Core.Dict";
-    _builtinTypeMap["set"] = "global::Sharpy.Core.Set";
-    _builtinTypeMap["tuple"] = "System.ValueTuple";
-}
+    null or UnknownType => object,
+    VoidType => void,
+    BuiltinType => (match singletons or lookup in map),
+    GenericType => MapGenericSemanticType(...),
+    NullableType => NullableType(MapSemanticType(underlying)),
+    UserDefinedType => ParseTypeName(GetMappedTypeNameFromSymbol(...)),
+    TypeParameterType => IdentifierName(typeParam.Name),
+    FunctionType => MapSemanticFunctionType(...),
+    TupleType => MapSemanticTupleType(...),
+    _ => object
+};
 ```
 
-**Design Decision: Why `global::`?**
-The `global::` prefix prevents namespace collisions. If a user creates a namespace called "Sharpy" in their output code, `Sharpy.Core.List` would become ambiguous. Using `global::Sharpy.Core.List` ensures we always reference the runtime library.
+**Special Cases**:
+- **Builtin Singletons**: Uses reference equality checks (`type == SemanticType.Int`) for performance
+- **Unknown Types**: Falls back to `object` (defensive coding)
+- **Type Parameters**: Directly emits the generic parameter name (e.g., `T` in `class Box[T]`)
 
-**Connection to Upstream:**
-- Uses `PrimitiveCatalog.GetAllPrimitives()` from semantic analysis to discover all primitive type mappings
-- This creates a single source of truth: primitives defined once in semantic analysis, automatically propagated to codegen
+**Example**:
+```csharp
+// SemanticType: GenericType { Name = "list", TypeArguments = [BuiltinType("int")] }
+var result = mapper.MapSemanticType(listIntType);
+// Result: global::Sharpy.Core.List<int>
+```
 
 ---
 
-### 2. Core Translation: `MapSemanticType(SemanticType type)`
+### 2. `MapType(TypeAnnotation? type)` → `TypeSyntax`
 
-This is the **primary entry point** for translating types discovered during semantic analysis.
+**Purpose**: Translates AST type annotations (before full semantic analysis) to C# types.
 
+**When Called**: During code generation when working directly with AST nodes that may not have semantic type info.
+
+**Key Features**:
+- **Type Alias Expansion**: Looks up type aliases in the symbol table and recursively expands them
+- **Nullable Handling**: Applies `?` modifier at the usage site
+- **Generic Type Arguments**: Recursively maps each type argument
+- **Default to `object`**: If no annotation exists
+
+**Algorithm**:
 ```csharp
-public TypeSyntax MapSemanticType(SemanticType type)
-{
-    return type switch
-    {
-        null or UnknownType => PredefinedType(Token(SyntaxKind.ObjectKeyword)),
-        VoidType => PredefinedType(Token(SyntaxKind.VoidKeyword)),
-
-        // Singleton pattern for primitives
-        BuiltinType builtin when type == SemanticType.Int =>
-            PredefinedType(Token(SyntaxKind.IntKeyword)),
-        // ... more primitive checks ...
-
-        GenericType generic => MapGenericSemanticType(generic),
-        NullableType nullable => NullableType(MapSemanticType(nullable.UnderlyingType)),
-        UserDefinedType udt => ParseTypeName(GetMappedTypeName(udt.Name)),
-        TypeParameterType typeParam => IdentifierName(typeParam.Name),
-        FunctionType funcType => MapSemanticFunctionType(funcType),
-        TupleType tupleType => MapSemanticTupleType(tupleType),
-
-        _ => PredefinedType(Token(SyntaxKind.ObjectKeyword))
-    };
-}
+1. If type == null → return object
+2. Check for type alias → expand and recursively map
+3. If generic → map base type + type arguments
+4. If nullable → wrap in NullableType(...)
+5. Return ParseTypeName(mapped name)
 ```
 
-**Key Insights:**
+**Example**:
+```python
+# Sharpy code
+type IntList = list[int]
+x: IntList = [1, 2, 3]
+```
 
-1. **Null Safety**: Unknown or null types become `object` (safe fallback)
-
-2. **Singleton Pattern for Primitives**: The semantic analyzer uses singleton instances like `SemanticType.Int`, so we can use reference equality (`type == SemanticType.Int`) instead of name matching. This is faster and type-safe.
-
-3. **Recursive Structure**: For complex types (generics, nullables, tuples), this method recursively calls itself. For example:
-   ```
-   list[int?] → GenericType(list, [NullableType(int)])
-              → MapGenericSemanticType
-              → Recursively maps NullableType(int)
-              → Returns: global::Sharpy.Core.List<int?>
-   ```
-
-4. **Upstream Connection**: This method consumes the output of `TypeResolver` and `TypeChecker` from semantic analysis. Every `SemanticType` has already been validated for correctness.
+```csharp
+// MapType(IntList annotation) resolves:
+// 1. Lookup IntList → finds alias to list[int]
+// 2. Expand → list[int]
+// 3. Map → global::Sharpy.Core.List<int>
+```
 
 ---
 
-### 3. Generic Type Mapping: `MapGenericSemanticType(GenericType generic)`
+### 3. `GetMappedTypeName(string sharpyTypeName)` → `string`
 
+**Purpose**: Core name resolution logic—converts Sharpy type names to C# type names.
+
+**Resolution Order**:
+1. **Built-in types**: Check `_builtinTypeMap` (fast path)
+2. **Registry builtins**: Check `_context.IsBuiltinType()` → return `Sharpy.{name}`
+3. **Cross-file/module types**: Look up in symbol table, check `DefiningFilePath`/`DefiningModule`
+4. **Current file types**: Apply `NameMangler.ToPascalCase()` (snake_case → PascalCase)
+
+**Example**:
 ```csharp
-private TypeSyntax MapGenericSemanticType(GenericType generic)
-{
-    var baseTypeName = GetMappedTypeName(generic.Name);
-    var typeArgs = generic.TypeArguments
-        .Select(MapSemanticType)  // Recursive!
-        .ToArray();
-
-    return GenericName(Identifier(baseTypeName))
-        .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
-}
+GetMappedTypeName("int")          // → "int"
+GetMappedTypeName("list")         // → "global::Sharpy.Core.List"
+GetMappedTypeName("my_class")     // → "MyClass" (name mangling)
+GetMappedTypeName("SomeClass")    // → "SomeClass" (already PascalCase)
 ```
-
-**Example Translation:**
-```
-Sharpy: list[dict[str, int]]
-        ↓
-C#:     global::Sharpy.Core.List<global::Sharpy.Core.Dict<string, int>>
-```
-
-**Implementation Detail:**
-- `GetMappedTypeName` handles the base type translation (list → global::Sharpy.Core.List)
-- `.Select(MapSemanticType)` recursively processes each type argument
-- Roslyn's `GenericName` and `TypeArgumentList` build the syntax tree
 
 ---
 
-### 4. Function Type Translation: `MapSemanticFunctionType(FunctionType funcType)`
+### 4. `GetFullyQualifiedTypeName(TypeSymbol typeSymbol, string sharpyTypeName)` → `string`
 
-This method maps Sharpy function types to C# delegates.
+**Purpose**: Constructs fully qualified C# names for types from other modules or files.
 
+**Namespace Construction**:
 ```csharp
-private TypeSyntax MapSemanticFunctionType(Semantic.FunctionType funcType)
-{
-    var paramTypes = funcType.ParameterTypes
-        .Select(MapSemanticType)
-        .ToArray();
-    var returnType = MapSemanticType(funcType.ReturnType);
+// For imported modules:
+"{ProjectNamespace}.{ModuleNamespace}.Exports.{TypeName}"
 
-    // If return type is void, use Action<T1, T2, ...>
-    if (funcType.ReturnType is VoidType)
-    {
-        if (paramTypes.Length == 0)
-            return ParseTypeName("System.Action");
-
-        return GenericName("System.Action")
-            .WithTypeArgumentList(TypeArgumentList(SeparatedList(paramTypes)));
-    }
-
-    // Otherwise use Func<T1, T2, ..., TResult>
-    var allTypes = paramTypes.Append(returnType).ToArray();
-
-    if (allTypes.Length == 1)  // No params, just return type
-        return GenericName("System.Func")
-            .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(returnType)));
-
-    return GenericName("System.Func")
-        .WithTypeArgumentList(TypeArgumentList(SeparatedList(allTypes)));
-}
+// Example:
+// import animal
+// class Dog: animal.Animal → "MyProject.Animal.Exports.Dog"
 ```
 
-**Translation Examples:**
-```
-() -> int              →  System.Func<int>
-(str) -> bool          →  System.Func<string, bool>
-(int, int) -> str      →  System.Func<int, int, string>
-() -> void             →  System.Action
-(str) -> void          →  System.Action<string>
-```
+**Algorithm**:
+1. Determine module namespace from `typeSymbol.DefiningModule` or derive from `DefiningFilePath`
+2. Convert module path to namespace (e.g., `"lib.animal"` → `"Lib.Animal"`)
+3. Mangle type name to PascalCase
+4. Build qualified name with project namespace prefix if present
 
-**Design Pattern:**
-- C# has two delegate families: `Func<T>` (returns value) and `Action` (returns void)
-- `Func` always has the return type as the **last** type argument
-- The method uses `.Append(returnType)` to add it at the end
+**Why "Exports"?** Sharpy wraps module-level code in a static `Exports` class, so types are nested within it.
 
 ---
 
-### 5. AST Type Annotation Mapping: `MapType(TypeAnnotation? type)`
+### 5. `MapGenericSemanticType(GenericType generic)` → `TypeSyntax`
 
-This method handles types from the **parser's AST** (before semantic analysis).
+**Purpose**: Handles generic type instantiations like `list[int]` or `dict[str, float]`.
 
+**Implementation**:
 ```csharp
-public TypeSyntax MapType(TypeAnnotation? type)
-{
-    if (type == null)
-        return PredefinedType(Token(SyntaxKind.ObjectKeyword));
+var baseTypeName = GetMappedTypeName(generic.Name);  // "list" → "global::Sharpy.Core.List"
+var typeArgs = generic.TypeArguments
+    .Select(MapSemanticType)  // Recursively map each argument
+    .ToArray();
 
-    // Check if this is a type alias and expand it
-    var aliasSymbol = _context.SymbolTable.LookupTypeAlias(type.Name);
-    if (aliasSymbol != null)
-    {
-        if (aliasSymbol.TypeAnnotation != null)
-        {
-            var expandedType = MapType(aliasSymbol.TypeAnnotation);
-            return type.IsNullable ? NullableType(expandedType) : expandedType;
-        }
-        else if (aliasSymbol.FunctionType != null)
-        {
-            var expandedType = MapFunctionType(aliasSymbol.FunctionType);
-            return type.IsNullable ? NullableType(expandedType) : expandedType;
-        }
-    }
-
-    // Get base type name
-    var baseTypeName = GetMappedTypeName(type.Name);
-
-    // Handle generic type arguments
-    if (type.TypeArguments.Count > 0)
-    {
-        var typeArgs = type.TypeArguments.Select(MapType).ToArray();
-        var result = GenericName(Identifier(baseTypeName))
-            .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
-
-        return type.IsNullable ? NullableType(result) : result;
-    }
-
-    // Handle nullable non-generic types
-    var typeSyntax = ParseTypeName(baseTypeName);
-    return type.IsNullable ? NullableType(typeSyntax) : typeSyntax;
-}
+return GenericName(Identifier(baseTypeName))
+    .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
 ```
 
-**Key Responsibilities:**
-
-1. **Type Alias Expansion**:
-   ```sharpy
-   type UserId = int
-   def get_user(id: UserId?) -> User:
-       ...
-   ```
-   The `UserId?` gets expanded to `int?` by looking up the alias in the symbol table.
-
-2. **Nullable Handling**: The `IsNullable` flag on `TypeAnnotation` is checked at every level. Generic types can be nullable: `list[int]?`.
-
-3. **Recursive Generics**: Type arguments are recursively mapped, supporting nested generics like `list[dict[str, set[int]]]`.
-
-**Connection to Symbol Table:**
-- Uses `_context.SymbolTable.LookupTypeAlias()` to resolve type aliases
-- This is why `TypeMapper` needs the `CodeGenContext` dependency
+**Result**: Produces Roslyn nodes equivalent to `List<int>` syntax tree.
 
 ---
 
-### 6. Type Name Translation: `GetMappedTypeName(string sharpyTypeName)`
+### 6. `MapSemanticFunctionType(FunctionType funcType)` → `TypeSyntax`
 
+**Purpose**: Converts function types to C# delegates (`Func<>` or `Action<>`).
+
+**Decision Logic**:
 ```csharp
-private string GetMappedTypeName(string sharpyTypeName)
-{
-    // Check if it's a built-in type
-    if (_builtinTypeMap.TryGetValue(sharpyTypeName, out var csharpType))
-        return csharpType;
-
-    // Check if it's a known builtin from the registry
-    if (_context.IsBuiltinType(sharpyTypeName))
-        return $"Sharpy.{sharpyTypeName}";
-
-    // User-defined types keep their original name
-    return sharpyTypeName;
+if (returnType is VoidType) {
+    if (no parameters) → System.Action
+    else → System.Action<T1, T2, ...>
+} else {
+    if (no parameters) → System.Func<TResult>
+    else → System.Func<T1, T2, ..., TResult>
 }
 ```
 
-**Three-Tier Lookup:**
+**Examples**:
+```python
+# Sharpy
+callback: (int, str) -> None     # → System.Action<int, string>
+processor: (int) -> str          # → System.Func<int, string>
+factory: () -> int               # → System.Func<int>
+```
 
-1. **Static Built-ins** (`_builtinTypeMap`): Fast dictionary lookup for primitives and collections
-   - `int` → stays as `int` (handled via predefined tokens)
-   - `list` → `global::Sharpy.Core.List`
-
-2. **Runtime Registry**: Dynamic builtin types registered at runtime
-   - Returns `Sharpy.{typeName}` for types from the runtime library
-
-3. **User Types**: Passed through unchanged
-   - `MyClass` → `MyClass`
-   - Name mangling (snake_case → PascalCase) happens elsewhere in `RoslynEmitter`
+**Why This Matters**: Enables first-class functions and lambda support.
 
 ---
 
-### 7. Type Inference: `InferElementType(IEnumerable<Expression> expressions)`
+### 7. `MapSemanticTupleType(TupleType tupleType)` → `TypeSyntax`
 
+**Purpose**: Maps Sharpy tuples to C# `ValueTuple<>`.
+
+**Edge Cases**:
+- **Empty tuple**: `()` → `System.ValueTuple` (zero-element)
+- **Single element**: `(int,)` → Just `int` (not a tuple in C#)
+- **Multiple elements**: `(int, str)` → `System.ValueTuple<int, string>`
+
+**Implementation**:
 ```csharp
-public TypeSyntax InferElementType(IEnumerable<Expression> expressions)
-{
-    var exprs = expressions.ToList();
-    if (exprs.Count == 0)
-        return PredefinedType(Token(SyntaxKind.ObjectKeyword));
+if (tupleType.ElementTypes.Count == 0)
+    return ParseTypeName("System.ValueTuple");
 
-    var firstExpr = exprs[0];
-    var inferredType = InferExpressionType(firstExpr);
+var elementTypes = tupleType.ElementTypes.Select(MapSemanticType).ToArray();
 
-    // Check if all expressions have the same type
-    if (exprs.All(e => TypesMatch(InferExpressionType(e), inferredType)))
-        return MapTypeFromInferredType(inferredType);
+if (elementTypes.Length == 1)
+    return elementTypes[0];  // Not a tuple!
 
-    return PredefinedType(Token(SyntaxKind.ObjectKeyword));
-}
+return GenericName("System.ValueTuple")
+    .WithTypeArgumentList(TypeArgumentList(SeparatedList(elementTypes)));
 ```
-
-**Use Case:**
-When translating collection literals without explicit type annotations:
-```sharpy
-x = [1, 2, 3]  # Infers list[int]
-y = [1, "two", 3.0]  # Falls back to list[object]
-```
-
-**Algorithm:**
-1. Infer type of first element
-2. Check if all elements match that type
-3. If yes: use inferred type; if no: fall back to `object`
-
-**Limitations:**
-This is a **simple heuristic** for v0.1. It doesn't handle:
-- Type widening (int → long → float)
-- Common base types (Dog and Cat → Animal)
-- Union types
-
-These could be improved with semantic type information in future versions.
 
 ---
 
-### 8. Helper: `InferExpressionType(Expression expr)`
+### 8. `InferElementType(IEnumerable<Expression> expressions)` → `TypeSyntax`
 
+**Purpose**: Type inference for collection literals when no explicit annotation exists.
+
+**Strategy**:
 ```csharp
-private string InferExpressionType(Expression expr)
-{
-    return expr switch
-    {
-        IntegerLiteral => "int",
-        FloatLiteral floatLit => floatLit.Suffix?.ToLower() switch
-        {
-            "f" => "float",
-            "m" => "decimal",
-            _ => "double"
-        },
-        StringLiteral => "string",
-        BooleanLiteral => "bool",
-        NoneLiteral => "object",
-        ListLiteral => "list",
-        DictLiteral => "dict",
-        SetLiteral => "set",
-        TupleLiteral => "tuple",
-        _ => "object"
-    };
-}
+1. If empty collection → object
+2. Infer type of first element
+3. Check if all elements have the same type
+4. If yes → use that type
+5. If no → fall back to object
 ```
 
-**Float Literal Handling:**
-Sharpy supports typed float literals like C#:
-- `3.14f` → `float`
-- `3.14m` → `decimal`
-- `3.14` → `double` (default)
+**Example**:
+```python
+# Sharpy
+numbers = [1, 2, 3]  # No type annotation
+# InferElementType([1, 2, 3]) → all are IntegerLiteral → int
+```
 
-The suffix is stored in the `FloatLiteral` AST node and examined here.
+**Limitations**: Only handles simple literal inference. Complex expression type inference relies on semantic analysis.
 
 ---
 
-### 9. Expression-to-Type Conversion: `MapTypeFromExpression(Expression expr)`
+### 9. `InferExpressionType(Expression expr)` → `string`
 
+**Purpose**: Simple pattern matching on AST nodes to infer types from literals.
+
+**Mapping**:
 ```csharp
-public TypeSyntax MapTypeFromExpression(Expression expr)
-{
-    if (expr is Identifier id)
-    {
-        var annotation = new TypeAnnotation { Name = id.Name };
-        return MapType(annotation);
-    }
-
-    // Handle nested generic types (e.g., Box[int])
-    if (expr is IndexAccess indexAccess && indexAccess.Object is Identifier nestedTypeName)
-    {
-        var typeArgs = MapTypeArgumentsFromExpression(indexAccess.Index);
-        return GenericName(NameMangler.ToPascalCase(nestedTypeName.Name))
-            .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
-    }
-
-    return PredefinedType(Token(SyntaxKind.ObjectKeyword));
-}
+IntegerLiteral → "int"
+FloatLiteral (with suffix) → "float" (f), "decimal" (m), or "double" (default)
+StringLiteral → "string"
+BooleanLiteral → "bool"
+NoneLiteral → "object"
+ListLiteral → "list"
+DictLiteral → "dict"
+SetLiteral → "set"
+TupleLiteral → "tuple"
+_ → "object"
 ```
 
-**Use Case:**
-In Sharpy, generic instantiation can look like this:
-```sharpy
-class Box[T]:
-    value: T
-
-# Instantiation uses index syntax
-my_box = Box[int](42)
-```
-
-When parsed, `Box[int]` becomes:
-- `Box` → `Identifier`
-- `[int]` → `IndexAccess` with `int` as an expression
-
-This method converts the expression `int` into a type syntax node.
-
-**Name Mangling:**
-Notice `NameMangler.ToPascalCase(nestedTypeName.Name)` converts `box` → `Box` for C# conventions.
+**Used By**: `InferElementType()` and `InferTypeFromExpression()`
 
 ---
 
-### 10. Tuple Type Mapping
+### 10. `MapTypeFromExpression(Expression expr)` → `TypeSyntax`
 
+**Purpose**: Handles a special case—generic type instantiation where type arguments are parsed as expressions.
+
+**Problem**:
+```python
+# Sharpy
+box = Box[int](42)  # "int" is parsed as Identifier expression, not TypeAnnotation!
+```
+
+**Solution**:
 ```csharp
-private TypeSyntax MapSemanticTupleType(Semantic.TupleType tupleType)
-{
-    if (tupleType.ElementTypes.Count == 0)
-        return ParseTypeName("System.ValueTuple");
+if (expr is Identifier id)
+    return MapType(new TypeAnnotation { Name = id.Name });
 
-    var elementTypes = tupleType.ElementTypes
-        .Select(MapSemanticType)
-        .ToArray();
-
-    // For single element, it's just the type (not a tuple)
-    if (elementTypes.Length == 1)
-        return elementTypes[0];
-
-    return GenericName("System.ValueTuple")
-        .WithTypeArgumentList(TypeArgumentList(SeparatedList(elementTypes)));
-}
+if (expr is IndexAccess indexAccess)  // Nested generics: Container[Box[int]]
+    return GenericName(...)
+        .WithTypeArgumentList(MapTypeArgumentsFromExpression(indexAccess.Index));
 ```
 
-**Translation Examples:**
-```
-()           →  System.ValueTuple
-(int,)       →  int  (degenerates to single type)
-(int, str)   →  System.ValueTuple<int, string>
-```
+**Why This Exists**: Parser limitation—`Box[int]` is initially parsed as index access, not a type. This method "re-interprets" it as a type during code generation.
 
-**Design Decision:**
-Single-element tuples aren't real tuples in C#—they degenerate to just the element type. This matches Python's behavior where `(42,)` is just `42` if not explicitly marked as a tuple.
+---
+
+### 11. Helper Methods
+
+#### `CreateCollectionType(string collectionName, TypeSyntax elementType)` → `TypeSyntax`
+- **Purpose**: Convenience method for creating `List<T>`, `Set<T>`, etc.
+- **Example**: `CreateCollectionType("list", intType)` → `global::Sharpy.Core.List<int>`
+
+#### `CreateDictType(TypeSyntax keyType, TypeSyntax valueType)` → `TypeSyntax`
+- **Purpose**: Specialized method for dictionary creation
+- **Example**: `CreateDictType(stringType, intType)` → `global::Sharpy.Core.Dict<string, int>`
+
+#### `MakeNullable(TypeSyntax type)` → `TypeSyntax`
+- **Purpose**: Wraps any type in nullable syntax
+- **Example**: `MakeNullable(intType)` → `int?`
+
+#### `MakeArrayType(TypeSyntax elementType, int rank = 1)` → `TypeSyntax`
+- **Purpose**: Creates C# array types (for potential future use or .NET interop)
+- **Example**: `MakeArrayType(intType, 2)` → `int[,]`
 
 ---
 
@@ -463,319 +363,327 @@ Single-element tuples aren't real tuples in C#—they degenerate to just the ele
 
 ### Internal Dependencies
 
-1. **CodeGenContext** (`_context`):
-   - Provides `SymbolTable` for type alias lookups
-   - Provides `IsBuiltinType()` for runtime type registry checks
-   - Location: `src/Sharpy.Compiler/CodeGen/CodeGenContext.cs`
+1. **`CodeGenContext`** (`CodeGen/CodeGenContext.cs`):
+   - Provides access to `SymbolTable`, `BuiltinRegistry`, file paths, and project namespace
+   - Essential for resolving type names and cross-file references
 
-2. **PrimitiveCatalog** (from `Sharpy.Compiler.Semantic`):
-   - Source of truth for primitive type mappings
-   - Used during static initialization
-   - Location: `src/Sharpy.Compiler/Semantic/PrimitiveCatalog.cs`
+2. **`NameMangler`** (`CodeGen/NameMangler.cs`):
+   - Converts `snake_case` → `PascalCase`
+   - Handles C# keyword escaping (e.g., `class` → `@class`)
+   - Maps dunder methods (`__str__` → `ToString`)
 
-3. **NameMangler**:
-   - Converts snake_case → PascalCase for type names
-   - Used in `MapTypeFromExpression`
-   - Location: `src/Sharpy.Compiler/CodeGen/NameMangler.cs`
+3. **`SemanticType`** (`Semantic/SemanticType.cs`):
+   - Family of types representing resolved semantic information
+   - Key subtypes: `BuiltinType`, `GenericType`, `NullableType`, `UserDefinedType`, `FunctionType`, `TupleType`
 
-4. **AST Types** (from `Sharpy.Compiler.Parser.Ast`):
-   - `TypeAnnotation`, `FunctionType`, `TupleType`
-   - `Expression` and all literal types
-   - Location: `src/Sharpy.Compiler/Parser/Ast/`
+4. **`TypeAnnotation`** (`Parser/Ast/*.cs`):
+   - AST representation of type syntax
+   - Contains `Name`, `TypeArguments`, `IsNullable`
 
-5. **Semantic Types** (from `Sharpy.Compiler.Semantic`):
-   - `SemanticType` hierarchy (BuiltinType, GenericType, etc.)
-   - Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs`
+5. **`PrimitiveCatalog`** (`Semantic/PrimitiveCatalog.cs`):
+   - Registry of primitive types with their C# names
+   - Used to populate `_builtinTypeMap` at startup
 
 ### External Dependencies
 
-1. **Roslyn (Microsoft.CodeAnalysis.CSharp)**:
-   - `SyntaxFactory` for creating syntax nodes
-   - `TypeSyntax` and all type syntax node types
-   - This is the **output format** of all TypeMapper methods
-
-2. **.NET System Types**:
-   - Maps to `System.Func`, `System.Action`, `System.ValueTuple`
+- **Microsoft.CodeAnalysis.CSharp**: Roslyn API for building C# syntax trees
+  - `SyntaxFactory`: Factory methods for creating syntax nodes
+  - `TypeSyntax`: Base class for all type syntax nodes
+  - `GenericName`, `NullableType`, `PredefinedType`, etc.
 
 ---
 
 ## Patterns and Design Decisions
 
-### 1. Pattern: Static Catalog + Instance Methods
+### 1. **Immutable Syntax Trees**
+All Roslyn syntax nodes are immutable. TypeMapper creates new nodes rather than modifying existing ones. This is thread-safe and aligns with functional programming principles.
 
 ```csharp
-private static readonly Dictionary<string, string> _builtinTypeMap;  // Shared
-private readonly CodeGenContext _context;  // Per-instance
+// Wrong (doesn't exist):
+typeSyntax.IsNullable = true;
 
-static TypeMapper() { ... }  // Initialize shared data once
-public TypeMapper(CodeGenContext context) { ... }  // Inject instance deps
+// Correct:
+var nullableType = NullableType(typeSyntax);
 ```
 
-**Why?**
-- Built-in type mappings are **immutable and universal**—no need to recreate for each instance
-- Context (symbol table, type registry) is **per-compilation**—different projects may have different symbols
+### 2. **Pattern Matching for Type Dispatch**
+Heavy use of C# 9's pattern matching makes the code concise and exhaustive:
 
-### 2. Pattern: Recursive Type Translation
-
-Almost every method follows this pattern:
-1. Check base case (primitive, null, etc.)
-2. If complex type (generic, function, tuple), recursively process components
-3. Combine results using Roslyn syntax builders
-
-**Example:**
-```
-list[dict[str, int?]]
-  ↓ MapSemanticType(GenericType)
-    ↓ MapSemanticType(GenericType) for dict
-      ↓ MapSemanticType(BuiltinType) for str
-      ↓ MapSemanticType(NullableType) for int?
-        ↓ MapSemanticType(BuiltinType) for int
-```
-
-### 3. Pattern: Fail-Safe Fallbacks
-
-Every mapping method has an **escape hatch**:
 ```csharp
-_ => PredefinedType(Token(SyntaxKind.ObjectKeyword))
-```
-
-This prevents crashes during code generation. If something goes wrong, you get `object` instead of a compiler crash. The trade-off is runtime type errors instead of compile-time errors—but those should be caught by semantic analysis anyway.
-
-### 4. Design Decision: `global::` Namespace Prefix
-
-For runtime types, the code uses `global::Sharpy.Core.List` instead of `Sharpy.Core.List`.
-
-**Rationale:**
-```csharp
-namespace Sharpy;  // User's namespace
-
-class MyClass
+return type switch
 {
-    // Without global::, this would be ambiguous!
-    // Does "Sharpy.Core.List" mean global Sharpy.Core or local Sharpy.Core?
-    List<int> items;
+    BuiltinType builtin when type == SemanticType.Int => ...,
+    GenericType generic => ...,
+    NullableType nullable => ...,
+    _ => ...  // Defensive fallback
+};
+```
+
+**Benefit**: Compile-time exhaustiveness checking when new `SemanticType` subclasses are added.
+
+### 3. **Two-Phase Mapping**
+TypeMapper supports mapping from both:
+- **AST types** (`TypeAnnotation`) — early in pipeline, may have aliases
+- **Semantic types** (`SemanticType`) — after full resolution, no aliases
+
+This dual interface allows flexibility in code generation without forcing semantic analysis everywhere.
+
+### 4. **Global Qualification for Runtime Types**
+Using `global::Sharpy.Core.List` instead of just `List` or `Sharpy.Core.List` prevents namespace collisions:
+
+```csharp
+// Without global::
+namespace Sharpy.MyApp {  // User's namespace
+    using Sharpy.Core;    // Collision! Sharpy is ambiguous
+    class MyClass { ... }
+}
+
+// With global::
+namespace Sharpy.MyApp {
+    class MyClass {
+        global::Sharpy.Core.List<int> items;  // Unambiguous
+    }
 }
 ```
 
-The `global::` prefix guarantees we always reference the **runtime library**, not a user namespace.
-
-### 5. Design Decision: Type Parameter Pass-Through
+### 5. **Singleton Optimization for Primitives**
+Primitive types use singleton instances (`SemanticType.Int`, `SemanticType.Str`), allowing fast reference equality checks instead of structural equality:
 
 ```csharp
-TypeParameterType typeParam => IdentifierName(typeParam.Name)
+// Fast path:
+if (type == SemanticType.Int)  // Reference comparison
+    return PredefinedType(Token(SyntaxKind.IntKeyword));
+
+// Avoid:
+if (type is BuiltinType bt && bt.Name == "int")  // Slower
 ```
 
-Type parameters (like `T` in `class Box[T]`) are passed through **unchanged**. This is correct because:
-- In C# generic declarations, type parameters are just identifiers
-- Name mangling doesn't apply (you don't want `Box[t]` to become `Box<T>`)
-- They're already validated by semantic analysis to exist in scope
+### 6. **Recursive Descent for Complex Types**
+Generic types, nullable types, and tuples are handled recursively:
+
+```csharp
+// list[dict[str, int?]]
+MapSemanticType(listType)
+  → MapGenericSemanticType
+    → MapSemanticType(dictType)
+      → MapGenericSemanticType
+        → MapSemanticType(str)
+        → MapSemanticType(nullable_int)
+          → NullableType(MapSemanticType(int))
+```
+
+This mirrors the nested structure of type annotations naturally.
 
 ---
 
 ## Debugging Tips
 
-### 1. Trace Type Translations
+### 1. **Use CLI Emit Commands**
+Debug type mapping without running full compilation:
 
-When debugging incorrect C# output, add breakpoints in:
-- `MapSemanticType` for types from semantic analysis
-- `MapType` for types from AST annotations
+```bash
+# See generated C# types
+dotnet run --project src/Sharpy.Cli -- emit csharp myfile.spy
 
-Set a conditional breakpoint on the type name you're investigating:
-```csharp
-// In MapSemanticType
-if (type is BuiltinType bt && bt.Name == "problematic_type")
-    Console.WriteLine($"Mapping {bt.Name}");
+# Check AST to verify what parser produces
+dotnet run --project src/Sharpy.Cli -- emit ast myfile.spy
 ```
 
-### 2. Check the Built-in Type Map
+### 2. **Add Logging in TypeMapper**
+Insert temporary debug output:
 
-If a type isn't being translated correctly, inspect `_builtinTypeMap` at runtime:
-```csharp
-// In immediate window during debugging
-_builtinTypeMap.ContainsKey("list")  // Should be true
-_builtinTypeMap["list"]  // Should be "global::Sharpy.Core.List"
-```
-
-### 3. Verify Upstream Semantic Types
-
-If `MapSemanticType` receives `null` or `UnknownType`, the problem is **upstream** in semantic analysis. The type checker should have assigned a concrete type.
-
-Add an assertion in debug builds:
 ```csharp
 public TypeSyntax MapSemanticType(SemanticType type)
 {
-    System.Diagnostics.Debug.Assert(
-        type is not UnknownType,
-        "Semantic analysis should resolve all unknown types");
-
-    return type switch { ... };
+    Console.WriteLine($"[TypeMapper] Mapping: {type.GetDisplayName()}");
+    var result = type switch { ... };
+    Console.WriteLine($"[TypeMapper] Result: {result}");
+    return result;
 }
 ```
 
-### 4. Inspect Generated Roslyn Syntax
+### 3. **Check SemanticType vs TypeAnnotation**
+If a type maps incorrectly, determine which entry point is being used:
+- `MapSemanticType()` → Check `TypeChecker` and `TypeResolver`
+- `MapType()` → Check `Parser` AST node structure
 
-Use `.ToFullString()` on any `TypeSyntax` to see the generated C# code:
+### 4. **Verify PrimitiveCatalog**
+If a primitive type isn't mapping:
+
 ```csharp
-var typeSyntax = mapper.MapSemanticType(someType);
-Console.WriteLine(typeSyntax.ToFullString());  // Prints: "global::Sharpy.Core.List<int>"
+// In unit test or interactive debugger:
+var primitives = PrimitiveCatalog.GetAllPrimitives();
+foreach (var (name, info) in primitives) {
+    Console.WriteLine($"{name} → {info.CSharpName}");
+}
 ```
 
-### 5. Common Pitfalls
+### 5. **Test with Python**
+Always verify expected behavior against Python first:
 
-**Problem:** Generic types render as `List<>` (empty type arguments)
-**Cause:** Type arguments weren't recursively mapped
-**Fix:** Ensure `Select(MapSemanticType)` is called on all type argument collections
+```bash
+python3 -c "
+x: list[int] = [1, 2, 3]
+print(type(x))
+"
+```
 
-**Problem:** User types get prefixed with `Sharpy.`
-**Cause:** `_context.IsBuiltinType()` incorrectly returns true
-**Fix:** Check the builtin type registry in `CodeGenContext`
+Then ensure Sharpy generates equivalent C# semantics.
 
-**Problem:** Function types map to `System.Func<void>` instead of `System.Action`
-**Cause:** Void check uses wrong condition
-**Fix:** Ensure `funcType.ReturnType is VoidType` check happens before Func mapping
+### 6. **Inspect Roslyn Output**
+Use Roslyn's built-in visualization:
+
+```csharp
+var typeSyntax = mapper.MapSemanticType(myType);
+Console.WriteLine(typeSyntax.ToFullString());  // Prints C# syntax
+```
+
+### 7. **Common Issues**
+
+| Symptom | Likely Cause | Fix |
+|---------|--------------|-----|
+| "Type not found" error | `GetMappedTypeName()` returning wrong name | Check symbol table lookup, verify `DefiningModule` |
+| Generic types missing `<>` | `MapGenericSemanticType()` not called | Check type switch in `MapSemanticType()` |
+| Nullable `?` missing | `IsNullable` not propagated | Trace nullable handling through recursive calls |
+| Cross-file types unresolved | Module namespace calculation wrong | Debug `GetFullyQualifiedTypeName()` |
+| Keywords not escaped | Name mangling not applied | Check if type goes through `NameMangler` |
 
 ---
 
 ## Contribution Guidelines
 
-### What Changes Belong Here?
+### When to Modify TypeMapper
 
-**✅ Appropriate Changes:**
+1. **Adding New Primitive Types**: Update `PrimitiveCatalog`, not TypeMapper (auto-populates)
+2. **New Collection Types**: Add to `_builtinTypeMap` static initializer
+3. **New Semantic Type Classes**: Add case to `MapSemanticType()` pattern match
+4. **Fixing Type Resolution**: Usually fix `GetMappedTypeName()` or `GetFullyQualifiedTypeName()`
+5. **Interop with .NET Types**: Potentially add special cases or expand builtin map
 
-1. **Adding new type mappings**:
-   ```csharp
-   // Example: Add byte type
-   _builtinTypeMap["byte"] = "byte";
-   _builtinTypeMap["bytes"] = "byte[]";
-   ```
+### What NOT to Change
 
-2. **Supporting new type constructs**:
-   - Union types: `int | str` → C# with discriminated unions
-   - Intersection types: `A & B`
-   - Type constraints: `T where T : IComparable`
+- **Don't bypass Roslyn**: Always use `SyntaxFactory` methods, never string concatenation
+- **Don't perform type checking**: That's `TypeChecker`'s job. Assume types are valid.
+- **Don't store state**: Keep methods pure. Use `CodeGenContext` for lookups, not mutations.
+- **Don't hardcode namespaces**: Use `_context.ProjectNamespace` for multi-file projects
 
-3. **Improving type inference**:
-   - Better element type inference for heterogeneous collections
-   - Widening rules (int → long → double)
-   - Common base type detection
+### Testing Changes
 
-4. **Bug fixes**:
-   - Incorrect nullable handling
-   - Missing generic type argument mappings
-   - Wrong delegate type selection
+1. **Unit Tests**: Add to `Sharpy.Compiler.Tests/CodeGen/TypeMapperTests.cs`
+2. **Integration Tests**: Add file-based test to `TestFixtures/` if it affects end-to-end output
+3. **Python Verification**: Always verify expected behavior with Python interpreter first
 
-**❌ Changes That Don't Belong Here:**
-
-1. **Type checking logic**: That belongs in `src/Sharpy.Compiler/Semantic/TypeChecker.cs`
-2. **Type resolution**: That's `src/Sharpy.Compiler/Semantic/TypeResolver.cs`
-3. **Name mangling**: That's `src/Sharpy.Compiler/CodeGen/NameMangler.cs`
-4. **Expression code generation**: That's `src/Sharpy.Compiler/CodeGen/RoslynEmitter.*.cs`
-
-### Adding a New Type Mapping
-
-To add support for a new built-in type:
-
-1. **Register in `PrimitiveCatalog`** (if it's a primitive):
-   ```csharp
-   // In src/Sharpy.Compiler/Semantic/PrimitiveCatalog.cs
-   primitives.Add("byte", new PrimitiveInfo("byte", "byte"));
-   ```
-
-2. **Add special case** (if needed) in `MapSemanticType`:
-   ```csharp
-   BuiltinType builtin when type == SemanticType.Byte =>
-       PredefinedType(Token(SyntaxKind.ByteKeyword)),
-   ```
-
-3. **Test it**:
-   ```csharp
-   // In tests
-   var mapper = new TypeMapper(context);
-   var result = mapper.MapSemanticType(SemanticType.Byte);
-   Assert.Equal("byte", result.ToFullString());
-   ```
-
-### Adding New Collection Types
-
-To add a new collection type like `deque`:
-
-1. **Add to built-in map**:
-   ```csharp
-   _builtinTypeMap["deque"] = "global::Sharpy.Core.Deque";
-   ```
-
-2. **Implement the runtime type** in `src/Sharpy.Core/`
-
-3. **Add helper method** (optional):
-   ```csharp
-   public TypeSyntax CreateDequeType(TypeSyntax elementType)
-   {
-       return CreateCollectionType("deque", elementType);
-   }
-   ```
-
-### Testing Guidelines
-
-All changes should include tests in `tests/Sharpy.Compiler.Tests/CodeGen/TypeMapperTests.cs`:
-
+**Example Test**:
 ```csharp
 [Fact]
-public void MapSemanticType_WithNewType_ReturnsCorrectCSharpType()
+public void MapSemanticType_ListOfInt_ReturnsGlobalSharpyCoreList()
 {
     var context = new CodeGenContext(...);
     var mapper = new TypeMapper(context);
-
-    var sharpyType = SemanticType.YourNewType;
-    var result = mapper.MapSemanticType(sharpyType);
-
-    Assert.Equal("ExpectedCSharpType", result.ToFullString());
+    var listIntType = new GenericType 
+    { 
+        Name = "list", 
+        TypeArguments = [SemanticType.Int] 
+    };
+    
+    var result = mapper.MapSemanticType(listIntType);
+    
+    Assert.Equal("global::Sharpy.Core.List<int>", result.ToString());
 }
 ```
 
-### Performance Considerations
+### Code Style Guidelines
 
-- **Keep `_builtinTypeMap` static**: It's accessed frequently, don't recreate it
-- **Use pattern matching**: C#'s switch expressions are optimized for type patterns
-- **Avoid unnecessary allocations**: Reuse `SeparatedList` and `TypeArgumentList` instead of creating arrays
+- **Use pattern matching**: Prefer `switch` expressions over `if`/`else` chains
+- **Recursive methods**: Keep single responsibility—one method per concern
+- **Naming**: `Map*` for transformations, `Get*` for lookups, `Create*` for factories
+- **Comments**: Explain *why* (design decisions), not *what* (code is self-documenting)
 
 ---
 
 ## Cross-References
 
-### Related Files in CodeGen Pipeline
+### Related Source Files
 
-- **[RoslynEmitter.CompilationUnit.md](RoslynEmitter.CompilationUnit.md)**: Uses TypeMapper for namespace and class declarations
-- **[RoslynEmitter.Expressions.md](RoslynEmitter.Expressions.md)**: Uses TypeMapper for cast expressions and type checks
-- **[RoslynEmitter.ClassMembers.md](RoslynEmitter.ClassMembers.md)**: Uses TypeMapper for field/property/method types
-- **[CodeGenContext.md](CodeGenContext.md)**: Provides symbol table and type registry to TypeMapper
-- *NameMangler.cs* (not yet documented): Handles snake_case → PascalCase conversions
+1. **[CodeGenContext.md](./CodeGenContext.md)**: Understanding the context object TypeMapper depends on
+2. **[NameMangler.md](./NameMangler.md)**: How Sharpy names are converted to C# naming conventions
+3. **[RoslynEmitter.md](./RoslynEmitter.md)**: How TypeMapper's output is used to emit full C# code
+4. **[../Semantic/SemanticType.md](../Semantic/SemanticType.md)**: The type system that TypeMapper translates from
+5. **[../Semantic/TypeChecker.md](../Semantic/TypeChecker.md)**: How semantic types are resolved before mapping
+6. **[../Parser/Ast/TypeAnnotation.md](../Parser/Ast/TypeAnnotation.md)**: AST representation of types
 
-### Upstream Dependencies (Semantic Analysis)
+### Related Specifications
 
-- *PrimitiveCatalog.cs*: Defines all primitive types and their C# mappings
-- *SemanticType.cs*: Defines the `SemanticType` hierarchy that TypeMapper consumes
-- *TypeResolver.cs*: Resolves type names to `SemanticType` instances
-- *TypeChecker.cs*: Validates type compatibility before code generation
+- **`docs/language_specification/type_annotations.md`**: Defines Sharpy's type annotation syntax
+- **`docs/language_specification/type_casting.md`**: Type conversion rules
+- **`docs/language_specification/type_hierarchy.md`**: Type system structure
+- **`docs/language_specification/generics.md`**: Generic type semantics
 
-### Language Specifications
+### Related Partial Classes
 
-- **[type_annotations.md](../../language_specification/type_annotations.md)**: Defines Sharpy's type annotation syntax
-- **[type_hierarchy.md](../../language_specification/type_hierarchy.md)**: Explains Sharpy's type system structure
-- **[type_casting.md](../../language_specification/type_casting.md)**: Type conversion rules (affects cast expression mapping)
+TypeMapper is a standalone class (not split across files), but it heavily interacts with:
+- **RoslynEmitter** partial classes in `CodeGen/`:
+  - `RoslynEmitter.Expressions.cs` — Uses TypeMapper for expression typing
+  - `RoslynEmitter.TypeDeclarations.cs` — Uses TypeMapper for class/method signatures
+  - `RoslynEmitter.Statements.cs` — Uses TypeMapper for variable declarations
+
+---
+
+## Appendix: Complete Type Mapping Reference
+
+### Primitive Type Mappings
+
+| Sharpy Type | C# Type | Notes |
+|-------------|---------|-------|
+| `int` | `int` | 32-bit signed integer |
+| `long` | `long` | 64-bit signed integer |
+| `float` | `double` | Sharpy's default float is 64-bit |
+| `float32` | `float` | Explicit 32-bit float |
+| `double` | `double` | Same as `float` |
+| `bool` | `bool` | Boolean |
+| `str` | `string` | String |
+| `None` | `void` | In return types only |
+
+### Collection Type Mappings
+
+| Sharpy Type | C# Type | Runtime Implementation |
+|-------------|---------|------------------------|
+| `list[T]` | `global::Sharpy.Core.List<T>` | Wraps `List<T>` |
+| `dict[K,V]` | `global::Sharpy.Core.Dict<K,V>` | Wraps `Dictionary<K,V>` |
+| `set[T]` | `global::Sharpy.Core.Set<T>` | Wraps `HashSet<T>` |
+| `tuple[T1, T2, ...]` | `System.ValueTuple<T1, T2, ...>` | .NET value type |
+
+### Function Type Mappings
+
+| Sharpy Type | C# Type | Example |
+|-------------|---------|---------|
+| `() -> None` | `System.Action` | No-op callback |
+| `(T1, T2) -> None` | `System.Action<T1, T2>` | Void function |
+| `() -> T` | `System.Func<T>` | Factory function |
+| `(T1, T2) -> TResult` | `System.Func<T1, T2, TResult>` | Transformation |
+
+### Special Cases
+
+| Sharpy Type | C# Type | Notes |
+|-------------|---------|-------|
+| `int?` | `int?` | Nullable value type |
+| `str?` | `string?` | Nullable reference type |
+| `T` (type parameter) | `T` | Generic type parameter |
+| `object` | `object` | Fallback for unknown types |
 
 ---
 
 ## Summary
 
-TypeMapper is a **pure translation layer**—it doesn't make decisions about what types are valid, it just converts them to C# syntax. Think of it as a dictionary with complex lookup rules:
+`TypeMapper` is the **Rosetta Stone** of the Sharpy compiler's code generation phase. It bridges two type systems—Sharpy's Pythonic types and C#'s strongly-typed system—with precision and flexibility. By understanding this file, you gain insight into:
 
-- Input: Sharpy type (from AST or semantic analysis)
-- Output: Roslyn TypeSyntax (C# syntax tree node)
-- Side effects: None (pure function)
+1. How Sharpy maintains Python's feel while generating idiomatic C#
+2. The challenges of multi-language type system translation
+3. The importance of namespacing and qualification in code generation
+4. How generic programming works across language boundaries
 
-The key insight is that Sharpy's type system is **isomorphic** to C#'s in many ways:
-- Both have primitives, generics, nullables, tuples, and functions
-- TypeMapper exploits these similarities for straightforward translation
-- Where they differ (e.g., Sharpy collections), it bridges to runtime library types
+When debugging type-related issues in generated code, TypeMapper is your first stop. When adding new language features that involve types, TypeMapper is where you'll implement the translation logic. Master this file, and you'll understand the heart of how Sharpy becomes C#.
 
-When debugging type-related issues, always ask: **"Did semantic analysis produce the right SemanticType?"** If yes, TypeMapper should translate it correctly. If no, the bug is upstream.
+---
+
+**Next Steps**: Read `RoslynEmitter.md` to see how TypeMapper's output is integrated into complete C# compilation units.
