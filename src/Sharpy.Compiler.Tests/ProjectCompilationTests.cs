@@ -894,5 +894,414 @@ def main():
     }
 
     #endregion
+
+    #region Transitive Import Tests
+
+    /// <summary>
+    /// Tests that types re-exported from a package __init__.spy file resolve correctly
+    /// in downstream modules.
+    ///
+    /// Structure:
+    /// - mypackage/__init__.spy: re-exports SomeClass from submodule
+    /// - mypackage/submodule.spy: defines SomeClass
+    /// - main.spy: imports from mypackage and uses SomeClass
+    /// </summary>
+    [Fact]
+    public void TransitiveImports_ReExportedTypes_ResolveCorrectly()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        Directory.CreateDirectory(Path.Combine(tempDir, "mypackage"));
+
+        try
+        {
+            // Define a class in the submodule
+            File.WriteAllText(Path.Combine(tempDir, "mypackage", "submodule.spy"), @"
+class SomeClass:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def get_value(self) -> int:
+        return self.value
+");
+
+            // Re-export the class from the package __init__.spy
+            File.WriteAllText(Path.Combine(tempDir, "mypackage", "__init__.spy"), @"
+from mypackage.submodule import SomeClass
+");
+
+            // Use the re-exported class in main
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), @"
+from mypackage import SomeClass
+
+def main():
+    obj = SomeClass(42)
+    print(obj.get_value())
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                EntryPoint = "main.spy",
+                SourceFiles = new List<string>
+                {
+                    Path.Combine(tempDir, "main.spy"),
+                    Path.Combine(tempDir, "mypackage", "__init__.spy"),
+                    Path.Combine(tempDir, "mypackage", "submodule.spy")
+                }
+            };
+
+            var compiler = new Compiler(_logger);
+
+            // Act
+            var result = compiler.CompileProject(config);
+
+            // Assert
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+            Assert.Empty(result.Errors);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// Tests that types are visible through nested package re-exports.
+    ///
+    /// Structure:
+    /// - pkg/subpkg/__init__.spy: re-exports Widget from module
+    /// - pkg/subpkg/widgets.spy: defines Widget
+    /// - pkg/__init__.spy: re-exports everything from subpkg
+    /// - main.spy: imports from pkg and uses Widget
+    /// </summary>
+    [Fact]
+    public void TransitiveImports_NestedPackages_TypesVisible()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        Directory.CreateDirectory(Path.Combine(tempDir, "pkg"));
+        Directory.CreateDirectory(Path.Combine(tempDir, "pkg", "subpkg"));
+
+        try
+        {
+            // Define Widget in the deepest module
+            File.WriteAllText(Path.Combine(tempDir, "pkg", "subpkg", "widgets.spy"), @"
+class Widget:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+");
+
+            // Re-export from subpkg
+            File.WriteAllText(Path.Combine(tempDir, "pkg", "subpkg", "__init__.spy"), @"
+from pkg.subpkg.widgets import Widget
+");
+
+            // Re-export from pkg (second level of re-export)
+            File.WriteAllText(Path.Combine(tempDir, "pkg", "__init__.spy"), @"
+from pkg.subpkg import Widget
+");
+
+            // Use the re-exported class in main
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), @"
+from pkg import Widget
+
+def main():
+    w = Widget(""test"")
+    print(w.name)
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                EntryPoint = "main.spy",
+                SourceFiles = new List<string>
+                {
+                    Path.Combine(tempDir, "main.spy"),
+                    Path.Combine(tempDir, "pkg", "__init__.spy"),
+                    Path.Combine(tempDir, "pkg", "subpkg", "__init__.spy"),
+                    Path.Combine(tempDir, "pkg", "subpkg", "widgets.spy")
+                }
+            };
+
+            var compiler = new Compiler(_logger);
+
+            // Act
+            var result = compiler.CompileProject(config);
+
+            // Assert
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+            Assert.Empty(result.Errors);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// Tests that symbols are accessible through a three-level import chain:
+    /// main.spy -> utils.spy -> base.spy
+    ///
+    /// main.spy uses utils.get_base_value() which internally uses base.BASE_VALUE.
+    /// The type of BASE_VALUE should be correctly resolved.
+    /// </summary>
+    [Fact]
+    public void TransitiveImports_ThreeLevelChain_SymbolsAccessible()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // base.spy - the root of the dependency chain
+            File.WriteAllText(Path.Combine(tempDir, "base.spy"), @"
+class BaseConfig:
+    debug: bool = True
+    max_items: int = 100
+
+    def __init__(self):
+        pass
+");
+
+            // utils.spy - imports from base and re-exports/wraps
+            File.WriteAllText(Path.Combine(tempDir, "utils.spy"), @"
+from base import BaseConfig
+
+def get_config() -> BaseConfig:
+    return BaseConfig()
+
+def get_max_items() -> int:
+    config = BaseConfig()
+    return config.max_items
+");
+
+            // main.spy - imports from utils, transitively depends on base
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), @"
+from utils import get_config, get_max_items
+
+def main():
+    config = get_config()
+    print(config.debug)
+    print(get_max_items())
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                EntryPoint = "main.spy",
+                SourceFiles = new List<string>
+                {
+                    Path.Combine(tempDir, "main.spy"),
+                    Path.Combine(tempDir, "utils.spy"),
+                    Path.Combine(tempDir, "base.spy")
+                }
+            };
+
+            var compiler = new Compiler(_logger);
+
+            // Act
+            var result = compiler.CompileProject(config);
+
+            // Assert
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+            Assert.Empty(result.Errors);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// Tests that a class can inherit from a type that was transitively imported
+    /// through a re-export chain.
+    ///
+    /// Structure:
+    /// - base_types.spy: defines BaseClass
+    /// - exports.spy: re-exports BaseClass
+    /// - derived.spy: imports from exports, defines DerivedClass(BaseClass)
+    /// </summary>
+    [Fact]
+    public void TransitiveImports_InheritanceFromReExportedType_Works()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // base_types.spy - defines the base class
+            File.WriteAllText(Path.Combine(tempDir, "base_types.spy"), @"
+class BaseClass:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @virtual
+    def describe(self) -> str:
+        return f""Base: {self.name}""
+");
+
+            // exports.spy - re-exports the base class
+            File.WriteAllText(Path.Combine(tempDir, "exports.spy"), @"
+from base_types import BaseClass
+");
+
+            // derived.spy - imports the re-exported class and inherits from it
+            File.WriteAllText(Path.Combine(tempDir, "derived.spy"), @"
+from exports import BaseClass
+
+class DerivedClass(BaseClass):
+    extra: int
+
+    def __init__(self, name: str, extra: int):
+        super().__init__(name)
+        self.extra = extra
+
+    @override
+    def describe(self) -> str:
+        return f""Derived: {self.name}, extra={self.extra}""
+");
+
+            // main.spy - uses the derived class
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), @"
+from derived import DerivedClass
+
+def main():
+    obj = DerivedClass(""test"", 42)
+    print(obj.describe())
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                EntryPoint = "main.spy",
+                SourceFiles = new List<string>
+                {
+                    Path.Combine(tempDir, "main.spy"),
+                    Path.Combine(tempDir, "derived.spy"),
+                    Path.Combine(tempDir, "exports.spy"),
+                    Path.Combine(tempDir, "base_types.spy")
+                }
+            };
+
+            var compiler = new Compiler(_logger);
+
+            // Act
+            var result = compiler.CompileProject(config);
+
+            // Assert
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+            Assert.Empty(result.Errors);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// Tests that type annotations using transitively imported types resolve correctly.
+    ///
+    /// A function parameter or return type that references a transitively imported
+    /// type should be properly resolved for type checking and code generation.
+    /// </summary>
+    [Fact]
+    public void TransitiveImports_TypeAnnotationsResolve_Correctly()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // models.spy - defines the model class
+            File.WriteAllText(Path.Combine(tempDir, "models.spy"), @"
+class User:
+    id: int
+    name: str
+
+    def __init__(self, id: int, name: str):
+        self.id = id
+        self.name = name
+");
+
+            // repository.spy - re-exports and provides factory functions
+            File.WriteAllText(Path.Combine(tempDir, "repository.spy"), @"
+from models import User
+
+def create_user(id: int, name: str) -> User:
+    return User(id, name)
+");
+
+            // service.spy - uses User type in function signatures
+            File.WriteAllText(Path.Combine(tempDir, "service.spy"), @"
+from repository import User, create_user
+
+def process_user(user: User) -> str:
+    return f""Processing user {user.name}""
+
+def get_user(id: int) -> User:
+    return create_user(id, ""default"")
+");
+
+            // main.spy - uses the service
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), @"
+from service import process_user, get_user
+
+def main():
+    user = get_user(1)
+    result = process_user(user)
+    print(result)
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                EntryPoint = "main.spy",
+                SourceFiles = new List<string>
+                {
+                    Path.Combine(tempDir, "main.spy"),
+                    Path.Combine(tempDir, "service.spy"),
+                    Path.Combine(tempDir, "repository.spy"),
+                    Path.Combine(tempDir, "models.spy")
+                }
+            };
+
+            var compiler = new Compiler(_logger);
+
+            // Act
+            var result = compiler.CompileProject(config);
+
+            // Assert
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+            Assert.Empty(result.Errors);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    #endregion
 }
 
