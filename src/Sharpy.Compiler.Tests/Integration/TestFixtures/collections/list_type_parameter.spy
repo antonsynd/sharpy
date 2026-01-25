@@ -1,0 +1,12 @@
+# Test: list[T] type annotation with .NET List<T>
+
+def sum_numbers(numbers: list[int]) -> int:
+    total: int = 0
+    for n in numbers:
+        total += n
+    return total
+
+def main():
+    nums: list[int] = [1, 2, 3, 4, 5]
+    result: int = sum_numbers(nums)
+    print(result)

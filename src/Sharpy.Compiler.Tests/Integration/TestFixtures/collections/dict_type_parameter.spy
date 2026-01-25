@@ -1,0 +1,6 @@
+# Test: dict[K,V] type annotation with .NET Dictionary<K,V>
+
+def main():
+    scores: dict[str, int] = {"alice": 100, "bob": 85}
+    print(scores["alice"])
+    print(scores["bob"])
