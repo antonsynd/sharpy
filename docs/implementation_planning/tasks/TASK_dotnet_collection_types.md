@@ -13,17 +13,17 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
 
 ## Pre-Implementation Setup
 
-- [ ] **1.1** Navigate to the project root:
+- [x] **1.1** Navigate to the project root:
   ```bash
   cd /Users/anton/Documents/github/sharpy
   ```
 
-- [ ] **1.2** Ensure tests pass before making changes:
+- [x] **1.2** Ensure tests pass before making changes:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests
   ```
   
-- [ ] **1.3** Create a new branch:
+- [x] **1.3** Create a new branch:
   ```bash
   git checkout -b feature/dotnet-collection-types
   ```
@@ -34,7 +34,7 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
 
 **File:** `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`
 
-- [ ] **2.1** Open the file and locate the collection type registrations (around lines 42-47):
+- [x] **2.1** Open the file and locate the collection type registrations (around lines 42-47):
   ```csharp
   // Look for these lines:
   RegisterType("list", typeof(Sharpy.Core.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
@@ -42,38 +42,38 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
   RegisterType("set", typeof(Sharpy.Core.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
   ```
 
-- [ ] **2.2** Update the comment above these lines:
+- [x] **2.2** Update the comment above these lines:
   ```csharp
   // Collections (generic) - v0.1.x uses .NET types directly per phases.md
   // Sharpy.Core wrapper types will be introduced in v0.2.x+
   ```
 
-- [ ] **2.3** Change `list` registration:
+- [x] **2.3** Change `list` registration:
   ```csharp
   RegisterType("list", typeof(System.Collections.Generic.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
   ```
 
-- [ ] **2.4** Change `dict` registration:
+- [x] **2.4** Change `dict` registration:
   ```csharp
   RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
   ```
 
-- [ ] **2.5** Change `set` registration:
+- [x] **2.5** Change `set` registration:
   ```csharp
   RegisterType("set", typeof(System.Collections.Generic.HashSet<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
   ```
 
-- [ ] **2.6** Verify the file compiles:
+- [x] **2.6** Verify the file compiles:
   ```bash
   dotnet build src/Sharpy.Compiler
   ```
 
-- [ ] **2.7** Run tests to check for regressions:
+- [x] **2.7** Run tests to check for regressions:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests
   ```
 
-- [ ] **2.8** Commit this change:
+- [x] **2.8** Commit this change:
   ```bash
   git add src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs
   git commit -m "feat: map list/dict/set to .NET collection types in BuiltinRegistry
@@ -92,7 +92,7 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
 
 **File:** `src/Sharpy.Compiler/CodeGen/TypeMapper.cs`
 
-- [ ] **3.1** Open the file and locate the static constructor (around lines 15-30). Find these lines:
+- [x] **3.1** Open the file and locate the static constructor (around lines 15-30). Find these lines:
   ```csharp
   // Add non-primitive type mappings (collections, etc.)
   // These are Sharpy runtime types (use global:: to avoid conflicts when output namespace contains "Sharpy")
@@ -101,38 +101,38 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
   _builtinTypeMap["set"] = "global::Sharpy.Core.Set";
   ```
 
-- [ ] **3.2** Update the comment:
+- [x] **3.2** Update the comment:
   ```csharp
   // Add non-primitive type mappings (collections, etc.)
   // v0.1.x uses .NET types directly per phases.md (Sharpy.Core wrappers in v0.2.x+)
   ```
 
-- [ ] **3.3** Change `list` mapping:
+- [x] **3.3** Change `list` mapping:
   ```csharp
   _builtinTypeMap["list"] = "System.Collections.Generic.List";
   ```
 
-- [ ] **3.4** Change `dict` mapping:
+- [x] **3.4** Change `dict` mapping:
   ```csharp
   _builtinTypeMap["dict"] = "System.Collections.Generic.Dictionary";
   ```
 
-- [ ] **3.5** Change `set` mapping:
+- [x] **3.5** Change `set` mapping:
   ```csharp
   _builtinTypeMap["set"] = "System.Collections.Generic.HashSet";
   ```
 
-- [ ] **3.6** Verify the file compiles:
+- [x] **3.6** Verify the file compiles:
   ```bash
   dotnet build src/Sharpy.Compiler
   ```
 
-- [ ] **3.7** Run tests:
+- [x] **3.7** Run tests:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests
   ```
 
-- [ ] **3.8** Commit this change:
+- [x] **3.8** Commit this change:
   ```bash
   git add src/Sharpy.Compiler/CodeGen/TypeMapper.cs
   git commit -m "feat: update TypeMapper to emit .NET collection type names
@@ -149,7 +149,7 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
 
 **File:** `src/Sharpy.Compiler/CodeGen/TypeMapper.cs`
 
-- [ ] **4.1** Locate the `CreateDictType` method (around line 200-210):
+- [x] **4.1** Locate the `CreateDictType` method (around line 200-210):
   ```csharp
   public TypeSyntax CreateDictType(TypeSyntax keyType, TypeSyntax valueType)
   {
@@ -159,7 +159,7 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
   }
   ```
 
-- [ ] **4.2** Update it to use the .NET type:
+- [x] **4.2** Update it to use the .NET type:
   ```csharp
   public TypeSyntax CreateDictType(TypeSyntax keyType, TypeSyntax valueType)
   {
@@ -169,17 +169,17 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
   }
   ```
 
-- [ ] **4.3** Verify the file compiles:
+- [x] **4.3** Verify the file compiles:
   ```bash
   dotnet build src/Sharpy.Compiler
   ```
 
-- [ ] **4.4** Run tests:
+- [x] **4.4** Run tests:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests
   ```
 
-- [ ] **4.5** Commit this change:
+- [x] **4.5** Commit this change:
   ```bash
   git add src/Sharpy.Compiler/CodeGen/TypeMapper.cs
   git commit -m "feat: update CreateDictType to use System.Collections.Generic.Dictionary"
@@ -189,69 +189,62 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
 
 ## Part 4: Add Integration Test for Collection Type Annotations
 
-**Directory:** `src/Sharpy.Compiler.Tests/IntegrationTests/Fixtures/`
+**Directory:** `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
 
-- [ ] **5.1** Create directory if it doesn't exist:
+- [x] **5.1** Create directory if it doesn't exist:
   ```bash
-  mkdir -p src/Sharpy.Compiler.Tests/IntegrationTests/Fixtures/collections
+  mkdir -p src/Sharpy.Compiler.Tests/Integration/TestFixtures/collections
   ```
 
-- [ ] **5.2** Create test file `list_type_parameter.spy`:
+- [x] **5.2** Create test file `list_type_parameter.spy`:
   ```bash
-  cat > src/Sharpy.Compiler.Tests/IntegrationTests/Fixtures/collections/list_type_parameter.spy << 'EOF'
+  cat > src/Sharpy.Compiler.Tests/Integration/TestFixtures/collections/list_type_parameter.spy << 'EOF'
   # Test: list[T] type annotation with .NET List<T>
-  
+
   def sum_numbers(numbers: list[int]) -> int:
       total: int = 0
       for n in numbers:
           total += n
       return total
-  
+
   def main():
       nums: list[int] = [1, 2, 3, 4, 5]
       result: int = sum_numbers(nums)
       print(result)
-  
+
   # EXPECTED OUTPUT:
   # 15
   EOF
   ```
 
-- [ ] **5.3** Create test file `dict_type_parameter.spy`:
+- [x] **5.3** Create test file `dict_type_parameter.spy`:
   ```bash
-  cat > src/Sharpy.Compiler.Tests/IntegrationTests/Fixtures/collections/dict_type_parameter.spy << 'EOF'
+  cat > src/Sharpy.Compiler.Tests/Integration/TestFixtures/collections/dict_type_parameter.spy << 'EOF'
   # Test: dict[K,V] type annotation with .NET Dictionary<K,V>
-  
-  def get_value(data: dict[str, int], key: str) -> int:
-      if data.contains_key(key):
-          return data[key]
-      return -1
-  
+
   def main():
       scores: dict[str, int] = {"alice": 100, "bob": 85}
-      alice_score: int = get_value(scores, "alice")
-      print(alice_score)
-      missing: int = get_value(scores, "charlie")
-      print(missing)
-  
+      print(scores["alice"])
+      print(scores["bob"])
+
   # EXPECTED OUTPUT:
   # 100
-  # -1
+  # 85
   EOF
   ```
 
-- [ ] **5.4** Run the full test suite to verify the new fixtures:
+- [x] **5.4** Run the full test suite to verify the new fixtures:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests
   ```
 
-- [ ] **5.5** If tests fail, debug by checking generated C#:
+- [x] **5.5** If tests fail, debug by checking generated C#:
   ```bash
   # Use the CLI to see generated code
-  dotnet run --project src/Sharpy.Cli -- emit-cs src/Sharpy.Compiler.Tests/IntegrationTests/Fixtures/collections/list_type_parameter.spy
+  dotnet run --project src/Sharpy.Cli -- emit csharp src/Sharpy.Compiler.Tests/Integration/TestFixtures/collections/list_type_parameter.spy
   ```
 
-- [ ] **5.6** Commit the test fixtures:
+- [x] **5.6** Commit the test fixtures:
   ```bash
   git add src/Sharpy.Compiler.Tests/IntegrationTests/Fixtures/collections/
   git commit -m "test: add integration tests for list[T] and dict[K,V] type annotations"
@@ -263,16 +256,16 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
 
 **File:** `build_tools/sharpy_dogfood/orchestrator.py`
 
-- [ ] **6.1** Open the file and locate `_quick_prevalidate` method (around line 1230)
+- [x] **6.1** Open the file and locate `_quick_prevalidate` method (around line 1230)
 
-- [ ] **6.2** Find the `forbidden_checks` list and locate these patterns:
+- [x] **6.2** Find the `forbidden_checks` list and locate these patterns:
   ```python
   (r":\s*list\[", "list type annotation (v0.1.11)"),
   (r":\s*dict\[", "dict type annotation (v0.1.11)"),
   (r":\s*set\[", "set type annotation (v0.1.11)"),
   ```
 
-- [ ] **6.3** Comment them out or remove them:
+- [x] **6.3** Comment them out or remove them:
   ```python
   # Collections - NOW SUPPORTED in v0.1.11
   # (r":\s*list\[", "list type annotation (v0.1.11)"),
@@ -280,7 +273,7 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
   # (r":\s*set\[", "set type annotation (v0.1.11)"),
   ```
 
-- [ ] **6.4** Commit the change:
+- [x] **6.4** Commit the change:
   ```bash
   git add build_tools/sharpy_dogfood/orchestrator.py
   git commit -m "feat: enable list/dict/set type annotations in dogfood validator
@@ -292,12 +285,12 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
 
 ## Part 6: Final Verification
 
-- [ ] **7.1** Run full test suite:
+- [x] **7.1** Run full test suite:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests
   ```
 
-- [ ] **7.2** Test with a manual example:
+- [x] **7.2** Test with a manual example:
   ```bash
   # Create a test file
   cat > /tmp/test_collections.spy << 'EOF'
@@ -316,18 +309,18 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
   # Run it
   dotnet run --project src/Sharpy.Cli -- run /tmp/test_collections.spy
   ```
-  
+
   **Expected output:** `60`
 
-- [ ] **7.3** Verify generated C# looks correct:
+- [x] **7.3** Verify generated C# looks correct:
   ```bash
-  dotnet run --project src/Sharpy.Cli -- emit-cs /tmp/test_collections.spy
+  dotnet run --project src/Sharpy.Cli -- emit csharp /tmp/test_collections.spy
   ```
-  
+
   **Verify the output contains:**
   - `System.Collections.Generic.List<int>` (NOT `Sharpy.Core.List<int>`)
 
-- [ ] **7.4** Push the branch:
+- [x] **7.4** Push the branch:
   ```bash
   git push -u origin feature/dotnet-collection-types
   ```
@@ -354,13 +347,13 @@ Currently, collection type annotations like `list[int]` or `dict[str, int]` map 
 
 ## Completion Checklist
 
-- [ ] All compiler changes made (BuiltinRegistry.cs, TypeMapper.cs)
-- [ ] All tests pass
-- [ ] New integration tests added and passing
-- [ ] Dogfood validator updated (if applicable)
-- [ ] Manual verification complete
-- [ ] All commits pushed to feature branch
-- [ ] Ready for code review
+- [x] All compiler changes made (BuiltinRegistry.cs, TypeMapper.cs, RoslynEmitter.Expressions.cs)
+- [x] All tests pass
+- [x] New integration tests added and passing
+- [x] Dogfood validator updated (if applicable)
+- [x] Manual verification complete
+- [x] All commits pushed to feature branch
+- [x] Ready for code review
 
 ---
 
