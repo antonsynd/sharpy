@@ -326,6 +326,35 @@ def main():
     }
 
     [Fact]
+    public void NarrowedTypeIsStoredInSemanticInfo()
+    {
+        var source = @"
+def main():
+    value: str? = None
+    if value is not None:
+        x: str = value
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Errors.Should().BeEmpty();
+
+        // Find the identifier 'value' in the if block assignment (x: str = value)
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        var ifStmt = mainFunc.Body.OfType<IfStatement>().First();
+        var assignment = ifStmt.ThenBody.OfType<VariableDeclaration>().First();
+        var valueIdentifier = assignment.InitialValue as Identifier;
+
+        valueIdentifier.Should().NotBeNull();
+        valueIdentifier!.Name.Should().Be("value");
+
+        // The narrowed type should be stored in SemanticInfo
+        var narrowedType = semanticInfo.GetNarrowedType(valueIdentifier);
+        narrowedType.Should().NotBeNull();
+        narrowedType.Should().Be(SemanticType.Str); // Narrowed from str? to str
+    }
+
+    [Fact]
     public void ChecksDivisionProducesDouble()
     {
         var source = @"
