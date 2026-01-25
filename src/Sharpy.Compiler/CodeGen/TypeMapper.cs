@@ -29,10 +29,10 @@ public class TypeMapper
         }
 
         // Add non-primitive type mappings (collections, etc.)
-        // These are Sharpy runtime types (use global:: to avoid conflicts when output namespace contains "Sharpy")
-        _builtinTypeMap["list"] = "global::Sharpy.Core.List";
-        _builtinTypeMap["dict"] = "global::Sharpy.Core.Dict";
-        _builtinTypeMap["set"] = "global::Sharpy.Core.Set";
+        // v0.1.x uses .NET types directly per phases.md (Sharpy.Core wrappers in v0.2.x+)
+        _builtinTypeMap["list"] = "System.Collections.Generic.List";
+        _builtinTypeMap["dict"] = "System.Collections.Generic.Dictionary";
+        _builtinTypeMap["set"] = "System.Collections.Generic.HashSet";
         _builtinTypeMap["tuple"] = "System.ValueTuple";
     }
 
@@ -461,11 +461,12 @@ public class TypeMapper
     }
 
     /// <summary>
-    /// Creates a global::Sharpy.Core.Dict type with key and value types
+    /// Creates a System.Collections.Generic.Dictionary type with key and value types
+    /// v0.1.x uses .NET types directly per phases.md
     /// </summary>
     public TypeSyntax CreateDictType(TypeSyntax keyType, TypeSyntax valueType)
     {
-        return GenericName("global::Sharpy.Core.Dict")
+        return GenericName("System.Collections.Generic.Dictionary")
             .WithTypeArgumentList(
                 TypeArgumentList(SeparatedList(new[] { keyType, valueType })));
     }
