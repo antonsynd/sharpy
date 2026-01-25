@@ -105,11 +105,14 @@ public class GenericTypeInferenceServiceTests
                 new ParameterSymbol { Name = "a", Type = new TypeParameterType { Name = "T" } },
                 new ParameterSymbol { Name = "b", Type = new TypeParameterType { Name = "T" } }
             },
-            ReturnType = new Sharpy.Compiler.Semantic.TupleType { ElementTypes = new List<SemanticType>
+            ReturnType = new Sharpy.Compiler.Semantic.TupleType
+            {
+                ElementTypes = new List<SemanticType>
             {
                 new TypeParameterType { Name = "T" },
                 new TypeParameterType { Name = "T" }
-            }}
+            }
+            }
         };
 
         // Act: call pair(1, 2) with both args as int
@@ -168,11 +171,14 @@ public class GenericTypeInferenceServiceTests
                 new ParameterSymbol { Name = "a", Type = new TypeParameterType { Name = "T" } },
                 new ParameterSymbol { Name = "b", Type = new TypeParameterType { Name = "T" } }
             },
-            ReturnType = new Sharpy.Compiler.Semantic.TupleType { ElementTypes = new List<SemanticType>
+            ReturnType = new Sharpy.Compiler.Semantic.TupleType
+            {
+                ElementTypes = new List<SemanticType>
             {
                 new TypeParameterType { Name = "T" },
                 new TypeParameterType { Name = "T" }
-            }}
+            }
+            }
         };
 
         // Act: call pair(1, "hello") with conflicting types
