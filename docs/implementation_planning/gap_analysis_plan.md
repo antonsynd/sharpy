@@ -35,7 +35,7 @@ The compiler has basic multi-file compilation support:
 ### Implementation Tasks
 
 #### Phase 1: Investigation & Test Infrastructure
-- [ ] **Task 1.1**: Create failing test cases that demonstrate the transitive import issue
+- [x] **Task 1.1**: Create failing test cases that demonstrate the transitive import issue
   ```
   File: src/Sharpy.Compiler.Tests/ProjectCompilationTests.cs
   Add test: TransitiveImports_ReExportedTypes_ResolveCorrectly()

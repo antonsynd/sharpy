@@ -121,7 +121,12 @@ public class ImportResolver
     /// </summary>
     public ModuleInfo? ResolveFromImport(FromImportStatement fromImport, string? searchPath = null)
     {
-        _logger.LogDebug($"Resolving from-import: from {fromImport.Module} import {string.Join(", ", fromImport.Names.Select(n => n.Name))}");
+        var importedNames = fromImport.ImportAll ? "*" : string.Join(", ", fromImport.Names.Select(n => n.AsName != null ? $"{n.Name} as {n.AsName}" : n.Name));
+        _logger.LogDebug($"[ImportResolver] Resolving from-import: from {fromImport.Module} import {importedNames}");
+        if (_currentModulePath != null)
+        {
+            _logger.LogDebug($"[ImportResolver]   Current module: {Path.GetFileName(_currentModulePath)}");
+        }
 
         // First, try to resolve as .NET assembly module
         var moduleInfo = TryResolveNetModule(fromImport.Module, fromImport.LineStart, fromImport.ColumnStart);
@@ -132,10 +137,14 @@ public class ImportResolver
             var resolution = ResolveModuleWithResult(fromImport.Module, searchPath);
             if (resolution == null)
             {
+                _logger.LogDebug($"[ImportResolver]   Module '{fromImport.Module}' not found");
                 AddError($"Cannot find module '{fromImport.Module}'",
                     fromImport.LineStart, fromImport.ColumnStart);
                 return null;
             }
+
+            _logger.LogDebug($"[ImportResolver]   Resolved to: {resolution.FullPath}");
+            _logger.LogDebug($"[ImportResolver]   Canonical name: {resolution.CanonicalModuleName ?? resolution.ModuleName}");
 
             // Store the resolved module path for code generation
             // For relative imports like ".helpers", this gives the canonical name like "mypackage.helpers"
@@ -159,10 +168,16 @@ public class ImportResolver
 
             moduleInfo = LoadModule(resolution.FullPath, fromImport.LineStart, fromImport.ColumnStart);
         }
+        else
+        {
+            _logger.LogDebug($"[ImportResolver]   Resolved as .NET module");
+        }
 
         // Validate imported names and populate re-export information for code generation
         if (moduleInfo != null)
         {
+            _logger.LogDebug($"[ImportResolver]   Module loaded, exported symbols: {string.Join(", ", moduleInfo.ExportedSymbols.Keys)}");
+
             // Initialize the re-exported symbols dictionary for code generation
             var reExportedSymbols = new Dictionary<string, Symbol>();
 
@@ -179,6 +194,7 @@ public class ImportResolver
                     {
                         var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
                         reExportedSymbols[name] = reExportSymbol;
+                        _logger.LogDebug($"[ImportResolver]     Re-exporting (wildcard): {name} ({symbol.Kind})");
                     }
                 }
             }
@@ -193,6 +209,7 @@ public class ImportResolver
                     // Check if symbol exists in the module's exported symbols
                     if (!moduleInfo.ExportedSymbols.ContainsKey(symbolName))
                     {
+                        _logger.LogDebug($"[ImportResolver]     Symbol '{symbolName}' NOT FOUND in module exports");
                         AddError($"Module '{fromImport.Module}' has no exported symbol '{symbolName}'",
                             importAlias.LineStart, importAlias.ColumnStart);
                         continue;
@@ -210,6 +227,16 @@ public class ImportResolver
                     {
                         var reExportSymbol = CreateReExportSymbol(symbol, fromImport, targetName);
                         reExportedSymbols[targetName] = reExportSymbol;
+
+                        // Log detailed information about re-exported symbols for debugging transitive imports
+                        if (symbol is TypeSymbol typeSymbol)
+                        {
+                            _logger.LogDebug($"[ImportResolver]     Importing type: {symbolName} -> {targetName}, DefiningModule: {typeSymbol.DefiningModule ?? "null"}, IsReExport: {typeSymbol.IsReExport}");
+                        }
+                        else
+                        {
+                            _logger.LogDebug($"[ImportResolver]     Importing: {symbolName} -> {targetName} ({symbol.Kind})");
+                        }
                     }
                 }
             }
@@ -217,6 +244,7 @@ public class ImportResolver
             // Store re-exported symbols
             if (reExportedSymbols.Count > 0)
             {
+                _logger.LogDebug($"[ImportResolver]   Storing {reExportedSymbols.Count} re-exported symbols");
                 if (_semanticBinding != null)
                 {
                     _semanticBinding.SetReExportedSymbols(fromImport, reExportedSymbols);
@@ -239,21 +267,29 @@ public class ImportResolver
     {
         // Check cache first
         if (_moduleCache.TryGetValue(modulePath, out var cached))
+        {
+            _logger.LogDebug($"[ImportResolver] LoadModule: {Path.GetFileName(modulePath)} (from cache)");
             return cached;
+        }
 
         // Check for circular imports with detailed chain
         if (IsModuleInChain(modulePath))
         {
             var chainMessage = FormatCircularImportChain(modulePath);
+            _logger.LogDebug($"[ImportResolver] Circular import detected: {Path.GetFileName(modulePath)}");
             AddError(chainMessage, lineStart, columnStart);
             return null;
         }
 
         // Check if already loaded
         if (_loadedModules.Contains(modulePath))
+        {
+            _logger.LogDebug($"[ImportResolver] LoadModule: {Path.GetFileName(modulePath)} (already loaded)");
             return _moduleCache.GetValueOrDefault(modulePath);
+        }
 
         _logger.LogInfo($"Loading module: {modulePath}");
+        _logger.LogDebug($"[ImportResolver] LoadModule: {Path.GetFileName(modulePath)} (parsing)");
 
         // Push to import chain before loading
         _importChain.Push(new ImportChainEntry(
@@ -315,6 +351,20 @@ public class ImportResolver
 
             _moduleCache[modulePath] = moduleInfo;
             _loadedModules.Add(modulePath);
+
+            // Log final exported symbols
+            _logger.LogDebug($"[ImportResolver] Module {Path.GetFileName(modulePath)} loaded with {moduleInfo.ExportedSymbols.Count} exports:");
+            foreach (var (name, symbol) in moduleInfo.ExportedSymbols)
+            {
+                if (symbol is TypeSymbol typeSymbol)
+                {
+                    _logger.LogDebug($"[ImportResolver]   - {name} ({symbol.Kind}:{typeSymbol.TypeKind}), DefiningModule: {typeSymbol.DefiningModule ?? "null"}, IsReExport: {typeSymbol.IsReExport}");
+                }
+                else
+                {
+                    _logger.LogDebug($"[ImportResolver]   - {name} ({symbol.Kind})");
+                }
+            }
 
             return moduleInfo;
         }
@@ -453,20 +503,30 @@ public class ImportResolver
     /// </summary>
     private void ExtractReExportedSymbols(FromImportStatement fromImport, ModuleInfo moduleInfo)
     {
+        var importedNames = fromImport.ImportAll ? "*" : string.Join(", ", fromImport.Names.Select(n => n.Name));
+        _logger.LogDebug($"[ImportResolver] ExtractReExportedSymbols: from {fromImport.Module} import {importedNames}");
+        _logger.LogDebug($"[ImportResolver]   In module: {Path.GetFileName(moduleInfo.Path)}");
+
         // Resolve the source module to get its exported symbols
         var sourceModulePath = ResolveModulePath(fromImport.Module, Path.GetDirectoryName(moduleInfo.Path));
         if (sourceModulePath == null)
         {
+            _logger.LogDebug($"[ImportResolver]   Source module '{fromImport.Module}' not found during re-export extraction");
             // Module not found - error will be reported during full import resolution
             return;
         }
+
+        _logger.LogDebug($"[ImportResolver]   Source module path: {sourceModulePath}");
 
         // Load the source module to get its symbols
         var sourceModule = LoadModule(sourceModulePath, fromImport.LineStart, fromImport.ColumnStart);
         if (sourceModule == null)
         {
+            _logger.LogDebug($"[ImportResolver]   Failed to load source module");
             return;
         }
+
+        _logger.LogDebug($"[ImportResolver]   Source module exports: {string.Join(", ", sourceModule.ExportedSymbols.Keys)}");
 
         // Build re-exported symbols dictionary for code generation
         var reExportedSymbols = new Dictionary<string, Symbol>();
@@ -482,6 +542,7 @@ public class ImportResolver
                     var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
                     moduleInfo.ExportedSymbols[name] = reExportSymbol;
                     reExportedSymbols[name] = reExportSymbol;
+                    _logger.LogDebug($"[ImportResolver]     Re-exporting (wildcard): {name}");
                 }
             }
         }
@@ -499,6 +560,20 @@ public class ImportResolver
                     var reExportSymbol = CreateReExportSymbol(symbol, fromImport, targetName);
                     moduleInfo.ExportedSymbols[targetName] = reExportSymbol;
                     reExportedSymbols[targetName] = reExportSymbol;
+
+                    // Log detailed info for type symbols
+                    if (symbol is TypeSymbol typeSymbol)
+                    {
+                        _logger.LogDebug($"[ImportResolver]     Re-exporting type: {sourceName} -> {targetName}, Original DefiningModule: {typeSymbol.DefiningModule ?? "null"}");
+                    }
+                    else
+                    {
+                        _logger.LogDebug($"[ImportResolver]     Re-exporting: {sourceName} -> {targetName} ({symbol.Kind})");
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug($"[ImportResolver]     Symbol '{sourceName}' NOT FOUND in source module exports");
                 }
                 // If symbol not found, error will be reported during full import resolution
             }
@@ -507,6 +582,7 @@ public class ImportResolver
         // Store re-exported symbols
         if (reExportedSymbols.Count > 0)
         {
+            _logger.LogDebug($"[ImportResolver]   Added {reExportedSymbols.Count} re-exported symbols to {Path.GetFileName(moduleInfo.Path)}");
             if (_semanticBinding != null)
             {
                 _semanticBinding.SetReExportedSymbols(fromImport, reExportedSymbols);
@@ -524,12 +600,14 @@ public class ImportResolver
     /// </summary>
     private Symbol CreateReExportSymbol(Symbol originalSymbol, FromImportStatement fromImport, string? newName = null)
     {
+        var effectiveName = newName ?? originalSymbol.Name;
+
         // Clone the symbol with the new name if provided
-        return originalSymbol switch
+        var result = originalSymbol switch
         {
             FunctionSymbol func => new FunctionSymbol
             {
-                Name = newName ?? func.Name,
+                Name = effectiveName,
                 Kind = func.Kind,
                 Parameters = func.Parameters,
                 ReturnType = func.ReturnType,
@@ -539,28 +617,10 @@ public class ImportResolver
                 IsReExport = true,
                 OriginalModule = fromImport.Module
             },
-            TypeSymbol type => new TypeSymbol
-            {
-                Name = newName ?? type.Name,
-                Kind = type.Kind,
-                TypeKind = type.TypeKind,
-                AccessLevel = type.AccessLevel,
-                TypeParameters = type.TypeParameters,
-                Fields = type.Fields,
-                Methods = type.Methods,
-                Properties = type.Properties,
-                Constructors = type.Constructors,
-                BaseType = type.BaseType,
-                Interfaces = type.Interfaces,
-                DeclarationLine = fromImport.LineStart,
-                DeclarationColumn = fromImport.ColumnStart,
-                IsReExport = true,
-                OriginalModule = fromImport.Module,
-                DefiningModule = type.DefiningModule ?? GetResolvedModulePath(fromImport) ?? fromImport.Module
-            },
+            TypeSymbol type => CreateReExportedTypeSymbol(type, fromImport, effectiveName),
             VariableSymbol var => new VariableSymbol
             {
-                Name = newName ?? var.Name,
+                Name = effectiveName,
                 Kind = var.Kind,
                 Type = var.Type,  // Preserve the type from the original symbol
                 IsConstant = var.IsConstant,
@@ -571,6 +631,43 @@ public class ImportResolver
                 OriginalModule = fromImport.Module
             },
             _ => originalSymbol // Fallback: use as-is
+        };
+
+        return result;
+    }
+
+    /// <summary>
+    /// Create a re-exported type symbol, properly tracking the DefiningModule through the re-export chain.
+    /// </summary>
+    private TypeSymbol CreateReExportedTypeSymbol(TypeSymbol originalType, FromImportStatement fromImport, string effectiveName)
+    {
+        // Determine the defining module - preserve original if set, otherwise use the resolved import path
+        var definingModule = originalType.DefiningModule ?? GetResolvedModulePath(fromImport) ?? fromImport.Module;
+
+        _logger.LogDebug($"[ImportResolver] CreateReExportedTypeSymbol: {originalType.Name} -> {effectiveName}");
+        _logger.LogDebug($"[ImportResolver]   Original DefiningModule: {originalType.DefiningModule ?? "null"}");
+        _logger.LogDebug($"[ImportResolver]   Original IsReExport: {originalType.IsReExport}");
+        _logger.LogDebug($"[ImportResolver]   New DefiningModule: {definingModule}");
+        _logger.LogDebug($"[ImportResolver]   FromImport.Module: {fromImport.Module}");
+
+        return new TypeSymbol
+        {
+            Name = effectiveName,
+            Kind = originalType.Kind,
+            TypeKind = originalType.TypeKind,
+            AccessLevel = originalType.AccessLevel,
+            TypeParameters = originalType.TypeParameters,
+            Fields = originalType.Fields,
+            Methods = originalType.Methods,
+            Properties = originalType.Properties,
+            Constructors = originalType.Constructors,
+            BaseType = originalType.BaseType,
+            Interfaces = originalType.Interfaces,
+            DeclarationLine = fromImport.LineStart,
+            DeclarationColumn = fromImport.ColumnStart,
+            IsReExport = true,
+            OriginalModule = fromImport.Module,
+            DefiningModule = definingModule
         };
     }
 
