@@ -56,7 +56,7 @@ The compiler has basic multi-file compilation support:
   **Commit:** "debug: Add verbose logging for import resolution tracing"
 
 #### Phase 2: Fix Symbol Propagation for Re-exports
-- [ ] **Task 2.1**: Enhance `ResolveFromImport` to track original defining module
+- [x] **Task 2.1**: Enhance `ResolveFromImport` to track original defining module
   ```
   File: src/Sharpy.Compiler/Semantic/ImportResolver.cs
   Method: ResolveFromImport()
@@ -69,7 +69,7 @@ The compiler has basic multi-file compilation support:
   **Verification:** Debug test showing symbol.DefiningModule is set correctly
   **Commit:** "fix: Preserve DefiningModule in re-exported symbols"
 
-- [ ] **Task 2.2**: Update `ExtractExportedSymbol` to handle transitive exports
+- [x] **Task 2.2**: Update `ExtractExportedSymbol` to handle transitive exports
   ```
   File: src/Sharpy.Compiler/Semantic/ImportResolver.cs
   Method: ExtractExportedSymbol()
@@ -80,7 +80,7 @@ The compiler has basic multi-file compilation support:
   **Verification:** Test that TypeSymbol includes all fields/methods after re-export
   **Commit:** "fix: Include complete type info in transitive exports"
 
-- [ ] **Task 2.3**: Store transitive import metadata in SemanticBinding
+- [x] **Task 2.3**: Store transitive import metadata in SemanticBinding
   ```
   File: src/Sharpy.Compiler/Semantic/SemanticBinding.cs
   
@@ -92,7 +92,7 @@ The compiler has basic multi-file compilation support:
   **Commit:** "feat: Track transitive import chains in SemanticBinding"
 
 #### Phase 3: Fix Type Resolution for Transitive Types
-- [ ] **Task 3.1**: Update TypeResolver to search transitive modules
+- [x] **Task 3.1**: Update TypeResolver to search transitive modules
   ```
   File: src/Sharpy.Compiler/Semantic/TypeResolver.cs
   
@@ -104,7 +104,7 @@ The compiler has basic multi-file compilation support:
   **Verification:** Test case with type annotation using transitively imported type
   **Commit:** "fix: TypeResolver searches transitive import chain"
 
-- [ ] **Task 3.2**: Fix cross-module inheritance resolution
+- [x] **Task 3.2**: Fix cross-module inheritance resolution
   ```
   File: src/Sharpy.Compiler/Semantic/NameResolver.cs
   Method: ResolveInheritance()
@@ -117,7 +117,7 @@ The compiler has basic multi-file compilation support:
   **Verification:** Test with `class C(B)` where B is in transitively imported module
   **Commit:** "fix: Cross-module inheritance resolves through import chain"
 
-- [ ] **Task 3.3**: Update ProjectCompiler type collection for transitive visibility
+- [x] **Task 3.3**: Update ProjectCompiler type collection for transitive visibility
   ```
   File: src/Sharpy.Compiler/Project/ProjectCompiler.cs
   Method: CollectTypeDeclarations()
@@ -130,7 +130,7 @@ The compiler has basic multi-file compilation support:
   **Commit:** "fix: Type collection includes transitive module types"
 
 #### Phase 4: Code Generation for Transitive Imports
-- [ ] **Task 4.1**: Generate correct `using` statements for transitive dependencies
+- [x] **Task 4.1**: Generate correct `using` statements for transitive dependencies
   ```
   File: src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs
   
@@ -143,7 +143,7 @@ The compiler has basic multi-file compilation support:
   **Verification:** Generated C# compiles without "type not found" errors
   **Commit:** "fix: Emit using statements for transitive dependencies"
 
-- [ ] **Task 4.2**: Handle namespace qualification for transitive types
+- [x] **Task 4.2**: Handle namespace qualification for transitive types
   ```
   File: src/Sharpy.Compiler/CodeGen/RoslynEmitter.TypeDeclarations.cs
   
@@ -154,7 +154,7 @@ The compiler has basic multi-file compilation support:
   **Commit:** "fix: Fully qualify transitively imported type references"
 
 #### Phase 5: Integration Testing
-- [ ] **Task 5.1**: Verify calculator_app sample project compiles and runs
+- [x] **Task 5.1**: Verify calculator_app sample project compiles and runs
   ```
   Path: samples/calculator_app/
   
@@ -164,7 +164,7 @@ The compiler has basic multi-file compilation support:
   **Verification:** `./bin/Debug/net9.0/Calculator` runs without errors
   **Commit:** "test: Verify calculator_app multi-file sample"
 
-- [ ] **Task 5.2**: Add comprehensive multi-file test suite
+- [x] **Task 5.2**: Add comprehensive multi-file test suite
   ```
   File: src/Sharpy.Compiler.Tests/Integration/MultiFileCompilationTests.cs
   
