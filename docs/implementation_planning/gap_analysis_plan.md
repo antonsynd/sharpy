@@ -223,7 +223,7 @@ x = first(items)                # Should infer T from items, currently errors
   **Verification:** Design doc reviewed
   **Commit:** "docs: Add generic type inference design document"
 
-- [ ] **Task 1.2**: Create failing test cases for inference
+- [x] **Task 1.2**: Create failing test cases for inference
   ```
   File: src/Sharpy.Compiler.Tests/Semantic/GenericInferenceTests.cs
   
