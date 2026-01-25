@@ -1,6 +1,0 @@
-Pass
-1
-Fail
-2
-No score recorded
-0
