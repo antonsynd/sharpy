@@ -1,0 +1,80 @@
+# Test keyword arguments with default parameters in various scenarios
+# Tests: function definitions with defaults, keyword arg calls, positional + keyword mixing
+
+class ConfigBuilder:
+    host: str
+    port: int
+    timeout: int
+    retry_count: int
+
+    def __init__(self, host: str = "localhost", port: int = 8080, timeout: int = 30, retry_count: int = 3):
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        self.retry_count = retry_count
+
+    def display_config(self) -> None:
+        print(self.host)
+        print(self.port)
+        print(self.timeout)
+        print(self.retry_count)
+
+@abstract
+class RequestHandler:
+    base_url: str
+
+    def __init__(self, url: str):
+        self.base_url = url
+
+    @abstract
+    def send_request(self, endpoint: str, method: str, retries: int) -> int:
+        ...
+
+class HttpClient(RequestHandler):
+    max_retries: int
+
+    def __init__(self, url: str, retries: int = 5):
+        super().__init__(url)
+        self.max_retries = retries
+
+    @override
+    def send_request(self, endpoint: str = "/api", method: str = "GET", retries: int = 3) -> int:
+        print(endpoint)
+        print(method)
+        return retries
+
+def calculate_score(base: int, bonus: int = 10, multiplier: int = 1, penalty: int = 0) -> int:
+    result: int = base + bonus
+    result = result * multiplier
+    result = result - penalty
+    return result
+
+def process_data(name: str, value: int = 100, enabled: bool = True) -> int:
+    if enabled:
+        print(name)
+        return value
+    return 0
+
+def main():
+    config1: ConfigBuilder = ConfigBuilder()
+    config1.display_config()
+
+    config2: ConfigBuilder = ConfigBuilder(host="example.com", port=9000)
+    print(config2.host)
+    print(config2.port)
+
+    client: HttpClient = HttpClient(url="https://api.example.com", retries=10)
+    result: int = client.send_request(endpoint="/users", method="POST", retries=5)
+    print(result)
+
+    score1: int = calculate_score(base=50)
+    print(score1)
+
+    score2: int = calculate_score(base=50, bonus=20, multiplier=2)
+    print(score2)
+
+    score3: int = calculate_score(base=100, penalty=15, multiplier=3)
+    print(score3)
+
+    val: int = process_data(name="DataPoint", value=250)
+    print(val)

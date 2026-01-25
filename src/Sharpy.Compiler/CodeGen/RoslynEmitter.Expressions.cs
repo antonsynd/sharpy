@@ -108,7 +108,7 @@ public partial class RoslynEmitter
                 var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
                 var keywordArgs = call.KeywordArguments.Select(kwarg =>
                     Argument(GenerateExpression(kwarg.Value))
-                        .WithNameColon(NameColon(IdentifierName(kwarg.Name))));
+                        .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
                 var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
 
                 return ObjectCreationExpression(genericTypeSyntax)
@@ -125,7 +125,7 @@ public partial class RoslynEmitter
                 var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
                 var keywordArgs = call.KeywordArguments.Select(kwarg =>
                     Argument(GenerateExpression(kwarg.Value))
-                        .WithNameColon(NameColon(IdentifierName(kwarg.Name))));
+                        .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
                 var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
 
                 return InvocationExpression(genericFuncSyntax)
@@ -170,7 +170,7 @@ public partial class RoslynEmitter
             // Generate keyword arguments with named syntax
             var keywordArgs = call.KeywordArguments.Select(kwarg =>
                 Argument(GenerateExpression(kwarg.Value))
-                    .WithNameColon(NameColon(IdentifierName(kwarg.Name))));
+                    .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
 
             // Combine positional and keyword arguments
             var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
@@ -391,7 +391,7 @@ public partial class RoslynEmitter
             var existingArgs = funcCall.Arguments.Select(a => Argument(GenerateExpression(a)));
             var keywordArgs = funcCall.KeywordArguments.Select(k =>
                 Argument(GenerateExpression(k.Value))
-                    .WithNameColon(NameColon(IdentifierName(k.Name))));
+                    .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(k.Name)))));
 
             var allArgs = new[] { prependedArg }.Concat(existingArgs).Concat(keywordArgs);
 
