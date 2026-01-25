@@ -8,10 +8,10 @@
 
 ## Prerequisites
 
-- [ ] Ensure you have the Sharpy repository cloned at `/Users/anton/Documents/github/sharpy`
-- [ ] Run `dotnet build` to verify the project builds successfully
-- [ ] Run `dotnet test src/Sharpy.Compiler.Tests` to verify all existing tests pass
-- [ ] Create a new branch: `git checkout -b feature/list-type-annotations`
+- [x] Ensure you have the Sharpy repository cloned at `/Users/anton/Documents/github/sharpy`
+- [x] Run `dotnet build` to verify the project builds successfully
+- [x] Run `dotnet test src/Sharpy.Compiler.Tests` to verify all existing tests pass
+- [x] Create a new branch: `git checkout -b feature/list-type-annotations`
 
 ---
 
@@ -21,14 +21,14 @@
 
 **File:** `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`
 
-- [ ] Open the file and locate the `LoadBuiltins()` method (around line 40)
-- [ ] Find the collection type registrations (lines 42-44):
+- [x] Open the file and locate the `LoadBuiltins()` method (around line 40)
+- [x] Find the collection type registrations (lines 42-44):
   ```csharp
   RegisterType("list", typeof(Sharpy.Core.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
   RegisterType("dict", typeof(Sharpy.Core.Dict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
   RegisterType("set", typeof(Sharpy.Core.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
   ```
-- [ ] Replace with .NET collection types:
+- [x] Replace with .NET collection types:
   ```csharp
   // Collections (generic) - v0.1.x uses .NET types directly per phases.md
   // Sharpy.Core wrapper types will be introduced in v0.2.x+
@@ -36,13 +36,13 @@
   RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
   RegisterType("set", typeof(System.Collections.Generic.HashSet<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
   ```
-- [ ] Update the comment above these lines to explain the v0.1.x decision
-- [ ] Save the file
+- [x] Update the comment above these lines to explain the v0.1.x decision
+- [x] Save the file
 
 ### Task 1.2: Verify Build
 
-- [ ] Run `dotnet build src/Sharpy.Compiler` - should succeed
-- [ ] Run `dotnet test src/Sharpy.Compiler.Tests` - note any failures (some may be expected)
+- [x] Run `dotnet build src/Sharpy.Compiler` - should succeed
+- [x] Run `dotnet test src/Sharpy.Compiler.Tests` - note any failures (some may be expected)
 
 ### Task 1.3: Commit
 
@@ -66,28 +66,28 @@ Sharpy.Core wrapper types will be introduced in v0.2.x+.
 
 **File:** `src/Sharpy.Compiler/CodeGen/TypeMapper.cs`
 
-- [ ] Open the file and locate the static constructor (around line 15-30)
-- [ ] Find the collection type string mappings:
+- [x] Open the file and locate the static constructor (around line 15-30)
+- [x] Find the collection type string mappings:
   ```csharp
   _builtinTypeMap["list"] = "global::Sharpy.Core.List";
   _builtinTypeMap["dict"] = "global::Sharpy.Core.Dict";
   _builtinTypeMap["set"] = "global::Sharpy.Core.Set";
   ```
-- [ ] Replace with .NET type strings:
+- [x] Replace with .NET type strings:
   ```csharp
   // v0.1.x uses .NET types directly per phases.md (Sharpy.Core wrappers in v0.2.x+)
   _builtinTypeMap["list"] = "System.Collections.Generic.List";
   _builtinTypeMap["dict"] = "System.Collections.Generic.Dictionary";
   _builtinTypeMap["set"] = "System.Collections.Generic.HashSet";
   ```
-- [ ] Save the file
+- [x] Save the file
 
 ### Task 2.2: Update CreateDictType Method
 
 **File:** `src/Sharpy.Compiler/CodeGen/TypeMapper.cs`
 
-- [ ] Locate the `CreateDictType` method (around line 200-210)
-- [ ] Find the current implementation:
+- [x] Locate the `CreateDictType` method (around line 200-210)
+- [x] Find the current implementation:
   ```csharp
   public TypeSyntax CreateDictType(TypeSyntax keyType, TypeSyntax valueType)
   {
@@ -96,7 +96,7 @@ Sharpy.Core wrapper types will be introduced in v0.2.x+.
               TypeArgumentList(SeparatedList(new[] { keyType, valueType })));
   }
   ```
-- [ ] Replace with:
+- [x] Replace with:
   ```csharp
   public TypeSyntax CreateDictType(TypeSyntax keyType, TypeSyntax valueType)
   {
@@ -105,12 +105,12 @@ Sharpy.Core wrapper types will be introduced in v0.2.x+.
               TypeArgumentList(SeparatedList(new[] { keyType, valueType })));
   }
   ```
-- [ ] Save the file
+- [x] Save the file
 
 ### Task 2.3: Verify Build and Tests
 
-- [ ] Run `dotnet build src/Sharpy.Compiler` - should succeed
-- [ ] Run `dotnet test src/Sharpy.Compiler.Tests` - note any failures
+- [x] Run `dotnet build src/Sharpy.Compiler` - should succeed
+- [x] Run `dotnet test src/Sharpy.Compiler.Tests` - note any failures
 
 ### Task 2.4: Commit
 
@@ -132,25 +132,25 @@ Update code generation to emit System.Collections.Generic types:
 
 **File:** `src/Sharpy.Compiler.Tests/IntegrationTests/Fixtures/collections/list_type_parameter.spy` (create directory if needed)
 
-- [ ] Create the `collections` directory if it doesn't exist:
+- [x] Create the `collections` directory if it doesn't exist:
   ```bash
   mkdir -p src/Sharpy.Compiler.Tests/IntegrationTests/Fixtures/collections
   ```
-- [ ] Create the test file with this content:
+- [x] Create the test file with this content:
   ```python
   # Test: list[T] type annotation in function parameter and return type
-  
+
   def sum_numbers(numbers: list[int]) -> int:
       total: int = 0
       for n in numbers:
           total += n
       return total
-  
+
   def main():
       nums: list[int] = [1, 2, 3, 4, 5]
       result: int = sum_numbers(nums)
       print(result)
-  
+
   # EXPECTED OUTPUT:
   # 15
   ```
@@ -159,7 +159,7 @@ Update code generation to emit System.Collections.Generic types:
 
 **File:** `src/Sharpy.Compiler.Tests/IntegrationTests/Fixtures/collections/dict_type_parameter.spy`
 
-- [ ] Create the test file with this content:
+- [x] Create the test file with this content:
   ```python
   # Test: dict[K, V] type annotation
   
@@ -184,7 +184,7 @@ Update code generation to emit System.Collections.Generic types:
 
 **File:** `src/Sharpy.Compiler.Tests/IntegrationTests/Fixtures/collections/set_type_parameter.spy`
 
-- [ ] Create the test file with this content:
+- [x] Create the test file with this content:
   ```python
   # Test: set[T] type annotation
   
@@ -205,15 +205,15 @@ Update code generation to emit System.Collections.Generic types:
 
 ### Task 3.4: Run Integration Tests
 
-- [ ] Run the integration tests:
+- [x] Run the integration tests:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests --filter "FullyQualifiedName~IntegrationTests"
   ```
-- [ ] If tests fail, debug by examining the generated C# code:
+- [x] If tests fail, debug by examining the generated C# code:
   ```bash
   dotnet run --project src/Sharpy.Cli -- emit-cs src/Sharpy.Compiler.Tests/IntegrationTests/Fixtures/collections/list_type_parameter.spy
   ```
-- [ ] Verify the generated C# uses `System.Collections.Generic.List<int>` not `Sharpy.Core.List<int>`
+- [x] Verify the generated C# uses `System.Collections.Generic.List<int>` not `Sharpy.Core.List<int>`
 
 ### Task 3.5: Commit
 
@@ -237,23 +237,23 @@ These tests verify that collection types generate correct .NET types."
 
 **File:** `build_tools/sharpy_dogfood/orchestrator.py`
 
-- [ ] Open the file and locate the `_quick_prevalidate` method (around line 1230)
-- [ ] Find the `forbidden_checks` list
-- [ ] Comment out or remove these patterns:
+- [x] Open the file and locate the `_quick_prevalidate` method (around line 1230)
+- [x] Find the `forbidden_checks` list
+- [x] Comment out or remove these patterns:
   ```python
   # REMOVE OR COMMENT THESE LINES:
   (r":\s*list\[", "list type annotation (v0.1.11)"),
   (r":\s*dict\[", "dict type annotation (v0.1.11)"),
   (r":\s*set\[", "set type annotation (v0.1.11)"),
   ```
-- [ ] Update the comment to indicate these are now supported:
+- [x] Update the comment to indicate these are now supported:
   ```python
   # Collections - NOW SUPPORTED in v0.1.11
   # (r":\s*list\[", "list type annotation"),  # Supported
   # (r":\s*dict\[", "dict type annotation"),  # Supported
   # (r":\s*set\[", "set type annotation"),    # Supported
   ```
-- [ ] Save the file
+- [x] Save the file
 
 ### Task 4.2: Commit
 
@@ -271,32 +271,36 @@ the compiler supports them."
 
 ### Task 5.1: Test the Multi-File Example (0006)
 
-- [ ] Navigate to the dogfood skip directory:
+- [x] Navigate to the dogfood skip directory:
   ```bash
   cd /Users/anton/Documents/github/sharpy/dogfood_output/skips/20260124_193258_skip_module_imports_multifile_0006
   ```
-- [ ] Try compiling the multi-file project:
+- [x] Try compiling the multi-file project:
   ```bash
   dotnet run --project /Users/anton/Documents/github/sharpy/src/Sharpy.Cli -- run main.spy -m .
   ```
-- [ ] If it fails, examine the error message and note it
-- [ ] If it succeeds, verify the output matches `expected_output.txt`
+- [x] If it fails, examine the error message and note it
+- [x] If it succeeds, verify the output matches `expected_output.txt`
+
+**Result:** FAIL - Uses unsupported union type syntax `list[Circle | Rectangle]` on line 18
 
 ### Task 5.2: Test the Multi-File Example (0003)
 
-- [ ] Navigate to the dogfood skip directory:
+- [x] Navigate to the dogfood skip directory:
   ```bash
   cd /Users/anton/Documents/github/sharpy/dogfood_output/skips/20260124_183629_skip_module_imports_multifile_0003
   ```
-- [ ] Try compiling the multi-file project:
+- [x] Try compiling the multi-file project:
   ```bash
   dotnet run --project /Users/anton/Documents/github/sharpy/src/Sharpy.Cli -- run main.spy -m .
   ```
-- [ ] Note whether it succeeds or fails (this one may have other issues beyond `list[T]`)
+- [x] Note whether it succeeds or fails (this one may have other issues beyond `list[T]`)
+
+**Result:** FAIL - Multi-file import resolution issues (unrelated to `list[T]`)
 
 ### Task 5.3: Document Results
 
-- [ ] Create a test results file:
+- [x] Create a test results file:
   ```bash
   # In the sharpy root directory
   echo "# Test Results for list[T] Implementation" > /tmp/test_results.md
@@ -316,20 +320,22 @@ the compiler supports them."
 
 ### Task 6.1: Run Full Test Suite
 
-- [ ] Run all compiler tests:
+- [x] Run all compiler tests:
   ```bash
   dotnet test src/Sharpy.Compiler.Tests
   ```
-- [ ] Ensure no regressions (all previously passing tests still pass)
-- [ ] Note the test count before and after changes
+- [x] Ensure no regressions (all previously passing tests still pass)
+- [x] Note the test count before and after changes
+
+**Result:** Passed! 4054 passed, 13 skipped, 0 failed (4067 total)
 
 ### Task 6.2: Run Full Build
 
-- [ ] Build the entire solution:
+- [x] Build the entire solution:
   ```bash
   dotnet build sharpy.sln
   ```
-- [ ] Ensure no build warnings related to the changes
+- [x] Ensure no build warnings related to the changes
 
 ### Task 6.3: Final Commit (if any uncommitted changes)
 
@@ -392,11 +398,24 @@ Adds support for `list[T]`, `dict[K, V]`, and `set[T]` type annotations per phas
 
 ## Checklist Summary
 
-- [ ] Part 1: BuiltinRegistry changes (1 commit)
-- [ ] Part 2: TypeMapper changes (1 commit)
-- [ ] Part 3: Integration tests (1 commit)
-- [ ] Part 4: Dogfood validator update (1 commit)
-- [ ] Part 5: Manual testing of dogfood examples
-- [ ] Part 6: Final verification and PR
+- [x] Part 1: BuiltinRegistry changes (1 commit)
+- [x] Part 2: TypeMapper changes (1 commit)
+- [x] Part 3: Integration tests (1 commit)
+- [x] Part 4: Dogfood validator update (1 commit)
+- [x] Part 5: Manual testing of dogfood examples
+- [x] Part 6: Final verification and PR
 
 **Total Expected Commits:** 4-5
+
+## Implementation Notes
+
+The `list[T]`, `dict[K,V]`, and `set[T]` type annotations are fully implemented and working.
+
+**Dogfood examples status:**
+- Example 0006: Uses union types (`list[Circle | Rectangle]`) which is a separate feature not yet supported
+- Example 0003: Has multi-file import resolution issues unrelated to collection type annotations
+
+**Test results:**
+- All 4054 passing tests continue to pass
+- Added new integration tests for list, dict, and set type annotations
+- Generated C# correctly uses `System.Collections.Generic.List<T>`, `Dictionary<K,V>`, and `HashSet<T>`
