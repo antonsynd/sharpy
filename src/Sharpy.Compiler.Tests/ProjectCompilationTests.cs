@@ -1292,8 +1292,19 @@ def main():
             // Act
             var result = compiler.CompileProject(config);
 
+            // Build error message with generated C# if compilation failed
+            var errorDetails = new System.Text.StringBuilder();
+            errorDetails.AppendLine($"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+            if (result.GeneratedCSharpFiles != null)
+            {
+                foreach (var (fileName, content) in result.GeneratedCSharpFiles)
+                {
+                    errorDetails.AppendLine($"\n=== {fileName} ===\n{content}");
+                }
+            }
+
             // Assert
-            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+            Assert.True(result.Success, errorDetails.ToString());
             Assert.Empty(result.Errors);
         }
         finally

@@ -706,9 +706,10 @@ public class ImportResolver
     }
 
     /// <summary>
-    /// Convert a type annotation to a semantic type for simple/primitive types.
+    /// Convert a type annotation to a semantic type.
     /// This is used during import resolution to provide type information before
-    /// full semantic analysis. Returns Unknown for complex types.
+    /// full semantic analysis. For user-defined types, creates a UserDefinedType
+    /// that can be resolved later during code generation via symbol table lookup.
     /// </summary>
     private SemanticType ConvertTypeAnnotationToSemanticType(TypeAnnotation? typeAnnotation)
     {
@@ -719,7 +720,7 @@ public class ImportResolver
         var isNullable = typeAnnotation.IsNullable;
 
         // Map primitive type names
-        var baseType = typeAnnotation.Name switch
+        SemanticType? baseType = typeAnnotation.Name switch
         {
             "int" => SemanticType.Int,
             "long" => SemanticType.Long,
@@ -730,11 +731,18 @@ public class ImportResolver
             "str" or "string" => SemanticType.Str,
             "void" or "None" => SemanticType.Void,
             "object" => SemanticType.Object,
-            _ => SemanticType.Unknown // Complex types will be resolved during semantic analysis
+            _ => null // Handle non-primitive types below
         };
 
+        // For non-primitive types, create a UserDefinedType
+        // The Symbol will be resolved during code generation via symbol table lookup
+        if (baseType == null)
+        {
+            baseType = new UserDefinedType { Name = typeAnnotation.Name };
+        }
+
         // Wrap in nullable if needed
-        if (isNullable && baseType != SemanticType.Unknown && baseType != SemanticType.Void)
+        if (isNullable && baseType != SemanticType.Void)
         {
             return new NullableType { UnderlyingType = baseType };
         }

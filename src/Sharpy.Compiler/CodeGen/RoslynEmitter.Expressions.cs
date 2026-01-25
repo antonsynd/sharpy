@@ -1291,13 +1291,49 @@ public partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Derives a module namespace from a file path.
-    /// E.g., "/path/to/animal.spy" -> "Animal"
+    /// Derives a module namespace from a file path, computing the full package path
+    /// relative to the project root.
+    /// E.g., for project root "/temp" and file "/temp/mypackage/submodule.spy" -> "Mypackage.Submodule"
     /// </summary>
-    private static string GetModuleNameFromFilePath(string filePath)
+    private string GetModuleNameFromFilePath(string filePath)
     {
-        var fileName = Path.GetFileNameWithoutExtension(filePath);
-        return NameMangler.ToPascalCase(fileName);
+        // If we have a project root, compute relative path for proper namespace
+        if (!string.IsNullOrEmpty(_context.ProjectRootPath))
+        {
+            var relativePath = Path.GetRelativePath(_context.ProjectRootPath, filePath);
+            var relativeDir = Path.GetDirectoryName(relativePath) ?? "";
+            var fileName = Path.GetFileNameWithoutExtension(filePath);
+
+            var namespaceParts = new List<string>();
+
+            // Add directory parts (package hierarchy)
+            if (!string.IsNullOrEmpty(relativeDir) && relativeDir != ".")
+            {
+                var dirParts = relativeDir.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                foreach (var part in dirParts)
+                {
+                    if (!string.IsNullOrEmpty(part) && part != ".")
+                    {
+                        namespaceParts.Add(NameMangler.ToPascalCase(part));
+                    }
+                }
+            }
+
+            // Add file name part (skip __init__ as it represents the package itself)
+            if (!string.Equals(fileName, "__init__", StringComparison.OrdinalIgnoreCase))
+            {
+                namespaceParts.Add(NameMangler.ToPascalCase(fileName));
+            }
+
+            if (namespaceParts.Count > 0)
+            {
+                return string.Join(".", namespaceParts);
+            }
+        }
+
+        // Fallback: just use file name
+        var fallbackFileName = Path.GetFileNameWithoutExtension(filePath);
+        return NameMangler.ToPascalCase(fallbackFileName);
     }
 
     /// <summary>
