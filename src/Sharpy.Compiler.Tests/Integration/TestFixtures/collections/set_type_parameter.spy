@@ -1,0 +1,7 @@
+# Test: set[T] type annotation with .NET HashSet<T>
+
+def main():
+    unique_nums: set[int] = {1, 2, 2, 3, 3, 3}
+    # Iterate over unique values - duplicates removed
+    for n in unique_nums:
+        print(n)
