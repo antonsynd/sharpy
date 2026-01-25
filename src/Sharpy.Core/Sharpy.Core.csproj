@@ -8,6 +8,8 @@
     <RootNamespace>Sharpy</RootNamespace>
     <AssemblyName>Sharpy.Core</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Suppress missing XML doc warnings - docs will be added incrementally -->
+    <NoWarn>CS1591</NoWarn>
   </PropertyGroup>
 
 </Project>

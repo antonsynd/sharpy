@@ -1,3 +1,6 @@
+// Testing deprecated OperatorValidator API - these tests ensure backward compatibility
+#pragma warning disable CS0618
+
 using Xunit;
 using FluentAssertions;
 using Sharpy.Compiler.Semantic;

@@ -5,12 +5,14 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- Suppress nullable warnings in tests - test framework handles assertion failures -->
+    <!-- CS0660/CS0661: Test helper classes intentionally have simplified equality -->
+    <!-- CS8714: Nullable type parameter constraint warnings in test scenarios -->
+    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS8714;CS0660;CS0661</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Reference the main library project -->
-    <PackageReference Include="System.Net.Http" Version="4.3.4" />
-  <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj" />
 
     <!-- Unit testing framework (choose one based on preference) -->
