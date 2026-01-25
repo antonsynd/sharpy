@@ -206,5 +206,57 @@
     "duration": 19.207242,
     "timestamp": "2026-01-24T18:38:53.637304",
     "skip_reason": "Invalid expected output after 3 attempts (Python says: )"
+  },
+  {
+    "iteration": 17,
+    "feature_focus": "enum_usage",
+    "complexity": "simple",
+    "success": false,
+    "success_dir": null,
+    "issue_type": "output_mismatch",
+    "issue_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/issues/20260124_193144_output_mismatch_0010",
+    "skip_dir": null,
+    "duration": 3170.780576,
+    "timestamp": "2026-01-24T19:31:44.418600",
+    "skip_reason": null
+  },
+  {
+    "iteration": 18,
+    "feature_focus": "logical_operators",
+    "complexity": "medium",
+    "success": false,
+    "success_dir": null,
+    "issue_type": "skipped",
+    "issue_dir": null,
+    "skip_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/skips/20260124_193220_skip_logical_operators_0005",
+    "duration": 36.49317,
+    "timestamp": "2026-01-24T19:32:20.913133",
+    "skip_reason": "Invalid expected output after 3 attempts (Python says: )"
+  },
+  {
+    "iteration": 19,
+    "feature_focus": "type_narrowing",
+    "complexity": "simple",
+    "success": false,
+    "success_dir": null,
+    "issue_type": "compilation_failed",
+    "issue_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/issues/20260124_193238_compilation_failed_0011",
+    "skip_dir": null,
+    "duration": 18.014946,
+    "timestamp": "2026-01-24T19:32:38.929000",
+    "skip_reason": null
+  },
+  {
+    "iteration": 20,
+    "feature_focus": "module_imports",
+    "complexity": "medium",
+    "success": false,
+    "success_dir": null,
+    "issue_type": "skipped",
+    "issue_dir": null,
+    "skip_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/skips/20260124_193258_skip_module_imports_multifile_0006",
+    "duration": 19.160349,
+    "timestamp": "2026-01-24T19:32:58.089847",
+    "skip_reason": "Unsupported feature in shapes.spy: Line 46: list type annotation (v0.1.11) - 'def calculate_total_area(shapes: list[Shape]) -> f...'"
   }
 ]

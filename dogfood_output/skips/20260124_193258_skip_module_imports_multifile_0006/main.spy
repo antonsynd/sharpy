@@ -1,0 +1,36 @@
+# Main entry point - demonstrates cross-module imports
+from shapes import Circle, Rectangle, calculate_total_area
+from measurements import UnitConverter, format_measurement
+
+def main():
+    # Create shapes
+    circle: Circle = Circle(5.0)
+    rectangle: Rectangle = Rectangle(4.0, 6.0)
+    
+    # Calculate individual areas
+    circle_area: float = circle.area()
+    rect_area: float = rectangle.area()
+    
+    print(circle_area)
+    print(rect_area)
+    
+    # Calculate total area
+    shapes: list[Circle | Rectangle] = [circle, rectangle]
+    total: float = calculate_total_area(shapes)
+    print(total)
+    
+    # Use measurement converter
+    converter: UnitConverter = UnitConverter()
+    area_in_feet: float = converter.convert_area_to_feet(total)
+    print(area_in_feet)
+    
+    # Format result
+    unit_label: str = format_measurement(area_in_feet, "sq ft")
+    print(unit_label)
+
+# EXPECTED OUTPUT:
+# 78.53975
+# 24.0
+# 102.53975
+# 1104.003234276
+# sq ft

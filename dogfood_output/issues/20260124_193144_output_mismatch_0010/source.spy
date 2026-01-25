@@ -1,0 +1,31 @@
+# Test enum usage with status codes and conditionals
+
+enum Status:
+    PENDING = 0
+    ACTIVE = 1
+    COMPLETED = 2
+    FAILED = 3
+
+class Task:
+    status: Status
+
+    def __init__(self, initial_status: Status):
+        self.status = initial_status
+
+    def get_status(self) -> Status:
+        return self.status
+
+def main():
+    task = Task(Status.PENDING)
+    print(task.get_status())
+    
+    task.status = Status.ACTIVE
+    print(task.get_status())
+    
+    task.status = Status.COMPLETED
+    print(task.get_status())
+
+# EXPECTED OUTPUT:
+# Status.PENDING
+# Status.ACTIVE
+# Status.COMPLETED
