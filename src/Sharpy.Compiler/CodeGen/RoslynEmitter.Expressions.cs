@@ -453,7 +453,8 @@ public partial class RoslynEmitter
 
     private ExpressionSyntax GenerateListLiteral(ListLiteral list)
     {
-        // new global::Sharpy.Core.List<T> { elem1, elem2, elem3 }
+        // new System.Collections.Generic.List<T> { elem1, elem2, elem3 }
+        // v0.1.x uses .NET types directly per phases.md
         // Prefer target type annotation if available (e.g., list[int] = [...])
         TypeSyntax elementType;
         if (_targetTypeContext != null &&
@@ -471,7 +472,7 @@ public partial class RoslynEmitter
 
         var elements = list.Elements.Select(GenerateExpression);
 
-        var listType = GenericName("global::Sharpy.Core.List")
+        var listType = GenericName("System.Collections.Generic.List")
             .AddTypeArgumentListArguments(elementType);
 
         return ObjectCreationExpression(listType)
@@ -483,7 +484,8 @@ public partial class RoslynEmitter
 
     private ExpressionSyntax GenerateDictLiteral(DictLiteral dict)
     {
-        // new global::Sharpy.Core.Dict<K,V> { { key1, value1 }, { key2, value2 } }
+        // new System.Collections.Generic.Dictionary<K,V> { { key1, value1 }, { key2, value2 } }
+        // v0.1.x uses .NET types directly per phases.md
         // Prefer target type annotation if available (e.g., dict[str, int] = {...})
         TypeSyntax keyType, valueType;
         if (_targetTypeContext != null &&
@@ -507,7 +509,7 @@ public partial class RoslynEmitter
                     GenerateExpression(entry.Value)
                 })));
 
-        var dictType = GenericName("global::Sharpy.Core.Dict")
+        var dictType = GenericName("System.Collections.Generic.Dictionary")
             .AddTypeArgumentListArguments(keyType, valueType);
 
         return ObjectCreationExpression(dictType)
@@ -519,7 +521,8 @@ public partial class RoslynEmitter
 
     private ExpressionSyntax GenerateSetLiteral(SetLiteral set)
     {
-        // new global::Sharpy.Core.Set<T> { elem1, elem2, elem3 }
+        // new System.Collections.Generic.HashSet<T> { elem1, elem2, elem3 }
+        // v0.1.x uses .NET types directly per phases.md
         // Prefer target type annotation if available (e.g., set[int] = {...})
         TypeSyntax elementType;
         if (_targetTypeContext != null &&
@@ -535,7 +538,7 @@ public partial class RoslynEmitter
 
         var elements = set.Elements.Select(GenerateExpression);
 
-        var setType = GenericName("global::Sharpy.Core.Set")
+        var setType = GenericName("System.Collections.Generic.HashSet")
             .AddTypeArgumentListArguments(elementType);
 
         return ObjectCreationExpression(setType)
