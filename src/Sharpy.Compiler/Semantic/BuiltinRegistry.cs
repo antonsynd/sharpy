@@ -43,11 +43,11 @@ public class BuiltinRegistry
             RegisterType(info.SharpyName, info.ClrType, kind);
         }
 
-        // Collections (generic) - not in PrimitiveCatalog
-        // NOTE: These use Sharpy.Core types, not System.Collections.Generic!
-        RegisterType("list", typeof(Sharpy.Core.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
-        RegisterType("dict", typeof(Sharpy.Core.Dict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
-        RegisterType("set", typeof(Sharpy.Core.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        // Collections (generic) - v0.1.x uses .NET types directly per phases.md
+        // Sharpy.Core wrapper types will be introduced in v0.2.x+
+        RegisterType("list", typeof(System.Collections.Generic.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        RegisterType("set", typeof(System.Collections.Generic.HashSet<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
 
         // Special
         RegisterType("object", typeof(object), TypeKind.Class);
