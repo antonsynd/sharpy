@@ -1,2 +1,0 @@
-Assembly compilation failed:
-  dogfood_test.cs(16,24): error CS0266: Cannot implicitly convert type 'int?' to 'int'. An explicit conversion exists (are you missing a cast?)

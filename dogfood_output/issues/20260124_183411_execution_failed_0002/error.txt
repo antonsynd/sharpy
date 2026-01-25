@@ -1,2 +1,0 @@
-Compilation failed:
-  Semantic error at line 11, column 1: Executable statements are not allowed at module level

@@ -1,7 +1,0 @@
-Compilation failed:
-  Semantic error at line 7, column 24: Undefined identifier 'Calculator'
-  Semantic error at line 14, column 20: Undefined identifier 'square'
-  Semantic error at line 18, column 33: Undefined identifier 'RangeValidator'
-  Semantic error at line 23, column 19: Undefined identifier 'is_perfect_square'
-  Semantic error: Type 'Calculator' not found
-  Semantic error: Type 'RangeValidator' not found
