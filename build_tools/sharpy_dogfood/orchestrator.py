@@ -1231,10 +1231,10 @@ class DogfoodOrchestrator:
             # String features not yet supported
             (r'f"[^"]*\{', "f-string interpolation (v0.1.11)"),
             (r"f'[^']*\{", "f-string interpolation (v0.1.11)"),
-            # Collections (v0.1.11)
-            (r":\s*list\[", "list type annotation (v0.1.11)"),
-            (r":\s*dict\[", "dict type annotation (v0.1.11)"),
-            (r":\s*set\[", "set type annotation (v0.1.11)"),
+            # Collections - NOW SUPPORTED in v0.1.11
+            # (r":\s*list\[", "list type annotation (v0.1.11)"),
+            # (r":\s*dict\[", "dict type annotation (v0.1.11)"),
+            # (r":\s*set\[", "set type annotation (v0.1.11)"),
             (r":\s*Optional\[", "Optional type - use T? instead"),
             (r"\[\s*\]", "empty list literal (v0.1.11)"),
             (r"\{\s*\}", "empty dict/set literal (v0.1.11)"),
