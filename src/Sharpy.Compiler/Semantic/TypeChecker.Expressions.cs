@@ -78,6 +78,9 @@ public partial class TypeChecker
         // Check if this identifier has a narrowed type in the current context
         if (_narrowedTypes.TryGetValue(id.Name, out var narrowedType))
         {
+            // Persist the narrowed type for code generation
+            // This allows RoslynEmitter to use the narrowed type when generating code
+            _semanticInfo.SetNarrowedType(id, narrowedType);
             return narrowedType;
         }
 

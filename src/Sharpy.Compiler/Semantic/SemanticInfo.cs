@@ -29,6 +29,11 @@ public class SemanticInfo
     private readonly Dictionary<TypeAnnotation, SemanticType> _typeAnnotations =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map expressions to their narrowed types (for type narrowing after is not None / isinstance checks)
+    // This captures the narrowed type at each specific usage of an identifier within a narrowing context
+    private readonly Dictionary<Expression, SemanticType> _narrowedExpressionTypes =
+        new(ReferenceEqualityComparer.Instance);
+
     public void SetExpressionType(Expression expr, SemanticType type)
     {
         _expressionTypes[expr] = type;
@@ -67,5 +72,23 @@ public class SemanticInfo
     public SemanticType? GetTypeAnnotation(TypeAnnotation annotation)
     {
         return _typeAnnotations.TryGetValue(annotation, out var type) ? type : null;
+    }
+
+    /// <summary>
+    /// Sets a narrowed type for an expression (typically an Identifier) within a narrowing context.
+    /// Used for type narrowing after `is not None` or `isinstance()` checks.
+    /// </summary>
+    public void SetNarrowedType(Expression expr, SemanticType narrowedType)
+    {
+        _narrowedExpressionTypes[expr] = narrowedType;
+    }
+
+    /// <summary>
+    /// Gets the narrowed type for an expression, if one was recorded.
+    /// Returns null if the expression wasn't in a narrowing context.
+    /// </summary>
+    public SemanticType? GetNarrowedType(Expression expr)
+    {
+        return _narrowedExpressionTypes.TryGetValue(expr, out var type) ? type : null;
     }
 }
