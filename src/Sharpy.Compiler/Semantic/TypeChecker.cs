@@ -23,6 +23,9 @@ public partial class TypeChecker
     // Type inference service - extracted from validators for clean separation
     private readonly TypeInferenceService _typeInference;
 
+    // Generic type argument inference service - for inferring type arguments from function call arguments
+    private readonly GenericTypeInferenceService _genericInference;
+
     // Track current function return type for return statement checking
     private SemanticType? _currentFunctionReturnType = null;
 
@@ -70,6 +73,9 @@ public partial class TypeChecker
 
         // Initialize type inference service for inferring result types during type checking
         _typeInference = new TypeInferenceService(_symbolTable, sharedClrCache);
+
+        // Initialize generic type argument inference service
+        _genericInference = new GenericTypeInferenceService(_symbolTable);
     }
 
     /// <summary>

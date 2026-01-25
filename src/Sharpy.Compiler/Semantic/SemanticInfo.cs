@@ -34,6 +34,11 @@ public class SemanticInfo
     private readonly Dictionary<Expression, SemanticType> _narrowedExpressionTypes =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map generic function calls to their inferred type arguments
+    // Used by codegen to emit explicit type arguments in generated C#
+    private readonly Dictionary<FunctionCall, List<SemanticType>> _inferredTypeArguments =
+        new(ReferenceEqualityComparer.Instance);
+
     public void SetExpressionType(Expression expr, SemanticType type)
     {
         _expressionTypes[expr] = type;
@@ -90,5 +95,23 @@ public class SemanticInfo
     public SemanticType? GetNarrowedType(Expression expr)
     {
         return _narrowedExpressionTypes.TryGetValue(expr, out var type) ? type : null;
+    }
+
+    /// <summary>
+    /// Sets the inferred type arguments for a generic function call.
+    /// Used when calling a generic function without explicit type arguments (e.g., identity(42) -> T=int).
+    /// </summary>
+    public void SetInferredTypeArguments(FunctionCall call, List<SemanticType> typeArguments)
+    {
+        _inferredTypeArguments[call] = typeArguments;
+    }
+
+    /// <summary>
+    /// Gets the inferred type arguments for a generic function call.
+    /// Returns null if no type arguments were inferred (explicit call or non-generic function).
+    /// </summary>
+    public List<SemanticType>? GetInferredTypeArguments(FunctionCall call)
+    {
+        return _inferredTypeArguments.TryGetValue(call, out var types) ? types : null;
     }
 }

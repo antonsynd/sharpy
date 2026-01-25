@@ -801,11 +801,20 @@ public partial class TypeChecker
             funcSymbol = symbol as FunctionSymbol;
 
             // If we found a symbol but it's not a function or type, it's not callable
+            // UNLESS it's a variable with a FunctionType (e.g., a parameter with type (T) -> U)
             if (symbol != null && funcSymbol == null && symbol is not TypeSymbol)
             {
-                AddError($"'{id.Name}' is not callable (type: {calleeType.GetDisplayName()})",
-                    call.LineStart, call.ColumnStart);
-                return SemanticType.Unknown;
+                // Check if it's a variable with a FunctionType - those are callable
+                if (symbol is VariableSymbol varSym && varSym.Type is FunctionType)
+                {
+                    // Let the FunctionType handling below deal with this
+                }
+                else
+                {
+                    AddError($"'{id.Name}' is not callable (type: {calleeType.GetDisplayName()})",
+                        call.LineStart, call.ColumnStart);
+                    return SemanticType.Unknown;
+                }
             }
 
             // Special handling for builtin functions with overloads
@@ -931,6 +940,38 @@ public partial class TypeChecker
         // If we have a FunctionSymbol, use it for validation (supports default parameters)
         if (funcSymbol != null)
         {
+            // Handle generic function inference: identity(42) -> infer T=int
+            // This is triggered when calling a generic function without explicit type arguments
+            if (funcSymbol.IsGeneric)
+            {
+                var inferenceResult = _genericInference.InferTypeArguments(funcSymbol, argTypes);
+                if (inferenceResult.Success && inferenceResult.InferredTypes != null)
+                {
+                    // Inference succeeded - substitute type parameters and return the result
+                    var substitutedReturnType = SubstituteTypeParameters(
+                        funcSymbol.ReturnType,
+                        funcSymbol.TypeParameters,
+                        inferenceResult.InferredTypes);
+
+                    // Store the inferred type arguments for codegen
+                    _semanticInfo.SetInferredTypeArguments(call, inferenceResult.InferredTypes);
+
+                    // Wrap result in nullable for null conditional calls
+                    if (isNullConditionalCall && substitutedReturnType is not NullableType)
+                    {
+                        return new NullableType { UnderlyingType = substitutedReturnType };
+                    }
+                    return substitutedReturnType;
+                }
+                else
+                {
+                    // Inference failed - report error
+                    AddError(inferenceResult.ErrorMessage ?? "Type arguments cannot be inferred",
+                        call.LineStart, call.ColumnStart);
+                    return SemanticType.Unknown;
+                }
+            }
+
             // Count required parameters (those without defaults)
             var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
             var totalParamCount = funcSymbol.Parameters.Count;

@@ -240,7 +240,7 @@ x = first(items)                # Should infer T from items, currently errors
   **Commit:** "test: Add failing tests for generic type inference"
 
 #### Phase 2: Core Inference Engine
-- [ ] **Task 2.1**: Create `GenericTypeInferenceService` class
+- [x] **Task 2.1**: Create `GenericTypeInferenceService` class
   ```
   File: src/Sharpy.Compiler/Semantic/GenericTypeInferenceService.cs
   
@@ -265,7 +265,7 @@ x = first(items)                # Should infer T from items, currently errors
   **Verification:** Unit tests for UnifyTypeParameter pass
   **Commit:** "feat: Add GenericTypeInferenceService with core unification"
 
-- [ ] **Task 2.2**: Implement type unification for simple cases
+- [x] **Task 2.2**: Implement type unification for simple cases
   ```
   File: src/Sharpy.Compiler/Semantic/GenericTypeInferenceService.cs
   
@@ -280,7 +280,7 @@ x = first(items)                # Should infer T from items, currently errors
   **Verification:** Tests for simple type unification pass
   **Commit:** "feat: Implement type unification for generic inference"
 
-- [ ] **Task 2.3**: Handle multiple type parameters
+- [x] **Task 2.3**: Handle multiple type parameters
   ```
   File: src/Sharpy.Compiler/Semantic/GenericTypeInferenceService.cs
   
@@ -295,7 +295,7 @@ x = first(items)                # Should infer T from items, currently errors
   **Verification:** Multi-parameter inference tests pass
   **Commit:** "feat: Support multiple type parameter inference"
 
-- [ ] **Task 2.4**: Implement constraint checking
+- [x] **Task 2.4**: Implement constraint checking
   ```
   File: src/Sharpy.Compiler/Semantic/GenericTypeInferenceService.cs
   
@@ -315,7 +315,7 @@ x = first(items)                # Should infer T from items, currently errors
   **Commit:** "feat: Add constraint checking to generic inference"
 
 #### Phase 3: Integration with TypeChecker
-- [ ] **Task 3.1**: Modify `CheckFunctionCall` to attempt inference
+- [x] **Task 3.1**: Modify `CheckFunctionCall` to attempt inference
   ```
   File: src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs
   Method: CheckFunctionCall()
@@ -351,7 +351,7 @@ x = first(items)                # Should infer T from items, currently errors
   **Verification:** `identity(42)` compiles with inferred type
   **Commit:** "feat: TypeChecker attempts generic inference before explicit"
 
-- [ ] **Task 3.2**: Store inferred types in SemanticInfo for code generation
+- [x] **Task 3.2**: Store inferred types in SemanticInfo for code generation
   ```
   File: src/Sharpy.Compiler/Semantic/SemanticInfo.cs
   
@@ -365,7 +365,7 @@ x = first(items)                # Should infer T from items, currently errors
   **Verification:** SemanticInfo contains inferred types after type checking
   **Commit:** "feat: Store inferred type arguments in SemanticInfo"
 
-- [ ] **Task 3.3**: Add helpful error messages for inference failures
+- [x] **Task 3.3**: Add helpful error messages for inference failures
   ```
   File: src/Sharpy.Compiler/Semantic/GenericTypeInferenceService.cs
   
@@ -519,19 +519,19 @@ dotnet test src/Sharpy.Compiler.Tests
 ## Definition of Done
 
 ### Gap 1: Multi-File Imports
-- [ ] All new test cases pass
-- [ ] calculator_app sample compiles and runs
-- [ ] No regressions in existing tests
-- [ ] Debug logging added for troubleshooting
-- [ ] Documentation updated
+- [x] All new test cases pass
+- [x] calculator_app sample compiles and runs
+- [x] No regressions in existing tests
+- [x] Debug logging added for troubleshooting
+- [x] Documentation updated
 
-### Gap 2: Generic Type Inference  
-- [ ] All new test cases pass
-- [ ] `identity(42)` compiles (basic inference)
-- [ ] `first([1,2,3])` compiles (collection inference)
-- [ ] Clear errors for non-inferable cases
-- [ ] No regressions in explicit generic syntax
-- [ ] Language spec examples work as documented
+### Gap 2: Generic Type Inference
+- [x] All new test cases pass
+- [x] `identity(42)` compiles (basic inference)
+- [x] `first([1,2,3])` compiles (collection inference)
+- [x] Clear errors for non-inferable cases
+- [x] No regressions in explicit generic syntax
+- [ ] Language spec examples work as documented (remaining work)
 
 ---
 

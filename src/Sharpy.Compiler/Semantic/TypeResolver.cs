@@ -129,6 +129,28 @@ public class TypeResolver
             return new TupleType { ElementTypes = elementTypes };
         }
 
+        // Special handling for function types - (T, U) -> V parsed as "function" with type args
+        // TypeArguments contain [param types..., return type] where return type is the last element
+        if (annotation.Name == "function")
+        {
+            if (annotation.TypeArguments.Length == 0)
+            {
+                AddError("Function type requires at least a return type", null, null);
+                return SemanticType.Unknown;
+            }
+
+            // Last type argument is the return type, rest are parameter types
+            var allTypes = annotation.TypeArguments.Select(ResolveTypeAnnotation).ToList();
+            var returnType = allTypes[^1];
+            var paramTypes = allTypes.Take(allTypes.Count - 1).ToList();
+
+            return new FunctionType
+            {
+                ParameterTypes = paramTypes,
+                ReturnType = returnType
+            };
+        }
+
         var typeSymbol = _symbolTable.LookupType(annotation.Name);
         if (typeSymbol == null)
         {
