@@ -1,1 +1,0 @@
-Unsupported feature in shapes.spy: Line 46: list type annotation (v0.1.11) - 'def calculate_total_area(shapes: list[Shape]) -> f...'
