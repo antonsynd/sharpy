@@ -314,6 +314,66 @@ public partial class RoslynEmitter
 
             yield return UsingDirective(ParseName(fullModuleClass))
                 .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
+
+            // Also generate using statements for namespaces where re-exported types are actually defined.
+            // This handles the case where a package __init__.spy re-exports types from submodules.
+            // For example:
+            //   - mypackage/__init__.spy re-exports SomeClass from mypackage.submodule
+            //   - When we "from mypackage import SomeClass", we need:
+            //     - using static TestProject.Mypackage.Exports; (for the import)
+            //     - using TestProject.Mypackage.Submodule; (for the actual type namespace)
+            foreach (var usingDirective in GenerateReExportedTypeNamespaceUsings(fromImport, moduleName))
+            {
+                yield return usingDirective;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Generates using statements for namespaces where re-exported types are actually defined.
+    /// When importing from a package that re-exports types from submodules, we need using
+    /// statements for those submodule namespaces to resolve the type references.
+    /// </summary>
+    private IEnumerable<UsingDirectiveSyntax> GenerateReExportedTypeNamespaceUsings(
+        FromImportStatement fromImport,
+        string importModuleName)
+    {
+        var reExportedSymbols = GetReExportedSymbols(fromImport);
+        if (reExportedSymbols == null || reExportedSymbols.Count == 0)
+        {
+            yield break;
+        }
+
+        var addedNamespaces = new HashSet<string>();
+
+        foreach (var (_, symbol) in reExportedSymbols)
+        {
+            if (symbol is TypeSymbol typeSymbol && !string.IsNullOrEmpty(typeSymbol.DefiningModule))
+            {
+                // If the type's DefiningModule differs from the import module, we need a using statement
+                // for the namespace where the type is actually defined.
+                if (!string.Equals(typeSymbol.DefiningModule, importModuleName, StringComparison.OrdinalIgnoreCase))
+                {
+                    var definingNamespace = ConvertModuleNameToNamespace(typeSymbol.DefiningModule);
+
+                    // Build full namespace path
+                    string fullNamespace;
+                    if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                    {
+                        fullNamespace = $"{_context.ProjectNamespace}.{definingNamespace}";
+                    }
+                    else
+                    {
+                        fullNamespace = definingNamespace;
+                    }
+
+                    // Only add each namespace once
+                    if (addedNamespaces.Add(fullNamespace))
+                    {
+                        yield return UsingDirective(ParseName(fullNamespace));
+                    }
+                }
+            }
         }
     }
 

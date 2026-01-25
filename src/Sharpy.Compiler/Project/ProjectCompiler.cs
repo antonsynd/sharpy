@@ -639,6 +639,8 @@ public class ProjectCompiler
                 Success = false,
                 Errors = _errors,
                 Warnings = assemblyResult.Warnings,
+                // Include generated C# for debugging even on failure
+                GeneratedCSharpFiles = generatedCSharp,
                 Metrics = _projectMetrics,
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel

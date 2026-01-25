@@ -291,6 +291,10 @@ public class ImportResolver
         _logger.LogInfo($"Loading module: {modulePath}");
         _logger.LogDebug($"[ImportResolver] LoadModule: {Path.GetFileName(modulePath)} (parsing)");
 
+        // Compute the canonical module name for this file (used for DefiningModule tracking)
+        var canonicalModuleName = ComputeCanonicalModuleName(modulePath);
+        _logger.LogDebug($"[ImportResolver]   Canonical module name: {canonicalModuleName}");
+
         // Push to import chain before loading
         _importChain.Push(new ImportChainEntry(
             modulePath,
@@ -321,7 +325,8 @@ public class ImportResolver
             {
                 Path = modulePath,
                 Module = module,
-                ExportedSymbols = new Dictionary<string, Symbol>()
+                ExportedSymbols = new Dictionary<string, Symbol>(),
+                CanonicalModuleName = canonicalModuleName
             };
 
             // Set current module path BEFORE extracting symbols (needed for relative imports in re-exports)
@@ -436,19 +441,22 @@ public class ImportResolver
 
             case ClassDef classDef:
                 // Extract full class information including fields, methods, and type parameters
-                var classSymbol = ExtractFullClassSymbol(classDef);
+                // Pass the canonical module name to set DefiningModule (critical for re-exports)
+                var classSymbol = ExtractFullClassSymbol(classDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
                 moduleInfo.ExportedSymbols[classDef.Name] = classSymbol;
                 break;
 
             case StructDef structDef:
                 // Extract full struct information including fields, methods, and type parameters
-                var structSymbol = ExtractFullStructSymbol(structDef);
+                // Pass the canonical module name to set DefiningModule (critical for re-exports)
+                var structSymbol = ExtractFullStructSymbol(structDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
                 moduleInfo.ExportedSymbols[structDef.Name] = structSymbol;
                 break;
 
             case InterfaceDef interfaceDef:
                 // Extract full interface information including methods and type parameters
-                var interfaceSymbol = ExtractFullInterfaceSymbol(interfaceDef);
+                // Pass the canonical module name to set DefiningModule (critical for re-exports)
+                var interfaceSymbol = ExtractFullInterfaceSymbol(interfaceDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
                 moduleInfo.ExportedSymbols[interfaceDef.Name] = interfaceSymbol;
                 break;
 
@@ -462,7 +470,9 @@ public class ImportResolver
                     TypeKind = TypeKind.Enum,
                     AccessLevel = enumAccessLevel,
                     DeclarationLine = enumDef.LineStart,
-                    DeclarationColumn = enumDef.ColumnStart
+                    DeclarationColumn = enumDef.ColumnStart,
+                    // Set DefiningModule for enums (critical for re-exports)
+                    DefiningModule = moduleInfo.CanonicalModuleName ?? moduleInfo.Path
                 };
                 moduleInfo.ExportedSymbols[enumDef.Name] = enumSymbol;
                 break;
@@ -738,7 +748,11 @@ public class ImportResolver
     /// Note: Base class resolution happens later in NameResolver.ResolveInheritance()
     /// after all types are registered in the symbol table.
     /// </summary>
-    private TypeSymbol ExtractFullClassSymbol(ClassDef classDef)
+    /// <param name="classDef">The class definition AST node.</param>
+    /// <param name="definingModulePath">The file path of the module where this class is defined.
+    /// This is critical for re-exports: when a class is re-exported through __init__.spy,
+    /// the DefiningModule tracks the original definition location.</param>
+    private TypeSymbol ExtractFullClassSymbol(ClassDef classDef, string definingModulePath)
     {
         var accessLevel = GetAccessLevel(classDef.Name);
         bool isAbstract = classDef.Decorators.Any(d => d.Name == "abstract");
@@ -752,7 +766,10 @@ public class ImportResolver
             IsAbstract = isAbstract,
             TypeParameters = classDef.TypeParameters.ToList(),
             DeclarationLine = classDef.LineStart,
-            DeclarationColumn = classDef.ColumnStart
+            DeclarationColumn = classDef.ColumnStart,
+            // Set DefiningModule to the actual file where this class is defined.
+            // This is preserved through re-export chains to enable proper namespace resolution.
+            DefiningModule = definingModulePath
         };
 
         // Extract fields
@@ -797,7 +814,9 @@ public class ImportResolver
     /// Extract full type information from a struct definition including
     /// fields, methods, and type parameters.
     /// </summary>
-    private TypeSymbol ExtractFullStructSymbol(StructDef structDef)
+    /// <param name="structDef">The struct definition AST node.</param>
+    /// <param name="definingModulePath">The file path of the module where this struct is defined.</param>
+    private TypeSymbol ExtractFullStructSymbol(StructDef structDef, string definingModulePath)
     {
         var accessLevel = GetAccessLevel(structDef.Name);
 
@@ -809,7 +828,9 @@ public class ImportResolver
             AccessLevel = accessLevel,
             TypeParameters = structDef.TypeParameters.ToList(),
             DeclarationLine = structDef.LineStart,
-            DeclarationColumn = structDef.ColumnStart
+            DeclarationColumn = structDef.ColumnStart,
+            // Set DefiningModule to the actual file where this struct is defined.
+            DefiningModule = definingModulePath
         };
 
         // Extract fields
@@ -854,7 +875,9 @@ public class ImportResolver
     /// Extract full type information from an interface definition including
     /// methods and type parameters.
     /// </summary>
-    private TypeSymbol ExtractFullInterfaceSymbol(InterfaceDef interfaceDef)
+    /// <param name="interfaceDef">The interface definition AST node.</param>
+    /// <param name="definingModulePath">The file path of the module where this interface is defined.</param>
+    private TypeSymbol ExtractFullInterfaceSymbol(InterfaceDef interfaceDef, string definingModulePath)
     {
         var accessLevel = GetAccessLevel(interfaceDef.Name);
 
@@ -866,7 +889,9 @@ public class ImportResolver
             AccessLevel = accessLevel,
             TypeParameters = interfaceDef.TypeParameters.ToList(),
             DeclarationLine = interfaceDef.LineStart,
-            DeclarationColumn = interfaceDef.ColumnStart
+            DeclarationColumn = interfaceDef.ColumnStart,
+            // Set DefiningModule to the actual file where this interface is defined.
+            DefiningModule = definingModulePath
         };
 
         // Extract methods (interface methods are always abstract)
@@ -1122,6 +1147,59 @@ public class ImportResolver
             : message;
         _errors.Add(new SemanticError(errorMessage, line, column));
     }
+
+    /// <summary>
+    /// Compute the canonical (fully-qualified) module name from a file path.
+    /// Uses directory structure and __init__.spy files to determine package path.
+    /// For example: /path/to/mypackage/submodule.spy -> "mypackage.submodule"
+    /// </summary>
+    private string ComputeCanonicalModuleName(string filePath)
+    {
+        // Normalize the path
+        var fullPath = Path.GetFullPath(filePath);
+        var fullPathDir = Path.GetDirectoryName(fullPath);
+        var fileName = Path.GetFileNameWithoutExtension(fullPath);
+
+        if (fullPathDir == null)
+            return fileName;
+
+        // Walk up the directory tree, collecting package names until we find a non-package directory.
+        // A package directory is one that contains __init__.spy
+        var packageParts = new List<string>();
+        var currentDir = fullPathDir;
+
+        while (currentDir != null)
+        {
+            var dirName = Path.GetFileName(currentDir);
+            var initFile = Path.Combine(currentDir, "__init__.spy");
+
+            // Check if this directory is a package (has __init__.spy)
+            if (File.Exists(initFile))
+            {
+                packageParts.Insert(0, dirName);
+                currentDir = Path.GetDirectoryName(currentDir);
+            }
+            else
+            {
+                // We've found the source root (non-package directory)
+                break;
+            }
+        }
+
+        // Build the canonical name
+        if (fileName != "__init__")
+        {
+            packageParts.Add(fileName);
+        }
+
+        // If no packages were found, just return the filename
+        if (packageParts.Count == 0)
+        {
+            return fileName;
+        }
+
+        return string.Join(".", packageParts);
+    }
 }
 
 /// <summary>
@@ -1138,4 +1216,10 @@ public class ModuleInfo
     public Module Module { get; init; } = null!;
     public Dictionary<string, Symbol> ExportedSymbols { get; init; } = new();
     public bool IsNetModule { get; init; } = false;
+
+    /// <summary>
+    /// The canonical module name (e.g., "mypackage.submodule") derived from the file path.
+    /// Used for DefiningModule tracking in re-exported symbols.
+    /// </summary>
+    public string? CanonicalModuleName { get; init; }
 }
