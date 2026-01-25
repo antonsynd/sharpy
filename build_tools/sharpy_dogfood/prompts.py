@@ -209,6 +209,8 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - All executable statements (print, variable assignments, function calls) must be inside `main()`
 - Only declarations (classes, functions, type aliases, static fields with type annotations) can be at module level
 - Module-level variables require explicit type annotations: `counter: int = 0`
+- **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
+- Example of WRONG: `def main(): ... \\n main()` - the `main()` call is forbidden at module level
 
 ## CRITICAL: Allowed Features (Phases 0.1.0-0.1.10 ONLY)
 
@@ -262,8 +264,9 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 
 #### Structs & Enums (0.1.8)
 - **Structs**: `struct Name:` (value types, copied on assignment)
-- **Enums**: `enum Name:` with explicit values
-- **Enum values**: `EnumName.VALUE`
+- **Enums**: `enum Name:` with explicit values (e.g., `RED = 1`, `PENDING = 0`)
+- **Enum values**: `EnumName.VALUE` (e.g., `Color.RED`, `Status.PENDING`)
+- **Enum output**: When printed, enums display in PascalCase (e.g., `print(Status.PENDING)` outputs `Pending`)
 
 #### Type System (0.1.9)
 - **Nullable types**: `T?` syntax
@@ -284,6 +287,7 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **String literals**: `"hello"`, `'world'`
 
 ### ❌ FORBIDDEN - Do NOT use these features (v0.1.11+):
+- **NO main() call at module level**: Do NOT write `main()` after defining it - it's auto-invoked by runtime
 - **NO f-strings**: `f"hello {{x}}"` is NOT allowed yet
 - **NO multi-argument print**: `print(a, b, c)` - use multiple `print()` calls
 - **NO string concatenation**: `"a" + "b"` may not work reliably
@@ -411,6 +415,7 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - All executable statements (print, variable assignments, function calls) must be inside `main()`
 - Library modules (non-main.spy files) do NOT need a `main()` function
 - Only declarations (classes, functions, type aliases, static fields) can be at module level
+- **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
 
 ## CRITICAL: Module System Rules (Phase 0.1.10)
 
@@ -559,6 +564,7 @@ Your previous code FAILED validation. You must fix the issue and regenerate.
 Every executable Sharpy program MUST have a `main()` function:
 - All executable statements (print, assignments, function calls) must be inside `main()`
 - Only declarations (classes, functions, constants) can be at module level
+- **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
 
 ## CRITICAL: Allowed Features (Phases 0.1.0-0.1.10 ONLY)
 
@@ -581,6 +587,7 @@ Every executable Sharpy program MUST have a `main()` function:
 - Built-ins: `print(value)` - SINGLE ARGUMENT ONLY, `range()` in for loops
 
 ### ❌ FORBIDDEN (DO NOT USE):
+- NO main() call at module level - `main()` is auto-invoked by runtime, do NOT call it yourself
 - NO bare executable statements at module level - wrap in `def main():`
 - NO f-strings: `f"hello {{x}}"`
 - NO multi-argument print: `print(a, b)` - use multiple print() calls instead
@@ -631,6 +638,8 @@ Every executable Sharpy program MUST have a `main()` function:
 - Only declarations are allowed at module level: classes, functions, constants, static fields (with type annotation)
 - Example of valid module-level: `counter: int = 0` (static field with type annotation)
 - Example of INVALID module-level: `x = 5` (no type annotation, or bare statement)
+- **DO NOT call main() yourself** - Sharpy auto-invokes `main()` at runtime
+- Example of INVALID: `def main(): ... \\n main()` - the `main()` call is forbidden
 
 ## ALLOWED Features (Phases 0.1.0-0.1.10):
 
@@ -689,6 +698,7 @@ Every executable Sharpy program MUST have a `main()` function:
 - Structs: `struct Name:` with fields and methods
 - Enums: `enum Name:` with explicit values (e.g., `RED = 1`)
 - Enum access: `EnumName.VALUE`
+- Enum output: When printed, displays PascalCase (e.g., `print(Status.PENDING)` outputs `Pending`)
 
 ### Type System (0.1.9)
 - Nullable types: `T?` syntax
@@ -715,6 +725,7 @@ Every executable Sharpy program MUST have a `main()` function:
 
 ## FORBIDDEN Features (NOT in phases 0.1.0-0.1.10):
 
+❌ Calling main() at module level - main() is auto-invoked, do NOT call it yourself - REJECT
 ❌ Bare executable statements at module level (must be in `main()`) - REJECT
 ❌ f-strings: `f"text {{var}}"` - REJECT
 ❌ Multi-argument print: `print(a, b, c)` - REJECT (use multiple print calls)
