@@ -773,8 +773,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - should generate global::Sharpy.Core.List<int>?
-        Assert.Contains("global::Sharpy.Core.List<int>?", code);
+        // Assert - should generate System.Collections.Generic.List<int>?
+        Assert.Contains("System.Collections.Generic.List<int>?", code);
     }
 
     [Fact]
@@ -817,8 +817,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - should generate global::Sharpy.Core.List<int?>
-        Assert.Contains("global::Sharpy.Core.List<int?>", code);
+        // Assert - should generate System.Collections.Generic.List<int?>
+        Assert.Contains("System.Collections.Generic.List<int?>", code);
     }
 
     #endregion

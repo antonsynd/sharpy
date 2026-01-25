@@ -196,15 +196,16 @@ public class RoslynEmitterStatementTests
         var result = GenerateStatementCode(stmt);
 
         // Should generate List<int>, not List<object>
-        Assert.Contains("global::Sharpy.Core.List<int>", result);
-        Assert.Contains("new global::Sharpy.Core.List<int>", result);
+        // v0.1.x uses .NET types directly per phases.md
+        Assert.Contains("System.Collections.Generic.List<int>", result);
+        Assert.Contains("new System.Collections.Generic.List<int>", result);
         Assert.DoesNotContain("List<object>", result);
     }
 
     [Fact]
     public void GenerateStatement_DictVarDeclaration_UsesTargetTypeForElements()
     {
-        // Test that dict[str, int] = {"a": 1} generates Dict<string, int>
+        // Test that dict[str, int] = {"a": 1} generates Dictionary<string, int>
         var stmt = new VariableDeclaration
         {
             Name = "lookup",
@@ -232,16 +233,17 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        // Should generate Dict<string, int>
-        Assert.Contains("global::Sharpy.Core.Dict<string, int>", result);
-        Assert.Contains("new global::Sharpy.Core.Dict<string, int>", result);
-        Assert.DoesNotContain("Dict<object", result);
+        // Should generate Dictionary<string, int>
+        // v0.1.x uses .NET types directly per phases.md
+        Assert.Contains("System.Collections.Generic.Dictionary<string, int>", result);
+        Assert.Contains("new System.Collections.Generic.Dictionary<string, int>", result);
+        Assert.DoesNotContain("Dictionary<object", result);
     }
 
     [Fact]
     public void GenerateStatement_SetVarDeclaration_UsesTargetTypeForElements()
     {
-        // Test that set[int] = {1, 2, 3} generates Set<int>
+        // Test that set[int] = {1, 2, 3} generates HashSet<int>
         var stmt = new VariableDeclaration
         {
             Name = "unique_nums",
@@ -266,10 +268,11 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        // Should generate Set<int>
-        Assert.Contains("global::Sharpy.Core.Set<int>", result);
-        Assert.Contains("new global::Sharpy.Core.Set<int>", result);
-        Assert.DoesNotContain("Set<object>", result);
+        // Should generate HashSet<int>
+        // v0.1.x uses .NET types directly per phases.md
+        Assert.Contains("System.Collections.Generic.HashSet<int>", result);
+        Assert.Contains("new System.Collections.Generic.HashSet<int>", result);
+        Assert.DoesNotContain("HashSet<object>", result);
     }
 
     [Fact]
@@ -293,7 +296,8 @@ public class RoslynEmitterStatementTests
         var result = GenerateStatementCode(stmt);
 
         // Should infer List<int> from element types
-        Assert.Contains("new global::Sharpy.Core.List<int>", result);
+        // v0.1.x uses .NET types directly per phases.md
+        Assert.Contains("new System.Collections.Generic.List<int>", result);
     }
 
     #endregion

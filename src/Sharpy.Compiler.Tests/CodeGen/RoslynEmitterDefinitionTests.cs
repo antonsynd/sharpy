@@ -307,8 +307,8 @@ public partial class RoslynEmitterDefinitionTests
 
         // Assert
         // Check for method signature (name mangling converts get_first to GetFirst)
-        // Note: Sharpy's list[T] maps to global::Sharpy.Core.List<T>, not System.Collections.Generic.List<T>
-        Assert.Contains("T GetFirst<T>(global::Sharpy.Core.List<T> items)", code);
+        // Note: Sharpy's list[T] maps to System.Collections.Generic.List<T> in v0.1.x
+        Assert.Contains("T GetFirst<T>(System.Collections.Generic.List<T> items)", code);
     }
 
     #endregion

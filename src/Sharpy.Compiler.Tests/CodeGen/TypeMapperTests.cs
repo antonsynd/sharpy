@@ -115,7 +115,7 @@ public class TypeMapperTests
     #region Generic Type Tests
 
     [Fact]
-    public void MapType_ListOfInt_ReturnsSharpyListInt()
+    public void MapType_ListOfInt_ReturnsListInt()
     {
         // Arrange
         var typeAnnotation = new TypeAnnotation
@@ -131,11 +131,11 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("global::Sharpy.Core.List<int>");
+        result.ToString().Should().Be("System.Collections.Generic.List<int>");
     }
 
     [Fact]
-    public void MapType_DictOfStringInt_ReturnsSharpyDictStringInt()
+    public void MapType_DictOfStringInt_ReturnsDictionaryStringInt()
     {
         // Arrange
         var typeAnnotation = new TypeAnnotation
@@ -152,11 +152,11 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("global::Sharpy.Core.Dict<string,int>");
+        result.ToString().Should().Be("System.Collections.Generic.Dictionary<string,int>");
     }
 
     [Fact]
-    public void MapType_SetOfString_ReturnsSharpySetString()
+    public void MapType_SetOfString_ReturnsHashSetString()
     {
         // Arrange
         var typeAnnotation = new TypeAnnotation
@@ -172,11 +172,11 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("global::Sharpy.Core.Set<string>");
+        result.ToString().Should().Be("System.Collections.Generic.HashSet<string>");
     }
 
     [Fact]
-    public void MapType_NullableListOfInt_ReturnsNullableSharpyListInt()
+    public void MapType_NullableListOfInt_ReturnsNullableListInt()
     {
         // Arrange
         var typeAnnotation = new TypeAnnotation
@@ -193,7 +193,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("global::Sharpy.Core.List<int>?");
+        result.ToString().Should().Be("System.Collections.Generic.List<int>?");
     }
 
     #endregion
@@ -410,7 +410,7 @@ public class TypeMapperTests
     #region Helper Method Tests
 
     [Fact]
-    public void CreateCollectionType_ListOfInt_ReturnsSharpyListInt()
+    public void CreateCollectionType_ListOfInt_ReturnsListInt()
     {
         // Arrange
         var elementType = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword));
@@ -419,11 +419,11 @@ public class TypeMapperTests
         var result = _typeMapper.CreateCollectionType("list", elementType);
 
         // Assert
-        result.ToString().Should().Be("global::Sharpy.Core.List<int>");
+        result.ToString().Should().Be("System.Collections.Generic.List<int>");
     }
 
     [Fact]
-    public void CreateDictType_StringToInt_ReturnsSharpyDictStringInt()
+    public void CreateDictType_StringToInt_ReturnsDictionaryStringInt()
     {
         // Arrange
         var keyType = SyntaxFactory.ParseTypeName("string");
@@ -433,7 +433,7 @@ public class TypeMapperTests
         var result = _typeMapper.CreateDictType(keyType, valueType);
 
         // Assert
-        result.ToString().Should().Be("global::Sharpy.Core.Dict<string,int>");
+        result.ToString().Should().Be("System.Collections.Generic.Dictionary<string,int>");
     }
 
     [Fact]

@@ -127,7 +127,7 @@ public class RoslynEmitterExpressionTests
     #region Collection Literal Tests
 
     [Fact]
-    public void GenerateExpression_EmptyListLiteral_GeneratesSharpyList()
+    public void GenerateExpression_EmptyListLiteral_GeneratesList()
     {
         // Arrange
         var expr = new ListLiteral { Elements = ImmutableArray<Expression>.Empty };
@@ -136,11 +136,12 @@ public class RoslynEmitterExpressionTests
         var result = InvokeGenerateExpression(expr);
 
         // Assert
-        result.ToString().Should().Contain("Sharpy.Core.List");
+        // v0.1.x uses .NET types directly per phases.md
+        result.ToString().Should().Contain("System.Collections.Generic.List");
     }
 
     [Fact]
-    public void GenerateExpression_ListOfIntegers_GeneratesSharpyListInt()
+    public void GenerateExpression_ListOfIntegers_GeneratesListInt()
     {
         // Arrange
         var expr = new ListLiteral
@@ -158,14 +159,15 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("Sharpy.Core.List<int>");
+        // v0.1.x uses .NET types directly per phases.md
+        code.Should().Contain("System.Collections.Generic.List<int>");
         code.Should().Contain("1");
         code.Should().Contain("2");
         code.Should().Contain("3");
     }
 
     [Fact]
-    public void GenerateExpression_DictLiteral_GeneratesSharpyDict()
+    public void GenerateExpression_DictLiteral_GeneratesDictionary()
     {
         // Arrange
         var expr = new DictLiteral
@@ -190,13 +192,14 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("Sharpy.Core.Dict");
+        // v0.1.x uses .NET types directly per phases.md
+        code.Should().Contain("System.Collections.Generic.Dictionary");
         code.Should().Contain("\"a\"");
         code.Should().Contain("\"b\"");
     }
 
     [Fact]
-    public void GenerateExpression_SetLiteral_GeneratesSharpySet()
+    public void GenerateExpression_SetLiteral_GeneratesHashSet()
     {
         // Arrange
         var expr = new SetLiteral
@@ -213,7 +216,8 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("Sharpy.Core.Set<int>");
+        // v0.1.x uses .NET types directly per phases.md
+        code.Should().Contain("System.Collections.Generic.HashSet<int>");
     }
 
     [Fact]
