@@ -1,0 +1,28 @@
+# Test logical operators with boolean expressions
+def main():
+    a: bool = True
+    b: bool = False
+
+    result1: bool = a and b
+    print(result1)
+
+    result2: bool = a or b
+    print(result2)
+
+    result3: bool = not a
+    print(result3)
+
+    result4: bool = not b
+    print(result4)
+
+    x: int = 10
+    y: int = 5
+
+    result5: bool = x > 5 and y < 10
+    print(result5)
+
+    result6: bool = x < 5 or y > 0
+    print(result6)
+
+    result7: bool = not (x == y)
+    print(result7)

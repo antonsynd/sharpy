@@ -1,0 +1,21 @@
+# Test basic class field access patterns
+class Person:
+    name: str
+    age: int
+    is_student: bool
+
+    def __init__(self, name: str, age: int, student: bool):
+        self.name = name
+        self.age = age
+        self.is_student = student
+
+def main():
+    p: Person = Person("Alice", 25, True)
+    print(p.name)
+    print(p.age)
+    print(p.is_student)
+
+    p.age = 26
+    p.is_student = False
+    print(p.age)
+    print(p.is_student)

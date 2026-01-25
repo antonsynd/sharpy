@@ -182,6 +182,11 @@ public partial class RoslynEmitter
                 }
                 // else: skip const redefinitions - first declaration wins
             }
+            else if (member == null && stmt is TypeAlias)
+            {
+                // Type aliases are compile-time only, they don't generate any C# output
+                // and should not be treated as executable statements
+            }
             else
             {
                 // This is an executable statement (expression, assignment, etc.)
