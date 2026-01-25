@@ -28,6 +28,11 @@ public class ModuleRegistry
     public IReadOnlyList<SemanticError> Errors => _errors.ToList();
 
     /// <summary>
+    /// Get all configured module search paths.
+    /// </summary>
+    public IEnumerable<string> GetModulePaths() => _modulePaths.ToList();
+
+    /// <summary>
     /// Add a path to search for module assemblies.
     /// </summary>
     public void AddModulePath(string path)
