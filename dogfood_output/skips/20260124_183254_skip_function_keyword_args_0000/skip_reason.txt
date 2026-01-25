@@ -1,1 +1,0 @@
-Pre-validation failed after 3 attempts: Line 73: tuple unpacking (not supported) - 'score2: int = calculate_score(base=50, bonus=20, m...'

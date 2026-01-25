@@ -1,5 +1,0 @@
-Alice
-25
-True
-26
-False
