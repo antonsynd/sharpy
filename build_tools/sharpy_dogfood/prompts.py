@@ -294,8 +294,8 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **String literals**: `"hello"`, `'world'`
 
 #### F-Strings (0.1.11)
-- **F-string interpolation**: `f"Hello {name}"`, `f"Result: {x + y}"`
-- **Format specifiers**: `f"{value:.2f}"`, `f"{num:05d}"`
+- **F-string interpolation**: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
+- **Format specifiers**: `f"{{value:.2f}}"`, `f"{{num:05d}}"`
 
 #### Collections (0.1.11)
 - **List literals**: `nums: list[int] = [1, 2, 3]`
@@ -384,7 +384,7 @@ def main():
 
 IMPORTANT:
 - Use ONLY simple print() calls with ONE argument: print(value)
-- For multiple values, use multiple print() statements or f-strings: print(f"value: {x}")
+- For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
 - Every print() output should appear in EXPECTED OUTPUT
 - Keep the code simple and focused on testing the specified feature"""
 
@@ -467,7 +467,7 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - Variables, functions, classes, structs, enums, interfaces
 - Inheritance, abstract/virtual/override methods
 - Nullable types, type aliases, basic generics
-- F-strings: `f"Hello {name}"`
+- F-strings: `f"Hello {{name}}"`
 - Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals
 - Comprehensions: `[x * 2 for x in range(10)]`
 - Exception handling: `try`, `except`, `finally`, `raise`
@@ -761,7 +761,7 @@ Every executable Sharpy program MUST have a `main()` function:
 - Integer: `42`, `-10`
 - Float: `3.14`
 - String: `"hello"`, `'world'`
-- F-strings: `f"Hello {name}"`, `f"Result: {x + y}"`
+- F-strings: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
 - Boolean: `True`, `False`
 - None: `None`
 
