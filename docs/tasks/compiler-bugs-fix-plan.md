@@ -87,16 +87,16 @@ We recommend **Option A** as it's the cleanest architectural fix.
 
 ### Implementation Steps
 
-- [ ] **Step 1**: Analyze phase dependencies in `ProjectCompiler.cs`
+- [x] **Step 1**: Analyze phase dependencies in `ProjectCompiler.cs`
   - Verify no circular dependencies between import resolution and type declaration collection
   - Check if `ImportResolver` needs type symbols to be pre-registered
 
-- [ ] **Step 2**: Reorder phases in `ProjectCompiler.CompileProject()`
+- [x] **Step 2**: Reorder phases in `ProjectCompiler.CompileProject()`
   - Move import resolution to happen BEFORE inheritance resolution
   - Current order: Parse → CollectTypeDeclarations (includes inheritance) → ResolveImports → TypeCheck
   - New order: Parse → CollectTypeDeclarations (declarations only) → ResolveImports → ResolveInheritance → TypeCheck
 
-- [ ] **Step 3**: Split `CollectTypeDeclarations()` into two methods
+- [x] **Step 3**: Split `CollectTypeDeclarations()` into two methods
   ```csharp
   private void CollectTypeDeclarations(ProjectConfig config)
   {
@@ -107,11 +107,11 @@ We recommend **Option A** as it's the cleanest architectural fix.
           nameResolver.SetCurrentFilePath(unit.FilePath);
           nameResolver.ResolveDeclarations(unit.Ast);
       }
-      
+
       // Store nameResolver for later use in inheritance resolution
       _sharedNameResolver = nameResolver;
   }
-  
+
   private void ResolveInheritanceRelationships()
   {
       // Phase 3b: Now that imports are resolved, resolve inheritance
@@ -119,23 +119,23 @@ We recommend **Option A** as it's the cleanest architectural fix.
   }
   ```
 
-- [ ] **Step 4**: Update `CompileProject()` call order
+- [x] **Step 4**: Update `CompileProject()` call order
   ```csharp
   // Phase 3a: Collect type declarations
   CollectTypeDeclarations(config);
-  
+
   // Phase 4: Resolve imports (NOW imports are in symbol table)
   if (!ResolveImports(config))
       return CreateFailureResult();
-  
+
   // Phase 3b: Resolve inheritance (imports are now available)
   ResolveInheritanceRelationships();
-  
+
   // Phase 5: Type checking
   // ...
   ```
 
-- [ ] **Step 5**: Write unit test
+- [x] **Step 5**: Write unit test
   - Test file: `tests/Sharpy.Compiler.Tests/Semantic/CrossModuleInheritanceTests.cs`
   - Test cases:
     - Class inheriting from imported class
