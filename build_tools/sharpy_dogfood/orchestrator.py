@@ -332,6 +332,29 @@ FEATURE_FOCUSES = [
     # Phase 0.1.10: Module System
     "import_statement",  # import module
     "from_import",  # from module import item
+    # Phase 0.1.11: F-Strings & Collections
+    "f_string_basic",  # f"Hello {name}"
+    "f_string_expressions",  # f"Result: {x + y}"
+    "list_literal",  # [1, 2, 3]
+    "dict_literal",  # {"key": value}
+    "set_literal",  # {1, 2, 3}
+    "list_comprehension",  # [x * 2 for x in range(10)]
+    "dict_comprehension",  # {k: v for k, v in items}
+    "set_comprehension",  # {x for x in items}
+    "collection_iteration",  # for item in collection
+    "collection_methods",  # .add(), .remove(), len()
+    # Phase 0.1.12: .NET Interop
+    "dotnet_import",  # from system import Console
+    "dotnet_type_usage",  # using .NET types
+    # Phase 0.1.13: Exception Handling
+    "try_except_basic",  # try/except
+    "try_except_finally",  # try/except/finally
+    "try_except_else",  # try/except/else/finally
+    "raise_exception",  # raise ValueError()
+    # Phase 0.1.14: Lambda Expressions
+    "lambda_basic",  # lambda x: x * 2
+    "lambda_multiarg",  # lambda a, b: a + b
+    "higher_order_function",  # passing lambdas
     # Combinations
     "nested_if_in_loop",  # if inside for/while
     "loop_in_function",  # for/while inside function
@@ -416,33 +439,21 @@ class DogfoodOrchestrator:
     def _load_example_snippets(self) -> None:
         """Load example Sharpy snippets from the snippets directory.
 
-        Filters to only include snippets that use features from phases 0.1.0-0.1.10.
-        Excludes snippets with v0.1.11+ features like collections, comprehensions, etc.
+        Filters to only include snippets that use features from phases 0.1.0-0.1.14.
+        Now includes f-strings, collections, comprehensions, exceptions, lambdas, .NET interop.
         """
         snippets_dir = self.config.snippets_dir
         if not snippets_dir.exists():
             return
 
-        # Features that indicate code is beyond phases 0.1.0-0.1.10
-        # (collections, comprehensions, exceptions, lambdas, .NET interop)
+        # Features that indicate code is beyond phases 0.1.0-0.1.14
+        # (only features NOT yet implemented)
         forbidden_patterns = [
-            "lambda",
-            "try:",
-            "except:",
-            "raise ",
-            'f"',  # f-strings (v0.1.11)
-            "f'",  # f-strings (v0.1.11)
-            "= [",  # list literals (v0.1.11)
-            "= {",  # dict/set literals (v0.1.11)
-            ": list[",  # list type (v0.1.11)
-            ": dict[",  # dict type (v0.1.11)
-            ": set[",  # set type (v0.1.11)
-            "-> list[",  # list return type (v0.1.11)
-            "-> dict[",  # dict return type (v0.1.11)
             "Optional[",  # Use T? instead
-            "from system",  # .NET interop (v0.1.12)
-            "from System",  # .NET interop (v0.1.12)
-            " for ",  # comprehensions (approximate check)
+            "async def",  # Not implemented
+            "await ",  # Not implemented
+            " with ",  # Context managers not implemented
+            ":=",  # Walrus operator not implemented
         ]
 
         for spy_file in snippets_dir.glob("*.spy"):
@@ -1220,44 +1231,34 @@ class DogfoodOrchestrator:
         Returns None if code passes, or an error message if it fails.
         This catches obvious issues before expensive AI validation.
 
-        Validates against phases 0.1.0-0.1.10 (excludes v0.1.11+ features).
+        Validates against phases 0.1.0-0.1.14 (includes f-strings, collections,
+        exception handling, lambdas, and .NET interop).
         """
         import re
 
-        # Patterns that indicate features beyond phases 0.1.0-0.1.10
-        # Note: Classes, structs, interfaces, enums, imports, decorators,
-        # nullable types, default params, keyword args ARE allowed now
+        # Patterns that indicate features NOT yet implemented
+        # Note: Phases 0.1.0-0.1.14 features ARE now allowed:
+        # - f-strings (0.1.11)
+        # - collections: list/dict/set literals & comprehensions (0.1.11)
+        # - .NET interop imports (0.1.12)
+        # - exception handling: try/except/raise (0.1.13)
+        # - lambdas (0.1.14)
         forbidden_checks = [
-            # String features not yet supported
-            (r'f"[^"]*\{', "f-string interpolation (v0.1.11)"),
-            (r"f'[^']*\{", "f-string interpolation (v0.1.11)"),
-            # Collections - NOW SUPPORTED in v0.1.11
-            # (r":\s*list\[", "list type annotation (v0.1.11)"),
-            # (r":\s*dict\[", "dict type annotation (v0.1.11)"),
-            # (r":\s*set\[", "set type annotation (v0.1.11)"),
+            # Type annotation style
             (r":\s*Optional\[", "Optional type - use T? instead"),
-            (r"\[\s*\]", "empty list literal (v0.1.11)"),
-            (r"\{\s*\}", "empty dict/set literal (v0.1.11)"),
-            (r"\[\s*\w+.*for\s+\w+\s+in", "list comprehension (v0.1.11)"),
-            (r"\{[^}]*for\s+\w+\s+in", "dict/set comprehension (v0.1.11)"),
-            # Exception handling (v0.1.13)
-            (r"\btry\s*:", "try block (v0.1.13)"),
-            (r"\bexcept\s*", "except block (v0.1.13)"),
-            (r"\braise\s+", "raise statement (v0.1.13)"),
-            # Lambdas (v0.1.14)
-            (r"\blambda\s*[^:]*:", "lambda expression (v0.1.14)"),
-            # Async/await (deferred)
-            (r"\basync\s+def", "async function (deferred)"),
-            (r"\bawait\s+", "await expression (deferred)"),
-            # Context managers (deferred)
-            (r"\bwith\s+", "with statement (deferred)"),
-            # Tuple unpacking
-            (r"\w+\s*,\s*\w+\s*=", "tuple unpacking (not supported)"),
-            # Ternary expression
-            (r"\bx\s+if\s+.+\s+else\s+", "ternary expression (not supported)"),
-            # .NET interop imports (v0.1.12)
-            (r"\bfrom\s+system\s+import", ".NET interop import (v0.1.12)"),
-            (r"\bfrom\s+System\s+import", ".NET interop import (v0.1.12)"),
+            # Async/await (not implemented)
+            (r"\basync\s+def", "async function (not implemented)"),
+            (r"\bawait\s+", "await expression (not implemented)"),
+            # Context managers (not implemented)
+            (r"\bwith\s+", "with statement (not implemented)"),
+            # Walrus operator (not implemented)
+            (r":=", "walrus operator (not implemented)"),
+            # Pattern matching (not implemented)
+            (r"\bmatch\s+\w+\s*:", "pattern matching (not implemented)"),
+            # Tuple unpacking (may have issues)
+            (r"\w+\s*,\s*\w+\s*=", "tuple unpacking (not fully supported)"),
+            # Ternary expression (may have issues)
+            (r"\S+\s+if\s+.+\s+else\s+", "ternary expression (not fully supported)"),
         ]
 
         lines = code.split("\n")

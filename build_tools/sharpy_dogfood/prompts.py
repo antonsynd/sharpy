@@ -99,7 +99,7 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
     # Load phases overview
     if phases_file.exists():
         content = phases_file.read_text()
-        # Extract phases 0.1.0 through 0.1.10
+        # Extract phases 0.1.0 through 0.1.14 (implemented features)
         lines = content.split("\n")
         in_relevant_section = False
         relevant_lines = []
@@ -107,7 +107,7 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
         for line in lines:
             if "## Phase 0.1.0" in line:
                 in_relevant_section = True
-            elif "## Phase 0.1.11" in line:
+            elif "## Phase 0.1.15" in line:
                 in_relevant_section = False
                 break
 
@@ -115,8 +115,8 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
                 relevant_lines.append(line)
 
         if relevant_lines:
-            context_parts.append("# Implementation Phases (0.1.0 - 0.1.10)\n\n")
-            context_parts.append("\n".join(relevant_lines[:1500]))  # Limit size
+            context_parts.append("# Implementation Phases (0.1.0 - 0.1.14)\n\n")
+            context_parts.append("\n".join(relevant_lines[:2000]))  # Limit size
 
     # Load key spec files
     key_specs = [
@@ -137,6 +137,13 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
         "generics.md",
         "type_aliases.md",
         "modules.md",
+        # Phase 0.1.11+ features
+        "collections.md",
+        "comprehensions.md",
+        "exception_handling.md",
+        "lambda_expressions.md",
+        "fstrings.md",
+        "dotnet_interop.md",
     ]
 
     for spec_name in key_specs:
@@ -212,7 +219,7 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
 - Example of WRONG: `def main(): ... \\n main()` - the `main()` call is forbidden at module level
 
-## CRITICAL: Allowed Features (Phases 0.1.0-0.1.10 ONLY)
+## CRITICAL: Allowed Features (Phases 0.1.0-0.1.14)
 
 ### ✅ ALLOWED - Use these features:
 
@@ -286,20 +293,45 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **Boolean/None literals**: `True`, `False`, `None`
 - **String literals**: `"hello"`, `'world'`
 
-### ❌ FORBIDDEN - Do NOT use these features (v0.1.11+):
+#### F-Strings (0.1.11)
+- **F-string interpolation**: `f"Hello {name}"`, `f"Result: {x + y}"`
+- **Format specifiers**: `f"{value:.2f}"`, `f"{num:05d}"`
+
+#### Collections (0.1.11)
+- **List literals**: `nums: list[int] = [1, 2, 3]`
+- **Dict literals**: `scores: dict[str, int] = {{"alice": 100, "bob": 85}}`
+- **Set literals**: `unique: set[int] = {{1, 2, 3}}`
+- **List comprehensions**: `[x * 2 for x in range(10)]`
+- **Dict comprehensions**: `{{k: v * 2 for k, v in items.items()}}`
+- **Set comprehensions**: `{{x for x in items if x > 0}}`
+- **Collection iteration**: `for item in collection:`
+- **len()**: `len(collection)` for lists, dicts, sets
+- **Indexing**: `collection[index]`, `dict[key]`
+
+#### .NET Interop (0.1.12)
+- **Import .NET namespaces**: `from system import Console`
+- **Use .NET types**: After importing, use types normally
+
+#### Exception Handling (0.1.13)
+- **Try/except**: `try: ... except ExceptionType as e: ...`
+- **Try/finally**: `try: ... finally: ...`
+- **Try/except/else/finally**: Full exception handling pattern
+- **Raise**: `raise ValueError("message")`
+
+#### Lambda Expressions (0.1.14)
+- **Lambdas**: `lambda x: x * 2`, `lambda a, b: a + b`
+- **Higher-order functions**: Passing lambdas to functions
+
+### ❌ FORBIDDEN - Do NOT use these features (not yet implemented):
 - **NO main() call at module level**: Do NOT write `main()` after defining it - it's auto-invoked by runtime
-- **NO f-strings**: `f"hello {{x}}"` is NOT allowed yet
 - **NO multi-argument print**: `print(a, b, c)` - use multiple `print()` calls
-- **NO string concatenation**: `"a" + "b"` may not work reliably
-- **NO lists/dicts/sets literals**: `[]`, `{{}}`, `set()` - collections are v0.1.11
-- **NO list comprehensions**: `[x for x in items]` - v0.1.11
-- **NO try/except**: exception handling is v0.1.13
-- **NO lambdas**: lambda expressions are v0.1.14
-- **NO .NET interop imports**: `from system import ...` is v0.1.12
+- **NO async/await**: Async programming not implemented
+- **NO with statement**: Context managers not implemented
+- **NO walrus operator**: `:=` - assignment expressions not implemented
+- **NO pattern matching**: `match`/`case` not implemented
+- **NO ternary expressions**: `x if cond else y` - may have issues
+- **NO tuple unpacking**: `a, b = 1, 2` - may have issues
 - **NO isinstance with tuples**: `isinstance(x, (int, str))` - use `or` instead
-- **NO ternary expressions**: `x if cond else y`
-- **NO multiple assignment**: `a, b = 1, 2`
-- **NO walrus operator**: `:=`
 
 ### ⚠️ NAMING RULES - Avoid builtin conflicts:
 - **Do NOT name functions** `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`
@@ -352,8 +384,7 @@ def main():
 
 IMPORTANT:
 - Use ONLY simple print() calls with ONE argument: print(value)
-- For multiple values, use multiple print() statements
-- NO string formatting, concatenation, or f-strings
+- For multiple values, use multiple print() statements or f-strings: print(f"value: {x}")
 - Every print() output should appear in EXPECTED OUTPUT
 - Keep the code simple and focused on testing the specified feature"""
 
@@ -432,17 +463,25 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - Modules in same directory can import each other
 - The entry point file (`main.spy`) MUST have a `main()` function
 
-### Allowed Features (same as single-file, phases 0.1.0-0.1.10)
+### Allowed Features (same as single-file, phases 0.1.0-0.1.14)
 - Variables, functions, classes, structs, enums, interfaces
 - Inheritance, abstract/virtual/override methods
 - Nullable types, type aliases, basic generics
-- NO lists, dicts, f-strings, try/except, lambdas
+- F-strings: `f"Hello {name}"`
+- Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals
+- Comprehensions: `[x * 2 for x in range(10)]`
+- Exception handling: `try`, `except`, `finally`, `raise`
+- Lambdas: `lambda x: x * 2`
+- .NET interop: `from system import Console`
 
 ### ❌ FORBIDDEN in module system:
 - **NO relative imports**: `from .module import x` - NOT SUPPORTED
 - **NO package imports**: `from package.module import x` - NOT SUPPORTED
-- **NO .NET interop imports**: `from system import x` - v0.1.12
 - **NO star imports**: `from module import *` - NOT SUPPORTED
+- **NO async/await**: Not implemented
+- **NO with statement**: Context managers not implemented
+- **NO walrus operator**: `:=` - Not implemented
+- **NO pattern matching**: `match`/`case` - Not implemented
 
 {existing_fixtures_section}
 
@@ -555,7 +594,7 @@ Your previous code FAILED validation. You must fix the issue and regenerate.
 ## Instructions
 
 1. Analyze the validation error carefully
-2. Identify which feature(s) are NOT allowed in phases 0.1.0-0.1.10
+2. Identify which feature(s) are NOT allowed in phases 0.1.0-0.1.14
 3. REMOVE or REPLACE the forbidden features
 4. Keep the same general logic/intent but use only allowed features
 
@@ -566,7 +605,7 @@ Every executable Sharpy program MUST have a `main()` function:
 - Only declarations (classes, functions, constants) can be at module level
 - **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
 
-## CRITICAL: Allowed Features (Phases 0.1.0-0.1.10 ONLY)
+## CRITICAL: Allowed Features (Phases 0.1.0-0.1.14)
 
 ### ✅ ALLOWED:
 - Entry point: `def main():` is REQUIRED for executable code
@@ -585,20 +624,23 @@ Every executable Sharpy program MUST have a `main()` function:
 - Basic generics: `class Box[T]:`, `def foo[T](x: T) -> T:`
 - Imports: `import module`, `from module import item`
 - Built-ins: `print(value)` - SINGLE ARGUMENT ONLY, `range()` in for loops
+- F-strings: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
+- Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals `[1,2,3]`, `{{"key": val}}`
+- Comprehensions: `[x * 2 for x in range(10)]`
+- Exception handling: `try`, `except`, `finally`, `raise`
+- Lambdas: `lambda x: x * 2`
+- .NET interop: `from system import Console`
 
 ### ❌ FORBIDDEN (DO NOT USE):
 - NO main() call at module level - `main()` is auto-invoked by runtime, do NOT call it yourself
 - NO bare executable statements at module level - wrap in `def main():`
-- NO f-strings: `f"hello {{x}}"`
-- NO multi-argument print: `print(a, b)` - use multiple print() calls instead
-- NO string concatenation: `"a" + "b"`
-- NO lists/dicts/sets: `[]`, `{{}}`
-- NO comprehensions: `[x for x in items]`
-- NO try/except/raise
-- NO lambdas
-- NO .NET interop: `from system import ...`
-- NO ternary: `x if cond else y`
-- NO tuple unpacking: `a, b = 1, 2`
+- NO multi-argument print: `print(a, b)` - use multiple print() calls or f-strings
+- NO async/await - not implemented
+- NO with statement - context managers not implemented
+- NO walrus operator: `:=` - not implemented
+- NO pattern matching: `match`/`case` - not implemented
+- NO ternary: `x if cond else y` - may have issues
+- NO tuple unpacking: `a, b = 1, 2` - may have issues
 
 {examples_section}
 
@@ -621,15 +663,14 @@ Return ONLY valid Sharpy code with expected output in comments:
 
 IMPORTANT:
 - Use ONLY simple print() calls with ONE argument
-- For multiple values, use multiple print() statements
-- NO string formatting, concatenation, or f-strings
+- For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
 - Every print() output should appear in EXPECTED OUTPUT"""
 
 
 def get_spec_validation_prompt(code: str, spec_context: str) -> str:
     """Generate a prompt for validating code against the spec."""
 
-    return f"""You are a STRICT Sharpy language specification validator for phases 0.1.0-0.1.10.
+    return f"""You are a STRICT Sharpy language specification validator for phases 0.1.0-0.1.14.
 
 ## Program Entry Point Requirement
 
@@ -641,7 +682,7 @@ Every executable Sharpy program MUST have a `main()` function:
 - **DO NOT call main() yourself** - Sharpy auto-invokes `main()` at runtime
 - Example of INVALID: `def main(): ... \\n main()` - the `main()` call is forbidden
 
-## ALLOWED Features (Phases 0.1.0-0.1.10):
+## ALLOWED Features (Phases 0.1.0-0.1.14):
 
 ### Program Structure
 - Entry point: `def main():` is REQUIRED for executable code
@@ -719,25 +760,45 @@ Every executable Sharpy program MUST have a `main()` function:
 ### Literals
 - Integer: `42`, `-10`
 - Float: `3.14`
-- String: `"hello"`, `'world'` (simple, no f-strings)
+- String: `"hello"`, `'world'`
+- F-strings: `f"Hello {name}"`, `f"Result: {x + y}"`
 - Boolean: `True`, `False`
 - None: `None`
 
-## FORBIDDEN Features (NOT in phases 0.1.0-0.1.10):
+### Collections (0.1.11)
+- List literals: `nums: list[int] = [1, 2, 3]`
+- Dict literals: `scores: dict[str, int] = {"alice": 100}`
+- Set literals: `unique: set[int] = {1, 2, 3}`
+- List comprehensions: `[x * 2 for x in range(10)]`
+- Dict/Set comprehensions: `{k: v for k, v in items}`
+- Collection iteration: `for item in collection:`
+- len(): `len(collection)`
+- Indexing: `collection[index]`, `dict[key]`
+
+### .NET Interop (0.1.12)
+- Import .NET namespaces: `from system import Console`
+- Use .NET types after importing
+
+### Exception Handling (0.1.13)
+- Try/except: `try: ... except ExceptionType as e: ...`
+- Try/finally: `try: ... finally: ...`
+- Raise: `raise ValueError("message")`
+
+### Lambda Expressions (0.1.14)
+- Lambdas: `lambda x: x * 2`, `lambda a, b: a + b`
+- Higher-order functions
+
+## FORBIDDEN Features (NOT in phases 0.1.0-0.1.14):
 
 ❌ Calling main() at module level - main() is auto-invoked, do NOT call it yourself - REJECT
 ❌ Bare executable statements at module level (must be in `main()`) - REJECT
-❌ f-strings: `f"text {{var}}"` - REJECT
-❌ Multi-argument print: `print(a, b, c)` - REJECT (use multiple print calls)
-❌ Lists/dicts/sets literals: `[]`, `{{}}`, `set()` - REJECT (v0.1.11)
-❌ List comprehensions: `[x for x in items]` - REJECT (v0.1.11)
-❌ Try/except/raise - REJECT (v0.1.13)
-❌ Lambda expressions - REJECT (v0.1.14)
-❌ .NET interop imports: `from system import ...` - REJECT (v0.1.12)
-❌ String concatenation: `"a" + "b"` - REJECT
-❌ Ternary expressions: `x if cond else y` - REJECT
-❌ Multiple assignment: `a, b = 1, 2` - REJECT
-❌ Walrus operator: `:=` - REJECT
+❌ Multi-argument print: `print(a, b, c)` - REJECT (use multiple print calls or f-strings)
+❌ Async/await: `async def`, `await` - REJECT (not implemented)
+❌ Context managers: `with` statement - REJECT (not implemented)
+❌ Walrus operator: `:=` - REJECT (not implemented)
+❌ Pattern matching: `match`/`case` - REJECT (not implemented)
+❌ Ternary expressions: `x if cond else y` - REJECT (may have issues)
+❌ Tuple unpacking: `a, b = 1, 2` - REJECT (may have issues)
 ❌ isinstance with tuple: `isinstance(x, (int, str))` - REJECT
 
 ## Code to Validate
@@ -755,7 +816,7 @@ Scan the code line by line. If ANY forbidden feature is used, mark as INVALID.
 If ALL features are from the allowed list:
 ```
 VALID
-The code uses only features from phases 0.1.0-0.1.10.
+The code uses only features from phases 0.1.0-0.1.14.
 ```
 
 If ANY forbidden feature is found:
