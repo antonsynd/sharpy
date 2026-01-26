@@ -37,22 +37,32 @@ process(article)  # ERROR: Cannot pass 'Article' to parameter of type 'Content'
 ```
 
 ### Root Cause
-In `NameResolver.ResolveClassInheritance()`, base class lookup only searches the local symbol table via `_symbolTable.Lookup(baseAnnot.Name)`. When the base class is imported from another module, it may not be found because:
 
-1. The imported symbols are registered by `ImportResolver` but the lookup doesn't search imported symbols
-2. The base class name needs to be resolved against the current scope which includes imports
+**CRITICAL**: The actual root cause is a **compilation phase ordering problem** in `ProjectCompiler.cs`:
+
+1. **Phase 3** (`CollectTypeDeclarations`): Calls `nameResolver.ResolveDeclarations()` then `nameResolver.ResolveInheritance()`
+2. **Phase 4** (`ResolveImports`): Calls `ImportResolver` to resolve imports and populate the symbol table with imported types
+
+The problem is that `ResolveInheritance()` runs **BEFORE** imports are resolved! When `ResolveClassInheritance()` calls `_symbolTable.Lookup(baseAnnot.Name)` for an imported base class, the imported type hasn't been added to the symbol table yet.
+
+**Note**: The compiler already uses a SINGLE NameResolver instance across all files (see `ProjectCompiler.cs:261` comment: "Create a SINGLE NameResolver for ALL files").
 
 ### Code Location
-**File**: `src/Sharpy.Compiler/Semantic/NameResolver.cs`
-**Method**: `ResolveClassInheritance()` (lines 380-420)
+**Primary File**: `src/Sharpy.Compiler/Project/ProjectCompiler.cs`
+- `CollectTypeDeclarations()` method (lines 250-300)
+- `ResolveImports()` method (lines 300-400)
+
+**Secondary File**: `src/Sharpy.Compiler/Semantic/NameResolver.cs`
+- `ResolveClassInheritance()` method (line 629)
 
 ```csharp
+// In NameResolver.cs at line 629
 private void ResolveClassInheritance(ClassDef classDef)
 {
     // ...
     foreach (var baseAnnot in classDef.BaseClasses)
     {
-        // BUG: Only searches local symbol table, not imported types
+        // BUG: Imported types aren't in symbol table yet (imports resolved in Phase 4)
         var baseSymbol = _symbolTable.Lookup(baseAnnot.Name) as TypeSymbol;
         if (baseSymbol == null)
         {
@@ -67,49 +77,63 @@ private void ResolveClassInheritance(ClassDef classDef)
 
 ### Fix Strategy
 
-The symbol table already contains imported types (registered during `ResolveFromImport`), but the issue is that `NameResolver` maintains separate instances for each file, so cross-module symbols aren't visible. The fix requires passing imported type symbols to the NameResolver.
+**Option A (Recommended)**: Reorder compilation phases so imports are resolved BEFORE inheritance resolution.
+
+**Option B**: Split inheritance resolution into two passes - one for local types (during Phase 3) and one for imported types (after Phase 4).
+
+**Option C**: Add a mechanism to register imported type symbols before inheritance resolution (workaround).
+
+We recommend **Option A** as it's the cleanest architectural fix.
 
 ### Implementation Steps
 
-- [ ] **Step 1**: Add a method to NameResolver to register imported type symbols
-  - Add field: `private readonly Dictionary<string, TypeSymbol> _importedTypes = new();`
-  - Add method: `public void RegisterImportedType(string name, TypeSymbol symbol)`
-  
-- [ ] **Step 2**: Update the compiler pipeline to pass imported types to NameResolver
-  - In `Compiler.cs` or `AssemblyCompiler.cs`, after ImportResolver resolves imports:
-    - Extract TypeSymbol entries from `FromImportStatement.ReExportedSymbols`
-    - Call `nameResolver.RegisterImportedType()` for each type
+- [ ] **Step 1**: Analyze phase dependencies in `ProjectCompiler.cs`
+  - Verify no circular dependencies between import resolution and type declaration collection
+  - Check if `ImportResolver` needs type symbols to be pre-registered
 
-- [ ] **Step 3**: Modify `ResolveClassInheritance()` to search imported types
-  - After `_symbolTable.Lookup()` returns null, check `_importedTypes`
-  - Use the imported TypeSymbol if found
-  
-```csharp
-private void ResolveClassInheritance(ClassDef classDef)
-{
-    // ...
-    foreach (var baseAnnot in classDef.BaseClasses)
-    {
-        var baseSymbol = _symbolTable.Lookup(baseAnnot.Name) as TypeSymbol;
-        
-        // NEW: Check imported types if not found locally
-        if (baseSymbol == null)
-        {
-            _importedTypes.TryGetValue(baseAnnot.Name, out baseSymbol);
-        }
-        
-        if (baseSymbol == null)
-        {
-            AddError($"Base type '{baseAnnot.Name}' not found",
-                classDef.LineStart, classDef.ColumnStart);
-            continue;
-        }
-        // ...
-    }
-}
-```
+- [ ] **Step 2**: Reorder phases in `ProjectCompiler.CompileProject()`
+  - Move import resolution to happen BEFORE inheritance resolution
+  - Current order: Parse → CollectTypeDeclarations (includes inheritance) → ResolveImports → TypeCheck
+  - New order: Parse → CollectTypeDeclarations (declarations only) → ResolveImports → ResolveInheritance → TypeCheck
 
-- [ ] **Step 4**: Apply same fix to `ResolveStructInheritance()` and `ResolveInterfaceInheritance()`
+- [ ] **Step 3**: Split `CollectTypeDeclarations()` into two methods
+  ```csharp
+  private void CollectTypeDeclarations(ProjectConfig config)
+  {
+      // Phase 3a: Collect declarations only (no inheritance)
+      var nameResolver = new NameResolver(_symbolTable, _logger);
+      foreach (var (_, unit) in _projectModel!.Units)
+      {
+          nameResolver.SetCurrentFilePath(unit.FilePath);
+          nameResolver.ResolveDeclarations(unit.Ast);
+      }
+      
+      // Store nameResolver for later use in inheritance resolution
+      _sharedNameResolver = nameResolver;
+  }
+  
+  private void ResolveInheritanceRelationships()
+  {
+      // Phase 3b: Now that imports are resolved, resolve inheritance
+      _sharedNameResolver.ResolveInheritance();
+  }
+  ```
+
+- [ ] **Step 4**: Update `CompileProject()` call order
+  ```csharp
+  // Phase 3a: Collect type declarations
+  CollectTypeDeclarations(config);
+  
+  // Phase 4: Resolve imports (NOW imports are in symbol table)
+  if (!ResolveImports(config))
+      return CreateFailureResult();
+  
+  // Phase 3b: Resolve inheritance (imports are now available)
+  ResolveInheritanceRelationships();
+  
+  // Phase 5: Type checking
+  // ...
+  ```
 
 - [ ] **Step 5**: Write unit test
   - Test file: `tests/Sharpy.Compiler.Tests/Semantic/CrossModuleInheritanceTests.cs`
@@ -117,6 +141,7 @@ private void ResolveClassInheritance(ClassDef classDef)
     - Class inheriting from imported class
     - Class implementing imported interface
     - Multi-level inheritance across modules
+    - Transitive imports (A imports from B which imports from C)
 
 ### Verification Command
 ```bash
@@ -126,11 +151,11 @@ dotnet test --filter "FullyQualifiedName~CrossModuleInheritance"
 
 ### Commit Message
 ```
-fix(semantic): resolve cross-module inheritance in NameResolver
+fix(compiler): reorder phases to resolve imports before inheritance
 
-- Add _importedTypes dictionary to track imported type symbols
-- Search imported types when base class not found in local symbol table
-- Apply fix to class, struct, and interface inheritance resolution
+- Split CollectTypeDeclarations into declaration and inheritance phases
+- Move import resolution between declaration and inheritance phases
+- Ensures imported base types are in symbol table during inheritance resolution
 
 Fixes dogfood issue #0004
 ```
@@ -165,67 +190,79 @@ using TestProject.Models;  // Correct: uses type's DefiningModule
 ```
 
 ### Root Cause
-In `RoslynEmitter.CompilationUnit.cs`, the `GenerateFromImportUsings()` method generates namespace paths based on the import module path rather than using the `TypeSymbol.DefiningModule` which tracks where the type is actually defined.
+
+Two potential issues:
+
+1. **ImportResolver not setting DefiningModule**: When `ImportResolver.ExtractFullClassSymbol()` extracts type symbols from imported modules, it may not be setting `TypeSymbol.DefiningModule` correctly.
+
+2. **Code generator not using DefiningModule**: In `RoslynEmitter.Expressions.cs`, `GetFullyQualifiedTypeName()` (line 1261) checks `DefiningFilePath` first, then `DefiningModule`. If `DefiningFilePath` is set incorrectly, it will compute the wrong namespace.
 
 ### Code Location
-**File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs`
-**Method**: `GenerateFromImportUsings()` (lines 200-280)
+**File 1**: `src/Sharpy.Compiler/Semantic/ImportResolver.cs`
+- `ExtractFullClassSymbol()` method - verify DefiningModule is set
 
-The issue is that `GenerateReExportedTypeNamespaceUsings()` is called but only handles the case where `DefiningModule` differs from `importModuleName`. For direct imports (not re-exports), the namespace is generated from the import path without considering DefiningModule.
+**File 2**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs`
+- `GenerateFromImportUsings()` (line 270)
+- `GenerateReExportedTypeNamespaceUsings()` (line 340)
+
+**File 3**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs`
+- `GetFullyQualifiedTypeName()` (line 1261)
 
 ### Fix Strategy
 
-1. Ensure `TypeSymbol.DefiningModule` is always set correctly (already done in ImportResolver)
-2. When generating using statements for imported types, prefer `DefiningModule` over import path
+1. Ensure `TypeSymbol.DefiningModule` is always set correctly during import resolution
+2. Ensure code generation uses `DefiningModule` consistently for namespace computation
+3. Generate proper `using` statements for imported types' actual namespaces
 
 ### Implementation Steps
 
-- [ ] **Step 1**: Verify DefiningModule is set correctly in ImportResolver
-  - Check `ExtractFullClassSymbol()`, `ExtractFullStructSymbol()`, etc.
-  - Ensure `CanonicalModuleName` is computed and used
-  - Add debug logging if needed
+- [ ] **Step 1**: Add debug logging to ImportResolver to trace DefiningModule assignment
+  ```csharp
+  // In ExtractFullClassSymbol() or similar
+  _logger.LogDebug($"Setting DefiningModule for {typeSymbol.Name} to '{canonicalModuleName}'");
+  ```
 
-- [ ] **Step 2**: Update `GenerateFromImportUsings()` to use DefiningModule for type imports
-  - When generating namespace for imported types, check if they have DefiningModule set
-  - Use DefiningModule to compute the correct namespace path
-  
-```csharp
-private IEnumerable<UsingDirectiveSyntax> GenerateFromImportUsings(FromImportStatement fromImport)
-{
-    // ... existing code for using static ...
-    
-    // For each imported type, generate namespace using based on DefiningModule
-    var reExportedSymbols = GetReExportedSymbols(fromImport);
-    if (reExportedSymbols != null)
-    {
-        foreach (var (name, symbol) in reExportedSymbols)
-        {
-            if (symbol is TypeSymbol typeSymbol && !string.IsNullOrEmpty(typeSymbol.DefiningModule))
-            {
-                var definingNamespace = ConvertModuleNameToNamespace(typeSymbol.DefiningModule);
-                string fullNamespace = !string.IsNullOrEmpty(_context.ProjectNamespace)
-                    ? $"{_context.ProjectNamespace}.{definingNamespace}"
-                    : definingNamespace;
-                    
-                // Add using statement for the type's actual namespace
-                yield return UsingDirective(ParseName(fullNamespace));
-            }
-        }
-    }
-}
-```
+- [ ] **Step 2**: Verify DefiningModule is set in ImportResolver extraction methods
+  - Check `ExtractFullClassSymbol()`, `ExtractFullStructSymbol()`, `ExtractFullInterfaceSymbol()`
+  - Ensure `CanonicalModuleName` or equivalent is computed and assigned to `DefiningModule`
 
-- [ ] **Step 3**: Deduplicate using statements (already handled in `GenerateUsingDirectives()`)
+- [ ] **Step 3**: Update `GenerateFromImportUsings()` to always generate namespace using for type imports
+  ```csharp
+  private IEnumerable<UsingDirectiveSyntax> GenerateFromImportUsings(FromImportStatement fromImport)
+  {
+      // ... existing using static generation ...
+      
+      // Always generate using for type namespaces (not just re-exports)
+      var reExportedSymbols = GetReExportedSymbols(fromImport);
+      if (reExportedSymbols != null)
+      {
+          foreach (var (_, symbol) in reExportedSymbols)
+          {
+              if (symbol is TypeSymbol typeSymbol && !string.IsNullOrEmpty(typeSymbol.DefiningModule))
+              {
+                  var definingNamespace = ConvertModuleNameToNamespace(typeSymbol.DefiningModule);
+                  string fullNamespace = !string.IsNullOrEmpty(_context.ProjectNamespace)
+                      ? $"{_context.ProjectNamespace}.{definingNamespace}"
+                      : definingNamespace;
+                  
+                  yield return UsingDirective(ParseName(fullNamespace));
+              }
+          }
+      }
+  }
+  ```
 
-- [ ] **Step 4**: Update `GetFullyQualifiedTypeName()` in `RoslynEmitter.Expressions.cs` to use DefiningModule
-  - This method already has logic for DefiningModule, verify it's working correctly
+- [ ] **Step 4**: Review `GetFullyQualifiedTypeName()` logic in RoslynEmitter.Expressions.cs
+  - The method at line 1261 checks `DefiningFilePath` first, then `DefiningModule`
+  - Ensure both paths compute the correct namespace
+  - Consider prioritizing `DefiningModule` over `DefiningFilePath` for imported types
 
 - [ ] **Step 5**: Write unit test
   - Test file: `tests/Sharpy.Compiler.Tests/CodeGen/CrossModuleNamespaceTests.cs`
   - Test cases:
-    - Simple import: `from models import Product`
-    - Nested module import: `from lib.math import Calculator`
-    - Re-exported type: `from package import SomeClass` (where package re-exports from submodule)
+    - Simple import: `from models import Product` → `using TestProject.Models;`
+    - Nested module: `from lib.math import Calculator` → `using TestProject.Lib.Math;`
+    - Re-exported type: `from package import SomeClass` → uses actual defining module's namespace
 
 ### Verification Command
 ```bash
@@ -237,9 +274,9 @@ dotnet test --filter "FullyQualifiedName~CrossModuleNamespace"
 ```
 fix(codegen): use DefiningModule for cross-module namespace resolution
 
-- Update GenerateFromImportUsings to use TypeSymbol.DefiningModule
-- Ensure imported types resolve to correct C# namespace
-- Add debug logging for namespace generation
+- Ensure ImportResolver sets DefiningModule correctly
+- Update GenerateFromImportUsings to emit using for all imported type namespaces
+- Verify GetFullyQualifiedTypeName uses correct namespace for imported types
 
 Fixes dogfood issues #0000, #0001
 ```
@@ -264,18 +301,18 @@ interface IMaintenance:
 ```
 
 ### Root Cause
-The parser's `ParseFunctionDef()` method requires a colon after the function signature. For interface methods, the colon and body should be optional since interface methods are implicitly abstract.
+The parser's `ParseFunctionDef()` method at line 189 always calls `Expect(TokenType.Colon)`. For interface methods, the colon and body should be optional since interface methods are implicitly abstract.
 
 ### Code Location
 **File**: `src/Sharpy.Compiler/Parser/Parser.Definitions.cs`
-**Method**: `ParseFunctionDef()` (lines 135-200)
+**Method**: `ParseFunctionDef()` (starts at line 160)
 
 ```csharp
 private FunctionDef ParseFunctionDef()
 {
-    // ... parse name, params, return type ...
+    // ... parse name, params, return type (lines 160-188) ...
     
-    Expect(TokenType.Colon);  // BUG: Always requires colon
+    Expect(TokenType.Colon);  // Line 189 - BUG: Always requires colon
     
     // Support inline ellipsis syntax: def foo(): ...
     if (Current.Type == TokenType.Ellipsis)
@@ -290,18 +327,18 @@ private FunctionDef ParseFunctionDef()
 
 ### Fix Strategy
 
-Add a flag or context to track if we're parsing inside an interface. When inside an interface, make the colon and body optional for method signatures.
+Add a parsing context flag to track if we're parsing inside an interface. When inside an interface, make the colon and body optional for method signatures.
 
 ### Implementation Steps
 
-- [ ] **Step 1**: Add interface parsing context flag to Parser
+- [ ] **Step 1**: Add interface parsing context flag to Parser.cs
   - Add field: `private bool _parsingInterface = false;`
 
-- [ ] **Step 2**: Set the flag in `ParseInterfaceDef()` before parsing body
+- [ ] **Step 2**: Set the flag in `ParseInterfaceDef()` (in Parser.Definitions.cs)
   ```csharp
   private InterfaceDef ParseInterfaceDef()
   {
-      // ... existing code ...
+      // ... existing code up to body parsing ...
       
       _parsingInterface = true;
       try
@@ -317,7 +354,7 @@ Add a flag or context to track if we're parsing inside an interface. When inside
   }
   ```
 
-- [ ] **Step 3**: Modify `ParseFunctionDef()` to handle interface methods
+- [ ] **Step 3**: Modify `ParseFunctionDef()` to handle interface methods (around line 189)
   ```csharp
   private FunctionDef ParseFunctionDef()
   {
@@ -327,20 +364,38 @@ Add a flag or context to track if we're parsing inside an interface. When inside
       if (_parsingInterface && Current.Type != TokenType.Colon)
       {
           // No body - implicit abstract method
+          // Current token should be Newline (end of signature)
           ExpectNewline();
+          
+          var ellipsisExpr = new EllipsisLiteral
+          {
+              LineStart = startLine,
+              ColumnStart = startColumn,
+              LineEnd = startLine,
+              ColumnEnd = startColumn
+          };
           
           return new FunctionDef
           {
               Name = name,
-              // ... other properties ...
+              TypeParameters = typeParams.ToImmutableArray(),
+              Parameters = parameters.ToImmutableArray(),
+              ReturnType = returnType,
               Body = ImmutableArray.Create<Statement>(
                   new ExpressionStatement
                   {
-                      Expression = new EllipsisLiteral { /* position info */ },
-                      // ... position info ...
+                      Expression = ellipsisExpr,
+                      LineStart = startLine,
+                      ColumnStart = startColumn,
+                      LineEnd = startLine,
+                      ColumnEnd = startColumn
                   }
               ),
-              // ...
+              DocString = null,
+              LineStart = startLine,
+              ColumnStart = startColumn,
+              LineEnd = Current.Line,
+              ColumnEnd = Current.Column
           };
       }
       
@@ -349,9 +404,9 @@ Add a flag or context to track if we're parsing inside an interface. When inside
   }
   ```
 
-- [ ] **Step 4**: Update `ValidateInterfaceMethod()` in NameResolver to accept bodyless methods
-  - The method already checks for `...` or `pass` bodies
-  - Ensure it also accepts the synthesized ellipsis body from the parser
+- [ ] **Step 4**: Verify `ValidateInterfaceMethod()` in NameResolver.cs accepts synthesized ellipsis body
+  - The method at line 594 already checks for `...` or `pass` bodies
+  - The synthesized ellipsis body should pass validation
 
 - [ ] **Step 5**: Write unit test
   - Test file: `tests/Sharpy.Compiler.Tests/Parser/InterfaceMethodParsingTests.cs`
@@ -359,7 +414,9 @@ Add a flag or context to track if we're parsing inside an interface. When inside
     - Interface method without body: `def foo(self) -> str`
     - Interface method with explicit ellipsis: `def foo(self) -> str: ...`
     - Interface method with pass: `def foo(self) -> str: pass`
-    - Regular class method still requires body
+    - Regular class method still requires body (should fail without colon)
+    - Interface method with decorators: `@property def foo(self) -> str`
+    - Interface method with type parameters: `def foo[T](self, item: T) -> T`
 
 ### Verification Command
 ```bash
@@ -404,7 +461,7 @@ items: list[WorkItem] = [bug, feature]  # ERROR: cannot convert List<object> to 
 ```
 
 ### Root Cause
-In `TypeChecker.Expressions.cs`, the `CheckListLiteral()` method:
+In `TypeChecker.Expressions.cs`, the `CheckListLiteral()` method at line 1156:
 1. Takes the first element's type as the candidate "common type"
 2. Checks if each subsequent element is assignable to that type
 3. If any element is NOT assignable (e.g., Feature is not assignable to Bug), sets commonType to Unknown
@@ -413,20 +470,24 @@ The logic doesn't find the Least Common Ancestor (LCA) in the type hierarchy.
 
 ### Code Location
 **File**: `src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs`
-**Method**: `CheckListLiteral()` (lines 1120-1140)
+**Method**: `CheckListLiteral()` (line 1156)
 
 ```csharp
 private SemanticType CheckListLiteral(ListLiteral list)
 {
     if (list.Elements.Length == 0)
     {
-        return new GenericType { Name = "list", TypeArguments = new List<SemanticType> { SemanticType.Unknown } };
+        return new GenericType
+        {
+            Name = "list",
+            TypeArguments = new List<SemanticType> { SemanticType.Unknown }
+        };
     }
 
     var elementTypes = list.Elements.Select(CheckExpression).ToList();
     var commonType = elementTypes[0];
 
-    // BUG: Doesn't find common base type
+    // BUG: Doesn't find common base type - just checks assignability to first element
     foreach (var elemType in elementTypes.Skip(1))
     {
         if (!IsAssignable(elemType, commonType))
@@ -436,7 +497,11 @@ private SemanticType CheckListLiteral(ListLiteral list)
         }
     }
 
-    return new GenericType { Name = "list", TypeArguments = new List<SemanticType> { commonType } };
+    return new GenericType
+    {
+        Name = "list",
+        TypeArguments = new List<SemanticType> { commonType }
+    };
 }
 ```
 
@@ -450,7 +515,8 @@ Implement a Least Common Ancestor (LCA) algorithm that walks up the inheritance 
   ```csharp
   /// <summary>
   /// Finds the least common ancestor (most specific common base type) of a list of types.
-  /// Returns SemanticType.Unknown if no common ancestor exists.
+  /// Returns SemanticType.Object if no more specific common ancestor exists.
+  /// Returns SemanticType.Unknown only if types list is empty.
   /// </summary>
   private SemanticType FindLeastCommonAncestor(List<SemanticType> types)
   {
@@ -462,25 +528,35 @@ Implement a Least Common Ancestor (LCA) algorithm that walks up the inheritance 
       // Get all ancestors of the first type (including itself)
       var ancestorChain = GetTypeAncestorChain(types[0]);
       if (ancestorChain.Count == 0)
-          return SemanticType.Unknown;
+          return SemanticType.Object;
       
       // For each subsequent type, find common ancestors
       foreach (var type in types.Skip(1))
       {
           var typeAncestors = new HashSet<string>(
-              GetTypeAncestorChain(type).Select(t => t.GetDisplayName()));
+              GetTypeAncestorChain(type).Select(t => GetTypeKey(t)));
           
           // Filter ancestor chain to only include common ancestors
           ancestorChain = ancestorChain
-              .Where(a => typeAncestors.Contains(a.GetDisplayName()))
+              .Where(a => typeAncestors.Contains(GetTypeKey(a)))
               .ToList();
           
           if (ancestorChain.Count == 0)
-              return SemanticType.Unknown;
+              return SemanticType.Object;
       }
       
       // Return the most specific common ancestor (first in chain)
       return ancestorChain.First();
+  }
+  
+  private string GetTypeKey(SemanticType type)
+  {
+      return type switch
+      {
+          UserDefinedType udt => udt.Name,
+          PrimitiveType pt => pt.Name,
+          _ => type.GetDisplayName()
+      };
   }
   ```
 
@@ -489,6 +565,7 @@ Implement a Least Common Ancestor (LCA) algorithm that walks up the inheritance 
   /// <summary>
   /// Gets the inheritance chain for a type, from most specific to least specific.
   /// For UserDefinedType: [Type, BaseType, BaseType.BaseType, ..., object]
+  /// For primitives: [PrimitiveType, object]
   /// </summary>
   private List<SemanticType> GetTypeAncestorChain(SemanticType type)
   {
@@ -499,13 +576,18 @@ Implement a Least Common Ancestor (LCA) algorithm that walks up the inheritance 
           var current = udt.Symbol.BaseType;
           while (current != null)
           {
-              chain.Add(new UserDefinedType { Name = current.Name, Symbol = current });
+              chain.Add(new UserDefinedType 
+              { 
+                  Name = current.Name, 
+                  Symbol = current 
+              });
               current = current.BaseType;
           }
       }
       
       // Add object as ultimate base (if not already there)
-      if (chain.Last().GetDisplayName() != "object")
+      var lastTypeName = chain.Last().GetDisplayName().ToLowerInvariant();
+      if (lastTypeName != "object" && lastTypeName != "system.object")
       {
           chain.Add(SemanticType.Object);
       }
@@ -520,7 +602,11 @@ Implement a Least Common Ancestor (LCA) algorithm that walks up the inheritance 
   {
       if (list.Elements.Length == 0)
       {
-          return new GenericType { Name = "list", TypeArguments = new List<SemanticType> { SemanticType.Unknown } };
+          return new GenericType
+          {
+              Name = "list",
+              TypeArguments = new List<SemanticType> { SemanticType.Unknown }
+          };
       }
 
       var elementTypes = list.Elements.Select(CheckExpression).ToList();
@@ -528,20 +614,33 @@ Implement a Least Common Ancestor (LCA) algorithm that walks up the inheritance 
       // Find least common ancestor of all element types
       var commonType = FindLeastCommonAncestor(elementTypes);
 
-      return new GenericType { Name = "list", TypeArguments = new List<SemanticType> { commonType } };
+      return new GenericType
+      {
+          Name = "list",
+          TypeArguments = new List<SemanticType> { commonType }
+      };
   }
   ```
 
 - [ ] **Step 4**: Apply same fix to `CheckSetLiteral()` and `CheckDictLiteral()` (for values)
+  - `CheckSetLiteral()` - around line 1185
+  - `CheckDictLiteral()` - around line 1200 (for value types)
 
-- [ ] **Step 5**: Write unit test
+- [ ] **Step 5**: Handle edge cases
+  - Nullable types: `[bug, None]` → should infer `list[Bug?]`
+  - Interface types: If types share interface but not class, consider interface as LCA
+  - Generic types: `[list[int], list[str]]` → `list[list[object]]`
+
+- [ ] **Step 6**: Write unit test
   - Test file: `tests/Sharpy.Compiler.Tests/Semantic/ListTypeInferenceTests.cs`
   - Test cases:
     - Homogeneous list: `[bug1, bug2]` → `list[Bug]`
     - Sibling types: `[bug, feature]` → `list[WorkItem]`
     - Mixed with None: `[bug, None]` → `list[Bug?]`
     - Deep hierarchy: grandchild types find common grandparent
-    - No common ancestor: `[1, "str"]` → `list[object]`
+    - No common class ancestor: `[1, "str"]` → `list[object]`
+    - Empty list: `[]` → `list[Unknown]` (unchanged)
+    - Single element: `[bug]` → `list[Bug]`
 
 ### Verification Command
 ```bash
@@ -589,7 +688,7 @@ After all fixes are implemented:
 
 Each bug fix should be a separate commit:
 
-1. `fix(semantic): resolve cross-module inheritance in NameResolver` (P0-2)
+1. `fix(compiler): reorder phases to resolve imports before inheritance` (P0-2)
 2. `fix(codegen): use DefiningModule for cross-module namespace resolution` (P0-1)
 3. `fix(parser): allow interface methods without explicit body` (P1-1)
 4. `fix(semantic): implement LCA for list element type inference` (P1-2)
@@ -607,9 +706,9 @@ git push origin fix/compiler-bugs-jan-2026
 
 | Bug | Files Modified |
 |-----|----------------|
-| P0-2 | `NameResolver.cs`, `Compiler.cs` or `AssemblyCompiler.cs` |
-| P0-1 | `RoslynEmitter.CompilationUnit.cs`, possibly `RoslynEmitter.Expressions.cs` |
-| P1-1 | `Parser.Definitions.cs`, possibly `NameResolver.cs` |
+| P0-2 | `ProjectCompiler.cs` (primary), possibly `NameResolver.cs` |
+| P0-1 | `ImportResolver.cs`, `RoslynEmitter.CompilationUnit.cs`, `RoslynEmitter.Expressions.cs` |
+| P1-1 | `Parser.cs`, `Parser.Definitions.cs` |
 | P1-2 | `TypeChecker.Expressions.cs`, `TypeChecker.Utilities.cs` |
 
 ---
@@ -618,10 +717,17 @@ git push origin fix/compiler-bugs-jan-2026
 
 If you encounter issues during implementation:
 
-1. **P0-2**: Check how `AssemblyCompiler` orchestrates compilation of multiple files - the symbol table may need to be shared or imported symbols need explicit registration.
+1. **P0-2**: The key insight is that compilation phases need reordering. Verify no circular dependencies exist between import resolution and type declaration. The `ImportResolver` may need some type information to resolve correctly - check if it can work with just type names (not full TypeSymbols).
 
-2. **P0-1**: Verify that `DefiningModule` is being set correctly by adding debug logging in `ImportResolver.ExtractFullClassSymbol()`.
+2. **P0-1**: Add debug logging in `ImportResolver.ExtractFullClassSymbol()` to verify `DefiningModule` is being set. If it's not, trace through the extraction logic to find where it should be assigned.
 
-3. **P1-1**: Consider edge cases like decorators on interface methods, type parameters, etc.
+3. **P1-1**: Edge cases to consider:
+   - Decorators on interface methods (`@property def foo(self) -> str`)
+   - Type parameters on interface methods
+   - Interface methods returning `None` (void)
 
-4. **P1-2**: The LCA algorithm may need optimization for deep hierarchies. Also handle interface inheritance (a type implementing multiple interfaces).
+4. **P1-2**: The LCA algorithm needs to handle:
+   - Interface inheritance (types sharing only interfaces, not class hierarchy)
+   - Generic type parameters
+   - Nullable types mixed with non-nullable
+   - Performance for deep hierarchies (consider caching ancestor chains)
