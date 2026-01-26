@@ -24,6 +24,9 @@ public class ProjectCompiler
     private SemanticInfo _semanticInfo = null!;
     private ImportResolver _importResolver = null!;
 
+    // Store NameResolver for deferred inheritance resolution
+    private NameResolver? _sharedNameResolver;
+
     // Track errors and warnings
     private List<string> _errors = new();
     private List<string> _warnings = new();
@@ -75,6 +78,11 @@ public class ProjectCompiler
             {
                 return CreateFailureResult();
             }
+
+            // Phase 4b: Resolve inheritance (now that imports are resolved)
+            // This must happen AFTER imports are resolved so that imported base types
+            // are available in the symbol table for cross-module inheritance
+            ResolveInheritanceRelationships();
 
             // Phase 5: Perform semantic analysis on all files
             if (!PerformSemanticAnalysis(config))
@@ -251,16 +259,19 @@ public class ProjectCompiler
     /// _classDefs, _structDefs, and _interfaceDefs lists are populated with ALL type
     /// definitions before resolving inheritance. This is critical for cross-module
     /// inheritance to work correctly.
+    ///
+    /// NOTE: Inheritance resolution is deferred to Phase 4b (after imports are resolved)
+    /// so that imported base types are available in the symbol table.
     /// </summary>
     private void CollectTypeDeclarations(ProjectConfig config)
     {
-        _logger.LogInfo("Phase 2: Collecting type declarations across all files");
+        _logger.LogInfo("Phase 3: Collecting type declarations across all files");
 
         // Create a SINGLE NameResolver for ALL files to preserve type definition lists
         // across files for correct inheritance resolution
-        var nameResolver = new NameResolver(_symbolTable, _logger);
+        _sharedNameResolver = new NameResolver(_symbolTable, _logger);
 
-        // Phase 3a: Collect all type declarations (shells only)
+        // Collect all type declarations (shells only)
         foreach (var (_, unit) in _projectModel!.Units)
         {
             if (unit.Phase == CompilationPhase.Failed || unit.Ast == null)
@@ -268,32 +279,57 @@ public class ProjectCompiler
 
             // Set current file path so types know which file they're defined in
             // Use unit.FilePath for original path (Units dictionary keys are normalized)
-            nameResolver.SetCurrentFilePath(unit.FilePath);
+            _sharedNameResolver.SetCurrentFilePath(unit.FilePath);
 
             // Only collect declarations - don't resolve inheritance yet
             // The NameResolver.ResolveDeclarations() method registers type names
             // and stores ClassDef/StructDef/InterfaceDef in internal lists
-            nameResolver.ResolveDeclarations(unit.Ast);
+            _sharedNameResolver.ResolveDeclarations(unit.Ast);
 
             // Update phase
             unit.Phase = CompilationPhase.NamesResolved;
         }
 
-        // Phase 3b: Resolve inheritance (using the SAME NameResolver instance)
-        // Now all types from all files are in the internal lists, so cross-module
-        // inheritance resolution will work correctly
-        _logger.LogInfo("Phase 2b: Resolving inheritance across all files");
-        nameResolver.ResolveInheritance();
+        // NOTE: Inheritance resolution is now done in ResolveInheritanceRelationships()
+        // after imports are resolved (Phase 4b)
 
-        // Collect all errors from both declaration and inheritance phases
-        if (nameResolver.Errors.Any())
+        // Collect declaration errors (inheritance errors will be collected in Phase 4b)
+        if (_sharedNameResolver.Errors.Any())
         {
-            foreach (var error in nameResolver.Errors)
+            foreach (var error in _sharedNameResolver.Errors)
             {
                 var errorMsg = $"({error.Line},{error.Column}): error: {error.Message}";
                 _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column);
                 _errors.Add(errorMsg);
             }
+        }
+    }
+
+    /// <summary>
+    /// Phase 4b: Resolve inheritance relationships
+    /// This is called AFTER imports are resolved so that imported base types
+    /// are available in the symbol table for cross-module inheritance.
+    /// </summary>
+    private void ResolveInheritanceRelationships()
+    {
+        if (_sharedNameResolver == null)
+            return;
+
+        _logger.LogInfo("Phase 4b: Resolving inheritance across all files");
+
+        // Clear previous errors before inheritance resolution
+        // (declaration errors were already collected in Phase 3)
+        var previousErrorCount = _sharedNameResolver.Errors.Count;
+
+        _sharedNameResolver.ResolveInheritance();
+
+        // Collect only new inheritance errors (skip already collected declaration errors)
+        var newErrors = _sharedNameResolver.Errors.Skip(previousErrorCount);
+        foreach (var error in newErrors)
+        {
+            var errorMsg = $"({error.Line},{error.Column}): error: {error.Message}";
+            _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column);
+            _errors.Add(errorMsg);
         }
     }
 
