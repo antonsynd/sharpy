@@ -767,10 +767,10 @@ Every executable Sharpy program MUST have a `main()` function:
 
 ### Collections (0.1.11)
 - List literals: `nums: list[int] = [1, 2, 3]`
-- Dict literals: `scores: dict[str, int] = {"alice": 100}`
-- Set literals: `unique: set[int] = {1, 2, 3}`
+- Dict literals: `scores: dict[str, int] = {{"alice": 100}}`
+- Set literals: `unique: set[int] = {{1, 2, 3}}`
 - List comprehensions: `[x * 2 for x in range(10)]`
-- Dict/Set comprehensions: `{k: v for k, v in items}`
+- Dict/Set comprehensions: `{{k: v for k, v in items}}`
 - Collection iteration: `for item in collection:`
 - len(): `len(collection)`
 - Indexing: `collection[index]`, `dict[key]`
