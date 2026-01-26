@@ -517,7 +517,7 @@ Implement a Least Common Ancestor (LCA) algorithm that walks up the inheritance 
 
 ### Implementation Steps
 
-- [ ] **Step 1**: Add `FindLeastCommonAncestor()` helper method to TypeChecker.Utilities.cs
+- [x] **Step 1**: Add `FindLeastCommonAncestor()` helper method to TypeChecker.Utilities.cs
   ```csharp
   /// <summary>
   /// Finds the least common ancestor (most specific common base type) of a list of types.
@@ -566,7 +566,7 @@ Implement a Least Common Ancestor (LCA) algorithm that walks up the inheritance 
   }
   ```
 
-- [ ] **Step 2**: Add `GetTypeAncestorChain()` helper method
+- [x] **Step 2**: Add `GetTypeAncestorChain()` helper method
   ```csharp
   /// <summary>
   /// Gets the inheritance chain for a type, from most specific to least specific.
@@ -602,7 +602,7 @@ Implement a Least Common Ancestor (LCA) algorithm that walks up the inheritance 
   }
   ```
 
-- [ ] **Step 3**: Update `CheckListLiteral()` to use LCA
+- [x] **Step 3**: Update `CheckListLiteral()` to use LCA
   ```csharp
   private SemanticType CheckListLiteral(ListLiteral list)
   {
@@ -628,16 +628,16 @@ Implement a Least Common Ancestor (LCA) algorithm that walks up the inheritance 
   }
   ```
 
-- [ ] **Step 4**: Apply same fix to `CheckSetLiteral()` and `CheckDictLiteral()` (for values)
+- [x] **Step 4**: Apply same fix to `CheckSetLiteral()` and `CheckDictLiteral()` (for values)
   - `CheckSetLiteral()` - around line 1185
   - `CheckDictLiteral()` - around line 1200 (for value types)
 
-- [ ] **Step 5**: Handle edge cases
+- [ ] **Step 5**: Handle edge cases (deferred for future work)
   - Nullable types: `[bug, None]` → should infer `list[Bug?]`
   - Interface types: If types share interface but not class, consider interface as LCA
   - Generic types: `[list[int], list[str]]` → `list[list[object]]`
 
-- [ ] **Step 6**: Write unit test
+- [x] **Step 6**: Write unit test
   - Test file: `tests/Sharpy.Compiler.Tests/Semantic/ListTypeInferenceTests.cs`
   - Test cases:
     - Homogeneous list: `[bug1, bug2]` → `list[Bug]`
