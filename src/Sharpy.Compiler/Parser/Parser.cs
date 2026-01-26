@@ -16,6 +16,12 @@ public partial class Parser
     private int _position;
     private readonly ICompilerLogger _logger;
 
+    /// <summary>
+    /// Flag indicating whether we're currently parsing inside an interface definition.
+    /// When true, interface methods can omit the colon and body (e.g., `def foo(self) -> str`).
+    /// </summary>
+    private bool _parsingInterface;
+
     public Parser(List<Token> tokens, ICompilerLogger? logger = null)
     {
         _tokens = tokens;

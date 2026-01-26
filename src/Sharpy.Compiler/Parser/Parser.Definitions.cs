@@ -186,6 +186,47 @@ public partial class Parser
             returnType = ParseTypeAnnotation();
         }
 
+        // For interface methods, the colon and body are optional.
+        // If we're parsing an interface and we see a newline instead of a colon,
+        // synthesize an ellipsis body to represent the abstract method signature.
+        if (_parsingInterface && Current.Type != TokenType.Colon)
+        {
+            // Interface method without explicit body - synthesize ellipsis body
+            ExpectNewline();
+
+            var ellipsisExpr = new EllipsisLiteral
+            {
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = startLine,
+                ColumnEnd = startColumn
+            };
+
+            return new FunctionDef
+            {
+                Name = name,
+                TypeParameters = typeParams.ToImmutableArray(),
+                Parameters = parameters.ToImmutableArray(),
+                ReturnType = returnType,
+                Body = ImmutableArray.Create<Statement>(
+                    new ExpressionStatement
+                    {
+                        Expression = ellipsisExpr,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = startLine,
+                        ColumnEnd = startColumn
+                    }
+                ),
+                DocString = null,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = Previous.Line,
+                ColumnEnd = Previous.Column,
+                Span = GetSpanFromTokens(startToken, Previous)
+            };
+        }
+
         Expect(TokenType.Colon);
 
         // Support inline ellipsis syntax: def foo(): ...
@@ -451,7 +492,17 @@ public partial class Parser
             SkipNewlines();
         }
 
-        var body = ParseBlock();
+        // Set interface parsing flag so ParseFunctionDef knows to allow bodyless methods
+        _parsingInterface = true;
+        List<Statement> body;
+        try
+        {
+            body = ParseBlock();
+        }
+        finally
+        {
+            _parsingInterface = false;
+        }
         Expect(TokenType.Dedent);
         var endToken = Previous;
 

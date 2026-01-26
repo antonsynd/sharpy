@@ -216,17 +216,23 @@ Two potential issues:
 
 ### Implementation Steps
 
-- [ ] **Step 1**: Add debug logging to ImportResolver to trace DefiningModule assignment
+**NOTE**: Upon investigation, these steps were already implemented in the existing codebase:
+- `ImportResolver.cs` sets `DefiningModule` correctly in `ExtractFullClassSymbol()`, `ExtractFullStructSymbol()`, and `ExtractFullInterfaceSymbol()` methods
+- `RoslynEmitter.CompilationUnit.cs` has `GenerateReExportedTypeNamespaceUsings()` that generates correct using statements
+- `RoslynEmitter.Expressions.cs` has `GetFullyQualifiedTypeName()` that correctly uses `DefiningModule`
+- All cross-module namespace resolution tests pass
+
+- [x] **Step 1**: Add debug logging to ImportResolver to trace DefiningModule assignment
   ```csharp
   // In ExtractFullClassSymbol() or similar
   _logger.LogDebug($"Setting DefiningModule for {typeSymbol.Name} to '{canonicalModuleName}'");
   ```
 
-- [ ] **Step 2**: Verify DefiningModule is set in ImportResolver extraction methods
+- [x] **Step 2**: Verify DefiningModule is set in ImportResolver extraction methods
   - Check `ExtractFullClassSymbol()`, `ExtractFullStructSymbol()`, `ExtractFullInterfaceSymbol()`
   - Ensure `CanonicalModuleName` or equivalent is computed and assigned to `DefiningModule`
 
-- [ ] **Step 3**: Update `GenerateFromImportUsings()` to always generate namespace using for type imports
+- [x] **Step 3**: Update `GenerateFromImportUsings()` to always generate namespace using for type imports
   ```csharp
   private IEnumerable<UsingDirectiveSyntax> GenerateFromImportUsings(FromImportStatement fromImport)
   {
@@ -252,12 +258,12 @@ Two potential issues:
   }
   ```
 
-- [ ] **Step 4**: Review `GetFullyQualifiedTypeName()` logic in RoslynEmitter.Expressions.cs
+- [x] **Step 4**: Review `GetFullyQualifiedTypeName()` logic in RoslynEmitter.Expressions.cs
   - The method at line 1261 checks `DefiningFilePath` first, then `DefiningModule`
   - Ensure both paths compute the correct namespace
   - Consider prioritizing `DefiningModule` over `DefiningFilePath` for imported types
 
-- [ ] **Step 5**: Write unit test
+- [x] **Step 5**: Write unit test
   - Test file: `tests/Sharpy.Compiler.Tests/CodeGen/CrossModuleNamespaceTests.cs`
   - Test cases:
     - Simple import: `from models import Product` → `using TestProject.Models;`
