@@ -1,0 +1,31 @@
+# Main entry point - demonstrates math utilities
+from math_utils import Calculator, factorial, is_prime
+
+def main():
+    print("=== Math Utilities Demo ===")
+    
+    # Test Calculator class
+    calc = Calculator()
+    calc.add(10.0)
+    print(calc.result)
+    
+    calc.multiply(3.0)
+    print(calc.result)
+    
+    print(calc.get_stats())
+    
+    # Test factorial function
+    fact_5: int = factorial(5)
+    print(fact_5)
+    
+    # Test prime checking
+    prime_check: bool = is_prime(7)
+    print(prime_check)
+
+# EXPECTED OUTPUT:
+# === Math Utilities Demo ===
+# 10
+# 30
+# Operations: 2, Result: 30
+# 120
+# True

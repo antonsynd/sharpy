@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-01-25T23:08:52.880986",
+  "skip_reason": "Unsupported feature in math_utils.spy: Line 4: with statement (not implemented) - '\"\"\"Basic calculator with operation history\"\"\"...'",
+  "generated_code": "# Main entry point - demonstrates math utilities\nfrom math_utils import Calculator, factorial, is_prime\n\ndef main():\n    print(\"=== Math Utilities Demo ===\")\n    \n    # Test Calculator class\n    calc = Calculator()\n    calc.add(10.0)\n    print(calc.result)\n    \n    calc.multiply(3.0)\n    print(calc.result)\n    \n    print(calc.get_stats())\n    \n    # Test factorial function\n    fact_5: int = factorial(5)\n    print(fact_5)\n    \n    # Test prime checking\n    prime_check: bool = is_prime(7)\n    print(prime_check)\n\n# EXPECTED OUTPUT:\n# === Math Utilities Demo ===\n# 10\n# 30\n# Operations: 2, Result: 30\n# 120\n# True",
+  "expected_output": "=== Math Utilities Demo ===\n10\n30\nOperations: 2, Result: 30\n120\nTrue\n",
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 10.088361024856567,
+  "source_files": {
+    "math_utils.spy": "# Utility module for mathematical operations\n\nclass Calculator:\n    \"\"\"Basic calculator with operation history\"\"\"\n    result: float\n    operation_count: int\n    \n    def __init__(self):\n        self.result = 0.0\n        self.operation_count = 0\n    \n    def add(self, value: float) -> float:\n        self.result += value\n        self.operation_count += 1\n        return self.result\n    \n    def multiply(self, value: float) -> float:\n        self.result *= value\n        self.operation_count += 1\n        return self.result\n    \n    def get_stats(self) -> str:\n        return f\"Operations: {self.operation_count}, Result: {self.result}\"\n\ndef factorial(n: int) -> int:\n    \"\"\"Calculate factorial iteratively\"\"\"\n    if n <= 1:\n        return 1\n    result: int = 1\n    i: int = 2\n    while i <= n:\n        result *= i\n        i += 1\n    return result\n\ndef is_prime(n: int) -> bool:\n    \"\"\"Check if a number is prime\"\"\"\n    if n < 2:\n        return False\n    if n == 2:\n        return True\n    i: int = 2\n    while i * i <= n:\n        if n % i == 0:\n            return False\n        i += 1\n    return True",
+    "main.spy": "# Main entry point - demonstrates math utilities\nfrom math_utils import Calculator, factorial, is_prime\n\ndef main():\n    print(\"=== Math Utilities Demo ===\")\n    \n    # Test Calculator class\n    calc = Calculator()\n    calc.add(10.0)\n    print(calc.result)\n    \n    calc.multiply(3.0)\n    print(calc.result)\n    \n    print(calc.get_stats())\n    \n    # Test factorial function\n    fact_5: int = factorial(5)\n    print(fact_5)\n    \n    # Test prime checking\n    prime_check: bool = is_prime(7)\n    print(prime_check)\n\n# EXPECTED OUTPUT:\n# === Math Utilities Demo ===\n# 10\n# 30\n# Operations: 2, Result: 30\n# 120\n# True"
+  },
+  "validation_output": null
+}
