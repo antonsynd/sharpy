@@ -774,6 +774,90 @@ public partial class TypeChecker
         return result;
     }
 
+    /// <summary>
+    /// Finds the least common ancestor (most specific common base type) of a list of types.
+    /// Returns SemanticType.Object if no more specific common ancestor exists.
+    /// Returns SemanticType.Unknown only if types list is empty.
+    /// </summary>
+    private SemanticType FindLeastCommonAncestor(List<SemanticType> types)
+    {
+        if (types.Count == 0)
+            return SemanticType.Unknown;
+        if (types.Count == 1)
+            return types[0];
+
+        // Get all ancestors of the first type (including itself)
+        var ancestorChain = GetTypeAncestorChain(types[0]);
+        if (ancestorChain.Count == 0)
+            return SemanticType.Object;
+
+        // For each subsequent type, find common ancestors
+        foreach (var type in types.Skip(1))
+        {
+            var typeAncestors = new HashSet<string>(
+                GetTypeAncestorChain(type).Select(t => GetTypeKey(t)));
+
+            // Filter ancestor chain to only include common ancestors
+            ancestorChain = ancestorChain
+                .Where(a => typeAncestors.Contains(GetTypeKey(a)))
+                .ToList();
+
+            if (ancestorChain.Count == 0)
+                return SemanticType.Object;
+        }
+
+        // Return the most specific common ancestor (first in chain)
+        return ancestorChain.First();
+    }
+
+    /// <summary>
+    /// Gets a unique key for a type to use in LCA comparison.
+    /// </summary>
+    private static string GetTypeKey(SemanticType type)
+    {
+        return type switch
+        {
+            UserDefinedType udt => udt.Name,
+            BuiltinType bt => bt.Name,
+            GenericType gt => $"{gt.Name}<{string.Join(",", gt.TypeArguments.Select(GetTypeKey))}>",
+            NullableType nt => $"{GetTypeKey(nt.UnderlyingType)}?",
+            _ => type.GetDisplayName()
+        };
+    }
+
+    /// <summary>
+    /// Gets the inheritance chain for a type, from most specific to least specific.
+    /// For UserDefinedType: [Type, BaseType, BaseType.BaseType, ..., object]
+    /// For primitives: [PrimitiveType, object]
+    /// </summary>
+    private List<SemanticType> GetTypeAncestorChain(SemanticType type)
+    {
+        var chain = new List<SemanticType> { type };
+
+        if (type is UserDefinedType udt && udt.Symbol != null)
+        {
+            var current = udt.Symbol.BaseType;
+            while (current != null)
+            {
+                chain.Add(new UserDefinedType
+                {
+                    Name = current.Name,
+                    Symbol = current
+                });
+                current = current.BaseType;
+            }
+        }
+
+        // Add object as ultimate base (if not already there)
+        var lastTypeName = chain.Last().GetDisplayName().ToLowerInvariant();
+        if (lastTypeName != "object" && lastTypeName != "system.object")
+        {
+            chain.Add(SemanticType.Object);
+        }
+
+        return chain;
+    }
+
     private void AddError(string message, int? line = null, int? column = null)
     {
         if (_errors.Count >= MaxErrors)

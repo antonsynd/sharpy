@@ -1165,17 +1165,10 @@ public partial class TypeChecker
         }
 
         var elementTypes = list.Elements.Select(CheckExpression).ToList();
-        var commonType = elementTypes[0];
 
-        // Try to find common type
-        foreach (var elemType in elementTypes.Skip(1))
-        {
-            if (!IsAssignable(elemType, commonType))
-            {
-                commonType = SemanticType.Unknown;
-                break;
-            }
-        }
+        // Find least common ancestor of all element types
+        // This handles cases like [Bug(), Feature()] -> list[WorkItem]
+        var commonType = FindLeastCommonAncestor(elementTypes);
 
         return new GenericType
         {
@@ -1198,8 +1191,9 @@ public partial class TypeChecker
         var keyTypes = dict.Entries.Select(e => CheckExpression(e.Key)).ToList();
         var valueTypes = dict.Entries.Select(e => CheckExpression(e.Value)).ToList();
 
-        var commonKeyType = keyTypes[0];
-        var commonValueType = valueTypes[0];
+        // Find least common ancestor for both keys and values
+        var commonKeyType = FindLeastCommonAncestor(keyTypes);
+        var commonValueType = FindLeastCommonAncestor(valueTypes);
 
         return new GenericType
         {
@@ -1220,7 +1214,9 @@ public partial class TypeChecker
         }
 
         var elementTypes = set.Elements.Select(CheckExpression).ToList();
-        var commonType = elementTypes[0];
+
+        // Find least common ancestor of all element types
+        var commonType = FindLeastCommonAncestor(elementTypes);
 
         return new GenericType
         {

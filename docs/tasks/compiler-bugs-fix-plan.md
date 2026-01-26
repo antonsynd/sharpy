@@ -337,15 +337,15 @@ Add a parsing context flag to track if we're parsing inside an interface. When i
 
 ### Implementation Steps
 
-- [ ] **Step 1**: Add interface parsing context flag to Parser.cs
+- [x] **Step 1**: Add interface parsing context flag to Parser.cs
   - Add field: `private bool _parsingInterface = false;`
 
-- [ ] **Step 2**: Set the flag in `ParseInterfaceDef()` (in Parser.Definitions.cs)
+- [x] **Step 2**: Set the flag in `ParseInterfaceDef()` (in Parser.Definitions.cs)
   ```csharp
   private InterfaceDef ParseInterfaceDef()
   {
       // ... existing code up to body parsing ...
-      
+
       _parsingInterface = true;
       try
       {
@@ -355,12 +355,12 @@ Add a parsing context flag to track if we're parsing inside an interface. When i
       {
           _parsingInterface = false;
       }
-      
+
       // ...
   }
   ```
 
-- [ ] **Step 3**: Modify `ParseFunctionDef()` to handle interface methods (around line 189)
+- [x] **Step 3**: Modify `ParseFunctionDef()` to handle interface methods (around line 189)
   ```csharp
   private FunctionDef ParseFunctionDef()
   {
@@ -410,11 +410,11 @@ Add a parsing context flag to track if we're parsing inside an interface. When i
   }
   ```
 
-- [ ] **Step 4**: Verify `ValidateInterfaceMethod()` in NameResolver.cs accepts synthesized ellipsis body
+- [x] **Step 4**: Verify `ValidateInterfaceMethod()` in NameResolver.cs accepts synthesized ellipsis body
   - The method at line 594 already checks for `...` or `pass` bodies
   - The synthesized ellipsis body should pass validation
 
-- [ ] **Step 5**: Write unit test
+- [x] **Step 5**: Write unit test
   - Test file: `tests/Sharpy.Compiler.Tests/Parser/InterfaceMethodParsingTests.cs`
   - Test cases:
     - Interface method without body: `def foo(self) -> str`
