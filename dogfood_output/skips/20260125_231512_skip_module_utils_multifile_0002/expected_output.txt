@@ -1,0 +1,8 @@
+16
+12
+32
+120
+True
+[Hello]
+6
+HiHiHi

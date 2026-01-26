@@ -1,0 +1,30 @@
+# Main entry point - Fleet management system
+
+from car import Car, Motorcycle
+from fleet import FleetManager
+
+def main():
+    manager = FleetManager("City Transport")
+    print(manager.get_fleet_summary())
+
+    tesla = Car("Tesla", "Model 3", 2023, 4, True)
+    manager.register_vehicle(tesla)
+    print(tesla.get_description())
+    print(tesla.get_vehicle_type())
+    print(tesla.perform_maintenance())
+
+    honda = Motorcycle("Honda", "CBR1000RR", 2022, False, 1000)
+    manager.register_vehicle(honda)
+    print(honda.get_description())
+    print(honda.get_vehicle_type())
+
+    print(manager.get_fleet_summary())
+
+# EXPECTED OUTPUT:
+# Fleet 'City Transport' has 0 vehicles
+# 2023 Tesla Model 3
+# Electric Car
+# Check battery and electric motor
+# 2022 Honda CBR1000RR
+# Motorcycle
+# Fleet 'City Transport' has 2 vehicles

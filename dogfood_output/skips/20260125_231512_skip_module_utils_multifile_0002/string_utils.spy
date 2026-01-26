@@ -1,0 +1,43 @@
+# String manipulation utilities
+
+class StringFormatter:
+    prefix: str
+    suffix: str
+
+    def __init__(self, prefix: str, suffix: str):
+        self.prefix = prefix
+        self.suffix = suffix
+
+    def format(self, text: str) -> str:
+        return f"{self.prefix}{text}{self.suffix}"
+
+class TextCounter:
+    text: str
+
+    def __init__(self, text: str):
+        self.text = text
+
+    def length(self) -> int:
+        count: int = 0
+        for c in self.text:
+            count += 1
+        return count
+
+def repeat_string(s: str, times: int) -> str:
+    result: str = ""
+    i: int = 0
+    while i < times:
+        result = f"{result}{s}"
+        i += 1
+    return result
+
+def join_strings(strings: list[str], separator: str) -> str:
+    if len(strings) == 0:
+        return ""
+    
+    result: str = strings[0]
+    i: int = 1
+    while i < len(strings):
+        result = f"{result}{separator}{strings[i]}"
+        i += 1
+    return result

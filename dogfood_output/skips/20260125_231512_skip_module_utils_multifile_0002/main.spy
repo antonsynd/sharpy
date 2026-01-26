@@ -1,0 +1,46 @@
+# Main entry point demonstrating cross-module utility usage
+from math_utils import Calculator, factorial, is_even
+from string_utils import StringFormatter, TextCounter, repeat_string, join_strings
+
+def main():
+    # Test math utilities
+    calc = Calculator(2)
+    sum_result: float = calc.add(10.5, 5.5)
+    print(sum_result)
+    
+    product: float = calc.multiply(4.0, 3.0)
+    print(product)
+    
+    power_result: float = calc.power(2.0, 5)
+    print(power_result)
+    
+    # Test factorial
+    fact: int = factorial(5)
+    print(fact)
+    
+    # Test is_even
+    even_check: bool = is_even(10)
+    print(even_check)
+    
+    # Test string utilities
+    formatter = StringFormatter("[", "]")
+    formatted: str = formatter.format("Hello")
+    print(formatted)
+    
+    counter = TextCounter("Sharpy")
+    text_len: int = counter.length()
+    print(text_len)
+    
+    # Test repeat and join
+    repeated: str = repeat_string("Hi", 3)
+    print(repeated)
+
+# EXPECTED OUTPUT:
+# 16
+# 12
+# 32
+# 120
+# True
+# [Hello]
+# 6
+# HiHiHi

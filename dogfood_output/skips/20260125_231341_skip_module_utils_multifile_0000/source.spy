@@ -1,0 +1,31 @@
+# Main entry point demonstrating utility module usage
+from math_utils import factorial, average, max_value
+from string_utils import repeat_string, count_vowels, StringFormatter
+
+def main():
+    # Test mathematical utilities
+    fact_result: int = factorial(5)
+    print(f"Factorial of 5: {fact_result}")
+
+    numbers: list[int] = [10, 20, 30, 40, 50]
+    avg: float = average(numbers)
+    print(f"Average: {avg}")
+
+    max_num: int = max_value(numbers)
+    print(f"Maximum: {max_num}")
+
+    # Test string utilities
+    repeated: str = repeat_string("Hi", 3)
+    print(f"Repeated string: {repeated}")
+
+    vowel_count: int = count_vowels("Hello World")
+    formatter = StringFormatter("[", "]")
+    formatted: str = formatter.format_text("Test")
+    print(f"Vowels: {vowel_count}, Formatted: {formatted}")
+
+# EXPECTED OUTPUT:
+# Factorial of 5: 120
+# Average: 30
+# Maximum: 50
+# Repeated string: HiHiHi
+# Vowels: 3, Formatted: [Test]

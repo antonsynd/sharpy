@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-25T23:16:00.488408",
+  "skip_reason": "Invalid expected output after 3 attempts (Python says: )",
+  "generated_code": "# Test arithmetic operators with remainder and exponentiation\ndef main():\n    base: int = 7\n    exponent: int = 2\n    divisor: int = 3\n    \n    power_result: int = base ** exponent\n    remainder: int = power_result % divisor\n    quotient: int = power_result // divisor\n    \n    print(power_result)\n    print(quotient)\n    print(remainder)\n\n# EXPECTED OUTPUT:\n# 49\n# 16\n# 1",
+  "expected_output": "49\n16\n1\n",
+  "feature_focus": "arithmetic_operators",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 18.898880004882812,
+  "source_files": null,
+  "validation_output": null
+}

@@ -1,0 +1,22 @@
+```
+INVALID
+Reason: Missing required main() entry point - executable code must be inside main()
+Found: Module contains only declarations with no main() function
+```
+
+**Explanation:**
+
+This code defines classes and functions but has no `main()` function. In Sharpy (phases 0.1.0-0.1.14), every executable program MUST have a `main()` entry point.
+
+While the code only contains valid declarations (classes, functions), it cannot be executed without a `main()` function. If this is intended as a library module only (no execution), that would be acceptable, but as presented for validation of an executable program, it violates the entry point requirement.
+
+**To make this valid, add:**
+
+```python
+def main():
+    calc: Calculator = Calculator(2)
+    result: float = calc.add(5.0, 3.0)
+    print(f"Result: {result}")
+    fact: int = factorial(5)
+    print(f"Factorial: {fact}")
+```

@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-01-25T23:13:49.131659",
+  "generated_code": "# Test: .NET interop - importing and using System.Math for calculations\n# Tests: from system import X, calling .NET static methods, .NET type compatibility\n\nfrom system import Math\n\nclass CircleCalculator:\n    radius: float\n\n    def __init__(self, r: float):\n        self.radius = r\n\n    def get_area(self) -> float:\n        # Use Math.PI and Math.Pow from .NET\n        return Math.PI * Math.Pow(self.radius, 2.0)\n\n    def get_circumference(self) -> float:\n        return 2.0 * Math.PI * self.radius\n\ndef calculate_square_root(value: float) -> float:\n    return Math.Sqrt(value)\n\ndef main():\n    print(f\"Math.PI: {Math.PI:.5f}\")\n    \n    circle = CircleCalculator(5.0)\n    area: float = circle.get_area()\n    circumference: float = circle.get_circumference()\n    \n    print(f\"Circle radius: {circle.radius:.1f}\")\n    print(f\"Circle area: {area:.2f}\")\n    print(f\"Circle circumference: {circumference:.2f}\")\n    \n    sqrt_result: float = calculate_square_root(16.0)\n    print(f\"Square root of 16: {sqrt_result:.1f}\")\n\n# EXPECTED OUTPUT:\n# Math.PI: 3.14159\n# Circle radius: 5.0\n# Circle area: 78.54\n# Circle circumference: 31.42\n# Square root of 16: 4.0",
+  "expected_output": "Math.PI: 3.14159\nCircle radius: 5.0\nCircle area: 78.54\nCircle circumference: 31.42\nSquare root of 16: 4.0\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n  dogfood_test.cs(36,20): error CS0234: The type or namespace name 'PI' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)\n  dogfood_test.cs(36,30): error CS0234: The type or namespace name 'Pow' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)\n  dogfood_test.cs(14,20): error CS0234: The type or namespace name 'Sqrt' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)\n  dogfood_test.cs(41,24): error CS0234: The type or namespace name 'PI' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)\n  dogfood_test.cs(19,59): error CS0234: The type or namespace name 'PI' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "dotnet_import",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 7.598810911178589,
+  "compilation_duration": null,
+  "execution_duration": 1.576491117477417,
+  "source_files": null
+}

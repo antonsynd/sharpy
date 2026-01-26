@@ -1,0 +1,3 @@
+Compilation failed:
+  Semantic error at line 25, column 45: Cannot pass argument of type 'Article' to parameter of type 'Content'
+  Semantic error at line 29, column 39: Cannot pass argument of type 'Video' to parameter of type 'Content'

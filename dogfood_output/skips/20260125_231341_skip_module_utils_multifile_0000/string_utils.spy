@@ -1,0 +1,35 @@
+# Utility module for string manipulation operations
+
+from math_utils import Calculator
+
+def repeat_string(text: str, count: int) -> str:
+    result: str = ""
+    i: int = 0
+    while i < count:
+        result += text
+        i += 1
+    return result
+
+def count_vowels(text: str) -> int:
+    vowels: str = "aeiouAEIOU"
+    count: int = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+class StringFormatter:
+    prefix: str
+    suffix: str
+
+    def __init__(self, prefix: str, suffix: str):
+        self.prefix = prefix
+        self.suffix = suffix
+
+    def format_text(self, text: str) -> str:
+        return f"{self.prefix}{text}{self.suffix}"
+
+    def format_number(self, value: float, precision: int) -> str:
+        calc = Calculator(precision)
+        rounded: float = calc.round_value(value)
+        return f"{self.prefix}{rounded}{self.suffix}"

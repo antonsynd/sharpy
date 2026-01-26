@@ -1,0 +1,28 @@
+# Test arithmetic operators with negative numbers and operator precedence
+def main():
+    x: int = -10
+    y: int = 3
+    
+    # Addition
+    print(x + y)
+    
+    # Subtraction
+    print(x - y)
+    
+    # Multiplication
+    print(x * y)
+    
+    # Power
+    result: int = y ** 2
+    print(result)
+    
+    # Combined with precedence
+    combined: int = x + y * result
+    print(combined)
+
+# EXPECTED OUTPUT:
+# -7
+# -13
+# -30
+# 9
+# 17
