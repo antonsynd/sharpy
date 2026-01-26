@@ -6,9 +6,17 @@ Interfaces define contracts that types must satisfy.
 interface IDrawable:
     """Interface for drawable objects."""
 
-    # Inline ellipsis syntax (preferred for brevity)
-    def draw(self): ...
+    # All three syntaxes below are equivalent for abstract methods:
+
+    # 1. Body-less syntax (most concise, interface-only)
+    def draw(self)
+
+    # 2. Inline ellipsis syntax
     def get_bounds(self) -> tuple[float, float, float, float]: ...
+
+    # 3. Block ellipsis syntax
+    def resize(self, width: float, height: float):
+        ...
 
 # Implementation
 class Circle(IDrawable):
@@ -27,11 +35,18 @@ class Circle(IDrawable):
     def get_bounds(self) -> tuple[float, float, float, float]:
         return (self.x - self.radius, self.y - self.radius,
                 self.radius * 2, self.radius * 2)
+
+    def resize(self, width: float, height: float):
+        self.radius = min(width, height) / 2
 ```
 
 **Interface Rules:**
-- All methods are implicitly abstract unless they have a body that is not `...` (ellipsis), excluding docstrings, whitespace, and comments.
-- Methods with an actual body (even just a `pass` statement) become the default implementation for that method.
+- All methods are implicitly abstract unless they have a body that is not `...` (ellipsis).
+- **Three syntaxes for abstract methods (all equivalent):**
+  1. **Body-less**: `def method(self) -> T` — No colon, no body (interface-only)
+  2. **Inline ellipsis**: `def method(self) -> T: ...` — Colon + ellipsis on same line
+  3. **Block ellipsis**: Colon, newline, indent, then `...`
+- Methods with an actual body (even just a `pass` statement) become the default implementation.
 - Implementing types must provide all methods that don't have a default implementation
 and can override the implementation of those that do have a default implementation.
 
@@ -66,9 +81,10 @@ interface IFoo:
 ```
 
 The distinction is:
+- No colon/body → abstract, no implementation (interface methods only)
 - `...` (ellipsis) → abstract, no implementation
 - `pass` → empty body, valid only for `-> None` methods as a default implementation
-- For non-void methods, either use `...` (abstract) or provide a return statement
+- For non-void methods, use body-less, `...` (abstract), or provide a return statement
 
 *Implementation*
 - *✅ Native - Direct mapping to C# `interface`.*
