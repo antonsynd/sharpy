@@ -1314,8 +1314,8 @@ class DogfoodOrchestrator:
         skipped = 0
 
         # Multi-file iteration settings
-        # Run ~20% of iterations as multi-file tests
-        multifile_probability = 0.2
+        # Run ~50% of iterations as multi-file tests
+        multifile_probability = 0.5
         multifile_features = ["module_imports", "cross_module_classes", "module_utils"]
 
         for i in range(1, max_iterations + 1):
