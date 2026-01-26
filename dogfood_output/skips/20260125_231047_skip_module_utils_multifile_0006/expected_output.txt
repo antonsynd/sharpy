@@ -1,0 +1,7 @@
+120
+True
+False
+18
+3
+7 is prime, factorial=5040
+6 is composite, factorial=720

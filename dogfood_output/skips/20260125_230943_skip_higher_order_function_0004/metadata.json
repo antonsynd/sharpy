@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-25T23:09:13.118909",
+  "skip_reason": "Invalid expected output after 3 attempts (Python says: )",
+  "generated_code": "# Test: Higher-order function - passing lambda to filter evens and apply transformation\n\ndef apply_to_filtered(numbers: list[int], predicate, transform) -> list[int]:\n    result: list[int] = []\n    for n in numbers:\n        if predicate(n):\n            result.append(transform(n))\n    return result\n\ndef main():\n    nums: list[int] = [1, 2, 3, 4, 5, 6]\n    is_even = lambda x: x % 2 == 0\n    square = lambda x: x * x\n    evens_squared: list[int] = apply_to_filtered(nums, is_even, square)\n    for val in evens_squared:\n        print(val)\n\n# EXPECTED OUTPUT:\n# 4\n# 16\n# 36",
+  "expected_output": "4\n16\n36\n",
+  "feature_focus": "higher_order_function",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 29.94903564453125,
+  "source_files": null,
+  "validation_output": null
+}
