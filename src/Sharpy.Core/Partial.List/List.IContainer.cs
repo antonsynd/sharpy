@@ -5,7 +5,10 @@ public sealed partial class List<T>
     /// <summary>
     /// Returns whether the item is in the list.
     /// </summary>
-    public bool __Contains__(T x)
+    /// <remarks>
+    /// This is the implementation for <see cref="ICollection{T}.Contains(T)"/>.
+    /// </remarks>
+    public bool Contains(T x)
     {
         return _list.Contains(x);
     }
@@ -13,8 +16,11 @@ public sealed partial class List<T>
     /// <summary>
     /// Returns whether the item is in the list.
     /// </summary>
-    public bool Contains(T x)
+    /// <remarks>
+    /// Deprecated: Use <see cref="Contains(T)"/> instead.
+    /// </remarks>
+    public bool __Contains__(T x)
     {
-        return __Contains__(x);
+        return Contains(x);
     }
 }
