@@ -935,11 +935,19 @@ class Program
                 outputAssemblyPath: finalOutputPath
             );
 
-            // Prepare C# sources for compilation
-            var csharpSources = new Dictionary<string, string>
+            // Prepare C# sources for compilation - use all generated files (entry + imports)
+            var csharpSources = new Dictionary<string, string>();
+            foreach (var (sourcePath, csCode) in result.GeneratedCSharpFiles)
             {
-                { Path.ChangeExtension(inputFile.FullName, ".cs"), result.GeneratedCSharpCode! }
-            };
+                var csFileName = Path.ChangeExtension(sourcePath, ".cs");
+                csharpSources[csFileName] = csCode;
+            }
+
+            // Fallback for backward compatibility if GeneratedCSharpFiles is empty
+            if (csharpSources.Count == 0 && result.GeneratedCSharpCode != null)
+            {
+                csharpSources[Path.ChangeExtension(inputFile.FullName, ".cs")] = result.GeneratedCSharpCode;
+            }
 
             // Compile to assembly
             var assemblyCompiler = new AssemblyCompiler(logger);
