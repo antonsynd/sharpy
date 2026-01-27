@@ -391,6 +391,13 @@ public class CompilationResult
     public SemanticInfo? SemanticInfo { get; init; }
     public ModuleRegistry? ModuleRegistry { get; init; }
     public string? GeneratedCSharpCode { get; init; }
+
+    /// <summary>
+    /// All generated C# code files (entry point + all imported modules).
+    /// Key is the source file path, value is the generated C# code.
+    /// </summary>
+    public Dictionary<string, string> GeneratedCSharpFiles { get; init; } = new();
+
     public CompilationMetrics? Metrics { get; init; }
 }
 
