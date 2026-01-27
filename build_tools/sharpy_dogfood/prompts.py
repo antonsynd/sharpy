@@ -331,7 +331,6 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **NO with statement**: Context managers not implemented
 - **NO walrus operator**: `:=` - assignment expressions not implemented
 - **NO pattern matching**: `match`/`case` not implemented
-- **NO ternary expressions**: `x if cond else y` - may have issues
 - **NO tuple unpacking**: `a, b = 1, 2` - may have issues
 - **NO isinstance with tuples**: `isinstance(x, (int, str))` - use `or` instead
 
@@ -642,7 +641,6 @@ Every executable Sharpy program MUST have a `main()` function:
 - NO with statement - context managers not implemented
 - NO walrus operator: `:=` - not implemented
 - NO pattern matching: `match`/`case` - not implemented
-- NO ternary: `x if cond else y` - may have issues
 - NO tuple unpacking: `a, b = 1, 2` - may have issues
 
 {examples_section}
@@ -807,7 +805,6 @@ it is a library module and is VALID without `main()`.
 ❌ Context managers: `with` statement - REJECT (not implemented)
 ❌ Walrus operator: `:=` - REJECT (not implemented)
 ❌ Pattern matching: `match`/`case` - REJECT (not implemented)
-❌ Ternary expressions: `x if cond else y` - REJECT (may have issues)
 ❌ Tuple unpacking: `a, b = 1, 2` - REJECT (may have issues)
 ❌ isinstance with tuple: `isinstance(x, (int, str))` - REJECT
 

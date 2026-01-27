@@ -1281,8 +1281,7 @@ class DogfoodOrchestrator:
             (r"\bmatch\s+\w+\s*:", "pattern matching (not implemented)"),
             # Tuple unpacking (may have issues)
             (r"\w+\s*,\s*\w+\s*=", "tuple unpacking (not fully supported)"),
-            # Ternary expression (may have issues)
-            (r"\S+\s+if\s+.+\s+else\s+", "ternary expression (not fully supported)"),
+            # Note: Ternary expressions ARE supported in Sharpy
         ]
 
         lines = code.split("\n")
