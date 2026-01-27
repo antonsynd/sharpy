@@ -4,11 +4,24 @@ using Collections.Interfaces;
 
 public sealed partial class List<T>
 {
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets or sets the element at the specified index.
+    /// </summary>
+    /// <remarks>
+    /// Supports negative indexing: -1 is the last element, -2 is second to last, etc.
+    /// </remarks>
     public T this[int index]
     {
-        get => __GetItem__(index);
-        set => __SetItem__(index, value);
+        get
+        {
+            index = Sharpy.Core.Index.Normalize(index, _list.Count, false, false);
+            return _list[index];
+        }
+        set
+        {
+            index = Sharpy.Core.Index.Normalize(index, _list.Count, false, false);
+            _list[index] = value;
+        }
     }
 
     /// <inheritdoc/>
@@ -214,11 +227,15 @@ public sealed partial class List<T>
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Sets the element at the specified index.
+    /// </summary>
+    /// <remarks>
+    /// Deprecated: Use the indexer <c>list[index] = value</c> instead.
+    /// </remarks>
     public void __SetItem__(int index, T value)
     {
-        index = Sharpy.Core.Index.Normalize(index, _list.Count, false, false);
-        _list[index] = value;
+        this[index] = value;
     }
 
     /// <inheritdoc/>

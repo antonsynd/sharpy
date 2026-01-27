@@ -40,11 +40,15 @@ public sealed partial class List<T>
         return res;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Returns the element at the specified index.
+    /// </summary>
+    /// <remarks>
+    /// Deprecated: Use the indexer <c>list[index]</c> instead.
+    /// </remarks>
     public T __GetItem__(int index)
     {
-        index = Sharpy.Core.Index.Normalize(index, _list.Count, false, false);
-        return _list[index];
+        return this[index];
     }
 
     /// <inheritdoc/>
