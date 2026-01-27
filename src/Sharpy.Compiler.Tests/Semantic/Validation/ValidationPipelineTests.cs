@@ -162,8 +162,9 @@ public class ValidationPipelineTests
         var pipeline = ValidationPipelineFactory.CreateDefault();
         var validators = pipeline.Validators.ToList();
 
-        Assert.Equal(7, validators.Count);  // Now includes ModuleLevelValidatorV2
+        Assert.Equal(8, validators.Count);  // Includes ModuleLevelValidatorV2 and DecoratorValidatorV2
         Assert.Contains(validators, v => v is ModuleLevelValidatorV2);
+        Assert.Contains(validators, v => v is DecoratorValidatorV2);
         Assert.Contains(validators, v => v is SignatureValidatorV2);
         Assert.Contains(validators, v => v is DefaultParameterValidatorV2);
         Assert.Contains(validators, v => v is ControlFlowValidatorV2);  // V2 is default for unreachable code detection

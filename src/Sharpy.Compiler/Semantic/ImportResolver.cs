@@ -945,7 +945,7 @@ public class ImportResolver
         bool hasSelfParameter = method.Parameters.Any(p =>
             string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
         bool hasStaticDecorator = method.Decorators.Any(d =>
-            d.Name == "static" || d.Name == "staticmethod");
+            d.Name == "static");
         bool isStatic = hasStaticDecorator || !hasSelfParameter;
 
         var parameters = method.Parameters.Select(p => new ParameterSymbol

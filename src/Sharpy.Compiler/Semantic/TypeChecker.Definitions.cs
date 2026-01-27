@@ -177,7 +177,7 @@ public partial class TypeChecker
         {
             // Check if this is a static method (explicitly decorated OR no self parameter)
             bool hasStaticDecorator = functionDef.Decorators.Any(d =>
-                d.Name == "static" || d.Name == "staticmethod");
+                d.Name == "static");
 
             bool hasSelfParameter = functionDef.Parameters.Length > 0 &&
                 functionDef.Parameters[0].Name == "self";

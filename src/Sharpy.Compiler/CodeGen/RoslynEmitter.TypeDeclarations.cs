@@ -153,7 +153,6 @@ public partial class RoslynEmitter
         {
             switch (decorator.Name)
             {
-                case "staticmethod":
                 case "static":
                     tokens.Add(Token(SyntaxKind.StaticKeyword));
                     break;

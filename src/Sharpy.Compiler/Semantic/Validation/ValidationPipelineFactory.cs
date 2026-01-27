@@ -18,6 +18,7 @@ public static class ValidationPipelineFactory
         return new ValidationPipeline(logger)
             // Order values determine execution sequence
             .AddValidator(new ModuleLevelValidatorV2())       // Order: 50 (earliest, validates module structure)
+            .AddValidator(new DecoratorValidatorV2())         // Order: 60 (validates decorator usage)
             .AddValidator(new SignatureValidatorV2())         // Order: 150 (early, validates dunder signatures)
             .AddValidator(new DefaultParameterValidatorV2())  // Order: 250
             .AddValidator(new ControlFlowValidatorV2())       // Order: 400 (AST-walking, handles unreachable code)
@@ -37,6 +38,7 @@ public static class ValidationPipelineFactory
     {
         return new ValidationPipeline(logger)
             .AddValidator(new ModuleLevelValidatorV2())       // Order: 50 (earliest)
+            .AddValidator(new DecoratorValidatorV2())         // Order: 60
             .AddValidator(new SignatureValidatorV2())
             .AddValidator(new DefaultParameterValidatorV2())
             .AddValidator(new ControlFlowValidatorV3())       // CFG-based validator
