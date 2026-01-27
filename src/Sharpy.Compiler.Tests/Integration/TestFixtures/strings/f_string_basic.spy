@@ -1,0 +1,12 @@
+# Test f-string basic interpolation with variables and expressions
+
+def main():
+    name: str = "Alice"
+    age: int = 25
+    score: float = 95.5
+
+    print(f"Name: {name}")
+    print(f"Age: {age}")
+    print(f"Score: {score}")
+    print(f"{name} is {age} years old")
+    print(f"Next year: {age + 1}")
