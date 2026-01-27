@@ -1,5 +1,0 @@
-Factorial of 5: 120
-Average: 30
-Maximum: 50
-Repeated string: HiHiHi
-Vowels: 3, Formatted: [Test]

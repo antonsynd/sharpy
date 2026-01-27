@@ -1,2 +1,0 @@
-Assembly compilation failed:
-  dogfood_test.cs(46,26): error CS1503: Argument 1: cannot convert from 'System.Collections.Generic.List<object>' to 'System.Collections.Generic.List<Sharpy.DogfoodTest.DogfoodTest.WorkItem>'

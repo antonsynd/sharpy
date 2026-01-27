@@ -1,7 +1,0 @@
-User carol can publish: True
-User bob can edit: True
-Python vs Sharpy by Bob Smith (1500 words)
-Sharpy Tutorial - 45min @ 1080p
-Article published: True
-Video published by editor: False
-Total published: 1

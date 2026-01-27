@@ -1,1 +1,0 @@
-Unsupported feature in models.spy: Line 25: ternary expression (not fully supported) - 'status: str = "Available" if self.is_available els...'

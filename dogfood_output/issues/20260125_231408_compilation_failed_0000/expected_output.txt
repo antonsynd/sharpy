@@ -1,5 +1,0 @@
-Math.PI: 3.14159
-Circle radius: 5.0
-Circle area: 78.54
-Circle circumference: 31.42
-Square root of 16: 4.0

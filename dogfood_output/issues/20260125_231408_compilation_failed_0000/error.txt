@@ -1,6 +1,0 @@
-Assembly compilation failed:
-  dogfood_test.cs(36,20): error CS0234: The type or namespace name 'PI' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)
-  dogfood_test.cs(36,30): error CS0234: The type or namespace name 'Pow' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)
-  dogfood_test.cs(14,20): error CS0234: The type or namespace name 'Sqrt' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)
-  dogfood_test.cs(41,24): error CS0234: The type or namespace name 'PI' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)
-  dogfood_test.cs(19,59): error CS0234: The type or namespace name 'PI' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)

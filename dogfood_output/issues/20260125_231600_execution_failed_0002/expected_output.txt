@@ -1,7 +1,0 @@
-Fleet 'City Transport' has 0 vehicles
-2023 Tesla Model 3
-Electric Car
-Check battery and electric motor
-2022 Honda CBR1000RR
-Motorcycle
-Fleet 'City Transport' has 2 vehicles

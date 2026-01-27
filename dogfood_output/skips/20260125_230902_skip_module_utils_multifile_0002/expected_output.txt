@@ -1,6 +1,0 @@
-=== Math Utilities Demo ===
-10
-30
-Operations: 2, Result: 30
-120
-True

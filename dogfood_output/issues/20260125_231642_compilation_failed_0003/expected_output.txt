@@ -1,9 +1,0 @@
-Pending
-InProgress
-Completed
-Bug
-Completed
-Completed
-Feature
-Pending
-InProgress

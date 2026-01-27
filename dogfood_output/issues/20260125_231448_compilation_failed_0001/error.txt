@@ -1,7 +1,0 @@
-Assembly compilation failed:
-  main.cs(7,26): error CS0234: The type or namespace name 'Models' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)
-  main.cs(8,26): error CS0234: The type or namespace name 'Cart' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)
-  main.cs(16,42): error CS0234: The type or namespace name 'Models' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)
-  main.cs(17,41): error CS0234: The type or namespace name 'Models' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)
-  main.cs(20,41): error CS0234: The type or namespace name 'Models' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)
-  main.cs(22,40): error CS0234: The type or namespace name 'Cart' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)

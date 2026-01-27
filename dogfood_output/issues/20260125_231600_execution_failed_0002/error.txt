@@ -1,5 +1,0 @@
-Compilation failed:
-  Semantic error at line 3, column 1: Error loading module '/var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmpgn5txvrw/vehicle.spy': Parser error at line 22, column 41: Expected Colon, got Dedent (in car.spy)
-  Semantic error at line 3, column 1: Error loading module '/var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmpgn5txvrw/vehicle.spy': Parser error at line 22, column 41: Expected Colon, got Dedent (in car.spy)
-  Semantic error at line 3, column 1: Error loading module '/var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmpgn5txvrw/vehicle.spy': Parser error at line 22, column 41: Expected Colon, got Dedent (in fleet.spy)
-  Semantic error at line 3, column 1: Error loading module '/var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmpgn5txvrw/vehicle.spy': Parser error at line 22, column 41: Expected Colon, got Dedent (in fleet.spy)
