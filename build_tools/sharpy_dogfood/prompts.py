@@ -268,6 +268,7 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **Interfaces**: `interface IName:` with method signatures using `...`
 - **Multiple interfaces**: `class Foo(IBar, IBaz):`
 - **Access modifiers**: `@private`, `@protected`, `@internal` (default is public)
+- **IMPORTANT**: Interface types have NO concrete members - you can only call methods declared in the interface. Do NOT access fields like `.value` through interface types.
 
 #### Structs & Enums (0.1.8)
 - **Structs**: `struct Name:` (value types, copied on assignment)
@@ -280,7 +281,8 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **Type narrowing**: `if x is not None:` narrows type
 - **Type aliases**: `type UserId = int`
 - **Basic generics**: `class Box[T]:`, `def identity[T](x: T) -> T:`
-- **Generic constraints**: `[T: IComparable]`
+- **Generic constraints**: `[T: IComparable]` - single constraint only
+- **Multiple constraints**: NOT SUPPORTED - use single constraint only, do NOT write `[T: A, B]`
 
 #### Module System (0.1.10)
 - **Import**: `import module_name`, `import module as alias`
@@ -333,9 +335,10 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **NO tuple unpacking**: `a, b = 1, 2` - may have issues
 - **NO isinstance with tuples**: `isinstance(x, (int, str))` - use `or` instead
 
-### ⚠️ NAMING RULES - Avoid builtin conflicts:
-- **Do NOT name functions** `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`
-- Use **descriptive names** like `double_value`, `multiply_by_two`, `calculate_double` instead
+### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
+- **NEVER name functions or variables**: `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`
+- Use **descriptive names** like `double_value`, `multiply_by_two`, `calculate_double`, `doubled` instead
+- Names like `double` conflict with the `double` type (float64) and will cause type errors
 
 {existing_fixtures_section}
 
@@ -681,6 +684,13 @@ Every executable Sharpy program MUST have a `main()` function:
 - Example of INVALID module-level: `x = 5` (no type annotation, or bare statement)
 - **DO NOT call main() yourself** - Sharpy auto-invokes `main()` at runtime
 - Example of INVALID: `def main(): ... \\n main()` - the `main()` call is forbidden
+
+## Module Files (Library Modules)
+
+**IMPORTANT**: Library modules that are IMPORTED by other files do NOT require a `main()` function.
+Only the entry point file (main.spy or a single executable file) needs `main()`.
+If the code contains ONLY declarations (classes, functions, constants) and no executable statements,
+it is a library module and is VALID without `main()`.
 
 ## ALLOWED Features (Phases 0.1.0-0.1.14):
 

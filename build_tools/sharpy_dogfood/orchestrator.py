@@ -143,6 +143,22 @@ async def _verify_expected_with_python(
     import tempfile
     import os
 
+    # Skip verification for Sharpy-specific features that Python can't run
+    sharpy_only_features = [
+        "struct ",
+        "interface ",
+        "@abstract",
+        "@virtual",
+        "@override",
+        "@final",
+        "@private",
+        "@protected",
+        "@internal",
+        "enum ",
+    ]
+    if any(feature in code for feature in sharpy_only_features):
+        return True, None, "Sharpy-specific features - skipping Python verification"
+
     # Convert Sharpy to Python (minimal transformations needed for basic code)
     python_code = _sharpy_to_python(code)
 
@@ -206,6 +222,8 @@ def _sharpy_to_python(sharpy_code: str) -> str:
     additional conversion or skipping for Python verification.
     """
     lines = []
+    has_main = "def main(" in sharpy_code or "def main():" in sharpy_code
+
     for line in sharpy_code.split("\n"):
         # Skip lines that are pure comments starting with EXPECTED OUTPUT
         stripped = line.strip()
@@ -230,6 +248,12 @@ def _sharpy_to_python(sharpy_code: str) -> str:
         line = re.sub(r"\bconst\s+", "", line)
 
         lines.append(line)
+
+    # Add main() call at the end if main function exists
+    # Python doesn't auto-invoke main() like Sharpy does
+    if has_main:
+        lines.append("")
+        lines.append("main()")
 
     return "\n".join(lines)
 
