@@ -14,7 +14,9 @@ public sealed partial class List<T>
       IInplaceAddable<List<T>>,
       IMultipliable<List<T>, int>,
       IInplaceMultipliable<int>,
-      IRightMultipliable<List<T>, int>
+      IRightMultipliable<List<T>, int>,
+      IList<T>,
+      IReadOnlyList<T>
 {
     private System.Collections.Generic.List<T> _list;
 
