@@ -2,7 +2,7 @@
 
 ## Overview
 
-This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class and Sharpy-specific interfaces, aligning with the dunder-as-alias design where dunders map directly to .NET methods, properties, and operators.
+This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class and Sharpy-specific interfaces, aligning with the dunder-as-alias design where dunders map directly to .NET methods, properties, and operators. It also adds the `FrozenSet<T>` immutable set type.
 
 **Prerequisites:**
 - All existing tests pass before starting
@@ -14,6 +14,7 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - Update tests alongside the code they test
 - Delete tests for removed functionality
 - Keep commits small and focused
+- **Maintain Unity/.NET Standard 2.1 compatibility** - avoid APIs that require .NET 5+ (e.g., `IReadOnlySet<T>`) or .NET 8+ (e.g., `System.Collections.Frozen`)
 
 ---
 
@@ -53,7 +54,7 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 ### Step 1.2: Add .NET interface implementations to `List<T>` (additive)
 - [ ] Edit `src/Sharpy.Core/Partial.List/List.cs`
   - Add `IList<T>` and `IReadOnlyList<T>` to the inheritance list (keep existing interfaces for now)
-- [ ] Create `src/Sharpy.Core/Partial.List/List.IList.cs` with explicit interface implementations that delegate to existing methods:
+- [ ] Create `src/Sharpy.Core/Partial.List/List.DotNet.IList.cs` with explicit interface implementations that delegate to existing methods:
   ```csharp
   public partial class List<T>
   {
@@ -74,7 +75,7 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [ ] Edit `src/Sharpy.Core/Partial.List/List.ISized.cs`
   - Rename `__Len__()` method to be a `Count` property: `public int Count => _list.Count;`
   - Remove explicit interface implementations from Step 1.2 that now conflict
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IList.cs`
+- [ ] Edit `src/Sharpy.Core/Partial.List/List.DotNet.IList.cs`
   - Remove `ICollection<T>.Count` and `IReadOnlyCollection<T>.Count` (now satisfied by public `Count`)
 - [ ] Update any internal references from `__Len__()` to `Count` in:
   - [ ] `List.IMutableSequence.cs` (search for `__Len__`)
@@ -204,10 +205,12 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 
 ### Step 2.2: Add .NET interface implementations to `Set<T>`
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.cs`
-  - Add `ISet<T>` and `IReadOnlySet<T>` to inheritance (keep existing for now)
-- [ ] Create `src/Sharpy.Core/Partial.Set/Set.ISet.cs` with any missing interface methods
+  - Add `ISet<T>` and `ICollection<T>` to inheritance (keep existing for now)
+  - Note: `IReadOnlySet<T>` is NOT used because it's .NET 5+ and not available in .NET Standard 2.1 (Unity)
+- [ ] Create `src/Sharpy.Core/Partial.Set/Set.DotNet.ISet.cs` with any missing .NET interface methods
+  - Note: `Set.ISet.cs` already exists for Sharpy's interface - use different filename for .NET's `ISet<T>`
 - [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "feat(Set): add ISet<T> and IReadOnlySet<T> interface implementations"`
+- [ ] **Commit:** `git commit -am "feat(Set): add ISet<T> and ICollection<T> interface implementations"`
 
 ### Step 2.3: Replace `__Len__` with `Count` property
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.ISized.cs`
@@ -229,7 +232,7 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 
 ### Step 2.6: Replace `__Repr__` with `ToString` override
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IRepresentable.cs`
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Repr.cs`
+- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Repr.cs` and `SetTests.Str.cs`
 - [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
 - [ ] **Commit:** `git commit -am "refactor(Set): replace __Repr__ with ToString override"`
 
@@ -275,7 +278,8 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 ### Step 2.12: Remove `Object` base class from `Set<T>`
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.cs`
   - Remove `: Object` and Sharpy interfaces
-  - Keep only `ISet<T>`, `IReadOnlySet<T>`, `IEquatable<Set<T>>`
+  - Keep only `ISet<T>`, `ICollection<T>`, `IEquatable<Set<T>>`
+  - Note: Do NOT use `IReadOnlySet<T>` - it's .NET 5+ only, not available in Unity/.NET Standard 2.1
 - [ ] Delete empty/redundant partial files
 - [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
 - [ ] **Commit:** `git commit -am "refactor(Set): remove Object base class and Sharpy interfaces"`
@@ -428,19 +432,32 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
 - [ ] **Commit:** `git commit -am "refactor(Repr): remove IRepresentable dependency"`
 
-### Step 6.3: Update `Bool()` builtin (or create if missing)
-- [ ] Create/edit `src/Sharpy.Core/Bool.cs`
+### Step 6.3: Update `Bool()` builtin
+- [ ] Edit `src/Sharpy.Core/Bool.cs`
+  - **Keep** all existing numeric overloads (int, float, double, etc. returning false for zero)
+  - **Remove** the `Bool(Object obj)` overload that uses `__Bool__()`
+  - **Remove** the `Bool(IBoolConvertible b)` overload that uses `__Bool__()`
+  - **Update** the `Bool(object? obj)` catch-all overload to use runtime dispatch:
   ```csharp
   public static bool Bool(object? obj) => obj switch
   {
       null => false,
       bool b => b,
-      ICollection c => c.Count > 0,
+      // Numeric types are handled by specific overloads, but include here for object boxing
+      int i => i != 0,
+      long l => l != 0,
+      double d => d != 0,
+      float f => f != 0,
+      decimal dec => dec != 0,
+      // Collection types - check Count for emptiness
+      System.Collections.ICollection c => c.Count > 0,
       string s => s.Length > 0,
+      // Non-null objects are truthy by default
       _ => true
   };
   ```
-- [ ] Add tests in `src/Sharpy.Core.Tests/BoolTests.cs`
+  - Remove references to `Object` and `IBoolConvertible` types
+- [ ] Add/update tests in `src/Sharpy.Core.Tests/BoolTests.cs` to test ICollection behavior
 - [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
 - [ ] **Commit:** `git commit -am "refactor(Bool): use runtime dispatch for truthiness"`
 
@@ -600,34 +617,97 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 
 ## Phase 9: Add `FrozenSet<T>`
 
+> **IMPORTANT UNITY COMPATIBILITY NOTE:**
+> This implementation uses `ImmutableHashSet<T>` from `System.Collections.Immutable` instead of
+> `System.Collections.Frozen.FrozenSet<T>` because:
+> - `System.Collections.Frozen` is .NET 8+ only
+> - `IReadOnlySet<T>` is .NET 5+ only
+> - Unity targets .NET Standard 2.1, which only has `System.Collections.Immutable`
+>
+> The `System.Collections.Immutable` package is available for .NET Standard 2.1 via NuGet.
+
+### Step 9.0: Add System.Collections.Immutable package reference
+- [ ] Edit `src/Sharpy.Core/Sharpy.Core.csproj`
+  - Add package reference: `<PackageReference Include="System.Collections.Immutable" Version="8.0.0" />`
+  - This package is compatible with .NET Standard 2.0+
+- [ ] Run: `dotnet restore src/Sharpy.Core`
+- [ ] **Commit:** `git commit -am "chore: add System.Collections.Immutable package reference"`
+
 ### Step 9.1: Create `FrozenSet<T>` class
 - [ ] Create `src/Sharpy.Core/FrozenSet.cs`
   ```csharp
-  public sealed class FrozenSet<T> : IReadOnlySet<T>, IEquatable<FrozenSet<T>>
+  using System.Collections.Immutable;
+
+  namespace Sharpy.Core;
+
+  /// <summary>
+  /// An immutable, hashable set. Since frozenset is immutable, it can be used
+  /// as a dictionary key or as an element of another set.
+  /// </summary>
+  /// <remarks>
+  /// Backed by ImmutableHashSet{T} for .NET Standard 2.1 / Unity compatibility.
+  /// Does NOT use System.Collections.Frozen (requires .NET 8+) or IReadOnlySet{T} (requires .NET 5+).
+  /// </remarks>
+  public sealed class FrozenSet<T> : IReadOnlyCollection<T>, IEquatable<FrozenSet<T>>
   {
-      private readonly HashSet<T> _set;  // or System.Collections.Frozen.FrozenSet<T> if targeting .NET 8+
+      private readonly ImmutableHashSet<T> _set;
 
-      public FrozenSet() => _set = [];
-      public FrozenSet(IEnumerable<T> items) => _set = [..items];
+      public FrozenSet() => _set = ImmutableHashSet<T>.Empty;
 
+      public FrozenSet(IEnumerable<T> items)
+      {
+          if (items is null)
+              throw TypeError.IsNotInterface("NoneType", "iterable");
+          _set = items.ToImmutableHashSet();
+      }
+
+      // Private constructor for internal operations
+      private FrozenSet(ImmutableHashSet<T> set) => _set = set;
+
+      // IReadOnlyCollection<T> implementation
       public int Count => _set.Count;
       public bool Contains(T item) => _set.Contains(item);
       public IEnumerator<T> GetEnumerator() => _set.GetEnumerator();
-      IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+      System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
 
+      // Set query methods (equivalent to IReadOnlySet<T> which isn't available in .NET Standard 2.1)
+      public bool IsProperSubsetOf(IEnumerable<T> other) => _set.IsProperSubsetOf(other);
+      public bool IsProperSupersetOf(IEnumerable<T> other) => _set.IsProperSupersetOf(other);
+      public bool IsSubsetOf(IEnumerable<T> other) => _set.IsSubsetOf(other);
+      public bool IsSupersetOf(IEnumerable<T> other) => _set.IsSupersetOf(other);
+      public bool Overlaps(IEnumerable<T> other) => _set.Overlaps(other);
+      public bool SetEquals(IEnumerable<T> other) => _set.SetEquals(other);
+
+      // System.Object overrides
       public override bool Equals(object? obj) => obj is FrozenSet<T> other && SetEquals(other);
       public bool Equals(FrozenSet<T>? other) => other is not null && _set.SetEquals(other._set);
-      public override int GetHashCode() { /* XOR of element hashes */ }
-      public override string ToString() => $"frozenset({{{string.Join(", ", _set.Select(Repr))}}})";
 
+      public override int GetHashCode()
+      {
+          // XOR of element hashes (order-independent, matches Python's frozenset)
+          int hash = 0;
+          foreach (var item in _set)
+              hash ^= item?.GetHashCode() ?? 0;
+          return hash;
+      }
+
+      public override string ToString() => Count == 0
+          ? "frozenset()"
+          : $"frozenset({{{string.Join(", ", _set.Select(x => Exports.Repr(x)))}}})";
+
+      // Truthiness operators
       public static bool operator true(FrozenSet<T>? s) => s is not null && s.Count > 0;
       public static bool operator false(FrozenSet<T>? s) => s is null || s.Count == 0;
 
-      // Set operators
-      public static FrozenSet<T> operator |(FrozenSet<T> a, FrozenSet<T> b) => new(a._set.Union(b._set));
-      public static FrozenSet<T> operator &(FrozenSet<T> a, FrozenSet<T> b) => new(a._set.Intersect(b._set));
-      public static FrozenSet<T> operator -(FrozenSet<T> a, FrozenSet<T> b) => new(a._set.Except(b._set));
-      public static FrozenSet<T> operator ^(FrozenSet<T> a, FrozenSet<T> b) => new(a._set.SymmetricExceptWith...);
+      // Set operators - return new FrozenSet instances
+      public static FrozenSet<T> operator |(FrozenSet<T> a, FrozenSet<T> b) =>
+          new(a._set.Union(b._set));
+      public static FrozenSet<T> operator &(FrozenSet<T> a, FrozenSet<T> b) =>
+          new(a._set.Intersect(b._set));
+      public static FrozenSet<T> operator -(FrozenSet<T> a, FrozenSet<T> b) =>
+          new(a._set.Except(b._set));
+      public static FrozenSet<T> operator ^(FrozenSet<T> a, FrozenSet<T> b) =>
+          new(a._set.SymmetricExcept(b._set));
 
       // Comparison operators (subset/superset)
       public static bool operator <(FrozenSet<T> a, FrozenSet<T> b) => a._set.IsProperSubsetOf(b._set);
@@ -640,12 +720,17 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
       // Python-style methods
       public FrozenSet<T> Copy() => new(_set);
       public FrozenSet<T> Union(FrozenSet<T> other) => this | other;
+      public FrozenSet<T> Union(IEnumerable<T> other) => new(_set.Union(other));
       public FrozenSet<T> Intersection(FrozenSet<T> other) => this & other;
+      public FrozenSet<T> Intersection(IEnumerable<T> other) => new(_set.Intersect(other));
       public FrozenSet<T> Difference(FrozenSet<T> other) => this - other;
+      public FrozenSet<T> Difference(IEnumerable<T> other) => new(_set.Except(other));
       public FrozenSet<T> SymmetricDifference(FrozenSet<T> other) => this ^ other;
+      public FrozenSet<T> SymmetricDifference(IEnumerable<T> other) => new(_set.SymmetricExcept(other));
       public bool IsSubset(FrozenSet<T> other) => this <= other;
       public bool IsSuperset(FrozenSet<T> other) => this >= other;
       public bool IsDisjoint(FrozenSet<T> other) => !_set.Overlaps(other._set);
+      public bool IsDisjoint(IEnumerable<T> other) => !_set.Overlaps(other);
   }
   ```
 - [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
@@ -653,21 +738,38 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 
 ### Step 9.2: Add `FrozenSet<T>` tests
 - [ ] Create `src/Sharpy.Core.Tests/FrozenSetTests.cs`
-  - [ ] Constructor tests
+  - [ ] Constructor tests (empty, from enumerable, null throws TypeError)
   - [ ] Count/Contains tests
-  - [ ] Equality tests (including hashability)
-  - [ ] Set operator tests (|, &, -, ^)
-  - [ ] Comparison operator tests (<, <=, >, >=)
-  - [ ] Truthiness tests
+  - [ ] Equality tests (two frozensets with same elements are equal)
+  - [ ] GetHashCode tests (equal frozensets have same hash)
+  - [ ] **Dict key tests** (can use frozenset as dictionary key - crucial use case)
+  - [ ] Set operator tests (`|`, `&`, `-`, `^`)
+  - [ ] Comparison operator tests (`<`, `<=`, `>`, `>=`, `==`, `!=`)
+  - [ ] Truthiness tests (empty is falsy, non-empty is truthy)
   - [ ] Iteration tests
+  - [ ] Python-style method tests (Union, Intersection, Difference, SymmetricDifference, IsSubset, IsSuperset, IsDisjoint, Copy)
+  - [ ] ToString/Repr tests (empty shows "frozenset()", non-empty shows "frozenset({...})")
+  - [ ] IEnumerable overloads tests (Union with IEnumerable, etc.)
 - [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
 - [ ] **Commit:** `git commit -am "test: add FrozenSet<T> tests"`
 
 ### Step 9.3: Add `frozenset()` builtin
 - [ ] Create `src/Sharpy.Core/FrozenSetConversion.cs`
   ```csharp
-  public static FrozenSet<T> FrozenSet<T>(IEnumerable<T> items) => new(items);
-  public static FrozenSet<T> FrozenSet<T>() => new();
+  namespace Sharpy.Core;
+
+  public static partial class Exports
+  {
+      /// <summary>
+      /// Return a new frozenset object, optionally with elements taken from iterable.
+      /// </summary>
+      public static FrozenSet<T> FrozenSet<T>(IEnumerable<T> items) => new(items);
+
+      /// <summary>
+      /// Return a new empty frozenset object.
+      /// </summary>
+      public static FrozenSet<T> FrozenSet<T>() => new();
+  }
   ```
 - [ ] Add tests in `src/Sharpy.Core.Tests/FrozenSetConversionTests.cs`
 - [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
@@ -728,6 +830,16 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 | Phase 6: Builtins | 7 | ~15 |
 | Phase 7: Other Types | 5 | ~10 |
 | Phase 8: Deletions | 6 | ~50 deleted |
-| Phase 9: FrozenSet | 3 | 3 |
+| Phase 9: FrozenSet | 4 | 4 (incl. csproj) |
 | Phase 10: Cleanup | 6 | ~10 |
-| **Total** | **~75** | **~150** |
+| **Total** | **~76** | **~150** |
+
+## Unity Compatibility Notes
+
+This migration maintains Unity compatibility by:
+
+1. **Avoiding .NET 5+ interfaces:** `IReadOnlySet<T>` is NOT used since it requires .NET 5+
+2. **Using `System.Collections.Immutable`:** FrozenSet uses `ImmutableHashSet<T>` instead of .NET 8's `System.Collections.Frozen.FrozenSet<T>`
+3. **Targeting .NET Standard 2.1 compatible APIs:** All interfaces used (`ISet<T>`, `ICollection<T>`, `IReadOnlyCollection<T>`, etc.) are available in .NET Standard 2.1
+
+The generated C# code from the Sharpy compiler targets C# 9.0 for Unity, but the runtime library (Sharpy.Core) can use any .NET version as long as it remains compatible with .NET Standard 2.1 consumers.
