@@ -48,14 +48,14 @@ public sealed partial class List<T>
         return left.__RMul__(i);
     }
 
-    public static bool operator true(List<T> list)
+    public static bool operator true(List<T>? list)
     {
-        return list?.__Bool__() ?? false;
+        return list is not null && list._list.Count > 0;
     }
 
-    public static bool operator false(List<T> list)
+    public static bool operator false(List<T>? list)
     {
-        return !(list?.__Bool__() ?? false);
+        return list is null || list._list.Count == 0;
     }
 
     public static bool operator <(List<T> left, List<T> right)

@@ -11,9 +11,12 @@ public partial class List_Tests
         // If
         var l = new List<int>();
 
-        // When/then
+        // When/then - test operator true/false
+        if (l)
+        {
+            true.Should().BeFalse("empty list should be falsy");
+        }
         Bool(l).Should().BeFalse();
-        l.__Bool__().Should().BeFalse();
     }
 
     [Fact]
@@ -22,8 +25,28 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
 
-        // When/then
+        // When/then - test operator true/false
+        if (l)
+        {
+            // This should execute
+        }
+        else
+        {
+            true.Should().BeFalse("non-empty list should be truthy");
+        }
         Bool(l).Should().BeTrue();
-        l.__Bool__().Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Bool_Null()
+    {
+        // If
+        List<int>? l = null;
+
+        // When/then - null list should be falsy
+        if (l)
+        {
+            true.Should().BeFalse("null list should be falsy");
+        }
     }
 }
