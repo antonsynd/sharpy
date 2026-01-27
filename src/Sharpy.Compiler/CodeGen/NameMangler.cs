@@ -45,6 +45,17 @@ public static class NameMangler
         // This avoids conflicts with user-defined Add(), Sub(), etc. methods
     };
 
+    // Python list method mappings to C# equivalents
+    // These are needed because Python and C# have different names for the same operations
+    private static readonly Dictionary<string, string> _listMethodMap = new()
+    {
+        { "append", "Add" },      // Python list.append() -> C# List.Add()
+        { "extend", "AddRange" }, // Python list.extend() -> C# List.AddRange()
+        { "pop", "RemoveAt" },    // Python list.pop(i) -> C# List.RemoveAt(i) (Note: pop() without args needs special handling)
+        { "remove", "Remove" },   // Python list.remove() -> C# List.Remove()
+        { "clear", "Clear" },     // Same name, but included for completeness
+    };
+
 #if DEBUG
     static NameMangler()
     {
@@ -229,6 +240,14 @@ public static class NameMangler
     public static string? GetDunderMethodMapping(string dunderName)
     {
         return _dunderMethodMap.TryGetValue(dunderName, out var mapped) ? mapped : null;
+    }
+
+    /// <summary>
+    /// Get the C# equivalent name for a Python list method, if it exists
+    /// </summary>
+    public static string? GetListMethodMapping(string methodName)
+    {
+        return _listMethodMap.TryGetValue(methodName, out var mapped) ? mapped : null;
     }
 
     private static string Capitalize(string word)

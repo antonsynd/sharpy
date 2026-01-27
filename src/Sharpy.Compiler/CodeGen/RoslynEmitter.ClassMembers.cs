@@ -20,8 +20,9 @@ public partial class RoslynEmitter
     {
         var members = new List<MemberDeclarationSyntax>();
 
-        // First pass: generate fields and build a mapping for use in constructor
+        // First pass: generate fields and build mappings for use in constructor
         var fieldMapping = new Dictionary<string, string>();
+        var fieldTypeMapping = new Dictionary<string, TypeAnnotation>();
         var fieldMembers = new List<MemberDeclarationSyntax>();
 
         foreach (var stmt in body.Where(s => s is VariableDeclaration))
@@ -36,6 +37,12 @@ public partial class RoslynEmitter
             var variable = ((FieldDeclarationSyntax)fieldDecl).Declaration.Variables.First();
             var fieldName = variable.Identifier.Text;
             fieldMapping[varDecl.Name] = fieldName;
+
+            // Also track the field's declared type for contextual type inference
+            if (varDecl.Type != null)
+            {
+                fieldTypeMapping[varDecl.Name] = varDecl.Type;
+            }
         }
 
         // Add field members first
@@ -108,7 +115,7 @@ public partial class RoslynEmitter
         // Generate all constructors (supports overloading)
         foreach (var initMethod in initMethods)
         {
-            members.Add(GenerateConstructor(initMethod, className, fieldMapping));
+            members.Add(GenerateConstructor(initMethod, className, fieldMapping, fieldTypeMapping));
         }
 
         // Generate complementary operators for C# requirements
@@ -126,7 +133,11 @@ public partial class RoslynEmitter
         return members;
     }
 
-    private ConstructorDeclarationSyntax GenerateConstructor(FunctionDef func, string className, Dictionary<string, string> fieldMapping)
+    private ConstructorDeclarationSyntax GenerateConstructor(
+        FunctionDef func,
+        string className,
+        Dictionary<string, string> fieldMapping,
+        Dictionary<string, TypeAnnotation> fieldTypeMapping)
     {
         // Clear declared variables and version tracking for new method scope
         _declaredVariables.Clear();
@@ -218,9 +229,28 @@ public partial class RoslynEmitter
                         IdentifierName(fieldName));
 
                     // For the right-hand side, check if it's an identifier that matches a parameter
-                    var assignValue = (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
-                        ? IdentifierName(mappedName)
-                        : GenerateExpression(assign.Value);
+                    ExpressionSyntax assignValue;
+                    if (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
+                    {
+                        assignValue = IdentifierName(mappedName);
+                    }
+                    else
+                    {
+                        // Set target type context for collection literal inference (e.g., self.items = [])
+                        var previousTargetType = _targetTypeContext;
+                        if (fieldTypeMapping.TryGetValue(memberAccess.Member, out var fieldType))
+                        {
+                            _targetTypeContext = fieldType;
+                        }
+                        try
+                        {
+                            assignValue = GenerateExpression(assign.Value);
+                        }
+                        finally
+                        {
+                            _targetTypeContext = previousTargetType;
+                        }
+                    }
 
                     bodyStatements.Add(ExpressionStatement(
                         AssignmentExpression(

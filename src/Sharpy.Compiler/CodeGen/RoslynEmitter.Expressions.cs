@@ -193,7 +193,9 @@ public partial class RoslynEmitter
             var obj = GenerateExpression(memberAccess.Object);
 
             // Apply name mangling to method name
-            var methodName = NameMangler.ToPascalCase(memberAccess.Member);
+            // First check for Python list method mappings (append -> Add, etc.)
+            var methodName = NameMangler.GetListMethodMapping(memberAccess.Member)
+                ?? NameMangler.ToPascalCase(memberAccess.Member);
 
             // Generate positional arguments
             var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));

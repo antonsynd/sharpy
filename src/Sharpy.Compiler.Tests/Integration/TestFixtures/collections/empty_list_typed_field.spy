@@ -1,0 +1,20 @@
+# Test empty list assignment with typed field - should infer element type from field annotation
+
+class TodoList:
+    items: list[str]
+
+    def __init__(self):
+        self.items = []
+
+    def add(self, task: str) -> None:
+        self.items.append(task)
+
+    def count(self) -> int:
+        return len(self.items)
+
+def main():
+    todos: TodoList = TodoList()
+    todos.add("Write code")
+    todos.add("Run tests")
+    print(todos.count())
+    print(todos.items[0])
