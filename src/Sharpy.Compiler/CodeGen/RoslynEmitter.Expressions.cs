@@ -1245,12 +1245,94 @@ public partial class RoslynEmitter
             }
             else if (part.Expression != null)
             {
-                parts.Add(Interpolation(GenerateExpression(part.Expression)));
+                var interpolation = Interpolation(GenerateExpression(part.Expression));
+
+                // Add format specifier if present (e.g., ".2f" in f"{value:.2f}")
+                if (!string.IsNullOrEmpty(part.FormatSpec))
+                {
+                    var csharpFormatSpec = TranslatePythonFormatSpec(part.FormatSpec);
+                    interpolation = interpolation.WithFormatClause(
+                        InterpolationFormatClause(
+                            Token(SyntaxKind.ColonToken),
+                            Token(
+                                TriviaList(),
+                                SyntaxKind.InterpolatedStringTextToken,
+                                csharpFormatSpec,
+                                csharpFormatSpec,
+                                TriviaList())));
+                }
+
+                parts.Add(interpolation);
             }
         }
 
         return InterpolatedStringExpression(Token(SyntaxKind.InterpolatedStringStartToken))
             .WithContents(List(parts));
+    }
+
+    /// <summary>
+    /// Translates Python format specifiers to C# format specifiers.
+    /// Python: [[fill]align][sign][#][0][width][grouping_option][.precision][type]
+    ///
+    /// Supported conversions:
+    /// - .Nf → FN (fixed-point, N decimal places)
+    /// - .Ne → EN (scientific notation)
+    /// - .N% → PN (percent)
+    /// - 0N → DN (zero-padded integer width N)
+    /// - , → N0 (number with thousand separators)
+    /// - .Ng → GN (general format)
+    /// </summary>
+    private static string TranslatePythonFormatSpec(string pythonSpec)
+    {
+        if (string.IsNullOrEmpty(pythonSpec))
+            return pythonSpec;
+
+        // Handle thousand separator only: "," → "N0"
+        if (pythonSpec == ",")
+            return "N0";
+
+        // Handle .Nf (fixed-point): ".2f" → "F2"
+        if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("f"))
+        {
+            var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
+            if (int.TryParse(precision, out _))
+                return "F" + precision;
+        }
+
+        // Handle .Ne (scientific): ".2e" → "E2"
+        if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("e"))
+        {
+            var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
+            if (int.TryParse(precision, out _))
+                return "E" + precision;
+        }
+
+        // Handle .N% (percent): ".1%" → "P1"
+        if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("%"))
+        {
+            var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
+            if (int.TryParse(precision, out _))
+                return "P" + precision;
+        }
+
+        // Handle .Ng (general): ".3g" → "G3"
+        if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("g"))
+        {
+            var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
+            if (int.TryParse(precision, out _))
+                return "G" + precision;
+        }
+
+        // Handle 0N (zero-padded): "05" → "D5" for integers
+        if (pythonSpec.StartsWith("0") && pythonSpec.Length > 1)
+        {
+            var width = pythonSpec.Substring(1);
+            if (int.TryParse(width, out _))
+                return "D" + width;
+        }
+
+        // Fall back to passing through (may not work, but allows custom C# formats)
+        return pythonSpec;
     }
 
     /// <summary>

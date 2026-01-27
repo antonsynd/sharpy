@@ -1,0 +1,17 @@
+# Test f-string format specifiers for number formatting
+
+def main():
+    price: float = 1000.0
+    print(f"Price: {price:.2f}")
+
+    pi: float = 3.14159
+    print(f"Pi: {pi:.3f}")
+
+    x: int = 42
+    print(f"Padded: {x:05}")
+
+    percent: float = 0.75
+    print(f"Percent: {percent:.1%}")
+
+    big_number: int = 1234567
+    print(f"With commas: {big_number:,}")
