@@ -287,7 +287,6 @@ public class Compiler
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);
             var csharpCode = compilationUnit.ToFullString();
-            metrics.EndPhase();
 
             // Check for code generation errors
             if (codeGenContext.HasErrors)
@@ -300,6 +299,33 @@ public class Compiler
                 };
             }
 
+            // Generate C# for all imported .spy modules
+            var allGeneratedFiles = new Dictionary<string, string>();
+
+            // Add entry file
+            allGeneratedFiles[filePath] = csharpCode;
+
+            // Add all imported modules
+            foreach (var (modulePath, moduleInfo) in importResolver.LoadedSpyModules)
+            {
+                // Skip the entry file (already added)
+                if (string.Equals(Path.GetFullPath(modulePath), Path.GetFullPath(filePath),
+                    StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var moduleCs = GenerateCSharpForModule(
+                    moduleInfo, symbolTable, builtinRegistry,
+                    codeGenContext.ProjectNamespace);
+
+                if (moduleCs != null)
+                {
+                    allGeneratedFiles[modulePath] = moduleCs;
+                    _logger.LogInfo($"Generated C# for imported module: {Path.GetFileName(modulePath)}");
+                }
+            }
+
+            metrics.EndPhase();
+
             return new CompilationResult
             {
                 Success = true,
@@ -307,7 +333,8 @@ public class Compiler
                 SymbolTable = symbolTable,
                 SemanticInfo = semanticInfo,
                 ModuleRegistry = _moduleRegistry,
-                GeneratedCSharpCode = csharpCode,
+                GeneratedCSharpCode = csharpCode,  // Keep for backward compatibility
+                GeneratedCSharpFiles = allGeneratedFiles,
                 Metrics = metrics
             };
         }
