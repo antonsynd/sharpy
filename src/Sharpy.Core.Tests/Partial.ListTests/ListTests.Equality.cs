@@ -21,9 +21,6 @@ public partial class List_Tests
         l.Equals(listRef).Should().BeTrue();
         l.Equals(objectRef).Should().BeTrue();
         l.Equals(objRef).Should().BeTrue();
-        l.__Eq__(listRef).Should().BeTrue();
-        l.__Eq__(objectRef).Should().BeTrue();
-        l.__Eq__(objRef).Should().BeTrue();
     }
 
     [Fact]
@@ -42,8 +39,6 @@ public partial class List_Tests
         listRef.Equals(l).Should().BeTrue();
         objectRef.Equals(l).Should().BeTrue();
         objRef.Equals(l).Should().BeTrue();
-        listRef.__Eq__(l).Should().BeTrue();
-        objectRef.__Eq__(l).Should().BeTrue();
     }
 
     [Fact]
@@ -59,9 +54,6 @@ public partial class List_Tests
         l.Equals((List<int>)null).Should().BeFalse();
         l.Equals((Object)null).Should().BeFalse();
         l.Equals((object)null).Should().BeFalse();
-        l.__Eq__((List<int>)null).Should().BeFalse();
-        l.__Eq__((Object)null).Should().BeFalse();
-        l.__Eq__((object)null).Should().BeFalse();
     }
 
     [Fact]
@@ -89,9 +81,9 @@ public partial class List_Tests
         (l != listRef).Should().BeFalse();
         (l != objectRef).Should().BeFalse();
         (l != objRef).Should().BeFalse();
-        l.__Ne__(listRef).Should().BeFalse();
-        l.__Ne__(objectRef).Should().BeFalse();
-        l.__Ne__(objRef).Should().BeFalse();
+        (!l.Equals(listRef)).Should().BeFalse();
+        (!l.Equals(objectRef)).Should().BeFalse();
+        (!l.Equals(objRef)).Should().BeFalse();
     }
 
     [Fact]
@@ -106,8 +98,8 @@ public partial class List_Tests
         (listRef != l).Should().BeFalse();
         (objectRef != l).Should().BeFalse();
         (objRef != l).Should().BeFalse();
-        listRef.__Ne__(l).Should().BeFalse();
-        objectRef.__Ne__(l).Should().BeFalse();
+        (!listRef.Equals(l)).Should().BeFalse();
+        (!objectRef.Equals(l)).Should().BeFalse();
     }
 
     [Fact]
@@ -120,9 +112,9 @@ public partial class List_Tests
         (l != (List<int>)null).Should().BeTrue();
         (l != (Object)null).Should().BeTrue();
         (l != (object)null).Should().BeTrue();
-        l.__Ne__((List<int>)null).Should().BeTrue();
-        l.__Ne__((Object)null).Should().BeTrue();
-        l.__Ne__((object)null).Should().BeTrue();
+        (!l.Equals((List<int>)null)).Should().BeTrue();
+        (!l.Equals((Object)null)).Should().BeTrue();
+        (!l.Equals((object)null)).Should().BeTrue();
     }
 
     [Fact]
@@ -152,9 +144,6 @@ public partial class List_Tests
         l.Equals(m).Should().BeFalse();
         l.Equals(objectRef).Should().BeFalse();
         l.Equals(objRef).Should().BeFalse();
-        l.__Eq__(m).Should().BeFalse();
-        l.__Eq__(objectRef).Should().BeFalse();
-        l.__Eq__(objRef).Should().BeFalse();
 
         // When
         m.Pop();
@@ -166,9 +155,6 @@ public partial class List_Tests
         l.Equals(m).Should().BeTrue();
         l.Equals(objectRef).Should().BeTrue();
         l.Equals(objRef).Should().BeTrue();
-        l.__Eq__(m).Should().BeTrue();
-        l.__Eq__(objectRef).Should().BeTrue();
-        l.__Eq__(objRef).Should().BeTrue();
     }
 
     [Fact]
@@ -187,8 +173,6 @@ public partial class List_Tests
         m.Equals(l).Should().BeFalse();
         objectRef.Equals(l).Should().BeFalse();
         objRef.Equals(l).Should().BeFalse();
-        m.__Eq__(l).Should().BeFalse();
-        objectRef.__Eq__(l).Should().BeFalse();
 
         // When
         m.Pop();
@@ -200,8 +184,6 @@ public partial class List_Tests
         m.Equals(l).Should().BeTrue();
         objectRef.Equals(l).Should().BeTrue();
         l.Equals(objRef).Should().BeTrue();
-        m.__Eq__(l).Should().BeTrue();
-        objectRef.__Eq__(l).Should().BeTrue();
     }
 
     [Fact]
@@ -217,9 +199,9 @@ public partial class List_Tests
         (l != m).Should().BeTrue();
         (l != objectRef).Should().BeTrue();
         (l != objRef).Should().BeTrue();
-        l.__Ne__(m).Should().BeTrue();
-        l.__Ne__(objectRef).Should().BeTrue();
-        l.__Ne__(objRef).Should().BeTrue();
+        (!l.Equals(m)).Should().BeTrue();
+        (!l.Equals(objectRef)).Should().BeTrue();
+        (!l.Equals(objRef)).Should().BeTrue();
 
         // When
         m.Pop();
@@ -228,9 +210,9 @@ public partial class List_Tests
         (l != m).Should().BeFalse();
         (l != objectRef).Should().BeFalse();
         (l != objRef).Should().BeFalse();
-        l.__Ne__(m).Should().BeFalse();
-        l.__Ne__(objectRef).Should().BeFalse();
-        l.__Ne__(objRef).Should().BeFalse();
+        (!l.Equals(m)).Should().BeFalse();
+        (!l.Equals(objectRef)).Should().BeFalse();
+        (!l.Equals(objRef)).Should().BeFalse();
     }
 
     [Fact]
@@ -246,8 +228,8 @@ public partial class List_Tests
         (m != l).Should().BeTrue();
         (objectRef != l).Should().BeTrue();
         (objRef != l).Should().BeTrue();
-        m.__Ne__(l).Should().BeTrue();
-        objectRef.__Ne__(l).Should().BeTrue();
+        (!m.Equals(l)).Should().BeTrue();
+        (!objectRef.Equals(l)).Should().BeTrue();
 
         // When
         m.Pop();
@@ -256,8 +238,8 @@ public partial class List_Tests
         (m != l).Should().BeFalse();
         (objectRef != l).Should().BeFalse();
         (objRef != l).Should().BeFalse();
-        m.__Ne__(l).Should().BeFalse();
-        objectRef.__Ne__(l).Should().BeFalse();
+        (!m.Equals(l)).Should().BeFalse();
+        (!objectRef.Equals(l)).Should().BeFalse();
     }
 
     [Fact]
@@ -276,9 +258,6 @@ public partial class List_Tests
         l.Equals(m).Should().BeFalse();
         l.Equals(objectRef).Should().BeFalse();
         l.Equals(objRef).Should().BeFalse();
-        l.__Eq__(m).Should().BeFalse();
-        l.__Eq__(objectRef).Should().BeFalse();
-        l.__Eq__(objRef).Should().BeFalse();
     }
 
     [Fact]
@@ -297,8 +276,6 @@ public partial class List_Tests
         m.Equals(l).Should().BeFalse();
         objectRef.Equals(l).Should().BeFalse();
         objRef.Equals(l).Should().BeFalse();
-        m.__Eq__(l).Should().BeFalse();
-        objectRef.__Eq__(l).Should().BeFalse();
     }
 
     [Fact]
@@ -314,9 +291,9 @@ public partial class List_Tests
         (l != m).Should().BeTrue();
         (l != objectRef).Should().BeTrue();
         (l != objRef).Should().BeTrue();
-        l.__Ne__(m).Should().BeTrue();
-        l.__Ne__(objectRef).Should().BeTrue();
-        l.__Ne__(objRef).Should().BeTrue();
+        (!l.Equals(m)).Should().BeTrue();
+        (!l.Equals(objectRef)).Should().BeTrue();
+        (!l.Equals(objRef)).Should().BeTrue();
     }
 
     [Fact]
@@ -332,7 +309,7 @@ public partial class List_Tests
         (m != l).Should().BeTrue();
         (objectRef != l).Should().BeTrue();
         (objRef != l).Should().BeTrue();
-        m.__Ne__(l).Should().BeTrue();
-        objectRef.__Ne__(l).Should().BeTrue();
+        (!m.Equals(l)).Should().BeTrue();
+        (!objectRef.Equals(l)).Should().BeTrue();
     }
 }

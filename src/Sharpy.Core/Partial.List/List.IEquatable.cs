@@ -1,7 +1,5 @@
 namespace Sharpy.Core;
 
-using Operator;
-
 public sealed partial class List<T>
 {
     /// <inheritdoc/>
@@ -28,12 +26,14 @@ public sealed partial class List<T>
             return false;
         }
 
-        for (uint i = 0; i < _list.Count; ++i)
-        {
-            var leftElem = _list[(int)i];
-            var rightElem = other._list[(int)i];
+        var comparer = System.Collections.Generic.EqualityComparer<T>.Default;
 
-            if (!Operator.Exports.Eq(leftElem, rightElem))
+        for (int i = 0; i < _list.Count; ++i)
+        {
+            var leftElem = _list[i];
+            var rightElem = other._list[i];
+
+            if (!comparer.Equals(leftElem, rightElem))
             {
                 return false;
             }
