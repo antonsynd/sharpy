@@ -12,7 +12,7 @@ public sealed partial class List<T>
         var builder = new StringBuilder();
         builder.Append('[');
 
-        uint i = 1;
+        int i = 1;
         var numElems = _list.Count;
 
         foreach (var item in _list)
