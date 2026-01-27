@@ -4,7 +4,7 @@ public readonly partial struct Str
 {
     public Str __GetItem__(int index)
     {
-        index = (int)Sharpy.Core.Index.Normalize(index, (uint)_s.Length, false, false);
+        index = Sharpy.Core.Index.Normalize(index, _s.Length, false, false);
         return new Str(_s[index]);
     }
 
@@ -20,7 +20,7 @@ public readonly partial struct Str
             return "";
         }
 
-        (int start, int end) = ((int, int))Slice.Normalize(slice.start, slice.end, (uint)_s.Length);
+        (int start, int end) = Slice.Normalize(slice.start, slice.end, _s.Length);
 
         if (start >= end)
         {
@@ -62,8 +62,8 @@ public readonly partial struct Str
 
         try
         {
-            start = (int)Sharpy.Core.Index.Normalize(start, (uint)_s.Length, false, false);
-            count = (int)Sharpy.Core.Index.Normalize(end, (uint)_s.Length, false, false) - start;
+            start = Sharpy.Core.Index.Normalize(start, _s.Length, false, false);
+            count = Sharpy.Core.Index.Normalize(end, _s.Length, false, false) - start;
         }
         catch (IndexError)
         {

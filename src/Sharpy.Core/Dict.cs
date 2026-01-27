@@ -199,9 +199,9 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
         set => __SetItem__(key, value);
     }
 
-    public uint __Len__()
+    public int __Len__()
     {
-        return (uint)_dict.Count;
+        return _dict.Count;
     }
 
     public override bool __Eq__(Object obj)

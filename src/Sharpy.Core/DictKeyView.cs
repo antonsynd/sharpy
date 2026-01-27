@@ -140,9 +140,9 @@ public sealed partial class DictKeyView<K, V> : IKeysView<K> where K : notnull
         return new EnumeratorIterator<K>(GetEnumerator());
     }
 
-    public uint __Len__()
+    public int __Len__()
     {
-        return (uint)_keys.Count;
+        return _keys.Count;
     }
 
     /// <summary>

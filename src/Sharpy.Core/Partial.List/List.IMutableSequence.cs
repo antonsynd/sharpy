@@ -75,7 +75,7 @@ public sealed partial class List<T>
     /// </summary>
     public void Insert(int i, T x)
     {
-        _list.Insert((int)Sharpy.Core.Index.Normalize(i, (uint)_list.Count, false, true), x);
+        _list.Insert(Sharpy.Core.Index.Normalize(i, _list.Count, false, true), x);
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public sealed partial class List<T>
 
         try
         {
-            i = (int)Sharpy.Core.Index.Normalize(i, (uint)_list.Count, false, false);
+            i = Sharpy.Core.Index.Normalize(i, _list.Count, false, false);
         }
         catch (IndexError)
         {
@@ -156,7 +156,7 @@ public sealed partial class List<T>
     /// <inheritdoc/>
     public void __DelItem__(int index)
     {
-        _list.RemoveAt((int)Sharpy.Core.Index.Normalize(index, (uint)_list.Count, false, false));
+        _list.RemoveAt(Sharpy.Core.Index.Normalize(index, _list.Count, false, false));
     }
 
     /// <inheritdoc/>
@@ -173,7 +173,7 @@ public sealed partial class List<T>
             return;
         }
 
-        (uint start, uint end) = Sharpy.Core.Slice.Normalize(slice.start, slice.end, (uint)_list.Count);
+        (int start, int end) = Sharpy.Core.Slice.Normalize(slice.start, slice.end, _list.Count);
 
         if (slice.step == 1)
         {
@@ -188,26 +188,26 @@ public sealed partial class List<T>
         }
         else
         {
-            _DeleteSliceMultiStep(start, end, (uint)slice.step);
+            _DeleteSliceMultiStep(start, end, slice.step);
         }
     }
 
-    private void _DeleteSliceSingleStep(uint start, uint end)
+    private void _DeleteSliceSingleStep(int start, int end)
     {
-        _list.RemoveRange((int)start, (int)(end - start));
+        _list.RemoveRange(start, end - start);
     }
 
-    private void _DeleteSliceMultiStep(uint start, uint end, uint step)
+    private void _DeleteSliceMultiStep(int start, int end, int step)
     {
-        var numElemsToChange = Slice.Len((int)start, (int)end, (int)step);
+        var numElemsToChange = Slice.Len(start, end, step);
 
-        uint elemsChanged = 0;
+        int elemsChanged = 0;
 
-        for (uint i = start; i < end && elemsChanged < numElemsToChange; ++i)
+        for (int i = start; i < end && elemsChanged < numElemsToChange; ++i)
         {
             if ((i - start) % step == 0)
             {
-                _list.RemoveAt((int)(i - elemsChanged));
+                _list.RemoveAt(i - elemsChanged);
 
                 ++elemsChanged;
             }
@@ -217,7 +217,7 @@ public sealed partial class List<T>
     /// <inheritdoc/>
     public void __SetItem__(int index, T value)
     {
-        index = (int)Sharpy.Core.Index.Normalize(index, (uint)_list.Count, false, false);
+        index = Sharpy.Core.Index.Normalize(index, _list.Count, false, false);
         _list[index] = value;
     }
 
@@ -240,7 +240,7 @@ public sealed partial class List<T>
             return;
         }
 
-        (uint start, uint end) = Slice.Normalize(slice.start, slice.end, (uint)_list.Count);
+        (int start, int end) = Slice.Normalize(slice.start, slice.end, _list.Count);
 
         if (slice.step == 1)
         {
@@ -257,11 +257,11 @@ public sealed partial class List<T>
         }
         else
         {
-            _SetSliceMultiStep(other, start, end, (uint)slice.step);
+            _SetSliceMultiStep(other, start, end, slice.step);
         }
     }
 
-    private void _SetSliceInsertion(List<T> other, uint start)
+    private void _SetSliceInsertion(List<T> other, int start)
     {
         if (other._list.Count == 0)
         {
@@ -269,10 +269,10 @@ public sealed partial class List<T>
         }
 
         _list.EnsureCapacity(_list.Count + other._list.Count);
-        _list.InsertRange((int)start, other);
+        _list.InsertRange(start, other);
     }
 
-    private void _SetSliceSingleStep(List<T> other, uint start, uint end)
+    private void _SetSliceSingleStep(List<T> other, int start, int end)
     {
         var numOldElems = end - start;
         var numNewElems = other.__Len__();
@@ -285,32 +285,32 @@ public sealed partial class List<T>
         else
         {
             // Trivial case, replace 1-to-1
-            for (uint i = start; i < end; ++i)
+            for (int i = start; i < end; ++i)
             {
-                _list[(int)i] = other[(int)(i - start)];
+                _list[i] = other[i - start];
             }
         }
     }
 
     private void _SetSliceSingleStepReplacement(List<T> other,
-                                        uint start,
-                                        uint numOldElems,
-                                        uint numNewElems)
+                                        int start,
+                                        int numOldElems,
+                                        int numNewElems)
     {
         if (numNewElems > numOldElems)
         {
             var numExtraElems = numNewElems - numOldElems;
-            _list.EnsureCapacity(_list.Count + (int)numExtraElems);
+            _list.EnsureCapacity(_list.Count + numExtraElems);
         }
 
         // TODO: Can optimize for fewer element shifts
-        _list.RemoveRange((int)start, (int)numOldElems);
-        _list.InsertRange((int)start, other);
+        _list.RemoveRange(start, numOldElems);
+        _list.InsertRange(start, other);
     }
 
-    private void _SetSliceMultiStep(List<T> other, uint start, uint end, uint step)
+    private void _SetSliceMultiStep(List<T> other, int start, int end, int step)
     {
-        var numElemsToChange = Slice.Len((int)start, (int)end, (int)step);
+        var numElemsToChange = Slice.Len(start, end, step);
 
         if (other._list.Count != numElemsToChange)
         {
@@ -319,13 +319,13 @@ public sealed partial class List<T>
                 + $"{numElemsToChange}");
         }
 
-        uint elemsChanged = 0;
+        int elemsChanged = 0;
 
-        for (uint i = start; i < end && elemsChanged < numElemsToChange; ++i)
+        for (int i = start; i < end && elemsChanged < numElemsToChange; ++i)
         {
             if ((i - start) % step == 0)
             {
-                _list[(int)i] = other[(int)elemsChanged];
+                _list[i] = other[elemsChanged];
 
                 ++elemsChanged;
             }

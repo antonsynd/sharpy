@@ -43,7 +43,7 @@ public sealed partial class List<T>
     /// <inheritdoc/>
     public T __GetItem__(int index)
     {
-        index = (int)Sharpy.Core.Index.Normalize(index, (uint)_list.Count, false, false);
+        index = Sharpy.Core.Index.Normalize(index, _list.Count, false, false);
         return _list[index];
     }
 
@@ -60,7 +60,7 @@ public sealed partial class List<T>
             return [];
         }
 
-        (int start, int end) = ((int, int))Slice.Normalize(slice.start, slice.end, (uint)_list.Count);
+        (int start, int end) = Slice.Normalize(slice.start, slice.end, _list.Count);
 
         return new List<T>
         {
@@ -99,8 +99,8 @@ public sealed partial class List<T>
 
         try
         {
-            start = (int)Sharpy.Core.Index.Normalize(start, (uint)_list.Count, false, false);
-            count = (int)Sharpy.Core.Index.Normalize(end, (uint)_list.Count, false, false) - start;
+            start = Sharpy.Core.Index.Normalize(start, _list.Count, false, false);
+            count = Sharpy.Core.Index.Normalize(end, _list.Count, false, false) - start;
         }
         catch (IndexError)
         {

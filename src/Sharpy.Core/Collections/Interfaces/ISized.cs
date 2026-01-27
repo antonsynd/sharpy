@@ -10,13 +10,13 @@ public interface ISized
     /// <summary>
     /// Return the length (the number of items) of an object.
     /// </summary>
-    uint __Len__();
+    int __Len__();
 
     int Length
     {
         get
         {
-            return (int)__Len__();
+            return __Len__();
         }
     }
 
@@ -24,7 +24,7 @@ public interface ISized
     {
         get
         {
-            return (int)__Len__();
+            return __Len__();
         }
     }
 }

@@ -44,9 +44,9 @@ public sealed class DictItemsView<K, V> : IItemsView<K, V> where K : notnull
         return new EnumeratorIterator<(K, V)>(GetEnumerator());
     }
 
-    public uint __Len__()
+    public int __Len__()
     {
-        return (uint)_dict.Count;
+        return _dict.Count;
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

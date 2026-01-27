@@ -2,7 +2,7 @@ namespace Sharpy.Core;
 
 public readonly partial struct Slice
 {
-    public uint __Len__()
+    public int __Len__()
     {
         return Len(start, end, step);
     }

@@ -47,9 +47,9 @@ public sealed class DictValuesView<K, V> : IValuesView<V> where K : notnull
         return new EnumeratorIterator<V>(GetEnumerator());
     }
 
-    public uint __Len__()
+    public int __Len__()
     {
-        return (uint)_values.Count;
+        return _values.Count;
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

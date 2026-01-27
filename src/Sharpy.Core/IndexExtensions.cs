@@ -2,7 +2,7 @@ namespace Sharpy.Core;
 
 public static class IndexExtensions
 {
-    public static uint ToNormalizedUint32(this System.Index index, uint max, bool forSlice, bool forInsertion)
+    public static int ToNormalizedInt32(this System.Index index, int max, bool forSlice, bool forInsertion)
     {
         if (index.IsFromEnd)
         {

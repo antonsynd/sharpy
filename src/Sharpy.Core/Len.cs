@@ -9,7 +9,7 @@ public static partial class Exports
     /// may be a sequence (such as a string, bytes, tuple, list, or range)
     /// or a collection (such as a dictionary, set, or frozen set).
     /// </summary>
-    public static uint Len(ISized sized)
+    public static int Len(ISized sized)
     {
         if (sized is null)
         {
@@ -19,8 +19,8 @@ public static partial class Exports
         return sized.__Len__();
     }
 
-    public static uint Len(string s)
+    public static int Len(string s)
     {
-        return (uint)s.Length;
+        return s.Length;
     }
 }

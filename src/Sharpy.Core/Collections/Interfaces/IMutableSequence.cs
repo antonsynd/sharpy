@@ -18,11 +18,11 @@ public interface IMutableSequence<T>
     {
         get
         {
-            return __GetItem__((int)Sharpy.Core.Index.Normalize(index, __Len__(), false, false));
+            return __GetItem__(Sharpy.Core.Index.Normalize(index, __Len__(), false, false));
         }
         set
         {
-            __SetItem__((int)Sharpy.Core.Index.Normalize(index, __Len__(), false, false), value);
+            __SetItem__(Sharpy.Core.Index.Normalize(index, __Len__(), false, false), value);
         }
     }
 
@@ -30,11 +30,11 @@ public interface IMutableSequence<T>
     {
         get
         {
-            return __GetItem__((int)index.ToNormalizedUint32(__Len__(), false, false));
+            return __GetItem__(index.ToNormalizedInt32(__Len__(), false, false));
         }
         set
         {
-            __SetItem__((int)index.ToNormalizedUint32(__Len__(), false, true), value);
+            __SetItem__(index.ToNormalizedInt32(__Len__(), false, true), value);
         }
     }
 

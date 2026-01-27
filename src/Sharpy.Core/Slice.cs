@@ -8,11 +8,11 @@ public readonly partial struct Slice(int start, int end, int step = 1) : ISized
     public readonly int end = end;
     public readonly int step = step;
 
-    public static uint Len(int start, int end, int step)
+    public static int Len(int start, int end, int step)
     {
         // Efficient ceil division (from ChatGPT)
         var length = end - start;
-        return (uint)((length + step - 1) / step);
+        return (length + step - 1) / step;
     }
 
     public static Slice FromRange(System.Range range)
@@ -20,7 +20,7 @@ public readonly partial struct Slice(int start, int end, int step = 1) : ISized
         return new Slice(range.Start.Value, range.End.Value);
     }
 
-    internal static (uint, uint) Normalize(int start, int end, uint max)
+    internal static (int, int) Normalize(int start, int end, int max)
     {
         return (Index.Normalize(start, max, true, false), Index.Normalize(end, max, true, false));
     }

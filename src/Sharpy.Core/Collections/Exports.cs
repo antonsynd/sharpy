@@ -100,7 +100,7 @@ public class Deque<T> : IIterable<T>, ISized
         }
     }
 
-    public uint __Len__() => (uint)_list.Count;
+    public int __Len__() => _list.Count;
 
     public Iterator<T> __Iter__()
     {

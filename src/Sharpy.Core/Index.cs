@@ -11,16 +11,16 @@ internal static class Index
     /// <param name="forInsertion">Whether this is for insertion or not (allowing for past the end indices).</param>
     /// <returns>The normalized index.</returns>
     /// <exception cref="IndexError">If the given index is inherently out of range.</exception>
-    internal static uint Normalize(int i, uint max, bool forSlice, bool forInsertion)
+    internal static int Normalize(int i, int max, bool forSlice, bool forInsertion)
     {
         if (forSlice || forInsertion)
         {
             if (i < 0)
             {
-                i = (int)max + i;
+                i = max + i;
             }
 
-            return (uint)System.Math.Clamp(i, 0, max);
+            return System.Math.Clamp(i, 0, max);
         }
 
         if (i >= max || i < -max)
@@ -30,9 +30,9 @@ internal static class Index
 
         if (i < 0)
         {
-            return (uint)(max + i);
+            return max + i;
         }
 
-        return (uint)i;
+        return i;
     }
 }

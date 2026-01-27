@@ -10,7 +10,7 @@ public class SetConversionTests
     {
         var result = Exports.Set<int>();
         Assert.NotNull(result);
-        Assert.Equal(0u, result.__Len__());
+        Assert.Equal(0, result.__Len__());
     }
 
     [Fact]
@@ -19,7 +19,7 @@ public class SetConversionTests
         var source = new System.Collections.Generic.List<int> { 1, 2, 3, 2, 1 };
         var result = Exports.Set<int>(source);
 
-        Assert.Equal(3u, result.__Len__());
+        Assert.Equal(3, result.__Len__());
         Assert.Contains(1, result);
         Assert.Contains(2, result);
         Assert.Contains(3, result);
@@ -35,15 +35,15 @@ public class SetConversionTests
 
         var copy = Exports.Set(original);
 
-        Assert.Equal(3u, copy.__Len__());
+        Assert.Equal(3, copy.__Len__());
         Assert.Contains(1, copy);
         Assert.Contains(2, copy);
         Assert.Contains(3, copy);
 
         // Verify it's a copy, not the same instance
         original.Add(4);
-        Assert.Equal(4u, original.__Len__());
-        Assert.Equal(3u, copy.__Len__());
+        Assert.Equal(4, original.__Len__());
+        Assert.Equal(3, copy.__Len__());
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public class SetConversionTests
         var range = Exports.Range(1, 4); // 1, 2, 3
         var result = Exports.Set(range);
 
-        Assert.Equal(3u, result.__Len__());
+        Assert.Equal(3, result.__Len__());
         Assert.Contains(1, result);
         Assert.Contains(2, result);
         Assert.Contains(3, result);
@@ -64,7 +64,7 @@ public class SetConversionTests
         var source = new System.Collections.Generic.List<string> { "a", "b", "a", "c", "b" };
         var result = Exports.Set<string>(source);
 
-        Assert.Equal(3u, result.__Len__());
+        Assert.Equal(3, result.__Len__());
         Assert.Contains("a", result);
         Assert.Contains("b", result);
         Assert.Contains("c", result);

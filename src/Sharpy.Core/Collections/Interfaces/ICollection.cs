@@ -15,7 +15,7 @@ public interface ICollection<T>
     {
         get
         {
-            return (int)__Len__();
+            return __Len__();
         }
     }
 

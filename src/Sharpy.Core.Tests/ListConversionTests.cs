@@ -10,7 +10,7 @@ public class ListConversionTests
     {
         var result = Exports.List<int>();
         Assert.NotNull(result);
-        Assert.Equal(0u, result.__Len__());
+        Assert.Equal(0, result.__Len__());
     }
 
     [Fact]
@@ -19,7 +19,7 @@ public class ListConversionTests
         var source = new System.Collections.Generic.List<int> { 1, 2, 3 };
         var result = Exports.List<int>(source);
 
-        Assert.Equal(3u, result.__Len__());
+        Assert.Equal(3, result.__Len__());
         Assert.Equal(1, result[0]);
         Assert.Equal(2, result[1]);
         Assert.Equal(3, result[2]);
@@ -35,15 +35,15 @@ public class ListConversionTests
 
         var copy = Exports.List(original);
 
-        Assert.Equal(3u, copy.__Len__());
+        Assert.Equal(3, copy.__Len__());
         Assert.Equal(1, copy[0]);
         Assert.Equal(2, copy[1]);
         Assert.Equal(3, copy[2]);
 
         // Verify it's a copy, not the same instance
         original.Add(4);
-        Assert.Equal(4u, original.__Len__());
-        Assert.Equal(3u, copy.__Len__());
+        Assert.Equal(4, original.__Len__());
+        Assert.Equal(3, copy.__Len__());
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public class ListConversionTests
         var range = Exports.Range(1, 4); // 1, 2, 3
         var result = Exports.List(range);
 
-        Assert.Equal(3u, result.__Len__());
+        Assert.Equal(3, result.__Len__());
         Assert.Equal(1, result[0]);
         Assert.Equal(2, result[1]);
         Assert.Equal(3, result[2]);

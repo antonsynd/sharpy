@@ -3,8 +3,8 @@ namespace Sharpy.Core;
 public sealed partial class Set<T>
 {
     /// <inheritdoc/>
-    public uint __Len__()
+    public int __Len__()
     {
-        return (uint)_set.Count;
+        return _set.Count;
     }
 }
