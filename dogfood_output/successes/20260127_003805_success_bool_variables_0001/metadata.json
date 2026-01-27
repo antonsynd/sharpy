@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-27T00:37:53.837718",
+  "generated_code": "# Test boolean variables with logical operations and comparisons\n\nis_active: bool = True\nis_locked: bool = False\nhas_access: bool = True\n\ndef main():\n    print(is_active)\n    print(is_locked)\n    print(is_active and has_access)\n    print(is_active or is_locked)\n    print(not is_locked)\n\n# EXPECTED OUTPUT:\n# True\n# False\n# True\n# True\n# True",
+  "expected_output": "True\nFalse\nTrue\nTrue\nTrue\n",
+  "actual_output": "True\nFalse\nTrue\nTrue\nTrue",
+  "feature_focus": "bool_variables",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 3.938981056213379,
+  "execution_duration": 1.3535292148590088,
+  "source_files": null
+}

@@ -1,0 +1,21 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-27T00:38:45.899003",
+  "generated_code": "# Main entry point - demonstrates utility module usage\nfrom utils import MathHelper, StringHelper, calculate_sum, find_max\n\ndef main():\n    # Test MathHelper\n    math: MathHelper = MathHelper(5)\n    result1: int = math.apply(7)\n    print(result1)\n\n    power_result: int = math.power(2, 3)\n    print(power_result)\n\n    # Test StringHelper\n    str_helper: StringHelper = StringHelper(\"INFO\")\n    message: str = str_helper.format_message(\"System ready\")\n    print(message)\n\n    # Test calculate_sum function\n    numbers: list[int] = [10, 20, 30]\n    total: int = calculate_sum(numbers)\n    print(total)\n\n    # Test find_max function\n    maximum: int = find_max(15, 42, 28)\n    print(maximum)\n\n# EXPECTED OUTPUT:\n# 35\n# 8\n# INFO: System ready\n# 60\n# 42",
+  "expected_output": "35\n8\nINFO: System ready\n60\n42\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 20, column 32: Cannot pass argument of type 'list[int]' to parameter of type 'list'\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_utils",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 11.712203979492188,
+  "compilation_duration": null,
+  "execution_duration": 0.8859210014343262,
+  "source_files": {
+    "utils.spy": "# Utility module providing math and string helper functions\n\nclass MathHelper:\n    multiplier: int\n\n    def __init__(self, mult: int):\n        self.multiplier = mult\n\n    def apply(self, value: int) -> int:\n        return value * self.multiplier\n\n    def power(self, base: int, exponent: int) -> int:\n        result: int = 1\n        i: int = 0\n        while i < exponent:\n            result *= base\n            i += 1\n        return result\n\n\nclass StringHelper:\n    prefix: str\n\n    def __init__(self, p: str):\n        self.prefix = p\n\n    def format_message(self, content: str) -> str:\n        return f\"{self.prefix}: {content}\"\n\n    def repeat(self, text: str, count: int) -> str:\n        result: str = \"\"\n        i: int = 0\n        while i < count:\n            result += text\n            i += 1\n        return result\n\n\ndef calculate_sum(numbers: list[int]) -> int:\n    total: int = 0\n    for num in numbers:\n        total += num\n    return total\n\n\ndef find_max(a: int, b: int, c: int) -> int:\n    max_val: int = a\n    if b > max_val:\n        max_val = b\n    if c > max_val:\n        max_val = c\n    return max_val",
+    "main.spy": "# Main entry point - demonstrates utility module usage\nfrom utils import MathHelper, StringHelper, calculate_sum, find_max\n\ndef main():\n    # Test MathHelper\n    math: MathHelper = MathHelper(5)\n    result1: int = math.apply(7)\n    print(result1)\n\n    power_result: int = math.power(2, 3)\n    print(power_result)\n\n    # Test StringHelper\n    str_helper: StringHelper = StringHelper(\"INFO\")\n    message: str = str_helper.format_message(\"System ready\")\n    print(message)\n\n    # Test calculate_sum function\n    numbers: list[int] = [10, 20, 30]\n    total: int = calculate_sum(numbers)\n    print(total)\n\n    # Test find_max function\n    maximum: int = find_max(15, 42, 28)\n    print(maximum)\n\n# EXPECTED OUTPUT:\n# 35\n# 8\n# INFO: System ready\n# 60\n# 42"
+  }
+}

@@ -1,0 +1,2 @@
+Compilation failed:
+  Semantic error at line 20, column 32: Cannot pass argument of type 'list[int]' to parameter of type 'list'

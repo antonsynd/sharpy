@@ -1,0 +1,36 @@
+# Main entry point - cross-module shape calculator
+from shapes import Shape, Rectangle, Circle
+
+def calculate_total_area(shapes: list[Shape]) -> float:
+    """Calculate total area of all shapes"""
+    total: float = 0.0
+    for shape in shapes:
+        total += shape.area()
+    return total
+
+def main():
+    # Create rectangle
+    rect = Rectangle(5.0, 3.0)
+    print(f"Created {rect.name}: {rect.width}x{rect.height}")
+    
+    # Create circle
+    circ = Circle(2.0)
+    print(f"Created {circ.name}: radius={circ.radius}")
+    
+    # Calculate individual areas
+    rect_area: float = rect.area()
+    circ_area: float = circ.area()
+    print(f"Rectangle area: {rect_area}")
+    print(f"Circle area: {circ_area}")
+    
+    # Calculate total area using polymorphic list
+    all_shapes: list[Shape] = [rect, circ]
+    total: float = calculate_total_area(all_shapes)
+    print(f"Total area: {total}")
+
+# EXPECTED OUTPUT:
+# Created Rectangle: 5x3
+# Created Circle: radius=2
+# Rectangle area: 15
+# Circle area: 12.56636
+# Total area: 27.56636

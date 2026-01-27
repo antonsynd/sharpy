@@ -1,0 +1,22 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-27T00:40:06.585067",
+  "generated_code": "# Main entry point - cross-module class usage demonstration\nfrom models import Employee, Manager, Developer\nfrom payroll import PayrollProcessor\n\ndef main():\n    # Create employees of different types\n    emp1: Employee = Employee(\"Alice\", 101)\n    mgr1: Manager = Manager(\"Bob\", 201, 5)\n    dev1: Developer = Developer(\"Charlie\", 301, \"Python\")\n\n    # Display employee information\n    print(emp1.get_info())\n    print(mgr1.get_info())\n    print(dev1.get_info())\n\n    # Process payroll using cross-module class interaction\n    processor: PayrollProcessor = PayrollProcessor()\n    processor.process_employee(emp1)\n    processor.process_employee(mgr1)\n    processor.process_employee(dev1)\n\n    # Show total bonuses\n    total: float = processor.get_total()\n    print(total)\n\n# EXPECTED OUTPUT:\n# Employee Alice (ID: 101)\n# Manager Bob (ID: 201, Team: 5)\n# Developer Charlie (ID: 301, Lang: Python)\n# 4500",
+  "expected_output": "Employee Alice (ID: 101)\nManager Bob (ID: 201, Team: 5)\nDeveloper Charlie (ID: 301, Lang: Python)\n4500\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 19, column 32: Cannot pass argument of type 'Manager' to parameter of type 'Employee'\n  Semantic error at line 20, column 32: Cannot pass argument of type 'Developer' to parameter of type 'Employee'\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 12.527860879898071,
+  "compilation_duration": null,
+  "execution_duration": 0.8997559547424316,
+  "source_files": {
+    "models.spy": "# Domain models for a simple employee management system\n\nclass Employee:\n    name: str\n    id: int\n\n    def __init__(self, name: str, id: int):\n        self.name = name\n        self.id = id\n\n    @virtual\n    def get_info(self) -> str:\n        return f\"Employee {self.name} (ID: {self.id})\"\n\n    @virtual\n    def calculate_bonus(self) -> float:\n        return 1000.0\n\nclass Manager(Employee):\n    team_size: int\n\n    def __init__(self, name: str, id: int, team_size: int):\n        super().__init__(name, id)\n        self.team_size = team_size\n\n    @override\n    def get_info(self) -> str:\n        return f\"Manager {self.name} (ID: {self.id}, Team: {self.team_size})\"\n\n    @override\n    def calculate_bonus(self) -> float:\n        return 1000.0 + (self.team_size * 200.0)\n\nclass Developer(Employee):\n    programming_language: str\n\n    def __init__(self, name: str, id: int, language: str):\n        super().__init__(name, id)\n        self.programming_language = language\n\n    @override\n    def get_info(self) -> str:\n        return f\"Developer {self.name} (ID: {self.id}, Lang: {self.programming_language})\"\n\n    @override\n    def calculate_bonus(self) -> float:\n        return 1500.0",
+    "payroll.spy": "# Payroll processing utilities\nfrom models import Employee, Manager, Developer\n\nclass PayrollProcessor:\n    total_bonus: float\n\n    def __init__(self):\n        self.total_bonus = 0.0\n\n    def process_employee(self, emp: Employee) -> None:\n        bonus: float = emp.calculate_bonus()\n        self.total_bonus += bonus\n\n    def get_total(self) -> float:\n        return self.total_bonus",
+    "main.spy": "# Main entry point - cross-module class usage demonstration\nfrom models import Employee, Manager, Developer\nfrom payroll import PayrollProcessor\n\ndef main():\n    # Create employees of different types\n    emp1: Employee = Employee(\"Alice\", 101)\n    mgr1: Manager = Manager(\"Bob\", 201, 5)\n    dev1: Developer = Developer(\"Charlie\", 301, \"Python\")\n\n    # Display employee information\n    print(emp1.get_info())\n    print(mgr1.get_info())\n    print(dev1.get_info())\n\n    # Process payroll using cross-module class interaction\n    processor: PayrollProcessor = PayrollProcessor()\n    processor.process_employee(emp1)\n    processor.process_employee(mgr1)\n    processor.process_employee(dev1)\n\n    # Show total bonuses\n    total: float = processor.get_total()\n    print(total)\n\n# EXPECTED OUTPUT:\n# Employee Alice (ID: 101)\n# Manager Bob (ID: 201, Team: 5)\n# Developer Charlie (ID: 301, Lang: Python)\n# 4500"
+  }
+}

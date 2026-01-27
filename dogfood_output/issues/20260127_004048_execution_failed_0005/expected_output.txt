@@ -1,0 +1,4 @@
+Employee Alice (ID: 101)
+Manager Bob (ID: 201, Team: 5)
+Developer Charlie (ID: 301, Lang: Python)
+4500

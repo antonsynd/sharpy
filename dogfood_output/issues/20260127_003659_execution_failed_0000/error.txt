@@ -1,0 +1,10 @@
+Compilation failed:
+  Semantic error at line 7, column 18: 'func' is not callable (type: <?>)
+  Semantic error at line 8, column 16: 'func' is not callable (type: <?>)
+  Semantic error at line 12, column 17: 'func1' is not callable (type: <?>)
+  Semantic error at line 13, column 16: 'func2' is not callable (type: <?>)
+  Semantic error at line 26, column 15: Function expects 1 arguments but got 2
+  Semantic error at line 30, column 15: Function expects 2 arguments but got 3
+  Semantic error: Type 'callable' not found
+  Semantic error at line 5, column 5: The '@staticmethod' decorator is not supported in Sharpy. Methods without a 'self' parameter are automatically static.
+  Semantic error at line 10, column 5: The '@staticmethod' decorator is not supported in Sharpy. Methods without a 'self' parameter are automatically static.

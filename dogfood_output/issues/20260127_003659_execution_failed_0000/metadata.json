@@ -1,0 +1,18 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-27T00:36:21.631013",
+  "generated_code": "# Test: Lambda expressions with higher-order functions\n# Tests: lambda syntax, passing lambdas to functions, lambda return types\n\nclass MathOperations:\n    @staticmethod\n    def apply_twice(func: callable, value: int) -> int:\n        result = func(value)\n        return func(result)\n\n    @staticmethod\n    def combine(func1: callable, func2: callable, x: int) -> int:\n        first = func1(x)\n        return func2(first)\n\ndef main():\n    # Basic lambda - square a number\n    square = lambda n: n * n\n    print(square(7))\n\n    # Lambda with addition\n    add_five = lambda x: x + 5\n    print(add_five(10))\n\n    # Apply lambda twice using higher-order function\n    ops = MathOperations()\n    result1 = ops.apply_twice(lambda n: n * 3, 4)\n    print(result1)\n\n    # Combine two lambdas\n    result2 = ops.combine(lambda x: x + 2, lambda y: y * 10, 5)\n    print(result2)\n\n    # Multi-parameter lambda\n    multiply = lambda a, b: a * b\n    print(multiply(6, 8))\n\n    # Lambda in list operations - FIXED: actually apply the lambda\n    numbers: list[int] = [1, 2, 3, 4, 5]\n    double_func = lambda x: x * 2\n    doubled: list[int] = [double_func(x) for x in numbers]\n    print(len(doubled))\n\n# EXPECTED OUTPUT:\n# 49\n# 15\n# 36\n# 70\n# 48\n# 5",
+  "expected_output": "49\n15\n36\n70\n48\n5\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 7, column 18: 'func' is not callable (type: <?>)\n  Semantic error at line 8, column 16: 'func' is not callable (type: <?>)\n  Semantic error at line 12, column 17: 'func1' is not callable (type: <?>)\n  Semantic error at line 13, column 16: 'func2' is not callable (type: <?>)\n  Semantic error at line 26, column 15: Function expects 1 arguments but got 2\n  Semantic error at line 30, column 15: Function expects 2 arguments but got 3\n  Semantic error: Type 'callable' not found\n  Semantic error at line 5, column 5: The '@staticmethod' decorator is not supported in Sharpy. Methods without a 'self' parameter are automatically static.\n  Semantic error at line 10, column 5: The '@staticmethod' decorator is not supported in Sharpy. Methods without a 'self' parameter are automatically static.\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "lambda_basic",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 18.412012815475464,
+  "compilation_duration": null,
+  "execution_duration": 0.9227550029754639,
+  "source_files": null
+}

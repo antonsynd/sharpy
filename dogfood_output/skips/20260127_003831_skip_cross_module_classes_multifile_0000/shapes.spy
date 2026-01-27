@@ -1,0 +1,58 @@
+# Module providing geometric shape classes
+
+@abstract
+class Shape:
+    """Base class for all shapes"""
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @abstract
+    def area(self) -> float:
+        ...
+
+    @abstract
+    def perimeter(self) -> float:
+        ...
+
+    def describe(self) -> str:
+        return f"{self.name}: area={self.area()}, perimeter={self.perimeter()}"
+
+
+class Rectangle(Shape):
+    """Rectangle with width and height"""
+    width: float
+    height: float
+
+    def __init__(self, width: float, height: float):
+        super().__init__("Rectangle")
+        self.width = width
+        self.height = height
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * (self.width + self.height)
+
+
+class Circle(Shape):
+    """Circle with radius"""
+    radius: float
+
+    def __init__(self, radius: float):
+        super().__init__("Circle")
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        # Using 3.14159 for pi
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def perimeter(self) -> float:
+        # Circumference = 2 * pi * r
+        return 2.0 * 3.14159 * self.radius

@@ -1,0 +1,19 @@
+# Test: Dictionary comprehension with simple transformations
+# Creates a dict from a list by mapping each number to its square
+
+def main():
+    numbers: list[int] = [1, 2, 3, 4, 5]
+    squares: dict[int, int] = {x: x * x for x in numbers}
+    
+    print(squares[1])
+    print(squares[2])
+    print(squares[3])
+    print(squares[4])
+    print(squares[5])
+
+# EXPECTED OUTPUT:
+# 1
+# 4
+# 9
+# 16
+# 25
