@@ -1,1 +1,0 @@
-Unsupported feature in game_entities.spy: Line 59: ternary expression (not fully supported) - 'status: str = "collected" if self.is_collected els...'

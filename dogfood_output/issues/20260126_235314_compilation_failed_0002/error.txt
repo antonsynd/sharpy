@@ -1,2 +1,0 @@
-Assembly compilation failed:
-  dogfood_test.cs(37,26): error CS0029: Cannot implicitly convert type 'System.Collections.Generic.List<object>' to 'System.Collections.Generic.List<string>'

@@ -1,5 +1,0 @@
-LOG: System started
-yprahS
-3
-120
-30
