@@ -4,48 +4,77 @@ public sealed partial class List<T>
 {
     /// <remarks>
     /// This returns true for both lists if they contain the same elements,
-    /// even if they are not the actual same list reference. If the elements
-    /// are Sharpy Objects, then <see cref="Object.__Eq__(Object)"/> is used.
-    /// Otherwise, <see cref="object.Equals(object)"/> is used.
+    /// even if they are not the actual same list reference.
     /// </remarks>
-    public static bool operator ==(List<T> left, List<T> right)
+    public static bool operator ==(List<T>? left, List<T>? right)
     {
-        return left?.__Eq__(right) ?? right is null;
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        return left?.Equals(right) ?? false;
     }
 
-    public static bool operator !=(List<T> left, List<T> right)
+    public static bool operator !=(List<T>? left, List<T>? right)
     {
         return !(left == right);
     }
 
-    public static List<T> operator +(List<T> left, List<T> right)
+    /// <summary>
+    /// Concatenates two lists, returning a new list.
+    /// </summary>
+    public static List<T> operator +(List<T>? left, List<T>? right)
     {
         if (left is null)
         {
             throw TypeError.CanOnlyNot("concatenate", $"List<{typeof(T).Name}>", "NoneType", "to", $"List<{typeof(T).Name}>");
         }
 
-        return left.__Add__(right);
+        if (right is null)
+        {
+            throw TypeError.CanOnlyNot("concatenate", $"List<{typeof(T).Name}>", "NoneType", "to", $"List<{typeof(T).Name}>");
+        }
+
+        var res = left.Copy();
+        res.Extend(right);
+
+        return res;
     }
 
-    public static List<T> operator *(List<T> left, int i)
+    /// <summary>
+    /// Repeats a list a specified number of times, returning a new list.
+    /// </summary>
+    public static List<T> operator *(List<T>? left, int count)
     {
         if (left is null)
         {
             throw TypeError.CanOnlyNot("multiply", $"List<{typeof(T).Name}>", "NoneType", "with", "int");
         }
 
-        return left.__Mul__(i);
-    }
+        var res = new List<T>();
 
-    public static List<T> operator *(int i, List<T> left)
-    {
-        if (left is null)
+        if (count <= 0)
         {
-            throw TypeError.CanOnlyNot("multiply", $"List<{typeof(T).Name}>", "NoneType", "with", "int");
+            return res;
         }
 
-        return left.__RMul__(i);
+        res._list.EnsureCapacity(left._list.Count * count);
+
+        for (int i = 0; i < count; ++i)
+        {
+            res.Extend(left);
+        }
+
+        return res;
+    }
+
+    /// <summary>
+    /// Repeats a list a specified number of times, returning a new list.
+    /// </summary>
+    public static List<T> operator *(int count, List<T>? right)
+    {
+        return right * count;
     }
 
     public static bool operator true(List<T>? list)
@@ -58,7 +87,7 @@ public sealed partial class List<T>
         return list is null || list._list.Count == 0;
     }
 
-    public static bool operator <(List<T> left, List<T> right)
+    public static bool operator <(List<T>? left, List<T>? right)
     {
         if (left is null)
         {
@@ -68,7 +97,7 @@ public sealed partial class List<T>
         return left.__Lt__(right);
     }
 
-    public static bool operator <=(List<T> left, List<T> right)
+    public static bool operator <=(List<T>? left, List<T>? right)
     {
         if (left is null)
         {
@@ -78,7 +107,7 @@ public sealed partial class List<T>
         return left.__Le__(right);
     }
 
-    public static bool operator >(List<T> left, List<T> right)
+    public static bool operator >(List<T>? left, List<T>? right)
     {
         if (left is null)
         {
@@ -88,7 +117,7 @@ public sealed partial class List<T>
         return left.__Gt__(right);
     }
 
-    public static bool operator >=(List<T> left, List<T> right)
+    public static bool operator >=(List<T>? left, List<T>? right)
     {
         if (left is null)
         {
