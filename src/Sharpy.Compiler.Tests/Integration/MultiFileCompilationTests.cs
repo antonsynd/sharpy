@@ -241,4 +241,36 @@ def greet(name: str) -> str:
         Assert.Contains(result.GeneratedCSharpFiles.Keys,
             k => k.Contains("helpers", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public void Compile_WithCircularImport_ReturnsError()
+    {
+        // Arrange: A imports B, B imports A
+        var aPath = Path.Combine(_tempDir, "a.spy");
+        var bPath = Path.Combine(_tempDir, "b.spy");
+
+        File.WriteAllText(aPath, @"
+from b import func_b
+
+def func_a() -> str:
+    return ""A""
+");
+
+        File.WriteAllText(bPath, @"
+from a import func_a
+
+def func_b() -> str:
+    return ""B""
+");
+
+        var compiler = new Compiler();
+
+        // Act
+        var result = compiler.Compile(File.ReadAllText(aPath), aPath);
+
+        // Assert
+        Assert.False(result.Success, "Compilation should fail for circular imports");
+        Assert.NotEmpty(result.Errors);
+        Assert.Contains(result.Errors, e => e.Contains("Circular import", StringComparison.OrdinalIgnoreCase));
+    }
 }
