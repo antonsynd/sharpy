@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-26T23:53:27.512837",
+  "generated_code": "# Test: Function calling function with discount calculation system\n# Tests: function composition, multiple return values, conditional logic\n\ndef calculate_subtotal(price: int, quantity: int) -> int:\n    return price * quantity\n\ndef apply_discount(amount: int, is_vip: bool) -> int:\n    if is_vip:\n        discount: int = amount * 20 // 100\n        return amount - discount\n    else:\n        discount: int = amount * 10 // 100\n        return amount - discount\n\ndef calculate_total(price: int, quantity: int, is_vip: bool) -> int:\n    subtotal: int = calculate_subtotal(price, quantity)\n    print(f\"Subtotal: {subtotal}\")\n    \n    total: int = apply_discount(subtotal, is_vip)\n    return total\n\ndef main():\n    print(\"Order 1: Regular customer\")\n    regular_total: int = calculate_total(100, 3, False)\n    print(f\"Final total: {regular_total}\")\n    \n    print(\"Order 2: VIP customer\")\n    vip_total: int = calculate_total(100, 3, True)\n    print(f\"Final total: {vip_total}\")\n\n# EXPECTED OUTPUT:\n# Order 1: Regular customer\n# Subtotal: 300\n# Final total: 270\n# Order 2: VIP customer\n# Subtotal: 300\n# Final total: 240",
+  "expected_output": "Order 1: Regular customer\nSubtotal: 300\nFinal total: 270\nOrder 2: VIP customer\nSubtotal: 300\nFinal total: 240\n",
+  "actual_output": "Order 1: Regular customer\nSubtotal: 300\nFinal total: 270\nOrder 2: VIP customer\nSubtotal: 300\nFinal total: 240",
+  "feature_focus": "function_calling_function",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 6.782991886138916,
+  "execution_duration": 1.5459420680999756,
+  "source_files": null
+}

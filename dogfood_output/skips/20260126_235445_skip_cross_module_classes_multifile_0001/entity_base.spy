@@ -1,0 +1,35 @@
+# Base entity system with interfaces and abstract classes
+
+@interface
+class IUpdateable:
+    def update(self, delta_time: float) -> None:
+        ...
+
+@interface
+class IRenderable:
+    def render(self) -> str:
+        ...
+
+@abstract
+class Entity(IUpdateable):
+    entity_id: int
+    position_x: float
+    position_y: float
+    is_active: bool
+
+    def __init__(self, id: int, x: float, y: float):
+        self.entity_id = id
+        self.position_x = x
+        self.position_y = y
+        self.is_active = True
+
+    @abstract
+    def get_type(self) -> str:
+        ...
+
+    def move(self, dx: float, dy: float) -> None:
+        self.position_x += dx
+        self.position_y += dy
+
+    def get_position(self) -> str:
+        return f"({self.position_x}, {self.position_y})"

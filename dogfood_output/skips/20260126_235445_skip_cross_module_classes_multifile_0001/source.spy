@@ -1,0 +1,50 @@
+# Game simulation using cross-module entity system
+from game_entities import Player, Enemy, Collectible
+from entity_base import IRenderable
+
+def main():
+    player: Player = Player(1, 10.0, 5.0)
+    enemy1: Enemy = Enemy(2, 50.0, 5.0, 15)
+    enemy2: Enemy = Enemy(3, 80.0, 5.0, 25)
+    coin: Collectible = Collectible(4, 30.0, 5.0, 100)
+
+    print("=== Initial Game State ===")
+    print(player.render())
+    print(enemy1.render())
+    print(enemy2.render())
+    print(coin.render())
+
+    print("\n=== Update Cycle (delta=1.0) ===")
+    player.update(1.0)
+    player.move(5.0, 2.0)
+    enemy1.update(1.0)
+    enemy2.update(1.0)
+
+    print(player.render())
+    print(enemy1.render())
+    print(enemy2.render())
+
+    print("\n=== Player Actions ===")
+    player.take_damage(20)
+    points: int = coin.collect()
+    player.score += points
+    print(f"Player collected {points} points!")
+    print(player.render())
+    print(coin.render())
+
+# EXPECTED OUTPUT:
+# === Initial Game State ===
+# Player[1] at (10, 5) HP:100 Score:0
+# Enemy[2] at (50, 5) DMG:15
+# Enemy[3] at (80, 5) DMG:25
+# Collectible[4] at (30, 5) Value:100 (available)
+# 
+# === Update Cycle (delta=1.0) ===
+# Player[1] at (15, 7) HP:100 Score:1
+# Enemy[2] at (52.5, 5) DMG:15
+# Enemy[3] at (82.5, 5) DMG:25
+# 
+# === Player Actions ===
+# Player collected 100 points!
+# Player[1] at (15, 7) HP:80 Score:101
+# Collectible[4] at (30, 5) Value:100 (collected)

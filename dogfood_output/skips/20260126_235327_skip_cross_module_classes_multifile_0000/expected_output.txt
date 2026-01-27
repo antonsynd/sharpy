@@ -1,0 +1,6 @@
+Alice Johnson (ID: 1001) - Books checked out: 0
+Checkout successful: Python Programming -> Alice Johnson
+Alice Johnson (ID: 1001) - Books checked out: 1
+Checkout failed: Python Programming is not available
+Return successful: Python Programming from Alice Johnson
+City Public Library - Total transactions: 2

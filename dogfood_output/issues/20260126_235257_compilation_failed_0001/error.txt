@@ -1,0 +1,4 @@
+Assembly compilation failed:
+  string_utils.cs(17,26): error CS0266: Cannot implicitly convert type 'uint' to 'int'. An explicit conversion exists (are you missing a cast?)
+  string_utils.cs(21,23): error CS0411: The type arguments for method 'Enumerable.Append<TSource>(IEnumerable<TSource>, TSource)' cannot be inferred from the usage. Try specifying the type arguments explicitly.
+  string_utils.cs(42,28): error CS1061: 'string' does not contain a definition for '__Contains__' and no accessible extension method '__Contains__' accepting a first argument of type 'string' could be found (are you missing a using directive or an assembly reference?)

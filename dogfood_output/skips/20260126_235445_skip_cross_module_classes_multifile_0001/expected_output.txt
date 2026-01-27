@@ -1,0 +1,15 @@
+=== Initial Game State ===
+Player[1] at (10, 5) HP:100 Score:0
+Enemy[2] at (50, 5) DMG:15
+Enemy[3] at (80, 5) DMG:25
+Collectible[4] at (30, 5) Value:100 (available)
+
+=== Update Cycle (delta=1.0) ===
+Player[1] at (15, 7) HP:100 Score:1
+Enemy[2] at (52.5, 5) DMG:15
+Enemy[3] at (82.5, 5) DMG:25
+
+=== Player Actions ===
+Player collected 100 points!
+Player[1] at (15, 7) HP:80 Score:101
+Collectible[4] at (30, 5) Value:100 (collected)

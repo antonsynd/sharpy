@@ -1,0 +1,6 @@
+Order 1: Regular customer
+Subtotal: 300
+Final total: 270
+Order 2: VIP customer
+Subtotal: 300
+Final total: 240

@@ -1,0 +1,4 @@
+Hello, Alice!
+You are 25 years old
+Score: 87.5
+Next year: 26

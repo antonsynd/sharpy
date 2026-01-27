@@ -1,0 +1,4 @@
+Original price: 1000
+After 3 discounts: 729
+Total savings: 271
+After 5 discounts: 590.49

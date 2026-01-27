@@ -1,0 +1,34 @@
+# Main entry point - demonstrates utilities from both modules
+from string_utils import TextProcessor, reverse_string, count_vowels
+from math_utils import factorial, is_even, Calculator
+
+def main():
+    # Test string utilities
+    processor: TextProcessor = TextProcessor("LOG")
+    message: str = processor.format_with_prefix("System started")
+    print(message)
+    
+    word: str = "Sharpy"
+    reversed_word: str = reverse_string(word)
+    print(reversed_word)
+    
+    vowel_count: int = count_vowels("Hello World")
+    print(vowel_count)
+    
+    # Test math utilities
+    fact_5: int = factorial(5)
+    print(fact_5)
+    
+    # Test calculator with accumulator pattern
+    calc: Calculator = Calculator()
+    calc.add(10)
+    calc.multiply(3)
+    final_result: int = calc.get_result()
+    print(final_result)
+
+# EXPECTED OUTPUT:
+# LOG: System started
+# yprahS
+# 3
+# 120
+# 30

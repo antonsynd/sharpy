@@ -1,0 +1,5 @@
+Name: Alice
+Age: 25
+Score: 95.5
+Alice is 25 years old
+Next year: 26
