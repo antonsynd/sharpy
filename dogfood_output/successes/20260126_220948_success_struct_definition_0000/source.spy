@@ -1,0 +1,23 @@
+# Test: Basic struct definition with value type semantics
+
+struct Dimensions:
+    width: int
+    height: int
+
+    def __init__(self, w: int, h: int):
+        self.width = w
+        self.height = h
+
+    def area(self) -> int:
+        return self.width * self.height
+
+def main():
+    d = Dimensions(8, 5)
+    print(d.width)
+    print(d.height)
+    print(d.area())
+
+# EXPECTED OUTPUT:
+# 8
+# 5
+# 40

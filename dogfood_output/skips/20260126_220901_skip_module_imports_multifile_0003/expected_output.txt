@@ -1,0 +1,9 @@
+Shape: Circle
+Drawing a circle with radius 10.0
+Circle area: 314.159
+Point(100, 200)
+ColoredShape at Point(100, 200) with color Blue
+Canvas: My Artwork
+Drawing a circle with radius 5.0
+Drawing a rectangle 4.0x6.0
+Total area: 102.53975

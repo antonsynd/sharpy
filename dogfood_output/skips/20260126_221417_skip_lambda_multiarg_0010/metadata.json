@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-26T22:13:41.740660",
+  "skip_reason": "Invalid expected output after 3 attempts (Python says: )",
+  "generated_code": "# Test: Multi-argument lambda expressions with different use cases\n# Tests: lambda with 2+ parameters, higher-order functions, lambda as argument\n\nclass Calculator:\n    def apply_operation(self, a: int, b: int, op) -> int:\n        return op(a, b)\n    \n    def apply_three_arg_op(self, a: int, b: int, c: int, op) -> int:\n        return op(a, b, c)\n\ndef main():\n    calc = Calculator()\n    \n    # Two-argument lambda: addition\n    add_lambda = lambda x, y: x + y\n    result1: int = calc.apply_operation(10, 5, add_lambda)\n    print(f\"10 + 5 = {result1}\")\n    \n    # Two-argument lambda: multiplication\n    mult_lambda = lambda x, y: x * y\n    result2: int = calc.apply_operation(7, 3, mult_lambda)\n    print(f\"7 * 3 = {result2}\")\n    \n    # Three-argument lambda: complex expression\n    three_arg = lambda a, b, c: (a + b) * c\n    result3: int = calc.apply_three_arg_op(2, 3, 4, three_arg)\n    print(f\"(2 + 3) * 4 = {result3}\")\n    \n    # Inline lambda usage\n    result4: int = calc.apply_operation(100, 25, lambda x, y: x - y)\n    print(f\"100 - 25 = {result4}\")\n    \n    # Lambda with division\n    result5: int = calc.apply_operation(50, 10, lambda x, y: x // y)\n    print(f\"50 // 10 = {result5}\")\n\n# EXPECTED OUTPUT:\n# 10 + 5 = 15\n# 7 * 3 = 21\n# (2 + 3) * 4 = 20\n# 100 - 25 = 75\n# 50 // 10 = 5",
+  "expected_output": "10 + 5 = 15\n7 * 3 = 21\n(2 + 3) * 4 = 20\n100 - 25 = 75\n50 // 10 = 5\n",
+  "feature_focus": "lambda_multiarg",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 29.299201250076294,
+  "source_files": null,
+  "validation_output": null
+}

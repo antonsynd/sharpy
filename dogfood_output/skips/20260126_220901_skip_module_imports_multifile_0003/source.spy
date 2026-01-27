@@ -1,0 +1,39 @@
+# Main entry point - demonstrates cross-module imports and inheritance
+from geometry import Circle, Rectangle, Drawable
+from color_system import Color, Point, ColoredShape
+from canvas import Canvas, create_default_shapes
+
+def main():
+    # Test basic shapes from geometry module
+    circle: Circle = Circle(10.0)
+    print(circle.describe())
+    print(circle.draw())
+    print(f"Circle area: {circle.area()}")
+
+    # Test color system with struct and enum
+    position: Point = Point(100, 200)
+    print(position.to_string())
+
+    colored_obj: ColoredShape = ColoredShape(Color.Blue, position)
+    print(colored_obj.info())
+
+    # Test canvas with multiple shapes
+    canvas: Canvas = Canvas("My Artwork")
+    shapes: list[Drawable] = create_default_shapes()
+    
+    for shape in shapes:
+        canvas.add_shape(shape)
+
+    canvas.render_all()
+    print(f"Total area: {canvas.total_area()}")
+
+# EXPECTED OUTPUT:
+# Shape: Circle
+# Drawing a circle with radius 10.0
+# Circle area: 314.159
+# Point(100, 200)
+# ColoredShape at Point(100, 200) with color Blue
+# Canvas: My Artwork
+# Drawing a circle with radius 5.0
+# Drawing a rectangle 4.0x6.0
+# Total area: 102.53975

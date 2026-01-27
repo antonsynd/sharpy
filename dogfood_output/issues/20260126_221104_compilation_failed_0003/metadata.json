@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-01-26T22:10:49.884936",
+  "generated_code": "# Test: from...import statement with multiple items and selective imports\n# Tests: from module import syntax, using imported items directly\n\nfrom system import Console, Environment\n\ndef main():\n    # Use imported .NET types directly without qualification\n    Console.WriteLine(\"Testing from-import\")\n    \n    # Access static property from imported type\n    newline_len: int = len(Environment.NewLine)\n    print(newline_len)\n    \n    # Verify we can use Console methods\n    Console.WriteLine(\"Direct Console access works\")\n\n# EXPECTED OUTPUT:\n# Testing from-import\n# 2\n# Direct Console access works",
+  "expected_output": "Testing from-import\n2\nDirect Console access works\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n  dogfood_test.cs(15,30): error CS0266: Cannot implicitly convert type 'uint' to 'int'. An explicit conversion exists (are you missing a cast?)\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "from_import",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 5.612587928771973,
+  "compilation_duration": null,
+  "execution_duration": 1.3260338306427002,
+  "source_files": null
+}

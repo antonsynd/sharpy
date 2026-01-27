@@ -1,0 +1,119 @@
+# Skipped Dogfood Run
+
+**Timestamp:** 2026-01-26T22:11:04.992484
+**Skip Reason:** Pre-validation failed after 3 attempts: Line 65: with statement (not implemented) - 'print("Testing default parameters with inheritance...'
+**Feature Focus:** function_default_params
+**Complexity:** complex
+**Backend:** claude
+
+## Generated Sharpy Code
+
+```python
+# Test: Default parameters with function overloading patterns
+# Tests: default params, method calls, inheritance, virtual/override, control flow
+
+@abstract
+class NotificationService:
+    name: str
+    max_retries: int
+    
+    def __init__(self, service_name: str):
+        self.name = service_name
+        self.max_retries = 3
+    
+    @abstract
+    def send(self, message: str, priority: int, retry_count: int) -> bool:
+        ...
+    
+    def notify_with_defaults(self, message: str, priority: int = 1, retry_count: int = 0) -> None:
+        success: bool = self.send(message, priority, retry_count)
+        if success:
+            print(f"Sent: {message}")
+        else:
+            print(f"Failed: {message}")
+
+class EmailService(NotificationService):
+    delivery_count: int
+    
+    def __init__(self):
+        super().__init__("Email")
+        self.delivery_count = 0
+    
+    @override
+    def send(self, message: str, priority: int, retry_count: int) -> bool:
+        self.delivery_count += 1
+        if retry_count < self.max_retries:
+            return True
+        return False
+
+class SMSService(NotificationService):
+    failed_attempts: int
+    
+    def __init__(self):
+        super().__init__("SMS")
+        self.failed_attempts = 0
+    
+    @override
+    def send(self, message: str, priority: int, retry_count: int) -> bool:
+        if priority > 5:
+            return True
+        self.failed_attempts += 1
+        return False
+
+def process_notifications(service: NotificationService, msg: str, high_priority: bool = False, retries: int = 0) -> int:
+    priority_level: int = 0
+    if high_priority:
+        priority_level = 8
+    else:
+        priority_level = 2
+    service.notify_with_defaults(msg, priority_level, retries)
+    return priority_level
+
+def main():
+    email: EmailService = EmailService()
+    sms: SMSService = SMSService()
+    
+    print("Testing default parameters with inheritance")
+    
+    email.notify_with_defaults("Welcome")
+    
+    email.notify_with_defaults("Alert", 5)
+    
+    email.notify_with_defaults("Critical", 10, 2)
+    
+    result1: int = process_notifications(sms, "Low priority message")
+    print(f"Priority used: {result1}")
+    
+    result2: int = process_notifications(sms, "High priority message", True)
+    print(f"Priority used: {result2}")
+    
+    i: int = 0
+    while i < 3:
+        sms.notify_with_defaults(f"Message {i}", i + 1)
+        i += 1
+
+# EXPECTED OUTPUT:
+# Testing default parameters with inheritance
+# Sent: Welcome
+# Sent: Alert
+# Sent: Critical
+# Failed: Low priority message
+# Priority used: 2
+# Sent: High priority message
+# Priority used: 8
+# Failed: Message 0
+# Failed: Message 1
+# Failed: Message 2
+```
+
+## Timing
+
+- Generation: 33.20s
+
+## Notes
+
+This iteration was skipped because the generated code didn't pass validation.
+This is typically due to the AI generating code with unsupported features
+or syntax that doesn't match the Sharpy spec (phases 0.1.0-0.1.10).
+
+This output is saved for inspection to help improve prompting.

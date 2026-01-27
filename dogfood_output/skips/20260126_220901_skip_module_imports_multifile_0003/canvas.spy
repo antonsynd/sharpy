@@ -1,0 +1,31 @@
+# Canvas module - uses geometry shapes
+
+from geometry import Shape, Circle, Rectangle, Drawable
+
+class Canvas:
+    shapes: list[Shape]
+    title: str
+
+    def __init__(self, canvas_title: str):
+        self.title = canvas_title
+        self.shapes = []
+
+    def add_shape(self, shape: Shape) -> None:
+        self.shapes.append(shape)
+
+    def total_area(self) -> float:
+        total: float = 0.0
+        for shape in self.shapes:
+            total += shape.area()
+        return total
+
+    def render_all(self) -> None:
+        print(f"Canvas: {self.title}")
+        for shape in self.shapes:
+            print(shape.draw())
+
+def create_default_shapes() -> list[Shape]:
+    result: list[Shape] = []
+    result.append(Circle(5.0))
+    result.append(Rectangle(4.0, 6.0))
+    return result

@@ -1,0 +1,7 @@
+Assembly compilation failed:
+  main.cs(7,26): error CS0234: The type or namespace name 'MathUtils' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)
+  main.cs(8,26): error CS0234: The type or namespace name 'Geometry' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)
+  main.cs(16,25): error CS0103: The name 'Factorial' does not exist in the current context
+  main.cs(18,40): error CS0234: The type or namespace name 'MathUtils' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)
+  main.cs(21,40): error CS0234: The type or namespace name 'Geometry' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)
+  main.cs(25,30): error CS0103: The name 'IsEven' does not exist in the current context

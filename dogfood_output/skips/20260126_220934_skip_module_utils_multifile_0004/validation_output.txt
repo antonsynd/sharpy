@@ -1,0 +1,11 @@
+```
+INVALID
+Reason: Missing required main() entry point
+Found: Module contains executable code structures but no main() function
+
+The code defines module-level declarations (functions and classes), which is allowed, but there is no main() entry point. In Sharpy, executable programs MUST have a def main(): function to serve as the entry point. This code appears to be a utility module without an entry point, which means it cannot be executed as a standalone program.
+
+Additionally, if this is intended as a library module (not an executable), it would need to be imported by another module that DOES have a main() function.
+```
+
+**Note:** The code itself uses only valid features from phases 0.1.0-0.1.14 (functions, classes, type annotations, f-strings, control flow), but it violates the **program structure requirement** that executable Sharpy programs must have a `main()` function. If this is intended as a library module to be imported by other code, that would be acceptable, but as a standalone file to execute, it is invalid.

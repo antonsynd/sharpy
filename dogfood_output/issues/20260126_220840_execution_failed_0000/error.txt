@@ -1,0 +1,7 @@
+Compilation failed:
+  Semantic error at line 20, column 25: Type 'IComparable' has no member 'value'
+  Semantic error at line 22, column 25: Type 'IComparable' has no member 'value'
+  Semantic error at line 38, column 14: Inferred type 'T' does not satisfy constraint 'IComparable' for type parameter 'T'
+  Semantic error at line 39, column 12: Inferred type '<?>' does not satisfy constraint 'IFormattable' for type parameter 'T'
+  Semantic error at line 49, column 15: Type parameter 'IFormattable' cannot be inferred; no arguments provide type information. Use explicit syntax: process_pair[T, IFormattable](...)
+  Semantic error at line 52, column 15: Type parameter 'IFormattable' cannot be inferred; no arguments provide type information. Use explicit syntax: process_pair[T, IFormattable](...)

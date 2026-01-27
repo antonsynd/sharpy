@@ -1,0 +1,22 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-01-26T22:10:15.085976",
+  "generated_code": "# Main entry point - tests module imports and cross-module usage\nfrom math_utils import factorial, is_even, Calculator\nfrom geometry import Rectangle\n\ndef main():\n    # Test importing function from math_utils\n    fact_5: int = factorial(5)\n    print(fact_5)\n\n    # Test importing class from math_utils\n    calc = Calculator(\"BasicCalc\")\n    sum_result: int = calc.add(10, 7)\n    print(sum_result)\n\n    # Test importing from geometry (which itself imports from math_utils)\n    rect = Rectangle(4, 6)\n    rect_area: int = rect.area()\n    print(rect_area)\n\n    # Test multiple imports working together\n    prod: int = calc.multiply(3, 8)\n    check_even: bool = is_even(prod)\n    print(check_even)\n\n    # Test perimeter calculation\n    rect_perim: int = rect.perimeter()\n    print(rect_perim)\n\n# EXPECTED OUTPUT:\n# 120\n# 17\n# 24\n# True\n# 20",
+  "expected_output": "120\n17\n24\nTrue\n20\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n  main.cs(7,26): error CS0234: The type or namespace name 'MathUtils' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)\n  main.cs(8,26): error CS0234: The type or namespace name 'Geometry' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)\n  main.cs(16,25): error CS0103: The name 'Factorial' does not exist in the current context\n  main.cs(18,40): error CS0234: The type or namespace name 'MathUtils' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)\n  main.cs(21,40): error CS0234: The type or namespace name 'Geometry' does not exist in the namespace 'Sharpy.Main' (are you missing an assembly reference?)\n  main.cs(25,30): error CS0103: The name 'IsEven' does not exist in the current context\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 9.926967144012451,
+  "compilation_duration": null,
+  "execution_duration": 1.2700660228729248,
+  "source_files": {
+    "math_utils.spy": "# Module providing mathematical utility functions and classes\n\nclass Calculator:\n    name: str\n\n    def __init__(self, name: str):\n        self.name = name\n\n    def add(self, a: int, b: int) -> int:\n        return a + b\n\n    def multiply(self, a: int, b: int) -> int:\n        return a * b\n\ndef factorial(n: int) -> int:\n    if n <= 1:\n        return 1\n    result: int = 1\n    i: int = 2\n    while i <= n:\n        result = result * i\n        i += 1\n    return result\n\ndef is_even(x: int) -> bool:\n    return x % 2 == 0",
+    "geometry.spy": "# Module providing geometric shapes and calculations\nfrom math_utils import Calculator\n\nclass Rectangle:\n    width: int\n    height: int\n    calc: Calculator\n\n    def __init__(self, w: int, h: int):\n        self.width = w\n        self.height = h\n        self.calc = Calculator(\"RectCalc\")\n\n    def area(self) -> int:\n        return self.calc.multiply(self.width, self.height)\n\n    def perimeter(self) -> int:\n        side_sum: int = self.calc.add(self.width, self.height)\n        return self.calc.multiply(side_sum, 2)",
+    "main.spy": "# Main entry point - tests module imports and cross-module usage\nfrom math_utils import factorial, is_even, Calculator\nfrom geometry import Rectangle\n\ndef main():\n    # Test importing function from math_utils\n    fact_5: int = factorial(5)\n    print(fact_5)\n\n    # Test importing class from math_utils\n    calc = Calculator(\"BasicCalc\")\n    sum_result: int = calc.add(10, 7)\n    print(sum_result)\n\n    # Test importing from geometry (which itself imports from math_utils)\n    rect = Rectangle(4, 6)\n    rect_area: int = rect.area()\n    print(rect_area)\n\n    # Test multiple imports working together\n    prod: int = calc.multiply(3, 8)\n    check_even: bool = is_even(prod)\n    print(check_even)\n\n    # Test perimeter calculation\n    rect_perim: int = rect.perimeter()\n    print(rect_perim)\n\n# EXPECTED OUTPUT:\n# 120\n# 17\n# 24\n# True\n# 20"
+  }
+}

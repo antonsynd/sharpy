@@ -1,0 +1,24 @@
+```
+INVALID
+Reason: No main() function defined - executable Sharpy programs MUST have a main() entry point
+Found: Module contains only class and function declarations without a main() function
+```
+
+**Explanation:**
+
+Every executable Sharpy program requires a `main()` function as the entry point. While this code contains valid declarations (a `Calculator` class and utility functions `factorial` and `is_even`), it lacks the required `main()` function.
+
+If this is intended as a utility module to be imported by other code, it would be valid. However, as a standalone executable program, it's **INVALID** without a `main()` function.
+
+To make this valid as an executable program, add:
+
+```python
+def main():
+    # Example usage
+    calc: Calculator = Calculator("MyCalc")
+    print(calc.add(5, 3))
+    print(factorial(5))
+    print(is_even(4))
+```
+
+**Note:** The existing declarations (class, functions) are all correctly formed according to phases 0.1.0-0.1.14, but the missing `main()` entry point violates the fundamental program structure requirement.

@@ -1,0 +1,28 @@
+# Simple class inheritance with a Vehicle hierarchy
+class Vehicle:
+    wheels: int
+
+    def __init__(self, wheels: int):
+        self.wheels = wheels
+
+    def describe(self) -> int:
+        return self.wheels
+
+class Car(Vehicle):
+    doors: int
+
+    def __init__(self, doors: int):
+        super().__init__(4)
+        self.doors = doors
+
+    def total_openings(self) -> int:
+        return self.wheels + self.doors
+
+def main():
+    sedan: Car = Car(4)
+    print(sedan.describe())
+    print(sedan.total_openings())
+
+# EXPECTED OUTPUT:
+# 4
+# 8

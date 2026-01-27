@@ -1,0 +1,24 @@
+# Utility module for string operations
+
+class TextProcessor:
+    prefix: str
+
+    def __init__(self, prefix: str):
+        self.prefix = prefix
+
+    def format_message(self, text: str) -> str:
+        return f"{self.prefix}: {text}"
+
+def repeat_string(s: str, times: int) -> str:
+    result: str = ""
+    i: int = 0
+    while i < times:
+        result = f"{result}{s}"
+        i += 1
+    return result
+
+def count_chars(s: str) -> int:
+    count: int = 0
+    for c in s:
+        count += 1
+    return count

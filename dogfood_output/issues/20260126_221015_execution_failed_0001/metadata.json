@@ -1,0 +1,21 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-26T22:09:48.818959",
+  "generated_code": "# Main entry point - tests module imports with classes and functions\nfrom utilities import Calculator, double, triple, StringFormatter\n\ndef main():\n    # Test standalone function imports\n    x: int = 5\n    doubled: int = double(x)\n    print(doubled)\n\n    tripled: int = triple(x)\n    print(tripled)\n\n    # Test class import and instantiation\n    calc = Calculator(2)\n    sum_result: int = calc.add(10, 20)\n    print(sum_result)\n\n    product: int = calc.multiply(4, 7)\n    formatted: str = calc.format_result(product)\n    print(formatted)\n\n    # Test another class import\n    formatter = StringFormatter(\"Status\")\n    message: str = formatter.format(\"Module system working\")\n    print(message)\n\n# EXPECTED OUTPUT:\n# 10\n# 15\n# 30\n# Result: 28 (precision: 2)\n# Status: Module system working",
+  "expected_output": "10\n15\n30\nResult: 28 (precision: 2)\nStatus: Module system working\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 7, column 5: Cannot assign type 'double' to variable of type 'int'\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 8.451214790344238,
+  "compilation_duration": null,
+  "execution_duration": 0.8908650875091553,
+  "source_files": {
+    "utilities.spy": "# Utility module providing math and string operations\n\nclass Calculator:\n    precision: int\n\n    def __init__(self, precision: int):\n        self.precision = precision\n\n    def add(self, a: int, b: int) -> int:\n        return a + b\n\n    def multiply(self, a: int, b: int) -> int:\n        return a * b\n\n    def format_result(self, value: int) -> str:\n        return f\"Result: {value} (precision: {self.precision})\"\n\ndef double(x: int) -> int:\n    return x * 2\n\ndef triple(x: int) -> int:\n    return x * 3\n\nclass StringFormatter:\n    prefix: str\n\n    def __init__(self, prefix: str):\n        self.prefix = prefix\n\n    def format(self, text: str) -> str:\n        return f\"{self.prefix}: {text}\"",
+    "main.spy": "# Main entry point - tests module imports with classes and functions\nfrom utilities import Calculator, double, triple, StringFormatter\n\ndef main():\n    # Test standalone function imports\n    x: int = 5\n    doubled: int = double(x)\n    print(doubled)\n\n    tripled: int = triple(x)\n    print(tripled)\n\n    # Test class import and instantiation\n    calc = Calculator(2)\n    sum_result: int = calc.add(10, 20)\n    print(sum_result)\n\n    product: int = calc.multiply(4, 7)\n    formatted: str = calc.format_result(product)\n    print(formatted)\n\n    # Test another class import\n    formatter = StringFormatter(\"Status\")\n    message: str = formatter.format(\"Module system working\")\n    print(message)\n\n# EXPECTED OUTPUT:\n# 10\n# 15\n# 30\n# Result: 28 (precision: 2)\n# Status: Module system working"
+  }
+}

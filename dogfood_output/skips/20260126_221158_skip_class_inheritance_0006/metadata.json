@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-26T22:11:38.197327",
+  "skip_reason": "Invalid expected output after 3 attempts (Python says: )",
+  "generated_code": "# Simple class inheritance with a Vehicle hierarchy\nclass Vehicle:\n    wheels: int\n\n    def __init__(self, wheels: int):\n        self.wheels = wheels\n\n    def describe(self) -> int:\n        return self.wheels\n\nclass Car(Vehicle):\n    doors: int\n\n    def __init__(self, doors: int):\n        super().__init__(4)\n        self.doors = doors\n\n    def total_openings(self) -> int:\n        return self.wheels + self.doors\n\ndef main():\n    sedan: Car = Car(4)\n    print(sedan.describe())\n    print(sedan.total_openings())\n\n# EXPECTED OUTPUT:\n# 4\n# 8",
+  "expected_output": "4\n8\n",
+  "feature_focus": "class_inheritance",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 20.42807912826538,
+  "source_files": null,
+  "validation_output": null
+}

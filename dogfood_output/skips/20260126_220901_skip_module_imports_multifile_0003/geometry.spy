@@ -1,0 +1,59 @@
+# Geometry module - shapes and interfaces
+
+@interface
+class Drawable:
+    def draw(self) -> str:
+        ...
+
+    def area(self) -> float:
+        ...
+
+@abstract
+class Shape(Drawable):
+    name: str
+
+    def __init__(self, shape_name: str):
+        self.name = shape_name
+
+    def describe(self) -> str:
+        return f"Shape: {self.name}"
+
+    @abstract
+    def area(self) -> float:
+        ...
+
+    @abstract
+    def draw(self) -> str:
+        ...
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, r: float):
+        super().__init__("Circle")
+        self.radius = r
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def draw(self) -> str:
+        return f"Drawing a circle with radius {self.radius}"
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, w: float, h: float):
+        super().__init__("Rectangle")
+        self.width = w
+        self.height = h
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def draw(self) -> str:
+        return f"Drawing a rectangle {self.width}x{self.height}"

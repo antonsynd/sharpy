@@ -1,0 +1,3 @@
+Testing from-import
+2
+Direct Console access works

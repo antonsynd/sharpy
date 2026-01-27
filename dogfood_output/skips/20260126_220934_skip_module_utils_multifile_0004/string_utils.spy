@@ -1,0 +1,27 @@
+# Utility module for string operations
+
+from math_utils import Calculator
+
+def repeat_string(text: str, times: int) -> str:
+    result: str = ""
+    i: int = 0
+    while i < times:
+        result += text
+        i += 1
+    return result
+
+class StringFormatter:
+    prefix: str
+    suffix: str
+
+    def __init__(self, pre: str, suf: str):
+        self.prefix = pre
+        self.suffix = suf
+
+    def format(self, content: str) -> str:
+        return f"{self.prefix}{content}{self.suffix}"
+
+    def format_number(self, num: int) -> str:
+        calc = Calculator(2)
+        powered: int = calc.power(num, 2)
+        return self.format(str(powered))

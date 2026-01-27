@@ -1,0 +1,11 @@
+Testing default parameters with inheritance
+Sent: Welcome
+Sent: Alert
+Sent: Critical
+Failed: Low priority message
+Priority used: 2
+Sent: High priority message
+Priority used: 8
+Failed: Message 0
+Failed: Message 1
+Failed: Message 2

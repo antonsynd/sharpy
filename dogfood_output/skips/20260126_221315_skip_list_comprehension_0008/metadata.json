@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-26T22:12:53.943124",
+  "skip_reason": "Invalid expected output after 3 attempts (Python says: )",
+  "generated_code": "# Test: List comprehension with filtering and transformation\n# Tests: list comprehension, filtering, range iteration, type inference\n\ndef main():\n    # Simple transformation\n    squares: list[int] = [x * x for x in range(1, 6)]\n    print(squares[0])\n    print(squares[4])\n    \n    # Filtering even numbers\n    evens: list[int] = [n for n in range(10) if n % 2 == 0]\n    print(evens[0])\n    print(evens[3])\n    \n    # Expression with condition\n    doubled_odds: list[int] = [x * 2 for x in range(1, 8) if x % 2 == 1]\n    print(len(doubled_odds))\n    print(doubled_odds[2])\n\n# EXPECTED OUTPUT:\n# 1\n# 25\n# 0\n# 6\n# 4\n# 10",
+  "expected_output": "1\n25\n0\n6\n4\n10\n",
+  "feature_focus": "list_comprehension",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 21.841614484786987,
+  "source_files": null,
+  "validation_output": null
+}

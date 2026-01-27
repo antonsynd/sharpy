@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-26T22:09:34.982157",
+  "generated_code": "# Test: Basic struct definition with value type semantics\n\nstruct Dimensions:\n    width: int\n    height: int\n\n    def __init__(self, w: int, h: int):\n        self.width = w\n        self.height = h\n\n    def area(self) -> int:\n        return self.width * self.height\n\ndef main():\n    d = Dimensions(8, 5)\n    print(d.width)\n    print(d.height)\n    print(d.area())\n\n# EXPECTED OUTPUT:\n# 8\n# 5\n# 40",
+  "expected_output": "8\n5\n40\n",
+  "actual_output": "8\n5\n40",
+  "feature_focus": "struct_definition",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 4.375231027603149,
+  "execution_duration": 1.4083361625671387,
+  "source_files": null
+}
