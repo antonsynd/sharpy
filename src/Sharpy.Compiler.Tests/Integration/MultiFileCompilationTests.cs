@@ -192,4 +192,53 @@ def add(a: int, b: int) -> int:
         // Entry point should contain Main method
         Assert.Contains("static void Main(", mainCsEntry.Value);
     }
+
+    [Fact]
+    public void Compile_WithTransitiveImports_GeneratesCSharpForAllFiles()
+    {
+        // Arrange: A imports B, B imports C
+        var mainPath = Path.Combine(_tempDir, "main.spy");
+        var utilsPath = Path.Combine(_tempDir, "utils.spy");
+        var helpersPath = Path.Combine(_tempDir, "helpers.spy");
+
+        File.WriteAllText(mainPath, @"
+from utils import format_greeting
+
+def main():
+    print(format_greeting(""World""))
+");
+
+        File.WriteAllText(utilsPath, @"
+from helpers import greet
+
+def format_greeting(name: str) -> str:
+    greeting = greet(name)
+    return f""[FORMATTED] {greeting}""
+");
+
+        File.WriteAllText(helpersPath, @"
+def greet(name: str) -> str:
+    return f""Hello, {name}!""
+");
+
+        var compiler = new Compiler();
+
+        // Act
+        var result = compiler.Compile(File.ReadAllText(mainPath), mainPath);
+
+        // Assert
+        Assert.True(result.Success, string.Join(", ", result.Errors));
+
+        // All three files should be compiled
+        Assert.True(result.GeneratedCSharpFiles.Count >= 3,
+            $"Expected at least 3 files for transitive imports, got {result.GeneratedCSharpFiles.Count}. " +
+            $"Files: {string.Join(", ", result.GeneratedCSharpFiles.Keys.Select(Path.GetFileName))}");
+
+        Assert.Contains(result.GeneratedCSharpFiles.Keys,
+            k => k.Contains("main", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.GeneratedCSharpFiles.Keys,
+            k => k.Contains("utils", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.GeneratedCSharpFiles.Keys,
+            k => k.Contains("helpers", StringComparison.OrdinalIgnoreCase));
+    }
 }
