@@ -29,6 +29,15 @@ public class ImportResolver
     private readonly Dictionary<string, ModuleInfo> _moduleCache = new();
     private readonly ModuleRegistry? _moduleRegistry;
     private readonly ModuleResolver _moduleResolver;
+
+    /// <summary>
+    /// All loaded .spy modules (excludes .NET modules).
+    /// Key is the full file path, value is the ModuleInfo.
+    /// </summary>
+    public IReadOnlyDictionary<string, ModuleInfo> LoadedSpyModules =>
+        _moduleCache
+            .Where(kvp => !kvp.Value.IsNetModule && kvp.Value.Module != null)
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
     private DependencyGraphBuilder? _graphBuilder;
     private SemanticBinding? _semanticBinding;
 
