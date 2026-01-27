@@ -377,6 +377,43 @@ public class Compiler
 
         return result;
     }
+
+    /// <summary>
+    /// Generate C# code for a single module that has already been parsed and type-checked.
+    /// Used for generating code for imported modules discovered during compilation.
+    /// </summary>
+    private string? GenerateCSharpForModule(
+        ModuleInfo moduleInfo,
+        SymbolTable symbolTable,
+        BuiltinRegistry builtinRegistry,
+        string? projectNamespace)
+    {
+        if (moduleInfo.Module == null || moduleInfo.IsNetModule)
+            return null;
+
+        var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
+        {
+            SourceFilePath = moduleInfo.Path,
+            ProjectNamespace = projectNamespace,
+            // Imported modules are NOT entry points - no Main method
+            IsEntryPoint = false,
+            Logger = _logger
+        };
+
+        var emitter = new RoslynEmitter(codeGenContext);
+        var compilationUnit = emitter.GenerateCompilationUnit(moduleInfo.Module);
+
+        if (codeGenContext.HasErrors)
+        {
+            foreach (var error in codeGenContext.Errors)
+            {
+                _logger.LogError($"Code generation error in {moduleInfo.Path}: {error}", 0, 0);
+            }
+            return null;
+        }
+
+        return compilationUnit.ToFullString();
+    }
 }
 
 /// <summary>
