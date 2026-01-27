@@ -6,8 +6,10 @@ using static Sharpy.Core.Exports;
 
 public sealed partial class List<T>
 {
-    /// <inheritdoc/>
-    public override string __Repr__()
+    /// <summary>
+    /// Returns a string representation of this list.
+    /// </summary>
+    public override string ToString()
     {
         var builder = new StringBuilder();
         builder.Append('[');
@@ -30,5 +32,13 @@ public sealed partial class List<T>
         builder.Append(']');
 
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// Deprecated: Use <see cref="ToString()"/> instead.
+    /// </summary>
+    public string __Repr__()
+    {
+        return ToString();
     }
 }
