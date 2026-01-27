@@ -1,2 +1,0 @@
-Compilation failed:
-  Semantic error at line 7, column 5: Cannot assign type 'double' to variable of type 'int'

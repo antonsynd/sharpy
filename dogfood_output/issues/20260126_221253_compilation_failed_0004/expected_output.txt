@@ -1,5 +1,0 @@
-15
-49
-HiHiHi
-False
-Result: done

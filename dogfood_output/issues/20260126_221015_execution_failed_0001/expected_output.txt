@@ -1,5 +1,0 @@
-10
-15
-30
-Result: 28 (precision: 2)
-Status: Module system working

@@ -1,5 +1,0 @@
-Factorial of 5: 120
-Is 7 prime? True
-2^4 = 16
-Repeated string: HiHiHi
-Formatted number: [25]
