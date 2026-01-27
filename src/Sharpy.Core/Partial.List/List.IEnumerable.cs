@@ -7,12 +7,11 @@ public sealed partial class List<T>
     /// <inheritdoc/>
     public IEnumerator<T> GetEnumerator()
     {
-        // Delegate to __Iter__() to ensure consistent iteration behavior
-        return __Iter__();
+        return new ListIterator<T>(this);
     }
 
     /// <summary>
-    /// Delegate to specialized GetEnumerator() for generalized one.
+    /// Non-generic enumerator for IEnumerable interface.
     /// </summary>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
