@@ -1,7 +1,5 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 /// <summary>
 /// Iterator that yields elements from an iterable for which a predicate is true.
 /// </summary>
@@ -16,7 +14,7 @@ public class FilterIterator<T> : Iterator<T>
     /// </summary>
     /// <param name="predicate">The predicate function</param>
     /// <param name="iterable">The iterable to filter</param>
-    public FilterIterator(Func<T, bool> predicate, IIterable<T> iterable)
+    public FilterIterator(Func<T, bool> predicate, IEnumerable<T> iterable)
     {
         if (predicate is null)
         {
@@ -29,7 +27,7 @@ public class FilterIterator<T> : Iterator<T>
         }
 
         _predicate = predicate;
-        _iterator = iterable.__Iter__();
+        _iterator = Exports.Iter(iterable);
     }
 
     /// <inheritdoc/>
@@ -56,7 +54,7 @@ public static partial class Exports
     /// <param name="predicate">The predicate function to test each element</param>
     /// <param name="iterable">The iterable to filter</param>
     /// <returns>A filter iterator</returns>
-    public static FilterIterator<T> Filter<T>(Func<T, bool> predicate, IIterable<T> iterable)
+    public static FilterIterator<T> Filter<T>(Func<T, bool> predicate, IEnumerable<T> iterable)
     {
         return new FilterIterator<T>(predicate, iterable);
     }
