@@ -7,7 +7,10 @@ using Collections.Interfaces;
 /// View of dictionary items as (key, value) tuples.
 /// This view reflects changes to the underlying dictionary.
 /// </summary>
-public sealed class DictItemsView<K, V> : IItemsView<K, V> where K : notnull
+public sealed class DictItemsView<K, V>
+    : IItemsView<K, V>,
+      IReadOnlyCollection<(K, V)>
+    where K : notnull
 {
     private readonly Dictionary<K, V> _dict;
 
@@ -16,20 +19,15 @@ public sealed class DictItemsView<K, V> : IItemsView<K, V> where K : notnull
         _dict = dict;
     }
 
+    /// <summary>
+    /// Gets the number of items in the view.
+    /// </summary>
+    public int Count => _dict.Count;
+
+    /// <summary>
+    /// Determines whether the view contains the specified key-value pair.
+    /// </summary>
     public bool Contains((K, V) item)
-    {
-        return __Contains__(item);
-    }
-
-    public IEnumerator<(K, V)> GetEnumerator()
-    {
-        foreach (var kvp in _dict)
-        {
-            yield return (kvp.Key, kvp.Value);
-        }
-    }
-
-    public bool __Contains__((K, V) item)
     {
         if (_dict.TryGetValue(item.Item1, out V? value))
         {
@@ -39,15 +37,34 @@ public sealed class DictItemsView<K, V> : IItemsView<K, V> where K : notnull
         return false;
     }
 
+    /// <summary>
+    /// Returns an enumerator that iterates through the items.
+    /// </summary>
+    public IEnumerator<(K, V)> GetEnumerator()
+    {
+        foreach (var kvp in _dict)
+        {
+            yield return (kvp.Key, kvp.Value);
+        }
+    }
+
+    /// <summary>
+    /// Deprecated: Use <see cref="Contains(ValueTuple{K, V})"/> instead.
+    /// </summary>
+    public bool __Contains__((K, V) item) => Contains(item);
+
+    /// <summary>
+    /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
+    /// </summary>
     public Iterator<(K, V)> __Iter__()
     {
         return new EnumeratorIterator<(K, V)>(GetEnumerator());
     }
 
-    public int __Len__()
-    {
-        return _dict.Count;
-    }
+    /// <summary>
+    /// Deprecated: Use <see cref="Count"/> instead.
+    /// </summary>
+    public int __Len__() => Count;
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
