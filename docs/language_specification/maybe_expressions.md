@@ -1,37 +1,40 @@
-# Maybe expressions
+# Maybe Expressions
 
-Optionals can be implicitly created via `maybe` expressions.
-A `maybe` expression wraps the value of the expression in
-`Optional[T]` where `T` is the type of the expression.
-If the expression is `None`, then the result
-holds its `Nothing` case.
+The `maybe` expression is the **bridge from .NET interop to safe Sharpy code**. It converts a `T | None` (C# nullable) value into a `T?` (`Optional[T]`) value.
+
+If the expression is `None`, the result is `Nothing`. Otherwise, the result is `Some(value)`.
 
 ```python
-d: dict[str, int] = {"y": 5}
-x = maybe d.get("x")  # x is of type Optional[int]
+raw: str | None = dotnet_api()  # C# nullable
+safe: str? = maybe raw           # Convert to Optional[str]
 ```
 
-It is a type-checking error if the expression does not return
-a nullable type (`T?`).
+## Type Constraint
+
+It is a type-checking error if the expression does not return a `T | None` type. The operand must be a C# nullable — not an `Optional[T]`:
 
 ```python
-# ✅ Valid - dict.get() returns T?
-d: dict[str, int] = {}
-x = maybe d.get("key")       # OK: get() returns int?
+# ✅ Valid - converts C# nullable to Optional
+raw: str | None = dotnet_api()
+safe: str? = maybe raw           # OK: raw is str | None
 
-# ✅ Valid - explicitly nullable
-value: int? = get_optional_value()
-y = maybe value              # OK: value is int?
+# ✅ Valid - dict.get() returns V | None at interop level
+d: dict[str, int] = {}
+x = maybe d.get("key")          # OK: get() returns int | None
+
+# ❌ Invalid - already an Optional
+opt: str? = Some("hello")
+x = maybe opt                    # ERROR: opt is str?, not str | None
 
 # ❌ Invalid - expression is not nullable
 s: str = "hello"
-z = maybe s.upper()          # ERROR: upper() returns str, not str?
+z = maybe s.upper()              # ERROR: upper() returns str, not str | None
 
 n: int = 42
-w = maybe n                  # ERROR: n is int, not int?
+w = maybe n                      # ERROR: n is int, not int | None
 ```
 
-**Precedence Rules:**
+## Precedence Rules
 
 Like `try`, the `maybe` expression has very low precedence (lower than `to`, arithmetic, comparisons, and logical operators), meaning it captures the entire following expression:
 
@@ -42,7 +45,7 @@ x = maybe get_value() + default    # Parsed as: maybe (get_value() + default)
 
 # maybe is lower precedence than `to`, so it wraps safe casts
 y = maybe obj to Widget?           # Parsed as: maybe (obj to Widget?)
-                                   # Optional[Widget]
+                                   # Widget?
 
 # maybe does NOT capture conditional expressions
 z = maybe foo() if cond else bar()  # Parsed as: (maybe foo()) if cond else bar()
