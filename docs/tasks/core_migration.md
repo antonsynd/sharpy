@@ -768,14 +768,14 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 > The `System.Collections.Immutable` package is available for .NET Standard 2.1 via NuGet.
 
 ### Step 9.0: Add System.Collections.Immutable package reference
-- [ ] Edit `src/Sharpy.Core/Sharpy.Core.csproj`
+- [x] Edit `src/Sharpy.Core/Sharpy.Core.csproj`
   - Add package reference: `<PackageReference Include="System.Collections.Immutable" Version="8.0.0" />`
   - This package is compatible with .NET Standard 2.0+
-- [ ] Run: `dotnet restore src/Sharpy.Core`
-- [ ] **Commit:** `git commit -am "chore: add System.Collections.Immutable package reference"`
+- [x] Run: `dotnet restore src/Sharpy.Core`
+- [x] **Commit:** `git commit -am "chore: add System.Collections.Immutable package reference"`
 
 ### Step 9.1: Create `FrozenSet<T>` class
-- [ ] Create `src/Sharpy.Core/FrozenSet.cs`
+- [x] Create `src/Sharpy.Core/FrozenSet.cs`
   ```csharp
   using System.Collections.Immutable;
 
@@ -874,28 +874,28 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
       public bool IsDisjoint(IEnumerable<T> other) => !_set.Overlaps(other);
   }
   ```
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "feat: add FrozenSet<T> immutable set type"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "feat: add FrozenSet<T> immutable set type"`
 
 ### Step 9.2: Add `FrozenSet<T>` tests
-- [ ] Create `src/Sharpy.Core.Tests/FrozenSetTests.cs`
-  - [ ] Constructor tests (empty, from enumerable, null throws TypeError)
-  - [ ] Count/Contains tests
-  - [ ] Equality tests (two frozensets with same elements are equal)
-  - [ ] GetHashCode tests (equal frozensets have same hash)
-  - [ ] **Dict key tests** (can use frozenset as dictionary key - crucial use case)
-  - [ ] Set operator tests (`|`, `&`, `-`, `^`)
-  - [ ] Comparison operator tests (`<`, `<=`, `>`, `>=`, `==`, `!=`)
-  - [ ] Truthiness tests (empty is falsy, non-empty is truthy)
-  - [ ] Iteration tests
-  - [ ] Python-style method tests (Union, Intersection, Difference, SymmetricDifference, IsSubset, IsSuperset, IsDisjoint, Copy)
-  - [ ] ToString/Repr tests (empty shows "frozenset()", non-empty shows "frozenset({...})")
-  - [ ] IEnumerable overloads tests (Union with IEnumerable, etc.)
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "test: add FrozenSet<T> tests"`
+- [x] Create `src/Sharpy.Core.Tests/FrozenSetTests.cs`
+  - [x] Constructor tests (empty, from enumerable, null throws TypeError)
+  - [x] Count/Contains tests
+  - [x] Equality tests (two frozensets with same elements are equal)
+  - [x] GetHashCode tests (equal frozensets have same hash)
+  - [x] **Dict key tests** (can use frozenset as dictionary key - crucial use case)
+  - [x] Set operator tests (`|`, `&`, `-`, `^`)
+  - [x] Comparison operator tests (`<`, `<=`, `>`, `>=`, `==`, `!=`)
+  - [x] Truthiness tests (empty is falsy, non-empty is truthy)
+  - [x] Iteration tests
+  - [x] Python-style method tests (Union, Intersection, Difference, SymmetricDifference, IsSubset, IsSuperset, IsDisjoint, Copy)
+  - [x] ToString/Repr tests (empty shows "frozenset()", non-empty shows "frozenset({...})")
+  - [x] IEnumerable overloads tests (Union with IEnumerable, etc.)
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "test: add FrozenSet<T> tests"`
 
 ### Step 9.3: Add `frozenset()` builtin
-- [ ] Create `src/Sharpy.Core/FrozenSetConversion.cs`
+- [x] Create `src/Sharpy.Core/FrozenSetConversion.cs`
   ```csharp
   namespace Sharpy.Core;
 
@@ -912,9 +912,9 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
       public static FrozenSet<T> FrozenSet<T>() => new();
   }
   ```
-- [ ] Add tests in `src/Sharpy.Core.Tests/FrozenSetConversionTests.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "feat: add frozenset() builtin"`
+- [x] Add tests in `src/Sharpy.Core.Tests/FrozenSetConversionTests.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "feat: add frozenset() builtin"`
 
 ---
 
