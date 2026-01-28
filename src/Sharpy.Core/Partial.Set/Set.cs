@@ -3,7 +3,9 @@ namespace Sharpy.Core;
 using Collections.Interfaces;
 
 public sealed partial class Set<T>
-    : Object, IMutableSet<Set<T>, T>,
+    : Object,
+      System.Collections.Generic.ISet<T>,
+      IMutableSet<Set<T>, T>,
       ILessThanOrEquatable<Set<T>>, IGreaterThanOrEquatable<Set<T>>
 {
     // Internal for SetIterator access to avoid infinite recursion when GetEnumerator delegates to __Iter__
