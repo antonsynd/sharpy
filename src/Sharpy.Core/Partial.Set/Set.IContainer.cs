@@ -2,15 +2,25 @@ namespace Sharpy.Core;
 
 public sealed partial class Set<T>
 {
-    /// <inheritdoc/>
+    /// <summary>
+    /// Returns whether the item is in the set.
+    /// </summary>
+    /// <remarks>
+    /// This is the implementation for <see cref="ICollection{T}.Contains(T)"/>.
+    /// </remarks>
     public bool Contains(T x)
     {
-        return __Contains__(x);
+        return _set.Contains(x);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Returns whether the item is in the set.
+    /// </summary>
+    /// <remarks>
+    /// Deprecated: Use <see cref="Contains(T)"/> instead.
+    /// </remarks>
     public bool __Contains__(T x)
     {
-        return _set.Contains(x);
+        return Contains(x);
     }
 }

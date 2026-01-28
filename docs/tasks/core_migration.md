@@ -248,10 +248,10 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Set): use Count directly in operator true/false"`
 
 ### Step 2.8: Replace `__Contains__` with `Contains` method
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IContainer.cs`
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Contains.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): replace __Contains__ with Contains method"`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.IContainer.cs`
+  - Make Contains primary, __Contains__ delegates to Contains
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Set): make Contains primary method"`
 
 ### Step 2.9: Replace `__Iter__` with `GetEnumerator`
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IIterable.cs`
