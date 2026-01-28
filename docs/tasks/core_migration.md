@@ -220,15 +220,17 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Set): replace __Len__() with Count property"`
 
 ### Step 2.4: Replace `__Eq__` with `Equals` override
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IEquatable.cs`
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): replace __Eq__ with Equals override"`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.IEquatable.cs`
+- [x] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Set): replace __Eq__ with Equals override"`
 
 ### Step 2.5: Replace `__Hash__` with `GetHashCode` override
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IHashable.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): replace __Hash__ with GetHashCode override"`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.IHashable.cs`
+  - Note: GetHashCode is sealed in Object, so __Hash__ must remain as override point
+  - Added documentation that this will become GetHashCode override in Step 2.12
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Set): document __Hash__ transition to GetHashCode"`
 
 ### Step 2.6: Replace `__Repr__` with `ToString` override
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IRepresentable.cs`
