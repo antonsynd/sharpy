@@ -4,27 +4,35 @@ using Collections.Interfaces;
 
 /// <summary>
 /// An object representing a stream of data. Repeated calls to the
-/// iterator’s <see cref="__Next__()"/> method (or passing it to the
-/// built-in function <see cref="Next(Iterator&lt;T&gt;)"/>) return successive items in the
+/// iterator's <see cref="Next()"/> method return successive items in the
 /// stream. When no more data are available, a <see cref="StopIteration"/>
 /// exception is raised instead. At this point, the iterator object is
-/// exhausted and any further calls to its <see cref="__Next__()"/> method
+/// exhausted and any further calls to its <see cref="Next()"/> method
 /// just raise <see cref="StopIteration"/> again.
 /// </summary>
 /// <remarks>
-/// Iterators are required to have an <see cref="__Iter__()"/> method that
-/// returns the iterator object itself so every iterator is also iterable
-/// and may be used in most places where other iterables are accepted. One
-/// notable exception is code which attempts multiple iteration passes. A
-/// container object (such as a list) produces a fresh new iterator each
-/// time you pass it to the <see cref="Iter(IIterable&lt;T&gt;)"/> function or use it in a
-/// <c>for</c> loop. Attempting this with an iterator will just return the
-/// same exhausted iterator object used in the previous iteration pass,
-/// making it appear like an empty container.
+/// <para>
+/// Iterators implement both Sharpy's iterator protocol (via <see cref="IIterable{T}"/>)
+/// and .NET's enumeration protocol (via <see cref="IEnumerator{T}"/>). Use
+/// <see cref="MoveNext()"/> and <see cref="Current"/> for .NET-style iteration,
+/// or <see cref="Next()"/> for Sharpy-style iteration.
+/// </para>
+/// <para>
+/// Iterators return themselves from <see cref="GetEnumerator()"/> so they can be
+/// used in foreach loops. Note that iterators are single-pass - once exhausted,
+/// they cannot be reset.
+/// </para>
 /// </remarks>
 public abstract partial class Iterator<T> : IIterable<T>, IEnumerator<T>
 {
     /// <summary>
+    /// Return the next item from the iterator. If there are no further
+    /// items, raises the <see cref="StopIteration"/> exception.
+    /// </summary>
+    public T Next() => __Next__();
+
+    /// <summary>
+    /// Deprecated: Use <see cref="Next()"/> instead.
     /// Return the next item from the iterator. If there are no further
     /// items, raises the <see cref="StopIteration"/> exception.
     /// </summary>
