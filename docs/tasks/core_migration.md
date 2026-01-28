@@ -600,9 +600,10 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Set): remove Sharpy interface declarations"`
 
 ### Step 7.5.4: Delete Set interface implementation files
-- [ ] Delete all `src/Sharpy.Core/Partial.Set/Set.I*.cs` files that implement Sharpy interfaces
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): delete Sharpy interface implementation files"`
+> **Partially skipped:** Similar to List, these files contain actual implementations with dunder methods (`__Eq__`, `__Len__`, `__Contains__`, etc.) that are tested and used. Removed only the `Collections.Interfaces.ISet<T>` overloads.
+- [x] Removed `Collections.Interfaces.ISet<T>` overloads from comparison and equality files
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 735 tests pass
+- [x] **Commit:** `git commit -am "refactor(Set): remove Sharpy ISet overloads from interface files"`
 
 ### Step 7.5.5: Update `Sum.cs` to remove `IAddable` constraint
 - [ ] Edit `src/Sharpy.Core/Sum.cs`
