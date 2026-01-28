@@ -240,10 +240,12 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Set): document __Repr__ transition to ToString"`
 
 ### Step 2.7: Replace `__Bool__` with `operator true/false`
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IBoolConvertible.cs`
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Bool.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): replace __Bool__ with operator true/false"`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.IBoolConvertible.cs`
+  - Mark __Bool__ as deprecated
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.operators.cs`
+  - Update operator true/false to use Count directly instead of __Bool__
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Set): use Count directly in operator true/false"`
 
 ### Step 2.8: Replace `__Contains__` with `Contains` method
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IContainer.cs`

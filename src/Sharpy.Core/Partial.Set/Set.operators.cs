@@ -56,13 +56,13 @@ public sealed partial class Set<T>
         return left.__Sub__(right);
     }
 
-    public static bool operator true(Set<T> set)
+    public static bool operator true(Set<T>? set)
     {
-        return set?.__Bool__() ?? false;
+        return set is not null && set._set.Count > 0;
     }
 
-    public static bool operator false(Set<T> set)
+    public static bool operator false(Set<T>? set)
     {
-        return !(set?.__Bool__() ?? false);
+        return set is null || set._set.Count == 0;
     }
 }
