@@ -1,59 +1,62 @@
-namespace Sharpy.Core;
-
-internal static class ComparerAdapter<T>
+using System.Collections.Generic;
+using System;
+namespace Sharpy.Core
 {
-    public static readonly IComparer<T> Instance = CreateComparer();
-
-    private static IComparer<T> CreateComparer()
+    internal static class ComparerAdapter<T>
     {
-        if (typeof(IComparable<T>).IsAssignableFrom(typeof(T)))
+        public static readonly IComparer<T> Instance = CreateComparer();
+
+        private static IComparer<T> CreateComparer()
         {
-            return new TypedIComparableComparer();
+            if (typeof(IComparable<T>).IsAssignableFrom(typeof(T)))
+            {
+                return new TypedIComparableComparer();
+            }
+
+            if (typeof(IComparable).IsAssignableFrom(typeof(T)))
+            {
+                return new UntypedIComparableComparer();
+            }
+
+            throw TypeError.OpNotSupported("<", typeof(T).Name);
         }
 
-        if (typeof(IComparable).IsAssignableFrom(typeof(T)))
+        private class TypedIComparableComparer : IComparer<T>
         {
-            return new UntypedIComparableComparer();
+            public int Compare(T? x, T? y)
+            {
+                // These are the same objects
+                if (ReferenceEquals(x, y))
+                {
+                    return 0;
+                }
+
+                if (x is null || y is null)
+                {
+                    throw TypeError.OpNotSupported("<", "NoneType");
+                }
+
+                return ((IComparable<T>)x).CompareTo(y);
+            }
         }
 
-        throw TypeError.OpNotSupported("<", typeof(T).Name);
-    }
-
-    private class TypedIComparableComparer : IComparer<T>
-    {
-        public int Compare(T? x, T? y)
+        private class UntypedIComparableComparer : IComparer<T>
         {
-            // These are the same objects
-            if (ReferenceEquals(x, y))
+            public int Compare(T? x, T? y)
             {
-                return 0;
+                // These are the same objects
+                if (ReferenceEquals(x, y))
+                {
+                    return 0;
+                }
+
+                if (x is null || y is null)
+                {
+                    throw TypeError.OpNotSupported("<", "NoneType");
+                }
+
+                return ((IComparable)x).CompareTo(y);
             }
-
-            if (x is null || y is null)
-            {
-                throw TypeError.OpNotSupported("<", "NoneType");
-            }
-
-            return ((IComparable<T>)x).CompareTo(y);
-        }
-    }
-
-    private class UntypedIComparableComparer : IComparer<T>
-    {
-        public int Compare(T? x, T? y)
-        {
-            // These are the same objects
-            if (ReferenceEquals(x, y))
-            {
-                return 0;
-            }
-
-            if (x is null || y is null)
-            {
-                throw TypeError.OpNotSupported("<", "NoneType");
-            }
-
-            return ((IComparable)x).CompareTo(y);
         }
     }
 }

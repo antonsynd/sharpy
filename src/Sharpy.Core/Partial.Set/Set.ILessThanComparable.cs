@@ -1,12 +1,13 @@
-namespace Sharpy.Core;
-
-public sealed partial class Set<T>
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Deprecated: Use <see cref="IsProperSubset(Set{T})"/> instead.
-    /// </summary>
-    public bool __Lt__(Set<T> other)
+    public sealed partial class Set<T>
     {
-        return IsProperSubset(other);
+        /// <summary>
+        /// Deprecated: Use <see cref="IsProperSubset(Set{T})"/> instead.
+        /// </summary>
+        public bool __Lt__(Set<T> other)
+        {
+            return IsProperSubset(other);
+        }
     }
 }

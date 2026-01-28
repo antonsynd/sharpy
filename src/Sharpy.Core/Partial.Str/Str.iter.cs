@@ -1,45 +1,46 @@
-namespace Sharpy.Core;
-
-using System.Globalization;
-
-/// <summary>
-/// Iterator for Str that yields individual characters.
-/// </summary>
-internal sealed class StrIterator : Iterator<Str>
+namespace Sharpy.Core
 {
-    private readonly string _str;
-    private readonly StringInfo _stringInfo;
-    private int _position;
+    using System.Globalization;
 
-    internal StrIterator(string str)
+    /// <summary>
+    /// Iterator for Str that yields individual characters.
+    /// </summary>
+    internal sealed class StrIterator : Iterator<Str>
     {
-        _str = str;
-        _stringInfo = new StringInfo(str);
-        _position = 0;
-    }
+        private readonly string _str;
+        private readonly StringInfo _stringInfo;
+        private int _position;
 
-    public override Str __Next__()
-    {
-        if (_position >= _stringInfo.LengthInTextElements)
+        internal StrIterator(string str)
         {
-            throw new StopIteration();
+            _str = str;
+            _stringInfo = new StringInfo(str);
+            _position = 0;
         }
 
-        var element = _stringInfo.SubstringByTextElements(_position, 1);
-        _position++;
+        public override Str __Next__()
+        {
+            if (_position >= _stringInfo.LengthInTextElements)
+            {
+                throw new StopIteration();
+            }
 
-        return new Str(element);
+            var element = _stringInfo.SubstringByTextElements(_position, 1);
+            _position++;
+
+            return new Str(element);
+        }
     }
-}
 
-public readonly partial struct Str
-{
-    /// <summary>
-    /// Implements the __iter__ dunder method.
-    /// Returns an iterator over the characters in the string.
-    /// </summary>
-    public Iterator<Str> __Iter__()
+    public readonly partial struct Str
     {
-        return new StrIterator(_s);
+        /// <summary>
+        /// Implements the __iter__ dunder method.
+        /// Returns an iterator over the characters in the string.
+        /// </summary>
+        public Iterator<Str> __Iter__()
+        {
+            return new StrIterator(_s);
+        }
     }
 }

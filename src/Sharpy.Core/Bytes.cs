@@ -1,25 +1,27 @@
-namespace Sharpy.Core;
-
-/// <summary>
-/// Represents an immutable sequence of bytes (similar to Python's bytes type).
-/// </summary>
-public readonly struct Bytes
+using System;
+namespace Sharpy.Core
 {
-    private readonly byte[] _data;
-
-    public Bytes(byte[] data)
+    /// <summary>
+    /// Represents an immutable sequence of bytes (similar to Python's bytes type).
+    /// </summary>
+    public readonly struct Bytes
     {
-        _data = data ?? [];
-    }
+        private readonly byte[] _data;
 
-    public int Length => _data.Length;
+        public Bytes(byte[] data)
+        {
+            _data = data ?? System.Array.Empty<byte>();
+        }
 
-    public byte this[int index] => _data[index];
+        public int Length => _data.Length;
 
-    public byte[] ToArray() => _data;
+        public byte this[int index] => _data[index];
 
-    public override string ToString()
-    {
-        return $"b'{BitConverter.ToString(_data).Replace("-", " ")}'";
+        public byte[] ToArray() => _data;
+
+        public override string ToString()
+        {
+            return $"b'{BitConverter.ToString(_data).Replace("-", " ")}'";
+        }
     }
 }

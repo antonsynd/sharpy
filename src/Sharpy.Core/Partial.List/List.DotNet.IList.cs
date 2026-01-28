@@ -1,38 +1,40 @@
-namespace Sharpy.Core;
-
-public sealed partial class List<T>
+using System.Collections.Generic;
+namespace Sharpy.Core
 {
-    // ICollection<T>.Count - delegate to __Len__
-    int System.Collections.Generic.ICollection<T>.Count => __Len__();
-
-    // IReadOnlyCollection<T>.Count - delegate to __Len__
-    int System.Collections.Generic.IReadOnlyCollection<T>.Count => __Len__();
-
-    // IList<T>.IndexOf - delegate to Index(), returning -1 if not found
-    int IList<T>.IndexOf(T item)
+    public sealed partial class List<T>
     {
-        try
+        // ICollection<T>.Count - delegate to __Len__
+        int System.Collections.Generic.ICollection<T>.Count => __Len__();
+
+        // IReadOnlyCollection<T>.Count - delegate to __Len__
+        int System.Collections.Generic.IReadOnlyCollection<T>.Count => __Len__();
+
+        // IList<T>.IndexOf - delegate to Index(), returning -1 if not found
+        int IList<T>.IndexOf(T item)
         {
-            return (int)Index(item);
+            try
+            {
+                return (int)Index(item);
+            }
+            catch (ValueError)
+            {
+                return -1;
+            }
         }
-        catch (ValueError)
+
+        // IList<T>.RemoveAt - delegate to __DelItem__
+        void IList<T>.RemoveAt(int index) => __DelItem__(index);
+
+        // IList<T>.Insert - already implemented in List.IMutableSequence.cs
+
+        // IList<T>.this[int] - explicit implementation to avoid conflicts
+        T IList<T>.this[int index]
         {
-            return -1;
+            get => __GetItem__(index);
+            set => __SetItem__(index, value);
         }
+
+        // IReadOnlyList<T>.this[int] - explicit implementation
+        T IReadOnlyList<T>.this[int index] => __GetItem__(index);
     }
-
-    // IList<T>.RemoveAt - delegate to __DelItem__
-    void IList<T>.RemoveAt(int index) => __DelItem__(index);
-
-    // IList<T>.Insert - already implemented in List.IMutableSequence.cs
-
-    // IList<T>.this[int] - explicit implementation to avoid conflicts
-    T IList<T>.this[int index]
-    {
-        get => __GetItem__(index);
-        set => __SetItem__(index, value);
-    }
-
-    // IReadOnlyList<T>.this[int] - explicit implementation
-    T IReadOnlyList<T>.this[int index] => __GetItem__(index);
 }

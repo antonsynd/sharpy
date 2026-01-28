@@ -1,10 +1,11 @@
 using Sharpy.Core;
-namespace Sharpy.Operator;
-
-public static partial class Exports
+namespace Sharpy.Operator
 {
-    public static bool IsNot(object left, object right)
+    public static partial class Exports
     {
-        return !ReferenceEquals(left, right);
+        public static bool IsNot(object left, object right)
+        {
+            return !ReferenceEquals(left, right);
+        }
     }
 }

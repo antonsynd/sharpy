@@ -1,16 +1,17 @@
 using System.Globalization;
 
-namespace Sharpy.Core;
-
-public readonly partial struct Str
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Returns the number of (Unicode) characters in the string.
-    /// </summary>
-    public int __Len__()
+    public readonly partial struct Str
     {
-        StringInfo stringInfo = new(_s);
+        /// <summary>
+        /// Returns the number of (Unicode) characters in the string.
+        /// </summary>
+        public int __Len__()
+        {
+            StringInfo stringInfo = new(_s);
 
-        return stringInfo.LengthInTextElements;
+            return stringInfo.LengthInTextElements;
+        }
     }
 }

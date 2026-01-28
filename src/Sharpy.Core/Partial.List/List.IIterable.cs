@@ -1,15 +1,16 @@
-namespace Sharpy.Core;
-
-public sealed partial class List<T>
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Returns an iterator over the list elements.
-    /// </summary>
-    /// <remarks>
-    /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
-    /// </remarks>
-    public Iterator<T> __Iter__()
+    public sealed partial class List<T>
     {
-        return (Iterator<T>)GetEnumerator();
+        /// <summary>
+        /// Returns an iterator over the list elements.
+        /// </summary>
+        /// <remarks>
+        /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
+        /// </remarks>
+        public Iterator<T> __Iter__()
+        {
+            return (Iterator<T>)GetEnumerator();
+        }
     }
 }

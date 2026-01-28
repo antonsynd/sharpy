@@ -1,41 +1,44 @@
-namespace Sharpy.Core;
-
-using System.Collections;
-
-/// <summary>
-/// Generic iterator wrapper that adapts an IEnumerator to the Iterator interface.
-/// </summary>
-internal sealed class EnumeratorIterator<T> : Iterator<T>
+using System.Collections.Generic;
+using System;
+namespace Sharpy.Core
 {
-    private readonly IEnumerator<T> _enumerator;
-    private bool _started;
-
-    public EnumeratorIterator(IEnumerator<T> enumerator)
-    {
-        _enumerator = enumerator ?? throw new ArgumentNullException(nameof(enumerator));
-        _started = false;
-    }
+    using System.Collections;
 
     /// <summary>
-    /// Deprecated: Use <see cref="Iterator{T}.Next()"/> instead.
+    /// Generic iterator wrapper that adapts an IEnumerator to the Iterator interface.
     /// </summary>
-    public override T __Next__()
+    internal sealed class EnumeratorIterator<T> : Iterator<T>
     {
-        if (!_started)
+        private readonly IEnumerator<T> _enumerator;
+        private bool _started;
+
+        public EnumeratorIterator(IEnumerator<T> enumerator)
         {
-            _started = true;
-            if (!_enumerator.MoveNext())
+            _enumerator = enumerator ?? throw new ArgumentNullException(nameof(enumerator));
+            _started = false;
+        }
+
+        /// <summary>
+        /// Deprecated: Use <see cref="Iterator{T}.Next()"/> instead.
+        /// </summary>
+        public override T __Next__()
+        {
+            if (!_started)
             {
-                throw new StopIteration();
+                _started = true;
+                if (!_enumerator.MoveNext())
+                {
+                    throw new StopIteration();
+                }
+                return _enumerator.Current;
             }
-            return _enumerator.Current;
-        }
 
-        if (_enumerator.MoveNext())
-        {
-            return _enumerator.Current;
-        }
+            if (_enumerator.MoveNext())
+            {
+                return _enumerator.Current;
+            }
 
-        throw new StopIteration();
+            throw new StopIteration();
+        }
     }
 }

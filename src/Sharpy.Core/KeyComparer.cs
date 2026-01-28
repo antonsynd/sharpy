@@ -1,42 +1,51 @@
-namespace Sharpy.Core;
+using System;
+using System.Collections.Generic;
 
-/// <summary>
-/// Delegator to statically chosen comparer.
-/// </summary>
-file class KeyComparer<T, TKey>(Func<T, TKey> key) : IComparer<T>
+namespace Sharpy.Core
 {
-    private readonly Func<T, TKey> _key = key;
-
-    /// <remarks>
-    /// Unlike in Python, this compares None to non-None values as ordering
-    /// before the non-None value, whereas Python disallows such comparisons
-    /// by raising a TypeError.
-    /// </remarks>
-    public int Compare(T? x, T? y)
+    /// <summary>
+    /// Delegator to statically chosen comparer.
+    /// </summary>
+    internal class KeyComparer<T, TKey> : IComparer<T>
     {
-        if (ReferenceEquals(x, y))
+        private readonly Func<T, TKey> _key;
+
+        public KeyComparer(Func<T, TKey> key)
         {
-            return 0;
+            _key = key;
         }
 
-        if (x is null || y is null)
+        /// <remarks>
+        /// Unlike in Python, this compares None to non-None values as ordering
+        /// before the non-None value, whereas Python disallows such comparisons
+        /// by raising a TypeError.
+        /// </remarks>
+        public int Compare(T? x, T? y)
         {
-            throw TypeError.OpNotSupported("<", "NoneType");
+            if (ReferenceEquals(x, y))
+            {
+                return 0;
+            }
+
+            if (x is null || y is null)
+            {
+                throw TypeError.OpNotSupported("<", "NoneType");
+            }
+
+            return ComparerAdapter<TKey>.Instance.Compare(_key(x), _key(y));
         }
 
-        return ComparerAdapter<TKey>.Instance.Compare(_key(x), _key(y));
     }
 
-}
-
-/// <summary>
-/// Simplifies creation of a key comparer if the key is null, by returning
-/// the comparer for T rather than for TKey.
-/// </summary>
-internal class KeyComparerFactory<T, TKey>
-{
-    public static IComparer<T> Create(Func<T, TKey> key)
+    /// <summary>
+    /// Simplifies creation of a key comparer if the key is null, by returning
+    /// the comparer for T rather than for TKey.
+    /// </summary>
+    internal class KeyComparerFactory<T, TKey>
     {
-        return new KeyComparer<T, TKey>(key);
+        public static IComparer<T> Create(Func<T, TKey> key)
+        {
+            return new KeyComparer<T, TKey>(key);
+        }
     }
 }

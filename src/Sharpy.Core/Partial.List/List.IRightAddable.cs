@@ -1,18 +1,19 @@
-namespace Sharpy.Core;
-
-public sealed partial class List<T>
+namespace Sharpy.Core
 {
-    /// <inheritdoc/>
-    public List<T> __RAdd__(List<T> other)
+    public sealed partial class List<T>
     {
-        if (other is null)
+        /// <inheritdoc/>
+        public List<T> __RAdd__(List<T> other)
         {
-            throw TypeError.CanOnlyNot("concatenate", $"List<{typeof(T).Name}>", "NoneType", "to", $"List<{typeof(T).Name}>");
+            if (other is null)
+            {
+                throw TypeError.CanOnlyNot("concatenate", $"List<{typeof(T).Name}>", "NoneType", "to", $"List<{typeof(T).Name}>");
+            }
+
+            var res = other.Copy();
+            res.Extend(this);
+
+            return res;
         }
-
-        var res = other.Copy();
-        res.Extend(this);
-
-        return res;
     }
 }

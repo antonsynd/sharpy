@@ -1,33 +1,35 @@
 using System.Collections.Generic;
+using System;
 
-namespace Sharpy.Core;
-
-/// <summary>
-/// Type conversion functions for set
-/// </summary>
-public static partial class Exports
+namespace Sharpy.Core
 {
     /// <summary>
-    /// Convert IEnumerable to set
+    /// Type conversion functions for set
     /// </summary>
-    public static Set<T> Set<T>(IEnumerable<T> enumerable)
+    public static partial class Exports
     {
-        return new Set<T>(enumerable);
-    }
+        /// <summary>
+        /// Convert IEnumerable to set
+        /// </summary>
+        public static Set<T> Set<T>(IEnumerable<T> enumerable)
+        {
+            return new Set<T>(enumerable);
+        }
 
-    /// <summary>
-    /// Create empty set
-    /// </summary>
-    public static Set<T> Set<T>()
-    {
-        return new Set<T>();
-    }
+        /// <summary>
+        /// Create empty set
+        /// </summary>
+        public static Set<T> Set<T>()
+        {
+            return new Set<T>();
+        }
 
-    /// <summary>
-    /// Convert set to set (copy)
-    /// </summary>
-    public static Set<T> Set<T>(Set<T> other)
-    {
-        return new Set<T>(other);
+        /// <summary>
+        /// Convert set to set (copy)
+        /// </summary>
+        public static Set<T> Set<T>(Set<T> other)
+        {
+            return new Set<T>(other);
+        }
     }
 }

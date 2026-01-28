@@ -1,57 +1,60 @@
-namespace Sharpy.Core;
-
-using Operator;
-
-public static partial class Exports
+using System.Collections.Generic;
+using System;
+namespace Sharpy.Core
 {
-    public static T Max<T>(IEnumerable<T> iterable)
-    {
-        return Max(iterable, value => value);
-    }
+    using Operator;
 
-    public static T Max<T, TKey>(IEnumerable<T> iterable, Func<T, TKey> key)
+    public static partial class Exports
     {
-        if (iterable is null)
+        public static T Max<T>(IEnumerable<T> iterable)
         {
-            throw TypeError.IsNotInterface("NoneType", "iterable");
+            return Max(iterable, value => value);
         }
 
-        if (key is null)
+        public static T Max<T, TKey>(IEnumerable<T> iterable, Func<T, TKey> key)
         {
-            throw TypeError.ArgNone("max", "key");
-        }
-
-        bool iterableIsEmpty = true;
-        T? biggest = default;
-
-        foreach (var elem in iterable)
-        {
-            if (elem is null)
+            if (iterable is null)
             {
-                throw TypeError.OpNotSupported("<", "NoneType");
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            if (key is null)
+            {
+                throw TypeError.ArgNone("max", "key");
+            }
+
+            bool iterableIsEmpty = true;
+            T? biggest = default;
+
+            foreach (var elem in iterable)
+            {
+                if (elem is null)
+                {
+                    throw TypeError.OpNotSupported("<", "NoneType");
+                }
+
+                if (biggest is null || iterableIsEmpty)
+                {
+                    biggest = elem;
+                    iterableIsEmpty = false;
+
+                    continue;
+                }
+
+                if (Operator.Exports.Lt(key(biggest), key(elem)))
+                {
+                    biggest = elem;
+                }
+
+                // No-op, these are equivalent, no need to do anything
             }
 
             if (biggest is null || iterableIsEmpty)
             {
-                biggest = elem;
-                iterableIsEmpty = false;
-
-                continue;
+                throw new ValueError("Max() iterable argument is empty");
             }
 
-            if (Operator.Exports.Lt(key(biggest), key(elem)))
-            {
-                biggest = elem;
-            }
-
-            // No-op, these are equivalent, no need to do anything
+            return biggest;
         }
-
-        if (biggest is null || iterableIsEmpty)
-        {
-            throw new ValueError("Max() iterable argument is empty");
-        }
-
-        return biggest;
     }
 }

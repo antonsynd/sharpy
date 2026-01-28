@@ -1,3 +1,9 @@
-namespace Sharpy.Core;
+using System;
 
-public class StopIteration() : Exception { }
+namespace Sharpy.Core
+{
+    public class StopIteration : Exception
+    {
+        public StopIteration() { }
+    }
+}

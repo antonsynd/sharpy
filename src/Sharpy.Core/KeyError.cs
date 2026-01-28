@@ -1,5 +1,9 @@
-namespace Sharpy.Core;
+using System;
 
-public class KeyError(string message) : Exception(message)
+namespace Sharpy.Core
 {
+    public class KeyError : Exception
+    {
+        public KeyError(string message) : base(message) { }
+    }
 }

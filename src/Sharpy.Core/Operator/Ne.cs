@@ -1,35 +1,37 @@
-namespace Sharpy.Operator;
-
-public static partial class Exports
+using System;
+namespace Sharpy.Operator
 {
-    public static bool Ne<T>(IComparable<T> left, T right)
+    public static partial class Exports
     {
-        if (ReferenceEquals(left, right))
+        public static bool Ne<T>(IComparable<T> left, T right)
         {
-            return false;
+            if (ReferenceEquals(left, right))
+            {
+                return false;
+            }
+
+            return left?.CompareTo(right) != 0;
         }
 
-        return left?.CompareTo(right) != 0;
-    }
-
-    public static bool Ne(IComparable left, object right)
-    {
-        if (ReferenceEquals(left, right))
+        public static bool Ne(IComparable left, object right)
         {
-            return false;
+            if (ReferenceEquals(left, right))
+            {
+                return false;
+            }
+
+            return left?.CompareTo(right) != 0;
         }
 
-        return left?.CompareTo(right) != 0;
+        public static bool Ne(object left, object right)
+        {
+            return !(left?.Equals(right) ?? right is null);
+        }
+
+        public static bool __Ne__<T>(IComparable<T> left, T right) => Ne(left, right);
+
+        public static bool __Ne__(IComparable left, object right) => Ne(left, right);
+
+        public static bool __Ne__(object left, object right) => Ne(left, right);
     }
-
-    public static bool Ne(object left, object right)
-    {
-        return !(left?.Equals(right) ?? right is null);
-    }
-
-    public static bool __Ne__<T>(IComparable<T> left, T right) => Ne(left, right);
-
-    public static bool __Ne__(IComparable left, object right) => Ne(left, right);
-
-    public static bool __Ne__(object left, object right) => Ne(left, right);
 }

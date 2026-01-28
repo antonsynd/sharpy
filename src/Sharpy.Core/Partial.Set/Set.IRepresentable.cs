@@ -1,41 +1,42 @@
 using System.Text;
 
-namespace Sharpy.Core;
-
-using static Sharpy.Core.Exports;
-
-public sealed partial class Set<T>
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Returns a string representation of this set.
-    /// </summary>
-    public override string ToString()
+    using static Sharpy.Core.Exports;
+
+    public sealed partial class Set<T>
     {
-        var builder = new StringBuilder();
-        builder.Append('{');
-
-        int i = 1;
-        var numElems = _set.Count;
-
-        foreach (var item in _set)
+        /// <summary>
+        /// Returns a string representation of this set.
+        /// </summary>
+        public override string ToString()
         {
-            builder.Append(Repr(item));
+            var builder = new StringBuilder();
+            builder.Append('{');
 
-            if (i < numElems)
+            int i = 1;
+            var numElems = _set.Count;
+
+            foreach (var item in _set)
             {
-                builder.Append(", ");
+                builder.Append(Repr(item));
+
+                if (i < numElems)
+                {
+                    builder.Append(", ");
+                }
+
+                ++i;
             }
 
-            ++i;
+            builder.Append('}');
+
+            return builder.ToString();
         }
 
-        builder.Append('}');
-
-        return builder.ToString();
+        /// <summary>
+        /// Deprecated: Use <see cref="ToString()"/> instead.
+        /// </summary>
+        public string __Repr__() => ToString();
     }
-
-    /// <summary>
-    /// Deprecated: Use <see cref="ToString()"/> instead.
-    /// </summary>
-    public string __Repr__() => ToString();
 }

@@ -1,22 +1,23 @@
-namespace Sharpy.Core;
-
-public sealed partial class List<T>
+namespace Sharpy.Core
 {
-    public bool IsReadOnly
+    public sealed partial class List<T>
     {
-        get
+        public bool IsReadOnly
         {
-            return false;
+            get
+            {
+                return false;
+            }
         }
-    }
 
-    bool System.Collections.Generic.ICollection<T>.Remove(T item)
-    {
-        return _list.Remove(item);
-    }
+        bool System.Collections.Generic.ICollection<T>.Remove(T item)
+        {
+            return _list.Remove(item);
+        }
 
-    public void CopyTo(T[] array, int arrayIndex)
-    {
-        _list.CopyTo(array, arrayIndex);
+        public void CopyTo(T[] array, int arrayIndex)
+        {
+            _list.CopyTo(array, arrayIndex);
+        }
     }
 }

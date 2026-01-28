@@ -1,32 +1,34 @@
-namespace Sharpy.Core;
-
-public static partial class Exports
+using System.Collections.Generic;
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Return an iterator object from any C# enumerable.
-    /// </summary>
-    /// <typeparam name="T">The type of elements in the enumerable.</typeparam>
-    /// <param name="enumerable">The C# enumerable to get an iterator from.</param>
-    /// <returns>An iterator for the enumerable.</returns>
-    /// <exception cref="TypeError">Thrown when enumerable is null.</exception>
-    /// <remarks>
-    /// Wraps the enumerator using EnumeratorIterator.
-    /// This allows any C# IEnumerable to work seamlessly with Sharpy's iterator protocol.
-    /// </remarks>
-    public static Iterator<T> Iter<T>(IEnumerable<T> enumerable)
+    public static partial class Exports
     {
-        if (enumerable is null)
+        /// <summary>
+        /// Return an iterator object from any C# enumerable.
+        /// </summary>
+        /// <typeparam name="T">The type of elements in the enumerable.</typeparam>
+        /// <param name="enumerable">The C# enumerable to get an iterator from.</param>
+        /// <returns>An iterator for the enumerable.</returns>
+        /// <exception cref="TypeError">Thrown when enumerable is null.</exception>
+        /// <remarks>
+        /// Wraps the enumerator using EnumeratorIterator.
+        /// This allows any C# IEnumerable to work seamlessly with Sharpy's iterator protocol.
+        /// </remarks>
+        public static Iterator<T> Iter<T>(IEnumerable<T> enumerable)
         {
-            throw TypeError.ArgNone("iter", "enumerable");
-        }
+            if (enumerable is null)
+            {
+                throw TypeError.ArgNone("iter", "enumerable");
+            }
 
-        // Optimization: if it's already an Iterator<T>, return it directly
-        if (enumerable is Iterator<T> iterator)
-        {
-            return iterator;
-        }
+            // Optimization: if it's already an Iterator<T>, return it directly
+            if (enumerable is Iterator<T> iterator)
+            {
+                return iterator;
+            }
 
-        // Wrap the enumerator using EnumeratorIterator
-        return new EnumeratorIterator<T>(enumerable.GetEnumerator());
+            // Wrap the enumerator using EnumeratorIterator
+            return new EnumeratorIterator<T>(enumerable.GetEnumerator());
+        }
     }
 }

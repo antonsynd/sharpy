@@ -1,27 +1,28 @@
-namespace Sharpy.Core;
-
-public readonly struct Complex
+namespace Sharpy.Core
 {
-    private readonly System.Numerics.Complex _inner;
-
-    private Complex(System.Numerics.Complex c)
+    public readonly struct Complex
     {
-        _inner = c;
-    }
+        private readonly System.Numerics.Complex _inner;
 
-    public Complex(double real, double imaginary)
-    {
-        _inner = new System.Numerics.Complex(real, imaginary);
-    }
+        private Complex(System.Numerics.Complex c)
+        {
+            _inner = c;
+        }
 
-    public static implicit operator System.Numerics.Complex(Complex c) => c._inner;
-    public static implicit operator Complex(System.Numerics.Complex c) => new(c);
+        public Complex(double real, double imaginary)
+        {
+            _inner = new System.Numerics.Complex(real, imaginary);
+        }
 
-    public double Real => _inner.Real;
-    public double Imag => _inner.Imaginary;
+        public static implicit operator System.Numerics.Complex(Complex c) => c._inner;
+        public static implicit operator Complex(System.Numerics.Complex c) => new(c);
 
-    public Complex Conjugate()
-    {
-        return System.Numerics.Complex.Conjugate(_inner);
+        public double Real => _inner.Real;
+        public double Imag => _inner.Imaginary;
+
+        public Complex Conjugate()
+        {
+            return System.Numerics.Complex.Conjugate(_inner);
+        }
     }
 }

@@ -1,176 +1,179 @@
-namespace Sharpy.Core;
-
-public static partial class Exports
+using System.Collections.Generic;
+using System.Collections;
+namespace Sharpy.Core
 {
-    public static bool Bool(bool b)
+    public static partial class Exports
     {
-        return b;
-    }
-
-    public static bool Bool(decimal d)
-    {
-        return d != 0;
-    }
-
-    public static bool Bool(float f)
-    {
-        return f != 0;
-    }
-
-    public static bool Bool(double d)
-    {
-        return d != 0;
-    }
-
-    public static bool Bool(int i)
-    {
-        return i != 0;
-    }
-
-    public static bool Bool(uint u)
-    {
-        return u != 0;
-    }
-
-    public static bool Bool(short s)
-    {
-        return s != 0;
-    }
-
-    public static bool Bool(ushort u)
-    {
-        return u != 0;
-    }
-
-    public static bool Bool(long l)
-    {
-        return l != 0;
-    }
-
-    public static bool Bool(ulong u)
-    {
-        return u != 0;
-    }
-
-    public static bool Bool(byte b)
-    {
-        return b != 0;
-    }
-
-    public static bool Bool(sbyte s)
-    {
-        return s != 0;
-    }
-
-    public static bool Bool(string s)
-    {
-        if (s is null)
+        public static bool Bool(bool b)
         {
-            return false;
+            return b;
         }
 
-        return s.Length > 0;
-    }
-
-    public static bool Bool(object? obj)
-    {
-        if (obj is null)
+        public static bool Bool(decimal d)
         {
-            return false;
+            return d != 0;
         }
 
-        if (obj is string @string)
+        public static bool Bool(float f)
         {
-            return Bool(@string);
+            return f != 0;
         }
 
-        if (obj is bool @bool)
+        public static bool Bool(double d)
         {
-            return Bool(@bool);
+            return d != 0;
         }
 
-        if (obj is int @int)
+        public static bool Bool(int i)
         {
-            return Bool(@int);
+            return i != 0;
         }
 
-        if (obj is uint @uint)
+        public static bool Bool(uint u)
         {
-            return Bool(@uint);
+            return u != 0;
         }
 
-        if (obj is byte @byte)
+        public static bool Bool(short s)
         {
-            return Bool(@byte);
+            return s != 0;
         }
 
-        if (obj is sbyte @sbyte)
+        public static bool Bool(ushort u)
         {
-            return Bool(@sbyte);
+            return u != 0;
         }
 
-        if (obj is short @short)
+        public static bool Bool(long l)
         {
-            return Bool(@short);
+            return l != 0;
         }
 
-        if (obj is ushort @ushort)
+        public static bool Bool(ulong u)
         {
-            return Bool(@ushort);
+            return u != 0;
         }
 
-        if (obj is long @long)
+        public static bool Bool(byte b)
         {
-            return Bool(@long);
+            return b != 0;
         }
 
-        if (obj is ulong @ulong)
+        public static bool Bool(sbyte s)
         {
-            return Bool(@ulong);
+            return s != 0;
         }
 
-        if (obj is double @double)
+        public static bool Bool(string s)
         {
-            return Bool(@double);
-        }
-
-        if (obj is decimal @decimal)
-        {
-            return Bool(@decimal);
-        }
-
-        if (obj is float @float)
-        {
-            return Bool(@float);
-        }
-
-        // Collection types - check Count for emptiness
-        // Note: ICollection (non-generic) is for arrays and old-style collections
-        if (obj is System.Collections.ICollection collection)
-        {
-            return collection.Count > 0;
-        }
-
-        // Check for ICollection<T> or IReadOnlyCollection<T> via interface check
-        // This handles List<T>, Set<T>, etc. that use explicit interface implementations
-        foreach (var iface in obj.GetType().GetInterfaces())
-        {
-            if (iface.IsGenericType)
+            if (s is null)
             {
-                var genericDef = iface.GetGenericTypeDefinition();
-                if (genericDef == typeof(ICollection<>) || genericDef == typeof(IReadOnlyCollection<>))
+                return false;
+            }
+
+            return s.Length > 0;
+        }
+
+        public static bool Bool(object? obj)
+        {
+            if (obj is null)
+            {
+                return false;
+            }
+
+            if (obj is string @string)
+            {
+                return Bool(@string);
+            }
+
+            if (obj is bool @bool)
+            {
+                return Bool(@bool);
+            }
+
+            if (obj is int @int)
+            {
+                return Bool(@int);
+            }
+
+            if (obj is uint @uint)
+            {
+                return Bool(@uint);
+            }
+
+            if (obj is byte @byte)
+            {
+                return Bool(@byte);
+            }
+
+            if (obj is sbyte @sbyte)
+            {
+                return Bool(@sbyte);
+            }
+
+            if (obj is short @short)
+            {
+                return Bool(@short);
+            }
+
+            if (obj is ushort @ushort)
+            {
+                return Bool(@ushort);
+            }
+
+            if (obj is long @long)
+            {
+                return Bool(@long);
+            }
+
+            if (obj is ulong @ulong)
+            {
+                return Bool(@ulong);
+            }
+
+            if (obj is double @double)
+            {
+                return Bool(@double);
+            }
+
+            if (obj is decimal @decimal)
+            {
+                return Bool(@decimal);
+            }
+
+            if (obj is float @float)
+            {
+                return Bool(@float);
+            }
+
+            // Collection types - check Count for emptiness
+            // Note: ICollection (non-generic) is for arrays and old-style collections
+            if (obj is System.Collections.ICollection collection)
+            {
+                return collection.Count > 0;
+            }
+
+            // Check for ICollection<T> or IReadOnlyCollection<T> via interface check
+            // This handles List<T>, Set<T>, etc. that use explicit interface implementations
+            foreach (var iface in obj.GetType().GetInterfaces())
+            {
+                if (iface.IsGenericType)
                 {
-                    var countProp = iface.GetProperty("Count");
-                    if (countProp is not null)
+                    var genericDef = iface.GetGenericTypeDefinition();
+                    if (genericDef == typeof(ICollection<>) || genericDef == typeof(IReadOnlyCollection<>))
                     {
-                        var count = (int)countProp.GetValue(obj)!;
-                        return count > 0;
+                        var countProp = iface.GetProperty("Count");
+                        if (countProp is not null)
+                        {
+                            var count = (int)countProp.GetValue(obj)!;
+                            return count > 0;
+                        }
                     }
                 }
             }
-        }
 
-        // Non-null objects are truthy by default (matching Python's behavior)
-        return true;
+            // Non-null objects are truthy by default (matching Python's behavior)
+            return true;
+        }
     }
 }

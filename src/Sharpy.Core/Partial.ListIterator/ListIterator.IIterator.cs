@@ -1,19 +1,21 @@
-namespace Sharpy.Core;
-
-public sealed partial class ListIterator<T>
+using System.Collections.Generic;
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Deprecated: Use <see cref="Iterator{T}.Next()"/> instead.
-    /// </summary>
-    public override T __Next__()
+    public sealed partial class ListIterator<T>
     {
-        if (_index < ((IReadOnlyCollection<T>)_list).Count)
+        /// <summary>
+        /// Deprecated: Use <see cref="Iterator{T}.Next()"/> instead.
+        /// </summary>
+        public override T __Next__()
         {
-            var res = _list[(int)_index];
-            ++_index;
-            return res;
-        }
+            if (_index < ((IReadOnlyCollection<T>)_list).Count)
+            {
+                var res = _list[(int)_index];
+                ++_index;
+                return res;
+            }
 
-        throw new StopIteration();
+            throw new StopIteration();
+        }
     }
 }

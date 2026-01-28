@@ -1,24 +1,27 @@
-namespace Sharpy.Core;
-
-public sealed partial class List<T>
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Returns a hash code for this list.
-    /// </summary>
-    public override int GetHashCode()
+    public sealed partial class List<T>
     {
-        var hashCode = new HashCode();
-        hashCode.Add(typeof(List<T>).GetHashCode());
-        hashCode.Add(_list.GetHashCode());
+        /// <summary>
+        /// Returns a hash code for this list.
+        /// </summary>
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + typeof(List<T>).GetHashCode();
+                hash = hash * 31 + _list.GetHashCode();
+                return hash;
+            }
+        }
 
-        return hashCode.ToHashCode();
-    }
-
-    /// <summary>
-    /// Deprecated: Use <see cref="GetHashCode()"/> instead.
-    /// </summary>
-    public int __Hash__()
-    {
-        return GetHashCode();
+        /// <summary>
+        /// Deprecated: Use <see cref="GetHashCode()"/> instead.
+        /// </summary>
+        public int __Hash__()
+        {
+            return GetHashCode();
+        }
     }
 }

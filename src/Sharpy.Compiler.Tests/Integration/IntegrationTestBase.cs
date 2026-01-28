@@ -156,23 +156,46 @@ public abstract class IntegrationTestBase
                 var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
                 var testDir = Path.GetDirectoryName(testAssemblyPath);
 
-                // Detect the current .NET version from the test assembly path
-                // Path format: .../bin/Debug/net10.0/...
-                var targetFramework = testDir!.Split(Path.DirectorySeparatorChar)
-                    .FirstOrDefault(s => s.StartsWith("net") && char.IsDigit(s.Length > 3 ? s[3] : ' '))
-                    ?? "net10.0"; // Default to net10.0
+                // Try to find Sharpy.Core.dll in multiple possible locations
+                // Sharpy.Core targets netstandard2.1 and netstandard2.0
+                var possibleFrameworks = new[] { "netstandard2.1", "netstandard2.0" };
+                bool found = false;
 
-                runtimePath = Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Core", "bin", "Debug", targetFramework, "Sharpy.Core.dll");
-                runtimePath = Path.GetFullPath(runtimePath);
-
-                if (File.Exists(runtimePath))
+                foreach (var targetFramework in possibleFrameworks)
                 {
-                    references.Add(MetadataReference.CreateFromFile(runtimePath));
-                    Output.WriteLine($"Loaded Sharpy.Core from: {runtimePath}");
+                    runtimePath = Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Core", "bin", "Debug", targetFramework, "Sharpy.Core.dll");
+                    runtimePath = Path.GetFullPath(runtimePath);
+
+                    if (File.Exists(runtimePath))
+                    {
+                        references.Add(MetadataReference.CreateFromFile(runtimePath));
+                        Output.WriteLine($"Loaded Sharpy.Core from: {runtimePath}");
+
+                        // Add netstandard reference for netstandard libraries
+                        try
+                        {
+                            var netstandardAssembly = Assembly.Load("netstandard");
+                            references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
+                        }
+                        catch
+                        {
+                            // Fallback: try to find netstandard.dll in runtime directory
+                            var runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location);
+                            var netstandardPath = Path.Combine(runtimeDir!, "netstandard.dll");
+                            if (File.Exists(netstandardPath))
+                            {
+                                references.Add(MetadataReference.CreateFromFile(netstandardPath));
+                            }
+                        }
+
+                        found = true;
+                        break;
+                    }
                 }
-                else
+
+                if (!found)
                 {
-                    Output.WriteLine($"Warning: Sharpy.Core not found at: {runtimePath}");
+                    Output.WriteLine($"Warning: Sharpy.Core not found in any expected location");
                 }
             }
             catch (FileNotFoundException ex)
@@ -505,22 +528,46 @@ public abstract class IntegrationTestBase
             {
                 var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
                 var testDir = Path.GetDirectoryName(testAssemblyPath);
-                var targetFramework = testDir!.Split(Path.DirectorySeparatorChar)
-                    .FirstOrDefault(s => s.StartsWith("net") && char.IsDigit(s.Length > 3 ? s[3] : ' '))
-                    ?? "net10.0";
 
-                runtimePath = Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Core", "bin", "Debug", targetFramework, "Sharpy.Core.dll");
-                runtimePath = Path.GetFullPath(runtimePath);
-
-                if (File.Exists(runtimePath))
+                // Sharpy.Core now targets netstandard2.1/2.0, not net10.0
+                var possibleFrameworks = new[] { "netstandard2.1", "netstandard2.0" };
+                foreach (var framework in possibleFrameworks)
                 {
-                    references.Add(MetadataReference.CreateFromFile(runtimePath));
-                    Output.WriteLine($"Loaded Sharpy.Core from: {runtimePath}");
+                    runtimePath = Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Core", "bin", "Debug", framework, "Sharpy.Core.dll");
+                    runtimePath = Path.GetFullPath(runtimePath);
+
+                    if (File.Exists(runtimePath))
+                    {
+                        references.Add(MetadataReference.CreateFromFile(runtimePath));
+                        Output.WriteLine($"Loaded Sharpy.Core from: {runtimePath}");
+                        break;
+                    }
                 }
             }
             catch (Exception ex)
             {
                 Output.WriteLine($"Warning: Failed to load Sharpy.Core: {ex.Message}");
+            }
+
+            // Add netstandard reference (required for Sharpy.Core which targets netstandard)
+            try
+            {
+                var netstandardAssembly = Assembly.Load("netstandard");
+                references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
+            }
+            catch
+            {
+                // Fallback: try to find in runtime directory
+                var coreLibPath = typeof(object).Assembly.Location;
+                var coreLibDir = Path.GetDirectoryName(coreLibPath);
+                if (!string.IsNullOrEmpty(coreLibDir))
+                {
+                    var netstandardPath = Path.Combine(coreLibDir, "netstandard.dll");
+                    if (File.Exists(netstandardPath))
+                    {
+                        references.Add(MetadataReference.CreateFromFile(netstandardPath));
+                    }
+                }
             }
 
             var compilation = CSharpCompilation.Create(

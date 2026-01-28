@@ -1,38 +1,40 @@
-namespace Sharpy.Core;
-
-using Operator;
-
-public sealed partial class List<T>
+using System.Linq;
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Implements the __gt__ dunder method for lexicographical comparison.
-    /// Returns true if this list is lexicographically greater than the other list.
-    /// </summary>
-    /// <param name="other">The list to compare with.</param>
-    /// <returns>True if this list is greater than the other list.</returns>
-    public bool __Gt__(List<T> other)
+    using Operator;
+
+    public sealed partial class List<T>
     {
-        if (other is null)
+        /// <summary>
+        /// Implements the __gt__ dunder method for lexicographical comparison.
+        /// Returns true if this list is lexicographically greater than the other list.
+        /// </summary>
+        /// <param name="other">The list to compare with.</param>
+        /// <returns>True if this list is greater than the other list.</returns>
+        public bool __Gt__(List<T> other)
         {
-            throw TypeError.OpNotSupported(">", "NoneType");
-        }
-
-        // Lexicographical comparison
-        var minLen = System.Math.Min(_list.Count, other._list.Count);
-
-        for (int i = 0; i < minLen; i++)
-        {
-            var leftElem = _list[i];
-            var rightElem = other._list[i];
-
-            // If elements are not equal, compare them
-            if (!Operator.Exports.Eq(leftElem, rightElem))
+            if (other is null)
             {
-                return Operator.Exports.Gt(leftElem, rightElem);
+                throw TypeError.OpNotSupported(">", "NoneType");
             }
-        }
 
-        // If all compared elements are equal, the longer list is greater
-        return _list.Count > other._list.Count;
+            // Lexicographical comparison
+            var minLen = System.Math.Min(_list.Count, other._list.Count);
+
+            for (int i = 0; i < minLen; i++)
+            {
+                var leftElem = _list[i];
+                var rightElem = other._list[i];
+
+                // If elements are not equal, compare them
+                if (!Operator.Exports.Eq(leftElem, rightElem))
+                {
+                    return Operator.Exports.Gt(leftElem, rightElem);
+                }
+            }
+
+            // If all compared elements are equal, the longer list is greater
+            return _list.Count > other._list.Count;
+        }
     }
 }

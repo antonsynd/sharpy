@@ -1,12 +1,13 @@
-namespace Sharpy.Core;
-
-public sealed partial class ListReverseIterator<T> : Iterator<T>
+namespace Sharpy.Core
 {
-    private readonly List<T> _list;
-    private uint _index = 0;
-
-    internal ListReverseIterator(List<T> list)
+    public sealed partial class ListReverseIterator<T> : Iterator<T>
     {
-        _list = list;
+        private readonly List<T> _list;
+        private uint _index = 0;
+
+        internal ListReverseIterator(List<T> list)
+        {
+            _list = list;
+        }
     }
 }

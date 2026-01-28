@@ -1,10 +1,11 @@
-namespace Sharpy.Core;
-
-public sealed partial class Set<T>
+namespace Sharpy.Core
 {
-    /// <inheritdoc/>
-    public bool __Ne__(Set<T> other)
+    public sealed partial class Set<T>
     {
-        return !__Eq__(other);
+        /// <inheritdoc/>
+        public bool __Ne__(Set<T> other)
+        {
+            return !__Eq__(other);
+        }
     }
 }

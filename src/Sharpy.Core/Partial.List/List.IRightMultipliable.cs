@@ -1,15 +1,16 @@
-namespace Sharpy.Core;
-
-public sealed partial class List<T>
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Repeats this list a specified number of times, returning a new list.
-    /// </summary>
-    /// <remarks>
-    /// Deprecated: Use <c>count * list</c> operator instead.
-    /// </remarks>
-    public List<T> __RMul__(int count)
+    public sealed partial class List<T>
     {
-        return count * this;
+        /// <summary>
+        /// Repeats this list a specified number of times, returning a new list.
+        /// </summary>
+        /// <remarks>
+        /// Deprecated: Use <c>count * list</c> operator instead.
+        /// </remarks>
+        public List<T> __RMul__(int count)
+        {
+            return count * this;
+        }
     }
 }

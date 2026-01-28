@@ -1,27 +1,27 @@
-namespace Sharpy.Core;
-
-public sealed partial class List<T>
+namespace Sharpy.Core
 {
-    /// <inheritdoc/>
-    public void __IMul__(int i)
+    public sealed partial class List<T>
     {
-        if (i <= 0)
+        /// <inheritdoc/>
+        public void __IMul__(int i)
         {
-            Clear();
-
-            return;
-        }
-
-        var originalLength = _list.Count;
-        _list.EnsureCapacity(originalLength * i);
-
-        --i;
-
-        for (; i > 0; --i)
-        {
-            for (uint j = 0; j < originalLength; ++j)
+            if (i <= 0)
             {
-                _list.Add(_list[(int)j]);
+                Clear();
+
+                return;
+            }
+
+            var originalLength = _list.Count;
+
+            --i;
+
+            for (; i > 0; --i)
+            {
+                for (uint j = 0; j < originalLength; ++j)
+                {
+                    _list.Add(_list[(int)j]);
+                }
             }
         }
     }

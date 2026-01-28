@@ -64,17 +64,37 @@ public class RoslynEmitterIntegrationTests
             Path.GetDirectoryName(typeof(object).Assembly.Location)!,
             "System.Runtime.dll");
 
+        var references = new List<MetadataReference>
+        {
+            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Sharpy.Core.Exports).Assembly.Location),
+            MetadataReference.CreateFromFile(systemRuntimePath),
+        };
+
+        // Add netstandard reference (required for Sharpy.Core which targets netstandard)
+        try
+        {
+            var netstandardAssembly = System.Reflection.Assembly.Load("netstandard");
+            references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
+        }
+        catch
+        {
+            // Fallback: try to find in runtime directory
+            var netstandardPath = Path.Combine(
+                Path.GetDirectoryName(typeof(object).Assembly.Location)!,
+                "netstandard.dll");
+            if (File.Exists(netstandardPath))
+            {
+                references.Add(MetadataReference.CreateFromFile(netstandardPath));
+            }
+        }
+
         var compilation = CSharpCompilation.Create(
             "TestAssembly",
             new[] { syntaxTree },
-            new[]
-            {
-                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(Sharpy.Core.Exports).Assembly.Location),
-                MetadataReference.CreateFromFile(systemRuntimePath),
-            },
+            references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         var diagnostics = compilation.GetDiagnostics();

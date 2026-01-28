@@ -1,97 +1,102 @@
-namespace Sharpy.Core;
-
-using static Sharpy.Sys.Exports;
-
-/// <summary>
-/// Global builtin functions available in all Sharpy programs
-/// </summary>
-public static partial class Exports
+using System;
+using System.Collections.Generic;
+using System.Collections;
+using System.Linq;
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Print values to standard output, matching Python's print() behavior.
-    /// Values are converted to strings using ToString() and separated by the separator.
-    /// </summary>
-    /// <param name="values">Values to print</param>
-    public static void Print(params object?[] values)
-    {
-        PrintWithOptions(values, sep: " ", end: "\n", file: Stdout, flush: false);
-    }
+    using static Sharpy.Sys.Exports;
 
     /// <summary>
-    /// Print values to standard output with custom options.
-    /// This is the full Python-compatible print function.
+    /// Global builtin functions available in all Sharpy programs
     /// </summary>
-    /// <param name="values">Values to print</param>
-    /// <param name="sep">Separator between values (default: space)</param>
-    /// <param name="end">String appended after the last value (default: newline)</param>
-    /// <param name="file">Output stream (default: stdout)</param>
-    /// <param name="flush">Whether to flush the stream (default: false)</param>
-    public static void PrintWithOptions(object?[] values, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
+    public static partial class Exports
     {
-        if (file == Stddev)
+        /// <summary>
+        /// Print values to standard output, matching Python's print() behavior.
+        /// Values are converted to strings using ToString() and separated by the separator.
+        /// </summary>
+        /// <param name="values">Values to print</param>
+        public static void Print(params object?[] values)
         {
-            return;
+            PrintWithOptions(values, sep: " ", end: "\n", file: Stdout, flush: false);
         }
 
-        var textWriter = file == Stdout ? Console.Out : Console.Error;
-        var output = string.Join(sep, values.Select(v => v?.ToString() ?? "None"));
-
-        if (end == "\n")
+        /// <summary>
+        /// Print values to standard output with custom options.
+        /// This is the full Python-compatible print function.
+        /// </summary>
+        /// <param name="values">Values to print</param>
+        /// <param name="sep">Separator between values (default: space)</param>
+        /// <param name="end">String appended after the last value (default: newline)</param>
+        /// <param name="file">Output stream (default: stdout)</param>
+        /// <param name="flush">Whether to flush the stream (default: false)</param>
+        public static void PrintWithOptions(object?[] values, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
         {
-            textWriter.WriteLine(output);
-        }
-        else
-        {
-            textWriter.Write(output);
-            if (!string.IsNullOrEmpty(end))
+            if (file == Stddev)
             {
-                textWriter.Write(end);
+                return;
+            }
+
+            var textWriter = file == Stdout ? Console.Out : Console.Error;
+            var output = string.Join(sep, values.Select(v => v?.ToString() ?? "None"));
+
+            if (end == "\n")
+            {
+                textWriter.WriteLine(output);
+            }
+            else
+            {
+                textWriter.Write(output);
+                if (!string.IsNullOrEmpty(end))
+                {
+                    textWriter.Write(end);
+                }
+            }
+
+            if (flush)
+            {
+                textWriter.Flush();
             }
         }
 
-        if (flush)
+        /// <summary>
+        /// Get the length of a collection or string.
+        /// This is the fallback overload for dynamically-typed scenarios.
+        /// </summary>
+        public static int Len(object obj)
         {
-            textWriter.Flush();
-        }
-    }
-
-    /// <summary>
-    /// Get the length of a collection or string.
-    /// This is the fallback overload for dynamically-typed scenarios.
-    /// </summary>
-    public static int Len(object obj)
-    {
-        if (obj is null)
-        {
-            throw TypeError.ArgNone("len", "sized");
-        }
-
-        // Fast path for common types
-        if (obj is string s)
-            return s.Length;
-        if (obj is Array arr)
-            return arr.Length;
-        if (obj is System.Collections.ICollection collection)
-            return collection.Count;
-
-        // Check for generic ICollection<T> or IReadOnlyCollection<T> via reflection
-        // This handles types like Set<T> that implement ICollection<T> but not non-generic ICollection
-        foreach (var iface in obj.GetType().GetInterfaces())
-        {
-            if (iface.IsGenericType)
+            if (obj is null)
             {
-                var genericDef = iface.GetGenericTypeDefinition();
-                if (genericDef == typeof(ICollection<>) || genericDef == typeof(IReadOnlyCollection<>))
+                throw TypeError.ArgNone("len", "sized");
+            }
+
+            // Fast path for common types
+            if (obj is string s)
+                return s.Length;
+            if (obj is Array arr)
+                return arr.Length;
+            if (obj is System.Collections.ICollection collection)
+                return collection.Count;
+
+            // Check for generic ICollection<T> or IReadOnlyCollection<T> via reflection
+            // This handles types like Set<T> that implement ICollection<T> but not non-generic ICollection
+            foreach (var iface in obj.GetType().GetInterfaces())
+            {
+                if (iface.IsGenericType)
                 {
-                    var countProp = iface.GetProperty("Count");
-                    if (countProp is not null)
+                    var genericDef = iface.GetGenericTypeDefinition();
+                    if (genericDef == typeof(ICollection<>) || genericDef == typeof(IReadOnlyCollection<>))
                     {
-                        return (int)countProp.GetValue(obj)!;
+                        var countProp = iface.GetProperty("Count");
+                        if (countProp is not null)
+                        {
+                            return (int)countProp.GetValue(obj)!;
+                        }
                     }
                 }
             }
-        }
 
-        throw new TypeError($"object of type '{obj.GetType().Name}' has no len()");
+            throw new TypeError($"object of type '{obj.GetType().Name}' has no len()");
+        }
     }
 }

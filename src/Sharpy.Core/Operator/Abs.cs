@@ -1,69 +1,43 @@
+using System;
 using Sharpy.Core;
-namespace Sharpy.Operator;
 
-using System.Numerics;
-using System.Runtime.InteropServices;
-
-public static partial class Exports
+namespace Sharpy.Operator
 {
-    public static decimal Abs(decimal x)
+    public static partial class Exports
     {
-        return System.Math.Abs(x);
-    }
-
-    public static double Abs(double x)
-    {
-        return System.Math.Abs(x);
-    }
-
-    public static int Abs(int x)
-    {
-        return System.Math.Abs(x);
-    }
-
-    public static IntPtr Abs(IntPtr x)
-    {
-        return System.Math.Abs(x);
-    }
-
-    public static short Abs(short x)
-    {
-        return System.Math.Abs(x);
-    }
-
-    public static long Abs(long x)
-    {
-        return System.Math.Abs(x);
-    }
-
-    public static float Abs(float x)
-    {
-        return System.Math.Abs(x);
-    }
-
-    public static sbyte Abs(sbyte x)
-    {
-        return System.Math.Abs(x);
-    }
-
-    public static T Abs<T>(T? x) where T : INumberBase<T>
-    {
-        if (x is null)
+        public static decimal Abs(decimal x)
         {
-            throw new ArgumentNullException(nameof(x));
+            return System.Math.Abs(x);
         }
 
-        return T.Abs(x);
-    }
+        public static double Abs(double x)
+        {
+            return System.Math.Abs(x);
+        }
 
-    // TODO: Optional<T> doesn't implement __Abs__
-    // public static T Abs<T>(Optional<T> x) where T : IAbsoluteValue<T>
-    // {
-    //     if (!x.HasValue())
-    //     {
-    //         throw new ArgumentNullException(nameof(x));
-    //     }
-    //
-    //     return x.__Abs__();
-    // }
+        public static int Abs(int x)
+        {
+            return System.Math.Abs(x);
+        }
+
+        public static long Abs(long x)
+        {
+            return System.Math.Abs(x);
+        }
+
+        public static short Abs(short x)
+        {
+            return System.Math.Abs(x);
+        }
+
+        public static float Abs(float x)
+        {
+            return System.Math.Abs(x);
+        }
+
+        public static sbyte Abs(sbyte x)
+        {
+            return System.Math.Abs(x);
+        }
+    }
 }

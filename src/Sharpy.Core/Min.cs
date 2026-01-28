@@ -1,57 +1,60 @@
-namespace Sharpy.Core;
-
-using Operator;
-
-public static partial class Exports
+using System.Collections.Generic;
+using System;
+namespace Sharpy.Core
 {
-    public static T Min<T>(IEnumerable<T> iterable)
-    {
-        return Min(iterable, value => value);
-    }
+    using Operator;
 
-    public static T Min<T, TKey>(IEnumerable<T> iterable, Func<T, TKey> key)
+    public static partial class Exports
     {
-        if (iterable is null)
+        public static T Min<T>(IEnumerable<T> iterable)
         {
-            throw TypeError.IsNotInterface("NoneType", "iterable");
+            return Min(iterable, value => value);
         }
 
-        if (key is null)
+        public static T Min<T, TKey>(IEnumerable<T> iterable, Func<T, TKey> key)
         {
-            throw TypeError.ArgNone("min", "key");
-        }
-
-        bool iterableIsEmpty = true;
-        T? smallest = default;
-
-        foreach (var elem in iterable)
-        {
-            if (elem is null)
+            if (iterable is null)
             {
-                throw TypeError.OpNotSupported("<", "NoneType");
+                throw TypeError.IsNotInterface("NoneType", "iterable");
+            }
+
+            if (key is null)
+            {
+                throw TypeError.ArgNone("min", "key");
+            }
+
+            bool iterableIsEmpty = true;
+            T? smallest = default;
+
+            foreach (var elem in iterable)
+            {
+                if (elem is null)
+                {
+                    throw TypeError.OpNotSupported("<", "NoneType");
+                }
+
+                if (smallest is null || iterableIsEmpty)
+                {
+                    smallest = elem;
+                    iterableIsEmpty = false;
+
+                    continue;
+                }
+
+                if (Operator.Exports.Lt(key(elem), key(smallest)))
+                {
+                    smallest = elem;
+                }
+
+                // No-op, these are equivalent, no need to do anything
             }
 
             if (smallest is null || iterableIsEmpty)
             {
-                smallest = elem;
-                iterableIsEmpty = false;
-
-                continue;
+                throw new ValueError("Min() iterable argument is empty");
             }
 
-            if (Operator.Exports.Lt(key(elem), key(smallest)))
-            {
-                smallest = elem;
-            }
-
-            // No-op, these are equivalent, no need to do anything
+            return smallest;
         }
-
-        if (smallest is null || iterableIsEmpty)
-        {
-            throw new ValueError("Min() iterable argument is empty");
-        }
-
-        return smallest;
     }
 }

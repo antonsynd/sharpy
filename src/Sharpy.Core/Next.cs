@@ -1,14 +1,15 @@
-namespace Sharpy.Core;
-
-public static partial class Exports
+namespace Sharpy.Core
 {
-    public static T Next<T>(Iterator<T> iterator)
+    public static partial class Exports
     {
-        if (iterator is null)
+        public static T Next<T>(Iterator<T> iterator)
         {
-            throw TypeError.ArgNone("next", "iterator");
-        }
+            if (iterator is null)
+            {
+                throw TypeError.ArgNone("next", "iterator");
+            }
 
-        return iterator.__Next__();
+            return iterator.__Next__();
+        }
     }
 }

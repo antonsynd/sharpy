@@ -1,17 +1,18 @@
-namespace Sharpy.Core;
-
-public sealed partial class Set<T>
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Gets the number of elements in the set.
-    /// </summary>
-    public int Count => _set.Count;
-
-    /// <summary>
-    /// Deprecated: Use <see cref="Count"/> instead.
-    /// </summary>
-    public int __Len__()
+    public sealed partial class Set<T>
     {
-        return Count;
+        /// <summary>
+        /// Gets the number of elements in the set.
+        /// </summary>
+        public int Count => _set.Count;
+
+        /// <summary>
+        /// Deprecated: Use <see cref="Count"/> instead.
+        /// </summary>
+        public int __Len__()
+        {
+            return Count;
+        }
     }
 }

@@ -1,74 +1,76 @@
-namespace Sharpy.Core;
-
-using System.Collections;
-
-/// <summary>
-/// View of dictionary values.
-/// This view reflects changes to the underlying dictionary.
-/// </summary>
-public sealed class DictValuesView<K, V>
-    : IReadOnlyCollection<V>
-    where K : notnull
+using System.Collections.Generic;
+namespace Sharpy.Core
 {
-    private readonly Dictionary<K, V>.ValueCollection _values;
-
-    internal DictValuesView(Dictionary<K, V>.ValueCollection values)
-    {
-        _values = values;
-    }
+    using System.Collections;
 
     /// <summary>
-    /// Gets the number of values in the view.
+    /// View of dictionary values.
+    /// This view reflects changes to the underlying dictionary.
     /// </summary>
-    public int Count => _values.Count;
-
-    /// <summary>
-    /// Determines whether the view contains the specified value.
-    /// </summary>
-    /// <remarks>
-    /// Values don't have a fast Contains check in .NET, so this iterates
-    /// through all values using Sharpy's equality comparison.
-    /// </remarks>
-    public bool Contains(V item)
+    public sealed class DictValuesView<K, V>
+        : IReadOnlyCollection<V>
+        where K : notnull
     {
-        foreach (var value in _values)
+        private readonly Dictionary<K, V>.ValueCollection _values;
+
+        internal DictValuesView(Dictionary<K, V>.ValueCollection values)
         {
-            if (Operator.Exports.Eq(value, item))
+            _values = values;
+        }
+
+        /// <summary>
+        /// Gets the number of values in the view.
+        /// </summary>
+        public int Count => _values.Count;
+
+        /// <summary>
+        /// Determines whether the view contains the specified value.
+        /// </summary>
+        /// <remarks>
+        /// Values don't have a fast Contains check in .NET, so this iterates
+        /// through all values using Sharpy's equality comparison.
+        /// </remarks>
+        public bool Contains(V item)
+        {
+            foreach (var value in _values)
             {
-                return true;
+                if (Operator.Exports.Eq(value, item))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Returns an enumerator that iterates through the values.
+        /// </summary>
+        public IEnumerator<V> GetEnumerator()
+        {
+            foreach (var value in _values)
+            {
+                yield return value;
             }
         }
-        return false;
-    }
 
-    /// <summary>
-    /// Returns an enumerator that iterates through the values.
-    /// </summary>
-    public IEnumerator<V> GetEnumerator()
-    {
-        foreach (var value in _values)
+        /// <summary>
+        /// Deprecated: Use <see cref="Contains(V)"/> instead.
+        /// </summary>
+        public bool __Contains__(V item) => Contains(item);
+
+        /// <summary>
+        /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
+        /// </summary>
+        public Iterator<V> __Iter__()
         {
-            yield return value;
+            return new EnumeratorIterator<V>(GetEnumerator());
         }
+
+        /// <summary>
+        /// Deprecated: Use <see cref="Count"/> instead.
+        /// </summary>
+        public int __Len__() => Count;
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
-
-    /// <summary>
-    /// Deprecated: Use <see cref="Contains(V)"/> instead.
-    /// </summary>
-    public bool __Contains__(V item) => Contains(item);
-
-    /// <summary>
-    /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
-    /// </summary>
-    public Iterator<V> __Iter__()
-    {
-        return new EnumeratorIterator<V>(GetEnumerator());
-    }
-
-    /// <summary>
-    /// Deprecated: Use <see cref="Count"/> instead.
-    /// </summary>
-    public int __Len__() => Count;
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

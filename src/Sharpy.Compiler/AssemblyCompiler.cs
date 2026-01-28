@@ -172,6 +172,26 @@ public class AssemblyCompiler
         // Add Sharpy.Core reference
         references.Add(MetadataReference.CreateFromFile(typeof(Sharpy.Core.Exports).Assembly.Location));
 
+        // Add netstandard reference (required because Sharpy.Core targets netstandard2.1/2.0)
+        try
+        {
+            var netstandardAssembly = System.Reflection.Assembly.Load("netstandard");
+            references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
+        }
+        catch
+        {
+            // netstandard may not be directly loadable in all runtimes
+            // Try to find it in the runtime directory
+            if (!string.IsNullOrEmpty(coreLibDir))
+            {
+                var netstandardPath = Path.Combine(coreLibDir, "netstandard.dll");
+                if (File.Exists(netstandardPath))
+                {
+                    references.Add(MetadataReference.CreateFromFile(netstandardPath));
+                }
+            }
+        }
+
         // Add project-specific references
         foreach (var referencePath in projectConfig.References)
         {

@@ -1,17 +1,19 @@
 using System.Collections;
+using System.Collections.Generic;
 
-namespace Sharpy.Core;
-
-public sealed partial class List<T>
+namespace Sharpy.Core
 {
-    /// <inheritdoc/>
-    public IEnumerator<T> GetEnumerator()
+    public sealed partial class List<T>
     {
-        return new ListIterator<T>(this);
-    }
+        /// <inheritdoc/>
+        public IEnumerator<T> GetEnumerator()
+        {
+            return new ListIterator<T>(this);
+        }
 
-    /// <summary>
-    /// Non-generic enumerator for IEnumerable interface.
-    /// </summary>
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        /// <summary>
+        /// Non-generic enumerator for IEnumerable interface.
+        /// </summary>
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
 }

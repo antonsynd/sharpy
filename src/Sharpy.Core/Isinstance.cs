@@ -1,60 +1,62 @@
-namespace Sharpy.Core;
-
-using System.Linq;
-
-public static partial class Exports
+using System;
+namespace Sharpy.Core
 {
-    /// <summary>
-    /// Return True if the object argument is an instance of the classinfo argument.
-    /// </summary>
-    /// <typeparam name="T">The type to check against</typeparam>
-    /// <param name="obj">The object to check</param>
-    /// <returns>True if obj is an instance of T, False otherwise</returns>
-    public static bool Isinstance<T>(object? obj)
+    using System.Linq;
+
+    public static partial class Exports
     {
-        return obj is T;
-    }
-
-    /// <summary>
-    /// Return True if the object argument is an instance of the classinfo argument.
-    /// This overload accepts the type as a parameter for runtime type checking.
-    /// </summary>
-    /// <param name="obj">The object to check</param>
-    /// <param name="classInfo">The type to check against</param>
-    /// <returns>True if obj is an instance of classInfo, False otherwise</returns>
-    public static bool Isinstance(object? obj, Type classInfo)
-    {
-        if (classInfo is null)
+        /// <summary>
+        /// Return True if the object argument is an instance of the classinfo argument.
+        /// </summary>
+        /// <typeparam name="T">The type to check against</typeparam>
+        /// <param name="obj">The object to check</param>
+        /// <returns>True if obj is an instance of T, False otherwise</returns>
+        public static bool Isinstance<T>(object? obj)
         {
-            throw TypeError.ArgNone("isinstance", "classinfo");
+            return obj is T;
         }
 
-        if (obj is null)
+        /// <summary>
+        /// Return True if the object argument is an instance of the classinfo argument.
+        /// This overload accepts the type as a parameter for runtime type checking.
+        /// </summary>
+        /// <param name="obj">The object to check</param>
+        /// <param name="classInfo">The type to check against</param>
+        /// <returns>True if obj is an instance of classInfo, False otherwise</returns>
+        public static bool Isinstance(object? obj, Type classInfo)
         {
-            return false;
+            if (classInfo is null)
+            {
+                throw TypeError.ArgNone("isinstance", "classinfo");
+            }
+
+            if (obj is null)
+            {
+                return false;
+            }
+
+            return classInfo.IsInstanceOfType(obj);
         }
 
-        return classInfo.IsInstanceOfType(obj);
-    }
-
-    /// <summary>
-    /// Return True if the object argument is an instance of any of the types in classInfo.
-    /// </summary>
-    /// <param name="obj">The object to check</param>
-    /// <param name="classInfo">A tuple of types to check against</param>
-    /// <returns>True if obj is an instance of any type in classInfo, False otherwise</returns>
-    public static bool Isinstance(object? obj, params Type[] classInfo)
-    {
-        if (classInfo is null || classInfo.Length == 0)
+        /// <summary>
+        /// Return True if the object argument is an instance of any of the types in classInfo.
+        /// </summary>
+        /// <param name="obj">The object to check</param>
+        /// <param name="classInfo">A tuple of types to check against</param>
+        /// <returns>True if obj is an instance of any type in classInfo, False otherwise</returns>
+        public static bool Isinstance(object? obj, params Type[] classInfo)
         {
-            throw TypeError.ArgNone("isinstance", "classinfo");
-        }
+            if (classInfo is null || classInfo.Length == 0)
+            {
+                throw TypeError.ArgNone("isinstance", "classinfo");
+            }
 
-        if (obj is null)
-        {
-            return false;
-        }
+            if (obj is null)
+            {
+                return false;
+            }
 
-        return classInfo.Where(type => type is not null).Any(type => type.IsInstanceOfType(obj));
+            return classInfo.Where(type => type is not null).Any(type => type.IsInstanceOfType(obj));
+        }
     }
 }

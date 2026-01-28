@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard2.1;netstandard2.0</TargetFrameworks>
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>Sharpy</RootNamespace>
     <AssemblyName>Sharpy.Core</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
+    <!-- Polyfill for System.Index/Range on netstandard2.0 -->
+    <PackageReference Include="Microsoft.Bcl.Memory" Version="9.0.0" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
   </ItemGroup>
 
 </Project>

@@ -1,40 +1,42 @@
-namespace Sharpy.Operator;
-
-public static partial class Exports
+using System;
+namespace Sharpy.Operator
 {
-    public static bool Eq<T>(IComparable<T> left, T right)
+    public static partial class Exports
     {
-        if (ReferenceEquals(left, right))
+        public static bool Eq<T>(IComparable<T> left, T right)
         {
-            return true;
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            return left?.CompareTo(right) == 0;
         }
 
-        return left?.CompareTo(right) == 0;
-    }
-
-    public static bool Eq(IComparable left, object right)
-    {
-        if (ReferenceEquals(left, right))
+        public static bool Eq(IComparable left, object right)
         {
-            return true;
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            return left?.CompareTo(right) == 0;
         }
 
-        return left?.CompareTo(right) == 0;
-    }
-
-    public static bool Eq(object left, object right)
-    {
-        if (ReferenceEquals(left, right))
+        public static bool Eq(object left, object right)
         {
-            return true;
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            return left?.Equals(right) ?? right is null;
         }
 
-        return left?.Equals(right) ?? right is null;
+        public static bool __Eq__<T>(IComparable<T> left, T right) => Eq(left, right);
+
+        public static bool __Eq__(IComparable left, object right) => Eq(left, right);
+
+        public static bool __Eq__(object left, object right) => Eq(left, right);
     }
-
-    public static bool __Eq__<T>(IComparable<T> left, T right) => Eq(left, right);
-
-    public static bool __Eq__(IComparable left, object right) => Eq(left, right);
-
-    public static bool __Eq__(object left, object right) => Eq(left, right);
 }

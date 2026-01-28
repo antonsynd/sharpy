@@ -1,14 +1,15 @@
-namespace Sharpy.Core;
-
-public static class IndexExtensions
+namespace Sharpy.Core
 {
-    public static int ToNormalizedInt32(this System.Index index, int max, bool forSlice, bool forInsertion)
+    public static class IndexExtensions
     {
-        if (index.IsFromEnd)
+        public static int ToNormalizedInt32(this System.Index index, int max, bool forSlice, bool forInsertion)
         {
-            return Sharpy.Core.Index.Normalize(-index.Value, max, forSlice, forInsertion);
-        }
+            if (index.IsFromEnd)
+            {
+                return Sharpy.Core.Index.Normalize(-index.Value, max, forSlice, forInsertion);
+            }
 
-        return Sharpy.Core.Index.Normalize(index.Value, max, forSlice, forInsertion);
+            return Sharpy.Core.Index.Normalize(index.Value, max, forSlice, forInsertion);
+        }
     }
 }
