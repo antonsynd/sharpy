@@ -21,40 +21,40 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 ## Phase 0: Preparation
 
 ### Step 0.1: Create a migration branch and verify baseline
-- [ ] Create branch: `git checkout -b migration/remove-sharpy-object`
-- [ ] Run all tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] Verify all tests pass
-- [ ] **Commit:** `git commit --allow-empty -m "chore: start Sharpy.Object migration"`
+- [x] Create branch: `git checkout -b migration/remove-sharpy-object`
+- [x] Run all tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] Verify all tests pass
+- [x] **Commit:** `git commit --allow-empty -m "chore: start Sharpy.Object migration"`
 
 ### Step 0.2: Document current interface usage
-- [ ] Create file `docs/migration/sharpy_object_removal.md`
-- [ ] List all files that reference `Sharpy.Object` as a base class
-- [ ] List all files that reference Sharpy-specific interfaces (`ISized`, `IContainer`, etc.)
-- [ ] **Commit:** `git add docs && git commit -m "docs: document Sharpy.Object migration plan"`
+- [x] Create file `docs/migration/sharpy_object_removal.md`
+- [x] List all files that reference `Sharpy.Object` as a base class
+- [x] List all files that reference Sharpy-specific interfaces (`ISized`, `IContainer`, etc.)
+- [x] **Commit:** `git add docs && git commit -m "docs: document Sharpy.Object migration plan"`
 
 ---
 
 ## Phase 1: Update `List<T>` (Most Complex Collection)
 
 ### Step 1.1: Change `__Len__` return type from `uint` to `int`
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.ISized.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.ISized.cs`
   - Change `public uint __Len__()` to `public int __Len__()`
   - Change return from `(uint)_list.Count` to `_list.Count`
-- [ ] Edit `src/Sharpy.Core/Collections/Interfaces/ISized.cs`
+- [x] Edit `src/Sharpy.Core/Collections/Interfaces/ISized.cs`
   - Change `uint __Len__()` to `int __Len__()`
   - Update `Length` and `Count` default implementations to remove casts
-- [ ] Edit `src/Sharpy.Core/Len.cs`
+- [x] Edit `src/Sharpy.Core/Len.cs`
   - Change return type from `uint` to `int`
   - Update `Len(string s)` similarly
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Len.cs`
+- [x] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Len.cs`
   - Change any `uint` assertions to `int`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): change __Len__ return type from uint to int"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): change __Len__ return type from uint to int"`
 
 ### Step 1.2: Add .NET interface implementations to `List<T>` (additive)
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.cs`
   - Add `IList<T>` and `IReadOnlyList<T>` to the inheritance list (keep existing interfaces for now)
-- [ ] Create `src/Sharpy.Core/Partial.List/List.DotNet.IList.cs` with explicit interface implementations that delegate to existing methods:
+- [x] Create `src/Sharpy.Core/Partial.List/List.DotNet.IList.cs` with explicit interface implementations that delegate to existing methods:
   ```csharp
   public partial class List<T>
   {
@@ -68,117 +68,117 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
       // Already have: Add, Clear, Contains, CopyTo, Remove, Insert, RemoveAt, GetEnumerator, indexer
   }
   ```
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "feat(List): add IList<T> and IReadOnlyList<T> interface implementations"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "feat(List): add IList<T> and IReadOnlyList<T> interface implementations"`
 
 ### Step 1.3: Replace `__Len__` with `Count` property
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.ISized.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.ISized.cs`
   - Rename `__Len__()` method to be a `Count` property: `public int Count => _list.Count;`
   - Remove explicit interface implementations from Step 1.2 that now conflict
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.DotNet.IList.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.DotNet.IList.cs`
   - Remove `ICollection<T>.Count` and `IReadOnlyCollection<T>.Count` (now satisfied by public `Count`)
-- [ ] Update any internal references from `__Len__()` to `Count` in:
-  - [ ] `List.IMutableSequence.cs` (search for `__Len__`)
-  - [ ] `List.ISequence.cs` (if exists)
-  - [ ] `List.IBoolConvertible.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): replace __Len__() with Count property"`
+- [x] Update any internal references from `__Len__()` to `Count` in:
+  - [x] `List.IMutableSequence.cs` (search for `__Len__`)
+  - [x] `List.ISequence.cs` (if exists)
+  - [x] `List.IBoolConvertible.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): replace __Len__() with Count property"`
 
 ### Step 1.4: Replace `__Eq__` with `Equals` override
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IEquatable.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IEquatable.cs`
   - Rename `public bool __Eq__(List<T> other)` to `public bool Equals(List<T>? other)`
   - Change `public override bool __Eq__(Object obj)` to `public override bool Equals(object? obj)`
   - Update internal logic to not call `Operator.Exports.Eq` - use `Equals()` or `EqualityComparer<T>.Default.Equals()`
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.DotNet.IEquatable.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.DotNet.IEquatable.cs`
   - This file may become redundant - merge or delete as needed
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs`
+- [x] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs`
   - Change any `__Eq__` calls to `Equals`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): replace __Eq__ with Equals override"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): replace __Eq__ with Equals override"`
 
 ### Step 1.5: Replace `__Hash__` with `GetHashCode` override
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IHashable.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IHashable.cs`
   - Rename method to `public override int GetHashCode()`
   - Keep the implementation logic
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): replace __Hash__ with GetHashCode override"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): replace __Hash__ with GetHashCode override"`
 
 ### Step 1.6: Replace `__Repr__` and `__Str__` with `ToString` override
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IRepresentable.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IRepresentable.cs`
   - Rename `__Repr__()` to a private helper or inline it
   - Create `public override string ToString()` that does the repr logic
-- [ ] Delete or merge `List.IStrConvertible.cs` if it exists (or was inherited from Object)
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Repr.cs` and `ListTests.Str.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): replace __Repr__/__Str__ with ToString override"`
+- [x] Delete or merge `List.IStrConvertible.cs` if it exists (or was inherited from Object)
+- [x] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Repr.cs` and `ListTests.Str.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): replace __Repr__/__Str__ with ToString override"`
 
 ### Step 1.7: Replace `__Bool__` with `operator true/false`
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IBoolConvertible.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IBoolConvertible.cs`
   - Remove `__Bool__()` method
   - Add/update:
     ```csharp
     public static bool operator true(List<T>? list) => list is not null && list.Count > 0;
     public static bool operator false(List<T>? list) => list is null || list.Count == 0;
     ```
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Bool.cs`
+- [x] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Bool.cs`
   - Change `__Bool__()` calls to use the operators or cast to bool in if statements
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): replace __Bool__ with operator true/false"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): replace __Bool__ with operator true/false"`
 
 ### Step 1.8: Replace `__Contains__` with `Contains` method
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IContainer.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IContainer.cs`
   - Rename `__Contains__` to `Contains` (may already exist for ICollection<T>)
   - Ensure it's the public method, not a dunder
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Contains.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): replace __Contains__ with Contains method"`
+- [x] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Contains.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): replace __Contains__ with Contains method"`
 
 ### Step 1.9: Replace `__Iter__` with `GetEnumerator`
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IIterable.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IIterable.cs`
   - Ensure `GetEnumerator()` is the public method
   - Remove `__Iter__()` if separate
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IEnumerable.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IEnumerable.cs`
   - Consolidate enumeration logic here
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Iteration.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): replace __Iter__ with GetEnumerator"`
+- [x] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Iteration.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): replace __Iter__ with GetEnumerator"`
 
 ### Step 1.10: Replace `__GetItem__`/`__SetItem__` with indexer
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IMutableSequence.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IMutableSequence.cs`
   - Rename `__GetItem__(int index)` logic to be the indexer getter
   - Rename `__SetItem__(int index, T value)` logic to be the indexer setter
   - Keep slice overloads as separate methods (e.g., `GetSlice`, `SetSlice`) called by the multi-param indexers
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.GetItem.cs` and `ListTests.SetItem.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): replace __GetItem__/__SetItem__ with indexer"`
+- [x] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.GetItem.cs` and `ListTests.SetItem.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): replace __GetItem__/__SetItem__ with indexer"`
 
 ### Step 1.11: Replace operator dunders with C# operators
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IAddable.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IAddable.cs`
   - Rename `__Add__` to be `operator +`
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IRightAddable.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IRightAddable.cs`
   - Merge into operator definitions or delete
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IInplaceAddable.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IInplaceAddable.cs`
   - `__IAdd__` becomes the implementation behind `+=` (C# handles this via `operator +` for classes)
   - May need to keep as `AddRange` or similar method
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.IMultipliable.cs` and related
+- [x] Edit `src/Sharpy.Core/Partial.List/List.IMultipliable.cs` and related
   - Rename `__Mul__` to be `operator *`
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.operators.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.operators.cs`
   - Consolidate all operators here
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Addition.cs` and `ListTests.Multiplication.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): replace operator dunders with C# operators"`
+- [x] Update tests in `src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Addition.cs` and `ListTests.Multiplication.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): replace operator dunders with C# operators"`
 
 ### Step 1.12: Remove `Object` base class from `List<T>`
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.cs`
   - Change `public sealed partial class List<T> : Object, ...` to `public sealed partial class List<T> : IList<T>, IReadOnlyList<T>, IEquatable<List<T>>`
   - Remove all Sharpy-specific interfaces from inheritance list
-- [ ] Delete files that are now empty or redundant:
-  - [ ] `List.IContainer.cs` (if empty)
-  - [ ] `List.IIterable.cs` (if empty)
-  - [ ] `List.ISized.cs` (if only had `__Len__`)
-  - [ ] Any other `List.I*.cs` files that only contained dunder methods
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): remove Object base class and Sharpy interfaces"`
+- [x] Delete files that are now empty or redundant:
+  - [x] `List.IContainer.cs` (if empty)
+  - [x] `List.IIterable.cs` (if empty)
+  - [x] `List.ISized.cs` (if only had `__Len__`)
+  - [x] Any other `List.I*.cs` files that only contained dunder methods
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): remove Object base class and Sharpy interfaces"`
 
 ### Step 1.13: Consolidate `List<T>` partial files
 - [ ] Review remaining partial files in `src/Sharpy.Core/Partial.List/`
@@ -197,27 +197,27 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 ## Phase 2: Update `Set<T>`
 
 ### Step 2.1: Change `__Len__` return type from `uint` to `int`
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.ISized.cs`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.ISized.cs`
   - Change return type to `int`
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Len.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): change __Len__ return type from uint to int"`
+- [x] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Len.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** (Done in Phase 1 Step 1.1 when updating ISized interface)
 
 ### Step 2.2: Add .NET interface implementations to `Set<T>`
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.cs`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.cs`
   - Add `ISet<T>` and `ICollection<T>` to inheritance (keep existing for now)
   - Note: `IReadOnlySet<T>` is NOT used because it's .NET 5+ and not available in .NET Standard 2.1 (Unity)
-- [ ] Create `src/Sharpy.Core/Partial.Set/Set.DotNet.ISet.cs` with any missing .NET interface methods
+- [x] Create `src/Sharpy.Core/Partial.Set/Set.DotNet.ISet.cs` with any missing .NET interface methods
   - Note: `Set.ISet.cs` already exists for Sharpy's interface - use different filename for .NET's `ISet<T>`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "feat(Set): add ISet<T> and ICollection<T> interface implementations"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "feat(Set): add ISet<T> and ICollection<T> interface implementations"`
 
 ### Step 2.3: Replace `__Len__` with `Count` property
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.ISized.cs`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.ISized.cs`
   - Replace method with property
-- [ ] Update internal references
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): replace __Len__() with Count property"`
+- [x] Update internal references
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Set): replace __Len__() with Count property"`
 
 ### Step 2.4: Replace `__Eq__` with `Equals` override
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IEquatable.cs`

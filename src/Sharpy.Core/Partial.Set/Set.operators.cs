@@ -4,16 +4,14 @@ public sealed partial class Set<T>
 {
     /// <remarks>
     /// This returns true for both sets if they contain the same items,
-    /// even if they are not the actual same set reference. If the items
-    /// are Sharpy Objects, then <see cref="Object.__Eq__(Object)"/> is used.
-    /// Otherwise, <see cref="object.Equals(object)"/> is used.
+    /// even if they are not the actual same set reference.
     /// </remarks>
-    public static bool operator ==(Set<T> left, Set<T> right)
+    public static bool operator ==(Set<T>? left, Set<T>? right)
     {
-        return left?.__Eq__(right) ?? right is null;
+        return left?.Equals(right) ?? right is null;
     }
 
-    public static bool operator !=(Set<T> left, Set<T> right)
+    public static bool operator !=(Set<T>? left, Set<T>? right)
     {
         return !(left == right);
     }

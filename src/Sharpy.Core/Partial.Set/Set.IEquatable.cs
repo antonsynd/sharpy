@@ -2,32 +2,69 @@ namespace Sharpy.Core;
 
 public sealed partial class Set<T>
 {
-    /// <inheritdoc/>
-    public override bool __Eq__(Object obj)
-    {
-        if (obj is Set<T> other)
-        {
-            return __Eq__(other);
-        }
-
-        return false;
-    }
-
-    /// <inheritdoc/>
-    public bool __Eq__(Set<T> other)
+    /// <summary>
+    /// Determines whether this set equals another set by comparing elements.
+    /// </summary>
+    public bool Equals(Set<T>? other)
     {
         if (other is null)
         {
             return false;
         }
 
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
         return _set.SetEquals(other._set);
     }
 
-    /// <inheritdoc/>
-    public bool __Eq__(Collections.Interfaces.ISet<T> other)
+    /// <summary>
+    /// Deprecated: Use <see cref="Equals(Set{T}?)"/> instead.
+    /// </summary>
+    public bool __Eq__(Set<T> other)
     {
-        uint numElems = 0;
+        return Equals(other);
+    }
+
+    /// <summary>
+    /// Deprecated: Use <see cref="Equals(Set{T}?)"/> instead.
+    /// </summary>
+    /// <remarks>
+    /// Required for IEquatable interface compatibility. Overrides Object.__Eq__(object)
+    /// to provide value equality for Set.
+    /// </remarks>
+    public override bool __Eq__(object other)
+    {
+        if (other is Set<T> set)
+        {
+            return Equals(set);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Determines whether this set equals another ISet by comparing elements.
+    /// </summary>
+    /// <remarks>
+    /// Required by IEquatable&lt;ISet&lt;T&gt;&gt; interface.
+    /// </remarks>
+    public bool Equals(Collections.Interfaces.ISet<T>? other)
+    {
+        if (other is null)
+        {
+            return false;
+        }
+
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        // Count elements and check containment
+        int numElems = 0;
 
         foreach (var x in other)
         {
@@ -40,5 +77,13 @@ public sealed partial class Set<T>
         }
 
         return numElems == _set.Count;
+    }
+
+    /// <summary>
+    /// Deprecated: Use <see cref="Equals(Collections.Interfaces.ISet{T}?)"/> instead.
+    /// </summary>
+    public bool __Eq__(Collections.Interfaces.ISet<T> other)
+    {
+        return Equals(other);
     }
 }
