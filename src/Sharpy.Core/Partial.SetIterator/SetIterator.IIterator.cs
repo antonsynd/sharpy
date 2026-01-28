@@ -2,7 +2,9 @@ namespace Sharpy.Core;
 
 public sealed partial class SetIterator<T>
 {
-    /// <inheritdoc/>
+    /// <summary>
+    /// Deprecated: Use <see cref="Iterator{T}.Next()"/> instead.
+    /// </summary>
     public override T __Next__()
     {
         if (_setEnumerator.MoveNext())
