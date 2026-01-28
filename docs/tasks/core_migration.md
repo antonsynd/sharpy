@@ -539,31 +539,31 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 ## Phase 7: Update Other Types
 
 ### Step 7.1: Update `Str` type
-- [ ] Edit `src/Sharpy.Core/Partial.Str/Str.cs`
+- [x] Edit `src/Sharpy.Core/Partial.Str/Str.cs`
   - Remove Sharpy interface dependencies if any
-- [ ] Edit related partial files
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Str): remove Sharpy interface dependencies"`
+- [x] Edit related partial files
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Str): remove Sharpy interface dependencies"`
 
 ### Step 7.2: Update `Range` type
-- [ ] Edit `src/Sharpy.Core/Range.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Range): remove Sharpy interface dependencies"`
+- [x] Edit `src/Sharpy.Core/Range.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Range): remove Sharpy interface dependencies"`
 
 ### Step 7.3: Update `Slice` type
-- [ ] Edit `src/Sharpy.Core/Slice.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Slice): remove Sharpy interface dependencies"`
+- [x] Edit `src/Sharpy.Core/Slice.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Slice): remove Sharpy interface dependencies"`
 
 ### Step 7.4: Update `Bytes` type
-- [ ] Edit `src/Sharpy.Core/Bytes.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Bytes): remove Sharpy interface dependencies"`
+- [x] Edit `src/Sharpy.Core/Bytes.cs` (no changes needed - no Sharpy interfaces)
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** (skipped - no changes)
 
 ### Step 7.5: Update `Complex` type
-- [ ] Edit `src/Sharpy.Core/Partial.Complex/Complex.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Complex): remove Sharpy interface dependencies"`
+- [x] Edit `src/Sharpy.Core/Partial.Complex/Complex.cs` (no changes needed - no Sharpy interfaces)
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** (skipped - no changes)
 
 ---
 
