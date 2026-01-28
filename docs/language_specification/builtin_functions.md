@@ -18,8 +18,7 @@ This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consisten
 | `bool(x)` | Convert to boolean | Truthiness check |
 
 **`str(x)`** returns a human-readable string representation:
-- For Sharpy types with `__str__`: calls `__str__`
-- For all types: falls back to `.ToString()`
+- For all types, calls `.ToString()`
 
 ## Type Checking
 

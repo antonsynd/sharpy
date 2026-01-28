@@ -1,6 +1,6 @@
 # Decorators
 
-Decorators modify the behavior of functions, methods, and classes.
+Decorators modify the behavior of functions, members, methods, and classes.
 
 **Decorator Ordering:**
 
@@ -19,14 +19,16 @@ For Sharpy's built-in decorators (`@virtual`, `@override`, `@abstract`, `@final`
 ```python
 # Recommended ordering (when applicable)
 @virtual         # Inheritance behavior
+@static
 @override
 @final
-@protected       # Access modifiers last
+@public          # Access modifiers last
+@protected
 @private
 @internal
 ```
 
-Note that Sharpy does not support any version of static or class methods equating to Python's `@staticmethod` and `@classmethod` decorators. See [static_methods.md](static_methods.md) and [class_methods.md](class_methods.md) respectively for details.
+Note that Sharpy does not support any version of class methods equating to Python's `@classmethod` decorator. However, it does support something like Python's `@staticmethod`, which is named `@static` in Sharpy. See [static_methods.md](static_methods.md) and [class_methods.md](class_methods.md) respectively for details.
 
 ## Access Modifiers
 
@@ -80,7 +82,7 @@ class Example:
 
 | Decorator | C# Equivalent | Notes |
 |-----------|---------------|-------|
-| `@static` | `static` | Class-level method, no `self` parameter |
+| `@static` | `static` | Class-level method, no `self` parameter. Can be omitted if the first parameter is not `self`. It is a compile-time error to use it on a method with `self` as the first parameter. |
 | `@override` | `override` | Override virtual/abstract base method |
 | `@virtual` | `virtual` | Method can be overridden by subclasses |
 | `@abstract` | `abstract` | Must be overridden, no implementation |
@@ -92,6 +94,18 @@ class Example:
 class Calculator:
     @static
     def add(x: int, y: int) -> int:
+        return x + y
+
+    # Also valid, `@static` is implied when the method
+    # does not have `self` as the first parameter.
+    def add(x: int, y: int) -> int:
+        return x + y
+
+    # WRONG: Cannot use `@static` on a method that has
+    # `self` as the first parameter, as that makes it an
+    # instance method.
+    @static
+    def reverse_add(self, x: int, y: int) -> int:
         return x + y
 
     @virtual

@@ -2,12 +2,12 @@
 
 | Sharpy Type | Shorthand | .NET Type | Notes |
 |-------------|-----------|-----------|-------|
-| `list[T]` | `[T]` | `System.Collections.Generic.List<T>` | Mutable list |
-| `dict[K, V]` | `{K: V}` | `Sharpy.Collections.Generic.Dictionary<K, V>` | Hash map |
-| `set[T]` | `{T}` | `Sharpy.Collections.Generic.HashSet<T>` | Unique elements |
+| `list[T]` | `[T]` | `Sharpy.Core.List<T>` | Mutable list |
+| `dict[K, V]` | `{K: V}` | `Sharpy.Core.Dict<K, V>` | Hash map |
+| `set[T]` | `{T}` | `Sharpy.Core.Set<T>` | Unique elements |
 | `tuple[T1, T2, ...]` | `(T1, T2, ...)` | `System.ValueTuple<T1, T2, ...>` | Fixed-size tuple |
 
-Sharpy uses the corresponding .NET collection types. At a later stage, Sharpy will provide Pythonic wrappers for these types.
+With the exception of `tuple[...]`, Sharpy collection types use custom Pythonic wrappers around the corresponding .NET collection types.
 
 ## Shorthand Syntax
 
