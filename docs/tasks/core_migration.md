@@ -670,20 +670,12 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 ## Phase 8: Delete `Sharpy.Object` and Sharpy Interfaces
 
 ### Step 8.1: Delete `Sharpy.Object` class
-- [ ] Delete entire directory: `src/Sharpy.Core/Partial.Object/`
-  - `Object.cs`
-  - `Object.object.cs`
-  - `Object.operators.cs`
-  - `Object.IEquatable.cs`
-  - `Object.IHashable.cs`
-  - `Object.IIdentifiable.cs`
-  - `Object.IInequatable.cs`
-  - `Object.IBoolConvertible.cs`
-  - `Object.IRepresentable.cs`
-  - `Object.IStrConvertible.cs`
-  - `Object.DotNet.IEquatable.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "chore: delete Sharpy.Object class"`
+- [x] Delete entire directory: `src/Sharpy.Core/Partial.Object/` (11 files)
+- [x] Remove duplicate `Object`-specific overloads from:
+  - `Print.cs` - removed `Print(PrintArguments<Object?>...)` overload
+  - `Format.cs` - removed `Format(Object?, ...)` overload
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 735 tests pass
+- [x] **Commit:** `git commit -am "chore: delete Sharpy.Object class"`
 
 ### Step 8.2: Delete operator interfaces
 - [ ] Delete files:
