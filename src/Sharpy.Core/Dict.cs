@@ -170,7 +170,11 @@ public sealed partial class Dict<K, V>
     /// </summary>
     public bool __Contains__(K key) => ContainsKey(key);
 
-    public void __DelItem__(K key)
+    /// <summary>
+    /// Removes the item with the specified key from the dictionary.
+    /// </summary>
+    /// <exception cref="KeyError">Thrown if the key does not exist.</exception>
+    public void Remove(K key)
     {
         if (!_dict.Remove(key))
         {
@@ -178,15 +182,15 @@ public sealed partial class Dict<K, V>
         }
     }
 
-    public V __GetItem__(K key)
-    {
-        if (_dict.TryGetValue(key, out V? value))
-        {
-            return value;
-        }
+    /// <summary>
+    /// Deprecated: Use <see cref="Remove(K)"/> instead.
+    /// </summary>
+    public void __DelItem__(K key) => Remove(key);
 
-        throw new KeyError(Repr(key));
-    }
+    /// <summary>
+    /// Deprecated: Use the indexer <c>dict[key]</c> instead.
+    /// </summary>
+    public V __GetItem__(K key) => this[key];
 
     /// <summary>
     /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
@@ -196,10 +200,22 @@ public sealed partial class Dict<K, V>
         return Keys().__Iter__();
     }
 
+    /// <summary>
+    /// Gets or sets the value associated with the specified key.
+    /// </summary>
+    /// <exception cref="KeyError">Thrown if the key does not exist on get.</exception>
     public V this[K key]
     {
-        get => __GetItem__(key);
-        set => __SetItem__(key, value);
+        get
+        {
+            if (_dict.TryGetValue(key, out V? value))
+            {
+                return value;
+            }
+
+            throw new KeyError(Repr(key));
+        }
+        set => _dict[key] = value;
     }
 
     /// <summary>
@@ -262,10 +278,10 @@ public sealed partial class Dict<K, V>
         return false;
     }
 
-    public void __SetItem__(K key, V value)
-    {
-        _dict[key] = value;
-    }
+    /// <summary>
+    /// Deprecated: Use the indexer <c>dict[key] = value</c> instead.
+    /// </summary>
+    public void __SetItem__(K key, V value) => this[key] = value;
 
     /// <summary>
     /// Delegate to specialized GetEnumerator() for generalized one.

@@ -372,11 +372,11 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Dict): make GetEnumerator primary iteration method"`
 
 ### Step 3.10: Replace `__GetItem__`/`__SetItem__`/`__DelItem__` with indexer and methods
-- [ ] Update `src/Sharpy.Core/Dict.cs`
-  - Indexer for get/set
-  - `Remove(K key)` for delete
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Dict): replace item dunders with indexer and Remove"`
+- [x] Make indexer the primary implementation (get throws KeyError)
+- [x] Add `Remove(K key)` method that throws KeyError
+- [x] Make `__GetItem__`, `__SetItem__`, `__DelItem__` deprecated aliases
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Dict): replace item dunders with indexer and Remove"`
 
 ### Step 3.11: Replace `__Or__`/`__IOr__` with `operator |`
 - [ ] Update `src/Sharpy.Core/Dict.cs`
