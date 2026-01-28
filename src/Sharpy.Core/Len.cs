@@ -22,23 +22,6 @@ public static partial class Exports
     }
 
     /// <summary>
-    /// Return the length (the number of items) of a read-only collection.
-    /// </summary>
-    /// <remarks>
-    /// This overload handles types that only implement <see cref="IReadOnlyCollection{T}"/>
-    /// and not <see cref="System.Collections.ICollection"/>.
-    /// </remarks>
-    public static int Len<T>(IReadOnlyCollection<T> c)
-    {
-        if (c is null)
-        {
-            throw TypeError.ArgNone("len", "sized");
-        }
-
-        return c.Count;
-    }
-
-    /// <summary>
     /// Return the length of a string.
     /// </summary>
     public static int Len(string s)
