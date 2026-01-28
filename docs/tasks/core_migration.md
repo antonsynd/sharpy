@@ -330,9 +330,10 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "feat(Dict): add IDictionary<K,V> and IReadOnlyDictionary<K,V> implementations"`
 
 ### Step 3.3: Replace `__Len__` with `Count` property
-- [ ] Change method to property in `src/Sharpy.Core/Dict.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Dict): replace __Len__() with Count property"`
+- [x] `Count` property added in Step 3.2
+- [x] Make `__Len__()` a deprecated alias calling `Count`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Dict): replace __Len__() with Count property"`
 
 ### Step 3.4: Replace `__Eq__` with `Equals` override
 - [ ] Update `src/Sharpy.Core/Dict.cs`

@@ -204,10 +204,10 @@ public sealed partial class Dict<K, V>
         set => __SetItem__(key, value);
     }
 
-    public int __Len__()
-    {
-        return _dict.Count;
-    }
+    /// <summary>
+    /// Deprecated: Use <see cref="Count"/> instead.
+    /// </summary>
+    public int __Len__() => Count;
 
     public override bool __Eq__(Object obj)
     {
