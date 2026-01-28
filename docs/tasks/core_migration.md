@@ -628,11 +628,19 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(IdentityAdapterFactory): remove Sharpy.Object dependency"`
 
 ### Step 7.5.8: Update Operator files to remove Sharpy dependencies
-- [ ] Edit operator files in `src/Sharpy.Core/Operator/`:
-  - `Eq.cs`, `Ne.cs`, `Not.cs`, `Truth.cs`, `Add.cs`, `Mul.cs`, `Gt.cs`, `Lt.cs`, `IAdd.cs`, `IMul.cs`
-  - Remove Sharpy.Object aliases and interface dependencies
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Operator): remove Sharpy.Object and interface dependencies"`
+- [x] Edit operator files in `src/Sharpy.Core/Operator/`:
+  - `Eq.cs` - Removed Sharpy.Object and IEquatable overloads, kept IComparable
+  - `Ne.cs` - Removed Sharpy.Object and IInequatable overloads, kept IComparable
+  - `Not.cs` - Removed IBoolConvertible, ISized, Object; use ICollection
+  - `Truth.cs` - Removed IBoolConvertible, ISized, Object; use ICollection
+  - `Add.cs` - Replaced IAddable with specific numeric type overloads
+  - `Mul.cs` - Replaced IMultipliable with specific numeric type overloads
+  - `Gt.cs` - Removed IGreaterThanComparableWith, kept IComparable
+  - `Lt.cs` - Removed ILessThanComparableWith, kept IComparable
+  - `IAdd.cs` - Replaced IInplaceAddable with specific numeric type overloads
+  - `IMul.cs` - Replaced IInplaceMultipliable with specific numeric type overloads
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 735 tests pass
+- [x] **Commit:** `git commit -am "refactor(Operator): remove Sharpy.Object and interface dependencies"`
 
 ### Step 7.5.9: Update `Iterator<T>` to remove `IIterable`
 - [ ] Edit `src/Sharpy.Core/Partial.Iterator/Iterator.cs`

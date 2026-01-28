@@ -1,24 +1,19 @@
-using Object = Sharpy.Core.Object;
-using Sharpy.Core;
-
 namespace Sharpy.Operator;
-
-using Sharpy.Collections.Interfaces;
 
 public static partial class Exports
 {
-    public static bool Truth(IBoolConvertible boolConvertible)
+    public static bool Truth(bool value)
     {
-        return boolConvertible.__Bool__();
+        return value;
     }
 
-    public static bool Truth(ISized sized)
+    public static bool Truth(System.Collections.ICollection collection)
     {
-        return sized.__Len__() > 0;
+        return collection.Count > 0;
     }
 
-    public static bool Truth(Object obj)
+    public static bool Truth<T>(ICollection<T> collection)
     {
-        return !obj.__Bool__();
+        return collection.Count > 0;
     }
 }

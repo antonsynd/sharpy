@@ -1,22 +1,16 @@
-using Sharpy.Core;
 namespace Sharpy.Operator;
 
 public static partial class Exports
 {
-    public static void IAdd<T>(IInplaceAddable<T> left, T right)
-    {
-        left.__IAdd__(right);
-    }
+    public static void IAdd(ref int left, int right) => left += right;
+    public static void IAdd(ref long left, long right) => left += right;
+    public static void IAdd(ref float left, float right) => left += right;
+    public static void IAdd(ref double left, double right) => left += right;
+    public static void IAdd(ref decimal left, decimal right) => left += right;
 
-    public static void IAdd<TAugend, TAddend>(ref TAugend left, TAddend right)
-        where TAugend : IAddable<TAugend, TAddend>
-    {
-        left = left.__Add__(right);
-    }
-
-    public static void __IAdd__<T>(IInplaceAddable<T> left, T right) => IAdd<T>(left, right);
-
-    public static void __IAdd__<TAugend, TAddend>(ref TAugend left, TAddend right)
-        where TAugend : IAddable<TAugend, TAddend>
-        => IAdd<TAugend, TAddend>(ref left, right);
+    public static void __IAdd__(ref int left, int right) => left += right;
+    public static void __IAdd__(ref long left, long right) => left += right;
+    public static void __IAdd__(ref float left, float right) => left += right;
+    public static void __IAdd__(ref double left, double right) => left += right;
+    public static void __IAdd__(ref decimal left, decimal right) => left += right;
 }
