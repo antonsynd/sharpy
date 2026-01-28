@@ -16,6 +16,9 @@ internal sealed class EnumeratorIterator<T> : Iterator<T>
         _started = false;
     }
 
+    /// <summary>
+    /// Deprecated: Use <see cref="Iterator{T}.Next()"/> instead.
+    /// </summary>
     public override T __Next__()
     {
         if (!_started)
