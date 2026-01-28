@@ -1,26 +1,7 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 public static partial class Exports
 {
-    /// <summary>
-    /// Return an iterator object from a Sharpy iterable.
-    /// </summary>
-    /// <typeparam name="T">The type of elements in the iterable.</typeparam>
-    /// <param name="iterable">The Sharpy iterable to get an iterator from.</param>
-    /// <returns>An iterator for the iterable.</returns>
-    /// <exception cref="TypeError">Thrown when iterable is null.</exception>
-    public static Iterator<T> Iter<T>(IIterable<T> iterable)
-    {
-        if (iterable is null)
-        {
-            throw TypeError.IsNotInterface("NoneType", "iterable");
-        }
-
-        return iterable.__Iter__();
-    }
-
     /// <summary>
     /// Return an iterator object from any C# enumerable.
     /// </summary>
@@ -29,8 +10,7 @@ public static partial class Exports
     /// <returns>An iterator for the enumerable.</returns>
     /// <exception cref="TypeError">Thrown when enumerable is null.</exception>
     /// <remarks>
-    /// If the enumerable is already an IIterable, this method uses its native __Iter__() method
-    /// to avoid unnecessary wrapping. Otherwise, it wraps the enumerator using EnumeratorIterator.
+    /// Wraps the enumerator using EnumeratorIterator.
     /// This allows any C# IEnumerable to work seamlessly with Sharpy's iterator protocol.
     /// </remarks>
     public static Iterator<T> Iter<T>(IEnumerable<T> enumerable)
@@ -40,13 +20,13 @@ public static partial class Exports
             throw TypeError.ArgNone("iter", "enumerable");
         }
 
-        // If it's already an IIterable, use its native __Iter__
-        if (enumerable is IIterable<T> iterable)
+        // Optimization: if it's already an Iterator<T>, return it directly
+        if (enumerable is Iterator<T> iterator)
         {
-            return iterable.__Iter__();
+            return iterator;
         }
 
-        // For pure C# IEnumerable, use EnumeratorIterator directly
+        // Wrap the enumerator using EnumeratorIterator
         return new EnumeratorIterator<T>(enumerable.GetEnumerator());
     }
 }
