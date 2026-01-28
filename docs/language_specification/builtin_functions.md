@@ -26,7 +26,7 @@ For user input and other expected-failure scenarios, the type conversion functio
 n = int("42")  # Raises ValueError if invalid
 
 # Result-returning version (recommended for user input)
-result: int !ValueError = int.parse("42")
+result: Result[int, ValueError] = int.parse("42")
 match result:
     case Ok(n):
         print(f"Parsed: {n}")
@@ -34,7 +34,7 @@ match result:
         print(f"Invalid input: {e}")
 
 # Similarly for float
-f: float !ValueError = float.parse("3.14")
+f: Result[float, ValueError] = float.parse("3.14")
 ```
 
 **Guiding principle:** Use the throwing version (`int(x)`) when bad input is a bug. Use the Result version (`int.parse(x)`) when bad input is expected (e.g., user input).

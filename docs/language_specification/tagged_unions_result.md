@@ -69,10 +69,6 @@ success: Result[int, str] = Ok(42)
 
 # Error case
 failure: Result[int, str] = Err("Something went wrong")
-
-# Using shorthand in type annotations
-success: int !str = Ok(42)
-failure: int !str = Err("Something went wrong")
 ```
 
 ## Pattern Matching
