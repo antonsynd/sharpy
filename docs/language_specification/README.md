@@ -46,7 +46,7 @@ See [type_annotations.md](type_annotations.md) for type annotation syntax.
 
 See [type_hierarchy.md](type_hierarchy.md) for the type hierarchy and object model.
 
-See [nullable_types.md](nullable_types.md) for nullable type semantics.
+See [nullable_types.md](nullable_types.md) for `T | None` C# nullable types (.NET interop).
 
 See [named_tuples.md](named_tuples.md) for named tuple syntax and usage.
 
