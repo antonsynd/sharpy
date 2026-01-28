@@ -3,21 +3,6 @@ namespace Sharpy.Operator;
 
 public static partial class Exports
 {
-    public static bool Gt<T>(IGreaterThanComparableWith<T> left, T right)
-    {
-        if (ReferenceEquals(left, right))
-        {
-            return false;
-        }
-
-        if (left is null || right is null)
-        {
-            throw TypeError.OpNotSupported("<", "NoneType");
-        }
-
-        return left.__Gt__(right);
-    }
-
     public static bool Gt<T>(IComparable<T> left, T right)
     {
         if (ReferenceEquals(left, right))
@@ -27,7 +12,7 @@ public static partial class Exports
 
         if (left is null || right is null)
         {
-            throw TypeError.OpNotSupported("<", "NoneType");
+            throw TypeError.OpNotSupported(">", "NoneType");
         }
 
         return left.CompareTo(right) > 0;
@@ -42,7 +27,7 @@ public static partial class Exports
 
         if (left is null || right is null)
         {
-            throw TypeError.OpNotSupported("<", "NoneType");
+            throw TypeError.OpNotSupported(">", "NoneType");
         }
 
         return left.CompareTo(right) > 0;
@@ -57,12 +42,7 @@ public static partial class Exports
 
         if (left is null || right is null)
         {
-            throw TypeError.OpNotSupported("<", "NoneType");
-        }
-
-        if (typeof(T).IsAssignableTo(typeof(IGreaterThanComparableWith<T>)))
-        {
-            return Gt((IGreaterThanComparableWith<T>)left, right);
+            throw TypeError.OpNotSupported(">", "NoneType");
         }
 
         if (typeof(T).IsAssignableTo(typeof(IComparable<T>)))
@@ -75,14 +55,12 @@ public static partial class Exports
             return Gt((IComparable)left, right);
         }
 
-        throw TypeError.OpNotSupported("<", typeof(T).Name);
+        throw TypeError.OpNotSupported(">", typeof(T).Name);
     }
-
-    public static bool __Gt__<T>(IGreaterThanComparableWith<T> left, T right) => Gt(left, right);
 
     public static bool __Gt__<T>(IComparable<T> left, T right) => Gt(left, right);
 
-    public static bool __Gt__<T>(IComparable left, object right) => Gt(left, right);
+    public static bool __Gt__(IComparable left, object right) => Gt(left, right);
 
     public static bool __Gt__<T>(T left, T right) => Gt(left, right);
 }

@@ -7,9 +7,10 @@ public sealed partial class ListReverseIterator<T>
     /// </summary>
     public override T __Next__()
     {
-        if (_index < _list.Count)
+        var count = ((IReadOnlyCollection<T>)_list).Count;
+        if (_index < count)
         {
-            var res = _list[(int)(_list.Count - _index - 1)];
+            var res = _list[(int)(count - _index - 1)];
             ++_index;
             return res;
         }

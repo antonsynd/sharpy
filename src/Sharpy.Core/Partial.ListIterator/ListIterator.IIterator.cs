@@ -7,7 +7,7 @@ public sealed partial class ListIterator<T>
     /// </summary>
     public override T __Next__()
     {
-        if (_index < _list.Count)
+        if (_index < ((IReadOnlyCollection<T>)_list).Count)
         {
             var res = _list[(int)_index];
             ++_index;

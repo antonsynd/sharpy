@@ -31,31 +31,4 @@ public static partial class Exports
         return value.ToString() ?? "None";
     }
 
-    /// <summary>
-    /// Convert a Sharpy object to a "formatted" representation.
-    /// </summary>
-    /// <param name="value">The Sharpy object to format</param>
-    /// <param name="formatSpec">The format specification string (default is empty string)</param>
-    /// <returns>The formatted string representation</returns>
-    public static string Format(Object? value, string formatSpec = "")
-    {
-        if (value is null)
-        {
-            return "None";
-        }
-
-        if (string.IsNullOrEmpty(formatSpec))
-        {
-            return value.__Str__();
-        }
-
-        // Try to use .NET formatting if the object is IFormattable
-        if (value is IFormattable formattable)
-        {
-            return formattable.ToString(formatSpec, System.Globalization.CultureInfo.InvariantCulture);
-        }
-
-        // Otherwise just return the string representation
-        return value.__Str__();
-    }
 }

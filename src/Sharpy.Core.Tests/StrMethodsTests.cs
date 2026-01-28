@@ -1,6 +1,5 @@
 using Xunit;
 using FluentAssertions;
-using Sharpy.Collections.Interfaces;
 
 namespace Sharpy.Core.Tests;
 
@@ -1146,7 +1145,7 @@ public class StrMethods_Tests
     public void MakeTrans_WithNullMapping_ThrowsArgumentNullException()
     {
         // Arrange & Act & Assert
-        var invoking = () => Str.MakeTrans((IMapping<Str, Str?>)null!);
+        var invoking = () => Str.MakeTrans((IReadOnlyDictionary<Str, Str?>)null!);
 
         invoking.Should().Throw<ArgumentNullException>();
     }

@@ -12,28 +12,6 @@ public static partial class Exports
     // Note: Removed Print(Object? obj, ...) and Print(object? obj, ...) overloads as they
     // conflict with Print(params object?[] values). Use PrintWithOptions for custom options.
 
-    public static void Print(PrintArguments<Object?> args, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
-    {
-        var lastIndex = (uint)args.args.Length - 1;
-        uint i = 0;
-
-        foreach (var obj in args.args)
-        {
-            var result = obj?.__Str__() ?? "None";
-
-            if (i < lastIndex)
-            {
-                _Print(result, sep, file, false, true);  // Print separator after non-last items
-            }
-            else
-            {
-                _Print(result, end, file, flush, true);  // Print end terminator after last item
-            }
-
-            ++i;
-        }
-    }
-
     public static void Print(PrintArguments<object?> args, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
     {
         var lastIndex = (uint)args.args.Length - 1;

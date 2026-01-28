@@ -139,45 +139,6 @@ public class IteratorInteropTests
 
     #endregion
 
-    #region AsIterable Extension Method Tests
-
-    [Fact]
-    public void AsIterable_CSharpEnumerable_ReturnsIterable()
-    {
-        // Given
-        var csharpArray = new[] { 1, 2, 3 };
-
-        // When
-        var iterable = csharpArray.AsIterable();
-
-        // Then
-        iterable.Should().BeAssignableTo<Collections.Interfaces.IIterable<int>>();
-    }
-
-    [Fact]
-    public void AsIterable_CanBeIteratedMultipleTimes()
-    {
-        // Given
-        var csharpArray = new[] { 1, 2, 3 };
-        var iterable = csharpArray.AsIterable();
-
-        // When/Then - First iteration
-        var iter1 = iterable.__Iter__();
-        Next(iter1).Should().Be(1);
-        Next(iter1).Should().Be(2);
-        Next(iter1).Should().Be(3);
-        Assert.Throws<StopIteration>(() => Next(iter1));
-
-        // When/Then - Second iteration
-        var iter2 = iterable.__Iter__();
-        Next(iter2).Should().Be(1);
-        Next(iter2).Should().Be(2);
-        Next(iter2).Should().Be(3);
-        Assert.Throws<StopIteration>(() => Next(iter2));
-    }
-
-    #endregion
-
     #region Sharpy Iterables in C# foreach Tests
 
     [Fact]
@@ -475,8 +436,8 @@ public class IteratorInteropTests
             ["three"] = 3
         };
 
-        // When - Dict iterates over keys
-        var result = sharpyDict.Select(key => key.ToUpper()).ToList();
+        // When - Dict iterates over KeyValuePair, extract keys
+        var result = sharpyDict.Select(kvp => kvp.Key.ToUpper()).ToList();
 
         // Then
         result.Should().BeEquivalentTo(new[] { "ONE", "TWO", "THREE" });
@@ -531,13 +492,6 @@ public class IteratorInteropTests
         Assert.Throws<TypeError>(() => nullEnumerable!.ToIterator());
     }
 
-    [Fact]
-    public void AsIterable_Null_ThrowsArgumentNullException()
-    {
-        // When/Then
-        IEnumerable<int>? nullEnumerable = null;
-        Assert.Throws<ArgumentNullException>(() => nullEnumerable!.AsIterable());
-    }
 
     [Fact]
     public void Next_ExhaustedIterator_ThrowsStopIteration()

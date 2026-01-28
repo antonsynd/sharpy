@@ -2,11 +2,9 @@ using Sharpy.Core;
 
 namespace Sharpy.Itertools;
 
-using Collections.Interfaces;
-
 internal static partial class Exports
 {
-    public static Iterator<T> Cycle<T>(IIterable<T> iterable)
+    public static Iterator<T> Cycle<T>(IEnumerable<T> iterable)
     {
         return new CycleIterator<T>(iterable);
     }
@@ -17,15 +15,15 @@ file class CycleIterator<T> : Iterator<T>
     private Sharpy.Core.List<T> _saved;
     private uint _currentIndex;
 
-    private readonly Iterator<T> _iterator;
+    private readonly IEnumerator<T> _enumerator;
     private bool _iteratorEmpty;
 
-    internal CycleIterator(IIterable<T> iterable)
+    internal CycleIterator(IEnumerable<T> iterable)
     {
         _saved = [];
         _currentIndex = 0;
 
-        _iterator = iterable.__Iter__();
+        _enumerator = iterable.GetEnumerator();
         _iteratorEmpty = false;
     }
 
@@ -34,15 +32,15 @@ file class CycleIterator<T> : Iterator<T>
         // Iterate through the iterator first, saving each item as we go along
         if (!_iteratorEmpty)
         {
-            try
+            if (_enumerator.MoveNext())
             {
-                var res = _iterator.__Next__();
+                var res = _enumerator.Current;
 
                 _saved.Append(res);
 
                 return res;
             }
-            catch (StopIteration e)
+            else
             {
                 _iteratorEmpty = true;
             }

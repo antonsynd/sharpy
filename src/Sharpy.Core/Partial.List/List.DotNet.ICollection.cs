@@ -15,11 +15,6 @@ public sealed partial class List<T>
         return _list.Remove(item);
     }
 
-    bool Collections.Interfaces.ICollection<T>.Remove(T item)
-    {
-        return _list.Remove(item);
-    }
-
     public void CopyTo(T[] array, int arrayIndex)
     {
         _list.CopyTo(array, arrayIndex);

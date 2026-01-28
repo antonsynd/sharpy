@@ -1,32 +1,18 @@
-using Sharpy.Core;
 namespace Sharpy.Operator;
 
 public static partial class Exports
 {
-    public static T Add<T>(T left, T right) where T : IAddable<T>
-    {
-        return left.__Add__(right);
-    }
+    public static int Add(int left, int right) => left + right;
+    public static long Add(long left, long right) => left + right;
+    public static float Add(float left, float right) => left + right;
+    public static double Add(double left, double right) => left + right;
+    public static decimal Add(decimal left, decimal right) => left + right;
+    public static string Add(string left, string right) => left + right;
 
-    public static TAugend Add<TAugend, TAddend>(TAugend left, TAddend right)
-        where TAugend : IAddable<TAugend, TAddend>
-    {
-        return left.__Add__(right);
-    }
-
-    public static TSum Add<TLeft, TRight, TSum>(TLeft left, TRight right)
-        where TLeft : IAddable<TLeft, TRight, TSum>
-    {
-        return left.__Add__(right);
-    }
-
-    public static T __Add__<T>(T left, T right) where T : IAddable<T> => Add<T>(left, right);
-
-    public static TAugend __Add__<TAugend, TAddend>(TAugend left, TAddend right)
-        where TAugend : IAddable<TAugend, TAddend>
-        => Add<TAugend, TAddend>(left, right);
-
-    public static TSum __Add__<TLeft, TRight, TSum>(TLeft left, TRight right)
-        where TLeft : IAddable<TLeft, TRight, TSum>
-        => Add<TLeft, TRight, TSum>(left, right);
+    public static int __Add__(int left, int right) => left + right;
+    public static long __Add__(long left, long right) => left + right;
+    public static float __Add__(float left, float right) => left + right;
+    public static double __Add__(double left, double right) => left + right;
+    public static decimal __Add__(decimal left, decimal right) => left + right;
+    public static string __Add__(string left, string right) => left + right;
 }

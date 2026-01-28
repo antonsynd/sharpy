@@ -1,24 +1,19 @@
-using Object = Sharpy.Core.Object;
-using Sharpy.Core;
-
 namespace Sharpy.Operator;
-
-using Sharpy.Collections.Interfaces;
 
 public static partial class Exports
 {
-    public static bool Not(IBoolConvertible boolConvertible)
+    public static bool Not(bool value)
     {
-        return !boolConvertible.__Bool__();
+        return !value;
     }
 
-    public static bool Not(ISized sized)
+    public static bool Not(System.Collections.ICollection collection)
     {
-        return sized.__Len__() == 0;
+        return collection.Count == 0;
     }
 
-    public static bool Not(Object obj)
+    public static bool Not<T>(ICollection<T> collection)
     {
-        return !obj.__Bool__();
+        return collection.Count == 0;
     }
 }

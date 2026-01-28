@@ -1,8 +1,11 @@
-using Object = Sharpy.Core.Object;
-
 namespace Sharpy.Core.Tests;
 
-public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, Sharpy.Core.IInequatable<Wrapper<T>>
+using static Sharpy.Core.Exports;
+
+/// <summary>
+/// Test helper wrapper class that provides Python-style dunder methods.
+/// </summary>
+public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>
 {
     private static uint _id;
 
@@ -21,13 +24,13 @@ public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, S
     }
 
     // Identifiable
-    public override int __Id__()
+    public int __Id__()
     {
         return (int)Id;
     }
 
     // BoolConvertible
-    public override bool __Bool__()
+    public bool __Bool__()
     {
         return Bool(Value);
     }
@@ -43,13 +46,13 @@ public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, S
     }
 
     // Representable
-    public override string __Repr__()
+    public string __Repr__()
     {
         return $"<Wrapper object with id {Id} and value {Repr(Value)}>";
     }
 
     // Hashable
-    public override int __Hash__()
+    public int __Hash__()
     {
         var hashCode = new HashCode();
         hashCode.Add(typeof(Wrapper<T>).GetHashCode());
@@ -59,8 +62,8 @@ public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, S
         return hashCode.ToHashCode();
     }
 
-    // Equatable<Object>
-    public override bool __Eq__(Object other)
+    // Equatable
+    public bool __Eq__(object? other)
     {
         if (other is Wrapper<T> wrapper)
         {
@@ -115,5 +118,20 @@ public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, S
     public bool __Ne__(Wrapper<T> other)
     {
         return !__Eq__(other);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is Wrapper<T> wrapper)
+        {
+            return Equals(wrapper);
+        }
+
+        return false;
+    }
+
+    public override int GetHashCode()
+    {
+        return __Hash__();
     }
 }

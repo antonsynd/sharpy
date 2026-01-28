@@ -1,21 +1,12 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 /// <summary>
 /// A list of elements.
 /// </summary>
 public sealed partial class List<T>
     : IList<T>,
       IReadOnlyList<T>,
-      System.IEquatable<List<T>>,
-      IMutableSequence<List<T>, T>,
-      IAddable<List<T>>,
-      IRightAddable<List<T>>,
-      IInplaceAddable<List<T>>,
-      IMultipliable<List<T>, int>,
-      IInplaceMultipliable<int>,
-      IRightMultipliable<List<T>, int>
+      System.IEquatable<List<T>>
 {
     private System.Collections.Generic.List<T> _list;
 

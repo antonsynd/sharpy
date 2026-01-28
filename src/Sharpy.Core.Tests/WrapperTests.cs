@@ -3,6 +3,11 @@ using FluentAssertions;
 
 namespace Sharpy.Core.Tests;
 
+/// <summary>
+/// Tests for the Wrapper test helper class.
+/// Note: Interface checks have been removed since the Sharpy interfaces have been migrated
+/// to standard .NET interfaces.
+/// </summary>
 public class Wrapper_Tests
 {
     [Fact]
@@ -32,9 +37,6 @@ public class Wrapper_Tests
     [Fact]
     public void Wrapper_Bool_Convertible()
     {
-        // If/when/then
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IBoolConvertible)).Should().BeTrue();
-
         // If
         var wrapper = new Wrapper<int>(1);
         // When/then
@@ -58,7 +60,6 @@ public class Wrapper_Tests
     public void Wrapper_Hashable()
     {
         // If
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IHashable)).Should().BeTrue();
         var wrapper0 = new Wrapper<int>(0);
         var wrapper1 = new Wrapper<int>(1);
 
@@ -72,7 +73,6 @@ public class Wrapper_Tests
     public void Wrapper_Equatable()
     {
         // If
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatable<Object>)).Should().BeTrue();
         typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatable<Wrapper<int>>)).Should().BeTrue();
         var wrapper0 = new Wrapper<int>(0);
         var wrapper1_0 = new Wrapper<int>(1);
@@ -83,7 +83,7 @@ public class Wrapper_Tests
         // When/then
         wrapper0.__Eq__(wrapper1_0).Should().BeFalse();
         wrapper0.__Eq__(wrapper1_1).Should().BeFalse();
-        wrapper0.__Eq__(null).Should().BeFalse();
+        wrapper0.__Eq__((Wrapper<int>)null!).Should().BeFalse();
 
         // Identity
         wrapper0.__Eq__(wrapper0).Should().BeTrue();
@@ -99,8 +99,6 @@ public class Wrapper_Tests
     public void Wrapper_Inequatable()
     {
         // If
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IInequatable<Object>)).Should().BeTrue();
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IInequatable<Wrapper<int>>)).Should().BeTrue();
         var wrapper0 = new Wrapper<int>(0);
         var wrapper1_0 = new Wrapper<int>(1);
         var wrapper1_1 = new Wrapper<int>(1);
@@ -110,7 +108,7 @@ public class Wrapper_Tests
         // When/then
         wrapper0.__Ne__(wrapper1_0).Should().BeTrue();
         wrapper0.__Ne__(wrapper1_1).Should().BeTrue();
-        wrapper0.__Ne__(null).Should().BeTrue();
+        wrapper0.__Ne__(null!).Should().BeTrue();
 
         // Identity
         wrapper0.__Ne__(wrapper0).Should().BeFalse();
@@ -126,7 +124,6 @@ public class Wrapper_Tests
     public void Wrapper_IEquatable()
     {
         // If
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatable<Object>)).Should().BeTrue();
         typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatable<Wrapper<int>>)).Should().BeTrue();
 
         var wrapper0 = new Wrapper<int>(0);
@@ -155,7 +152,6 @@ public class Wrapper_Tests
     public void Wrapper_Identifiable()
     {
         // If
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IIdentifiable)).Should().BeTrue();
         var wrapper0 = new Wrapper<int>(0);
         var wrapper1 = new Wrapper<int>(1);
 
@@ -169,26 +165,11 @@ public class Wrapper_Tests
     public void Wrapper_Representable()
     {
         // If
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IRepresentable)).Should().BeTrue();
         var wrapper0 = new Wrapper<int>(0);
         var wrapper1 = new Wrapper<int>(1);
 
         // When/then
         wrapper0.__Repr__().Length.Should().BeGreaterThan(0);
         wrapper0.__Repr__().Should().NotBe(wrapper1.__Repr__());
-    }
-
-    [Fact]
-    public void Wrapper_StrConvertible()
-    {
-        // If
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IStrConvertible)).Should().BeTrue();
-        var wrapper0 = new Wrapper<int>(0);
-        var wrapper1 = new Wrapper<int>(1);
-
-        // When/then
-        wrapper0.__Str__().Should().Be(wrapper0.__Repr__());
-        wrapper0.ToString().Should().Be(wrapper0.__Str__());
-        wrapper0.__Str__().Should().NotBe(wrapper1.__Str__());
     }
 }

@@ -1,7 +1,5 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 public sealed partial class List<T>
 {
     /// <summary>
@@ -24,30 +22,22 @@ public sealed partial class List<T>
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets or sets a slice of the list using start and end indices.
+    /// </summary>
     public List<T> this[int start, int end]
     {
         get => __GetItem__(new Slice(start, end, 1));
         set => __SetItem__(new Slice(start, end, 1), value);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets or sets a slice of the list using start, end, and step.
+    /// </summary>
     public List<T> this[int start, int end, int step]
     {
         get => __GetItem__(new Slice(start, end, step));
         set => __SetItem__(new Slice(start, end, step), value);
-    }
-
-    IMutableSequence<T> IMutableSequence<T>.this[int start, int end]
-    {
-        get => this[start, end];
-        set => this[start, end] = [.. value];
-    }
-
-    IMutableSequence<T> IMutableSequence<T>.this[int start, int end, int step]
-    {
-        get => this[start, end, step];
-        set => this[start, end, step] = [.. value];
     }
 
     /// <summary>
@@ -139,8 +129,13 @@ public sealed partial class List<T>
         _list.Reverse();
     }
 
-    /// <inheritdoc/>
-    public void __IAdd__(ISequence<T> other)
+    /// <summary>
+    /// In-place addition (extend) from an enumerable.
+    /// </summary>
+    /// <remarks>
+    /// Deprecated: Use <c>list.Extend(other)</c> instead.
+    /// </remarks>
+    public void __IAdd__(IEnumerable<T> other)
     {
         if (other is null)
         {
@@ -150,29 +145,36 @@ public sealed partial class List<T>
         _list.AddRange(other);
     }
 
-    /// <inheritdoc/>
-    public void __SetItem__(Slice slice, ISequence<T> other)
+    /// <summary>
+    /// Sets a slice of the list from an enumerable.
+    /// </summary>
+    /// <remarks>
+    /// Deprecated: Use <c>list[start, end] = other</c> instead.
+    /// </remarks>
+    public void __SetItem__(Slice slice, IEnumerable<T> other)
     {
         if (other is null)
         {
             throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
-        __SetItem__(slice, [.. other]);
+        __SetItem__(slice, new List<T>(other));
     }
 
-    ISequence<T> ISequence<T>.__GetItem__(Slice slice)
-    {
-        return __GetItem__(slice);
-    }
-
-    /// <inheritdoc/>
+    /// <summary>
+    /// Deletes the element at the specified index.
+    /// </summary>
+    /// <remarks>
+    /// Deprecated: Use <c>list.Pop(index)</c> instead.
+    /// </remarks>
     public void __DelItem__(int index)
     {
         _list.RemoveAt(Sharpy.Core.Index.Normalize(index, _list.Count, false, false));
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Deletes a slice of the list.
+    /// </summary>
     public void __DelItem__(Slice slice)
     {
         if (slice.step == 0)

@@ -3,15 +3,13 @@ namespace Sharpy.Core;
 using System.Collections;
 using System.Text;
 
-using Collections.Interfaces;
 using Operator;
 using static Sharpy.Core.Exports;
 
 public sealed partial class Dict<K, V>
     : IDictionary<K, V>,
       IReadOnlyDictionary<K, V>,
-      System.IEquatable<Dict<K, V>>,
-      IMutableMapping<K, V>
+      System.IEquatable<Dict<K, V>>
     where K : notnull
 {
     private readonly Dictionary<K, V> _dict;
@@ -21,19 +19,29 @@ public sealed partial class Dict<K, V>
         _dict = [];
     }
 
-    public Dict(IMapping<K, V> mapping) : this()
+    public Dict(IReadOnlyDictionary<K, V> mapping) : this()
     {
         if (mapping is null)
         {
             throw TypeError.IsNotInterface("NoneType", "iterable");
         }
+
+        foreach (var kvp in mapping)
+        {
+            _dict[kvp.Key] = kvp.Value;
+        }
     }
 
-    public Dict(IIterable<(K, V)> iterable) : this()
+    public Dict(IEnumerable<(K, V)> iterable) : this()
     {
         if (iterable is null)
         {
             throw TypeError.IsNotInterface("NoneType", "iterable");
+        }
+
+        foreach (var (key, value) in iterable)
+        {
+            _dict[key] = value;
         }
     }
 
@@ -91,12 +99,12 @@ public sealed partial class Dict<K, V>
         return _dict.Keys.GetEnumerator();
     }
 
-    public IItemsView<K, V> Items()
+    public DictItemsView<K, V> Items()
     {
         return new DictItemsView<K, V>(_dict);
     }
 
-    public IKeysView<K> Keys()
+    public DictKeyView<K, V> Keys()
     {
         return new DictKeyView<K, V>(_dict.Keys);
     }
@@ -139,20 +147,20 @@ public sealed partial class Dict<K, V>
         return _dict[key] = @default;
     }
 
-    public void Update(IMapping<K, V> other)
+    public void Update(IReadOnlyDictionary<K, V> other)
     {
         if (other == null)
         {
             throw new ArgumentNullException(nameof(other));
         }
 
-        foreach (var key in other.Keys())
+        foreach (var kvp in other)
         {
-            _dict[key] = other.__GetItem__(key);
+            _dict[kvp.Key] = kvp.Value;
         }
     }
 
-    public void Update(IIterable<(K, V)> other)
+    public void Update(IEnumerable<(K, V)> other)
     {
         foreach (var (key, value) in other)
         {
@@ -160,7 +168,7 @@ public sealed partial class Dict<K, V>
         }
     }
 
-    public IValuesView<V> Values()
+    public DictValuesView<K, V> Values()
     {
         return new DictValuesView<K, V>(_dict.Values);
     }
@@ -322,7 +330,7 @@ public sealed partial class Dict<K, V>
     /// <summary>
     /// Deprecated: Use <see cref="Merge(Dict{K,V})"/> with explicit cast instead.
     /// </summary>
-    public IMapping<K, V> __Or__(IMapping<K, V> other)
+    public Dict<K, V> __Or__(IReadOnlyDictionary<K, V> other)
     {
         var newDict = Copy();
         newDict.Update(other);
@@ -331,14 +339,14 @@ public sealed partial class Dict<K, V>
     }
 
     /// <summary>
-    /// Deprecated: Use <see cref="Update(IMapping{K,V})"/> instead.
+    /// Deprecated: Use Update with IReadOnlyDictionary instead.
     /// </summary>
-    public void __IOr__(IMapping<K, V> other) => Update(other);
+    public void __IOr__(IReadOnlyDictionary<K, V> other) => Update(other);
 
     /// <summary>
     /// Deprecated: Use <see cref="Merge(Dict{K,V})"/> with explicit conversion instead.
     /// </summary>
-    public IMapping<K, V> __Or__(IIterable<(K, V)> other)
+    public Dict<K, V> __Or__(IEnumerable<(K, V)> other)
     {
         var newDict = Copy();
         newDict.Update(other);
@@ -347,9 +355,9 @@ public sealed partial class Dict<K, V>
     }
 
     /// <summary>
-    /// Deprecated: Use <see cref="Update(IIterable{ValueTuple{K,V}})"/> instead.
+    /// Deprecated: Use <see cref="Update(IEnumerable{ValueTuple{K,V}})"/> instead.
     /// </summary>
-    public void __IOr__(IIterable<(K, V)> other) => Update(other);
+    public void __IOr__(IEnumerable<(K, V)> other) => Update(other);
 
     public static Dict<K, V> operator |(Dict<K, V> left, Dict<K, V> right)
     {
@@ -442,44 +450,6 @@ public sealed partial class Dict<K, V>
         }
     }
 
-    public void Add(K key)
-    {
-        if (_dict.ContainsKey(key))
-        {
-            return;
-        }
-
-        _dict[key] = default(V);
-    }
-
-    bool System.Collections.Generic.ICollection<K>.Remove(K key)
-    {
-        return _dict.Remove(key);
-    }
-
-    public void CopyTo(K[] array, int arrayIndex)
-    {
-        if (array is null)
-        {
-            throw new ArgumentNullException("array cannot be null");
-        }
-
-        if (arrayIndex < 0)
-        {
-            throw new ArgumentOutOfRangeException("arrayIndex cannot be less than 0");
-        }
-
-        if (array.Length - arrayIndex < _dict.Keys.Count)
-        {
-            throw new ArgumentException("Number of keys is greater than the available space in the array");
-        }
-
-        foreach (var key in _dict.Keys)
-        {
-            array[arrayIndex] = key;
-            ++arrayIndex;
-        }
-    }
 
     #region IDictionary<K,V> and IReadOnlyDictionary<K,V> implementation
 
