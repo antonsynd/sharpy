@@ -378,10 +378,12 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
 - [x] **Commit:** `git commit -am "refactor(Dict): replace item dunders with indexer and Remove"`
 
-### Step 3.11: Replace `__Or__`/`__IOr__` with `operator |`
-- [ ] Update `src/Sharpy.Core/Dict.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Dict): replace __Or__ with operator |"`
+### Step 3.11: Replace `__Or__`/`__IOr__` with `Merge` method and `Update`
+- [x] Add `Merge(Dict<K,V>)` as primary method for `__Or__`
+- [x] Make `__Or__` and `__IOr__` deprecated aliases
+- [x] Update `operator |` to call `Merge` directly
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Dict): make Merge primary for dictionary union"`
 
 ### Step 3.12: Remove `Object` base class from `Dict<K,V>`
 - [ ] Edit `src/Sharpy.Core/Dict.cs`

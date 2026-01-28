@@ -293,7 +293,11 @@ public sealed partial class Dict<K, V>
         return new Dictionary<K, V>(_dict);
     }
 
-    public Dict<K, V> __Or__(Dict<K, V> other)
+    /// <summary>
+    /// Returns a new dictionary that is the result of merging this dictionary with other.
+    /// Keys from other take precedence.
+    /// </summary>
+    public Dict<K, V> Merge(Dict<K, V> other)
     {
         var newDict = Copy();
         newDict.Update(other);
@@ -301,11 +305,19 @@ public sealed partial class Dict<K, V>
         return newDict;
     }
 
-    public void __IOr__(Dict<K, V> other)
-    {
-        Update(other);
-    }
+    /// <summary>
+    /// Deprecated: Use <see cref="Merge(Dict{K,V})"/> instead.
+    /// </summary>
+    public Dict<K, V> __Or__(Dict<K, V> other) => Merge(other);
 
+    /// <summary>
+    /// Deprecated: Use <see cref="Update(IMapping{K,V})"/> instead.
+    /// </summary>
+    public void __IOr__(Dict<K, V> other) => Update(other);
+
+    /// <summary>
+    /// Deprecated: Use <see cref="Merge(Dict{K,V})"/> with explicit cast instead.
+    /// </summary>
     public IMapping<K, V> __Or__(IMapping<K, V> other)
     {
         var newDict = Copy();
@@ -314,11 +326,14 @@ public sealed partial class Dict<K, V>
         return newDict;
     }
 
-    public void __IOr__(IMapping<K, V> other)
-    {
-        Update(other);
-    }
+    /// <summary>
+    /// Deprecated: Use <see cref="Update(IMapping{K,V})"/> instead.
+    /// </summary>
+    public void __IOr__(IMapping<K, V> other) => Update(other);
 
+    /// <summary>
+    /// Deprecated: Use <see cref="Merge(Dict{K,V})"/> with explicit conversion instead.
+    /// </summary>
     public IMapping<K, V> __Or__(IIterable<(K, V)> other)
     {
         var newDict = Copy();
@@ -327,14 +342,14 @@ public sealed partial class Dict<K, V>
         return newDict;
     }
 
-    public void __IOr__(IIterable<(K, V)> other)
-    {
-        Update(other);
-    }
+    /// <summary>
+    /// Deprecated: Use <see cref="Update(IIterable{ValueTuple{K,V}})"/> instead.
+    /// </summary>
+    public void __IOr__(IIterable<(K, V)> other) => Update(other);
 
     public static Dict<K, V> operator |(Dict<K, V> left, Dict<K, V> right)
     {
-        return left.__Or__(right);
+        return left.Merge(right);
     }
 
     public static bool operator ==(Dict<K, V>? left, Dict<K, V>? right)
