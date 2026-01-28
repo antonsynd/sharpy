@@ -27,8 +27,10 @@ union BinaryTree[T]:
 
 Sharpy provides `Result[T, E]` and `Optional[T]` in the standard library with special integration into the language:
 
-- **[Result Type](tagged_unions_result.md)** - For operations that can fail with typed errors
-- **[Optional Type](tagged_unions_optional.md)** - For representing optional values
+- **[Optional Type](tagged_unions_optional.md)** — `T?` is shorthand for `Optional[T]` (safe tagged union for optional values)
+- **[Result Type](tagged_unions_result.md)** — `T !E` is shorthand for `Result[T, E]` (in return type annotations)
+
+Both are **structs** (no heap allocation).
 
 These types have special syntax and operators. See:
 - [Try Expressions](try_expressions.md) - Special syntax for Result types
