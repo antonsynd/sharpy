@@ -613,12 +613,12 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Sum): remove IAddable constraint, use specific overloads"`
 
 ### Step 7.5.6: Update `ComparerAdapter` to use .NET interfaces only
-- [ ] Edit `src/Sharpy.Core/ComparerAdapter.cs`
+- [x] Edit `src/Sharpy.Core/ComparerAdapter.cs`
   - Remove all Sharpy interface checks (`ILessThanOrEquatableWith`, `IEquatableWith`, etc.)
   - Keep only `IComparable<T>` and `IComparable` checks
-  - Delete Sharpy-specific comparer classes
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(ComparerAdapter): use .NET IComparable instead of Sharpy interfaces"`
+  - Delete Sharpy-specific comparer classes (LessThanComparableComparer, LessThanOrEquatableComparer, etc.)
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 735 tests pass
+- [x] **Commit:** `git commit -am "refactor(ComparerAdapter): use .NET IComparable instead of Sharpy interfaces"`
 
 ### Step 7.5.7: Update `IdentityAdapterFactory` to remove Sharpy.Object dependency
 - [ ] Edit `src/Sharpy.Core/IdentityAdapterFactory.cs`
