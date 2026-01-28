@@ -233,10 +233,11 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Set): document __Hash__ transition to GetHashCode"`
 
 ### Step 2.6: Replace `__Repr__` with `ToString` override
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IRepresentable.cs`
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Repr.cs` and `SetTests.Str.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): replace __Repr__ with ToString override"`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.IRepresentable.cs`
+  - Note: ToString() is sealed in Object (delegates to __Str__ which calls __Repr__)
+  - Added documentation that this will become ToString override in Step 2.12
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Set): document __Repr__ transition to ToString"`
 
 ### Step 2.7: Replace `__Bool__` with `operator true/false`
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IBoolConvertible.cs`
