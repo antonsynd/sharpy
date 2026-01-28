@@ -1,24 +1,46 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 public static partial class Exports
 {
     /// <summary>
-    /// Return the length (the number of items) of an object. The argument
-    /// may be a sequence (such as a string, bytes, tuple, list, or range)
-    /// or a collection (such as a dictionary, set, or frozen set).
+    /// Return the length (the number of items) of a collection.
     /// </summary>
-    public static int Len(ISized sized)
+    /// <remarks>
+    /// Uses the non-generic <see cref="System.Collections.ICollection"/> interface
+    /// which is implemented by arrays, List{T}, Dictionary{K,V}, etc.
+    /// This avoids overload ambiguity when a type implements both
+    /// <see cref="ICollection{T}"/> and <see cref="IReadOnlyCollection{T}"/>.
+    /// </remarks>
+    public static int Len(System.Collections.ICollection c)
     {
-        if (sized is null)
+        if (c is null)
         {
             throw TypeError.ArgNone("len", "sized");
         }
 
-        return sized.__Len__();
+        return c.Count;
     }
 
+    /// <summary>
+    /// Return the length (the number of items) of a read-only collection.
+    /// </summary>
+    /// <remarks>
+    /// This overload handles types that only implement <see cref="IReadOnlyCollection{T}"/>
+    /// and not <see cref="System.Collections.ICollection"/>.
+    /// </remarks>
+    public static int Len<T>(IReadOnlyCollection<T> c)
+    {
+        if (c is null)
+        {
+            throw TypeError.ArgNone("len", "sized");
+        }
+
+        return c.Count;
+    }
+
+    /// <summary>
+    /// Return the length of a string.
+    /// </summary>
     public static int Len(string s)
     {
         return s.Length;
