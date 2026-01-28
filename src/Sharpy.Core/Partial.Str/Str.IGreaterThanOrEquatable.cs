@@ -1,6 +1,0 @@
-namespace Sharpy.Core;
-
-public readonly partial struct Str : IGreaterThanOrEquatable<Str>
-{
-    // Implementation is already in Str.operators.cs
-}

@@ -1,7 +1,5 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 /// <summary>
 /// Iterator that yields integers in a range.
 /// </summary>

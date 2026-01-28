@@ -1,8 +1,6 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
-public readonly partial struct Slice(int start, int end, int step = 1) : ISized
+public readonly partial struct Slice(int start, int end, int step = 1)
 {
     public readonly int start = start;
     public readonly int end = end;

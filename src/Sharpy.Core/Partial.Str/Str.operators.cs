@@ -2,8 +2,17 @@ namespace Sharpy.Core;
 
 using System.Text;
 
-public readonly partial struct Str
+public readonly partial struct Str : IComparable<Str>
 {
+    /// <summary>
+    /// Compares the current instance with another Str for sorting.
+    /// Implements IComparable&lt;Str&gt; for use with .NET comparison operators.
+    /// </summary>
+    public int CompareTo(Str other)
+    {
+        return string.Compare(_s, other._s, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Implements the __add__ dunder method for string concatenation.
     /// Maps to the + operator in Sharpy code.
