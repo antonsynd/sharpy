@@ -15,6 +15,19 @@ pi = 3.14159        # Inferred as float
 *Implementation*
 - *✅ Native - Direct mapping to C# type declarations.*
 
+## Nullability and Optional Type Syntax
+
+```python
+T           # Non-nullable type
+T?          # Optional[T] — safe tagged union (Sharpy-native)
+T | None    # C# nullable — .NET interop only
+T !E        # Result[T, E] — for return type annotations
+```
+
+- `T?` is syntactic sugar for `Optional[T]`. See [Optional Type](tagged_unions_optional.md).
+- `T | None` is the **only** valid inline union form. No free unions like `int | str`. See [Nullable Types](nullable_types.md).
+- `T !E` is syntactic sugar for `Result[T, E]`, recommended for top-level return types. See [Result Type](tagged_unions_result.md).
+
 ## Shorthand Syntax
 
 Sharpy supports shorthand syntax for common collection types. See [Type Annotation Shorthand](type_annotation_shorthand.md) for details.
