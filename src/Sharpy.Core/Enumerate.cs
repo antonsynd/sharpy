@@ -1,7 +1,5 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 /// <summary>
 /// Iterator that yields (index, value) tuples from an iterable.
 /// </summary>
@@ -16,14 +14,14 @@ public class EnumerateIterator<T> : Iterator<(int, T)>
     /// </summary>
     /// <param name="iterable">The iterable to enumerate</param>
     /// <param name="start">The starting index</param>
-    public EnumerateIterator(IIterable<T> iterable, int start = 0)
+    public EnumerateIterator(IEnumerable<T> iterable, int start = 0)
     {
         if (iterable is null)
         {
             throw TypeError.ArgNone("enumerate", "iterable");
         }
 
-        _iterator = iterable.__Iter__();
+        _iterator = Exports.Iter(iterable);
         _index = start;
     }
 
@@ -49,7 +47,7 @@ public static partial class Exports
     /// <param name="iterable">The iterable to enumerate</param>
     /// <param name="start">The starting index (default 0)</param>
     /// <returns>An enumerate iterator</returns>
-    public static EnumerateIterator<T> Enumerate<T>(IIterable<T> iterable, int start = 0)
+    public static EnumerateIterator<T> Enumerate<T>(IEnumerable<T> iterable, int start = 0)
     {
         return new EnumerateIterator<T>(iterable, start);
     }

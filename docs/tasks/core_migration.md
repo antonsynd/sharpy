@@ -474,22 +474,22 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 ## Phase 6: Update Builtins
 
 ### Step 6.1: Update `Len()` builtin
-- [ ] Edit `src/Sharpy.Core/Len.cs`
+- [x] Edit `src/Sharpy.Core/Len.cs`
   - Remove `Len(ISized sized)` overload
   - Add `Len<T>(ICollection<T> c)` and `Len<T>(IReadOnlyCollection<T> c)`
   - Keep `Len(string s)`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Len): use .NET ICollection instead of ISized"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Len): use .NET ICollection instead of ISized"`
 
 ### Step 6.2: Update `Repr()` builtin
-- [ ] Edit `src/Sharpy.Core/Repr.cs`
+- [x] Edit `src/Sharpy.Core/Repr.cs`
   - Remove any `IRepresentable` checks
   - Use `ToString()` as fallback
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Repr): remove IRepresentable dependency"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Repr): remove IRepresentable dependency"`
 
 ### Step 6.3: Update `Bool()` builtin
-- [ ] Edit `src/Sharpy.Core/Bool.cs`
+- [x] Edit `src/Sharpy.Core/Bool.cs`
   - **Keep** all existing numeric overloads (int, float, double, etc. returning false for zero)
   - **Remove** the `Bool(Object obj)` overload that uses `__Bool__()`
   - **Remove** the `Bool(IBoolConvertible b)` overload that uses `__Bool__()`
@@ -513,34 +513,34 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
   };
   ```
   - Remove references to `Object` and `IBoolConvertible` types
-- [ ] Add/update tests in `src/Sharpy.Core.Tests/BoolTests.cs` to test ICollection behavior
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Bool): use runtime dispatch for truthiness"`
+- [x] Add/update tests in `src/Sharpy.Core.Tests/BoolTests.cs` to test ICollection behavior
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Bool): use runtime dispatch for truthiness"`
 
 ### Step 6.4: Update `Iter()` builtin
-- [ ] Edit `src/Sharpy.Core/Iter.cs`
+- [x] Edit `src/Sharpy.Core/Iter.cs`
   - Remove `IIterable` dependency
   - Use `IEnumerable<T>` instead
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Iter): use IEnumerable instead of IIterable"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Iter): use IEnumerable instead of IIterable"`
 
 ### Step 6.5: Update `Reversed()` builtin
-- [ ] Edit `src/Sharpy.Core/Reversed.cs`
+- [x] Edit `src/Sharpy.Core/Reversed.cs`
   - Remove `IReversible` dependency
   - Check for `IList<T>` and iterate backwards, or use `Enumerable.Reverse()`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Reversed): remove IReversible dependency"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Reversed): remove IReversible dependency"`
 
 ### Step 6.6: Update `Sorted()` builtin
-- [ ] Edit `src/Sharpy.Core/Sorted.cs`
+- [x] Edit `src/Sharpy.Core/Sorted.cs`
   - Ensure it works with `IEnumerable<T>`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Sorted): ensure IEnumerable compatibility"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Sorted): ensure IEnumerable compatibility"`
 
 ### Step 6.7: Update remaining builtins that use Sharpy interfaces
-- [ ] Review and update: `All.cs`, `Any.cs`, `Enumerate.cs`, `Filter.cs`, `Map.cs`, `Max.cs`, `Min.cs`, `Next.cs`, `Sum.cs`, `Zip.cs`
-- [ ] Run tests after each file: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(builtins): remove Sharpy interface dependencies"`
+- [x] Review and update: `All.cs`, `Any.cs`, `Enumerate.cs`, `Filter.cs`, `Map.cs`, `Max.cs`, `Min.cs`, `Next.cs`, `Sum.cs`, `Zip.cs`
+- [x] Run tests after each file: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(builtins): remove Sharpy interface dependencies"`
 
 ---
 

@@ -56,16 +56,39 @@ public static partial class Exports
     }
 
     /// <summary>
-    /// Get the length of a collection or string
+    /// Get the length of a collection or string.
+    /// This is the fallback overload for dynamically-typed scenarios.
     /// </summary>
     public static int Len(object obj)
     {
-        return obj switch
+        if (obj is null)
         {
-            string s => s.Length,
-            Array arr => arr.Length,
-            System.Collections.ICollection collection => collection.Count,
-            _ => throw new TypeError($"object of type '{obj.GetType().Name}' has no len()")
-        };
+            throw TypeError.ArgNone("len", "sized");
+        }
+
+        // Fast path for common types
+        if (obj is string s) return s.Length;
+        if (obj is Array arr) return arr.Length;
+        if (obj is System.Collections.ICollection collection) return collection.Count;
+
+        // Check for generic ICollection<T> or IReadOnlyCollection<T> via reflection
+        // This handles types like Set<T> that implement ICollection<T> but not non-generic ICollection
+        foreach (var iface in obj.GetType().GetInterfaces())
+        {
+            if (iface.IsGenericType)
+            {
+                var genericDef = iface.GetGenericTypeDefinition();
+                if (genericDef == typeof(ICollection<>) || genericDef == typeof(IReadOnlyCollection<>))
+                {
+                    var countProp = iface.GetProperty("Count");
+                    if (countProp is not null)
+                    {
+                        return (int)countProp.GetValue(obj)!;
+                    }
+                }
+            }
+        }
+
+        throw new TypeError($"object of type '{obj.GetType().Name}' has no len()");
     }
 }

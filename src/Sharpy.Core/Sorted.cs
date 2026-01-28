@@ -1,7 +1,5 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 public static partial class Exports
 {
     /// <summary>
@@ -10,12 +8,12 @@ public static partial class Exports
     /// <typeparam name="T">The type of elements in the iterable</typeparam>
     /// <param name="iterable">The iterable to sort</param>
     /// <returns>A new sorted list</returns>
-    public static List<T> Sorted<T>(IIterable<T> iterable)
+    public static List<T> Sorted<T>(IEnumerable<T> iterable)
     {
         return SortedImpl(iterable, ComparerAdapter<T>.Instance, reverse: false);
     }
 
-    public static List<T> Sorted<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
+    public static List<T> Sorted<T, TKey>(IEnumerable<T> iterable, Func<T, TKey> key)
     {
         if (key is null)
         {
@@ -24,12 +22,12 @@ public static partial class Exports
         return SortedImpl(iterable, KeyComparerFactory<T, TKey>.Create(key), reverse: false);
     }
 
-    public static List<T> Sorted<T>(IIterable<T> iterable, bool reverse)
+    public static List<T> Sorted<T>(IEnumerable<T> iterable, bool reverse)
     {
         return SortedImpl(iterable, ComparerAdapter<T>.Instance, reverse);
     }
 
-    public static List<T> Sorted<T, TKey>(IIterable<T> iterable, Func<T, TKey> key, bool reverse)
+    public static List<T> Sorted<T, TKey>(IEnumerable<T> iterable, Func<T, TKey> key, bool reverse)
     {
         if (key is null)
         {
@@ -38,19 +36,14 @@ public static partial class Exports
         return SortedImpl(iterable, KeyComparerFactory<T, TKey>.Create(key), reverse);
     }
 
-    private static List<T> SortedImpl<T>(IIterable<T> iterable, IComparer<T> comparer, bool reverse)
+    private static List<T> SortedImpl<T>(IEnumerable<T> iterable, IComparer<T> comparer, bool reverse)
     {
         if (iterable is null)
         {
             throw TypeError.ArgNone("sorted", "iterable");
         }
 
-        var systemList = new System.Collections.Generic.List<T>();
-        foreach (var item in iterable)
-        {
-            systemList.Add(item);
-        }
-
+        var systemList = new System.Collections.Generic.List<T>(iterable);
         systemList.Sort(comparer);
         if (reverse)
         {

@@ -1,7 +1,5 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 /// <summary>
 /// Iterator that yields the result of applying a function to elements from an iterable.
 /// </summary>
@@ -17,7 +15,7 @@ public class MapIterator<TIn, TOut> : Iterator<TOut>
     /// </summary>
     /// <param name="function">The function to apply to each element</param>
     /// <param name="iterable">The iterable to map over</param>
-    public MapIterator(Func<TIn, TOut> function, IIterable<TIn> iterable)
+    public MapIterator(Func<TIn, TOut> function, IEnumerable<TIn> iterable)
     {
         if (function is null)
         {
@@ -30,7 +28,7 @@ public class MapIterator<TIn, TOut> : Iterator<TOut>
         }
 
         _function = function;
-        _iterator = iterable.__Iter__();
+        _iterator = Exports.Iter(iterable);
     }
 
     /// <inheritdoc/>
@@ -51,7 +49,7 @@ public static partial class Exports
     /// <param name="function">The function to apply to each element</param>
     /// <param name="iterable">The iterable to map over</param>
     /// <returns>A map iterator</returns>
-    public static MapIterator<TIn, TOut> Map<TIn, TOut>(Func<TIn, TOut> function, IIterable<TIn> iterable)
+    public static MapIterator<TIn, TOut> Map<TIn, TOut>(Func<TIn, TOut> function, IEnumerable<TIn> iterable)
     {
         return new MapIterator<TIn, TOut>(function, iterable);
     }

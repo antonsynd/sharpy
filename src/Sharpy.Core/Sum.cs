@@ -1,17 +1,15 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 public static partial class Exports
 {
-    public static T Sum<T>(IIterable<T> iterable) where T : IAddable<T>
+    public static T Sum<T>(IEnumerable<T> iterable) where T : IAddable<T>
     {
         if (iterable is null)
         {
             throw TypeError.ArgNone("sum", "iterable");
         }
 
-        var iterator = iterable.__Iter__();
+        var iterator = Iter(iterable);
 
         try
         {

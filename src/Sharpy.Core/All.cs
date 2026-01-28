@@ -1,6 +1,5 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
 using System.Linq;
 
 public static partial class Exports
@@ -11,7 +10,7 @@ public static partial class Exports
     /// <typeparam name="T">The type of elements in the iterable</typeparam>
     /// <param name="iterable">The iterable to check</param>
     /// <returns>True if all elements are truthy, False otherwise</returns>
-    public static bool All<T>(IIterable<T> iterable)
+    public static bool All<T>(IEnumerable<T> iterable)
     {
         if (iterable is null)
         {
