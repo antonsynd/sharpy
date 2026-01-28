@@ -354,9 +354,10 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Dict): document __Repr__ transition to ToString"`
 
 ### Step 3.7: Replace `__Bool__` with `operator true/false`
-- [ ] Update `src/Sharpy.Core/Dict.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Dict): replace __Bool__ with operator true/false"`
+- [x] Update `operator true/false` to use `Count` directly instead of `__Bool__`
+- [x] Mark `__Bool__` as deprecated
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Dict): use Count directly in operator true/false"`
 
 ### Step 3.8: Replace `__Contains__` with `ContainsKey` method
 - [ ] Update `src/Sharpy.Core/Dict.cs`

@@ -384,19 +384,22 @@ public sealed partial class Dict<K, V>
         return builder.ToString();
     }
 
+    /// <summary>
+    /// Deprecated: Use <c>dict</c> in a boolean context (operator true/false) instead.
+    /// </summary>
     public override bool __Bool__()
     {
         return _dict.Count > 0;
     }
 
-    public static bool operator true(Dict<K, V> dict)
+    public static bool operator true(Dict<K, V>? dict)
     {
-        return dict?.__Bool__() ?? false;
+        return dict is not null && dict._dict.Count > 0;
     }
 
-    public static bool operator false(Dict<K, V> dict)
+    public static bool operator false(Dict<K, V>? dict)
     {
-        return !(dict?.__Bool__() ?? false);
+        return dict is null || dict._dict.Count == 0;
     }
 
     public bool IsReadOnly
