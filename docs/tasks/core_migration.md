@@ -310,19 +310,24 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 
 ## Phase 3: Update `Dict<K,V>`
 
-### Step 3.1: Change `__Len__` return type from `uint` to `int`
-- [ ] Edit `src/Sharpy.Core/Dict.cs`
-  - Change `__Len__()` return type to `int`
-- [ ] Update tests in `src/Sharpy.Core.Tests/DictTests.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Dict): change __Len__ return type from uint to int"`
+### Step 3.1: Verify `__Len__` return type is `int`
+- [x] Verify `src/Sharpy.Core/Dict.cs` - already returns `int`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - 47 Dict tests pass
+- [x] No commit needed (already correct)
 
 ### Step 3.2: Add .NET interface implementations to `Dict<K,V>`
-- [ ] Edit `src/Sharpy.Core/Dict.cs`
+- [x] Edit `src/Sharpy.Core/Dict.cs`
   - Add `IDictionary<K,V>` and `IReadOnlyDictionary<K,V>` to inheritance
-- [ ] Implement any missing interface members
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "feat(Dict): add IDictionary<K,V> and IReadOnlyDictionary<K,V> implementations"`
+- [x] Implement missing interface members:
+  - `Count` property
+  - `ContainsKey`, `TryGetValue`
+  - Explicit `IDictionary<K,V>.Keys`, `IDictionary<K,V>.Values`
+  - Explicit `IReadOnlyDictionary<K,V>.Keys`, `IReadOnlyDictionary<K,V>.Values`
+  - Explicit `IDictionary<K,V>.Add(K, V)`, `IDictionary<K,V>.Remove(K)`
+  - Explicit `ICollection<KeyValuePair<K,V>>` members
+  - Explicit `IEnumerable<KeyValuePair<K,V>>.GetEnumerator()`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "feat(Dict): add IDictionary<K,V> and IReadOnlyDictionary<K,V> implementations"`
 
 ### Step 3.3: Replace `__Len__` with `Count` property
 - [ ] Change method to property in `src/Sharpy.Core/Dict.cs`
