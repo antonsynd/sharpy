@@ -386,10 +386,14 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Dict): make Merge primary for dictionary union"`
 
 ### Step 3.12: Remove `Object` base class from `Dict<K,V>`
-- [ ] Edit `src/Sharpy.Core/Dict.cs`
+- [x] Edit `src/Sharpy.Core/Dict.cs`
   - Remove `: Object` and Sharpy interfaces
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Dict): remove Object base class and Sharpy interfaces"`
+  - Change `override __Hash__()` to `GetHashCode()`
+  - Change `override __Repr__()` to `ToString()`
+  - Change `override __Bool__()` to regular method
+  - Change `override __Eq__(object)` to `Equals(object?)`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 4105 tests pass
+- [x] **Commit:** `git commit -am "refactor(Dict): remove Object base class"`
 
 ---
 

@@ -8,9 +8,9 @@ using Operator;
 using static Sharpy.Core.Exports;
 
 public sealed partial class Dict<K, V>
-    : Object,
-      IDictionary<K, V>,
+    : IDictionary<K, V>,
       IReadOnlyDictionary<K, V>,
+      System.IEquatable<Dict<K, V>>,
       IMutableMapping<K, V>
     where K : notnull
 {
@@ -260,23 +260,27 @@ public sealed partial class Dict<K, V>
     }
 
     /// <summary>
-    /// Deprecated: Use <see cref="Equals(Dict{K,V}?)"/> instead.
+    /// Determines whether this dictionary is equal to the specified object.
     /// </summary>
-    public bool __Eq__(Dict<K, V> other) => Equals(other);
-
-    /// <summary>
-    /// Required for Object base class compatibility. Delegates to <see cref="Equals(Dict{K,V}?)"/>.
-    /// Will become <c>override Equals(object?)</c> when Object base class is removed.
-    /// </summary>
-    public override bool __Eq__(object other)
+    public override bool Equals(object? obj)
     {
-        if (other is Dict<K, V> dict)
+        if (obj is Dict<K, V> dict)
         {
             return Equals(dict);
         }
 
         return false;
     }
+
+    /// <summary>
+    /// Deprecated: Use <see cref="Equals(Dict{K,V}?)"/> instead.
+    /// </summary>
+    public bool __Eq__(Dict<K, V> other) => Equals(other);
+
+    /// <summary>
+    /// Deprecated: Use <see cref="Equals(object?)"/> instead.
+    /// </summary>
+    public bool __Eq__(object other) => Equals(other);
 
     /// <summary>
     /// Deprecated: Use the indexer <c>dict[key] = value</c> instead.
@@ -365,12 +369,7 @@ public sealed partial class Dict<K, V>
     /// <summary>
     /// Returns a hash code for this dictionary.
     /// </summary>
-    /// <remarks>
-    /// While Dict inherits from Object, GetHashCode() is sealed and delegates to __Hash__().
-    /// Once Dict no longer inherits from Object, this will become:
-    /// <code>public override int GetHashCode()</code>
-    /// </remarks>
-    public override int __Hash__()
+    public override int GetHashCode()
     {
         var hashCode = new HashCode();
         hashCode.Add(typeof(Dict<K, V>).GetHashCode());
@@ -380,15 +379,14 @@ public sealed partial class Dict<K, V>
     }
 
     /// <summary>
+    /// Deprecated: Use <see cref="GetHashCode()"/> instead.
+    /// </summary>
+    public int __Hash__() => GetHashCode();
+
+    /// <summary>
     /// Returns a string representation of this dictionary.
     /// </summary>
-    /// <remarks>
-    /// While Dict inherits from Object, ToString() is sealed and delegates to __Str__(),
-    /// which by default calls __Repr__(). Once Dict no longer inherits from Object,
-    /// this will become:
-    /// <code>public override string ToString()</code>
-    /// </remarks>
-    public override string __Repr__()
+    public override string ToString()
     {
         var builder = new StringBuilder();
         builder.Append('{');
@@ -414,9 +412,14 @@ public sealed partial class Dict<K, V>
     }
 
     /// <summary>
+    /// Deprecated: Use <see cref="ToString()"/> instead.
+    /// </summary>
+    public string __Repr__() => ToString();
+
+    /// <summary>
     /// Deprecated: Use <c>dict</c> in a boolean context (operator true/false) instead.
     /// </summary>
-    public override bool __Bool__()
+    public bool __Bool__()
     {
         return _dict.Count > 0;
     }
