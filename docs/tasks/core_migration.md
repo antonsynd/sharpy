@@ -621,11 +621,11 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(ComparerAdapter): use .NET IComparable instead of Sharpy interfaces"`
 
 ### Step 7.5.7: Update `IdentityAdapterFactory` to remove Sharpy.Object dependency
-- [ ] Edit `src/Sharpy.Core/IdentityAdapterFactory.cs`
+- [x] Edit `src/Sharpy.Core/IdentityAdapterFactory.cs`
   - Remove `typeof(T).IsSubclassOf(typeof(Object))` check
-  - Delete `IdentityAdapter` inner class
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(IdentityAdapterFactory): remove Sharpy.Object dependency"`
+  - Delete `IdentityAdapter` inner class that used `__Id__()` method
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 735 tests pass
+- [x] **Commit:** `git commit -am "refactor(IdentityAdapterFactory): remove Sharpy.Object dependency"`
 
 ### Step 7.5.8: Update Operator files to remove Sharpy dependencies
 - [ ] Edit operator files in `src/Sharpy.Core/Operator/`:
