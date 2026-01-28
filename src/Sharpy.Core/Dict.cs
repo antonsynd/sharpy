@@ -83,10 +83,12 @@ public sealed partial class Dict<K, V>
         return @default;
     }
 
+    /// <summary>
+    /// Returns an enumerator that iterates through the keys.
+    /// </summary>
     public IEnumerator<K> GetEnumerator()
     {
-        // Delegate to __Iter__() to ensure consistent iteration behavior
-        return __Iter__();
+        return _dict.Keys.GetEnumerator();
     }
 
     public IItemsView<K, V> Items()
@@ -186,6 +188,9 @@ public sealed partial class Dict<K, V>
         throw new KeyError(Repr(key));
     }
 
+    /// <summary>
+    /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
+    /// </summary>
     public Iterator<K> __Iter__()
     {
         return Keys().__Iter__();
