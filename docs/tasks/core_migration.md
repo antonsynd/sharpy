@@ -588,37 +588,16 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(List): remove Sharpy interface declarations"`
 
 ### Step 7.5.2: Delete List interface implementation files
-- [ ] Delete files:
-  - [ ] `List.IAddable.cs`
-  - [ ] `List.IRightAddable.cs`
-  - [ ] `List.IInplaceAddable.cs`
-  - [ ] `List.IMultipliable.cs`
-  - [ ] `List.IRightMultipliable.cs`
-  - [ ] `List.IInplaceMultipliable.cs`
-  - [ ] `List.IMutableSequence.cs`
-  - [ ] `List.ISequence.cs`
-  - [ ] `List.ISized.cs`
-  - [ ] `List.IContainer.cs`
-  - [ ] `List.IIterable.cs`
-  - [ ] `List.IReversible.cs`
-  - [ ] `List.IBoolConvertible.cs`
-  - [ ] `List.IRepresentable.cs`
-  - [ ] `List.IHashable.cs`
-  - [ ] `List.IEquatable.cs`
-  - [ ] `List.ILessThanComparable.cs`
-  - [ ] `List.ILessThanOrEquatable.cs`
-  - [ ] `List.IGreaterThanComparable.cs`
-  - [ ] `List.IGreaterThanOrEquatable.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): delete Sharpy interface implementation files"`
+> **Skipped:** These files contain actual implementations with dunder methods (`__Add__`, `__Contains__`, `__Bool__`, etc.) that are tested and used. They will be cleaned up in a future consolidation step. The interface dependencies have been removed in Step 7.5.1.
+- [x] (skipped) Files retained for backwards compatibility
 
 ### Step 7.5.3: Remove Sharpy interface declarations from `Set<T>`
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.cs`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.cs`
   - Remove from inheritance: `IMutableSet<Set<T>, T>`, `ILessThanOrEquatable<Set<T>>`, `IGreaterThanOrEquatable<Set<T>>`
   - Remove `using Collections.Interfaces;`
   - Keep: `System.Collections.Generic.ISet<T>`, `System.IEquatable<Set<T>>`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): remove Sharpy interface declarations"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 735 tests pass
+- [x] **Commit:** `git commit -am "refactor(Set): remove Sharpy interface declarations"`
 
 ### Step 7.5.4: Delete Set interface implementation files
 - [ ] Delete all `src/Sharpy.Core/Partial.Set/Set.I*.cs` files that implement Sharpy interfaces

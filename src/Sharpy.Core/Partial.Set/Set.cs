@@ -1,12 +1,8 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 public sealed partial class Set<T>
     : System.Collections.Generic.ISet<T>,
-      System.IEquatable<Set<T>>,
-      IMutableSet<Set<T>, T>,
-      ILessThanOrEquatable<Set<T>>, IGreaterThanOrEquatable<Set<T>>
+      System.IEquatable<Set<T>>
 {
     // Internal for SetIterator access to avoid infinite recursion when GetEnumerator delegates to __Iter__
     internal readonly HashSet<T> _set;

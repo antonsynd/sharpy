@@ -49,36 +49,6 @@ public sealed partial class Set<T>
     }
 
     /// <inheritdoc/>
-    public void __IOr__(Collections.Interfaces.ISet<T> other)
-    {
-        foreach (var item in other)
-        {
-            _set.Add(item);
-        }
-    }
-
-    /// <inheritdoc/>
-    public void __IAnd__(Collections.Interfaces.ISet<T> other)
-    {
-        var otherSet = new HashSet<T>(other);
-        _set.IntersectWith(otherSet);
-    }
-
-    /// <inheritdoc/>
-    public void __IXOr__(Collections.Interfaces.ISet<T> other)
-    {
-        var otherSet = new HashSet<T>(other);
-        _set.SymmetricExceptWith(otherSet);
-    }
-
-    /// <inheritdoc/>
-    public void __ISub__(Collections.Interfaces.ISet<T> other)
-    {
-        var otherSet = new HashSet<T>(other);
-        _set.ExceptWith(otherSet);
-    }
-
-    /// <inheritdoc/>
     public void __IAnd__(Set<T> other)
     {
         _set.IntersectWith(other._set);
