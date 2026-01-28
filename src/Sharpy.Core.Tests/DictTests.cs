@@ -426,15 +426,17 @@ public class Dict_Tests
     }
 
     [Fact]
-    public void Contains_WithNullKey_ThrowsArgumentNullException()
+    public void Contains_WithNullKey_ThrowsException()
     {
         // Arrange
         var dict = new Dict<Str, int>();
         dict["a"] = 1;
 
         // Act & Assert
+        // Note: With K : notnull constraint, null keys throw NullReferenceException
+        // when the key type's GetHashCode is called by the underlying Dictionary
         dict.Invoking(d => d.__Contains__(null!))
-            .Should().Throw<ArgumentNullException>();
+            .Should().Throw<NullReferenceException>();
     }
 
     [Fact]
