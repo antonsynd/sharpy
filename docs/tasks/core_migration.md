@@ -272,14 +272,17 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Set): make named methods primary for set operations"`
 
 ### Step 2.11: Replace comparison dunders with C# operators
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.ILessThanComparable.cs` and related
-  - `__Lt__` → `operator <` (proper subset)
-  - `__Le__` → `operator <=` (subset)
-  - `__Gt__` → `operator >` (proper superset)
-  - `__Ge__` → `operator >=` (superset)
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Comparators.cs`, `SetTests.IsSubset.cs`, `SetTests.IsSuperset.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): replace comparison dunders with C# operators"`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.cs`
+  - Add IsProperSubset, IsSubset, IsProperSuperset, IsSuperset as primary named methods
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.ILessThanComparable.cs` and related
+  - `__Lt__` → deprecated, delegates to IsProperSubset
+  - `__Le__` → deprecated, delegates to IsSubset
+  - `__Gt__` → deprecated, delegates to IsProperSuperset
+  - `__Ge__` → deprecated, delegates to IsSuperset
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.operators.cs`
+  - Update operators to call named methods instead of dunders
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Set): make named methods primary for subset/superset operations"`
 
 ### Step 2.12: Remove `Object` base class from `Set<T>`
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.cs`

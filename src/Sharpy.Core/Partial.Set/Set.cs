@@ -43,14 +43,56 @@ public sealed partial class Set<T>
         return newSet;
     }
 
-    public bool IsSubset(Set<T> other)
+    /// <summary>
+    /// Returns whether this set is a proper subset of other (subset but not equal).
+    /// </summary>
+    public bool IsProperSubset(Set<T> other)
     {
-        return __Le__(other);
+        if (other is null)
+        {
+            throw TypeError.IsNotInterface("NoneType", "iterable");
+        }
+
+        return _set.IsProperSubsetOf(other._set);
     }
 
+    /// <summary>
+    /// Returns whether this set is a subset of other (all elements in other).
+    /// </summary>
+    public bool IsSubset(Set<T> other)
+    {
+        if (other is null)
+        {
+            throw TypeError.IsNotInterface("NoneType", "iterable");
+        }
+
+        return _set.IsSubsetOf(other._set);
+    }
+
+    /// <summary>
+    /// Returns whether this set is a proper superset of other (superset but not equal).
+    /// </summary>
+    public bool IsProperSuperset(Set<T> other)
+    {
+        if (other is null)
+        {
+            throw TypeError.IsNotInterface("NoneType", "iterable");
+        }
+
+        return _set.IsProperSupersetOf(other._set);
+    }
+
+    /// <summary>
+    /// Returns whether this set is a superset of other (contains all elements of other).
+    /// </summary>
     public bool IsSuperset(Set<T> other)
     {
-        return __Ge__(other);
+        if (other is null)
+        {
+            throw TypeError.IsNotInterface("NoneType", "iterable");
+        }
+
+        return _set.IsSupersetOf(other._set);
     }
 
     /// <summary>

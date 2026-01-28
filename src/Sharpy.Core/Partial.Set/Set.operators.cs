@@ -18,22 +18,22 @@ public sealed partial class Set<T>
 
     public static bool operator <(Set<T> left, Set<T> right)
     {
-        return left.__Lt__(right);
+        return left.IsProperSubset(right);
     }
 
     public static bool operator >(Set<T> left, Set<T> right)
     {
-        return left.__Gt__(right);
+        return left.IsProperSuperset(right);
     }
 
     public static bool operator <=(Set<T> left, Set<T> right)
     {
-        return left.__Le__(right);
+        return left.IsSubset(right);
     }
 
     public static bool operator >=(Set<T> left, Set<T> right)
     {
-        return left.__Ge__(right);
+        return left.IsSuperset(right);
     }
 
     public static Set<T> operator |(Set<T> left, Set<T> right)

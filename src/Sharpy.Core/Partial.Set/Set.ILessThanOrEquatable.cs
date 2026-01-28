@@ -2,18 +2,17 @@ namespace Sharpy.Core;
 
 public sealed partial class Set<T>
 {
-    /// <inheritdoc/>
+    /// <summary>
+    /// Deprecated: Use <see cref="IsSubset(Set{T})"/> instead.
+    /// </summary>
     public bool __Le__(Set<T> other)
     {
-        if (other is null)
-        {
-            throw TypeError.IsNotInterface("NoneType", "iterable");
-        }
-
-        return _set.IsSubsetOf(other._set);
+        return IsSubset(other);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Deprecated: Use IsSubset instead.
+    /// </summary>
     public bool __Le__(Collections.Interfaces.ISet<T> other)
     {
         if (other is null)
@@ -26,7 +25,7 @@ public sealed partial class Set<T>
 
         if (numElems == otherNumElems)
         {
-            return __Eq__(other);
+            return Equals(other);
         }
         else if (numElems > otherNumElems)
         {
