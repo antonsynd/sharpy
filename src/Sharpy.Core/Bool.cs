@@ -166,6 +166,32 @@ public static partial class Exports
             return Bool(@float);
         }
 
+        // Collection types - check Count for emptiness
+        // Note: ICollection (non-generic) is for arrays and old-style collections
+        if (obj is System.Collections.ICollection collection)
+        {
+            return collection.Count > 0;
+        }
+
+        // Check for ICollection<T> or IReadOnlyCollection<T> via interface check
+        // This handles List<T>, Set<T>, etc. that use explicit interface implementations
+        foreach (var iface in obj.GetType().GetInterfaces())
+        {
+            if (iface.IsGenericType)
+            {
+                var genericDef = iface.GetGenericTypeDefinition();
+                if (genericDef == typeof(ICollection<>) || genericDef == typeof(IReadOnlyCollection<>))
+                {
+                    var countProp = iface.GetProperty("Count");
+                    if (countProp is not null)
+                    {
+                        var count = (int)countProp.GetValue(obj)!;
+                        return count > 0;
+                    }
+                }
+            }
+        }
+
         throw TypeError.IsNotInterface(obj.GetType().Name, "convertible to bool");
     }
 }
