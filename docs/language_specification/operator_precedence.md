@@ -115,3 +115,21 @@ Use parentheses when you need different grouping:
 # Only wrap the function call, then add
 x = (try some_func(4)) + 5     # Must unwrap the Result before adding
 ```
+
+## Type Annotation Precedence
+
+In type annotation contexts, the `!E` (Result shorthand) and `| None` (C# nullable) modifiers have their own precedence:
+
+- `!E` binds **tighter** than `| None`
+
+This is type-level precedence, not expression-level:
+
+```python
+# !E binds tighter than | None
+int !ValueError | None  →  (int !ValueError) | None  →  Result[int, ValueError] | None
+
+# Use in function signatures
+def try_parse(s: str) -> int !ValueError | None:
+    # Returns Result[int, ValueError] | None
+    ...
+```
