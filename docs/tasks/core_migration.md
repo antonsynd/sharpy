@@ -181,16 +181,16 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(List): remove Object base class and Sharpy interfaces"`
 
 ### Step 1.13: Consolidate `List<T>` partial files
-- [ ] Review remaining partial files in `src/Sharpy.Core/Partial.List/`
-- [ ] Merge small files into logical groupings:
+- [x] Review remaining partial files in `src/Sharpy.Core/Partial.List/`
+- [x] Merge small files into logical groupings:
   - `List.cs` - core class, constructors, fields
   - `List.Interfaces.cs` - IList<T>, ICollection<T> implementation
   - `List.Operators.cs` - all operator overloads
   - `List.Methods.cs` - Python-style methods (Append, Extend, Pop, etc.)
   - `List.Slicing.cs` - slice-related logic
-- [ ] Delete empty/redundant partial files
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): consolidate partial class files"`
+- [x] Delete empty/redundant partial files
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(List): consolidate partial class files"`
 
 ---
 
@@ -301,10 +301,10 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Set): remove Object base class and Sharpy interfaces"`
 
 ### Step 2.13: Consolidate `Set<T>` partial files
-- [ ] Merge into logical groupings
-- [ ] Delete empty files
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): consolidate partial class files"`
+- [x] Merge into logical groupings
+- [x] Delete empty files
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Set): consolidate partial class files"`
 
 ---
 
