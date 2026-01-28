@@ -209,21 +209,19 @@ public sealed partial class Dict<K, V>
     /// </summary>
     public int __Len__() => Count;
 
-    public override bool __Eq__(Object obj)
-    {
-        if (obj is Dict<K, V> other)
-        {
-            return __Eq__(other);
-        }
-
-        return false;
-    }
-
-    public bool __Eq__(Dict<K, V> other)
+    /// <summary>
+    /// Determines whether this dictionary equals another dictionary by comparing key-value pairs.
+    /// </summary>
+    public bool Equals(Dict<K, V>? other)
     {
         if (other is null)
         {
             return false;
+        }
+
+        if (ReferenceEquals(this, other))
+        {
+            return true;
         }
 
         if (_dict.Count != other._dict.Count)
@@ -233,7 +231,6 @@ public sealed partial class Dict<K, V>
 
         foreach (var kv in _dict)
         {
-
             if (!other._dict.TryGetValue(kv.Key, out V? value))
             {
                 return false;
@@ -246,6 +243,25 @@ public sealed partial class Dict<K, V>
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Deprecated: Use <see cref="Equals(Dict{K,V}?)"/> instead.
+    /// </summary>
+    public bool __Eq__(Dict<K, V> other) => Equals(other);
+
+    /// <summary>
+    /// Required for Object base class compatibility. Delegates to <see cref="Equals(Dict{K,V}?)"/>.
+    /// Will become <c>override Equals(object?)</c> when Object base class is removed.
+    /// </summary>
+    public override bool __Eq__(object other)
+    {
+        if (other is Dict<K, V> dict)
+        {
+            return Equals(dict);
+        }
+
+        return false;
     }
 
     public void __SetItem__(K key, V value)
@@ -307,19 +323,9 @@ public sealed partial class Dict<K, V>
         return left.__Or__(right);
     }
 
-    public static bool operator ==(Dict<K, V> left, Dict<K, V> right)
+    public static bool operator ==(Dict<K, V>? left, Dict<K, V>? right)
     {
-        if (ReferenceEquals(left, right))
-        {
-            return true;
-        }
-
-        if (left is null || right is null)
-        {
-            return false;
-        }
-
-        return left.__Eq__(right);
+        return left?.Equals(right) ?? right is null;
     }
 
     public static bool operator !=(Dict<K, V> left, Dict<K, V> right)

@@ -336,9 +336,12 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Dict): replace __Len__() with Count property"`
 
 ### Step 3.4: Replace `__Eq__` with `Equals` override
-- [ ] Update `src/Sharpy.Core/Dict.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Dict): replace __Eq__ with Equals override"`
+- [x] Add `Equals(Dict<K,V>?)` as primary method
+- [x] Update `__Eq__(Dict<K,V>)` to deprecated alias calling `Equals`
+- [x] Keep `__Eq__(object)` as override (Equals is sealed in Object)
+- [x] Update `operator ==` to use `Equals`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Dict): replace __Eq__ with Equals as primary"`
 
 ### Step 3.5: Replace `__Hash__` with `GetHashCode` override
 - [ ] Update `src/Sharpy.Core/Dict.cs`
