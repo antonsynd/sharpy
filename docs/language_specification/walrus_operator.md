@@ -57,7 +57,7 @@ items = get_items()  # Not: [(x := get_items()) ...]
 [x for x in items]
 
 # Or use an explicit loop
-last_valid: int? = None
+last_valid: int | None = None
 results: list[int] = []
 for x in data:
     y = transform(x)

@@ -111,7 +111,7 @@ except IOError as e:
     raise ConfigError("Failed to load config") from e
 
 # Referencing stored exception
-saved_error: Exception? = None
+saved_error: Exception | None = None
 try:
     do_something()
 except Exception as e:

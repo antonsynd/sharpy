@@ -162,8 +162,8 @@ more_ints: list[int] = [*int_list, 4, 5]
 str_list: list[str] = ["a", "b"]
 mixed = [*int_list, *str_list]  # ERROR: cannot mix int and str
 
-# ✅ Use union type
-mixed: list[int | str] = [*int_list, *str_list]
+# ✅ Use a common base type (e.g., object)
+mixed: list[object] = [*int_list, *str_list]
 ```
 
 ## Nested Spreading

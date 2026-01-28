@@ -204,7 +204,7 @@ cat = dog to Cat                 # ERROR: Dog cannot be cast to Cat (no inherita
 Casting `None` always fails:
 
 ```python
-x: Dog? = None
+x: Dog | None = None
 dog = x to Dog                   # Throws InvalidCastException
 dog = x to Dog?                  # None
 ```

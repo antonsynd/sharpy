@@ -28,7 +28,7 @@ The type is explicitly specified:
 count: int = 0
 name: str = "Alice"
 items: list[int] = [1, 2, 3]
-user: User? = None
+user: User | None = None
 ```
 
 **Form 2: Type Inference (Implicit)**
@@ -76,7 +76,7 @@ Module-level variables MUST have explicit type annotations:
 counter: int = 0
 name: str = "default"
 items: list[int] = []
-data: Config? = None
+data: Config | None = None
 
 # ❌ Invalid - no type annotation at module level
 x = 42                  # ERROR: requires type annotation
@@ -137,7 +137,7 @@ name: str              # ERROR: variable declaration requires initializer
 x: int = 0
 name: str = ""
 items: list[int] = []
-user: User? = None
+user: User | None = None
 ```
 
 **Exception: Class Instance Fields**

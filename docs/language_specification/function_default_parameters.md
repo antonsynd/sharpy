@@ -35,12 +35,12 @@ def process(
     factor: float = 1.0,
     enabled: bool = True,
     mode: Mode = Mode.NORMAL,
-    callback: Callable? = None
+    callback: Callable | None = None
 ) -> None:
     pass
 
 # ✅ Using None for optional parameters (recommended pattern)
-def search(query: str, limit: int? = None, offset: int? = None) -> list[Result]:
+def search(query: str, limit: int | None = None, offset: int | None = None) -> list[Result]:
     actual_limit = limit ?? 100
     actual_offset = offset ?? 0
     # ...

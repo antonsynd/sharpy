@@ -24,7 +24,7 @@ def main():
     count: int = 0
     name: str = "Alice"
     items: list[int] = [1, 2, 3]
-    user: User? = None
+    user: User | None = None
 ```
 
 **Form 2: Type Inference (Implicit)**
@@ -79,7 +79,7 @@ def main():
     x: int = 0
     name: str = ""
     items: list[int] = []
-    user: User? = None
+    user: User | None = None
 ```
 
 **Exception: Class Instance Fields**

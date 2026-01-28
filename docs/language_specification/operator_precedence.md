@@ -106,7 +106,7 @@ result = try animal to Dog     # Parsed as: try (animal to Dog)
 
 # maybe with safe cast
 opt = maybe obj to Widget?     # Parsed as: maybe (obj to Widget?)
-                               # Optional[Widget]
+                               # Widget?
 ```
 
 Use parentheses when you need different grouping:
