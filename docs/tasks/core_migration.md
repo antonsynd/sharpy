@@ -435,31 +435,39 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 ## Phase 5: Update Iterators
 
 ### Step 5.1: Update `Iterator<T>`
-- [ ] Edit `src/Sharpy.Core/Partial.Iterator/Iterator.cs`
-  - Remove Sharpy interface dependencies
-  - Ensure it implements `IEnumerator<T>`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Iterator): use .NET interfaces"`
+- [x] Edit `src/Sharpy.Core/Partial.Iterator/Iterator.cs`
+  - Add `Next()` method as primary, `__Next__()` deprecated alias
+  - Mark `__Iter__()` as deprecated in favor of `GetEnumerator()`
+  - Update class docs to reference .NET interfaces
+  - Already implements `IEnumerator<T>` ✓
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 737 tests pass
+- [x] **Commit:** `git commit -am "refactor(Iterator): add Next() method and deprecation docs"`
 
 ### Step 5.2: Update `ListIterator<T>`
-- [ ] Edit `src/Sharpy.Core/Partial.ListIterator/`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(ListIterator): use .NET interfaces"`
+- [x] Edit `src/Sharpy.Core/Partial.ListIterator/ListIterator.IIterator.cs`
+  - Mark `__Next__()` as deprecated
+  - Use `Count` property instead of `__Len__()`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 737 tests pass
+- [x] **Commit:** `git commit -am "refactor(ListIterator): add deprecation docs and use Count"`
 
 ### Step 5.3: Update `ListReverseIterator<T>`
-- [ ] Edit `src/Sharpy.Core/Partial.ListReverseIterator/`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(ListReverseIterator): use .NET interfaces"`
+- [x] Edit `src/Sharpy.Core/Partial.ListReverseIterator/ListReverseIterator.IIterator.cs`
+  - Mark `__Next__()` as deprecated
+  - Use `Count` property instead of `__Len__()`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 737 tests pass
+- [x] **Commit:** `git commit -am "refactor(ListReverseIterator): add deprecation docs and use Count"`
 
 ### Step 5.4: Update `SetIterator<T>`
-- [ ] Edit `src/Sharpy.Core/Partial.SetIterator/`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(SetIterator): use .NET interfaces"`
+- [x] Edit `src/Sharpy.Core/Partial.SetIterator/SetIterator.IIterator.cs`
+  - Mark `__Next__()` as deprecated
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 737 tests pass
+- [x] **Commit:** `git commit -am "refactor(SetIterator): add deprecation docs to __Next__"`
 
 ### Step 5.5: Update `EnumeratorIterator<T>`
-- [ ] Edit `src/Sharpy.Core/EnumeratorIterator.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(EnumeratorIterator): use .NET interfaces"`
+- [x] Edit `src/Sharpy.Core/EnumeratorIterator.cs`
+  - Mark `__Next__()` as deprecated
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 737 tests pass
+- [x] **Commit:** `git commit -am "refactor(EnumeratorIterator): add deprecation docs to __Next__"`
 
 ---
 
