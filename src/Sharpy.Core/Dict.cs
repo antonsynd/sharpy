@@ -350,12 +350,21 @@ public sealed partial class Dict<K, V>
         return hashCode.ToHashCode();
     }
 
+    /// <summary>
+    /// Returns a string representation of this dictionary.
+    /// </summary>
+    /// <remarks>
+    /// While Dict inherits from Object, ToString() is sealed and delegates to __Str__(),
+    /// which by default calls __Repr__(). Once Dict no longer inherits from Object,
+    /// this will become:
+    /// <code>public override string ToString()</code>
+    /// </remarks>
     public override string __Repr__()
     {
         var builder = new StringBuilder();
         builder.Append('{');
 
-        uint i = 1;
+        int i = 1;
         var numItems = _dict.Count;
 
         foreach (var kv in _dict)

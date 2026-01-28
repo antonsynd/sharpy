@@ -349,9 +349,9 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Dict): document __Hash__ transition to GetHashCode"`
 
 ### Step 3.6: Replace `__Repr__` with `ToString` override
-- [ ] Update `src/Sharpy.Core/Dict.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Dict): replace __Repr__ with ToString override"`
+- [x] Document that `__Repr__` will become `ToString` when Object is removed (ToString is sealed in Object)
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Dict): document __Repr__ transition to ToString"`
 
 ### Step 3.7: Replace `__Bool__` with `operator true/false`
 - [ ] Update `src/Sharpy.Core/Dict.cs`
