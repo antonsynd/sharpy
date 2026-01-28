@@ -1,7 +1,6 @@
 namespace Sharpy.Core;
 
 using System.Text;
-using Collections.Interfaces;
 
 public static partial class Exports
 {
@@ -340,7 +339,7 @@ public readonly partial struct Str
     /// This is useful if for example mapping is a dict subclass.
     /// TODO: Full implementation requires Python format string parser - planned for v0.6
     /// </summary>
-    public Str FormatMap<K, V>(IMapping<K, V> mapping) where K : notnull
+    public Str FormatMap<K, V>(IReadOnlyDictionary<K, V> mapping) where K : notnull
     {
         // TODO: Implement full Python format string parsing with mapping
         throw new NotImplementedException("str.format_map() requires full format string parser - planned for v0.6");
@@ -672,7 +671,7 @@ public readonly partial struct Str
     /// Static method to create a translation table usable for Translate().
     /// This version accepts a dictionary mapping strings to their replacements.
     /// </summary>
-    public static Dict<uint, Str?> MakeTrans(IMapping<Str, Str?> mapping)
+    public static Dict<uint, Str?> MakeTrans(IReadOnlyDictionary<Str, Str?> mapping)
     {
         if (mapping is null)
         {
@@ -681,7 +680,7 @@ public readonly partial struct Str
 
         var table = new Dict<uint, Str?>();
 
-        foreach (var key in mapping.Keys())
+        foreach (var key in mapping.Keys)
         {
             var keyStr = (string)key;
             if (keyStr.Length != 1)
@@ -701,11 +700,11 @@ public readonly partial struct Str
     /// Static method to create a translation table usable for Translate().
     /// This version accepts a dictionary mapping Unicode code points to their replacements.
     /// </summary>
-    public static Dict<uint, Str?> MakeTrans(IMapping<uint, Str?> mapping)
+    public static Dict<uint, Str?> MakeTrans(IReadOnlyDictionary<uint, Str?> mapping)
     {
         var table = new Dict<uint, Str?>();
 
-        foreach (var key in mapping.Keys())
+        foreach (var key in mapping.Keys)
         {
             table[key] = mapping[key];
         }

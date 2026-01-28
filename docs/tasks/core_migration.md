@@ -678,80 +678,81 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "chore: delete Sharpy.Object class"`
 
 ### Step 8.2: Delete operator interfaces
-- [ ] Delete files:
-  - [ ] `IAbsoluteValue.cs`
-  - [ ] `IAddable.cs`
-  - [ ] `IBitwiseAndable.cs`
-  - [ ] `IBitwiseOrable.cs`
-  - [ ] `IBitwiseXorable.cs`
-  - [ ] `IDivisible.cs`
-  - [ ] `IFloorDivisible.cs`
-  - [ ] `IInplaceAddable.cs`
-  - [ ] `IInplaceMultipliable.cs`
-  - [ ] `IInvertible.cs`
-  - [ ] `ILeftShiftable.cs`
-  - [ ] `IModulable.cs`
-  - [ ] `IMultipliable.cs`
-  - [ ] `INegatable.cs`
-  - [ ] `IPowerable.cs`
-  - [ ] `IRightAddable.cs`
-  - [ ] `IRightMultipliable.cs`
-  - [ ] `IRightShiftable.cs`
-  - [ ] `ISubtractable.cs`
-  - [ ] `IUnaryPlusable.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "chore: delete operator interfaces"`
+- [x] Delete files:
+  - [x] `IAbsoluteValue.cs`
+  - [x] `IAddable.cs`
+  - [x] `IBitwiseAndable.cs`
+  - [x] `IBitwiseOrable.cs`
+  - [x] `IBitwiseXorable.cs`
+  - [x] `IDivisible.cs`
+  - [x] `IFloorDivisible.cs`
+  - [x] `IInplaceAddable.cs`
+  - [x] `IInplaceMultipliable.cs`
+  - [x] `IInvertible.cs`
+  - [x] `ILeftShiftable.cs`
+  - [x] `IModulable.cs`
+  - [x] `IMultipliable.cs`
+  - [x] `INegatable.cs`
+  - [x] `IPowerable.cs`
+  - [x] `IRightAddable.cs`
+  - [x] `IRightMultipliable.cs`
+  - [x] `IRightShiftable.cs`
+  - [x] `ISubtractable.cs`
+  - [x] `IUnaryPlusable.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 731 tests pass
+- [x] **Commit:** See combined commit below
 
 ### Step 8.3: Delete comparison interfaces
-- [ ] Delete files:
-  - [ ] `IEquatable.cs` (Sharpy's version)
-  - [ ] `IInequatable.cs`
-  - [ ] `IGreaterThanComparable.cs`
-  - [ ] `IGreaterThanOrEquatable.cs`
-  - [ ] `ILessThanComparable.cs`
-  - [ ] `ILessThanOrEquatable.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "chore: delete comparison interfaces"`
+- [x] Delete files:
+  - [x] `IEquatable.cs` (Sharpy's version)
+  - [x] `IInequatable.cs`
+  - [x] `IGreaterThanComparable.cs`
+  - [x] `IGreaterThanOrEquatable.cs`
+  - [x] `ILessThanComparable.cs`
+  - [x] `ILessThanOrEquatable.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 731 tests pass
+- [x] **Commit:** See combined commit below
 
 ### Step 8.4: Delete protocol interfaces
-- [ ] Delete files:
-  - [ ] `IBoolConvertible.cs`
-  - [ ] `IHashable.cs`
-  - [ ] `IIdentifiable.cs`
-  - [ ] `IRepresentable.cs`
-  - [ ] `IStrConvertible.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "chore: delete protocol interfaces"`
+- [x] Delete files:
+  - [x] `IBoolConvertible.cs`
+  - [x] `IHashable.cs`
+  - [x] `IIdentifiable.cs`
+  - [x] `IRepresentable.cs`
+  - [x] `IStrConvertible.cs`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 731 tests pass
+- [x] **Commit:** See combined commit below
 
 ### Step 8.5: Delete collection interfaces
-- [ ] Delete directory: `src/Sharpy.Core/Collections/Interfaces/`
-  - [ ] `ISized.cs`
-  - [ ] `IContainer.cs`
-  - [ ] `IIterable.cs`
-  - [ ] `ICollection.cs`
-  - [ ] `IReversible.cs`
-  - [ ] `ISequence.cs`
-  - [ ] `IMutableSequence.cs`
-  - [ ] `ISet.cs`
-  - [ ] `IMutableSet.cs`
-  - [ ] `IMapping.cs`
-  - [ ] `IMutableMapping.cs`
-  - [ ] `IMappingView.cs`
-  - [ ] `IKeysView.cs`
-  - [ ] `IValuesView.cs`
-  - [ ] `IItemsView.cs`
-- [ ] Delete `src/Sharpy.Core/Collections/Exports.cs` if empty
-- [ ] Delete `src/Sharpy.Core/Collections/` directory if empty
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "chore: delete Sharpy collection interfaces"`
+- [x] Delete directory: `src/Sharpy.Core/Collections/Interfaces/`
+  - [x] `ISized.cs`
+  - [x] `IContainer.cs`
+  - [x] `IIterable.cs`
+  - [x] `ICollection.cs`
+  - [x] `IReversible.cs`
+  - [x] `ISequence.cs`
+  - [x] `IMutableSequence.cs`
+  - [x] `ISet.cs`
+  - [x] `IMutableSet.cs`
+  - [x] `IMapping.cs`
+  - [x] `IMutableMapping.cs`
+  - [x] `IMappingView.cs`
+  - [x] `IKeysView.cs`
+  - [x] `IValuesView.cs`
+  - [x] `IItemsView.cs`
+- [x] `src/Sharpy.Core/Collections/Exports.cs` kept - contains Deque<T>
+- [x] `src/Sharpy.Core/Collections/` directory kept - contains Deque<T>
+- [x] Fixed all files referencing deleted `Collections.Interfaces`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 731 tests pass
+- [x] **Commit:** See combined commit below
 
 ### Step 8.6: Delete helper classes that depended on deleted interfaces
-- [ ] Review and delete if unused:
-  - [ ] `IdentityAdapterFactory.cs`
-  - [ ] `ComparerAdapter.cs`
-  - [ ] `KeyComparer.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "chore: delete unused helper classes"`
+- [x] Review and delete if unused:
+  - [x] `IdentityAdapterFactory.cs` - deleted (not used anywhere)
+  - [x] `ComparerAdapter.cs` - kept (used by Sorted.cs, KeyComparer.cs)
+  - [x] `KeyComparer.cs` - kept (used by List.cs, Sorted.cs)
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 731 tests pass
+- [x] **Commit:** `git commit -am "chore: delete Sharpy interfaces and unused helpers (Phase 8)"`
 
 ---
 

@@ -2,7 +2,7 @@ namespace Sharpy.Core;
 
 using Operator;
 
-public sealed partial class List<T> : IGreaterThanComparable<List<T>>
+public sealed partial class List<T>
 {
     /// <summary>
     /// Implements the __gt__ dunder method for lexicographical comparison.

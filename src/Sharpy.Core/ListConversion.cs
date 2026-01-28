@@ -8,30 +8,6 @@ namespace Sharpy.Core;
 public static partial class Exports
 {
     /// <summary>
-    /// Convert iterable to list
-    /// </summary>
-    public static List<T> List<T>(Collections.Interfaces.IIterable<T> iterable)
-    {
-        var list = new List<T>();
-        var iterator = iterable.__Iter__();
-
-        while (true)
-        {
-            try
-            {
-                var item = iterator.__Next__();
-                list.Add(item);
-            }
-            catch (StopIteration)
-            {
-                break;
-            }
-        }
-
-        return list;
-    }
-
-    /// <summary>
     /// Convert IEnumerable to list
     /// </summary>
     public static List<T> List<T>(IEnumerable<T> enumerable)

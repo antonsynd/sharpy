@@ -1,6 +1,6 @@
-using Object = Sharpy.Core.Object;
-
 namespace Sharpy.Core.Tests;
+
+using static Sharpy.Core.Exports;
 
 public sealed class IdentityWrapper<T> : Wrapper<T>
 {
@@ -8,14 +8,14 @@ public sealed class IdentityWrapper<T> : Wrapper<T>
     {
     }
 
-    public override bool __Eq__(Object other)
+    public bool __Eq__(IdentityWrapper<T>? other)
     {
-        if (other is IdentityWrapper<T> wrapper)
+        if (other is null)
         {
-            return Id == wrapper.Id;
+            return false;
         }
 
-        return false;
+        return Id == other.Id;
     }
 
     public static implicit operator IdentityWrapper<T>(T value)
@@ -43,8 +43,18 @@ public sealed class IdentityWrapper<T> : Wrapper<T>
         return !(left == right);
     }
 
-    public override bool __Bool__()
+    public override bool Equals(object? obj)
     {
-        return Bool(Value);
+        if (obj is IdentityWrapper<T> wrapper)
+        {
+            return Id == wrapper.Id;
+        }
+
+        return false;
+    }
+
+    public override int GetHashCode()
+    {
+        return __Hash__();
     }
 }

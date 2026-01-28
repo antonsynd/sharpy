@@ -1,7 +1,6 @@
 namespace Sharpy.Core;
 
 using System.Collections;
-using Collections.Interfaces;
 
 /// <summary>
 /// View of dictionary keys as a set-like object.
@@ -9,8 +8,7 @@ using Collections.Interfaces;
 /// Supports set operations like intersection, union, difference.
 /// </summary>
 public sealed partial class DictKeyView<K, V>
-    : IKeysView<K>,
-      IReadOnlyCollection<K>,
+    : IReadOnlyCollection<K>,
       System.IEquatable<Set<K>>
     where K : notnull
 {

@@ -1,6 +1,5 @@
 namespace Sharpy.Itertools;
 
-using Sharpy.Collections.Interfaces;
 using Sharpy.Core;
 
 /// <summary>
@@ -9,10 +8,10 @@ using Sharpy.Core;
 /// </summary>
 public class ChainIterator<T> : Iterator<T>
 {
-    private readonly IEnumerator<IIterable<T>> _iterables;
-    private Iterator<T>? _currentIterator;
+    private readonly IEnumerator<IEnumerable<T>> _iterables;
+    private IEnumerator<T>? _currentIterator;
 
-    public ChainIterator(IEnumerable<IIterable<T>> iterables)
+    public ChainIterator(IEnumerable<IEnumerable<T>> iterables)
     {
         _iterables = iterables.GetEnumerator();
         _currentIterator = null;
@@ -24,11 +23,11 @@ public class ChainIterator<T> : Iterator<T>
         {
             if (_currentIterator != null)
             {
-                try
+                if (_currentIterator.MoveNext())
                 {
-                    return _currentIterator.__Next__();
+                    return _currentIterator.Current;
                 }
-                catch (StopIteration)
+                else
                 {
                     _currentIterator = null;
                 }
@@ -39,7 +38,7 @@ public class ChainIterator<T> : Iterator<T>
                 throw new StopIteration();
             }
 
-            _currentIterator = _iterables.Current.__Iter__();
+            _currentIterator = _iterables.Current.GetEnumerator();
         }
     }
 }
@@ -51,69 +50,67 @@ public class ChainIterator<T> : Iterator<T>
 /// </summary>
 public class IsliceIterator<T> : Iterator<T>
 {
-    private readonly Iterator<T> _iterator;
+    private readonly IEnumerator<T> _enumerator;
     private readonly int _stop;
     private readonly int _step;
     private int _currentIndex;
+    private bool _exhausted;
 
-    public IsliceIterator(IIterable<T> iterable, int stop)
+    public IsliceIterator(IEnumerable<T> iterable, int stop)
         : this(iterable, 0, stop, 1)
     {
     }
 
-    public IsliceIterator(IIterable<T> iterable, int start, int stop, int step = 1)
+    public IsliceIterator(IEnumerable<T> iterable, int start, int stop, int step = 1)
     {
         if (start < 0 || stop < 0 || step <= 0)
         {
             throw new ValueError("Indices for islice() must be non-negative");
         }
 
-        _iterator = iterable.__Iter__();
+        _enumerator = iterable.GetEnumerator();
         _stop = stop;
         _step = step;
         _currentIndex = 0;
+        _exhausted = false;
 
-        // Skip to start - if iterator is exhausted before start, just mark it
+        // Skip to start - if iterator is exhausted before start, mark as exhausted
         for (int i = 0; i < start; i++)
         {
-            try
+            if (!_enumerator.MoveNext())
             {
-                _iterator.__Next__();
-                _currentIndex++;
-            }
-            catch (StopIteration)
-            {
-                // Iterator exhausted before reaching start - mark as past stop
-                _currentIndex = stop;
+                _exhausted = true;
                 break;
             }
+            _currentIndex++;
         }
     }
 
     public override T __Next__()
     {
-        if (_currentIndex >= _stop)
+        if (_exhausted || _currentIndex >= _stop)
         {
             throw new StopIteration();
         }
 
-        T value = _iterator.__Next__();
+        if (!_enumerator.MoveNext())
+        {
+            _exhausted = true;
+            throw new StopIteration();
+        }
+
+        T value = _enumerator.Current;
         _currentIndex++;
 
         // Skip step - 1 elements
         for (int i = 1; i < _step; i++)
         {
-            try
+            if (!_enumerator.MoveNext())
             {
-                _iterator.__Next__();
-                _currentIndex++;
-            }
-            catch (StopIteration)
-            {
-                // Iterator exhausted mid-step - just stop here
-                _currentIndex = _stop;
+                _exhausted = true;
                 break;
             }
+            _currentIndex++;
         }
 
         return value;
@@ -131,7 +128,7 @@ public class CombinationsIterator<T> : Iterator<T[]>
     private bool _started;
     private bool _exhausted;
 
-    public CombinationsIterator(IIterable<T> iterable, int r)
+    public CombinationsIterator(IEnumerable<T> iterable, int r)
     {
         _pool = iterable.ToArray();
         _r = r;
@@ -204,7 +201,7 @@ public class PermutationsIterator<T> : Iterator<T[]>
     private bool _started;
     private bool _exhausted;
 
-    public PermutationsIterator(IIterable<T> iterable, int? r = null)
+    public PermutationsIterator(IEnumerable<T> iterable, int? r = null)
     {
         _pool = iterable.ToArray();
         _r = r ?? _pool.Length;
@@ -272,7 +269,7 @@ internal static partial class Exports
     /// Make an iterator that returns elements from the first iterable until it is exhausted,
     /// then proceeds to the next iterable.
     /// </summary>
-    public static ChainIterator<T> Chain<T>(params IIterable<T>[] iterables)
+    public static ChainIterator<T> Chain<T>(params IEnumerable<T>[] iterables)
     {
         return new ChainIterator<T>(iterables);
     }
@@ -280,7 +277,7 @@ internal static partial class Exports
     /// <summary>
     /// Make an iterator that returns selected elements from the iterable.
     /// </summary>
-    public static IsliceIterator<T> Islice<T>(IIterable<T> iterable, int stop)
+    public static IsliceIterator<T> Islice<T>(IEnumerable<T> iterable, int stop)
     {
         return new IsliceIterator<T>(iterable, stop);
     }
@@ -288,7 +285,7 @@ internal static partial class Exports
     /// <summary>
     /// Make an iterator that returns selected elements from the iterable.
     /// </summary>
-    public static IsliceIterator<T> Islice<T>(IIterable<T> iterable, int start, int stop, int step = 1)
+    public static IsliceIterator<T> Islice<T>(IEnumerable<T> iterable, int start, int stop, int step = 1)
     {
         return new IsliceIterator<T>(iterable, start, stop, step);
     }
@@ -296,7 +293,7 @@ internal static partial class Exports
     /// <summary>
     /// Return r-length combinations of elements in the iterable.
     /// </summary>
-    public static CombinationsIterator<T> Combinations<T>(IIterable<T> iterable, int r)
+    public static CombinationsIterator<T> Combinations<T>(IEnumerable<T> iterable, int r)
     {
         return new CombinationsIterator<T>(iterable, r);
     }
@@ -304,7 +301,7 @@ internal static partial class Exports
     /// <summary>
     /// Return successive r-length permutations of elements in the iterable.
     /// </summary>
-    public static PermutationsIterator<T> Permutations<T>(IIterable<T> iterable, int? r = null)
+    public static PermutationsIterator<T> Permutations<T>(IEnumerable<T> iterable, int? r = null)
     {
         return new PermutationsIterator<T>(iterable, r);
     }

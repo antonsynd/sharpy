@@ -1,8 +1,6 @@
-using Sharpy.Collections.Interfaces;
-
 namespace Sharpy.Core;
 
-public sealed partial class ByteArray : Object, MutableSequence<ByteArray, byte>
+public sealed partial class ByteArray
 {
     /// <summary>
     /// Add an item to the end of the list. Similar to a[len(a):] = [x].

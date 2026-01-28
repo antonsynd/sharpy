@@ -1,15 +1,13 @@
 namespace Sharpy.Core;
 
 using System.Collections;
-using Collections.Interfaces;
 
 /// <summary>
 /// View of dictionary values.
 /// This view reflects changes to the underlying dictionary.
 /// </summary>
 public sealed class DictValuesView<K, V>
-    : IValuesView<V>,
-      IReadOnlyCollection<V>
+    : IReadOnlyCollection<V>
     where K : notnull
 {
     private readonly Dictionary<K, V>.ValueCollection _values;
