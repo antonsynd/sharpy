@@ -1,6 +1,10 @@
 # Optional Type
 
-The `Optional[T]` type is a special tagged union provided by the Sharpy standard library for representing values that may or may not be present. This is similar to Rust's `Option` type and provides an alternative to nullable types (`T?`).
+> **`T?` is syntactic sugar for `Optional[T]`.** The `T?` shorthand is the preferred way to express optional values in Sharpy-native code.
+
+The `Optional[T]` type is a special tagged union provided by the Sharpy standard library for representing values that may or may not be present. This is similar to Rust's `Option` type.
+
+`Optional[T]` is a **struct** — no heap allocation for returning optional values, just a bool + value (like `Nullable<T>` but with tagged union semantics).
 
 ## Definition
 
@@ -15,11 +19,13 @@ The `Optional` type is part of the standard library and provides special syntax 
 ## Creating Optional Values
 
 ```python
-# Some case (value is present)
-some_value: Optional[int] = Optional.Some(42)
+# Shorthand (preferred)
+value: int? = Some(42)
+empty: int? = Nothing
 
-# Nothing case (no value)
-no_value: Optional[int] = Optional.Nothing
+# Explicit (equivalent)
+value: Optional[int] = Optional.Some(42)
+empty: Optional[int] = Optional.Nothing
 ```
 
 ## Pattern Matching
@@ -27,7 +33,7 @@ no_value: Optional[int] = Optional.Nothing
 Use pattern matching to handle both Some and Nothing cases:
 
 ```python
-def find_user(id: int) -> Optional[User]:
+def find_user(id: int) -> User?:
     user = database.find(id)
     if user is not None:
         return Some(user)
@@ -86,7 +92,7 @@ union Optional[T]:
             case Nothing:
                 return f()
 
-    def map(self, f: (T) -> U) -> Optional[U]:
+    def map(self, f: (T) -> U) -> U?:
         """Transforms the contained value if present"""
         match self:
             case Some(value):
@@ -95,37 +101,41 @@ union Optional[T]:
                 return Nothing
 ```
 
-## Comparison with Nullable Types
+## Comparison: `T?` (Optional) vs `T | None` (C# Nullable)
 
-| Feature | `Optional[T]` | `T?` (Nullable) |
-|---------|---------------|-----------------|
-| Has value | `Optional.Some(value)` | `value` |
-| No value | `Optional.Nothing` | `None` |
+| Feature | `T?` / `Optional[T]` | `T \| None` (C# Nullable) |
+|---------|----------------------|---------------------------|
+| Meaning | Safe tagged union | C# nullable reference/value |
+| Has value | `Some(value)` | `value` |
+| No value | `Nothing` | `None` |
 | Type safety | Works with any `T` | Only reference types and `Nullable<T>` |
-| Pattern matching | `case Optional.Some(v):` | `if x is not None:` |
-| Use case | Explicit optional semantics | Standard .NET nullable pattern |
+| Pattern matching | `case Some(v):` | `if x is not None:` |
+| Heap allocation | **No** (struct) | No |
+| Use case | Sharpy-native optionals | .NET interop boundaries |
 | Interop | May need conversion | Direct .NET interop |
 
-### When to Use Optional vs Nullable
+### When to Use `T?` (Optional)
 
-**Use `Optional[T]` when:**
+- You're writing Sharpy-native code
 - You want explicit, type-safe optional semantics
 - You're working with value types that need to be optional
 - You prefer functional programming patterns (map, flatMap, etc.)
 - You want to make optionality more explicit in the type system
 
-**Use `T?` (nullable) when:**
+### When to Use `T | None` (C# Nullable)
+
 - You're interfacing with .NET APIs that use null
-- You want simpler syntax with `??` and `?.` operators
-- You're following .NET conventions
+- You're at a .NET interop boundary
 - You want direct C# interop without conversions
+
+See [Nullable Types](nullable_types.md) for details on `T | None`.
 
 ## Examples
 
 ### Safe Dictionary Access
 
 ```python
-def get_config_value(config: dict[str, str], key: str) -> Optional[str]:
+def get_config_value(config: dict[str, str], key: str) -> str?:
     if key in config:
         return Some(config[key])
     return Nothing
@@ -142,7 +152,7 @@ match value:
 ### Chaining Optional Operations
 
 ```python
-def get_user_city(user_id: int) -> Optional[str]:
+def get_user_city(user_id: int) -> str?:
     user = find_user(user_id)
     if user.is_nothing():
         return Nothing
@@ -158,26 +168,26 @@ def get_user_city(user_id: int) -> Optional[str]:
 
 ```python
 # Using map to transform the value if present
-opt_number: Optional[int] = Some(42)
+opt_number: int? = Some(42)
 opt_string = opt_number.map(lambda x: f"The answer is {x}")
-# Result: Optional.Some("The answer is 42")
+# Result: Some("The answer is 42")
 
-opt_nothing: Optional[int] = Nothing
+opt_nothing: int? = Nothing
 opt_result = opt_nothing.map(lambda x: x * 2)
-# Result: Optional.Nothing
+# Result: Nothing
 ```
 
-## Converting Between Optional and Nullable
+## Converting Between Optional and C# Nullable
+
+Use `maybe` to convert from `T | None` (C# nullable) to `T?` (Optional):
 
 ```python
-# Nullable to Optional
-def nullable_to_optional(value: T?) -> Optional[T]:
-    if value is not None:
-        return Some(value)
-    return Nothing
+# C# nullable to Optional (use maybe)
+raw: str | None = dotnet_api()
+safe: str? = maybe raw              # Convert to Optional[str]
 
-# Optional to Nullable
-def optional_to_nullable(opt: Optional[T]) -> T?:
+# Optional to C# nullable
+def optional_to_nullable(opt: T?) -> T | None:
     match opt:
         case Some(value):
             return value
@@ -185,14 +195,16 @@ def optional_to_nullable(opt: Optional[T]) -> T?:
             return None
 ```
 
+See [Maybe Expressions](maybe_expressions.md) for details on the `maybe` keyword.
+
 *Implementation*
-- *🔄 Lowered - Abstract base class + sealed nested case classes (see [Tagged Unions](tagged_unions.md) for implementation details)*
+- *🔄 Lowered - Struct-based tagged union (no heap allocation). See [Tagged Unions](tagged_unions.md) for implementation details.*
 
 ## See Also
 
 - [Tagged Unions](tagged_unions.md) - General tagged union syntax and implementation
 - [Result Type](tagged_unions_result.md) - The Result type for error handling
-- [Maybe Expressions](maybe_expressions.md) - Special syntax for Optional types
-- [Nullable Types](nullable_types.md) - Standard nullable type syntax with `?`
-- [Null Coalescing Operator](null_coalescing_operator.md) - The `??` operator for nullable types
+- [Maybe Expressions](maybe_expressions.md) - Converting `T | None` to `T?`
+- [Nullable Types](nullable_types.md) - `T | None` syntax for .NET interop
+- [Null Coalescing Operator](null_coalescing_operator.md) - The `??` operator
 - [Pattern Matching](match_statement.md) - Pattern matching syntax
