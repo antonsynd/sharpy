@@ -1247,29 +1247,75 @@ public partial class RoslynEmitter
             }
             else if (part.Expression != null)
             {
-                var interpolation = Interpolation(GenerateExpression(part.Expression));
-
-                // Add format specifier if present (e.g., ".2f" in f"{value:.2f}")
-                if (!string.IsNullOrEmpty(part.FormatSpec))
+                // Special handling for percent format (.N%) - Python's % format doesn't add
+                // a space before %, but .NET's P format does (even with InvariantCulture).
+                // Generate: {value * 100:FN}% instead of {value:PN}
+                if (!string.IsNullOrEmpty(part.FormatSpec) && IsPercentFormat(part.FormatSpec, out var percentPrecision))
                 {
-                    var csharpFormatSpec = TranslatePythonFormatSpec(part.FormatSpec);
-                    interpolation = interpolation.WithFormatClause(
-                        InterpolationFormatClause(
-                            Token(SyntaxKind.ColonToken),
-                            Token(
-                                TriviaList(),
-                                SyntaxKind.InterpolatedStringTextToken,
-                                csharpFormatSpec,
-                                csharpFormatSpec,
-                                TriviaList())));
-                }
+                    // Generate: value * 100
+                    var multipliedExpr = BinaryExpression(
+                        SyntaxKind.MultiplyExpression,
+                        GenerateExpression(part.Expression),
+                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(100)));
 
-                parts.Add(interpolation);
+                    var interpolation = Interpolation(multipliedExpr)
+                        .WithFormatClause(
+                            InterpolationFormatClause(
+                                Token(SyntaxKind.ColonToken),
+                                Token(
+                                    TriviaList(),
+                                    SyntaxKind.InterpolatedStringTextToken,
+                                    "F" + percentPrecision,
+                                    "F" + percentPrecision,
+                                    TriviaList())));
+
+                    parts.Add(interpolation);
+
+                    // Add the literal "%" after the interpolation
+                    parts.Add(InterpolatedStringText()
+                        .WithTextToken(Token(
+                            TriviaList(),
+                            SyntaxKind.InterpolatedStringTextToken,
+                            "%",
+                            "%",
+                            TriviaList())));
+                }
+                else
+                {
+                    var interpolation = Interpolation(GenerateExpression(part.Expression));
+
+                    // Add format specifier if present (e.g., ".2f" in f"{value:.2f}")
+                    if (!string.IsNullOrEmpty(part.FormatSpec))
+                    {
+                        var csharpFormatSpec = TranslatePythonFormatSpec(part.FormatSpec);
+                        interpolation = interpolation.WithFormatClause(
+                            InterpolationFormatClause(
+                                Token(SyntaxKind.ColonToken),
+                                Token(
+                                    TriviaList(),
+                                    SyntaxKind.InterpolatedStringTextToken,
+                                    csharpFormatSpec,
+                                    csharpFormatSpec,
+                                    TriviaList())));
+                    }
+
+                    parts.Add(interpolation);
+                }
             }
         }
 
-        return InterpolatedStringExpression(Token(SyntaxKind.InterpolatedStringStartToken))
+        // Wrap with FormattableString.Invariant() to ensure consistent formatting
+        // regardless of locale (e.g., percent format uses space before % in some locales)
+        var interpolatedString = InterpolatedStringExpression(Token(SyntaxKind.InterpolatedStringStartToken))
             .WithContents(List(parts));
+
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("FormattableString"),
+                IdentifierName("Invariant")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                Argument(interpolatedString))));
     }
 
     /// <summary>
@@ -1335,6 +1381,20 @@ public partial class RoslynEmitter
 
         // Fall back to passing through (may not work, but allows custom C# formats)
         return pythonSpec;
+    }
+
+    /// <summary>
+    /// Checks if a Python format spec is a percent format (.N%) and extracts the precision.
+    /// </summary>
+    private static bool IsPercentFormat(string pythonSpec, out string precision)
+    {
+        precision = "0";
+        if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("%"))
+        {
+            precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
+            return int.TryParse(precision, out _);
+        }
+        return false;
     }
 
     /// <summary>
