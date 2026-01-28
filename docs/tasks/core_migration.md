@@ -400,21 +400,35 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 ## Phase 4: Update Dict Views
 
 ### Step 4.1: Update `DictKeyView<K,V>`
-- [ ] Edit `src/Sharpy.Core/DictKeyView.cs`
-  - Remove any Sharpy interface dependencies
-  - Implement `IReadOnlyCollection<K>` or `IEnumerable<K>`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(DictKeyView): use .NET interfaces"`
+- [x] Edit `src/Sharpy.Core/DictKeyView.cs`
+  - Add `IReadOnlyCollection<K>` and `System.IEquatable<Set<K>>` interfaces
+  - Keep `IKeysView<K>` for compatibility
+  - Add `Count` property, make `__Len__` deprecated alias
+  - Add `Intersection`, `Union`, `Difference`, `SymmetricDifference` methods
+  - Add `IsSubset`, `IsProperSubset`, `IsSuperset`, `IsProperSuperset` methods
+  - Make all dunders deprecated aliases
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 737 tests pass
+- [x] **Commit:** `git commit -am "refactor(DictKeyView): use .NET interfaces and named methods"`
 
 ### Step 4.2: Update `DictValuesView<K,V>`
-- [ ] Edit `src/Sharpy.Core/DictValuesView.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(DictValuesView): use .NET interfaces"`
+- [x] Edit `src/Sharpy.Core/DictValuesView.cs`
+  - Add `IReadOnlyCollection<V>` interface
+  - Keep `IValuesView<V>` for compatibility
+  - Add `Count` property, make `__Len__` deprecated alias
+  - Make `Contains` primary, `__Contains__` deprecated alias
+  - Make `__Iter__` deprecated alias for `GetEnumerator`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 737 tests pass
+- [x] **Commit:** `git commit -am "refactor(DictValuesView): use .NET interfaces and named methods"`
 
 ### Step 4.3: Update `DictItemsView<K,V>`
-- [ ] Edit `src/Sharpy.Core/DictItemsView.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(DictItemsView): use .NET interfaces"`
+- [x] Edit `src/Sharpy.Core/DictItemsView.cs`
+  - Add `IReadOnlyCollection<(K, V)>` interface
+  - Keep `IItemsView<K, V>` for compatibility
+  - Add `Count` property, make `__Len__` deprecated alias
+  - Make `Contains` primary, `__Contains__` deprecated alias
+  - Make `__Iter__` deprecated alias for `GetEnumerator`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 737 tests pass
+- [x] **Commit:** `git commit -am "refactor(DictItemsView): use .NET interfaces and named methods"`
 
 ---
 
