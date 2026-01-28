@@ -17,6 +17,28 @@ This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consisten
 | `str(x)` | Convert to string | Calls `__str__` if defined, else `.ToString()` |
 | `bool(x)` | Convert to boolean | Truthiness check |
 
+### Result-Returning Variants
+
+For user input and other expected-failure scenarios, the type conversion functions offer Result-returning variants via static `.parse()` methods:
+
+```python
+# Throwing version (Python-compatible)
+n = int("42")  # Raises ValueError if invalid
+
+# Result-returning version (recommended for user input)
+result: int !ValueError = int.parse("42")
+match result:
+    case Ok(n):
+        print(f"Parsed: {n}")
+    case Err(e):
+        print(f"Invalid input: {e}")
+
+# Similarly for float
+f: float !ValueError = float.parse("3.14")
+```
+
+**Guiding principle:** Use the throwing version (`int(x)`) when bad input is a bug. Use the Result version (`int.parse(x)`) when bad input is expected (e.g., user input).
+
 **`str(x)`** returns a human-readable string representation:
 - For all types, calls `.ToString()`
 
