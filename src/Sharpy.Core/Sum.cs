@@ -2,44 +2,68 @@ namespace Sharpy.Core;
 
 public static partial class Exports
 {
-    public static T Sum<T>(IEnumerable<T> iterable) where T : IAddable<T>
+    /// <summary>
+    /// Sums a sequence of integers.
+    /// </summary>
+    public static int Sum(IEnumerable<int> iterable)
     {
         if (iterable is null)
         {
             throw TypeError.ArgNone("sum", "iterable");
         }
 
-        var iterator = Iter(iterable);
+        return iterable.Sum();
+    }
 
-        try
+    /// <summary>
+    /// Sums a sequence of longs.
+    /// </summary>
+    public static long Sum(IEnumerable<long> iterable)
+    {
+        if (iterable is null)
         {
-            var result = iterator.__Next__();
-
-            // This sentinel is needed to ensure linters don't think this
-            // is an infinite loop
-            var shouldLoop = true;
-
-            while (shouldLoop)
-            {
-                try
-                {
-                    var elem = iterator.__Next__();
-
-                    result = result.__Add__(elem);
-                }
-                catch (StopIteration)
-                {
-                    shouldLoop = false;
-
-                    break;
-                }
-            }
-
-            return result;
+            throw TypeError.ArgNone("sum", "iterable");
         }
-        catch (StopIteration)
+
+        return iterable.Sum();
+    }
+
+    /// <summary>
+    /// Sums a sequence of floats.
+    /// </summary>
+    public static float Sum(IEnumerable<float> iterable)
+    {
+        if (iterable is null)
         {
-            throw new ValueError("Sum() iterable argument is empty");
+            throw TypeError.ArgNone("sum", "iterable");
         }
+
+        return iterable.Sum();
+    }
+
+    /// <summary>
+    /// Sums a sequence of doubles.
+    /// </summary>
+    public static double Sum(IEnumerable<double> iterable)
+    {
+        if (iterable is null)
+        {
+            throw TypeError.ArgNone("sum", "iterable");
+        }
+
+        return iterable.Sum();
+    }
+
+    /// <summary>
+    /// Sums a sequence of decimals.
+    /// </summary>
+    public static decimal Sum(IEnumerable<decimal> iterable)
+    {
+        if (iterable is null)
+        {
+            throw TypeError.ArgNone("sum", "iterable");
+        }
+
+        return iterable.Sum();
     }
 }

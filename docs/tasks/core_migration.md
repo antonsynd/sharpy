@@ -606,10 +606,11 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Set): remove Sharpy ISet overloads from interface files"`
 
 ### Step 7.5.5: Update `Sum.cs` to remove `IAddable` constraint
-- [ ] Edit `src/Sharpy.Core/Sum.cs`
-  - Replace generic `Sum<T>() where T : IAddable<T>` with specific numeric overloads
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Sum): remove IAddable constraint, use specific overloads"`
+- [x] Edit `src/Sharpy.Core/Sum.cs`
+  - Replace generic `Sum<T>() where T : IAddable<T>` with specific numeric overloads (int, long, float, double, decimal)
+  - Use LINQ's built-in Sum for implementation
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 735 tests pass
+- [x] **Commit:** `git commit -am "refactor(Sum): remove IAddable constraint, use specific overloads"`
 
 ### Step 7.5.6: Update `ComparerAdapter` to use .NET interfaces only
 - [ ] Edit `src/Sharpy.Core/ComparerAdapter.cs`
