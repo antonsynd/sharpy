@@ -1,7 +1,5 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 /// <summary>
 /// An object representing a stream of data. Repeated calls to the
 /// iterator's <see cref="Next()"/> method return successive items in the
@@ -12,8 +10,7 @@ using Collections.Interfaces;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Iterators implement both Sharpy's iterator protocol (via <see cref="IIterable{T}"/>)
-/// and .NET's enumeration protocol (via <see cref="IEnumerator{T}"/>). Use
+/// Iterators implement the .NET enumeration protocol (via <see cref="IEnumerator{T}"/>). Use
 /// <see cref="MoveNext()"/> and <see cref="Current"/> for .NET-style iteration,
 /// or <see cref="Next()"/> for Sharpy-style iteration.
 /// </para>
@@ -23,7 +20,7 @@ using Collections.Interfaces;
 /// they cannot be reset.
 /// </para>
 /// </remarks>
-public abstract partial class Iterator<T> : IIterable<T>, IEnumerator<T>
+public abstract partial class Iterator<T> : IEnumerator<T>, IEnumerable<T>
 {
     /// <summary>
     /// Return the next item from the iterator. If there are no further

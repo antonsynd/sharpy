@@ -643,24 +643,27 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Operator): remove Sharpy.Object and interface dependencies"`
 
 ### Step 7.5.9: Update `Iterator<T>` to remove `IIterable`
-- [ ] Edit `src/Sharpy.Core/Partial.Iterator/Iterator.cs`
+- [x] Edit `src/Sharpy.Core/Partial.Iterator/Iterator.cs`
   - Remove `IIterable<T>` from inheritance
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Iterator): remove IIterable interface"`
+  - Add `IEnumerable<T>` for .NET compatibility
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 735 tests pass
+- [x] **Commit:** `git commit -am "refactor(Iterator): remove IIterable interface"`
 
 ### Step 7.5.10: Update `EnumerableExtensions`
-- [ ] Edit `src/Sharpy.Core/EnumerableExtensions.cs`
-  - Remove `IIterable<T>` from `EnumerableAdapter<T>`
-  - Update methods to not check for `IIterable<T>`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(EnumerableExtensions): remove IIterable dependency"`
+- [x] Edit `src/Sharpy.Core/EnumerableExtensions.cs`
+  - Remove `IIterable<T>` from `EnumerableAdapter<T>` (deleted class entirely)
+  - Remove `AsIterable` extension method
+  - Simplify `ToIterator` to always wrap with EnumeratorIterator
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 735 tests pass
+- [x] **Commit:** `git commit -am "refactor(EnumerableExtensions): remove IIterable dependency"`
 
 ### Step 7.5.11: Update `Deque<T>`
-- [ ] Edit `src/Sharpy.Core/Collections/Exports.cs`
+- [x] Edit `src/Sharpy.Core/Collections/Exports.cs`
   - Remove `IIterable<T>` and `ISized` from `Deque<T>`
   - Add `IReadOnlyCollection<T>`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Deque): use .NET interfaces instead of Sharpy interfaces"`
+  - Add `Count` property for IReadOnlyCollection
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 735 tests pass
+- [x] **Commit:** `git commit -am "refactor(Deque): use .NET interfaces instead of Sharpy interfaces"`
 
 ---
 

@@ -1,4 +1,3 @@
-using Sharpy.Collections.Interfaces;
 using Sharpy.Core;
 using System.Linq;
 
@@ -8,7 +7,7 @@ namespace Sharpy.Collections;
 /// A deque (double-ended queue) is a generalization of stacks and queues
 /// that supports adding and removing elements from either end.
 /// </summary>
-public class Deque<T> : IIterable<T>, ISized
+public class Deque<T> : IReadOnlyCollection<T>
 {
     private readonly System.Collections.Generic.LinkedList<T> _list;
 
@@ -100,14 +99,25 @@ public class Deque<T> : IIterable<T>, ISized
         }
     }
 
-    public int __Len__() => _list.Count;
+    /// <summary>
+    /// Gets the number of elements in the deque.
+    /// </summary>
+    public int Count => _list.Count;
 
+    /// <summary>
+    /// Deprecated: Use <see cref="Count"/> instead.
+    /// </summary>
+    public int __Len__() => Count;
+
+    /// <summary>
+    /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
+    /// </summary>
     public Iterator<T> __Iter__()
     {
         return new EnumeratorIterator<T>(_list.GetEnumerator());
     }
 
-    IEnumerator<T> IEnumerable<T>.GetEnumerator() => _list.GetEnumerator();
+    public IEnumerator<T> GetEnumerator() => _list.GetEnumerator();
 
     System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => _list.GetEnumerator();
 }
