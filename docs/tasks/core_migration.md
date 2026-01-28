@@ -360,9 +360,10 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Dict): use Count directly in operator true/false"`
 
 ### Step 3.8: Replace `__Contains__` with `ContainsKey` method
-- [ ] Update `src/Sharpy.Core/Dict.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Dict): replace __Contains__ with ContainsKey"`
+- [x] `ContainsKey` already added in Step 3.2
+- [x] Make `Contains` and `__Contains__` deprecated aliases calling `ContainsKey`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Dict): make ContainsKey primary method"`
 
 ### Step 3.9: Replace `__Iter__` with `GetEnumerator`
 - [ ] Update `src/Sharpy.Core/Dict.cs`

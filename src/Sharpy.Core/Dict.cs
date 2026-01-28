@@ -58,10 +58,10 @@ public sealed partial class Dict<K, V>
         _dict.Clear();
     }
 
-    public bool Contains(K key)
-    {
-        return __Contains__(key);
-    }
+    /// <summary>
+    /// Deprecated: Use <see cref="ContainsKey(K)"/> instead.
+    /// </summary>
+    public bool Contains(K key) => ContainsKey(key);
 
     public V? Get(K key)
     {
@@ -163,17 +163,10 @@ public sealed partial class Dict<K, V>
         return new DictValuesView<K, V>(_dict.Values);
     }
 
-    public bool __Contains__(K key)
-    {
-        try
-        {
-            return _dict.ContainsKey(key);
-        }
-        catch (NullReferenceException)
-        {
-            throw new ArgumentNullException(nameof(key));
-        }
-    }
+    /// <summary>
+    /// Deprecated: Use <see cref="ContainsKey(K)"/> instead.
+    /// </summary>
+    public bool __Contains__(K key) => ContainsKey(key);
 
     public void __DelItem__(K key)
     {
