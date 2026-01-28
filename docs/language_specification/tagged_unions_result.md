@@ -2,6 +2,8 @@
 
 The `Result[T, E]` type is a special tagged union provided by the Sharpy standard library for representing operations that can either succeed with a value of type `T` or fail with an error of type `E`. This is similar to Rust's `Result` type.
 
+`Result[T, E]` is a **struct** — no heap allocation for returning result values.
+
 ## Definition
 
 ```python
@@ -12,6 +14,53 @@ union Result[T, E]:
 
 The `Result` type is part of the standard library and provides special syntax and operators for ergonomic error handling.
 
+## Shorthand Syntax
+
+The `T !E` syntax is sugar for `Result[T, E]` in **return type annotations**:
+
+```python
+# Shorthand (in return type annotations)
+def parse(s: str) -> int !ValueError:
+    ...
+
+# Equivalent explicit form
+def parse(s: str) -> Result[int, ValueError]:
+    ...
+```
+
+**`!E` is recommended for top-level return types only.** For nested or complex cases, use the explicit `Result[T, E]` form:
+
+```python
+# ✅ Good - shorthand for simple return types
+def read_file(path: str) -> str !IOError:
+    ...
+
+# ✅ Good - explicit form for nested/complex types
+def batch_parse(items: list[str]) -> list[Result[int, ValueError]]:
+    ...
+
+# ❌ Avoid - shorthand in non-return-type positions
+cache: dict[str, int !ValueError] = {}  # Use Result[int, ValueError] instead
+```
+
+### Precedence
+
+`!E` binds tighter than `| None`:
+
+```python
+# !E binds tighter than | None
+int !ValueError | None  →  (int !ValueError) | None  →  Result[int, ValueError] | None
+```
+
+This means a function can return an optional result:
+
+```python
+def try_parse(s: str) -> int !ValueError | None:
+    # Returns Result[int, ValueError] | None
+    # None means "no input", Err means "bad input", Ok means "success"
+    ...
+```
+
 ## Creating Result Values
 
 ```python
@@ -20,6 +69,10 @@ success: Result[int, str] = Ok(42)
 
 # Error case
 failure: Result[int, str] = Err("Something went wrong")
+
+# Using shorthand in type annotations
+success: int !str = Ok(42)
+failure: int !str = Err("Something went wrong")
 ```
 
 ## Pattern Matching
@@ -27,7 +80,7 @@ failure: Result[int, str] = Err("Something went wrong")
 Use pattern matching to handle both success and error cases:
 
 ```python
-def divide(a: float, b: float) -> Result[float, str]:
+def divide(a: float, b: float) -> float !str:
     if b == 0:
         return Err("Division by zero")
     return Ok(a / b)
@@ -86,22 +139,37 @@ union Result[T, E]:
                 return f(error)
 ```
 
-## Comparison with Nullable Types
+## Stdlib Conventions
 
-| Feature | `Result[T, E]` | `T?` (Nullable) |
-|---------|----------------|-----------------|
-| Success/Some case | `Result.Ok(value)` | `value` |
-| Failure/None case | `Result.Err(error)` | `None` |
+The standard library follows these conventions for when to use `Result` vs exceptions:
+
+| Category | Style | Example |
+|----------|-------|---------|
+| Parsing/conversion | `Result` | `int.parse(s: str) -> int !ValueError` |
+| File/network open | `Result` | `open(path: str) -> File !IOError` |
+| Collection "get" | `Optional` | `dict.get(key: K) -> V?` |
+| Collection index | Exception | `list[i]` throws `IndexError` |
+| Type casting | `Result` | `obj to Dog` returns `Result` |
+
+**Guiding principle:** Exceptions are for bugs. Results are for expected failures.
+
+## Comparison with `T?` (Optional)
+
+| Feature | `Result[T, E]` / `T !E` | `T?` / `Optional[T]` |
+|---------|--------------------------|----------------------|
+| Success case | `Ok(value)` | `Some(value)` |
+| Failure case | `Err(error)` | `Nothing` |
 | Error information | ✅ Typed error `E` | ❌ No error info |
-| Pattern matching | `case Result.Ok(v):` | `if x is not None:` |
+| Pattern matching | `case Ok(v):` | `case Some(v):` |
 | Use case | Operations that can fail with details | Optional values without error details |
+| Heap allocation | **No** (struct) | **No** (struct) |
 
 ## Examples
 
 ### File Operations
 
 ```python
-def read_config(path: str) -> Result[Config, str]:
+def read_config(path: str) -> Config !str:
     if not file_exists(path):
         return Err(f"File not found: {path}")
 
@@ -124,7 +192,7 @@ match result:
 ### Chaining Operations
 
 ```python
-def process_user_input(input: str) -> Result[int, str]:
+def process_user_input(input: str) -> int !str:
     # Validate input
     if not input:
         return Err("Input cannot be empty")
@@ -143,12 +211,12 @@ def process_user_input(input: str) -> Result[int, str]:
 ```
 
 *Implementation*
-- *🔄 Lowered - Abstract base class + sealed nested case classes (see [Tagged Unions](tagged_unions.md) for implementation details)*
+- *🔄 Lowered - Struct-based tagged union (no heap allocation). See [Tagged Unions](tagged_unions.md) for implementation details.*
 
 ## See Also
 
 - [Tagged Unions](tagged_unions.md) - General tagged union syntax and implementation
-- [Optional Type](tagged_unions_optional.md) - The Optional type for representing optional values
-- [Try Expressions](try_expressions.md) - Special syntax for Result types
+- [Optional Type](tagged_unions_optional.md) - The `T?` / `Optional[T]` type for optional values
+- [Try Expressions](try_expressions.md) - Special syntax for wrapping exceptions in Result
 - [Exception Handling](exception_handling.md) - Traditional exception-based error handling
 - [Pattern Matching](match_statement.md) - Pattern matching syntax
