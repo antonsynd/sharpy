@@ -921,26 +921,30 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 ## Phase 10: Final Cleanup
 
 ### Step 10.1: Update `Exports.cs` files
-- [ ] Edit `src/Sharpy.Core/Builtins/Exports.cs`
+- [x] Edit `src/Sharpy.Core/Builtins/Exports.cs`
   - Remove exports for deleted types/methods
   - Add exports for new types/methods
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "chore: update Exports.cs files"`
+  - **No changes needed - all exports are valid**
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** N/A - no changes needed
 
 ### Step 10.2: Clean up `using` statements
-- [ ] Run a tool or manually review all `.cs` files
-- [ ] Remove unused `using Sharpy.Collections.Interfaces;` and similar
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "chore: clean up unused using statements"`
+- [x] Run a tool or manually review all `.cs` files
+- [x] Remove unused `using Sharpy.Collections.Interfaces;` and similar
+  - No unused using statements found
+  - Removed 5 orphaned Sharpy.Object suppressions from GlobalSuppressions.cs
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "chore: clean up unused using statements"`
 
 ### Step 10.3: Update XML documentation
-- [ ] Review and update XML docs on public APIs
-- [ ] Ensure references to `__len__`, `__eq__`, etc. are updated to refer to `Count`, `Equals`, etc.
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "docs: update XML documentation for new API"`
+- [x] Review and update XML docs on public APIs
+- [x] Ensure references to `__len__`, `__eq__`, etc. are updated to refer to `Count`, `Equals`, etc.
+  - **All deprecated dunder methods have correct deprecation notices pointing to .NET replacements**
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** N/A - documentation is already correct
 
 ### Step 10.4: Delete migration documentation
-- [ ] Delete `docs/migration/sharpy_object_removal.md` (or move to archive)
+- [x] Delete `docs/migration/sharpy_object_removal.md` (or move to archive)
 - [ ] **Commit:** `git commit -am "chore: remove migration documentation"`
 
 ### Step 10.5: Final verification
