@@ -7,7 +7,10 @@ using Collections.Interfaces;
 /// View of dictionary values.
 /// This view reflects changes to the underlying dictionary.
 /// </summary>
-public sealed class DictValuesView<K, V> : IValuesView<V> where K : notnull
+public sealed class DictValuesView<K, V>
+    : IValuesView<V>,
+      IReadOnlyCollection<V>
+    where K : notnull
 {
     private readonly Dictionary<K, V>.ValueCollection _values;
 
@@ -16,22 +19,20 @@ public sealed class DictValuesView<K, V> : IValuesView<V> where K : notnull
         _values = values;
     }
 
+    /// <summary>
+    /// Gets the number of values in the view.
+    /// </summary>
+    public int Count => _values.Count;
+
+    /// <summary>
+    /// Determines whether the view contains the specified value.
+    /// </summary>
+    /// <remarks>
+    /// Values don't have a fast Contains check in .NET, so this iterates
+    /// through all values using Sharpy's equality comparison.
+    /// </remarks>
     public bool Contains(V item)
     {
-        return __Contains__(item);
-    }
-
-    public IEnumerator<V> GetEnumerator()
-    {
-        foreach (var value in _values)
-        {
-            yield return value;
-        }
-    }
-
-    public bool __Contains__(V item)
-    {
-        // Values don't have a fast Contains check in .NET, so we iterate
         foreach (var value in _values)
         {
             if (Operator.Exports.Eq(value, item))
@@ -42,15 +43,34 @@ public sealed class DictValuesView<K, V> : IValuesView<V> where K : notnull
         return false;
     }
 
+    /// <summary>
+    /// Returns an enumerator that iterates through the values.
+    /// </summary>
+    public IEnumerator<V> GetEnumerator()
+    {
+        foreach (var value in _values)
+        {
+            yield return value;
+        }
+    }
+
+    /// <summary>
+    /// Deprecated: Use <see cref="Contains(V)"/> instead.
+    /// </summary>
+    public bool __Contains__(V item) => Contains(item);
+
+    /// <summary>
+    /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
+    /// </summary>
     public Iterator<V> __Iter__()
     {
         return new EnumeratorIterator<V>(GetEnumerator());
     }
 
-    public int __Len__()
-    {
-        return _values.Count;
-    }
+    /// <summary>
+    /// Deprecated: Use <see cref="Count"/> instead.
+    /// </summary>
+    public int __Len__() => Count;
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
