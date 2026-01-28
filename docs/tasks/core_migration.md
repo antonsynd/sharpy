@@ -575,6 +575,106 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 
 ---
 
+## Phase 7.5: Pre-Deletion Cleanup
+
+> **Note:** This phase was added to resolve active dependencies before Phase 8 deletions can proceed.
+
+### Step 7.5.1: Remove Sharpy interface declarations from `List<T>`
+- [ ] Edit `src/Sharpy.Core/Partial.List/List.cs`
+  - Remove from inheritance: `IMutableSequence<List<T>, T>`, `IAddable<List<T>>`, `IRightAddable<List<T>>`, `IInplaceAddable<List<T>>`, `IMultipliable<List<T>, int>`, `IInplaceMultipliable<int>`, `IRightMultipliable<List<T>, int>`
+  - Remove `using Collections.Interfaces;`
+  - Keep: `IList<T>`, `IReadOnlyList<T>`, `System.IEquatable<List<T>>`
+- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [ ] **Commit:** `git commit -am "refactor(List): remove Sharpy interface declarations"`
+
+### Step 7.5.2: Delete List interface implementation files
+- [ ] Delete files:
+  - [ ] `List.IAddable.cs`
+  - [ ] `List.IRightAddable.cs`
+  - [ ] `List.IInplaceAddable.cs`
+  - [ ] `List.IMultipliable.cs`
+  - [ ] `List.IRightMultipliable.cs`
+  - [ ] `List.IInplaceMultipliable.cs`
+  - [ ] `List.IMutableSequence.cs`
+  - [ ] `List.ISequence.cs`
+  - [ ] `List.ISized.cs`
+  - [ ] `List.IContainer.cs`
+  - [ ] `List.IIterable.cs`
+  - [ ] `List.IReversible.cs`
+  - [ ] `List.IBoolConvertible.cs`
+  - [ ] `List.IRepresentable.cs`
+  - [ ] `List.IHashable.cs`
+  - [ ] `List.IEquatable.cs`
+  - [ ] `List.ILessThanComparable.cs`
+  - [ ] `List.ILessThanOrEquatable.cs`
+  - [ ] `List.IGreaterThanComparable.cs`
+  - [ ] `List.IGreaterThanOrEquatable.cs`
+- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [ ] **Commit:** `git commit -am "refactor(List): delete Sharpy interface implementation files"`
+
+### Step 7.5.3: Remove Sharpy interface declarations from `Set<T>`
+- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.cs`
+  - Remove from inheritance: `IMutableSet<Set<T>, T>`, `ILessThanOrEquatable<Set<T>>`, `IGreaterThanOrEquatable<Set<T>>`
+  - Remove `using Collections.Interfaces;`
+  - Keep: `System.Collections.Generic.ISet<T>`, `System.IEquatable<Set<T>>`
+- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [ ] **Commit:** `git commit -am "refactor(Set): remove Sharpy interface declarations"`
+
+### Step 7.5.4: Delete Set interface implementation files
+- [ ] Delete all `src/Sharpy.Core/Partial.Set/Set.I*.cs` files that implement Sharpy interfaces
+- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [ ] **Commit:** `git commit -am "refactor(Set): delete Sharpy interface implementation files"`
+
+### Step 7.5.5: Update `Sum.cs` to remove `IAddable` constraint
+- [ ] Edit `src/Sharpy.Core/Sum.cs`
+  - Replace generic `Sum<T>() where T : IAddable<T>` with specific numeric overloads
+- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [ ] **Commit:** `git commit -am "refactor(Sum): remove IAddable constraint, use specific overloads"`
+
+### Step 7.5.6: Update `ComparerAdapter` to use .NET interfaces only
+- [ ] Edit `src/Sharpy.Core/ComparerAdapter.cs`
+  - Remove all Sharpy interface checks (`ILessThanOrEquatableWith`, `IEquatableWith`, etc.)
+  - Keep only `IComparable<T>` and `IComparable` checks
+  - Delete Sharpy-specific comparer classes
+- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [ ] **Commit:** `git commit -am "refactor(ComparerAdapter): use .NET IComparable instead of Sharpy interfaces"`
+
+### Step 7.5.7: Update `IdentityAdapterFactory` to remove Sharpy.Object dependency
+- [ ] Edit `src/Sharpy.Core/IdentityAdapterFactory.cs`
+  - Remove `typeof(T).IsSubclassOf(typeof(Object))` check
+  - Delete `IdentityAdapter` inner class
+- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [ ] **Commit:** `git commit -am "refactor(IdentityAdapterFactory): remove Sharpy.Object dependency"`
+
+### Step 7.5.8: Update Operator files to remove Sharpy dependencies
+- [ ] Edit operator files in `src/Sharpy.Core/Operator/`:
+  - `Eq.cs`, `Ne.cs`, `Not.cs`, `Truth.cs`, `Add.cs`, `Mul.cs`, `Gt.cs`, `Lt.cs`, `IAdd.cs`, `IMul.cs`
+  - Remove Sharpy.Object aliases and interface dependencies
+- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [ ] **Commit:** `git commit -am "refactor(Operator): remove Sharpy.Object and interface dependencies"`
+
+### Step 7.5.9: Update `Iterator<T>` to remove `IIterable`
+- [ ] Edit `src/Sharpy.Core/Partial.Iterator/Iterator.cs`
+  - Remove `IIterable<T>` from inheritance
+- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [ ] **Commit:** `git commit -am "refactor(Iterator): remove IIterable interface"`
+
+### Step 7.5.10: Update `EnumerableExtensions`
+- [ ] Edit `src/Sharpy.Core/EnumerableExtensions.cs`
+  - Remove `IIterable<T>` from `EnumerableAdapter<T>`
+  - Update methods to not check for `IIterable<T>`
+- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [ ] **Commit:** `git commit -am "refactor(EnumerableExtensions): remove IIterable dependency"`
+
+### Step 7.5.11: Update `Deque<T>`
+- [ ] Edit `src/Sharpy.Core/Collections/Exports.cs`
+  - Remove `IIterable<T>` and `ISized` from `Deque<T>`
+  - Add `IReadOnlyCollection<T>`
+- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [ ] **Commit:** `git commit -am "refactor(Deque): use .NET interfaces instead of Sharpy interfaces"`
+
+---
+
 ## Phase 8: Delete `Sharpy.Object` and Sharpy Interfaces
 
 ### Step 8.1: Delete `Sharpy.Object` class
