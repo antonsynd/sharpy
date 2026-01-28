@@ -1,8 +1,0 @@
-Primes from 10 to 25:
-11
-13
-17
-19
-23
-Divisors of 28: 6
-Is 17 prime: True

@@ -1,4 +1,0 @@
-Assembly compilation failed:
-  math_utils.cs(80,51): error CS0246: The type or namespace name 'Float' could not be found (are you missing a using directive or an assembly reference?)
-  string_utils.cs(14,61): error CS0029: Cannot implicitly convert type 'System.Collections.Generic.List<char>' to 'System.Collections.Generic.List<string>'
-  string_utils.cs(33,28): error CS1061: 'string' does not contain a definition for '__Contains__' and no accessible extension method '__Contains__' accepting a first argument of type 'string' could be found (are you missing a using directive or an assembly reference?)

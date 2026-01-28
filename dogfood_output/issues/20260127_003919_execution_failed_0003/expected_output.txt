@@ -1,5 +1,0 @@
-35
-8
-INFO: System ready
-60
-42

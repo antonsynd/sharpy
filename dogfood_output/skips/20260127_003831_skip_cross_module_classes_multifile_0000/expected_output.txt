@@ -1,5 +1,0 @@
-Created Rectangle: 5x3
-Created Circle: radius=2
-Rectangle area: 15
-Circle area: 12.56636
-Total area: 27.56636

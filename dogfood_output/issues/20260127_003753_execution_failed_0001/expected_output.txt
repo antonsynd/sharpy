@@ -1,7 +1,0 @@
-Source DB001 active: True
-Source FILE001 active: True
-[1] Data from DB: server=localhost;db=test | temperature=72 at 2026-01-27T10:00
-[2] Data from DB: server=localhost;db=test | humidity=65 at 2026-01-27T10:05
-[1] Data from file: /data/records.csv | pressure=1013 at 2026-01-27T10:10
-DB processor handled: 2 records
-File processor handled: 1 records

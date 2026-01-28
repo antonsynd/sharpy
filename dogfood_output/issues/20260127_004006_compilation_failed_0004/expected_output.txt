@@ -1,7 +1,0 @@
-Factorial of 5: 120
-Is 17 prime? True
-GCD of 48 and 18: 6
-Rounded to 2 decimals: 3.14
-Reversed 'sharpy': yprahs
-Vowel count in 'Hello World': 3
-Formatted text: [wrapped]
