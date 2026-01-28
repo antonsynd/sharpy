@@ -67,9 +67,12 @@ public static partial class Exports
         }
 
         // Fast path for common types
-        if (obj is string s) return s.Length;
-        if (obj is Array arr) return arr.Length;
-        if (obj is System.Collections.ICollection collection) return collection.Count;
+        if (obj is string s)
+            return s.Length;
+        if (obj is Array arr)
+            return arr.Length;
+        if (obj is System.Collections.ICollection collection)
+            return collection.Count;
 
         // Check for generic ICollection<T> or IReadOnlyCollection<T> via reflection
         // This handles types like Set<T> that implement ICollection<T> but not non-generic ICollection
