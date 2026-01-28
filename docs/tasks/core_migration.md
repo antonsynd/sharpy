@@ -262,15 +262,14 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Set): make GetEnumerator primary iteration method"`
 
 ### Step 2.10: Replace set operator dunders with C# operators
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.ISet.cs` and `Set.IMutableSet.cs`
-  - `__Or__` → `operator |` (union)
-  - `__And__` → `operator &` (intersection)
-  - `__Sub__` → `operator -` (difference)
-  - `__XOr__` → `operator ^` (symmetric difference)
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.operators.cs`
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Union.cs`, `SetTests.Intersection.cs`, `SetTests.Difference.cs`, `SetTests.SymmetricDifference.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): replace set operator dunders with C# operators"`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.cs`
+  - Move implementations from dunders to named methods (Union, Intersection, Difference, SymmetricDifference)
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.ISet.cs`
+  - Make dunders deprecated aliases (__Or__, __And__, __Sub__, __XOr__ delegate to named methods)
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.operators.cs`
+  - Update operators to call named methods instead of dunders
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Set): make named methods primary for set operations"`
 
 ### Step 2.11: Replace comparison dunders with C# operators
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.ILessThanComparable.cs` and related

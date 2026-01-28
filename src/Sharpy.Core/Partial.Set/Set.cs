@@ -53,24 +53,101 @@ public sealed partial class Set<T>
         return __Ge__(other);
     }
 
+    /// <summary>
+    /// Returns a new set with elements from both sets.
+    /// </summary>
     public Set<T> Union(Set<T> other)
     {
-        return __Or__(other);
+        if (other is null)
+        {
+            throw TypeError.IsNotInterface("NoneType", "iterable");
+        }
+
+        var result = new Set<T>(_set);
+
+        foreach (var item in other._set)
+        {
+            result._set.Add(item);
+        }
+
+        return result;
     }
 
+    /// <summary>
+    /// Returns a new set with elements common to both sets.
+    /// </summary>
     public Set<T> Intersection(Set<T> other)
     {
-        return __And__(other);
+        if (other is null)
+        {
+            throw TypeError.IsNotInterface("NoneType", "iterable");
+        }
+
+        var result = new Set<T>();
+
+        foreach (var item in _set)
+        {
+            if (other._set.Contains(item))
+            {
+                result._set.Add(item);
+            }
+        }
+
+        return result;
     }
 
+    /// <summary>
+    /// Returns a new set with elements in this set but not in other.
+    /// </summary>
     public Set<T> Difference(Set<T> other)
     {
-        return __Sub__(other);
+        if (other is null)
+        {
+            throw TypeError.IsNotInterface("NoneType", "iterable");
+        }
+
+        var result = new Set<T>();
+
+        foreach (var item in _set)
+        {
+            if (!other._set.Contains(item))
+            {
+                result._set.Add(item);
+            }
+        }
+
+        return result;
     }
 
+    /// <summary>
+    /// Returns a new set with elements in either set but not both.
+    /// </summary>
     public Set<T> SymmetricDifference(Set<T> other)
     {
-        return __XOr__(other);
+        if (other is null)
+        {
+            throw TypeError.IsNotInterface("NoneType", "iterable");
+        }
+
+        var result = new Set<T>();
+
+        foreach (var item in _set)
+        {
+            if (!other._set.Contains(item))
+            {
+                result._set.Add(item);
+            }
+        }
+
+        foreach (var item in other._set)
+        {
+            if (!_set.Contains(item))
+            {
+                result.Add(item);
+            }
+        }
+
+        return result;
     }
 
     public HashSet<T> ToHashSet()

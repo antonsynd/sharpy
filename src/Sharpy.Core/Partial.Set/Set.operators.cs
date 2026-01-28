@@ -38,22 +38,22 @@ public sealed partial class Set<T>
 
     public static Set<T> operator |(Set<T> left, Set<T> right)
     {
-        return left.__Or__(right);
+        return left.Union(right);
     }
 
     public static Set<T> operator &(Set<T> left, Set<T> right)
     {
-        return left.__And__(right);
+        return left.Intersection(right);
     }
 
     public static Set<T> operator ^(Set<T> left, Set<T> right)
     {
-        return left.__XOr__(right);
+        return left.SymmetricDifference(right);
     }
 
     public static Set<T> operator -(Set<T> left, Set<T> right)
     {
-        return left.__Sub__(right);
+        return left.Difference(right);
     }
 
     public static bool operator true(Set<T>? set)
