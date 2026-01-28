@@ -17,13 +17,7 @@ public sealed partial class Set<T>
         return _set.Add(item);
     }
 
-    /// <summary>
-    /// Gets the number of elements in the set.
-    /// </summary>
-    /// <remarks>
-    /// Required for <see cref="ICollection{T}"/>.
-    /// </remarks>
-    int ICollection<T>.Count => _set.Count;
+    // ICollection<T>.Count is now satisfied by the public Count property in Set.ISized.cs
 
     /// <summary>
     /// Removes all elements in the specified collection from the current set.

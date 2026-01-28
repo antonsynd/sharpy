@@ -2,9 +2,16 @@ namespace Sharpy.Core;
 
 public sealed partial class Set<T>
 {
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets the number of elements in the set.
+    /// </summary>
+    public int Count => _set.Count;
+
+    /// <summary>
+    /// Deprecated: Use <see cref="Count"/> instead.
+    /// </summary>
     public int __Len__()
     {
-        return _set.Count;
+        return Count;
     }
 }
