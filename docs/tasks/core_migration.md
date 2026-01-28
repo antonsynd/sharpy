@@ -580,12 +580,12 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 > **Note:** This phase was added to resolve active dependencies before Phase 8 deletions can proceed.
 
 ### Step 7.5.1: Remove Sharpy interface declarations from `List<T>`
-- [ ] Edit `src/Sharpy.Core/Partial.List/List.cs`
+- [x] Edit `src/Sharpy.Core/Partial.List/List.cs`
   - Remove from inheritance: `IMutableSequence<List<T>, T>`, `IAddable<List<T>>`, `IRightAddable<List<T>>`, `IInplaceAddable<List<T>>`, `IMultipliable<List<T>, int>`, `IInplaceMultipliable<int>`, `IRightMultipliable<List<T>, int>`
   - Remove `using Collections.Interfaces;`
   - Keep: `IList<T>`, `IReadOnlyList<T>`, `System.IEquatable<List<T>>`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(List): remove Sharpy interface declarations"`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests` - All 735 tests pass
+- [x] **Commit:** `git commit -am "refactor(List): remove Sharpy interface declarations"`
 
 ### Step 7.5.2: Delete List interface implementation files
 - [ ] Delete files:

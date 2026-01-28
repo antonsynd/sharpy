@@ -1,21 +1,14 @@
 namespace Sharpy.Core;
 
-using Collections.Interfaces;
-
 public sealed partial class List<T>
 {
-    ISequence<T> ISequence<T>.this[int start, int end]
-    {
-        get => this[start, end];
-    }
-
-    ISequence<T> ISequence<T>.this[int start, int end, int step]
-    {
-        get => this[start, end, step];
-    }
-
-    /// <inheritdoc/>
-    public ISequence<T> __Add__(ISequence<T> other)
+    /// <summary>
+    /// Concatenates this list with another enumerable, returning a new list.
+    /// </summary>
+    /// <remarks>
+    /// Deprecated: Use <c>list1 + list2</c> operator instead.
+    /// </remarks>
+    public List<T> __Add__(IEnumerable<T> other)
     {
         var res = new List<T>
         {
@@ -27,8 +20,13 @@ public sealed partial class List<T>
         return res;
     }
 
-    /// <inheritdoc/>
-    public ISequence<T> __RAdd__(ISequence<T> other)
+    /// <summary>
+    /// Right-side addition (prepends other to this list).
+    /// </summary>
+    /// <remarks>
+    /// Deprecated: Use <c>list1 + list2</c> operator instead.
+    /// </remarks>
+    public List<T> __RAdd__(IEnumerable<T> other)
     {
         var res = new List<T>
         {
@@ -51,7 +49,12 @@ public sealed partial class List<T>
         return this[index];
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Returns a slice of the list.
+    /// </summary>
+    /// <remarks>
+    /// Deprecated: Use the indexer <c>list[start, end]</c> or <c>list[start, end, step]</c> instead.
+    /// </remarks>
     public List<T> __GetItem__(Slice slice)
     {
         if (slice.step == 0)
@@ -120,6 +123,4 @@ public sealed partial class List<T>
 
         return (uint)result;
     }
-
-    // Getters for this[...] are defined in List.MutableSequence.cs
 }
