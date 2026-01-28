@@ -949,12 +949,6 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [ ] Verify no warnings
 - [ ] **Commit:** `git commit -am "chore: final migration verification"`
 
-### Step 10.6: Merge
-- [ ] Create PR for review
-- [ ] After approval: `git checkout main && git merge migration/remove-sharpy-object`
-- [ ] Delete branch: `git branch -d migration/remove-sharpy-object`
-- [ ] Tag release if appropriate: `git tag v0.2.0-alpha`
-
 ---
 
 ## Summary Statistics
