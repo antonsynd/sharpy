@@ -268,7 +268,8 @@ public class FrozenSetTests
 
         // Test using if statement which invokes operator true/false
         bool result = false;
-        if (fs) result = true;
+        if (fs)
+            result = true;
 
         result.Should().BeFalse();
     }
@@ -279,7 +280,8 @@ public class FrozenSetTests
         var fs = new FrozenSet<int>(new[] { 1 });
 
         bool result = false;
-        if (fs) result = true;
+        if (fs)
+            result = true;
 
         result.Should().BeTrue();
     }
