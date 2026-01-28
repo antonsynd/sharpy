@@ -9,13 +9,7 @@ public sealed partial class Set<T>
     /// <summary>
     /// Returns a string representation of this set.
     /// </summary>
-    /// <remarks>
-    /// While Set inherits from Object, ToString() is sealed and delegates to __Str__(),
-    /// which by default calls __Repr__(). Once Set no longer inherits from Object,
-    /// this will become:
-    /// <code>public override string ToString()</code>
-    /// </remarks>
-    public override string __Repr__()
+    public override string ToString()
     {
         var builder = new StringBuilder();
         builder.Append('{');
@@ -39,4 +33,9 @@ public sealed partial class Set<T>
 
         return builder.ToString();
     }
+
+    /// <summary>
+    /// Deprecated: Use <see cref="ToString()"/> instead.
+    /// </summary>
+    public string __Repr__() => ToString();
 }

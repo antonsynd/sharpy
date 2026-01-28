@@ -3,8 +3,8 @@ namespace Sharpy.Core;
 using Collections.Interfaces;
 
 public sealed partial class Set<T>
-    : Object,
-      System.Collections.Generic.ISet<T>,
+    : System.Collections.Generic.ISet<T>,
+      System.IEquatable<Set<T>>,
       IMutableSet<Set<T>, T>,
       ILessThanOrEquatable<Set<T>>, IGreaterThanOrEquatable<Set<T>>
 {

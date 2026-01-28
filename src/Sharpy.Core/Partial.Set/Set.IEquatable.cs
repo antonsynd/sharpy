@@ -29,20 +29,24 @@ public sealed partial class Set<T>
     }
 
     /// <summary>
-    /// Deprecated: Use <see cref="Equals(Set{T}?)"/> instead.
+    /// Determines whether this set is equal to the specified object.
     /// </summary>
-    /// <remarks>
-    /// Required for IEquatable interface compatibility. Overrides Object.__Eq__(object)
-    /// to provide value equality for Set.
-    /// </remarks>
-    public override bool __Eq__(object other)
+    public override bool Equals(object? obj)
     {
-        if (other is Set<T> set)
+        if (obj is Set<T> set)
         {
             return Equals(set);
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Deprecated: Use <see cref="Equals(object?)"/> instead.
+    /// </summary>
+    public bool __Eq__(object other)
+    {
+        return Equals(other);
     }
 
     /// <summary>

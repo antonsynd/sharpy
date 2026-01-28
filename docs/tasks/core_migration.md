@@ -285,13 +285,20 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Set): make named methods primary for subset/superset operations"`
 
 ### Step 2.12: Remove `Object` base class from `Set<T>`
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.cs`
-  - Remove `: Object` and Sharpy interfaces
-  - Keep only `ISet<T>`, `ICollection<T>`, `IEquatable<Set<T>>`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.cs`
+  - Remove `: Object`, keep `ISet<T>`, `IEquatable<Set<T>>`, `IMutableSet<Set<T>, T>`
+  - Keep `ILessThanOrEquatable<Set<T>>`, `IGreaterThanOrEquatable<Set<T>>` (required by IMutableSet)
   - Note: Do NOT use `IReadOnlySet<T>` - it's .NET 5+ only, not available in Unity/.NET Standard 2.1
-- [ ] Delete empty/redundant partial files
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): remove Object base class and Sharpy interfaces"`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.IHashable.cs`
+  - Change `override __Hash__()` to `override GetHashCode()`, add `__Hash__()` alias
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.IRepresentable.cs`
+  - Change `override __Repr__()` to `override ToString()`, add `__Repr__()` alias
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.IBoolConvertible.cs`
+  - Remove `override` keyword from `__Bool__()` (no longer inheriting from Object)
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.IEquatable.cs`
+  - Change `override __Eq__(object)` to `override Equals(object?)`, add `__Eq__(object)` alias
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Set): remove Object base class and Sharpy interfaces"`
 
 ### Step 2.13: Consolidate `Set<T>` partial files
 - [ ] Merge into logical groupings
