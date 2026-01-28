@@ -1,6 +1,6 @@
 # Null-Coalescing Assignment Operator
 
-The null-coalescing assignment operator `??=` assigns a value to a variable only if the variable is currently `None`.
+The null-coalescing assignment operator `??=` assigns a value to a variable only if the variable currently has no value. It works with both `T?` (`Optional[T]`) and `T | None` (C# nullable).
 
 ## Syntax
 
@@ -77,19 +77,23 @@ c = (a ??= (b ??= 42))  # c, a, and b are all 42
 
 ## Type Requirements
 
-The variable must have a nullable type (`T?`):
+The variable must have an optional type (`T?`) or a nullable type (`T | None`):
 
 ```python
-# ✅ Valid - nullable type
-x: int? = None
+# ✅ Valid - Optional type (T?)
+x: int? = Nothing
+x ??= 10  # OK
+
+# ✅ Valid - C# nullable type (T | None)
+x: int | None = None
 x ??= 10  # OK
 
 # ❌ Invalid - non-nullable type
 y: int = 5
-y ??= 10  # ERROR: y is not nullable
+y ??= 10  # ERROR: y is not nullable or optional
 
 # ✅ Valid - dictionary value might be None
-cache: dict[str, Data?] = {}
+cache: dict[str, Data | None] = {}
 cache["key"] ??= Data()
 ```
 
@@ -233,17 +237,17 @@ x ??= y ?? 5  # Equivalent to: x ??= (y ?? 5)
 
 ## Optional (Tagged Union)
 
-The `Optional[T]` tagged union works with null-conditional assignment, with its `Nothing` case being treated similarly to `None`:
+The `Optional[T]` tagged union (written as `T?`) works with null-coalescing assignment, with its `Nothing` case being treated similarly to `None`:
 
 ```python
-maybe_str: Optional[str] = Optional.Some("HELLO")
-maybe_str ??= Optional.Some("hello")  # maybe_str = Optional[str].Some("HELLO")
+maybe_str: str? = Some("HELLO")
+maybe_str ??= Some("hello")  # maybe_str is still Some("HELLO")
 
-maybe_str = Optional.Nothing
-maybe_str ??= Optional.Some("hello")  # maybe_str = Optional[str].Some("hello")
+maybe_str = Nothing
+maybe_str ??= Some("hello")  # maybe_str is now Some("hello")
 ```
 
-In this situation, the return type is `Optional[T]` where `T` is the expected type of the entire expression if it had evaluated.
+In this situation, the return type is `T?` where `T` is the expected type of the entire expression if it had evaluated.
 
 ## Limitations
 
@@ -265,5 +269,5 @@ value ??= 10
 ```
 
 *Implementation*
-- *✅ Native - For nullable types, maps directly to C# `??=` operator.*
-- *🔄 Lowered - For `Optional[T]`, compiler generates `if`/`else` assignment.*
+- *✅ Native - For `T | None` (C# nullable), maps directly to C# `??=` operator.*
+- *🔄 Lowered - For `T?` (`Optional[T]`), compiler generates `if`/`else` assignment.*
