@@ -254,10 +254,12 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Set): make Contains primary method"`
 
 ### Step 2.9: Replace `__Iter__` with `GetEnumerator`
-- [ ] Edit `src/Sharpy.Core/Partial.Set/Set.IIterable.cs`
-- [ ] Update tests in `src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Iteration.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Set): replace __Iter__ with GetEnumerator"`
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.IIterable.cs`
+  - __Iter__ now deprecated, delegates to GetEnumerator
+- [x] Edit `src/Sharpy.Core/Partial.Set/Set.IEnumerable.cs`
+  - GetEnumerator is now primary implementation
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Set): make GetEnumerator primary iteration method"`
 
 ### Step 2.10: Replace set operator dunders with C# operators
 - [ ] Edit `src/Sharpy.Core/Partial.Set/Set.ISet.cs` and `Set.IMutableSet.cs`

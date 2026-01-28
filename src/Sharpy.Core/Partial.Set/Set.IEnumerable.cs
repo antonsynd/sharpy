@@ -4,11 +4,15 @@ using System.Collections;
 
 public sealed partial class Set<T>
 {
-    /// <inheritdoc/>
+    /// <summary>
+    /// Returns an enumerator that iterates through the set.
+    /// </summary>
+    /// <remarks>
+    /// This is the implementation for <see cref="IEnumerable{T}.GetEnumerator"/>.
+    /// </remarks>
     public IEnumerator<T> GetEnumerator()
     {
-        // Delegate to __Iter__() to ensure consistent iteration behavior
-        return __Iter__();
+        return new SetIterator<T>(this);
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

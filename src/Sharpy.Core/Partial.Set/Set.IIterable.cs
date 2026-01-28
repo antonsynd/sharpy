@@ -2,9 +2,14 @@ namespace Sharpy.Core;
 
 public sealed partial class Set<T>
 {
-    /// <inheritdoc/>
+    /// <summary>
+    /// Returns an iterator over the set elements.
+    /// </summary>
+    /// <remarks>
+    /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
+    /// </remarks>
     public Iterator<T> __Iter__()
     {
-        return new SetIterator<T>(this);
+        return (Iterator<T>)GetEnumerator();
     }
 }
