@@ -333,6 +333,14 @@ public sealed partial class Dict<K, V>
         return !(left == right);
     }
 
+    /// <summary>
+    /// Returns a hash code for this dictionary.
+    /// </summary>
+    /// <remarks>
+    /// While Dict inherits from Object, GetHashCode() is sealed and delegates to __Hash__().
+    /// Once Dict no longer inherits from Object, this will become:
+    /// <code>public override int GetHashCode()</code>
+    /// </remarks>
     public override int __Hash__()
     {
         var hashCode = new HashCode();

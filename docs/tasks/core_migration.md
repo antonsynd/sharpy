@@ -344,9 +344,9 @@ This task list migrates `Sharpy.Core` away from the `Sharpy.Object` base class a
 - [x] **Commit:** `git commit -am "refactor(Dict): replace __Eq__ with Equals as primary"`
 
 ### Step 3.5: Replace `__Hash__` with `GetHashCode` override
-- [ ] Update `src/Sharpy.Core/Dict.cs`
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests`
-- [ ] **Commit:** `git commit -am "refactor(Dict): replace __Hash__ with GetHashCode override"`
+- [x] Document that `__Hash__` will become `GetHashCode` when Object is removed (GetHashCode is sealed in Object)
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests`
+- [x] **Commit:** `git commit -am "refactor(Dict): document __Hash__ transition to GetHashCode"`
 
 ### Step 3.6: Replace `__Repr__` with `ToString` override
 - [ ] Update `src/Sharpy.Core/Dict.cs`
