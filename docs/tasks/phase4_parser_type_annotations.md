@@ -7,7 +7,7 @@ This phase updates the parser to handle the new type annotation syntax:
 - `T | None` → sets `IsCSharpNullable = true`
 - `T !E` → sets `ErrorType` to the parsed error type
 
-**Prerequisites:** 
+**Prerequisites:**
 - Phase 2 (Bang token in lexer)
 - Phase 3 (AST changes)
 
@@ -29,10 +29,10 @@ The current parser already handles `T?` by setting `IsNullable = true`. After Ph
 
 ### Steps
 
-- [ ] Open `src/Sharpy.Compiler/Parser/Parser.Types.cs`
-- [ ] Find the `ParseTypeAnnotation` method
-- [ ] Locate where `T?` is handled (search for `TokenType.Question`)
-- [ ] Verify it sets `IsOptional = true` (not `IsNullable`):
+- [x] Open `src/Sharpy.Compiler/Parser/Parser.Types.cs`
+- [x] Find the `ParseTypeAnnotation` method
+- [x] Locate where `T?` is handled (search for `TokenType.Question`)
+- [x] Verify it sets `IsOptional = true` (not `IsNullable`):
   ```csharp
   // Nullable/Optional type suffix T?
   if (Current.Type == TokenType.Question)
@@ -47,12 +47,12 @@ The current parser already handles `T?` by setting `IsNullable = true`. After Ph
       };
   }
   ```
-- [ ] If still using `IsNullable`, update to `IsOptional`
+- [x] If still using `IsNullable`, update to `IsOptional`
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] Run existing nullable tests to ensure `T?` still works
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] Run existing nullable tests to ensure `T?` still works
 
 ```
 git add src/Sharpy.Compiler/Parser/Parser.Types.cs
@@ -67,26 +67,26 @@ git commit -m "parser: verify T? sets IsOptional correctly"
 
 ### Steps
 
-- [ ] Open `src/Sharpy.Compiler/Parser/Parser.Types.cs`
-- [ ] Find the `ParseTypeAnnotation` method
-- [ ] Locate the section that handles `T?` (after base type parsing, before return)
-- [ ] Add handling for `T !E` **BEFORE** the `T?` check (because `!E` binds tighter):
+- [x] Open `src/Sharpy.Compiler/Parser/Parser.Types.cs`
+- [x] Find the `ParseTypeAnnotation` method
+- [x] Locate the section that handles `T?` (after base type parsing, before return)
+- [x] Add handling for `T !E` **BEFORE** the `T?` check (because `!E` binds tighter):
   ```csharp
   // After parsing base type and array suffix...
-  
+
   // Result type suffix T !E (binds tighter than ? and | None)
   if (Current.Type == TokenType.Bang)
   {
       var bangToken = Current;
       Advance(); // consume '!'
-      
+
       // Parse the error type
       var errorType = ParseTypeAnnotation();
-      
+
       var endToken = Previous;
       var endLine = endToken.Line;
       var endColumn = endToken.Column + endToken.Value.Length;
-      
+
       baseType = baseType with
       {
           ErrorType = errorType,
@@ -95,7 +95,7 @@ git commit -m "parser: verify T? sets IsOptional correctly"
           Span = GetSpanFromTokens(startToken, endToken)
       };
   }
-  
+
   // Optional type suffix T? (existing code)
   if (Current.Type == TokenType.Question)
   {
@@ -117,8 +117,8 @@ This means:
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Parser/Parser.Types.cs
@@ -133,23 +133,23 @@ git commit -m "parser: add T !E result type syntax parsing"
 
 ### Prerequisites Check
 
-- [ ] **Verify `TokenType.None` exists** in the lexer's token types. `None` should already be a keyword in Sharpy (like Python's `None`). If not, add it to the lexer first:
+- [x] **Verify `TokenType.None` exists** in the lexer's token types. `None` should already be a keyword in Sharpy (like Python's `None`). If not, add it to the lexer first:
   ```csharp
   // In Token.cs or keywords section
   None,  // None keyword
   ```
-- [ ] **Verify `TokenType.Pipe` exists** for the `|` operator. This should already exist for bitwise OR.
+- [x] **Verify `TokenType.Pipe` exists** for the `|` operator. This should already exist for bitwise OR.
 
 ### Steps
 
-- [ ] In `ParseTypeAnnotation`, after the `T?` handling, add `| None` handling:
+- [x] In `ParseTypeAnnotation`, after the `T?` handling, add `| None` handling:
   ```csharp
   // C# nullable suffix T | None
   if (Current.Type == TokenType.Pipe)
   {
       var pipeToken = Current;
       Advance(); // consume '|'
-      
+
       // Must be followed by 'None'
       if (Current.Type != TokenType.None)
       {
@@ -157,17 +157,17 @@ git commit -m "parser: add T !E result type syntax parsing"
               "Only '| None' is allowed for nullable types. " +
               "Free unions like 'int | str' are not supported. " +
               "Use 'union' declarations for custom sum types.",
-              Current.Line, 
+              Current.Line,
               Current.Column
           );
       }
-      
+
       Advance(); // consume 'None'
-      
+
       var endToken = Previous;
       var endLine = endToken.Line;
       var endColumn = endToken.Column + endToken.Value.Length;
-      
+
       baseType = baseType with
       {
           IsCSharpNullable = true,
@@ -187,8 +187,8 @@ The error message should guide users:
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Parser/Parser.Types.cs
@@ -203,8 +203,8 @@ git commit -m "parser: add T | None C# nullable syntax parsing"
 
 ### Steps
 
-- [ ] Create new file `src/Sharpy.Compiler.Tests/Parser/TypeAnnotationParserTests.cs`
-- [ ] Add comprehensive tests:
+- [x] Create new file `src/Sharpy.Compiler.Tests/Parser/TypeAnnotationParserTests.cs`
+- [x] Add comprehensive tests:
 
 ```csharp
 using Sharpy.Compiler.Lexer;
@@ -226,175 +226,175 @@ public class TypeAnnotationParserTests
         var stmt = module.Statements[0] as VariableDeclaration;
         return stmt!.TypeAnnotation!;
     }
-    
+
     #region Basic Types
-    
+
     [Fact]
     public void Parse_SimpleType_NoModifiers()
     {
         var type = ParseType("int");
-        
+
         Assert.Equal("int", type.Name);
         Assert.False(type.IsOptional);
         Assert.False(type.IsCSharpNullable);
         Assert.False(type.IsResult);
     }
-    
+
     [Fact]
     public void Parse_GenericType_NoModifiers()
     {
         var type = ParseType("list[int]");
-        
+
         Assert.Equal("list", type.Name);
         Assert.Single(type.TypeArguments);
         Assert.Equal("int", type.TypeArguments[0].Name);
     }
-    
+
     #endregion
-    
+
     #region Optional (T?) Syntax
-    
+
     [Fact]
     public void Parse_OptionalType_SetsIsOptional()
     {
         var type = ParseType("int?");
-        
+
         Assert.Equal("int", type.Name);
         Assert.True(type.IsOptional);
         Assert.False(type.IsCSharpNullable);
         Assert.False(type.IsResult);
     }
-    
+
     [Fact]
     public void Parse_OptionalGenericType_Works()
     {
         var type = ParseType("list[int]?");
-        
+
         Assert.Equal("list", type.Name);
         Assert.True(type.IsOptional);
         Assert.Single(type.TypeArguments);
     }
-    
+
     #endregion
-    
+
     #region C# Nullable (T | None) Syntax
-    
+
     [Fact]
     public void Parse_CSharpNullable_SetsIsCSharpNullable()
     {
         var type = ParseType("str | None");
-        
+
         Assert.Equal("str", type.Name);
         Assert.False(type.IsOptional);
         Assert.True(type.IsCSharpNullable);
         Assert.False(type.IsResult);
     }
-    
+
     [Fact]
     public void Parse_CSharpNullableGeneric_Works()
     {
         var type = ParseType("list[str] | None");
-        
+
         Assert.Equal("list", type.Name);
         Assert.True(type.IsCSharpNullable);
     }
-    
+
     [Fact]
     public void Parse_FreeUnion_ThrowsError()
     {
         Assert.Throws<ParserError>(() => ParseType("int | str"));
     }
-    
+
     [Fact]
     public void Parse_FreeUnionWithNone_ThrowsError()
     {
         // int | str | None should fail at "int | str"
         Assert.Throws<ParserError>(() => ParseType("int | str | None"));
     }
-    
+
     #endregion
-    
+
     #region Result (T !E) Syntax
-    
+
     [Fact]
     public void Parse_ResultType_SetsErrorType()
     {
         var type = ParseType("int !ValueError");
-        
+
         Assert.Equal("int", type.Name);
         Assert.True(type.IsResult);
         Assert.NotNull(type.ErrorType);
         Assert.Equal("ValueError", type.ErrorType!.Name);
     }
-    
+
     [Fact]
     public void Parse_ResultTypeGenericError_Works()
     {
         var type = ParseType("int !IOError[str]");
-        
+
         Assert.True(type.IsResult);
         Assert.Equal("IOError", type.ErrorType!.Name);
         Assert.Single(type.ErrorType.TypeArguments);
     }
-    
+
     [Fact]
     public void Parse_GenericResultType_Works()
     {
         var type = ParseType("list[int] !ParseError");
-        
+
         Assert.Equal("list", type.Name);
         Assert.True(type.IsResult);
         Assert.Equal("ParseError", type.ErrorType!.Name);
     }
-    
+
     #endregion
-    
+
     #region Combined Modifiers
-    
+
     [Fact]
     public void Parse_ResultWithCSharpNullable_Works()
     {
         // int !ValueError | None → Result[int, ValueError] | None
         var type = ParseType("int !ValueError | None");
-        
+
         Assert.Equal("int", type.Name);
         Assert.True(type.IsResult);
         Assert.True(type.IsCSharpNullable);
         Assert.Equal("ValueError", type.ErrorType!.Name);
     }
-    
+
     [Fact]
     public void Parse_Precedence_BangBindsTighterThanPipe()
     {
         // int !E | None should be (int !E) | None, not int !(E | None)
         var type = ParseType("int !ValueError | None");
-        
+
         // The error type should be just "ValueError", not "ValueError | None"
         Assert.False(type.ErrorType!.IsCSharpNullable);
         Assert.True(type.IsCSharpNullable); // The outer type is nullable
     }
-    
+
     #endregion
-    
+
     #region Position Tracking
-    
+
     [Fact]
     public void Parse_ResultType_TracksPosition()
     {
         var type = ParseType("int !ValueError");
-        
+
         Assert.True(type.LineStart > 0 || type.ColumnStart > 0);
         Assert.NotNull(type.ErrorType);
     }
-    
+
     #endregion
 }
 ```
 
 ### Verification
 
-- [ ] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter TypeAnnotationParserTests`
-- [ ] All tests pass
+- [x] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter TypeAnnotationParserTests`
+- [x] All tests pass
 
 ```
 git add src/Sharpy.Compiler.Tests/Parser/TypeAnnotationParserTests.cs
@@ -407,9 +407,9 @@ git commit -m "test: add parser tests for T?, T | None, and T !E syntax"
 
 ### Steps
 
-- [ ] Run all parser tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Parser"`
-- [ ] Investigate any failures
-- [ ] Fix any regressions
+- [x] Run all parser tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Parser"`
+- [x] Investigate any failures
+- [x] Fix any regressions
 
 ### Common Issues
 
@@ -419,7 +419,7 @@ git commit -m "test: add parser tests for T?, T | None, and T !E syntax"
 
 ### Verification
 
-- [ ] All parser tests pass
+- [x] All parser tests pass
 
 ```
 # If fixes were needed:
@@ -435,8 +435,8 @@ git commit -m "fix: update parser tests for new type annotation properties"
 
 ### Steps
 
-- [ ] Open `docs/language_specification/type_annotation_shorthand.md`
-- [ ] Add a new section "Nullability and Result Syntax" after existing content:
+- [x] Open `docs/language_specification/type_annotation_shorthand.md`
+- [x] Add a new section "Nullability and Result Syntax" after existing content:
   ```markdown
   ## Nullability and Result Syntax
 
@@ -487,12 +487,12 @@ git commit -m "fix: update parser tests for new type annotation properties"
   parsed: [int] !Error    # Result[list[int], Error]
   ```
   ```
-- [ ] Verify the new section is consistent with other documentation
+- [x] Verify the new section is consistent with other documentation
 
 ### Verification
 
-- [ ] Read through the updated document
-- [ ] Check for consistency with `nullable_types.md`, `tagged_unions_optional.md`, `tagged_unions_result.md`
+- [x] Read through the updated document
+- [x] Check for consistency with `nullable_types.md`, `tagged_unions_optional.md`, `tagged_unions_result.md`
 
 ```
 git add docs/language_specification/type_annotation_shorthand.md
@@ -503,11 +503,11 @@ git commit -m "spec: add nullability and result syntax to type annotation docs"
 
 ## Final Verification
 
-- [ ] Build entire compiler: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all parser tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Parser"`
-- [ ] Run all compiler tests: `dotnet test src/Sharpy.Compiler.Tests`
-- [ ] All tests pass
-- [ ] Review all commits in this phase
+- [x] Build entire compiler: `dotnet build src/Sharpy.Compiler`
+- [x] Run all parser tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Parser"`
+- [x] Run all compiler tests: `dotnet test src/Sharpy.Compiler.Tests`
+- [x] All tests pass
+- [x] Review all commits in this phase
 
 ```
 git log --oneline -5
