@@ -855,11 +855,11 @@ def foo():
     {
         var source = @"
 def foo():
-    x: int | None = None  # valid for optional type
+    x: int | None = None  # valid for C# nullable type
 ";
-        // Union types (|) are not yet implemented, causes parse error
-        Action act = () => CompileAndCheck(source);
-        act.Should().Throw<Exception>();
+        // T | None is now supported — parses to IsCSharpNullable = true
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
     }
 
     #endregion
