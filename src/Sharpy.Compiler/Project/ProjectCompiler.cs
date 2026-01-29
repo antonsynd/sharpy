@@ -84,6 +84,11 @@ public class ProjectCompiler
             // are available in the symbol table for cross-module inheritance
             ResolveInheritanceRelationships();
 
+            // Phase 4c: Resolve inheritance for imported types from external modules
+            // ResolveInheritanceRelationships() handles types declared within the project,
+            // but imported types from external modules still have unresolved base names.
+            Compiler.ResolveImportedTypeInheritance(_symbolTable, _logger);
+
             // Phase 5: Perform semantic analysis on all files
             if (!PerformSemanticAnalysis(config))
             {
