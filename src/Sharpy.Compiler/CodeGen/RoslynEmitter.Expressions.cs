@@ -1163,7 +1163,7 @@ public partial class RoslynEmitter
 
         var value = GenerateExpression(coercion.Value);
 
-        if (coercion.TargetType.IsNullable)
+        if (coercion.TargetType.IsOptional)
         {
             // Safe form: value to T?
             // Create a non-nullable version of the target type for the 'as' expression
@@ -1171,7 +1171,7 @@ public partial class RoslynEmitter
             {
                 Name = coercion.TargetType.Name,
                 TypeArguments = coercion.TargetType.TypeArguments,
-                IsNullable = false
+                IsOptional = false
             };
             var baseTypeSyntax = _typeMapper.MapType(baseType);
             var nullableTypeSyntax = _typeMapper.MapType(coercion.TargetType);

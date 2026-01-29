@@ -176,14 +176,14 @@ public class TypeMapper
                 // For type annotations, recursively map the underlying type
                 var expandedType = MapType(aliasSymbol.TypeAnnotation);
                 // Apply nullable modifier from usage site
-                return type.IsNullable ? NullableType(expandedType) : expandedType;
+                return type.IsOptional ? NullableType(expandedType) : expandedType;
             }
             else if (aliasSymbol.FunctionType != null)
             {
                 // For function types, map to C# delegate/Func/Action
                 var expandedType = MapFunctionType(aliasSymbol.FunctionType);
                 // Function types typically shouldn't be nullable, but handle it anyway
-                return type.IsNullable ? NullableType(expandedType) : expandedType;
+                return type.IsOptional ? NullableType(expandedType) : expandedType;
             }
         }
 
@@ -202,14 +202,14 @@ public class TypeMapper
                     TypeArgumentList(SeparatedList(typeArgs)));
 
             // Handle nullable generic types
-            return type.IsNullable
+            return type.IsOptional
                 ? NullableType(result)
                 : result;
         }
 
         // Handle nullable non-generic types
         var typeSyntax = ParseTypeName(baseTypeName);
-        return type.IsNullable
+        return type.IsOptional
             ? NullableType(typeSyntax)
             : typeSyntax;
     }

@@ -741,7 +741,7 @@ public class AstDumper
             var args = string.Join(", ", type.TypeArguments.Select(FormatType));
             result += $"[{args}]";
         }
-        if (type.IsNullable)
+        if (type.IsOptional)
         {
             result += "?";
         }

@@ -23,6 +23,6 @@ public static class TypeAnnotationHelper
             ? $"{typeAnnotation.Name}[{string.Join(", ", typeAnnotation.TypeArguments.Select(GetName))}]"
             : typeAnnotation.Name;
 
-        return typeAnnotation.IsNullable ? $"{baseName}?" : baseName;
+        return typeAnnotation.IsOptional ? $"{baseName}?" : baseName;
     }
 }

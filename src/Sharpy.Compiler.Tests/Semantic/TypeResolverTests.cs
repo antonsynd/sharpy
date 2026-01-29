@@ -76,7 +76,7 @@ public class TypeResolverTests
         var nullableIntAnnotation = new TypeAnnotation
         {
             Name = "int",
-            IsNullable = true
+            IsOptional = true
         };
 
         var type = resolver.ResolveTypeAnnotation(nullableIntAnnotation);
@@ -162,7 +162,7 @@ public class TypeResolverTests
         symbolTable.Define(aliasSymbol);
 
         // Use the alias with nullable modifier: UserId?
-        var annotation = new TypeAnnotation { Name = "UserId", IsNullable = true };
+        var annotation = new TypeAnnotation { Name = "UserId", IsOptional = true };
         var type = resolver.ResolveTypeAnnotation(annotation);
 
         // Should expand to int?
@@ -270,7 +270,7 @@ public class TypeResolverTests
         {
             Name = "MaybeUserId",
             Kind = SymbolKind.TypeAlias,
-            TypeAnnotation = new TypeAnnotation { Name = "UserId", IsNullable = true }
+            TypeAnnotation = new TypeAnnotation { Name = "UserId", IsOptional = true }
         };
         symbolTable.Define(maybeUserIdAlias);
 

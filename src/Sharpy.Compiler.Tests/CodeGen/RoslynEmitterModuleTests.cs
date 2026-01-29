@@ -685,7 +685,7 @@ public class RoslynEmitterModuleTests
                         new Parameter
                         {
                             Name = "value",
-                            Type = new TypeAnnotation { Name = "int", IsNullable = true }
+                            Type = new TypeAnnotation { Name = "int", IsOptional = true }
                         }
                     }.ToImmutableArray(),
                     ReturnType = new TypeAnnotation { Name = "void" },
@@ -716,7 +716,7 @@ public class RoslynEmitterModuleTests
                 {
                     Name = "get_name",
                     Parameters = ImmutableArray<Parameter>.Empty,
-                    ReturnType = new TypeAnnotation { Name = "str", IsNullable = true },
+                    ReturnType = new TypeAnnotation { Name = "str", IsOptional = true },
                     Body = new List<Statement>
                     {
                         new ReturnStatement
@@ -756,7 +756,7 @@ public class RoslynEmitterModuleTests
                         {
                             new TypeAnnotation { Name = "int" }
                         }.ToImmutableArray(),
-                        IsNullable = true
+                        IsOptional = true
                     },
                     Body = new List<Statement>
                     {
@@ -795,9 +795,9 @@ public class RoslynEmitterModuleTests
                         Name = "list",
                         TypeArguments = new List<TypeAnnotation>
                         {
-                            new TypeAnnotation { Name = "int", IsNullable = true }
+                            new TypeAnnotation { Name = "int", IsOptional = true }
                         }.ToImmutableArray(),
-                        IsNullable = false
+                        IsOptional = false
                     },
                     Body = new List<Statement>
                     {

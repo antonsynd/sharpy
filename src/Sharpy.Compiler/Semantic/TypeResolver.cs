@@ -50,7 +50,7 @@ public class TypeResolver
         // Check for type alias and expand it
         else if (_symbolTable.LookupTypeAlias(annotation.Name) is TypeAliasSymbol aliasSymbol)
         {
-            result = ExpandTypeAlias(aliasSymbol, annotation.IsNullable);
+            result = ExpandTypeAlias(aliasSymbol, annotation.IsOptional);
         }
         // Check for generic type
         else if (annotation.TypeArguments.Length > 0)
@@ -87,7 +87,7 @@ public class TypeResolver
 
         // Handle nullable types (already handled for type aliases in ExpandTypeAlias)
         // For non-alias types, apply nullable modifier here
-        if (annotation.IsNullable && result != SemanticType.Unknown
+        if (annotation.IsOptional && result != SemanticType.Unknown
             && _symbolTable.LookupTypeAlias(annotation.Name) == null)
         {
             result = new NullableType { UnderlyingType = result };

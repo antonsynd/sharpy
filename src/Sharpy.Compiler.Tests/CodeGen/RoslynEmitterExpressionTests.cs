@@ -1077,7 +1077,7 @@ public class RoslynEmitterExpressionTests
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "obj" },
-            TargetType = new TypeAnnotation { Name = "int", IsNullable = false }
+            TargetType = new TypeAnnotation { Name = "int", IsOptional = false }
         };
 
         // Act
@@ -1096,7 +1096,7 @@ public class RoslynEmitterExpressionTests
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "obj" },
-            TargetType = new TypeAnnotation { Name = "int", IsNullable = true }
+            TargetType = new TypeAnnotation { Name = "int", IsOptional = true }
         };
 
         // Act
@@ -1119,7 +1119,7 @@ public class RoslynEmitterExpressionTests
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "obj" },
-            TargetType = new TypeAnnotation { Name = "str", IsNullable = true }
+            TargetType = new TypeAnnotation { Name = "str", IsOptional = true }
         };
 
         // Act
@@ -1138,7 +1138,7 @@ public class RoslynEmitterExpressionTests
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "animal" },
-            TargetType = new TypeAnnotation { Name = "Dog", IsNullable = true }
+            TargetType = new TypeAnnotation { Name = "Dog", IsOptional = true }
         };
 
         // Act

@@ -48,7 +48,7 @@ class Dog(Animal):
         classDef.BaseClasses.Should().HaveCount(1);
         classDef.BaseClasses[0].Name.Should().Be("Animal");
         classDef.BaseClasses[0].TypeArguments.Should().BeEmpty();
-        classDef.BaseClasses[0].IsNullable.Should().BeFalse();
+        classDef.BaseClasses[0].IsOptional.Should().BeFalse();
     }
 
     [Fact]

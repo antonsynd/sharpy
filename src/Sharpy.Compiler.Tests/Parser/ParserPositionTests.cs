@@ -594,7 +594,7 @@ class Point:
         var module = Parse("x: int?");
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
 
-        varDecl.Type.Should().Match<TypeAnnotation>(t => t.LineStart == 1 && t.IsNullable);
+        varDecl.Type.Should().Match<TypeAnnotation>(t => t.LineStart == 1 && t.IsOptional);
     }
 
     [Fact]

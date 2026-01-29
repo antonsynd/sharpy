@@ -368,7 +368,7 @@ public class Phase011ExitCriteriaTests
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
         varDecl.Name.Should().Be("x");
         varDecl.Type.Name.Should().Be("int");
-        varDecl.Type.IsNullable.Should().BeFalse();
+        varDecl.Type.IsOptional.Should().BeFalse();
         varDecl.InitialValue.Should().BeNull();
     }
 
@@ -378,7 +378,7 @@ public class Phase011ExitCriteriaTests
         var module = Parse("x: int?");
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
         varDecl.Type.Name.Should().Be("int");
-        varDecl.Type.IsNullable.Should().BeTrue();
+        varDecl.Type.IsOptional.Should().BeTrue();
     }
 
     [Fact]
@@ -409,7 +409,7 @@ public class Phase011ExitCriteriaTests
         var module = Parse("x: list[int]?");
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
         varDecl.Type.Name.Should().Be("list");
-        varDecl.Type.IsNullable.Should().BeTrue();
+        varDecl.Type.IsOptional.Should().BeTrue();
         varDecl.Type.TypeArguments[0].Name.Should().Be("int");
     }
 
@@ -794,7 +794,7 @@ def foo():
         var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
         var coercion = exprStmt.Expression.Should().BeOfType<TypeCoercion>().Subject;
         coercion.TargetType.Name.Should().Be("int");
-        coercion.TargetType.IsNullable.Should().BeTrue();
+        coercion.TargetType.IsOptional.Should().BeTrue();
     }
 
     [Fact]

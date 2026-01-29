@@ -80,7 +80,7 @@ public class TypeAnnotationShorthandTests
     {
         var annotation = ParseTypeAnnotation("[int]?");
         annotation.Name.Should().Be("list");
-        annotation.IsNullable.Should().BeTrue();
+        annotation.IsOptional.Should().BeTrue();
         annotation.TypeArguments[0].Name.Should().Be("int");
     }
 
@@ -89,9 +89,9 @@ public class TypeAnnotationShorthandTests
     {
         var annotation = ParseTypeAnnotation("[int?]");
         annotation.Name.Should().Be("list");
-        annotation.IsNullable.Should().BeFalse();
+        annotation.IsOptional.Should().BeFalse();
         annotation.TypeArguments[0].Name.Should().Be("int");
-        annotation.TypeArguments[0].IsNullable.Should().BeTrue();
+        annotation.TypeArguments[0].IsOptional.Should().BeTrue();
     }
 
     #endregion
@@ -130,7 +130,7 @@ public class TypeAnnotationShorthandTests
     {
         var annotation = ParseTypeAnnotation("{str}?");
         annotation.Name.Should().Be("set");
-        annotation.IsNullable.Should().BeTrue();
+        annotation.IsOptional.Should().BeTrue();
         annotation.TypeArguments[0].Name.Should().Be("str");
     }
 
@@ -172,7 +172,7 @@ public class TypeAnnotationShorthandTests
     {
         var annotation = ParseTypeAnnotation("{str: int}?");
         annotation.Name.Should().Be("dict");
-        annotation.IsNullable.Should().BeTrue();
+        annotation.IsOptional.Should().BeTrue();
     }
 
     [Fact]
@@ -271,7 +271,7 @@ public class TypeAnnotationShorthandTests
     {
         var annotation = ParseTypeAnnotation("(int, str)?");
         annotation.Name.Should().Be("tuple");
-        annotation.IsNullable.Should().BeTrue();
+        annotation.IsOptional.Should().BeTrue();
     }
 
     [Fact]
@@ -330,7 +330,7 @@ public class TypeAnnotationShorthandTests
     {
         var annotation = ParseTypeAnnotation("int[]?");
         annotation.Name.Should().Be("array");
-        annotation.IsNullable.Should().BeTrue();
+        annotation.IsOptional.Should().BeTrue();
     }
 
     [Fact]
@@ -411,7 +411,7 @@ public class TypeAnnotationShorthandTests
     {
         var annotation = ParseTypeAnnotation("(int) -> str?");
         annotation.Name.Should().Be("function");
-        annotation.TypeArguments[1].IsNullable.Should().BeTrue();
+        annotation.TypeArguments[1].IsOptional.Should().BeTrue();
     }
 
     [Fact]
@@ -595,7 +595,7 @@ def apply(f: (int) -> str, x: int) -> str:
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
 
         varDecl.Type!.Name.Should().Be("list");
-        varDecl.Type!.IsNullable.Should().BeTrue();
+        varDecl.Type!.IsOptional.Should().BeTrue();
     }
 
     #endregion

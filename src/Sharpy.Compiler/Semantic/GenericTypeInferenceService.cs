@@ -415,7 +415,7 @@ public class GenericTypeInferenceService
         }
 
         // Add nullable suffix if nullable
-        if (typeAnnotation.IsNullable)
+        if (typeAnnotation.IsOptional)
         {
             baseName = $"{baseName}?";
         }

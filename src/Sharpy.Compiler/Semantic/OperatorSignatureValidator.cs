@@ -153,7 +153,7 @@ public class OperatorSignatureValidator
     /// </summary>
     private static bool IsTypeAnnotationBool(TypeAnnotation typeAnnotation)
     {
-        return typeAnnotation.Name == "bool" && typeAnnotation.TypeArguments.Length == 0 && !typeAnnotation.IsNullable;
+        return typeAnnotation.Name == "bool" && typeAnnotation.TypeArguments.Length == 0 && !typeAnnotation.IsOptional;
     }
 
     /// <summary>

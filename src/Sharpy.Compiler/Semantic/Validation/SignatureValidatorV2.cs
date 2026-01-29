@@ -303,7 +303,7 @@ public class SignatureValidatorV2 : SemanticValidatorBase
 
     private static bool IsTypeAnnotationBool(TypeAnnotation typeAnnotation)
     {
-        return typeAnnotation.Name == "bool" && typeAnnotation.TypeArguments.Length == 0 && !typeAnnotation.IsNullable;
+        return typeAnnotation.Name == "bool" && typeAnnotation.TypeArguments.Length == 0 && !typeAnnotation.IsOptional;
     }
 
     private static bool IsTypeAnnotationVoid(TypeAnnotation typeAnnotation)

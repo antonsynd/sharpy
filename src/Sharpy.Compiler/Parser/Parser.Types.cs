@@ -55,7 +55,7 @@ public partial class Parser
             {
                 Name = "array",
                 TypeArguments = ImmutableArray.Create(baseType),
-                IsNullable = false,
+                IsOptional = false,
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = endLine,
@@ -74,7 +74,7 @@ public partial class Parser
 
             baseType = baseType with
             {
-                IsNullable = true,
+                IsOptional = true,
                 LineEnd = endLine,
                 ColumnEnd = endColumn,
                 Span = GetSpanFromTokens(startToken, endToken)
@@ -134,7 +134,7 @@ public partial class Parser
         {
             Name = name,
             TypeArguments = typeArgs.ToImmutableArray(),
-            IsNullable = false,
+            IsOptional = false,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endLine,
@@ -167,7 +167,7 @@ public partial class Parser
         {
             Name = "list",
             TypeArguments = ImmutableArray.Create(elementType),
-            IsNullable = false,
+            IsOptional = false,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endLine,
@@ -207,7 +207,7 @@ public partial class Parser
             {
                 Name = "dict",
                 TypeArguments = ImmutableArray.Create(firstType, valueType),
-                IsNullable = false,
+                IsOptional = false,
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = endLine,
@@ -227,7 +227,7 @@ public partial class Parser
         {
             Name = "set",
             TypeArguments = ImmutableArray.Create(firstType),
-            IsNullable = false,
+            IsOptional = false,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = setEndLine,
@@ -289,7 +289,7 @@ public partial class Parser
             {
                 Name = "function",
                 TypeArguments = funcTypeArgs.ToImmutableArray(),
-                IsNullable = false,
+                IsOptional = false,
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = funcEndLine,
@@ -307,7 +307,7 @@ public partial class Parser
         {
             Name = "tuple",
             TypeArguments = types.ToImmutableArray(),
-            IsNullable = false,
+            IsOptional = false,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endLine,

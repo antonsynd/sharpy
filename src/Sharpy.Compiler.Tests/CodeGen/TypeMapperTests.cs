@@ -83,7 +83,7 @@ public class TypeMapperTests
         var typeAnnotation = new TypeAnnotation
         {
             Name = "int",
-            IsNullable = true
+            IsOptional = true
         };
 
         // Act
@@ -100,7 +100,7 @@ public class TypeMapperTests
         var typeAnnotation = new TypeAnnotation
         {
             Name = "str",
-            IsNullable = true
+            IsOptional = true
         };
 
         // Act
@@ -182,7 +182,7 @@ public class TypeMapperTests
         var typeAnnotation = new TypeAnnotation
         {
             Name = "list",
-            IsNullable = true,
+            IsOptional = true,
             TypeArguments = new List<TypeAnnotation>
             {
                 new TypeAnnotation { Name = "int" }

@@ -645,7 +645,7 @@ class Point:
         var module = Parse(source);
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
         varDecl.Type.Name.Should().Be("list");
-        varDecl.Type.IsNullable.Should().BeTrue();
+        varDecl.Type.IsOptional.Should().BeTrue();
         varDecl.Type.TypeArguments[0].Name.Should().Be("int");
     }
 
@@ -657,7 +657,7 @@ class Point:
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
         varDecl.Type.Name.Should().Be("dict");
         varDecl.Type.TypeArguments[1].Name.Should().Be("list");
-        varDecl.Type.TypeArguments[1].IsNullable.Should().BeTrue();
+        varDecl.Type.TypeArguments[1].IsOptional.Should().BeTrue();
     }
 
     [Fact]
@@ -667,9 +667,9 @@ class Point:
         var module = Parse(source);
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
         varDecl.Type.Name.Should().Be("list");
-        varDecl.Type.IsNullable.Should().BeFalse();
+        varDecl.Type.IsOptional.Should().BeFalse();
         varDecl.Type.TypeArguments[0].Name.Should().Be("int");
-        varDecl.Type.TypeArguments[0].IsNullable.Should().BeTrue();
+        varDecl.Type.TypeArguments[0].IsOptional.Should().BeTrue();
     }
 
     [Fact]
@@ -679,9 +679,9 @@ class Point:
         var module = Parse(source);
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
         varDecl.Type.Name.Should().Be("list");
-        varDecl.Type.IsNullable.Should().BeTrue();
+        varDecl.Type.IsOptional.Should().BeTrue();
         varDecl.Type.TypeArguments[0].Name.Should().Be("int");
-        varDecl.Type.TypeArguments[0].IsNullable.Should().BeTrue();
+        varDecl.Type.TypeArguments[0].IsOptional.Should().BeTrue();
     }
 
     [Fact]
@@ -691,7 +691,7 @@ class Point:
         var module = Parse(source);
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
         varDecl.Type.Name.Should().Be("str");
-        varDecl.Type.IsNullable.Should().BeTrue();
+        varDecl.Type.IsOptional.Should().BeTrue();
     }
 
     [Fact]
@@ -965,7 +965,7 @@ def find(key: str) -> int?:
         var module = Parse(source);
         var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
         funcDef.ReturnType.Should().NotBeNull();
-        funcDef.ReturnType.IsNullable.Should().BeTrue();
+        funcDef.ReturnType.IsOptional.Should().BeTrue();
     }
 
     [Fact]

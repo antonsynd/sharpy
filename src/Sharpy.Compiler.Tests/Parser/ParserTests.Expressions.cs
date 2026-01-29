@@ -93,7 +93,7 @@ public partial class ParserTests
         varDecl.Name.Should().Be("x");
         varDecl.Type.Should().NotBeNull();
         varDecl.Type.Name.Should().Be("int");
-        varDecl.Type.IsNullable.Should().BeFalse();
+        varDecl.Type.IsOptional.Should().BeFalse();
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public partial class ParserTests
     {
         var module = Parse("x: int?");
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
-        varDecl.Type.IsNullable.Should().BeTrue();
+        varDecl.Type.IsOptional.Should().BeTrue();
         varDecl.Type.Name.Should().Be("int");
     }
 
@@ -136,7 +136,7 @@ def greet(name: str?):
         funcDef.Parameters.Should().HaveCount(1);
         funcDef.Parameters[0].Type.Should().NotBeNull();
         funcDef.Parameters[0].Type.Name.Should().Be("str");
-        funcDef.Parameters[0].Type.IsNullable.Should().BeTrue();
+        funcDef.Parameters[0].Type.IsOptional.Should().BeTrue();
     }
 
     [Fact]
@@ -149,7 +149,7 @@ def find_user(id: int) -> User?:
         var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
         funcDef.ReturnType.Should().NotBeNull();
         funcDef.ReturnType.Name.Should().Be("User");
-        funcDef.ReturnType.IsNullable.Should().BeTrue();
+        funcDef.ReturnType.IsOptional.Should().BeTrue();
     }
 
     [Fact]
@@ -159,12 +159,12 @@ def find_user(id: int) -> User?:
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
         varDecl.Type.Should().NotBeNull();
         varDecl.Type.Name.Should().Be("dict");
-        varDecl.Type.IsNullable.Should().BeTrue();
+        varDecl.Type.IsOptional.Should().BeTrue();
         varDecl.Type.TypeArguments.Should().HaveCount(2);
         varDecl.Type.TypeArguments[0].Name.Should().Be("str");
-        varDecl.Type.TypeArguments[0].IsNullable.Should().BeFalse();
+        varDecl.Type.TypeArguments[0].IsOptional.Should().BeFalse();
         varDecl.Type.TypeArguments[1].Name.Should().Be("int");
-        varDecl.Type.TypeArguments[1].IsNullable.Should().BeTrue();
+        varDecl.Type.TypeArguments[1].IsOptional.Should().BeTrue();
     }
 
     #endregion

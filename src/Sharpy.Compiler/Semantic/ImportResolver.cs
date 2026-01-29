@@ -726,7 +726,7 @@ public class ImportResolver
             return SemanticType.Unknown;
 
         // Handle nullable types
-        var isNullable = typeAnnotation.IsNullable;
+        var isNullable = typeAnnotation.IsOptional;
 
         // Map primitive type names
         SemanticType? baseType = typeAnnotation.Name switch

@@ -101,7 +101,7 @@ public class ServiceAdapterTests
         var typeResolver = new TypeResolver(symbolTable, semanticInfo);
         var adapter = new TypeResolverAdapter(typeResolver);
 
-        var intAnnotation = new TypeAnnotation { Name = "int", IsNullable = false };
+        var intAnnotation = new TypeAnnotation { Name = "int", IsOptional = false };
 
         // Act
         var result = adapter.ResolveTypeAnnotation(intAnnotation);
@@ -120,7 +120,7 @@ public class ServiceAdapterTests
         var typeResolver = new TypeResolver(symbolTable, semanticInfo);
         var adapter = new TypeResolverAdapter(typeResolver);
 
-        var strAnnotation = new TypeAnnotation { Name = "str", IsNullable = false };
+        var strAnnotation = new TypeAnnotation { Name = "str", IsOptional = false };
 
         // Act
         var result = adapter.ResolveTypeAnnotation(strAnnotation);
