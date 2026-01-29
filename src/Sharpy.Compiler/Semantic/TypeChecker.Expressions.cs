@@ -1595,21 +1595,40 @@ public partial class TypeChecker
 
     private SemanticType CheckLambda(LambdaExpression lambda)
     {
-        var paramTypes = lambda.Parameters
-            .Select(p => _typeResolver.ResolveTypeAnnotation(p.Type))
-            .ToList();
+        // Use _expectedType for bidirectional type inference: if the context expects
+        // a FunctionType, extract parameter types from it to infer lambda parameter types.
+        FunctionType? expectedFunc = _expectedType as FunctionType;
+
+        var paramTypes = new List<SemanticType>();
+        for (int i = 0; i < lambda.Parameters.Length; i++)
+        {
+            var param = lambda.Parameters[i];
+            if (param.Type != null)
+            {
+                // Explicit type annotation — use it
+                paramTypes.Add(_typeResolver.ResolveTypeAnnotation(param.Type));
+            }
+            else if (expectedFunc != null && i < expectedFunc.ParameterTypes.Count)
+            {
+                // Infer from expected function type context
+                paramTypes.Add(expectedFunc.ParameterTypes[i]);
+            }
+            else
+            {
+                paramTypes.Add(SemanticType.Unknown);
+            }
+        }
 
         // Enter lambda scope
         _symbolTable.EnterScope("lambda");
 
-        foreach (var param in lambda.Parameters)
+        for (int i = 0; i < lambda.Parameters.Length; i++)
         {
-            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
             var paramSymbol = new VariableSymbol
             {
-                Name = param.Name,
+                Name = lambda.Parameters[i].Name,
                 Kind = SymbolKind.Parameter,
-                Type = paramType,
+                Type = paramTypes[i],
                 IsParameter = true
             };
             _symbolTable.Define(paramSymbol);

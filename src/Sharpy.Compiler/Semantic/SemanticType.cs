@@ -499,6 +499,59 @@ public record FunctionType : SemanticType
         var params_ = string.Join(", ", ParameterTypes.Select(p => p.GetDisplayName()));
         return $"({params_}) -> {ReturnType.GetDisplayName()}";
     }
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        if (other is FunctionType otherFunc
+            && ParameterTypes.Count == otherFunc.ParameterTypes.Count)
+        {
+            // Parameter types: contravariant (other's param assignable to this param)
+            for (int i = 0; i < ParameterTypes.Count; i++)
+            {
+                if (!ParameterTypes[i].IsAssignableTo(otherFunc.ParameterTypes[i])
+                    && !otherFunc.ParameterTypes[i].IsAssignableTo(ParameterTypes[i]))
+                    return false;
+            }
+            // Return type: covariant
+            if (!ReturnType.IsAssignableTo(otherFunc.ReturnType))
+                return false;
+            return true;
+        }
+        return base.IsAssignableTo(other);
+    }
+
+    // Override Equals and GetHashCode to compare ParameterTypes by content
+    public virtual bool Equals(FunctionType? other)
+    {
+        if (other is null)
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
+
+        if (ParameterTypes.Count != other.ParameterTypes.Count)
+            return false;
+
+        for (int i = 0; i < ParameterTypes.Count; i++)
+        {
+            if (!ParameterTypes[i].Equals(other.ParameterTypes[i]))
+                return false;
+        }
+
+        return ReturnType.Equals(other.ReturnType)
+            && SkipArgumentValidation == other.SkipArgumentValidation;
+    }
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        foreach (var param in ParameterTypes)
+        {
+            hash.Add(param);
+        }
+        hash.Add(ReturnType);
+        hash.Add(SkipArgumentValidation);
+        return hash.ToHashCode();
+    }
 }
 
 /// <summary>
