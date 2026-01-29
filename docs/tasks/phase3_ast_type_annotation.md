@@ -25,8 +25,8 @@ Currently, the AST only has `IsNullable` which conflates `T?` and `T | None`.
 
 ### Steps
 
-- [ ] Open `src/Sharpy.Compiler/Parser/Ast/Types.cs`
-- [ ] Find the `TypeAnnotation` record (should be near the top)
+- [x] Open `src/Sharpy.Compiler/Parser/Ast/Types.cs`
+- [x] Find the `TypeAnnotation` record (should be near the top)
 - [ ] Current structure looks like:
   ```csharp
   public record TypeAnnotation
@@ -37,7 +37,7 @@ Currently, the AST only has `IsNullable` which conflates `T?` and `T | None`.
       // ... source location fields ...
   }
   ```
-- [ ] Rename `IsNullable` to `IsCSharpNullable` and update its comment:
+- [x] Rename `IsNullable` to `IsCSharpNullable` and update its comment:
   ```csharp
   /// <summary>
   /// True if this type uses T | None syntax (C# nullable interop).
@@ -45,7 +45,7 @@ Currently, the AST only has `IsNullable` which conflates `T?` and `T | None`.
   /// </summary>
   public bool IsCSharpNullable { get; init; }  // T | None syntax
   ```
-- [ ] Add `IsOptional` property:
+- [x] Add `IsOptional` property:
   ```csharp
   /// <summary>
   /// True if this type uses T? syntax (desugars to Optional[T]).
@@ -53,7 +53,7 @@ Currently, the AST only has `IsNullable` which conflates `T?` and `T | None`.
   /// </summary>
   public bool IsOptional { get; init; }  // T? syntax
   ```
-- [ ] Add `ErrorType` property for result syntax:
+- [x] Add `ErrorType` property for result syntax:
   ```csharp
   /// <summary>
   /// The error type E in T !E syntax (desugars to Result[T, E]).
@@ -61,7 +61,7 @@ Currently, the AST only has `IsNullable` which conflates `T?` and `T | None`.
   /// </summary>
   public TypeAnnotation? ErrorType { get; init; }  // E in T !E
   ```
-- [ ] Add helper properties for clarity:
+- [x] Add helper properties for clarity:
   ```csharp
   /// <summary>
   /// True if this type uses T !E syntax (desugars to Result[T, E]).
@@ -109,8 +109,8 @@ public record TypeAnnotation
 
 ### Verification
 
-- [ ] Build the compiler: `dotnet build src/Sharpy.Compiler`
-- [ ] **EXPECT ERRORS** — This will break code that uses `IsNullable`
+- [x] Build the compiler: `dotnet build src/Sharpy.Compiler`
+- [x] **EXPECT ERRORS** — This will break code that uses `IsNullable`
 
 ```
 git add src/Sharpy.Compiler/Parser/Ast/Types.cs
@@ -127,11 +127,11 @@ The rename from `IsNullable` to having two separate properties will break existi
 
 ### Steps
 
-- [ ] Search the codebase for `IsNullable` usage in type annotation contexts:
+- [x] Search the codebase for `IsNullable` usage in type annotation contexts:
   ```bash
   grep -r "IsNullable" src/Sharpy.Compiler --include="*.cs"
   ```
-- [ ] For each occurrence, determine the correct replacement:
+- [x] For each occurrence, determine the correct replacement:
   - If it's about `T?` syntax → use `IsOptional`
   - If it's about C# nullable interop → use `IsCSharpNullable`
   - If it's about either/both → may need to check both properties
@@ -140,11 +140,11 @@ The rename from `IsNullable` to having two separate properties will break existi
 
 Based on typical compiler structure:
 
-- [ ] `src/Sharpy.Compiler/Parser/Parser.Types.cs` — where `IsNullable = true` is set
-- [ ] `src/Sharpy.Compiler/Semantic/TypeResolver.cs` — resolves type annotations
-- [ ] `src/Sharpy.Compiler/Semantic/TypeChecker.*.cs` — type checking logic
-- [ ] `src/Sharpy.Compiler/CodeGen/TypeMapper.cs` — maps to C# types
-- [ ] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.*.cs` — code generation
+- [x] `src/Sharpy.Compiler/Parser/Parser.Types.cs` — where `IsNullable = true` is set
+- [x] `src/Sharpy.Compiler/Semantic/TypeResolver.cs` — resolves type annotations
+- [x] `src/Sharpy.Compiler/Semantic/TypeChecker.*.cs` — type checking logic
+- [x] `src/Sharpy.Compiler/CodeGen/TypeMapper.cs` — maps to C# types
+- [x] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.*.cs` — code generation
 
 ### Important: Current Behavior
 
@@ -155,17 +155,17 @@ After this change:
 - `T | None` should set `IsCSharpNullable = true` and map to C# nullable
 
 **However**, full parser support for `T | None` comes in Phase 4. For now:
-- [ ] Change existing `IsNullable = true` to `IsOptional = true` 
-- [ ] This is a **naming change only** at the AST level. The parser will set `IsOptional = true` for `T?` syntax.
-- [ ] The actual semantic interpretation (mapping to `OptionalType` vs `NullableType`) happens in Phases 5-6.
-- [ ] At this phase, the behavior is unchanged — we're just preparing the AST structure.
+- [x] Change existing `IsNullable = true` to `IsOptional = true`
+- [x] This is a **naming change only** at the AST level. The parser will set `IsOptional = true` for `T?` syntax.
+- [x] The actual semantic interpretation (mapping to `OptionalType` vs `NullableType`) happens in Phases 5-6.
+- [x] At this phase, the behavior is unchanged — we're just preparing the AST structure.
 
 ### Verification
 
-- [ ] Build the compiler: `dotnet build src/Sharpy.Compiler`
-- [ ] All compiler errors resolved
-- [ ] Run existing tests: `dotnet test src/Sharpy.Compiler.Tests`
-- [ ] Tests should still pass (behavior unchanged for now)
+- [x] Build the compiler: `dotnet build src/Sharpy.Compiler`
+- [x] All compiler errors resolved
+- [x] Run existing tests: `dotnet test src/Sharpy.Compiler.Tests`
+- [x] Tests should still pass (behavior unchanged for now)
 
 ```
 git add -A
@@ -180,9 +180,9 @@ git commit -m "refactor: update IsNullable references to IsOptional (temporary)"
 
 ### Steps
 
-- [ ] Create new file `src/Sharpy.Compiler.Tests/Ast/TypeAnnotationTests.cs`
-- [ ] Add test class `TypeAnnotationTests`
-- [ ] Add tests for the new AST structure:
+- [x] Create new file `src/Sharpy.Compiler.Tests/Ast/TypeAnnotationTests.cs`
+- [x] Add test class `TypeAnnotationTests`
+- [x] Add tests for the new AST structure:
 
 ```csharp
 using Sharpy.Compiler.Parser.Ast;
@@ -268,8 +268,8 @@ public class TypeAnnotationTests
 
 ### Verification
 
-- [ ] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter TypeAnnotationTests`
-- [ ] All tests pass
+- [x] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter TypeAnnotationTests`
+- [x] All tests pass
 
 ```
 git add src/Sharpy.Compiler.Tests/Ast/TypeAnnotationTests.cs
@@ -280,10 +280,10 @@ git commit -m "test: add unit tests for TypeAnnotation modifiers"
 
 ## Final Verification
 
-- [ ] Build entire compiler: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all compiler tests: `dotnet test src/Sharpy.Compiler.Tests`
-- [ ] All tests pass
-- [ ] Review all commits in this phase
+- [x] Build entire compiler: `dotnet build src/Sharpy.Compiler`
+- [x] Run all compiler tests: `dotnet test src/Sharpy.Compiler.Tests`
+- [x] All tests pass
+- [x] Review all commits in this phase
 
 ```
 git log --oneline -3
