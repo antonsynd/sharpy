@@ -27,9 +27,9 @@ These are NOT user-defined tagged unions — they are compiler-blessed core prim
 
 ### Steps
 
-- [ ] Create new file `Optional.cs` in `/src/Sharpy.Core/`
-- [ ] Add file header comment explaining this is the core Optional type
-- [ ] Implement `Optional<T>` as a `readonly struct`:
+- [x] Create new file `Optional.cs` in `/src/Sharpy.Core/`
+- [x] Add file header comment explaining this is the core Optional type
+- [x] Implement `Optional<T>` as a `readonly struct`:
   ```csharp
   namespace Sharpy;
   
@@ -94,7 +94,7 @@ These are NOT user-defined tagged unions — they are compiler-blessed core prim
   }
   ```
 
-- [ ] Add static helper class for type inference:
+- [x] Add static helper class for type inference:
   ```csharp
   /// <summary>
   /// Static factory methods for Optional. Enables Some(value) syntax with type inference.
@@ -105,7 +105,7 @@ These are NOT user-defined tagged unions — they are compiler-blessed core prim
   }
   ```
 
-- [ ] Verify the file compiles: `dotnet build src/Sharpy.Core/`
+- [x] Verify the file compiles: `dotnet build src/Sharpy.Core/`
 
 ### Commit
 ```
@@ -121,9 +121,9 @@ git commit -m "core: add Optional<T> struct for T? syntax support"
 
 ### Steps
 
-- [ ] Create new file `Result.cs` in `/src/Sharpy.Core/`
-- [ ] Add file header comment explaining this is the core Result type
-- [ ] Implement `Result<T, E>` as a `readonly struct`:
+- [x] Create new file `Result.cs` in `/src/Sharpy.Core/`
+- [x] Add file header comment explaining this is the core Result type
+- [x] Implement `Result<T, E>` as a `readonly struct`:
   ```csharp
   namespace Sharpy;
   
@@ -199,7 +199,7 @@ git commit -m "core: add Optional<T> struct for T? syntax support"
   }
   ```
 
-- [ ] Add static helper class for type inference:
+- [x] Add static helper class for type inference:
   ```csharp
   /// <summary>
   /// Static factory methods for Result. Enables Ok(value)/Err(error) syntax with type inference.
@@ -211,7 +211,7 @@ git commit -m "core: add Optional<T> struct for T? syntax support"
   }
   ```
 
-- [ ] Verify the file compiles: `dotnet build src/Sharpy.Core/`
+- [x] Verify the file compiles: `dotnet build src/Sharpy.Core/`
 
 ### Commit
 ```
@@ -227,8 +227,8 @@ git commit -m "core: add Result<T, E> struct for T !E syntax support"
 
 ### Steps
 
-- [ ] Create new test file `OptionalTests.cs`
-- [ ] Add tests for `Some` construction and properties:
+- [x] Create new test file `OptionalTests.cs`
+- [x] Add tests for `Some` construction and properties:
   ```csharp
   [Fact]
   public void Some_CreatesOptionalWithValue()
@@ -240,7 +240,7 @@ git commit -m "core: add Result<T, E> struct for T !E syntax support"
   }
   ```
 
-- [ ] Add tests for `Nothing` construction and properties:
+- [x] Add tests for `Nothing` construction and properties:
   ```csharp
   [Fact]
   public void Nothing_CreatesEmptyOptional()
@@ -251,7 +251,7 @@ git commit -m "core: add Result<T, E> struct for T !E syntax support"
   }
   ```
 
-- [ ] Add tests for `Unwrap` throwing on Nothing:
+- [x] Add tests for `Unwrap` throwing on Nothing:
   ```csharp
   [Fact]
   public void Unwrap_ThrowsOnNothing()
@@ -261,7 +261,7 @@ git commit -m "core: add Result<T, E> struct for T !E syntax support"
   }
   ```
 
-- [ ] Add tests for `UnwrapOr`:
+- [x] Add tests for `UnwrapOr`:
   ```csharp
   [Fact]
   public void UnwrapOr_ReturnValueWhenSome()
@@ -278,7 +278,7 @@ git commit -m "core: add Result<T, E> struct for T !E syntax support"
   }
   ```
 
-- [ ] Add tests for `UnwrapOrElse`:
+- [x] Add tests for `UnwrapOrElse`:
   ```csharp
   [Fact]
   public void UnwrapOrElse_DoesNotCallFuncWhenSome()
@@ -299,7 +299,7 @@ git commit -m "core: add Result<T, E> struct for T !E syntax support"
   }
   ```
 
-- [ ] Add tests for `Map`:
+- [x] Add tests for `Map`:
   ```csharp
   [Fact]
   public void Map_TransformsValueWhenSome()
@@ -319,7 +319,7 @@ git commit -m "core: add Result<T, E> struct for T !E syntax support"
   }
   ```
 
-- [ ] Add tests for equality:
+- [x] Add tests for equality:
   ```csharp
   [Fact]
   public void Equality_SomeValuesEqual()
@@ -347,7 +347,7 @@ git commit -m "core: add Result<T, E> struct for T !E syntax support"
   }
   ```
 
-- [ ] Add tests for static helper `Optional.Some`:
+- [x] Add tests for static helper `Optional.Some`:
   ```csharp
   [Fact]
   public void StaticSome_InfersTypeCorrectly()
@@ -358,7 +358,7 @@ git commit -m "core: add Result<T, E> struct for T !E syntax support"
   }
   ```
 
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests/ --filter OptionalTests`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests/ --filter OptionalTests`
 
 ### Commit
 ```
@@ -374,8 +374,8 @@ git commit -m "test: add unit tests for Optional<T>"
 
 ### Steps
 
-- [ ] Create new test file `ResultTests.cs`
-- [ ] Add tests for `Ok` construction and properties:
+- [x] Create new test file `ResultTests.cs`
+- [x] Add tests for `Ok` construction and properties:
   ```csharp
   [Fact]
   public void Ok_CreatesResultWithValue()
@@ -387,7 +387,7 @@ git commit -m "test: add unit tests for Optional<T>"
   }
   ```
 
-- [ ] Add tests for `Err` construction and properties:
+- [x] Add tests for `Err` construction and properties:
   ```csharp
   [Fact]
   public void Err_CreatesResultWithError()
@@ -399,7 +399,7 @@ git commit -m "test: add unit tests for Optional<T>"
   }
   ```
 
-- [ ] Add tests for `Unwrap` throwing on Err:
+- [x] Add tests for `Unwrap` throwing on Err:
   ```csharp
   [Fact]
   public void Unwrap_ThrowsOnErr()
@@ -410,7 +410,7 @@ git commit -m "test: add unit tests for Optional<T>"
   }
   ```
 
-- [ ] Add tests for `UnwrapErr` throwing on Ok:
+- [x] Add tests for `UnwrapErr` throwing on Ok:
   ```csharp
   [Fact]
   public void UnwrapErr_ThrowsOnOk()
@@ -420,7 +420,7 @@ git commit -m "test: add unit tests for Optional<T>"
   }
   ```
 
-- [ ] Add tests for `UnwrapOr`:
+- [x] Add tests for `UnwrapOr`:
   ```csharp
   [Fact]
   public void UnwrapOr_ReturnsValueWhenOk()
@@ -437,7 +437,7 @@ git commit -m "test: add unit tests for Optional<T>"
   }
   ```
 
-- [ ] Add tests for `UnwrapOrElse`:
+- [x] Add tests for `UnwrapOrElse`:
   ```csharp
   [Fact]
   public void UnwrapOrElse_DoesNotCallFuncWhenOk()
@@ -458,7 +458,7 @@ git commit -m "test: add unit tests for Optional<T>"
   }
   ```
 
-- [ ] Add tests for `Map`:
+- [x] Add tests for `Map`:
   ```csharp
   [Fact]
   public void Map_TransformsValueWhenOk()
@@ -479,7 +479,7 @@ git commit -m "test: add unit tests for Optional<T>"
   }
   ```
 
-- [ ] Add tests for `MapErr`:
+- [x] Add tests for `MapErr`:
   ```csharp
   [Fact]
   public void MapErr_PreservesValueWhenOk()
@@ -500,7 +500,7 @@ git commit -m "test: add unit tests for Optional<T>"
   }
   ```
 
-- [ ] Add tests for equality:
+- [x] Add tests for equality:
   ```csharp
   [Fact]
   public void Equality_OkValuesEqual()
@@ -527,7 +527,7 @@ git commit -m "test: add unit tests for Optional<T>"
   }
   ```
 
-- [ ] Run tests: `dotnet test src/Sharpy.Core.Tests/ --filter ResultTests`
+- [x] Run tests: `dotnet test src/Sharpy.Core.Tests/ --filter ResultTests`
 
 ### Commit
 ```
@@ -541,7 +541,7 @@ git commit -m "test: add unit tests for Result<T, E>"
 
 ### Steps
 
-- [ ] Update `/docs/language_specification/tagged_unions_optional.md`:
+- [x] Update `/docs/language_specification/tagged_unions_optional.md`:
   - Add "Implementation" section at the bottom:
     ```markdown
     ## Implementation Details
@@ -560,7 +560,7 @@ git commit -m "test: add unit tests for Result<T, E>"
     for convenient construction.
     ```
 
-- [ ] Update `/docs/language_specification/tagged_unions_result.md`:
+- [x] Update `/docs/language_specification/tagged_unions_result.md`:
   - Add "Implementation Details" section at the bottom:
     ```markdown
     ## Implementation Details
@@ -579,7 +579,7 @@ git commit -m "test: add unit tests for Result<T, E>"
     for convenient construction.
     ```
 
-- [ ] Update `/docs/language_specification/tagged_unions.md`:
+- [x] Update `/docs/language_specification/tagged_unions.md`:
   - Add clarifying note in "Standard Library Types" section:
     ```markdown
     > **Note:** `Optional[T]` and `Result[T, E]` are **core primitives** implemented as
@@ -602,11 +602,11 @@ git commit -m "docs: add implementation details for Optional and Result"
 
 Before marking Phase 1 complete:
 
-- [ ] `dotnet build src/Sharpy.Core/` succeeds
-- [ ] `dotnet test src/Sharpy.Core.Tests/ --filter OptionalTests` - all pass
-- [ ] `dotnet test src/Sharpy.Core.Tests/ --filter ResultTests` - all pass
-- [ ] Documentation updated with implementation details
-- [ ] All commits pushed
+- [x] `dotnet build src/Sharpy.Core/` succeeds
+- [x] `dotnet test src/Sharpy.Core.Tests/ --filter OptionalTests` - all pass
+- [x] `dotnet test src/Sharpy.Core.Tests/ --filter ResultTests` - all pass
+- [x] Documentation updated with implementation details
+- [x] All commits pushed
 
 ---
 
