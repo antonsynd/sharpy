@@ -1,0 +1,73 @@
+# Test: Higher-order functions with filtering, mapping, and custom predicates
+# Tests: lambda expressions, function parameters, list comprehensions, optional types, generics
+
+class NumberProcessor:
+    numbers: list[int]
+    
+    def __init__(self, nums: list[int]):
+        self.numbers = nums
+    
+    def apply_transform(self, transform_fn) -> list[int]:
+        return [transform_fn(n) for n in self.numbers]
+    
+    def filter_by(self, predicate_fn) -> list[int]:
+        return [n for n in self.numbers if predicate_fn(n)]
+    
+    def find_first(self, predicate_fn) -> int?:
+        for n in self.numbers:
+            if predicate_fn(n):
+                return Some(n)
+        return Nothing
+
+class Validator:
+    threshold: int
+    
+    def __init__(self, threshold: int):
+        self.threshold = threshold
+    
+    def is_above_threshold(self, value: int) -> bool:
+        return value > self.threshold
+    
+    def is_even(self, value: int) -> bool:
+        return value % 2 == 0
+
+def compose(f, g):
+    return lambda x: f(g(x))
+
+def main():
+    processor: NumberProcessor = NumberProcessor([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    validator: Validator = Validator(5)
+    
+    # Test basic transformation
+    doubled: list[int] = processor.apply_transform(lambda x: x * 2)
+    print(doubled[0])
+    print(doubled[4])
+    
+    # Test filtering with method reference pattern
+    above_threshold: list[int] = processor.filter_by(validator.is_above_threshold)
+    print(above_threshold[0])
+    print(len(above_threshold))
+    
+    # Test composition
+    square_then_add_ten = compose(lambda x: x + 10, lambda x: x * x)
+    print(square_then_add_ten(3))
+    
+    # Test find_first with optional return
+    first_even: int? = processor.find_first(validator.is_even)
+    print(first_even.unwrap())
+    
+    # Test chaining transformations
+    squared: list[int] = processor.apply_transform(lambda x: x * x)
+    even_squares: list[int] = NumberProcessor(squared).filter_by(validator.is_even)
+    print(even_squares[0])
+    print(len(even_squares))
+
+# EXPECTED OUTPUT:
+# 2
+# 10
+# 6
+# 5
+# 19
+# 2
+# 4
+# 5

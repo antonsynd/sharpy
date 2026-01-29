@@ -1,0 +1,18 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-29T00:06:27.368009",
+  "generated_code": "# Test: super().__init__() with employee hierarchy\n# Complexity: medium (inheritance chain, multiple fields, constructor chaining)\n\nclass Person:\n    name: str\n    age: int\n\n    def __init__(self, name: str, age: int):\n        self.name = name\n        self.age = age\n\n    def describe(self) -> None:\n        print(f\"Name: {self.name}\")\n        print(f\"Age: {self.age}\")\n\n\nclass Employee(Person):\n    employee_id: int\n    salary: float\n\n    def __init__(self, name: str, age: int, emp_id: int, salary: float):\n        super().__init__(name, age)\n        self.employee_id = emp_id\n        self.salary = salary\n\n    @override\n    def describe(self) -> None:\n        super().describe()\n        print(f\"ID: {self.employee_id}\")\n        print(f\"Salary: {self.salary}\")\n\n\ndef main():\n    emp = Employee(\"Alice\", 30, 12345, 75000.50)\n    emp.describe()\n    \n    if emp.salary > 70000.0:\n        print(\"High earner\")\n    else:\n        print(\"Standard earner\")\n\n# EXPECTED OUTPUT:\n# Name: Alice\n# Age: 30\n# ID: 12345\n# Salary: 75000.5\n# High earner",
+  "expected_output": "Name: Alice\nAge: 30\nID: 12345\nSalary: 75000.5\nHigh earner\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 27, column 5: Cannot override 'describe' because the base class method in 'Person' is not marked @virtual or @abstract. Add @virtual to the method in the base class.\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "super_init_call",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 7.002869367599487,
+  "compilation_duration": null,
+  "execution_duration": 1.1796159744262695,
+  "source_files": null
+}

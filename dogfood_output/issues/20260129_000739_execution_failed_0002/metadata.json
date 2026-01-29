@@ -1,0 +1,18 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-29T00:07:02.766617",
+  "generated_code": "# Test: Higher-order functions with filtering, mapping, and custom predicates\n# Tests: lambda expressions, function parameters, list comprehensions, optional types, generics\n\nclass NumberProcessor:\n    numbers: list[int]\n    \n    def __init__(self, nums: list[int]):\n        self.numbers = nums\n    \n    def apply_transform(self, transform_fn) -> list[int]:\n        return [transform_fn(n) for n in self.numbers]\n    \n    def filter_by(self, predicate_fn) -> list[int]:\n        return [n for n in self.numbers if predicate_fn(n)]\n    \n    def find_first(self, predicate_fn) -> int?:\n        for n in self.numbers:\n            if predicate_fn(n):\n                return Some(n)\n        return Nothing\n\nclass Validator:\n    threshold: int\n    \n    def __init__(self, threshold: int):\n        self.threshold = threshold\n    \n    def is_above_threshold(self, value: int) -> bool:\n        return value > self.threshold\n    \n    def is_even(self, value: int) -> bool:\n        return value % 2 == 0\n\ndef compose(f, g):\n    return lambda x: f(g(x))\n\ndef main():\n    processor: NumberProcessor = NumberProcessor([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])\n    validator: Validator = Validator(5)\n    \n    # Test basic transformation\n    doubled: list[int] = processor.apply_transform(lambda x: x * 2)\n    print(doubled[0])\n    print(doubled[4])\n    \n    # Test filtering with method reference pattern\n    above_threshold: list[int] = processor.filter_by(validator.is_above_threshold)\n    print(above_threshold[0])\n    print(len(above_threshold))\n    \n    # Test composition\n    square_then_add_ten = compose(lambda x: x + 10, lambda x: x * x)\n    print(square_then_add_ten(3))\n    \n    # Test find_first with optional return\n    first_even: int? = processor.find_first(validator.is_even)\n    print(first_even.unwrap())\n    \n    # Test chaining transformations\n    squared: list[int] = processor.apply_transform(lambda x: x * x)\n    even_squares: list[int] = NumberProcessor(squared).filter_by(validator.is_even)\n    print(even_squares[0])\n    print(len(even_squares))\n\n# EXPECTED OUTPUT:\n# 2\n# 10\n# 6\n# 5\n# 19\n# 2\n# 4\n# 5",
+  "expected_output": "2\n10\n6\n5\n19\n2\n4\n5\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 10, column 31: Parameter 'transform_fn' requires a type annotation\n  Semantic error at line 11, column 17: 'transform_fn' is not callable (type: <?>)\n  Semantic error at line 13, column 25: Parameter 'predicate_fn' requires a type annotation\n  Semantic error at line 14, column 44: 'predicate_fn' is not callable (type: <?>)\n  Semantic error at line 16, column 26: Parameter 'predicate_fn' requires a type annotation\n  Semantic error at line 18, column 16: 'predicate_fn' is not callable (type: <?>)\n  Semantic error at line 34, column 13: Parameter 'f' requires a type annotation\n  Semantic error at line 34, column 16: Parameter 'g' requires a type annotation\n  Semantic error at line 35, column 24: 'g' is not callable (type: <?>)\n  Semantic error at line 35, column 22: 'f' is not callable (type: <?>)\n  Semantic error at line 35, column 5: Cannot return type '(<?>) -> <?>' from function expecting 'None'\n  Semantic error at line 53, column 11: 'square_then_add_ten' is not callable (type: None)\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "higher_order_function",
+  "complexity": "complex",
+  "backend_used": "claude",
+  "generation_duration": 19.42413020133972,
+  "compilation_duration": null,
+  "execution_duration": 0.9959449768066406,
+  "source_files": null
+}

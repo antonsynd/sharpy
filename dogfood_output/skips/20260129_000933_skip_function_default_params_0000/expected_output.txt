@@ -1,0 +1,13 @@
+Host: localhost
+Port: 8080
+Timeout: 30s
+Retries: 3
+100
+Host: api.example.com
+Port: 443
+Timeout: 30s
+Retries: 3
+200
+60
+70
+130

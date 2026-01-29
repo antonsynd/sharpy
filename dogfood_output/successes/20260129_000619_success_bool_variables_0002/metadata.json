@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-29T00:05:56.143998",
+  "generated_code": "# Test boolean variables with validation system\n\nclass ValidationResult:\n    is_valid: bool\n    is_complete: bool\n    has_errors: bool\n    \n    def __init__(self, valid: bool, complete: bool, errors: bool):\n        self.is_valid = valid\n        self.is_complete = complete\n        self.has_errors = errors\n    \n    def is_approved(self) -> bool:\n        return self.is_valid and self.is_complete and not self.has_errors\n    \n    def needs_review(self) -> bool:\n        return not self.is_valid or self.has_errors\n\nclass FormValidator:\n    def validate_submission(self, has_name: bool, has_email: bool, has_consent: bool) -> ValidationResult:\n        valid = has_name and has_email\n        complete = has_name and has_email and has_consent\n        errors = not has_name or not has_email\n        \n        return ValidationResult(valid, complete, errors)\n\ndef main():\n    validator = FormValidator()\n    \n    result1 = validator.validate_submission(True, True, True)\n    print(result1.is_approved())\n    print(result1.needs_review())\n    \n    result2 = validator.validate_submission(True, False, True)\n    print(result2.is_approved())\n    print(result2.needs_review())\n    \n    result3 = validator.validate_submission(True, True, False)\n    print(result3.is_approved())\n    print(result3.needs_review())\n\n# EXPECTED OUTPUT:\n# True\n# False\n# False\n# True\n# False\n# False",
+  "expected_output": "True\nFalse\nFalse\nTrue\nFalse\nFalse\n",
+  "actual_output": "True\nFalse\nFalse\nTrue\nFalse\nFalse",
+  "feature_focus": "bool_variables",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 9.00400424003601,
+  "execution_duration": 1.462317943572998,
+  "source_files": null
+}

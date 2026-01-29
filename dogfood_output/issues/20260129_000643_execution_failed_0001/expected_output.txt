@@ -1,0 +1,5 @@
+Name: Alice
+Age: 30
+ID: 12345
+Salary: 75000.5
+High earner
