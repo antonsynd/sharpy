@@ -253,6 +253,11 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **Default parameters**: `def foo(x: int, y: int = 5) -> int:`
 - **Keyword arguments**: `foo(x=10, y=20)`
 - **Return**: `return value`
+- **Function type parameters**: Use `(ParamType) -> ReturnType` syntax for callable parameters
+  - `() -> int` (no params, returns int)
+  - `(int) -> str` (one param)
+  - `(int, str) -> bool` (two params)
+  - Example: `def apply(func: (int) -> int, x: int) -> int:`
 
 #### Classes (0.1.6)
 - **Class definition**: `class ClassName:`
@@ -267,13 +272,27 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **Super calls**: `super().__init__(args)` in `__init__`, `super().method()` in `@override` methods
 - **Abstract classes**: `@abstract` decorator on class
 - **Abstract methods**: `@abstract` decorator + `...` body
-- **Virtual methods**: `@virtual` decorator
-- **Override methods**: `@override` decorator
+- **Virtual methods**: `@virtual` decorator — **REQUIRED** on any method that will be overridden
+- **Override methods**: `@override` decorator — MUST match a `@virtual` or `@abstract` method in base class
 - **Final classes/methods**: `@final` decorator
 - **Interfaces**: `interface IName:` with method signatures using `...`
 - **Multiple interfaces**: `class Foo(IBar, IBaz):`
 - **Access modifiers**: `@private`, `@protected`, `@internal` (default is public)
 - **IMPORTANT**: Interface types have NO concrete members - you can only call methods declared in the interface. Do NOT access fields like `.value` through interface types.
+- **IMPORTANT**: Unlike Python, `@virtual` is REQUIRED on base class methods that subclasses override. Without `@virtual`, using `@override` in a subclass will cause a compile error.
+
+Example:
+```python
+class Animal:
+    @virtual
+    def speak(self) -> str:
+        return "..."
+
+class Dog(Animal):
+    @override
+    def speak(self) -> str:
+        return "Woof!"
+```
 
 #### Structs & Enums (0.1.8)
 - **Structs**: `struct Name:` (value types, copied on assignment)
@@ -327,8 +346,9 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 
 #### Lambda Expressions (0.1.14)
 - **Lambdas**: `lambda x: x * 2`, `lambda a, b: a + b`
-- **Higher-order functions**: Passing lambdas to functions
+- **Higher-order functions**: Passing lambdas to functions that have typed parameters
 - **Type inference**: Lambda parameter types are inferred from the expected function type context
+- **IMPORTANT**: The receiving function MUST declare its parameter with a function type: `def apply(fn: (int) -> int) -> int:`
 
 #### Optional Types (0.1.15)
 - **Optional type**: `x: int? = Some(42)`, `y: int? = Nothing`
@@ -383,6 +403,36 @@ than the existing tests shown above. Be creative! Some ideas:
 {complexity_guide.get(complexity, complexity_guide["simple"])}
 
 {examples_section}
+
+## Correct Sharpy Pattern Examples
+
+```python
+# Higher-order function with typed parameter
+def apply_twice(fn: (int) -> int, x: int) -> int:
+    return fn(fn(x))
+
+# Class with virtual/override pattern
+class Shape:
+    @virtual
+    def area(self) -> float:
+        return 0.0
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, r: float):
+        self.radius = r
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius ** 2
+
+# Optional types
+def find_first(items: list[int]) -> int?:
+    if len(items) > 0:
+        return Some(items[0])
+    return Nothing
+```
 
 ## Output Format
 
@@ -494,7 +544,7 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 
 ### Allowed Features (same as single-file, phases 0.1.0-0.1.18)
 - Variables, functions, classes, structs, enums, interfaces
-- Inheritance, abstract/virtual/override methods
+- Inheritance: `@virtual` is REQUIRED on base class methods that will be overridden, `@override` on subclass methods
 - Nullable types, type aliases, basic generics
 - F-strings: `f"Hello {{name}}"`
 - Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals
@@ -506,6 +556,29 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.map(fn)`
 - Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
 - Try expression: `try risky_call()` (wraps in `Result[T, Exception]`)
+
+### ⚠️ Key Patterns for Multi-File Projects
+
+When using inheritance across modules, `@virtual` is REQUIRED on base class methods:
+
+```python
+# === In base_module.spy ===
+class Animal:
+    @virtual
+    def speak(self) -> str:
+        return "..."
+
+# === In derived_module.spy ===
+from base_module import Animal
+
+class Dog(Animal):
+    @override
+    def speak(self) -> str:
+        return "Woof!"
+```
+
+When using higher-order functions, declare function type parameters explicitly:
+`def apply(fn: (int) -> int, x: int) -> int:`
 
 ### ❌ FORBIDDEN in module system:
 - **NO relative imports**: `from .module import x` - NOT SUPPORTED
