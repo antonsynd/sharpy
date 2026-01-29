@@ -209,6 +209,21 @@ def process_user_input(input: str) -> int !str:
 *Implementation*
 - *🔄 Lowered - Struct-based tagged union (no heap allocation). See [Tagged Unions](tagged_unions.md) for implementation details.*
 
+## Implementation Details
+
+`Result[T, E]` is implemented as a C# `readonly struct` in `Sharpy.Core`:
+
+```csharp
+public readonly struct Result<T, E>
+{
+    // Three fields: the value, the error, and an isOk flag
+    // Zero heap allocation
+}
+```
+
+The static helpers `Ok(value)` and `Err(error)` are available at module scope
+for convenient construction.
+
 ## See Also
 
 - [Tagged Unions](tagged_unions.md) - General tagged union syntax and implementation

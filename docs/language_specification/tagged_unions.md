@@ -32,6 +32,11 @@ Sharpy provides `Result[T, E]` and `Optional[T]` in the standard library with sp
 
 Both are **structs** (no heap allocation).
 
+> **Note:** `Optional[T]` and `Result[T, E]` are **core primitives** implemented as
+> structs for zero-allocation performance. They are distinct from user-defined
+> tagged unions (declared with `union`), which use class-based representation
+> to support recursive types and more than two cases.
+
 These types have special syntax and operators. See:
 - [Try Expressions](try_expressions.md) - Special syntax for Result types
 - [Maybe Expressions](maybe_expressions.md) - Special syntax for Optional types

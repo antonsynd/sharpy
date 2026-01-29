@@ -200,6 +200,21 @@ See [Maybe Expressions](maybe_expressions.md) for details on the `maybe` keyword
 *Implementation*
 - *🔄 Lowered - Struct-based tagged union (no heap allocation). See [Tagged Unions](tagged_unions.md) for implementation details.*
 
+## Implementation Details
+
+`Optional[T]` is implemented as a C# `readonly struct` in `Sharpy.Core`:
+
+```csharp
+public readonly struct Optional<T>
+{
+    // Two fields: the value and a hasValue flag
+    // Zero heap allocation
+}
+```
+
+The static helpers `Some(value)` and `Nothing` are available at module scope
+for convenient construction.
+
 ## See Also
 
 - [Tagged Unions](tagged_unions.md) - General tagged union syntax and implementation
