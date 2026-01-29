@@ -231,7 +231,7 @@ public class OperatorValidatorV2 : SemanticValidatorBase
 
     private void ValidateNullCoalesce(BinaryOp binOp, SemanticType leftType, SemanticType rightType)
     {
-        if (leftType is not NullableType)
+        if (leftType is not NullableType and not OptionalType)
         {
             AddError(_context,
                 $"Left operand of null coalescing operator must be nullable, but got '{leftType.GetDisplayName()}'",

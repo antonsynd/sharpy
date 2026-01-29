@@ -481,16 +481,22 @@ public partial class TypeChecker
         SemanticType memberLookupType = objectType;
         if (memberAccess.IsNullConditional)
         {
-            // Null conditional can only be used on nullable types
-            if (objectType is not NullableType nullableObjectType)
+            // Null conditional can only be used on nullable/optional types
+            if (objectType is NullableType nullableObjectType)
+            {
+                memberLookupType = nullableObjectType.UnderlyingType;
+            }
+            else if (objectType is OptionalType optionalObjectType)
+            {
+                memberLookupType = optionalObjectType.UnderlyingType;
+            }
+            else
             {
                 AddError(
                     $"Null conditional operator '?.' can only be used on nullable types, but got '{objectType.GetDisplayName()}'",
                     memberAccess.LineStart, memberAccess.ColumnStart);
                 return SemanticType.Unknown;
             }
-            // Use the underlying type for member lookup
-            memberLookupType = nullableObjectType.UnderlyingType;
         }
 
         // Handle module member access (e.g., config.MAX_SIZE, utils.helper())
@@ -1485,8 +1491,13 @@ public partial class TypeChecker
             return targetType;
         }
 
-        // Get the underlying target type (strip nullable wrapper if present)
-        var underlyingTargetType = targetType is NullableType nullable ? nullable.UnderlyingType : targetType;
+        // Get the underlying target type (strip nullable/optional wrapper if present)
+        var underlyingTargetType = targetType switch
+        {
+            NullableType nullable => nullable.UnderlyingType,
+            OptionalType optional => optional.UnderlyingType,
+            _ => targetType
+        };
 
         // Validate the coercion
         ValidateTypeCoercion(coercion, sourceType, underlyingTargetType);

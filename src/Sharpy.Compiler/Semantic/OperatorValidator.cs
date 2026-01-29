@@ -94,15 +94,8 @@ public class OperatorValidator
             case BinaryOperator.NullCoalesce:
                 // Null coalescing operator: left ?? right
                 // Returns left if it's not null, otherwise returns right
-                // Left operand must be nullable, right operand should be assignable to the non-nullable version of left
-                if (left is not NullableType nullableLeft)
-                {
-                    AddError(
-                        $"Left operand of null coalescing operator must be nullable, but got '{left.GetDisplayName()}'",
-                        line, column);
-                    result = SemanticType.Unknown;
-                }
-                else
+                // Left operand must be nullable/optional, right operand should be assignable to the non-nullable version of left
+                if (left is NullableType nullableLeft)
                 {
                     // Result type is the non-nullable version of the left operand
                     // (or stays nullable if right is also nullable)
@@ -112,6 +105,14 @@ public class OperatorValidator
                         // If right is nullable, result is nullable, otherwise non-nullable
                         result = right is NullableType ? left : leftNonNullable;
                     }
+                    else if (right is NullableType nr && nr.UnderlyingType.IsAssignableTo(leftNonNullable))
+                    {
+                        result = left;
+                    }
+                    else if (right is OptionalType or2 && or2.UnderlyingType.IsAssignableTo(leftNonNullable))
+                    {
+                        result = left;
+                    }
                     else
                     {
                         AddError(
@@ -119,6 +120,36 @@ public class OperatorValidator
                             line, column);
                         result = SemanticType.Unknown;
                     }
+                }
+                else if (left is OptionalType optionalLeft)
+                {
+                    var leftNonOptional = optionalLeft.UnderlyingType;
+                    if (right.IsAssignableTo(leftNonOptional))
+                    {
+                        result = right is NullableType or OptionalType ? left : leftNonOptional;
+                    }
+                    else if (right is NullableType nr2 && nr2.UnderlyingType.IsAssignableTo(leftNonOptional))
+                    {
+                        result = left;
+                    }
+                    else if (right is OptionalType or3 && or3.UnderlyingType.IsAssignableTo(leftNonOptional))
+                    {
+                        result = left;
+                    }
+                    else
+                    {
+                        AddError(
+                            $"Right operand of null coalescing operator must be assignable to '{leftNonOptional.GetDisplayName()}', but got '{right.GetDisplayName()}'",
+                            line, column);
+                        result = SemanticType.Unknown;
+                    }
+                }
+                else
+                {
+                    AddError(
+                        $"Left operand of null coalescing operator must be nullable, but got '{left.GetDisplayName()}'",
+                        line, column);
+                    result = SemanticType.Unknown;
                 }
                 break;
 

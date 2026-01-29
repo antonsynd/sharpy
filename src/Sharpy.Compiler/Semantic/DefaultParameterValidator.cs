@@ -82,8 +82,8 @@ public class DefaultParameterValidator
         {
             var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
 
-            // None is only valid for nullable types
-            if (paramType is not NullableType && paramType is not UnknownType)
+            // None is only valid for nullable/optional types
+            if (paramType is not NullableType and not OptionalType && paramType is not UnknownType)
             {
                 AddError(
                     $"Cannot use 'None' as default value for non-nullable parameter '{param.Name}' of type '{paramType.GetDisplayName()}' in function '{functionName}'. " +

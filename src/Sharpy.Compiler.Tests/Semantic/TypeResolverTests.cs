@@ -69,21 +69,21 @@ public class TypeResolverTests
     }
 
     [Fact]
-    public void ResolvesNullableTypes()
+    public void ResolvesOptionalTypes()
     {
         var (resolver, _, _) = CreateResolver();
 
-        var nullableIntAnnotation = new TypeAnnotation
+        var optionalIntAnnotation = new TypeAnnotation
         {
             Name = "int",
             IsOptional = true
         };
 
-        var type = resolver.ResolveTypeAnnotation(nullableIntAnnotation);
+        var type = resolver.ResolveTypeAnnotation(optionalIntAnnotation);
 
-        type.Should().BeOfType<NullableType>();
-        var nullableType = (NullableType)type;
-        nullableType.UnderlyingType.Should().Be(SemanticType.Int);
+        type.Should().BeOfType<OptionalType>();
+        var optionalType = (OptionalType)type;
+        optionalType.UnderlyingType.Should().Be(SemanticType.Int);
         resolver.Errors.Should().BeEmpty();
     }
 
@@ -148,7 +148,7 @@ public class TypeResolverTests
     }
 
     [Fact]
-    public void ExpandsNullableTypeAlias()
+    public void ExpandsOptionalTypeAlias()
     {
         var (resolver, symbolTable, _) = CreateResolver();
 
@@ -161,14 +161,14 @@ public class TypeResolverTests
         };
         symbolTable.Define(aliasSymbol);
 
-        // Use the alias with nullable modifier: UserId?
+        // Use the alias with optional modifier: UserId?
         var annotation = new TypeAnnotation { Name = "UserId", IsOptional = true };
         var type = resolver.ResolveTypeAnnotation(annotation);
 
-        // Should expand to int?
-        type.Should().BeOfType<NullableType>();
-        var nullableType = (NullableType)type;
-        nullableType.UnderlyingType.Should().Be(SemanticType.Int);
+        // Should expand to Optional[int]
+        type.Should().BeOfType<OptionalType>();
+        var optionalType = (OptionalType)type;
+        optionalType.UnderlyingType.Should().Be(SemanticType.Int);
         resolver.Errors.Should().BeEmpty();
     }
 
@@ -278,10 +278,10 @@ public class TypeResolverTests
         var annotation = new TypeAnnotation { Name = "MaybeUserId" };
         var type = resolver.ResolveTypeAnnotation(annotation);
 
-        // Should expand to int?
-        type.Should().BeOfType<NullableType>();
-        var nullableType = (NullableType)type;
-        nullableType.UnderlyingType.Should().Be(SemanticType.Int);
+        // Should expand to Optional[int]
+        type.Should().BeOfType<OptionalType>();
+        var optionalType = (OptionalType)type;
+        optionalType.UnderlyingType.Should().Be(SemanticType.Int);
         resolver.Errors.Should().BeEmpty();
     }
 

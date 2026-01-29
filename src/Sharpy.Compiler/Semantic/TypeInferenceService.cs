@@ -91,17 +91,38 @@ public class TypeInferenceService
 
     private SemanticType? InferNullCoalesceType(SemanticType left, SemanticType right)
     {
-        if (left is not NullableType nullableLeft)
-            return null; // Invalid - left must be nullable
-
-        var leftNonNullable = nullableLeft.UnderlyingType;
-        if (right.IsAssignableTo(leftNonNullable))
+        if (left is NullableType nullableLeft)
         {
-            // If right is nullable, result is nullable, otherwise non-nullable
-            return right is NullableType ? left : leftNonNullable;
+            var leftNonNullable = nullableLeft.UnderlyingType;
+            if (right.IsAssignableTo(leftNonNullable))
+            {
+                // If right is nullable, result is nullable, otherwise non-nullable
+                return right is NullableType ? left : leftNonNullable;
+            }
+            // Right may also be nullable/optional with compatible underlying type
+            if (right is NullableType nullableRight && nullableRight.UnderlyingType.IsAssignableTo(leftNonNullable))
+                return left;
+            if (right is OptionalType optionalRight && optionalRight.UnderlyingType.IsAssignableTo(leftNonNullable))
+                return left;
+            return null; // Invalid - right not assignable
         }
 
-        return null; // Invalid - right not assignable
+        if (left is OptionalType optionalLeft)
+        {
+            var leftNonOptional = optionalLeft.UnderlyingType;
+            if (right.IsAssignableTo(leftNonOptional))
+            {
+                return right is NullableType or OptionalType ? left : leftNonOptional;
+            }
+            // Right may also be nullable/optional with compatible underlying type
+            if (right is NullableType nullableRight2 && nullableRight2.UnderlyingType.IsAssignableTo(leftNonOptional))
+                return left;
+            if (right is OptionalType optionalRight2 && optionalRight2.UnderlyingType.IsAssignableTo(leftNonOptional))
+                return left;
+            return null; // Invalid - right not assignable
+        }
+
+        return null; // Invalid - left must be nullable/optional
     }
 
     private SemanticType? TryInferBuiltinBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
