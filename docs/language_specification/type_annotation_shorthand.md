@@ -140,25 +140,67 @@ matrix: int[][] = ...   # Array of arrays
 list_array: [int][] = ...  # Array of list[int]
 ```
 
-## Nullability
+## Nullability and Result Syntax
 
-All shorthand forms support the `?` suffix for nullable types:
+### Optional (`T?`)
+
+The `T?` suffix creates an `Optional[T]` (safe tagged union):
 
 ```python
-# Nullable list
-items: [int]? = None
+name: str? = Some("Alice")
+empty: int? = Nothing
+```
 
-# Nullable set
-unique: {str}? = None
+All shorthand forms support the `?` suffix:
 
-# Nullable dict
-lookup: {str: int}? = None
+```python
+items: [int]? = Nothing       # Optional[list[int]]
+unique: {str}? = Nothing      # Optional[set[str]]
+lookup: {str: int}? = Nothing # Optional[dict[str, int]]
+pair: (int, str)? = Nothing   # Optional[tuple[int, str]]
+buffer: int[]? = Nothing      # Optional[int[]]
+```
 
-# Nullable tuple
-pair: (int, str)? = None
+### C# Nullable (`T | None`)
 
-# Nullable array
-buffer: int[]? = None
+The `T | None` suffix marks a type as C# nullable (for .NET interop):
+
+```python
+raw: str | None = dotnet_api()
+```
+
+**Note:** `| None` is the only valid inline union. Free unions like `int | str` are not supported. Use `union` declarations for custom sum types.
+
+All shorthand forms support `| None`:
+
+```python
+items: [int] | None = None      # list[int] | None (C# nullable)
+lookup: {str: int} | None = None
+data: int[] | None = None
+```
+
+### Result Type (`T !E`)
+
+The `T !E` suffix creates a `Result[T, E]`:
+
+```python
+def parse(s: str) -> int !ValueError:
+    ...
+```
+
+All shorthand forms support `!E`:
+
+```python
+parsed: [int] !Error = Ok([1, 2, 3])
+lookup: {str: int} !IOError = Err(IOError("file not found"))
+```
+
+### Precedence
+
+`!E` binds tighter than `| None`:
+
+```python
+int !ValueError | None  # Result[int, ValueError] | None
 ```
 
 ## Nesting
