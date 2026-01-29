@@ -71,6 +71,30 @@ success: Result[int, str] = Ok(42)
 failure: Result[int, str] = Err("Something went wrong")
 ```
 
+## Constructor Shorthand
+
+When the expected type is known, you can use `Ok(value)` and `Err(error)`
+without qualifying with the type name:
+
+```python
+# With type annotation - shorthand works
+x: int !str = Ok(42)
+y: int !str = Err("failed")
+
+# Function return - shorthand works
+def parse(s: str) -> int !str:
+    if not s:
+        return Err("empty string")
+    return Ok(42)
+
+# Without type context - error (type cannot be inferred)
+x = Ok(42)    # Error: Cannot infer type for 'Ok()'
+x = Err("e")  # Error: Cannot infer type for 'Err()'
+```
+
+The compiler infers the full type from context. The shorthand is equivalent to
+calling `Result<T, E>.Ok(value)` or `Result<T, E>.Err(error)`.
+
 ## Pattern Matching
 
 Use pattern matching to handle both success and error cases:

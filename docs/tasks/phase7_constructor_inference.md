@@ -75,9 +75,9 @@ The type checker needs an "expected type" to flow down during expression checkin
 
 ### Steps
 
-- [ ] Open `src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs`
-- [ ] Find the method that checks function calls (e.g., `CheckFunctionCall` or `VisitFunctionCall`)
-- [ ] Add logic to recognize Optional/Result constructors:
+- [x] Open `src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs`
+- [x] Find the method that checks function calls (e.g., `CheckFunctionCall` or `VisitFunctionCall`)
+- [x] Add logic to recognize Optional/Result constructors:
 
 ```csharp
 private SemanticType CheckFunctionCall(FunctionCall call, SemanticType? expectedType)
@@ -150,8 +150,8 @@ private SemanticType CheckFunctionCall(FunctionCall call, SemanticType? expected
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs
@@ -168,8 +168,8 @@ git commit -m "semantic: add constructor recognition for Some/Ok/Err"
 
 `Nothing` is not a function call — it's just an identifier. Handle it separately:
 
-- [ ] Find the method that checks identifiers (e.g., `CheckIdentifier` or `VisitIdentifier`)
-- [ ] Add logic to recognize `Nothing`:
+- [x] Find the method that checks identifiers (e.g., `CheckIdentifier` or `VisitIdentifier`)
+- [x] Add logic to recognize `Nothing`:
 
 ```csharp
 private SemanticType CheckIdentifier(Identifier id, SemanticType? expectedType)
@@ -199,8 +199,8 @@ private SemanticType CheckIdentifier(Identifier id, SemanticType? expectedType)
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs
@@ -217,8 +217,8 @@ git commit -m "semantic: add Nothing identifier recognition for Optional"
 
 The names `Some`, `Nothing`, `Ok`, `Err` need to be recognized by the name resolver as special built-ins that the type checker handles.
 
-- [ ] Find where built-in names are registered
-- [ ] Add these names as "special" built-ins (not regular functions):
+- [x] Find where built-in names are registered
+- [x] Add these names as "special" built-ins (not regular functions):
 
 ```csharp
 // In BuiltinRegistry or similar
@@ -234,7 +234,7 @@ public bool IsTaggedUnionConstructor(string name)
     => TaggedUnionConstructors.Contains(name);
 ```
 
-- [ ] Update NameResolver to not error on these names when they're not found in scope:
+- [x] Update NameResolver to not error on these names when they're not found in scope:
 
 ```csharp
 // In NameResolver, when name is not found
@@ -253,8 +253,8 @@ If the architecture doesn't easily support this, consider:
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs src/Sharpy.Compiler/Semantic/NameResolver.cs
@@ -269,8 +269,8 @@ git commit -m "semantic: register tagged union constructor names as built-ins"
 
 ### Steps
 
-- [ ] Create new file `src/Sharpy.Compiler.Tests/Semantic/ConstructorInferenceTests.cs`
-- [ ] Add comprehensive tests:
+- [x] Create new file `src/Sharpy.Compiler.Tests/Semantic/ConstructorInferenceTests.cs`
+- [x] Add comprehensive tests:
 
 ```csharp
 using Xunit;
@@ -486,8 +486,8 @@ def foo(x: int? = Some(0)) -> None:
 
 ### Verification
 
-- [ ] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter ConstructorInferenceTests`
-- [ ] All tests pass (or expected failures for not-yet-implemented features)
+- [x] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter ConstructorInferenceTests`
+- [x] All tests pass (or expected failures for not-yet-implemented features)
 
 ```
 git add src/Sharpy.Compiler.Tests/Semantic/ConstructorInferenceTests.cs
@@ -502,7 +502,7 @@ git commit -m "test: add tests for tagged union constructor inference"
 
 ### Steps
 
-- [ ] Add a section about constructor shorthand:
+- [x] Add a section about constructor shorthand:
   ```markdown
   ## Constructor Shorthand
 
@@ -527,7 +527,7 @@ git commit -m "test: add tests for tagged union constructor inference"
 
 **File:** `docs/language_specification/tagged_unions_result.md`
 
-- [ ] Add similar section for Result:
+- [x] Add similar section for Result:
   ```markdown
   ## Constructor Shorthand
 
@@ -554,8 +554,8 @@ git commit -m "test: add tests for tagged union constructor inference"
 
 ### Verification
 
-- [ ] Read through updated documentation
-- [ ] Verify examples are consistent with implementation
+- [x] Read through updated documentation
+- [x] Verify examples are consistent with implementation
 
 ```
 git add docs/language_specification/tagged_unions_optional.md docs/language_specification/tagged_unions_result.md
@@ -566,10 +566,10 @@ git commit -m "spec: document constructor shorthand for Optional and Result"
 
 ## Final Verification
 
-- [ ] Build entire compiler: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all semantic tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Semantic"`
-- [ ] All tests pass
-- [ ] Review all commits in this phase
+- [x] Build entire compiler: `dotnet build src/Sharpy.Compiler`
+- [x] Run all semantic tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Semantic"`
+- [x] All tests pass
+- [x] Review all commits in this phase
 
 ```
 git log --oneline -5

@@ -101,6 +101,31 @@ union Optional[T]:
                 return Nothing
 ```
 
+## Constructor Shorthand
+
+When the expected type is known, you can use `Some(value)` and `Nothing`
+without qualifying with the type name:
+
+```python
+# With type annotation - shorthand works
+x: int? = Some(42)
+y: int? = Nothing
+
+# Function return - shorthand works
+def get_value() -> int?:
+    return Some(42)
+
+# Default parameter - shorthand works
+def foo(x: int? = Nothing) -> None:
+    pass
+
+# Without type context - error (type cannot be inferred)
+x = Some(42)   # Error: Cannot infer type for 'Some()'
+```
+
+The compiler infers the full type from context. The shorthand is equivalent to
+calling `Optional<T>.Some(value)` or using `Optional<T>.Nothing`.
+
 ## Comparison: `T?` (Optional) vs `T | None` (C# Nullable)
 
 | Feature | `T?` / `Optional[T]` | `T \| None` (C# Nullable) |
