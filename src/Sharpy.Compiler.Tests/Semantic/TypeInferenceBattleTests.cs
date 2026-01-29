@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class TypeInferenceBattleTests
 {
-    private (Module, TypeChecker) CompileAndCheck(string source)
+    private (Module, TypeChecker, SemanticInfo) CompileAndCheck(string source)
     {
         var lexer = new Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
         var tokens = lexer.TokenizeAll();
@@ -30,7 +30,20 @@ public class TypeInferenceBattleTests
         var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance);
 
-        return (module, typeChecker);
+        return (module, typeChecker, semanticInfo);
+    }
+
+    /// <summary>
+    /// Asserts the invariant: if no semantic errors, no expression types should be Unknown.
+    /// </summary>
+    private void AssertNoUnknownTypesWhenNoErrors(TypeChecker typeChecker, SemanticInfo semanticInfo)
+    {
+        if (!typeChecker.Errors.Any())
+        {
+            semanticInfo.HasUnknownExpressionTypes().Should().BeFalse(
+                "when there are no semantic errors, no expression types should be Unknown (<?>) — " +
+                "this indicates a silent type inference failure");
+        }
     }
 
     #region Variable Assignment Inference
@@ -42,7 +55,7 @@ public class TypeInferenceBattleTests
 def main():
     x = 42
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -54,7 +67,7 @@ def main():
 def main():
     x = ""hello""
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -67,7 +80,7 @@ def main():
     x = True
     y = False
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -79,7 +92,7 @@ def main():
 def main():
     x = 3.14
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -92,7 +105,7 @@ def main():
     x: auto = 42
     y: auto = ""world""
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -105,7 +118,7 @@ def main():
     x = 42
     x = 99
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -122,7 +135,7 @@ def takes_str(s: str) -> None:
 def main():
     takes_str(str(42))
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -137,7 +150,7 @@ def takes_int(n: int) -> None:
 def main():
     takes_int(int(3.14))
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -153,7 +166,7 @@ def main():
 def main():
     items = [1, 2, 3]
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -165,7 +178,7 @@ def main():
 def main():
     items: list[int] = [1, 2, 3]
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -177,7 +190,7 @@ def main():
 def main():
     d = {""a"": 1, ""b"": 2}
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -189,7 +202,7 @@ def main():
 def main():
     s = {1, 2, 3}
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -206,7 +219,7 @@ def main():
     items = [1, 2, 3]
     doubled = [x * 2 for x in items]
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -219,7 +232,7 @@ def main():
     items = [1, 2, 3, 4, 5]
     evens = [x for x in items if x % 2 == 0]
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -232,7 +245,7 @@ def main():
     items = [1, 2, 3]
     d = {x: x * 2 for x in items}
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -248,7 +261,7 @@ def main():
 def main():
     result = 3 + 4
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -260,7 +273,7 @@ def main():
 def main():
     result = 3 * 2.5
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -272,7 +285,7 @@ def main():
 def main():
     result = ""hello"" + "" world""
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -284,7 +297,7 @@ def main():
 def main():
     result = ""ha"" * 3
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -298,7 +311,7 @@ def main():
     b = [3, 4]
     result = a + b
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -310,7 +323,7 @@ def main():
 def main():
     result = 3 < 5
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -323,7 +336,7 @@ def main():
     x = 5
     result = 1 < x < 10
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -336,7 +349,7 @@ def main():
     x: int? = 42
     result = x ?? 0
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -352,7 +365,7 @@ def main():
 def main():
     x = 42 if True else 0
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -370,7 +383,7 @@ def main():
     for x in items:
         y = x + 1
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -383,7 +396,7 @@ def main():
     for ch in ""hello"":
         y = ch + ""!""
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -397,7 +410,7 @@ def main():
     for key in d:
         y = key + ""!""
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -413,7 +426,7 @@ def main():
 def add(a: int, b: int) -> int:
     return a + b
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -425,7 +438,7 @@ def add(a: int, b: int) -> int:
 def get_name() -> int:
     return ""hello""
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().NotBeEmpty();
     }
@@ -437,7 +450,7 @@ def get_name() -> int:
 def do_something():
     x = 42
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -456,7 +469,7 @@ def identity[T](value: T) -> T:
 def main():
     x = identity(42)
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -471,7 +484,7 @@ def pair[T, U](first: T, second: U) -> T:
 def main():
     x = pair(42, ""hello"")
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -487,7 +500,7 @@ def main():
     items = [1, 2, 3]
     x = first(items)
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -512,7 +525,7 @@ def main():
     p = Point(1, 2)
     val = p.x
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -529,7 +542,7 @@ def main():
     calc = Calculator()
     result = calc.add(3, 4)
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -545,7 +558,7 @@ def main():
 def main():
     x: int? = Some(42)
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -557,7 +570,7 @@ def main():
 def main():
     x: int? = Nothing
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -573,7 +586,7 @@ def main():
 def main():
     x: int !str = Ok(42)
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -585,7 +598,7 @@ def main():
 def main():
     x: int !str = Err(""failed"")
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -601,7 +614,7 @@ def main():
 def main():
     result = try 42
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -614,7 +627,7 @@ def main():
 def process(x: int | None) -> None:
     result = maybe x
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -630,7 +643,7 @@ def process(x: int | None) -> None:
 def main():
     t = (1, ""hello"", True)
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -642,7 +655,7 @@ def main():
 def main():
     a, b = (1, ""hello"")
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -664,7 +677,7 @@ def triple(x: int) -> int:
 def main():
     result = double(triple(7))
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -676,7 +689,7 @@ def main():
 def main():
     matrix: list[list[int]] = [[1, 2], [3, 4]]
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -695,7 +708,7 @@ def apply(f: (int, int) -> int, a: int, b: int) -> int:
 def main():
     result = apply(lambda x, y: x + y, 3, 4)
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -710,7 +723,7 @@ def test(f: (int) -> bool, x: int) -> bool:
 def main():
     result = test(lambda n: n > 0, 5)
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -727,7 +740,7 @@ def main():
     x = 10
     x += 5
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -740,7 +753,7 @@ def main():
     s = ""hello""
     s += "" world""
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -758,7 +771,7 @@ def process(x: int?) -> int:
         return x
     return 0
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -775,7 +788,7 @@ def main():
     items = [1, 2, 3]
     x = items[0]
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
     }
@@ -788,9 +801,103 @@ def main():
     d = {""a"": 1, ""b"": 2}
     x = d[""a""]
 ";
-        var (module, typeChecker) = CompileAndCheck(source);
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region UnknownType Invariant — No Silent Type Leaks
+
+    [Fact]
+    public void Invariant_SimpleArithmetic_NoUnknownTypes()
+    {
+        var source = @"
+def main():
+    x = 3 + 4
+    y = x * 2
+";
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.Errors.Should().BeEmpty();
+        AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
+    }
+
+    [Fact]
+    public void Invariant_FunctionCallChain_NoUnknownTypes()
+    {
+        var source = @"
+def double(x: int) -> int:
+    return x * 2
+
+def main():
+    result = double(21)
+";
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.Errors.Should().BeEmpty();
+        AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
+    }
+
+    [Fact]
+    public void Invariant_ListOperations_NoUnknownTypes()
+    {
+        var source = @"
+def main():
+    items = [1, 2, 3]
+    first = items[0]
+    total = first + 1
+";
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.Errors.Should().BeEmpty();
+        AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
+    }
+
+    [Fact]
+    public void Invariant_Conditional_NoUnknownTypes()
+    {
+        var source = @"
+def main():
+    x = 42 if True else 0
+    y = x > 10
+";
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.Errors.Should().BeEmpty();
+        AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
+    }
+
+    [Fact]
+    public void Invariant_ForLoop_NoUnknownTypes()
+    {
+        var source = @"
+def main():
+    items = [1, 2, 3]
+    for x in items:
+        y = x + 1
+";
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.Errors.Should().BeEmpty();
+        AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
+    }
+
+    [Fact]
+    public void Invariant_LambdaWithContext_NoUnknownTypes()
+    {
+        var source = @"
+def apply(f: (int) -> int, x: int) -> int:
+    return f(x)
+
+def main():
+    result = apply(lambda n: n * 2, 5)
+";
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.Errors.Should().BeEmpty();
+        AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
     }
 
     #endregion

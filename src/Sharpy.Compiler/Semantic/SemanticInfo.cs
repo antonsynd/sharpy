@@ -114,4 +114,13 @@ public class SemanticInfo
     {
         return _inferredTypeArguments.TryGetValue(call, out var types) ? types : null;
     }
+
+    /// <summary>
+    /// Returns true if any expression type in the semantic info is UnknownType.
+    /// Used by tests to verify the invariant: if no semantic errors, no types should be unknown.
+    /// </summary>
+    public bool HasUnknownExpressionTypes()
+    {
+        return _expressionTypes.Values.Any(t => t is UnknownType);
+    }
 }
