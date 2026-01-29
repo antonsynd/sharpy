@@ -65,9 +65,39 @@ public partial class TypeChecker
             // Normal identifier lookup will follow and find the self parameter
         }
 
+        // Handle 'Nothing' — tagged union constructor for OptionalType
+        if (id.Name == "Nothing")
+        {
+            if (_expectedType is OptionalType)
+            {
+                return _expectedType;
+            }
+            else if (_expectedType != null)
+            {
+                AddError($"'Nothing' can only be assigned to Optional types, not '{_expectedType.GetDisplayName()}'",
+                    id.LineStart, id.ColumnStart);
+                return SemanticType.Unknown;
+            }
+            else
+            {
+                AddError("Cannot infer type for 'Nothing' without a type annotation. Add a type annotation like 'x: int? = Nothing'",
+                    id.LineStart, id.ColumnStart);
+                return SemanticType.Unknown;
+            }
+        }
+
         var symbol = _symbolTable.Lookup(id.Name);
         if (symbol == null)
         {
+            // Don't error on tagged union constructors — they're handled by CheckFunctionCall
+            if (_symbolTable.BuiltinRegistry.IsTaggedUnionConstructor(id.Name))
+            {
+                // These are function-call constructors, not bare identifiers.
+                // If we get here, it means the user wrote e.g. 'x = Some' without calling it.
+                AddError($"'{id.Name}' must be called as a function, e.g. '{id.Name}(value)'",
+                    id.LineStart, id.ColumnStart);
+                return SemanticType.Unknown;
+            }
             AddError($"Undefined identifier '{id.Name}'",
                 id.LineStart, id.ColumnStart);
             return SemanticType.Unknown;
@@ -687,6 +717,14 @@ public partial class TypeChecker
 
     private SemanticType CheckFunctionCall(FunctionCall call)
     {
+        // Check if this is a tagged union constructor shorthand (Some/Ok/Err)
+        if (call.Function is Identifier constructorId && call.Arguments.Length == 1 && call.KeywordArguments.Length == 0)
+        {
+            var constructorResult = TryCheckTaggedUnionConstructor(constructorId, call);
+            if (constructorResult != null)
+                return constructorResult;
+        }
+
         // Check if this is a null conditional method call (obj?.method())
         bool isNullConditionalCall = call.Function is MemberAccess { IsNullConditional: true };
 
@@ -1157,6 +1195,83 @@ public partial class TypeChecker
             return null;
         typeArgs.Add(singleTypeArg);
         return typeArgs;
+    }
+
+    /// <summary>
+    /// Tries to check a function call as a tagged union constructor (Some/Ok/Err).
+    /// Returns the resolved type if successful, or null if this is not a constructor call.
+    /// </summary>
+    private SemanticType? TryCheckTaggedUnionConstructor(Identifier constructorId, FunctionCall call)
+    {
+        var name = constructorId.Name;
+
+        if (name == "Some")
+        {
+            if (_expectedType is OptionalType opt)
+            {
+                var argType = CheckExpression(call.Arguments[0]);
+                if (!IsAssignable(argType, opt.UnderlyingType))
+                {
+                    AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Optional underlying type '{opt.UnderlyingType.GetDisplayName()}'",
+                        call.LineStart, call.ColumnStart);
+                }
+                return _expectedType;
+            }
+            else if (_expectedType == null && _symbolTable.Lookup("Some") == null)
+            {
+                // No expected type and no user-defined 'Some' — error
+                AddError("Cannot infer type for 'Some()' without a type annotation. Add a type annotation like 'x: int? = Some(value)'",
+                    call.LineStart, call.ColumnStart);
+                // Still check the argument to avoid cascading errors
+                CheckExpression(call.Arguments[0]);
+                return SemanticType.Unknown;
+            }
+            // Fall through to normal function call if there's a user-defined 'Some' or expectedType is not OptionalType
+        }
+
+        if (name == "Ok")
+        {
+            if (_expectedType is ResultType result)
+            {
+                var argType = CheckExpression(call.Arguments[0]);
+                if (!IsAssignable(argType, result.OkType))
+                {
+                    AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Result Ok type '{result.OkType.GetDisplayName()}'",
+                        call.LineStart, call.ColumnStart);
+                }
+                return _expectedType;
+            }
+            else if (_expectedType == null && _symbolTable.Lookup("Ok") == null)
+            {
+                AddError("Cannot infer type for 'Ok()' without a type annotation. Add a type annotation like 'x: int !str = Ok(value)'",
+                    call.LineStart, call.ColumnStart);
+                CheckExpression(call.Arguments[0]);
+                return SemanticType.Unknown;
+            }
+        }
+
+        if (name == "Err")
+        {
+            if (_expectedType is ResultType result)
+            {
+                var argType = CheckExpression(call.Arguments[0]);
+                if (!IsAssignable(argType, result.ErrorType))
+                {
+                    AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Result Error type '{result.ErrorType.GetDisplayName()}'",
+                        call.LineStart, call.ColumnStart);
+                }
+                return _expectedType;
+            }
+            else if (_expectedType == null && _symbolTable.Lookup("Err") == null)
+            {
+                AddError("Cannot infer type for 'Err()' without a type annotation. Add a type annotation like 'x: int !str = Err(error)'",
+                    call.LineStart, call.ColumnStart);
+                CheckExpression(call.Arguments[0]);
+                return SemanticType.Unknown;
+            }
+        }
+
+        return null; // Not a tagged union constructor — fall through to normal handling
     }
 
     private SemanticType CheckListLiteral(ListLiteral list)

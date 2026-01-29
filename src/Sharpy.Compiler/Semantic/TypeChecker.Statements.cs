@@ -146,7 +146,11 @@ public partial class TypeChecker
 
         // Check target and value types
         var targetType = CheckExpression(assignment.Target);
+        // Set expected type for constructor inference (Some/Nothing/Ok/Err)
+        var previousExpectedType = _expectedType;
+        _expectedType = targetType is UnknownType ? null : targetType;
         var valueType = CheckExpression(assignment.Value);
+        _expectedType = previousExpectedType;
 
         // Handle augmented assignment operators (+=, -=, *=, /=, //=, %=, **=, &=, |=, ^=, <<=, >>=)
         if (assignment.Operator != AssignmentOperator.Assign)
@@ -206,7 +210,11 @@ public partial class TypeChecker
 
         if (varDecl.InitialValue != null)
         {
+            // Set expected type for constructor inference (Some/Nothing/Ok/Err)
+            var previousExpectedType = _expectedType;
+            _expectedType = declaredType is UnknownType ? null : declaredType;
             var initType = CheckExpression(varDecl.InitialValue);
+            _expectedType = previousExpectedType;
 
             // Handle type inference for 'auto'
             if (declaredType is UnknownType)
@@ -309,7 +317,11 @@ public partial class TypeChecker
 
         if (returnStmt.Value != null)
         {
+            // Set expected type for constructor inference (Some/Nothing/Ok/Err)
+            var previousExpectedType = _expectedType;
+            _expectedType = _currentFunctionReturnType;
             var returnType = CheckExpression(returnStmt.Value);
+            _expectedType = previousExpectedType;
             if (!IsAssignable(returnType, _currentFunctionReturnType))
             {
                 AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",

@@ -92,6 +92,21 @@ public class DefaultParameterValidator
                     param.ColumnStart);
             }
         }
+
+        // Check Nothing assignment to non-optional types
+        if (defaultValue is Identifier nothingId && nothingId.Name == "Nothing")
+        {
+            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+
+            if (paramType is not OptionalType && paramType is not UnknownType)
+            {
+                AddError(
+                    $"Cannot use 'Nothing' as default value for non-optional parameter '{param.Name}' of type '{paramType.GetDisplayName()}' in function '{functionName}'. " +
+                    $"Use '{paramType.GetDisplayName()}?' to make the parameter optional.",
+                    param.LineStart,
+                    param.ColumnStart);
+            }
+        }
     }
 
     /// <summary>
@@ -167,11 +182,16 @@ public class DefaultParameterValidator
                 IsCompileTimeConstant(cond.ThenValue) &&
                 IsCompileTimeConstant(cond.ElseValue),
 
-            // Identifiers referencing const declarations are compile-time constants
-            Identifier id => IsConstReference(id),
+            // Identifiers referencing const declarations or Nothing are compile-time constants
+            Identifier id => id.Name == "Nothing" || IsConstReference(id),
 
-            // Function calls are generally NOT compile-time constants
-            // (unless they are special constant constructors, but we'll be strict here)
+            // Some(const), Ok(const), Err(const) are compile-time constants
+            FunctionCall call when call.Function is Identifier fid
+                && fid.Name is "Some" or "Ok" or "Err"
+                && call.Arguments.Length == 1
+                => IsCompileTimeConstant(call.Arguments[0]),
+
+            // Other function calls are generally NOT compile-time constants
             FunctionCall => false,
 
             // Member access to enum members is a compile-time constant
