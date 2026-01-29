@@ -84,10 +84,44 @@ namespace Sharpy.Core
 
     /// <summary>
     /// Static factory methods for Result. Enables Ok(value)/Err(error) syntax with type inference.
+    /// Also provides Try() for wrapping expressions that may throw.
     /// </summary>
     public static class Result
     {
         public static Result<T, E> Ok<T, E>(T value) => Result<T, E>.Ok(value);
         public static Result<T, E> Err<T, E>(E error) => Result<T, E>.Err(error);
+
+        /// <summary>
+        /// Wraps a function call in a try/catch, returning Ok on success or Err on exception.
+        /// Used by the 'try' expression: try expr → Result[T, Exception].
+        /// </summary>
+        public static Result<T, Exception> Try<T>(Func<T> func)
+        {
+            try
+            {
+                return Result<T, Exception>.Ok(func());
+            }
+            catch (Exception ex)
+            {
+                return Result<T, Exception>.Err(ex);
+            }
+        }
+
+        /// <summary>
+        /// Wraps a function call in a try/catch for a specific exception type.
+        /// Used by the 'try[E]' expression: try[ValueError] expr → Result[T, ValueError].
+        /// Other exception types are not caught and propagate normally.
+        /// </summary>
+        public static Result<T, E> Try<T, E>(Func<T> func) where E : Exception
+        {
+            try
+            {
+                return Result<T, E>.Ok(func());
+            }
+            catch (E ex)
+            {
+                return Result<T, E>.Err(ex);
+            }
+        }
     }
 }

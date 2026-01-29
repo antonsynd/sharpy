@@ -146,4 +146,50 @@ public class ResultTests
         var result = Result<int, string>.Err("failed");
         Assert.Equal("Err(failed)", result.ToString());
     }
+
+    #region Result.Try
+
+    [Fact]
+    public void Try_SuccessfulExpression_ReturnsOk()
+    {
+        var result = Result.Try(() => int.Parse("42"));
+        Assert.True(result.IsOk);
+        Assert.Equal(42, result.Unwrap());
+    }
+
+    [Fact]
+    public void Try_ThrowingExpression_ReturnsErr()
+    {
+        var result = Result.Try(() => int.Parse("not a number"));
+        Assert.True(result.IsErr);
+        Assert.IsType<FormatException>(result.UnwrapErr());
+    }
+
+    [Fact]
+    public void Try_Typed_MatchingException_ReturnsErr()
+    {
+        var result = Result.Try<int, FormatException>(() => int.Parse("not a number"));
+        Assert.True(result.IsErr);
+        Assert.IsType<FormatException>(result.UnwrapErr());
+    }
+
+    [Fact]
+    public void Try_Typed_NonMatchingException_Propagates()
+    {
+        Assert.Throws<FormatException>(() =>
+        {
+            // InvalidOperationException doesn't match FormatException, so it should propagate
+            Result.Try<int, InvalidOperationException>(() => int.Parse("not a number"));
+        });
+    }
+
+    [Fact]
+    public void Try_Typed_SuccessfulExpression_ReturnsOk()
+    {
+        var result = Result.Try<int, FormatException>(() => int.Parse("42"));
+        Assert.True(result.IsOk);
+        Assert.Equal(42, result.Unwrap());
+    }
+
+    #endregion
 }
