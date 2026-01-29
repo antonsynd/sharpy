@@ -57,3 +57,28 @@ Use parentheses when you need to limit what `maybe` captures:
 # Only wrap the dict lookup, then use Optional methods
 x = (maybe d.get("key")).unwrap_or(0)
 ```
+
+## Implementation Notes
+
+The `maybe` expression is a **semantic pass-through** at the C# code generation level. Both `NullableType` (`T | None`) and `OptionalType` (`T?`) map to C# `T?`, so the generated code is identical — the value passes through unchanged.
+
+The type checker enforces the semantic distinction:
+1. Validates that the operand is a `NullableType` (not `OptionalType` or a non-nullable type)
+2. Returns an `OptionalType` wrapping the underlying type
+3. This prevents unsafe nullable values from being used where safe Optionals are expected
+
+```python
+# Sharpy source
+def convert(raw: str | None) -> str?:
+    return maybe raw
+```
+
+```csharp
+// Generated C# — maybe is a pass-through
+public static string? Convert(string? raw)
+{
+    return raw;
+}
+```
+
+*Implementation: Semantic pass-through — type checker converts NullableType to OptionalType, code generator emits the operand unchanged.*

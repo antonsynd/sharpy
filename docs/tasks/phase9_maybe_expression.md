@@ -32,26 +32,26 @@ The parser may already handle `maybe` expressions from existing code. **This mus
 
 ### Steps
 
-- [ ] **Search for `MaybeExpression` AST node:**
+- [x] **Search for `MaybeExpression` AST node:**
   ```bash
   grep -r "MaybeExpression" src/Sharpy.Compiler --include="*.cs"
   ```
   - If found in `Parser/Ast/Expression.cs` or similar → proceed
   - If NOT found → you must implement the AST node and parser support first (see "If Not Implemented" below)
 
-- [ ] **Search for `maybe` keyword in parser:**
+- [x] **Search for `maybe` keyword in parser:**
   ```bash
   grep -r "maybe" src/Sharpy.Compiler/Parser --include="*.cs"
   ```
   - Check if there's parsing logic for `maybe` keyword
 
-- [ ] **Search for `TokenType.Maybe` in lexer:**
+- [x] **Search for `TokenType.Maybe` in lexer:**
   ```bash
   grep -r "Maybe" src/Sharpy.Compiler/Lexer --include="*.cs"
   ```
   - Verify `maybe` is recognized as a keyword
 
-- [ ] Run existing parser tests for `maybe` if any exist
+- [x] Run existing parser tests for `maybe` if any exist
 
 ### If NOT Implemented (Add This First)
 
@@ -102,8 +102,8 @@ public void Parse_MaybeExpression_CreatesMaybeNode()
 
 ### Verification
 
-- [ ] Parsing works for `maybe expr`
-- [ ] No changes needed (or fix if broken)
+- [x] Parsing works for `maybe expr`
+- [x] No changes needed (or fix if broken)
 
 ```
 # Only commit if changes were needed
@@ -119,8 +119,8 @@ git commit -m "fix: ensure maybe expression parsing works"
 
 ### Steps
 
-- [ ] Find the method that type-checks expressions
-- [ ] Add handling for `MaybeExpression`:
+- [x] Find the method that type-checks expressions
+- [x] Add handling for `MaybeExpression`:
 
 ```csharp
 private SemanticType CheckMaybeExpression(MaybeExpression expr)
@@ -164,8 +164,8 @@ private SemanticType CheckMaybeExpression(MaybeExpression expr)
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs
@@ -180,8 +180,8 @@ git commit -m "semantic: implement type checking for maybe expression"
 
 ### Steps
 
-- [ ] Find the expression generation method
-- [ ] Add handling for `MaybeExpression`:
+- [x] Find the expression generation method
+- [x] Add handling for `MaybeExpression`:
 
 ```csharp
 private ExpressionSyntax GenerateMaybeExpression(MaybeExpression expr, SemanticInfo info)
@@ -286,8 +286,8 @@ private ExpressionSyntax GenerateMaybeExpressionOptimized(MaybeExpression expr, 
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs
@@ -302,7 +302,7 @@ git commit -m "codegen: implement maybe expression code generation"
 
 ### Steps
 
-- [ ] Create new file with comprehensive tests:
+- [x] Create new file with comprehensive tests:
 
 ```csharp
 using Xunit;
@@ -468,8 +468,8 @@ def get_value(dict: dict[str, int] | None, key: str) -> int?:
 
 ### Verification
 
-- [ ] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter MaybeExpressionTests`
-- [ ] All tests pass
+- [x] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter MaybeExpressionTests`
+- [x] All tests pass
 
 ```
 git add src/Sharpy.Compiler.Tests/Integration/MaybeExpressionTests.cs
@@ -484,9 +484,9 @@ git commit -m "test: add integration tests for maybe expression"
 
 ### Steps
 
-- [ ] Review the existing documentation
-- [ ] Ensure it accurately reflects the implementation
-- [ ] Add implementation notes:
+- [x] Review the existing documentation
+- [x] Ensure it accurately reflects the implementation
+- [x] Add implementation notes:
 
 ```markdown
 ## Implementation Notes
@@ -514,8 +514,8 @@ raw.HasValue ? Optional<int>.Some(raw.Value) : Optional<int>.Nothing
 
 ### Verification
 
-- [ ] Read through the documentation
-- [ ] Ensure examples match implementation behavior
+- [x] Read through the documentation
+- [x] Ensure examples match implementation behavior
 
 ```
 git add docs/language_specification/maybe_expressions.md
@@ -554,8 +554,8 @@ Optional.FromNullable(raw)
 
 ### Verification
 
-- [ ] Build Sharpy.Core: `dotnet build src/Sharpy.Core`
-- [ ] Update code generator to use helper (if implemented)
+- [x] Build Sharpy.Core: `dotnet build src/Sharpy.Core`
+- [x] Update code generator to use helper (if implemented)
 
 ```
 git add src/Sharpy.Core/Optional.cs
@@ -566,10 +566,10 @@ git commit -m "core: add FromNullable helper to Optional"
 
 ## Final Verification
 
-- [ ] Build entire solution: `dotnet build`
-- [ ] Run all tests: `dotnet test`
-- [ ] All tests pass
-- [ ] Review all commits in this phase
+- [x] Build entire solution: `dotnet build`
+- [x] Run all tests: `dotnet test`
+- [x] All tests pass
+- [x] Review all commits in this phase
 
 ```
 git log --oneline -5
