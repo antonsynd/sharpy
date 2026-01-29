@@ -1307,7 +1307,8 @@ class DogfoodOrchestrator:
             # Pattern matching (not implemented)
             (r"\bmatch\s+\w+\s*:", "pattern matching (not implemented)"),
             # Tuple unpacking (may have issues)
-            (r"\w+\s*,\s*\w+\s*=", "tuple unpacking (not fully supported)"),
+            # Anchored to line start to avoid matching keyword arguments like func(a=1, b=2)
+            (r"^\w+\s*,\s*\w+\s*=[^=]", "tuple unpacking (not fully supported)"),
             # Note: Ternary expressions ARE supported in Sharpy
         ]
 
