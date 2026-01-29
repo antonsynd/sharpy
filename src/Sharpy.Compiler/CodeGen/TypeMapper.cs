@@ -64,6 +64,20 @@ public class TypeMapper
             // Handle generic types
             GenericType generic => MapGenericSemanticType(generic),
 
+            // Handle optional types (T? → Optional<T>)
+            OptionalType opt => GenericName(Identifier("Optional"))
+                .WithTypeArgumentList(
+                    TypeArgumentList(SingletonSeparatedList(MapSemanticType(opt.UnderlyingType)))),
+
+            // Handle result types (T !E → Result<T, E>)
+            ResultType res => GenericName(Identifier("Result"))
+                .WithTypeArgumentList(
+                    TypeArgumentList(SeparatedList(new[]
+                    {
+                        MapSemanticType(res.OkType),
+                        MapSemanticType(res.ErrorType)
+                    }))),
+
             // Handle nullable types
             NullableType nullable => NullableType(MapSemanticType(nullable.UnderlyingType)),
 
