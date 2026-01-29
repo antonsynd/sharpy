@@ -972,7 +972,9 @@ def get_test_uniqueness_prompt(
                 content = content[:300] + "\n# ... (truncated)"
             existing_section += f"### {name}\n```python\n{content}\n```\n\n"
     else:
-        existing_section = "## Existing Tests\n\nNo existing tests in this category yet.\n"
+        existing_section = (
+            "## Existing Tests\n\nNo existing tests in this category yet.\n"
+        )
 
     return f"""Evaluate whether this Sharpy test provides unique value compared to existing tests.
 

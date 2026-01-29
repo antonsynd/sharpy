@@ -718,9 +718,7 @@ class DogfoodOrchestrator:
 
             # Auto-convert to test fixture if enabled
             if self.auto_convert and success_dir:
-                await self._auto_convert_if_unique(
-                    success_dir, code, feature_focus
-                )
+                await self._auto_convert_if_unique(success_dir, code, feature_focus)
 
         print("\n✓ Iteration completed successfully!", file=sys.stderr)
         return IterationResult(IterationStatus.SUCCESS, success_dir=success_dir)
