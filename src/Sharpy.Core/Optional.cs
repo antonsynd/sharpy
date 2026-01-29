@@ -76,5 +76,17 @@ namespace Sharpy.Core
     public static class Optional
     {
         public static Optional<T> Some<T>(T value) => Optional<T>.Some(value);
+
+        /// <summary>
+        /// Converts a nullable reference type to Optional. Used by the 'maybe' expression.
+        /// </summary>
+        public static Optional<T> From<T>(T? value) where T : class
+            => value is null ? Optional<T>.Nothing : Optional<T>.Some(value);
+
+        /// <summary>
+        /// Converts a nullable value type to Optional. Used by the 'maybe' expression.
+        /// </summary>
+        public static Optional<T> From<T>(T? value) where T : struct
+            => value.HasValue ? Optional<T>.Some(value.Value) : Optional<T>.Nothing;
     }
 }
