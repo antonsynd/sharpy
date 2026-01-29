@@ -739,18 +739,57 @@ public partial class TypeChecker
             _superInitCalled = true;
         }
 
-        // Check arguments and collect their types
-        var argTypes = new List<SemanticType>();
-        foreach (var arg in call.Arguments)
+        // Try to resolve the function symbol early for constructor inference on arguments.
+        // For simple identifier calls (foo(Some(42))), we can look up the function before
+        // checking arguments, allowing _expectedType to be set per-parameter.
+        FunctionSymbol? earlyFuncSymbol = null;
+        if (call.Function is Identifier earlyId)
         {
-            argTypes.Add(CheckExpression(arg));
+            var earlySymbol = _symbolTable.Lookup(earlyId.Name);
+            if (earlySymbol is FunctionSymbol fs && !fs.IsGeneric)
+            {
+                // Only use early resolution for non-generic, non-overloaded functions.
+                // Generic functions need argument types first for inference.
+                // Overloaded builtins need argument types for resolution.
+                var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(earlyId.Name);
+                if (overloads == null || overloads.Count <= 1 || !overloads.Contains(fs))
+                {
+                    earlyFuncSymbol = fs;
+                }
+            }
+        }
+
+        // Check arguments and collect their types
+        // When we have an early function symbol, set _expectedType per-parameter
+        // to enable constructor inference (Some/Ok/Err) in function arguments.
+        var argTypes = new List<SemanticType>();
+        for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
+        {
+            var previousExpectedType = _expectedType;
+            if (earlyFuncSymbol != null && argIdx < earlyFuncSymbol.Parameters.Count)
+            {
+                var paramType = earlyFuncSymbol.Parameters[argIdx].Type;
+                _expectedType = paramType is UnknownType ? null : paramType;
+            }
+            argTypes.Add(CheckExpression(call.Arguments[argIdx]));
+            _expectedType = previousExpectedType;
         }
 
         // Check keyword arguments and collect their types
         var kwargTypes = new Dictionary<string, SemanticType>();
         foreach (var kwarg in call.KeywordArguments)
         {
+            var previousExpectedType = _expectedType;
+            if (earlyFuncSymbol != null)
+            {
+                var param = earlyFuncSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
+                if (param != null)
+                {
+                    _expectedType = param.Type is UnknownType ? null : param.Type;
+                }
+            }
             kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
+            _expectedType = previousExpectedType;
         }
 
         // Total argument count includes both positional and keyword arguments

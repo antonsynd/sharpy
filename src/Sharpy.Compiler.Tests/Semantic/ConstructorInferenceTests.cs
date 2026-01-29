@@ -279,6 +279,106 @@ def foo(x: int? = Nothing) -> None:
 
     #endregion
 
+    #region Function Argument Inference
+
+    [Fact]
+    public void Some_AsFunctionArgument_InfersFromParameterType()
+    {
+        var source = @"
+def process(opt: int?) -> None:
+    pass
+
+def main() -> None:
+    process(Some(42))
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Nothing_AsFunctionArgument_InfersFromParameterType()
+    {
+        var source = @"
+def process(opt: int?) -> None:
+    pass
+
+def main() -> None:
+    process(Nothing)
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Ok_AsFunctionArgument_InfersFromParameterType()
+    {
+        var source = @"
+def handle(result: int !str) -> None:
+    pass
+
+def main() -> None:
+    handle(Ok(42))
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Err_AsFunctionArgument_InfersFromParameterType()
+    {
+        var source = @"
+def handle(result: int !str) -> None:
+    pass
+
+def main() -> None:
+    handle(Err(""error""))
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Some_AsKeywordArgument_InfersFromParameterType()
+    {
+        var source = @"
+def process(opt: int?) -> None:
+    pass
+
+def main() -> None:
+    process(opt=Some(42))
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Some_AsSecondArgument_InfersFromParameterType()
+    {
+        var source = @"
+def process(name: str, opt: int?) -> None:
+    pass
+
+def main() -> None:
+    process(""test"", Some(42))
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    #endregion
+
     #region Mixed Usage
 
     [Fact]
