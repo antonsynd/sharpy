@@ -317,6 +317,92 @@ def main():
         Assert.Contains(": Exception", result.GeneratedCSharp ?? "");
     }
 
+    [Fact]
+    public void ImportedClass_CanAccessInheritedMethods()
+    {
+        // Tests that when a derived class is imported, its inherited methods
+        // are accessible through the resolved BaseType relationship.
+        using var tempDir = new TempDirectory();
+
+        tempDir.CreateFile("shape.spy", @"
+class Shape:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @virtual
+    def describe(self) -> str:
+        return f""Shape: {self.name}""
+");
+
+        tempDir.CreateFile("rectangle.spy", @"
+from shape import Shape
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, w: float, h: float):
+        super().__init__(""Rectangle"")
+        self.width = w
+        self.height = h
+");
+
+        tempDir.CreateFile("main.spy", @"
+from rectangle import Rectangle
+
+def main() -> None:
+    r = Rectangle(5.0, 3.0)
+    print(r.describe())
+");
+
+        var result = CompileMultiFile(tempDir.Path, "main.spy");
+
+        Assert.Empty(result.Errors);
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+    }
+
+    [Fact]
+    public void ImportedClass_CanBePassedToBaseTypeParameter()
+    {
+        // Tests that an imported derived class can be passed where the base type is expected.
+        using var tempDir = new TempDirectory();
+
+        tempDir.CreateFile("shape.spy", @"
+class Shape:
+    pass
+
+def process_shape(s: Shape) -> str:
+    return ""processed""
+");
+
+        tempDir.CreateFile("circle.spy", @"
+from shape import Shape
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, r: float):
+        self.radius = r
+");
+
+        tempDir.CreateFile("main.spy", @"
+from shape import process_shape
+from circle import Circle
+
+def main() -> None:
+    c = Circle(5.0)
+    result: str = process_shape(c)
+    print(result)
+");
+
+        var result = CompileMultiFile(tempDir.Path, "main.spy");
+
+        Assert.Empty(result.Errors);
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+    }
+
     /// <summary>
     /// Helper method to compile a multi-file Sharpy project.
     /// </summary>
