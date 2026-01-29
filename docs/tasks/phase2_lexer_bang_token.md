@@ -21,10 +21,10 @@ This phase adds the `Bang` (`!`) token to the lexer, which is needed for the `T 
 
 ### Steps
 
-- [ ] Open `src/Sharpy.Compiler/Lexer/Token.cs`
-- [ ] Find the `TokenType` enum
-- [ ] Locate the "Operators - Comparison" section (around line 100-107)
-- [ ] Add `Bang` token after `NotEqual`:
+- [x] Open `src/Sharpy.Compiler/Lexer/Token.cs`
+- [x] Find the `TokenType` enum
+- [x] Locate the "Operators - Comparison" section (around line 100-107)
+- [x] Add `Bang` token after `NotEqual`:
   ```csharp
   // Operators - Comparison
   Equal,          // ==
@@ -32,12 +32,12 @@ This phase adds the `Bang` (`!`) token to the lexer, which is needed for the `T 
   Bang,           // ! (standalone, for T !E result type syntax)
   Less,           // <
   ```
-- [ ] Save the file
+- [x] Save the file
 
 ### Verification
 
-- [ ] Build the compiler: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build the compiler: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Lexer/Token.cs
@@ -52,10 +52,10 @@ git commit -m "lexer: add Bang token type for T !E syntax"
 
 ### Steps
 
-- [ ] Open `src/Sharpy.Compiler/Lexer/Lexer.cs`
-- [ ] Find the method that handles operator characters (likely `ScanToken` or similar)
-- [ ] Locate the case that handles `!` (currently only produces `NotEqual` for `!=`)
-- [ ] Modify to handle standalone `!`:
+- [x] Open `src/Sharpy.Compiler/Lexer/Lexer.cs`
+- [x] Find the method that handles operator characters (likely `ScanToken` or similar)
+- [x] Locate the case that handles `!` (currently only produces `NotEqual` for `!=`)
+- [x] Modify to handle standalone `!`:
   ```csharp
   case '!':
       if (Peek() == '=')
@@ -65,9 +65,9 @@ git commit -m "lexer: add Bang token type for T !E syntax"
       }
       return MakeToken(TokenType.Bang, "!");
   ```
-- [ ] Ensure `Peek()` checks the next character without consuming it
-- [ ] Ensure `Advance()` moves to the next character
-- [ ] Ensure `MakeToken()` creates a token with proper position tracking
+- [x] Ensure `Peek()` checks the next character without consuming it
+- [x] Ensure `Advance()` moves to the next character
+- [x] Ensure `MakeToken()` creates a token with proper position tracking
 
 ### Important Notes
 
@@ -77,8 +77,8 @@ git commit -m "lexer: add Bang token type for T !E syntax"
 
 ### Verification
 
-- [ ] Build the compiler: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build the compiler: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Lexer/Lexer.cs
@@ -93,14 +93,14 @@ git commit -m "lexer: implement Bang token lexing for standalone !"
 
 ### Steps
 
-- [ ] Create new file `src/Sharpy.Compiler.Tests/Lexer/BangTokenTests.cs`
-- [ ] Add test class `BangTokenTests`
-- [ ] Add using statements:
+- [x] Create new file `src/Sharpy.Compiler.Tests/Lexer/BangTokenTests.cs`
+- [x] Add test class `BangTokenTests`
+- [x] Add using statements:
   ```csharp
   using Sharpy.Compiler.Lexer;
   using Xunit;
   ```
-- [ ] Add tests:
+- [x] Add tests:
 
 #### Test: Standalone Bang Token
 ```csharp
@@ -194,8 +194,8 @@ public void Lexer_ComplexTypeWithBang_TokenizesCorrectly()
 
 ### Verification
 
-- [ ] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter BangTokenTests`
-- [ ] All tests pass
+- [x] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter BangTokenTests`
+- [x] All tests pass
 
 ```
 git add src/Sharpy.Compiler.Tests/Lexer/BangTokenTests.cs
@@ -208,9 +208,9 @@ git commit -m "test: add unit tests for Bang token lexing"
 
 ### Steps
 
-- [ ] Run all lexer tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Lexer"`
-- [ ] Verify no regressions in existing tests
-- [ ] If any tests fail, investigate and fix
+- [x] Run all lexer tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Lexer"`
+- [x] Verify no regressions in existing tests
+- [x] If any tests fail, investigate and fix
 
 ### Common Issues to Watch For
 
@@ -220,8 +220,8 @@ git commit -m "test: add unit tests for Bang token lexing"
 
 ### Verification
 
-- [ ] All lexer tests pass
-- [ ] No regressions introduced
+- [x] All lexer tests pass
+- [x] No regressions introduced
 
 ```
 # No commit needed if no fixes required
@@ -234,10 +234,10 @@ git commit -m "fix: resolve test regressions from Bang token addition"
 
 ## Final Verification
 
-- [ ] Build entire compiler: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all lexer tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Lexer"`
-- [ ] All tests pass
-- [ ] Review all commits in this phase
+- [x] Build entire compiler: `dotnet build src/Sharpy.Compiler`
+- [x] Run all lexer tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Lexer"`
+- [x] All tests pass
+- [x] Review all commits in this phase
 
 ```
 git log --oneline -3
