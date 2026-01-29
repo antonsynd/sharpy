@@ -85,10 +85,27 @@ public class TypeResolver
             }
         }
 
-        // Handle nullable types (already handled for type aliases in ExpandTypeAlias)
-        // For non-alias types, apply nullable modifier here
+        // Handle T !E (Result type) — must come before T? and | None
+        if (annotation.ErrorType != null && result != SemanticType.Unknown)
+        {
+            var errorType = ResolveTypeAnnotation(annotation.ErrorType);
+            result = new ResultType
+            {
+                OkType = result,
+                ErrorType = errorType
+            };
+        }
+
+        // Handle T? (Optional type) — Sharpy native optional
+        // Already handled for type aliases in ExpandTypeAlias
         if (annotation.IsOptional && result != SemanticType.Unknown
             && _symbolTable.LookupTypeAlias(annotation.Name) == null)
+        {
+            result = new OptionalType { UnderlyingType = result };
+        }
+
+        // Handle T | None (C# nullable) — .NET interop
+        if (annotation.IsCSharpNullable && result != SemanticType.Unknown)
         {
             result = new NullableType { UnderlyingType = result };
         }
@@ -119,6 +136,21 @@ public class TypeResolver
 
     private SemanticType ResolveGenericType(TypeAnnotation annotation)
     {
+        // Handle explicit Optional[T] syntax
+        if (annotation.Name == "Optional" && annotation.TypeArguments.Length == 1)
+        {
+            var underlyingType = ResolveTypeAnnotation(annotation.TypeArguments[0]);
+            return new OptionalType { UnderlyingType = underlyingType };
+        }
+
+        // Handle explicit Result[T, E] syntax
+        if (annotation.Name == "Result" && annotation.TypeArguments.Length == 2)
+        {
+            var okType = ResolveTypeAnnotation(annotation.TypeArguments[0]);
+            var errorType = ResolveTypeAnnotation(annotation.TypeArguments[1]);
+            return new ResultType { OkType = okType, ErrorType = errorType };
+        }
+
         // Special handling for tuple types - they have variable arity (tuple[int], tuple[int, str], etc.)
         if (annotation.Name == "tuple")
         {
@@ -179,7 +211,7 @@ public class TypeResolver
         };
     }
 
-    private SemanticType ExpandTypeAlias(TypeAliasSymbol aliasSymbol, bool isNullable)
+    private SemanticType ExpandTypeAlias(TypeAliasSymbol aliasSymbol, bool isOptional)
     {
         SemanticType result;
 
@@ -200,10 +232,10 @@ public class TypeResolver
             return SemanticType.Unknown;
         }
 
-        // Apply nullable modifier if present at usage site
-        if (isNullable && result != SemanticType.Unknown)
+        // Apply optional modifier if present at usage site (T? → OptionalType)
+        if (isOptional && result != SemanticType.Unknown)
         {
-            result = new NullableType { UnderlyingType = result };
+            result = new OptionalType { UnderlyingType = result };
         }
 
         return result;
