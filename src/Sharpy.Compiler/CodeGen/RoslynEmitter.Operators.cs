@@ -257,39 +257,44 @@ public partial class RoslynEmitter
 
     /// <summary>
     /// Generate a try expression: try expr or try[ExceptionType] expr
-    /// Wraps the expression in Result[T, E] using a try/catch pattern.
+    /// Wraps the expression in Result[T, E] using Result.Try().
+    /// Default: Result.Try&lt;T&gt;(() => operand) → Result&lt;T, Exception&gt;
+    /// Typed: Result.Try&lt;T, E&gt;(() => operand) → Result&lt;T, E&gt;
     /// </summary>
     private ExpressionSyntax GenerateTryExpression(TryExpression tryExpr)
     {
-        // Generate the operand expression
+        // Generate the operand expression wrapped in a lambda
         var operandExpr = GenerateExpression(tryExpr.Operand);
-
-        // Determine the exception type to catch (default to Exception)
-        var exceptionTypeName = tryExpr.ExceptionType != null
-            ? _typeMapper.MapType(tryExpr.ExceptionType).ToString()
-            : "Exception";
-
-        // Generate: Result.Try(() => operand)
-        // or for specific exception type: Result.Try<ExceptionType>(() => operand)
         var lambdaExpr = ParenthesizedLambdaExpression()
             .WithExpressionBody(operandExpr);
 
-        // If exception type is specified and not the default Exception, use generic version
-        if (tryExpr.ExceptionType != null && exceptionTypeName != "Exception")
+        // Get the ResultType from semantic info to extract T and E
+        var resultType = GetExpressionSemanticType(tryExpr) as Semantic.ResultType;
+
+        if (tryExpr.ExceptionType != null || tryExpr.Operand is TypeCoercion)
         {
-            // Result.Try<ExceptionType>(() => operand)
+            // Typed version: Result.Try<T, E>(() => operand)
+            // Used for try[ValueError] expr and try x to Cat
+            var okTypeSyntax = resultType != null
+                ? _typeMapper.MapSemanticType(resultType.OkType)
+                : (TypeSyntax)PredefinedType(Token(SyntaxKind.ObjectKeyword));
+            var errTypeSyntax = resultType != null
+                ? _typeMapper.MapSemanticType(resultType.ErrorType)
+                : (TypeSyntax)IdentifierName("Exception");
+
             return InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
                     IdentifierName("global::Sharpy.Core.Result"),
                     GenericName("Try")
                         .WithTypeArgumentList(TypeArgumentList(
-                            SingletonSeparatedList<TypeSyntax>(IdentifierName(exceptionTypeName))))))
+                            SeparatedList(new[] { okTypeSyntax, errTypeSyntax })))))
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(lambdaExpr))));
         }
         else
         {
-            // Result.Try(() => operand)
+            // Default version: Result.Try<T>(() => operand) → Result<T, Exception>
+            // C# infers T from the lambda when only one type parameter is provided
             return InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
