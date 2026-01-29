@@ -100,6 +100,7 @@ public enum TokenType
     // Operators - Comparison
     Equal,          // ==
     NotEqual,       // !=
+    Bang,           // ! (standalone, for T !E result type syntax)
     Less,           // <
     Greater,        // >
     LessEqual,      // <=
