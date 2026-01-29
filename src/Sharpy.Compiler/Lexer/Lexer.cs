@@ -1706,6 +1706,7 @@ public class Lexer
             ';' => CreateToken(TokenType.Semicolon, ";", startLine, startColumn, startPosition),
             '.' => CreateToken(TokenType.Dot, ".", startLine, startColumn, startPosition),
             '@' => CreateToken(TokenType.At, "@", startLine, startColumn, startPosition),
+            '!' => CreateToken(TokenType.Bang, "!", startLine, startColumn, startPosition),
             '\\' => CreateToken(TokenType.Backslash, "\\", startLine, startColumn, startPosition),
             _ => throw new LexerError($"Unexpected character: '{c}'", startLine, startColumn)
         };
