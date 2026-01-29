@@ -4,7 +4,7 @@
 
 This phase adds proper `OptionalType` and `ResultType` to the semantic type system, distinguishing them from `NullableType` (C# nullable interop).
 
-**Prerequisites:** 
+**Prerequisites:**
 - Phase 1 (Core types in Sharpy.Core)
 - Phase 3 (AST changes)
 
@@ -24,14 +24,14 @@ This phase adds proper `OptionalType` and `ResultType` to the semantic type syst
 
 ### Steps
 
-- [ ] Open `src/Sharpy.Compiler/Semantic/SemanticType.cs`
-- [ ] Find the `NullableType` record (should be around line 300-330)
-- [ ] Add `OptionalType` **before** `NullableType`:
+- [x] Open `src/Sharpy.Compiler/Semantic/SemanticType.cs`
+- [x] Find the `NullableType` record (should be around line 300-330)
+- [x] Add `OptionalType` **before** `NullableType`:
   ```csharp
   /// <summary>
   /// Optional type (T? → Optional[T]).
   /// This is a SAFE tagged union, distinct from NullableType (C# nullable interop).
-  /// 
+  ///
   /// <para><b>Semantic Meaning:</b></para>
   /// <list type="bullet">
   /// <item><description>Represents Sharpy's native optional value</description></item>
@@ -61,19 +61,19 @@ This phase adds proper `OptionalType` and `ResultType` to the semantic type syst
           // OptionalType is assignable to same OptionalType
           if (other is OptionalType otherOpt)
               return UnderlyingType.IsAssignableTo(otherOpt.UnderlyingType);
-          
+
           // OptionalType is NOT assignable to NullableType or raw type
           // (explicit conversion needed)
-          
+
           return base.IsAssignableTo(other);
       }
-      
+
       public override ITypeInfo MakeNullable()
       {
           // Optional<T> | None → NullableType wrapping OptionalType
           return new NullableType { UnderlyingType = this };
       }
-      
+
       public override ITypeInfo UnwrapNullable()
       {
           // OptionalType is not a nullable type in the C# sense
@@ -84,8 +84,8 @@ This phase adds proper `OptionalType` and `ResultType` to the semantic type syst
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Semantic/SemanticType.cs
@@ -100,12 +100,12 @@ git commit -m "semantic: add OptionalType for T? syntax"
 
 ### Steps
 
-- [ ] In the same file, add `ResultType` after `OptionalType`:
+- [x] In the same file, add `ResultType` after `OptionalType`:
   ```csharp
   /// <summary>
   /// Result type (T !E → Result[T, E]).
   /// This is a SAFE tagged union for error handling.
-  /// 
+  ///
   /// <para><b>Semantic Meaning:</b></para>
   /// <list type="bullet">
   /// <item><description>Represents Sharpy's native result/error type</description></item>
@@ -120,7 +120,7 @@ git commit -m "semantic: add OptionalType for T? syntax"
       /// The success type T in Result[T, E].
       /// </summary>
       public SemanticType OkType { get; init; } = SemanticType.Unknown;
-      
+
       /// <summary>
       /// The error type E in Result[T, E].
       /// </summary>
@@ -134,12 +134,12 @@ git commit -m "semantic: add OptionalType for T? syntax"
       {
           // ResultType is assignable to same ResultType with compatible types
           if (other is ResultType otherResult)
-              return OkType.IsAssignableTo(otherResult.OkType) 
+              return OkType.IsAssignableTo(otherResult.OkType)
                   && ErrorType.IsAssignableTo(otherResult.ErrorType);
-          
+
           return base.IsAssignableTo(other);
       }
-      
+
       public override ITypeInfo MakeNullable()
       {
           // Result<T, E> | None → NullableType wrapping ResultType
@@ -150,8 +150,8 @@ git commit -m "semantic: add OptionalType for T? syntax"
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Semantic/SemanticType.cs
@@ -166,20 +166,20 @@ git commit -m "semantic: add ResultType for T !E syntax"
 
 ### Steps
 
-- [ ] Find the existing `NullableType` record
-- [ ] Update its documentation to clarify it's for C# interop:
+- [x] Find the existing `NullableType` record
+- [x] Update its documentation to clarify it's for C# interop:
   ```csharp
   /// <summary>
   /// C# nullable type (T | None).
   /// This represents .NET nullable reference types or Nullable&lt;T&gt; for value types.
-  /// 
+  ///
   /// <para><b>Semantic Meaning:</b></para>
   /// <list type="bullet">
   /// <item><description>Used for .NET interop when APIs return/accept null</description></item>
   /// <item><description>Maps to C# T? (nullable reference) or Nullable&lt;T&gt;</description></item>
   /// <item><description>NOT the same as OptionalType (T? Sharpy syntax)</description></item>
   /// </list>
-  /// 
+  ///
   /// <para><b>Distinction from OptionalType:</b></para>
   /// <list type="bullet">
   /// <item><description>NullableType: C# null semantics, for .NET interop</description></item>
@@ -194,8 +194,8 @@ git commit -m "semantic: add ResultType for T !E syntax"
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Semantic/SemanticType.cs
@@ -210,8 +210,8 @@ git commit -m "semantic: clarify NullableType is for C# interop"
 
 ### Steps
 
-- [ ] Create new file `src/Sharpy.Compiler.Tests/Semantic/OptionalTypeTests.cs`
-- [ ] Add test class:
+- [x] Create new file `src/Sharpy.Compiler.Tests/Semantic/OptionalTypeTests.cs`
+- [x] Add test class:
 
 ```csharp
 using Sharpy.Compiler.Semantic;
@@ -227,21 +227,21 @@ public class OptionalTypeTests
         var opt = new OptionalType { UnderlyingType = SemanticType.Int };
         Assert.Equal("int?", opt.GetDisplayName());
     }
-    
+
     [Fact]
     public void OptionalType_IsNullable_ReturnsTrue()
     {
         var opt = new OptionalType { UnderlyingType = SemanticType.Str };
         Assert.True(opt.IsNullable);
     }
-    
+
     [Fact]
     public void OptionalType_IsValueType_ReturnsTrue()
     {
         var opt = new OptionalType { UnderlyingType = SemanticType.Int };
         Assert.True(opt.IsValueType);
     }
-    
+
     [Fact]
     public void OptionalType_AssignableToSameOptional()
     {
@@ -249,7 +249,7 @@ public class OptionalTypeTests
         var opt2 = new OptionalType { UnderlyingType = SemanticType.Int };
         Assert.True(opt1.IsAssignableTo(opt2));
     }
-    
+
     [Fact]
     public void OptionalType_NotAssignableToDifferentOptional()
     {
@@ -257,7 +257,7 @@ public class OptionalTypeTests
         var optStr = new OptionalType { UnderlyingType = SemanticType.Str };
         Assert.False(optInt.IsAssignableTo(optStr));
     }
-    
+
     [Fact]
     public void OptionalType_NotAssignableToNullableType()
     {
@@ -265,25 +265,25 @@ public class OptionalTypeTests
         var nullable = new NullableType { UnderlyingType = SemanticType.Int };
         Assert.False(opt.IsAssignableTo(nullable));
     }
-    
+
     [Fact]
     public void OptionalType_NotAssignableToRawType()
     {
         var opt = new OptionalType { UnderlyingType = SemanticType.Int };
         Assert.False(opt.IsAssignableTo(SemanticType.Int));
     }
-    
+
     [Fact]
     public void OptionalType_MakeNullable_WrapsInNullableType()
     {
         var opt = new OptionalType { UnderlyingType = SemanticType.Int };
         var nullable = opt.MakeNullable();
-        
+
         Assert.IsType<NullableType>(nullable);
         var nt = (NullableType)nullable;
         Assert.IsType<OptionalType>(nt.UnderlyingType);
     }
-    
+
     [Fact]
     public void OptionalType_UnwrapNullable_ReturnsSelf()
     {
@@ -291,7 +291,7 @@ public class OptionalTypeTests
         var unwrapped = opt.UnwrapNullable();
         Assert.Same(opt, unwrapped);
     }
-    
+
     [Fact]
     public void OptionalType_NestedOptional_DisplaysCorrectly()
     {
@@ -304,8 +304,8 @@ public class OptionalTypeTests
 
 ### Verification
 
-- [ ] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter OptionalTypeTests`
-- [ ] All tests pass
+- [x] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter OptionalTypeTests`
+- [x] All tests pass
 
 ```
 git add src/Sharpy.Compiler.Tests/Semantic/OptionalTypeTests.cs
@@ -320,8 +320,8 @@ git commit -m "test: add unit tests for OptionalType"
 
 ### Steps
 
-- [ ] Create new file `src/Sharpy.Compiler.Tests/Semantic/ResultTypeTests.cs`
-- [ ] Add test class:
+- [x] Create new file `src/Sharpy.Compiler.Tests/Semantic/ResultTypeTests.cs`
+- [x] Add test class:
 
 > **Note:** The test uses `UserDefinedType` to represent error types. If `UserDefinedType` doesn't exist in the codebase, create a simple mock type or use an existing type that has a `Name` property. Alternatively, create error types as `ClassType` or whatever represents user-defined classes in the semantic type system.
 
@@ -337,21 +337,21 @@ public class ResultTypeTests
     // Note: Adjust to match actual semantic type system (e.g., ClassType, UserDefinedType, etc.)
     private static readonly SemanticType ValueError = new UserDefinedType { Name = "ValueError" };
     private static readonly SemanticType IOError = new UserDefinedType { Name = "IOError" };
-    
+
     [Fact]
     public void ResultType_DisplayName_ShowsBangSyntax()
     {
         var result = new ResultType { OkType = SemanticType.Int, ErrorType = ValueError };
         Assert.Equal("int !ValueError", result.GetDisplayName());
     }
-    
+
     [Fact]
     public void ResultType_IsValueType_ReturnsTrue()
     {
         var result = new ResultType { OkType = SemanticType.Int, ErrorType = ValueError };
         Assert.True(result.IsValueType);
     }
-    
+
     [Fact]
     public void ResultType_AssignableToSameResult()
     {
@@ -359,7 +359,7 @@ public class ResultTypeTests
         var r2 = new ResultType { OkType = SemanticType.Int, ErrorType = ValueError };
         Assert.True(r1.IsAssignableTo(r2));
     }
-    
+
     [Fact]
     public void ResultType_NotAssignableToDifferentOkType()
     {
@@ -367,7 +367,7 @@ public class ResultTypeTests
         var r2 = new ResultType { OkType = SemanticType.Str, ErrorType = ValueError };
         Assert.False(r1.IsAssignableTo(r2));
     }
-    
+
     [Fact]
     public void ResultType_NotAssignableToDifferentErrorType()
     {
@@ -375,7 +375,7 @@ public class ResultTypeTests
         var r2 = new ResultType { OkType = SemanticType.Int, ErrorType = IOError };
         Assert.False(r1.IsAssignableTo(r2));
     }
-    
+
     [Fact]
     public void ResultType_NotAssignableToOptional()
     {
@@ -383,34 +383,34 @@ public class ResultTypeTests
         var opt = new OptionalType { UnderlyingType = SemanticType.Int };
         Assert.False(result.IsAssignableTo(opt));
     }
-    
+
     [Fact]
     public void ResultType_NotAssignableToRawType()
     {
         var result = new ResultType { OkType = SemanticType.Int, ErrorType = ValueError };
         Assert.False(result.IsAssignableTo(SemanticType.Int));
     }
-    
+
     [Fact]
     public void ResultType_MakeNullable_WrapsInNullableType()
     {
         var result = new ResultType { OkType = SemanticType.Int, ErrorType = ValueError };
         var nullable = result.MakeNullable();
-        
+
         Assert.IsType<NullableType>(nullable);
         var nt = (NullableType)nullable;
         Assert.IsType<ResultType>(nt.UnderlyingType);
     }
-    
+
     [Fact]
     public void ResultType_ComplexTypes_DisplaysCorrectly()
     {
         // Note: Adjust GenericType usage to match actual semantic type system
         // This might be ListType, GenericType, or ConstructedGenericType depending on implementation
-        var okType = new GenericType 
-        { 
-            Name = "list", 
-            TypeArguments = new List<SemanticType> { SemanticType.Int } 
+        var okType = new GenericType
+        {
+            Name = "list",
+            TypeArguments = new List<SemanticType> { SemanticType.Int }
         };
         var result = new ResultType { OkType = okType, ErrorType = ValueError };
         Assert.Equal("list[int] !ValueError", result.GetDisplayName());
@@ -420,8 +420,8 @@ public class ResultTypeTests
 
 ### Verification
 
-- [ ] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter ResultTypeTests`
-- [ ] All tests pass
+- [x] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter ResultTypeTests`
+- [x] All tests pass
 
 ```
 git add src/Sharpy.Compiler.Tests/Semantic/ResultTypeTests.cs
@@ -434,13 +434,13 @@ git commit -m "test: add unit tests for ResultType"
 
 ### Steps
 
-- [ ] Run all semantic tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Semantic"`
-- [ ] Investigate any failures
-- [ ] Fix any regressions
+- [x] Run all semantic tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Semantic"`
+- [x] Investigate any failures
+- [x] Fix any regressions
 
 ### Verification
 
-- [ ] All semantic tests pass
+- [x] All semantic tests pass
 
 ```
 # If fixes were needed:
@@ -452,10 +452,10 @@ git commit -m "fix: resolve semantic test regressions"
 
 ## Final Verification
 
-- [ ] Build entire compiler: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all semantic tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Semantic"`
-- [ ] All tests pass
-- [ ] Review all commits in this phase
+- [x] Build entire compiler: `dotnet build src/Sharpy.Compiler`
+- [x] Run all semantic tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Semantic"`
+- [x] All tests pass
+- [x] Review all commits in this phase
 
 ```
 git log --oneline -5
