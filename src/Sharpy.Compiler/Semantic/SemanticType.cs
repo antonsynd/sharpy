@@ -341,7 +341,119 @@ public record UserDefinedType : SemanticType
 }
 
 /// <summary>
-/// Nullable type (T?)
+/// Optional type (T? → Optional[T]).
+/// This is a SAFE tagged union, distinct from NullableType (C# nullable interop).
+///
+/// <para><b>Semantic Meaning:</b></para>
+/// <list type="bullet">
+/// <item><description>Represents Sharpy's native optional value</description></item>
+/// <item><description>Maps to Sharpy.Optional&lt;T&gt; struct</description></item>
+/// <item><description>Zero heap allocation</description></item>
+/// <item><description>Uses Some(value) / Nothing cases</description></item>
+/// </list>
+/// </summary>
+public record OptionalType : SemanticType
+{
+    /// <summary>
+    /// The underlying type T in Optional[T].
+    /// </summary>
+    public SemanticType UnderlyingType { get; init; } = SemanticType.Unknown;
+
+    public override string GetDisplayName() => $"{UnderlyingType.GetDisplayName()}?";
+
+    /// <summary>
+    /// Optional types can hold "nothing" which is conceptually similar to null.
+    /// </summary>
+    public override bool IsNullable => true;
+
+    public override bool IsValueType => true; // Optional<T> is a struct
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        // OptionalType is assignable to same OptionalType
+        if (other is OptionalType otherOpt)
+            return UnderlyingType.IsAssignableTo(otherOpt.UnderlyingType);
+
+        // OptionalType is NOT assignable to NullableType or raw type
+        // (explicit conversion needed)
+
+        return base.IsAssignableTo(other);
+    }
+
+    public override ITypeInfo MakeNullable()
+    {
+        // Optional<T> | None → NullableType wrapping OptionalType
+        return new NullableType { UnderlyingType = this };
+    }
+
+    public override ITypeInfo UnwrapNullable()
+    {
+        // OptionalType is not a nullable type in the C# sense
+        return this;
+    }
+}
+
+/// <summary>
+/// Result type (T !E → Result[T, E]).
+/// This is a SAFE tagged union for error handling.
+///
+/// <para><b>Semantic Meaning:</b></para>
+/// <list type="bullet">
+/// <item><description>Represents Sharpy's native result/error type</description></item>
+/// <item><description>Maps to Sharpy.Result&lt;T, E&gt; struct</description></item>
+/// <item><description>Zero heap allocation</description></item>
+/// <item><description>Uses Ok(value) / Err(error) cases</description></item>
+/// </list>
+/// </summary>
+public record ResultType : SemanticType
+{
+    /// <summary>
+    /// The success type T in Result[T, E].
+    /// </summary>
+    public SemanticType OkType { get; init; } = SemanticType.Unknown;
+
+    /// <summary>
+    /// The error type E in Result[T, E].
+    /// </summary>
+    public SemanticType ErrorType { get; init; } = SemanticType.Unknown;
+
+    public override string GetDisplayName() => $"{OkType.GetDisplayName()} !{ErrorType.GetDisplayName()}";
+
+    public override bool IsValueType => true; // Result<T, E> is a struct
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        // ResultType is assignable to same ResultType with compatible types
+        if (other is ResultType otherResult)
+            return OkType.IsAssignableTo(otherResult.OkType)
+                && ErrorType.IsAssignableTo(otherResult.ErrorType);
+
+        return base.IsAssignableTo(other);
+    }
+
+    public override ITypeInfo MakeNullable()
+    {
+        // Result<T, E> | None → NullableType wrapping ResultType
+        return new NullableType { UnderlyingType = this };
+    }
+}
+
+/// <summary>
+/// C# nullable type (T | None).
+/// This represents .NET nullable reference types or Nullable&lt;T&gt; for value types.
+///
+/// <para><b>Semantic Meaning:</b></para>
+/// <list type="bullet">
+/// <item><description>Used for .NET interop when APIs return/accept null</description></item>
+/// <item><description>Maps to C# T? (nullable reference) or Nullable&lt;T&gt;</description></item>
+/// <item><description>NOT the same as OptionalType (T? Sharpy syntax)</description></item>
+/// </list>
+///
+/// <para><b>Distinction from OptionalType:</b></para>
+/// <list type="bullet">
+/// <item><description>NullableType: C# null semantics, for .NET interop</description></item>
+/// <item><description>OptionalType: Safe tagged union, for Sharpy-native code</description></item>
+/// </list>
 /// </summary>
 public record NullableType : SemanticType
 {
