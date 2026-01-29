@@ -131,6 +131,15 @@ git commit -m "parser: add T !E result type syntax parsing"
 
 **File:** `src/Sharpy.Compiler/Parser/Parser.Types.cs`
 
+### Prerequisites Check
+
+- [ ] **Verify `TokenType.None` exists** in the lexer's token types. `None` should already be a keyword in Sharpy (like Python's `None`). If not, add it to the lexer first:
+  ```csharp
+  // In Token.cs or keywords section
+  None,  // None keyword
+  ```
+- [ ] **Verify `TokenType.Pipe` exists** for the `|` operator. This should already exist for bitwise OR.
+
 ### Steps
 
 - [ ] In `ParseTypeAnnotation`, after the `T?` handling, add `| None` handling:

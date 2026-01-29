@@ -28,15 +28,62 @@ safe: str? = maybe raw           # Convert to Optional[str]
 
 ## Task 9.1: Verify `maybe` Expression Parsing
 
-The parser already handles `maybe` expressions (from existing code). Verify it works:
+The parser may already handle `maybe` expressions from existing code. **This must be verified before proceeding.**
 
 ### Steps
 
-- [ ] Check that `MaybeExpression` AST node exists in `src/Sharpy.Compiler/Parser/Ast/Expression.cs`
-- [ ] Check that parsing is implemented in `src/Sharpy.Compiler/Parser/Parser.Expressions.cs`
+- [ ] **Search for `MaybeExpression` AST node:**
+  ```bash
+  grep -r "MaybeExpression" src/Sharpy.Compiler --include="*.cs"
+  ```
+  - If found in `Parser/Ast/Expression.cs` or similar → proceed
+  - If NOT found → you must implement the AST node and parser support first (see "If Not Implemented" below)
+
+- [ ] **Search for `maybe` keyword in parser:**
+  ```bash
+  grep -r "maybe" src/Sharpy.Compiler/Parser --include="*.cs"
+  ```
+  - Check if there's parsing logic for `maybe` keyword
+
+- [ ] **Search for `TokenType.Maybe` in lexer:**
+  ```bash
+  grep -r "Maybe" src/Sharpy.Compiler/Lexer --include="*.cs"
+  ```
+  - Verify `maybe` is recognized as a keyword
+
 - [ ] Run existing parser tests for `maybe` if any exist
 
-### Quick Test
+### If NOT Implemented (Add This First)
+
+If `maybe` expression parsing doesn't exist, implement it:
+
+1. **Add to Token.cs:**
+   ```csharp
+   Maybe,  // maybe keyword
+   ```
+
+2. **Add to Lexer (keywords):**
+   ```csharp
+   { "maybe", TokenType.Maybe },
+   ```
+
+3. **Add AST node:**
+   ```csharp
+   public record MaybeExpression(Expression Operand) : Expression;
+   ```
+
+4. **Add parsing logic:**
+   ```csharp
+   // In ParseUnaryExpression or similar
+   if (Current.Type == TokenType.Maybe)
+   {
+       Advance();
+       var operand = ParseUnaryExpression();  // or appropriate precedence
+       return new MaybeExpression(operand);
+   }
+   ```
+
+### Quick Test (After Verification)
 
 ```csharp
 [Fact]

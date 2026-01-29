@@ -323,6 +323,8 @@ git commit -m "test: add unit tests for OptionalType"
 - [ ] Create new file `src/Sharpy.Compiler.Tests/Semantic/ResultTypeTests.cs`
 - [ ] Add test class:
 
+> **Note:** The test uses `UserDefinedType` to represent error types. If `UserDefinedType` doesn't exist in the codebase, create a simple mock type or use an existing type that has a `Name` property. Alternatively, create error types as `ClassType` or whatever represents user-defined classes in the semantic type system.
+
 ```csharp
 using Sharpy.Compiler.Semantic;
 using Xunit;
@@ -332,6 +334,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 public class ResultTypeTests
 {
     // Create a simple error type for testing
+    // Note: Adjust to match actual semantic type system (e.g., ClassType, UserDefinedType, etc.)
     private static readonly SemanticType ValueError = new UserDefinedType { Name = "ValueError" };
     private static readonly SemanticType IOError = new UserDefinedType { Name = "IOError" };
     
@@ -402,6 +405,8 @@ public class ResultTypeTests
     [Fact]
     public void ResultType_ComplexTypes_DisplaysCorrectly()
     {
+        // Note: Adjust GenericType usage to match actual semantic type system
+        // This might be ListType, GenericType, or ConstructedGenericType depending on implementation
         var okType = new GenericType 
         { 
             Name = "list", 

@@ -155,8 +155,10 @@ After this change:
 - `T | None` should set `IsCSharpNullable = true` and map to C# nullable
 
 **However**, full parser support for `T | None` comes in Phase 4. For now:
-- [ ] Change existing `IsNullable = true` to `IsOptional = true` (temporary — maintains current behavior that `T?` works)
-- [ ] Leave the actual semantic change (Optional vs nullable) for Phase 5-6
+- [ ] Change existing `IsNullable = true` to `IsOptional = true` 
+- [ ] This is a **naming change only** at the AST level. The parser will set `IsOptional = true` for `T?` syntax.
+- [ ] The actual semantic interpretation (mapping to `OptionalType` vs `NullableType`) happens in Phases 5-6.
+- [ ] At this phase, the behavior is unchanged — we're just preparing the AST structure.
 
 ### Verification
 

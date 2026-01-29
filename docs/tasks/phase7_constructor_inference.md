@@ -8,6 +8,13 @@ This phase adds support for recognizing `Some(v)`, `Nothing`, `Ok(v)`, and `Err(
 - Phase 1 (Core types in Sharpy.Core)
 - Phase 5-6 (Semantic types and resolution)
 
+> ⚠️ **CRITICAL ARCHITECTURE CHECK:** This phase requires **expected type propagation** in the type checker. The type checker must pass an "expected type" down when checking expressions so that `Some(42)` can be recognized as `Optional<int>.Some(42)` when the expected type is `int?`.
+>
+> **Before starting this phase:**
+> 1. Verify the type checker supports expected type propagation
+> 2. If not, this phase will require significant architectural changes to `TypeChecker.Expressions.cs`
+> 3. Check existing code for patterns like `CheckExpression(expr, expectedType)` — if the second parameter doesn't exist, you'll need to add it
+
 **Files to modify:**
 - `src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs`
 - `src/Sharpy.Compiler/Semantic/NameResolver.cs`

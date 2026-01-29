@@ -336,10 +336,17 @@ public class TypeResolverOptionalResultTests
 
 ### Note on Test Setup
 
-The test helper `ResolveTypeFromCode` may need adjustment based on:
+> ⚠️ **IMPORTANT:** The test helper `ResolveTypeFromCode` is a **simplified example** that may not work directly with the actual codebase architecture.
+
+The test helper may need adjustment based on:
 - How `TypeResolver` is constructed (dependencies, services)
 - Whether it needs a full `CompilerServices` setup
 - Symbol table initialization for `ValueError` etc.
+
+**Recommended approach:** Check how existing type resolution tests are structured in the codebase and follow that pattern. You may need to:
+1. Use `IntegrationTestBase` if it exists
+2. Set up a minimal `CompilerServices` context
+3. Register necessary types (like `ValueError`) in a symbol table before testing
 
 Consider creating a simpler test that directly creates `TypeAnnotation` AST nodes:
 

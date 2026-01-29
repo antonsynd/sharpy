@@ -150,6 +150,23 @@ git commit -m "codegen: add using Sharpy directive for Optional/Result"
 
 **File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs`
 
+### Prerequisites Check
+
+> ⚠️ **CRITICAL:** This task requires `SemanticInfo` to be available during code generation. Verify that:
+> 1. The `RoslynEmitter` has access to semantic information (e.g., via `CodeGenInfo` or a similar mechanism)
+> 2. Expression types are available when generating code
+> 
+> Check for patterns like:
+> ```csharp
+> var type = _codeGenInfo.GetExpressionType(expr);
+> // or
+> var semanticInfo = _semanticModel.GetInfo(expr);
+> ```
+> 
+> If semantic info is NOT available in the emitter, you'll need to either:
+> - Pass it through from the semantic analysis phase (add to `CodeGenInfo`)
+> - Store it on AST nodes during semantic analysis
+
 ### Steps
 
 The semantic analyzer has already identified these as tagged union constructors. Now we need to generate the correct C# code.
