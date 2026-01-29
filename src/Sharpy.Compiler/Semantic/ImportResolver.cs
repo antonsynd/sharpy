@@ -790,6 +790,24 @@ public class ImportResolver
             DefiningModule = definingModulePath
         };
 
+        // Store unresolved base class names for deferred resolution
+        // The actual BaseType will be resolved after all types are registered
+        if (classDef.BaseClasses.Length > 0)
+        {
+            foreach (var baseAnnot in classDef.BaseClasses)
+            {
+                if (classSymbol.UnresolvedBaseName == null)
+                {
+                    classSymbol.UnresolvedBaseName = baseAnnot.Name;
+                }
+                else
+                {
+                    classSymbol.UnresolvedInterfaceNames.Add(baseAnnot.Name);
+                }
+            }
+            _logger.LogDebug($"[ImportResolver] Stored unresolved base for {classDef.Name}: {classSymbol.UnresolvedBaseName}");
+        }
+
         // Extract fields
         foreach (var stmt in classDef.Body)
         {
@@ -851,6 +869,12 @@ public class ImportResolver
             DefiningModule = definingModulePath
         };
 
+        // Store unresolved interface names for deferred resolution
+        foreach (var baseAnnot in structDef.BaseClasses)
+        {
+            structSymbol.UnresolvedInterfaceNames.Add(baseAnnot.Name);
+        }
+
         // Extract fields
         foreach (var stmt in structDef.Body)
         {
@@ -911,6 +935,12 @@ public class ImportResolver
             // Set DefiningModule to the actual file where this interface is defined.
             DefiningModule = definingModulePath
         };
+
+        // Store unresolved base interface names for deferred resolution
+        foreach (var baseAnnot in interfaceDef.BaseInterfaces)
+        {
+            interfaceSymbol.UnresolvedInterfaceNames.Add(baseAnnot.Name);
+        }
 
         // Extract methods (interface methods are always abstract)
         foreach (var stmt in interfaceDef.Body)
