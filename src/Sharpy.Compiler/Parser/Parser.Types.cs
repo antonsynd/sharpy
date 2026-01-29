@@ -13,6 +13,54 @@ public partial class Parser
 {
     private TypeAnnotation ParseTypeAnnotation()
     {
+        var baseType = ParseTypeAnnotationCore();
+        var startToken = baseType; // reuse position from core parse
+
+        // C# nullable suffix T | None (lowest precedence)
+        if (Current.Type == TokenType.Pipe)
+        {
+            var pipeToken = Current;
+            Advance(); // consume '|'
+
+            // Must be followed by 'None'
+            if (Current.Type != TokenType.None)
+            {
+                throw new ParserError(
+                    "Only '| None' is allowed for nullable types. " +
+                    "Free unions like 'int | str' are not supported. " +
+                    "Use 'union' declarations for custom sum types.",
+                    Current.Line,
+                    Current.Column
+                );
+            }
+
+            Advance(); // consume 'None'
+
+            var endToken = Previous;
+            var endLine = endToken.Line;
+            var endColumn = endToken.Column + endToken.Value.Length;
+
+            baseType = baseType with
+            {
+                IsCSharpNullable = true,
+                LineEnd = endLine,
+                ColumnEnd = endColumn,
+                Span = baseType.Span != null && endToken.GetSpan() != null
+                    ? Text.TextSpan.FromBounds(baseType.Span.Value.Start, endToken.GetSpan()!.Value.End)
+                    : null
+            };
+        }
+
+        return baseType;
+    }
+
+    /// <summary>
+    /// Parses a type annotation without the | None suffix.
+    /// Used for recursive type parsing (e.g., the error type in T !E)
+    /// where | None should not be consumed.
+    /// </summary>
+    private TypeAnnotation ParseTypeAnnotationCore()
+    {
         var startLine = Current.Line;
         var startColumn = Current.Column;
         var startToken = Current;
@@ -64,7 +112,28 @@ public partial class Parser
             };
         }
 
-        // Nullable type suffix T?
+        // Result type suffix T !E (binds tighter than ? and | None)
+        if (Current.Type == TokenType.Bang)
+        {
+            Advance(); // consume '!'
+
+            // Parse the error type (without | None — it binds to the outer type)
+            var errorType = ParseTypeAnnotationCore();
+
+            var endToken = Previous;
+            var endLine = endToken.Line;
+            var endColumn = endToken.Column + endToken.Value.Length;
+
+            baseType = baseType with
+            {
+                ErrorType = errorType,
+                LineEnd = endLine,
+                ColumnEnd = endColumn,
+                Span = GetSpanFromTokens(startToken, endToken)
+            };
+        }
+
+        // Optional type suffix T?
         if (Current.Type == TokenType.Question)
         {
             Advance();
