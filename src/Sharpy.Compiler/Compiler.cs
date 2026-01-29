@@ -227,6 +227,10 @@ public class Compiler
                     }
                 }
             }
+
+            // Resolve inheritance for imported types now that all symbols are registered
+            ResolveImportedTypeInheritance(symbolTable, _logger);
+
             metrics.EndPhase();
 
             if (importResolver.Errors.Any())
@@ -367,6 +371,64 @@ public class Compiler
             .WithTypeResolver(typeResolver)
             .WithClrCache(clrCache ?? new ClrMemberCache())
             .Build();
+    }
+
+    /// <summary>
+    /// Resolve inheritance relationships for imported types.
+    /// This is called after all imports are registered but before type checking.
+    /// Imported types have their base class/interface names stored as strings;
+    /// this method resolves them to actual TypeSymbol references.
+    /// </summary>
+    internal static void ResolveImportedTypeInheritance(SymbolTable symbolTable, ICompilerLogger logger)
+    {
+        logger.LogDebug("Resolving inheritance for imported types...");
+
+        var allTypes = symbolTable.GlobalScope.GetAllSymbols()
+            .OfType<TypeSymbol>()
+            .ToList();
+
+        foreach (var type in allTypes)
+        {
+            // Resolve base class
+            if (type.BaseType == null && !string.IsNullOrEmpty(type.UnresolvedBaseName))
+            {
+                var baseType = symbolTable.LookupType(type.UnresolvedBaseName);
+                if (baseType != null)
+                {
+                    if (baseType.TypeKind == TypeKind.Interface)
+                    {
+                        if (!type.Interfaces.Contains(baseType))
+                        {
+                            type.Interfaces.Add(baseType);
+                        }
+                    }
+                    else
+                    {
+                        type.BaseType = baseType;
+                    }
+                    logger.LogDebug($"Resolved inheritance: {type.Name} : {baseType.Name}");
+                }
+                else
+                {
+                    logger.LogWarning($"Could not resolve base type '{type.UnresolvedBaseName}' for {type.Name}", 0, 0);
+                }
+            }
+
+            // Resolve interfaces
+            foreach (var ifaceName in type.UnresolvedInterfaceNames)
+            {
+                var ifaceType = symbolTable.LookupType(ifaceName);
+                if (ifaceType != null && !type.Interfaces.Contains(ifaceType))
+                {
+                    type.Interfaces.Add(ifaceType);
+                    logger.LogDebug($"Resolved interface: {type.Name} : {ifaceType.Name}");
+                }
+                else if (ifaceType == null)
+                {
+                    logger.LogWarning($"Could not resolve interface '{ifaceName}' for {type.Name}", 0, 0);
+                }
+            }
+        }
     }
 
     /// <summary>
