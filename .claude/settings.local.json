@@ -50,7 +50,8 @@
       "Bash(git -C /Users/anton/Documents/github/sharpy commit -m \"$\\(cat <<''EOF''\ntest: add constructor inference tests for Some/Nothing/Ok/Err\n\n20 tests covering:\n- Some\\(v\\) with typed variables, returns, type mismatches\n- Nothing with typed variables, returns, assignments\n- Ok\\(v\\)/Err\\(e\\) with typed variables and returns\n- Error cases: no type context, type mismatch, non-optional target\n- Default parameters with Nothing\n- Mixed Some/Nothing and Ok/Err in same function\n\nAlso set _expectedType in assignment and default parameter checking.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git -C /Users/anton/Documents/github/sharpy add docs/tasks/phase7_constructor_inference.md docs/language_specification/tagged_unions_optional.md docs/language_specification/tagged_unions_result.md)",
       "Bash(git -C /Users/anton/Documents/github/sharpy commit -m \"$\\(cat <<''EOF''\ndocs: document constructor shorthand and mark Phase 7 complete\n\nAdd Constructor Shorthand sections to:\n- tagged_unions_optional.md: Some\\(v\\)/Nothing inference from context\n- tagged_unions_result.md: Ok\\(v\\)/Err\\(e\\) inference from context\n\nMark all phase7_constructor_inference.md checkboxes as complete.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git -C /Users/anton/Documents/github/sharpy status --short)"
+      "Bash(git -C /Users/anton/Documents/github/sharpy status --short)",
+      "Bash(git -C /Users/anton/Documents/github/sharpy log --oneline -8)"
     ]
   }
 }
