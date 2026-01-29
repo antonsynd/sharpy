@@ -51,7 +51,9 @@
       "Bash(git -C /Users/anton/Documents/github/sharpy add docs/tasks/phase7_constructor_inference.md docs/language_specification/tagged_unions_optional.md docs/language_specification/tagged_unions_result.md)",
       "Bash(git -C /Users/anton/Documents/github/sharpy commit -m \"$\\(cat <<''EOF''\ndocs: document constructor shorthand and mark Phase 7 complete\n\nAdd Constructor Shorthand sections to:\n- tagged_unions_optional.md: Some\\(v\\)/Nothing inference from context\n- tagged_unions_result.md: Ok\\(v\\)/Err\\(e\\) inference from context\n\nMark all phase7_constructor_inference.md checkboxes as complete.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git -C /Users/anton/Documents/github/sharpy status --short)",
-      "Bash(git -C /Users/anton/Documents/github/sharpy log --oneline -8)"
+      "Bash(git -C /Users/anton/Documents/github/sharpy log --oneline -8)",
+      "Bash(git -C /Users/anton/Documents/github/sharpy add src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs src/Sharpy.Compiler/Semantic/TypeResolver.cs src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs src/Sharpy.Compiler.Tests/Semantic/TypeInferenceBattleTests.cs)",
+      "Bash(git -C /Users/anton/Documents/github/sharpy commit -m \"$\\(cat <<''EOF''\nsemantic: add CLR type fallback for .NET interop types\n\nTypeResolver now falls back to resolving types from well-known .NET\nnamespaces \\(System, System.IO, etc.\\) when a type isn''t found in the\nsymbol table. This replaces the need to manually register every .NET\ntype in BuiltinRegistry. Results are cached for performance.\n\nAlso fixes try expression type checking to use CLR-resolved symbols\nfor Exception/InvalidCastException, ensuring IsAssignableTo works\ncorrectly for result types.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
