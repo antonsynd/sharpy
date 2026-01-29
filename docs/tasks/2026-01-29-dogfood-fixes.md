@@ -615,19 +615,19 @@ def find_first(items: list[int]) -> int?:
 
 | Phase | Task | Status |
 |-------|------|--------|
-| 1.1 | Add UnresolvedBaseName to TypeSymbol | ☐ |
-| 1.2 | Store unresolved names in ImportResolver | ☐ |
-| 1.3 | Add ResolveImportedTypeInheritance method | ☐ |
-| 1.4 | Call inheritance resolution in Compiler | ☐ |
-| 1.5 | Add GetAllSymbols to Scope | ☐ |
-| 1.6 | Apply fix to ProjectCompiler | ☐ |
-| 1.7 | Write integration tests | ☐ |
-| 2.1 | Locate pre-validator | ☐ |
-| 2.2 | Fix tuple unpacking detection | ☐ |
-| 3.1 | Add syntax validation function | ☐ |
-| 3.2 | Integrate syntax check | ☐ |
-| 4.1 | Add @virtual to prompts | ☐ |
-| 4.2 | Add function type requirements | ☐ |
-| 4.3 | Add pattern examples | ☐ |
-| 5.1 | Run full test suite | ☐ |
+| 1.1 | Add UnresolvedBaseName to TypeSymbol | ☑ |
+| 1.2 | Store unresolved names in ImportResolver | ☑ |
+| 1.3 | Add ResolveImportedTypeInheritance method | ☑ |
+| 1.4 | Call inheritance resolution in Compiler | ☑ |
+| 1.5 | Add GetAllSymbols to Scope | ☑ (already existed) |
+| 1.6 | Apply fix to ProjectCompiler | ☑ |
+| 1.7 | Write integration tests | ☑ |
+| 2.1 | Locate pre-validator | ☑ |
+| 2.2 | Fix tuple unpacking detection | ☑ |
+| 3.1 | Add syntax validation function | ☑ |
+| 3.2 | Integrate syntax check | ☑ |
+| 4.1 | Add @virtual to prompts | ☑ |
+| 4.2 | Add function type requirements | ☑ |
+| 4.3 | Add pattern examples | ☑ |
+| 5.1 | Run full test suite | ☑ (4302 pass, 0 fail) |
 | 5.2 | Re-run dogfood | ☐ |
