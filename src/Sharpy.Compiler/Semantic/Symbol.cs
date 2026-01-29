@@ -129,6 +129,18 @@ public record TypeSymbol : Symbol
     /// </remarks>
     public TypeSymbol? BaseType { get; set; }
     public List<TypeSymbol> Interfaces { get; init; } = new();
+
+    /// <summary>
+    /// Unresolved base class name from AST, used for deferred inheritance resolution
+    /// when types are imported from other modules. The actual BaseType is resolved
+    /// after all imports are registered in the symbol table.
+    /// </summary>
+    public string? UnresolvedBaseName { get; set; }
+
+    /// <summary>
+    /// Unresolved interface names from AST, used for deferred inheritance resolution.
+    /// </summary>
+    public List<string> UnresolvedInterfaceNames { get; set; } = new();
 }
 
 /// <summary>
