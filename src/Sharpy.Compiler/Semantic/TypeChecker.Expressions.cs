@@ -863,7 +863,7 @@ public partial class TypeChecker
                 // instead of treating as constructor. This matches Python semantics where int(x) calls
                 // the int conversion function, not constructs a new int object.
                 var primitiveOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
-                if (primitiveOverloads != null && primitiveOverloads.Count > 0 && typeSymbol.ClrType != null && typeSymbol.ClrType.IsPrimitive)
+                if (primitiveOverloads != null && primitiveOverloads.Count > 0 && PrimitiveCatalog.IsPrimitive(id.Name))
                 {
                     // Route to builtin function overload resolution below
                     // (fall through to overload handling)

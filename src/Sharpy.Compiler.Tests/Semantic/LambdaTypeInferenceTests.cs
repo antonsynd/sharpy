@@ -71,11 +71,11 @@ def main():
     public void Lambda_AsFunctionArgument_ReturnsCorrectType()
     {
         var source = @"
-def transform(f: (int) -> int, x: int) -> int:
+def transform(f: (int) -> str, x: int) -> str:
     return f(x)
 
 def main():
-    result = transform(lambda n: n + 10, 42)
+    result = transform(lambda n: str(n), 42)
 ";
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);

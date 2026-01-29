@@ -110,6 +110,38 @@ def main():
         typeChecker.Errors.Should().BeEmpty();
     }
 
+    [Fact]
+    public void StrConstructor_ReturnsBuiltinStrType()
+    {
+        // str(n) should return the same type as a str literal,
+        // not UserDefinedType (which would cause type mismatches)
+        var source = @"
+def takes_str(s: str) -> None:
+    pass
+
+def main():
+    takes_str(str(42))
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void IntConstructor_ReturnsBuiltinIntType()
+    {
+        var source = @"
+def takes_int(n: int) -> None:
+    pass
+
+def main():
+    takes_int(int(3.14))
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
     #endregion
 
     #region Collection Inference
