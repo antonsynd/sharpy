@@ -110,6 +110,36 @@ public class TypeMapperTests
         result.ToString().Should().Be("string?");
     }
 
+    [Fact]
+    public void MapType_CSharpNullableInt_ReturnsIntQuestion()
+    {
+        // T | None syntax (IsCSharpNullable) also maps to C# T?
+        var typeAnnotation = new TypeAnnotation
+        {
+            Name = "int",
+            IsCSharpNullable = true
+        };
+
+        var result = _typeMapper.MapType(typeAnnotation);
+
+        result.ToString().Should().Be("int?");
+    }
+
+    [Fact]
+    public void MapType_ResultType_ReturnsResultGeneric()
+    {
+        // T !E maps to Result<T, E>
+        var typeAnnotation = new TypeAnnotation
+        {
+            Name = "int",
+            ErrorType = new TypeAnnotation { Name = "str" }
+        };
+
+        var result = _typeMapper.MapType(typeAnnotation);
+
+        result.ToString().Should().Be("Result<int,string>");
+    }
+
     #endregion
 
     #region Generic Type Tests

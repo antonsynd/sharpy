@@ -170,7 +170,10 @@ public class TypeMapper
     }
 
     /// <summary>
-    /// Maps a Sharpy type annotation to a C# TypeSyntax
+    /// Maps a Sharpy type annotation to a C# TypeSyntax.
+    /// Note: T? (IsOptional) currently maps to C# T? for backward compatibility
+    /// with existing null-based tests. T !E (IsResult) maps to Result&lt;T, E&gt;.
+    /// Use MapSemanticType for the canonical Optional&lt;T&gt; mapping.
     /// </summary>
     public TypeSyntax MapType(TypeAnnotation? type)
     {
@@ -178,6 +181,16 @@ public class TypeMapper
         if (type == null)
         {
             return PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
+
+        // Handle T !E → Result<T, E>
+        if (type.IsResult)
+        {
+            var okType = MapType(new TypeAnnotation { Name = type.Name, TypeArguments = type.TypeArguments });
+            var errType = MapType(type.ErrorType);
+            return GenericName(Identifier("Result"))
+                .WithTypeArgumentList(
+                    TypeArgumentList(SeparatedList(new[] { okType, errType })));
         }
 
         // Check if this is a type alias and expand it
@@ -190,14 +203,14 @@ public class TypeMapper
                 // For type annotations, recursively map the underlying type
                 var expandedType = MapType(aliasSymbol.TypeAnnotation);
                 // Apply nullable modifier from usage site
-                return type.IsOptional ? NullableType(expandedType) : expandedType;
+                return (type.IsOptional || type.IsCSharpNullable) ? NullableType(expandedType) : expandedType;
             }
             else if (aliasSymbol.FunctionType != null)
             {
                 // For function types, map to C# delegate/Func/Action
                 var expandedType = MapFunctionType(aliasSymbol.FunctionType);
                 // Function types typically shouldn't be nullable, but handle it anyway
-                return type.IsOptional ? NullableType(expandedType) : expandedType;
+                return (type.IsOptional || type.IsCSharpNullable) ? NullableType(expandedType) : expandedType;
             }
         }
 
@@ -216,14 +229,14 @@ public class TypeMapper
                     TypeArgumentList(SeparatedList(typeArgs)));
 
             // Handle nullable generic types
-            return type.IsOptional
+            return (type.IsOptional || type.IsCSharpNullable)
                 ? NullableType(result)
                 : result;
         }
 
         // Handle nullable non-generic types
         var typeSyntax = ParseTypeName(baseTypeName);
-        return type.IsOptional
+        return (type.IsOptional || type.IsCSharpNullable)
             ? NullableType(typeSyntax)
             : typeSyntax;
     }

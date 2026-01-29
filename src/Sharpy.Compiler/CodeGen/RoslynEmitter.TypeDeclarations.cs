@@ -106,7 +106,17 @@ public partial class RoslynEmitter
         // Add default value if present
         if (param.DefaultValue != null)
         {
-            var defaultExpr = GenerateExpression(param.DefaultValue);
+            ExpressionSyntax defaultExpr;
+            // Nothing as default param → null (T? maps to C# nullable)
+            if (param.DefaultValue is Identifier defaultId && defaultId.Name == "Nothing"
+                && param.Type is { IsOptional: true })
+            {
+                defaultExpr = LiteralExpression(SyntaxKind.NullLiteralExpression);
+            }
+            else
+            {
+                defaultExpr = GenerateExpression(param.DefaultValue);
+            }
             parameter = parameter.WithDefault(EqualsValueClause(defaultExpr));
         }
 

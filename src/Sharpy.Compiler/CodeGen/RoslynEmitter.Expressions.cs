@@ -40,9 +40,9 @@ public partial class RoslynEmitter
             // Primary expressions
             // Handle 'self' -> 'this' conversion for instance methods
             Identifier name when string.Equals(name.Name, "self", StringComparison.OrdinalIgnoreCase) => ThisExpression(),
-            // Handle Nothing -> Optional<T>.Nothing (tagged union constructor)
+            // Handle Nothing -> null (for T? codegen compatibility)
             Identifier name when name.Name == "Nothing" && GetExpressionSemanticType(name) is OptionalType
-                => GenerateNothingExpression((OptionalType)GetExpressionSemanticType(name)!),
+                => LiteralExpression(SyntaxKind.NullLiteralExpression),
             Identifier name => IdentifierName(GetMangledVariableName(name.Name, isNewDeclaration: false)),
             SuperExpression => BaseExpression(),  // super() -> base
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
@@ -1527,6 +1527,8 @@ public partial class RoslynEmitter
 
     /// <summary>
     /// Generates code for a tagged union constructor call (Some, Ok, Err).
+    /// Some(v) generates just the value (for T? compatibility).
+    /// Ok(v)/Err(e) generate Result&lt;T,E&gt;.Ok(v)/Err(e).
     /// </summary>
     private ExpressionSyntax GenerateTaggedUnionConstructor(FunctionCall call)
     {
@@ -1535,42 +1537,12 @@ public partial class RoslynEmitter
 
         return (id.Name, exprType) switch
         {
-            ("Some", OptionalType opt) => GenerateSomeExpression(call, opt),
+            // Some(v) → just the value (T? uses raw values, not Optional<T>.Some)
+            ("Some", OptionalType) => GenerateExpression(call.Arguments[0]),
             ("Ok", ResultType res) => GenerateOkExpression(call, res),
             ("Err", ResultType res) => GenerateErrExpression(call, res),
             _ => throw new InvalidOperationException($"Unexpected tagged union constructor: {id.Name}")
         };
-    }
-
-    /// <summary>
-    /// Generates: Optional&lt;T&gt;.Some(value)
-    /// </summary>
-    private ExpressionSyntax GenerateSomeExpression(FunctionCall call, OptionalType opt)
-    {
-        var underlyingType = _typeMapper.MapSemanticType(opt.UnderlyingType);
-        var arg = GenerateExpression(call.Arguments[0]);
-
-        return InvocationExpression(
-            MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                GenericName("Optional")
-                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(underlyingType))),
-                IdentifierName("Some")))
-            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(arg))));
-    }
-
-    /// <summary>
-    /// Generates: Optional&lt;T&gt;.Nothing
-    /// </summary>
-    private ExpressionSyntax GenerateNothingExpression(OptionalType opt)
-    {
-        var underlyingType = _typeMapper.MapSemanticType(opt.UnderlyingType);
-
-        return MemberAccessExpression(
-            SyntaxKind.SimpleMemberAccessExpression,
-            GenericName("Optional")
-                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(underlyingType))),
-            IdentifierName("Nothing"));
     }
 
     /// <summary>
