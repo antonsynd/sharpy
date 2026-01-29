@@ -725,8 +725,9 @@ public class ImportResolver
         if (typeAnnotation == null)
             return SemanticType.Unknown;
 
-        // Handle nullable types
-        var isNullable = typeAnnotation.IsOptional;
+        // Handle optional types (T? syntax) — during import resolution, we map to NullableType
+        // since we're operating before full semantic analysis in a .NET interop context
+        var isOptional = typeAnnotation.IsOptional;
 
         // Map primitive type names
         SemanticType? baseType = typeAnnotation.Name switch
@@ -751,7 +752,7 @@ public class ImportResolver
         }
 
         // Wrap in nullable if needed
-        if (isNullable && baseType != SemanticType.Void)
+        if (isOptional && baseType != SemanticType.Void)
         {
             return new NullableType { UnderlyingType = baseType };
         }
