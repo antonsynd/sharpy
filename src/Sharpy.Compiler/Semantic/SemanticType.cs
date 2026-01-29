@@ -145,8 +145,8 @@ public record VoidType : SemanticType
 
     public override bool IsAssignableTo(SemanticType other)
     {
-        // None can be assigned to any nullable type
-        if (other is NullableType)
+        // None can be assigned to any nullable or optional type
+        if (other is NullableType or OptionalType)
             return true;
 
         return base.IsAssignableTo(other);

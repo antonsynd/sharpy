@@ -186,8 +186,8 @@ public partial class TypeChecker
         // Otherwise, check as a regular simple assignment
         if (!IsAssignable(valueType, targetType))
         {
-            // Special case: Allow None for nullable types but provide better error message
-            if (valueType is VoidType && targetType is not NullableType)
+            // Special case: Allow None for nullable/optional types but provide better error message
+            if (valueType is VoidType && targetType is not NullableType and not OptionalType)
             {
                 AddError($"Cannot assign 'None' to non-nullable type '{targetType.GetDisplayName()}'",
                     assignment.LineStart, assignment.ColumnStart);
@@ -219,9 +219,9 @@ public partial class TypeChecker
             }
             else if (!IsAssignable(initType, declaredType))
             {
-                // Special case: Allow None for nullable types (VoidType.IsAssignableTo handles this)
-                // but provide better error message for non-nullable types
-                if (initType is VoidType && declaredType is not NullableType)
+                // Special case: Allow None for nullable/optional types (VoidType.IsAssignableTo handles this)
+                // but provide better error message for non-nullable/non-optional types
+                if (initType is VoidType && declaredType is not NullableType and not OptionalType)
                 {
                     AddError($"Cannot assign 'None' to non-nullable type '{declaredType.GetDisplayName()}'",
                         varDecl.LineStart, varDecl.ColumnStart);

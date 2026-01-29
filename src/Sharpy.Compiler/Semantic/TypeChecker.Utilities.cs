@@ -41,11 +41,14 @@ public partial class TypeChecker
             {
                 if (isPositiveBranch)
                 {
-                    // In the positive branch (x is not None), narrow nullable to non-nullable
+                    // In the positive branch (x is not None), narrow nullable/optional to non-nullable
                     var symbol = _symbolTable.Lookup(id.Name);
-                    if (symbol is VariableSymbol varSymbol && varSymbol.Type is NullableType nullable)
+                    if (symbol is VariableSymbol varSymbol)
                     {
-                        narrowedTypes[id.Name] = nullable.UnderlyingType;
+                        if (varSymbol.Type is NullableType nullable)
+                            narrowedTypes[id.Name] = nullable.UnderlyingType;
+                        else if (varSymbol.Type is OptionalType optional)
+                            narrowedTypes[id.Name] = optional.UnderlyingType;
                     }
                 }
             }
@@ -59,9 +62,12 @@ public partial class TypeChecker
                 {
                     // In the negative branch (else after 'x is None'), narrow to non-nullable
                     var symbol = _symbolTable.Lookup(id.Name);
-                    if (symbol is VariableSymbol varSymbol && varSymbol.Type is NullableType nullable)
+                    if (symbol is VariableSymbol varSymbol)
                     {
-                        narrowedTypes[id.Name] = nullable.UnderlyingType;
+                        if (varSymbol.Type is NullableType nullable)
+                            narrowedTypes[id.Name] = nullable.UnderlyingType;
+                        else if (varSymbol.Type is OptionalType optional)
+                            narrowedTypes[id.Name] = optional.UnderlyingType;
                     }
                 }
             }
@@ -128,6 +134,12 @@ public partial class TypeChecker
             return source.IsAssignableTo(nullable.UnderlyingType);
         }
 
+        // Non-optional type can be assigned to optional version of the same type
+        if (target is OptionalType optional)
+        {
+            return source.IsAssignableTo(optional.UnderlyingType);
+        }
+
         // Handle covariance for generic collection types (list, set)
         if (source is GenericType sourceGeneric && target is GenericType targetGeneric)
         {
@@ -184,6 +196,15 @@ public partial class TypeChecker
             NullableType nt => new NullableType
             {
                 UnderlyingType = SubstituteTypeParametersInType(nt.UnderlyingType, substitutions)
+            },
+            OptionalType ot => new OptionalType
+            {
+                UnderlyingType = SubstituteTypeParametersInType(ot.UnderlyingType, substitutions)
+            },
+            ResultType rt => new ResultType
+            {
+                OkType = SubstituteTypeParametersInType(rt.OkType, substitutions),
+                ErrorType = SubstituteTypeParametersInType(rt.ErrorType, substitutions)
             },
             FunctionType ft => new FunctionType
             {
@@ -820,7 +841,9 @@ public partial class TypeChecker
             UserDefinedType udt => udt.Name,
             BuiltinType bt => bt.Name,
             GenericType gt => $"{gt.Name}<{string.Join(",", gt.TypeArguments.Select(GetTypeKey))}>",
-            NullableType nt => $"{GetTypeKey(nt.UnderlyingType)}?",
+            NullableType nt => $"{GetTypeKey(nt.UnderlyingType)}|None",
+            OptionalType ot => $"{GetTypeKey(ot.UnderlyingType)}?",
+            ResultType rt => $"{GetTypeKey(rt.OkType)}!{GetTypeKey(rt.ErrorType)}",
             _ => type.GetDisplayName()
         };
     }
