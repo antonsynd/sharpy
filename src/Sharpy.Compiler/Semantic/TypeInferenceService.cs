@@ -578,7 +578,7 @@ public class TypeInferenceService
                 return MapClrTypeToSemanticType(elementType);
         }
 
-        return SemanticType.Unknown;
+        return null;
     }
 
     /// <summary>
