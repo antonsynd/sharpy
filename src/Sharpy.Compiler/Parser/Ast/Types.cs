@@ -9,7 +9,29 @@ public record TypeAnnotation
 {
     public string Name { get; init; } = "";
     public ImmutableArray<TypeAnnotation> TypeArguments { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
-    public bool IsNullable { get; init; }  // T? syntax
+
+    /// <summary>
+    /// True if this type uses T? syntax (desugars to Optional[T]).
+    /// This is distinct from IsCSharpNullable (T | None for C# interop).
+    /// </summary>
+    public bool IsOptional { get; init; }
+
+    /// <summary>
+    /// True if this type uses T | None syntax (C# nullable interop).
+    /// This is distinct from IsOptional (T? syntax for Optional[T]).
+    /// </summary>
+    public bool IsCSharpNullable { get; init; }
+
+    /// <summary>
+    /// The error type E in T !E syntax (desugars to Result[T, E]).
+    /// Null if this is not a result type.
+    /// </summary>
+    public TypeAnnotation? ErrorType { get; init; }
+
+    /// <summary>
+    /// True if this type uses T !E syntax (desugars to Result[T, E]).
+    /// </summary>
+    public bool IsResult => ErrorType != null;
 
     // Source location
     public int LineStart { get; init; }
