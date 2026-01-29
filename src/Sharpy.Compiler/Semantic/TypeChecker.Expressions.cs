@@ -43,6 +43,7 @@ public partial class TypeChecker
             TypeCoercion coercion => CheckTypeCoercion(coercion),
             TypeCheck typeCheck => CheckTypeCheck(typeCheck),
             MaybeExpression maybeExpr => CheckMaybeExpression(maybeExpr),
+            TryExpression tryExpr => CheckTryExpression(tryExpr),
             Parenthesized paren => CheckExpression(paren.Expression),
             _ => SemanticType.Unknown
         };
@@ -1832,6 +1833,41 @@ public partial class TypeChecker
         }
 
         return new OptionalType { UnderlyingType = nullable.UnderlyingType };
+    }
+
+    /// <summary>
+    /// Type-checks a try expression: try expr or try[ExceptionType] expr.
+    /// Wraps the operand in Result[T, E] where T is the operand type and E is the exception type.
+    /// Default E is Exception, except for 'to' expressions where it's InvalidCastException.
+    /// </summary>
+    private SemanticType CheckTryExpression(TryExpression tryExpr)
+    {
+        var operandType = CheckExpression(tryExpr.Operand);
+
+        if (operandType is UnknownType)
+        {
+            return SemanticType.Unknown;
+        }
+
+        // Determine the error type
+        SemanticType errorType;
+        if (tryExpr.ExceptionType != null)
+        {
+            // Explicit exception type: try[ValueError] expr
+            errorType = _typeResolver.ResolveTypeAnnotation(tryExpr.ExceptionType);
+        }
+        else if (tryExpr.Operand is TypeCoercion)
+        {
+            // Special case: try x to Cat → Result[Cat, InvalidCastException]
+            errorType = new UserDefinedType { Name = "InvalidCastException" };
+        }
+        else
+        {
+            // Default: try expr → Result[T, Exception]
+            errorType = new UserDefinedType { Name = "Exception" };
+        }
+
+        return new ResultType { OkType = operandType, ErrorType = errorType };
     }
 
     /// <summary>
