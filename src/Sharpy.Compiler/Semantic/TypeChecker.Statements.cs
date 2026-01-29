@@ -123,7 +123,14 @@ public partial class TypeChecker
 
             // In Sharpy, simple assignments (x = value) create new variable versions
             // This enables Python-like behavior where variables can be reassigned to different types
+            // Set expected type for constructor inference if the variable was previously declared
+            var previousExpectedType2 = _expectedType;
+            if (existingSymbol is VariableSymbol existingVarSym)
+                _expectedType = existingVarSym.Type is UnknownType ? null : existingVarSym.Type;
+            else if (parentSymbol is VariableSymbol parentVarSym)
+                _expectedType = parentVarSym.Type is UnknownType ? null : parentVarSym.Type;
             var inferredType = CheckExpression(assignment.Value);
+            _expectedType = previousExpectedType2;
 
             // Create a new variable symbol with the inferred type (or redefine existing)
             var newSymbol = new VariableSymbol

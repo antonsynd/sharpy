@@ -253,7 +253,11 @@ public partial class TypeChecker
             // Type check default value if present
             if (param.DefaultValue != null)
             {
+                // Set expected type for constructor inference (Some/Nothing/Ok/Err)
+                var previousExpectedType = _expectedType;
+                _expectedType = paramType is UnknownType ? null : paramType;
                 var defaultType = CheckExpression(param.DefaultValue);
+                _expectedType = previousExpectedType;
                 if (!IsAssignable(defaultType, paramType))
                 {
                     AddError($"Default value type '{defaultType.GetDisplayName()}' is not assignable to parameter type '{paramType.GetDisplayName()}'",
