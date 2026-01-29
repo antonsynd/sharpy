@@ -58,7 +58,8 @@ namespace Sharpy.Core
 
         public override int GetHashCode()
         {
-            if (!_hasValue) return 0;
+            if (!_hasValue)
+                return 0;
             unchecked
             {
                 return 31 * _hasValue.GetHashCode() + EqualityComparer<T>.Default.GetHashCode(_value!);
