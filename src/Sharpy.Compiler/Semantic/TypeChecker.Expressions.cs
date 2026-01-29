@@ -42,6 +42,7 @@ public partial class TypeChecker
             TypeCast cast => CheckTypeCast(cast),
             TypeCoercion coercion => CheckTypeCoercion(coercion),
             TypeCheck typeCheck => CheckTypeCheck(typeCheck),
+            MaybeExpression maybeExpr => CheckMaybeExpression(maybeExpr),
             Parenthesized paren => CheckExpression(paren.Expression),
             _ => SemanticType.Unknown
         };
@@ -1768,6 +1769,30 @@ public partial class TypeChecker
         CheckExpression(typeCheck.Value);
         _typeResolver.ResolveTypeAnnotation(typeCheck.CheckType);
         return SemanticType.Bool;
+    }
+
+    /// <summary>
+    /// Type-checks a maybe expression: maybe expr.
+    /// The operand must be a NullableType (T | None). The result is OptionalType wrapping the underlying type.
+    /// </summary>
+    private SemanticType CheckMaybeExpression(MaybeExpression maybeExpr)
+    {
+        var operandType = CheckExpression(maybeExpr.Operand);
+
+        if (operandType is UnknownType)
+        {
+            return SemanticType.Unknown;
+        }
+
+        if (operandType is not NullableType nullable)
+        {
+            AddError(
+                $"'maybe' expression requires a nullable type (T | None), but got '{operandType.GetDisplayName()}'",
+                maybeExpr.LineStart, maybeExpr.ColumnStart);
+            return SemanticType.Unknown;
+        }
+
+        return new OptionalType { UnderlyingType = nullable.UnderlyingType };
     }
 
     /// <summary>
