@@ -11,7 +11,7 @@ namespace SharpyGenerated;
 /// </summary>
 public static class Exports
 {
-        public static void Main()
+    public static void Main()
     {
         Sharpy.Exports.Print("Hello, World!");
         Sharpy.Exports.Print("This is Sharpy!");

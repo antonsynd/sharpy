@@ -25,11 +25,11 @@ public static class Exports
     {
         if (numbers.Length == 0)
             return 0;
-        
+
         double sum = 0;
         foreach (var num in numbers)
             sum += num;
-        
+
         return sum / numbers.Length;
     }
 
@@ -38,10 +38,12 @@ public static class Exports
     /// </summary>
     public static bool IsPrime(int n)
     {
-        if (n < 2) return false;
+        if (n < 2)
+            return false;
         for (int i = 2; i <= Math.Sqrt(n); i++)
         {
-            if (n % i == 0) return false;
+            if (n % i == 0)
+                return false;
         }
         return true;
     }
@@ -55,7 +57,7 @@ public static class Exports
             throw new ArgumentException("Factorial is not defined for negative numbers");
         if (n == 0 || n == 1)
             return 1;
-        
+
         long result = 1;
         for (int i = 2; i <= n; i++)
         {

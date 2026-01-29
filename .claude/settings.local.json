@@ -34,7 +34,14 @@
       "Bash(git -C /Users/anton/Documents/github/sharpy log --oneline -20)",
       "Bash(git commit:*)",
       "Bash(git stash:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(git -C /Users/anton/Documents/github/sharpy status)",
+      "Bash(git -C /Users/anton/Documents/github/sharpy diff --stat)",
+      "Bash(git -C /Users/anton/Documents/github/sharpy log --oneline -5)",
+      "Bash(git -C /Users/anton/Documents/github/sharpy diff examples/generic_demo.cs)",
+      "Bash(git -C /Users/anton/Documents/github/sharpy add docs/tasks/phase6_type_resolution.md)",
+      "Bash(git -C /Users/anton/Documents/github/sharpy commit -m \"$\\(cat <<''EOF''\ndocs: mark Phase 6 type resolution tasks complete\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/anton/Documents/github/sharpy log --oneline -6)"
     ]
   }
 }
