@@ -99,7 +99,7 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
     # Load phases overview
     if phases_file.exists():
         content = phases_file.read_text()
-        # Extract phases 0.1.0 through 0.1.14 (implemented features)
+        # Extract phases 0.1.0 through 0.1.18 (implemented features)
         lines = content.split("\n")
         in_relevant_section = False
         relevant_lines = []
@@ -107,7 +107,7 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
         for line in lines:
             if "## Phase 0.1.0" in line:
                 in_relevant_section = True
-            elif "## Phase 0.1.15" in line:
+            elif "## Phase 0.1.19" in line:
                 in_relevant_section = False
                 break
 
@@ -115,7 +115,7 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
                 relevant_lines.append(line)
 
         if relevant_lines:
-            context_parts.append("# Implementation Phases (0.1.0 - 0.1.14)\n\n")
+            context_parts.append("# Implementation Phases (0.1.0 - 0.1.18)\n\n")
             context_parts.append("\n".join(relevant_lines[:2000]))  # Limit size
 
     # Load key spec files
@@ -144,6 +144,11 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
         "lambda_expressions.md",
         "fstrings.md",
         "dotnet_interop.md",
+        # Phase 0.1.15-0.1.18: Optional & Result types
+        "tagged_unions_optional.md",
+        "tagged_unions_result.md",
+        "maybe_expressions.md",
+        "try_expressions.md",
     ]
 
     for spec_name in key_specs:
@@ -219,7 +224,7 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
 - Example of WRONG: `def main(): ... \\n main()` - the `main()` call is forbidden at module level
 
-## CRITICAL: Allowed Features (Phases 0.1.0-0.1.14)
+## CRITICAL: Allowed Features (Phases 0.1.0-0.1.18)
 
 ### ✅ ALLOWED - Use these features:
 
@@ -323,6 +328,28 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 #### Lambda Expressions (0.1.14)
 - **Lambdas**: `lambda x: x * 2`, `lambda a, b: a + b`
 - **Higher-order functions**: Passing lambdas to functions
+- **Type inference**: Lambda parameter types are inferred from the expected function type context
+
+#### Optional Types (0.1.15)
+- **Optional type**: `x: int? = Some(42)`, `y: int? = Nothing`
+- **Optional constructors**: `Some(value)` wraps a value, `Nothing` represents absence
+- **Optional methods**: `.unwrap()`, `.unwrap_or(default)`, `.map(lambda v: v * 2)`
+- **Type annotation**: `T?` is shorthand for `Optional[T]`
+
+#### Result Types (0.1.16)
+- **Result type**: `x: int !str = Ok(42)`, `y: int !str = Err("failed")`
+- **Result constructors**: `Ok(value)` for success, `Err(error)` for failure
+- **Result methods**: `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`, `.map_err(fn)`
+- **Type annotation**: `T !E` is shorthand for `Result[T, E]`
+
+#### Maybe Expression (0.1.17)
+- **Maybe**: `maybe nullable_value` converts `T | None` to `T?` (Optional)
+- **Usage**: Useful for converting .NET nullable values to Sharpy optionals
+
+#### Try Expression (0.1.18)
+- **Try**: `try risky_call()` wraps a call in `Result[T, Exception]`
+- **Try with type**: `try[ValueError] int("abc")` catches specific exception type
+- **Usage**: Converts exception-throwing code into Result-based error handling
 
 ### ❌ FORBIDDEN - Do NOT use these features (not yet implemented):
 - **NO main() call at module level**: Do NOT write `main()` after defining it - it's auto-invoked by runtime
@@ -465,7 +492,7 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - Modules in same directory can import each other
 - The entry point file (`main.spy`) MUST have a `main()` function
 
-### Allowed Features (same as single-file, phases 0.1.0-0.1.14)
+### Allowed Features (same as single-file, phases 0.1.0-0.1.18)
 - Variables, functions, classes, structs, enums, interfaces
 - Inheritance, abstract/virtual/override methods
 - Nullable types, type aliases, basic generics
@@ -473,8 +500,12 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals
 - Comprehensions: `[x * 2 for x in range(10)]`
 - Exception handling: `try`, `except`, `finally`, `raise`
-- Lambdas: `lambda x: x * 2`
+- Lambdas: `lambda x: x * 2` (parameter types inferred from context)
 - .NET interop: `from system import Console`
+- Optional types: `T?`, `Some(value)`, `Nothing`, `.unwrap()`, `.unwrap_or()`
+- Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.map(fn)`
+- Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
+- Try expression: `try risky_call()` (wraps in `Result[T, Exception]`)
 
 ### ❌ FORBIDDEN in module system:
 - **NO relative imports**: `from .module import x` - NOT SUPPORTED
@@ -596,7 +627,7 @@ Your previous code FAILED validation. You must fix the issue and regenerate.
 ## Instructions
 
 1. Analyze the validation error carefully
-2. Identify which feature(s) are NOT allowed in phases 0.1.0-0.1.14
+2. Identify which feature(s) are NOT allowed in phases 0.1.0-0.1.18
 3. REMOVE or REPLACE the forbidden features
 4. Keep the same general logic/intent but use only allowed features
 
@@ -607,7 +638,7 @@ Every executable Sharpy program MUST have a `main()` function:
 - Only declarations (classes, functions, constants) can be at module level
 - **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
 
-## CRITICAL: Allowed Features (Phases 0.1.0-0.1.14)
+## CRITICAL: Allowed Features (Phases 0.1.0-0.1.18)
 
 ### ✅ ALLOWED:
 - Entry point: `def main():` is REQUIRED for executable code
@@ -630,8 +661,12 @@ Every executable Sharpy program MUST have a `main()` function:
 - Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals `[1,2,3]`, `{{"key": val}}`
 - Comprehensions: `[x * 2 for x in range(10)]`
 - Exception handling: `try`, `except`, `finally`, `raise`
-- Lambdas: `lambda x: x * 2`
+- Lambdas: `lambda x: x * 2` (parameter types inferred from context)
 - .NET interop: `from system import Console`
+- Optional types: `T?`, `Some(value)`, `Nothing`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
+- Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
+- Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
+- Try expression: `try risky_call()`, `try[ExceptionType] expr` (wraps in Result)
 
 ### ❌ FORBIDDEN (DO NOT USE):
 - NO main() call at module level - `main()` is auto-invoked by runtime, do NOT call it yourself
@@ -671,7 +706,7 @@ IMPORTANT:
 def get_spec_validation_prompt(code: str, spec_context: str) -> str:
     """Generate a prompt for validating code against the spec."""
 
-    return f"""You are a STRICT Sharpy language specification validator for phases 0.1.0-0.1.14.
+    return f"""You are a STRICT Sharpy language specification validator for phases 0.1.0-0.1.18.
 
 ## Program Entry Point Requirement
 
@@ -690,7 +725,7 @@ Only the entry point file (main.spy or a single executable file) needs `main()`.
 If the code contains ONLY declarations (classes, functions, constants) and no executable statements,
 it is a library module and is VALID without `main()`.
 
-## ALLOWED Features (Phases 0.1.0-0.1.14):
+## ALLOWED Features (Phases 0.1.0-0.1.18):
 
 ### Program Structure
 - Entry point: `def main():` is REQUIRED for executable code
@@ -795,8 +830,26 @@ it is a library module and is VALID without `main()`.
 ### Lambda Expressions (0.1.14)
 - Lambdas: `lambda x: x * 2`, `lambda a, b: a + b`
 - Higher-order functions
+- Lambda parameter types inferred from expected function type context
 
-## FORBIDDEN Features (NOT in phases 0.1.0-0.1.14):
+### Optional Types (0.1.15)
+- Optional type annotation: `T?` or `Optional[T]`
+- Optional constructors: `Some(value)`, `Nothing`
+- Optional methods: `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
+
+### Result Types (0.1.16)
+- Result type annotation: `T !E` or `Result[T, E]`
+- Result constructors: `Ok(value)`, `Err(error)`
+- Result methods: `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`, `.map_err(fn)`
+
+### Maybe Expression (0.1.17)
+- Maybe: `maybe expr` converts `T | None` to `T?` (Optional)
+
+### Try Expression (0.1.18)
+- Try: `try expr` wraps in `Result[T, Exception]`
+- Try with type: `try[ExceptionType] expr` catches specific exception
+
+## FORBIDDEN Features (NOT in phases 0.1.0-0.1.18):
 
 ❌ Calling main() at module level - main() is auto-invoked, do NOT call it yourself - REJECT
 ❌ Bare executable statements at module level (must be in `main()`) - REJECT
@@ -823,7 +876,7 @@ Scan the code line by line. If ANY forbidden feature is used, mark as INVALID.
 If ALL features are from the allowed list:
 ```
 VALID
-The code uses only features from phases 0.1.0-0.1.14.
+The code uses only features from phases 0.1.0-0.1.18.
 ```
 
 If ANY forbidden feature is found:

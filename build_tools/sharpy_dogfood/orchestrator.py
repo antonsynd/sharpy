@@ -155,6 +155,15 @@ async def _verify_expected_with_python(
         "@protected",
         "@internal",
         "enum ",
+        "Some(",
+        "Nothing",
+        "Ok(",
+        "Err(",
+        "maybe ",
+        "int?",
+        "str?",
+        "float?",
+        "bool?",
     ]
     if any(feature in code for feature in sharpy_only_features):
         return True, None, "Sharpy-specific features - skipping Python verification"
@@ -302,7 +311,7 @@ def _has_multi_arg_print(line: str) -> bool:
     return False
 
 
-# Feature focuses for code generation - matched to phases 0.1.0-0.1.10
+# Feature focuses for code generation - matched to phases 0.1.0-0.1.18
 # Each focus tests specific compiler functionality
 FEATURE_FOCUSES = [
     # Phase 0.1.3: Variables & Expressions
@@ -379,6 +388,14 @@ FEATURE_FOCUSES = [
     "lambda_basic",  # lambda x: x * 2
     "lambda_multiarg",  # lambda a, b: a + b
     "higher_order_function",  # passing lambdas
+    # Phase 0.1.15-0.1.18: Optional & Result Types
+    "optional_type",  # T?, Some(x), Nothing
+    "optional_unwrap",  # .unwrap(), .unwrap_or(), .map()
+    "result_type",  # T !E, Ok(x), Err(e)
+    "result_unwrap",  # .unwrap(), .unwrap_or(), .map()
+    "maybe_expression",  # maybe expr — T | None → T?
+    "try_expression",  # try expr — wraps in Result[T, E]
+    "lambda_type_inference",  # lambda params inferred from context
     # Combinations
     "nested_if_in_loop",  # if inside for/while
     "loop_in_function",  # for/while inside function
@@ -463,17 +480,16 @@ class DogfoodOrchestrator:
     def _load_example_snippets(self) -> None:
         """Load example Sharpy snippets from the snippets directory.
 
-        Filters to only include snippets that use features from phases 0.1.0-0.1.14.
+        Filters to only include snippets that use features from phases 0.1.0-0.1.18.
         Now includes f-strings, collections, comprehensions, exceptions, lambdas, .NET interop.
         """
         snippets_dir = self.config.snippets_dir
         if not snippets_dir.exists():
             return
 
-        # Features that indicate code is beyond phases 0.1.0-0.1.14
+        # Features that indicate code is beyond phases 0.1.0-0.1.18
         # (only features NOT yet implemented)
         forbidden_patterns = [
-            "Optional[",  # Use T? instead
             "async def",  # Not implemented
             "await ",  # Not implemented
             " with ",  # Context managers not implemented
@@ -1255,21 +1271,24 @@ class DogfoodOrchestrator:
         Returns None if code passes, or an error message if it fails.
         This catches obvious issues before expensive AI validation.
 
-        Validates against phases 0.1.0-0.1.14 (includes f-strings, collections,
-        exception handling, lambdas, and .NET interop).
+        Validates against phases 0.1.0-0.1.18 (includes f-strings, collections,
+        exception handling, lambdas, .NET interop, Optional/Result types,
+        maybe/try expressions).
         """
         import re
 
         # Patterns that indicate features NOT yet implemented
-        # Note: Phases 0.1.0-0.1.14 features ARE now allowed:
+        # Note: Phases 0.1.0-0.1.18 features ARE now allowed:
         # - f-strings (0.1.11)
         # - collections: list/dict/set literals & comprehensions (0.1.11)
         # - .NET interop imports (0.1.12)
         # - exception handling: try/except/raise (0.1.13)
         # - lambdas (0.1.14)
+        # - optional types: T?, Some(), Nothing (0.1.15)
+        # - result types: T !E, Ok(), Err() (0.1.16)
+        # - maybe expression (0.1.17)
+        # - try expression (0.1.18)
         forbidden_checks = [
-            # Type annotation style
-            (r":\s*Optional\[", "Optional type - use T? instead"),
             # Async/await (not implemented)
             (r"\basync\s+def", "async function (not implemented)"),
             (r"\bawait\s+", "await expression (not implemented)"),

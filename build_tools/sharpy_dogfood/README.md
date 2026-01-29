@@ -6,7 +6,7 @@ A comprehensive testing tool that generates random/novel Sharpy code using AI, v
 
 The dogfooding tool helps catch compiler bugs by:
 1. **Generating** novel Sharpy code using Claude or GitHub Copilot
-2. **Validating** the generated code against the language spec (phases 0.1.0-0.1.10)
+2. **Validating** the generated code against the language spec (phases 0.1.0-0.1.18)
 3. **Compiling** the code using the Sharpy compiler
 4. **Executing** the compiled code and capturing output
 5. **Verifying** that the output matches expectations (via print statements)
@@ -68,7 +68,7 @@ The tool detects several types of issues:
 
 ## Features Tested
 
-The tool tests features from implementation phases 0.1.0 through 0.1.10:
+The tool tests features from implementation phases 0.1.0 through 0.1.18:
 
 - **0.1.0** - Lexer: tokens, keywords, operators, indentation
 - **0.1.1** - Parser: AST, expressions, literals
@@ -81,6 +81,14 @@ The tool tests features from implementation phases 0.1.0 through 0.1.10:
 - **0.1.8** - Structs & Enums: value types (structs), enumerations
 - **0.1.9** - Type System: nullable types (`T?`), type aliases, basic generics, null coalescing (`??`), null conditional (`?.`)
 - **0.1.10** - Module System: imports, module resolution, multi-file compilation
+- **0.1.11** - F-Strings & Collections: f-string interpolation, list/dict/set literals, comprehensions
+- **0.1.12** - .NET Interop: importing .NET namespaces, using .NET types
+- **0.1.13** - Exception Handling: try/except/else/finally, raise
+- **0.1.14** - Lambda Expressions: lambdas, higher-order functions
+- **0.1.15** - Optional Types: `T?`, `Some(value)`, `Nothing`, `.unwrap()`, `.map(fn)`
+- **0.1.16** - Result Types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.map(fn)`
+- **0.1.17** - Maybe Expression: `maybe expr` (converts `T | None` to `T?`)
+- **0.1.18** - Try Expression: `try expr`, `try[E] expr` (wraps in `Result[T, E]`)
 
 ### Allowed Features (Strict)
 
@@ -99,16 +107,24 @@ The tool tests features from implementation phases 0.1.0 through 0.1.10:
 ✅ Type aliases: `type UserId = int`
 ✅ Imports: `import module`, `from module import item`
 ✅ Built-ins: `print()`, `range()`
+✅ F-strings: `f"Hello {name}"`, `f"Result: {x + y}"`
+✅ Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals
+✅ Comprehensions: `[x * 2 for x in range(10)]`
+✅ .NET interop: `from system import Console`
+✅ Exceptions: `try/except/else/finally`, `raise`
+✅ Lambdas: `lambda x: x * 2`, parameter types inferred from context
+✅ Optional types: `T?`, `Some(value)`, `Nothing`, `.unwrap()`, `.map(fn)`
+✅ Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.map(fn)`
+✅ Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
+✅ Try expression: `try expr`, `try[E] expr` (wraps in `Result[T, E]`)
 
 ### Forbidden Features (Not Yet Implemented)
 
-❌ f-strings, string concatenation
-❌ Lists, dicts, sets literals
-❌ List comprehensions
-❌ .NET interop imports (`from system import ...`)
-❌ Exceptions (try/except)
-❌ Lambdas
-❌ Multiple assignment, walrus operator
+❌ Pattern matching: `match`/`case`
+❌ Async/await
+❌ Context managers (`with` statement)
+❌ Walrus operator (`:=`)
+❌ Multiple assignment / tuple unpacking
 
 ## Validation
 

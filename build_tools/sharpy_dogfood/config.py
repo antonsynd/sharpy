@@ -92,7 +92,7 @@ class Config(BaseConfig):
         }
     )
 
-    # Feature coverage phases (0.1.0 to 0.1.10)
+    # Feature coverage phases (0.1.0 to 0.1.18)
     supported_phases: list[str] = field(
         default_factory=lambda: [
             "0.1.0",  # Lexer Foundation
@@ -106,6 +106,14 @@ class Config(BaseConfig):
             "0.1.8",  # Structs & Enums
             "0.1.9",  # Type System Enhancements
             "0.1.10",  # Module System
+            "0.1.11",  # F-Strings & Collections
+            "0.1.12",  # .NET Interop
+            "0.1.13",  # Exception Handling
+            "0.1.14",  # Lambda Expressions
+            "0.1.15",  # Optional Types
+            "0.1.16",  # Result Types
+            "0.1.17",  # Maybe Expression
+            "0.1.18",  # Try Expression
         ]
     )
 
