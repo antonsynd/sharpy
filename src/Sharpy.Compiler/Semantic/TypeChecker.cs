@@ -29,6 +29,10 @@ public partial class TypeChecker
     // Track current function return type for return statement checking
     private SemanticType? _currentFunctionReturnType = null;
 
+    // Expected type for constructor inference (Some/Nothing/Ok/Err)
+    // Set temporarily when checking initializers, return values, and arguments
+    private SemanticType? _expectedType = null;
+
     // Track current class being checked (for self parameter typing)
     private TypeSymbol? _currentClass = null;
 

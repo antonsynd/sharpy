@@ -22,6 +22,15 @@ public class BuiltinRegistry
         "int", "long", "float", "double", "decimal", "bool", "str"
     };
 
+    /// <summary>
+    /// Tagged union constructor names that the type checker handles via expected type inference.
+    /// These are not regular functions — the type checker recognizes them based on context.
+    /// </summary>
+    private static readonly HashSet<string> TaggedUnionConstructors = new()
+    {
+        "Some", "Nothing", "Ok", "Err"
+    };
+
     public BuiltinRegistry()
     {
         _discovery = new CachedModuleDiscovery();
@@ -107,6 +116,12 @@ public class BuiltinRegistry
     /// Returns all function overloads with the given name, or null if no function with that name exists.
     /// </summary>
     public List<FunctionSymbol>? GetFunctionOverloads(string name) => _functions.GetValueOrDefault(name);
+
+    /// <summary>
+    /// Returns true if the name is a tagged union constructor (Some, Nothing, Ok, Err).
+    /// These are handled by the type checker via expected type inference, not as regular functions.
+    /// </summary>
+    public bool IsTaggedUnionConstructor(string name) => TaggedUnionConstructors.Contains(name);
 
     public IEnumerable<(string Name, TypeSymbol Type)> GetAllTypes() => _types.Select(kv => (kv.Key, kv.Value));
     public IEnumerable<(string Name, FunctionSymbol Function)> GetAllFunctions() =>
