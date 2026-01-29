@@ -233,4 +233,98 @@ public class GenericTypeInferenceServiceTests
         result.InferredTypes.Should().HaveCount(1);
         result.InferredTypes![0].Should().Be(SemanticType.Int);
     }
+
+    #region Optional and Result Type Unification
+
+    [Fact]
+    public void InferFromOptionalParameter()
+    {
+        // Arrange: def unwrap_or[T](opt: T?, default: T) -> T
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "unwrap_or",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "opt",
+                    Type = new OptionalType { UnderlyingType = new TypeParameterType { Name = "T" } }
+                },
+                new ParameterSymbol
+                {
+                    Name = "default_val",
+                    Type = new TypeParameterType { Name = "T" }
+                }
+            },
+            ReturnType = new TypeParameterType { Name = "T" }
+        };
+
+        // Act: call unwrap_or(Optional[int], 0)
+        var argumentTypes = new List<SemanticType>
+        {
+            new OptionalType { UnderlyingType = SemanticType.Int },
+            SemanticType.Int
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(1);
+        result.InferredTypes![0].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferFromResultParameter()
+    {
+        // Arrange: def map_ok[T, U, E](result: Result[T, E], f: (T) -> U) -> Result[U, E]
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "map_ok",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" },
+                new TypeParameterDef { Name = "E" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "result",
+                    Type = new ResultType
+                    {
+                        OkType = new TypeParameterType { Name = "T" },
+                        ErrorType = new TypeParameterType { Name = "E" }
+                    }
+                },
+                new ParameterSymbol
+                {
+                    Name = "default_val",
+                    Type = new TypeParameterType { Name = "T" }
+                }
+            },
+            ReturnType = new TypeParameterType { Name = "T" }
+        };
+
+        // Act: call map_ok(Result[int, str], 0)
+        var argumentTypes = new List<SemanticType>
+        {
+            new ResultType { OkType = SemanticType.Int, ErrorType = SemanticType.Str },
+            SemanticType.Int
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(2);
+        result.InferredTypes![0].Should().Be(SemanticType.Int);
+        result.InferredTypes![1].Should().Be(SemanticType.Str);
+    }
+
+    #endregion
 }

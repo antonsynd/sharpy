@@ -197,14 +197,33 @@ public class GenericTypeInferenceService
             return UnifyTupleTypes(formalTuple, actualTuple, substitutions);
         }
 
-        // Case 7: No type parameters involved - types should match
-        // (We're lenient here - actual should be assignable to formal)
+        // Case 7: Both are optional types (e.g., T? vs int?)
+        if (formal is OptionalType formalOpt && actual is OptionalType actualOpt)
+        {
+            return Unify(formalOpt.UnderlyingType, actualOpt.UnderlyingType, substitutions);
+        }
+
+        // Case 8: Both are result types (e.g., Result[T, E] vs Result[int, str])
+        if (formal is ResultType formalResult && actual is ResultType actualResult)
+        {
+            var okResult = Unify(formalResult.OkType, actualResult.OkType, substitutions);
+            if (!okResult.Success)
+                return okResult;
+            return Unify(formalResult.ErrorType, actualResult.ErrorType, substitutions);
+        }
+
+        // Case 9: No type parameters involved - types should match
+        // We're lenient here: the purpose of unification is to extract type parameter bindings,
+        // not to validate argument types (that's done by CheckFunctionCall). If concrete types
+        // don't match, we simply have no bindings to extract from this argument pair.
         if (actual.IsAssignableTo(formal))
         {
             return InferenceResult.Succeeded(new List<SemanticType>());
         }
 
-        // Types don't match and can't be unified
+        // Concrete types don't match — still return success because type validation
+        // is the caller's responsibility. Returning failure here would abort inference
+        // prematurely and prevent binding type parameters from other arguments.
         return InferenceResult.Succeeded(new List<SemanticType>());
     }
 
@@ -240,7 +259,9 @@ public class GenericTypeInferenceService
         // Names must match (e.g., both must be "list")
         if (formal.Name != actual.Name)
         {
-            return InferenceResult.Succeeded(new List<SemanticType>()); // Different generic types, can't unify
+            // Different generic types — can't extract type parameter bindings from this pair,
+            // but don't abort inference (other arguments may provide bindings)
+            return InferenceResult.Succeeded(new List<SemanticType>());
         }
 
         // Must have same number of type arguments
