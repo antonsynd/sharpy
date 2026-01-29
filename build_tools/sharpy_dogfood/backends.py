@@ -165,10 +165,20 @@ class ClaudeBackend:
 
     @property
     def is_available(self) -> bool:
-        """Check if this backend is currently available."""
+        """Check if this backend is currently available.
+
+        Checks both the shared backend (CLI exists, disabled_until) and the
+        dogfood-specific rate limit state (cooldown, backoff, window limits).
+        """
         if not self.config.enabled:
             return False
-        return self._shared_backend.is_available()
+        if not self._shared_backend.is_available():
+            return False
+        # Also check dogfood-specific rate limit (cooldown + backoff)
+        should_wait, _ = self.rate_limit_state.should_wait_with_config(
+            self.config.rate_limit
+        )
+        return not should_wait
 
     def get_wait_time(self) -> float:
         """Get time to wait before next request."""
@@ -192,9 +202,11 @@ class ClaudeBackend:
     async def execute(
         self, prompt: str, timeout: Optional[float] = None
     ) -> ExecutionResult:
-        """Execute a prompt using Claude Code CLI with heartbeat logging."""
-        await self.wait_for_availability()
+        """Execute a prompt using Claude Code CLI with heartbeat logging.
 
+        Note: Does NOT wait for rate limit availability — the BackendManager
+        controls failover/wait logic so it can try other backends first.
+        """
         # Build shared config
         effective_timeout = timeout or self.config.execution_timeout
         shared_config = SharedBackendConfig(
@@ -239,10 +251,20 @@ class CopilotBackend:
 
     @property
     def is_available(self) -> bool:
-        """Check if this backend is currently available."""
+        """Check if this backend is currently available.
+
+        Checks both the shared backend (CLI exists, disabled_until) and the
+        dogfood-specific rate limit state (cooldown, backoff, window limits).
+        """
         if not self.config.enabled:
             return False
-        return self._shared_backend.is_available()
+        if not self._shared_backend.is_available():
+            return False
+        # Also check dogfood-specific rate limit (cooldown + backoff)
+        should_wait, _ = self.rate_limit_state.should_wait_with_config(
+            self.config.rate_limit
+        )
+        return not should_wait
 
     def get_wait_time(self) -> float:
         """Get time to wait before next request."""
@@ -266,9 +288,11 @@ class CopilotBackend:
     async def execute(
         self, prompt: str, timeout: Optional[float] = None
     ) -> ExecutionResult:
-        """Execute a prompt using GitHub Copilot CLI with heartbeat logging."""
-        await self.wait_for_availability()
+        """Execute a prompt using GitHub Copilot CLI with heartbeat logging.
 
+        Note: Does NOT wait for rate limit availability — the BackendManager
+        controls failover/wait logic so it can try other backends first.
+        """
         # Build shared config
         effective_timeout = timeout or self.config.execution_timeout
         shared_config = SharedBackendConfig(
@@ -383,11 +407,14 @@ class BackendManager:
                         min_wait = wait
 
             if min_wait < float("inf") and min_wait > 0 and retry < max_retries:
-                # A backend will become available - wait for it
+                # A backend will become available — wait for it, capped at max_backoff
+                actual_wait = min(min_wait, max_backoff)
                 print(
-                    f"[BackendManager] Backend will be available in {min_wait:.1f}s",
+                    f"[BackendManager] All backends busy. Waiting {actual_wait:.1f}s "
+                    f"(backend available in {min_wait:.1f}s)...",
                     file=sys.stderr,
                 )
+                await asyncio.sleep(actual_wait)
 
         # All backends exhausted after retries
         return ExecutionResult(

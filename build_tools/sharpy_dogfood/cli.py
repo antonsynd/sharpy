@@ -116,6 +116,13 @@ def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
         help="Check configuration without running iterations",
     )
 
+    parser.add_argument(
+        "--auto-convert",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Auto-convert unique successful tests to integration test fixtures (default: enabled)",
+    )
+
 
 def _add_convert_arguments(parser: argparse.ArgumentParser) -> None:
     """Add arguments for the convert command."""
@@ -230,9 +237,13 @@ async def run_dogfood(args: argparse.Namespace) -> int:
     )
     print("=" * 40, file=sys.stderr)
 
+    auto_convert = getattr(args, "auto_convert", True)
+    print(f"Auto-convert: {'enabled' if auto_convert else 'disabled'}", file=sys.stderr)
+    print("=" * 40, file=sys.stderr)
+
     if args.dry_run:
         print("\nDry run - checking configuration...", file=sys.stderr)
-        orchestrator = DogfoodOrchestrator(config)
+        orchestrator = DogfoodOrchestrator(config, auto_convert=auto_convert)
         if await orchestrator.initialize():
             print("✓ Configuration is valid", file=sys.stderr)
             return 0
@@ -241,7 +252,7 @@ async def run_dogfood(args: argparse.Namespace) -> int:
             return 1
 
     # Run the dogfooding process
-    orchestrator = DogfoodOrchestrator(config)
+    orchestrator = DogfoodOrchestrator(config, auto_convert=auto_convert)
     return await orchestrator.run(args.iterations)
 
 

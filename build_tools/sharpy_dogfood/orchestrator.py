@@ -28,6 +28,7 @@ from .prompts import (
     get_multifile_generation_prompt,
     get_spec_validation_prompt,
     get_regeneration_prompt,
+    get_test_uniqueness_prompt,
     extract_expected_output,
     extract_code_block,
     extract_multifile_code,
@@ -35,6 +36,7 @@ from .prompts import (
     load_test_fixtures,
     format_fixtures_for_prompt,
 )
+from .convert import convert_dogfood_to_test, get_category_from_feature
 from .reporting import (
     Issue,
     IssueType,
@@ -410,8 +412,9 @@ COMPLEXITY_LEVELS = ["simple", "simple", "simple", "medium", "medium", "complex"
 class DogfoodOrchestrator:
     """Orchestrates the dogfooding process."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, auto_convert: bool = True):
         self.config = config
+        self.auto_convert = auto_convert
         self.backend_manager = BackendManager(config)
         self.compiler = SharpyCompiler(config.project_root, config.sharpy_cli_project)
         self.issue_reporter = IssueReporter(config.issues_dir)
@@ -422,6 +425,7 @@ class DogfoodOrchestrator:
         self.example_snippets: list[str] = []
         self.test_fixtures: dict[str, list[tuple[str, str]]] = {}
         self.fixtures_prompt_section: str = ""
+        self.auto_converted_count: int = 0
 
     async def initialize(self) -> bool:
         """Initialize the orchestrator and verify dependencies."""
@@ -711,6 +715,12 @@ class DogfoodOrchestrator:
             )
             success_dir = self.success_reporter.report(success)
             print(f"  Success saved: {success_dir.name}", file=sys.stderr)
+
+            # Auto-convert to test fixture if enabled
+            if self.auto_convert and success_dir:
+                await self._auto_convert_if_unique(
+                    success_dir, code, feature_focus
+                )
 
         print("\n✓ Iteration completed successfully!", file=sys.stderr)
         return IterationResult(IterationStatus.SUCCESS, success_dir=success_dir)
@@ -1338,6 +1348,74 @@ class DogfoodOrchestrator:
             prompt, timeout=30.0  # Quick comparison
         )
 
+    async def _auto_convert_if_unique(
+        self,
+        success_dir: Path,
+        code: str,
+        feature_focus: str,
+    ) -> bool:
+        """Auto-convert a successful test to a fixture if AI deems it unique.
+
+        Args:
+            success_dir: Path to the success output directory
+            code: The generated Sharpy code
+            feature_focus: The feature area that was tested
+
+        Returns:
+            True if the test was converted, False otherwise
+        """
+        category = get_category_from_feature(feature_focus)
+
+        # Get existing tests in this category
+        existing_tests = self.test_fixtures.get(category, [])
+
+        # Ask AI to evaluate uniqueness
+        prompt = get_test_uniqueness_prompt(code, existing_tests)
+        result = await self.backend_manager.execute(prompt, timeout=30.0)
+
+        if not result.success:
+            print(
+                f"  Auto-convert: AI check failed ({result.error}), skipping",
+                file=sys.stderr,
+            )
+            return False
+
+        if "DUPLICATE" in result.output.upper():
+            print(
+                f"  Auto-convert: Test is a duplicate, skipping",
+                file=sys.stderr,
+            )
+            return False
+
+        if "UNIQUE" not in result.output.upper():
+            print(
+                f"  Auto-convert: Unclear AI response, skipping",
+                file=sys.stderr,
+            )
+            return False
+
+        # Convert to test fixture
+        test_fixtures_dir = self.config.test_fixtures_dir
+        test_path = convert_dogfood_to_test(
+            success_dir, test_fixtures_dir, category=category
+        )
+
+        if test_path:
+            self.auto_converted_count += 1
+            # Reload fixtures so subsequent uniqueness checks see the new test
+            self._load_test_fixtures()
+            print(
+                f"  Auto-convert: Added test fixture {test_path.name}",
+                file=sys.stderr,
+            )
+            return True
+        else:
+            print(
+                f"  Auto-convert: Conversion failed",
+                file=sys.stderr,
+            )
+            return False
+
     async def run(self, iterations: Optional[int] = None) -> int:
         """Run the full dogfooding process."""
         max_iterations = iterations or self.config.max_iterations
@@ -1452,6 +1530,11 @@ class DogfoodOrchestrator:
         print(f"Successful: {successful}/{max_iterations}", file=sys.stderr)
         print(f"Failed: {failed}/{max_iterations}", file=sys.stderr)
         print(f"Skipped: {skipped}/{max_iterations}", file=sys.stderr)
+        if self.auto_convert:
+            print(
+                f"Auto-converted: {self.auto_converted_count} tests added",
+                file=sys.stderr,
+            )
         print(f"\nIssues saved to: {self.config.issues_dir}", file=sys.stderr)
         print(f"Summary: {self.config.output_dir / 'SUMMARY.md'}", file=sys.stderr)
 

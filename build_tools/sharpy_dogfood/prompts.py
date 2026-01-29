@@ -950,6 +950,71 @@ Got: [what was received]
 """
 
 
+def get_test_uniqueness_prompt(
+    code: str,
+    existing_tests: list[tuple[str, str]],
+) -> str:
+    """Generate a prompt for checking if a test provides unique value.
+
+    Args:
+        code: The generated Sharpy code to evaluate.
+        existing_tests: List of (test_name, test_code) tuples from the same category.
+
+    Returns:
+        Prompt string for uniqueness evaluation.
+    """
+    existing_section = ""
+    if existing_tests:
+        existing_section = "## Existing Tests in This Category\n\n"
+        for name, content in existing_tests[:10]:  # Limit to 10 examples
+            # Truncate long tests
+            if len(content) > 300:
+                content = content[:300] + "\n# ... (truncated)"
+            existing_section += f"### {name}\n```python\n{content}\n```\n\n"
+    else:
+        existing_section = "## Existing Tests\n\nNo existing tests in this category yet.\n"
+
+    return f"""Evaluate whether this Sharpy test provides unique value compared to existing tests.
+
+## New Test Code
+
+```python
+{code}
+```
+
+{existing_section}
+
+## Evaluation Criteria
+
+A test is UNIQUE and worth adding if it:
+- Tests a different feature combination than existing tests
+- Uses a meaningfully different algorithm or pattern
+- Covers an edge case not tested by existing tests
+- Tests a feature at a different complexity level
+
+A test is a DUPLICATE and should be skipped if it:
+- Tests the same feature combination with only trivial differences (variable names, numeric values)
+- Is structurally identical to an existing test
+- Doesn't add meaningful coverage beyond what already exists
+
+## Response Format
+
+Respond with EXACTLY one of:
+
+```
+UNIQUE
+Reason: [brief explanation of what new coverage this provides]
+```
+
+OR
+
+```
+DUPLICATE
+Reason: [which existing test(s) already cover this]
+```
+"""
+
+
 def extract_expected_output(code: str) -> Optional[str]:
     """Extract expected output from code comments."""
     lines = code.split("\n")

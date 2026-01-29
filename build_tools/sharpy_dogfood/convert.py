@@ -136,6 +136,37 @@ def get_category_from_feature(feature_focus: Optional[str]) -> str:
         # Modules
         "import_statement": "modules",
         "from_import": "modules",
+        # F-Strings & Collections
+        "f_string_basic": "fstrings",
+        "f_string_expressions": "fstrings",
+        "list_literal": "collections",
+        "dict_literal": "collections",
+        "set_literal": "collections",
+        "list_comprehension": "collections",
+        "dict_comprehension": "collections",
+        "set_comprehension": "collections",
+        "collection_iteration": "collections",
+        "collection_methods": "collections",
+        # .NET Interop
+        "dotnet_import": "dotnet_interop",
+        "dotnet_type_usage": "dotnet_interop",
+        # Exception Handling
+        "try_except_basic": "exceptions",
+        "try_except_finally": "exceptions",
+        "try_except_else": "exceptions",
+        "raise_exception": "exceptions",
+        # Lambda Expressions
+        "lambda_basic": "lambdas",
+        "lambda_multiarg": "lambdas",
+        "higher_order_function": "lambdas",
+        "lambda_type_inference": "lambdas",
+        # Optional & Result Types
+        "optional_type": "optional_result",
+        "optional_unwrap": "optional_result",
+        "result_type": "optional_result",
+        "result_unwrap": "optional_result",
+        "maybe_expression": "optional_result",
+        "try_expression": "optional_result",
     }
 
     return category_map.get(feature_focus, "misc")
