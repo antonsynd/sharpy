@@ -863,6 +863,31 @@ class DogfoodOrchestrator:
                         attempts=attempt,
                     )
 
+            # Step 1.55: Validate Python syntax (catches malformed code early)
+            syntax_error = self._validate_python_syntax(code)
+            if syntax_error:
+                print(
+                    f"  Python syntax validation failed: {syntax_error}",
+                    file=sys.stderr,
+                )
+                last_error = f"Python syntax error: {syntax_error}"
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry with feedback ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return GenerationResult(
+                        success=False,
+                        code=code,
+                        expected_output=extract_expected_output(code),
+                        skip_reason=f"Python syntax error after {attempt} attempts: {syntax_error}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+
             # Step 1.6: Verify expected output using Python
             expected_output = extract_expected_output(code)
             if expected_output:
@@ -1104,6 +1129,33 @@ class DogfoodOrchestrator:
                     skip_reason=f"Unsupported feature in {filename}: {prevalidation_error}",
                 )
 
+        # Step 1.55: Validate Python syntax for each file
+        for filename, code in files.items():
+            syntax_error = self._validate_python_syntax(code)
+            if syntax_error:
+                print(
+                    f"  Python syntax validation failed for {filename}: {syntax_error}",
+                    file=sys.stderr,
+                )
+                skip = Skip(
+                    timestamp=timestamp,
+                    skip_reason=f"Python syntax error in {filename}: {syntax_error}",
+                    generated_code=files.get("main.spy", ""),
+                    expected_output=expected_output,
+                    feature_focus=feature_focus,
+                    complexity=complexity,
+                    backend_used=gen_result.backend,
+                    generation_duration=gen_result.duration_seconds,
+                    source_files=files,
+                )
+                skip_dir = self.skip_reporter.report(skip)
+                print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
+                return IterationResult(
+                    IterationStatus.SKIPPED,
+                    skip_dir=skip_dir,
+                    skip_reason=f"Python syntax error in {filename}: {syntax_error}",
+                )
+
         # Step 2: Validate each file against spec
         print("\n[2/4] Validating against spec...", file=sys.stderr)
         for filename, code in files.items():
@@ -1330,6 +1382,23 @@ class DogfoodOrchestrator:
                     return f"Line {i}: {description} - '{stripped[:50]}...'"
 
         return None
+
+    @staticmethod
+    def _validate_python_syntax(code: str) -> Optional[str]:
+        """Validate that code has valid Python syntax.
+
+        Since Sharpy uses Python-like syntax, Python's ast.parse() catches
+        most syntax errors before attempting compilation.
+
+        Returns None if syntax is valid, or an error message if invalid.
+        """
+        import ast
+
+        try:
+            ast.parse(code)
+            return None
+        except SyntaxError as e:
+            return f"Syntax error at line {e.lineno}: {e.msg}"
 
     async def _validate_code(self, code: str) -> AIResult:
         """Validate code against the Sharpy spec."""
