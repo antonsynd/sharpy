@@ -27,10 +27,10 @@ This phase updates the TypeResolver to correctly resolve the new type annotation
 
 ### Steps
 
-- [ ] Open `src/Sharpy.Compiler/Semantic/TypeResolver.cs`
-- [ ] Find the main type resolution method (likely `ResolveType` or `Resolve`)
-- [ ] Locate where `IsNullable` (now `IsOptional`) is handled
-- [ ] Update to create `OptionalType` instead of `NullableType`:
+- [x] Open `src/Sharpy.Compiler/Semantic/TypeResolver.cs`
+- [x] Find the main type resolution method (likely `ResolveType` or `Resolve`)
+- [x] Locate where `IsNullable` (now `IsOptional`) is handled
+- [x] Update to create `OptionalType` instead of `NullableType`:
 
 **Before (approximate):**
 ```csharp
@@ -95,8 +95,8 @@ This means:
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Semantic/TypeResolver.cs
@@ -113,7 +113,7 @@ git commit -m "semantic: update TypeResolver for OptionalType and ResultType"
 
 When users write explicit `Optional[T]` or `Result[T, E]`, the resolver should recognize these:
 
-- [ ] In the method that resolves type names, add handling:
+- [x] In the method that resolves type names, add handling:
   ```csharp
   private SemanticType ResolveBaseType(TypeAnnotation annotation)
   {
@@ -140,8 +140,8 @@ When users write explicit `Optional[T]` or `Result[T, E]`, the resolver should r
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] No compiler errors
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] No compiler errors
 
 ```
 git add src/Sharpy.Compiler/Semantic/TypeResolver.cs
@@ -156,8 +156,8 @@ git commit -m "semantic: recognize Optional[T] and Result[T, E] as type names"
 
 ### Steps
 
-- [ ] Create new file `src/Sharpy.Compiler.Tests/Semantic/TypeResolverOptionalResultTests.cs`
-- [ ] Add comprehensive tests:
+- [x] Create new file `src/Sharpy.Compiler.Tests/Semantic/TypeResolverOptionalResultTests.cs`
+- [x] Add comprehensive tests:
 
 ```csharp
 using Sharpy.Compiler.Lexer;
@@ -369,8 +369,8 @@ public void Resolve_DirectAst_OptionalType()
 
 ### Verification
 
-- [ ] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter TypeResolverOptionalResultTests`
-- [ ] All tests pass (or adjust test setup as needed)
+- [x] Run tests: `dotnet test src/Sharpy.Compiler.Tests --filter TypeResolverOptionalResultTests`
+- [x] All tests pass (or adjust test setup as needed)
 
 ```
 git add src/Sharpy.Compiler.Tests/Semantic/TypeResolverOptionalResultTests.cs
@@ -390,12 +390,12 @@ The TypeChecker needs to understand the new types for:
 - Return type checking
 - Argument type checking
 
-- [ ] Search for places that check `NullableType`:
+- [x] Search for places that check `NullableType`:
   ```bash
   grep -r "NullableType" src/Sharpy.Compiler/Semantic --include="*.cs"
   ```
-- [ ] For each occurrence, determine if it should also handle `OptionalType` or `ResultType`
-- [ ] Common patterns to update:
+- [x] For each occurrence, determine if it should also handle `OptionalType` or `ResultType`
+- [x] Common patterns to update:
   ```csharp
   // Before: Only checked NullableType
   if (type is NullableType nullable)
@@ -420,15 +420,15 @@ The TypeChecker needs to understand the new types for:
 
 ### Key Areas to Check
 
-- [ ] **Null literal assignment:** `None` should be assignable to `NullableType` but not `OptionalType`
-  - For `OptionalType`, use `Nothing` instead
-- [ ] **Return type checking:** Ensure function return types are resolved correctly
-- [ ] **Variable assignment:** Ensure type compatibility is checked correctly
+- [x] **Null literal assignment:** `None` should be assignable to `NullableType` but not `OptionalType`
+  - For `OptionalType`, use `Nothing` instead (temporarily allowing None until Phase 7)
+- [x] **Return type checking:** Ensure function return types are resolved correctly
+- [x] **Variable assignment:** Ensure type compatibility is checked correctly
 
 ### Verification
 
-- [ ] Build: `dotnet build src/Sharpy.Compiler`
-- [ ] Run existing type checker tests
+- [x] Build: `dotnet build src/Sharpy.Compiler`
+- [x] Run existing type checker tests
 
 ```
 git add src/Sharpy.Compiler/Semantic/TypeChecker*.cs
@@ -441,9 +441,9 @@ git commit -m "semantic: update TypeChecker for OptionalType and ResultType"
 
 ### Steps
 
-- [ ] Run all semantic tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Semantic"`
-- [ ] Run all integration tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Integration"`
-- [ ] Investigate and fix any failures
+- [x] Run all semantic tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Semantic"`
+- [x] Run all integration tests: `dotnet test src/Sharpy.Compiler.Tests --filter "Integration"`
+- [x] Investigate and fix any failures
 
 ### Common Issues
 
@@ -453,7 +453,7 @@ git commit -m "semantic: update TypeChecker for OptionalType and ResultType"
 
 ### Verification
 
-- [ ] All tests pass
+- [x] All tests pass
 
 ```
 # If fixes were needed:
@@ -465,10 +465,10 @@ git commit -m "fix: update tests for OptionalType vs NullableType"
 
 ## Final Verification
 
-- [ ] Build entire compiler: `dotnet build src/Sharpy.Compiler`
-- [ ] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
-- [ ] All tests pass
-- [ ] Review all commits in this phase
+- [x] Build entire compiler: `dotnet build src/Sharpy.Compiler`
+- [x] Run all tests: `dotnet test src/Sharpy.Compiler.Tests`
+- [x] All tests pass
+- [x] Review all commits in this phase
 
 ```
 git log --oneline -5
