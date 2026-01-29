@@ -601,7 +601,8 @@ class Program
                 SourceFilePath = inputFile.FullName,
                 // Single-file emit is treated as an entry point for consistency with run/build
                 IsEntryPoint = true,
-                Logger = logger
+                Logger = logger,
+                SemanticInfo = semanticInfo
             };
 
             // Generate C# code using RoslynEmitter

@@ -40,11 +40,16 @@ public partial class RoslynEmitter
             // Primary expressions
             // Handle 'self' -> 'this' conversion for instance methods
             Identifier name when string.Equals(name.Name, "self", StringComparison.OrdinalIgnoreCase) => ThisExpression(),
+            // Handle Nothing -> Optional<T>.Nothing (tagged union constructor)
+            Identifier name when name.Name == "Nothing" && GetExpressionSemanticType(name) is OptionalType
+                => GenerateNothingExpression((OptionalType)GetExpressionSemanticType(name)!),
             Identifier name => IdentifierName(GetMangledVariableName(name.Name, isNewDeclaration: false)),
             SuperExpression => BaseExpression(),  // super() -> base
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
             SliceAccess sliceAccess => GenerateSliceAccess(sliceAccess),
+            // Handle Some/Ok/Err -> Optional/Result factory calls (tagged union constructors)
+            FunctionCall call when IsTaggedUnionConstructorCall(call) => GenerateTaggedUnionConstructor(call),
             FunctionCall call => GenerateCall(call),
 
             // Operators
@@ -1490,6 +1495,118 @@ public partial class RoslynEmitter
     {
         var parts = modulePath.Split('.');
         return string.Join(".", parts.Select(p => NameMangler.ToPascalCase(p)));
+    }
+
+    // ============================================================
+    // Tagged Union Constructor Generation (Some/Nothing/Ok/Err)
+    // ============================================================
+
+    /// <summary>
+    /// Gets the semantic type of an expression from SemanticInfo, if available.
+    /// </summary>
+    private SemanticType? GetExpressionSemanticType(Sharpy.Compiler.Parser.Ast.Expression expr)
+    {
+        return _context.SemanticInfo?.GetExpressionType(expr);
+    }
+
+    /// <summary>
+    /// Checks if a function call is a tagged union constructor (Some, Ok, Err)
+    /// by checking the expression's semantic type from SemanticInfo.
+    /// </summary>
+    private bool IsTaggedUnionConstructorCall(FunctionCall call)
+    {
+        if (call.Function is not Identifier id)
+            return false;
+
+        if (id.Name is not ("Some" or "Ok" or "Err"))
+            return false;
+
+        var exprType = GetExpressionSemanticType(call);
+        return exprType is OptionalType or ResultType;
+    }
+
+    /// <summary>
+    /// Generates code for a tagged union constructor call (Some, Ok, Err).
+    /// </summary>
+    private ExpressionSyntax GenerateTaggedUnionConstructor(FunctionCall call)
+    {
+        var id = (Identifier)call.Function;
+        var exprType = GetExpressionSemanticType(call)!;
+
+        return (id.Name, exprType) switch
+        {
+            ("Some", OptionalType opt) => GenerateSomeExpression(call, opt),
+            ("Ok", ResultType res) => GenerateOkExpression(call, res),
+            ("Err", ResultType res) => GenerateErrExpression(call, res),
+            _ => throw new InvalidOperationException($"Unexpected tagged union constructor: {id.Name}")
+        };
+    }
+
+    /// <summary>
+    /// Generates: Optional&lt;T&gt;.Some(value)
+    /// </summary>
+    private ExpressionSyntax GenerateSomeExpression(FunctionCall call, OptionalType opt)
+    {
+        var underlyingType = _typeMapper.MapSemanticType(opt.UnderlyingType);
+        var arg = GenerateExpression(call.Arguments[0]);
+
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                GenericName("Optional")
+                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(underlyingType))),
+                IdentifierName("Some")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(arg))));
+    }
+
+    /// <summary>
+    /// Generates: Optional&lt;T&gt;.Nothing
+    /// </summary>
+    private ExpressionSyntax GenerateNothingExpression(OptionalType opt)
+    {
+        var underlyingType = _typeMapper.MapSemanticType(opt.UnderlyingType);
+
+        return MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            GenericName("Optional")
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(underlyingType))),
+            IdentifierName("Nothing"));
+    }
+
+    /// <summary>
+    /// Generates: Result&lt;T, E&gt;.Ok(value)
+    /// </summary>
+    private ExpressionSyntax GenerateOkExpression(FunctionCall call, ResultType res)
+    {
+        var okType = _typeMapper.MapSemanticType(res.OkType);
+        var errType = _typeMapper.MapSemanticType(res.ErrorType);
+        var arg = GenerateExpression(call.Arguments[0]);
+
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                GenericName("Result")
+                    .WithTypeArgumentList(TypeArgumentList(SeparatedList(new[] { okType, errType }))),
+                IdentifierName("Ok")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(arg))));
+    }
+
+    /// <summary>
+    /// Generates: Result&lt;T, E&gt;.Err(error)
+    /// </summary>
+    private ExpressionSyntax GenerateErrExpression(FunctionCall call, ResultType res)
+    {
+        var okType = _typeMapper.MapSemanticType(res.OkType);
+        var errType = _typeMapper.MapSemanticType(res.ErrorType);
+        var arg = GenerateExpression(call.Arguments[0]);
+
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                GenericName("Result")
+                    .WithTypeArgumentList(TypeArgumentList(SeparatedList(new[] { okType, errType }))),
+                IdentifierName("Err")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(arg))));
     }
 
 }

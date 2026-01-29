@@ -115,7 +115,8 @@ public abstract class IntegrationTestBase
             {
                 SourceFilePath = fileName,
                 IsEntryPoint = true,  // Integration tests are executable programs
-                Logger = logger
+                Logger = logger,
+                SemanticInfo = semanticInfo
             };
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);

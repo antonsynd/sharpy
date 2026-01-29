@@ -282,7 +282,8 @@ public class Compiler
                     : null,
                 // Single-file compilation is always an entry point - generate Main method
                 IsEntryPoint = true,
-                Logger = _logger
+                Logger = _logger,
+                SemanticInfo = semanticInfo
             };
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);
@@ -315,7 +316,7 @@ public class Compiler
 
                 var moduleCs = GenerateCSharpForModule(
                     moduleInfo, symbolTable, builtinRegistry,
-                    codeGenContext.ProjectNamespace);
+                    codeGenContext.ProjectNamespace, semanticInfo);
 
                 if (moduleCs != null)
                 {
@@ -413,7 +414,8 @@ public class Compiler
         ModuleInfo moduleInfo,
         SymbolTable symbolTable,
         BuiltinRegistry builtinRegistry,
-        string? projectNamespace)
+        string? projectNamespace,
+        SemanticInfo? semanticInfo = null)
     {
         if (moduleInfo.Module == null || moduleInfo.IsNetModule)
             return null;
@@ -424,7 +426,8 @@ public class Compiler
             ProjectNamespace = projectNamespace,
             // Imported modules are NOT entry points - no Main method
             IsEntryPoint = false,
-            Logger = _logger
+            Logger = _logger,
+            SemanticInfo = semanticInfo
         };
 
         var emitter = new RoslynEmitter(codeGenContext);

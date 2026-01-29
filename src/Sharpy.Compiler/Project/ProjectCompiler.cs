@@ -608,7 +608,8 @@ public class ProjectCompiler
                 ProjectRootPath = ComputeSourceRootPath(config),
                 IsEntryPoint = isEntryPoint,
                 Logger = _logger,
-                SemanticBinding = _projectModel.SemanticBinding
+                SemanticBinding = _projectModel.SemanticBinding,
+                SemanticInfo = _semanticInfo
             };
 
             var emitter = new RoslynEmitter(codeGenContext);

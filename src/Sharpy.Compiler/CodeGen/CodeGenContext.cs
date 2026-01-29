@@ -58,6 +58,12 @@ public class CodeGenContext
     /// </summary>
     public SemanticBinding? SemanticBinding { get; set; }
 
+    /// <summary>
+    /// Semantic info providing expression type information from type checking.
+    /// Used for tagged union constructor detection (Some/Nothing/Ok/Err).
+    /// </summary>
+    public SemanticInfo? SemanticInfo { get; set; }
+
     public CodeGenContext(SymbolTable symbolTable, BuiltinRegistry builtins)
     {
         SymbolTable = symbolTable;
