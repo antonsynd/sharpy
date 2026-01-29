@@ -80,8 +80,21 @@ public class TypeResolver
             }
             else
             {
-                AddError($"Type '{annotation.Name}' not found", null, null);
-                result = SemanticType.Unknown;
+                // Try CLR type fallback for .NET interop types (Exception, etc.)
+                var clrTypeSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
+                if (clrTypeSymbol != null)
+                {
+                    result = new UserDefinedType
+                    {
+                        Name = annotation.Name,
+                        Symbol = clrTypeSymbol
+                    };
+                }
+                else
+                {
+                    AddError($"Type '{annotation.Name}' not found", null, null);
+                    result = SemanticType.Unknown;
+                }
             }
         }
 

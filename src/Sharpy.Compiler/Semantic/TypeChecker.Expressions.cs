@@ -1878,12 +1878,14 @@ public partial class TypeChecker
         else if (tryExpr.Operand is TypeCoercion)
         {
             // Special case: try x to Cat → Result[Cat, InvalidCastException]
-            errorType = new UserDefinedType { Name = "InvalidCastException" };
+            var clrSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType("InvalidCastException");
+            errorType = new UserDefinedType { Name = "InvalidCastException", Symbol = clrSymbol };
         }
         else
         {
             // Default: try expr → Result[T, Exception]
-            errorType = new UserDefinedType { Name = "Exception" };
+            var clrSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType("Exception");
+            errorType = new UserDefinedType { Name = "Exception", Symbol = clrSymbol };
         }
 
         return new ResultType { OkType = operandType, ErrorType = errorType };

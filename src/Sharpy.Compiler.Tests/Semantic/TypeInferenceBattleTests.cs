@@ -901,4 +901,44 @@ def main():
     }
 
     #endregion
+
+    #region CLR Type Fallback
+
+    [Fact]
+    public void ClrTypeFallback_Exception_Resolves()
+    {
+        var source = @"
+def main():
+    result: int !Exception = try 42
+";
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ClrTypeFallback_ResultWithException_Resolves()
+    {
+        var source = @"
+def main():
+    result: Result[int, Exception] = try 42
+";
+        var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ClrTypeFallback_NonexistentType_StillErrors()
+    {
+        var source = @"
+def main():
+    x: CompletelyFakeType = 42
+";
+        var (module, typeChecker, _) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.Errors.Should().NotBeEmpty();
+    }
+
+    #endregion
 }

@@ -126,4 +126,75 @@ public class BuiltinRegistry
     public IEnumerable<(string Name, TypeSymbol Type)> GetAllTypes() => _types.Select(kv => (kv.Key, kv.Value));
     public IEnumerable<(string Name, FunctionSymbol Function)> GetAllFunctions() =>
         _functions.SelectMany(kv => kv.Value.Select(f => (kv.Key, f)));
+
+    #region CLR Type Fallback
+
+    private readonly Dictionary<string, TypeSymbol?> _clrTypeCache = new();
+
+    /// <summary>
+    /// Attempts to resolve a type name as a .NET type from well-known namespaces.
+    /// Used as a fallback when a type is not found in the symbol table.
+    /// Results are cached for performance.
+    /// </summary>
+    public TypeSymbol? TryResolveClrType(string name)
+    {
+        if (_clrTypeCache.TryGetValue(name, out var cached))
+            return cached;
+
+        var clrType = TryFindClrType(name);
+        if (clrType == null)
+        {
+            _clrTypeCache[name] = null;
+            return null;
+        }
+
+        var kind = clrType.IsValueType ? TypeKind.Struct : TypeKind.Class;
+        var typeSymbol = new TypeSymbol
+        {
+            Name = name,
+            Kind = SymbolKind.Type,
+            TypeKind = kind,
+            ClrType = clrType,
+            AccessLevel = AccessLevel.Public,
+            IsAbstract = clrType.IsAbstract && !clrType.IsInterface
+        };
+
+        _clrTypeCache[name] = typeSymbol;
+        return typeSymbol;
+    }
+
+    private static Type? TryFindClrType(string name)
+    {
+        // Search well-known .NET namespaces (ordered by likelihood of use in Sharpy)
+        string[] namespaces =
+        {
+            "System",
+            "System.Collections.Generic",
+            "System.IO",
+            "System.Text"
+        };
+
+        foreach (var ns in namespaces)
+        {
+            var fullName = $"{ns}.{name}";
+            var type = Type.GetType(fullName);
+            if (type != null)
+                return type;
+        }
+
+        // Search loaded assemblies for types not in System.Private.CoreLib
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            foreach (var ns in namespaces)
+            {
+                var type = assembly.GetType($"{ns}.{name}");
+                if (type != null)
+                    return type;
+            }
+        }
+
+        return null;
+    }
+
+    #endregion
 }
