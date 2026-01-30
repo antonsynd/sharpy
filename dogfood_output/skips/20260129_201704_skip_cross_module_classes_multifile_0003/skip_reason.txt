@@ -1,1 +1,0 @@
-main.spy invalid per spec

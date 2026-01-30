@@ -1,3 +1,0 @@
-Compilation failed:
-  Semantic error at line 5, column 8: Type 'T' does not support operator '<' with operand of type 'T'
-  Semantic error at line 10, column 8: Type 'T' does not support operator '>' with operand of type 'T'

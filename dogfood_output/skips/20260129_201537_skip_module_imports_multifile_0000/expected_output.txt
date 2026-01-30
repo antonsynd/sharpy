@@ -1,9 +1,0 @@
-Circle with radius 5.0
-Rectangle 4.0x6.0
-Triangle with sides 3.0, 4.0, 5.0
-Total area: 108.53975
-Total perimeter: 67.41590000000001
-All shapes:
-Circle with radius 5.0
-Rectangle 4.0x6.0
-Triangle with sides 3.0, 4.0, 5.0

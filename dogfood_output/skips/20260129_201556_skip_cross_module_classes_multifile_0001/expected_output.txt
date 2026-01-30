@@ -1,6 +1,0 @@
-Collection 'My Shapes' with 4 shapes
-Total area: 139.24775, Average: 34.8119375
-Red shapes: 2
-A red circle with radius 5.0
-Circle area: 78.53975
-Rectangle area: 24.0
