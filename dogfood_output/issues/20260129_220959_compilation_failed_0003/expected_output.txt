@@ -1,0 +1,6 @@
+Reversed 'hello': olleh
+Vowels in 'Beautiful': 5
+Words: 3, Vowels: 4, Length: 15
+5! = 120
+Is 12321 palindrome? True
+Calculator: (10+15)*3 = 75

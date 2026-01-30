@@ -1,0 +1,33 @@
+# Canvas module for managing and rendering drawable objects
+from geometry import IDrawable, Shape, Circle, Rectangle
+
+class Canvas:
+    shapes: list[IDrawable]
+    name: str
+    
+    def __init__(self, name: str):
+        self.name = name
+        self.shapes = []
+    
+    def add_shape(self, shape: IDrawable) -> None:
+        self.shapes.append(shape)
+    
+    def render_all(self) -> None:
+        print(f"Rendering canvas: {self.name}")
+        for shape in self.shapes:
+            print(shape.draw())
+    
+    def total_area(self) -> float:
+        total: float = 0.0
+        for shape in self.shapes:
+            total += shape.area()
+        return total
+
+class ShapeFactory:
+    @staticmethod
+    def create_circle(color: str, radius: float) -> Circle:
+        return Circle(color, radius)
+    
+    @staticmethod
+    def create_rectangle(color: str, width: float, height: float) -> Rectangle:
+        return Rectangle(color, width, height)

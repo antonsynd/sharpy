@@ -1,0 +1,18 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-29T22:07:47.187187",
+  "generated_code": "# Test try/except/finally with file operations simulation\n# Tests exception handling with resource cleanup\n\nclass FileHandle:\n    path: str\n    is_open: bool\n\n    def __init__(self, path: str):\n        self.path = path\n        self.is_open = False\n\n    def open(self) -> None:\n        print(f\"Opening {self.path}\")\n        self.is_open = True\n\n    def read_line(self, line_num: int) -> str:\n        if not self.is_open:\n            raise RuntimeError(\"File not open\")\n        if line_num < 0:\n            raise ValueError(\"Invalid line number\")\n        return f\"Line {line_num} content\"\n\n    def close(self) -> None:\n        if self.is_open:\n            print(f\"Closing {self.path}\")\n            self.is_open = False\n\ndef read_with_error_handling(file: FileHandle, line: int) -> str:\n    result: str = \"\"\n    try:\n        file.open()\n        result = file.read_line(line)\n        print(f\"Successfully read: {result}\")\n    except ValueError:\n        print(\"ValueError caught: invalid line number\")\n    except RuntimeError:\n        print(\"RuntimeError caught: file access error\")\n    finally:\n        file.close()\n        print(\"Cleanup completed\")\n    \n    return result\n\ndef main():\n    file1: FileHandle = FileHandle(\"data.txt\")\n    content: str = read_with_error_handling(file1, 5)\n    print(\"---\")\n    \n    file2: FileHandle = FileHandle(\"config.txt\")\n    bad_content: str = read_with_error_handling(file2, -1)\n\n# EXPECTED OUTPUT:\n# Opening data.txt\n# Successfully read: Line 5 content\n# Closing data.txt\n# Cleanup completed\n# ---\n# Opening config.txt\n# ValueError caught: invalid line number\n# Closing config.txt\n# Cleanup completed",
+  "expected_output": "Opening data.txt\nSuccessfully read: Line 5 content\nClosing data.txt\nCleanup completed\n---\nOpening config.txt\nValueError caught: invalid line number\nClosing config.txt\nCleanup completed\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 18, column 19: Undefined identifier 'RuntimeError'\n  Semantic error at line 20, column 19: Undefined identifier 'ValueError'\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "try_except_finally",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 40.43179631233215,
+  "compilation_duration": null,
+  "execution_duration": 4.757352113723755,
+  "source_files": null
+}

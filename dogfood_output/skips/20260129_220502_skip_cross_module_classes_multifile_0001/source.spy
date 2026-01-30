@@ -1,0 +1,35 @@
+# Main entry point - demonstrate cross-module inheritance and interfaces
+from shapes import Rectangle, Circle
+from canvas import Canvas, calculate_total_area
+
+def main():
+    # Create shapes using cross-module inheritance
+    rect: Rectangle = Rectangle("MyRect", 10.0, 5.0)
+    circle: Circle = Circle("MyCircle", 3.0)
+    
+    # Test polymorphic describe() method
+    print(rect.describe())
+    print(circle.describe())
+    
+    # Create canvas and add shapes (IDrawable interface)
+    canvas: Canvas = Canvas()
+    canvas.add_shape(rect)
+    canvas.add_shape(circle)
+    
+    print(f"Canvas has {canvas.count()} shapes")
+    
+    # Render all shapes via interface
+    canvas.render_all()
+    
+    # Calculate total area using IMeasurable interface
+    shapes: list = [rect, circle]
+    total: float = calculate_total_area(shapes)
+    print(f"Total area: {total}")
+
+# EXPECTED OUTPUT:
+# Rectangle MyRect: 10.0x5.0
+# Circle MyCircle: radius=3.0
+# Canvas has 2 shapes
+# Drawing rectangle MyRect
+# Drawing circle MyCircle
+# Total area: 78.26544

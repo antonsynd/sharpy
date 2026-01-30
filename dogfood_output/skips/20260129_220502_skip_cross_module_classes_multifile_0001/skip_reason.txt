@@ -1,0 +1,1 @@
+Python syntax error in geometry.spy: Syntax error at line 3: invalid syntax

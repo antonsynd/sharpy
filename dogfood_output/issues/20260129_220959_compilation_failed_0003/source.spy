@@ -1,0 +1,38 @@
+# Main entry point demonstrating cross-module utilities
+from string_utils import reverse_string, count_vowels, TextAnalyzer
+from math_utils import factorial, is_palindrome_number, Calculator
+
+def main():
+    # Test string utilities
+    original: str = "hello"
+    reversed: str = reverse_string(original)
+    print(f"Reversed '{original}': {reversed}")
+    
+    vowels: int = count_vowels("Beautiful")
+    print(f"Vowels in 'Beautiful': {vowels}")
+    
+    # Test text analyzer
+    analyzer = TextAnalyzer("quick brown fox")
+    summary: str = analyzer.get_summary()
+    print(summary)
+    
+    # Test math utilities with cross-module dependency
+    fact_5: int = factorial(5)
+    print(f"5! = {fact_5}")
+    
+    is_pal: bool = is_palindrome_number(12321)
+    print(f"Is 12321 palindrome? {is_pal}")
+    
+    # Test calculator class
+    calc = Calculator()
+    sum_result: int = calc.add_and_store(10, 15)
+    product: int = calc.multiply_with_last(3)
+    print(f"Calculator: (10+15)*3 = {product}")
+
+# EXPECTED OUTPUT:
+# Reversed 'hello': olleh
+# Vowels in 'Beautiful': 5
+# Words: 3, Vowels: 4, Length: 15
+# 5! = 120
+# Is 12321 palindrome? True
+# Calculator: (10+15)*3 = 75

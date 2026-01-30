@@ -1,0 +1,6 @@
+Rectangle MyRect: 10.0x5.0
+Circle MyCircle: radius=3.0
+Canvas has 2 shapes
+Drawing rectangle MyRect
+Drawing circle MyCircle
+Total area: 78.26544

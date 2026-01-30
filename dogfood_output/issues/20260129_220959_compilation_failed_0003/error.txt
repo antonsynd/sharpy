@@ -1,0 +1,7 @@
+Assembly compilation failed:
+  main.cs(19,31): error CS0121: The call is ambiguous between the following methods or properties: 'Sharpy.Main.StringUtils.Exports.ReverseString(string)' and 'Sharpy.Main.MathUtils.Exports.ReverseString(string)'
+  string_utils.cs(69,21): error CS0019: Operator '==' cannot be applied to operands of type 'char' and 'string'
+  string_utils.cs(85,30): error CS0103: The name 'CountVowels' does not exist in the current context
+  string_utils.cs(86,106): error CS0103: The name 'global' does not exist in the current context
+  string_utils.cs(38,32): error CS0029: Cannot implicitly convert type 'char' to 'string'
+  string_utils.cs(39,28): error CS1061: 'string' does not contain a definition for '__Contains__' and no accessible extension method '__Contains__' accepting a first argument of type 'string' could be found (are you missing a using directive or an assembly reference?)

@@ -1,0 +1,18 @@
+# Test boolean variables with simple logic
+
+def main():
+    is_enabled: bool = True
+    is_active: bool = False
+    
+    print(is_enabled)
+    print(is_active)
+    print(is_enabled and is_active)
+    print(is_enabled or is_active)
+    print(not is_active)
+
+# EXPECTED OUTPUT:
+# True
+# False
+# False
+# True
+# True

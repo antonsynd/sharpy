@@ -1,0 +1,2 @@
+Assembly compilation failed:
+  dogfood_test.cs(38,104): error CS0103: The name 'global' does not exist in the current context

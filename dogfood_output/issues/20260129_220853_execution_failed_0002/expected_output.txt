@@ -1,0 +1,9 @@
+Opening data.txt
+Successfully read: Line 5 content
+Closing data.txt
+Cleanup completed
+---
+Opening config.txt
+ValueError caught: invalid line number
+Closing config.txt
+Cleanup completed

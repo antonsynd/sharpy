@@ -1,0 +1,96 @@
+# Test: F-string interpolation with class hierarchy and formatting
+# Complex test combining f-strings with inheritance, virtual/override, and control flow
+
+@abstract
+class Report:
+    title: str
+    report_id: int
+
+    def __init__(self, title: str, id: int):
+        self.title = title
+        self.report_id = id
+
+    @abstract
+    def get_summary(self) -> str:
+        ...
+
+    @virtual
+    def get_header(self) -> str:
+        return f"Report #{self.report_id}: {self.title}"
+
+class SalesReport(Report):
+    revenue: float
+    units_sold: int
+
+    def __init__(self, title: str, id: int, revenue: float, units: int):
+        super().__init__(title, id)
+        self.revenue = revenue
+        self.units_sold = units
+
+    @override
+    def get_summary(self) -> str:
+        avg_price: float = self.revenue / self.units_sold if self.units_sold > 0 else 0.0
+        return f"Revenue: ${self.revenue:.2f}, Units: {self.units_sold}, Avg: ${avg_price:.2f}"
+
+    @override
+    def get_header(self) -> str:
+        return f"[SALES] {super().get_header()}"
+
+class InventoryReport(Report):
+    items_in_stock: int
+    items_needed: int
+
+    def __init__(self, title: str, id: int, in_stock: int, needed: int):
+        super().__init__(title, id)
+        self.items_in_stock = in_stock
+        self.items_needed = needed
+
+    @override
+    def get_summary(self) -> str:
+        status: str = "OK" if self.items_in_stock >= self.items_needed else "LOW"
+        return f"Stock: {self.items_in_stock}, Needed: {self.items_needed}, Status: {status}"
+
+    @override
+    def get_header(self) -> str:
+        return f"[INVENTORY] {super().get_header()}"
+
+def process_reports(reports: list[Report]) -> None:
+    count: int = 0
+    for report in reports:
+        count += 1
+        print(f"Processing report {count}...")
+        print(report.get_header())
+        print(report.get_summary())
+
+def main():
+    reports: list[Report] = []
+    
+    sales1: SalesReport = SalesReport("Q1 Electronics", 101, 45000.75, 150)
+    sales2: SalesReport = SalesReport("Q2 Accessories", 102, 12500.00, 250)
+    inventory1: InventoryReport = InventoryReport("Warehouse A", 201, 500, 450)
+    inventory2: InventoryReport = InventoryReport("Warehouse B", 202, 100, 300)
+    
+    reports.append(sales1)
+    reports.append(sales2)
+    reports.append(inventory1)
+    reports.append(inventory2)
+    
+    print(f"Total reports to process: {len(reports)}")
+    process_reports(reports)
+    print(f"Report processing complete!")
+
+# EXPECTED OUTPUT:
+# Total reports to process: 4
+# Processing report 1...
+# [SALES] Report #101: Q1 Electronics
+# Revenue: $45000.75, Units: 150, Avg: $300.01
+# Processing report 2...
+# [SALES] Report #102: Q2 Accessories
+# Revenue: $12500.00, Units: 250, Avg: $50.00
+# Processing report 3...
+# [INVENTORY] Report #201: Warehouse A
+# Stock: 500, Needed: 450, Status: OK
+# Processing report 4...
+# [INVENTORY] Report #202: Warehouse B
+# Stock: 100, Needed: 300, Status: LOW
+# Report processing complete!
