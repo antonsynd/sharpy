@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-29T20:14:51.067060",
+  "generated_code": "# Test: super().__init__() with multi-level inheritance and field initialization\n# Tests: super init calls, field initialization order, inheritance chain\n\nclass Vehicle:\n    wheels: int\n    brand: str\n\n    def __init__(self, wheels: int, brand: str):\n        self.wheels = wheels\n        self.brand = brand\n\nclass Car(Vehicle):\n    doors: int\n    model: str\n\n    def __init__(self, brand: str, model: str, doors: int):\n        super().__init__(4, brand)\n        self.doors = doors\n        self.model = model\n\n    def get_description(self) -> str:\n        return f\"{self.brand} {self.model}\"\n\nclass ElectricCar(Car):\n    battery_capacity: int\n    range_km: int\n\n    def __init__(self, brand: str, model: str, battery: int, range_km: int):\n        super().__init__(brand, model, 4)\n        self.battery_capacity = battery\n        self.range_km = range_km\n\n    def get_full_info(self) -> str:\n        return f\"{self.brand} {self.model} - {self.battery_capacity}kWh\"\n\ndef main():\n    tesla = ElectricCar(\"Tesla\", \"Model3\", 75, 500)\n    print(tesla.wheels)\n    print(tesla.doors)\n    print(tesla.get_description())\n    print(tesla.battery_capacity)\n    print(tesla.range_km)\n    print(tesla.get_full_info())\n\n# EXPECTED OUTPUT:\n# 4\n# 4\n# Tesla Model3\n# 75\n# 500\n# Tesla Model3 - 75kWh",
+  "expected_output": "4\n4\nTesla Model3\n75\n500\nTesla Model3 - 75kWh\n",
+  "actual_output": "4\n4\nTesla Model3\n75\n500\nTesla Model3 - 75kWh",
+  "feature_focus": "super_init_call",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 7.884776830673218,
+  "execution_duration": 1.650928020477295,
+  "source_files": null
+}

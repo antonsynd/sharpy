@@ -1,0 +1,44 @@
+# Module providing inventory and item management
+
+from entities import Player
+
+class Item:
+    name: str
+    value: int
+    
+    def __init__(self, name: str, value: int):
+        self.name = name
+        self.value = value
+    
+    def get_description(self) -> str:
+        return f"{self.name} (worth {self.value} gold)"
+
+class Inventory:
+    owner: Player
+    items: list[Item]
+    max_size: int
+    
+    def __init__(self, owner: Player, max_size: int):
+        self.owner = owner
+        self.items = []
+        self.max_size = max_size
+    
+    def add_item(self, item: Item) -> bool:
+        if len(self.items) < self.max_size:
+            self.items.append(item)
+            return True
+        return False
+    
+    def get_total_value(self) -> int:
+        total: int = 0
+        for item in self.items:
+            total += item.value
+        return total
+    
+    def list_items(self) -> str:
+        if len(self.items) == 0:
+            return "Inventory empty"
+        result: str = f"{self.owner.name}'s Inventory:"
+        for item in self.items:
+            result = result + f" [{item.name}]"
+        return result

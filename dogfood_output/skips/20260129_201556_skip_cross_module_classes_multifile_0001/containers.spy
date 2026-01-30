@@ -1,0 +1,31 @@
+# Container classes for managing collections of shapes
+
+from shapes import Shape
+
+class ShapeCollection:
+    """Manages a collection of shapes with statistics"""
+    shapes: list[Shape]
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+        self.shapes = []
+
+    def add_shape(self, shape: Shape) -> None:
+        self.shapes.append(shape)
+
+    def total_area(self) -> float:
+        total: float = 0.0
+        for shape in self.shapes:
+            total += shape.area()
+        return total
+
+    def count_by_color(self, color: str) -> int:
+        count: int = 0
+        for shape in self.shapes:
+            if shape.color == color:
+                count += 1
+        return count
+
+    def get_description(self) -> str:
+        return f"Collection '{self.name}' with {len(self.shapes)} shapes"

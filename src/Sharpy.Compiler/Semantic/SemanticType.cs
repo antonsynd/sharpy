@@ -1,3 +1,6 @@
+using System.Collections.Immutable;
+using Sharpy.Compiler.Parser.Ast;
+
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
@@ -638,6 +641,12 @@ public record TypeParameterType : SemanticType
 {
     public string Name { get; init; } = string.Empty;
     public TypeSymbol? DeclaringType { get; init; }
+
+    /// <summary>
+    /// Constraint clauses for this type parameter (e.g., T: IComparable)
+    /// </summary>
+    public ImmutableArray<ConstraintClause> Constraints { get; init; }
+        = ImmutableArray<ConstraintClause>.Empty;
 
     public override string GetDisplayName() => Name;
 

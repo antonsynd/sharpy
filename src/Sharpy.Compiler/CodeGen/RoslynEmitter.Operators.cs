@@ -393,8 +393,8 @@ public partial class RoslynEmitter
             {
                 // Division always produces float
                 BinaryOperator.Divide => true,
-                // Power produces float (Math.Pow returns double)
-                BinaryOperator.Power => true,
+                // Power: float if either operand is float, otherwise integer (cast to long)
+                BinaryOperator.Power => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right),
                 // Floor division depends on operands
                 BinaryOperator.FloorDivide => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right),
                 // Other operators: float if either operand is float

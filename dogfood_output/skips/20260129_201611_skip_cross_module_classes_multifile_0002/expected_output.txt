@@ -1,0 +1,4 @@
+Circle 'Small Circle' with radius 5.0
+Area: 78.53975
+Canvas 'Design 1' has 3 shapes
+Total area: 414.69875

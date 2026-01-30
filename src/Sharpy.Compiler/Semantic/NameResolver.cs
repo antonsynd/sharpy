@@ -159,6 +159,7 @@ public class NameResolver
                 Name = typeParam.Name,
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = typeSymbol,
+                Constraints = typeParam.Constraints,
                 DeclarationLine = classDef.LineStart,
                 DeclarationColumn = classDef.ColumnStart
             };
@@ -218,6 +219,7 @@ public class NameResolver
                 Name = typeParam.Name,
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = typeSymbol,
+                Constraints = typeParam.Constraints,
                 DeclarationLine = structDef.LineStart,
                 DeclarationColumn = structDef.ColumnStart
             };
@@ -277,6 +279,7 @@ public class NameResolver
                 Name = typeParam.Name,
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = typeSymbol,
+                Constraints = typeParam.Constraints,
                 DeclarationLine = interfaceDef.LineStart,
                 DeclarationColumn = interfaceDef.ColumnStart
             };

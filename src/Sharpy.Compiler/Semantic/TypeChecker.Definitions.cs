@@ -49,6 +49,7 @@ public partial class TypeChecker
                 Name = typeParam.Name,
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = null,  // No declaring type for standalone generic functions
+                Constraints = typeParam.Constraints,
                 DeclarationLine = functionDef.LineStart,
                 DeclarationColumn = functionDef.ColumnStart
             };
@@ -318,6 +319,7 @@ public partial class TypeChecker
                 Name = typeParam.Name,
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = classSymbol,
+                Constraints = typeParam.Constraints,
                 DeclarationLine = classDef.LineStart,
                 DeclarationColumn = classDef.ColumnStart
             };
@@ -392,6 +394,7 @@ public partial class TypeChecker
                 Name = typeParam.Name,
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = structSymbol,
+                Constraints = typeParam.Constraints,
                 DeclarationLine = structDef.LineStart,
                 DeclarationColumn = structDef.ColumnStart
             };
@@ -463,6 +466,7 @@ public partial class TypeChecker
                 Name = typeParam.Name,
                 Kind = SymbolKind.TypeParameter,
                 DeclaringType = interfaceSymbol,
+                Constraints = typeParam.Constraints,
                 DeclarationLine = interfaceDef.LineStart,
                 DeclarationColumn = interfaceDef.ColumnStart
             };

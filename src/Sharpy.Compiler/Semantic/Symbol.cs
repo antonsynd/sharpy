@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -199,6 +200,12 @@ public record TypeParameterSymbol : Symbol
     /// The type symbol that declares this type parameter
     /// </summary>
     public TypeSymbol? DeclaringType { get; init; }
+
+    /// <summary>
+    /// Constraint clauses for this type parameter (e.g., T: IComparable)
+    /// </summary>
+    public ImmutableArray<ConstraintClause> Constraints { get; init; }
+        = ImmutableArray<ConstraintClause>.Empty;
 }
 
 public enum SymbolKind

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -75,6 +76,11 @@ public class TypeInferenceService
         var builtinResult = TryInferBuiltinBinaryOp(op, left, right);
         if (builtinResult != null)
             return builtinResult;
+
+        // Try type parameter constraints (e.g., T: IComparable allows comparison)
+        var typeParamResult = TryInferTypeParameterBinaryOp(op, left, right);
+        if (typeParamResult != null)
+            return typeParamResult;
 
         // Try user-defined types
         var userResult = TryInferUserDefinedBinaryOp(op, left, right);
@@ -156,9 +162,10 @@ public class TypeInferenceService
                 BinaryOperator.Modulo => InferNumericResultType(left, right),
 
                 // Division always returns float64 (Python semantics)
-                // Power also always returns float64 (Math.Pow returns double)
-                BinaryOperator.Divide or
-                BinaryOperator.Power => SemanticType.Double,
+                BinaryOperator.Divide => SemanticType.Double,
+
+                // Power: integer ** integer => Long, any float => Double
+                BinaryOperator.Power => InferPowerResultType(left, right),
 
                 BinaryOperator.Equal or
                 BinaryOperator.NotEqual or
@@ -233,6 +240,44 @@ public class TypeInferenceService
             return rightList;
 
         return leftList;
+    }
+
+    private SemanticType? TryInferTypeParameterBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        // Check if either operand is a type parameter
+        var typeParam = left as TypeParameterType ?? right as TypeParameterType;
+        if (typeParam == null)
+            return null;
+
+        // Equality operators are always allowed (all .NET types support equality)
+        if (op == BinaryOperator.Equal || op == BinaryOperator.NotEqual)
+            return SemanticType.Bool;
+
+        // Comparison operators require IComparable constraint
+        if (op is BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
+            or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual)
+        {
+            if (HasComparableConstraint(typeParam.Constraints))
+                return SemanticType.Bool;
+        }
+
+        return null;
+    }
+
+    private static bool HasComparableConstraint(ImmutableArray<ConstraintClause> constraints)
+    {
+        foreach (var constraint in constraints)
+        {
+            if (constraint is TypeConstraint typeConstraint)
+            {
+                // Check if the constraint type name contains "Comparable"
+                // This covers IComparable, IComparable[T], System.IComparable, etc.
+                var typeName = typeConstraint.Type.Name;
+                if (typeName.Contains("Comparable"))
+                    return true;
+            }
+        }
+        return false;
     }
 
     private SemanticType? TryInferUserDefinedBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
@@ -650,6 +695,17 @@ public class TypeInferenceService
     private static bool IsIntegerType(SemanticType type)
     {
         return type == SemanticType.Int || type == SemanticType.Long;
+    }
+
+    private static SemanticType InferPowerResultType(SemanticType left, SemanticType right)
+    {
+        // Power type promotion:
+        // - Both integer types → use numeric promotion (int**int→int, int**long→long, etc.)
+        //   Math.Pow returns double, but we cast back to the promoted integer type
+        // - Any float involvement → Double
+        if (IsIntegerType(left) && IsIntegerType(right))
+            return InferNumericResultType(left, right);
+        return SemanticType.Double;
     }
 
     private static SemanticType InferNumericResultType(SemanticType left, SemanticType right)

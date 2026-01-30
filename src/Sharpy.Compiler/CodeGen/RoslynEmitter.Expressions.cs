@@ -250,7 +250,7 @@ public partial class RoslynEmitter
             case BinaryOperator.Power:
                 // x ** y → System.Math.Pow(x, y)
                 // Note: We use fully qualified System.Math to avoid conflicts with Sharpy.Math namespace
-                return InvocationExpression(
+                var powCall = InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             IdentifierName("System"),
@@ -259,6 +259,20 @@ public partial class RoslynEmitter
                     .AddArgumentListArguments(
                         Argument(left),
                         Argument(right));
+                // If both operands are integers, cast result back to integer type
+                // Math.Pow returns double, but int ** int should stay integer
+                if (!IsFloatExpression(binOp.Left) && !IsFloatExpression(binOp.Right))
+                {
+                    // Check semantic type to determine the right integer cast type
+                    var resultType = GetExpressionSemanticType(binOp);
+                    var castKind = resultType == SemanticType.Long
+                        ? SyntaxKind.LongKeyword
+                        : SyntaxKind.IntKeyword;
+                    return CastExpression(
+                        PredefinedType(Token(castKind)),
+                        ParenthesizedExpression(powCall));
+                }
+                return powCall;
 
             case BinaryOperator.Divide:
                 // x / y → true division with Python semantics (always returns float64)

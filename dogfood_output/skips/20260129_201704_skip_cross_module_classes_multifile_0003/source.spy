@@ -1,0 +1,41 @@
+# Main entry point - complex multi-module game system demonstration
+
+from entities import Player, Enemy
+from inventory import Item, Inventory
+
+def main():
+    # Create player and enemy
+    player = Player(1, "Hero", 5)
+    enemy = Enemy(2, "Goblin", 50.0, 15.0)
+    
+    print(f"{player.name} (Level {player.level}) vs {enemy.name}")
+    print(f"{player.get_type()} health: {player.health}")
+    
+    # Combat simulation
+    player.take_damage(20.0)
+    enemy.take_damage(30.0)
+    
+    print(f"After combat - {player.name}: {player.health}hp, {enemy.name}: {enemy.health}hp")
+    
+    # Inventory system
+    inventory = Inventory(player, 5)
+    sword = Item("Iron Sword", 150)
+    potion = Item("Health Potion", 50)
+    
+    inventory.add_item(sword)
+    inventory.add_item(potion)
+    
+    print(inventory.list_items())
+    print(f"Total inventory value: {inventory.get_total_value()} gold")
+    
+    # Level up restores health
+    player.level_up()
+    print(f"{player.name} leveled up to {player.level}! Health restored to {player.health}")
+
+# EXPECTED OUTPUT:
+# Hero (Level 5) vs Goblin
+# Player health: 100.0
+# After combat - Hero: 80.0hp, Goblin: 23.0hp
+# Hero's Inventory: [Iron Sword] [Health Potion]
+# Total inventory value: 200 gold
+# Hero leveled up to 6! Health restored to 100.0

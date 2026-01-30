@@ -29,7 +29,9 @@
       "Bash(git stash:*)",
       "Bash(wc:*)",
       "Bash(git log:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(tree:*)",
+      "Bash(du:*)"
     ]
   }
 }

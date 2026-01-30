@@ -1,0 +1,12 @@
+def main():
+    x: int = 3 ** 2
+    print(x)
+    y: int = 2 ** 10
+    print(y)
+    z: float = 2.0 ** 3.0
+    print(z)
+
+# EXPECTED OUTPUT:
+# 9
+# 1024
+# 8

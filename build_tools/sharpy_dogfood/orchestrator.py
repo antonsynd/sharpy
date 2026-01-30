@@ -313,6 +313,23 @@ def _has_multi_arg_print(line: str) -> bool:
     return False
 
 
+def _replace_expected_output_in_code(code: str, new_output: str) -> str:
+    """Replace the expected output comment block in code with new output.
+
+    Finds the '# EXPECTED OUTPUT:' (or '# Expected output:') comment block
+    and replaces the commented output lines with the new output.
+    """
+    # Match the expected output header and all subsequent comment lines
+    pattern = r"#\s*(?:EXPECTED|Expected)\s*(?:OUTPUT|output):?\s*\n(?:#\s*.*\n?)+"
+    replacement_lines = [f"# EXPECTED OUTPUT:"]
+    for line in new_output.strip().split("\n"):
+        replacement_lines.append(f"# {line}")
+    replacement = "\n".join(replacement_lines) + "\n"
+
+    result = re.sub(pattern, replacement, code)
+    return result
+
+
 # Feature focuses for code generation - matched to phases 0.1.0-0.1.18
 # Each focus tests specific compiler functionality
 FEATURE_FOCUSES = [
@@ -840,7 +857,7 @@ class DogfoodOrchestrator:
             print(f"  Generated {len(code)} chars of code", file=sys.stderr)
 
             # Step 1.5: Quick pre-validation (programmatic check for forbidden features)
-            prevalidation_error = self._quick_prevalidate(code)
+            prevalidation_error = await self._quick_prevalidate(code)
             if prevalidation_error:
                 print(
                     f"  Pre-validation failed: {prevalidation_error}", file=sys.stderr
@@ -894,28 +911,21 @@ class DogfoodOrchestrator:
                 is_valid, python_output, verify_error = (
                     await _verify_expected_with_python(code, expected_output)
                 )
-                if not is_valid:
+                if not is_valid and python_output is not None:
+                    # Python ran successfully but output differs from LLM's expected output.
+                    # Adopt Python's output as authoritative.
                     print(
-                        f"  Expected output verification failed: {verify_error}",
+                        f"  Expected output corrected by Python (was: '{expected_output[:30]}...', "
+                        f"now: '{python_output[:30]}...')",
                         file=sys.stderr,
                     )
-                    last_error = f"Expected output verification error: {verify_error}. Python says output should be: {python_output}"
-                    if attempt < max_attempts:
-                        print(
-                            f"  Will retry with feedback ({attempt}/{max_attempts})...",
-                            file=sys.stderr,
-                        )
-                        continue
-                    else:
-                        return GenerationResult(
-                            success=False,
-                            code=code,
-                            expected_output=expected_output,
-                            skip_reason=f"Invalid expected output after {attempt} attempts (Python says: {python_output})",
-                            backend_used=backend_used,
-                            generation_duration=total_duration,
-                            attempts=attempt,
-                        )
+                    expected_output = python_output
+                    # Update the expected output comment block in the code
+                    code = _replace_expected_output_in_code(code, python_output)
+                    last_code = code
+                elif not is_valid:
+                    # Python couldn't run the code — keep LLM's expected output
+                    pass
                 elif python_output is not None:
                     print(
                         f"  Expected output verified with Python: {python_output[:50]}...",
@@ -1103,7 +1113,7 @@ class DogfoodOrchestrator:
 
         # Step 1.5: Quick pre-validation for each file
         for filename, code in files.items():
-            prevalidation_error = self._quick_prevalidate(code)
+            prevalidation_error = await self._quick_prevalidate(code)
             if prevalidation_error:
                 print(
                     f"  Pre-validation failed for {filename}: {prevalidation_error}",
@@ -1158,8 +1168,11 @@ class DogfoodOrchestrator:
 
         # Step 2: Validate each file against spec
         print("\n[2/4] Validating against spec...", file=sys.stderr)
+        available_modules = [f.replace(".spy", "") for f in files.keys()]
         for filename, code in files.items():
-            val_result = await self._validate_code(code)
+            val_result = await self._validate_code(
+                code, available_modules=available_modules
+            )
             if not val_result.success:
                 print(
                     f"  Validation failed for {filename}: {val_result.error}",
@@ -1325,45 +1338,20 @@ class DogfoodOrchestrator:
         print("\n✓ Multi-file iteration completed successfully!", file=sys.stderr)
         return IterationResult(IterationStatus.SUCCESS, success_dir=success_dir)
 
-    def _quick_prevalidate(self, code: str) -> Optional[str]:
+    async def _quick_prevalidate(self, code: str) -> Optional[str]:
         """Quick programmatic check for forbidden features.
 
         Returns None if code passes, or an error message if it fails.
         This catches obvious issues before expensive AI validation.
 
+        Uses the Sharpy lexer (emit tokens) to check for forbidden keyword tokens,
+        which avoids false positives from keywords inside f-string text or string
+        literals. Falls back to regex if the lexer fails.
+
         Validates against phases 0.1.0-0.1.18 (includes f-strings, collections,
         exception handling, lambdas, .NET interop, Optional/Result types,
         maybe/try expressions).
         """
-        import re
-
-        # Patterns that indicate features NOT yet implemented
-        # Note: Phases 0.1.0-0.1.18 features ARE now allowed:
-        # - f-strings (0.1.11)
-        # - collections: list/dict/set literals & comprehensions (0.1.11)
-        # - .NET interop imports (0.1.12)
-        # - exception handling: try/except/raise (0.1.13)
-        # - lambdas (0.1.14)
-        # - optional types: T?, Some(), Nothing (0.1.15)
-        # - result types: T !E, Ok(), Err() (0.1.16)
-        # - maybe expression (0.1.17)
-        # - try expression (0.1.18)
-        forbidden_checks = [
-            # Async/await (not implemented)
-            (r"\basync\s+def", "async function (not implemented)"),
-            (r"\bawait\s+", "await expression (not implemented)"),
-            # Context managers (not implemented)
-            (r"\bwith\s+", "with statement (not implemented)"),
-            # Walrus operator (not implemented)
-            (r":=", "walrus operator (not implemented)"),
-            # Pattern matching (not implemented)
-            (r"\bmatch\s+\w+\s*:", "pattern matching (not implemented)"),
-            # Tuple unpacking (may have issues)
-            # Anchored to line start to avoid matching keyword arguments like func(a=1, b=2)
-            (r"^\w+\s*,\s*\w+\s*=[^=]", "tuple unpacking (not fully supported)"),
-            # Note: Ternary expressions ARE supported in Sharpy
-        ]
-
         lines = code.split("\n")
         for i, line in enumerate(lines, 1):
             # Skip comments
@@ -1375,11 +1363,79 @@ class DogfoodOrchestrator:
             if _has_multi_arg_print(stripped):
                 return f"Line {i}: multi-argument print (use multiple print() calls) - '{stripped[:50]}...'"
 
-            for pattern, description in forbidden_checks:
-                if description is None:
-                    continue
+        # Try lexer-based token checking
+        token_result = await self._check_forbidden_tokens_via_lexer(code)
+        if token_result is not None:
+            return token_result
+
+        # Regex-only checks for things the lexer doesn't cover as keyword tokens
+        forbidden_regex_checks = [
+            # Walrus operator (not implemented) - operator token, not keyword
+            (r":=", "walrus operator (not implemented)"),
+            # Tuple unpacking (may have issues)
+            # Anchored to line start to avoid matching keyword arguments
+            (r"^\w+\s*,\s*\w+\s*=[^=]", "tuple unpacking (not fully supported)"),
+        ]
+
+        for i, line in enumerate(lines, 1):
+            stripped = line.split("#")[0].strip()
+            if not stripped:
+                continue
+            for pattern, description in forbidden_regex_checks:
                 if re.search(pattern, stripped):
                     return f"Line {i}: {description} - '{stripped[:50]}...'"
+
+        return None
+
+    async def _check_forbidden_tokens_via_lexer(self, code: str) -> Optional[str]:
+        """Use the Sharpy lexer to check for forbidden keyword tokens.
+
+        Returns an error message if forbidden tokens are found, None if clean.
+        Returns None (passes) if the lexer itself fails (falls back to allow).
+        """
+        import tempfile
+
+        # Forbidden token types that indicate unimplemented features
+        forbidden_tokens = {
+            "With": "with statement (not implemented)",
+            "Async": "async function (not implemented)",
+            "Await": "await expression (not implemented)",
+            "Match": "pattern matching (not implemented)",
+        }
+
+        try:
+            # Write code to a temp file for the lexer
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".spy", delete=False
+            ) as f:
+                f.write(code)
+                temp_path = Path(f.name)
+
+            try:
+                result = await self.compiler.emit_tokens(temp_path, timeout=15.0)
+            finally:
+                try:
+                    temp_path.unlink()
+                except Exception:
+                    pass
+
+            if not result.success:
+                # Lexer failed (e.g., syntax error) — fall back to allowing
+                return None
+
+            # Parse token output lines: "   0: With                 @ L1:C1 = 'with'"
+            token_pattern = re.compile(r"\d+:\s+(\w+)\s+@\s+L(\d+):C(\d+)")
+            for line in result.output.split("\n"):
+                m = token_pattern.search(line)
+                if m:
+                    token_type = m.group(1)
+                    token_line = m.group(2)
+                    if token_type in forbidden_tokens:
+                        return f"Line {token_line}: {forbidden_tokens[token_type]}"
+
+        except Exception:
+            # Any unexpected error — fall back to allowing
+            return None
 
         return None
 
@@ -1400,9 +1456,13 @@ class DogfoodOrchestrator:
         except SyntaxError as e:
             return f"Syntax error at line {e.lineno}: {e.msg}"
 
-    async def _validate_code(self, code: str) -> AIResult:
+    async def _validate_code(
+        self, code: str, available_modules: Optional[list[str]] = None
+    ) -> AIResult:
         """Validate code against the Sharpy spec."""
-        prompt = get_spec_validation_prompt(code, self.spec_context)
+        prompt = get_spec_validation_prompt(
+            code, self.spec_context, available_modules=available_modules
+        )
         return await self.backend_manager.execute(
             prompt, timeout=60.0  # Validation should be quick
         )

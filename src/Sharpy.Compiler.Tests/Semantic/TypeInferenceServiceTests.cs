@@ -68,11 +68,11 @@ public class TypeInferenceServiceTests
     }
 
     [Fact]
-    public void InferBinaryOpType_IntPowerInt_ReturnsDouble()
+    public void InferBinaryOpType_IntPowerInt_ReturnsInt()
     {
-        // Math.Pow returns double
+        // int ** int returns int (integer exponentiation)
         var result = _service.InferBinaryOpType(BinaryOperator.Power, SemanticType.Int, SemanticType.Int);
-        result.Should().Be(SemanticType.Double);
+        result.Should().Be(SemanticType.Int);
     }
 
     #endregion
@@ -506,12 +506,12 @@ public class TypeInferenceServiceTests
     }
 
     [Fact]
-    public void InferAugmentedAssignmentType_PowerAssignIntInt_ReturnsDouble()
+    public void InferAugmentedAssignmentType_PowerAssignIntInt_ReturnsInt()
     {
-        // Power always returns double (Math.Pow)
+        // int **= int returns int (integer exponentiation)
         var result = _service.InferAugmentedAssignmentType(
             AssignmentOperator.PowerAssign, SemanticType.Int, SemanticType.Int);
-        result.Should().Be(SemanticType.Double);
+        result.Should().Be(SemanticType.Int);
     }
 
     [Fact]

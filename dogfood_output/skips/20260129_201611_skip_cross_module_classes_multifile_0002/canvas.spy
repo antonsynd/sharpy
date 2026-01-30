@@ -1,0 +1,22 @@
+# Module for managing collections of shapes
+from shapes import Shape, Circle, Rectangle
+
+class Canvas:
+    shapes: list[Shape]
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+        self.shapes = []
+
+    def add_shape(self, shape: Shape) -> None:
+        self.shapes.append(shape)
+
+    def total_area(self) -> float:
+        total: float = 0.0
+        for shape in self.shapes:
+            total += shape.area()
+        return total
+
+    def count_shapes(self) -> int:
+        return len(self.shapes)

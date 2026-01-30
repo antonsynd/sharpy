@@ -1045,18 +1045,18 @@ def main():
     }
 
     [Fact]
-    public void AugmentedAssignment_IntPowerAssignInt_ProducesTypeError()
+    public void AugmentedAssignment_IntPowerAssignInt_Succeeds()
     {
-        // Python semantics: **= always returns float (double), so assigning to int should fail
+        // int ** int now returns int (integer exponentiation), so assigning to int should succeed
         var source = @"
-x: int = 2
-x **= 3
+def main():
+    x: int = 2
+    x **= 3
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e =>
-            e.Message.Contains("double") && e.Message.Contains("int"));
+        typeChecker.Errors.Should().BeEmpty();
     }
 
     [Fact]

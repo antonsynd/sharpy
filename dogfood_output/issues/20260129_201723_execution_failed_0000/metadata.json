@@ -1,0 +1,18 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-29T20:17:04.561447",
+  "generated_code": "# Test: Generic function with min/max operations on different types\n# Tests type parameter inference across int, float, and str types\n\ndef min_value[T](a: T, b: T) -> T:\n    if a < b:\n        return a\n    return b\n\ndef max_value[T](a: T, b: T) -> T:\n    if a > b:\n        return a\n    return b\n\ndef main():\n    print(min_value(10, 5))\n    print(max_value(10, 5))\n    print(min_value(3.14, 2.71))\n    print(max_value(3.14, 2.71))\n    print(min_value(\"zebra\", \"apple\"))\n    print(max_value(\"zebra\", \"apple\"))\n\n# EXPECTED OUTPUT:\n# 5\n# 10\n# 2.71\n# 3.14\n# apple\n# zebra",
+  "expected_output": "5\n10\n2.71\n3.14\napple\nzebra\n",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 5, column 8: Type 'T' does not support operator '<' with operand of type 'T'\n  Semantic error at line 10, column 8: Type 'T' does not support operator '>' with operand of type 'T'\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "generic_function",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 8.674443006515503,
+  "compilation_duration": null,
+  "execution_duration": 0.9862561225891113,
+  "source_files": null
+}

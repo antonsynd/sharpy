@@ -248,9 +248,14 @@ public class OperatorValidatorV2 : SemanticValidatorBase
         // Check if operator is supported by the left type
         if (!SupportsOperator(leftType, dunderName))
         {
-            // Check if it's a comparison operator - primitives support these
+            // Check if it's a comparison operator - primitives and constrained type parameters support these
             if (!IsComparisonOperator(binOp.Operator) || !IsPrimitiveType(leftType))
             {
+                // Type parameters with IComparable constraint support comparison operators,
+                // and all type parameters support equality (== / !=)
+                if (IsTypeParameterOperatorAllowed(binOp.Operator, leftType, rightType))
+                    return;
+
                 // Check right-hand side for reflected operator
                 var reflectedDunder = GetReflectedDunder(dunderName);
                 if (reflectedDunder == null || !SupportsOperator(rightType, reflectedDunder))
@@ -261,6 +266,30 @@ public class OperatorValidatorV2 : SemanticValidatorBase
                 }
             }
         }
+    }
+
+    private static bool IsTypeParameterOperatorAllowed(BinaryOperator op, SemanticType leftType, SemanticType rightType)
+    {
+        var typeParam = leftType as TypeParameterType ?? rightType as TypeParameterType;
+        if (typeParam == null)
+            return false;
+
+        // Equality operators are always allowed for type parameters
+        if (op is BinaryOperator.Equal or BinaryOperator.NotEqual)
+            return true;
+
+        // Comparison operators require IComparable constraint
+        if (op is BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
+            or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual)
+        {
+            foreach (var constraint in typeParam.Constraints)
+            {
+                if (constraint is TypeConstraint tc && tc.Type.Name.Contains("Comparable"))
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     private void ValidateUnaryOp(UnaryOp unaryOp)

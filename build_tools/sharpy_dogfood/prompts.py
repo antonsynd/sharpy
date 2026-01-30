@@ -776,10 +776,24 @@ IMPORTANT:
 - Every print() output should appear in EXPECTED OUTPUT"""
 
 
-def get_spec_validation_prompt(code: str, spec_context: str) -> str:
+def get_spec_validation_prompt(
+    code: str,
+    spec_context: str,
+    available_modules: Optional[list[str]] = None,
+) -> str:
     """Generate a prompt for validating code against the spec."""
 
+    modules_section = ""
+    if available_modules:
+        modules_section = (
+            f"\n## Multi-File Project Context\n\n"
+            f"This file is part of a multi-file project. The following modules "
+            f"are available and can be imported: {', '.join(available_modules)}. "
+            f"Imports from these modules are VALID.\n"
+        )
+
     return f"""You are a STRICT Sharpy language specification validator for phases 0.1.0-0.1.18.
+{modules_section}
 
 ## Program Entry Point Requirement
 

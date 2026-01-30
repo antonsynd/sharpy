@@ -63,7 +63,8 @@ public class TypeResolver
             result = new TypeParameterType
             {
                 Name = annotation.Name,
-                DeclaringType = typeParamSymbol.DeclaringType
+                DeclaringType = typeParamSymbol.DeclaringType,
+                Constraints = typeParamSymbol.Constraints
             };
         }
         // Look up user-defined type

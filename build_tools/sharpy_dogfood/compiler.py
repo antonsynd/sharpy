@@ -384,6 +384,78 @@ class SharpyCompiler:
                 duration_seconds=time.time() - start_time,
             )
 
+    async def emit_tokens(
+        self,
+        source_path: Path,
+        timeout: float = 60.0,
+    ) -> CompilationResult:
+        """Emit token listing for a Sharpy source file."""
+        import time
+
+        start_time = time.time()
+
+        cmd = [
+            self._dotnet_path,
+            "run",
+            "--project",
+            str(self.cli_project),
+            "--",
+            "emit",
+            "tokens",
+            str(source_path),
+        ]
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=self.project_root,
+            )
+
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                try:
+                    process.kill()
+                    await process.wait()
+                except Exception:
+                    pass
+                return CompilationResult(
+                    success=False,
+                    output="",
+                    error=f"Emit tokens timed out after {timeout}s",
+                    duration_seconds=time.time() - start_time,
+                )
+
+            duration = time.time() - start_time
+            stdout_text = stdout.decode()
+            stderr_text = stderr.decode()
+
+            if process.returncode == 0:
+                return CompilationResult(
+                    success=True,
+                    output=stdout_text,
+                    duration_seconds=duration,
+                )
+            else:
+                return CompilationResult(
+                    success=False,
+                    output=stdout_text,
+                    error=stderr_text or stdout_text,
+                    duration_seconds=duration,
+                )
+
+        except Exception as e:
+            return CompilationResult(
+                success=False,
+                output="",
+                error=f"Emit tokens failed: {e}",
+                duration_seconds=time.time() - start_time,
+            )
+
 
 class TempSourceFile:
     """Context manager for creating temporary Sharpy source files."""

@@ -1,0 +1,85 @@
+# Skipped Dogfood Run
+
+**Timestamp:** 2026-01-29T20:18:25.642903
+**Skip Reason:** Invalid expected output after 3 attempts (Python says: Calculator initialized 7 and 3
+Sum: 10
+Product: 21
+Expression: 7 + 3 = 10
+Price per item: 19.99
+Quantity: 5
+Subtotal: 99.95
+Tax (8%): 8.00
+Total: 107.95
+Padded number: 00042)
+**Feature Focus:** f_string_expressions
+**Complexity:** medium
+**Backend:** claude
+
+## Generated Sharpy Code
+
+```python
+# Test f-string expressions with arithmetic, method calls, and formatting
+
+class Calculator:
+    operand_a: int
+    operand_b: int
+
+    def __init__(self, a: int, b: int):
+        self.operand_a = a
+        self.operand_b = b
+
+    def add(self) -> int:
+        return self.operand_a + self.operand_b
+
+    def multiply(self) -> int:
+        return self.operand_a * self.operand_b
+
+def main():
+    calc: Calculator = Calculator(7, 3)
+    
+    print(f"Calculator initialized {calc.operand_a} and {calc.operand_b}")
+    print(f"Sum: {calc.add()}")
+    print(f"Product: {calc.multiply()}")
+    print(f"Expression: {calc.operand_a} + {calc.operand_b} = {calc.operand_a + calc.operand_b}")
+    
+    price: float = 19.99
+    quantity: int = 5
+    tax_rate: float = 0.08
+    
+    subtotal: float = price * quantity
+    tax: float = subtotal * tax_rate
+    total: float = subtotal + tax
+    
+    print(f"Price per item: {price:.2f}")
+    print(f"Quantity: {quantity}")
+    print(f"Subtotal: {subtotal:.2f}")
+    print(f"Tax (8%): {tax:.2f}")
+    print(f"Total: {total:.2f}")
+    
+    count: int = 42
+    print(f"Padded number: {count:05d}")
+
+# EXPECTED OUTPUT:
+# Calculator initialized 7 and 3
+# Sum: 10
+# Product: 21
+# Expression: 7 + 3 = 10
+# Price per item: 19.99
+# Quantity: 5
+# Subtotal: 99.95
+# Tax (8%): 7.99
+# Total: 107.94
+# Padded number: 00042
+```
+
+## Timing
+
+- Generation: 25.98s
+
+## Notes
+
+This iteration was skipped because the generated code didn't pass validation.
+This is typically due to the AI generating code with unsupported features
+or syntax that doesn't match the Sharpy spec (phases 0.1.0-0.1.18).
+
+This output is saved for inspection to help improve prompting.

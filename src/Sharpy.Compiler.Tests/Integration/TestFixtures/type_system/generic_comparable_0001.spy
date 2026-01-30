@@ -1,0 +1,10 @@
+from system import IComparable
+
+def find_max[T: IComparable[T]](a: T, b: T) -> T:
+    if a > b:
+        return a
+    return b
+
+def main():
+    print(find_max(10, 20))
+    print(find_max(3, 1))

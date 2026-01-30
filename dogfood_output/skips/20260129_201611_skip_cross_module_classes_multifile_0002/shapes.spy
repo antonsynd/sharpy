@@ -1,0 +1,48 @@
+# Module providing base shape classes and utilities
+
+@abstract
+class Shape:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @abstract
+    def area(self) -> float:
+        ...
+
+    @virtual
+    def describe(self) -> str:
+        return f"Shape: {self.name}"
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, name: str, radius: float):
+        self.name = name
+        self.radius = radius
+
+    @override
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+    @override
+    def describe(self) -> str:
+        return f"Circle '{self.name}' with radius {self.radius}"
+
+class Rectangle(Shape):
+    width: float
+    height: float
+
+    def __init__(self, name: str, width: float, height: float):
+        self.name = name
+        self.width = width
+        self.height = height
+
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+
+    @override
+    def describe(self) -> str:
+        return f"Rectangle '{self.name}' ({self.width}x{self.height})"

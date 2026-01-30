@@ -1,0 +1,23 @@
+# Shape calculator utilities module
+
+from geometry import IShape
+
+class ShapeCalculator:
+    @staticmethod
+    def total_area(shapes: list[IShape]) -> float:
+        total: float = 0.0
+        for shape in shapes:
+            total += shape.area()
+        return total
+    
+    @staticmethod
+    def total_perimeter(shapes: list[IShape]) -> float:
+        total: float = 0.0
+        for shape in shapes:
+            total += shape.perimeter()
+        return total
+    
+    @staticmethod
+    def describe_all(shapes: list[IShape]) -> None:
+        for shape in shapes:
+            print(shape.describe())

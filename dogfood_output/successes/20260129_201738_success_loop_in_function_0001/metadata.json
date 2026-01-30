@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-29T20:17:23.969801",
+  "generated_code": "# Test: loop in function with accumulator pattern\ndef sum_evens(limit: int) -> int:\n    total: int = 0\n    i: int = 0\n    while i <= limit:\n        if i % 2 == 0:\n            total += i\n        i += 1\n    return total\n\ndef main():\n    result: int = sum_evens(10)\n    print(result)\n\n# EXPECTED OUTPUT:\n# 30",
+  "expected_output": "30\n",
+  "actual_output": "30",
+  "feature_focus": "loop_in_function",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 5.629615783691406,
+  "execution_duration": 1.451488971710205,
+  "source_files": null
+}

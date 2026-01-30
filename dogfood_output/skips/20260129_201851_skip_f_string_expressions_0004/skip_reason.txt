@@ -1,0 +1,10 @@
+Invalid expected output after 3 attempts (Python says: Calculator initialized 7 and 3
+Sum: 10
+Product: 21
+Expression: 7 + 3 = 10
+Price per item: 19.99
+Quantity: 5
+Subtotal: 99.95
+Tax (8%): 8.00
+Total: 107.95
+Padded number: 00042)

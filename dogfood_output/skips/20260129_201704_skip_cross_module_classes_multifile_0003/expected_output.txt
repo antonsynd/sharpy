@@ -1,0 +1,6 @@
+Hero (Level 5) vs Goblin
+Player health: 100.0
+After combat - Hero: 80.0hp, Goblin: 23.0hp
+Hero's Inventory: [Iron Sword] [Health Potion]
+Total inventory value: 200 gold
+Hero leveled up to 6! Health restored to 100.0
