@@ -31,7 +31,8 @@
       "Bash(git log:*)",
       "Bash(git status:*)",
       "Bash(tree:*)",
-      "Bash(du:*)"
+      "Bash(du:*)",
+      "Bash(xargs:*)"
     ]
   }
 }
