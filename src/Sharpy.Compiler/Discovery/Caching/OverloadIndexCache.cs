@@ -13,6 +13,7 @@ public class OverloadIndexCache
     private readonly string _cacheDirectory;
     private const int MaxRetries = 3;
     private const int RetryDelayMs = 100;
+    private const int CurrentCacheFormatVersion = 2;
 
     // Using camelCase for JSON serialization to reduce file size and follow common conventions.
     // DefaultIgnoreCondition.WhenWritingNull reduces cache file size by omitting null properties.
@@ -75,8 +76,15 @@ public class OverloadIndexCache
                 using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
                 var index = JsonSerializer.Deserialize<OverloadIndex>(gzipStream, JsonOptions);
 
+                // Reject caches from older format versions
+                if (index?.CacheFormatVersion != CurrentCacheFormatVersion)
+                {
+                    TryDeleteFile(cachePath);
+                    return null;
+                }
+
                 // Verify the identity matches
-                if (index?.Identity.Equals(identity) == true)
+                if (index.Identity.Equals(identity))
                 {
                     return index;
                 }

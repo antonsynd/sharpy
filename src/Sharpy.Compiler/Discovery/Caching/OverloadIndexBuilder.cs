@@ -22,7 +22,7 @@ public class OverloadIndexBuilder
         {
             Identity = identity,
             CreatedAt = DateTime.UtcNow,
-            CacheFormatVersion = 1
+            CacheFormatVersion = 2
         };
 
         // Find all classes named "Exports"
@@ -84,7 +84,7 @@ public class OverloadIndexBuilder
             {
                 Name = type.Name,
                 Namespace = type.Namespace ?? string.Empty,
-                ClrTypeName = type.FullName ?? type.Name,
+                ClrTypeName = type.AssemblyQualifiedName ?? type.FullName ?? type.Name,
                 IsException = isException,
                 BaseTypeName = type.BaseType?.Name,
                 TypeKind = typeKind
@@ -221,7 +221,7 @@ public class OverloadIndexBuilder
         var signature = new TypeSignature
         {
             Name = semanticType.GetDisplayName(),
-            ClrTypeName = clrType.FullName ?? clrType.Name
+            ClrTypeName = clrType.AssemblyQualifiedName ?? clrType.FullName ?? clrType.Name
         };
 
         if (semanticType is GenericType genericType)
