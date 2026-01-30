@@ -1,0 +1,41 @@
+# Test: super().__init__() with employee hierarchy
+# Tests: inheritance chain, constructor chaining, @virtual/@override, super().method()
+
+class Person:
+    name: str
+    age: int
+
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+    @virtual
+    def describe(self) -> None:
+        print(f"Name: {self.name}")
+        print(f"Age: {self.age}")
+
+
+class Employee(Person):
+    employee_id: int
+    salary: float
+
+    def __init__(self, name: str, age: int, emp_id: int, salary: float):
+        super().__init__(name, age)
+        self.employee_id = emp_id
+        self.salary = salary
+
+    @override
+    def describe(self) -> None:
+        super().describe()
+        print(f"ID: {self.employee_id}")
+        print(f"Salary: {self.salary}")
+
+
+def main():
+    emp = Employee("Alice", 30, 12345, 75000.50)
+    emp.describe()
+
+    if emp.salary > 70000.0:
+        print("High earner")
+    else:
+        print("Standard earner")

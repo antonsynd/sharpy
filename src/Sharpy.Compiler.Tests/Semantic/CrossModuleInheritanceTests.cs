@@ -235,4 +235,146 @@ def main() -> None:
         // Assert
         Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
     }
+
+    /// <summary>
+    /// Tests that use Compiler.Compile() (single-file path with dynamic imports)
+    /// to verify that the re-exported type symbol preserves UnresolvedBaseName
+    /// and that IsAssignableTo works when Symbol is null.
+    /// </summary>
+    [Fact]
+    public void SingleFileCompile_InheritedMethodAccessible()
+    {
+        // This tests the Compiler.Compile() path (not ProjectCompiler).
+        // Previously failed because CreateReExportedTypeSymbol didn't copy
+        // UnresolvedBaseName, so BaseType was never resolved for imported types.
+        var basePath = Path.Combine(_tempDir, "animal.spy");
+        File.WriteAllText(basePath, @"
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @virtual
+    def speak(self) -> str:
+        return ""...""
+");
+
+        var derivedPath = Path.Combine(_tempDir, "dog.spy");
+        File.WriteAllText(derivedPath, @"
+from animal import Animal
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    @override
+    def speak(self) -> str:
+        return ""Woof!""
+");
+
+        var mainPath = Path.Combine(_tempDir, "main.spy");
+        File.WriteAllText(mainPath, @"
+from animal import Animal
+from dog import Dog
+
+def main() -> None:
+    d: Dog = Dog(""Rex"")
+    print(d.speak())
+    print(d.name)
+");
+
+        // Use Compiler.Compile() directly (the CLI path)
+        var options = new CompilerOptions { ModulePaths = new[] { _tempDir } };
+        var compiler = new Compiler(options, NullLogger.Instance);
+        var source = File.ReadAllText(mainPath);
+
+        var result = compiler.Compile(source, mainPath);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+    }
+
+    [Fact]
+    public void SingleFileCompile_SubtypePassedToBaseParameter()
+    {
+        // Tests that a derived type can be passed where base type is expected
+        // via the Compiler.Compile() path.
+        var basePath = Path.Combine(_tempDir, "shape.spy");
+        File.WriteAllText(basePath, @"
+class Shape:
+    pass
+
+def process_shape(s: Shape) -> str:
+    return ""processed""
+");
+
+        var derivedPath = Path.Combine(_tempDir, "circle.spy");
+        File.WriteAllText(derivedPath, @"
+from shape import Shape
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, r: float):
+        self.radius = r
+");
+
+        var mainPath = Path.Combine(_tempDir, "main.spy");
+        File.WriteAllText(mainPath, @"
+from shape import Shape, process_shape
+from circle import Circle
+
+def main() -> None:
+    c: Circle = Circle(5.0)
+    result: str = process_shape(c)
+    print(result)
+");
+
+        var options = new CompilerOptions { ModulePaths = new[] { _tempDir } };
+        var compiler = new Compiler(options, NullLogger.Instance);
+        var source = File.ReadAllText(mainPath);
+
+        var result = compiler.Compile(source, mainPath);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+    }
+
+    [Fact]
+    public void SingleFileCompile_ImportedFunctionReturnTypeAssignable()
+    {
+        // Tests the IsAssignableTo fix: imported function return types have
+        // Symbol=null but should still match by name.
+        var modulePath = Path.Combine(_tempDir, "validators.spy");
+        File.WriteAllText(modulePath, @"
+class Result:
+    ok: bool
+    msg: str
+
+    def __init__(self, ok: bool, msg: str):
+        self.ok = ok
+        self.msg = msg
+
+def validate(value: int) -> Result:
+    if value > 0:
+        return Result(True, ""valid"")
+    return Result(False, ""invalid"")
+");
+
+        var mainPath = Path.Combine(_tempDir, "main.spy");
+        File.WriteAllText(mainPath, @"
+from validators import Result, validate
+
+def main() -> None:
+    r: Result = validate(42)
+    print(r.msg)
+");
+
+        var options = new CompilerOptions { ModulePaths = new[] { _tempDir } };
+        var compiler = new Compiler(options, NullLogger.Instance);
+        var source = File.ReadAllText(mainPath);
+
+        var result = compiler.Compile(source, mainPath);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+    }
 }

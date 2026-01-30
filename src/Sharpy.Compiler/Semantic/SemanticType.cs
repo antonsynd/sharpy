@@ -275,23 +275,31 @@ public record UserDefinedType : SemanticType
         if (base.IsAssignableTo(other))
             return true;
 
-        if (other is UserDefinedType otherUdt && Symbol != null)
+        if (other is UserDefinedType otherUdt)
         {
-            // Same type
-            if (Symbol == otherUdt.Symbol || Name == otherUdt.Name)
+            // Name-based comparison works even when Symbol is null
+            // (e.g., imported function return types don't have Symbol resolved)
+            if (Name == otherUdt.Name)
                 return true;
 
-            // Check inheritance chain
-            var current = Symbol.BaseType;
-            while (current != null)
+            if (Symbol != null)
             {
-                if (current == otherUdt.Symbol || current.Name == otherUdt.Name)
+                // Reference-based same-type check
+                if (Symbol == otherUdt.Symbol)
                     return true;
-                current = current.BaseType;
-            }
 
-            // Check all interfaces (including inherited from base classes)
-            return ImplementsInterface(Symbol, otherUdt);
+                // Check inheritance chain
+                var current = Symbol.BaseType;
+                while (current != null)
+                {
+                    if (current == otherUdt.Symbol || current.Name == otherUdt.Name)
+                        return true;
+                    current = current.BaseType;
+                }
+
+                // Check all interfaces (including inherited from base classes)
+                return ImplementsInterface(Symbol, otherUdt);
+            }
         }
 
         return false;

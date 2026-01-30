@@ -1,0 +1,20 @@
+# Validators module: tests imported function return type assignability
+# Tests: function return types with Symbol=null are assignable by name
+
+from geometry import Shape
+
+class ValidationResult:
+    is_valid: bool
+    message: str
+
+    def __init__(self, valid: bool, msg: str):
+        self.is_valid = valid
+        self.message = msg
+
+def validate_positive(value: float) -> ValidationResult:
+    if value > 0.0:
+        return ValidationResult(True, "positive")
+    return ValidationResult(False, "not positive")
+
+def validate_shape(shape: Shape) -> bool:
+    return shape.area() > 0.0 and shape.perimeter() > 0.0

@@ -1,0 +1,26 @@
+# Main entry point: cross-module abstract inheritance + function return types
+# Tests:
+#   - Inherited method access on imported derived types (describe() from Shape)
+#   - Subtype passing: Rectangle/Circle passed to Shape parameter
+#   - Imported function return type assignability (ValidationResult)
+
+from geometry import Shape, Rectangle, Circle
+from validators import ValidationResult, validate_positive, validate_shape
+
+def main():
+    rect: Rectangle = Rectangle(5.0, 3.0)
+    circ: Circle = Circle(2.0)
+
+    # Test inherited method access
+    print(rect.describe())
+    print(circ.describe())
+
+    # Test imported function return type assignment
+    validation: ValidationResult = validate_positive(rect.width)
+    print(validation.message)
+
+    # Test subtype passing (derived -> base parameter)
+    rect_valid: bool = validate_shape(rect)
+    circ_valid: bool = validate_shape(circ)
+    print(rect_valid)
+    print(circ_valid)
