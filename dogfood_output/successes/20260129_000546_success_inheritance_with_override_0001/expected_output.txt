@@ -1,4 +1,0 @@
-Manager
-6000
-Developer
-4500

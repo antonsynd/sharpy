@@ -1,6 +1,0 @@
-Name: Alice
-Age: 25
-Score: 87
-Alice is 25 years old
-Next year: 26
-Double score: 174

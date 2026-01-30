@@ -1,6 +1,0 @@
-Compilation failed:
-  Semantic error at line 13, column 11: Type 'Rectangle' has no member 'describe'
-  Semantic error at line 14, column 11: Type 'Circle' has no member 'describe'
-  Semantic error at line 17, column 5: Cannot assign type 'ValidationResult' to variable of type 'ValidationResult'
-  Semantic error at line 21, column 50: Cannot pass argument of type 'Rectangle' to parameter of type 'Shape'
-  Semantic error at line 22, column 50: Cannot pass argument of type 'Circle' to parameter of type 'Shape'

@@ -1,2 +1,0 @@
-Compilation failed:
-  Semantic error at line 27, column 5: Cannot override 'describe' because the base class method in 'Person' is not marked @virtual or @abstract. Add @virtual to the method in the base class.
