@@ -22,7 +22,8 @@ public class CachedModuleDiscoveryTypeTests : IDisposable
     {
         if (Directory.Exists(_testCacheDir))
         {
-            try { Directory.Delete(_testCacheDir, recursive: true); }
+            try
+            { Directory.Delete(_testCacheDir, recursive: true); }
             catch { /* ignore cleanup errors */ }
         }
     }
