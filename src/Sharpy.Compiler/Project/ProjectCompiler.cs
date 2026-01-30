@@ -608,12 +608,15 @@ public class ProjectCompiler
             // Determine if this file is the entry point
             var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
 
+            var isPackageInit = Path.GetFileNameWithoutExtension(sourceFile) == "__init__";
+
             var codeGenContext = new CodeGenContext(_symbolTable, builtinRegistry)
             {
                 SourceFilePath = sourceFile,
                 ProjectNamespace = config.RootNamespace,
                 ProjectRootPath = ComputeSourceRootPath(config),
                 IsEntryPoint = isEntryPoint,
+                IsPackageInit = isPackageInit,
                 Logger = _logger,
                 SemanticBinding = _projectModel.SemanticBinding,
                 SemanticInfo = _semanticInfo

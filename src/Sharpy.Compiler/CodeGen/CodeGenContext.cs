@@ -48,6 +48,13 @@ public class CodeGenContext
     public bool IsEntryPoint { get; set; } = false;
 
     /// <summary>
+    /// If true, this file is a package __init__.spy file.
+    /// Package init files re-export from-imported symbols as delegating members.
+    /// Regular library modules do not re-export to avoid CS0229 ambiguity.
+    /// </summary>
+    public bool IsPackageInit { get; set; } = false;
+
+    /// <summary>
     /// Logger for code generation warnings and messages.
     /// </summary>
     public ICompilerLogger Logger { get; set; } = NullLogger.Instance;

@@ -28,10 +28,11 @@ public partial class RoslynEmitter
             .ToList();
 
         // Collect from-import statements with re-exports for generating delegating members
-        // Only generate re-export members for non-entry-point files (i.e., library modules/packages)
-        // Entry point files should not re-export - they just use the imports
+        // Only generate re-export members for package __init__.spy files
+        // Regular library modules should not re-export to avoid CS0229 ambiguity
+        // when main imports from both module A and module B (where B imports from A)
         List<FromImportStatement>? fromImports = null;
-        if (!_context.IsEntryPoint)
+        if (!_context.IsEntryPoint && _context.IsPackageInit)
         {
             fromImports = module.Body
                 .OfType<FromImportStatement>()
