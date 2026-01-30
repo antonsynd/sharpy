@@ -10,6 +10,10 @@ namespace Sharpy.Core
         {
         }
 
+        public TypeError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+
         internal static TypeError OpNotSupported(string op, string type)
         {
             return new TypeError($"'{op}' not supported for instances of '{type}'");
@@ -39,6 +43,10 @@ namespace Sharpy.Core
         public ValueError(string message) : base(message)
         {
         }
+
+        public ValueError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
     }
 
     /// <summary>
@@ -47,6 +55,10 @@ namespace Sharpy.Core
     public class RuntimeError : Exception
     {
         public RuntimeError(string message) : base(message)
+        {
+        }
+
+        public RuntimeError(string message, Exception innerException) : base(message, innerException)
         {
         }
     }
@@ -59,6 +71,10 @@ namespace Sharpy.Core
         public NotImplementedError(string message) : base(message)
         {
         }
+
+        public NotImplementedError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
     }
 
     /// <summary>
@@ -67,6 +83,10 @@ namespace Sharpy.Core
     public class AttributeError : Exception
     {
         public AttributeError(string message) : base(message)
+        {
+        }
+
+        public AttributeError(string message, Exception innerException) : base(message, innerException)
         {
         }
     }
@@ -79,6 +99,10 @@ namespace Sharpy.Core
         public ZeroDivisionError(string message) : base(message)
         {
         }
+
+        public ZeroDivisionError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
     }
 
     /// <summary>
@@ -87,6 +111,10 @@ namespace Sharpy.Core
     public class OverflowError : Exception
     {
         public OverflowError(string message) : base(message)
+        {
+        }
+
+        public OverflowError(string message, Exception innerException) : base(message, innerException)
         {
         }
     }
