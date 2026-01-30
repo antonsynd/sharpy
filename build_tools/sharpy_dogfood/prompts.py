@@ -352,6 +352,7 @@ class Dog(Animal):
 - **Try/finally**: `try: ... finally: ...`
 - **Try/except/else/finally**: Full exception handling pattern
 - **Raise**: `raise ValueError("message")`
+- **Available exception types**: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
 
 #### Lambda Expressions (0.1.14)
 - **Lambdas**: `lambda x: x * 2`, `lambda a, b: a + b`
@@ -392,6 +393,9 @@ class Dog(Animal):
 - **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
 - **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
 - **NO union types (T | U)**: union types are not supported — use a common base class or interface instead
+- **NO string indexing (s[i])**: not yet fully supported — use string methods instead
+- **NO 'in' operator on strings**: `char in "abc"` — not yet fully supported
+- **NO character-by-character string iteration**: use `range(len(s))` and string methods instead
 
 ### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
 - **NEVER name functions or variables**: `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`
@@ -562,6 +566,7 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals
 - Comprehensions: `[x * 2 for x in range(10)]`
 - Exception handling: `try`, `except`, `finally`, `raise`
+- Available exception types: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
 - Lambdas: `lambda x: x * 2` (parameter types inferred from context)
 - .NET interop: `from system import Console`
 - Optional types: `T?`, `Some(value)`, `Nothing`, `.unwrap()`, `.unwrap_or()`
@@ -612,6 +617,9 @@ When using higher-order functions, declare function type parameters explicitly:
 - **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
 - **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
 - **NO union types (T | U)**: union types are not supported — use a common base class or interface instead
+- **NO string indexing (s[i])**: not yet fully supported — use string methods instead
+- **NO 'in' operator on strings**: `char in "abc"` — not yet fully supported
+- **NO character-by-character string iteration**: use `range(len(s))` and string methods instead
 
 {existing_fixtures_section}
 
@@ -758,6 +766,7 @@ Every executable Sharpy program MUST have a `main()` function:
 - Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals `[1,2,3]`, `{{"key": val}}`
 - Comprehensions: `[x * 2 for x in range(10)]`
 - Exception handling: `try`, `except`, `finally`, `raise`
+- Available exception types: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
 - Lambdas: `lambda x: x * 2` (parameter types inferred from context)
 - .NET interop: `from system import Console`
 - Optional types: `T?`, `Some(value)`, `Nothing`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
@@ -777,6 +786,9 @@ Every executable Sharpy program MUST have a `main()` function:
 - NO @interface decorator - `interface` is a keyword, use `interface IName:` syntax
 - NO combining @abstract and @virtual - abstract methods are inherently virtual in .NET, use only @abstract
 - NO union types (T | U) - use a common base class or interface instead
+- NO string indexing (s[i]) - not yet fully supported, use string methods instead
+- NO 'in' operator on strings: `char in "abc"` - not yet fully supported
+- NO character-by-character string iteration - use `range(len(s))` and string methods instead
 
 {examples_section}
 
@@ -940,6 +952,7 @@ it is a library module and is VALID without `main()`.
 - Try/except: `try: ... except ExceptionType as e: ...`
 - Try/finally: `try: ... finally: ...`
 - Raise: `raise ValueError("message")`
+- Available exception types: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
 
 ### Lambda Expressions (0.1.14)
 - Lambdas: `lambda x: x * 2`, `lambda a, b: a + b`
@@ -977,6 +990,9 @@ it is a library module and is VALID without `main()`.
 ❌ @interface decorator: `interface` is a keyword, not a decorator - REJECT (use `interface IName:`)
 ❌ Combining @abstract and @virtual on same method - REJECT (abstract is inherently virtual)
 ❌ Union types (T | U) - REJECT (not supported, use base class or interface)
+❌ String indexing (s[i]) - REJECT (not yet fully supported, use string methods)
+❌ 'in' operator on strings: `char in "abc"` - REJECT (not yet fully supported)
+❌ Character-by-character string iteration - REJECT (use string methods instead)
 
 ## Code to Validate
 
