@@ -1,0 +1,6 @@
+Assembly compilation failed:
+  shapes.cs(17,40): error CS0503: The abstract method 'Shape.Area()' cannot be marked virtual
+  shapes.cs(18,40): error CS0503: The abstract method 'Shape.Perimeter()' cannot be marked virtual
+  shapes.cs(44,16): error CS7036: There is no argument given that corresponds to the required parameter 'shapeName' of 'Shape.Shape(string)'
+  advanced_shapes.cs(28,16): error CS7036: There is no argument given that corresponds to the required parameter 'shapeName' of 'Shape.Shape(string)'
+  advanced_shapes.cs(51,16): error CS7036: There is no argument given that corresponds to the required parameter 'shapeName' of 'Shape.Shape(string)'

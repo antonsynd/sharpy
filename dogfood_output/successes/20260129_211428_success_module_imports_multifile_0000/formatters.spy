@@ -1,0 +1,13 @@
+# Module for formatting numerical results
+
+class ResultFormatter:
+    prefix: str
+    
+    def __init__(self, prefix: str):
+        self.prefix = prefix
+    
+    def format_result(self, operation: str, value: float) -> str:
+        return f"{self.prefix} {operation} = {value}"
+
+def format_simple(value: float) -> str:
+    return f"Result: {value}"

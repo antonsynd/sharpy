@@ -1,0 +1,5 @@
+Result: 15
+Square of 4: 16
+2^3 via power: 8
+2^3 via cube: 8
+Scientific multiplication = 21

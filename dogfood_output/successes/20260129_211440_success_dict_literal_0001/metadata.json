@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-29T21:14:28.174996",
+  "generated_code": "# Test: Dictionary literal with string keys and int values\ndef main():\n    inventory: dict[str, int] = {\"apples\": 12, \"bananas\": 8, \"oranges\": 15}\n    print(inventory[\"apples\"])\n    print(inventory[\"bananas\"])\n    print(inventory[\"oranges\"])\n\n# EXPECTED OUTPUT:\n# 12\n# 8\n# 15",
+  "expected_output": "12\n8\n15\n",
+  "actual_output": "12\n8\n15",
+  "feature_focus": "dict_literal",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 4.498992204666138,
+  "execution_duration": 1.4862582683563232,
+  "source_files": null
+}

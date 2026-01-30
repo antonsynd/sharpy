@@ -1,0 +1,22 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-01-29T21:19:29.359435",
+  "generated_code": "# Main entry point - demonstrates cross-module class usage\nfrom shapes import Circle, Shape\nfrom containers import ShapeContainer\n\ndef main():\n    print(\"=== Cross-Module Classes Demo ===\")\n    \n    # Create shapes from imported module\n    circle1: Circle = Circle(5.0)\n    circle2: Circle = Circle(10.0)\n    \n    print(circle1.describe())\n    print(f\"Area: {circle1.area()}\")\n    \n    # Use container from another module\n    container: ShapeContainer = ShapeContainer()\n    container.add_shape(circle1)\n    container.add_shape(circle2)\n    \n    print(f\"Total shapes: {container.count}\")\n    print(f\"Average area: {container.get_average_area()}\")\n\n# EXPECTED OUTPUT:\n# === Cross-Module Classes Demo ===\n# Circle with radius 5.0\n# Area: 78.53975\n# Total shapes: 2\n# Average area: 196.3493625",
+  "expected_output": "=== Cross-Module Classes Demo ===\nCircle with radius 5.0\nArea: 78.53975\nTotal shapes: 2\nAverage area: 196.3493625\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n  containers.cs(32,51): error CS0246: The type or namespace name 'Float' could not be found (are you missing a using directive or an assembly reference?)\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "cross_module_classes",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 15.831010103225708,
+  "compilation_duration": null,
+  "execution_duration": 1.331207036972046,
+  "source_files": {
+    "shapes.spy": "# Shapes module - base geometry classes\n\n@abstract\nclass Shape:\n    name: str\n    \n    def __init__(self, shape_name: str):\n        self.name = shape_name\n    \n    @abstract\n    def area(self) -> float:\n        ...\n    \n    @virtual\n    def describe(self) -> str:\n        return f\"Shape: {self.name}\"\n\nclass Circle(Shape):\n    radius: float\n    \n    def __init__(self, r: float):\n        super().__init__(\"Circle\")\n        self.radius = r\n    \n    @override\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius\n    \n    @override\n    def describe(self) -> str:\n        return f\"{self.name} with radius {self.radius}\"",
+    "containers.spy": "# Container module - manages collections of shapes\nfrom shapes import Shape\n\nclass ShapeContainer:\n    count: int\n    total_area: float\n    \n    def __init__(self):\n        self.count = 0\n        self.total_area = 0.0\n    \n    def add_shape(self, shape: Shape) -> None:\n        self.count += 1\n        self.total_area += shape.area()\n    \n    def get_average_area(self) -> float:\n        if self.count == 0:\n            return 0.0\n        return self.total_area / float(self.count)",
+    "main.spy": "# Main entry point - demonstrates cross-module class usage\nfrom shapes import Circle, Shape\nfrom containers import ShapeContainer\n\ndef main():\n    print(\"=== Cross-Module Classes Demo ===\")\n    \n    # Create shapes from imported module\n    circle1: Circle = Circle(5.0)\n    circle2: Circle = Circle(10.0)\n    \n    print(circle1.describe())\n    print(f\"Area: {circle1.area()}\")\n    \n    # Use container from another module\n    container: ShapeContainer = ShapeContainer()\n    container.add_shape(circle1)\n    container.add_shape(circle2)\n    \n    print(f\"Total shapes: {container.count}\")\n    print(f\"Average area: {container.get_average_area()}\")\n\n# EXPECTED OUTPUT:\n# === Cross-Module Classes Demo ===\n# Circle with radius 5.0\n# Area: 78.53975\n# Total shapes: 2\n# Average area: 196.3493625"
+  }
+}

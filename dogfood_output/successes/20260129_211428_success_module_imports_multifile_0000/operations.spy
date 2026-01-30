@@ -1,0 +1,22 @@
+# Module providing mathematical operations
+
+class Calculator:
+    precision: int
+    
+    def __init__(self, precision: int):
+        self.precision = precision
+    
+    def add(self, a: float, b: float) -> float:
+        return a + b
+    
+    def multiply(self, a: float, b: float) -> float:
+        return a * b
+    
+    def power(self, base: float, exponent: float) -> float:
+        return base ** exponent
+
+def square(x: float) -> float:
+    return x * x
+
+def cube(x: float) -> float:
+    return x * x * x

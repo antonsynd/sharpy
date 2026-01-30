@@ -1,0 +1,42 @@
+Let me scan this code line by line against the Sharpy language specification for phases 0.1.0-0.1.18.
+
+**Line-by-line analysis:**
+
+1. `# Main entry point - demonstrates cross-module class usage` - ✅ Comment (allowed)
+2. `from shapes import Rectangle, Circle` - ✅ From import (0.1.10)
+3. `from calculator import ShapeCalculator` - ✅ From import (0.1.10)
+4. (blank line)
+5. `def main():` - ✅ Entry point function (required)
+6. `# Create shapes from imported module` - ✅ Comment
+7. `rect: Rectangle = Rectangle(5.0, 3.0)` - ✅ Variable declaration with type annotation (0.1.3), constructor call (0.1.6)
+8. `circle: Circle = Circle(2.0)` - ✅ Variable declaration with type annotation (0.1.3), constructor call (0.1.6)
+9. (blank line)
+10. `print(rect.describe())` - ✅ print() with single argument (built-in), method call (0.1.6)
+11. `print(f"Area: {rect.area()}")` - ✅ print() with f-string (literals), method call
+12. (blank line)
+13. `print(circle.describe())` - ✅ print() with single argument, method call
+14. (blank line)
+15. `# Use calculator utilities from another module` - ✅ Comment
+16. `comparison: str = ShapeCalculator.compare_areas(rect, circle)` - ✅ Variable declaration, static method call
+17. `print(comparison)` - ✅ print() with single argument
+18. (blank line)
+19. `# Calculate total area` - ✅ Comment
+20. `shapes: list[Rectangle | Circle] = [rect, circle]` - ⚠️ **CHECKING: Union type `Rectangle | Circle`**
+21. `total: float = ShapeCalculator.total_area(shapes)` - ✅ Variable declaration, static method call
+22. `print(f"Total area: {total}")` - ✅ print() with f-string
+
+**Critical finding on line 20:**
+
+The code uses `Rectangle | Circle` which is a **union type**. Union types are NOT listed in the allowed features for phases 0.1.0-0.1.18. The specification lists:
+- Generic types (0.1.9): `class Box[T]`, `def foo[T](x: T) -> T:`
+- Optional types (0.1.15): `T?` or `Optional[T]`
+- Result types (0.1.16): `T !E` or `Result[T, E]`
+
+But union types (`T | U`) are **not mentioned** in any phase 0.1.0-0.1.18.
+
+```
+INVALID
+Reason: Union types (T | U) are not available in phases 0.1.0-0.1.18
+Line: 20
+Found: shapes: list[Rectangle | Circle] = [rect, circle]
+```

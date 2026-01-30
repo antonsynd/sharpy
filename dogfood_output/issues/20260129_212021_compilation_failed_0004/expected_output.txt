@@ -1,0 +1,5 @@
+=== Cross-Module Classes Demo ===
+Circle with radius 5.0
+Area: 78.53975
+Total shapes: 2
+Average area: 196.3493625

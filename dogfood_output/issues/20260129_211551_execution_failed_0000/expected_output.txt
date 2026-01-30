@@ -1,0 +1,7 @@
+Area: 78.53975, Perimeter: 31.4159
+Area: 24.0, Perimeter: 20.0
+Circle
+Rectangle
+Shape meets minimum area requirement
+Shape meets minimum area requirement
+True

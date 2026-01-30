@@ -1,0 +1,17 @@
+# Test: Basic .NET interop - import and use System.Math
+from system import Math
+
+def main():
+    x = Math.Abs(-42)
+    print(x)
+    
+    y = Math.Max(10, 25)
+    print(y)
+    
+    z = Math.Min(7, 3)
+    print(z)
+
+# EXPECTED OUTPUT:
+# 42
+# 25
+# 3

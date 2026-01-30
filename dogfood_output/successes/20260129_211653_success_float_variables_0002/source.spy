@@ -1,0 +1,15 @@
+# Test: float variable declarations, arithmetic, and printing
+
+pi: float = 3.14159
+radius: float = 5.0
+area: float = pi * radius * radius
+
+def main():
+    print(pi)
+    print(radius)
+    print(area)
+
+# EXPECTED OUTPUT:
+# 3.14159
+# 5
+# 78.53975

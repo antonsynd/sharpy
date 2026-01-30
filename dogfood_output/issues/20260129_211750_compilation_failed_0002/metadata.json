@@ -1,0 +1,22 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-01-29T21:17:01.645001",
+  "generated_code": "# Main entry point - library management system\n\nfrom book import Book\nfrom catalog import Library\n\ndef main():\n    # Create library\n    lib = Library(\"City Library\")\n    print(f\"Welcome to {lib.name}\")\n\n    # Add books\n    book1 = Book(\"Python Basics\", \"Alice Smith\", 350)\n    book2 = Book(\"Data Structures\", \"Bob Jones\", 480)\n    book3 = Book(\"Algorithms\", \"Carol White\", 520)\n    \n    lib.add_book(book1)\n    lib.add_book(book2)\n    lib.add_book(book3)\n\n    # Show initial state\n    print(f\"Available books: {lib.get_available_count()}\")\n    print(f\"Total pages: {lib.get_total_pages()}\")\n\n    # Checkout a book\n    success: bool = book1.checkout()\n    print(f\"Checkout successful: {success}\")\n\n    # Show updated state\n    print(f\"Available books after checkout: {lib.get_available_count()}\")\n\n# EXPECTED OUTPUT:\n# Welcome to City Library\n# Available books: 3\n# Total pages: 1350\n# Checkout successful: True\n# Available books after checkout: 2",
+  "expected_output": "Welcome to City Library\nAvailable books: 3\nTotal pages: 1350\nCheckout successful: True\nAvailable books after checkout: 2\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n  catalog.cs(13,74): error CS0305: Using the generic type 'List<T>' requires 1 type arguments\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": null,
+  "feature_focus": "module_imports",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 11.673396110534668,
+  "compilation_duration": null,
+  "execution_duration": 1.3073489665985107,
+  "source_files": {
+    "book.spy": "# Book module providing core book types and operations\n\nclass Book:\n    title: str\n    author: str\n    pages: int\n    is_available: bool\n\n    def __init__(self, title: str, author: str, pages: int):\n        self.title = title\n        self.author = author\n        self.pages = pages\n        self.is_available = True\n\n    def checkout(self) -> bool:\n        if self.is_available:\n            self.is_available = False\n            return True\n        return False\n\n    def return_book(self) -> None:\n        self.is_available = True\n\n    def get_info(self) -> str:\n        status: str = \"Available\" if self.is_available else \"Checked Out\"\n        return f\"{self.title} by {self.author} ({self.pages} pages) - {status}\"\n\ndef calculate_total_pages(books: list[Book]) -> int:\n    total: int = 0\n    for book in books:\n        total += book.pages\n    return total",
+    "catalog.spy": "# Catalog module for managing collections of books\n\nfrom book import Book, calculate_total_pages\n\nclass Library:\n    name: str\n    books: list[Book]\n\n    def __init__(self, name: str):\n        self.name = name\n        self.books = []\n\n    def add_book(self, book: Book) -> None:\n        self.books.append(book)\n\n    def get_available_count(self) -> int:\n        count: int = 0\n        for book in self.books:\n            if book.is_available:\n                count += 1\n        return count\n\n    def get_total_pages(self) -> int:\n        return calculate_total_pages(self.books)",
+    "main.spy": "# Main entry point - library management system\n\nfrom book import Book\nfrom catalog import Library\n\ndef main():\n    # Create library\n    lib = Library(\"City Library\")\n    print(f\"Welcome to {lib.name}\")\n\n    # Add books\n    book1 = Book(\"Python Basics\", \"Alice Smith\", 350)\n    book2 = Book(\"Data Structures\", \"Bob Jones\", 480)\n    book3 = Book(\"Algorithms\", \"Carol White\", 520)\n    \n    lib.add_book(book1)\n    lib.add_book(book2)\n    lib.add_book(book3)\n\n    # Show initial state\n    print(f\"Available books: {lib.get_available_count()}\")\n    print(f\"Total pages: {lib.get_total_pages()}\")\n\n    # Checkout a book\n    success: bool = book1.checkout()\n    print(f\"Checkout successful: {success}\")\n\n    # Show updated state\n    print(f\"Available books after checkout: {lib.get_available_count()}\")\n\n# EXPECTED OUTPUT:\n# Welcome to City Library\n# Available books: 3\n# Total pages: 1350\n# Checkout successful: True\n# Available books after checkout: 2"
+  }
+}

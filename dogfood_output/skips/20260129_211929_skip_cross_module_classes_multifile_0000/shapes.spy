@@ -1,0 +1,44 @@
+# Module providing shape classes with area calculation
+
+@abstract
+class Shape:
+    """Base class for all shapes"""
+    
+    @abstract
+    def area(self) -> float:
+        ...
+    
+    @abstract
+    def describe(self) -> str:
+        ...
+
+class Rectangle(Shape):
+    width: float
+    height: float
+    
+    def __init__(self, w: float, h: float):
+        self.width = w
+        self.height = h
+    
+    @override
+    def area(self) -> float:
+        return self.width * self.height
+    
+    @override
+    def describe(self) -> str:
+        return f"Rectangle({self.width}x{self.height})"
+
+class Circle(Shape):
+    radius: float
+    
+    def __init__(self, r: float):
+        self.radius = r
+    
+    @override
+    def area(self) -> float:
+        # Approximation of pi * r^2
+        return 3.14159 * self.radius * self.radius
+    
+    @override
+    def describe(self) -> str:
+        return f"Circle(radius={self.radius})"

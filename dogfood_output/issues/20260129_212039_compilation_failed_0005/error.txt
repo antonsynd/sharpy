@@ -1,0 +1,4 @@
+Assembly compilation failed:
+  dogfood_test.cs(14,21): error CS0234: The type or namespace name 'Abs' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)
+  dogfood_test.cs(16,21): error CS0234: The type or namespace name 'Max' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)
+  dogfood_test.cs(18,21): error CS0234: The type or namespace name 'Min' does not exist in the namespace 'Sharpy.Math' (are you missing an assembly reference?)

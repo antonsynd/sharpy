@@ -1,0 +1,5 @@
+Welcome to City Library
+Available books: 3
+Total pages: 1350
+Checkout successful: True
+Available books after checkout: 2
