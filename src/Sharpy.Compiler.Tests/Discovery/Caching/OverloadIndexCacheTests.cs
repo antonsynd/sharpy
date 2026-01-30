@@ -123,6 +123,33 @@ public class OverloadIndexCacheTests : IDisposable
     }
 
     [Fact]
+    public void TryLoad_RejectsOldCacheFormatVersion()
+    {
+        // Arrange - save a V1 cache
+        var identity = new AssemblyIdentity
+        {
+            Name = "OldVersionTest",
+            Version = "1.0.0",
+            ContentHash = "oldver123",
+            FilePath = "/test/oldver.dll"
+        };
+
+        var v1Index = new OverloadIndex
+        {
+            Identity = identity,
+            CreatedAt = DateTime.UtcNow,
+            CacheFormatVersion = 1
+        };
+        _cache.Save(v1Index);
+
+        // Act
+        var loaded = _cache.TryLoad(identity);
+
+        // Assert - V1 cache should be rejected
+        Assert.Null(loaded);
+    }
+
+    [Fact]
     public void ClearAll_RemovesCacheFiles()
     {
         // Arrange
