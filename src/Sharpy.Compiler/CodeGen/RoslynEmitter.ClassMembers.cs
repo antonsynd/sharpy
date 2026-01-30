@@ -508,8 +508,19 @@ public partial class RoslynEmitter
         // Add initializer if present
         if (varDecl.InitialValue != null)
         {
-            var initExpr = GenerateExpression(varDecl.InitialValue);
-            variable = variable.WithInitializer(EqualsValueClause(initExpr));
+            // Set target type context for collection literal type inference
+            // e.g., books: list[Book] = [] needs the element type from the annotation
+            var previousTargetType = _targetTypeContext;
+            _targetTypeContext = varDecl.Type;
+            try
+            {
+                var initExpr = GenerateExpression(varDecl.InitialValue);
+                variable = variable.WithInitializer(EqualsValueClause(initExpr));
+            }
+            finally
+            {
+                _targetTypeContext = previousTargetType;
+            }
         }
 
         var declaration = VariableDeclaration(fieldType)

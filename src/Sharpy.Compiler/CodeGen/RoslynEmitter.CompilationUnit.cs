@@ -273,9 +273,27 @@ public partial class RoslynEmitter
 
         if (isNetFramework)
         {
-            // from system.io import File -> using System.IO; (standard .NET import)
             var namespaceName = ConvertModuleNameToNamespace(fromImport.Module);
-            yield return UsingDirective(ParseName(namespaceName));
+
+            if (fromImport.ImportAll || fromImport.Names.Length == 0)
+            {
+                // from system.io import * -> using System.IO; (import everything)
+                yield return UsingDirective(ParseName(namespaceName));
+            }
+            else
+            {
+                // from system import Math -> using Math = global::System.Math;
+                // Emit per-name type aliases with global:: prefix to avoid ambiguity
+                // when the emitted code's namespace (e.g. Sharpy.Math) shadows .NET types.
+                foreach (var importedName in fromImport.Names)
+                {
+                    var csharpName = importedName.AsName ?? SimpleToPascalCase(importedName.Name);
+                    var qualifiedName = $"global::{namespaceName}.{SimpleToPascalCase(importedName.Name)}";
+                    yield return UsingDirective(
+                        NameEquals(csharpName),
+                        ParseName(qualifiedName));
+                }
+            }
         }
         else
         {
@@ -314,6 +332,21 @@ public partial class RoslynEmitter
 
             yield return UsingDirective(ParseName(fullModuleClass))
                 .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
+
+            // Also emit a non-static using for the module namespace itself.
+            // Types (classes, structs, interfaces, enums) are placed at namespace level as siblings
+            // to the Exports class, so they need a plain using to be visible.
+            // e.g., "from math_utils import MathConstants" also needs "using TestProject.MathUtils;"
+            string moduleNamespace;
+            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+            {
+                moduleNamespace = $"{_context.ProjectNamespace}.{moduleNamespacePath}";
+            }
+            else
+            {
+                moduleNamespace = moduleNamespacePath;
+            }
+            yield return UsingDirective(ParseName(moduleNamespace));
 
             // Also generate using statements for namespaces where re-exported types are actually defined.
             // This handles the case where a package __init__.spy re-exports types from submodules.

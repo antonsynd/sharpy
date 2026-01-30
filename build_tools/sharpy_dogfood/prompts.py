@@ -275,20 +275,29 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **Virtual methods**: `@virtual` decorator — **REQUIRED** on any method that will be overridden
 - **Override methods**: `@override` decorator — MUST match a `@virtual` or `@abstract` method in base class
 - **Final classes/methods**: `@final` decorator
-- **Interfaces**: `interface IName:` with method signatures using `...`
+- **Interfaces**: `interface IName:` with method signatures using `...` (NOTE: `interface` is a keyword, NOT a decorator — do NOT write `@interface`)
 - **Multiple interfaces**: `class Foo(IBar, IBaz):`
 - **Access modifiers**: `@private`, `@protected`, `@internal` (default is public)
 - **IMPORTANT**: Interface types have NO concrete members - you can only call methods declared in the interface. Do NOT access fields like `.value` through interface types.
 - **IMPORTANT**: Unlike Python, `@virtual` is REQUIRED on base class methods that subclasses override. Without `@virtual`, using `@override` in a subclass will cause a compile error.
+- **IMPORTANT**: When a parent class has required constructor parameters, subclass `__init__` MUST call `super().__init__(...)` with the required arguments.
 
 Example:
 ```python
 class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
     @virtual
     def speak(self) -> str:
         return "..."
 
 class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
     @override
     def speak(self) -> str:
         return "Woof!"
@@ -380,6 +389,9 @@ class Dog(Animal):
 - **NO pattern matching**: `match`/`case` not implemented
 - **NO tuple unpacking**: `a, b = 1, 2` - may have issues
 - **NO isinstance with tuples**: `isinstance(x, (int, str))` - use `or` instead
+- **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
+- **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
+- **NO union types (T | U)**: union types are not supported — use a common base class or interface instead
 
 ### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
 - **NEVER name functions or variables**: `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`
@@ -559,11 +571,17 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 
 ### ⚠️ Key Patterns for Multi-File Projects
 
-When using inheritance across modules, `@virtual` is REQUIRED on base class methods:
+When using inheritance across modules, `@virtual` is REQUIRED on base class methods.
+When a parent class has required constructor parameters, subclass `__init__` MUST call `super().__init__(...)` with the required arguments:
 
 ```python
 # === In base_module.spy ===
 class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
     @virtual
     def speak(self) -> str:
         return "..."
@@ -572,6 +590,9 @@ class Animal:
 from base_module import Animal
 
 class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
     @override
     def speak(self) -> str:
         return "Woof!"
@@ -588,6 +609,9 @@ When using higher-order functions, declare function type parameters explicitly:
 - **NO with statement**: Context managers not implemented
 - **NO walrus operator**: `:=` - Not implemented
 - **NO pattern matching**: `match`/`case` - Not implemented
+- **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
+- **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
+- **NO union types (T | U)**: union types are not supported — use a common base class or interface instead
 
 {existing_fixtures_section}
 
@@ -750,6 +774,9 @@ Every executable Sharpy program MUST have a `main()` function:
 - NO walrus operator: `:=` - not implemented
 - NO pattern matching: `match`/`case` - not implemented
 - NO tuple unpacking: `a, b = 1, 2` - may have issues
+- NO @interface decorator - `interface` is a keyword, use `interface IName:` syntax
+- NO combining @abstract and @virtual - abstract methods are inherently virtual in .NET, use only @abstract
+- NO union types (T | U) - use a common base class or interface instead
 
 {examples_section}
 
@@ -947,6 +974,9 @@ it is a library module and is VALID without `main()`.
 ❌ Pattern matching: `match`/`case` - REJECT (not implemented)
 ❌ Tuple unpacking: `a, b = 1, 2` - REJECT (may have issues)
 ❌ isinstance with tuple: `isinstance(x, (int, str))` - REJECT
+❌ @interface decorator: `interface` is a keyword, not a decorator - REJECT (use `interface IName:`)
+❌ Combining @abstract and @virtual on same method - REJECT (abstract is inherently virtual)
+❌ Union types (T | U) - REJECT (not supported, use base class or interface)
 
 ## Code to Validate
 

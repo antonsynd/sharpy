@@ -159,8 +159,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - .NET framework imports normally without using static
-        Assert.Contains("using System.IO;", code);
+        // Assert - .NET framework from-import emits per-name alias with global:: prefix
+        Assert.Contains("using File = global::System.IO.File;", code);
     }
 
     [Fact]
