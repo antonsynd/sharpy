@@ -67,9 +67,12 @@ public class OverloadIndexBuilder
             }
 
             var typeKind = "Class";
-            if (type.IsEnum) typeKind = "Enum";
-            else if (type.IsValueType) typeKind = "Struct";
-            else if (type.IsInterface) typeKind = "Interface";
+            if (type.IsEnum)
+                typeKind = "Enum";
+            else if (type.IsValueType)
+                typeKind = "Struct";
+            else if (type.IsInterface)
+                typeKind = "Interface";
 
             // Skip static classes (they are Exports-style containers, not constructible types)
             if (type.IsAbstract && type.IsSealed && !type.IsInterface)
@@ -91,7 +94,8 @@ public class OverloadIndexBuilder
 
     private string DeriveModuleNameFromNamespace(string? ns)
     {
-        if (ns == null) return "builtins";
+        if (ns == null)
+            return "builtins";
         if (ns == "Sharpy.Core" || ns.StartsWith("Sharpy.Core."))
             return "builtins";
         return ns.ToLowerInvariant().Replace(".", "_");
