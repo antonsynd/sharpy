@@ -1191,6 +1191,22 @@ public class ImportResolver
         return chain.ToString().TrimEnd();
     }
 
+    /// <summary>
+    /// Search all loaded modules in the cache for a TypeSymbol with the given name.
+    /// Used to discover transitive base types that were parsed but not explicitly imported.
+    /// </summary>
+    public TypeSymbol? FindTypeInLoadedModules(string typeName)
+    {
+        foreach (var (_, moduleInfo) in _moduleCache)
+        {
+            if (moduleInfo.ExportedSymbols.TryGetValue(typeName, out var symbol) && symbol is TypeSymbol typeSymbol)
+            {
+                return typeSymbol;
+            }
+        }
+        return null;
+    }
+
     private void AddError(string message, int? line, int? column)
     {
         var errorMessage = _currentModulePath != null

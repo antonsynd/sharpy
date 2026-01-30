@@ -228,6 +228,9 @@ public class Compiler
                 }
             }
 
+            // Auto-import transitive base types from loaded modules before resolving inheritance
+            ResolveTransitiveBaseTypes(symbolTable, importResolver, _logger);
+
             // Resolve inheritance for imported types now that all symbols are registered
             ResolveImportedTypeInheritance(symbolTable, _logger);
 
@@ -428,6 +431,57 @@ public class Compiler
                     logger.LogWarning($"Could not resolve interface '{ifaceName}' for {type.Name}", 0, 0);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Auto-import transitive base types that are referenced by imported types but not
+    /// explicitly imported by the user. Iterates until stable (fixpoint) to handle
+    /// multi-level inheritance chains like Entity -> NamedEntity -> User.
+    /// </summary>
+    internal static void ResolveTransitiveBaseTypes(SymbolTable symbolTable, ImportResolver importResolver, ICompilerLogger logger)
+    {
+        logger.LogDebug("Resolving transitive base types from loaded modules...");
+
+        const int maxIterations = 100;
+        for (int iteration = 0; iteration < maxIterations; iteration++)
+        {
+            bool addedNew = false;
+
+            var allTypes = symbolTable.GlobalScope.GetAllSymbols()
+                .OfType<TypeSymbol>()
+                .ToList();
+
+            foreach (var type in allTypes)
+            {
+                // Check unresolved base class name
+                if (!string.IsNullOrEmpty(type.UnresolvedBaseName) && symbolTable.LookupType(type.UnresolvedBaseName) == null)
+                {
+                    var found = importResolver.FindTypeInLoadedModules(type.UnresolvedBaseName);
+                    if (found != null && symbolTable.TryDefine(found))
+                    {
+                        logger.LogDebug($"Auto-imported transitive base type: {found.Name} (needed by {type.Name})");
+                        addedNew = true;
+                    }
+                }
+
+                // Check unresolved interface names
+                foreach (var ifaceName in type.UnresolvedInterfaceNames)
+                {
+                    if (symbolTable.LookupType(ifaceName) == null)
+                    {
+                        var found = importResolver.FindTypeInLoadedModules(ifaceName);
+                        if (found != null && symbolTable.TryDefine(found))
+                        {
+                            logger.LogDebug($"Auto-imported transitive interface type: {found.Name} (needed by {type.Name})");
+                            addedNew = true;
+                        }
+                    }
+                }
+            }
+
+            if (!addedNew)
+                break;
         }
     }
 

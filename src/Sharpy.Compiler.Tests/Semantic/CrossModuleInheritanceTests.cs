@@ -339,6 +339,188 @@ def main() -> None:
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
     }
 
+    /// <summary>
+    /// Tests that transitive base types are auto-imported when only the leaf type
+    /// is explicitly imported. Entity -> NamedEntity -> User, only User is imported.
+    /// </summary>
+    [Fact]
+    public void SingleFileCompile_TransitiveBaseTypeAutoImported()
+    {
+        // Entity (root)
+        var entityPath = Path.Combine(_tempDir, "entity.spy");
+        File.WriteAllText(entityPath, @"
+class Entity:
+    id: int
+
+    def __init__(self, id: int):
+        self.id = id
+");
+
+        // NamedEntity extends Entity
+        var namedEntityPath = Path.Combine(_tempDir, "named_entity.spy");
+        File.WriteAllText(namedEntityPath, @"
+from entity import Entity
+
+class NamedEntity(Entity):
+    name: str
+
+    def __init__(self, id: int, name: str):
+        super().__init__(id)
+        self.name = name
+");
+
+        // User extends NamedEntity
+        var userPath = Path.Combine(_tempDir, "user.spy");
+        File.WriteAllText(userPath, @"
+from named_entity import NamedEntity
+
+class User(NamedEntity):
+    email: str
+
+    def __init__(self, id: int, name: str, email: str):
+        super().__init__(id, name)
+        self.email = email
+");
+
+        // Main only imports User — Entity and NamedEntity should be auto-imported
+        var mainPath = Path.Combine(_tempDir, "main.spy");
+        File.WriteAllText(mainPath, @"
+from user import User
+
+def main() -> None:
+    u: User = User(1, ""Alice"", ""alice@example.com"")
+    print(u.id)
+    print(u.name)
+    print(u.email)
+");
+
+        var options = new CompilerOptions { ModulePaths = new[] { _tempDir } };
+        var compiler = new Compiler(options, NullLogger.Instance);
+        var source = File.ReadAllText(mainPath);
+
+        var result = compiler.Compile(source, mainPath);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+    }
+
+    /// <summary>
+    /// Tests that transitive interface types are auto-imported when only the
+    /// implementing class is explicitly imported.
+    /// </summary>
+    [Fact]
+    public void SingleFileCompile_TransitiveInterfaceAutoImported()
+    {
+        // Interface in its own module
+        var ifacePath = Path.Combine(_tempDir, "printable.spy");
+        File.WriteAllText(ifacePath, @"
+interface IPrintable:
+    def display(self) -> str: ...
+");
+
+        // Class implementing the interface
+        var implPath = Path.Combine(_tempDir, "widget.spy");
+        File.WriteAllText(implPath, @"
+from printable import IPrintable
+
+class Widget(IPrintable):
+    label: str
+
+    def __init__(self, label: str):
+        self.label = label
+
+    def display(self) -> str:
+        return self.label
+");
+
+        // Main only imports Widget — IPrintable should be auto-imported
+        var mainPath = Path.Combine(_tempDir, "main.spy");
+        File.WriteAllText(mainPath, @"
+from widget import Widget
+
+def main() -> None:
+    w: Widget = Widget(""OK"")
+    print(w.display())
+");
+
+        var options = new CompilerOptions { ModulePaths = new[] { _tempDir } };
+        var compiler = new Compiler(options, NullLogger.Instance);
+        var source = File.ReadAllText(mainPath);
+
+        var result = compiler.Compile(source, mainPath);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+    }
+
+    /// <summary>
+    /// Tests that transitive base types are auto-imported via ProjectCompiler
+    /// when the main file only imports the leaf type and the base types are
+    /// in other project source files but not explicitly imported by main.
+    /// </summary>
+    [Fact]
+    public void ProjectCompiler_TransitiveBaseTypeResolution()
+    {
+        // Entity (root)
+        var entityPath = Path.Combine(_tempDir, "entity.spy");
+        File.WriteAllText(entityPath, @"
+class Entity:
+    id: int
+
+    def __init__(self, id: int):
+        self.id = id
+");
+
+        // NamedEntity extends Entity
+        var namedEntityPath = Path.Combine(_tempDir, "named_entity.spy");
+        File.WriteAllText(namedEntityPath, @"
+from entity import Entity
+
+class NamedEntity(Entity):
+    name: str
+
+    def __init__(self, id: int, name: str):
+        super().__init__(id)
+        self.name = name
+");
+
+        // User extends NamedEntity
+        var userPath = Path.Combine(_tempDir, "user.spy");
+        File.WriteAllText(userPath, @"
+from named_entity import NamedEntity
+
+class User(NamedEntity):
+    email: str
+
+    def __init__(self, id: int, name: str, email: str):
+        super().__init__(id, name)
+        self.email = email
+");
+
+        // Main only imports User — Entity and NamedEntity resolved transitively
+        var mainPath = Path.Combine(_tempDir, "main.spy");
+        File.WriteAllText(mainPath, @"
+from user import User
+
+def main() -> None:
+    u: User = User(1, ""Bob"", ""bob@example.com"")
+    print(u.id)
+    print(u.name)
+    print(u.email)
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectDirectory = _tempDir,
+            RootNamespace = "TestProject",
+            SourceFiles = new List<string> { entityPath, namedEntityPath, userPath, mainPath }
+        };
+
+        var compiler = new ProjectCompiler(NullLogger.Instance);
+
+        var result = compiler.Compile(config);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+    }
+
     [Fact]
     public void SingleFileCompile_ImportedFunctionReturnTypeAssignable()
     {
