@@ -176,9 +176,22 @@ class Program
             EmitCSharp(input, output, logger);
         });
 
+        var emitParseCommand = new Command("parse", "Validate lexing and parsing only");
+        var emitParseInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
+        emitParseCommand.Arguments.Add(emitParseInputArg);
+        emitParseCommand.SetAction((parseResult) =>
+        {
+            var input = parseResult.GetValue(emitParseInputArg)!;
+            var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+            var logFile = parseResult.GetValue(logFileOption);
+            var logger = CreateLogger(logLevel, logFile);
+            EmitParse(input, logger);
+        });
+
         emitCommand.Subcommands.Add(emitTokensCommand);
         emitCommand.Subcommands.Add(emitAstCommand);
         emitCommand.Subcommands.Add(emitCsharpCommand);
+        emitCommand.Subcommands.Add(emitParseCommand);
 
         // === Cache Command (with subcommands) ===
         var cacheCommand = new Command("cache", "Manage the overload discovery cache");
@@ -529,6 +542,37 @@ class Program
             Console.Write(ast);
 
             Console.WriteLine(new string('=', 80));
+        }
+        catch (LexerError ex)
+        {
+            Console.Error.WriteLine($"Lexer error at line {ex.Line}, column {ex.Column}:");
+            Console.Error.WriteLine($"  {ex.Message}");
+            Environment.Exit(1);
+        }
+        catch (ParserError ex)
+        {
+            Console.Error.WriteLine($"Parser error at line {ex.Line}, column {ex.Column}:");
+            Console.Error.WriteLine($"  {ex.Message}");
+            Environment.Exit(1);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Unexpected error: {ex.Message}");
+            Environment.Exit(1);
+        }
+    }
+
+    static void EmitParse(FileInfo inputFile, ICompilerLogger logger)
+    {
+        try
+        {
+            var source = File.ReadAllText(inputFile.FullName);
+            var lexer = new Lexer(source, logger);
+            var tokens = lexer.TokenizeAll();
+            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
+            parser.ParseModule();
+
+            Console.WriteLine("PARSE_OK");
         }
         catch (LexerError ex)
         {

@@ -880,14 +880,14 @@ class DogfoodOrchestrator:
                         attempts=attempt,
                     )
 
-            # Step 1.55: Validate Python syntax (catches malformed code early)
-            syntax_error = self._validate_python_syntax(code)
+            # Step 1.55: Validate Sharpy syntax (catches malformed code early)
+            syntax_error = await self._validate_sharpy_syntax(code)
             if syntax_error:
                 print(
-                    f"  Python syntax validation failed: {syntax_error}",
+                    f"  Sharpy syntax validation failed: {syntax_error}",
                     file=sys.stderr,
                 )
-                last_error = f"Python syntax error: {syntax_error}"
+                last_error = f"Sharpy syntax error: {syntax_error}"
                 if attempt < max_attempts:
                     print(
                         f"  Will retry with feedback ({attempt}/{max_attempts})...",
@@ -899,7 +899,7 @@ class DogfoodOrchestrator:
                         success=False,
                         code=code,
                         expected_output=extract_expected_output(code),
-                        skip_reason=f"Python syntax error after {attempt} attempts: {syntax_error}",
+                        skip_reason=f"Sharpy syntax error after {attempt} attempts: {syntax_error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
                         attempts=attempt,
@@ -1139,17 +1139,17 @@ class DogfoodOrchestrator:
                     skip_reason=f"Unsupported feature in {filename}: {prevalidation_error}",
                 )
 
-        # Step 1.55: Validate Python syntax for each file
+        # Step 1.55: Validate Sharpy syntax for each file
         for filename, code in files.items():
-            syntax_error = self._validate_python_syntax(code)
+            syntax_error = await self._validate_sharpy_syntax(code)
             if syntax_error:
                 print(
-                    f"  Python syntax validation failed for {filename}: {syntax_error}",
+                    f"  Sharpy syntax validation failed for {filename}: {syntax_error}",
                     file=sys.stderr,
                 )
                 skip = Skip(
                     timestamp=timestamp,
-                    skip_reason=f"Python syntax error in {filename}: {syntax_error}",
+                    skip_reason=f"Sharpy syntax error in {filename}: {syntax_error}",
                     generated_code=files.get("main.spy", ""),
                     expected_output=expected_output,
                     feature_focus=feature_focus,
@@ -1439,22 +1439,20 @@ class DogfoodOrchestrator:
 
         return None
 
-    @staticmethod
-    def _validate_python_syntax(code: str) -> Optional[str]:
-        """Validate that code has valid Python syntax.
+    async def _validate_sharpy_syntax(self, code: str) -> Optional[str]:
+        """Validate that code has valid Sharpy syntax using the Sharpy parser.
 
-        Since Sharpy uses Python-like syntax, Python's ast.parse() catches
-        most syntax errors before attempting compilation.
+        Uses the 'emit parse' CLI command which runs lexer + parser only.
+        This correctly handles Sharpy keywords like interface, struct, enum
+        that would fail Python's ast.parse().
 
         Returns None if syntax is valid, or an error message if invalid.
         """
-        import ast
-
-        try:
-            ast.parse(code)
-            return None
-        except SyntaxError as e:
-            return f"Syntax error at line {e.lineno}: {e.msg}"
+        with TempSourceFile(code) as temp_path:
+            result = await self.compiler.parse_file(temp_path, timeout=10.0)
+            if result.success:
+                return None
+            return result.error or "Unknown parse error"
 
     async def _validate_code(
         self, code: str, available_modules: Optional[list[str]] = None

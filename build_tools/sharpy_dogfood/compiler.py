@@ -384,6 +384,81 @@ class SharpyCompiler:
                 duration_seconds=time.time() - start_time,
             )
 
+    async def parse_file(
+        self,
+        source_path: Path,
+        timeout: float = 10.0,
+    ) -> CompilationResult:
+        """Validate that a Sharpy source file lexes and parses successfully.
+
+        Uses 'emit parse' which runs only lexer + parser (no semantic analysis).
+        """
+        import time
+
+        start_time = time.time()
+
+        cmd = [
+            self._dotnet_path,
+            "run",
+            "--project",
+            str(self.cli_project),
+            "--",
+            "emit",
+            "parse",
+            str(source_path),
+        ]
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=self.project_root,
+            )
+
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                try:
+                    process.kill()
+                    await process.wait()
+                except Exception:
+                    pass
+                return CompilationResult(
+                    success=False,
+                    output="",
+                    error=f"Parse validation timed out after {timeout}s",
+                    duration_seconds=time.time() - start_time,
+                )
+
+            duration = time.time() - start_time
+            stdout_text = stdout.decode()
+            stderr_text = stderr.decode()
+
+            if process.returncode == 0:
+                return CompilationResult(
+                    success=True,
+                    output=stdout_text.strip(),
+                    duration_seconds=duration,
+                )
+            else:
+                return CompilationResult(
+                    success=False,
+                    output=stdout_text,
+                    error=stderr_text or stdout_text,
+                    duration_seconds=duration,
+                )
+
+        except Exception as e:
+            return CompilationResult(
+                success=False,
+                output="",
+                error=f"Parse validation failed: {e}",
+                duration_seconds=time.time() - start_time,
+            )
+
     async def emit_tokens(
         self,
         source_path: Path,
