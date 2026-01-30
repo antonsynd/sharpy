@@ -1,2 +1,0 @@
-Assembly compilation failed:
-  catalog.cs(13,74): error CS0305: Using the generic type 'List<T>' requires 1 type arguments

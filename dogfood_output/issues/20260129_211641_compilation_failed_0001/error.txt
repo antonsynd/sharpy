@@ -1,2 +1,0 @@
-Assembly compilation failed:
-  string_utils.cs(28,79): error CS0103: The name 'MathConstants' does not exist in the current context

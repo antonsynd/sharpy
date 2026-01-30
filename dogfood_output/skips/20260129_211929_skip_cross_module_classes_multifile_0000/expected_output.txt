@@ -1,5 +1,0 @@
-Rectangle(5.0x3.0)
-Area: 15.0
-Circle(radius=2.0)
-Rectangle(5.0x3.0) is larger
-Total area: 27.56636
