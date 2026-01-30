@@ -582,7 +582,7 @@ public partial class RoslynEmitter
             invocation = InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName("System.Diagnostics.Debug"),
+                    ParseName("System.Diagnostics.Debug"),
                     IdentifierName("Assert")))
                 .AddArgumentListArguments(
                     Argument(condition),
@@ -593,7 +593,7 @@ public partial class RoslynEmitter
             invocation = InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName("System.Diagnostics.Debug"),
+                    ParseName("System.Diagnostics.Debug"),
                     IdentifierName("Assert")))
                 .AddArgumentListArguments(Argument(condition));
         }

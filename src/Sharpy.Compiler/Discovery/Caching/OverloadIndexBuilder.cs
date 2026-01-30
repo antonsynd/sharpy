@@ -41,7 +41,60 @@ public class OverloadIndexBuilder
             }
         }
 
+        // Discover public types (classes, structs, enums) from the assembly
+        DiscoverPublicTypes(assembly, index);
+
         return index;
+    }
+
+    private void DiscoverPublicTypes(Assembly assembly, OverloadIndex index)
+    {
+        var allTypes = assembly.GetTypes()
+            .Where(t => t.IsPublic)
+            .Where(t => !t.Name.StartsWith("<"))  // Exclude compiler-generated types
+            .Where(t => t.Name != "Exports")       // Exclude Exports classes
+            .Where(t => t.Name != "Str")            // Already mapped to str primitive
+            .ToList();
+
+        foreach (var type in allTypes)
+        {
+            var moduleName = DeriveModuleNameFromNamespace(type.Namespace);
+
+            if (!index.Modules.TryGetValue(moduleName, out var moduleOverloads))
+            {
+                moduleOverloads = new ModuleOverloads { ModuleName = moduleName };
+                index.Modules[moduleName] = moduleOverloads;
+            }
+
+            var typeKind = "Class";
+            if (type.IsEnum) typeKind = "Enum";
+            else if (type.IsValueType) typeKind = "Struct";
+            else if (type.IsInterface) typeKind = "Interface";
+
+            // Skip static classes (they are Exports-style containers, not constructible types)
+            if (type.IsAbstract && type.IsSealed && !type.IsInterface)
+                continue;
+
+            var isException = typeof(Exception).IsAssignableFrom(type);
+
+            moduleOverloads.Types.Add(new DiscoveredTypeInfo
+            {
+                Name = type.Name,
+                Namespace = type.Namespace ?? string.Empty,
+                ClrTypeName = type.FullName ?? type.Name,
+                IsException = isException,
+                BaseTypeName = type.BaseType?.Name,
+                TypeKind = typeKind
+            });
+        }
+    }
+
+    private string DeriveModuleNameFromNamespace(string? ns)
+    {
+        if (ns == null) return "builtins";
+        if (ns == "Sharpy.Core" || ns.StartsWith("Sharpy.Core."))
+            return "builtins";
+        return ns.ToLowerInvariant().Replace(".", "_");
     }
 
     private string DeriveModuleName(Type exportType)

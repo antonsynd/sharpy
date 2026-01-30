@@ -40,4 +40,54 @@ namespace Sharpy.Core
         {
         }
     }
+
+    /// <summary>
+    /// Runtime error exception
+    /// </summary>
+    public class RuntimeError : Exception
+    {
+        public RuntimeError(string message) : base(message)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Not implemented error exception
+    /// </summary>
+    public class NotImplementedError : Exception
+    {
+        public NotImplementedError(string message) : base(message)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Attribute error exception
+    /// </summary>
+    public class AttributeError : Exception
+    {
+        public AttributeError(string message) : base(message)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Zero division error exception
+    /// </summary>
+    public class ZeroDivisionError : Exception
+    {
+        public ZeroDivisionError(string message) : base(message)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Overflow error exception
+    /// </summary>
+    public class OverflowError : Exception
+    {
+        public OverflowError(string message) : base(message)
+        {
+        }
+    }
 }

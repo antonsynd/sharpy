@@ -285,7 +285,7 @@ public partial class RoslynEmitter
             return InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName("global::Sharpy.Core.Result"),
+                    ParseName("global::Sharpy.Core.Result"),
                     GenericName("Try")
                         .WithTypeArgumentList(TypeArgumentList(
                             SeparatedList(new[] { okTypeSyntax, errTypeSyntax })))))
@@ -298,7 +298,7 @@ public partial class RoslynEmitter
             return InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName("global::Sharpy.Core.Result"),
+                    ParseName("global::Sharpy.Core.Result"),
                     IdentifierName("Try")))
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(lambdaExpr))));
         }

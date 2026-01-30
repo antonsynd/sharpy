@@ -20,6 +20,20 @@ public class ModuleOverloads
 {
     public string ModuleName { get; set; } = string.Empty;
     public Dictionary<string, List<FunctionSignature>> Functions { get; set; } = new();
+    public List<DiscoveredTypeInfo> Types { get; set; } = new();
+}
+
+/// <summary>
+/// Information about a public type discovered from an assembly.
+/// </summary>
+public class DiscoveredTypeInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public string Namespace { get; set; } = string.Empty;
+    public string ClrTypeName { get; set; } = string.Empty;
+    public bool IsException { get; set; }
+    public string? BaseTypeName { get; set; }
+    public string TypeKind { get; set; } = "Class";
 }
 
 /// <summary>

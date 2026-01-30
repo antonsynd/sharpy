@@ -64,6 +64,28 @@ public class BuiltinRegistry
 
         // Load builtin functions using reflection-based discovery
         LoadBuiltinFunctions();
+
+        // Auto-discover and register public types from Sharpy.Core (exceptions, etc.)
+        LoadBuiltinTypes();
+
+        // Register System.Exception as a base type for catch clauses
+        if (!_types.ContainsKey("Exception"))
+        {
+            RegisterType("Exception", typeof(System.Exception), TypeKind.Class);
+        }
+    }
+
+    private void LoadBuiltinTypes()
+    {
+        var discoveredTypes = _discovery.GetModuleTypes("builtins");
+        foreach (var typeSymbol in discoveredTypes)
+        {
+            // Skip types already registered (primitives, collections, etc.)
+            if (_types.ContainsKey(typeSymbol.Name))
+                continue;
+
+            _types[typeSymbol.Name] = typeSymbol;
+        }
     }
 
     private void LoadBuiltinFunctions()
@@ -165,9 +187,10 @@ public class BuiltinRegistry
 
     private static Type? TryFindClrType(string name)
     {
-        // Search well-known .NET namespaces (ordered by likelihood of use in Sharpy)
+        // Search well-known namespaces (ordered by likelihood of use in Sharpy)
         string[] namespaces =
         {
+            "Sharpy.Core",
             "System",
             "System.Collections.Generic",
             "System.IO",

@@ -252,14 +252,7 @@ public class TypeMapper
             return csharpType;
         }
 
-        // Check if it's a known builtin from the registry
-        if (_context.IsBuiltinType(sharpyTypeName))
-        {
-            // Builtin types from registry should be in Sharpy namespace
-            return $"Sharpy.{sharpyTypeName}";
-        }
-
-        // Check if it's a user-defined type from another file/module
+        // Check if it's a user-defined type from another file/module (takes priority over builtins)
         var typeSymbol = _context.SymbolTable.LookupType(sharpyTypeName);
         if (typeSymbol != null)
         {
@@ -278,6 +271,28 @@ public class TypeMapper
                 // Type from another module - use fully qualified name
                 return GetFullyQualifiedTypeName(typeSymbol, sharpyTypeName);
             }
+
+            // Type is in current scope (user-defined in current file) - use simple name
+            // This takes priority over builtin registry to allow shadowing
+            return NameMangler.ToPascalCase(sharpyTypeName);
+        }
+
+        // Check if it's a known builtin from the registry (exception types, etc.)
+        var builtinTypeSymbol = _context.Builtins.GetType(sharpyTypeName);
+        if (builtinTypeSymbol != null)
+        {
+            if (builtinTypeSymbol.ClrType != null)
+            {
+                var ns = builtinTypeSymbol.ClrType.Namespace ?? string.Empty;
+                // System namespace types are always available in C# without qualification
+                if (ns == "System" || ns.StartsWith("System."))
+                {
+                    return builtinTypeSymbol.ClrType.Name;
+                }
+                // Sharpy.Core types need global:: qualification
+                return $"global::{builtinTypeSymbol.ClrType.FullName}";
+            }
+            return sharpyTypeName;
         }
 
         // User-defined types in current module keep their PascalCase name

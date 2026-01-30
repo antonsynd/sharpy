@@ -108,7 +108,7 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Equal("throw Exception(\"error\");", result);
+        Assert.Equal("throw new Exception(\"error\");", result);
     }
 
     [Fact]

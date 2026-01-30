@@ -85,6 +85,62 @@ public class CachedModuleDiscovery
     }
 
     /// <summary>
+    /// Get all discovered type symbols from a specific module.
+    /// </summary>
+    public List<TypeSymbol> GetModuleTypes(string moduleName)
+    {
+        var types = new List<TypeSymbol>();
+
+        foreach (var index in _loadedIndices.Values)
+        {
+            if (!index.Modules.TryGetValue(moduleName, out var moduleOverloads))
+                continue;
+
+            foreach (var typeInfo in moduleOverloads.Types)
+            {
+                var typeSymbol = ConvertToTypeSymbol(typeInfo);
+                if (typeSymbol != null)
+                    types.Add(typeSymbol);
+            }
+        }
+
+        return types;
+    }
+
+    /// <summary>
+    /// Convert a cached DiscoveredTypeInfo to a TypeSymbol.
+    /// </summary>
+    private TypeSymbol? ConvertToTypeSymbol(Caching.DiscoveredTypeInfo typeInfo)
+    {
+        // Resolve CLR type
+        Type? clrType = Type.GetType(typeInfo.ClrTypeName);
+        if (clrType == null)
+        {
+            clrType = AppDomain.CurrentDomain.GetAssemblies()
+                .Select(a => a.GetType(typeInfo.ClrTypeName))
+                .FirstOrDefault(t => t != null);
+        }
+
+        var typeKind = typeInfo.TypeKind switch
+        {
+            "Enum" => TypeKind.Enum,
+            "Struct" => TypeKind.Struct,
+            "Interface" => TypeKind.Interface,
+            _ => TypeKind.Class
+        };
+
+        return new TypeSymbol
+        {
+            Name = typeInfo.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = typeKind,
+            ClrType = clrType,
+            AccessLevel = AccessLevel.Public,
+            IsAbstract = clrType?.IsAbstract == true && !clrType.IsInterface
+        };
+    }
+
+    /// <summary>
     /// Get all loaded modules.
     /// </summary>
     public IEnumerable<string> GetLoadedModules()
