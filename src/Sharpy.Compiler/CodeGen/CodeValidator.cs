@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using System.Linq;
 
 namespace Sharpy.Compiler.CodeGen;
@@ -10,38 +11,57 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 public class CodeValidator
 {
-    private readonly List<string> _errors = new();
-    private readonly List<string> _warnings = new();
+    private readonly DiagnosticBag _diagnostics = new();
 
     /// <summary>
-    /// Get all validation errors
+    /// Structured diagnostics from code validation.
     /// </summary>
-    public IReadOnlyList<string> Errors => _errors;
+    public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
-    /// Get all validation warnings
+    /// Get all validation errors (backward compatibility).
+    /// Prefer using <see cref="Diagnostics"/> for structured access.
     /// </summary>
-    public IReadOnlyList<string> Warnings => _warnings;
+    [Obsolete("Use Diagnostics property instead.")]
+    public IReadOnlyList<string> Errors =>
+        _diagnostics.GetErrors().Select(d => d.Message).ToList();
+
+    /// <summary>
+    /// Get all validation warnings (backward compatibility).
+    /// Prefer using <see cref="Diagnostics"/> for structured access.
+    /// </summary>
+    [Obsolete("Use Diagnostics property instead.")]
+    public IReadOnlyList<string> Warnings =>
+        _diagnostics.GetWarnings().Select(d => d.Message).ToList();
 
     /// <summary>
     /// Validate a syntax tree
     /// </summary>
     public bool Validate(SyntaxTree syntaxTree)
     {
-        _errors.Clear();
-        _warnings.Clear();
+        _diagnostics.Clear();
 
         // Check for syntax errors
         var diagnostics = syntaxTree.GetDiagnostics();
         foreach (var diagnostic in diagnostics)
         {
+            var lineSpan = diagnostic.Location.GetLineSpan();
+            int? line = lineSpan.IsValid ? lineSpan.StartLinePosition.Line + 1 : null;
+            int? column = lineSpan.IsValid ? lineSpan.StartLinePosition.Character + 1 : null;
+            var filePath = lineSpan.IsValid && !string.IsNullOrEmpty(lineSpan.Path)
+                ? lineSpan.Path : null;
+
             if (diagnostic.Severity == DiagnosticSeverity.Error)
             {
-                _errors.Add($"Syntax error at {diagnostic.Location.GetLineSpan()}: {diagnostic.GetMessage()}");
+                _diagnostics.AddError(
+                    $"Syntax error at {diagnostic.Location.GetLineSpan()}: {diagnostic.GetMessage()}",
+                    line, column, filePath, diagnostic.Id, CompilerPhase.CodeGeneration);
             }
             else if (diagnostic.Severity == DiagnosticSeverity.Warning)
             {
-                _warnings.Add($"Syntax warning at {diagnostic.Location.GetLineSpan()}: {diagnostic.GetMessage()}");
+                _diagnostics.AddWarning(
+                    $"Syntax warning at {diagnostic.Location.GetLineSpan()}: {diagnostic.GetMessage()}",
+                    line, column, filePath, diagnostic.Id, CompilerPhase.CodeGeneration);
             }
         }
 
@@ -49,7 +69,7 @@ public class CodeValidator
         var root = syntaxTree.GetRoot();
         ValidateNode(root);
 
-        return _errors.Count == 0;
+        return !_diagnostics.HasErrors;
     }
 
     private void ValidateNode(SyntaxNode node)
@@ -80,7 +100,11 @@ public class CodeValidator
         // Check for empty class name
         if (string.IsNullOrWhiteSpace(classDecl.Identifier.Text))
         {
-            _errors.Add("Class declaration has empty name");
+            var location = classDecl.GetLocation().GetLineSpan();
+            _diagnostics.AddError("Class declaration has empty name",
+                location.IsValid ? location.StartLinePosition.Line + 1 : null,
+                location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                phase: CompilerPhase.CodeGeneration);
         }
 
         // Check for duplicate non-method members (fields, properties)
@@ -99,7 +123,11 @@ public class CodeValidator
 
         foreach (var duplicate in duplicates)
         {
-            _warnings.Add($"Class {classDecl.Identifier.Text} has duplicate member: {duplicate}");
+            var location = classDecl.GetLocation().GetLineSpan();
+            _diagnostics.AddWarning($"Class {classDecl.Identifier.Text} has duplicate member: {duplicate}",
+                location.IsValid ? location.StartLinePosition.Line + 1 : null,
+                location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                phase: CompilerPhase.CodeGeneration);
         }
     }
 
@@ -108,14 +136,22 @@ public class CodeValidator
         // Check for empty method name
         if (string.IsNullOrWhiteSpace(methodDecl.Identifier.Text))
         {
-            _errors.Add("Method declaration has empty name");
+            var location = methodDecl.GetLocation().GetLineSpan();
+            _diagnostics.AddError("Method declaration has empty name",
+                location.IsValid ? location.StartLinePosition.Line + 1 : null,
+                location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                phase: CompilerPhase.CodeGeneration);
         }
 
         // Check for abstract method with body
         if (methodDecl.Modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)) &&
             methodDecl.Body != null)
         {
-            _errors.Add($"Abstract method {methodDecl.Identifier.Text} cannot have a body");
+            var location = methodDecl.GetLocation().GetLineSpan();
+            _diagnostics.AddError($"Abstract method {methodDecl.Identifier.Text} cannot have a body",
+                location.IsValid ? location.StartLinePosition.Line + 1 : null,
+                location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                phase: CompilerPhase.CodeGeneration);
         }
 
         // Check for non-abstract method without body or expression
@@ -128,7 +164,11 @@ public class CodeValidator
             if (parent is not InterfaceDeclarationSyntax &&
                 !methodDecl.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
             {
-                _errors.Add($"Non-abstract method {methodDecl.Identifier.Text} must have a body");
+                var location = methodDecl.GetLocation().GetLineSpan();
+                _diagnostics.AddError($"Non-abstract method {methodDecl.Identifier.Text} must have a body",
+                    location.IsValid ? location.StartLinePosition.Line + 1 : null,
+                    location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                    phase: CompilerPhase.CodeGeneration);
             }
         }
     }
@@ -140,7 +180,11 @@ public class CodeValidator
         {
             foreach (var variable in varDecl.Variables.Where(v => v.Initializer == null))
             {
-                _warnings.Add($"Variable {variable.Identifier.Text} uses 'var' without initializer");
+                var location = variable.GetLocation().GetLineSpan();
+                _diagnostics.AddWarning($"Variable {variable.Identifier.Text} uses 'var' without initializer",
+                    location.IsValid ? location.StartLinePosition.Line + 1 : null,
+                    location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                    phase: CompilerPhase.CodeGeneration);
             }
         }
     }

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Diagnostics;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
@@ -16,7 +17,7 @@ public class Person
 {
     public string Name { get; set; }
     public int Age { get; set; }
-    
+
     public void Greet()
     {
         Console.WriteLine($""Hello, I'm {Name}"");
@@ -31,6 +32,8 @@ public class Person
         // Assert
         result.Should().BeTrue();
         validator.Errors.Should().BeEmpty();
+        validator.Diagnostics.HasErrors.Should().BeFalse();
+        validator.Diagnostics.ErrorCount.Should().Be(0);
     }
 
     [Fact]
@@ -54,6 +57,9 @@ public class Invalid
         // Assert
         result.Should().BeFalse();
         validator.Errors.Should().NotBeEmpty();
+        validator.Diagnostics.HasErrors.Should().BeTrue();
+        validator.Diagnostics.GetErrors().Should().AllSatisfy(d =>
+            d.Phase.Should().Be(CompilerPhase.CodeGeneration));
     }
 
     [Fact]
@@ -77,6 +83,8 @@ public abstract class Base
         // Assert
         result.Should().BeFalse();
         validator.Errors.Should().Contain(e => e.Contains("Abstract method") && e.Contains("cannot have a body"));
+        validator.Diagnostics.GetErrors().Should().Contain(d =>
+            d.Message.Contains("Abstract method") && d.Message.Contains("cannot have a body"));
     }
 
     [Fact]
@@ -98,6 +106,8 @@ public class MyClass
         // Assert
         // This will have syntax errors due to duplicate field names, but we also check for custom warnings
         validator.Warnings.Should().Contain(w => w.Contains("duplicate member"));
+        validator.Diagnostics.GetWarnings().Should().Contain(d =>
+            d.Message.Contains("duplicate member"));
     }
 
     [Fact]
@@ -119,6 +129,7 @@ public class MyClass
         // Assert
         result.Should().BeTrue();
         validator.Warnings.Should().NotContain(w => w.Contains("duplicate member"));
+        validator.Diagnostics.WarningCount.Should().Be(0);
     }
 
     [Fact]
@@ -139,6 +150,7 @@ public interface IDrawable
         // Assert
         result.Should().BeTrue();
         validator.Errors.Should().BeEmpty();
+        validator.Diagnostics.HasErrors.Should().BeFalse();
     }
 
     [Fact]
@@ -164,6 +176,8 @@ public class MyClass
         // detects it during AST traversal and adds a custom warning before Roslyn reports the error.
         // This warning provides additional context specific to the Sharpy → C# compilation process.
         validator.Warnings.Should().Contain(w => w.Contains("var") && w.Contains("without initializer"));
+        validator.Diagnostics.GetWarnings().Should().Contain(d =>
+            d.Message.Contains("var") && d.Message.Contains("without initializer"));
     }
 
     [Fact]
@@ -175,7 +189,7 @@ public class MyClass
 {
     public int Value;
     public int Value;
-    
+
     public abstract void AbstractWithBody()
     {
         // Should not have body
@@ -191,6 +205,8 @@ public class MyClass
         result.Should().BeFalse();
         validator.Errors.Should().NotBeEmpty();
         validator.Warnings.Should().NotBeEmpty();
+        validator.Diagnostics.ErrorCount.Should().BeGreaterThan(0);
+        validator.Diagnostics.WarningCount.Should().BeGreaterThan(0);
     }
 
     [Fact]
@@ -207,6 +223,7 @@ public class MyClass
         // Assert
         result.Should().BeTrue();
         validator.Errors.Should().BeEmpty();
+        validator.Diagnostics.GetAll().Should().BeEmpty();
     }
 
     [Fact]
@@ -226,5 +243,36 @@ public class MyClass
         result2.Should().BeTrue();
         validator.Errors.Should().BeEmpty(); // Should be cleared
         validator.Warnings.Should().BeEmpty(); // Should be cleared
+        validator.Diagnostics.GetAll().Should().BeEmpty(); // Should be cleared
+    }
+
+    [Fact]
+    public void Validate_StructuredDiagnostics_HavePhaseAndLocation()
+    {
+        // Arrange
+        var code = @"
+public abstract class Base
+{
+    public abstract void Method()
+    {
+    }
+}";
+        var syntaxTree = CSharpSyntaxTree.ParseText(code);
+        var validator = new CodeValidator();
+
+        // Act
+        validator.Validate(syntaxTree);
+
+        // Assert - verify structured data on diagnostics from validation rules
+        var validationErrors = validator.Diagnostics.GetErrors()
+            .Where(d => d.Message.Contains("Abstract method"))
+            .ToList();
+        validationErrors.Should().NotBeEmpty();
+        validationErrors.Should().AllSatisfy(d =>
+        {
+            d.Phase.Should().Be(CompilerPhase.CodeGeneration);
+            d.Line.Should().NotBeNull();
+            d.Column.Should().NotBeNull();
+        });
     }
 }

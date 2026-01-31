@@ -25,6 +25,7 @@ public class CodeGenContext
     /// <summary>
     /// Errors collected during code generation (as strings for backward compatibility).
     /// </summary>
+    [Obsolete("Use Diagnostics property instead.")]
     public IReadOnlyList<string> Errors => _diagnostics.GetErrors().Select(d => d.Message).ToList();
 
     /// <summary>

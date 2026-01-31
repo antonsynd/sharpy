@@ -45,6 +45,56 @@ Each validator:
 3. Reports errors via `DiagnosticBag`
 4. Returns success/failure
 
+## Validation Responsibility Split
+
+Semantic validation is split between **TypeChecker** and the **ValidationPipeline**.
+The split is based on whether a validation rule needs type inference context or can
+operate as a self-contained AST analysis.
+
+### TypeChecker (type-inference-coupled)
+
+These validations live in `TypeChecker` because they are tightly coupled to the
+type inference walk and depend on in-progress type resolution state:
+
+- **Type mismatches** — assignment/return type compatibility (SHP0220, SHP0221)
+- **Callable validation** — argument count/type checking (SHP0224, SHP0225)
+- **`super()` calls** — inheritance chain validation
+- **Enum/struct rules** — member access, construction patterns
+- **Return type checking** — function return type consistency
+- **Override validation** — method signature compatibility with base class
+- **Operator type checking** — binary/unary operator applicability (SHP0222, SHP0223)
+
+### ValidationPipeline (self-contained AST analyses)
+
+These validations run after type checking as independent AST passes.
+They do not require in-progress type inference state:
+
+- **Module-level rules** — entry point validation, top-level type annotations (ModuleLevelValidatorV2)
+- **Decorator usage** — valid decorator targets and known decorators (DecoratorValidatorV2)
+- **Signature checks** — dunder method signatures, protocol conformance (SignatureValidatorV2)
+- **Default parameters** — mutable defaults, non-constant defaults (DefaultParameterValidatorV2)
+- **Control flow** — unreachable code, missing returns, break/continue outside loops (ControlFlowValidatorV2/V3)
+- **Member access** — private member access from outside class (AccessValidatorV2)
+- **Protocol methods** — __len__/__iter__/etc. signature validation (ProtocolValidatorV2)
+- **Operator validation** — unsupported operators for known types (OperatorValidatorV2, SHP0402)
+
+### Deduplication
+
+Some validations overlap between TypeChecker and the ValidationPipeline—notably
+operator errors where TypeChecker reports SHP0222 (InvalidBinaryOperation) and
+OperatorValidatorV2 reports SHP0402 (UnsupportedOperator) for the same expression.
+
+Deduplication is handled in `TypeChecker.CheckModule()` when merging pipeline
+diagnostics. The merge logic:
+
+1. Takes a snapshot of existing diagnostics before running the pipeline
+2. After the pipeline runs, collects only newly-added diagnostics
+3. Builds a set of positions `(line, column)` from existing operator errors
+4. Skips pipeline-added operator errors whose position matches an existing error
+
+This position-based deduplication ensures users see only one error per problematic
+operator expression, regardless of whether it was caught by TypeChecker or the pipeline.
+
 ## Adding a New Validator
 
 1. Create `MyValidatorV2.cs` implementing `ISemanticValidator`

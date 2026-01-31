@@ -366,6 +366,7 @@ public class AssemblyCompilationResult
     /// Backward-compatible convenience property for error messages as strings.
     /// Prefer using <see cref="Diagnostics"/> for structured access.
     /// </summary>
+    [Obsolete("Use Diagnostics property instead.")]
     public List<string> Errors
     {
         get => Diagnostics.GetErrors().Select(d => d.ToString()).ToList();
@@ -382,6 +383,7 @@ public class AssemblyCompilationResult
     /// Backward-compatible convenience property for warning messages as strings.
     /// Prefer using <see cref="Diagnostics"/> for structured access.
     /// </summary>
+    [Obsolete("Use Diagnostics property instead.")]
     public List<string> Warnings
     {
         get => Diagnostics.GetWarnings().Select(d => d.ToString()).ToList();

@@ -367,8 +367,9 @@ public class ProjectCompilationHelper : IDisposable
     {
         if (!result.Success)
         {
-            var errorMessage = $"Compilation failed with {result.Errors.Count} error(s):\n" +
-                             string.Join("\n", result.Errors);
+            var errors = result.Diagnostics.GetErrors();
+            var errorMessage = $"Compilation failed with {errors.Count} error(s):\n" +
+                             string.Join("\n", errors.Select(e => e.ToString()));
             throw new Xunit.Sdk.XunitException(errorMessage);
         }
         return result;
@@ -384,11 +385,15 @@ public class ProjectCompilationHelper : IDisposable
             throw new Xunit.Sdk.XunitException("Expected compilation to fail, but it succeeded");
         }
 
-        if (expectedErrorPattern != null && !result.Errors.Any(e => e.Contains(expectedErrorPattern)))
+        if (expectedErrorPattern != null)
         {
-            throw new Xunit.Sdk.XunitException(
-                $"Expected error containing '{expectedErrorPattern}', but got:\n" +
-                string.Join("\n", result.Errors));
+            var errors = result.Diagnostics.GetErrors();
+            if (!errors.Any(e => e.ToString().Contains(expectedErrorPattern)))
+            {
+                throw new Xunit.Sdk.XunitException(
+                    $"Expected error containing '{expectedErrorPattern}', but got:\n" +
+                    string.Join("\n", errors.Select(e => e.ToString())));
+            }
         }
 
         return result;
