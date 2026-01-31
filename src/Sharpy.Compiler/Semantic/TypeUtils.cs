@@ -217,4 +217,25 @@ public static class TypeUtils
 
         return null;
     }
+
+    /// <summary>
+    /// Maps a ComparisonOperator to its corresponding BinaryOperator.
+    /// </summary>
+    public static Parser.Ast.BinaryOperator ComparisonOperatorToBinaryOperator(Parser.Ast.ComparisonOperator op)
+    {
+        return op switch
+        {
+            Parser.Ast.ComparisonOperator.Equal => Parser.Ast.BinaryOperator.Equal,
+            Parser.Ast.ComparisonOperator.NotEqual => Parser.Ast.BinaryOperator.NotEqual,
+            Parser.Ast.ComparisonOperator.LessThan => Parser.Ast.BinaryOperator.LessThan,
+            Parser.Ast.ComparisonOperator.LessThanOrEqual => Parser.Ast.BinaryOperator.LessThanOrEqual,
+            Parser.Ast.ComparisonOperator.GreaterThan => Parser.Ast.BinaryOperator.GreaterThan,
+            Parser.Ast.ComparisonOperator.GreaterThanOrEqual => Parser.Ast.BinaryOperator.GreaterThanOrEqual,
+            Parser.Ast.ComparisonOperator.In => Parser.Ast.BinaryOperator.In,
+            Parser.Ast.ComparisonOperator.NotIn => Parser.Ast.BinaryOperator.NotIn,
+            Parser.Ast.ComparisonOperator.Is => Parser.Ast.BinaryOperator.Is,
+            Parser.Ast.ComparisonOperator.IsNot => Parser.Ast.BinaryOperator.IsNot,
+            _ => throw new ArgumentException($"Unknown comparison operator: {op}", nameof(op))
+        };
+    }
 }
