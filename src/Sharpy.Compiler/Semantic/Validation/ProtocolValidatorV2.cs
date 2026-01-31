@@ -10,10 +10,9 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - Indexing protocols (__getitem__/__setitem__ for subscript access)
 /// - Len protocol (__len__ for len() calls)
 ///
-/// This is the pipeline-compatible version of ProtocolValidator.
-/// Unlike the legacy version which provides type inference during type-checking,
-/// this validator performs post-pass validation only.
-/// The legacy ProtocolValidator is still used for type inference.
+/// Post-pass validation of protocol usage. TypeInferenceService handles
+/// type inference during type-checking; this validator catches missing
+/// protocol implementations after types are resolved.
 /// </summary>
 public class ProtocolValidatorV2 : SemanticValidatorBase
 {

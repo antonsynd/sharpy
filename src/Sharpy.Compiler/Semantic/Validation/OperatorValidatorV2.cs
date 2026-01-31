@@ -9,10 +9,9 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - Unary operators (-, +, not, ~)
 /// - Augmented assignment operators (+=, -=, etc.)
 ///
-/// This is the pipeline-compatible version of OperatorValidator.
-/// Unlike the legacy version which provides type inference during type-checking,
-/// this validator performs post-pass validation only.
-/// The legacy OperatorValidator is still used for type inference.
+/// Post-pass validation of operator usage. TypeInferenceService handles
+/// type inference during type-checking; this validator catches additional
+/// constraint violations after types are resolved.
 /// </summary>
 public class OperatorValidatorV2 : SemanticValidatorBase
 {
