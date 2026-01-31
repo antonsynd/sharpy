@@ -141,19 +141,11 @@ public class ValidationPipelineTests
     }
 
     [Fact]
-    public void CreateEmpty_ReturnsEmptyPipeline()
+    public void Constructor_ReturnsEmptyPipeline()
     {
-        var pipeline = ValidationPipeline.CreateEmpty();
+        var pipeline = new ValidationPipeline();
 
         Assert.Empty(pipeline.Validators);
-    }
-
-    [Fact]
-    public void CreateDefault_ReturnsPipeline()
-    {
-        var pipeline = ValidationPipeline.CreateDefault();
-
-        Assert.NotNull(pipeline);
     }
 
     [Fact]

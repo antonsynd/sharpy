@@ -96,21 +96,4 @@ public class ValidationPipeline
         return context.Diagnostics;
     }
 
-    /// <summary>
-    /// Create a pipeline with the standard set of validators.
-    /// This is the default configuration matching current behavior.
-    /// </summary>
-    public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
-    {
-        // Note: This will be populated as validators are migrated
-        return new ValidationPipeline(logger);
-    }
-
-    /// <summary>
-    /// Create a minimal pipeline for testing specific validators.
-    /// </summary>
-    public static ValidationPipeline CreateEmpty(ICompilerLogger? logger = null)
-    {
-        return new ValidationPipeline(logger);
-    }
 }
