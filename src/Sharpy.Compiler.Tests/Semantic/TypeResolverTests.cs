@@ -33,7 +33,7 @@ public class TypeResolverTests
         var type = resolver.ResolveTypeAnnotation(intAnnotation);
 
         type.Should().Be(SemanticType.Int);
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class TypeResolverTests
         var type = resolver.ResolveTypeAnnotation(strAnnotation);
 
         type.Should().Be(SemanticType.Str);
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public class TypeResolverTests
         var type = resolver.ResolveTypeAnnotation(autoAnnotation);
 
         type.Should().BeOfType<UnknownType>();
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class TypeResolverTests
         type.Should().BeOfType<OptionalType>();
         var optionalType = (OptionalType)type;
         optionalType.UnderlyingType.Should().Be(SemanticType.Int);
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -100,8 +100,8 @@ public class TypeResolverTests
         var type = resolver.ResolveTypeAnnotation(unknownAnnotation);
 
         type.Should().Be(SemanticType.Unknown);
-        resolver.Errors.Should().HaveCount(1);
-        resolver.Errors[0].Message.Should().Contain("not found");
+        resolver.Diagnostics.GetErrors().Should().HaveCount(1);
+        resolver.Diagnostics.GetErrors()[0].Message.Should().Contain("not found");
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class TypeResolverTests
 
         // Should expand to int
         type.Should().Be(SemanticType.Int);
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public class TypeResolverTests
         type.Should().BeOfType<OptionalType>();
         var optionalType = (OptionalType)type;
         optionalType.UnderlyingType.Should().Be(SemanticType.Int);
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -212,7 +212,7 @@ public class TypeResolverTests
         genericType.Name.Should().Be("list");
         genericType.TypeArguments.Should().HaveCount(1);
         genericType.TypeArguments[0].Should().Be(SemanticType.Str);
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -248,7 +248,7 @@ public class TypeResolverTests
         funcType.ParameterTypes[0].Should().Be(SemanticType.Int);
         funcType.ParameterTypes[1].Should().Be(SemanticType.Str);
         funcType.ReturnType.Should().Be(SemanticType.Bool);
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -282,7 +282,7 @@ public class TypeResolverTests
         type.Should().BeOfType<OptionalType>();
         var optionalType = (OptionalType)type;
         optionalType.UnderlyingType.Should().Be(SemanticType.Int);
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -305,7 +305,7 @@ public class TypeResolverTests
         var type = resolver.ResolveTypeAnnotation(annotation);
 
         type.Should().Be(SemanticType.Unknown);
-        resolver.Errors.Should().HaveCount(1);
-        resolver.Errors[0].Message.Should().Contain("has no type definition");
+        resolver.Diagnostics.GetErrors().Should().HaveCount(1);
+        resolver.Diagnostics.GetErrors()[0].Message.Should().Contain("has no type definition");
     }
 }

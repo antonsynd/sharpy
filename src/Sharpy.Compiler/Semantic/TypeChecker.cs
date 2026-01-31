@@ -160,18 +160,20 @@ public partial class TypeChecker
         // Run pipeline validators (always enabled)
         var context = CreateSemanticContext();
         context.MergeFromLegacyErrors(_errors);
-        context.MergeFromLegacyErrors(_typeResolver.Errors);
+        context.Diagnostics.Merge(_typeResolver.Diagnostics);
 
         _validationPipeline.Validate(module, context);
 
         // Merge TypeResolver errors into _errors (they are not covered by V2 validators)
-        foreach (var error in _typeResolver.Errors)
+        foreach (var error in _typeResolver.Diagnostics.GetErrors())
         {
             bool isDuplicate = _errors.Any(e =>
-                e.Line == error.Line && e.Message == error.Message);
+                e.Line == error.Line &&
+                (e.Message == error.Message ||
+                 e.Message.EndsWith(": " + error.Message)));
             if (!isDuplicate)
             {
-                _errors.Add(error);
+                _errors.Add(new SemanticError(error.Message, error.Line, error.Column, error.Code));
             }
         }
 

@@ -1,4 +1,4 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 
@@ -22,7 +22,7 @@ public class TypeResolverAdapter : ITypeResolver
         return _typeResolver.ResolveTypeAnnotation(annotation);
     }
 
-    public IReadOnlyList<SemanticError> Errors => _typeResolver.Errors;
+    public DiagnosticBag Diagnostics => _typeResolver.Diagnostics;
 
     /// <summary>
     /// Get the underlying TypeResolver for cases that need direct access.

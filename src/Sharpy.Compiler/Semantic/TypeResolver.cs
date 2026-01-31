@@ -1,4 +1,4 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -12,7 +12,7 @@ public class TypeResolver
     private readonly SymbolTable _symbolTable;
     private readonly SemanticInfo _semanticInfo;
     private readonly ICompilerLogger _logger;
-    private readonly List<SemanticError> _errors = new();
+    private readonly DiagnosticBag _diagnostics = new();
 
     public TypeResolver(SymbolTable symbolTable, SemanticInfo semanticInfo, ICompilerLogger? logger = null)
     {
@@ -21,7 +21,7 @@ public class TypeResolver
         _logger = logger ?? NullLogger.Instance;
     }
 
-    public IReadOnlyList<SemanticError> Errors => _errors;
+    public DiagnosticBag Diagnostics => _diagnostics;
 
     public SemanticType ResolveTypeAnnotation(TypeAnnotation? annotation)
     {
@@ -94,7 +94,7 @@ public class TypeResolver
                 }
                 else
                 {
-                    AddError($"Type '{annotation.Name}' not found", null, null, code: Diagnostics.DiagnosticCodes.Semantic.UndefinedType);
+                    AddError($"Type '{annotation.Name}' not found", null, null, code: DiagnosticCodes.Semantic.UndefinedType);
                     result = SemanticType.Unknown;
                 }
             }
@@ -201,7 +201,7 @@ public class TypeResolver
         var typeSymbol = _symbolTable.LookupType(annotation.Name);
         if (typeSymbol == null)
         {
-            AddError($"Generic type '{annotation.Name}' not found", null, null, code: Diagnostics.DiagnosticCodes.Semantic.UndefinedType);
+            AddError($"Generic type '{annotation.Name}' not found", null, null, code: DiagnosticCodes.Semantic.UndefinedType);
             return SemanticType.Unknown;
         }
 
@@ -273,8 +273,7 @@ public class TypeResolver
 
     private void AddError(string message, int? line = null, int? column = null, string? code = null)
     {
-        var error = new SemanticError(message, line, column, code);
-        _errors.Add(error);
-        _logger.LogError(error.Message, line ?? 0, column ?? 0);
+        _diagnostics.AddError(message, line, column, code: code, phase: CompilerPhase.TypeChecking);
+        _logger.LogError(message, line ?? 0, column ?? 0);
     }
 }
