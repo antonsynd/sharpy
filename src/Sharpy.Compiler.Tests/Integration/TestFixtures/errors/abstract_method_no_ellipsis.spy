@@ -1,0 +1,8 @@
+@abstract
+class Base:
+    @abstract
+    def greet(self) -> str:
+        return "hello"
+
+def main():
+    pass

@@ -1,0 +1,11 @@
+class Base:
+    @virtual
+    def greet(self) -> str:
+        return "hello"
+
+class Child(Base):
+    def greet(self) -> str:
+        return "hi"
+
+def main():
+    c: Child = Child()

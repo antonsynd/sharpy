@@ -1,0 +1,11 @@
+class Base:
+    def greet(self) -> str:
+        return "hello"
+
+class Child(Base):
+    @override
+    def nonexistent(self) -> str:
+        return "hi"
+
+def main():
+    c: Child = Child()

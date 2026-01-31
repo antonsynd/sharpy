@@ -1,0 +1,12 @@
+class Foo:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def get_name(self) -> str:
+        return self.name
+
+def main():
+    f = Foo("test")
+    result: str? = f?.get_name()

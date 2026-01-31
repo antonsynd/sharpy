@@ -1,0 +1,6 @@
+interface Greetable:
+    def greet(self) -> str:
+        return "hello"
+
+def main():
+    pass
