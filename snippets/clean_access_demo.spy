@@ -10,21 +10,17 @@ class Calculator:
     def internal_calculation(self, x: int) -> int:
         return x * 2
 
-    @static
+    # @static is implied by lack of self parameter
     @private
     def private_static_method() -> int:
         return 42
 
-@internal
-def module_helper():
-    pass
+    # @static is possible, but redundant here since @static is implied by lack of self parameter
+    @static
+    @private
+    def also_private_static_method() -> int:
+        return 42
 
-@file
-def file_scoped_function():
-    pass
 
-def _traditional_protected():
-    pass
-
-def __traditional_private():
+def main():
     pass

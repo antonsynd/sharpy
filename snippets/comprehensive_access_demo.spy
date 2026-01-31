@@ -18,10 +18,6 @@ class Calculator:
     def shared_utility(self) -> str:
         return "shared across module"
 
-    @file
-    def local_helper(self) -> None:
-        pass
-
     # Underscore naming hints (fallback when no decorator)
     def _protected_style(self) -> None:
         pass
@@ -54,12 +50,5 @@ class Calculator:
 def module_helper():
     pass
 
-@file
-def file_scoped_function():
-    pass
-
-def _traditional_protected():
-    pass
-
-def __traditional_private():
+def main():
     pass

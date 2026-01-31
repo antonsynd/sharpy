@@ -1,13 +1,13 @@
-def greet(name):
+def greet(name: str):
     """Greet a person by name"""
-    print("Hello,", name, "!")
+    print(f"Hello, {name}!")
 
-def calculate(x, y):
+def calculate(x: int, y: int) -> int:
     """Perform some calculations"""
     sum_val = x + y
     product = x * y
-    print("Sum:", sum_val)
-    print("Product:", product)
+    print(f"Sum: {sum_val}")
+    print(f"Product: {product}")
     return product
 
 def main():
@@ -18,7 +18,7 @@ def main():
     greet("Sharpy")
 
     result = calculate(5, 7)
-    print("Result:", result)
+    print(f"Result: {result}")
 
     # Conditionals
     if result > 30:
@@ -29,7 +29,7 @@ def main():
     # Loops
     i = 0
     while i < 3:
-        print("Loop iteration:", i)
+        print(f"Loop iteration: {i}")
         i = i + 1
 
     print("=== Demo Complete ===")

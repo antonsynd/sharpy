@@ -1,4 +1,4 @@
-def calculate(x, y):
+def calculate(x: int, y: int) -> int:
     """Perform some calculations"""
     result = x + y
     print("Sum:", result)

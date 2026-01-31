@@ -57,5 +57,3 @@ def main():
         pass
     finally:
         pass
-
-    # TODO: match statements

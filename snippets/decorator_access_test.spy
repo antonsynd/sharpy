@@ -12,10 +12,6 @@ def protected_function():
 def internal_function():
     pass
 
-@file
-def file_function():
-    pass
-
 # Test underscore prefix fallback (when no decorator)
 def _protected_by_prefix():
     pass
