@@ -916,7 +916,7 @@ public partial class TypeChecker
             return;
         }
 
-        _diagnostics.AddError(message, line, column, code: code, phase: CompilerPhase.TypeChecking);
+        _diagnostics.AddError(message, line, column, _currentFilePath, code: code, phase: CompilerPhase.TypeChecking);
         _logger.LogError(message, line ?? 0, column ?? 0);
     }
 }

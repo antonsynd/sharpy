@@ -538,7 +538,10 @@ public class ProjectCompiler
             // Type checking
             fileMetrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
-            var typeChecker = new TypeChecker(_symbolTable, _semanticInfo, typeResolver, _logger, pipeline);
+            var typeChecker = new TypeChecker(_symbolTable, _semanticInfo, typeResolver, _logger, pipeline)
+            {
+                CurrentFilePath = unit.FilePath
+            };
 
             // Determine if this file is the entry point for module-level validation
             var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);

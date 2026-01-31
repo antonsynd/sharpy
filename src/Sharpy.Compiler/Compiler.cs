@@ -302,7 +302,10 @@ public class Compiler
 
             metrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
-            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline);
+            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline)
+            {
+                CurrentFilePath = filePath
+            };
             try
             {
                 // Single-file compilation is always an entry point

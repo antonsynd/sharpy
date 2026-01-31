@@ -57,6 +57,9 @@ public partial class TypeChecker
     // Whether the current module is an entry point file
     private bool _isEntryPoint = false;
 
+    // Current file path for diagnostic location
+    private string? _currentFilePath = null;
+
     // Optional CompilerServices for centralized access
     private readonly CompilerServices? _services;
 
@@ -117,6 +120,9 @@ public partial class TypeChecker
 
         // Set entry point flag for module-level validation
         context.IsEntryPoint = _isEntryPoint;
+        // Set file path for diagnostic location (if not already set by CompilerServices)
+        if (context.CurrentFilePath == null && _currentFilePath != null)
+            context.CurrentFilePath = _currentFilePath;
         return context;
     }
 
@@ -124,6 +130,15 @@ public partial class TypeChecker
     /// Gets diagnostics from type checking, type resolution, and validation pipeline.
     /// </summary>
     public DiagnosticBag Diagnostics => _diagnostics;
+
+    /// <summary>
+    /// Current file path for diagnostic location. Set by the compiler before calling CheckModule.
+    /// </summary>
+    public string? CurrentFilePath
+    {
+        get => _currentFilePath;
+        set => _currentFilePath = value;
+    }
 
     /// <summary>
     /// Type check all statements in a module
