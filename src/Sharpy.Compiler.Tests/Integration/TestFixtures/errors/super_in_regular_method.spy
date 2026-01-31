@@ -1,0 +1,10 @@
+class Base:
+    def greet(self) -> str:
+        return "hello"
+
+class Child(Base):
+    def custom(self) -> str:
+        return super().greet()
+
+def main():
+    c: Child = Child()

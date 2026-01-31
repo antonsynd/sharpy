@@ -1,0 +1,5 @@
+const MAX_SIZE: int = 100
+const MAX_SIZE: int = 200
+
+def main():
+    print(MAX_SIZE)

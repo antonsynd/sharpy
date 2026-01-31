@@ -1,0 +1,8 @@
+class Foo:
+    def __init__(self):
+        self.x = 1
+
+def main():
+    a: Foo = Foo()
+    b: Foo = Foo()
+    c = a - b

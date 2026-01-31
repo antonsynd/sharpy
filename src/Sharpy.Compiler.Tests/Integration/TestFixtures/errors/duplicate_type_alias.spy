@@ -1,0 +1,5 @@
+type MyInt = int
+type MyInt = str
+
+def main():
+    x: MyInt = 5

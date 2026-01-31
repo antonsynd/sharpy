@@ -1,0 +1,7 @@
+enum Color:
+    RED = 1
+    GREEN
+    BLUE = 3
+
+def main():
+    c: Color = Color.RED

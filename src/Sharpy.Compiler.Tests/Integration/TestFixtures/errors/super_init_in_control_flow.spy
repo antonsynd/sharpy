@@ -1,0 +1,11 @@
+class Base:
+    def __init__(self):
+        self.x = 0
+
+class Child(Base):
+    def __init__(self, flag: bool):
+        if flag:
+            super().__init__()
+
+def main():
+    c: Child = Child(True)

@@ -1,0 +1,6 @@
+enum Status:
+    ACTIVE = 1
+    INACTIVE = "off"
+
+def main():
+    s: Status = Status.ACTIVE

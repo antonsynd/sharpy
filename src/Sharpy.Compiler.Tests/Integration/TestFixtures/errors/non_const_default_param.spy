@@ -1,0 +1,5 @@
+def greet(name: str = len("hello")) -> str:
+    return name
+
+def main():
+    print(greet())

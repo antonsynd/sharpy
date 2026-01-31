@@ -1,0 +1,1 @@
+super() in __init__ can only call super().__init__
