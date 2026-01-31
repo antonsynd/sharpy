@@ -434,8 +434,8 @@ public class NameResolver
                 _symbolTable.Define(funcSymbol);
             }
         }
-        else if (OperatorSignatureValidator.IsOperatorDunder(method.Name) ||
-                 ProtocolSignatureValidator.IsProtocolDunder(method.Name))
+        else if (OperatorRegistry.IsOperatorDunder(method.Name) ||
+                 ProtocolRegistry.IsProtocolDunder(method.Name))
         {
             // For operator and protocol dunder methods, allow multiple overloads
             // Only register the first overload in the symbol table to avoid duplicate name errors
@@ -452,7 +452,7 @@ public class NameResolver
         }
 
         // Register operator dunder methods in cache (validation moved to SignatureValidatorV2)
-        if (OperatorSignatureValidator.IsOperatorDunder(method.Name))
+        if (OperatorRegistry.IsOperatorDunder(method.Name))
         {
             if (!owningType.OperatorMethods.TryGetValue(method.Name, out var overloads))
             {
@@ -463,7 +463,7 @@ public class NameResolver
             _logger.LogDebug($"Registered operator method: {owningType.Name}.{method.Name}");
         }
         // Register protocol dunder methods in cache (validation moved to SignatureValidatorV2)
-        else if (ProtocolSignatureValidator.IsProtocolDunder(method.Name))
+        else if (ProtocolRegistry.IsProtocolDunder(method.Name))
         {
             if (!owningType.ProtocolMethods.TryGetValue(method.Name, out var overloads))
             {

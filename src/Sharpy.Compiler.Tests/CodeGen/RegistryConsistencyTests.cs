@@ -30,7 +30,7 @@ public class RegistryConsistencyTests
             var mangled = NameMangler.Transform(protocol.DunderName, NameContext.Method);
 
             // Should not just preserve the dunder name unchanged (except operators)
-            if (!OperatorSignatureValidator.IsOperatorDunder(protocol.DunderName))
+            if (!OperatorRegistry.IsOperatorDunder(protocol.DunderName))
             {
                 // Verify it's actually transformed (not just returned as-is with capitalization)
                 mangled.Should().NotBeNull(
@@ -55,10 +55,10 @@ public class RegistryConsistencyTests
         foreach (var dunder in codegenDunders)
         {
             var isProtocol = ProtocolRegistry.IsProtocolDunder(dunder);
-            var isOperator = OperatorSignatureValidator.IsOperatorDunder(dunder);
+            var isOperator = OperatorRegistry.IsOperatorDunder(dunder);
 
             (isProtocol || isOperator).Should().BeTrue(
-                $"Dunder '{dunder}' should be recognized by ProtocolRegistry or OperatorSignatureValidator");
+                $"Dunder '{dunder}' should be recognized by ProtocolRegistry or OperatorRegistry");
         }
     }
 }

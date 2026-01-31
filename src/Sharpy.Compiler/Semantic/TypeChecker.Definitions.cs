@@ -61,7 +61,7 @@ public partial class TypeChecker
         var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
 
         // Special case: __init__ always returns None/void
-        // (signature validation is in ProtocolSignatureValidator)
+        // (signature validation is in SignatureValidatorV2)
         if (functionDef.Name == "__init__")
         {
             returnType = SemanticType.Void;

@@ -37,7 +37,7 @@ public record ProtocolInfo(
 
 /// <summary>
 /// Central registry of protocol dunder methods and their mappings to Sharpy.Core interfaces.
-/// Excludes operator dunders which are handled by <see cref="OperatorSignatureValidator"/>.
+/// Excludes operator dunders which are handled by <see cref="OperatorRegistry"/>.
 /// </summary>
 public static class ProtocolRegistry
 {
@@ -186,7 +186,7 @@ public static class ProtocolRegistry
             ExpectedReturnType: "bool"
         ));
 
-        // Note: __eq__ and __ne__ are handled by OperatorSignatureValidator as they
+        // Note: __eq__ and __ne__ are handled by OperatorRegistry as they
         // are comparison operators that map to .NET operator overloads.
         // However, they also integrate with Sharpy.Core.Object for equality semantics.
     }
@@ -201,7 +201,7 @@ public static class ProtocolRegistry
 
     /// <summary>
     /// Checks if a method name is a recognized protocol dunder method.
-    /// This excludes operator dunders, which are handled by <see cref="OperatorSignatureValidator"/>.
+    /// This excludes operator dunders, which are handled by <see cref="OperatorRegistry"/>.
     /// </summary>
     public static bool IsProtocolDunder(string name)
         => _protocols.ContainsKey(name);
@@ -259,10 +259,10 @@ public static class ProtocolRegistry
 
     /// <summary>
     /// Checks if the given method name is any registered dunder (protocol or operator).
-    /// This combines <see cref="IsProtocolDunder"/> and <see cref="OperatorSignatureValidator.IsOperatorDunder"/>.
+    /// This combines <see cref="IsProtocolDunder"/> and <see cref="OperatorRegistry.IsOperatorDunder"/>.
     /// </summary>
     public static bool IsAnyDunder(string methodName)
-        => IsProtocolDunder(methodName) || OperatorSignatureValidator.IsOperatorDunder(methodName);
+        => IsProtocolDunder(methodName) || OperatorRegistry.IsOperatorDunder(methodName);
 
     /// <summary>
     /// Gets the expected parameter count and return type for a dunder name.

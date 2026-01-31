@@ -42,7 +42,7 @@ public class ProtocolRegistryTests
     [Fact]
     public void GetProtocol_ReturnsNullForOperatorDunder()
     {
-        // Operator dunders are handled by OperatorSignatureValidator, not ProtocolRegistry
+        // Operator dunders are handled by OperatorRegistry, not ProtocolRegistry
         var protocol = ProtocolRegistry.GetProtocol("__add__");
         protocol.Should().BeNull();
     }
@@ -298,15 +298,15 @@ public class ProtocolRegistryTests
         ProtocolRegistry.Count.Should().Be(12, "exactly 12 protocols are registered for operator overloading");
     }
 
-    // ==================== Test Consistency with OperatorSignatureValidator ====================
+    // ==================== Test Consistency with OperatorRegistry ====================
 
     [Fact]
-    public void ProtocolRegistry_DoesNotOverlapWithOperatorSignatureValidator()
+    public void ProtocolRegistry_DoesNotOverlapWithOperatorRegistry()
     {
-        // Ensure no dunders are registered in both registries by querying OperatorSignatureValidator directly
+        // Ensure no dunders are registered in both registries
         foreach (var protocol in ProtocolRegistry.GetAllProtocols())
         {
-            OperatorSignatureValidator.IsOperatorDunder(protocol.DunderName)
+            OperatorRegistry.IsOperatorDunder(protocol.DunderName)
                 .Should().BeFalse(
                     $"'{protocol.DunderName}' should not be registered in both registries");
         }
@@ -347,7 +347,7 @@ public class ProtocolRegistryTests
     [Fact]
     public void IsAnyDunder_ReturnsTrueForOperatorDunders()
     {
-        // Operator dunders (from OperatorSignatureValidator)
+        // Operator dunders (from OperatorRegistry)
         ProtocolRegistry.IsAnyDunder("__add__").Should().BeTrue();
         ProtocolRegistry.IsAnyDunder("__eq__").Should().BeTrue();
         ProtocolRegistry.IsAnyDunder("__neg__").Should().BeTrue();
