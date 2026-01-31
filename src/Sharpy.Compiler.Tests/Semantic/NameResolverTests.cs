@@ -1,3 +1,4 @@
+using FluentAssertions;
 using Xunit;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Parser.Ast;
@@ -8,6 +9,16 @@ namespace Sharpy.Compiler.Tests.Semantic;
 
 public class NameResolverTests
 {
+    private static string ParseExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        parser.ParseModule();
+        parser.Diagnostics.HasErrors.Should().BeTrue("Expected parser to report an error for input: " + source);
+        return string.Join("\n", parser.Diagnostics.GetErrors().Select(d => d.Message));
+    }
+
     private (NameResolver resolver, Module module, SymbolTable symbolTable) CreateResolver(string source)
     {
         var lexer = new LexerNs.Lexer(source);
@@ -1056,10 +1067,10 @@ enum EmptyEnum:
     pass
 ";
 
-        // Parser should throw error for empty enum
-        var exception = Assert.Throws<ParserNs.ParserError>(() => CreateResolver(source));
-        Assert.Contains("EmptyEnum", exception.Message);
-        Assert.Contains("must have at least one member", exception.Message);
+        // Parser now collects errors into Diagnostics instead of throwing
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("EmptyEnum");
+        errors.Should().Contain("must have at least one member");
     }
 
     [Fact]

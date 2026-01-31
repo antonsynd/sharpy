@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Semantic;
@@ -143,6 +144,16 @@ public class ProjectCompiler
                 var tokens = lexer.TokenizeAll();
                 fileMetrics.EndPhase();
 
+                // Check if lexer collected any errors
+                if (lexer.Diagnostics.HasErrors)
+                {
+                    compilationUnit.Diagnostics.Merge(lexer.Diagnostics);
+                    compilationUnit.Phase = CompilationPhase.Failed;
+                    _diagnostics.Merge(lexer.Diagnostics);
+                    _projectMetrics.AddFileMetrics(fileMetrics);
+                    continue;
+                }
+
                 // Store tokens in CompilationUnit
                 compilationUnit.Tokens = tokens;
                 compilationUnit.Phase = CompilationPhase.Lexed;
@@ -151,6 +162,16 @@ public class ProjectCompiler
                 var parser = new Parser.Parser(tokens, _logger);
                 var module = parser.ParseModule();
                 fileMetrics.EndPhase();
+
+                // Check if parser collected any errors
+                if (parser.Diagnostics.HasErrors)
+                {
+                    compilationUnit.Diagnostics.Merge(parser.Diagnostics);
+                    compilationUnit.Phase = CompilationPhase.Failed;
+                    _diagnostics.Merge(parser.Diagnostics);
+                    _projectMetrics.AddFileMetrics(fileMetrics);
+                    continue;
+                }
 
                 // Store AST in CompilationUnit
                 compilationUnit.Ast = module;

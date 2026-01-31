@@ -3,7 +3,6 @@ using Xunit;
 using Sharpy.Compiler.Parser.Ast;
 using LexerNs = Sharpy.Compiler.Lexer;
 using ParserNs = Sharpy.Compiler.Parser;
-using ParserError = Sharpy.Compiler.Parser.ParserError;
 
 namespace Sharpy.Compiler.Tests.Parser;
 
@@ -25,6 +24,16 @@ public class TypeAnnotationParserTests
         }
         var parser = new ParserNs.Parser(tokens);
         return parser.ParseModule();
+    }
+
+    private static string ParseExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        parser.ParseModule();
+        parser.Diagnostics.HasErrors.Should().BeTrue("Expected parser to report an error for input: " + source);
+        return string.Join("\n", parser.Diagnostics.GetErrors().Select(d => d.Message));
     }
 
     private static TypeAnnotation ParseType(string typeSource)
@@ -110,8 +119,8 @@ public class TypeAnnotationParserTests
     [Fact]
     public void Parse_FreeUnion_ThrowsError()
     {
-        var act = () => ParseType("int | str");
-        act.Should().Throw<ParserError>();
+        var source = "x: int | str";
+        var errors = ParseExpectingError(source);
     }
 
     #endregion

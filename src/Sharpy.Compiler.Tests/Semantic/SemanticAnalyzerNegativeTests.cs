@@ -4,6 +4,8 @@ using FluentAssertions;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using LexerNs = Sharpy.Compiler.Lexer;
+using ParserNs = Sharpy.Compiler.Parser;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -12,6 +14,16 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class SemanticAnalyzerNegativeTests
 {
+    private static string ParseExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source, NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens, NullLogger.Instance);
+        parser.ParseModule();
+        parser.Diagnostics.HasErrors.Should().BeTrue("Expected parser to report an error for input: " + source);
+        return string.Join("\n", parser.Diagnostics.GetErrors().Select(d => d.Message));
+    }
+
     private (Module, SymbolTable, SemanticInfo, NameResolver, TypeChecker) CompileAndCheck(string source)
     {
         var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
@@ -796,13 +808,8 @@ def foo():
 def foo():
     x: list[123] = []  # generic argument must be a type
 ";
-        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
-        var tokens = lexer.TokenizeAll();
-        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
-
-        var act = () => parser.ParseModule();
-        act.Should().Throw<global::Sharpy.Compiler.Parser.ParserError>()
-            .WithMessage("*Expected identifier*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected identifier");
     }
 
     [Fact]
@@ -920,8 +927,8 @@ def decorator(f):
 x: int = 5  # cannot decorate non-function
 ";
         // This is caught at parse time, not semantic analysis
-        Action act = () => CompileAndCheck(source);
-        act.Should().Throw<Exception>().WithMessage("*Decorators can only be applied*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Decorators can only be applied");
     }
 
     [Fact]

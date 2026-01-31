@@ -73,6 +73,16 @@ public abstract class IntegrationTestBase
             var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
             var module = parser.ParseModule();
 
+            // Check for parser errors collected via DiagnosticBag
+            if (parser.Diagnostics.HasErrors)
+            {
+                return new ExecutionResult
+                {
+                    Success = false,
+                    CompilationErrors = parser.Diagnostics.GetErrors().Select(d => d.Message).ToList()
+                };
+            }
+
             // Phase 3: Semantic analysis
             var builtinRegistry = new BuiltinRegistry();
             var symbolTable = new SymbolTable(builtinRegistry);

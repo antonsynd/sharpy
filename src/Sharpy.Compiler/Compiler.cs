@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 using System.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;
@@ -110,6 +111,18 @@ public class Compiler
             var parser = new Parser.Parser(tokens, _logger);
             var module = parser.ParseModule();
             metrics.EndPhase();
+
+            // Check if parser collected any errors into DiagnosticBag
+            if (parser.Diagnostics.HasErrors)
+            {
+                diagnostics.Merge(parser.Diagnostics);
+                return new CompilationResult
+                {
+                    Success = false,
+                    Diagnostics = diagnostics,
+                    Metrics = metrics
+                };
+            }
 
             // Assertion: Parser must produce a valid module with span info
             Debug.Assert(module != null, "Parser should produce a non-null Module");

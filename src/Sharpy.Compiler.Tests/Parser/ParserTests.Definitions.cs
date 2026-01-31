@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // ParserError is obsolete
 using FluentAssertions;
 using Xunit;
 using Sharpy.Compiler.Parser.Ast;
@@ -340,29 +341,27 @@ for i in range(10):
     [Fact]
     public void ParseError_MissingColon()
     {
-        Action act = () => Parse("if True\n    pass");
-        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
+        var errors = ParseExpectingError("if True\n    pass");
+        errors.Should().Contain("Expected Colon");
     }
 
     [Fact]
     public void ParseError_InvalidIndentation()
     {
-        Action act = () => Parse("def foo():\npass");
-        act.Should().Throw<ParserError>();
+        ParseExpectingError("def foo():\npass");
     }
 
     [Fact]
     public void ParseError_UnexpectedToken()
     {
-        Action act = () => Parse("def 123():\n    pass");
-        act.Should().Throw<ParserError>();
+        ParseExpectingError("def 123():\n    pass");
     }
 
     [Fact]
     public void ParseError_UnclosedBracket()
     {
-        Action act = () => Parse("[1, 2, 3");
-        act.Should().Throw<ParserError>().WithMessage("*Expected RightBracket*");
+        var errors = ParseExpectingError("[1, 2, 3");
+        errors.Should().Contain("Expected RightBracket");
     }
 
     #endregion

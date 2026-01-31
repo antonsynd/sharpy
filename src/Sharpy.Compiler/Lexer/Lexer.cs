@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // LexerError is obsolete
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;

@@ -1,5 +1,5 @@
+using FluentAssertions;
 using Sharpy.Compiler.Logging;
-using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Parser.Ast;
 using Xunit;
 
@@ -181,7 +181,10 @@ class Processor:
         var tokens = lexer.TokenizeAll();
         var parser = new Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
 
-        // Act & Assert: Should throw because class methods require body
-        Assert.Throws<ParserError>(() => parser.ParseModule());
+        // Act: Parse collects errors into Diagnostics instead of throwing
+        parser.ParseModule();
+
+        // Assert: Should report error because class methods require body
+        parser.Diagnostics.HasErrors.Should().BeTrue("Class methods require colon and body");
     }
 }

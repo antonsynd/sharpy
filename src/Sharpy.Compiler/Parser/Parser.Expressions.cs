@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // ParserError is obsolete
 using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Lexer;

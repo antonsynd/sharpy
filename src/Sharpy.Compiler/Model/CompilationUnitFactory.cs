@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Parser.Ast;
@@ -108,6 +109,15 @@ public static class CompilationUnitFactory
         {
             var parser = new Parser.Parser(unit.Tokens.ToList(), logger ?? NullLogger.Instance);
             var ast = parser.ParseModule();
+
+            // Check if parser collected any errors into DiagnosticBag
+            if (parser.Diagnostics.HasErrors)
+            {
+                unit.Diagnostics.Merge(parser.Diagnostics);
+                unit.Phase = CompilationPhase.Failed;
+                return false;
+            }
+
             unit.Ast = ast;
 
             // Extract import statements from AST
@@ -133,6 +143,7 @@ public static class CompilationUnitFactory
         }
         catch (ParserError ex)
         {
+            // Safety net: should not be reached since ParseModule() catches ParserError internally
             unit.Diagnostics.AddError(ex.Message, ex.Line, ex.Column, unit.FilePath);
             unit.Phase = CompilationPhase.Failed;
             return false;

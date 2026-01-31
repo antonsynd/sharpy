@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 namespace Sharpy.Compiler.Diagnostics;
 
 /// <summary>

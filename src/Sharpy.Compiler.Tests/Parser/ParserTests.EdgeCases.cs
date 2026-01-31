@@ -1,9 +1,9 @@
+#pragma warning disable CS0618 // ParserError is obsolete
 using FluentAssertions;
 using Xunit;
 using Sharpy.Compiler.Parser.Ast;
 using LexerNs = Sharpy.Compiler.Lexer;
 using ParserNs = Sharpy.Compiler.Parser;
-using ParserError = Sharpy.Compiler.Parser.ParserError;
 
 namespace Sharpy.Compiler.Tests.Parser;
 
@@ -362,9 +362,8 @@ def convert[T: IInput, U: class & IOutput](val: T) -> U:
     public void ParseFunctionCallPositionalAfterKeywordThrows()
     {
         // foo(x=1, 2) - positional after keyword is a syntax error
-        var action = () => Parse("foo(x=1, 2)");
-        action.Should().Throw<ParserError>()
-            .WithMessage("*Positional argument cannot follow keyword argument*");
+        var errors = ParseExpectingError("foo(x=1, 2)");
+        errors.Should().Contain("Positional argument cannot follow keyword argument");
     }
 
     #endregion
@@ -605,8 +604,8 @@ interface IEmpty:
 enum Empty:
     pass
 ";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*must have at least one member*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("must have at least one member");
     }
 
     [Fact]
@@ -848,8 +847,7 @@ def func():
     public void ParseError_MalformedDecorator_ThrowsError()
     {
         var source = "@\ndef func():\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
@@ -1011,24 +1009,27 @@ class MyClass:
     public void ParseError_InconsistentIndentation_ThrowsLexerError()
     {
         var source = "if True:\n    x = 1\n  y = 2";  // Mixed indentation
-        Action act = () => Parse(source);
-        act.Should().Throw<Exception>();  // Either ParserError or LexerError is fine
+        // Lexer or parser will report an error via diagnostics
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        parser.ParseModule();
+        var hasError = lexer.Diagnostics.HasErrors || parser.Diagnostics.HasErrors;
+        hasError.Should().BeTrue("Expected a lexer or parser error for inconsistent indentation");
     }
 
     [Fact]
     public void ParseError_MissingGenericCloseBracket_ThrowsError()
     {
         var source = "x: list[int";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void ParseError_InvalidTypeParameter_ThrowsError()
     {
         var source = "class Generic[123]:\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     #endregion

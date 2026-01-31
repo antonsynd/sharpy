@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // ParserError is obsolete
 using FluentAssertions;
 using Xunit;
 using Sharpy.Compiler.Parser.Ast;
@@ -26,6 +27,16 @@ public class TypeAnnotationShorthandTests
         }
         var parser = new ParserNs.Parser(tokens);
         return parser.ParseModule();
+    }
+
+    private static string ParseExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        parser.ParseModule();
+        parser.Diagnostics.HasErrors.Should().BeTrue("Expected parser to report an error for input: " + source);
+        return string.Join("\n", parser.Diagnostics.GetErrors().Select(d => d.Message));
     }
 
     private static TypeAnnotation ParseTypeAnnotation(string typeSource)
@@ -504,17 +515,17 @@ public class TypeAnnotationShorthandTests
     [Fact]
     public void ParseError_EmptyListShorthand()
     {
-        Action act = () => ParseTypeAnnotation("[]");
-        act.Should().Throw<ParserError>()
-            .WithMessage("*element type*");
+        var source = "x: []";
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("element type");
     }
 
     [Fact]
     public void ParseError_EmptySetOrDict()
     {
-        Action act = () => ParseTypeAnnotation("{}");
-        act.Should().Throw<ParserError>()
-            .WithMessage("*type*");
+        var source = "x: {}";
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("type");
     }
 
     #endregion

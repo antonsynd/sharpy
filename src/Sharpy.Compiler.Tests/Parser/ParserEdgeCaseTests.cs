@@ -3,7 +3,6 @@ using Xunit;
 using Sharpy.Compiler.Parser.Ast;
 using LexerNs = Sharpy.Compiler.Lexer;
 using ParserNs = Sharpy.Compiler.Parser;
-using ParserError = Sharpy.Compiler.Parser.ParserError;
 
 namespace Sharpy.Compiler.Tests.Parser;
 
@@ -25,6 +24,16 @@ public class ParserEdgeCaseTests
         }
         var parser = new ParserNs.Parser(tokens);
         return parser.ParseModule();
+    }
+
+    private static string ParseExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        parser.ParseModule();
+        parser.Diagnostics.HasErrors.Should().BeTrue("Expected parser to report an error for input: " + source);
+        return string.Join("\n", parser.Diagnostics.GetErrors().Select(d => d.Message));
     }
 
     #region Complex Nesting
@@ -431,9 +440,9 @@ def greet(prefix: str, *names: str) -> None:
 def foo(*args: int = []):
     pass
 ";
-        var action = () => Parse(source);
-        action.Should().Throw<ParserError>()
-            .WithMessage("*Variadic parameter*cannot have a default value*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Variadic parameter");
+        errors.Should().Contain("cannot have a default value");
     }
 
     [Fact]
@@ -443,9 +452,9 @@ def foo(*args: int = []):
 def foo(*args: int, suffix: str):
     pass
 ";
-        var action = () => Parse(source);
-        action.Should().Throw<ParserError>()
-            .WithMessage("*Variadic parameter*must be the last*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Variadic parameter");
+        errors.Should().Contain("must be the last");
     }
 
     [Fact]
@@ -456,9 +465,9 @@ def foo(*args: int, suffix: str):
 def foo(*args: int, *more: str):
     pass
 ";
-        var action = () => Parse(source);
-        action.Should().Throw<ParserError>()
-            .WithMessage("*Variadic parameter*must be the last*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Variadic parameter");
+        errors.Should().Contain("must be the last");
     }
 
     [Fact]
@@ -470,10 +479,10 @@ def foo(*args: int, *more: str):
 def foo(*args: int,):
     pass
 ";
-        // Trailing comma after variadic should throw "must be last"
-        var action = () => Parse(source);
-        action.Should().Throw<ParserError>()
-            .WithMessage("*Variadic parameter*must be the last*");
+        // Trailing comma after variadic should report "must be last"
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Variadic parameter");
+        errors.Should().Contain("must be the last");
     }
 
     [Fact(Skip = "Unimplemented: **kwargs keyword arguments not yet supported")]
@@ -1177,14 +1186,14 @@ match value:
     case _:
         print('other')
 ";
-        try
+        // Match might not be supported; parse and accept either success or diagnostics
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        var module = parser.ParseModule();
+        if (!parser.Diagnostics.HasErrors)
         {
-            var module = Parse(source);
             module.Body.Should().HaveCount(1);
-        }
-        catch (ParserError)
-        {
-            // Match might not be supported
         }
     }
 

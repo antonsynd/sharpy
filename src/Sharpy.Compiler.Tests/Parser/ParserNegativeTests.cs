@@ -1,9 +1,9 @@
+#pragma warning disable CS0618 // ParserError is obsolete
 using FluentAssertions;
 using Xunit;
 using Sharpy.Compiler.Parser.Ast;
 using LexerNs = Sharpy.Compiler.Lexer;
 using ParserNs = Sharpy.Compiler.Parser;
-using ParserError = Sharpy.Compiler.Parser.ParserError;
 
 namespace Sharpy.Compiler.Tests.Parser;
 
@@ -27,62 +27,83 @@ public class ParserNegativeTests
         return parser.ParseModule();
     }
 
+    /// <summary>
+    /// Parses the source expecting errors in the diagnostics bag.
+    /// Uses TokenizeAll() so that both lexer and parser errors are collected into diagnostics.
+    /// Returns all error messages joined by newline.
+    /// </summary>
+    private static string ParseExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        parser.ParseModule();
+
+        // Merge lexer diagnostics so we catch both lexer and parser errors
+        var allErrors = lexer.Diagnostics.GetErrors()
+            .Concat(parser.Diagnostics.GetErrors())
+            .ToList();
+
+        allErrors.Should().NotBeEmpty("Expected parser/lexer to report an error for input: " + source);
+        return string.Join("\n", allErrors.Select(d => d.Message));
+    }
+
     #region Missing Syntax Elements
 
     [Fact]
     public void RejectsMissingColonAfterIf()
     {
         var source = "if True\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected Colon");
     }
 
     [Fact]
     public void RejectsMissingColonAfterWhile()
     {
         var source = "while True\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected Colon");
     }
 
     [Fact]
     public void RejectsMissingColonAfterFor()
     {
         var source = "for x in range(10)\n    print(x)";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected Colon");
     }
 
     [Fact]
     public void RejectsMissingColonAfterDef()
     {
         var source = "def foo()\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected Colon");
     }
 
     [Fact]
     public void RejectsMissingColonAfterClass()
     {
         var source = "class Foo\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected Colon");
     }
 
     [Fact]
     public void RejectsMissingColonAfterElse()
     {
         var source = "if True:\n    pass\nelse\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected Colon");
     }
 
     [Fact]
     public void RejectsMissingColonAfterElif()
     {
         var source = "if True:\n    pass\nelif False\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected Colon");
     }
 
     [Fact]
@@ -92,24 +113,24 @@ public class ParserNegativeTests
         // an incomplete try expression (missing operand), not a try statement missing a colon.
         // The error message reflects this - it encounters a newline where an expression is expected.
         var source = "try\n    pass\nexcept:\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Unexpected token*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Unexpected token");
     }
 
     [Fact]
     public void RejectsMissingColonAfterExcept()
     {
         var source = "try:\n    pass\nexcept Exception\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected Colon");
     }
 
     [Fact]
     public void RejectsMissingColonAfterFinally()
     {
         var source = "try:\n    pass\nfinally\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected Colon");
     }
 
     #endregion
@@ -120,40 +141,38 @@ public class ParserNegativeTests
     public void RejectsMissingRightParen()
     {
         var source = "foo(1, 2";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected RightParen*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected RightParen");
     }
 
     [Fact]
     public void RejectsMissingRightBracket()
     {
         var source = "[1, 2, 3";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected RightBracket*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected RightBracket");
     }
 
     [Fact]
     public void RejectsMissingRightBrace()
     {
         var source = "{1, 2, 3";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected RightBrace*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected RightBrace");
     }
 
     [Fact]
     public void RejectsMismatchedBrackets()
     {
         var source = "[1, 2, 3}";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsUnexpectedRightParen()
     {
         var source = "x = 1)";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     #endregion
@@ -164,16 +183,14 @@ public class ParserNegativeTests
     public void RejectsFunctionWithoutName()
     {
         var source = "def ():\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsFunctionWithInvalidParameterName()
     {
         var source = "def foo(123):\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
@@ -181,8 +198,7 @@ public class ParserNegativeTests
     {
         // Empty body without pass is invalid
         var source = "def foo():\n";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
@@ -200,8 +216,7 @@ public class ParserNegativeTests
     public void RejectsMissingArrowBeforeReturnType()
     {
         var source = "def foo() int:\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     #endregion
@@ -212,32 +227,28 @@ public class ParserNegativeTests
     public void RejectsClassWithoutName()
     {
         var source = "class:\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsClassWithInvalidName()
     {
         var source = "class 123:\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsClassWithEmptyBody()
     {
         var source = "class Foo:\n";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsClassWithInvalidBaseClass()
     {
         var source = "class Foo(123):\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     #endregion
@@ -248,17 +259,15 @@ public class ParserNegativeTests
     public void RejectsEmptyEnum()
     {
         var source = "enum Color:\n    pass";
-        Action act = () => Parse(source);
         // Error message may vary - the important thing is it's rejected
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsEnumWithInvalidMemberName()
     {
         var source = "enum Color:\n    123";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     #endregion
@@ -269,24 +278,21 @@ public class ParserNegativeTests
     public void RejectsMissingTypeAfterColon()
     {
         var source = "x: = 5";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsInvalidTypeAnnotation()
     {
         var source = "x: 123 = 5";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsMissingGenericCloseBracket()
     {
         var source = "x: list[int";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
@@ -310,8 +316,7 @@ public class ParserNegativeTests
     public void RejectsIncompleteExpression()
     {
         var source = "x = 1 +";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
@@ -327,32 +332,28 @@ public class ParserNegativeTests
     public void RejectsMissingConditionInTernary()
     {
         var source = "x = 1 if else 2";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsMissingElseInTernary()
     {
         var source = "x = 1 if True 2";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsInvalidLambda()
     {
         var source = "lambda: ";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsInvalidSlice()
     {
         var source = "x[:]:]";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     #endregion
@@ -363,25 +364,25 @@ public class ParserNegativeTests
     public void RejectsUnexpectedIndent()
     {
         var source = "x = 1\n    y = 2";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Unexpected*Indent*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Unexpected").And.Contain("Indent");
     }
 
     [Fact]
     public void RejectsUnexpectedDedent()
     {
         var source = "if True:\n    x = 1\n  y = 2";  // Invalid dedent level
-        Action act = () => Parse(source);
         // This is caught by lexer as invalid indentation (not multiple of 4)
-        act.Should().Throw<Exception>();  // Could be LexerError or ParserError
+        // Using ParseExpectingError which collects both lexer and parser diagnostics
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsMissingIndentAfterColon()
     {
         var source = "if True:\npass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected Indent*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected Indent");
     }
 
     #endregion
@@ -433,8 +434,8 @@ public class ParserNegativeTests
     {
         // Semicolons are not statement separators
         var source = "x = 1; y = 2";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected end of statement*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected end of statement");
     }
 
     #endregion
@@ -445,32 +446,28 @@ public class ParserNegativeTests
     public void RejectsImportWithoutModule()
     {
         var source = "import";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsFromImportWithoutModule()
     {
         var source = "from import x";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsFromImportWithoutImport()
     {
         var source = "from math x";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsImportAsWithoutAlias()
     {
         var source = "import math as";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     #endregion
@@ -491,16 +488,14 @@ public class ParserNegativeTests
     public void ExceptWithoutTryIsInvalid()
     {
         var source = "except Exception:\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void FinallyWithoutTryIsInvalid()
     {
         var source = "finally:\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
@@ -524,32 +519,28 @@ def foo():
     if True:
         while False
             pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsMalformedDictionary()
     {
         var source = "{\"a\": 1, \"b\":}";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsInvalidDecorator()
     {
         var source = "@\ndef foo():\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsDecoratorOnNonFunction()
     {
         var source = "@decorator\nx = 1";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     #endregion
@@ -632,8 +623,7 @@ z = 3";
     {
         // Escape sequences in identifiers are only valid in literal names
         var source = "x\\n = 1";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
@@ -656,48 +646,43 @@ z = 3";
     public void RejectsForWithoutIn()
     {
         var source = "for x range(10):\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected In*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected In");
     }
 
     [Fact]
     public void RejectsForWithoutIterator()
     {
         var source = "for x in:\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsWhileWithoutCondition()
     {
         var source = "while:\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsIfWithoutCondition()
     {
         var source = "if:\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsElifWithoutCondition()
     {
         var source = "if True:\n    pass\nelif:\n    pass";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsAssertWithoutExpression()
     {
         var source = "assert";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
@@ -705,15 +690,17 @@ z = 3";
     {
         var source = "raise";
         // Bare raise is valid in except block, but parser might allow it anywhere
-        // Check what happens
-        try
+        // With DiagnosticBag-based error collection, ParseModule no longer throws.
+        // The parser either succeeds (bare raise is valid) or collects errors.
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        var module = parser.ParseModule();
+
+        // Either it parses successfully (bare raise) or has errors - both are acceptable
+        if (!parser.Diagnostics.HasErrors)
         {
-            var module = Parse(source);
             module.Body.Should().HaveCount(1);
-        }
-        catch (ParserError)
-        {
-            // Also acceptable
         }
     }
 
@@ -725,96 +712,89 @@ z = 3";
     public void RejectsMissingInKeywordInComprehension()
     {
         var source = "x = [i for i range(10)]";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected In*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected In");
     }
 
     [Fact]
     public void RejectsMissingIteratorInComprehension()
     {
         var source = "x = [i for i in]";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsMissingForKeywordInComprehension()
     {
         var source = "x = [i i in range(10)]";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected RightBracket*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected RightBracket");
     }
 
     [Fact]
     public void RejectsMissingFilterConditionInComprehension()
     {
         var source = "x = [i for i in range(10) if]";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsMissingElementExpressionInComprehension()
     {
         var source = "x = [for i in range(10)]";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsMissingTargetVariableInComprehension()
     {
         var source = "x = [i for in range(10)]";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsMissingColonInDictComprehension()
     {
         var source = "x = {i i for i in range(10)}";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsMissingValueInDictComprehension()
     {
         var source = "x = {i: for i in range(10)}";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsMissingKeyInDictComprehension()
     {
         var source = "x = {:i for i in range(10)}";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     [Fact]
     public void RejectsUnterminatedListComprehension()
     {
         var source = "x = [i for i in range(10)";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected RightBracket*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected RightBracket");
     }
 
     [Fact]
     public void RejectsUnterminatedSetComprehension()
     {
         var source = "x = {i for i in range(10)";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected RightBrace*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected RightBrace");
     }
 
     [Fact]
     public void RejectsUnterminatedDictComprehension()
     {
         var source = "x = {i: i * 2 for i in range(10)";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected RightBrace*");
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected RightBrace");
     }
 
     [Fact]
@@ -831,8 +811,7 @@ z = 3";
     public void RejectsMultipleCommasInComprehension()
     {
         var source = "x = [i,, for i in range(10)]";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        ParseExpectingError(source);
     }
 
     #endregion

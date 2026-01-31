@@ -378,7 +378,7 @@ def func1() -> None:
     #region Error Handling
 
     [Fact]
-    public void ResolvePackage_InvalidSyntax_ReturnsNull()
+    public void ResolvePackage_InvalidSyntax_ReturnsEmptyPackage()
     {
         // Arrange
         var packageDir = Path.Combine(_testDir, "invalid_pkg");
@@ -392,10 +392,13 @@ def invalid_syntax(
         var resolver = new PackageResolver(_logger);
 
         // Act
+        // Parser now collects errors into Diagnostics instead of throwing,
+        // so PackageResolver succeeds but returns a package with no exported symbols
         var packageInfo = resolver.ResolvePackage("invalid_pkg", initPath);
 
         // Assert
-        packageInfo.Should().BeNull();
+        packageInfo.Should().NotBeNull();
+        packageInfo!.ExportedSymbols.Should().BeEmpty();
     }
 
     [Fact]

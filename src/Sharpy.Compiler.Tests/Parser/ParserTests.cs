@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // ParserError is obsolete
 using FluentAssertions;
 using Xunit;
 using Sharpy.Compiler.Parser.Ast;
@@ -22,6 +23,16 @@ public partial class ParserTests
         }
         var parser = new ParserNs.Parser(tokens);
         return parser.ParseModule();
+    }
+
+    private static string ParseExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        parser.ParseModule();
+        parser.Diagnostics.HasErrors.Should().BeTrue("Expected parser to report an error for input: " + source);
+        return string.Join("\n", parser.Diagnostics.GetErrors().Select(d => d.Message));
     }
 
     #region Literal Expressions
