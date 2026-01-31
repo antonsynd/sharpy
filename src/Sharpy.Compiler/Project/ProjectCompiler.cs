@@ -558,16 +558,13 @@ public class ProjectCompiler
             }
             fileMetrics.EndPhase();
 
+            // Merge all type checking diagnostics to both unit and project level
+            unit.Diagnostics.Merge(typeChecker.Diagnostics);
+            _diagnostics.Merge(typeChecker.Diagnostics);
+
             if (typeChecker.Diagnostics.HasErrors)
             {
-                // Add to unit diagnostics
-                foreach (var error in typeChecker.Diagnostics.GetErrors())
-                {
-                    unit.Diagnostics.AddError(error.Message, error.Line, error.Column, unit.FilePath, code: error.Code);
-                }
                 unit.Phase = CompilationPhase.Failed;
-
-                _diagnostics.Merge(typeChecker.Diagnostics);
             }
             else
             {
