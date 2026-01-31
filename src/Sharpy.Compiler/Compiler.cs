@@ -99,9 +99,10 @@ public class Compiler
             var module = parser.ParseModule();
             metrics.EndPhase();
 
-            // Assertion: Parser must produce a valid module
+            // Assertion: Parser must produce a valid module with span info
             Debug.Assert(module != null, "Parser should produce a non-null Module");
             Debug.Assert(module.Body != null, "Module.Body should not be null");
+            AssertStatementsHaveSpans(module);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -434,6 +435,23 @@ public class Compiler
     }
 
     // ----- Phase Boundary Assertions (compiled out in Release) -----
+
+    /// <summary>
+    /// Verify top-level statements have TextSpan populated.
+    /// </summary>
+    [Conditional("DEBUG")]
+    private static void AssertStatementsHaveSpans(Module module)
+    {
+        foreach (var stmt in module.Body)
+        {
+            // Import statements may not have spans (they're processed before codegen)
+            if (stmt is ImportStatement or FromImportStatement)
+                continue;
+
+            Debug.Assert(stmt.Span.HasValue,
+                $"Statement {stmt.GetType().Name} at line {stmt.LineStart} is missing TextSpan");
+        }
+    }
 
     /// <summary>
     /// Verify all symbols in the global scope have non-empty names.

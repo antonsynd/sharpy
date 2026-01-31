@@ -480,8 +480,17 @@ public partial class Parser
                     {
                         do
                         {
+                            var paramToken = Current;
                             var name = ExpectIdentifier();
-                            parameters.Add(new Parameter { Name = name });
+                            parameters.Add(new Parameter
+                            {
+                                Name = name,
+                                LineStart = paramToken.Line,
+                                ColumnStart = paramToken.Column,
+                                LineEnd = paramToken.Line,
+                                ColumnEnd = paramToken.Column + name.Length,
+                                Span = GetSpanFromToken(paramToken)
+                            });
 
                             if (Current.Type == TokenType.Comma)
                                 Advance();
