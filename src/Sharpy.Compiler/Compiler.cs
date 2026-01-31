@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 using System.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;
@@ -417,28 +416,6 @@ public class Compiler
         {
             _logger.LogInfo("Compilation cancelled");
             diagnostics.AddError("Compilation cancelled", filePath: filePath);
-            return new CompilationResult
-            {
-                Success = false,
-                Diagnostics = diagnostics,
-                Metrics = metrics
-            };
-        }
-        catch (LexerError ex)
-        {
-            _logger.LogError($"Compilation failed with lexer error: {ex.Message}", ex.Line, ex.Column);
-            diagnostics.AddLexerError(ex, filePath);
-            return new CompilationResult
-            {
-                Success = false,
-                Diagnostics = diagnostics,
-                Metrics = metrics
-            };
-        }
-        catch (ParserError ex)
-        {
-            _logger.LogError($"Compilation failed with parser error: {ex.Message}", ex.Line, ex.Column);
-            diagnostics.AddParserError(ex, filePath);
             return new CompilationResult
             {
                 Success = false,

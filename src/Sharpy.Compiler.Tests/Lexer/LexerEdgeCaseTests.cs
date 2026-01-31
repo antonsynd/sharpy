@@ -1,10 +1,7 @@
-#pragma warning disable CS0618 // LexerError is obsolete (diagnostics-based error handling)
-
 using FluentAssertions;
 using System.Text;
 using LexerNs = Sharpy.Compiler.Lexer;
 using TokenType = Sharpy.Compiler.Lexer.TokenType;
-using LexerError = Sharpy.Compiler.Lexer.LexerError;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Lexer;

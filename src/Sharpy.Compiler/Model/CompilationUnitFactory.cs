@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Parser.Ast;
@@ -63,30 +62,20 @@ public static class CompilationUnitFactory
     {
         ArgumentNullException.ThrowIfNull(unit);
 
-        try
-        {
-            var lexer = new Lexer.Lexer(unit.SourceText, logger ?? NullLogger.Instance);
-            var tokens = lexer.TokenizeAll();
+        var lexer = new Lexer.Lexer(unit.SourceText, logger ?? NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
 
-            // Check if lexer collected any errors into DiagnosticBag
-            if (lexer.Diagnostics.HasErrors)
-            {
-                unit.Diagnostics.Merge(lexer.Diagnostics);
-                unit.Phase = CompilationPhase.Failed;
-                return false;
-            }
-
-            unit.Tokens = tokens;
-            unit.Phase = CompilationPhase.Lexed;
-            return true;
-        }
-        catch (LexerError ex)
+        // Check if lexer collected any errors into DiagnosticBag
+        if (lexer.Diagnostics.HasErrors)
         {
-            // Safety net: should not be reached since TokenizeAll() catches LexerError internally
-            unit.Diagnostics.AddError(ex.Message, ex.Line, ex.Column, unit.FilePath);
+            unit.Diagnostics.Merge(lexer.Diagnostics);
             unit.Phase = CompilationPhase.Failed;
             return false;
         }
+
+        unit.Tokens = tokens;
+        unit.Phase = CompilationPhase.Lexed;
+        return true;
     }
 
     /// <summary>
@@ -105,49 +94,39 @@ public static class CompilationUnitFactory
             throw new InvalidOperationException("Cannot parse without tokens. Call Lex() first.");
         }
 
-        try
+        var parser = new Parser.Parser(unit.Tokens.ToList(), logger ?? NullLogger.Instance);
+        var ast = parser.ParseModule();
+
+        // Check if parser collected any errors into DiagnosticBag
+        if (parser.Diagnostics.HasErrors)
         {
-            var parser = new Parser.Parser(unit.Tokens.ToList(), logger ?? NullLogger.Instance);
-            var ast = parser.ParseModule();
-
-            // Check if parser collected any errors into DiagnosticBag
-            if (parser.Diagnostics.HasErrors)
-            {
-                unit.Diagnostics.Merge(parser.Diagnostics);
-                unit.Phase = CompilationPhase.Failed;
-                return false;
-            }
-
-            unit.Ast = ast;
-
-            // Extract import statements from AST
-            var imports = new List<ImportStatement>();
-            var fromImports = new List<FromImportStatement>();
-
-            foreach (var statement in ast.Body)
-            {
-                if (statement is ImportStatement import)
-                {
-                    imports.Add(import);
-                }
-                else if (statement is FromImportStatement fromImport)
-                {
-                    fromImports.Add(fromImport);
-                }
-            }
-
-            unit.Imports = imports;
-            unit.FromImports = fromImports;
-            unit.Phase = CompilationPhase.Parsed;
-            return true;
-        }
-        catch (ParserError ex)
-        {
-            // Safety net: should not be reached since ParseModule() catches ParserError internally
-            unit.Diagnostics.AddError(ex.Message, ex.Line, ex.Column, unit.FilePath);
+            unit.Diagnostics.Merge(parser.Diagnostics);
             unit.Phase = CompilationPhase.Failed;
             return false;
         }
+
+        unit.Ast = ast;
+
+        // Extract import statements from AST
+        var imports = new List<ImportStatement>();
+        var fromImports = new List<FromImportStatement>();
+
+        foreach (var statement in ast.Body)
+        {
+            if (statement is ImportStatement import)
+            {
+                imports.Add(import);
+            }
+            else if (statement is FromImportStatement fromImport)
+            {
+                fromImports.Add(fromImport);
+            }
+        }
+
+        unit.Imports = imports;
+        unit.FromImports = fromImports;
+        unit.Phase = CompilationPhase.Parsed;
+        return true;
     }
 
     /// <summary>

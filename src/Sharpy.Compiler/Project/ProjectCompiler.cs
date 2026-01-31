@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Semantic;
@@ -199,32 +198,6 @@ public class ProjectCompiler
                     _logger.LogDebug($"Parsed {Path.GetFileName(sourceFile)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
                 }
 
-                _projectMetrics.AddFileMetrics(fileMetrics);
-            }
-            catch (LexerError ex)
-            {
-                // Add to CompilationUnit diagnostics if available
-                var unit = _projectModel!.GetUnit(sourceFile);
-                if (unit != null)
-                {
-                    unit.Diagnostics.AddLexerError(ex, sourceFile);
-                    unit.Phase = CompilationPhase.Failed;
-                }
-
-                _diagnostics.AddLexerError(ex, sourceFile);
-                _projectMetrics.AddFileMetrics(fileMetrics);
-            }
-            catch (ParserError ex)
-            {
-                // Add to CompilationUnit diagnostics if available
-                var unit = _projectModel!.GetUnit(sourceFile);
-                if (unit != null)
-                {
-                    unit.Diagnostics.AddParserError(ex, sourceFile);
-                    unit.Phase = CompilationPhase.Failed;
-                }
-
-                _diagnostics.AddParserError(ex, sourceFile);
                 _projectMetrics.AddFileMetrics(fileMetrics);
             }
             catch (Exception ex)

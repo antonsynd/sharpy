@@ -2,9 +2,6 @@ using FluentAssertions;
 using System.Text;
 using LexerNs = Sharpy.Compiler.Lexer;
 using TokenType = Sharpy.Compiler.Lexer.TokenType;
-#pragma warning disable CS0618 // LexerError is obsolete
-using LexerError = Sharpy.Compiler.Lexer.LexerError;
-#pragma warning restore CS0618
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Lexer;

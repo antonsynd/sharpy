@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
@@ -383,22 +382,6 @@ public abstract class IntegrationTestBase
                     // Ignore cleanup errors
                 }
             }
-        }
-        catch (LexerError ex)
-        {
-            return new ExecutionResult
-            {
-                Success = false,
-                CompilationErrors = new List<string> { $"Lexer error at line {ex.Line}, column {ex.Column}: {ex.Message}" }
-            };
-        }
-        catch (ParserError ex)
-        {
-            return new ExecutionResult
-            {
-                Success = false,
-                CompilationErrors = new List<string> { $"Parser error at line {ex.Line}, column {ex.Column}: {ex.Message}" }
-            };
         }
         catch (TargetInvocationException ex)
         {

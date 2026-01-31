@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 using System.CommandLine;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Lexer;
@@ -519,12 +518,6 @@ class Program
             Console.WriteLine(new string('=', 80));
             Console.WriteLine($"Total tokens: {tokens.Count}");
         }
-        catch (LexerError ex)
-        {
-            Console.Error.WriteLine($"Lexer error at line {ex.Line}, column {ex.Column}:");
-            Console.Error.WriteLine($"  {ex.Message}");
-            Environment.Exit(1);
-        }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
@@ -566,18 +559,6 @@ class Program
 
             Console.WriteLine(new string('=', 80));
         }
-        catch (LexerError ex)
-        {
-            Console.Error.WriteLine($"Lexer error at line {ex.Line}, column {ex.Column}:");
-            Console.Error.WriteLine($"  {ex.Message}");
-            Environment.Exit(1);
-        }
-        catch (ParserError ex)
-        {
-            Console.Error.WriteLine($"Parser error at line {ex.Line}, column {ex.Column}:");
-            Console.Error.WriteLine($"  {ex.Message}");
-            Environment.Exit(1);
-        }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
@@ -611,18 +592,6 @@ class Program
             }
 
             Console.WriteLine("PARSE_OK");
-        }
-        catch (LexerError ex)
-        {
-            Console.Error.WriteLine($"Lexer error at line {ex.Line}, column {ex.Column}:");
-            Console.Error.WriteLine($"  {ex.Message}");
-            Environment.Exit(1);
-        }
-        catch (ParserError ex)
-        {
-            Console.Error.WriteLine($"Parser error at line {ex.Line}, column {ex.Column}:");
-            Console.Error.WriteLine($"  {ex.Message}");
-            Environment.Exit(1);
         }
         catch (Exception ex)
         {
@@ -708,18 +677,6 @@ class Program
             // Write C# code to output file
             File.WriteAllText(outputFile.FullName, csharpCode);
             Console.WriteLine($"Generated C# code written to: {outputFile.FullName}");
-        }
-        catch (LexerError ex)
-        {
-            Console.Error.WriteLine($"Lexer error at line {ex.Line}, column {ex.Column}:");
-            Console.Error.WriteLine($"  {ex.Message}");
-            Environment.Exit(1);
-        }
-        catch (ParserError ex)
-        {
-            Console.Error.WriteLine($"Parser error at line {ex.Line}, column {ex.Column}:");
-            Console.Error.WriteLine($"  {ex.Message}");
-            Environment.Exit(1);
         }
         catch (Exception ex)
         {
@@ -1108,18 +1065,6 @@ class Program
 
             // Output metrics if requested (showing assembly compilation metrics)
             OutputMetrics(assemblyResult.Metrics, metricsFormat, metricsOutput);
-        }
-        catch (LexerError ex)
-        {
-            Console.Error.WriteLine($"Lexer error at line {ex.Line}, column {ex.Column}:");
-            Console.Error.WriteLine($"  {ex.Message}");
-            Environment.Exit(1);
-        }
-        catch (ParserError ex)
-        {
-            Console.Error.WriteLine($"Parser error at line {ex.Line}, column {ex.Column}:");
-            Console.Error.WriteLine($"  {ex.Message}");
-            Environment.Exit(1);
         }
         catch (Exception ex)
         {
