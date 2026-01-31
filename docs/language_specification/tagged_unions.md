@@ -15,7 +15,7 @@ union Result[T, E]:
 # Optional type (like Rust's Option)
 union Optional[T]:
     case Some(value: T)
-    case Nothing()
+    case None()
 
 # Tree structure
 union BinaryTree[T]:
@@ -51,8 +51,8 @@ Cases that carry no associated data can be defined with or without parentheses:
 ```python
 union Option[T]:
     case Some(value: T)
-    case Nothing           # No parentheses needed for unit case
-    # case Nothing()       # Also valid, but parentheses are optional
+    case None              # No parentheses needed for unit case
+    # case None()          # Also valid, but parentheses are optional
 
 union Result[T, E]:
     case Ok(value: T)
@@ -72,7 +72,7 @@ When pattern matching, unit cases also don't require parentheses:
 ```python
 match opt:
     case Option.Some(v): print(v)
-    case Option.Nothing: print("none")  # No parens in pattern
+    case Option.None: print("none")  # No parens in pattern
 
 match state:
     case LoadState.NotStarted: start_loading()

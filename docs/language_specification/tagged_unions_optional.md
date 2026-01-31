@@ -11,7 +11,7 @@ The `Optional[T]` type is a special tagged union provided by the Sharpy standard
 ```python
 union Optional[T]:
     case Some(value: T)
-    case Nothing()  # Or simply: case Nothing
+    case None()
 ```
 
 The `Optional` type is part of the standard library and provides special syntax and operators for ergonomic optional value handling.
@@ -21,29 +21,31 @@ The `Optional` type is part of the standard library and provides special syntax 
 ```python
 # Shorthand (preferred)
 value: int? = Some(42)
-empty: int? = Nothing
+empty: int? = None()
 
 # Explicit (equivalent)
 value: Optional[int] = Optional.Some(42)
-empty: Optional[int] = Optional.Nothing
+empty: Optional[int] = Optional.None()
 ```
+
+> **Note:** `None()` (with parentheses) constructs an empty Optional. Bare `None` (without parentheses) is the C# null literal for `T | None` (NullableType). See [Nullable Types](nullable_types.md).
 
 ## Pattern Matching
 
-Use pattern matching to handle both Some and Nothing cases:
+Use pattern matching to handle both Some and None cases:
 
 ```python
 def find_user(id: int) -> User?:
     user = database.find(id)
     if user is not None:
         return Some(user)
-    return Nothing
+    return None()
 
 result = find_user(123)
 match result:
     case Some(user):
         print(f"Found user: {user.name}")
-    case Nothing:
+    case None:
         print("User not found")
 ```
 
@@ -54,17 +56,17 @@ The `Optional` type provides several useful methods:
 ```python
 union Optional[T]:
     case Some(value: T)
-    case Nothing
+    case None()
 
     def is_some(self) -> bool:
         """Returns True if the optional contains a value"""
         match self:
             case Some():
                 return True
-            case Nothing:
+            case None:
                 return False
 
-    def is_nothing(self) -> bool:
+    def is_none(self) -> bool:
         """Returns True if the optional is empty"""
         return not self.is_some()
 
@@ -73,15 +75,15 @@ union Optional[T]:
         match self:
             case Some(value):
                 return value
-            case Nothing:
-                raise Exception("Called unwrap on Nothing")
+            case None:
+                raise Exception("Called unwrap on empty Optional")
 
     def unwrap_or(self, default: T) -> T:
         """Returns the value or the default"""
         match self:
             case Some(value):
                 return value
-            case Nothing:
+            case None:
                 return default
 
     def unwrap_or_else(self, f: () -> T) -> T:
@@ -89,7 +91,7 @@ union Optional[T]:
         match self:
             case Some(value):
                 return value
-            case Nothing:
+            case None:
                 return f()
 
     def map(self, f: (T) -> U) -> U?:
@@ -97,26 +99,26 @@ union Optional[T]:
         match self:
             case Some(value):
                 return Some(f(value))
-            case Nothing:
-                return Nothing
+            case None:
+                return None()
 ```
 
 ## Constructor Shorthand
 
-When the expected type is known, you can use `Some(value)` and `Nothing`
+When the expected type is known, you can use `Some(value)` and `None()`
 without qualifying with the type name:
 
 ```python
 # With type annotation - shorthand works
 x: int? = Some(42)
-y: int? = Nothing
+y: int? = None()
 
 # Function return - shorthand works
 def get_value() -> int?:
     return Some(42)
 
 # Default parameter - shorthand works
-def foo(x: int? = Nothing) -> None:
+def foo(x: int? = None()) -> None:
     pass
 
 # Without type context - error (type cannot be inferred)
@@ -124,7 +126,7 @@ x = Some(42)   # Error: Cannot infer type for 'Some()'
 ```
 
 The compiler infers the full type from context. The shorthand is equivalent to
-calling `Optional<T>.Some(value)` or using `Optional<T>.Nothing`.
+calling `Optional<T>.Some(value)` or using `Optional<T>.None()`.
 
 ## Comparison: `T?` (Optional) vs `T | None` (C# Nullable)
 
@@ -132,7 +134,7 @@ calling `Optional<T>.Some(value)` or using `Optional<T>.Nothing`.
 |---------|----------------------|---------------------------|
 | Meaning | Safe tagged union | C# nullable reference/value |
 | Has value | `Some(value)` | `value` |
-| No value | `Nothing` | `None` |
+| No value | `None()` | `None` |
 | Type safety | Works with any `T` | Only reference types and `Nullable<T>` |
 | Pattern matching | `case Some(v):` | `if x is not None:` |
 | Heap allocation | **No** (struct) | No |
@@ -163,14 +165,14 @@ See [Nullable Types](nullable_types.md) for details on `T | None`.
 def get_config_value(config: dict[str, str], key: str) -> str?:
     if key in config:
         return Some(config[key])
-    return Nothing
+    return None()
 
 # Using the result
 value = get_config_value(config, "timeout")
 match value:
     case Some(v):
         timeout = int(v)
-    case Nothing:
+    case None:
         timeout = 30  # default
 ```
 
@@ -179,12 +181,12 @@ match value:
 ```python
 def get_user_city(user_id: int) -> str?:
     user = find_user(user_id)
-    if user.is_nothing():
-        return Nothing
+    if user.is_none():
+        return None()
 
     address = user.unwrap().get_address()
-    if address.is_nothing():
-        return Nothing
+    if address.is_none():
+        return None()
 
     return Some(address.unwrap().city)
 ```
@@ -197,9 +199,9 @@ opt_number: int? = Some(42)
 opt_string = opt_number.map(lambda x: f"The answer is {x}")
 # Result: Some("The answer is 42")
 
-opt_nothing: int? = Nothing
+opt_nothing: int? = None()
 opt_result = opt_nothing.map(lambda x: x * 2)
-# Result: Nothing
+# Result: None()
 ```
 
 ## Converting Between Optional and C# Nullable
@@ -216,7 +218,7 @@ def optional_to_nullable(opt: T?) -> T | None:
     match opt:
         case Some(value):
             return value
-        case Nothing:
+        case None:
             return None
 ```
 
@@ -237,7 +239,7 @@ public readonly struct Optional<T>
 }
 ```
 
-The static helpers `Some(value)` and `Nothing` are available at module scope
+The static helpers `Some(value)` and `None()` are available at module scope
 for convenient construction.
 
 ## See Also

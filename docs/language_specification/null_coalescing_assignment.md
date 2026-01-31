@@ -16,7 +16,7 @@ if variable is None:
 
 For `T?` (Optional), equivalent to:
 ```python
-if variable.is_nothing():
+if variable.is_none():
     variable = Some(value)
 ```
 
@@ -24,7 +24,7 @@ if variable.is_nothing():
 
 ```python
 # With T? (Optional)
-name: str? = Nothing
+name: str? = None()
 name ??= "Anonymous"  # name is now Some("Anonymous")
 
 # With T | None (C# nullable)
@@ -91,7 +91,7 @@ The variable must have an optional type (`T?`) or a nullable type (`T | None`):
 
 ```python
 # ✅ Valid - Optional type (T?)
-x: int? = Nothing
+x: int? = None()
 x ??= 10  # OK
 
 # ✅ Valid - C# nullable type (T | None)
@@ -111,13 +111,13 @@ cache["key"] ??= Data()
 
 | Operator | Condition | Effect |
 |----------|-----------|--------|
-| `??=` | If absent (`None` or `Nothing`) | Assign new value |
+| `??=` | If absent (`None` or `None()`) | Assign new value |
 | `\|\|=` | If falsy (`__bool__()` returns False) | Assign new value |
 | `=` | Always | Assign new value |
 | `??` | N/A | Return non-None value (doesn't assign) |
 
 ```python
-# ??= checks for absence (None or Nothing)
+# ??= checks for absence (None or None())
 x: int | None = 0
 x ??= 5      # x is still 0 (not None)
 
@@ -247,13 +247,13 @@ x ??= y ?? 5  # Equivalent to: x ??= (y ?? 5)
 
 ## Optional (Tagged Union)
 
-The `Optional[T]` tagged union (written as `T?`) works with null-coalescing assignment, with its `Nothing` case being treated similarly to `None`:
+The `Optional[T]` tagged union (written as `T?`) works with null-coalescing assignment, with its empty case (`None()`) being treated similarly to bare `None`:
 
 ```python
 maybe_str: str? = Some("HELLO")
 maybe_str ??= Some("hello")  # maybe_str is still Some("HELLO")
 
-maybe_str = Nothing
+maybe_str = None()
 maybe_str ??= Some("hello")  # maybe_str is now Some("hello")
 ```
 
