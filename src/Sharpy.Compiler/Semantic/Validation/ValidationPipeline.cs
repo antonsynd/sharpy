@@ -64,13 +64,16 @@ public class ValidationPipeline
     /// </summary>
     /// <param name="module">The AST module to validate</param>
     /// <param name="context">The semantic context</param>
+    /// <param name="cancellationToken">Optional cancellation token for LSP/IDE scenarios</param>
     /// <returns>The diagnostics collected during validation</returns>
-    public DiagnosticBag Validate(Module module, SemanticContext context)
+    public DiagnosticBag Validate(Module module, SemanticContext context, CancellationToken cancellationToken = default)
     {
         _logger.LogInfo($"Starting validation pipeline with {_validators.Count} validators");
 
         foreach (var validator in _validators)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (!context.ShouldContinue())
             {
                 _logger.LogInfo($"Stopping validation pipeline (error limit reached or errors found)");
