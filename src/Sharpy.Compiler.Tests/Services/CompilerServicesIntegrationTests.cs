@@ -30,7 +30,7 @@ y: str = ""hello""
         typeChecker.CheckModule(module);
 
         // Assert
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 
     [Fact]
@@ -55,7 +55,7 @@ x: int = ""not an int""
         typeChecker.CheckModule(module);
 
         // Assert
-        Assert.NotEmpty(typeChecker.Errors);
+        Assert.NotEmpty(typeChecker.Diagnostics.GetErrors());
     }
 
     [Fact]
@@ -191,6 +191,6 @@ greeting: str = p.greet()
         typeChecker.CheckModule(module);
 
         // Assert
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 }

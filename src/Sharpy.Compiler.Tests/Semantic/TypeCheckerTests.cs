@@ -64,7 +64,7 @@ x: int = 42
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -77,8 +77,8 @@ y: str = x
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("Cannot assign");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Cannot assign");
     }
 
     [Fact]
@@ -92,7 +92,7 @@ x: auto = 42
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Filter out module-level errors since we're testing type inference specifically
-        var typeErrors = typeChecker.Errors.Where(e => !e.Message.Contains("module level")).ToList();
+        var typeErrors = typeChecker.Diagnostics.GetErrors().Where(e => !e.Message.Contains("module level")).ToList();
         typeErrors.Should().BeEmpty();
 
         // Verify type was inferred
@@ -110,9 +110,9 @@ x: auto
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().HaveCount(1);
-        typeChecker.Errors[0].Message.Should().Contain("auto");
-        typeChecker.Errors[0].Message.Should().Contain("initializer");
+        typeChecker.Diagnostics.GetErrors().Should().HaveCount(1);
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("auto");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("initializer");
     }
 
     [Fact]
@@ -125,7 +125,7 @@ def add(a: int, b: int) -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -138,8 +138,8 @@ def get_name() -> str:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("return");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("return");
     }
 
     [Fact]
@@ -153,7 +153,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -166,8 +166,8 @@ if 42:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("boolean");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("boolean");
     }
 
     [Fact]
@@ -181,7 +181,7 @@ numbers: auto = [1, 2, 3]
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Filter out module-level errors since we're testing type inference specifically
-        var typeErrors = typeChecker.Errors.Where(e => !e.Message.Contains("module level")).ToList();
+        var typeErrors = typeChecker.Diagnostics.GetErrors().Where(e => !e.Message.Contains("module level")).ToList();
         typeErrors.Should().BeEmpty();
 
         var varDecl = (VariableDeclaration)module.Body[0];
@@ -209,7 +209,7 @@ class Person:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -222,7 +222,7 @@ y: bool = 10 > 5
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -236,7 +236,7 @@ add: auto = lambda a, b: a + b
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Filter out module-level errors since we're testing type inference specifically
-        var typeErrors = typeChecker.Errors.Where(e => !e.Message.Contains("module level")).ToList();
+        var typeErrors = typeChecker.Diagnostics.GetErrors().Where(e => !e.Message.Contains("module level")).ToList();
         typeErrors.Should().BeEmpty();
 
         var varDecl = (VariableDeclaration)module.Body[0];
@@ -255,7 +255,7 @@ z: bool = 3.14
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().HaveCount(3);
+        typeChecker.Diagnostics.GetErrors().Should().HaveCount(3);
     }
 
     [Fact]
@@ -267,7 +267,7 @@ x: int = 5 if True else 10
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -279,7 +279,7 @@ x: float = 42 as float
         var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -292,7 +292,7 @@ y: str? = None()
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -304,8 +304,8 @@ x: int = None
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("None");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("None");
     }
 
     [Fact]
@@ -322,7 +322,7 @@ def main():
 
         // This test validates that type narrowing is working
         // In the if branch, value should be narrowed from str? to str
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -337,7 +337,7 @@ def main():
         var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         // Find the identifier 'value' in the if block assignment (x: str = value)
         var mainFunc = module.Body.OfType<FunctionDef>().First();
@@ -365,7 +365,7 @@ result: double = x / y
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -379,7 +379,7 @@ result: int = x // y
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -395,7 +395,7 @@ result: float = x ** y
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -408,7 +408,7 @@ y: bool = False
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -422,7 +422,7 @@ z: bool = not True
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -435,7 +435,7 @@ result: bool = 2 in items
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -448,7 +448,7 @@ result: bool = x is None
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -470,7 +470,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Type narrowing should allow assignment of animal to Dog type
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -493,7 +493,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -516,7 +516,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -542,7 +542,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -563,7 +563,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -579,7 +579,7 @@ class Person:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -595,7 +595,7 @@ class Person:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -613,8 +613,8 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // The error is raised by SignatureValidatorV2 during type checking
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("__init__") && e.Message.Contains("must return"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("__init__") && e.Message.Contains("must return"));
     }
 
     [Fact]
@@ -632,8 +632,8 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // The error is raised by SignatureValidatorV2 during type checking
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("__init__"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("__init__"));
     }
 
     [Fact]
@@ -649,7 +649,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -662,8 +662,8 @@ def get_value() -> None:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("Cannot return type");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Cannot return type");
     }
 
     [Fact]
@@ -679,7 +679,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -695,7 +695,7 @@ def maybe_print(condition: bool, msg: str) -> None:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #region Operator Type Validation Tests
@@ -712,7 +712,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -726,7 +726,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -741,7 +741,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -755,7 +755,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -769,7 +769,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -785,7 +785,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -798,7 +798,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -813,7 +813,7 @@ def foo():
 
         // Logical operations work on any type in Python (truthy/falsy values)
         // Sharpy follows Python semantics here
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -832,7 +832,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -846,7 +846,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -862,7 +862,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -876,7 +876,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -890,8 +890,8 @@ def foo():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should report an error for comparing int and str
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("does not support operator '<'");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("does not support operator '<'");
     }
 
     [Fact]
@@ -906,7 +906,7 @@ def foo():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Numeric type mixing (int and float) is allowed
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -922,7 +922,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -936,7 +936,7 @@ def foo(x: int):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -951,7 +951,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -969,7 +969,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -983,7 +983,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -997,7 +997,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1012,7 +1012,7 @@ x /= 2
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e =>
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("double") && e.Message.Contains("int"));
     }
 
@@ -1027,7 +1027,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1041,7 +1041,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1056,7 +1056,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1070,7 +1070,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1084,7 +1084,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1098,7 +1098,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1112,7 +1112,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1126,7 +1126,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1140,7 +1140,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1154,7 +1154,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1168,9 +1168,9 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
         // Check for either legacy or V2 error format
-        var errorMsg = typeChecker.Errors[0].Message;
+        var errorMsg = typeChecker.Diagnostics.GetErrors()[0].Message;
         (errorMsg.Contains("does not support") || errorMsg.Contains("Unsupported operand types"))
             .Should().BeTrue($"Expected operator error message but got: {errorMsg}");
     }
@@ -1186,9 +1186,9 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
         // Check for either legacy or V2 error format
-        var errorMsg = typeChecker.Errors[0].Message;
+        var errorMsg = typeChecker.Diagnostics.GetErrors()[0].Message;
         (errorMsg.Contains("does not support") || errorMsg.Contains("Unsupported operand types"))
             .Should().BeTrue($"Expected operator error message but got: {errorMsg}");
     }
@@ -1204,7 +1204,7 @@ def increment(x: int) -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1220,7 +1220,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1235,7 +1235,7 @@ def main():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1248,9 +1248,9 @@ X += 5
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("Cannot");
-        typeChecker.Errors[0].Message.Should().Contain("constant");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Cannot");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("constant");
     }
 
     #endregion
@@ -1269,7 +1269,7 @@ result: str = greet('World', greeting='Hi')
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1284,8 +1284,8 @@ greet(unknown='test')
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("Unknown keyword argument 'unknown'");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Unknown keyword argument 'unknown'");
     }
 
     [Fact]
@@ -1300,8 +1300,8 @@ greet('World', name='Alice')
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("Argument 'name' was already provided positionally");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Argument 'name' was already provided positionally");
     }
 
     [Fact]
@@ -1316,8 +1316,8 @@ greet('World', count='not an int')
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("Cannot pass argument of type");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Cannot pass argument of type");
     }
 
     #endregion
@@ -1340,8 +1340,8 @@ class Person:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("Duplicate constructor signature");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Duplicate constructor signature");
     }
 
     [Fact]
@@ -1367,7 +1367,7 @@ class Person:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1386,7 +1386,7 @@ class Value:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1408,8 +1408,8 @@ class Box:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("Duplicate constructor signature");
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Duplicate constructor signature");
     }
 
     [Fact]
@@ -1425,7 +1425,7 @@ class Person:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1439,7 +1439,7 @@ class EmptyClass:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion

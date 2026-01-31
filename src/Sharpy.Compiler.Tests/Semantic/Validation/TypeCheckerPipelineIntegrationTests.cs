@@ -41,7 +41,7 @@ def foo() -> int:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Legacy mode still works - control flow errors should be present
-        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("must return"));
+        Assert.Contains(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("must return"));
     }
 
     [Fact]
@@ -61,7 +61,7 @@ def foo() -> int:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Pipeline mode should also report control flow errors
-        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("must return"));
+        Assert.Contains(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("must return"));
     }
 
     [Fact]
@@ -81,7 +81,7 @@ def foo() -> int:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have both type error AND control flow error
-        var errors = typeChecker.Errors;
+        var errors = typeChecker.Diagnostics.GetErrors();
         Assert.True(errors.Any(e => e.Message.Contains("type")),
             "Should have type error");
         Assert.True(errors.Any(e => e.Message.Contains("must return")),
@@ -110,7 +110,7 @@ def foo() -> int:
 
         // With empty pipeline, control flow errors are NOT detected
         // (missing return value won't be caught without ControlFlowValidatorV2/V3)
-        Assert.DoesNotContain(typeChecker.Errors, e => e.Message.Contains("must return"));
+        Assert.DoesNotContain(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("must return"));
     }
 
     [Fact]
@@ -148,7 +148,7 @@ def foo() -> int:
             validationPipeline: pipeline);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 
     [Fact]
@@ -169,7 +169,7 @@ def foo() -> int:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should detect break outside loop
-        var errors = typeChecker.Errors;
+        var errors = typeChecker.Diagnostics.GetErrors();
         Assert.Contains(errors, e => e.Message.Contains("'break' statement outside loop"));
     }
 
@@ -189,7 +189,7 @@ def foo() -> int:
             validationPipeline: pipeline);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        var controlFlowError = typeChecker.Errors.FirstOrDefault(e => e.Message.Contains("must return"));
+        var controlFlowError = typeChecker.Diagnostics.GetErrors().FirstOrDefault(e => e.Message.Contains("must return"));
         Assert.NotNull(controlFlowError);
         Assert.True(controlFlowError.Line.HasValue, "Error should have line number");
     }

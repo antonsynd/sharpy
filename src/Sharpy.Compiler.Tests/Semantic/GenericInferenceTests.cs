@@ -92,7 +92,7 @@ def main():
         paramType.Should().BeOfType<TypeParameterType>($"parameter type should be TypeParameterType, but was {paramType?.GetType().Name}: {paramType?.GetDisplayName()}");
 
         // Check errors before the assertion
-        var errors = typeChecker.Errors.Select(e => e.Message).ToList();
+        var errors = typeChecker.Diagnostics.GetErrors().Select(e => e.Message).ToList();
         errors.Should().BeEmpty($"Expected no errors but got: [{string.Join(", ", errors)}]");
 
         // And the result should be typed as int
@@ -116,7 +116,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Then there should be no errors
-        typeChecker.Errors.Should().BeEmpty("inference should deduce T=str from argument \"hello\"");
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty("inference should deduce T=str from argument \"hello\"");
 
         // And the result should be typed as str
         var resultType = GetCallResultType(module, semanticInfo, "result");
@@ -138,7 +138,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Then there should be no errors
-        typeChecker.Errors.Should().BeEmpty("inference should deduce T=int from both arguments");
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty("inference should deduce T=int from both arguments");
     }
 
     #endregion
@@ -161,7 +161,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Then there should be no errors
-        typeChecker.Errors.Should().BeEmpty("inference should extract T=int from list[int]");
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty("inference should extract T=int from list[int]");
 
         // And the result should be typed as int
         var resultType = GetCallResultType(module, semanticInfo, "result");
@@ -186,7 +186,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Then there should be no errors
-        typeChecker.Errors.Should().BeEmpty("inference should extract K=str, V=int from dict[str, int]");
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty("inference should extract K=str, V=int from dict[str, int]");
 
         // And the result should be typed as int
         var resultType = GetCallResultType(module, semanticInfo, "result");
@@ -215,7 +215,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Then there should be no errors
-        typeChecker.Errors.Should().BeEmpty("inference should deduce T=str from arg 1, U=int from function return type");
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty("inference should deduce T=str from arg 1, U=int from function return type");
 
         // And the result should be typed as int
         var resultType = GetCallResultType(module, semanticInfo, "result");
@@ -241,8 +241,8 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Then there should be an error about missing type arguments
-        typeChecker.Errors.Should().NotBeEmpty();
-        var errorMessage = typeChecker.Errors[0].Message;
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        var errorMessage = typeChecker.Diagnostics.GetErrors()[0].Message;
         // The error could mention: cannot be inferred, explicit, type argument, required
         (errorMessage.Contains("infer") ||
          errorMessage.Contains("explicit") ||
@@ -266,8 +266,8 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Then there should be an error about conflicting types
-        typeChecker.Errors.Should().NotBeEmpty();
-        var errorMessage = typeChecker.Errors[0].Message;
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        var errorMessage = typeChecker.Diagnostics.GetErrors()[0].Message;
         // The error could mention: conflict, mismatch, Cannot assign, different types (case-insensitive)
         (errorMessage.Contains("conflict", StringComparison.OrdinalIgnoreCase) ||
          errorMessage.Contains("mismatch", StringComparison.OrdinalIgnoreCase) ||
@@ -292,7 +292,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // This should compile (inferring T=object)
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -325,7 +325,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Then there should be no errors (MyClass implements ICloneable)
-        typeChecker.Errors.Should().BeEmpty("MyClass satisfies ICloneable constraint");
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty("MyClass satisfies ICloneable constraint");
     }
 
     #endregion
@@ -347,7 +347,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Then there should be no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         // And the result should be typed as int
         var resultType = GetCallResultType(module, semanticInfo, "result");
@@ -370,7 +370,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Then there should be no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion

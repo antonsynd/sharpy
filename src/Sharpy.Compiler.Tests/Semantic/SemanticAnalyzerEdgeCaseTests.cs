@@ -46,7 +46,7 @@ def foo() -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Unreachable code"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Unreachable code"));
     }
 
     [Fact]
@@ -60,7 +60,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Unreachable code"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Unreachable code"));
     }
 
     [Fact]
@@ -74,7 +74,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -88,7 +88,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -101,7 +101,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("'break' statement outside loop"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("'break' statement outside loop"));
     }
 
     [Fact]
@@ -114,7 +114,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("'continue' statement outside loop"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("'continue' statement outside loop"));
     }
 
     [Fact]
@@ -129,7 +129,7 @@ def foo(x: bool) -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("must return a value"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("must return a value"));
     }
 
     [Fact]
@@ -145,7 +145,7 @@ def foo(x: bool) -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -163,7 +163,7 @@ def foo(x: int) -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -179,7 +179,7 @@ def foo(x: bool):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -193,7 +193,7 @@ class Foo:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -208,7 +208,7 @@ def process(x: int):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -226,7 +226,7 @@ def categorize(x: int):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -244,7 +244,7 @@ def nested(x: int, y: int):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -261,7 +261,7 @@ def compute(value: int):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -276,7 +276,7 @@ def compute(x: int):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -294,7 +294,7 @@ def complex(x: int, y: int):  # main function
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -312,7 +312,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -333,7 +333,7 @@ def bar():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -349,7 +349,7 @@ class Foo:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -366,7 +366,7 @@ def bar():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot access protected member"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Cannot access protected member"));
     }
 
     [Fact]
@@ -382,7 +382,7 @@ class Foo:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -399,7 +399,7 @@ def bar():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot access private member"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Cannot access private member"));
     }
 
     [Fact]
@@ -416,7 +416,7 @@ def bar():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -433,7 +433,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot assign type"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Cannot assign type"));
     }
 
     [Fact]
@@ -446,7 +446,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -459,7 +459,7 @@ def foo() -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot return type"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Cannot return type"));
     }
 
     [Fact]
@@ -475,7 +475,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle();
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
     }
 
     [Fact]
@@ -488,7 +488,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined identifier"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Undefined identifier"));
     }
 
     [Fact]
@@ -519,7 +519,7 @@ def foo(x: int = 'invalid'):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Default value type"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Default value type"));
     }
 
     #endregion
@@ -541,7 +541,7 @@ class Point:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -557,7 +557,7 @@ class Foo:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot assign type"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Cannot assign type"));
     }
 
     [Fact]
@@ -595,7 +595,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -621,7 +621,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -640,7 +640,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -667,7 +667,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -680,7 +680,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -702,7 +702,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -718,7 +718,7 @@ def foo() -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -734,7 +734,7 @@ def foo() -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("must return a value"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("must return a value"));
     }
 
     #endregion
@@ -759,7 +759,7 @@ def foo(x: int) -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -774,7 +774,7 @@ def foo(x: int) -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("must return a value"));
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("must return a value"));
     }
 
     #endregion

@@ -56,7 +56,7 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         // Verify the class was registered
         var personSymbol = symbolTable.LookupType("Person");
@@ -79,7 +79,7 @@ class Point:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         // Verify field access worked correctly
         var pointSymbol = symbolTable.LookupType("Point");
@@ -104,7 +104,7 @@ class Calculator:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         // Verify method call worked
         var calcSymbol = symbolTable.LookupType("Calculator");
@@ -128,7 +128,7 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         // Verify __init__ method was registered
         var personSymbol = symbolTable.LookupType("Person");
@@ -158,7 +158,7 @@ class Rectangle:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         // Verify all methods were registered
         var rectSymbol = symbolTable.LookupType("Rectangle");
@@ -187,7 +187,7 @@ class Builder:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -205,8 +205,8 @@ def greet() -> str:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should produce error about self outside class
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e =>
             e.Message.Contains("'self' can only be used inside instance methods"));
     }
 
@@ -224,8 +224,8 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should produce error about reassigning self
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e =>
             e.Message.Contains("Cannot reassign 'self'"));
     }
 
@@ -243,8 +243,8 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should produce error about non-existent field
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e =>
             e.Message.Contains("has no member 'age'"));
     }
 
@@ -262,8 +262,8 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should produce error about non-existent method
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e =>
             e.Message.Contains("has no member 'say_hello'"));
     }
 
@@ -280,7 +280,7 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // No error - this is treated as a valid static method
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -296,7 +296,7 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // No error - this is treated as a valid static method
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -309,8 +309,8 @@ x: int = self.value
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should produce error about self outside class
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e =>
             e.Message.Contains("'self' can only be used inside instance methods"));
     }
 
@@ -332,7 +332,7 @@ class Counter:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -349,7 +349,7 @@ class Builder:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors (void return is fine)
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -369,7 +369,7 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -387,7 +387,7 @@ class Counter:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -410,8 +410,8 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should produce type error (can't assign str to int)
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e =>
             e.Message.Contains("Cannot assign"));
     }
 
@@ -431,7 +431,7 @@ class Calculator:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors when argument types are correct
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -449,7 +449,7 @@ class Calculator:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have no errors when return type matches
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion

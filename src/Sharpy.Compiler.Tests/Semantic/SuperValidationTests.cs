@@ -51,7 +51,7 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -71,7 +71,7 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -91,7 +91,7 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -110,7 +110,7 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -127,8 +127,8 @@ def my_func():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("cannot be used outside of a class"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("cannot be used outside of a class"));
     }
 
     #endregion
@@ -146,8 +146,8 @@ class MyClass:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("no parent class"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("no parent class"));
     }
 
     #endregion
@@ -169,8 +169,8 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("only in __init__, @override, or dunder methods"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("only in __init__, @override, or dunder methods"));
     }
 
     #endregion
@@ -191,8 +191,8 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("only methods are allowed"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("only methods are allowed"));
     }
 
     #endregion
@@ -215,8 +215,8 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("not inside control flow"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("not inside control flow"));
     }
 
     [Fact]
@@ -234,8 +234,8 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("can only call super().__init__"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("can only call super().__init__"));
     }
 
     [Fact]
@@ -254,8 +254,8 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("can only be called once"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("can only be called once"));
     }
 
     #endregion
@@ -282,8 +282,8 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("must call super().process"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("must call super().process"));
     }
 
     #endregion
@@ -306,8 +306,8 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("must call a dunder method"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("must call a dunder method"));
     }
 
     #endregion
@@ -329,8 +329,8 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("must be followed by a method call"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("must be followed by a method call"));
     }
 
     #endregion
@@ -352,9 +352,9 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
         // Error is now caught by override validation: "@override but no matching method exists in base class"
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("@override") && e.Message.Contains("no matching method"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("@override") && e.Message.Contains("no matching method"));
     }
 
     #endregion
@@ -379,8 +379,8 @@ class Child(Parent):
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have error because it's inside control flow (nested if)
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("not inside control flow"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("not inside control flow"));
     }
 
     [Fact]
@@ -399,8 +399,8 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("not inside control flow"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("not inside control flow"));
     }
 
     [Fact]
@@ -419,8 +419,8 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("not inside control flow"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("not inside control flow"));
     }
 
     [Fact]
@@ -441,8 +441,8 @@ class Child(Parent):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("not inside control flow"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("not inside control flow"));
     }
 
     #endregion

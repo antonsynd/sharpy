@@ -48,7 +48,7 @@ class Shape:
         var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         // Verify method is marked abstract in symbol table
         var shapeType = symbolTable.LookupType("Shape");
@@ -70,7 +70,7 @@ class Shape:
         var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         var shapeType = symbolTable.LookupType("Shape");
         var areaMethod = shapeType!.Methods.FirstOrDefault(m => m.Name == "area");
@@ -90,7 +90,7 @@ class Shape:
         var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         var shapeType = symbolTable.LookupType("Shape");
         shapeType!.Methods.Should().HaveCount(3);
@@ -113,7 +113,7 @@ class Shape:
         var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         var shapeType = symbolTable.LookupType("Shape");
         var areaMethod = shapeType!.Methods.FirstOrDefault(m => m.Name == "area");
@@ -138,7 +138,7 @@ class Shape:
         var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         var shapeType = symbolTable.LookupType("Shape");
         var areaMethod = shapeType!.Methods.FirstOrDefault(m => m.Name == "area");
@@ -163,7 +163,7 @@ class TodoService:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should NOT error - ellipsis in concrete class is valid (generates NotImplementedException)
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
 
         var todoType = symbolTable.LookupType("TodoService");
         var method = todoType!.Methods.FirstOrDefault(m => m.Name == "not_done_yet");
@@ -185,8 +185,8 @@ class Shape:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("abstract class",
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("abstract class",
             "should indicate that @abstract method requires @abstract class");
     }
 
@@ -203,8 +203,8 @@ class Shape:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("...",
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("...",
             "should indicate that @abstract method must have '...' as body");
     }
 

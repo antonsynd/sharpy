@@ -38,7 +38,7 @@ public class TypeInferenceBattleTests
     /// </summary>
     private void AssertNoUnknownTypesWhenNoErrors(TypeChecker typeChecker, SemanticInfo semanticInfo)
     {
-        if (!typeChecker.Errors.Any())
+        if (!typeChecker.Diagnostics.GetErrors().Any())
         {
             semanticInfo.HasUnknownExpressionTypes().Should().BeFalse(
                 "when there are no semantic errors, no expression types should be Unknown (<?>) — " +
@@ -57,7 +57,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -69,7 +69,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -82,7 +82,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -94,7 +94,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -107,7 +107,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -120,7 +120,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -137,7 +137,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -152,7 +152,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -168,7 +168,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -180,7 +180,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -192,7 +192,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -204,7 +204,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -221,7 +221,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -234,7 +234,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -247,7 +247,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -263,7 +263,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -275,7 +275,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -287,7 +287,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -299,7 +299,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -313,7 +313,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -325,7 +325,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -338,7 +338,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -351,7 +351,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -367,7 +367,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -385,7 +385,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -398,7 +398,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -412,7 +412,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -428,7 +428,7 @@ def add(a: int, b: int) -> int:
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -440,7 +440,7 @@ def get_name() -> int:
 ";
         var (module, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
     }
 
     [Fact]
@@ -452,7 +452,7 @@ def do_something():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -471,7 +471,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -486,7 +486,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -502,7 +502,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -527,7 +527,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -544,7 +544,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -560,7 +560,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -572,7 +572,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -588,7 +588,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -600,7 +600,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -616,7 +616,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -629,7 +629,7 @@ def process(x: int | None) -> None:
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -645,7 +645,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -657,7 +657,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -679,7 +679,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -691,7 +691,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -710,7 +710,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -725,7 +725,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -742,7 +742,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -755,7 +755,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -773,7 +773,7 @@ def process(x: int?) -> int:
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -790,7 +790,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -803,7 +803,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -820,7 +820,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
         AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
     }
 
@@ -836,7 +836,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
         AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
     }
 
@@ -851,7 +851,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
         AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
     }
 
@@ -865,7 +865,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
         AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
     }
 
@@ -880,7 +880,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
         AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
     }
 
@@ -896,7 +896,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
         AssertNoUnknownTypesWhenNoErrors(typeChecker, semanticInfo);
     }
 
@@ -913,7 +913,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -925,7 +925,7 @@ def main():
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -937,7 +937,7 @@ def main():
 ";
         var (module, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
-        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
     }
 
     #endregion

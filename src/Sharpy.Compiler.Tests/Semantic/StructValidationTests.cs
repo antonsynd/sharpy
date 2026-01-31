@@ -54,7 +54,7 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e =>
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("Struct 'Point' constructor must initialize all fields") &&
             e.Message.Contains("'z'"));
     }
@@ -77,10 +77,10 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e =>
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("Struct 'Point' constructor must initialize all fields"));
 
-        var error = typeChecker.Errors.First(e => e.Message.Contains("Struct 'Point' constructor must initialize all fields"));
+        var error = typeChecker.Diagnostics.GetErrors().First(e => e.Message.Contains("Struct 'Point' constructor must initialize all fields"));
         error.Message.Should().Contain("'y'");
         error.Message.Should().Contain("'z'");
         error.Message.Should().Contain("'w'");
@@ -104,7 +104,7 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("constructor must initialize all fields"));
     }
 
@@ -126,7 +126,7 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("constructor must initialize all fields"));
     }
 
@@ -148,7 +148,7 @@ struct Vector2:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("constructor must initialize all fields"));
     }
 
@@ -170,7 +170,7 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e =>
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("Struct 'Point' constructor must initialize all fields") &&
             e.Message.Contains("'y'"));
     }
@@ -194,7 +194,7 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e =>
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("Struct 'Point' constructor must initialize all fields") &&
             e.Message.Contains("'y'"));
     }
@@ -219,7 +219,7 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e =>
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("Struct 'Point' constructor must initialize all fields") &&
             e.Message.Contains("'y'"));
     }
@@ -236,7 +236,7 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("constructor must initialize all fields"));
     }
 
@@ -252,7 +252,7 @@ struct Empty:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("constructor must initialize all fields"));
     }
 
@@ -276,7 +276,7 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e =>
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("Struct 'Point' constructor must initialize all fields") &&
             e.Message.Contains("'y'"));
     }
@@ -297,7 +297,7 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("constructor must initialize all fields"));
     }
 
@@ -320,7 +320,7 @@ struct Vector2:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e =>
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("Struct 'Vector2' constructor must initialize all fields") &&
             e.Message.Contains("'y'"));
     }
@@ -341,7 +341,7 @@ struct Container:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("constructor must initialize all fields"));
     }
 
@@ -363,7 +363,7 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("constructor must initialize all fields"));
     }
 
@@ -443,7 +443,7 @@ struct Point:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -463,7 +463,7 @@ struct Counter:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion

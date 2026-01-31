@@ -122,12 +122,12 @@ public abstract class IntegrationTestBase
             // Integration tests are executable programs, so they're entry points
             typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
 
-            if (typeChecker.Errors.Any())
+            if (typeChecker.Diagnostics.HasErrors)
             {
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = typeChecker.Errors.Select(e => e.Message).ToList()
+                    CompilationErrors = typeChecker.Diagnostics.GetErrors().Select(e => e.Message).ToList()
                 };
             }
 

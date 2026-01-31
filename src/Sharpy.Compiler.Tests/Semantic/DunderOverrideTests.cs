@@ -42,10 +42,10 @@ class Foo:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle();
-        typeChecker.Errors[0].Message.Should().Contain("__str__");
-        typeChecker.Errors[0].Message.Should().Contain("@override");
-        typeChecker.Errors[0].Message.Should().Contain("System.Object");
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("__str__");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("@override");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("System.Object");
     }
 
     [Fact]
@@ -59,10 +59,10 @@ class Bar:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle();
-        typeChecker.Errors[0].Message.Should().Contain("__eq__");
-        typeChecker.Errors[0].Message.Should().Contain("@override");
-        typeChecker.Errors[0].Message.Should().Contain("System.Object");
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("__eq__");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("@override");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("System.Object");
     }
 
     [Fact]
@@ -76,10 +76,10 @@ class Baz:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle();
-        typeChecker.Errors[0].Message.Should().Contain("__hash__");
-        typeChecker.Errors[0].Message.Should().Contain("@override");
-        typeChecker.Errors[0].Message.Should().Contain("System.Object");
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("__hash__");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("@override");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("System.Object");
     }
 
     [Fact]
@@ -94,7 +94,7 @@ class FooGood:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -109,7 +109,7 @@ class BarGood:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -124,7 +124,7 @@ class BazGood:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -139,7 +139,7 @@ class MyList:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -154,7 +154,7 @@ class MyClass:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -169,7 +169,7 @@ class MyNum:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -189,10 +189,10 @@ class MultiDunder:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().HaveCount(3);
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("__str__"));
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("__eq__"));
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("__hash__"));
+        typeChecker.Diagnostics.GetErrors().Should().HaveCount(3);
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("__str__"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("__eq__"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("__hash__"));
     }
 
     [Fact]
@@ -206,6 +206,6 @@ def __str__() -> str:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 }

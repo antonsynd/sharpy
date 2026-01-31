@@ -309,14 +309,14 @@ public class Compiler
             metrics.EndPhase();
 
             // Assertion: After successful type checking, warn if unknown types remain
-            WarnIfUnknownTypes(semanticInfo, typeChecker.Errors);
+            WarnIfUnknownTypes(semanticInfo, typeChecker.Diagnostics);
             // Assertion: Type checking should have processed at least some expressions
             Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0,
                 "Type checker should record at least one expression type for non-empty modules");
 
-            if (typeChecker.Errors.Any())
+            if (typeChecker.Diagnostics.HasErrors)
             {
-                diagnostics.AddSemanticErrors(typeChecker.Errors, filePath, CompilerPhase.TypeChecking);
+                diagnostics.Merge(typeChecker.Diagnostics);
                 return new CompilationResult
                 {
                     Success = false,
@@ -497,9 +497,9 @@ public class Compiler
     /// or in cross-module scenarios where imported types may not be fully resolved.
     /// </summary>
     [Conditional("DEBUG")]
-    private void WarnIfUnknownTypes(SemanticInfo semanticInfo, IReadOnlyCollection<SemanticError> errors)
+    private void WarnIfUnknownTypes(SemanticInfo semanticInfo, DiagnosticBag diagnostics)
     {
-        if (errors.Count == 0 && semanticInfo.HasUnknownExpressionTypes())
+        if (!diagnostics.HasErrors && semanticInfo.HasUnknownExpressionTypes())
         {
             _logger.LogWarning(
                 "Unknown expression types remain after type checking (possible cross-module resolution gap)", 0, 0);

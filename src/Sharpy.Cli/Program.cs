@@ -667,11 +667,10 @@ class Program
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
             typeChecker.CheckModule(module, computeCodeGenInfo: true);
 
-            if (typeChecker.Errors.Any())
+            if (typeChecker.Diagnostics.HasErrors)
             {
                 Console.Error.WriteLine("Type checking errors:");
-                var bag = DiagnosticBag.FromSemanticErrors(typeChecker.Errors);
-                foreach (var diag in bag.GetErrors())
+                foreach (var diag in typeChecker.Diagnostics.GetErrors())
                 {
                     Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
                 }

@@ -1,4 +1,4 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -884,9 +884,9 @@ public partial class TypeChecker
 
     private void AddError(string message, int? line = null, int? column = null, string? code = null)
     {
-        if (_errors.Count >= MaxErrors)
+        if (_diagnostics.ErrorCount >= MaxErrors)
         {
-            if (_errors.Count == MaxErrors)
+            if (_diagnostics.ErrorCount == MaxErrors)
             {
                 _logger.LogError("Maximum error count reached, stopping type checking", 0, 0);
             }
@@ -897,9 +897,8 @@ public partial class TypeChecker
             return;
         }
 
-        var error = new SemanticError(message, line, column, code);
-        _errors.Add(error);
-        _logger.LogError(error.Message, line ?? 0, column ?? 0);
+        _diagnostics.AddError(message, line, column, code: code, phase: CompilerPhase.TypeChecking);
+        _logger.LogError(message, line ?? 0, column ?? 0);
     }
 }
 

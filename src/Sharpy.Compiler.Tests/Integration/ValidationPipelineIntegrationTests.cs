@@ -58,7 +58,7 @@ def main() -> int:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 
     [Fact]
@@ -71,8 +71,8 @@ class BadOperator:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.NotEmpty(typeChecker.Errors);
-        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("must have exactly 2 parameters"));
+        Assert.NotEmpty(typeChecker.Diagnostics.GetErrors());
+        Assert.Contains(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("must have exactly 2 parameters"));
     }
 
     [Fact]
@@ -84,8 +84,8 @@ def foo() -> int:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.NotEmpty(typeChecker.Errors);
-        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("must return"));
+        Assert.NotEmpty(typeChecker.Diagnostics.GetErrors());
+        Assert.Contains(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("must return"));
     }
 
     [Fact]
@@ -97,8 +97,8 @@ def foo() -> None:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.NotEmpty(typeChecker.Errors);
-        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("'break' statement outside loop"));
+        Assert.NotEmpty(typeChecker.Diagnostics.GetErrors());
+        Assert.Contains(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("'break' statement outside loop"));
     }
 
     #endregion
@@ -116,7 +116,7 @@ class BadClass:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        var errors = typeChecker.Errors;
+        var errors = typeChecker.Diagnostics.GetErrors();
         // Signature error
         Assert.Contains(errors, e => e.Message.Contains("must have exactly 2 parameters"));
         // Control flow error (break outside loop)
@@ -136,7 +136,7 @@ class Container:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        var errors = typeChecker.Errors;
+        var errors = typeChecker.Diagnostics.GetErrors();
         // Protocol signature errors
         Assert.Contains(errors, e => e.Message.Contains("__len__") && e.Message.Contains("1 parameter"));
         Assert.Contains(errors, e => e.Message.Contains("__contains__") && e.Message.Contains("2 parameters"));
@@ -157,7 +157,7 @@ def foo() -> int:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        var error = typeChecker.Errors.FirstOrDefault(e => e.Message.Contains("must return"));
+        var error = typeChecker.Diagnostics.GetErrors().FirstOrDefault(e => e.Message.Contains("must return"));
         Assert.NotNull(error);
         Assert.True(error.Line.HasValue, "Error should have line number");
         Assert.True(error.Line > 0, "Line number should be positive");
@@ -173,7 +173,7 @@ class Bad:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        var error = typeChecker.Errors.FirstOrDefault(e => e.Message.Contains("must have exactly 1 parameter"));
+        var error = typeChecker.Diagnostics.GetErrors().FirstOrDefault(e => e.Message.Contains("must have exactly 1 parameter"));
         Assert.NotNull(error);
         Assert.True(error.Line.HasValue, "Error should have line number");
         Assert.Equal(3, error.Line.Value);  // __neg__ is on line 3
@@ -197,8 +197,8 @@ class BadOperators:
         var (_, typeChecker) = CompileAndCheck(code);
 
         // Should have errors for both operators
-        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("__add__") && e.Message.Contains("2 parameters"));
-        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("__neg__") && e.Message.Contains("1 parameter"));
+        Assert.Contains(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("__add__") && e.Message.Contains("2 parameters"));
+        Assert.Contains(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("__neg__") && e.Message.Contains("1 parameter"));
     }
 
     [Fact]
@@ -217,7 +217,7 @@ struct Vector:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 
     [Fact]
@@ -232,7 +232,7 @@ struct BadVector:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("must have exactly 2 parameters"));
+        Assert.Contains(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("must have exactly 2 parameters"));
     }
 
     #endregion
@@ -275,7 +275,7 @@ class Container:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 
     [Fact]
@@ -307,7 +307,7 @@ class Number:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 
     #endregion
@@ -325,7 +325,7 @@ def foo() -> int:
 
         // Should have exactly one "must return" error, not duplicates from both
         // legacy validator and V2 validator
-        var returnErrors = typeChecker.Errors
+        var returnErrors = typeChecker.Diagnostics.GetErrors()
             .Where(e => e.Message.Contains("must return"))
             .ToList();
 
@@ -342,7 +342,7 @@ def foo() -> None:
         var (_, typeChecker) = CompileAndCheck(code);
 
         // Should have exactly one "break statement outside loop" error
-        var breakErrors = typeChecker.Errors
+        var breakErrors = typeChecker.Diagnostics.GetErrors()
             .Where(e => e.Message.Contains("break"))
             .ToList();
 
@@ -359,7 +359,7 @@ def foo() -> None:
         var (_, typeChecker) = CompileAndCheck(code);
 
         // Should have type error(s) but no duplicates for same operator error
-        var operatorErrors = typeChecker.Errors
+        var operatorErrors = typeChecker.Diagnostics.GetErrors()
             .Where(e => e.Message.Contains("does not support operator"))
             .GroupBy(e => (e.Line, e.Message))
             .ToList();
@@ -388,11 +388,11 @@ class BadOperator:
         var (_, typeChecker) = CompileAndCheck(code);
 
         // Should have at least 2 errors: signature and control flow
-        Assert.True(typeChecker.Errors.Count >= 2);
+        Assert.True(typeChecker.Diagnostics.GetErrors().Count >= 2);
 
         // Verify both error types are present
-        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("parameter"));
-        Assert.Contains(typeChecker.Errors, e => e.Message.Contains("break"));
+        Assert.Contains(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("parameter"));
+        Assert.Contains(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("break"));
     }
 
     #endregion
@@ -410,7 +410,7 @@ def foo() -> int:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 
     [Fact]
@@ -424,7 +424,7 @@ def foo() -> int:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 
     [Fact]
@@ -438,7 +438,7 @@ def foo() -> None:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 
     [Fact]
@@ -451,7 +451,7 @@ def foo() -> int:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 
     [Fact]
@@ -464,7 +464,7 @@ def foo() -> int:
 ";
         var (_, typeChecker) = CompileAndCheck(code);
 
-        Assert.Empty(typeChecker.Errors);
+        Assert.Empty(typeChecker.Diagnostics.GetErrors());
     }
 
     #endregion

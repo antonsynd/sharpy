@@ -45,7 +45,7 @@ x: int? = Some(42)
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -58,7 +58,7 @@ def get_value() -> int?:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -70,7 +70,7 @@ name: str? = Some(""hello"")
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -82,7 +82,7 @@ x = Some(42)
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Cannot infer type for 'Some()'"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Cannot infer type for 'Some()'"));
     }
 
     [Fact]
@@ -94,7 +94,7 @@ x: str? = Some(42)
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("not compatible"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("not compatible"));
     }
 
     [Fact]
@@ -108,7 +108,7 @@ x: int = Some(42)
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
     }
 
     #endregion
@@ -124,7 +124,7 @@ x: int? = None()
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -137,7 +137,7 @@ def get_nothing() -> int?:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -149,7 +149,7 @@ x = None()
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Cannot infer type for 'None()'"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Cannot infer type for 'None()'"));
     }
 
     [Fact]
@@ -161,7 +161,7 @@ x: int = None()
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("None()") && e.Message.Contains("Optional"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("None()") && e.Message.Contains("Optional"));
     }
 
     [Fact]
@@ -175,7 +175,7 @@ def foo() -> None:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -187,7 +187,7 @@ x: int? = None
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Did you mean 'None()'"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Did you mean 'None()'"));
     }
 
     #endregion
@@ -203,7 +203,7 @@ x: int !str = Ok(42)
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -216,7 +216,7 @@ def parse(s: str) -> int !str:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -228,7 +228,7 @@ x = Ok(42)
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Cannot infer type for 'Ok()'"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Cannot infer type for 'Ok()'"));
     }
 
     #endregion
@@ -244,7 +244,7 @@ x: int !str = Err(""error message"")
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -257,7 +257,7 @@ def parse(s: str) -> int !str:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -269,7 +269,7 @@ x = Err(""error"")
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Cannot infer type for 'Err()'"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Cannot infer type for 'Err()'"));
     }
 
     #endregion
@@ -286,7 +286,7 @@ def foo(x: int? = None()) -> None:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -306,7 +306,7 @@ def main() -> None:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -322,7 +322,7 @@ def main() -> None:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -338,7 +338,7 @@ def main() -> None:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -354,7 +354,7 @@ def main() -> None:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -370,7 +370,7 @@ def main() -> None:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -386,7 +386,7 @@ def main() -> None:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -405,7 +405,7 @@ def maybe_double(x: int) -> int?:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -420,7 +420,7 @@ def parse(s: str) -> int !str:
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion

@@ -1,4 +1,4 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic.Validation;
@@ -16,7 +16,7 @@ public partial class TypeChecker
     private readonly TypeResolver _typeResolver;
 
     private readonly ICompilerLogger _logger;
-    private readonly List<SemanticError> _errors = new();
+    private readonly DiagnosticBag _diagnostics = new();
 
     // Validation pipeline - always enabled (default created if not provided)
     private readonly ValidationPipeline _validationPipeline;
@@ -121,19 +121,9 @@ public partial class TypeChecker
     }
 
     /// <summary>
-    /// Gets all semantic errors from type checking and validation.
+    /// Gets diagnostics from type checking, type resolution, and validation pipeline.
     /// </summary>
-    /// <remarks>
-    /// Errors come from:
-    /// 1. Direct TypeChecker errors (_errors) - includes type mismatch, undefined symbols
-    /// 2. TypeResolver errors (unresolved types) - merged in CheckModule
-    /// 3. V2 validators via ValidationPipeline (control flow, access, operators, protocols) - merged in CheckModule
-    ///
-    /// Legacy validators are still instantiated but their errors are no longer collected here.
-    /// They remain for backward compatibility with code that calls their validation methods directly.
-    /// Error reporting is now handled by V2 validators and direct TypeChecker error reporting.
-    /// </remarks>
-    public IReadOnlyList<SemanticError> Errors => _errors;
+    public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
     /// Type check all statements in a module
@@ -159,40 +149,25 @@ public partial class TypeChecker
 
         // Run pipeline validators (always enabled)
         var context = CreateSemanticContext();
-        context.MergeFromLegacyErrors(_errors);
+        context.Diagnostics.Merge(_diagnostics);
         context.Diagnostics.Merge(_typeResolver.Diagnostics);
 
         _validationPipeline.Validate(module, context);
 
-        // Merge TypeResolver errors into _errors (they are not covered by V2 validators)
-        foreach (var error in _typeResolver.Diagnostics.GetErrors())
-        {
-            bool isDuplicate = _errors.Any(e =>
-                e.Line == error.Line &&
-                (e.Message == error.Message ||
-                 e.Message.EndsWith(": " + error.Message)));
-            if (!isDuplicate)
-            {
-                _errors.Add(new SemanticError(error.Message, error.Line, error.Column, error.Code));
-            }
-        }
+        // Merge TypeResolver diagnostics
+        _diagnostics.Merge(_typeResolver.Diagnostics);
 
-        // Merge pipeline diagnostics back to _errors
-        // Note: SemanticError.Message is formatted with "Semantic error at line X:" prefix,
-        // while CompilerDiagnostic.Message is raw. We need to check if the raw message
-        // is contained in the formatted message for proper deduplication.
+        // Merge pipeline diagnostics back (dedup by line + message)
         foreach (var error in context.Diagnostics.GetErrors())
         {
-            bool isDuplicate = _errors.Any(e =>
+            bool isDuplicate = _diagnostics.GetErrors().Any(e =>
                 e.Line == error.Line &&
                 (e.Message == error.Message ||
-                 e.Message.EndsWith(": " + error.Message) ||
-                 // Handle similar operator error messages (e.g., "with operand" vs "with right operand")
                  (e.Message.Contains("does not support operator") &&
                   error.Message.Contains("does not support operator"))));
             if (!isDuplicate)
             {
-                _errors.Add(new SemanticError(error.Message, error.Line, error.Column));
+                _diagnostics.AddError(error.Message, error.Line, error.Column, error.FilePath, error.Code, error.Phase);
             }
         }
 

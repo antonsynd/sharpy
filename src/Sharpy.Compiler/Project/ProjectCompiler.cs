@@ -572,16 +572,16 @@ public class ProjectCompiler
             typeChecker.CheckModule(unit.Ast, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo, isEntryPoint: isEntryPoint);
             fileMetrics.EndPhase();
 
-            if (typeChecker.Errors.Any())
+            if (typeChecker.Diagnostics.HasErrors)
             {
                 // Add to unit diagnostics
-                foreach (var error in typeChecker.Errors)
+                foreach (var error in typeChecker.Diagnostics.GetErrors())
                 {
                     unit.Diagnostics.AddError(error.Message, error.Line, error.Column, unit.FilePath);
                 }
                 unit.Phase = CompilationPhase.Failed;
 
-                _diagnostics.AddSemanticErrors(typeChecker.Errors, unit.FilePath, CompilerPhase.TypeChecking);
+                _diagnostics.Merge(typeChecker.Diagnostics);
             }
             else
             {

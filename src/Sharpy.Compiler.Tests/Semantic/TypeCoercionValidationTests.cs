@@ -48,11 +48,11 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle();
-        typeChecker.Errors[0].Message.Should().Contain("Cannot cast");
-        typeChecker.Errors[0].Message.Should().Contain("int");
-        typeChecker.Errors[0].Message.Should().Contain("str");
-        typeChecker.Errors[0].Message.Should().Contain("Use str(...)");
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Cannot cast");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("int");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("str");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Use str(...)");
     }
 
     [Fact]
@@ -66,9 +66,9 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle();
-        typeChecker.Errors[0].Message.Should().Contain("Cannot cast");
-        typeChecker.Errors[0].Message.Should().Contain("str");
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Cannot cast");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("str");
     }
 
     [Fact]
@@ -82,9 +82,9 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle();
-        typeChecker.Errors[0].Message.Should().Contain("Cannot cast");
-        typeChecker.Errors[0].Message.Should().Contain("str");
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Cannot cast");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("str");
     }
 
     [Fact]
@@ -98,9 +98,9 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle();
-        typeChecker.Errors[0].Message.Should().Contain("Cannot cast");
-        typeChecker.Errors[0].Message.Should().Contain("str");
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Cannot cast");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("str");
     }
 
     // ========== Valid numeric casts - should NOT produce errors ==========
@@ -116,7 +116,7 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -130,7 +130,7 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -144,7 +144,7 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -158,7 +158,7 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     // ========== Object unboxing - should be valid ==========
@@ -174,7 +174,7 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -188,7 +188,7 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     // ========== Class casting - inheritance relationships ==========
@@ -210,7 +210,7 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -230,7 +230,7 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     // ========== Nullable form - should also validate ==========
@@ -246,9 +246,9 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle();
-        typeChecker.Errors[0].Message.Should().Contain("Cannot cast");
-        typeChecker.Errors[0].Message.Should().Contain("str");
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Cannot cast");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("str");
     }
 
     // ========== str(x) - the correct way - should work ==========
@@ -264,6 +264,6 @@ def test():
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 }

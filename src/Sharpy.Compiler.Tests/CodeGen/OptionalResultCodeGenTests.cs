@@ -44,7 +44,7 @@ public class OptionalResultCodeGenTests
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
         typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: isEntryPoint);
 
-        typeChecker.Errors.Should().BeEmpty("Sharpy source should have no type errors");
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty("Sharpy source should have no type errors");
 
         var context = new CodeGenContext(symbolTable, builtinRegistry)
         {

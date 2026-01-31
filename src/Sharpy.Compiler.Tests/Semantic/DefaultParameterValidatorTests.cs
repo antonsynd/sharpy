@@ -43,7 +43,7 @@ def foo(x: int = 42):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -56,7 +56,7 @@ def foo(x: float = 3.14):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -69,7 +69,7 @@ def foo(name: str = ""default""):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -82,7 +82,7 @@ def foo(flag: bool = True):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -95,7 +95,7 @@ def foo(x: int? = None()):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -108,7 +108,7 @@ def bar(x: str? = None()):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -121,7 +121,7 @@ def foo(x: int = -1):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -134,7 +134,7 @@ def foo(point: tuple[int, int] = (0, 0)):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -147,7 +147,7 @@ def foo(x: int = 1, y: int = 2, z: int = 3):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -160,7 +160,7 @@ def foo(required: str, optional: int = 42):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -177,8 +177,8 @@ def foo(items: list[int] = []):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default"));
     }
 
     [Fact]
@@ -191,8 +191,8 @@ def foo(items: list[int] = [1, 2, 3]):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default"));
     }
 
     [Fact]
@@ -205,8 +205,8 @@ def foo(data: dict[str, int] = {}):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default"));
     }
 
     [Fact]
@@ -219,8 +219,8 @@ def foo(data: dict[str, int] = {""a"": 1}):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default"));
     }
 
     [Fact]
@@ -233,8 +233,8 @@ def foo(items: set[int] = {1, 2, 3}):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default"));
     }
 
     [Fact]
@@ -247,8 +247,8 @@ def foo(items: set[int] = set()):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default"));
     }
 
     [Fact]
@@ -261,8 +261,8 @@ def foo(items: list[int] = list()):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default"));
     }
 
     [Fact]
@@ -275,8 +275,8 @@ def foo(data: dict[str, int] = dict()):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default"));
     }
 
     #endregion
@@ -293,8 +293,8 @@ def foo(x: int = None):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable"));
     }
 
     [Fact]
@@ -307,8 +307,8 @@ def foo(name: str = None):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable"));
     }
 
     [Fact]
@@ -321,8 +321,8 @@ def foo(flag: bool = None):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable"));
     }
 
     [Fact]
@@ -335,8 +335,8 @@ def foo(value: float = None):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable"));
     }
 
     #endregion
@@ -358,7 +358,7 @@ def paint(color: Color = Color.RED):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -377,7 +377,7 @@ class Logger:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -399,7 +399,7 @@ def configure(level: Level = Level.MEDIUM, status: Status = Status.ACTIVE):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -418,7 +418,7 @@ def connect(timeout: float = DEFAULT_TIMEOUT):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -433,7 +433,7 @@ def fetch(retries: int = MAX_RETRIES):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -448,7 +448,7 @@ def greet(name: str = DEFAULT_NAME):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -463,7 +463,7 @@ def run(debug: bool = DEBUG_MODE):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -480,7 +480,7 @@ def connect(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, timeout: float =
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -498,8 +498,8 @@ def foo(x: int = DEFAULT_VALUE):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("compile-time constant"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("compile-time constant"));
     }
 
     [Fact]
@@ -515,8 +515,8 @@ def foo(x: int = get_default()):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("compile-time constant"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("compile-time constant"));
     }
 
     #endregion
@@ -534,7 +534,7 @@ class MyClass:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -548,8 +548,8 @@ class MyClass:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default"));
     }
 
     [Fact]
@@ -563,8 +563,8 @@ class MyClass:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable"));
     }
 
     [Fact]
@@ -578,7 +578,7 @@ class MyClass:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion
@@ -595,7 +595,7 @@ def foo(x: int = (42)):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -608,7 +608,7 @@ def foo(x: int = 1 + 2):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -621,7 +621,7 @@ def foo(x: bool = not False):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -634,7 +634,7 @@ def foo(point: tuple[tuple[int, int], tuple[int, int]] = ((0, 0), (1, 1))):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -647,8 +647,8 @@ def foo(items: list[int] = ([])):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default"));
+        typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default"));
     }
 
     [Fact]
@@ -664,9 +664,9 @@ def foo(a: list[int] = [], b: int = None, c: dict[str, int] = {}):
         // Should have at least 3 errors from DefaultParameterValidator:
         // mutable list, None for non-nullable, mutable dict
         // Plus TypeChecker also adds type mismatch errors
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default") && e.Message.Contains("'a'"));
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable") && e.Message.Contains("'b'"));
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default") && e.Message.Contains("'c'"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default") && e.Message.Contains("'a'"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable") && e.Message.Contains("'b'"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Mutable default") && e.Message.Contains("'c'"));
     }
 
     #endregion

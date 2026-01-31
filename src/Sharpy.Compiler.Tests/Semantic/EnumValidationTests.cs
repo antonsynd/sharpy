@@ -48,7 +48,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().ContainSingle(e =>
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("Enum member 'PENDING' requires an explicit value"));
     }
 
@@ -65,9 +65,9 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().HaveCountGreaterThanOrEqualTo(2);
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Enum member 'PENDING' requires an explicit value"));
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Enum member 'INACTIVE' requires an explicit value"));
+        typeChecker.Diagnostics.GetErrors().Should().HaveCountGreaterThanOrEqualTo(2);
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Enum member 'PENDING' requires an explicit value"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Enum member 'INACTIVE' requires an explicit value"));
     }
 
     [Fact]
@@ -83,7 +83,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("requires an explicit value"));
     }
 
@@ -104,7 +104,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("must be the same type"));
     }
 
@@ -121,7 +121,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("must be the same type"));
     }
 
@@ -137,7 +137,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e =>
             e.Message.Contains("Enum member 'ACTIVE' has type") &&
             e.Message.Contains("but previous members have type") &&
             e.Message.Contains("All enum values must be the same type"));
@@ -154,7 +154,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e =>
             e.Message.Contains("Enum member 'PENDING' has invalid value type") &&
             e.Message.Contains("Enum values must be int or str"));
     }
@@ -170,7 +170,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e =>
             e.Message.Contains("Enum member 'PENDING' has invalid value type") &&
             e.Message.Contains("Enum values must be int or str"));
     }
@@ -188,7 +188,7 @@ enum Status:
 
         // The expression should still be type-checked, but the result should be int
         // So this shouldn't error unless there's an issue with the expression itself
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("has invalid value type"));
     }
 
@@ -205,7 +205,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("has invalid value type"));
     }
 
@@ -227,9 +227,9 @@ enum Status:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Should have at least 2 errors: missing value for PENDING and type mismatch for INACTIVE
-        typeChecker.Errors.Should().HaveCountGreaterThanOrEqualTo(2);
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Enum member 'PENDING' requires an explicit value"));
-        typeChecker.Errors.Should().Contain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().HaveCountGreaterThanOrEqualTo(2);
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Enum member 'PENDING' requires an explicit value"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e =>
             e.Message.Contains("Enum member 'INACTIVE'") &&
             e.Message.Contains("must be the same type"));
     }
@@ -248,7 +248,7 @@ enum Status:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // An enum with at least one valid member should have no errors
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -262,7 +262,7 @@ enum Single:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -276,7 +276,7 @@ enum Single:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -295,7 +295,7 @@ enum StrEnum:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -310,7 +310,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().NotContain(e =>
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
             e.Message.Contains("has invalid value type"));
     }
 
@@ -329,7 +329,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        var error = typeChecker.Errors.Should().ContainSingle(e =>
+        var error = typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("Enum member 'PENDING' requires an explicit value")).Subject;
         error.Message.Should().Contain("All enum members must have explicit constant values");
     }
@@ -346,7 +346,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        var error = typeChecker.Errors.Should().ContainSingle(e =>
+        var error = typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("Enum member 'ACTIVE'")).Subject;
         error.Message.Should().Contain("str");
         error.Message.Should().Contain("int");
@@ -363,7 +363,7 @@ enum Status:
         var (module, symbolTable, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        var error = typeChecker.Errors.Should().ContainSingle(e =>
+        var error = typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("Enum member 'PENDING'")).Subject;
         error.Message.Should().Contain("Enum values must be int or str");
     }
