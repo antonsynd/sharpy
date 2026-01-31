@@ -104,6 +104,7 @@ public class CodeValidator
             _diagnostics.AddError("Class declaration has empty name",
                 location.IsValid ? location.StartLinePosition.Line + 1 : null,
                 location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                code: DiagnosticCodes.CodeGen.EmptyClassName,
                 phase: CompilerPhase.CodeGeneration);
         }
 
@@ -127,6 +128,7 @@ public class CodeValidator
             _diagnostics.AddWarning($"Class {classDecl.Identifier.Text} has duplicate member: {duplicate}",
                 location.IsValid ? location.StartLinePosition.Line + 1 : null,
                 location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                code: DiagnosticCodes.CodeGen.DuplicateMember,
                 phase: CompilerPhase.CodeGeneration);
         }
     }
@@ -140,6 +142,7 @@ public class CodeValidator
             _diagnostics.AddError("Method declaration has empty name",
                 location.IsValid ? location.StartLinePosition.Line + 1 : null,
                 location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                code: DiagnosticCodes.CodeGen.EmptyMethodName,
                 phase: CompilerPhase.CodeGeneration);
         }
 
@@ -151,6 +154,7 @@ public class CodeValidator
             _diagnostics.AddError($"Abstract method {methodDecl.Identifier.Text} cannot have a body",
                 location.IsValid ? location.StartLinePosition.Line + 1 : null,
                 location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                code: DiagnosticCodes.CodeGen.AbstractMethodWithBody,
                 phase: CompilerPhase.CodeGeneration);
         }
 
@@ -168,6 +172,7 @@ public class CodeValidator
                 _diagnostics.AddError($"Non-abstract method {methodDecl.Identifier.Text} must have a body",
                     location.IsValid ? location.StartLinePosition.Line + 1 : null,
                     location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                    code: DiagnosticCodes.CodeGen.NonAbstractMethodWithoutBody,
                     phase: CompilerPhase.CodeGeneration);
             }
         }
@@ -184,6 +189,7 @@ public class CodeValidator
                 _diagnostics.AddWarning($"Variable {variable.Identifier.Text} uses 'var' without initializer",
                     location.IsValid ? location.StartLinePosition.Line + 1 : null,
                     location.IsValid ? location.StartLinePosition.Character + 1 : null,
+                    code: DiagnosticCodes.CodeGen.VarWithoutInitializer,
                     phase: CompilerPhase.CodeGeneration);
             }
         }

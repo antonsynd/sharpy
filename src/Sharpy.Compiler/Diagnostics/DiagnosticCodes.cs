@@ -178,6 +178,12 @@ public static class DiagnosticCodes
     {
         public const string EmitError = "SHP0500";
         public const string UnsupportedFeature = "SHP0501";
+        public const string EmptyClassName = "SHP0502";
+        public const string DuplicateMember = "SHP0503";
+        public const string EmptyMethodName = "SHP0504";
+        public const string AbstractMethodWithBody = "SHP0505";
+        public const string NonAbstractMethodWithoutBody = "SHP0506";
+        public const string VarWithoutInitializer = "SHP0507";
     }
 
     /// <summary>
