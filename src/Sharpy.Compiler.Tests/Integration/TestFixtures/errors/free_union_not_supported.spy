@@ -1,0 +1,5 @@
+def foo(x: int | str) -> str:
+    return str(x)
+
+def main():
+    print(foo(1))

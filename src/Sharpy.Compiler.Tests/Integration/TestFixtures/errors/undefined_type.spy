@@ -1,0 +1,5 @@
+def foo(x: Nonexistent) -> str:
+    return "hello"
+
+def main():
+    print(foo(1))
