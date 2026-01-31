@@ -1,5 +1,5 @@
-using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -49,7 +49,7 @@ public abstract class SemanticValidatorBase : ISemanticValidator
     /// </summary>
     protected void AddError(SemanticContext context, string message, int? line = null, int? column = null, string? code = null)
     {
-        context.Diagnostics.AddError(message, line, column, context.CurrentFilePath, code: code);
+        context.Diagnostics.AddError(message, line, column, context.CurrentFilePath, code: code, phase: CompilerPhase.Validation);
     }
 
     /// <summary>
@@ -57,6 +57,6 @@ public abstract class SemanticValidatorBase : ISemanticValidator
     /// </summary>
     protected void AddWarning(SemanticContext context, string message, int? line = null, int? column = null, string? code = null)
     {
-        context.Diagnostics.AddWarning(message, line, column, context.CurrentFilePath, code: code);
+        context.Diagnostics.AddWarning(message, line, column, context.CurrentFilePath, code: code, phase: CompilerPhase.Validation);
     }
 }
