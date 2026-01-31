@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // ParserError is obsolete
 using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
@@ -27,7 +26,7 @@ public partial class Parser
             // Must be followed by 'None'
             if (Current.Type != TokenType.None)
             {
-                throw new ParserError(
+                throw ReportError(
                     "Only '| None' is allowed for nullable types. " +
                     "Free unions like 'int | str' are not supported. " +
                     "Use 'union' declarations for custom sum types.",
@@ -225,7 +224,7 @@ public partial class Parser
         // Check for empty brackets - error case
         if (Current.Type == TokenType.RightBracket)
         {
-            throw new ParserError("List type shorthand requires an element type: [T]", Current.Line, Current.Column, DiagnosticCodes.Parser.EmptyListShorthand);
+            throw ReportError("List type shorthand requires an element type: [T]", Current.Line, Current.Column, DiagnosticCodes.Parser.EmptyListShorthand);
         }
 
         var elementType = ParseTypeAnnotation();
@@ -259,7 +258,7 @@ public partial class Parser
         // Check for empty braces - error case
         if (Current.Type == TokenType.RightBrace)
         {
-            throw new ParserError("Set/dict type shorthand requires type arguments: {T} for set or {K: V} for dict", Current.Line, Current.Column, DiagnosticCodes.Parser.EmptySetDictShorthand);
+            throw ReportError("Set/dict type shorthand requires type arguments: {T} for set or {K: V} for dict", Current.Line, Current.Column, DiagnosticCodes.Parser.EmptySetDictShorthand);
         }
 
         var firstType = ParseTypeAnnotation();
@@ -428,14 +427,14 @@ public partial class Parser
     private void Expect(TokenType type)
     {
         if (Current.Type != type)
-            throw new ParserError($"Expected {type}, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedToken);
+            throw ReportError($"Expected {type}, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedToken);
         Advance();
     }
 
     private string ExpectIdentifier()
     {
         if (Current.Type != TokenType.Identifier)
-            throw new ParserError($"Expected identifier, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedIdentifier);
+            throw ReportError($"Expected identifier, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedIdentifier);
         var value = Current.Value;
         Advance();
         return value;
@@ -453,7 +452,7 @@ public partial class Parser
             Advance();
             return value;
         }
-        throw new ParserError($"Expected identifier, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedIdentifier);
+        throw ReportError($"Expected identifier, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedIdentifier);
     }
 
     /// <summary>
@@ -498,7 +497,7 @@ public partial class Parser
         if (Current.Type == TokenType.Newline)
             Advance();
         else if (!IsAtEnd)
-            throw new ParserError($"Expected newline, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedNewline);
+            throw ReportError($"Expected newline, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedNewline);
     }
 
     private void ExpectStatementEnd()
@@ -510,7 +509,7 @@ public partial class Parser
         if (Current.Type == TokenType.Newline)
             Advance();
         else if (Current.Type != TokenType.Dedent && !IsAtEnd)
-            throw new ParserError($"Expected end of statement, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedEndOfStatement);
+            throw ReportError($"Expected end of statement, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedEndOfStatement);
     }
 
     private void SkipNewlines()
@@ -574,7 +573,7 @@ public partial class Parser
             }
             else
             {
-                throw new ParserError($"Unexpected token in f-string: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken);
+                throw ReportError($"Unexpected token in f-string: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken);
             }
         }
 

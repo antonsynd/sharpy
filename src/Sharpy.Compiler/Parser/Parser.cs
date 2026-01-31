@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // ParserError is obsolete
 using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
@@ -14,6 +13,22 @@ namespace Sharpy.Compiler.Parser;
 /// </summary>
 public partial class Parser
 {
+    /// <summary>
+    /// Lightweight sentinel exception for unwinding the parser call stack.
+    /// The diagnostic is recorded into DiagnosticBag before this is thrown.
+    /// </summary>
+    private class ParserAbortException : Exception { }
+
+    /// <summary>
+    /// Record a parser error into diagnostics and return an exception for stack unwinding.
+    /// Usage: <c>throw ReportError("msg", line, col, code);</c>
+    /// </summary>
+    private ParserAbortException ReportError(string message, int line, int column, string code)
+    {
+        _diagnostics.AddError(message, line, column, code: code, phase: CompilerPhase.Parser);
+        return new ParserAbortException();
+    }
+
     private readonly List<Token> _tokens;
     private int _position;
     private readonly ICompilerLogger _logger;
@@ -81,16 +96,9 @@ public partial class Parser
                 var stmt = ParseStatement();
                 statements.Add(stmt);
             }
-            catch (ParserError ex)
+            catch (ParserAbortException)
             {
-                var rawMessage = ex.Message;
-                var colonIndex = rawMessage.IndexOf(": ", StringComparison.Ordinal);
-                if (colonIndex >= 0 && rawMessage.StartsWith("Parser error", StringComparison.Ordinal))
-                    rawMessage = rawMessage[(colonIndex + 2)..];
-
-                _diagnostics.AddError(rawMessage, ex.Line, ex.Column,
-                    code: ex.Code,
-                    phase: CompilerPhase.Parser);
+                // Error already recorded in _diagnostics by ReportError()
 
                 // Stop after MaxErrors to avoid cascading false errors
                 if (_diagnostics.ErrorCount >= MaxErrors)
@@ -213,7 +221,7 @@ public partial class Parser
             var decoratorStartToken = Current;
             Advance();  // Skip @
             if (Current.Type != TokenType.Identifier)
-                throw new ParserError("Expected decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName);
+                throw ReportError("Expected decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName);
 
             var decoratorName = Current.Value;
             Advance();
@@ -239,7 +247,7 @@ public partial class Parser
             TokenType.Def => ParseFunctionDef(),
             TokenType.Class => ParseClassDef(),
             TokenType.Struct => ParseStructDef(),
-            _ => throw new ParserError("Decorators can only be applied to functions, classes, or structs", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget)
+            _ => throw ReportError("Decorators can only be applied to functions, classes, or structs", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget)
         };
 
         // Attach decorators
@@ -248,7 +256,7 @@ public partial class Parser
             FunctionDef func => func with { Decorators = decorators.ToImmutableArray() },
             ClassDef cls => cls with { Decorators = decorators.ToImmutableArray() },
             StructDef str => str with { Decorators = decorators.ToImmutableArray() },
-            _ => throw new ParserError("Unexpected decorated statement type", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken)
+            _ => throw ReportError("Unexpected decorated statement type", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken)
         };
     }
 

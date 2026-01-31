@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // ParserError is obsolete
 using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
@@ -69,7 +68,7 @@ public partial class Parser
             }
 
             // If not an assignment, this is an error (tuple expression statements not allowed)
-            throw new ParserError("Tuple expression not allowed as a statement", Current.Line, Current.Column, DiagnosticCodes.Parser.TupleAsStatement);
+            throw ReportError("Tuple expression not allowed as a statement", Current.Line, Current.Column, DiagnosticCodes.Parser.TupleAsStatement);
         }
 
         // Check for assignment operators
@@ -97,7 +96,7 @@ public partial class Parser
         if (Current.Type == TokenType.Colon)
         {
             if (expr is not Identifier id)
-                throw new ParserError("Invalid type annotation target", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidTypeAnnotationTarget);
+                throw ReportError("Invalid type annotation target", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidTypeAnnotationTarget);
 
             Advance();  // Skip :
             var type = ParseTypeAnnotation();
@@ -156,7 +155,7 @@ public partial class Parser
         TokenType.LeftShiftAssign => AssignmentOperator.LeftShiftAssign,
         TokenType.RightShiftAssign => AssignmentOperator.RightShiftAssign,
         TokenType.NullCoalesceAssign => AssignmentOperator.NullCoalesceAssign,
-        _ => throw new ParserError($"Not an assignment operator: {type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken)
+        _ => throw ReportError($"Not an assignment operator: {type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken)
     };
 
     private FunctionDef ParseFunctionDef()
@@ -687,7 +686,7 @@ public partial class Parser
         // Validate enum has at least one member
         if (members.Count == 0)
         {
-            throw new ParserError($"Enum '{name}' must have at least one member", startLine, startColumn, DiagnosticCodes.Parser.EmptyEnum);
+            throw ReportError($"Enum '{name}' must have at least one member", startLine, startColumn, DiagnosticCodes.Parser.EmptyEnum);
         }
 
         return new EnumDef

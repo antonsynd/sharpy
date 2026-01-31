@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // ParserError is obsolete
 using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
@@ -694,7 +693,7 @@ public partial class Parser
         }
 
         // No dots and no identifier means invalid syntax (e.g., "from import x")
-        throw new ParserError("Expected module name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedModuleName);
+        throw ReportError("Expected module name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedModuleName);
     }
 
     private List<Statement> ParseBlock()
@@ -733,7 +732,7 @@ public partial class Parser
             if (Current.Type == TokenType.Star)
             {
                 if (hasVariadic)
-                    throw new ParserError("Only one variadic parameter (*args) is allowed per function", Current.Line, Current.Column, DiagnosticCodes.Parser.MultipleVariadic);
+                    throw ReportError("Only one variadic parameter (*args) is allowed per function", Current.Line, Current.Column, DiagnosticCodes.Parser.MultipleVariadic);
                 isVariadic = true;
                 hasVariadic = true;
                 Advance();  // Skip *
@@ -752,7 +751,7 @@ public partial class Parser
             if (Current.Type == TokenType.Assign)
             {
                 if (isVariadic)
-                    throw new ParserError("Variadic parameter (*args) cannot have a default value", Current.Line, Current.Column, DiagnosticCodes.Parser.VariadicWithDefault);
+                    throw ReportError("Variadic parameter (*args) cannot have a default value", Current.Line, Current.Column, DiagnosticCodes.Parser.VariadicWithDefault);
                 Advance();
                 defaultValue = ParseExpression();
             }
@@ -777,7 +776,7 @@ public partial class Parser
             if (Current.Type == TokenType.Comma)
             {
                 if (isVariadic)
-                    throw new ParserError("Variadic parameter (*args) must be the last parameter", Current.Line, Current.Column, DiagnosticCodes.Parser.VariadicNotLast);
+                    throw ReportError("Variadic parameter (*args) must be the last parameter", Current.Line, Current.Column, DiagnosticCodes.Parser.VariadicNotLast);
                 Advance();
                 // Allow trailing comma: def foo(a, b, c,):
                 if (Current.Type == TokenType.RightParen)
