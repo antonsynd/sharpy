@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Tests.Model;
 using Xunit;
@@ -60,8 +61,8 @@ def main() -> None:
 
         var result = CompileMultiFile(tempDir.Path, "main.spy");
 
-        Assert.Empty(result.Errors);
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         // Dog should inherit from Animal (may use fully qualified name like Sharpy.Test.Base.Exports.Animal)
         var derivedCode = result.GeneratedCSharp["derived.cs"];
         Assert.Contains("class Dog :", derivedCode);
@@ -102,8 +103,8 @@ def main() -> None:
 
         var result = CompileMultiFile(tempDir.Path, "main.spy");
 
-        Assert.Empty(result.Errors);
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         // Circle should implement IDrawable (may use fully qualified name)
         var circleCode = result.GeneratedCSharp["circle.cs"];
         Assert.Contains("class Circle :", circleCode);
@@ -149,8 +150,8 @@ def main() -> None:
 
         var result = CompileMultiFile(tempDir.Path, "main.spy");
 
-        Assert.Empty(result.Errors);
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -193,8 +194,8 @@ def main() -> None:
 
         var result = CompileMultiFile(tempDir.Path, "main.spy");
 
-        Assert.Empty(result.Errors);
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         // Check that Widget implements both interfaces (order may vary)
         var widgetCode = result.GeneratedCSharp["widget.cs"];
         Assert.Contains("IDrawable", widgetCode);
@@ -241,8 +242,8 @@ def main() -> None:
 
         var result = CompileMultiFile(tempDir.Path, "main.spy");
 
-        Assert.Empty(result.Errors);
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -283,8 +284,8 @@ def main() -> None:
 
         var result = CompileMultiFile(tempDir.Path, "main.spy");
 
-        Assert.Empty(result.Errors);
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -359,8 +360,8 @@ def main() -> None:
 
         var result = CompileMultiFile(tempDir.Path, "main.spy");
 
-        Assert.Empty(result.Errors);
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -399,8 +400,8 @@ def main() -> None:
 
         var result = CompileMultiFile(tempDir.Path, "main.spy");
 
-        Assert.Empty(result.Errors);
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     /// <summary>
@@ -436,7 +437,7 @@ def main() -> None:
         return new MultiFileCompilationResult
         {
             Success = result.Success,
-            Errors = result.Errors,
+            Diagnostics = result.Diagnostics,
             GeneratedCSharp = generatedCSharp
         };
     }
@@ -448,7 +449,7 @@ def main() -> None:
 public class MultiFileCompilationResult
 {
     public bool Success { get; set; }
-    public List<string> Errors { get; set; } = new();
+    public DiagnosticBag Diagnostics { get; set; } = new();
     public Dictionary<string, string> GeneratedCSharp { get; set; } = new();
 }
 

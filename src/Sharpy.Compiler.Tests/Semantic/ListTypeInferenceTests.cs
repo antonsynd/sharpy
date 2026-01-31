@@ -1,3 +1,4 @@
+using System.Linq;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Logging;
 using Xunit;
@@ -66,8 +67,8 @@ def main() -> None:
         var result = compiler.Compile(config);
 
         // Assert
-        _output.WriteLine($"Errors: {string.Join(", ", result.Errors)}");
-        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+        _output.WriteLine($"Errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -100,8 +101,8 @@ def main() -> None:
         var result = compiler.Compile(config);
 
         // Assert
-        _output.WriteLine($"Errors: {string.Join(", ", result.Errors)}");
-        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+        _output.WriteLine($"Errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -143,8 +144,8 @@ def main() -> None:
         var result = compiler.Compile(config);
 
         // Assert
-        _output.WriteLine($"Errors: {string.Join(", ", result.Errors)}");
-        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+        _output.WriteLine($"Errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -180,8 +181,8 @@ def main() -> None:
         var result = compiler.Compile(config);
 
         // Assert
-        _output.WriteLine($"Errors: {string.Join(", ", result.Errors)}");
-        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+        _output.WriteLine($"Errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -213,8 +214,8 @@ def main() -> None:
         var result = compiler.Compile(config);
 
         // Assert
-        _output.WriteLine($"Errors: {string.Join(", ", result.Errors)}");
-        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+        _output.WriteLine($"Errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -253,8 +254,8 @@ def main() -> None:
         var result = compiler.Compile(config);
 
         // Assert
-        _output.WriteLine($"Errors: {string.Join(", ", result.Errors)}");
-        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+        _output.WriteLine($"Errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -293,7 +294,7 @@ def main() -> None:
         var result = compiler.Compile(config);
 
         // Assert
-        _output.WriteLine($"Errors: {string.Join(", ", result.Errors)}");
-        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+        _output.WriteLine($"Errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 }

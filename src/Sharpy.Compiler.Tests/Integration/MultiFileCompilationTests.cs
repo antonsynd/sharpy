@@ -1,3 +1,4 @@
+using System.Linq;
 using Sharpy.Compiler;
 using Xunit;
 
@@ -48,7 +49,7 @@ def greet(name: str) -> str:
         var result = compiler.Compile(File.ReadAllText(mainPath), mainPath);
 
         // Assert
-        Assert.True(result.Success, string.Join(", ", result.Errors));
+        Assert.True(result.Success, string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message)));
         Assert.True(result.GeneratedCSharpFiles.Count >= 2,
             $"Expected at least 2 files, got {result.GeneratedCSharpFiles.Count}");
         Assert.Contains(result.GeneratedCSharpFiles.Keys,
@@ -74,7 +75,7 @@ def main():
         var result = compiler.Compile(File.ReadAllText(mainPath), mainPath);
 
         // Assert
-        Assert.True(result.Success, string.Join(", ", result.Errors));
+        Assert.True(result.Success, string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message)));
         Assert.Single(result.GeneratedCSharpFiles);
         Assert.Contains(result.GeneratedCSharpFiles.Keys,
             k => k.Contains("single", StringComparison.OrdinalIgnoreCase));
@@ -114,7 +115,7 @@ def greet(name: str) -> str:
         var result = compiler.Compile(File.ReadAllText(mainPath), mainPath);
 
         // Assert
-        Assert.True(result.Success, string.Join(", ", result.Errors));
+        Assert.True(result.Success, string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message)));
         Assert.True(result.GeneratedCSharpFiles.Count >= 3,
             $"Expected at least 3 files, got {result.GeneratedCSharpFiles.Count}");
     }
@@ -144,7 +145,7 @@ def add(a: int, b: int) -> int:
         var result = compiler.Compile(File.ReadAllText(mainPath), mainPath);
 
         // Assert
-        Assert.True(result.Success, string.Join(", ", result.Errors));
+        Assert.True(result.Success, string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message)));
 
         // Find the helper's generated C#
         var helperCsEntry = result.GeneratedCSharpFiles.FirstOrDefault(
@@ -181,7 +182,7 @@ def add(a: int, b: int) -> int:
         var result = compiler.Compile(File.ReadAllText(mainPath), mainPath);
 
         // Assert
-        Assert.True(result.Success, string.Join(", ", result.Errors));
+        Assert.True(result.Success, string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message)));
 
         // Find the main file's generated C#
         var mainCsEntry = result.GeneratedCSharpFiles.FirstOrDefault(
@@ -227,7 +228,7 @@ def greet(name: str) -> str:
         var result = compiler.Compile(File.ReadAllText(mainPath), mainPath);
 
         // Assert
-        Assert.True(result.Success, string.Join(", ", result.Errors));
+        Assert.True(result.Success, string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message)));
 
         // All three files should be compiled
         Assert.True(result.GeneratedCSharpFiles.Count >= 3,
@@ -270,7 +271,7 @@ def func_b() -> str:
 
         // Assert
         Assert.False(result.Success, "Compilation should fail for circular imports");
-        Assert.NotEmpty(result.Errors);
-        Assert.Contains(result.Errors, e => e.Contains("Circular import", StringComparison.OrdinalIgnoreCase));
+        Assert.True(result.Diagnostics.HasErrors);
+        Assert.Contains(result.Diagnostics.GetErrors(), d => d.Message.Contains("Circular import", StringComparison.OrdinalIgnoreCase));
     }
 }

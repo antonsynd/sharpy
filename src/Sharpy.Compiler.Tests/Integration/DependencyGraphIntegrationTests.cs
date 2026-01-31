@@ -48,7 +48,7 @@ def main() -> None:
         var result = CompileProject(tempDir.Path, "main.spy");
 
         // Verify compilation succeeded
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
 
         // Verify graph structure
         Assert.NotNull(result.DependencyGraph);
@@ -105,9 +105,9 @@ def main() -> None:
 
         // Should have circular dependency error
         Assert.False(result.Success);
-        Assert.Contains(result.Errors, e =>
-            e.Contains("circular", StringComparison.OrdinalIgnoreCase) ||
-            e.Contains("Circular", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Diagnostics.GetErrors(), d =>
+            d.Message.Contains("circular", StringComparison.OrdinalIgnoreCase) ||
+            d.Message.Contains("Circular", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -140,7 +140,7 @@ def main():
 
         var result = CompileProject(tempDir.Path, "main.spy");
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         Assert.NotNull(result.DependencyGraph);
 
         var groups = result.DependencyGraph.GetParallelizableGroups();
@@ -190,7 +190,7 @@ def main() -> None:
 
         var result = CompileProject(tempDir.Path, "main.spy");
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         Assert.NotNull(result.DependencyGraph);
 
         var graph = result.DependencyGraph;
@@ -232,7 +232,7 @@ def main() -> None:
 
         var result = CompileProject(tempDir.Path, "main.spy");
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         Assert.NotNull(result.DependencyGraph);
 
         var groups = result.DependencyGraph.GetParallelizableGroups();

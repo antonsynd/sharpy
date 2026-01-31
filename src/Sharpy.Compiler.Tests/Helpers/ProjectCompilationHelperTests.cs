@@ -32,7 +32,7 @@ def main():
         var result = helper.Compile();
 
         result.Success.Should().BeTrue();
-        result.Errors.Should().BeEmpty();
+        result.Diagnostics.GetErrors().Should().BeEmpty();
         result.OutputAssemblyPath.Should().NotBeNullOrEmpty();
     }
 
@@ -60,7 +60,7 @@ def multiply(a: int, b: int) -> int:
         var result = helper.Compile();
 
         result.Success.Should().BeTrue();
-        result.Errors.Should().BeEmpty();
+        result.Diagnostics.GetErrors().Should().BeEmpty();
         result.GeneratedCSharpFiles.Should().HaveCount(2);
     }
 
@@ -102,7 +102,7 @@ def main():
         var result = helper.Compile();
 
         result.Success.Should().BeFalse();
-        result.Errors.Should().NotBeEmpty();
+        result.Diagnostics.GetErrors().Should().NotBeEmpty();
     }
 
     [Fact]

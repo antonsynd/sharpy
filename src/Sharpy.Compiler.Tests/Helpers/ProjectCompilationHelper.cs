@@ -226,7 +226,7 @@ public class ProjectCompilationHelper : IDisposable
         if (!result.Success)
         {
             _output?.WriteLine("Compilation failed with errors:");
-            foreach (var error in result.Errors)
+            foreach (var error in result.Diagnostics.GetErrors().Select(d => d.Message))
             {
                 _output?.WriteLine($"  {error}");
             }
@@ -251,7 +251,7 @@ public class ProjectCompilationHelper : IDisposable
             return new ExecutionResult
             {
                 Success = false,
-                CompilationErrors = compilationResult.Errors,
+                CompilationErrors = compilationResult.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
                 StandardOutput = string.Empty,
                 StandardError = string.Empty
             };

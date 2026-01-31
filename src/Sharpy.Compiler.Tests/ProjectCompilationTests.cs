@@ -1,3 +1,4 @@
+using System.Linq;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Project;
@@ -194,8 +195,8 @@ def add_numbers(a: int, b: int) -> int:
             var result = compiler.CompileProject(config);
 
             // Assert
-            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
-            Assert.Empty(result.Errors);
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+            Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         }
         finally
         {
@@ -241,8 +242,8 @@ def main():
 
             // Assert
             Assert.False(result.Success);
-            Assert.NotEmpty(result.Errors);
-            Assert.Contains(result.Errors, e => e.Contains("Cannot find module 'nonexistent'"));
+            Assert.True(result.Diagnostics.HasErrors);
+            Assert.Contains(result.Diagnostics.GetErrors(), d => d.Message.Contains("Cannot find module 'nonexistent'"));
         }
         finally
         {
@@ -293,7 +294,7 @@ def helper() -> int:
             var result = compiler.CompileProject(config);
 
             // Assert
-            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
             Assert.NotNull(result.OutputAssemblyPath);
 
             // Check that output was created
@@ -599,8 +600,8 @@ def helper() -> str:
             var result = compiler.CompileProject(config);
 
             // Assert
-            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
-            Assert.Empty(result.Errors);
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+            Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
             Assert.NotNull(result.OutputAssemblyPath);
         }
         finally
@@ -639,7 +640,7 @@ def main():
             var result = compiler.CompileProject(config);
 
             // Assert
-            Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+            Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
             Assert.NotNull(result.DependencyGraph);
             Assert.Single(result.DependencyGraph.AllFiles);
         }
@@ -688,7 +689,7 @@ def main():
             var result = compiler.CompileProject(config);
 
             // Assert
-            Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+            Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
             Assert.NotNull(result.DependencyGraph);
 
             // Verify main depends on utils
@@ -748,7 +749,7 @@ def b_func() -> int:
 
             // Assert
             Assert.False(result.Success);
-            Assert.Contains(result.Errors, e => e.Contains("Circular dependency"));
+            Assert.Contains(result.Diagnostics.GetErrors(), d => d.Message.Contains("Circular dependency"));
         }
         finally
         {
@@ -805,10 +806,10 @@ def c_func():
 
             // Assert
             Assert.False(result.Success);
-            Assert.Contains(result.Errors, e => e.Contains("Circular dependency"));
+            Assert.Contains(result.Diagnostics.GetErrors(), d => d.Message.Contains("Circular dependency"));
             // The error should show the cycle chain with file names
-            Assert.Contains(result.Errors, e =>
-                e.Contains("a.spy") && e.Contains("b.spy") && e.Contains("c.spy"));
+            Assert.Contains(result.Diagnostics.GetErrors(), d =>
+                d.Message.Contains("a.spy") && d.Message.Contains("b.spy") && d.Message.Contains("c.spy"));
         }
         finally
         {
@@ -862,7 +863,7 @@ def main():
             var result = compiler.CompileProject(config);
 
             // Assert
-            Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+            Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
             Assert.NotNull(result.DependencyGraph);
 
             // Verify build order: base -> utils -> main
@@ -962,8 +963,8 @@ def main():
             var result = compiler.CompileProject(config);
 
             // Assert
-            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
-            Assert.Empty(result.Errors);
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+            Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         }
         finally
         {
@@ -1040,8 +1041,8 @@ def main():
             var result = compiler.CompileProject(config);
 
             // Assert
-            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
-            Assert.Empty(result.Errors);
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+            Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         }
         finally
         {
@@ -1117,8 +1118,8 @@ def main():
             var result = compiler.CompileProject(config);
 
             // Assert
-            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
-            Assert.Empty(result.Errors);
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+            Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         }
         finally
         {
@@ -1208,8 +1209,8 @@ def main():
             var result = compiler.CompileProject(config);
 
             // Assert
-            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
-            Assert.Empty(result.Errors);
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
+            Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         }
         finally
         {
@@ -1294,7 +1295,7 @@ def main():
 
             // Build error message with generated C# if compilation failed
             var errorDetails = new System.Text.StringBuilder();
-            errorDetails.AppendLine($"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+            errorDetails.AppendLine($"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
             if (result.GeneratedCSharpFiles != null)
             {
                 foreach (var (fileName, content) in result.GeneratedCSharpFiles)
@@ -1305,7 +1306,7 @@ def main():
 
             // Assert
             Assert.True(result.Success, errorDetails.ToString());
-            Assert.Empty(result.Errors);
+            Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         }
         finally
         {

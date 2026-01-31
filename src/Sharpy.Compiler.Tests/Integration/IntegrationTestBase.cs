@@ -152,7 +152,7 @@ public abstract class IntegrationTestBase
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = codeGenContext.Errors.ToList(),
+                    CompilationErrors = codeGenContext.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
                     GeneratedCSharp = generatedCSharp
                 };
             }
@@ -498,7 +498,7 @@ public abstract class IntegrationTestBase
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = result.Errors,
+                    CompilationErrors = result.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
                     GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
                 };
             }

@@ -92,7 +92,7 @@ def main():
         var result = compiler.Compile(source, "test.spy");
 
         // Assert
-        Assert.True(result.Success, string.Join("; ", result.Errors));
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
         Assert.NotNull(result.GeneratedCSharpCode);
         Assert.Contains("public static int Add", result.GeneratedCSharpCode);
     }

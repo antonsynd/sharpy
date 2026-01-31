@@ -1,3 +1,4 @@
+using System.Linq;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Logging;
 using Xunit;
@@ -21,8 +22,8 @@ def main():
         var compiler = new Compiler();
         var result = compiler.Compile(code, "test.spy");
 
-        Assert.True(result.Success, string.Join("; ", result.Errors));
-        Assert.Empty(result.Errors);
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         Assert.NotNull(result.Module);
     }
 
@@ -41,8 +42,8 @@ def main():
         var compiler = new Compiler(options);
         var result = compiler.Compile(code, "test.spy");
 
-        Assert.True(result.Success, string.Join("; ", result.Errors));
-        Assert.Empty(result.Errors);
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         Assert.NotNull(result.ModuleRegistry);
         Assert.Contains("builtins", result.ModuleRegistry.GetLoadedModules());
     }
@@ -72,8 +73,8 @@ def main():
         var compiler = new Compiler(options);
         var result = compiler.Compile(code, "test.spy");
 
-        Assert.True(result.Success, string.Join("; ", result.Errors));
-        Assert.Empty(result.Errors);
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         Assert.NotNull(result.ModuleRegistry);
         Assert.Contains("samplemodule", result.ModuleRegistry.GetLoadedModules());
 
@@ -103,8 +104,8 @@ def main():
         var result = compiler.Compile(code, "test.spy");
 
         Assert.False(result.Success);
-        Assert.NotEmpty(result.Errors);
-        Assert.Contains(result.Errors, e => e.Contains("NonExistent.dll"));
+        Assert.True(result.Diagnostics.HasErrors);
+        Assert.Contains(result.Diagnostics.GetErrors(), d => d.Message.Contains("NonExistent.dll"));
     }
 
     [Fact]
@@ -123,8 +124,8 @@ def main():
         var compiler = new Compiler(options);
         var result = compiler.Compile(code, "test.spy");
 
-        Assert.True(result.Success, string.Join("; ", result.Errors));
-        Assert.Empty(result.Errors);
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -150,8 +151,8 @@ def main():
         var compiler = new Compiler(options);
         var result = compiler.Compile(code, "test.spy");
 
-        Assert.True(result.Success, string.Join("; ", result.Errors));
-        Assert.Empty(result.Errors);
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+        Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         Assert.NotNull(result.ModuleRegistry);
         Assert.Contains("builtins", result.ModuleRegistry.GetLoadedModules());
 
@@ -179,7 +180,7 @@ def main():
         var compiler = new Compiler(options, logger);
         var result = compiler.Compile(code, "test.spy");
 
-        Assert.True(result.Success, string.Join("; ", result.Errors));
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
 
         var log = logOutput.ToString();
         Assert.Contains("Loaded module reference", log);

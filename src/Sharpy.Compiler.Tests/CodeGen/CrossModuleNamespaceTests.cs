@@ -63,7 +63,7 @@ def main() -> None:
         var result = compiler.Compile(config);
 
         // Assert
-        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
 
         // Check generated C# for main.spy
         Assert.NotNull(result.GeneratedCSharpFiles);
@@ -132,9 +132,9 @@ def main() -> None:
                 _output.WriteLine(value);
             }
         }
-        _output.WriteLine($"Errors: {string.Join(", ", result.Errors)}");
+        _output.WriteLine($"Errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
 
-        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
 
         // Check generated C# for main.spy
         Assert.NotNull(result.GeneratedCSharpFiles);
@@ -197,9 +197,9 @@ def main() -> None:
                 _output.WriteLine(value);
             }
         }
-        _output.WriteLine($"Errors: {string.Join(", ", result.Errors)}");
+        _output.WriteLine($"Errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
 
-        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
 
         // Check generated C# for main.spy
         Assert.NotNull(result.GeneratedCSharpFiles);

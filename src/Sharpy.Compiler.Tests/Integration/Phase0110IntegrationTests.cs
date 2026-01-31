@@ -1,3 +1,4 @@
+using System.Linq;
 using Xunit;
 using Xunit.Abstractions;
 using Sharpy.Compiler.Tests.Helpers;
@@ -57,7 +58,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -80,7 +81,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -110,7 +111,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -134,7 +135,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -168,7 +169,7 @@ def main():
 
         // Should fail with circular import error
         Assert.False(result.Success, "Expected compilation to fail due to circular import");
-        Assert.Contains(result.Errors, e => e.Contains("circular") || e.Contains("Circular"));
+        Assert.Contains(result.Diagnostics.GetErrors(), d => d.Message.Contains("circular") || d.Message.Contains("Circular"));
     }
 
     [Fact]
@@ -187,7 +188,7 @@ def main():
         var result = helper.Compile();
 
         Assert.False(result.Success, "Expected compilation to fail due to module not found");
-        Assert.Contains(result.Errors, e => e.Contains("not found", StringComparison.OrdinalIgnoreCase) || e.Contains("cannot find", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Diagnostics.GetErrors(), d => d.Message.Contains("not found", StringComparison.OrdinalIgnoreCase) || d.Message.Contains("cannot find", StringComparison.OrdinalIgnoreCase));
     }
 
     #endregion
@@ -215,7 +216,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -249,7 +250,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -273,7 +274,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -300,7 +301,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -324,7 +325,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -347,7 +348,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     #endregion
@@ -371,7 +372,7 @@ def main():
         helper.CreateProjectFile();
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -390,7 +391,7 @@ def library_function() -> int:
         helper.CreateProjectFile();
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -422,7 +423,7 @@ def main():
         helper.CreateProjectFile();
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -441,7 +442,7 @@ def main():
         helper.CreateProjectFile();
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     #endregion
@@ -468,7 +469,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -498,7 +499,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -536,7 +537,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -592,7 +593,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -619,7 +620,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -691,7 +692,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -721,7 +722,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -749,7 +750,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -787,7 +788,7 @@ def main():
         helper.CreateProjectFile();
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -821,7 +822,7 @@ def main():
         helper.CreateProjectFile();
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -849,7 +850,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     #endregion
@@ -872,7 +873,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -895,7 +896,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact(Skip = "Requires package namespace isolation - symbols from different packages currently share the same global scope")]
@@ -927,7 +928,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -952,7 +953,7 @@ def main():
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     #endregion
@@ -985,7 +986,7 @@ def main() -> int:
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     [Fact]
@@ -1008,7 +1009,7 @@ def main() -> int:
         helper.WithEntryPoint("main.spy");
         var result = helper.Compile();
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
     }
 
     #endregion
