@@ -1,0 +1,6 @@
+class Foo:
+    def __str__(self) -> str:
+        return "Foo"
+
+def main():
+    f: Foo = Foo()
