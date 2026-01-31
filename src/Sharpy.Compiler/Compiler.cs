@@ -282,6 +282,9 @@ public class Compiler
             var inheritanceResolver = new InheritanceResolver(symbolTable, _logger, semanticBinding);
             inheritanceResolver.ResolveAll(importResolver);
 
+            // Assertion: SemanticBinding must be consistent with Symbol properties after inheritance resolution
+            AssertInheritanceDualWriteConsistency(symbolTable, semanticBinding);
+
             metrics.EndPhase();
 
             if (importResolver.Diagnostics.HasErrors)
@@ -496,6 +499,29 @@ public class Compiler
         {
             _logger.LogWarning(
                 "Unknown expression types remain after type checking (possible cross-module resolution gap)", 0, 0);
+        }
+    }
+
+    /// <summary>
+    /// Verify that SemanticBinding BaseType entries are consistent with Symbol.BaseType.
+    /// This catches dual-write bugs where one path sets the symbol but not SemanticBinding.
+    /// Only checks types resolved by NameResolver and InheritanceResolver (not CLR types from ModuleRegistry).
+    /// </summary>
+    [Conditional("DEBUG")]
+    private static void AssertInheritanceDualWriteConsistency(SymbolTable symbolTable, SemanticBinding semanticBinding)
+    {
+        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        {
+            // Skip CLR types (from ModuleRegistry) - they don't go through the dual-write path
+            if (symbol.ClrType != null)
+                continue;
+
+            if (symbol.BaseType != null)
+            {
+                var bindingBaseType = semanticBinding.GetBaseType(symbol);
+                Debug.Assert(bindingBaseType != null,
+                    $"TypeSymbol '{symbol.Name}' has BaseType '{symbol.BaseType.Name}' but SemanticBinding.GetBaseType() returned null (dual-write inconsistency)");
+            }
         }
     }
 

@@ -26,17 +26,27 @@ namespace Sharpy.Compiler.Semantic;
 /// </remarks>
 public class SemanticBinding
 {
+    // Use ReferenceEqualityComparer for all symbol-keyed dictionaries.
+    // Symbol types are records with mutable properties (BaseType, CodeGenInfo, etc.),
+    // making their value-based GetHashCode/Equals unstable. Reference equality
+    // ensures dictionary lookups remain correct even as symbols are mutated during
+    // semantic analysis.
+
     // Maps symbols to their CodeGenInfo
-    private readonly ConcurrentDictionary<Symbol, CodeGenInfo> _codeGenInfo = new();
+    private readonly ConcurrentDictionary<Symbol, CodeGenInfo> _codeGenInfo =
+        new(ReferenceEqualityComparer.Instance);
 
     // Maps variable symbols to their resolved types
-    private readonly ConcurrentDictionary<VariableSymbol, SemanticType> _variableTypes = new();
+    private readonly ConcurrentDictionary<VariableSymbol, SemanticType> _variableTypes =
+        new(ReferenceEqualityComparer.Instance);
 
     // Maps type symbols to their resolved base types
-    private readonly ConcurrentDictionary<TypeSymbol, TypeSymbol> _baseTypes = new();
+    private readonly ConcurrentDictionary<TypeSymbol, TypeSymbol> _baseTypes =
+        new(ReferenceEqualityComparer.Instance);
 
     // Maps type symbols to their resolved interface lists
-    private readonly ConcurrentDictionary<TypeSymbol, ConcurrentBag<TypeSymbol>> _interfaces = new();
+    private readonly ConcurrentDictionary<TypeSymbol, ConcurrentBag<TypeSymbol>> _interfaces =
+        new(ReferenceEqualityComparer.Instance);
 
     // Maps FromImportStatement nodes to their resolved module paths
     private readonly ConcurrentDictionary<FromImportStatement, string> _resolvedModulePaths = new();
