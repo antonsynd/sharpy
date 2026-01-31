@@ -165,9 +165,14 @@ public partial class TypeChecker
         var existingErrors = _diagnostics.GetErrors();
         var exactErrors = new HashSet<(int?, int?, string)>(
             existingErrors.Select(e => (e.Line, e.Column, e.Message)));
+
+        // Track positions of operator errors by diagnostic code (not message content)
+        // to match near-duplicates where TypeChecker (SHP0222) and OperatorValidatorV2
+        // (SHP0402) report the same operator issue with slightly different wording.
         var operatorErrorPositions = new HashSet<(int?, int?)>(
             existingErrors
-                .Where(e => e.Message.Contains("does not support operator"))
+                .Where(e => e.Code is DiagnosticCodes.Semantic.InvalidBinaryOperation
+                                   or DiagnosticCodes.Validation.UnsupportedOperator)
                 .Select(e => (e.Line, e.Column)));
 
         var allDiagnostics = context.Diagnostics.GetAll();
@@ -179,9 +184,9 @@ public partial class TypeChecker
                 // Skip exact duplicates (same position and message)
                 if (exactErrors.Contains((diag.Line, diag.Column, diag.Message)))
                     continue;
-                // Skip near-duplicate operator errors (TypeChecker and OperatorValidatorV2
-                // produce slightly different wording for the same binary operator issue)
-                if (diag.Message.Contains("does not support operator")
+                // Skip near-duplicate operator errors at the same position
+                if (diag.Code is DiagnosticCodes.Semantic.InvalidBinaryOperation
+                              or DiagnosticCodes.Validation.UnsupportedOperator
                     && operatorErrorPositions.Contains((diag.Line, diag.Column)))
                     continue;
             }
