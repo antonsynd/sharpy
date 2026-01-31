@@ -83,7 +83,22 @@ public class ValidationPipeline
             _logger.LogDebug($"Running validator: {validator.Name} (order: {validator.Order})");
 
             var errorsBefore = context.Diagnostics.ErrorCount;
-            validator.Validate(module, context);
+            try
+            {
+                validator.Validate(module, context);
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // Propagate cancellation
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Validator {validator.Name} threw an exception: {ex.Message}", 0, 0);
+                context.Diagnostics.AddError(
+                    $"Internal compiler error in {validator.Name}: {ex.Message}",
+                    code: DiagnosticCodes.Infrastructure.CompilationFailed,
+                    phase: CompilerPhase.Validation);
+            }
             var errorsAfter = context.Diagnostics.ErrorCount;
 
             if (errorsAfter > errorsBefore)
