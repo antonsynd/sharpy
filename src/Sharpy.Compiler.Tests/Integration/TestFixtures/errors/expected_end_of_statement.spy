@@ -1,0 +1,2 @@
+def main():
+    x: int = 5 y: int = 10

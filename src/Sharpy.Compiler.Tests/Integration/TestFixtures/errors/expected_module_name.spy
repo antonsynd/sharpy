@@ -1,0 +1,4 @@
+from import something
+
+def main():
+    pass

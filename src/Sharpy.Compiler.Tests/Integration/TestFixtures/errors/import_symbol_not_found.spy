@@ -1,0 +1,4 @@
+from nonexistent_module import something
+
+def main():
+    pass

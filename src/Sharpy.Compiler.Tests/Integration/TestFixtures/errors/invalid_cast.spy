@@ -1,0 +1,15 @@
+class Foo:
+    x: int
+
+    def __init__(self):
+        self.x = 1
+
+class Bar:
+    y: int
+
+    def __init__(self):
+        self.y = 2
+
+def main():
+    f: Foo = Foo()
+    b: Bar = f to Bar
