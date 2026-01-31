@@ -312,6 +312,9 @@ public class AccessValidatorV2 : SemanticValidatorBase
         return AccessLevel.Public;
     }
 
+    private TypeSymbol? GetBaseType(TypeSymbol symbol)
+        => _context.SemanticBinding?.GetBaseType(symbol) ?? symbol.BaseType;
+
     private bool IsInHierarchy(TypeSymbol currentClass, TypeSymbol targetClass)
     {
         // Same class
@@ -319,21 +322,21 @@ public class AccessValidatorV2 : SemanticValidatorBase
             return true;
 
         // Check if currentClass is a subclass of targetClass
-        var baseType = currentClass.BaseType;
+        var baseType = GetBaseType(currentClass);
         while (baseType != null)
         {
             if (baseType == targetClass)
                 return true;
-            baseType = baseType.BaseType;
+            baseType = GetBaseType(baseType);
         }
 
         // Check if currentClass is a superclass of targetClass
-        baseType = targetClass.BaseType;
+        baseType = GetBaseType(targetClass);
         while (baseType != null)
         {
             if (baseType == currentClass)
                 return true;
-            baseType = baseType.BaseType;
+            baseType = GetBaseType(baseType);
         }
 
         return false;

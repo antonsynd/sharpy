@@ -128,6 +128,8 @@ public partial class TypeChecker
         // Set file path for diagnostic location (if not already set by CompilerServices)
         if (context.CurrentFilePath == null && _currentFilePath != null)
             context.CurrentFilePath = _currentFilePath;
+        // Thread SemanticBinding so validators can read from it
+        context.SemanticBinding = SemanticBinding;
         return context;
     }
 

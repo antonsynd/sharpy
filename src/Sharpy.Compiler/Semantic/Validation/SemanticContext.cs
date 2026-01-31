@@ -48,6 +48,12 @@ public class SemanticContext
     /// </summary>
     public CompilerServices? Services { get; }
 
+    /// <summary>
+    /// Optional SemanticBinding for reading inheritance data.
+    /// When set, validators should prefer this over direct symbol property access.
+    /// </summary>
+    public SemanticBinding? SemanticBinding { get; set; }
+
     // Centralized AST traversal state (recommended for new validators)
     /// <summary>
     /// Centralized AST traversal state for validators.
@@ -102,6 +108,7 @@ public class SemanticContext
             CurrentFilePath = filePath,
             ContinueAfterErrors = ContinueAfterErrors,
             MaxErrors = MaxErrors,
+            SemanticBinding = SemanticBinding,
             // Share the ClrCache across files for efficiency
         };
     }
