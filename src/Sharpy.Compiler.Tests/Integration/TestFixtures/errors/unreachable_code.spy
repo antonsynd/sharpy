@@ -1,0 +1,7 @@
+def foo() -> int:
+    return 1
+    x: int = 2
+    return x
+
+def main():
+    print(foo())

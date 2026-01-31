@@ -1,0 +1,6 @@
+def foo(x: int) -> int:
+    if x > 0:
+        return 1
+
+def main():
+    print(foo(5))

@@ -1,0 +1,6 @@
+class Foo:
+    x: int = 5
+
+def main():
+    obj: Foo = Foo()
+    print(obj.nonexistent)

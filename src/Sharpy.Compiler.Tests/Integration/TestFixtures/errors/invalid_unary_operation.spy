@@ -1,0 +1,4 @@
+def main():
+    x: str = "hello"
+    y: str = -x
+    print(y)
