@@ -86,7 +86,7 @@ public class ProjectCompiler
             // then resolve inheritance for imported types.
             // ResolveInheritanceRelationships() handles types declared within the project,
             // but imported types from external modules still have unresolved base names.
-            var inheritanceResolver = new InheritanceResolver(_symbolTable, _logger);
+            var inheritanceResolver = new InheritanceResolver(_symbolTable, _logger, _projectModel.SemanticBinding);
             inheritanceResolver.ResolveAll(_importResolver);
 
             // Phase 5: Perform semantic analysis on all files
@@ -269,7 +269,7 @@ public class ProjectCompiler
 
         // Create a SINGLE NameResolver for ALL files to preserve type definition lists
         // across files for correct inheritance resolution
-        _sharedNameResolver = new NameResolver(_symbolTable, _logger);
+        _sharedNameResolver = new NameResolver(_symbolTable, _logger, _projectModel.SemanticBinding);
 
         // Collect all type declarations (shells only)
         foreach (var (_, unit) in _projectModel!.Units)

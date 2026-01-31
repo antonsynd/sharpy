@@ -35,6 +35,9 @@ public class SemanticBinding
     // Maps type symbols to their resolved base types
     private readonly ConcurrentDictionary<TypeSymbol, TypeSymbol> _baseTypes = new();
 
+    // Maps type symbols to their resolved interface lists
+    private readonly ConcurrentDictionary<TypeSymbol, ConcurrentBag<TypeSymbol>> _interfaces = new();
+
     // Maps FromImportStatement nodes to their resolved module paths
     private readonly ConcurrentDictionary<FromImportStatement, string> _resolvedModulePaths = new();
 
@@ -93,6 +96,26 @@ public class SemanticBinding
     /// </summary>
     public TypeSymbol? GetBaseType(TypeSymbol symbol)
         => _baseTypes.TryGetValue(symbol, out var bt) ? bt : null;
+
+    #endregion
+
+    #region Interfaces
+
+    /// <summary>
+    /// Adds a resolved interface to a type symbol.
+    /// </summary>
+    public void AddInterface(TypeSymbol symbol, TypeSymbol iface)
+    {
+        var bag = _interfaces.GetOrAdd(symbol, _ => new ConcurrentBag<TypeSymbol>());
+        bag.Add(iface);
+    }
+
+    /// <summary>
+    /// Gets the resolved interfaces for a type symbol.
+    /// Returns an empty list if none are set.
+    /// </summary>
+    public IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
+        => _interfaces.TryGetValue(symbol, out var bag) ? bag.ToList() : Array.Empty<TypeSymbol>();
 
     #endregion
 

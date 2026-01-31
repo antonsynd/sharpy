@@ -17,11 +17,13 @@ public class InheritanceResolver
 {
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
+    private readonly SemanticBinding? _semanticBinding;
 
-    public InheritanceResolver(SymbolTable symbolTable, ICompilerLogger? logger = null)
+    public InheritanceResolver(SymbolTable symbolTable, ICompilerLogger? logger = null, SemanticBinding? semanticBinding = null)
     {
         _symbolTable = symbolTable;
         _logger = logger ?? NullLogger.Instance;
+        _semanticBinding = semanticBinding;
     }
 
     /// <summary>
@@ -68,11 +70,13 @@ public class InheritanceResolver
                         if (!type.Interfaces.Contains(baseType))
                         {
                             type.Interfaces.Add(baseType);
+                            _semanticBinding?.AddInterface(type, baseType);
                         }
                     }
                     else
                     {
                         type.BaseType = baseType;
+                        _semanticBinding?.SetBaseType(type, baseType);
                     }
                     _logger.LogDebug($"Resolved inheritance: {type.Name} : {baseType.Name}");
                 }
@@ -89,6 +93,7 @@ public class InheritanceResolver
                 if (ifaceType != null && !type.Interfaces.Contains(ifaceType))
                 {
                     type.Interfaces.Add(ifaceType);
+                    _semanticBinding?.AddInterface(type, ifaceType);
                     _logger.LogDebug($"Resolved interface: {type.Name} : {ifaceType.Name}");
                 }
                 else if (ifaceType == null)

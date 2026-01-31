@@ -151,7 +151,7 @@ public class Compiler
 
             // Pass 1: Name resolution (declarations)
             metrics.StartPhase("Name Resolution");
-            var nameResolver = new NameResolver(symbolTable, _logger);
+            var nameResolver = new NameResolver(symbolTable, _logger, semanticBinding);
             nameResolver.ResolveDeclarations(module);
             nameResolver.ResolveInheritance(); // Second pass: resolve inheritance after all types are declared
             metrics.EndPhase();
@@ -279,7 +279,7 @@ public class Compiler
             }
 
             // Resolve inheritance for imported types (transitive base types + imported type inheritance)
-            var inheritanceResolver = new InheritanceResolver(symbolTable, _logger);
+            var inheritanceResolver = new InheritanceResolver(symbolTable, _logger, semanticBinding);
             inheritanceResolver.ResolveAll(importResolver);
 
             metrics.EndPhase();
