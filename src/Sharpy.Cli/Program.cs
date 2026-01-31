@@ -652,11 +652,10 @@ class Program
             nameResolver.ResolveDeclarations(module);
             nameResolver.ResolveInheritance();
 
-            if (nameResolver.Errors.Any())
+            if (nameResolver.Diagnostics.HasErrors)
             {
                 Console.Error.WriteLine("Name resolution errors:");
-                var bag = DiagnosticBag.FromSemanticErrors(nameResolver.Errors);
-                foreach (var diag in bag.GetErrors())
+                foreach (var diag in nameResolver.Diagnostics.GetErrors())
                 {
                     Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
                 }

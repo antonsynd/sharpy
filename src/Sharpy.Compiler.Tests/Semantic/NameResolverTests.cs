@@ -44,7 +44,7 @@ class Person:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         // Verify class symbol was created
         var personType = symbolTable.LookupType("Person");
@@ -71,8 +71,8 @@ class Person:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Single(resolver.Errors);
-        Assert.Contains("already defined", resolver.Errors[0].Message);
+        Assert.Single(resolver.Diagnostics.GetErrors());
+        Assert.Contains("already defined", resolver.Diagnostics.GetErrors()[0].Message);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ class MyClass:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var classType = symbolTable.LookupType("MyClass");
         Assert.NotNull(classType);
@@ -111,7 +111,7 @@ def greet(name: str) -> str:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var greetFunc = symbolTable.LookupFunction("greet");
         Assert.NotNull(greetFunc);
@@ -129,7 +129,7 @@ struct Point:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var pointType = symbolTable.LookupType("Point");
         Assert.NotNull(pointType);
@@ -148,7 +148,7 @@ interface IDrawable:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var drawableType = symbolTable.LookupType("IDrawable");
         Assert.NotNull(drawableType);
@@ -168,7 +168,7 @@ enum Color:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var colorType = symbolTable.LookupType("Color");
         Assert.NotNull(colorType);
@@ -189,7 +189,7 @@ class Calculator:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var calcType = symbolTable.LookupType("Calculator");
         Assert.NotNull(calcType);
@@ -233,7 +233,7 @@ class Container[T]:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var containerType = symbolTable.LookupType("Container");
         Assert.NotNull(containerType);
@@ -252,7 +252,7 @@ const MAX_SIZE: int = 100
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var piConst = symbolTable.LookupVariable("PI");
         Assert.NotNull(piConst);
@@ -278,8 +278,8 @@ struct Point:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Single(resolver.Errors);
-        Assert.Contains("Struct 'Point' is already defined", resolver.Errors[0].Message);
+        Assert.Single(resolver.Diagnostics.GetErrors());
+        Assert.Contains("Struct 'Point' is already defined", resolver.Diagnostics.GetErrors()[0].Message);
     }
 
     [Fact]
@@ -295,8 +295,8 @@ interface IShape:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Single(resolver.Errors);
-        Assert.Contains("Interface 'IShape' is already defined", resolver.Errors[0].Message);
+        Assert.Single(resolver.Diagnostics.GetErrors());
+        Assert.Contains("Interface 'IShape' is already defined", resolver.Diagnostics.GetErrors()[0].Message);
     }
 
     [Fact]
@@ -312,8 +312,8 @@ enum Color:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Single(resolver.Errors);
-        Assert.Contains("Enum 'Color' is already defined", resolver.Errors[0].Message);
+        Assert.Single(resolver.Diagnostics.GetErrors());
+        Assert.Contains("Enum 'Color' is already defined", resolver.Diagnostics.GetErrors()[0].Message);
     }
 
     [Fact]
@@ -329,8 +329,8 @@ def calculate(x: int) -> int:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Single(resolver.Errors);
-        Assert.Contains("Function 'calculate' is already defined", resolver.Errors[0].Message);
+        Assert.Single(resolver.Diagnostics.GetErrors());
+        Assert.Contains("Function 'calculate' is already defined", resolver.Diagnostics.GetErrors()[0].Message);
     }
 
     [Fact]
@@ -343,8 +343,8 @@ const VALUE: int = 20
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Single(resolver.Errors);
-        Assert.Contains("Constant 'VALUE' is already defined", resolver.Errors[0].Message);
+        Assert.Single(resolver.Diagnostics.GetErrors());
+        Assert.Contains("Constant 'VALUE' is already defined", resolver.Diagnostics.GetErrors()[0].Message);
     }
 
     [Fact]
@@ -360,8 +360,8 @@ struct MyType:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Single(resolver.Errors);
-        Assert.Contains("Struct 'MyType' is already defined", resolver.Errors[0].Message);
+        Assert.Single(resolver.Diagnostics.GetErrors());
+        Assert.Contains("Struct 'MyType' is already defined", resolver.Diagnostics.GetErrors()[0].Message);
     }
 
     #endregion
@@ -401,7 +401,7 @@ class ClassB:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var classA = symbolTable.LookupType("ClassA");
         var classB = symbolTable.LookupType("ClassB");
@@ -430,7 +430,7 @@ class MyClass:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var classType = symbolTable.LookupType("MyClass");
         Assert.NotNull(classType);
@@ -455,7 +455,7 @@ class MyClass:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var classType = symbolTable.LookupType("MyClass");
         Assert.NotNull(classType);
@@ -482,7 +482,7 @@ class Pair[T, U]:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var pairType = symbolTable.LookupType("Pair");
         Assert.NotNull(pairType);
@@ -503,7 +503,7 @@ struct Option[T]:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var optionType = symbolTable.LookupType("Option");
         Assert.NotNull(optionType);
@@ -523,7 +523,7 @@ interface IComparable[T]:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var comparableType = symbolTable.LookupType("IComparable");
         Assert.NotNull(comparableType);
@@ -541,7 +541,7 @@ class Simple:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var simpleType = symbolTable.LookupType("Simple");
         Assert.NotNull(simpleType);
@@ -569,7 +569,7 @@ class Math:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var mathType = symbolTable.LookupType("Math");
         Assert.NotNull(mathType);
@@ -598,7 +598,7 @@ class Animal:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var animalType = symbolTable.LookupType("Animal");
         Assert.NotNull(animalType);
@@ -627,7 +627,7 @@ class Derived:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var baseType = symbolTable.LookupType("Base");
         var derivedType = symbolTable.LookupType("Derived");
@@ -655,7 +655,7 @@ class MyClass:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var classType = symbolTable.LookupType("MyClass");
         Assert.NotNull(classType);
@@ -681,7 +681,7 @@ class Empty:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var emptyType = symbolTable.LookupType("Empty");
         Assert.NotNull(emptyType);
@@ -699,7 +699,7 @@ interface IMarker:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var markerType = symbolTable.LookupType("IMarker");
         Assert.NotNull(markerType);
@@ -717,7 +717,7 @@ struct Unit:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var unitType = symbolTable.LookupType("Unit");
         Assert.NotNull(unitType);
@@ -750,7 +750,7 @@ class Counter:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var counterType = symbolTable.LookupType("Counter");
         Assert.NotNull(counterType);
@@ -777,7 +777,7 @@ struct Point:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var pointType = symbolTable.LookupType("Point");
         Assert.NotNull(pointType);
@@ -813,7 +813,7 @@ enum Status:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         // Verify all declarations are registered
         Assert.NotNull(symbolTable.LookupVariable("VERSION"));
@@ -831,7 +831,7 @@ enum Status:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
         // Only builtins should be present
         Assert.NotNull(symbolTable.LookupType("int"));
         Assert.NotNull(symbolTable.LookupType("str"));
@@ -851,7 +851,7 @@ class Exists:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         Assert.Null(symbolTable.LookupType("DoesNotExist"));
         Assert.Null(symbolTable.LookupFunction("nonexistent_func"));
@@ -871,7 +871,7 @@ class myclass:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var type1 = symbolTable.LookupType("MyClass");
         var type2 = symbolTable.LookupType("myclass");
@@ -908,7 +908,7 @@ const DUP: int = 2
         resolver.ResolveDeclarations(module);
 
         // Should report 3 errors (one for each duplicate)
-        Assert.Equal(3, resolver.Errors.Count);
+        Assert.Equal(3, resolver.Diagnostics.ErrorCount);
     }
 
     [Fact]
@@ -930,7 +930,7 @@ class Valid2:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Single(resolver.Errors);
+        Assert.Single(resolver.Diagnostics.GetErrors());
 
         // Valid declarations should still be registered
         Assert.NotNull(symbolTable.LookupType("Valid1"));
@@ -953,7 +953,7 @@ import sys
         resolver.ResolveDeclarations(module);
 
         // Imports are logged but not yet fully implemented in Phase 1
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
     }
 
     [Fact]
@@ -967,7 +967,7 @@ from collections import defaultdict
         resolver.ResolveDeclarations(module);
 
         // From-imports are logged but not yet fully implemented in Phase 1
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
     }
 
     #endregion
@@ -991,7 +991,7 @@ class MyClass:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var classType = symbolTable.LookupType("MyClass");
         Assert.NotNull(classType);
@@ -1019,7 +1019,7 @@ const Y: int = 20
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         // Regular variable should not be in symbol table at module level in Phase 1
         // (only consts, functions, and types are handled at module level)
@@ -1044,7 +1044,7 @@ def my_function():
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var classType = symbolTable.LookupType("MyClass");
         Assert.NotNull(classType);
@@ -1083,7 +1083,7 @@ enum Status:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var statusType = symbolTable.LookupType("Status");
         Assert.NotNull(statusType);
@@ -1104,7 +1104,7 @@ interface IWithField:
 
         // Phase 1 doesn't validate that interfaces can't have fields
         // This is acceptable for Phase 1 - validation comes later
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
     }
 
     [Fact]
@@ -1125,7 +1125,7 @@ const CONSTANT: int = 42
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var classSymbol = symbolTable.LookupType("MyClass");
         Assert.NotNull(classSymbol);
@@ -1151,7 +1151,7 @@ class MyClass:
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var classType = symbolTable.LookupType("MyClass");
         Assert.NotNull(classType);

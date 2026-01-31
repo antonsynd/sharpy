@@ -137,7 +137,7 @@ x: int = double(5)
         var (module, _, _, nameResolver, typeChecker) = CompileAndCheck(source);
 
         // Name resolution should succeed (builtin 'double' is shadowed)
-        nameResolver.Errors.Should().BeEmpty();
+        nameResolver.Diagnostics.HasErrors.Should().BeFalse();
 
         typeChecker.CheckModule(module, isEntryPoint: false);
         typeChecker.Errors.Should().BeEmpty();
@@ -638,8 +638,9 @@ class Foo(x):  # cannot inherit from non-class
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // Check both name resolver and type checker errors since inheritance validation happens in name resolution
-        var allErrors = nameResolver.Errors.Concat(typeChecker.Errors).ToList();
-        allErrors.Should().Contain(e => e.Message.Contains("not a class") || e.Message.Contains("not found"));
+        var allErrorMessages = nameResolver.Diagnostics.GetErrors().Select(d => d.Message)
+            .Concat(typeChecker.Errors.Select(e => e.Message)).ToList();
+        allErrorMessages.Should().Contain(m => m.Contains("not a class") || m.Contains("not found"));
     }
 
     #endregion
@@ -1512,7 +1513,7 @@ interface IDrawable:
 ";
         var (module, _, _, nameResolver, _) = CompileAndCheck(source);
 
-        nameResolver.Errors.Should().ContainSingle(e =>
+        nameResolver.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("cannot have an implementation") &&
             e.Message.Contains("draw"));
     }
@@ -1527,7 +1528,7 @@ interface IDrawable:
 ";
         var (module, _, _, nameResolver, _) = CompileAndCheck(source);
 
-        nameResolver.Errors.Should().BeEmpty();
+        nameResolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1540,7 +1541,7 @@ interface IEmpty:
 ";
         var (module, _, _, nameResolver, _) = CompileAndCheck(source);
 
-        nameResolver.Errors.Should().BeEmpty();
+        nameResolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1554,7 +1555,7 @@ interface IDrawable:
 ";
         var (module, _, _, nameResolver, _) = CompileAndCheck(source);
 
-        nameResolver.Errors.Should().ContainSingle(e =>
+        nameResolver.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("cannot have an implementation"));
     }
 
@@ -1568,7 +1569,7 @@ interface ICalculator:
 ";
         var (module, _, _, nameResolver, _) = CompileAndCheck(source);
 
-        nameResolver.Errors.Should().ContainSingle(e =>
+        nameResolver.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("cannot have an implementation"));
     }
 
@@ -1584,7 +1585,7 @@ interface IEmpty:
         try
         {
             var (module, _, _, nameResolver, _) = CompileAndCheck(source);
-            nameResolver.Errors.Should().NotBeEmpty();
+            nameResolver.Diagnostics.GetErrors().Should().NotBeEmpty();
         }
         catch
         {
@@ -1608,7 +1609,7 @@ interface IDrawable:
 ";
         var (module, _, _, nameResolver, _) = CompileAndCheck(source);
 
-        nameResolver.Errors.Should().BeEmpty();
+        nameResolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1624,7 +1625,7 @@ interface IMixed:
 ";
         var (module, _, _, nameResolver, _) = CompileAndCheck(source);
 
-        nameResolver.Errors.Should().ContainSingle(e =>
+        nameResolver.Diagnostics.GetErrors().Should().ContainSingle(e =>
             e.Message.Contains("invalid_method") &&
             e.Message.Contains("cannot have an implementation"));
     }

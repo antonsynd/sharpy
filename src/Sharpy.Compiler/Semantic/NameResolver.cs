@@ -1,5 +1,3 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
-using System.Collections.Immutable;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
@@ -13,7 +11,7 @@ public class NameResolver
 {
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
-    private readonly List<SemanticError> _errors = new();
+    private readonly DiagnosticBag _diagnostics = new();
     private readonly List<ClassDef> _classDefs = new();
     private readonly List<StructDef> _structDefs = new();
     private readonly List<InterfaceDef> _interfaceDefs = new();
@@ -25,7 +23,7 @@ public class NameResolver
         _logger = logger ?? NullLogger.Instance;
     }
 
-    public IReadOnlyList<SemanticError> Errors => _errors;
+    public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
     /// Set the current source file path for tracking type definitions.
@@ -626,9 +624,8 @@ public class NameResolver
 
     private void AddError(string message, int? line = null, int? column = null, string? code = null)
     {
-        var error = new SemanticError(message, line, column, code);
-        _errors.Add(error);
-        _logger.LogError(error.Message, line ?? 0, column ?? 0);
+        _diagnostics.AddError(message, line, column, _currentFilePath, code, CompilerPhase.NameResolution);
+        _logger.LogError(message, line ?? 0, column ?? 0);
     }
 
     private void ResolveClassInheritance(ClassDef classDef)

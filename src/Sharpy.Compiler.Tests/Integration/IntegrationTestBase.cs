@@ -99,12 +99,12 @@ public abstract class IntegrationTestBase
 
             nameResolver.ResolveInheritance(); // Second pass: resolve inheritance relationships
 
-            if (nameResolver.Errors.Any())
+            if (nameResolver.Diagnostics.HasErrors)
             {
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = nameResolver.Errors.Select(e => e.Message).ToList()
+                    CompilationErrors = nameResolver.Diagnostics.GetErrors().Select(d => d.Message).ToList()
                 };
             }
 

@@ -38,7 +38,7 @@ class Vector:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var vectorType = symbolTable.Lookup("Vector") as TypeSymbol;
         vectorType.Should().NotBeNull();
@@ -60,7 +60,7 @@ class Point:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var pointType = symbolTable.Lookup("Point") as TypeSymbol;
         pointType.Should().NotBeNull();
@@ -92,7 +92,7 @@ class Number:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var numberType = symbolTable.Lookup("Number") as TypeSymbol;
         numberType.Should().NotBeNull();
@@ -116,7 +116,7 @@ class SignedValue:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var valueType = symbolTable.Lookup("SignedValue") as TypeSymbol;
         valueType.Should().NotBeNull();
@@ -136,7 +136,7 @@ class Counter:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var counterType = symbolTable.Lookup("Counter") as TypeSymbol;
         counterType.Should().NotBeNull();
@@ -156,7 +156,7 @@ class Matrix:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var matrixType = symbolTable.Lookup("Matrix") as TypeSymbol;
         matrixType.Should().NotBeNull();
@@ -176,7 +176,7 @@ class Accumulator:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var accType = symbolTable.Lookup("Accumulator") as TypeSymbol;
         accType.Should().NotBeNull();
@@ -202,7 +202,7 @@ class Example:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var exampleType = symbolTable.Lookup("Example") as TypeSymbol;
         exampleType.Should().NotBeNull();
@@ -238,7 +238,7 @@ class BadVector:
         resolver.ResolveDeclarations(module);
 
         // NameResolver no longer validates signatures - it just registers methods
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var vectorType = symbolTable.Lookup("BadVector") as TypeSymbol;
         vectorType.Should().NotBeNull();
@@ -260,7 +260,7 @@ class BadCompare:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var compareType = symbolTable.Lookup("BadCompare") as TypeSymbol;
         compareType.Should().NotBeNull();
@@ -281,7 +281,7 @@ class BadNegate:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var negateType = symbolTable.Lookup("BadNegate") as TypeSymbol;
         negateType.Should().NotBeNull();
@@ -302,7 +302,7 @@ class BadAdd:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var addType = symbolTable.Lookup("BadAdd") as TypeSymbol;
         addType.Should().NotBeNull();
@@ -329,7 +329,7 @@ class FlexibleAdd:
 
         resolver.ResolveDeclarations(module);
 
-        resolver.Errors.Should().BeEmpty();
+        resolver.Diagnostics.GetErrors().Should().BeEmpty();
 
         var flexType = symbolTable.Lookup("FlexibleAdd") as TypeSymbol;
         flexType.Should().NotBeNull();

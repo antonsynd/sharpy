@@ -321,9 +321,9 @@ public class ProjectCompiler
         // after imports are resolved (Phase 4b)
 
         // Collect declaration errors (inheritance errors will be collected in Phase 4b)
-        if (_sharedNameResolver.Errors.Any())
+        if (_sharedNameResolver.Diagnostics.HasErrors)
         {
-            foreach (var error in _sharedNameResolver.Errors)
+            foreach (var error in _sharedNameResolver.Diagnostics.GetErrors())
             {
                 _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column);
                 _diagnostics.AddError(error.Message, error.Line, error.Column, phase: CompilerPhase.NameResolution);
@@ -343,14 +343,14 @@ public class ProjectCompiler
 
         _logger.LogInfo("Phase 4b: Resolving inheritance across all files");
 
-        // Clear previous errors before inheritance resolution
+        // Track previous error count so we only collect new inheritance errors
         // (declaration errors were already collected in Phase 3)
-        var previousErrorCount = _sharedNameResolver.Errors.Count;
+        var previousErrorCount = _sharedNameResolver.Diagnostics.ErrorCount;
 
         _sharedNameResolver.ResolveInheritance();
 
         // Collect only new inheritance errors (skip already collected declaration errors)
-        var newErrors = _sharedNameResolver.Errors.Skip(previousErrorCount);
+        var newErrors = _sharedNameResolver.Diagnostics.GetErrors().Skip(previousErrorCount);
         foreach (var error in newErrors)
         {
             _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column);

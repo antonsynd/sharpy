@@ -159,9 +159,9 @@ public class Compiler
             // Assertion: After name resolution, all defined type symbols must have names
             AssertAllSymbolsHaveNames(symbolTable);
 
-            if (nameResolver.Errors.Any())
+            if (nameResolver.Diagnostics.HasErrors)
             {
-                diagnostics.AddSemanticErrors(nameResolver.Errors, filePath, CompilerPhase.NameResolution);
+                diagnostics.Merge(nameResolver.Diagnostics);
                 return new CompilationResult
                 {
                     Success = false,
