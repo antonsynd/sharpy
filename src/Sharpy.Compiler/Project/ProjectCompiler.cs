@@ -542,7 +542,17 @@ public class ProjectCompiler
 
             // Determine if this file is the entry point for module-level validation
             var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
-            typeChecker.CheckModule(unit.Ast, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo, isEntryPoint: isEntryPoint);
+            try
+            {
+                typeChecker.CheckModule(unit.Ast, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo, isEntryPoint: isEntryPoint);
+            }
+            catch (SemanticAnalysisException)
+            {
+                // Preserve all accumulated diagnostics from the type checker
+                _diagnostics.Merge(typeChecker.Diagnostics);
+                unit.Phase = CompilationPhase.Failed;
+                continue;
+            }
             fileMetrics.EndPhase();
 
             if (typeChecker.Diagnostics.HasErrors)
@@ -621,11 +631,8 @@ public class ProjectCompiler
             // Check for code generation errors
             if (codeGenContext.HasErrors)
             {
-                foreach (var error in codeGenContext.Errors)
-                {
-                    unit.Diagnostics.AddError(error, filePath: sourceFile);
-                    _diagnostics.AddError(error, filePath: sourceFile, phase: CompilerPhase.CodeGeneration);
-                }
+                unit.Diagnostics.Merge(codeGenContext.Diagnostics);
+                _diagnostics.Merge(codeGenContext.Diagnostics);
                 unit.Phase = CompilationPhase.Failed;
                 continue;
             }

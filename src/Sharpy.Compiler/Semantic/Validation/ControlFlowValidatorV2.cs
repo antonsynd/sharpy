@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -93,7 +94,7 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
         {
             AddError(_context,
                 $"Function '{funcDef.Name}' must return a value of type '{returnType.GetDisplayName()}' in all code paths",
-                funcDef.LineStart, funcDef.ColumnStart);
+                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.NotAllPathsReturn);
         }
     }
 
@@ -130,7 +131,7 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
                 if (!hasUnreachableCode)
                 {
                     AddError(_context, "Unreachable code detected",
-                        statement.LineStart, statement.ColumnStart);
+                        statement.LineStart, statement.ColumnStart, code: DiagnosticCodes.Semantic.UnreachableCode);
                     hasUnreachableCode = true;
                 }
                 continue;
@@ -165,7 +166,7 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
                 if (loopDepth == 0)
                 {
                     AddError(_context, "'break' statement outside loop",
-                        statement.LineStart, statement.ColumnStart);
+                        statement.LineStart, statement.ColumnStart, code: DiagnosticCodes.Semantic.BreakOutsideLoop);
                 }
                 return (false, true);
 
@@ -173,7 +174,7 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
                 if (loopDepth == 0)
                 {
                     AddError(_context, "'continue' statement outside loop",
-                        statement.LineStart, statement.ColumnStart);
+                        statement.LineStart, statement.ColumnStart, code: DiagnosticCodes.Semantic.ContinueOutsideLoop);
                 }
                 return (false, true);
 

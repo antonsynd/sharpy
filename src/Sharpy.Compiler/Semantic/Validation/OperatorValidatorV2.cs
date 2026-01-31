@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -234,7 +235,7 @@ public class OperatorValidatorV2 : SemanticValidatorBase
         {
             AddError(_context,
                 $"Left operand of null coalescing operator must be nullable, but got '{leftType.GetDisplayName()}'",
-                binOp.LineStart, binOp.ColumnStart);
+                binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Validation.InvalidNullCoalesce);
         }
     }
 
@@ -261,7 +262,7 @@ public class OperatorValidatorV2 : SemanticValidatorBase
                 {
                     AddError(_context,
                         $"Type '{leftType.GetDisplayName()}' does not support operator '{OperatorToString(binOp.Operator)}' with right operand of type '{rightType.GetDisplayName()}'",
-                        binOp.LineStart, binOp.ColumnStart);
+                        binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator);
                 }
             }
         }
@@ -309,7 +310,7 @@ public class OperatorValidatorV2 : SemanticValidatorBase
         {
             AddError(_context,
                 $"Type '{operandType.GetDisplayName()}' does not support unary operator '{OperatorToString(unaryOp.Operator)}'",
-                unaryOp.LineStart, unaryOp.ColumnStart);
+                unaryOp.LineStart, unaryOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator);
         }
     }
 
@@ -335,7 +336,7 @@ public class OperatorValidatorV2 : SemanticValidatorBase
             {
                 AddError(_context,
                     $"Unsupported operand types for {OperatorToString(assignment.Operator)}: '{targetType.GetDisplayName()}' and '{valueType.GetDisplayName()}'",
-                    assignment.LineStart, assignment.ColumnStart);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator);
             }
         }
     }

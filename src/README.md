@@ -11,8 +11,7 @@ The compiler library that transforms Sharpy source code into executable .NET ass
 Sharpy.Compiler/
 ├── Lexer/              # Tokenization
 │   ├── Token.cs        # Token types and data structures
-│   ├── Lexer.cs        # Lexical analyzer
-│   └── LexerError.cs   # Lexer error handling
+│   └── Lexer.cs        # Lexical analyzer
 ├── Parser/             # Parsing
 │   ├── Ast/            # Abstract Syntax Tree definitions
 │   │   ├── Node.cs     # Base AST node types
@@ -20,12 +19,14 @@ Sharpy.Compiler/
 │   │   ├── Expression.cs # Expression nodes
 │   │   └── Types.cs    # Type annotations
 │   └── Parser.cs       # Recursive descent parser
+├── Diagnostics/        # Unified error handling
+│   ├── DiagnosticBag.cs # Structured diagnostic collection
+│   └── DiagnosticCodes.cs # SHP error code catalog
 ├── Semantic/           # Semantic analysis
 │   ├── Symbol.cs       # Symbol definitions
 │   ├── Scope.cs        # Scope management
 │   ├── SymbolTable.cs  # Symbol table
-│   ├── BuiltinRegistry.cs # Builtin types/functions registry
-│   └── SemanticError.cs # Error handling
+│   └── BuiltinRegistry.cs # Builtin types/functions registry
 └── CodeGen/            # Code generation
     ├── RoslynEmitter.cs # Generates C# using Roslyn
     ├── NameMangler.cs   # Name conversion (snake_case → PascalCase)

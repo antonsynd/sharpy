@@ -47,16 +47,16 @@ public abstract class SemanticValidatorBase : ISemanticValidator
     /// <summary>
     /// Convenience method to add an error to the context's diagnostics.
     /// </summary>
-    protected void AddError(SemanticContext context, string message, int? line = null, int? column = null)
+    protected void AddError(SemanticContext context, string message, int? line = null, int? column = null, string? code = null)
     {
-        context.Diagnostics.AddError(message, line, column, context.CurrentFilePath);
+        context.Diagnostics.AddError(message, line, column, context.CurrentFilePath, code: code);
     }
 
     /// <summary>
     /// Convenience method to add a warning to the context's diagnostics.
     /// </summary>
-    protected void AddWarning(SemanticContext context, string message, int? line = null, int? column = null)
+    protected void AddWarning(SemanticContext context, string message, int? line = null, int? column = null, string? code = null)
     {
-        context.Diagnostics.AddWarning(message, line, column, context.CurrentFilePath);
+        context.Diagnostics.AddWarning(message, line, column, context.CurrentFilePath, code: code);
     }
 }

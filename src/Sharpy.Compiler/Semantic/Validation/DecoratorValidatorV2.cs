@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -108,7 +109,7 @@ public class DecoratorValidatorV2 : SemanticValidatorBase
             if (UnsupportedDecorators.TryGetValue(decorator.Name, out var errorMessage))
             {
                 _logger.LogDebug($"Found unsupported decorator '@{decorator.Name}' on '{definitionName}'");
-                AddError(_context, errorMessage, decorator.LineStart, decorator.ColumnStart);
+                AddError(_context, errorMessage, decorator.LineStart, decorator.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDecoratorUsage);
             }
         }
     }

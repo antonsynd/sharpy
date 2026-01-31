@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -87,7 +88,7 @@ public class ModuleLevelValidatorV2 : SemanticValidatorBase
         {
             AddError(_context,
                 $"Top-level variable '{varDecl.Name}' requires a type annotation",
-                varDecl.LineStart, varDecl.ColumnStart);
+                varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.ModuleLevelNoTypeAnnotation);
         }
 
         // Report errors for executable statements at module level when:
@@ -104,7 +105,7 @@ public class ModuleLevelValidatorV2 : SemanticValidatorBase
             {
                 AddError(_context,
                     "Executable statements are not allowed at module level",
-                    stmt.LineStart, stmt.ColumnStart);
+                    stmt.LineStart, stmt.ColumnStart, code: DiagnosticCodes.Semantic.ModuleLevelExecutableStatement);
             }
         }
 
@@ -113,7 +114,7 @@ public class ModuleLevelValidatorV2 : SemanticValidatorBase
         {
             AddError(_context,
                 "Entry point file requires a 'main()' function",
-                module.LineStart, module.ColumnStart);
+                module.LineStart, module.ColumnStart, code: DiagnosticCodes.Validation.MissingMainFunction);
         }
     }
 }

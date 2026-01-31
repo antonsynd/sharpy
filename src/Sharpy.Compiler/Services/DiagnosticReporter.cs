@@ -25,26 +25,26 @@ public class DiagnosticReporter : IDiagnosticReporter
         _logger = logger ?? NullLogger.Instance;
     }
 
-    public void ReportError(string message, int? line = null, int? column = null)
+    public void ReportError(string message, int? line = null, int? column = null, string? code = null)
     {
-        _diagnostics.AddError(message, line, column, CurrentFilePath);
+        _diagnostics.AddError(message, line, column, CurrentFilePath, code: code);
         _logger.LogError(message, line ?? 0, column ?? 0);
     }
 
-    public void ReportError(string message, Node node)
+    public void ReportError(string message, Node node, string? code = null)
     {
-        ReportError(message, node.LineStart, node.ColumnStart);
+        ReportError(message, node.LineStart, node.ColumnStart, code);
     }
 
-    public void ReportWarning(string message, int? line = null, int? column = null)
+    public void ReportWarning(string message, int? line = null, int? column = null, string? code = null)
     {
-        _diagnostics.AddWarning(message, line, column, CurrentFilePath);
+        _diagnostics.AddWarning(message, line, column, CurrentFilePath, code: code);
         _logger.LogWarning(message, line ?? 0, column ?? 0);
     }
 
-    public void ReportWarning(string message, Node node)
+    public void ReportWarning(string message, Node node, string? code = null)
     {
-        ReportWarning(message, node.LineStart, node.ColumnStart);
+        ReportWarning(message, node.LineStart, node.ColumnStart, code);
     }
 
     public DiagnosticBag Diagnostics => _diagnostics;

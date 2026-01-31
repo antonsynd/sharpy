@@ -97,7 +97,8 @@ public partial class TypeChecker
                 AddError(
                     $"Dunder method '{functionDef.Name}' overrides a System.Object method and requires the @override decorator",
                     functionDef.LineStart,
-                    functionDef.ColumnStart);
+                    functionDef.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidOverride);
             }
         }
 
@@ -110,7 +111,8 @@ public partial class TypeChecker
                 AddError(
                     $"Method '{functionDef.Name}' overrides a virtual method in base class '{baseOwner?.Name ?? _currentClass.BaseType.Name}' and requires the @override decorator",
                     functionDef.LineStart,
-                    functionDef.ColumnStart);
+                    functionDef.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidOverride);
             }
         }
 
@@ -127,7 +129,8 @@ public partial class TypeChecker
                 AddError(
                     $"Method '{functionDef.Name}' is marked @override but no matching method exists in base class",
                     functionDef.LineStart,
-                    functionDef.ColumnStart);
+                    functionDef.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidOverride);
             }
             else if (!baseMethod.IsVirtual && !baseMethod.IsAbstract && !baseMethod.IsOverride)
             {
@@ -140,7 +143,8 @@ public partial class TypeChecker
                     AddError(
                         $"Cannot override '{functionDef.Name}' because the base class method in '{baseOwner?.Name}' is not marked @virtual or @abstract. Add @virtual to the method in the base class.",
                         functionDef.LineStart,
-                        functionDef.ColumnStart);
+                        functionDef.ColumnStart,
+                        code: DiagnosticCodes.Semantic.InvalidOverride);
                 }
             }
         }
@@ -160,13 +164,13 @@ public partial class TypeChecker
         if (hasAbstractDecorator && !hasEllipsisBody)
         {
             AddError($"Abstract method '{functionDef.Name}' must have '...' as its body",
-                functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.IncompatibleOverride);
+                functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.MissingMethodBody);
         }
 
         if (hasAbstractDecorator && !isInAbstractClass && _currentClass != null)
         {
             AddError($"Abstract method '{functionDef.Name}' can only be declared in an abstract class. Add @abstract decorator to class '{_currentClass.Name}'",
-                functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.IncompatibleOverride);
+                functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.MissingMethodBody);
         }
 
         // Note: Ellipsis body in concrete class is valid (generates NotImplementedException)

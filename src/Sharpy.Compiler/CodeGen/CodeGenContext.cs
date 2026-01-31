@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
 
@@ -10,26 +11,34 @@ public class CodeGenContext
 {
     private int _indentLevel = 0;
     private const int IndentSize = 4;
-    private readonly List<string> _errors = new();
+    private readonly DiagnosticBag _diagnostics = new();
 
     public SymbolTable SymbolTable { get; }
     public BuiltinRegistry Builtins { get; }
     public string? SourceFilePath { get; set; }
 
     /// <summary>
-    /// Errors collected during code generation
+    /// Structured diagnostics from code generation.
     /// </summary>
-    public IReadOnlyList<string> Errors => _errors;
+    public DiagnosticBag Diagnostics => _diagnostics;
+
+    /// <summary>
+    /// Errors collected during code generation (as strings for backward compatibility).
+    /// </summary>
+    public IReadOnlyList<string> Errors => _diagnostics.GetErrors().Select(d => d.Message).ToList();
 
     /// <summary>
     /// Returns true if there are any errors
     /// </summary>
-    public bool HasErrors => _errors.Count > 0;
+    public bool HasErrors => _diagnostics.HasErrors;
 
     /// <summary>
     /// Add an error during code generation
     /// </summary>
-    public void AddError(string message) => _errors.Add(message);
+    public void AddError(string message, string? code = null, int? line = null, int? column = null)
+    {
+        _diagnostics.AddError(message, line, column, SourceFilePath, code, CompilerPhase.CodeGeneration);
+    }
 
     /// <summary>
     /// Project root namespace (for multi-file compilation)

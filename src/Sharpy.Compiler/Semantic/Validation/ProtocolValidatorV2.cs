@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -113,7 +114,7 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +
                 "(missing '__iter__' method). Consider implementing IIterable<T> interface.",
-                forStmt.Iterator.LineStart, forStmt.Iterator.ColumnStart);
+                forStmt.Iterator.LineStart, forStmt.Iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
         }
 
         // Also validate the iterator expression
@@ -232,7 +233,7 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +
                 "(missing '__iter__' method). Consider implementing IIterable<T> interface.",
-                iterator.LineStart, iterator.ColumnStart);
+                iterator.LineStart, iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
         }
     }
 
@@ -247,7 +248,7 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"Type '{containerType.GetDisplayName()}' does not support indexing " +
                 "(missing '__getitem__' method). Consider implementing ISequence<T> interface.",
-                indexAccess.LineStart, indexAccess.ColumnStart);
+                indexAccess.LineStart, indexAccess.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
         }
     }
 
@@ -262,7 +263,7 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"Type '{containerType.GetDisplayName()}' does not support membership testing " +
                 "(missing '__contains__' method). Consider implementing IContainer<T> interface.",
-                binOp.LineStart, binOp.ColumnStart);
+                binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
         }
     }
 
@@ -280,7 +281,7 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
                 AddError(_context,
                     $"Type '{argType.GetDisplayName()}' does not support len() " +
                     "(missing '__len__' method). Consider implementing ISized interface.",
-                    call.LineStart, call.ColumnStart);
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
             }
         }
     }

@@ -38,7 +38,7 @@ public partial class TypeChecker
             if (tupleValueType is not TupleType tupleType)
             {
                 AddError($"Cannot unpack non-tuple type '{tupleValueType.GetDisplayName()}' into tuple",
-                    assignment.LineStart, assignment.ColumnStart);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
                 return;
             }
 
@@ -46,7 +46,7 @@ public partial class TypeChecker
             if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
             {
                 AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables",
-                    assignment.LineStart, assignment.ColumnStart);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
                 return;
             }
 
@@ -262,7 +262,7 @@ public partial class TypeChecker
         else if (declaredType is UnknownType)
         {
             AddError($"Variable '{varDecl.Name}' declared with 'auto' must have an initializer",
-                varDecl.LineStart, varDecl.ColumnStart);
+                varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAutoVariable);
         }
 
         // Check if symbol already exists in current scope
@@ -485,7 +485,7 @@ public partial class TypeChecker
             if (elementType is not TupleType tupleType)
             {
                 AddError($"Cannot unpack non-tuple type '{elementType.GetDisplayName()}' in for loop",
-                    forStmt.LineStart, forStmt.ColumnStart);
+                    forStmt.LineStart, forStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
             }
             else
             {
@@ -493,7 +493,7 @@ public partial class TypeChecker
                 if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
                 {
                     AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables in for loop",
-                        forStmt.LineStart, forStmt.ColumnStart);
+                        forStmt.LineStart, forStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
                 }
                 else
                 {
@@ -576,7 +576,7 @@ public partial class TypeChecker
         if (raiseStmt.Exception == null && !_inExceptBlock)
         {
             AddError("Bare 'raise' statement can only be used inside an exception handler",
-                raiseStmt.LineStart, raiseStmt.ColumnStart);
+                raiseStmt.LineStart, raiseStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidRaise);
         }
 
         if (raiseStmt.Exception != null)

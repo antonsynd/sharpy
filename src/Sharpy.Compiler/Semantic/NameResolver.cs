@@ -535,14 +535,14 @@ public class NameResolver
         if (typeAlias.Type == null && typeAlias.FunctionType == null)
         {
             AddError($"Type alias '{typeAlias.Name}' must have a type",
-                typeAlias.LineStart, typeAlias.ColumnStart);
+                typeAlias.LineStart, typeAlias.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTypeAlias);
             return;
         }
 
         if (typeAlias.Type != null && typeAlias.FunctionType != null)
         {
             AddError($"Type alias '{typeAlias.Name}' cannot have both Type and FunctionType",
-                typeAlias.LineStart, typeAlias.ColumnStart);
+                typeAlias.LineStart, typeAlias.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTypeAlias);
             return;
         }
 
@@ -600,7 +600,7 @@ public class NameResolver
         if (method.Body.Length == 0)
         {
             AddError($"Interface method '{method.Name}' in interface '{interfaceName}' must have a body with '...' or 'pass'",
-                method.LineStart, method.ColumnStart);
+                method.LineStart, method.ColumnStart, code: DiagnosticCodes.Semantic.InterfaceMethodBody);
             return;
         }
 
@@ -619,7 +619,7 @@ public class NameResolver
 
         // If we get here, the method has an invalid body (implementation)
         AddError($"Interface method '{method.Name}' in interface '{interfaceName}' cannot have an implementation. Use '...' or 'pass' instead",
-            method.LineStart, method.ColumnStart);
+            method.LineStart, method.ColumnStart, code: DiagnosticCodes.Semantic.InterfaceMethodBody);
     }
 
     private void AddError(string message, int? line = null, int? column = null, string? code = null)

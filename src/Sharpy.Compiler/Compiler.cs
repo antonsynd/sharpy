@@ -303,8 +303,22 @@ public class Compiler
             metrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline);
-            // Single-file compilation is always an entry point
-            typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
+            try
+            {
+                // Single-file compilation is always an entry point
+                typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
+            }
+            catch (SemanticAnalysisException)
+            {
+                // Preserve all accumulated diagnostics from the type checker
+                diagnostics.Merge(typeChecker.Diagnostics);
+                return new CompilationResult
+                {
+                    Success = false,
+                    Diagnostics = diagnostics,
+                    Metrics = metrics
+                };
+            }
             metrics.EndPhase();
 
             // Assertion: After successful type checking, warn if unknown types remain
@@ -360,10 +374,7 @@ public class Compiler
             // Check for code generation errors
             if (codeGenContext.HasErrors)
             {
-                foreach (var error in codeGenContext.Errors)
-                {
-                    diagnostics.AddError(error, filePath: filePath, phase: CompilerPhase.CodeGeneration);
-                }
+                diagnostics.Merge(codeGenContext.Diagnostics);
                 return new CompilationResult
                 {
                     Success = false,

@@ -1,0 +1,12 @@
+class Vec:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+    def __add__(self) -> int:
+        return self.x
+
+def main():
+    v: Vec = Vec(1)
+    print(v.x)

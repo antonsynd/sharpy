@@ -385,7 +385,7 @@ public class ImportResolver
         }
         catch (Exception ex)
         {
-            AddError($"Error loading module '{modulePath}': {ex.Message}", lineStart, columnStart);
+            AddError($"Error loading module '{modulePath}': {ex.Message}", lineStart, columnStart, code: DiagnosticCodes.Semantic.ModuleLoadError);
             return null;
         }
         finally

@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -285,7 +286,7 @@ public class AccessValidatorV2 : SemanticValidatorBase
                 {
                     AddError(_context,
                         $"Cannot access private member '{memberName}' of '{owningType.Name}' from outside the class",
-                        lineStart, columnStart);
+                        lineStart, columnStart, code: DiagnosticCodes.Semantic.AccessViolation);
                 }
                 break;
 
@@ -295,7 +296,7 @@ public class AccessValidatorV2 : SemanticValidatorBase
                 {
                     AddError(_context,
                         $"Cannot access protected member '{memberName}' of '{owningType.Name}' from outside the class hierarchy",
-                        lineStart, columnStart);
+                        lineStart, columnStart, code: DiagnosticCodes.Semantic.AccessViolation);
                 }
                 break;
 

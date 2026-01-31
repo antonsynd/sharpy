@@ -1,0 +1,5 @@
+def process(items: list[int] = [1, 2, 3]) -> int:
+    return len(items)
+
+def main():
+    print(process())

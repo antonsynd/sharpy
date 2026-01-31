@@ -80,6 +80,9 @@ public static class DiagnosticCodes
         public const string DuplicateDefinition = "SHP0204";
         public const string DuplicateClassField = "SHP0205";
         public const string DuplicateParameter = "SHP0206";
+        public const string DuplicateConstant = "SHP0207";
+        public const string DuplicateTypeAlias = "SHP0208";
+        public const string InvalidTypeAlias = "SHP0209";
 
         // Type checking (SHP0220-SHP0259)
         public const string TypeMismatch = "SHP0220";
@@ -92,6 +95,28 @@ public static class DiagnosticCodes
         public const string CannotInferType = "SHP0227";
         public const string InvalidCast = "SHP0228";
         public const string NullabilityViolation = "SHP0229";
+        public const string NotCallable = "SHP0230";
+        public const string InvalidPipeTarget = "SHP0231";
+        public const string InvalidSelfUsage = "SHP0232";
+        public const string InvalidNothingUsage = "SHP0233";
+        public const string UnknownKeywordArgument = "SHP0234";
+        public const string DuplicateArgument = "SHP0235";
+        public const string InvalidNullConditional = "SHP0236";
+        public const string CannotInferGenericType = "SHP0237";
+        public const string InvalidComprehension = "SHP0238";
+        public const string InvalidTupleUnpacking = "SHP0239";
+        public const string InvalidAutoVariable = "SHP0240";
+        public const string ConditionNotBoolean = "SHP0241";
+        public const string InvalidRaise = "SHP0242";
+        public const string InvalidMaybeExpression = "SHP0243";
+        public const string InvalidNoneConstructor = "SHP0244";
+        public const string InvalidSomeConstructor = "SHP0245";
+        public const string InvalidOkErrConstructor = "SHP0246";
+        public const string MissingMethodBody = "SHP0247";
+        public const string InvalidOverride = "SHP0248";
+        public const string MissingParameterAnnotation = "SHP0249";
+        public const string InvalidDefaultValue = "SHP0250";
+        public const string InterfaceMethodBody = "SHP0251";
 
         // Return and control flow (SHP0260-SHP0279)
         public const string MissingReturnValue = "SHP0260";
@@ -115,6 +140,10 @@ public static class DiagnosticCodes
         public const string ModuleNotFound = "SHP0300";
         public const string ImportError = "SHP0301";
         public const string CircularImport = "SHP0302";
+        public const string ImportPrivateSymbol = "SHP0303";
+        public const string ModuleLoadError = "SHP0304";
+        public const string AssemblyNotFound = "SHP0305";
+        public const string AssemblyLoadError = "SHP0306";
 
         // Protocol and operator (SHP0320-SHP0339)
         public const string ProtocolMissingMethod = "SHP0320";
@@ -124,6 +153,18 @@ public static class DiagnosticCodes
         // Module level (SHP0340-SHP0349)
         public const string ModuleLevelExecutableStatement = "SHP0340";
         public const string ModuleLevelNoTypeAnnotation = "SHP0341";
+    }
+
+    /// <summary>
+    /// Validation diagnostic codes (SHP0400-SHP0499).
+    /// </summary>
+    public static class Validation
+    {
+        public const string MutableDefault = "SHP0400";
+        public const string NonConstDefault = "SHP0401";
+        public const string UnsupportedOperator = "SHP0402";
+        public const string MissingMainFunction = "SHP0403";
+        public const string InvalidNullCoalesce = "SHP0404";
     }
 
     /// <summary>

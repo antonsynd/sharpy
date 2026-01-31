@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -80,7 +81,7 @@ public class DefaultParameterValidatorV2 : SemanticValidatorBase
                 $"Mutable default value is not allowed for parameter '{param.Name}' in function '{functionName}'. " +
                 "Use None as default and initialize in the function body instead.",
                 param.LineStart,
-                param.ColumnStart);
+                param.ColumnStart, code: DiagnosticCodes.Validation.MutableDefault);
             return;
         }
 
@@ -90,7 +91,7 @@ public class DefaultParameterValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"Default value for parameter '{param.Name}' in function '{functionName}' must be a compile-time constant expression",
                 param.LineStart,
-                param.ColumnStart);
+                param.ColumnStart, code: DiagnosticCodes.Validation.NonConstDefault);
             return;
         }
 
@@ -106,7 +107,7 @@ public class DefaultParameterValidatorV2 : SemanticValidatorBase
                     $"Cannot use 'None' as default value for non-nullable parameter '{param.Name}' of type '{paramType.GetDisplayName()}' in function '{functionName}'. " +
                     $"Use '{paramType.GetDisplayName()}?' to make the parameter nullable.",
                     param.LineStart,
-                    param.ColumnStart);
+                    param.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDefaultValue);
             }
         }
 
@@ -122,7 +123,7 @@ public class DefaultParameterValidatorV2 : SemanticValidatorBase
                     $"Cannot use 'None()' as default value for non-optional parameter '{param.Name}' of type '{paramType.GetDisplayName()}' in function '{functionName}'. " +
                     $"Use '{paramType.GetDisplayName()}?' to make the parameter optional.",
                     param.LineStart,
-                    param.ColumnStart);
+                    param.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDefaultValue);
             }
         }
     }

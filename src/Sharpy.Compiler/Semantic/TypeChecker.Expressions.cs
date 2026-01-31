@@ -62,7 +62,7 @@ public partial class TypeChecker
             if (_currentClass == null)
             {
                 AddError("'self' can only be used inside instance methods",
-                    id.LineStart, id.ColumnStart);
+                    id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.InvalidSelfUsage);
                 return SemanticType.Unknown;
             }
             // Normal identifier lookup will follow and find the self parameter
@@ -72,7 +72,7 @@ public partial class TypeChecker
         if (id.Name == "Nothing")
         {
             AddError("'Nothing' is not a valid identifier. Use 'None()' to construct an empty Optional, or 'None' for the null literal",
-                id.LineStart, id.ColumnStart);
+                id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.InvalidNothingUsage);
             return SemanticType.Unknown;
         }
 
@@ -85,7 +85,7 @@ public partial class TypeChecker
                 // These are function-call constructors, not bare identifiers.
                 // If we get here, it means the user wrote e.g. 'x = Some' without calling it.
                 AddError($"'{id.Name}' must be called as a function, e.g. '{id.Name}(value)'",
-                    id.LineStart, id.ColumnStart);
+                    id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.NotCallable);
                 return SemanticType.Unknown;
             }
             AddError($"Undefined identifier '{id.Name}'",
@@ -190,7 +190,7 @@ public partial class TypeChecker
             if (ft.ParameterTypes.Count < 1)
             {
                 AddError($"Pipe target function takes no arguments, cannot pipe a value to it",
-                    binOp.Right.LineStart, binOp.Right.ColumnStart);
+                    binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
                 return SemanticType.Unknown;
             }
 
@@ -217,7 +217,7 @@ public partial class TypeChecker
                 if (requiredParamCount < 1)
                 {
                     AddError($"Pipe target function '{id.Name}' takes no required arguments, cannot pipe a value to it",
-                        binOp.Right.LineStart, binOp.Right.ColumnStart);
+                        binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
                     return SemanticType.Unknown;
                 }
 
@@ -246,7 +246,7 @@ public partial class TypeChecker
                 // Constructor call via pipe - x |> SomeClass → SomeClass(x)
                 // This is allowed, handled similarly to function call
                 AddError($"Piping to constructors is not yet supported",
-                    binOp.Right.LineStart, binOp.Right.ColumnStart);
+                    binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
                 return SemanticType.Unknown;
             }
 
@@ -257,7 +257,7 @@ public partial class TypeChecker
 
         // Right side is some other expression that's not callable
         AddError($"Pipe target must be callable, got '{rightType.GetDisplayName()}'",
-            binOp.Right.LineStart, binOp.Right.ColumnStart);
+            binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
         return SemanticType.Unknown;
     }
 
@@ -340,7 +340,7 @@ public partial class TypeChecker
                     if (param == null)
                     {
                         AddError($"Unknown keyword argument '{kwarg.Name}'",
-                            kwarg.LineStart, kwarg.ColumnStart);
+                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument);
                     }
                     else
                     {
@@ -349,7 +349,7 @@ public partial class TypeChecker
                         if (paramIndex < allArgTypes.Count)
                         {
                             AddError($"Argument '{kwarg.Name}' was already provided positionally",
-                                kwarg.LineStart, kwarg.ColumnStart);
+                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument);
                         }
                         else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
                         {
@@ -366,7 +366,7 @@ public partial class TypeChecker
             {
                 // Constructor call via pipe - x |> SomeClass(y) → SomeClass(x, y)
                 AddError($"Piping to constructors is not yet supported",
-                    binOp.Right.LineStart, binOp.Right.ColumnStart);
+                    binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
                 return SemanticType.Unknown;
             }
 
@@ -405,7 +405,7 @@ public partial class TypeChecker
         }
 
         AddError($"Pipe target must be callable, got '{calleeType.GetDisplayName()}'",
-            call.LineStart, call.ColumnStart);
+            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
         return SemanticType.Unknown;
     }
 
@@ -516,7 +516,7 @@ public partial class TypeChecker
             {
                 AddError(
                     $"Null conditional operator '?.' can only be used on nullable types, but got '{objectType.GetDisplayName()}'",
-                    memberAccess.LineStart, memberAccess.ColumnStart);
+                    memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.InvalidNullConditional);
                 return SemanticType.Unknown;
             }
         }
@@ -719,7 +719,7 @@ public partial class TypeChecker
             else if (_expectedType != null)
             {
                 AddError($"'None()' can only construct Optional types, not '{_expectedType.GetDisplayName()}'",
-                    call.LineStart, call.ColumnStart);
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.InvalidNoneConstructor);
                 return SemanticType.Unknown;
             }
             else
@@ -1069,7 +1069,7 @@ public partial class TypeChecker
                 {
                     // Inference failed - report error
                     AddError(inferenceResult.ErrorMessage ?? "Type arguments cannot be inferred",
-                        call.LineStart, call.ColumnStart);
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferGenericType);
                     return SemanticType.Unknown;
                 }
             }
@@ -1111,7 +1111,7 @@ public partial class TypeChecker
                     if (param == null)
                     {
                         AddError($"Unknown keyword argument '{kwarg.Name}'",
-                            kwarg.LineStart, kwarg.ColumnStart);
+                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument);
                     }
                     else
                     {
@@ -1120,7 +1120,7 @@ public partial class TypeChecker
                         if (paramIndex < argTypes.Count)
                         {
                             AddError($"Argument '{kwarg.Name}' was already provided positionally",
-                                kwarg.LineStart, kwarg.ColumnStart);
+                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument);
                         }
                         else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
                         {
@@ -1445,7 +1445,7 @@ public partial class TypeChecker
                     // For tuple unpacking or other complex targets
                     // TODO: Implement tuple unpacking in comprehensions
                     AddError($"Tuple unpacking in comprehensions not yet supported",
-                        forClause.LineStart, forClause.ColumnStart);
+                        forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
                 }
             }
             else if (clause is IfClause ifClause)
@@ -1455,7 +1455,7 @@ public partial class TypeChecker
                 if (!condType.IsAssignableTo(SemanticType.Bool))
                 {
                     AddError($"Comprehension filter must be bool, got '{condType.GetDisplayName()}'",
-                        ifClause.LineStart, ifClause.ColumnStart);
+                        ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean);
                 }
             }
         }
@@ -1506,7 +1506,7 @@ public partial class TypeChecker
                 {
                     // For tuple unpacking or other complex targets
                     AddError($"Tuple unpacking in comprehensions not yet supported",
-                        forClause.LineStart, forClause.ColumnStart);
+                        forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
                 }
             }
             else if (clause is IfClause ifClause)
@@ -1516,7 +1516,7 @@ public partial class TypeChecker
                 if (!condType.IsAssignableTo(SemanticType.Bool))
                 {
                     AddError($"Comprehension filter must be bool, got '{condType.GetDisplayName()}'",
-                        ifClause.LineStart, ifClause.ColumnStart);
+                        ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean);
                 }
             }
         }
@@ -1567,7 +1567,7 @@ public partial class TypeChecker
                 {
                     // For tuple unpacking or other complex targets
                     AddError($"Tuple unpacking in comprehensions not yet supported",
-                        forClause.LineStart, forClause.ColumnStart);
+                        forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
                 }
             }
             else if (clause is IfClause ifClause)
@@ -1577,7 +1577,7 @@ public partial class TypeChecker
                 if (!condType.IsAssignableTo(SemanticType.Bool))
                 {
                     AddError($"Comprehension filter must be bool, got '{condType.GetDisplayName()}'",
-                        ifClause.LineStart, ifClause.ColumnStart);
+                        ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean);
                 }
             }
         }
@@ -1866,7 +1866,7 @@ public partial class TypeChecker
         {
             AddError(
                 $"'maybe' expression requires a nullable type (T | None), but got '{operandType.GetDisplayName()}'",
-                maybeExpr.LineStart, maybeExpr.ColumnStart);
+                maybeExpr.LineStart, maybeExpr.ColumnStart, code: DiagnosticCodes.Semantic.InvalidMaybeExpression);
             return SemanticType.Unknown;
         }
 

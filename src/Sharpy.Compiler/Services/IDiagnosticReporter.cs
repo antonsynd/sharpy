@@ -12,22 +12,22 @@ public interface IDiagnosticReporter
     /// <summary>
     /// Report an error with optional source location.
     /// </summary>
-    void ReportError(string message, int? line = null, int? column = null);
+    void ReportError(string message, int? line = null, int? column = null, string? code = null);
 
     /// <summary>
     /// Report an error at a specific AST node's location.
     /// </summary>
-    void ReportError(string message, Node node);
+    void ReportError(string message, Node node, string? code = null);
 
     /// <summary>
     /// Report a warning with optional source location.
     /// </summary>
-    void ReportWarning(string message, int? line = null, int? column = null);
+    void ReportWarning(string message, int? line = null, int? column = null, string? code = null);
 
     /// <summary>
     /// Report a warning at a specific AST node's location.
     /// </summary>
-    void ReportWarning(string message, Node node);
+    void ReportWarning(string message, Node node, string? code = null);
 
     /// <summary>
     /// Get all diagnostics reported so far.
