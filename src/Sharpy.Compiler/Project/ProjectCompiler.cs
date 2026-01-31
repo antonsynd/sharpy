@@ -104,7 +104,7 @@ public class ProjectCompiler
         catch (Exception ex)
         {
             _logger.LogError($"Project compilation failed: {ex.Message}", 0, 0);
-            _diagnostics.AddError($"Project compilation failed: {ex.Message}");
+            _diagnostics.AddError($"Project compilation failed: {ex.Message}", code: DiagnosticCodes.Infrastructure.CompilationFailed);
             return new ProjectCompilationResult
             {
                 Success = false,
@@ -206,11 +206,11 @@ public class ProjectCompiler
                 var unit = _projectModel!.GetUnit(sourceFile);
                 if (unit != null)
                 {
-                    unit.Diagnostics.AddError(ex.Message, filePath: sourceFile);
+                    unit.Diagnostics.AddError(ex.Message, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
                     unit.Phase = CompilationPhase.Failed;
                 }
 
-                _diagnostics.AddError(ex.Message, filePath: sourceFile);
+                _diagnostics.AddError(ex.Message, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
                 _projectMetrics.AddFileMetrics(fileMetrics);
             }
         }
@@ -298,8 +298,8 @@ public class ProjectCompiler
         {
             foreach (var error in _sharedNameResolver.Diagnostics.GetErrors())
             {
-                _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column);
-                _diagnostics.AddError(error.Message, error.Line, error.Column, phase: CompilerPhase.NameResolution);
+                _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code);
+                _diagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code, phase: CompilerPhase.NameResolution);
             }
         }
     }
@@ -326,8 +326,8 @@ public class ProjectCompiler
         var newErrors = _sharedNameResolver.Diagnostics.GetErrors().Skip(previousErrorCount);
         foreach (var error in newErrors)
         {
-            _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column);
-            _diagnostics.AddError(error.Message, error.Line, error.Column, phase: CompilerPhase.NameResolution);
+            _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code);
+            _diagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code, phase: CompilerPhase.NameResolution);
         }
     }
 
@@ -466,8 +466,8 @@ public class ProjectCompiler
                 var cycleFiles = cycle.Select(Path.GetFileName).ToList();
                 var cycleDescription = string.Join(" → ", cycleFiles);
                 var errorMsg = $"Circular dependency detected: {cycleDescription}";
-                _projectModel!.GlobalDiagnostics.AddError(errorMsg);
-                _diagnostics.AddError(errorMsg, phase: CompilerPhase.ImportResolution);
+                _projectModel!.GlobalDiagnostics.AddError(errorMsg, code: DiagnosticCodes.Semantic.CircularImport);
+                _diagnostics.AddError(errorMsg, code: DiagnosticCodes.Semantic.CircularImport, phase: CompilerPhase.ImportResolution);
             }
             // Don't add import resolver errors when we have circular dependencies
             // as they would be redundant/confusing (e.g., "module not found" errors
@@ -480,8 +480,8 @@ public class ProjectCompiler
         {
             foreach (var error in _importResolver.Diagnostics.GetErrors())
             {
-                _projectModel!.GlobalDiagnostics.AddError(error.Message);
-                _diagnostics.AddError(error.Message, error.Line, error.Column, phase: CompilerPhase.ImportResolution);
+                _projectModel!.GlobalDiagnostics.AddError(error.Message, code: error.Code);
+                _diagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code, phase: CompilerPhase.ImportResolution);
             }
         }
 
@@ -560,7 +560,7 @@ public class ProjectCompiler
                 // Add to unit diagnostics
                 foreach (var error in typeChecker.Diagnostics.GetErrors())
                 {
-                    unit.Diagnostics.AddError(error.Message, error.Line, error.Column, unit.FilePath);
+                    unit.Diagnostics.AddError(error.Message, error.Line, error.Column, unit.FilePath, code: error.Code);
                 }
                 unit.Phase = CompilationPhase.Failed;
 
@@ -675,8 +675,8 @@ public class ProjectCompiler
             // Add assembly errors to global diagnostics
             foreach (var error in assemblyResult.Errors)
             {
-                _projectModel!.GlobalDiagnostics.AddError(error);
-                _diagnostics.AddError(error, phase: CompilerPhase.Assembly);
+                _projectModel!.GlobalDiagnostics.AddError(error, code: DiagnosticCodes.Infrastructure.AssemblyCompilationFailed);
+                _diagnostics.AddError(error, code: DiagnosticCodes.Infrastructure.AssemblyCompilationFailed, phase: CompilerPhase.Assembly);
             }
 
             foreach (var warning in assemblyResult.Warnings)

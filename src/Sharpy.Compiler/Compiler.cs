@@ -426,7 +426,7 @@ public class Compiler
         catch (OperationCanceledException)
         {
             _logger.LogInfo("Compilation cancelled");
-            diagnostics.AddError("Compilation cancelled", filePath: filePath);
+            diagnostics.AddError("Compilation cancelled", filePath: filePath, code: DiagnosticCodes.Infrastructure.CompilationCancelled);
             return new CompilationResult
             {
                 Success = false,
@@ -437,7 +437,7 @@ public class Compiler
         catch (Exception ex)
         {
             _logger.LogError($"Compilation failed with exception: {ex.Message}", 0, 0);
-            diagnostics.AddError($"Compilation failed: {ex.Message}", filePath: filePath);
+            diagnostics.AddError($"Compilation failed: {ex.Message}", filePath: filePath, code: DiagnosticCodes.Infrastructure.CompilationFailed);
             return new CompilationResult
             {
                 Success = false,

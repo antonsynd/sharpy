@@ -2,6 +2,7 @@ using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -237,7 +238,7 @@ public partial class RoslynEmitter
             {
                 // This is an error - when main() is defined, it will be automatically invoked
                 // Users should not have executable statements alongside a main function definition
-                _context.AddError("Cannot have module-level executable statements when a 'main' function is defined. The main function is automatically invoked as the entry point.");
+                _context.AddError("Cannot have module-level executable statements when a 'main' function is defined. The main function is automatically invoked as the entry point.", code: DiagnosticCodes.Semantic.ModuleLevelExecutableStatement);
             }
             // else: Only VariableDeclaration statements remain, which are legitimate typed declarations
             // These will be handled by generating them as local variables in a synthesized static constructor or similar

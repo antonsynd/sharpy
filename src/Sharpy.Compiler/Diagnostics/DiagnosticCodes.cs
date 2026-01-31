@@ -175,4 +175,16 @@ public static class DiagnosticCodes
         public const string EmitError = "SHP0500";
         public const string UnsupportedFeature = "SHP0501";
     }
+
+    /// <summary>
+    /// Infrastructure diagnostic codes (SHP0900-SHP0999).
+    /// These cover compiler-level errors not tied to a specific language phase.
+    /// </summary>
+    public static class Infrastructure
+    {
+        public const string CompilationFailed = "SHP0900";
+        public const string CompilationCancelled = "SHP0901";
+        public const string AssemblyCompilationFailed = "SHP0902";
+        public const string FileReadError = "SHP0903";
+    }
 }

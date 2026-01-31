@@ -100,8 +100,11 @@ public class ControlFlowValidatorV3 : SemanticValidatorBase
         var loopErrors = ControlFlowAnalysis.ValidateLoopControlFlow(cfg);
         foreach (var error in loopErrors)
         {
+            var code = error.Statement is BreakStatement
+                ? DiagnosticCodes.Semantic.BreakOutsideLoop
+                : DiagnosticCodes.Semantic.ContinueOutsideLoop;
             AddError(_context, error.Message,
-                error.Statement.LineStart, error.Statement.ColumnStart);
+                error.Statement.LineStart, error.Statement.ColumnStart, code: code);
         }
     }
 
