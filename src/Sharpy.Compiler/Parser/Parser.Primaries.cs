@@ -1,6 +1,7 @@
 #pragma warning disable CS0618 // ParserError is obsolete
 using System.Collections.Immutable;
 using System.Text;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
@@ -522,7 +523,7 @@ public partial class Parser
                 }
 
             default:
-                throw new ParserError($"Unexpected token: {Current.Type}", Current.Line, Current.Column);
+                throw new ParserError($"Unexpected token: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken);
         }
     }
 }

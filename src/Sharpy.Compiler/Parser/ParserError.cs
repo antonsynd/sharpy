@@ -11,10 +11,17 @@ public class ParserError : Exception
     public int Line { get; }
     public int Column { get; }
 
-    public ParserError(string message, int line, int column)
+    /// <summary>
+    /// Diagnostic error code (e.g., "SHP0100"). Assigned at throw site
+    /// so the catch boundary doesn't need fragile message string matching.
+    /// </summary>
+    public string? Code { get; }
+
+    public ParserError(string message, int line, int column, string? code = null)
         : base($"Parser error at line {line}, column {column}: {message}")
     {
         Line = line;
         Column = column;
+        Code = code;
     }
 }

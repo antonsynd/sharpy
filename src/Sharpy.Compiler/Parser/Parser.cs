@@ -90,7 +90,7 @@ public partial class Parser
                     rawMessage = rawMessage[(colonIndex + 2)..];
 
                 _diagnostics.AddError(rawMessage, ex.Line, ex.Column,
-                    code: MapParserErrorToCode(rawMessage),
+                    code: ex.Code,
                     phase: CompilerPhase.Parser);
 
                 // Stop after MaxErrors to avoid cascading false errors
@@ -157,50 +157,6 @@ public partial class Parser
         }
     }
 
-    /// <summary>
-    /// Maps a parser error message to a diagnostic code.
-    /// </summary>
-    private static string? MapParserErrorToCode(string message)
-    {
-        if (message.Contains("Unexpected token"))
-            return DiagnosticCodes.Parser.UnexpectedToken;
-        if (message.Contains("Expected identifier"))
-            return DiagnosticCodes.Parser.ExpectedIdentifier;
-        if (message.Contains("Expected newline"))
-            return DiagnosticCodes.Parser.ExpectedNewline;
-        if (message.Contains("Expected end of statement"))
-            return DiagnosticCodes.Parser.ExpectedEndOfStatement;
-        if (message.StartsWith("Expected "))
-            return DiagnosticCodes.Parser.ExpectedToken;
-        if (message.Contains("Decorators can only be applied"))
-            return DiagnosticCodes.Parser.InvalidDecoratorTarget;
-        if (message.Contains("decorator name"))
-            return DiagnosticCodes.Parser.ExpectedDecoratorName;
-        if (message.Contains("Tuple expression not allowed"))
-            return DiagnosticCodes.Parser.TupleAsStatement;
-        if (message.Contains("Invalid type annotation"))
-            return DiagnosticCodes.Parser.InvalidTypeAnnotationTarget;
-        if (message.Contains("must have at least one member"))
-            return DiagnosticCodes.Parser.EmptyEnum;
-        if (message.Contains("Positional argument cannot follow keyword"))
-            return DiagnosticCodes.Parser.PositionalAfterKeyword;
-        if (message.Contains("Only one variadic parameter"))
-            return DiagnosticCodes.Parser.MultipleVariadic;
-        if (message.Contains("Variadic parameter") && message.Contains("default"))
-            return DiagnosticCodes.Parser.VariadicWithDefault;
-        if (message.Contains("Variadic parameter") && message.Contains("last"))
-            return DiagnosticCodes.Parser.VariadicNotLast;
-        if (message.Contains("List type shorthand"))
-            return DiagnosticCodes.Parser.EmptyListShorthand;
-        if (message.Contains("Set/dict type shorthand"))
-            return DiagnosticCodes.Parser.EmptySetDictShorthand;
-        if (message.Contains("Expected module name"))
-            return DiagnosticCodes.Parser.ExpectedModuleName;
-        if (message.Contains("free-form union"))
-            return DiagnosticCodes.Parser.FreeUnionNotSupported;
-        return null;
-    }
-
     private Statement ParseStatement()
     {
         // Decorators (for functions, classes, structs)
@@ -258,7 +214,7 @@ public partial class Parser
             var decoratorStartToken = Current;
             Advance();  // Skip @
             if (Current.Type != TokenType.Identifier)
-                throw new ParserError("Expected decorator name", Current.Line, Current.Column);
+                throw new ParserError("Expected decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName);
 
             var decoratorName = Current.Value;
             Advance();
@@ -284,7 +240,7 @@ public partial class Parser
             TokenType.Def => ParseFunctionDef(),
             TokenType.Class => ParseClassDef(),
             TokenType.Struct => ParseStructDef(),
-            _ => throw new ParserError("Decorators can only be applied to functions, classes, or structs", Current.Line, Current.Column)
+            _ => throw new ParserError("Decorators can only be applied to functions, classes, or structs", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget)
         };
 
         // Attach decorators
@@ -293,7 +249,7 @@ public partial class Parser
             FunctionDef func => func with { Decorators = decorators.ToImmutableArray() },
             ClassDef cls => cls with { Decorators = decorators.ToImmutableArray() },
             StructDef str => str with { Decorators = decorators.ToImmutableArray() },
-            _ => throw new ParserError("Unexpected decorated statement type", Current.Line, Current.Column)
+            _ => throw new ParserError("Unexpected decorated statement type", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken)
         };
     }
 
