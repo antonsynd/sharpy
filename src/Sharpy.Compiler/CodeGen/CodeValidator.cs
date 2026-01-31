@@ -19,22 +19,6 @@ public class CodeValidator
     public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
-    /// Get all validation errors (backward compatibility).
-    /// Prefer using <see cref="Diagnostics"/> for structured access.
-    /// </summary>
-    [Obsolete("Use Diagnostics property instead.")]
-    public IReadOnlyList<string> Errors =>
-        _diagnostics.GetErrors().Select(d => d.Message).ToList();
-
-    /// <summary>
-    /// Get all validation warnings (backward compatibility).
-    /// Prefer using <see cref="Diagnostics"/> for structured access.
-    /// </summary>
-    [Obsolete("Use Diagnostics property instead.")]
-    public IReadOnlyList<string> Warnings =>
-        _diagnostics.GetWarnings().Select(d => d.Message).ToList();
-
-    /// <summary>
     /// Validate a syntax tree
     /// </summary>
     public bool Validate(SyntaxTree syntaxTree)

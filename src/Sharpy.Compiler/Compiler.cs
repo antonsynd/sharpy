@@ -637,24 +637,6 @@ public class CompilationResult
     /// </summary>
     public DiagnosticBag Diagnostics { get; init; } = new();
 
-    /// <summary>
-    /// Backward-compatible convenience property for error messages as strings.
-    /// Prefer using <see cref="Diagnostics"/> for structured access.
-    /// </summary>
-    [Obsolete("Use Diagnostics property instead.")]
-    public List<string> Errors
-    {
-        get => Diagnostics.GetErrors().Select(d => d.ToString()).ToList();
-        init
-        {
-            // Support legacy initialization: convert string errors to diagnostics
-            foreach (var error in value)
-            {
-                Diagnostics.AddError(error);
-            }
-        }
-    }
-
     public Module? Module { get; init; }
     public SymbolTable? SymbolTable { get; init; }
     public SemanticInfo? SemanticInfo { get; init; }
@@ -682,40 +664,6 @@ public class ProjectCompilationResult
     /// This is the primary way to access errors, warnings, and other diagnostics.
     /// </summary>
     public DiagnosticBag Diagnostics { get; init; } = new();
-
-    /// <summary>
-    /// Backward-compatible convenience property for error messages as strings.
-    /// Prefer using <see cref="Diagnostics"/> for structured access.
-    /// </summary>
-    [Obsolete("Use Diagnostics property instead.")]
-    public List<string> Errors
-    {
-        get => Diagnostics.GetErrors().Select(d => d.ToString()).ToList();
-        init
-        {
-            foreach (var error in value)
-            {
-                Diagnostics.AddError(error);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Backward-compatible convenience property for warning messages as strings.
-    /// Prefer using <see cref="Diagnostics"/> for structured access.
-    /// </summary>
-    [Obsolete("Use Diagnostics property instead.")]
-    public List<string> Warnings
-    {
-        get => Diagnostics.GetWarnings().Select(d => d.ToString()).ToList();
-        init
-        {
-            foreach (var warning in value)
-            {
-                Diagnostics.AddWarning(warning);
-            }
-        }
-    }
 
     public string? OutputAssemblyPath { get; init; }
     public Dictionary<string, string> GeneratedCSharpFiles { get; init; } = new();

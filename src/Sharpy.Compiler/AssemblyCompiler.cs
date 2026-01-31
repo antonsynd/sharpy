@@ -362,40 +362,6 @@ public class AssemblyCompilationResult
     /// </summary>
     public DiagnosticBag Diagnostics { get; init; } = new();
 
-    /// <summary>
-    /// Backward-compatible convenience property for error messages as strings.
-    /// Prefer using <see cref="Diagnostics"/> for structured access.
-    /// </summary>
-    [Obsolete("Use Diagnostics property instead.")]
-    public List<string> Errors
-    {
-        get => Diagnostics.GetErrors().Select(d => d.ToString()).ToList();
-        init
-        {
-            foreach (var error in value)
-            {
-                Diagnostics.AddError(error, phase: CompilerPhase.Assembly);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Backward-compatible convenience property for warning messages as strings.
-    /// Prefer using <see cref="Diagnostics"/> for structured access.
-    /// </summary>
-    [Obsolete("Use Diagnostics property instead.")]
-    public List<string> Warnings
-    {
-        get => Diagnostics.GetWarnings().Select(d => d.ToString()).ToList();
-        init
-        {
-            foreach (var warning in value)
-            {
-                Diagnostics.AddWarning(warning, phase: CompilerPhase.Assembly);
-            }
-        }
-    }
-
     public string? OutputAssemblyPath { get; init; }
     public CompilationMetrics? Metrics { get; init; }
 }
