@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;

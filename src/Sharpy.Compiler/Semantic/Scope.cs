@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // SemanticError is obsolete
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>

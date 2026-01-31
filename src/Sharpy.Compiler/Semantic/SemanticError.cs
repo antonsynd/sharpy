@@ -1,8 +1,11 @@
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// Represents an error during semantic analysis
+/// Represents an error during semantic analysis.
+/// Semantic errors are now collected into DiagnosticBag via Compiler.Diagnostics.
+/// This type is retained during migration from exception-based to DiagnosticBag-based error handling.
 /// </summary>
+[Obsolete("Semantic errors should be collected into DiagnosticBag. This type is retained during migration.")]
 public class SemanticError : Exception
 {
     public int? Line { get; }

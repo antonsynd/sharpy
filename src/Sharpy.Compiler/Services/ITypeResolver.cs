@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // SemanticError is obsolete
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 

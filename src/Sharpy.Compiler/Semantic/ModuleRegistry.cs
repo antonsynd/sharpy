@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // SemanticError is obsolete
 using System.Collections.Concurrent;
 using System.Reflection;
 using Sharpy.Compiler.Discovery;

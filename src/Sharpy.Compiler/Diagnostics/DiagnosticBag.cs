@@ -1,4 +1,4 @@
-#pragma warning disable CS0618 // LexerError and ParserError are obsolete
+#pragma warning disable CS0618 // LexerError, ParserError, and SemanticError are obsolete
 namespace Sharpy.Compiler.Diagnostics;
 
 /// <summary>
@@ -189,7 +189,7 @@ public class DiagnosticBag
         // Extract the raw message from the formatted "Lexer error at line X, column Y: message"
         var rawMessage = ExtractRawMessage(error.Message, "Lexer error");
         Add(new CompilerDiagnostic(rawMessage, CompilerDiagnosticSeverity.Error,
-            error.Line, error.Column, filePath, Phase: CompilerPhase.Lexer));
+            error.Line, error.Column, filePath, Code: error.Code, Phase: CompilerPhase.Lexer));
     }
 
     /// <summary>
@@ -200,7 +200,7 @@ public class DiagnosticBag
         // Extract the raw message from the formatted "Parser error at line X, column Y: message"
         var rawMessage = ExtractRawMessage(error.Message, "Parser error");
         Add(new CompilerDiagnostic(rawMessage, CompilerDiagnosticSeverity.Error,
-            error.Line, error.Column, filePath, Phase: CompilerPhase.Parser));
+            error.Line, error.Column, filePath, Code: error.Code, Phase: CompilerPhase.Parser));
     }
 
     /// <summary>

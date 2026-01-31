@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // SemanticError is obsolete
 using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Logging;

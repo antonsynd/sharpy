@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // SemanticError is obsolete
 using Xunit;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;

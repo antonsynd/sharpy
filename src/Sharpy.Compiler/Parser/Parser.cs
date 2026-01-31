@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // ParserError is obsolete
 using System.Collections.Immutable;
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
@@ -80,9 +81,7 @@ public partial class Parser
                 var stmt = ParseStatement();
                 statements.Add(stmt);
             }
-#pragma warning disable CS0618 // ParserError is obsolete
             catch (ParserError ex)
-#pragma warning restore CS0618
             {
                 var rawMessage = ex.Message;
                 var colonIndex = rawMessage.IndexOf(": ", StringComparison.Ordinal);
