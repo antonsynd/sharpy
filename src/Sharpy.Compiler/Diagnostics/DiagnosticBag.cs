@@ -13,6 +13,22 @@ public enum CompilerDiagnosticSeverity
 }
 
 /// <summary>
+/// Phase of compilation where the diagnostic originated.
+/// </summary>
+public enum CompilerPhase
+{
+    Lexer,
+    Parser,
+    NameResolution,
+    ImportResolution,
+    TypeChecking,
+    Validation,
+    CodeGeneration,
+    Assembly,
+    Unknown
+}
+
+/// <summary>
 /// A single diagnostic message with location and severity.
 /// Named CompilerDiagnostic to avoid conflict with Microsoft.CodeAnalysis.Diagnostic.
 /// </summary>
@@ -22,10 +38,12 @@ public record CompilerDiagnostic(
     int? Line = null,
     int? Column = null,
     string? FilePath = null,
-    string? Code = null  // e.g., "SHP001" for future error codes
+    string? Code = null,
+    CompilerPhase Phase = CompilerPhase.Unknown
 )
 {
     public bool IsError => Severity == CompilerDiagnosticSeverity.Error;
+    public bool IsWarning => Severity == CompilerDiagnosticSeverity.Warning;
 
     public override string ToString()
     {
@@ -68,14 +86,16 @@ public class DiagnosticBag
         }
     }
 
-    public void AddError(string message, int? line = null, int? column = null, string? filePath = null)
+    public void AddError(string message, int? line = null, int? column = null, string? filePath = null,
+        string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
     {
-        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Error, line, column, filePath));
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Error, line, column, filePath, code, phase));
     }
 
-    public void AddWarning(string message, int? line = null, int? column = null, string? filePath = null)
+    public void AddWarning(string message, int? line = null, int? column = null, string? filePath = null,
+        string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
     {
-        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Warning, line, column, filePath));
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Warning, line, column, filePath, code, phase));
     }
 
     public void AddRange(IEnumerable<CompilerDiagnostic> diagnostics)
@@ -144,7 +164,7 @@ public class DiagnosticBag
             bag.AddError(error.Message.Replace("Semantic error: ", "")
                 .Replace($"Semantic error at line {error.Line}: ", "")
                 .Replace($"Semantic error at line {error.Line}, column {error.Column}: ", ""),
-                error.Line, error.Column);
+                error.Line, error.Column, phase: CompilerPhase.TypeChecking);
         }
         return bag;
     }
@@ -158,5 +178,64 @@ public class DiagnosticBag
         return GetErrors()
             .Select(d => new Semantic.SemanticError(d.Message, d.Line, d.Column))
             .ToList();
+    }
+
+    /// <summary>
+    /// Add a diagnostic from a LexerError exception.
+    /// </summary>
+    public void AddLexerError(Lexer.LexerError error, string? filePath = null)
+    {
+        // Extract the raw message from the formatted "Lexer error at line X, column Y: message"
+        var rawMessage = ExtractRawMessage(error.Message, "Lexer error");
+        Add(new CompilerDiagnostic(rawMessage, CompilerDiagnosticSeverity.Error,
+            error.Line, error.Column, filePath, Phase: CompilerPhase.Lexer));
+    }
+
+    /// <summary>
+    /// Add a diagnostic from a ParserError exception.
+    /// </summary>
+    public void AddParserError(Parser.ParserError error, string? filePath = null)
+    {
+        // Extract the raw message from the formatted "Parser error at line X, column Y: message"
+        var rawMessage = ExtractRawMessage(error.Message, "Parser error");
+        Add(new CompilerDiagnostic(rawMessage, CompilerDiagnosticSeverity.Error,
+            error.Line, error.Column, filePath, Phase: CompilerPhase.Parser));
+    }
+
+    /// <summary>
+    /// Add diagnostics from legacy SemanticErrors.
+    /// </summary>
+    public void AddSemanticErrors(IEnumerable<Semantic.SemanticError> errors, string? filePath = null,
+        CompilerPhase phase = CompilerPhase.TypeChecking)
+    {
+        foreach (var error in errors)
+        {
+            var rawMessage = ExtractRawMessage(error.Message, "Semantic error");
+            AddError(rawMessage, error.Line, error.Column, filePath, phase: phase);
+        }
+    }
+
+    /// <summary>
+    /// Extract the raw message from a formatted error message.
+    /// E.g., "Lexer error at line 1, column 2: unexpected token" -> "unexpected token"
+    /// </summary>
+    private static string ExtractRawMessage(string formattedMessage, string prefix)
+    {
+        // Pattern: "Prefix error at line X, column Y: message" or "Prefix error at line X: message" or "Prefix error: message"
+        var atIndex = formattedMessage.IndexOf($"{prefix} at line ", StringComparison.Ordinal);
+        if (atIndex >= 0)
+        {
+            var colonIndex = formattedMessage.IndexOf(": ", atIndex + prefix.Length);
+            if (colonIndex >= 0)
+                return formattedMessage[(colonIndex + 2)..];
+        }
+
+        // Try "Prefix error: message"
+        var prefixWithColon = $"{prefix}: ";
+        if (formattedMessage.StartsWith(prefixWithColon, StringComparison.Ordinal))
+            return formattedMessage[prefixWithColon.Length..];
+
+        // Return as-is if no pattern matched
+        return formattedMessage;
     }
 }

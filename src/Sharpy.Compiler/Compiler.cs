@@ -72,6 +72,7 @@ public class Compiler
     {
         _logger.LogInfo($"Starting compilation of {filePath}");
         var metrics = new CompilationMetrics(fileName: filePath);
+        var diagnostics = new DiagnosticBag();
 
         try
         {
@@ -98,10 +99,11 @@ public class Compiler
             // Check for module registry errors
             if (_moduleRegistry != null && _moduleRegistry.Errors.Any())
             {
+                diagnostics.AddSemanticErrors(_moduleRegistry.Errors, filePath, CompilerPhase.ImportResolution);
                 return new CompilationResult
                 {
                     Success = false,
-                    Errors = _moduleRegistry.Errors.Select(e => e.Message).ToList(),
+                    Diagnostics = diagnostics,
                     Metrics = metrics
                 };
             }
@@ -115,10 +117,11 @@ public class Compiler
 
             if (nameResolver.Errors.Any())
             {
+                diagnostics.AddSemanticErrors(nameResolver.Errors, filePath, CompilerPhase.NameResolution);
                 return new CompilationResult
                 {
                     Success = false,
-                    Errors = nameResolver.Errors.Select(e => e.Message).ToList(),
+                    Diagnostics = diagnostics,
                     Metrics = metrics
                 };
             }
@@ -238,10 +241,11 @@ public class Compiler
 
             if (importResolver.Errors.Any())
             {
+                diagnostics.AddSemanticErrors(importResolver.Errors, filePath, CompilerPhase.ImportResolution);
                 return new CompilationResult
                 {
                     Success = false,
-                    Errors = importResolver.Errors.Select(e => e.Message).ToList(),
+                    Diagnostics = diagnostics,
                     Metrics = metrics
                 };
             }
@@ -260,10 +264,11 @@ public class Compiler
 
             if (typeChecker.Errors.Any())
             {
+                diagnostics.AddSemanticErrors(typeChecker.Errors, filePath, CompilerPhase.TypeChecking);
                 return new CompilationResult
                 {
                     Success = false,
-                    Errors = typeChecker.Errors.Select(e => e.Message).ToList(),
+                    Diagnostics = diagnostics,
                     Metrics = metrics
                 };
             }
@@ -299,10 +304,14 @@ public class Compiler
             // Check for code generation errors
             if (codeGenContext.HasErrors)
             {
+                foreach (var error in codeGenContext.Errors)
+                {
+                    diagnostics.AddError(error, filePath: filePath, phase: CompilerPhase.CodeGeneration);
+                }
                 return new CompilationResult
                 {
                     Success = false,
-                    Errors = codeGenContext.Errors.ToList(),
+                    Diagnostics = diagnostics,
                     Metrics = metrics
                 };
             }
@@ -337,6 +346,7 @@ public class Compiler
             return new CompilationResult
             {
                 Success = true,
+                Diagnostics = diagnostics,
                 Module = module,
                 SymbolTable = symbolTable,
                 SemanticInfo = semanticInfo,
@@ -346,13 +356,36 @@ public class Compiler
                 Metrics = metrics
             };
         }
-        catch (Exception ex)
+        catch (LexerError ex)
         {
-            _logger.LogError($"Compilation failed with exception: {ex.Message}", 0, 0);
+            _logger.LogError($"Compilation failed with lexer error: {ex.Message}", ex.Line, ex.Column);
+            diagnostics.AddLexerError(ex, filePath);
             return new CompilationResult
             {
                 Success = false,
-                Errors = new List<string> { $"Compilation failed: {ex.Message}" },
+                Diagnostics = diagnostics,
+                Metrics = metrics
+            };
+        }
+        catch (ParserError ex)
+        {
+            _logger.LogError($"Compilation failed with parser error: {ex.Message}", ex.Line, ex.Column);
+            diagnostics.AddParserError(ex, filePath);
+            return new CompilationResult
+            {
+                Success = false,
+                Diagnostics = diagnostics,
+                Metrics = metrics
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Compilation failed with exception: {ex.Message}", 0, 0);
+            diagnostics.AddError($"Compilation failed: {ex.Message}", filePath: filePath);
+            return new CompilationResult
+            {
+                Success = false,
+                Diagnostics = diagnostics,
                 Metrics = metrics
             };
         }
@@ -568,7 +601,30 @@ public class Compiler
 public class CompilationResult
 {
     public bool Success { get; init; }
-    public List<string> Errors { get; init; } = new();
+
+    /// <summary>
+    /// Structured diagnostics from all compilation phases.
+    /// This is the primary way to access errors, warnings, and other diagnostics.
+    /// </summary>
+    public DiagnosticBag Diagnostics { get; init; } = new();
+
+    /// <summary>
+    /// Backward-compatible convenience property for error messages as strings.
+    /// Prefer using <see cref="Diagnostics"/> for structured access.
+    /// </summary>
+    public List<string> Errors
+    {
+        get => Diagnostics.GetErrors().Select(d => d.ToString()).ToList();
+        init
+        {
+            // Support legacy initialization: convert string errors to diagnostics
+            foreach (var error in value)
+            {
+                Diagnostics.AddError(error);
+            }
+        }
+    }
+
     public Module? Module { get; init; }
     public SymbolTable? SymbolTable { get; init; }
     public SemanticInfo? SemanticInfo { get; init; }
@@ -590,8 +646,45 @@ public class CompilationResult
 public class ProjectCompilationResult
 {
     public bool Success { get; init; }
-    public List<string> Errors { get; init; } = new();
-    public List<string> Warnings { get; init; } = new();
+
+    /// <summary>
+    /// Structured diagnostics from all compilation phases.
+    /// This is the primary way to access errors, warnings, and other diagnostics.
+    /// </summary>
+    public DiagnosticBag Diagnostics { get; init; } = new();
+
+    /// <summary>
+    /// Backward-compatible convenience property for error messages as strings.
+    /// Prefer using <see cref="Diagnostics"/> for structured access.
+    /// </summary>
+    public List<string> Errors
+    {
+        get => Diagnostics.GetErrors().Select(d => d.ToString()).ToList();
+        init
+        {
+            foreach (var error in value)
+            {
+                Diagnostics.AddError(error);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Backward-compatible convenience property for warning messages as strings.
+    /// Prefer using <see cref="Diagnostics"/> for structured access.
+    /// </summary>
+    public List<string> Warnings
+    {
+        get => Diagnostics.GetWarnings().Select(d => d.ToString()).ToList();
+        init
+        {
+            foreach (var warning in value)
+            {
+                Diagnostics.AddWarning(warning);
+            }
+        }
+    }
+
     public string? OutputAssemblyPath { get; init; }
     public Dictionary<string, string> GeneratedCSharpFiles { get; init; } = new();
     public ProjectCompilationMetrics? Metrics { get; init; }
