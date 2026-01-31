@@ -67,25 +67,12 @@ public partial class TypeChecker
             // Normal identifier lookup will follow and find the self parameter
         }
 
-        // Handle 'Nothing' — tagged union constructor for OptionalType
+        // 'Nothing' was removed — users should use None() for Optional construction
         if (id.Name == "Nothing")
         {
-            if (_expectedType is OptionalType)
-            {
-                return _expectedType;
-            }
-            else if (_expectedType != null)
-            {
-                AddError($"'Nothing' can only be assigned to Optional types, not '{_expectedType.GetDisplayName()}'",
-                    id.LineStart, id.ColumnStart);
-                return SemanticType.Unknown;
-            }
-            else
-            {
-                AddError("Cannot infer type for 'Nothing' without a type annotation. Add a type annotation like 'x: int? = Nothing'",
-                    id.LineStart, id.ColumnStart);
-                return SemanticType.Unknown;
-            }
+            AddError("'Nothing' is not a valid identifier. Use 'None()' to construct an empty Optional, or 'None' for the null literal",
+                id.LineStart, id.ColumnStart);
+            return SemanticType.Unknown;
         }
 
         var symbol = _symbolTable.Lookup(id.Name);
@@ -719,6 +706,27 @@ public partial class TypeChecker
 
     private SemanticType CheckFunctionCall(FunctionCall call)
     {
+        // Handle None() — empty Optional constructor
+        if (call.Function is NoneLiteral && call.Arguments.Length == 0 && call.KeywordArguments.Length == 0)
+        {
+            if (_expectedType is OptionalType)
+            {
+                return _expectedType;
+            }
+            else if (_expectedType != null)
+            {
+                AddError($"'None()' can only construct Optional types, not '{_expectedType.GetDisplayName()}'",
+                    call.LineStart, call.ColumnStart);
+                return SemanticType.Unknown;
+            }
+            else
+            {
+                AddError("Cannot infer type for 'None()' without a type annotation. Add a type annotation like 'x: int? = None()'",
+                    call.LineStart, call.ColumnStart);
+                return SemanticType.Unknown;
+            }
+        }
+
         // Check if this is a tagged union constructor shorthand (Some/Ok/Err)
         if (call.Function is Identifier constructorId && call.Arguments.Length == 1 && call.KeywordArguments.Length == 0)
         {
@@ -761,8 +769,9 @@ public partial class TypeChecker
         }
 
         // Check arguments and collect their types
-        // When we have an early function symbol, set _expectedType per-parameter
-        // to enable constructor inference (Some/Ok/Err) in function arguments.
+        // When we have an early function symbol or callee FunctionType, set _expectedType per-parameter
+        // to enable constructor inference (Some/None()/Ok/Err) in function arguments.
+        var calleeFunctionType = calleeType as FunctionType;
         var argTypes = new List<SemanticType>();
         for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
         {
@@ -770,6 +779,11 @@ public partial class TypeChecker
             if (earlyFuncSymbol != null && argIdx < earlyFuncSymbol.Parameters.Count)
             {
                 var paramType = earlyFuncSymbol.Parameters[argIdx].Type;
+                _expectedType = paramType is UnknownType ? null : paramType;
+            }
+            else if (calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)
+            {
+                var paramType = calleeFunctionType.ParameterTypes[argIdx];
                 _expectedType = paramType is UnknownType ? null : paramType;
             }
             argTypes.Add(CheckExpression(call.Arguments[argIdx]));

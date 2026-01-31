@@ -40,7 +40,7 @@ def main():
     status_2 = evaluator.get_status(test_score_2)
     print(status_2)
 
-    test_score_3: int? = None
+    test_score_3: int? = None()
     result_3 = evaluator.evaluate(test_score_3)
     print(result_3)
     status_3 = evaluator.get_status(test_score_3)

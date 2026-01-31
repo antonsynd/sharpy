@@ -107,8 +107,9 @@ public partial class RoslynEmitter
         if (param.DefaultValue != null)
         {
             ExpressionSyntax defaultExpr;
-            // Nothing as default param → null (T? maps to C# nullable)
-            if (param.DefaultValue is Identifier defaultId && defaultId.Name == "Nothing"
+            // None() as default param → null (T? maps to C# nullable)
+            if (param.DefaultValue is FunctionCall { Function: NoneLiteral } noneCall
+                && noneCall.Arguments.Length == 0
                 && param.Type is { IsOptional: true })
             {
                 defaultExpr = LiteralExpression(SyntaxKind.NullLiteralExpression);

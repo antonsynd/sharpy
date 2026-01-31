@@ -148,17 +148,17 @@ The `T?` suffix creates an `Optional[T]` (safe tagged union):
 
 ```python
 name: str? = Some("Alice")
-empty: int? = Nothing
+empty: int? = None()
 ```
 
 All shorthand forms support the `?` suffix:
 
 ```python
-items: [int]? = Nothing       # Optional[list[int]]
-unique: {str}? = Nothing      # Optional[set[str]]
-lookup: {str: int}? = Nothing # Optional[dict[str, int]]
-pair: (int, str)? = Nothing   # Optional[tuple[int, str]]
-buffer: int[]? = Nothing      # Optional[int[]]
+items: [int]? = None()       # Optional[list[int]]
+unique: {str}? = None()      # Optional[set[str]]
+lookup: {str: int}? = None() # Optional[dict[str, int]]
+pair: (int, str)? = None()   # Optional[tuple[int, str]]
+buffer: int[]? = None()      # Optional[int[]]
 ```
 
 ### C# Nullable (`T | None`)

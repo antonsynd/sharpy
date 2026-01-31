@@ -2,7 +2,7 @@
 
 The `maybe` expression is the **bridge from .NET interop to safe Sharpy code**. It converts a `T | None` (C# nullable) value into a `T?` (`Optional[T]`) value.
 
-If the expression is `None`, the result is `Nothing`. Otherwise, the result is `Some(value)`.
+If the expression is `None`, the result is `None()` (empty Optional). Otherwise, the result is `Some(value)`.
 
 ```python
 raw: str | None = dotnet_api()  # C# nullable

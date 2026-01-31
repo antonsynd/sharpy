@@ -14,4 +14,4 @@ def todo_function():
 ```
 
 *Implementation*
-- *🔄 Lowered - Nothing for abstract methods or interface methods without a default implementation, otherwise `throw new NotImplementedException()`.*
+- *🔄 Lowered - No-op for abstract methods or interface methods without a default implementation, otherwise `throw new NotImplementedException()`.*

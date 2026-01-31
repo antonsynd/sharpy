@@ -28,7 +28,7 @@ public class BuiltinRegistry
     /// </summary>
     private static readonly HashSet<string> TaggedUnionConstructors = new()
     {
-        "Some", "Nothing", "Ok", "Err"
+        "Some", "Ok", "Err"
     };
 
     public BuiltinRegistry()
@@ -140,7 +140,7 @@ public class BuiltinRegistry
     public List<FunctionSymbol>? GetFunctionOverloads(string name) => _functions.GetValueOrDefault(name);
 
     /// <summary>
-    /// Returns true if the name is a tagged union constructor (Some, Nothing, Ok, Err).
+    /// Returns true if the name is a tagged union constructor (Some, Ok, Err).
     /// These are handled by the type checker via expected type inference, not as regular functions.
     /// </summary>
     public bool IsTaggedUnionConstructor(string name) => TaggedUnionConstructors.Contains(name);

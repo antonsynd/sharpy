@@ -61,7 +61,7 @@ items: list[str | None] = dotnet_list_with_nulls()
 name: str | None = None
 
 # ✅ Prefer T? for Sharpy-native optionals
-name: str? = Nothing
+name: str? = None()
 ```
 
 ## Converting to Safe Optionals

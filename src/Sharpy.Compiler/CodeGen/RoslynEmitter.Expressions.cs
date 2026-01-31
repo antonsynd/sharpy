@@ -40,14 +40,16 @@ public partial class RoslynEmitter
             // Primary expressions
             // Handle 'self' -> 'this' conversion for instance methods
             Identifier name when string.Equals(name.Name, "self", StringComparison.OrdinalIgnoreCase) => ThisExpression(),
-            // Handle Nothing -> null (for T? codegen compatibility)
-            Identifier name when name.Name == "Nothing" && GetExpressionSemanticType(name) is OptionalType
-                => LiteralExpression(SyntaxKind.NullLiteralExpression),
             Identifier name => IdentifierName(GetMangledVariableName(name.Name, isNewDeclaration: false)),
             SuperExpression => BaseExpression(),  // super() -> base
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
             SliceAccess sliceAccess => GenerateSliceAccess(sliceAccess),
+            // Handle None() -> null (for T? codegen compatibility)
+            FunctionCall call when call.Function is NoneLiteral
+                && call.Arguments.Length == 0
+                && GetExpressionSemanticType(call) is OptionalType
+                => LiteralExpression(SyntaxKind.NullLiteralExpression),
             // Handle Some/Ok/Err -> Optional/Result factory calls (tagged union constructors)
             FunctionCall call when IsTaggedUnionConstructorCall(call) => GenerateTaggedUnionConstructor(call),
             FunctionCall call => GenerateCall(call),
@@ -1512,7 +1514,7 @@ public partial class RoslynEmitter
     }
 
     // ============================================================
-    // Tagged Union Constructor Generation (Some/Nothing/Ok/Err)
+    // Tagged Union Constructor Generation (Some/Ok/Err)
     // ============================================================
 
     /// <summary>

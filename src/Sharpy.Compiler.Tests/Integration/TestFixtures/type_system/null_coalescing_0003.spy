@@ -1,14 +1,14 @@
 # Test null coalescing operator with different types
 
 # Basic null coalescing with int
-x: int? = None
+x: int? = None()
 y: int = x ?? 42
 a: int? = 100
 b: int = a ?? 999
-name: str? = None
+name: str? = None()
 default_name: str = name ?? "Guest"
-first: int? = None
-second: int? = None
+first: int? = None()
+second: int? = None()
 third: int = 77
 result: int = first ?? second ?? third
 

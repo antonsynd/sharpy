@@ -153,7 +153,7 @@ public partial class TypeChecker
 
         // Check target and value types
         var targetType = CheckExpression(assignment.Target);
-        // Set expected type for constructor inference (Some/Nothing/Ok/Err)
+        // Set expected type for constructor inference (Some/None()/Ok/Err)
         var previousExpectedType = _expectedType;
         _expectedType = targetType is UnknownType ? null : targetType;
         var valueType = CheckExpression(assignment.Value);
@@ -197,8 +197,13 @@ public partial class TypeChecker
         // Otherwise, check as a regular simple assignment
         if (!IsAssignable(valueType, targetType))
         {
-            // Special case: Allow None for nullable/optional types but provide better error message
-            if (valueType is VoidType && targetType is not NullableType and not OptionalType)
+            // Special case: Provide helpful error messages for None misuse
+            if (valueType is VoidType && targetType is OptionalType)
+            {
+                AddError($"Cannot assign 'None' to '{targetType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
+                    assignment.LineStart, assignment.ColumnStart);
+            }
+            else if (valueType is VoidType && targetType is not NullableType)
             {
                 AddError($"Cannot assign 'None' to non-nullable type '{targetType.GetDisplayName()}'",
                     assignment.LineStart, assignment.ColumnStart);
@@ -217,7 +222,7 @@ public partial class TypeChecker
 
         if (varDecl.InitialValue != null)
         {
-            // Set expected type for constructor inference (Some/Nothing/Ok/Err)
+            // Set expected type for constructor inference (Some/None()/Ok/Err)
             var previousExpectedType = _expectedType;
             _expectedType = declaredType is UnknownType ? null : declaredType;
             var initType = CheckExpression(varDecl.InitialValue);
@@ -234,9 +239,13 @@ public partial class TypeChecker
             }
             else if (!IsAssignable(initType, declaredType))
             {
-                // Special case: Allow None for nullable/optional types (VoidType.IsAssignableTo handles this)
-                // but provide better error message for non-nullable/non-optional types
-                if (initType is VoidType && declaredType is not NullableType and not OptionalType)
+                // Special case: Provide helpful error messages for None misuse
+                if (initType is VoidType && declaredType is OptionalType)
+                {
+                    AddError($"Cannot assign 'None' to '{declaredType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
+                        varDecl.LineStart, varDecl.ColumnStart);
+                }
+                else if (initType is VoidType && declaredType is not NullableType)
                 {
                     AddError($"Cannot assign 'None' to non-nullable type '{declaredType.GetDisplayName()}'",
                         varDecl.LineStart, varDecl.ColumnStart);
@@ -324,15 +333,23 @@ public partial class TypeChecker
 
         if (returnStmt.Value != null)
         {
-            // Set expected type for constructor inference (Some/Nothing/Ok/Err)
+            // Set expected type for constructor inference (Some/None()/Ok/Err)
             var previousExpectedType = _expectedType;
             _expectedType = _currentFunctionReturnType;
             var returnType = CheckExpression(returnStmt.Value);
             _expectedType = previousExpectedType;
             if (!IsAssignable(returnType, _currentFunctionReturnType))
             {
-                AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
-                    returnStmt.LineStart, returnStmt.ColumnStart);
+                if (returnType is VoidType && _currentFunctionReturnType is OptionalType)
+                {
+                    AddError($"Cannot return 'None' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
+                        returnStmt.LineStart, returnStmt.ColumnStart);
+                }
+                else
+                {
+                    AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
+                        returnStmt.LineStart, returnStmt.ColumnStart);
+                }
             }
         }
         else if (_currentFunctionReturnType != SemanticType.Void)

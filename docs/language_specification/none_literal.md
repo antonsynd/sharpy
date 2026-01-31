@@ -6,7 +6,7 @@
 value: str | None = None
 ```
 
-> **Note:** For Sharpy-native optionals, use `Nothing` with `T?` (which is `Optional[T]`). See [Optional Type](tagged_unions_optional.md).
+> **Note:** For Sharpy-native optionals, use `None()` (with parentheses) with `T?` (which is `Optional[T]`). Bare `None` is the C# null literal for `T | None`. See [Optional Type](tagged_unions_optional.md).
 
 *Implementation*
 - *✅ Native - `None` → `null`.*

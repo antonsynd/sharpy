@@ -7,7 +7,7 @@ using Sharpy.Compiler.Parser.Ast;
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// Tests for tagged union constructor inference (Some/Nothing/Ok/Err).
+/// Tests for tagged union constructor inference (Some/None()/Ok/Err).
 /// Verifies that the type checker correctly recognizes these constructors
 /// when the expected type is known from context.
 /// </summary>
@@ -113,13 +113,13 @@ x: int = Some(42)
 
     #endregion
 
-    #region Nothing Inference
+    #region None() Inference
 
     [Fact]
-    public void Nothing_WithTypedVariable_NoError()
+    public void None_WithTypedVariable_NoError()
     {
         var source = @"
-x: int? = Nothing
+x: int? = None()
 ";
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -128,11 +128,11 @@ x: int? = Nothing
     }
 
     [Fact]
-    public void Nothing_InReturn_InfersFromReturnType()
+    public void None_InReturn_InfersFromReturnType()
     {
         var source = @"
 def get_nothing() -> int?:
-    return Nothing
+    return None()
 ";
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -141,41 +141,53 @@ def get_nothing() -> int?:
     }
 
     [Fact]
-    public void Nothing_WithoutTypeContext_ReportsError()
+    public void None_WithoutTypeContext_ReportsError()
     {
         var source = @"
-x = Nothing
+x = None()
 ";
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Cannot infer type for 'Nothing'"));
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Cannot infer type for 'None()'"));
     }
 
     [Fact]
-    public void Nothing_AssignedToNonOptional_ReportsError()
+    public void None_AssignedToNonOptional_ReportsError()
     {
         var source = @"
-x: int = Nothing
+x: int = None()
 ";
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Nothing") && e.Message.Contains("Optional"));
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("None()") && e.Message.Contains("Optional"));
     }
 
     [Fact]
-    public void Nothing_InAssignment_NoError()
+    public void None_InAssignment_NoError()
     {
         var source = @"
 def foo() -> None:
     x: int? = Some(42)
-    x = Nothing
+    x = None()
 ";
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void None_BareOnOptional_ProducesHelpfulError()
+    {
+        var source = @"
+x: int? = None
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Did you mean 'None()'"));
     }
 
     #endregion
@@ -265,10 +277,10 @@ x = Err(""error"")
     #region Default Parameters
 
     [Fact]
-    public void Nothing_AsDefaultParameter_NoError()
+    public void None_AsDefaultParameter_NoError()
     {
         var source = @"
-def foo(x: int? = Nothing) -> None:
+def foo(x: int? = None()) -> None:
     pass
 ";
         var (module, typeChecker) = CompileAndCheck(source);
@@ -298,14 +310,14 @@ def main() -> None:
     }
 
     [Fact]
-    public void Nothing_AsFunctionArgument_InfersFromParameterType()
+    public void None_AsFunctionArgument_InfersFromParameterType()
     {
         var source = @"
 def process(opt: int?) -> None:
     pass
 
 def main() -> None:
-    process(Nothing)
+    process(None())
 ";
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -382,13 +394,13 @@ def main() -> None:
     #region Mixed Usage
 
     [Fact]
-    public void Some_And_Nothing_InSameFunction_NoError()
+    public void Some_And_None_InSameFunction_NoError()
     {
         var source = @"
 def maybe_double(x: int) -> int?:
     if x > 0:
         return Some(x * 2)
-    return Nothing
+    return None()
 ";
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);

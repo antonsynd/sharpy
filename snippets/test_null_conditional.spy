@@ -20,7 +20,7 @@ def test_field_access():
 
 # Test 2: Null conditional method call
 def test_method_call():
-    p: Person? = None
+    p: Person? = None()
     # greeting should be str?
     greeting = p?.greet()
     print(greeting)
@@ -41,14 +41,14 @@ class PersonWithAddress:
         self.address = address
 
 def test_chained():
-    p: PersonWithAddress? = PersonWithAddress("Bob", None)
+    p: PersonWithAddress? = PersonWithAddress("Bob", None())
     # city should be str?
     city = p?.address?.city
     print(city)
 
 # Test 4: Null conditional with null coalescing
 def test_with_coalesce():
-    p: Person? = None
+    p: Person? = None()
     # age should be int (not int?)
     age: int = p?.age ?? 0
     print(age)

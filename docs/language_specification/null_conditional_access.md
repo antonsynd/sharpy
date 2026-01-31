@@ -14,7 +14,7 @@ nested = obj?.field?.nested  # Chains null checks
 
 # With T? (Optional)
 name: str? = get_name()
-upper = name?.upper()        # Returns str? (Nothing if name is Nothing)
+upper = name?.upper()        # Returns str? (None() if name is None())
 ```
 
 ## Return Types
@@ -36,18 +36,18 @@ length = safe?.len()             # length is int?
 
 *Implementation*
 - *✅ Native - For `T | None`, maps to C# `?.` operator (C# 6.0+).*
-- *🔄 Lowered - For `T?` (`Optional[T]`), compiler generates `match` on `Some`/`Nothing`.*
+- *🔄 Lowered - For `T?` (`Optional[T]`), compiler generates `match` on `Some`/`None()`.*
 
 ## Optional (Tagged Union)
 
-The `Optional[T]` tagged union (written as `T?`) works with null-conditional access, with its `Nothing` case being treated similarly to `None`:
+The `Optional[T]` tagged union (written as `T?`) works with null-conditional access, with its empty case (`None()`) being treated similarly to bare `None`:
 
 ```python
 maybe_str: str? = Some("HELLO")
 val = maybe_str?.lower()  # val is str? = Some("hello")
 
-maybe_str = Nothing
-maybe_val = maybe_str?.len()  # maybe_val is int? = Nothing
+maybe_str = None()
+maybe_val = maybe_str?.len()  # maybe_val is int? = None()
 ```
 
 In this situation, the return type is `U?` where `U` is the expected type of the entire expression if it had evaluated.

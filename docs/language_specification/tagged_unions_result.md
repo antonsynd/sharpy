@@ -178,7 +178,7 @@ The standard library follows these conventions for when to use `Result` vs excep
 | Feature | `Result[T, E]` / `T !E` | `T?` / `Optional[T]` |
 |---------|--------------------------|----------------------|
 | Success case | `Ok(value)` | `Some(value)` |
-| Failure case | `Err(error)` | `Nothing` |
+| Failure case | `Err(error)` | `None()` |
 | Error information | ✅ Typed error `E` | ❌ No error info |
 | Pattern matching | `case Ok(v):` | `case Some(v):` |
 | Use case | Operations that can fail with details | Optional values without error details |

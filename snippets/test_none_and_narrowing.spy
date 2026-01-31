@@ -1,8 +1,8 @@
 # Test None assignment and type narrowing features
 
-# Test 1: None assignment to nullable types
-x: int? = None
-y: str? = None
+# Test 1: None() assignment to optional types
+x: int? = None()
+y: str? = None()
 value: str? = "hello"
 maybe_num: int? = 42
 name: str? = "Alice"

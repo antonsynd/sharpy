@@ -4,7 +4,7 @@ def main():
     x: int = 5
 
     # Optional type
-    maybe_value: int? = None
+    maybe_value: int? = None()
 
     # Generic type
     items: list[str] = ["hello", "world"]

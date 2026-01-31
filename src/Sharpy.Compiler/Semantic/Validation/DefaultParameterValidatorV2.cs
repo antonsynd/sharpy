@@ -110,15 +110,16 @@ public class DefaultParameterValidatorV2 : SemanticValidatorBase
             }
         }
 
-        // Check Nothing assignment to non-optional types
-        if (defaultValue is Identifier nothingId && nothingId.Name == "Nothing")
+        // Check None() assignment to non-optional types
+        if (defaultValue is FunctionCall { Function: NoneLiteral } noneCall
+            && noneCall.Arguments.Length == 0 && noneCall.KeywordArguments.Length == 0)
         {
             var paramType = _context.TypeResolver.ResolveTypeAnnotation(param.Type);
 
             if (paramType is not OptionalType && paramType is not UnknownType)
             {
                 AddError(_context,
-                    $"Cannot use 'Nothing' as default value for non-optional parameter '{param.Name}' of type '{paramType.GetDisplayName()}' in function '{functionName}'. " +
+                    $"Cannot use 'None()' as default value for non-optional parameter '{param.Name}' of type '{paramType.GetDisplayName()}' in function '{functionName}'. " +
                     $"Use '{paramType.GetDisplayName()}?' to make the parameter optional.",
                     param.LineStart,
                     param.ColumnStart);
@@ -199,8 +200,13 @@ public class DefaultParameterValidatorV2 : SemanticValidatorBase
                 IsCompileTimeConstant(cond.ThenValue) &&
                 IsCompileTimeConstant(cond.ElseValue),
 
-            // Identifiers referencing const declarations or Nothing are compile-time constants
-            Identifier id => id.Name == "Nothing" || IsConstReference(id),
+            // Identifiers referencing const declarations are compile-time constants
+            Identifier id => IsConstReference(id),
+
+            // None() is a compile-time constant (empty Optional)
+            FunctionCall call when call.Function is NoneLiteral
+                && call.Arguments.Length == 0
+                => true,
 
             // Some(const), Ok(const), Err(const) are compile-time constants
             FunctionCall call when call.Function is Identifier fid

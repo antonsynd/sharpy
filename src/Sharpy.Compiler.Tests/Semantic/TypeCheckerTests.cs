@@ -286,8 +286,8 @@ x: float = 42 as float
     public void AllowsNoneForNullableTypes()
     {
         var source = @"
-x: int? = None
-y: str? = None
+x: int? = None()
+y: str? = None()
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -313,7 +313,7 @@ x: int = None
     {
         var source = @"
 def main():
-    value: str? = None
+    value: str? = None()
     if value is not None:
         x: str = value
 ";
@@ -330,7 +330,7 @@ def main():
     {
         var source = @"
 def main():
-    value: str? = None
+    value: str? = None()
     if value is not None:
         x: str = value
 ";
@@ -442,7 +442,7 @@ result: bool = 2 in items
     public void ChecksIdentityOperator()
     {
         var source = @"
-x: str? = None
+x: str? = None()
 result: bool = x is None
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);

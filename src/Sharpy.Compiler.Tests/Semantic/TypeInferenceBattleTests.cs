@@ -564,11 +564,11 @@ def main():
     }
 
     [Fact]
-    public void Optional_NothingConstructor_InfersFromContext()
+    public void Optional_NoneConstructor_InfersFromContext()
     {
         var source = @"
 def main():
-    x: int? = Nothing
+    x: int? = None()
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);

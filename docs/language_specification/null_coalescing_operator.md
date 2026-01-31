@@ -27,16 +27,16 @@ name = None or "Anonymous"  # name = "Anonymous"
 
 *Implementation*
 - *✅ Native - For `T | None`, maps to C# `??` operator.*
-- *🔄 Lowered - For `T?` (`Optional[T]`), compiler generates `match` on `Some`/`Nothing`.*
+- *🔄 Lowered - For `T?` (`Optional[T]`), compiler generates `match` on `Some`/`None()`.*
 
 ## Optional (Tagged Union)
 
-The `Optional[T]` tagged union (written as `T?`) works with null coalescing, with its `Nothing` case being treated similarly to `None`:
+The `Optional[T]` tagged union (written as `T?`) works with null coalescing, with its empty case (`None()`) being treated similarly to bare `None`:
 
 ```python
 maybe_int: int? = Some(5)
 val = maybe_int ?? 0  # val = 5
 
-maybe_int = Nothing
+maybe_int = None()
 val = maybe_int ?? 0  # val = 0
 ```

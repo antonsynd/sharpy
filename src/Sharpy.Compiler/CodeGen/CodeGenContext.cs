@@ -67,7 +67,7 @@ public class CodeGenContext
 
     /// <summary>
     /// Semantic info providing expression type information from type checking.
-    /// Used for tagged union constructor detection (Some/Nothing/Ok/Err).
+    /// Used for tagged union constructor detection (Some/None()/Ok/Err).
     /// </summary>
     public SemanticInfo? SemanticInfo { get; set; }
 

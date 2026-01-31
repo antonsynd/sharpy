@@ -71,4 +71,4 @@ def main():
 
     armed_system: SecuritySystem = SecuritySystem(True, True)
     print(armed_system.grant_access(pin, False))
-    print(armed_system.grant_access(None, True))
+    print(armed_system.grant_access(None(), True))

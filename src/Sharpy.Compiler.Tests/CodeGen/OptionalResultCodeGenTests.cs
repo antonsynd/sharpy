@@ -12,13 +12,13 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 
 /// <summary>
 /// Tests for code generation of Optional and Result types,
-/// including Some/Nothing/Ok/Err constructor expressions.
+/// including Some/None()/Ok/Err constructor expressions.
 ///
 /// Current codegen strategy:
 /// - T? (Optional) → C# T? (nullable) for backward compatibility
 /// - T !E (Result) → C# Result&lt;T, E&gt; (Sharpy.Core struct)
 /// - Some(v) → v (raw value, compatible with T?)
-/// - Nothing → null (compatible with T?)
+/// - None() → null (compatible with T?)
 /// - Ok(v) → Result&lt;T, E&gt;.Ok(v)
 /// - Err(e) → Result&lt;T, E&gt;.Err(e)
 /// </summary>
@@ -64,7 +64,7 @@ public class OptionalResultCodeGenTests
     {
         // T? currently maps to C# int? for backward compatibility
         var code = @"
-x: int? = Nothing
+x: int? = None()
 ";
         var csharp = CompileToCSharp(code);
         csharp.Should().Contain("int?");
@@ -98,15 +98,15 @@ x: int? = Some(42)
     }
 
     [Fact]
-    public void Constructor_Nothing_GeneratesNull()
+    public void Constructor_None_GeneratesNull()
     {
-        // Nothing → null (compatible with T? codegen)
+        // None() → null (compatible with T? codegen)
         var code = @"
-x: int? = Nothing
+x: int? = None()
 ";
         var csharp = CompileToCSharp(code);
         csharp.Should().Contain("null");
-        csharp.Should().NotContain("Optional<int>.Nothing");
+        csharp.Should().NotContain("Optional<int>.None");
     }
 
     #endregion
@@ -162,16 +162,16 @@ def parse(s: str) -> int !str:
     }
 
     [Fact]
-    public void Function_OptionalReturn_SomeAndNothing_GeneratesBoth()
+    public void Function_OptionalReturn_SomeAndNone_GeneratesBoth()
     {
         var code = @"
 def maybe_double(x: int) -> int?:
     if x > 0:
         return Some(x * 2)
-    return Nothing
+    return None()
 ";
         var csharp = CompileToCSharp(code);
-        // Some → raw value, Nothing → null
+        // Some → raw value, None() → null
         csharp.Should().Contain("null");
     }
 
@@ -194,11 +194,11 @@ def parse(s: str) -> int !str:
     #region Default Parameters
 
     [Fact]
-    public void DefaultParam_Nothing_GeneratesNull()
+    public void DefaultParam_None_GeneratesNull()
     {
-        // Nothing as default parameter generates null for T? compatibility
+        // None() as default parameter generates null for T? compatibility
         var code = @"
-def foo(x: int? = Nothing) -> None:
+def foo(x: int? = None()) -> None:
     pass
 ";
         var csharp = CompileToCSharp(code);
@@ -261,7 +261,7 @@ def foo(x: int? = Nothing) -> None:
     {
         var code = @"
 x: int? = Some(42)
-y: int? = Nothing
+y: int? = None()
 ";
         var csharp = CompileToCSharp(code);
         var success = CompileGeneratedCSharp(csharp, out var errors);
@@ -287,7 +287,7 @@ y: int !str = Err(""error"")
 def get_value(flag: bool) -> int?:
     if flag:
         return Some(42)
-    return Nothing
+    return None()
 ";
         var csharp = CompileToCSharp(code);
         var success = CompileGeneratedCSharp(csharp, out var errors);
@@ -309,10 +309,10 @@ def parse(s: str) -> int !str:
     }
 
     [Fact]
-    public void Compile_DefaultNothing_ProducesValidCSharp()
+    public void Compile_DefaultNone_ProducesValidCSharp()
     {
         var code = @"
-def foo(x: int? = Nothing) -> None:
+def foo(x: int? = None()) -> None:
     pass
 ";
         var csharp = CompileToCSharp(code);

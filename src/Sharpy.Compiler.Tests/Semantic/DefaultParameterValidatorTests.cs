@@ -89,7 +89,7 @@ def foo(flag: bool = True):
     public void AllowsNoneDefaultForNullableType()
     {
         var source = @"
-def foo(x: int? = None):
+def foo(x: int? = None()):
     pass
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
@@ -102,7 +102,7 @@ def foo(x: int? = None):
     public void AllowsNoneDefaultForNullableStringType()
     {
         var source = @"
-def bar(x: str? = None):
+def bar(x: str? = None()):
     pass
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
@@ -572,7 +572,7 @@ class MyClass:
     {
         var source = @"
 class MyClass:
-    def method(self, x: int? = None):
+    def method(self, x: int? = None()):
         pass
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);

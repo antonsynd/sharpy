@@ -254,7 +254,7 @@ public partial class TypeChecker
             // Type check default value if present
             if (param.DefaultValue != null)
             {
-                // Set expected type for constructor inference (Some/Nothing/Ok/Err)
+                // Set expected type for constructor inference (Some/None()/Ok/Err)
                 var previousExpectedType = _expectedType;
                 _expectedType = paramType is UnknownType ? null : paramType;
                 var defaultType = CheckExpression(param.DefaultValue);

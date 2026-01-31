@@ -52,7 +52,7 @@ some_result = try my_dog as Cat  # some_result = Result[Cat, InvalidCastExceptio
 some_result = try my_dog as Cat?  # some_result = Result[Cat?, Exception].Ok(None). Compiler will warn user to use a `maybe` expression instead
 
 some_optional = maybe my_dog as Cat  # Throws. Compiler will warn user to use a `try` expression instead
-some_optional = maybe my_dog as Cat?  # some_optional = Optional[str].Nothing
+some_optional = maybe my_dog as Cat?  # some_optional = Optional[str].None()
 ```
 
 ## Safe Casting Pattern

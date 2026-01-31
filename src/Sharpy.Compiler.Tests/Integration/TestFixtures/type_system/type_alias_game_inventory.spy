@@ -30,7 +30,7 @@ class Weapon(Item):
     durability: Durability
 
     def __init__(self, id: ItemId, name: str, damage: int, durability: Durability):
-        super().__init__(id, name, None)
+        super().__init__(id, name, None())
         self.damage = damage
         self.durability = durability
 

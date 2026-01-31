@@ -419,7 +419,7 @@ public record TryExpression : Expression
 /// <summary>
 /// Maybe expression (maybe expr)
 /// Wraps a nullable expression in Optional[T].
-/// If the expression is None, the result holds its Nothing case.
+/// If the expression is None, the result holds the empty Optional case.
 /// </summary>
 public record MaybeExpression : Expression
 {
