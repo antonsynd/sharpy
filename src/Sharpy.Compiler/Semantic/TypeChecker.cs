@@ -152,23 +152,40 @@ public partial class TypeChecker
         context.Diagnostics.Merge(_diagnostics);
         context.Diagnostics.Merge(_typeResolver.Diagnostics);
 
+        var diagnosticCountBeforePipeline = context.Diagnostics.GetAll().Count;
+
         _validationPipeline.Validate(module, context);
 
         // Merge TypeResolver diagnostics
         _diagnostics.Merge(_typeResolver.Diagnostics);
 
-        // Merge pipeline diagnostics back (dedup by line + message)
-        foreach (var error in context.Diagnostics.GetErrors())
+        // Merge only pipeline-added diagnostics (those added after the snapshot).
+        // Dedup against existing errors to avoid duplicates where both TypeChecker
+        // (via type inference) and OperatorValidatorV2 report the same issue.
+        var existingErrors = _diagnostics.GetErrors();
+        var exactErrors = new HashSet<(int?, int?, string)>(
+            existingErrors.Select(e => (e.Line, e.Column, e.Message)));
+        var operatorErrorPositions = new HashSet<(int?, int?)>(
+            existingErrors
+                .Where(e => e.Message.Contains("does not support operator"))
+                .Select(e => (e.Line, e.Column)));
+
+        var allDiagnostics = context.Diagnostics.GetAll();
+        for (int i = diagnosticCountBeforePipeline; i < allDiagnostics.Count; i++)
         {
-            bool isDuplicate = _diagnostics.GetErrors().Any(e =>
-                e.Line == error.Line &&
-                (e.Message == error.Message ||
-                 (e.Message.Contains("does not support operator") &&
-                  error.Message.Contains("does not support operator"))));
-            if (!isDuplicate)
+            var diag = allDiagnostics[i];
+            if (diag.IsError)
             {
-                _diagnostics.AddError(error.Message, error.Line, error.Column, error.FilePath, error.Code, error.Phase);
+                // Skip exact duplicates (same position and message)
+                if (exactErrors.Contains((diag.Line, diag.Column, diag.Message)))
+                    continue;
+                // Skip near-duplicate operator errors (TypeChecker and OperatorValidatorV2
+                // produce slightly different wording for the same binary operator issue)
+                if (diag.Message.Contains("does not support operator")
+                    && operatorErrorPositions.Contains((diag.Line, diag.Column)))
+                    continue;
             }
+            _diagnostics.Add(diag);
         }
 
         // Compute CodeGenInfo for all symbols if enabled
