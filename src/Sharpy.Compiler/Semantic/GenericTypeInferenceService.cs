@@ -81,10 +81,22 @@ public class GenericTypeInferenceService
 {
     private readonly SymbolTable _symbolTable;
 
+    /// <summary>
+    /// Optional SemanticBinding for reading inheritance data.
+    /// When set, helpers prefer this over direct symbol property access.
+    /// </summary>
+    public SemanticBinding? SemanticBinding { get; set; }
+
     public GenericTypeInferenceService(SymbolTable symbolTable)
     {
         _symbolTable = symbolTable;
     }
+
+    private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
+        => SemanticBinding?.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+
+    private TypeSymbol? GetBaseType(TypeSymbol symbol)
+        => SemanticBinding?.GetBaseType(symbol) ?? symbol.BaseType;
 
     /// <summary>
     /// Attempt to infer type arguments for a generic function call.
@@ -476,7 +488,7 @@ public class GenericTypeInferenceService
         {
             // Check if the type implements the constraint interface
             // Look for the constraint type name in the symbol's interfaces
-            foreach (var iface in udt.Symbol.Interfaces)
+            foreach (var iface in GetInterfaces(udt.Symbol))
             {
                 if (InterfaceMatchesConstraint(iface, constraintTypeName))
                 {
@@ -485,9 +497,10 @@ public class GenericTypeInferenceService
             }
 
             // Check base type
-            if (udt.Symbol.BaseType != null)
+            var symbolBase = GetBaseType(udt.Symbol);
+            if (symbolBase != null)
             {
-                var baseType = new UserDefinedType { Symbol = udt.Symbol.BaseType, Name = udt.Symbol.BaseType.Name };
+                var baseType = new UserDefinedType { Symbol = symbolBase, Name = symbolBase.Name };
                 if (TypeSatisfiesConstraint(baseType, constraintTypeName))
                 {
                     return true;

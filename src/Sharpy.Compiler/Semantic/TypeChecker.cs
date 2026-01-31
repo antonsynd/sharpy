@@ -178,6 +178,9 @@ public partial class TypeChecker
         _logger.LogInfo("Type checking module");
         _isEntryPoint = isEntryPoint;
 
+        // Propagate SemanticBinding to sub-services
+        _genericInference.SemanticBinding = SemanticBinding;
+
         foreach (var statement in module.Body)
         {
             CheckStatement(statement);

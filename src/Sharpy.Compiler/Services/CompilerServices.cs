@@ -41,6 +41,12 @@ public class CompilerServices
     public CompilerServicesConfiguration Configuration => _config;
 
     /// <summary>
+    /// Optional SemanticBinding for reading inheritance data.
+    /// When set, helpers prefer this over direct symbol property access.
+    /// </summary>
+    public SemanticBinding? SemanticBinding { get; set; }
+
+    /// <summary>
     /// Current file path being processed. Can be updated as compilation progresses.
     /// </summary>
     public string? CurrentFilePath
@@ -169,6 +175,12 @@ public class CompilerServices
     // Private helper methods
     // =========================================================================
 
+    private TypeSymbol? GetBaseType(TypeSymbol symbol)
+        => SemanticBinding?.GetBaseType(symbol) ?? symbol.BaseType;
+
+    private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
+        => SemanticBinding?.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+
     private bool IsSubtypeOf(TypeSymbol? derived, TypeSymbol? baseType)
     {
         if (derived == null || baseType == null)
@@ -177,11 +189,12 @@ public class CompilerServices
             return true;
 
         // Check direct base type
-        if (derived.BaseType != null && IsSubtypeOf(derived.BaseType, baseType))
+        var derivedBase = GetBaseType(derived);
+        if (derivedBase != null && IsSubtypeOf(derivedBase, baseType))
             return true;
 
         // Check interfaces
-        foreach (var iface in derived.Interfaces)
+        foreach (var iface in GetInterfaces(derived))
         {
             if (IsSubtypeOf(iface, baseType))
                 return true;
