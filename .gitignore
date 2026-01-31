@@ -1,3 +1,6 @@
+# Claude settings
+.claude/settings.local.json
+
 # Screen files
 screenlog.*
 
