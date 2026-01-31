@@ -11,10 +11,17 @@ public class LexerError : Exception
     public int Line { get; }
     public int Column { get; }
 
-    public LexerError(string message, int line, int column)
+    /// <summary>
+    /// Diagnostic error code (e.g., "SHP0001"). Assigned at throw site
+    /// so the catch boundary doesn't need fragile message string matching.
+    /// </summary>
+    public string? Code { get; }
+
+    public LexerError(string message, int line, int column, string? code = null)
         : base($"Lexer error at line {line}, column {column}: {message}")
     {
         Line = line;
         Column = column;
+        Code = code;
     }
 }
