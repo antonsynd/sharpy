@@ -1,4 +1,4 @@
-#pragma warning disable CS0618 // LexerError, ParserError, and SemanticError are obsolete
+#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 using System.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;

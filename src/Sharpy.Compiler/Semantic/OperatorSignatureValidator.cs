@@ -1,4 +1,4 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -58,11 +58,11 @@ public class OperatorSignatureValidator
 
     /// <summary>
     /// Validates the signature of a dunder operator method.
-    /// Returns a list of semantic errors if the signature is invalid.
+    /// Returns a list of diagnostics if the signature is invalid.
     /// </summary>
-    public static List<SemanticError> ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType)
+    public static List<CompilerDiagnostic> ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType)
     {
-        var errors = new List<SemanticError>();
+        var errors = new List<CompilerDiagnostic>();
         var methodName = funcDef.Name;
 
         if (!IsOperatorDunder(methodName))
@@ -79,10 +79,12 @@ public class OperatorSignatureValidator
             // Unary operators: just 'self' (1 parameter)
             if (paramCount != 1)
             {
-                errors.Add(new SemanticError(
+                errors.Add(new CompilerDiagnostic(
                     $"Unary operator method '{methodName}' on '{owningType.Name}' must have exactly 1 parameter (self), got {paramCount}",
+                    CompilerDiagnosticSeverity.Error,
                     funcDef.LineStart,
-                    funcDef.ColumnStart));
+                    funcDef.ColumnStart,
+                    Phase: CompilerPhase.Validation));
             }
         }
         else if (BinaryArithmeticOps.Contains(methodName) ||
@@ -93,10 +95,12 @@ public class OperatorSignatureValidator
             // Binary operators: 'self' + one other parameter (2 parameters total)
             if (paramCount != 2)
             {
-                errors.Add(new SemanticError(
+                errors.Add(new CompilerDiagnostic(
                     $"Binary operator method '{methodName}' on '{owningType.Name}' must have exactly 2 parameters (self, other), got {paramCount}",
+                    CompilerDiagnosticSeverity.Error,
                     funcDef.LineStart,
-                    funcDef.ColumnStart));
+                    funcDef.ColumnStart,
+                    Phase: CompilerPhase.Validation));
             }
         }
 
@@ -112,7 +116,7 @@ public class OperatorSignatureValidator
     /// <summary>
     /// Validates the return type of an operator method based on .NET semantics
     /// </summary>
-    private static void ValidateReturnType(FunctionDef funcDef, string methodName, string owningTypeName, List<SemanticError> errors)
+    private static void ValidateReturnType(FunctionDef funcDef, string methodName, string owningTypeName, List<CompilerDiagnostic> errors)
     {
         var returnType = funcDef.ReturnType;
         if (returnType == null)
@@ -126,10 +130,12 @@ public class OperatorSignatureValidator
             // Check if return type is 'bool'
             if (!IsTypeAnnotationBool(returnType))
             {
-                errors.Add(new SemanticError(
+                errors.Add(new CompilerDiagnostic(
                     $"Comparison operator method '{methodName}' on '{owningTypeName}' must return 'bool', got '{TypeAnnotationHelper.GetName(returnType)}'",
+                    CompilerDiagnosticSeverity.Error,
                     funcDef.LineStart,
-                    funcDef.ColumnStart));
+                    funcDef.ColumnStart,
+                    Phase: CompilerPhase.Validation));
             }
         }
 
@@ -141,10 +147,12 @@ public class OperatorSignatureValidator
         {
             if (IsTypeAnnotationVoid(returnType))
             {
-                errors.Add(new SemanticError(
+                errors.Add(new CompilerDiagnostic(
                     $"Operator method '{methodName}' on '{owningTypeName}' must return a non-void type",
+                    CompilerDiagnosticSeverity.Error,
                     funcDef.LineStart,
-                    funcDef.ColumnStart));
+                    funcDef.ColumnStart,
+                    Phase: CompilerPhase.Validation));
             }
         }
     }

@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
@@ -164,14 +163,6 @@ public class CompilerServices
         if (DiagnosticReporter.Diagnostics.ErrorCount >= _config.MaxErrors)
             return false;
         return true;
-    }
-
-    /// <summary>
-    /// Get all diagnostics as legacy SemanticErrors for backwards compatibility.
-    /// </summary>
-    public IReadOnlyList<SemanticError> GetSemanticErrors()
-    {
-        return DiagnosticReporter.Diagnostics.ToSemanticErrors();
     }
 
     // =========================================================================

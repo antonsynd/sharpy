@@ -136,21 +136,6 @@ public class CompilerServicesTests
     }
 
     [Fact]
-    public void GetSemanticErrors_ReturnsLegacyFormat()
-    {
-        // Arrange
-        var services = CompilerServicesBuilder.CreateForTesting();
-        services.ReportError("Test error", 10, 5);
-
-        // Act
-        var errors = services.GetSemanticErrors();
-
-        // Assert
-        Assert.Single(errors);
-        Assert.Equal(10, errors[0].Line);
-    }
-
-    [Fact]
     public void Configuration_IsAccessible()
     {
         // Arrange

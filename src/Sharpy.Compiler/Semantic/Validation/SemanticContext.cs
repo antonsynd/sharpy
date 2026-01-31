@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Services;
@@ -129,23 +128,4 @@ public class SemanticContext
         return true;
     }
 
-    /// <summary>
-    /// Merge diagnostics from a legacy validator's error list.
-    /// Use during migration period.
-    /// </summary>
-    public void MergeFromLegacyErrors(IEnumerable<SemanticError> errors)
-    {
-        foreach (var error in errors)
-        {
-            // Extract message without the "Semantic error at line X:" prefix
-            var message = error.Message;
-            if (message.StartsWith("Semantic error"))
-            {
-                var colonIdx = message.IndexOf(": ");
-                if (colonIdx >= 0)
-                    message = message.Substring(colonIdx + 2);
-            }
-            Diagnostics.AddError(message, error.Line, error.Column, CurrentFilePath);
-        }
-    }
 }

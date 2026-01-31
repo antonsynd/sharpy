@@ -1,4 +1,4 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -17,11 +17,11 @@ public static class ProtocolSignatureValidator
 
     /// <summary>
     /// Validates the signature of a protocol dunder method.
-    /// Returns a list of semantic errors if the signature is invalid.
+    /// Returns a list of diagnostics if the signature is invalid.
     /// </summary>
-    public static List<SemanticError> ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType)
+    public static List<CompilerDiagnostic> ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType)
     {
-        var errors = new List<SemanticError>();
+        var errors = new List<CompilerDiagnostic>();
         var methodName = funcDef.Name;
 
         var protocol = ProtocolRegistry.GetProtocol(methodName);
@@ -43,7 +43,7 @@ public static class ProtocolSignatureValidator
         FunctionDef funcDef,
         ProtocolInfo protocol,
         TypeSymbol owningType,
-        List<SemanticError> errors)
+        List<CompilerDiagnostic> errors)
     {
         var actualCount = funcDef.Parameters.Length;
         var expectedCount = protocol.ExpectedParamCount;
@@ -66,14 +66,16 @@ public static class ProtocolSignatureValidator
                 _ => $"({expectedCount} parameters)"
             };
 
-            errors.Add(new SemanticError(
+            errors.Add(new CompilerDiagnostic(
                 $"Protocol method '{protocol.DunderName}' on '{owningType.Name}' must have exactly " +
                 $"{expectedCount} parameter{(expectedCount == 1 ? "" : "s")} {paramDescription}, got {actualCount}. " +
                 (protocol.SharpyCoreInterface != null
                     ? $"See interface '{protocol.SharpyCoreInterface}' for expected signature."
                     : ""),
+                CompilerDiagnosticSeverity.Error,
                 funcDef.LineStart,
-                funcDef.ColumnStart));
+                funcDef.ColumnStart,
+                Phase: CompilerPhase.Validation));
         }
     }
 
@@ -81,7 +83,7 @@ public static class ProtocolSignatureValidator
         FunctionDef funcDef,
         ProtocolInfo protocol,
         TypeSymbol owningType,
-        List<SemanticError> errors)
+        List<CompilerDiagnostic> errors)
     {
         // Skip if no return type expectation (null means any type is valid)
         if (protocol.ExpectedReturnType == null)
@@ -99,14 +101,16 @@ public static class ProtocolSignatureValidator
 
         if (!string.Equals(actualNormalized, expectedNormalized, StringComparison.OrdinalIgnoreCase))
         {
-            errors.Add(new SemanticError(
+            errors.Add(new CompilerDiagnostic(
                 $"Protocol method '{protocol.DunderName}' on '{owningType.Name}' must return " +
                 $"'{protocol.ExpectedReturnType}', got '{actualReturnType}'. " +
                 (protocol.SharpyCoreInterface != null
                     ? $"See interface '{protocol.SharpyCoreInterface}' for expected signature."
                     : ""),
+                CompilerDiagnosticSeverity.Error,
                 funcDef.LineStart,
-                funcDef.ColumnStart));
+                funcDef.ColumnStart,
+                Phase: CompilerPhase.Validation));
         }
     }
 
@@ -114,7 +118,7 @@ public static class ProtocolSignatureValidator
         FunctionDef funcDef,
         ProtocolInfo protocol,
         TypeSymbol owningType,
-        List<SemanticError> errors)
+        List<CompilerDiagnostic> errors)
     {
         // Check if there are any parameters to validate
         if (funcDef.Parameters.Length == 0)
@@ -123,10 +127,12 @@ public static class ProtocolSignatureValidator
             // Only add a 'self' error for variable-param protocols (like __init__) with 0 params.
             if (protocol.ExpectedParamCount == -1)
             {
-                errors.Add(new SemanticError(
+                errors.Add(new CompilerDiagnostic(
                     $"Protocol method '{protocol.DunderName}' on '{owningType.Name}' must have 'self' as first parameter",
+                    CompilerDiagnosticSeverity.Error,
                     funcDef.LineStart,
-                    funcDef.ColumnStart));
+                    funcDef.ColumnStart,
+                    Phase: CompilerPhase.Validation));
             }
             return;
         }
@@ -134,11 +140,13 @@ public static class ProtocolSignatureValidator
         // Validate that the first parameter is named 'self'
         if (funcDef.Parameters[0].Name != "self")
         {
-            errors.Add(new SemanticError(
+            errors.Add(new CompilerDiagnostic(
                 $"First parameter of protocol method '{protocol.DunderName}' on '{owningType.Name}' must be " +
                 $"'self', got '{funcDef.Parameters[0].Name}'",
+                CompilerDiagnosticSeverity.Error,
                 funcDef.LineStart,
-                funcDef.ColumnStart));
+                funcDef.ColumnStart,
+                Phase: CompilerPhase.Validation));
         }
     }
 }

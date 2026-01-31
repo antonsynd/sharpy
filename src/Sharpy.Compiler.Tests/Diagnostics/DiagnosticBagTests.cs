@@ -1,7 +1,5 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
 using Xunit;
 using Sharpy.Compiler.Diagnostics;
-using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.Tests.Diagnostics;
 
@@ -51,33 +49,6 @@ public class DiagnosticBagTests
 
         Assert.Equal(2, bag1.ErrorCount);
         Assert.Equal(1, bag1.WarningCount);
-    }
-
-    [Fact]
-    public void FromSemanticErrors_ConvertsLegacyErrors()
-    {
-        var legacyErrors = new List<SemanticError>
-        {
-            new SemanticError("Error 1", 10, 5),
-            new SemanticError("Error 2", 20, 10)
-        };
-
-        var bag = DiagnosticBag.FromSemanticErrors(legacyErrors);
-
-        Assert.Equal(2, bag.ErrorCount);
-    }
-
-    [Fact]
-    public void ToSemanticErrors_ConvertsToLegacyFormat()
-    {
-        var bag = new DiagnosticBag();
-        bag.AddError("Error 1", 10, 5);
-        bag.AddError("Error 2", 20, 10);
-        bag.AddWarning("Warning 1", 30, 15); // Should be excluded
-
-        var legacyErrors = bag.ToSemanticErrors();
-
-        Assert.Equal(2, legacyErrors.Count);
     }
 
     [Fact]

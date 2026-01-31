@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
@@ -40,7 +39,7 @@ public class Scope
             }
 
             // For all other cases (constants, functions, types, etc.), redefinition is an error
-            throw new SemanticError($"Symbol '{symbol.Name}' is already defined in this scope");
+            throw new InvalidOperationException($"Symbol '{symbol.Name}' is already defined in this scope");
         }
 
         _symbols[symbol.Name] = symbol;

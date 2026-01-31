@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // LexerError, ParserError, and SemanticError are obsolete
 namespace Sharpy.Compiler.Diagnostics;
 
 /// <summary>
@@ -154,36 +153,9 @@ public class DiagnosticBag
     }
 
     /// <summary>
-    /// Convert legacy SemanticErrors to Diagnostics.
-    /// Use during migration period.
-    /// </summary>
-    public static DiagnosticBag FromSemanticErrors(IEnumerable<Semantic.SemanticError> errors)
-    {
-        var bag = new DiagnosticBag();
-        foreach (var error in errors)
-        {
-            bag.AddError(error.Message.Replace("Semantic error: ", "")
-                .Replace($"Semantic error at line {error.Line}: ", "")
-                .Replace($"Semantic error at line {error.Line}, column {error.Column}: ", ""),
-                error.Line, error.Column, code: error.Code, phase: CompilerPhase.TypeChecking);
-        }
-        return bag;
-    }
-
-    /// <summary>
-    /// Convert Diagnostics to legacy SemanticErrors.
-    /// Use during migration period.
-    /// </summary>
-    public IReadOnlyList<Semantic.SemanticError> ToSemanticErrors()
-    {
-        return GetErrors()
-            .Select(d => new Semantic.SemanticError(d.Message, d.Line, d.Column))
-            .ToList();
-    }
-
-    /// <summary>
     /// Add a diagnostic from a LexerError exception.
     /// </summary>
+#pragma warning disable CS0618 // LexerError is obsolete (retained as internal safety net)
     public void AddLexerError(Lexer.LexerError error, string? filePath = null)
     {
         // Extract the raw message from the formatted "Lexer error at line X, column Y: message"
@@ -191,10 +163,12 @@ public class DiagnosticBag
         Add(new CompilerDiagnostic(rawMessage, CompilerDiagnosticSeverity.Error,
             error.Line, error.Column, filePath, Code: error.Code, Phase: CompilerPhase.Lexer));
     }
+#pragma warning restore CS0618
 
     /// <summary>
     /// Add a diagnostic from a ParserError exception.
     /// </summary>
+#pragma warning disable CS0618 // ParserError is obsolete (retained as internal safety net)
     public void AddParserError(Parser.ParserError error, string? filePath = null)
     {
         // Extract the raw message from the formatted "Parser error at line X, column Y: message"
@@ -202,19 +176,7 @@ public class DiagnosticBag
         Add(new CompilerDiagnostic(rawMessage, CompilerDiagnosticSeverity.Error,
             error.Line, error.Column, filePath, Code: error.Code, Phase: CompilerPhase.Parser));
     }
-
-    /// <summary>
-    /// Add diagnostics from legacy SemanticErrors.
-    /// </summary>
-    public void AddSemanticErrors(IEnumerable<Semantic.SemanticError> errors, string? filePath = null,
-        CompilerPhase phase = CompilerPhase.TypeChecking)
-    {
-        foreach (var error in errors)
-        {
-            var rawMessage = ExtractRawMessage(error.Message, "Semantic error");
-            AddError(rawMessage, error.Line, error.Column, filePath, code: error.Code, phase: phase);
-        }
-    }
+#pragma warning restore CS0618
 
     /// <summary>
     /// Extract the raw message from a formatted error message.
