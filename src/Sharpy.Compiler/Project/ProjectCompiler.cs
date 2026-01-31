@@ -27,7 +27,10 @@ public class ProjectCompiler
     // Store NameResolver for deferred inheritance resolution
     private NameResolver? _sharedNameResolver;
 
-    // Track errors and warnings
+    // Track errors and warnings using structured diagnostics
+    private DiagnosticBag _diagnostics = new();
+
+    // Legacy error/warning lists for backward compatibility during migration
     private List<string> _errors = new();
     private List<string> _warnings = new();
 
@@ -54,6 +57,7 @@ public class ProjectCompiler
     {
         _logger.LogInfo($"Starting project compilation: {config.RootNamespace}");
 
+        _diagnostics = new DiagnosticBag();
         _errors = new List<string>();
         _warnings = new List<string>();
         _projectMetrics = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
@@ -106,10 +110,11 @@ public class ProjectCompiler
         catch (Exception ex)
         {
             _logger.LogError($"Project compilation failed: {ex.Message}", 0, 0);
+            _diagnostics.AddError($"Project compilation failed: {ex.Message}");
             return new ProjectCompilationResult
             {
                 Success = false,
-                Errors = new List<string> { $"Project compilation failed: {ex.Message}" },
+                Diagnostics = _diagnostics,
                 Metrics = _projectMetrics,
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel
@@ -187,10 +192,11 @@ public class ProjectCompiler
                 var unit = _projectModel!.GetUnit(sourceFile);
                 if (unit != null)
                 {
-                    unit.Diagnostics.AddError(ex.Message, ex.Line, ex.Column, sourceFile);
+                    unit.Diagnostics.AddLexerError(ex, sourceFile);
                     unit.Phase = CompilationPhase.Failed;
                 }
 
+                _diagnostics.AddLexerError(ex, sourceFile);
                 _errors.Add($"{sourceFile}({ex.Line},{ex.Column}): error: {ex.Message}");
                 _projectMetrics.AddFileMetrics(fileMetrics);
             }
@@ -200,10 +206,11 @@ public class ProjectCompiler
                 var unit = _projectModel!.GetUnit(sourceFile);
                 if (unit != null)
                 {
-                    unit.Diagnostics.AddError(ex.Message, ex.Line, ex.Column, sourceFile);
+                    unit.Diagnostics.AddParserError(ex, sourceFile);
                     unit.Phase = CompilationPhase.Failed;
                 }
 
+                _diagnostics.AddParserError(ex, sourceFile);
                 _errors.Add($"{sourceFile}({ex.Line},{ex.Column}): error: {ex.Message}");
                 _projectMetrics.AddFileMetrics(fileMetrics);
             }
@@ -217,6 +224,7 @@ public class ProjectCompiler
                     unit.Phase = CompilationPhase.Failed;
                 }
 
+                _diagnostics.AddError(ex.Message, filePath: sourceFile);
                 _errors.Add($"{sourceFile}: error: {ex.Message}");
                 _projectMetrics.AddFileMetrics(fileMetrics);
             }
@@ -307,6 +315,7 @@ public class ProjectCompiler
             {
                 var errorMsg = $"({error.Line},{error.Column}): error: {error.Message}";
                 _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column);
+                _diagnostics.AddError(error.Message, error.Line, error.Column, phase: CompilerPhase.NameResolution);
                 _errors.Add(errorMsg);
             }
         }
@@ -336,6 +345,7 @@ public class ProjectCompiler
         {
             var errorMsg = $"({error.Line},{error.Column}): error: {error.Message}";
             _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column);
+            _diagnostics.AddError(error.Message, error.Line, error.Column, phase: CompilerPhase.NameResolution);
             _errors.Add(errorMsg);
         }
     }
@@ -476,6 +486,7 @@ public class ProjectCompiler
                 var cycleDescription = string.Join(" → ", cycleFiles);
                 var errorMsg = $"Circular dependency detected: {cycleDescription}";
                 _projectModel!.GlobalDiagnostics.AddError(errorMsg);
+                _diagnostics.AddError(errorMsg, phase: CompilerPhase.ImportResolution);
                 _errors.Add(errorMsg);
             }
             // Don't add import resolver errors when we have circular dependencies
@@ -490,6 +501,7 @@ public class ProjectCompiler
             foreach (var error in _importResolver.Errors)
             {
                 _projectModel!.GlobalDiagnostics.AddError(error.Message);
+                _diagnostics.AddError(error.Message, error.Line, error.Column, phase: CompilerPhase.ImportResolution);
                 _errors.Add(error.Message);
             }
         }
@@ -563,6 +575,7 @@ public class ProjectCompiler
                 }
                 unit.Phase = CompilationPhase.Failed;
 
+                _diagnostics.AddSemanticErrors(typeChecker.Errors, unit.FilePath, CompilerPhase.TypeChecking);
                 _errors.AddRange(typeChecker.Errors.Select(e =>
                     $"{unit.FilePath}({e.Line},{e.Column}): error: {e.Message}"));
             }
@@ -634,6 +647,7 @@ public class ProjectCompiler
                 foreach (var error in codeGenContext.Errors)
                 {
                     unit.Diagnostics.AddError(error, filePath: sourceFile);
+                    _diagnostics.AddError(error, filePath: sourceFile, phase: CompilerPhase.CodeGeneration);
                     _errors.Add($"{sourceFile}: error: {error}");
                 }
                 unit.Phase = CompilationPhase.Failed;
@@ -679,13 +693,19 @@ public class ProjectCompiler
             foreach (var error in assemblyResult.Errors)
             {
                 _projectModel!.GlobalDiagnostics.AddError(error);
+                _diagnostics.AddError(error, phase: CompilerPhase.Assembly);
             }
             _errors.AddRange(assemblyResult.Errors);
+
+            foreach (var warning in assemblyResult.Warnings)
+            {
+                _diagnostics.AddWarning(warning, phase: CompilerPhase.Assembly);
+            }
+
             return new ProjectCompilationResult
             {
                 Success = false,
-                Errors = _errors,
-                Warnings = assemblyResult.Warnings,
+                Diagnostics = _diagnostics,
                 // Include generated C# for debugging even on failure
                 GeneratedCSharpFiles = generatedCSharp,
                 Metrics = _projectMetrics,
@@ -695,12 +715,16 @@ public class ProjectCompiler
         }
 
         _warnings.AddRange(assemblyResult.Warnings);
+        foreach (var warning in assemblyResult.Warnings)
+        {
+            _diagnostics.AddWarning(warning, phase: CompilerPhase.Assembly);
+        }
 
         return new ProjectCompilationResult
         {
             Success = true,
+            Diagnostics = _diagnostics,
             OutputAssemblyPath = assemblyResult.OutputAssemblyPath,
-            Warnings = _warnings,
             GeneratedCSharpFiles = generatedCSharp,
             Metrics = _projectMetrics,
             DependencyGraph = _dependencyGraph,
@@ -736,7 +760,7 @@ public class ProjectCompiler
         return new ProjectCompilationResult
         {
             Success = false,
-            Errors = _errors,
+            Diagnostics = _diagnostics,
             Metrics = _projectMetrics,
             DependencyGraph = _dependencyGraph,
             ProjectModel = _projectModel
