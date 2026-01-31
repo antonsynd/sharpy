@@ -68,7 +68,10 @@ public class Compiler
         return projectCompiler.Compile(projectConfig);
     }
 
-    public CompilationResult Compile(string sourceCode, string filePath)
+    public CompilationResult Compile(string sourceCode, string filePath) =>
+        Compile(sourceCode, filePath, CancellationToken.None);
+
+    public CompilationResult Compile(string sourceCode, string filePath, CancellationToken cancellationToken)
     {
         _logger.LogInfo($"Starting compilation of {filePath}");
         var metrics = new CompilationMetrics(fileName: filePath);
@@ -83,12 +86,16 @@ public class Compiler
             var tokens = lexer.TokenizeAll();
             metrics.EndPhase();
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Phase 2: Syntax Analysis
             _logger.LogInfo("Phase 2: Syntax Analysis");
             metrics.StartPhase("Syntax Analysis");
             var parser = new Parser.Parser(tokens, _logger);
             var module = parser.ParseModule();
             metrics.EndPhase();
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 3: Semantic Analysis
             _logger.LogInfo("Phase 3: Semantic Analysis");
@@ -125,6 +132,8 @@ public class Compiler
                     Metrics = metrics
                 };
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Pass 1.5: Import resolution (resolves imports and registers symbols)
             metrics.StartPhase("Import Resolution");
@@ -248,6 +257,8 @@ public class Compiler
                 };
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Pass 2: Type resolution and type checking
             metrics.StartPhase("Type Resolution");
             var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger);
@@ -270,6 +281,8 @@ public class Compiler
                     Metrics = metrics
                 };
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             // TODO: Pass 3: Semantic validation (will implement in Phase 3)
 
@@ -351,6 +364,17 @@ public class Compiler
                 ModuleRegistry = _moduleRegistry,
                 GeneratedCSharpCode = csharpCode,  // Keep for backward compatibility
                 GeneratedCSharpFiles = allGeneratedFiles,
+                Metrics = metrics
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInfo("Compilation cancelled");
+            diagnostics.AddError("Compilation cancelled", filePath: filePath);
+            return new CompilationResult
+            {
+                Success = false,
+                Diagnostics = diagnostics,
                 Metrics = metrics
             };
         }
