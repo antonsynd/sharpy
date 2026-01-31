@@ -69,7 +69,7 @@ def public_func():
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
         Assert.Contains("public_func", result.ExportedSymbols.Keys);
         Assert.Equal(AccessLevel.Public, result.ExportedSymbols["public_func"].AccessLevel);
     }
@@ -100,7 +100,7 @@ class PublicClass:
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
         Assert.Contains("PublicClass", result.ExportedSymbols.Keys);
         Assert.Equal(AccessLevel.Public, result.ExportedSymbols["PublicClass"].AccessLevel);
     }
@@ -135,7 +135,7 @@ def _protected_func():
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.Empty(resolver.Errors); // Direct import of protected symbols is allowed
+        Assert.False(resolver.Diagnostics.HasErrors); // Direct import of protected symbols is allowed
         Assert.Contains("_protected_func", result.ExportedSymbols.Keys);
         Assert.Equal(AccessLevel.Protected, result.ExportedSymbols["_protected_func"].AccessLevel);
     }
@@ -166,7 +166,7 @@ def _protected_func():
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         // Get symbols available via import *
         var importAllSymbols = resolver.GetImportAllSymbols(result);
@@ -211,8 +211,8 @@ def __private_func():
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.NotEmpty(resolver.Errors);
-        Assert.Contains(resolver.Errors, e => e.Message.Contains("private") && e.Message.Contains("__private_func"));
+        Assert.True(resolver.Diagnostics.HasErrors);
+        Assert.Contains(resolver.Diagnostics.GetErrors(), e => e.Message.Contains("private") && e.Message.Contains("__private_func"));
     }
 
     [Fact]
@@ -241,7 +241,7 @@ def __private_func():
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         // Get symbols available via import *
         var importAllSymbols = resolver.GetImportAllSymbols(result);
@@ -301,7 +301,7 @@ const __PRIVATE_CONSTANT: int = 123
         };
         var publicResult = resolver.ResolveFromImport(publicImport, _testDir);
         Assert.NotNull(publicResult);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         // Test direct import of protected symbol (should succeed)
         var protectedImport = new FromImportStatement
@@ -319,7 +319,7 @@ const __PRIVATE_CONSTANT: int = 123
         protectedResolver.SetCurrentModule(_testDir);
         var protectedResult = protectedResolver.ResolveFromImport(protectedImport, _testDir);
         Assert.NotNull(protectedResult);
-        Assert.Empty(protectedResolver.Errors);
+        Assert.False(protectedResolver.Diagnostics.HasErrors);
 
         // Test direct import of private symbol (should fail)
         var privateImport = new FromImportStatement
@@ -337,7 +337,7 @@ const __PRIVATE_CONSTANT: int = 123
         privateResolver.SetCurrentModule(_testDir);
         var privateResult = privateResolver.ResolveFromImport(privateImport, _testDir);
         Assert.NotNull(privateResult);
-        Assert.NotEmpty(privateResolver.Errors);
+        Assert.True(privateResolver.Diagnostics.HasErrors);
     }
 
     [Fact]
@@ -378,7 +378,7 @@ class __PrivateClass:
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         // Get symbols available via import *
         var importAllSymbols = resolver.GetImportAllSymbols(result);
@@ -438,8 +438,8 @@ def __private_func():
         Assert.NotNull(result);
 
         // Should have error only for __private_func
-        Assert.Single(resolver.Errors);
-        Assert.Contains(resolver.Errors, e => e.Message.Contains("__private_func"));
+        Assert.Single(resolver.Diagnostics.GetErrors());
+        Assert.Contains(resolver.Diagnostics.GetErrors(), e => e.Message.Contains("__private_func"));
     }
 
     #endregion
@@ -472,8 +472,8 @@ def existing_func():
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.NotEmpty(resolver.Errors);
-        Assert.Contains(resolver.Errors, e => e.Message.Contains("nonexistent_func"));
+        Assert.True(resolver.Diagnostics.HasErrors);
+        Assert.Contains(resolver.Diagnostics.GetErrors(), e => e.Message.Contains("nonexistent_func"));
     }
 
     #endregion
@@ -506,7 +506,7 @@ struct _ProtectedStruct:
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
         Assert.Contains("_ProtectedStruct", result.ExportedSymbols.Keys);
         Assert.Equal(AccessLevel.Protected, result.ExportedSymbols["_ProtectedStruct"].AccessLevel);
     }
@@ -537,8 +537,8 @@ interface __PrivateInterface:
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.NotEmpty(resolver.Errors);
-        Assert.Contains(resolver.Errors, e => e.Message.Contains("private") && e.Message.Contains("__PrivateInterface"));
+        Assert.True(resolver.Diagnostics.HasErrors);
+        Assert.Contains(resolver.Diagnostics.GetErrors(), e => e.Message.Contains("private") && e.Message.Contains("__PrivateInterface"));
     }
 
     [Fact]
@@ -569,7 +569,7 @@ enum Color:
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
         Assert.Contains("Color", result.ExportedSymbols.Keys);
         Assert.Equal(AccessLevel.Public, result.ExportedSymbols["Color"].AccessLevel);
     }
@@ -603,7 +603,7 @@ const PI: float = 3.14159
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
         Assert.Contains("PI", result.ExportedSymbols.Keys);
         Assert.Equal(AccessLevel.Public, result.ExportedSymbols["PI"].AccessLevel);
     }
@@ -633,7 +633,7 @@ const _MAX_SIZE: int = 1000
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
         Assert.Contains("_MAX_SIZE", result.ExportedSymbols.Keys);
         Assert.Equal(AccessLevel.Protected, result.ExportedSymbols["_MAX_SIZE"].AccessLevel);
     }
@@ -663,8 +663,8 @@ const __SECRET_KEY: str = ""secret""
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.NotEmpty(resolver.Errors);
-        Assert.Contains(resolver.Errors, e => e.Message.Contains("private") && e.Message.Contains("__SECRET_KEY"));
+        Assert.True(resolver.Diagnostics.HasErrors);
+        Assert.Contains(resolver.Diagnostics.GetErrors(), e => e.Message.Contains("private") && e.Message.Contains("__SECRET_KEY"));
     }
 
     #endregion
@@ -694,7 +694,7 @@ pass
         var result = resolver.ResolveFromImport(fromImport, _testDir);
 
         Assert.NotNull(result);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
 
         var importAllSymbols = resolver.GetImportAllSymbols(result);
         Assert.Empty(importAllSymbols);
@@ -727,7 +727,7 @@ def _protected_func():
 
         Assert.NotNull(result);
         // Protected symbols can be directly imported (even with alias)
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
     }
 
     [Fact]
@@ -757,8 +757,8 @@ def __private_func():
 
         Assert.NotNull(result);
         // Private symbols cannot be imported, even with alias
-        Assert.NotEmpty(resolver.Errors);
-        Assert.Contains(resolver.Errors, e => e.Message.Contains("private") && e.Message.Contains("__private_func"));
+        Assert.True(resolver.Diagnostics.HasErrors);
+        Assert.Contains(resolver.Diagnostics.GetErrors(), e => e.Message.Contains("private") && e.Message.Contains("__private_func"));
     }
 
     #endregion

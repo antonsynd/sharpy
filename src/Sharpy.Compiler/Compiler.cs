@@ -283,9 +283,9 @@ public class Compiler
 
             metrics.EndPhase();
 
-            if (importResolver.Errors.Any())
+            if (importResolver.Diagnostics.HasErrors)
             {
-                diagnostics.AddSemanticErrors(importResolver.Errors, filePath, CompilerPhase.ImportResolution);
+                diagnostics.Merge(importResolver.Diagnostics);
                 return new CompilationResult
                 {
                     Success = false,

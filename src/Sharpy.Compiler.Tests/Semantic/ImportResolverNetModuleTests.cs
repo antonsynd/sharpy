@@ -101,8 +101,8 @@ public class ImportResolverNetModuleTests
         var result = resolver.ResolveImport(importStmt);
 
         Assert.Empty(result);
-        Assert.NotEmpty(resolver.Errors);
-        Assert.Contains(resolver.Errors, e => e.Message.Contains("nonexistent"));
+        Assert.True(resolver.Diagnostics.HasErrors);
+        Assert.Contains(resolver.Diagnostics.GetErrors(), e => e.Message.Contains("nonexistent"));
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public class ImportResolverNetModuleTests
         Assert.True(result.IsNetModule);
         Assert.Contains("print", result.ExportedSymbols.Keys);
         Assert.Contains("range", result.ExportedSymbols.Keys);
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
     }
 
     [Fact]
@@ -160,8 +160,8 @@ public class ImportResolverNetModuleTests
         var result = resolver.ResolveFromImport(fromImport);
 
         Assert.NotNull(result);
-        Assert.NotEmpty(resolver.Errors);
-        Assert.Contains(resolver.Errors, e => e.Message.Contains("nonexistent_function"));
+        Assert.True(resolver.Diagnostics.HasErrors);
+        Assert.Contains(resolver.Diagnostics.GetErrors(), e => e.Message.Contains("nonexistent_function"));
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public class ImportResolverNetModuleTests
         Assert.True(result.IsNetModule);
         Assert.NotEmpty(result.ExportedSymbols);
         // Should not validate specific symbols when importing all
-        Assert.Empty(resolver.Errors);
+        Assert.False(resolver.Diagnostics.HasErrors);
     }
 
     [Fact]
@@ -240,6 +240,6 @@ public class ImportResolverNetModuleTests
 
         // Without ModuleRegistry, it should try .spy files and fail
         Assert.Empty(result);
-        Assert.NotEmpty(resolver.Errors);
+        Assert.True(resolver.Diagnostics.HasErrors);
     }
 }

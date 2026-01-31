@@ -108,12 +108,12 @@ public abstract class IntegrationTestBase
                 };
             }
 
-            if (importResolver.Errors.Any())
+            if (importResolver.Diagnostics.HasErrors)
             {
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = importResolver.Errors.Select(e => e.Message).ToList()
+                    CompilationErrors = importResolver.Diagnostics.GetErrors().Select(d => d.Message).ToList()
                 };
             }
 

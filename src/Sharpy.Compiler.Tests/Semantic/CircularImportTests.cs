@@ -65,8 +65,8 @@ class ClassB:
         var result = _resolver.ResolveFromImport(importStmt, _tempDir);
 
         // Should detect circular import
-        Assert.NotEmpty(_resolver.Errors);
-        Assert.Contains(_resolver.Errors, e => e.Message.Contains("Circular import detected"));
+        Assert.True(_resolver.Diagnostics.HasErrors);
+        Assert.Contains(_resolver.Diagnostics.GetErrors(), e => e.Message.Contains("Circular import detected"));
     }
 
     [Fact]
@@ -112,8 +112,8 @@ class ClassC:
         var result = _resolver.ResolveFromImport(importStmt, _tempDir);
 
         // Should detect transitive circular import
-        Assert.NotEmpty(_resolver.Errors);
-        Assert.Contains(_resolver.Errors, e => e.Message.Contains("Circular import detected"));
+        Assert.True(_resolver.Diagnostics.HasErrors);
+        Assert.Contains(_resolver.Diagnostics.GetErrors(), e => e.Message.Contains("Circular import detected"));
     }
 
     [Fact]
@@ -143,8 +143,8 @@ class ClassA:
         var result = _resolver.ResolveFromImport(importStmt, _tempDir);
 
         // Should detect self-import
-        Assert.NotEmpty(_resolver.Errors);
-        Assert.Contains(_resolver.Errors, e => e.Message.Contains("Circular import detected"));
+        Assert.True(_resolver.Diagnostics.HasErrors);
+        Assert.Contains(_resolver.Diagnostics.GetErrors(), e => e.Message.Contains("Circular import detected"));
     }
 
     [Fact]
@@ -190,8 +190,8 @@ class ClassC:
         var result = _resolver.ResolveFromImport(importStmt, _tempDir);
 
         // Error message should contain the full chain
-        Assert.NotEmpty(_resolver.Errors);
-        var error = _resolver.Errors.First(e => e.Message.Contains("Circular import detected"));
+        Assert.True(_resolver.Diagnostics.HasErrors);
+        var error = _resolver.Diagnostics.GetErrors().First(e => e.Message.Contains("Circular import detected"));
         Assert.Contains("a.spy", error.Message);
         Assert.Contains("b.spy", error.Message);
         Assert.Contains("c.spy", error.Message);
@@ -262,7 +262,7 @@ class ClassD:
         var resultC = _resolver.ResolveFromImport(importC, _tempDir);
 
         // Should succeed - no circular import
-        var circularErrors = _resolver.Errors.Where(e => e.Message.Contains("Circular import")).ToList();
+        var circularErrors = _resolver.Diagnostics.GetErrors().Where(e => e.Message.Contains("Circular import")).ToList();
         Assert.Empty(circularErrors);
     }
 
@@ -312,7 +312,7 @@ class ClassB:
         var result2 = _resolver.ResolveFromImport(import2, _tempDir);
 
         // Should not report circular import
-        var circularErrors = _resolver.Errors.Where(e => e.Message.Contains("Circular import")).ToList();
+        var circularErrors = _resolver.Diagnostics.GetErrors().Where(e => e.Message.Contains("Circular import")).ToList();
         Assert.Empty(circularErrors);
     }
 
@@ -349,8 +349,8 @@ class ClassB:
         var result = _resolver.ResolveImport(importStmt, _tempDir);
 
         // Should detect circular import
-        Assert.NotEmpty(_resolver.Errors);
-        Assert.Contains(_resolver.Errors, e => e.Message.Contains("Circular import detected"));
+        Assert.True(_resolver.Diagnostics.HasErrors);
+        Assert.Contains(_resolver.Diagnostics.GetErrors(), e => e.Message.Contains("Circular import detected"));
     }
 
     [Fact]
@@ -404,8 +404,8 @@ class ClassD:
         var result = _resolver.ResolveFromImport(importStmt, _tempDir);
 
         // Error should show the full chain
-        Assert.NotEmpty(_resolver.Errors);
-        var error = _resolver.Errors.First(e => e.Message.Contains("Circular import detected"));
+        Assert.True(_resolver.Diagnostics.HasErrors);
+        var error = _resolver.Diagnostics.GetErrors().First(e => e.Message.Contains("Circular import detected"));
 
         // Check that all files appear in the error message
         Assert.Contains("a.spy", error.Message);
@@ -463,7 +463,7 @@ class ClassD:
         var result = _resolver.ResolveFromImport(importStmt, _tempDir);
 
         // Should succeed - no circular import
-        var circularErrors = _resolver.Errors.Where(e => e.Message.Contains("Circular import")).ToList();
+        var circularErrors = _resolver.Diagnostics.GetErrors().Where(e => e.Message.Contains("Circular import")).ToList();
         Assert.Empty(circularErrors);
     }
 }

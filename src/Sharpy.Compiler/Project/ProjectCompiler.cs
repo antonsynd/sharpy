@@ -503,9 +503,9 @@ public class ProjectCompiler
         }
 
         // Add import resolver errors only if no circular dependencies were detected
-        if (_importResolver.Errors.Any())
+        if (_importResolver.Diagnostics.HasErrors)
         {
-            foreach (var error in _importResolver.Errors)
+            foreach (var error in _importResolver.Diagnostics.GetErrors())
             {
                 _projectModel!.GlobalDiagnostics.AddError(error.Message);
                 _diagnostics.AddError(error.Message, error.Line, error.Column, phase: CompilerPhase.ImportResolution);

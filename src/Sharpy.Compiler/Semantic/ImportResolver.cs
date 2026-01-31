@@ -1,6 +1,6 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
 using System.Collections.Immutable;
 using System.Text;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Parser.Ast;
@@ -24,7 +24,7 @@ internal record ImportChainEntry(
 public class ImportResolver
 {
     private readonly ICompilerLogger _logger;
-    private readonly List<SemanticError> _errors = new();
+    private readonly DiagnosticBag _diagnostics = new();
     private readonly HashSet<string> _loadedModules = new();
     private readonly Stack<ImportChainEntry> _importChain = new(); // For detailed circular import detection
     private readonly Dictionary<string, ModuleInfo> _moduleCache = new();
@@ -61,7 +61,7 @@ public class ImportResolver
         _semanticBinding = binding;
     }
 
-    public IReadOnlyList<SemanticError> Errors => _errors;
+    public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
     /// Set the dependency graph builder for tracking file dependencies.
@@ -103,7 +103,7 @@ public class ImportResolver
                 if (modulePath == null)
                 {
                     AddError($"Cannot find module '{importAlias.Name}'",
-                        importAlias.LineStart, importAlias.ColumnStart, code: Diagnostics.DiagnosticCodes.Semantic.ModuleNotFound);
+                        importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.ModuleNotFound);
                     continue;
                 }
 
@@ -149,7 +149,7 @@ public class ImportResolver
             {
                 _logger.LogDebug($"[ImportResolver]   Module '{fromImport.Module}' not found");
                 AddError($"Cannot find module '{fromImport.Module}'",
-                    fromImport.LineStart, fromImport.ColumnStart, code: Diagnostics.DiagnosticCodes.Semantic.ModuleNotFound);
+                    fromImport.LineStart, fromImport.ColumnStart, code: DiagnosticCodes.Semantic.ModuleNotFound);
                 return null;
             }
 
@@ -221,7 +221,7 @@ public class ImportResolver
                     {
                         _logger.LogDebug($"[ImportResolver]     Symbol '{symbolName}' NOT FOUND in module exports");
                         AddError($"Module '{fromImport.Module}' has no exported symbol '{symbolName}'",
-                            importAlias.LineStart, importAlias.ColumnStart, code: Diagnostics.DiagnosticCodes.Semantic.ImportError);
+                            importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.ImportError);
                         continue;
                     }
 
@@ -229,7 +229,7 @@ public class ImportResolver
                     if (!IsDirectlyImportable(symbolName))
                     {
                         AddError($"Cannot import private symbol '{symbolName}' from module '{fromImport.Module}'",
-                            importAlias.LineStart, importAlias.ColumnStart, code: Diagnostics.DiagnosticCodes.Semantic.AccessViolation);
+                            importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.AccessViolation);
                     }
 
                     // Populate re-export symbols for code generation
@@ -287,7 +287,7 @@ public class ImportResolver
         {
             var chainMessage = FormatCircularImportChain(modulePath);
             _logger.LogDebug($"[ImportResolver] Circular import detected: {Path.GetFileName(modulePath)}");
-            AddError(chainMessage, lineStart, columnStart, code: Diagnostics.DiagnosticCodes.Semantic.CircularImport);
+            AddError(chainMessage, lineStart, columnStart, code: DiagnosticCodes.Semantic.CircularImport);
             return null;
         }
 
@@ -318,7 +318,7 @@ public class ImportResolver
             // Read the source file
             if (!File.Exists(modulePath))
             {
-                AddError($"Module file not found: {modulePath}", lineStart, columnStart, code: Diagnostics.DiagnosticCodes.Semantic.ModuleNotFound);
+                AddError($"Module file not found: {modulePath}", lineStart, columnStart, code: DiagnosticCodes.Semantic.ModuleNotFound);
                 return null;
             }
 
@@ -1213,7 +1213,7 @@ public class ImportResolver
         var errorMessage = _currentModulePath != null
             ? $"{message} (in {Path.GetFileName(_currentModulePath)})"
             : message;
-        _errors.Add(new SemanticError(errorMessage, line, column, code));
+        _diagnostics.AddError(errorMessage, line, column, _currentModulePath, code, CompilerPhase.ImportResolution);
     }
 
     /// <summary>
