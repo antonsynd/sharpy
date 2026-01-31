@@ -603,13 +603,13 @@ public partial class TypeChecker
             return (field, type);
 
         // Check base class chain
-        var current = type.BaseType;
+        var current = GetBaseType(type);
         while (current != null)
         {
             field = current.Fields.FirstOrDefault(f => f.Name == fieldName);
             if (field != null)
                 return (field, current);
-            current = current.BaseType;
+            current = GetBaseType(current);
         }
 
         return (null, null);
@@ -626,17 +626,17 @@ public partial class TypeChecker
             return (method, type);
 
         // Check base class chain
-        var current = type.BaseType;
+        var current = GetBaseType(type);
         while (current != null)
         {
             method = current.Methods.FirstOrDefault(m => m.Name == methodName);
             if (method != null)
                 return (method, current);
-            current = current.BaseType;
+            current = GetBaseType(current);
         }
 
         // Check interfaces (for method contracts)
-        foreach (var iface in type.Interfaces)
+        foreach (var iface in GetInterfaces(type))
         {
             method = iface.Methods.FirstOrDefault(m => m.Name == methodName);
             if (method != null)
@@ -1824,16 +1824,16 @@ public partial class TypeChecker
         if (derived == null || baseType == null)
             return false;
 
-        var current = derived.BaseType;
+        var current = GetBaseType(derived);
         while (current != null)
         {
             if (current == baseType || current.Name == baseType.Name)
                 return true;
-            current = current.BaseType;
+            current = GetBaseType(current);
         }
 
         // Also check interfaces
-        foreach (var iface in derived.Interfaces)
+        foreach (var iface in GetInterfaces(derived))
         {
             if (iface == baseType || iface.Name == baseType.Name)
                 return true;

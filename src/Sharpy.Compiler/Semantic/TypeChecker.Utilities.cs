@@ -523,7 +523,8 @@ public partial class TypeChecker
         }
 
         // Check 2: Class must have a parent
-        if (_currentClass.BaseType == null)
+        var classBaseType = GetBaseType(_currentClass);
+        if (classBaseType == null)
         {
             AddError($"super() cannot be used in class '{_currentClass.Name}' which has no parent class",
                 superExpr.LineStart, superExpr.ColumnStart,
@@ -533,7 +534,7 @@ public partial class TypeChecker
 
         // Check 3: Cannot access fields via super()
         // Check the entire inheritance chain for fields
-        var currentType = _currentClass.BaseType;
+        var currentType = classBaseType;
         while (currentType != null)
         {
             var field = currentType.Fields.FirstOrDefault(f => f.Name == memberName);
@@ -544,7 +545,7 @@ public partial class TypeChecker
                     code: DiagnosticCodes.Semantic.InvalidSuperUsage);
                 return SemanticType.Unknown;
             }
-            currentType = currentType.BaseType;
+            currentType = GetBaseType(currentType);
         }
 
         // Check 4: Validate based on method context
@@ -552,11 +553,11 @@ public partial class TypeChecker
 
         // Look up the method in the parent class hierarchy and return its type
         // Use FindMethodInHierarchy to traverse the full inheritance chain
-        var (parentMethod, methodOwner) = FindMethodInHierarchy(_currentClass.BaseType, memberName);
+        var (parentMethod, methodOwner) = FindMethodInHierarchy(classBaseType, memberName);
         if (parentMethod == null && memberName == "__init__")
         {
             // __init__ might be in Constructors list - check full hierarchy
-            currentType = _currentClass.BaseType;
+            currentType = classBaseType;
             while (currentType != null)
             {
                 // For .NET types, we can't do proper overload resolution here
@@ -582,7 +583,7 @@ public partial class TypeChecker
                         ReturnType = SemanticType.Void
                     };
                 }
-                currentType = currentType.BaseType;
+                currentType = GetBaseType(currentType);
             }
         }
 
@@ -753,20 +754,20 @@ public partial class TypeChecker
         var queue = new Queue<TypeSymbol>();
 
         // Add directly implemented interfaces
-        foreach (var iface in type.Interfaces)
+        foreach (var iface in GetInterfaces(type))
         {
             queue.Enqueue(iface);
         }
 
         // Add interfaces from base class hierarchy (with cycle detection)
-        var baseType = type.BaseType;
+        var baseType = GetBaseType(type);
         while (baseType != null && visitedBaseClasses.Add(baseType.Name))
         {
-            foreach (var iface in baseType.Interfaces)
+            foreach (var iface in GetInterfaces(baseType))
             {
                 queue.Enqueue(iface);
             }
-            baseType = baseType.BaseType;
+            baseType = GetBaseType(baseType);
         }
 
         // BFS through interface inheritance
@@ -779,7 +780,7 @@ public partial class TypeChecker
             result.Add(iface);
 
             // Add base interfaces
-            foreach (var baseIface in iface.Interfaces)
+            foreach (var baseIface in GetInterfaces(iface))
             {
                 queue.Enqueue(baseIface);
             }
@@ -809,7 +810,7 @@ public partial class TypeChecker
                     result[method.Name] = method;
                 }
             }
-            currentType = currentType.BaseType;
+            currentType = GetBaseType(currentType);
         }
 
         return result;
@@ -879,7 +880,7 @@ public partial class TypeChecker
 
         if (type is UserDefinedType udt && udt.Symbol != null)
         {
-            var current = udt.Symbol.BaseType;
+            var current = GetBaseType(udt.Symbol);
             while (current != null)
             {
                 chain.Add(new UserDefinedType
@@ -887,7 +888,7 @@ public partial class TypeChecker
                     Name = current.Name,
                     Symbol = current
                 });
-                current = current.BaseType;
+                current = GetBaseType(current);
             }
         }
 

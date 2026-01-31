@@ -132,6 +132,20 @@ public partial class TypeChecker
     }
 
     /// <summary>
+    /// Gets the base type for a TypeSymbol, preferring SemanticBinding when available.
+    /// Falls back to symbol.BaseType for backward compatibility during migration.
+    /// </summary>
+    private TypeSymbol? GetBaseType(TypeSymbol symbol)
+        => SemanticBinding?.GetBaseType(symbol) ?? symbol.BaseType;
+
+    /// <summary>
+    /// Gets the interfaces for a TypeSymbol, preferring SemanticBinding when available.
+    /// Falls back to symbol.Interfaces for backward compatibility during migration.
+    /// </summary>
+    private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
+        => SemanticBinding?.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+
+    /// <summary>
     /// Gets diagnostics from type checking, type resolution, and validation pipeline.
     /// </summary>
     public DiagnosticBag Diagnostics => _diagnostics;
