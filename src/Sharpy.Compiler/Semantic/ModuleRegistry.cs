@@ -1,6 +1,6 @@
-#pragma warning disable CS0618 // SemanticError is obsolete
 using System.Collections.Concurrent;
 using System.Reflection;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Logging;
@@ -18,7 +18,7 @@ public class ModuleRegistry
     private readonly ICompilerLogger _logger;
     private readonly ConcurrentDictionary<string, Assembly> _loadedAssemblies = new();
     private readonly ConcurrentBag<string> _modulePaths = new();
-    private readonly ConcurrentBag<SemanticError> _errors = new();
+    private readonly DiagnosticBag _diagnostics = new();
 
     public ModuleRegistry(ICompilerLogger? logger = null, OverloadIndexCache? cache = null)
     {
@@ -26,7 +26,7 @@ public class ModuleRegistry
         _logger = logger ?? NullLogger.Instance;
     }
 
-    public IReadOnlyList<SemanticError> Errors => _errors.ToList();
+    public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
     /// Get all configured module search paths.
@@ -416,6 +416,6 @@ public class ModuleRegistry
 
     private void AddError(string message)
     {
-        _errors.Add(new SemanticError(message, null, null));
+        _diagnostics.AddError(message, phase: CompilerPhase.ImportResolution);
     }
 }

@@ -108,7 +108,7 @@ public class ModuleDiscoveryWorkflowTests : IDisposable
         var loaded = registry.LoadReference("SampleModule.dll");
 
         // Assert
-        Assert.True(loaded, $"Failed to load module. Errors: {string.Join(", ", registry.Errors.Select(e => e.Message))}");
+        Assert.True(loaded, $"Failed to load module. Errors: {string.Join(", ", registry.Diagnostics.GetErrors().Select(e => e.Message))}");
         Assert.True(registry.IsModuleLoaded("samplemodule"));
     }
 

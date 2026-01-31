@@ -38,7 +38,7 @@ public class ModuleRegistryTests : IDisposable
         var registry = new ModuleRegistry(cache: _cache);
 
         Assert.NotNull(registry);
-        Assert.Empty(registry.Errors);
+        Assert.False(registry.Diagnostics.HasErrors);
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class ModuleRegistryTests : IDisposable
         var result = registry.LoadReference(sharpyCoreAssembly);
 
         Assert.True(result);
-        Assert.Empty(registry.Errors);
+        Assert.False(registry.Diagnostics.HasErrors);
         Assert.Contains("builtins", registry.GetLoadedModules());
     }
 
@@ -62,7 +62,7 @@ public class ModuleRegistryTests : IDisposable
         var result = registry.LoadReference("NonExistent.dll");
 
         Assert.False(result);
-        Assert.NotEmpty(registry.Errors);
+        Assert.True(registry.Diagnostics.HasErrors);
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class ModuleRegistryTests : IDisposable
         registry.AddModulePath(tempPath);
 
         // No direct way to verify, but should not throw
-        Assert.Empty(registry.Errors);
+        Assert.False(registry.Diagnostics.HasErrors);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class ModuleRegistryTests : IDisposable
         // Should not throw, just log warning
         registry.AddModulePath(nonExistentPath);
 
-        Assert.Empty(registry.Errors);
+        Assert.False(registry.Diagnostics.HasErrors);
     }
 
     [Fact]
@@ -158,6 +158,6 @@ public class ModuleRegistryTests : IDisposable
         // Should not throw
         registry.ClearCache();
 
-        Assert.Empty(registry.Errors);
+        Assert.False(registry.Diagnostics.HasErrors);
     }
 }

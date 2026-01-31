@@ -138,9 +138,9 @@ public class Compiler
             var semanticInfo = new SemanticInfo();
 
             // Check for module registry errors
-            if (_moduleRegistry != null && _moduleRegistry.Errors.Any())
+            if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
             {
-                diagnostics.AddSemanticErrors(_moduleRegistry.Errors, filePath, CompilerPhase.ImportResolution);
+                diagnostics.Merge(_moduleRegistry.Diagnostics);
                 return new CompilationResult
                 {
                     Success = false,

@@ -44,8 +44,8 @@ public class ThirdPartyModuleTests : IDisposable
 
         var result = registry.LoadReference(SampleModulePath);
 
-        Assert.True(result, $"Failed to load sample module. Errors: {string.Join(", ", registry.Errors.Select(e => e.Message))}");
-        Assert.Empty(registry.Errors);
+        Assert.True(result, $"Failed to load sample module. Errors: {string.Join(", ", registry.Diagnostics.GetErrors().Select(e => e.Message))}");
+        Assert.False(registry.Diagnostics.HasErrors);
     }
 
     [Fact]
