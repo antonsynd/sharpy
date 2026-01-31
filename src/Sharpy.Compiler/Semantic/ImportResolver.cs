@@ -786,6 +786,44 @@ public class ImportResolver
             ? classDef.BaseClasses.Skip(1).Select(b => b.Name).ToList()
             : new List<string>();
 
+        // Collect all member data before construction so TypeSymbol properties are set at init
+
+        // Extract fields
+        var fields = new List<VariableSymbol>();
+        foreach (var stmt in classDef.Body)
+        {
+            if (stmt is VariableDeclaration varDecl)
+            {
+                fields.Add(new VariableSymbol
+                {
+                    Name = varDecl.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
+                    IsConstant = varDecl.IsConst,
+                    AccessLevel = GetAccessLevel(varDecl.Name),
+                    DeclarationLine = varDecl.LineStart,
+                    DeclarationColumn = varDecl.ColumnStart
+                });
+            }
+        }
+
+        // Extract methods and constructors
+        var methods = new List<FunctionSymbol>();
+        var ctors = new List<FunctionSymbol>();
+        foreach (var stmt in classDef.Body)
+        {
+            if (stmt is FunctionDef method)
+            {
+                var methodSymbol = ExtractMethodSymbol(method);
+                methods.Add(methodSymbol);
+
+                if (method.Name == "__init__")
+                {
+                    ctors.Add(methodSymbol);
+                }
+            }
+        }
+
         var classSymbol = new TypeSymbol
         {
             Name = classDef.Name,
@@ -796,51 +834,17 @@ public class ImportResolver
             TypeParameters = classDef.TypeParameters.ToList(),
             DeclarationLine = classDef.LineStart,
             DeclarationColumn = classDef.ColumnStart,
-            // Set DefiningModule to the actual file where this class is defined.
-            // This is preserved through re-export chains to enable proper namespace resolution.
             DefiningModule = definingModulePath,
             UnresolvedBaseName = unresolvedBase,
-            UnresolvedInterfaceNames = unresolvedInterfaces
+            UnresolvedInterfaceNames = unresolvedInterfaces,
+            Fields = fields,
+            Methods = methods,
+            Constructors = ctors
         };
 
         if (unresolvedBase != null)
         {
             _logger.LogDebug($"[ImportResolver] Stored unresolved base for {classDef.Name}: {classSymbol.UnresolvedBaseName}");
-        }
-
-        // Extract fields
-        foreach (var stmt in classDef.Body)
-        {
-            if (stmt is VariableDeclaration varDecl)
-            {
-                var fieldSymbol = new VariableSymbol
-                {
-                    Name = varDecl.Name,
-                    Kind = SymbolKind.Variable,
-                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
-                    IsConstant = varDecl.IsConst,
-                    AccessLevel = GetAccessLevel(varDecl.Name),
-                    DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart
-                };
-                classSymbol.Fields.Add(fieldSymbol);
-            }
-        }
-
-        // Extract methods
-        foreach (var stmt in classDef.Body)
-        {
-            if (stmt is FunctionDef method)
-            {
-                var methodSymbol = ExtractMethodSymbol(method);
-                classSymbol.Methods.Add(methodSymbol);
-
-                // Track constructors separately
-                if (method.Name == "__init__")
-                {
-                    classSymbol.Constructors.Add(methodSymbol);
-                }
-            }
         }
 
         return classSymbol;
@@ -856,6 +860,44 @@ public class ImportResolver
     {
         var accessLevel = GetAccessLevel(structDef.Name);
 
+        // Collect all member data before construction so TypeSymbol properties are set at init
+
+        // Extract fields
+        var fields = new List<VariableSymbol>();
+        foreach (var stmt in structDef.Body)
+        {
+            if (stmt is VariableDeclaration varDecl)
+            {
+                fields.Add(new VariableSymbol
+                {
+                    Name = varDecl.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
+                    IsConstant = varDecl.IsConst,
+                    AccessLevel = GetAccessLevel(varDecl.Name),
+                    DeclarationLine = varDecl.LineStart,
+                    DeclarationColumn = varDecl.ColumnStart
+                });
+            }
+        }
+
+        // Extract methods and constructors
+        var methods = new List<FunctionSymbol>();
+        var ctors = new List<FunctionSymbol>();
+        foreach (var stmt in structDef.Body)
+        {
+            if (stmt is FunctionDef method)
+            {
+                var methodSymbol = ExtractMethodSymbol(method);
+                methods.Add(methodSymbol);
+
+                if (method.Name == "__init__")
+                {
+                    ctors.Add(methodSymbol);
+                }
+            }
+        }
+
         var structSymbol = new TypeSymbol
         {
             Name = structDef.Name,
@@ -865,45 +907,12 @@ public class ImportResolver
             TypeParameters = structDef.TypeParameters.ToList(),
             DeclarationLine = structDef.LineStart,
             DeclarationColumn = structDef.ColumnStart,
-            // Set DefiningModule to the actual file where this struct is defined.
             DefiningModule = definingModulePath,
-            UnresolvedInterfaceNames = structDef.BaseClasses.Select(b => b.Name).ToList()
+            UnresolvedInterfaceNames = structDef.BaseClasses.Select(b => b.Name).ToList(),
+            Fields = fields,
+            Methods = methods,
+            Constructors = ctors
         };
-
-        // Extract fields
-        foreach (var stmt in structDef.Body)
-        {
-            if (stmt is VariableDeclaration varDecl)
-            {
-                var fieldSymbol = new VariableSymbol
-                {
-                    Name = varDecl.Name,
-                    Kind = SymbolKind.Variable,
-                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
-                    IsConstant = varDecl.IsConst,
-                    AccessLevel = GetAccessLevel(varDecl.Name),
-                    DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart
-                };
-                structSymbol.Fields.Add(fieldSymbol);
-            }
-        }
-
-        // Extract methods
-        foreach (var stmt in structDef.Body)
-        {
-            if (stmt is FunctionDef method)
-            {
-                var methodSymbol = ExtractMethodSymbol(method);
-                structSymbol.Methods.Add(methodSymbol);
-
-                // Track constructors separately
-                if (method.Name == "__init__")
-                {
-                    structSymbol.Constructors.Add(methodSymbol);
-                }
-            }
-        }
 
         return structSymbol;
     }
@@ -918,6 +927,29 @@ public class ImportResolver
     {
         var accessLevel = GetAccessLevel(interfaceDef.Name);
 
+        // Collect all member data before construction so TypeSymbol properties are set at init
+
+        // Extract methods (interface methods are always abstract)
+        var methods = new List<FunctionSymbol>();
+        foreach (var stmt in interfaceDef.Body)
+        {
+            if (stmt is FunctionDef method)
+            {
+                var methodSymbol = ExtractMethodSymbol(method);
+                // Interface methods are implicitly abstract unless they have an implementation
+                if (!methodSymbol.IsAbstract)
+                {
+                    bool hasEllipsisBody = method.Body.Length == 1
+                        && method.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+                    if (hasEllipsisBody)
+                    {
+                        methodSymbol = methodSymbol with { IsAbstract = true };
+                    }
+                }
+                methods.Add(methodSymbol);
+            }
+        }
+
         var interfaceSymbol = new TypeSymbol
         {
             Name = interfaceDef.Name,
@@ -927,31 +959,10 @@ public class ImportResolver
             TypeParameters = interfaceDef.TypeParameters.ToList(),
             DeclarationLine = interfaceDef.LineStart,
             DeclarationColumn = interfaceDef.ColumnStart,
-            // Set DefiningModule to the actual file where this interface is defined.
             DefiningModule = definingModulePath,
-            UnresolvedInterfaceNames = interfaceDef.BaseInterfaces.Select(b => b.Name).ToList()
+            UnresolvedInterfaceNames = interfaceDef.BaseInterfaces.Select(b => b.Name).ToList(),
+            Methods = methods
         };
-
-        // Extract methods (interface methods are always abstract)
-        foreach (var stmt in interfaceDef.Body)
-        {
-            if (stmt is FunctionDef method)
-            {
-                var methodSymbol = ExtractMethodSymbol(method);
-                // Interface methods are implicitly abstract unless they have an implementation
-                if (!methodSymbol.IsAbstract)
-                {
-                    // Check if the method has an ellipsis body (abstract method signature)
-                    bool hasEllipsisBody = method.Body.Length == 1
-                        && method.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
-                    if (hasEllipsisBody)
-                    {
-                        methodSymbol = methodSymbol with { IsAbstract = true };
-                    }
-                }
-                interfaceSymbol.Methods.Add(methodSymbol);
-            }
-        }
 
         return interfaceSymbol;
     }

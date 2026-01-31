@@ -253,6 +253,41 @@ public class ModuleRegistry
                      : clrType.IsValueType ? TypeKind.Struct
                      : TypeKind.Class;
 
+        // Collect all data before construction so TypeSymbol properties can be init-only
+
+        // Resolve base type for classes (except System.Object)
+        TypeSymbol? baseTypeSymbol = null;
+        if (clrType.BaseType != null && clrType.BaseType != typeof(object))
+        {
+            baseTypeSymbol = CreateTypeSymbolFromClrType(clrType.BaseType);
+        }
+
+        // Collect implemented interfaces (only directly implemented, not inherited)
+        var interfaces = new List<TypeSymbol>();
+        foreach (var iface in clrType.GetInterfaces())
+        {
+            if (clrType.BaseType != null && clrType.BaseType.GetInterfaces().Contains(iface))
+                continue;
+
+            var ifaceSymbol = CreateTypeSymbolFromClrType(iface);
+            if (ifaceSymbol != null)
+            {
+                interfaces.Add(ifaceSymbol);
+            }
+        }
+
+        // Collect constructors (as __init__ methods for Sharpy compatibility)
+        var ctorSymbols = new List<FunctionSymbol>();
+        var constructors = clrType.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+        foreach (var ctor in constructors)
+        {
+            var ctorSymbol = CreateConstructorSymbol(ctor, clrType);
+            if (ctorSymbol != null)
+            {
+                ctorSymbols.Add(ctorSymbol);
+            }
+        }
+
         var typeSymbol = new TypeSymbol
         {
             Name = clrType.Name,
@@ -260,44 +295,11 @@ public class ModuleRegistry
             TypeKind = typeKind,
             ClrType = clrType,
             IsAbstract = clrType.IsAbstract && !clrType.IsInterface,
-            AccessLevel = AccessLevel.Public
+            AccessLevel = AccessLevel.Public,
+            BaseType = baseTypeSymbol,
+            Interfaces = interfaces,
+            Constructors = ctorSymbols
         };
-
-        // Set base type for classes (except System.Object)
-        if (clrType.BaseType != null && clrType.BaseType != typeof(object))
-        {
-            var baseTypeSymbol = CreateTypeSymbolFromClrType(clrType.BaseType);
-            if (baseTypeSymbol != null)
-            {
-                // Set the BaseType property directly on the TypeSymbol
-                typeSymbol.BaseType = baseTypeSymbol;
-            }
-        }
-
-        // Add implemented interfaces
-        foreach (var iface in clrType.GetInterfaces())
-        {
-            // Only add directly implemented interfaces (not inherited ones)
-            if (clrType.BaseType != null && clrType.BaseType.GetInterfaces().Contains(iface))
-                continue;
-
-            var ifaceSymbol = CreateTypeSymbolFromClrType(iface);
-            if (ifaceSymbol != null)
-            {
-                typeSymbol.Interfaces.Add(ifaceSymbol);
-            }
-        }
-
-        // Add constructors (as __init__ methods for Sharpy compatibility)
-        var constructors = clrType.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
-        foreach (var ctor in constructors)
-        {
-            var ctorSymbol = CreateConstructorSymbol(ctor, clrType);
-            if (ctorSymbol != null)
-            {
-                typeSymbol.Constructors.Add(ctorSymbol);
-            }
-        }
 
         return typeSymbol;
     }
