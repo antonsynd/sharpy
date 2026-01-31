@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // LexerError and ParserError are obsolete
 using System.CommandLine;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Lexer;
@@ -498,6 +499,13 @@ class Program
             var lexer = new Lexer(source, logger);
             var tokens = lexer.TokenizeAll();
 
+            if (lexer.Diagnostics.HasErrors)
+            {
+                foreach (var diag in lexer.Diagnostics.GetErrors())
+                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
+                Environment.Exit(1);
+            }
+
             Console.WriteLine($"Tokens for {inputFile.Name}:");
             Console.WriteLine(new string('=', 80));
 
@@ -531,8 +539,23 @@ class Program
             var source = File.ReadAllText(inputFile.FullName);
             var lexer = new Lexer(source, logger);
             var tokens = lexer.TokenizeAll();
+
+            if (lexer.Diagnostics.HasErrors)
+            {
+                foreach (var diag in lexer.Diagnostics.GetErrors())
+                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
+                Environment.Exit(1);
+            }
+
             var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
             var module = parser.ParseModule();
+
+            if (parser.Diagnostics.HasErrors)
+            {
+                foreach (var diag in parser.Diagnostics.GetErrors())
+                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
+                Environment.Exit(1);
+            }
 
             Console.WriteLine($"AST for {inputFile.Name}:");
             Console.WriteLine(new string('=', 80));
@@ -569,8 +592,23 @@ class Program
             var source = File.ReadAllText(inputFile.FullName);
             var lexer = new Lexer(source, logger);
             var tokens = lexer.TokenizeAll();
+
+            if (lexer.Diagnostics.HasErrors)
+            {
+                foreach (var diag in lexer.Diagnostics.GetErrors())
+                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
+                Environment.Exit(1);
+            }
+
             var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
             parser.ParseModule();
+
+            if (parser.Diagnostics.HasErrors)
+            {
+                foreach (var diag in parser.Diagnostics.GetErrors())
+                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
+                Environment.Exit(1);
+            }
 
             Console.WriteLine("PARSE_OK");
         }
@@ -617,9 +655,10 @@ class Program
             if (nameResolver.Errors.Any())
             {
                 Console.Error.WriteLine("Name resolution errors:");
-                foreach (var error in nameResolver.Errors)
+                var bag = DiagnosticBag.FromSemanticErrors(nameResolver.Errors);
+                foreach (var diag in bag.GetErrors())
                 {
-                    Console.Error.WriteLine($"  {error.Message}");
+                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
                 }
                 Environment.Exit(1);
             }
@@ -632,9 +671,10 @@ class Program
             if (typeChecker.Errors.Any())
             {
                 Console.Error.WriteLine("Type checking errors:");
-                foreach (var error in typeChecker.Errors)
+                var bag = DiagnosticBag.FromSemanticErrors(typeChecker.Errors);
+                foreach (var diag in bag.GetErrors())
                 {
-                    Console.Error.WriteLine($"  {error.Message}");
+                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
                 }
                 Environment.Exit(1);
             }
@@ -763,9 +803,9 @@ class Program
                 Console.Error.WriteLine("Build FAILED.");
                 Console.Error.WriteLine();
                 Console.Error.WriteLine("Errors:");
-                foreach (var error in result.Errors)
+                foreach (var error in result.Diagnostics.GetErrors())
                 {
-                    Console.Error.WriteLine($"  {error}");
+                    Console.Error.WriteLine($"  {FormatDiagnostic(error)}");
                 }
                 Environment.Exit(1);
             }
@@ -822,6 +862,52 @@ class Program
             Console.Error.WriteLine($"Error retrieving cache info: {ex.Message}");
             Environment.Exit(1);
         }
+    }
+
+    /// <summary>
+    /// Format a diagnostic for CLI output.
+    /// Format: file.spy(3,5): error SHP0201: Undefined variable 'x'
+    /// </summary>
+    static string FormatDiagnostic(CompilerDiagnostic diagnostic)
+    {
+        var parts = new List<string>();
+
+        // File and location
+        if (!string.IsNullOrEmpty(diagnostic.FilePath))
+        {
+            var file = Path.GetFileName(diagnostic.FilePath);
+            if (diagnostic.Line.HasValue && diagnostic.Column.HasValue)
+                parts.Add($"{file}({diagnostic.Line},{diagnostic.Column})");
+            else if (diagnostic.Line.HasValue)
+                parts.Add($"{file}({diagnostic.Line})");
+            else
+                parts.Add(file);
+        }
+        else if (diagnostic.Line.HasValue)
+        {
+            if (diagnostic.Column.HasValue)
+                parts.Add($"({diagnostic.Line},{diagnostic.Column})");
+            else
+                parts.Add($"({diagnostic.Line})");
+        }
+
+        // Severity
+        var severity = diagnostic.Severity switch
+        {
+            CompilerDiagnosticSeverity.Error => "error",
+            CompilerDiagnosticSeverity.Warning => "warning",
+            CompilerDiagnosticSeverity.Info => "info",
+            CompilerDiagnosticSeverity.Hint => "hint",
+            _ => "diagnostic"
+        };
+
+        // Code and message
+        if (!string.IsNullOrEmpty(diagnostic.Code))
+            parts.Add($"{severity} {diagnostic.Code}: {diagnostic.Message}");
+        else
+            parts.Add($"{severity}: {diagnostic.Message}");
+
+        return string.Join(": ", parts);
     }
 
     static string FormatBytes(long bytes)
@@ -936,9 +1022,9 @@ class Program
             if (!result.Success)
             {
                 Console.Error.WriteLine("Compilation failed:");
-                foreach (var error in result.Errors)
+                foreach (var diagnostic in result.Diagnostics.GetErrors())
                 {
-                    Console.Error.WriteLine($"  {error}");
+                    Console.Error.WriteLine($"  {FormatDiagnostic(diagnostic)}");
                 }
                 Environment.Exit(1);
             }
