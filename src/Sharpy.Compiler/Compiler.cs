@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Semantic;
@@ -86,6 +87,9 @@ public class Compiler
             var tokens = lexer.TokenizeAll();
             metrics.EndPhase();
 
+            // Assertion: Lexer must produce at least an EOF token
+            Debug.Assert(tokens.Count > 0, "Lexer should produce at least one token (EOF)");
+
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 2: Syntax Analysis
@@ -94,6 +98,10 @@ public class Compiler
             var parser = new Parser.Parser(tokens, _logger);
             var module = parser.ParseModule();
             metrics.EndPhase();
+
+            // Assertion: Parser must produce a valid module
+            Debug.Assert(module != null, "Parser should produce a non-null Module");
+            Debug.Assert(module.Body != null, "Module.Body should not be null");
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -121,6 +129,9 @@ public class Compiler
             nameResolver.ResolveDeclarations(module);
             nameResolver.ResolveInheritance(); // Second pass: resolve inheritance after all types are declared
             metrics.EndPhase();
+
+            // Assertion: After name resolution, all defined type symbols must have names
+            AssertAllSymbolsHaveNames(symbolTable);
 
             if (nameResolver.Errors.Any())
             {
@@ -271,6 +282,12 @@ public class Compiler
             typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
             metrics.EndPhase();
 
+            // Assertion: After successful type checking, warn if unknown types remain
+            WarnIfUnknownTypes(semanticInfo, typeChecker.Errors);
+            // Assertion: Type checking should have processed at least some expressions
+            Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0,
+                "Type checker should record at least one expression type for non-empty modules");
+
             if (typeChecker.Errors.Any())
             {
                 diagnostics.AddSemanticErrors(typeChecker.Errors, filePath, CompilerPhase.TypeChecking);
@@ -311,6 +328,9 @@ public class Compiler
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);
             var csharpCode = compilationUnit.ToFullString();
+
+            // Assertion: Generated C# should parse without syntax errors
+            AssertGeneratedCSharpParses(csharpCode);
 
             // Check for code generation errors
             if (codeGenContext.HasErrors)
@@ -411,6 +431,52 @@ public class Compiler
                 Metrics = metrics
             };
         }
+    }
+
+    // ----- Phase Boundary Assertions (compiled out in Release) -----
+
+    /// <summary>
+    /// Verify all symbols in the global scope have non-empty names.
+    /// </summary>
+    [Conditional("DEBUG")]
+    private static void AssertAllSymbolsHaveNames(SymbolTable symbolTable)
+    {
+        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols())
+        {
+            Debug.Assert(!string.IsNullOrEmpty(symbol.Name),
+                $"Symbol with kind {symbol.Kind} has null/empty name");
+        }
+    }
+
+    /// <summary>
+    /// Log a warning if unknown expression types remain after successful type checking.
+    /// Unknown types are acceptable when there are semantic errors (error recovery)
+    /// or in cross-module scenarios where imported types may not be fully resolved.
+    /// </summary>
+    [Conditional("DEBUG")]
+    private void WarnIfUnknownTypes(SemanticInfo semanticInfo, IReadOnlyCollection<SemanticError> errors)
+    {
+        if (errors.Count == 0 && semanticInfo.HasUnknownExpressionTypes())
+        {
+            _logger.LogWarning(
+                "Unknown expression types remain after type checking (possible cross-module resolution gap)", 0, 0);
+        }
+    }
+
+    /// <summary>
+    /// Verify generated C# code parses without syntax errors.
+    /// This catches codegen bugs that produce malformed C#.
+    /// </summary>
+    [Conditional("DEBUG")]
+    private static void AssertGeneratedCSharpParses(string csharpCode)
+    {
+        var tree = CSharpSyntaxTree.ParseText(csharpCode);
+        var parseDiagnostics = tree.GetDiagnostics()
+            .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
+            .ToList();
+        Debug.Assert(parseDiagnostics.Count == 0,
+            $"Generated C# has {parseDiagnostics.Count} parse error(s): " +
+            string.Join("; ", parseDiagnostics.Take(3).Select(d => d.GetMessage())));
     }
 
     /// <summary>

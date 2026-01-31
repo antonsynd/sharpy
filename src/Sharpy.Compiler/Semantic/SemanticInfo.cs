@@ -123,4 +123,15 @@ public class SemanticInfo
     {
         return _expressionTypes.Values.Any(t => t is UnknownType);
     }
+
+    /// <summary>
+    /// Returns the total number of expression types recorded.
+    /// Used for consistency assertions and diagnostics.
+    /// </summary>
+    public int ExpressionTypeCount => _expressionTypes.Count;
+
+    /// <summary>
+    /// Returns the total number of identifier-to-symbol mappings.
+    /// </summary>
+    public int IdentifierSymbolCount => _identifierSymbols.Count;
 }
