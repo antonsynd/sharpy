@@ -458,7 +458,7 @@ public partial class TypeChecker
             operandTypes.Add(CheckExpression(chain.Operands[i]));
         }
 
-        // Validate each comparison pair using OperatorValidator
+        // Validate each comparison pair
         for (int i = 0; i < chain.Operators.Length; i++)
         {
             var leftType = operandTypes[i];

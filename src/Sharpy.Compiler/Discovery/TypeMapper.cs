@@ -104,8 +104,7 @@ public class TypeMapper
     /// Returns null otherwise.
     /// </summary>
     /// <remarks>
-    /// TODO: This method is duplicated in Semantic/ProtocolValidator.cs.
-    /// Consider consolidating in Phase 7 (ClrMemberCache extraction).
+    /// TODO: Consider consolidating with similar logic in ProtocolValidatorV2.
     /// </remarks>
     private Type? GetIteratorElementType(Type clrType)
     {

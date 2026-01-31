@@ -18,16 +18,14 @@ of semantic rules.
 
 ### Validators (V2 = current generation)
 
-- `OperatorValidatorV2.cs` - Binary/unary operator type checking
-- `ProtocolValidatorV2.cs` - Protocol method validation (__len__, __iter__, etc.)
-- `AccessValidatorV2.cs` - Member access validation
-- `SignatureValidatorV2.cs` - Function/method signature checks
-- `ControlFlowValidatorV2.cs` / `V3.cs` - Control flow analysis
+- `ModuleLevelValidatorV2.cs` - Entry point rules, module-level type annotations
+- `DecoratorValidatorV2.cs` - Decorator usage validation
+- `SignatureValidatorV2.cs` - Function/method signature checks (dunders, protocols)
 - `DefaultParameterValidatorV2.cs` - Default parameter constraints
-
-### Adapters
-
-- `LegacyValidatorAdapter.cs` - Wraps old-style validators
+- `ControlFlowValidatorV2.cs` / `V3.cs` - Control flow analysis
+- `AccessValidatorV2.cs` - Member access validation
+- `ProtocolValidatorV2.cs` - Protocol method validation (__len__, __iter__, etc.)
+- `OperatorValidatorV2.cs` - Binary/unary operator type checking
 
 ## Architecture
 
