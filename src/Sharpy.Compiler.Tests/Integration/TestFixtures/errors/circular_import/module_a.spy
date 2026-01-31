@@ -1,0 +1,4 @@
+import module_b
+
+def helper_a() -> int:
+    return 1

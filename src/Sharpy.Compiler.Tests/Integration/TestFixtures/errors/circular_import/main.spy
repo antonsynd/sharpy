@@ -1,0 +1,4 @@
+import module_a
+
+def main():
+    pass
