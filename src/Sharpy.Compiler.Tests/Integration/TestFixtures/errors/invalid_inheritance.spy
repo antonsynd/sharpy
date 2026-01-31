@@ -1,0 +1,10 @@
+struct Point:
+    x: int
+    y: int
+
+class Foo(Point):
+    def __init__(self):
+        pass
+
+def main():
+    f: Foo = Foo()

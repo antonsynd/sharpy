@@ -1,0 +1,13 @@
+class Base:
+    @virtual
+    def greet(self) -> str:
+        return "hello"
+
+class Child(Base):
+    @override
+    def farewell(self) -> str:
+        return "goodbye"
+
+def main():
+    c: Child = Child()
+    print(c.farewell())

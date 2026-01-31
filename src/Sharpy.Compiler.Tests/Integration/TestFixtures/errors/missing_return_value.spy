@@ -1,0 +1,5 @@
+def compute(x: int) -> int:
+    y: int = x * 2
+
+def main():
+    print(compute(5))

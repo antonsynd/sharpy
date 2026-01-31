@@ -1,0 +1,7 @@
+@abstract
+class Animal:
+    def speak(self) -> str:
+        ...
+
+def main():
+    a: Animal = Animal()

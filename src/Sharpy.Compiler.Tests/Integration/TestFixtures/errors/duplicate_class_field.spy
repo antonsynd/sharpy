@@ -1,0 +1,13 @@
+class Foo:
+    def __init__(self):
+        self.x = 1
+
+    def greet(self) -> str:
+        return "hello"
+
+    def greet(self) -> str:
+        return "world"
+
+def main():
+    f: Foo = Foo()
+    print(f.greet())

@@ -1,0 +1,2 @@
+def main():
+    x: str = "hello
