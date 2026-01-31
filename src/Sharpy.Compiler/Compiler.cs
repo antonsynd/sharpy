@@ -335,6 +335,8 @@ public class Compiler
             // Assertion: Type checking should have processed at least some expressions
             Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0,
                 "Type checker should record at least one expression type for non-empty modules");
+            // Assertion: CodeGenInfo dual-write consistency after type checking
+            AssertCodeGenInfoDualWriteConsistency(symbolTable, semanticBinding);
 
             if (typeChecker.Diagnostics.HasErrors)
             {
@@ -521,6 +523,31 @@ public class Compiler
                 var bindingBaseType = semanticBinding.GetBaseType(symbol);
                 Debug.Assert(bindingBaseType != null,
                     $"TypeSymbol '{symbol.Name}' has BaseType '{symbol.BaseType.Name}' but SemanticBinding.GetBaseType() returned null (dual-write inconsistency)");
+            }
+
+            if (symbol.Interfaces.Count > 0)
+            {
+                var bindingInterfaces = semanticBinding.GetInterfaces(symbol);
+                Debug.Assert(bindingInterfaces.Count == symbol.Interfaces.Count,
+                    $"TypeSymbol '{symbol.Name}' has {symbol.Interfaces.Count} interface(s) but SemanticBinding.GetInterfaces() returned {bindingInterfaces.Count} (dual-write inconsistency)");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verify that SemanticBinding CodeGenInfo entries are consistent with Symbol.CodeGenInfo.
+    /// This catches dual-write bugs where one path sets the symbol but not SemanticBinding.
+    /// </summary>
+    [Conditional("DEBUG")]
+    private static void AssertCodeGenInfoDualWriteConsistency(SymbolTable symbolTable, SemanticBinding semanticBinding)
+    {
+        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols())
+        {
+            if (symbol.CodeGenInfo != null)
+            {
+                var bindingCodeGenInfo = semanticBinding.GetCodeGenInfo(symbol);
+                Debug.Assert(bindingCodeGenInfo != null,
+                    $"Symbol '{symbol.Name}' has CodeGenInfo but SemanticBinding.GetCodeGenInfo() returned null (dual-write inconsistency)");
             }
         }
     }
