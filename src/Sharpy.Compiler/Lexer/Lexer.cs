@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // LexerError is obsolete
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
@@ -11,6 +10,22 @@ namespace Sharpy.Compiler.Lexer;
 /// </summary>
 public class Lexer
 {
+    /// <summary>
+    /// Lightweight sentinel exception for unwinding the lexer call stack.
+    /// The diagnostic is recorded into DiagnosticBag before this is thrown.
+    /// </summary>
+    private class LexerAbortException : Exception { }
+
+    /// <summary>
+    /// Record a lexer error into diagnostics and return an exception for stack unwinding.
+    /// Usage: <c>throw ReportError("msg", line, col, code);</c>
+    /// </summary>
+    private LexerAbortException ReportError(string message, int line, int column, string code)
+    {
+        _diagnostics.AddError(message, line, column, code: code, phase: CompilerPhase.Lexer);
+        return new LexerAbortException();
+    }
+
     private readonly string _source;
     private int _position;
     private int _line = 1;
@@ -141,21 +156,10 @@ public class Lexer
             {
                 token = NextToken();
             }
-            catch (LexerError ex)
+            catch (LexerAbortException)
             {
-                // Collect the error into diagnostics instead of propagating
-                var rawMessage = ex.Message;
-                // Strip the "Lexer error at line X, column Y: " prefix if present
-                var colonIndex = rawMessage.IndexOf(": ", StringComparison.Ordinal);
-                if (colonIndex >= 0 && rawMessage.StartsWith("Lexer error", StringComparison.Ordinal))
-                    rawMessage = rawMessage[(colonIndex + 2)..];
-
-                _diagnostics.AddError(rawMessage, ex.Line, ex.Column,
-                    code: ex.Code,
-                    phase: CompilerPhase.Lexer);
-
-                // Emit an Error token at the error location, then EOF
-                tokens.Add(new Token(TokenType.Eof, "", ex.Line, ex.Column, _position));
+                // Error already recorded in _diagnostics by ReportError()
+                tokens.Add(new Token(TokenType.Eof, "", _line, _column, _position));
                 break;
             }
 
@@ -310,7 +314,7 @@ public class Lexer
                 else
                 {
                     // Backslash at EOF after other content - likely a mistake
-                    throw new LexerError("Backslash at end of file", _line, _column, DiagnosticCodes.Lexer.BackslashAtEof);
+                    throw ReportError("Backslash at end of file", _line, _column, DiagnosticCodes.Lexer.BackslashAtEof);
                 }
             }
             else
@@ -326,7 +330,7 @@ public class Lexer
                     if (tempPos != nextPos)
                     {
                         // There was whitespace between \ and newline
-                        throw new LexerError("Backslash line continuation cannot have trailing whitespace", _line, _column, DiagnosticCodes.Lexer.BackslashTrailingWhitespace);
+                        throw ReportError("Backslash line continuation cannot have trailing whitespace", _line, _column, DiagnosticCodes.Lexer.BackslashTrailingWhitespace);
                     }
 
                     // Valid line continuation - skip the backslash and newline
@@ -343,7 +347,7 @@ public class Lexer
                 else if (tempPos >= _source.Length && tempPos != nextPos)
                 {
                     // Backslash followed by whitespace at end of file
-                    throw new LexerError("Backslash at end of file", _line, _column, DiagnosticCodes.Lexer.BackslashAtEof);
+                    throw ReportError("Backslash at end of file", _line, _column, DiagnosticCodes.Lexer.BackslashAtEof);
                 }
                 // Otherwise, fall through to treat backslash as operator
             }
@@ -470,15 +474,15 @@ public class Lexer
 
         // Check for mixed tabs and spaces
         if (hasSpaces && hasTabs)
-            throw new LexerError("Mixed tabs and spaces in indentation", _line, 1, DiagnosticCodes.Lexer.MixedTabsAndSpaces);
+            throw ReportError("Mixed tabs and spaces in indentation", _line, 1, DiagnosticCodes.Lexer.MixedTabsAndSpaces);
 
         // No tabs allowed at all
         if (hasTabs)
-            throw new LexerError("Tabs are not allowed for indentation. Use 4 spaces.", _line, 1, DiagnosticCodes.Lexer.TabsNotAllowed);
+            throw ReportError("Tabs are not allowed for indentation. Use 4 spaces.", _line, 1, DiagnosticCodes.Lexer.TabsNotAllowed);
 
         // Validate 4-space indentation
         if (indent % 4 != 0)
-            throw new LexerError($"Indentation must be multiple of 4 spaces (found {indent})", _line, 1, DiagnosticCodes.Lexer.InvalidIndentation);
+            throw ReportError($"Indentation must be multiple of 4 spaces (found {indent})", _line, 1, DiagnosticCodes.Lexer.InvalidIndentation);
 
         // Check for indentation mismatch - indent level not matching any previous level
         if (indent < _indentStack.Peek())
@@ -495,7 +499,7 @@ public class Lexer
             }
             if (!foundMatch)
             {
-                throw new LexerError("Indentation mismatch", _line, 1, DiagnosticCodes.Lexer.IndentationMismatch);
+                throw ReportError("Indentation mismatch", _line, 1, DiagnosticCodes.Lexer.IndentationMismatch);
             }
         }
 
@@ -588,13 +592,13 @@ public class Lexer
                 _position++;
                 _column++;
                 if (_position >= _source.Length)
-                    throw new LexerError("Unterminated string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
+                    throw ReportError("Unterminated string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
 
                 sb.Append(ProcessEscapeSequence());
             }
             else if (c == '\n' || c == '\r')
             {
-                throw new LexerError("Unterminated string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
+                throw ReportError("Unterminated string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
             }
             else
             {
@@ -604,7 +608,7 @@ public class Lexer
             }
         }
 
-        throw new LexerError("Unterminated string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
+        throw ReportError("Unterminated string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
     }
 
     private Token ReadTripleQuotedString(char quote, int startLine, int startColumn, int startPosition)
@@ -645,7 +649,7 @@ public class Lexer
                 _position++;
                 _column++;
                 if (_position >= _source.Length)
-                    throw new LexerError("Unterminated string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
+                    throw ReportError("Unterminated string literal", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
 
                 sb.Append(ProcessEscapeSequence());
             }
@@ -657,7 +661,7 @@ public class Lexer
             }
         }
 
-        throw new LexerError("Unterminated triple-quoted string", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
+        throw ReportError("Unterminated triple-quoted string", _line, _column, DiagnosticCodes.Lexer.UnterminatedString);
     }
 
     /// <summary>
@@ -706,7 +710,7 @@ public class Lexer
     {
         if (_position >= _source.Length)
         {
-            throw new LexerError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
+            throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
         }
 
         var context = _fstringStack.Peek();
@@ -752,7 +756,7 @@ public class Lexer
             SkipWhitespace();
 
             if (_position >= _source.Length)
-                throw new LexerError("Unterminated f-string expression", _line, _column, DiagnosticCodes.Lexer.UnterminatedFStringExpression);
+                throw ReportError("Unterminated f-string expression", _line, _column, DiagnosticCodes.Lexer.UnterminatedFStringExpression);
 
             current = _source[_position];
             startLine = _line;
@@ -850,7 +854,7 @@ public class Lexer
                     }
                 }
 
-                throw new LexerError("Unterminated format specification in f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
+                throw ReportError("Unterminated format specification in f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFormatSpec);
             }
 
             // String literals inside expressions
@@ -961,7 +965,7 @@ public class Lexer
                 else
                 {
                     // Unmatched closing brace in f-string
-                    throw new LexerError("Unmatched '}' in f-string", _line, _column, DiagnosticCodes.Lexer.UnmatchedBraceInFString);
+                    throw ReportError("Unmatched '}' in f-string", _line, _column, DiagnosticCodes.Lexer.UnmatchedBraceInFString);
                 }
             }
             // Handle escape sequences
@@ -970,7 +974,7 @@ public class Lexer
                 _position++;
                 _column++;
                 if (_position >= _source.Length)
-                    throw new LexerError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
+                    throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
 
                 sb.Append(ProcessEscapeSequence());
             }
@@ -979,7 +983,7 @@ public class Lexer
             {
                 if (!context.IsTriple)
                 {
-                    throw new LexerError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
+                    throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
                 }
                 sb.Append(c);
                 _position++;
@@ -990,7 +994,7 @@ public class Lexer
             {
                 if (!context.IsTriple)
                 {
-                    throw new LexerError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
+                    throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
                 }
                 if (_position + 1 < _source.Length && _source[_position + 1] == '\n')
                 {
@@ -1015,7 +1019,7 @@ public class Lexer
         }
 
         // Reached end of source while in f-string
-        throw new LexerError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
+        throw ReportError("Unterminated f-string", _line, _column, DiagnosticCodes.Lexer.UnterminatedFString);
     }
 
     private Token ReadRawString()
@@ -1070,7 +1074,7 @@ public class Lexer
                     _column++;
                 }
             }
-            throw new LexerError("Unterminated raw string", _line, _column, DiagnosticCodes.Lexer.UnterminatedRawString);
+            throw ReportError("Unterminated raw string", _line, _column, DiagnosticCodes.Lexer.UnterminatedRawString);
         }
 
         // Single-line raw string
@@ -1087,14 +1091,14 @@ public class Lexer
             }
 
             if (c == '\n' || c == '\r')
-                throw new LexerError("Unterminated raw string", _line, _column, DiagnosticCodes.Lexer.UnterminatedRawString);
+                throw ReportError("Unterminated raw string", _line, _column, DiagnosticCodes.Lexer.UnterminatedRawString);
 
             sb2.Append(c);
             _position++;
             _column++;
         }
 
-        throw new LexerError("Unterminated raw string", _line, _column, DiagnosticCodes.Lexer.UnterminatedRawString);
+        throw ReportError("Unterminated raw string", _line, _column, DiagnosticCodes.Lexer.UnterminatedRawString);
     }
 
     private char ProcessEscapeSequence()
@@ -1134,11 +1138,11 @@ public class Lexer
             case 'x':
                 {
                     if (_position + 1 >= _source.Length)
-                        throw new LexerError("Invalid hex escape sequence", _line, _column, DiagnosticCodes.Lexer.InvalidHexEscape);
+                        throw ReportError("Invalid hex escape sequence", _line, _column, DiagnosticCodes.Lexer.InvalidHexEscape);
 
                     var hex = _source.Substring(_position, 2);
                     if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var value))
-                        throw new LexerError($"Invalid hex escape sequence: \\x{hex}", _line, _column, DiagnosticCodes.Lexer.InvalidHexEscape);
+                        throw ReportError($"Invalid hex escape sequence: \\x{hex}", _line, _column, DiagnosticCodes.Lexer.InvalidHexEscape);
 
                     _position += 2;
                     _column += 2;
@@ -1149,11 +1153,11 @@ public class Lexer
             case 'u':
                 {
                     if (_position + 3 >= _source.Length)
-                        throw new LexerError("Invalid unicode escape sequence", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
+                        throw ReportError("Invalid unicode escape sequence", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
 
                     var hex = _source.Substring(_position, 4);
                     if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var value))
-                        throw new LexerError($"Invalid unicode escape sequence: \\u{hex}", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
+                        throw ReportError($"Invalid unicode escape sequence: \\u{hex}", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
 
                     _position += 4;
                     _column += 4;
@@ -1163,11 +1167,11 @@ public class Lexer
             case 'U':
                 {
                     if (_position + 7 >= _source.Length)
-                        throw new LexerError("Invalid unicode escape sequence", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
+                        throw ReportError("Invalid unicode escape sequence", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
 
                     var hex = _source.Substring(_position, 8);
                     if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var value))
-                        throw new LexerError($"Invalid unicode escape sequence: \\U{hex}", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
+                        throw ReportError($"Invalid unicode escape sequence: \\U{hex}", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
 
                     _position += 8;
                     _column += 8;
@@ -1193,13 +1197,13 @@ public class Lexer
 
                     var value = Convert.ToInt32(octal, 8);
                     if (value > 255)
-                        throw new LexerError($"Octal escape value {octal} exceeds maximum (377)", _line, _column, DiagnosticCodes.Lexer.OctalEscapeOverflow);
+                        throw ReportError($"Octal escape value {octal} exceeds maximum (377)", _line, _column, DiagnosticCodes.Lexer.OctalEscapeOverflow);
 
                     return (char)value;
                 }
 
             default:
-                throw new LexerError($"Invalid escape sequence: \\{escaped}", _line, _column, DiagnosticCodes.Lexer.InvalidEscapeSequence);
+                throw ReportError($"Invalid escape sequence: \\{escaped}", _line, _column, DiagnosticCodes.Lexer.InvalidEscapeSequence);
         }
     }
 
@@ -1240,7 +1244,7 @@ public class Lexer
 
             // Check for consecutive underscores
             if (c == '_' && lastChar == '_')
-                throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+                throw ReportError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
 
             if (c != '_')
                 sb.Append(c);
@@ -1252,7 +1256,7 @@ public class Lexer
 
         // Check if number ends with underscore
         if (lastChar == '_')
-            throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+            throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
 
         // Check for decimal point
         if (_position < _source.Length && _source[_position] == '.' &&
@@ -1271,7 +1275,7 @@ public class Lexer
 
                 // Check for consecutive underscores
                 if (c == '_' && lastChar == '_')
-                    throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+                    throw ReportError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
 
                 if (c != '_')
                     sb.Append(c);
@@ -1283,7 +1287,7 @@ public class Lexer
 
             // Check if fractional part ends with underscore
             if (lastChar == '_')
-                throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+                throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
         }
 
         // Check for scientific notation (e or E)
@@ -1304,7 +1308,7 @@ public class Lexer
 
             // Read exponent digits
             if (_position >= _source.Length || !char.IsDigit(_source[_position]))
-                throw new LexerError("Invalid scientific notation: expected exponent digits", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+                throw ReportError("Invalid scientific notation: expected exponent digits", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
 
             lastChar = null;
             while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
@@ -1313,7 +1317,7 @@ public class Lexer
 
                 // Check for consecutive underscores
                 if (c == '_' && lastChar == '_')
-                    throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+                    throw ReportError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
 
                 if (c != '_')
                     sb.Append(c);
@@ -1325,7 +1329,7 @@ public class Lexer
 
             // Check if exponent ends with underscore
             if (lastChar == '_')
-                throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
+                throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumber);
         }
 
         // Check for suffix (f, L, ul, etc.)
@@ -1346,7 +1350,7 @@ public class Lexer
             // Validate suffix
             var validSuffixes = new[] { "f", "F", "d", "D", "m", "M", "l", "L", "u", "U", "ul", "UL", "uL", "Ul" };
             if (!validSuffixes.Contains(suffix))
-                throw new LexerError($"Invalid numeric suffix: {suffix}", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumericSuffix);
+                throw ReportError($"Invalid numeric suffix: {suffix}", startLine, startColumn, DiagnosticCodes.Lexer.InvalidNumericSuffix);
 
             sb.Append(suffix);
 
@@ -1384,7 +1388,7 @@ public class Lexer
             {
                 // Check for consecutive underscores
                 if (lastChar == '_')
-                    throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidHexLiteral);
+                    throw ReportError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidHexLiteral);
 
                 lastChar = '_';
                 _position++;
@@ -1397,11 +1401,11 @@ public class Lexer
         }
 
         if (!hasDigits)
-            throw new LexerError("Invalid hexadecimal literal: no digits after 0x", startLine, startColumn, DiagnosticCodes.Lexer.InvalidHexLiteral);
+            throw ReportError("Invalid hexadecimal literal: no digits after 0x", startLine, startColumn, DiagnosticCodes.Lexer.InvalidHexLiteral);
 
         // Check if number ends with underscore
         if (lastChar == '_')
-            throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidHexLiteral);
+            throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidHexLiteral);
 
         return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
     }
@@ -1431,7 +1435,7 @@ public class Lexer
             {
                 // Check for consecutive underscores
                 if (lastChar == '_')
-                    throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidBinaryLiteral);
+                    throw ReportError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidBinaryLiteral);
 
                 lastChar = '_';
                 _position++;
@@ -1440,7 +1444,7 @@ public class Lexer
             else if (char.IsDigit(c))
             {
                 // Invalid binary digit (2-9)
-                throw new LexerError($"Invalid binary digit: '{c}' (only 0 and 1 allowed)", startLine, startColumn, DiagnosticCodes.Lexer.InvalidBinaryLiteral);
+                throw ReportError($"Invalid binary digit: '{c}' (only 0 and 1 allowed)", startLine, startColumn, DiagnosticCodes.Lexer.InvalidBinaryLiteral);
             }
             else
             {
@@ -1449,11 +1453,11 @@ public class Lexer
         }
 
         if (!hasDigits)
-            throw new LexerError("Invalid binary literal: no digits after 0b", startLine, startColumn, DiagnosticCodes.Lexer.InvalidBinaryLiteral);
+            throw ReportError("Invalid binary literal: no digits after 0b", startLine, startColumn, DiagnosticCodes.Lexer.InvalidBinaryLiteral);
 
         // Check if number ends with underscore
         if (lastChar == '_')
-            throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidBinaryLiteral);
+            throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidBinaryLiteral);
 
         return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
     }
@@ -1483,7 +1487,7 @@ public class Lexer
             {
                 // Check for consecutive underscores
                 if (lastChar == '_')
-                    throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidOctalLiteral);
+                    throw ReportError("Invalid number: consecutive underscores not allowed", startLine, startColumn, DiagnosticCodes.Lexer.InvalidOctalLiteral);
 
                 lastChar = '_';
                 _position++;
@@ -1492,7 +1496,7 @@ public class Lexer
             else if (char.IsDigit(c))
             {
                 // Invalid octal digit (8-9)
-                throw new LexerError($"Invalid octal digit: '{c}' (only 0-7 allowed)", startLine, startColumn, DiagnosticCodes.Lexer.InvalidOctalLiteral);
+                throw ReportError($"Invalid octal digit: '{c}' (only 0-7 allowed)", startLine, startColumn, DiagnosticCodes.Lexer.InvalidOctalLiteral);
             }
             else
             {
@@ -1501,11 +1505,11 @@ public class Lexer
         }
 
         if (!hasDigits)
-            throw new LexerError("Invalid octal literal: no digits after 0o", startLine, startColumn, DiagnosticCodes.Lexer.InvalidOctalLiteral);
+            throw ReportError("Invalid octal literal: no digits after 0o", startLine, startColumn, DiagnosticCodes.Lexer.InvalidOctalLiteral);
 
         // Check if number ends with underscore
         if (lastChar == '_')
-            throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidOctalLiteral);
+            throw ReportError("Invalid number: cannot end with underscore", startLine, startColumn, DiagnosticCodes.Lexer.InvalidOctalLiteral);
 
         return CreateToken(TokenType.Integer, sb.ToString(), startLine, startColumn, startPosition);
     }
@@ -1559,7 +1563,7 @@ public class Lexer
 
             if (c == '\n' || c == '\r')
             {
-                throw new LexerError("Unterminated literal name (backtick-delimited identifier)", _line, _column, DiagnosticCodes.Lexer.UnterminatedBacktickIdentifier);
+                throw ReportError("Unterminated literal name (backtick-delimited identifier)", _line, _column, DiagnosticCodes.Lexer.UnterminatedBacktickIdentifier);
             }
 
             sb.Append(c);
@@ -1567,7 +1571,7 @@ public class Lexer
             _column++;
         }
 
-        throw new LexerError("Unterminated literal name (backtick-delimited identifier)", _line, _column, DiagnosticCodes.Lexer.UnterminatedBacktickIdentifier);
+        throw ReportError("Unterminated literal name (backtick-delimited identifier)", _line, _column, DiagnosticCodes.Lexer.UnterminatedBacktickIdentifier);
     }
 
     private Token ReadOperatorOrDelimiter()
@@ -1705,7 +1709,7 @@ public class Lexer
         // Check for float starting with decimal point (not allowed in v0.1)
         if (c == '.' && _position + 1 < _source.Length && char.IsDigit(_source[_position + 1]))
         {
-            throw new LexerError("Float literals must have at least one digit before the decimal point (e.g., use '0.5' instead of '.5'). This restriction is for v0.1.", startLine, startColumn, DiagnosticCodes.Lexer.InvalidFloatLiteral);
+            throw ReportError("Float literals must have at least one digit before the decimal point (e.g., use '0.5' instead of '.5'). This restriction is for v0.1.", startLine, startColumn, DiagnosticCodes.Lexer.InvalidFloatLiteral);
         }
 
         // Single-character operators and delimiters
@@ -1740,7 +1744,7 @@ public class Lexer
             '@' => CreateToken(TokenType.At, "@", startLine, startColumn, startPosition),
             '!' => CreateToken(TokenType.Bang, "!", startLine, startColumn, startPosition),
             '\\' => CreateToken(TokenType.Backslash, "\\", startLine, startColumn, startPosition),
-            _ => throw new LexerError($"Unexpected character: '{c}'", startLine, startColumn, DiagnosticCodes.Lexer.UnexpectedCharacter)
+            _ => throw ReportError($"Unexpected character: '{c}'", startLine, startColumn, DiagnosticCodes.Lexer.UnexpectedCharacter)
         };
 
         // Track bracket depth for implicit line continuation
