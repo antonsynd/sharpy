@@ -399,7 +399,7 @@ public class Compiler
 
                 var moduleCs = GenerateCSharpForModule(
                     moduleInfo, symbolTable, builtinRegistry,
-                    codeGenContext.ProjectNamespace, semanticInfo);
+                    codeGenContext.ProjectNamespace, diagnostics, semanticInfo);
 
                 if (moduleCs != null)
                 {
@@ -412,7 +412,7 @@ public class Compiler
 
             return new CompilationResult
             {
-                Success = true,
+                Success = !diagnostics.HasErrors,
                 Diagnostics = diagnostics,
                 Module = module,
                 SymbolTable = symbolTable,
@@ -594,6 +594,7 @@ public class Compiler
         SymbolTable symbolTable,
         BuiltinRegistry builtinRegistry,
         string? projectNamespace,
+        DiagnosticBag diagnostics,
         SemanticInfo? semanticInfo = null)
     {
         if (moduleInfo.Module == null || moduleInfo.IsNetModule)
@@ -614,10 +615,7 @@ public class Compiler
 
         if (codeGenContext.HasErrors)
         {
-            foreach (var error in codeGenContext.Errors)
-            {
-                _logger.LogError($"Code generation error in {moduleInfo.Path}: {error}", 0, 0);
-            }
+            diagnostics.Merge(codeGenContext.Diagnostics);
             return null;
         }
 

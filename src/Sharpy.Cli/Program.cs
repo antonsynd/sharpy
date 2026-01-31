@@ -742,12 +742,13 @@ class Program
             }
 
             // Display warnings
-            if (result.Warnings.Any())
+            var projectWarnings = result.Diagnostics.GetWarnings();
+            if (projectWarnings.Count > 0)
             {
                 Console.WriteLine("Warnings:");
-                foreach (var warning in result.Warnings)
+                foreach (var warning in projectWarnings)
                 {
-                    Console.WriteLine($"  {warning}");
+                    Console.WriteLine($"  {FormatDiagnostic(warning)}");
                 }
                 Console.WriteLine();
             }
