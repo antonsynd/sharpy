@@ -158,7 +158,7 @@ async def _verify_expected_with_python(
         "@internal",
         "enum ",
         "Some(",
-        "Nothing",
+        "None()",
         "Ok(",
         "Err(",
         "maybe ",
@@ -408,7 +408,7 @@ FEATURE_FOCUSES = [
     "lambda_multiarg",  # lambda a, b: a + b
     "higher_order_function",  # passing lambdas
     # Phase 0.1.15-0.1.18: Optional & Result Types
-    "optional_type",  # T?, Some(x), Nothing
+    "optional_type",  # T?, Some(x), None()
     "optional_unwrap",  # .unwrap(), .unwrap_or(), .map()
     "result_type",  # T !E, Ok(x), Err(e)
     "result_unwrap",  # .unwrap(), .unwrap_or(), .map()

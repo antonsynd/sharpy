@@ -85,7 +85,7 @@ The tool tests features from implementation phases 0.1.0 through 0.1.18:
 - **0.1.12** - .NET Interop: importing .NET namespaces, using .NET types
 - **0.1.13** - Exception Handling: try/except/else/finally, raise
 - **0.1.14** - Lambda Expressions: lambdas, higher-order functions
-- **0.1.15** - Optional Types: `T?`, `Some(value)`, `Nothing`, `.unwrap()`, `.map(fn)`
+- **0.1.15** - Optional Types: `T?`, `Some(value)`, `None()`, `.unwrap()`, `.map(fn)`
 - **0.1.16** - Result Types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.map(fn)`
 - **0.1.17** - Maybe Expression: `maybe expr` (converts `T | None` to `T?`)
 - **0.1.18** - Try Expression: `try expr`, `try[E] expr` (wraps in `Result[T, E]`)
@@ -113,7 +113,7 @@ The tool tests features from implementation phases 0.1.0 through 0.1.18:
 ✅ .NET interop: `from system import Console`
 ✅ Exceptions: `try/except/else/finally`, `raise`
 ✅ Lambdas: `lambda x: x * 2`, parameter types inferred from context
-✅ Optional types: `T?`, `Some(value)`, `Nothing`, `.unwrap()`, `.map(fn)`
+✅ Optional types: `T?`, `Some(value)`, `None()`, `.unwrap()`, `.map(fn)`
 ✅ Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.map(fn)`
 ✅ Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
 ✅ Try expression: `try expr`, `try[E] expr` (wraps in `Result[T, E]`)

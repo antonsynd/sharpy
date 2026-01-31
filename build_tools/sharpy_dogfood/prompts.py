@@ -361,8 +361,8 @@ class Dog(Animal):
 - **IMPORTANT**: The receiving function MUST declare its parameter with a function type: `def apply(fn: (int) -> int) -> int:`
 
 #### Optional Types (0.1.15)
-- **Optional type**: `x: int? = Some(42)`, `y: int? = Nothing`
-- **Optional constructors**: `Some(value)` wraps a value, `Nothing` represents absence
+- **Optional type**: `x: int? = Some(42)`, `y: int? = None()`
+- **Optional constructors**: `Some(value)` wraps a value, `None()` represents absence
 - **Optional methods**: `.unwrap()`, `.unwrap_or(default)`, `.map(lambda v: v * 2)`
 - **Type annotation**: `T?` is shorthand for `Optional[T]`
 
@@ -447,7 +447,7 @@ class Circle(Shape):
 def find_first(items: list[int]) -> int?:
     if len(items) > 0:
         return Some(items[0])
-    return Nothing
+    return None()
 ```
 
 ## Output Format
@@ -569,7 +569,7 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - Available exception types: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
 - Lambdas: `lambda x: x * 2` (parameter types inferred from context)
 - .NET interop: `from system import Console`
-- Optional types: `T?`, `Some(value)`, `Nothing`, `.unwrap()`, `.unwrap_or()`
+- Optional types: `T?`, `Some(value)`, `None()`, `.unwrap()`, `.unwrap_or()`
 - Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.map(fn)`
 - Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
 - Try expression: `try risky_call()` (wraps in `Result[T, Exception]`)
@@ -769,7 +769,7 @@ Every executable Sharpy program MUST have a `main()` function:
 - Available exception types: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
 - Lambdas: `lambda x: x * 2` (parameter types inferred from context)
 - .NET interop: `from system import Console`
-- Optional types: `T?`, `Some(value)`, `Nothing`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
+- Optional types: `T?`, `Some(value)`, `None()`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
 - Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
 - Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
 - Try expression: `try risky_call()`, `try[ExceptionType] expr` (wraps in Result)
@@ -961,7 +961,7 @@ it is a library module and is VALID without `main()`.
 
 ### Optional Types (0.1.15)
 - Optional type annotation: `T?` or `Optional[T]`
-- Optional constructors: `Some(value)`, `Nothing`
+- Optional constructors: `Some(value)`, `None()`
 - Optional methods: `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
 
 ### Result Types (0.1.16)

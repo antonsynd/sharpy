@@ -508,7 +508,7 @@ public record MaybeExpression : Expression
 
 **Sharpy extension** for optional handling:
 - `maybe expr` → wraps nullable expression in `Optional<T>`
-- Returns `Some(value)` if non-null, `Nothing` if null
+- Returns `Some(value)` if non-null, `None()` if null
 
 **Relationship to TryExpression**: `maybe` is for null safety, `try` is for exception safety.
 

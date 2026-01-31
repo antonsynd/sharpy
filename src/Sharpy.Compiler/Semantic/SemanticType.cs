@@ -148,8 +148,9 @@ public record VoidType : SemanticType
 
     public override bool IsAssignableTo(SemanticType other)
     {
-        // None can be assigned to any nullable or optional type
-        if (other is NullableType or OptionalType)
+        // Bare None is the C# null literal — only valid for nullable types (T | None)
+        // For optional types (T?), use None() instead
+        if (other is NullableType)
             return true;
 
         return base.IsAssignableTo(other);
@@ -360,7 +361,7 @@ public record UserDefinedType : SemanticType
 /// <item><description>Represents Sharpy's native optional value</description></item>
 /// <item><description>Maps to Sharpy.Optional&lt;T&gt; struct</description></item>
 /// <item><description>Zero heap allocation</description></item>
-/// <item><description>Uses Some(value) / Nothing cases</description></item>
+/// <item><description>Uses Some(value) / None() cases</description></item>
 /// </list>
 /// </summary>
 public record OptionalType : SemanticType
@@ -373,7 +374,7 @@ public record OptionalType : SemanticType
     public override string GetDisplayName() => $"{UnderlyingType.GetDisplayName()}?";
 
     /// <summary>
-    /// Optional types can hold "nothing" which is conceptually similar to null.
+    /// Optional types can hold an empty value (None) which is conceptually similar to null.
     /// </summary>
     public override bool IsNullable => true;
 
