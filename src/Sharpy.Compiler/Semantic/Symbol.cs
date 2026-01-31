@@ -29,14 +29,11 @@ public abstract record Symbol
     /// Null until CodeGenInfo computation pass runs.
     /// </summary>
     /// <remarks>
-    /// Uses 'set' instead of 'init' to allow setting CodeGenInfo after initial symbol creation,
-    /// which is necessary because symbols are created during NameResolver but CodeGenInfo
-    /// is computed during/after TypeChecker.
-    ///
-    /// MIGRATION NOTE: In the future, use SemanticBinding.SetCodeGenInfo/GetCodeGenInfo instead.
-    /// The mutable setter is preserved for backward compatibility during migration.
+    /// Uses 'internal set' to allow setting CodeGenInfo after initial symbol creation
+    /// (symbols are created during NameResolver, CodeGenInfo is computed during/after TypeChecker).
+    /// Readers should prefer SemanticBinding.GetCodeGenInfo when available.
     /// </remarks>
-    public CodeGenInfo? CodeGenInfo { get; set; }
+    public CodeGenInfo? CodeGenInfo { get; internal set; }
 }
 
 /// <summary>
@@ -48,10 +45,10 @@ public record VariableSymbol : Symbol
     /// The resolved type of this variable.
     /// </summary>
     /// <remarks>
-    /// MIGRATION NOTE: In the future, use SemanticBinding.SetVariableType/GetVariableType instead.
-    /// The mutable setter is preserved for backward compatibility during migration.
+    /// Uses 'internal set' because type resolution happens after symbol creation.
+    /// Readers should prefer SemanticBinding.GetVariableType when available.
     /// </remarks>
-    public SemanticType Type { get; set; } = SemanticType.Unknown;
+    public SemanticType Type { get; internal set; } = SemanticType.Unknown;
     public bool IsParameter { get; init; }
     public bool IsConstant { get; init; }
     public bool HasDefaultValue { get; init; }
@@ -125,10 +122,10 @@ public record TypeSymbol : Symbol
     /// The base type (parent class) of this type symbol.
     /// </summary>
     /// <remarks>
-    /// MIGRATION NOTE: In the future, use SemanticBinding.SetBaseType/GetBaseType instead.
-    /// The mutable setter is preserved for backward compatibility during migration.
+    /// Uses 'internal set' because inheritance resolution happens after symbol creation.
+    /// Readers should prefer SemanticBinding.GetBaseType when available.
     /// </remarks>
-    public TypeSymbol? BaseType { get; set; }
+    public TypeSymbol? BaseType { get; internal set; }
     public List<TypeSymbol> Interfaces { get; init; } = new();
 
     /// <summary>
@@ -136,12 +133,12 @@ public record TypeSymbol : Symbol
     /// when types are imported from other modules. The actual BaseType is resolved
     /// after all imports are registered in the symbol table.
     /// </summary>
-    public string? UnresolvedBaseName { get; set; }
+    public string? UnresolvedBaseName { get; init; }
 
     /// <summary>
     /// Unresolved interface names from AST, used for deferred inheritance resolution.
     /// </summary>
-    public List<string> UnresolvedInterfaceNames { get; set; } = new();
+    public List<string> UnresolvedInterfaceNames { get; init; } = new();
 }
 
 /// <summary>

@@ -130,7 +130,7 @@ public partial class RoslynEmitter
                 // _variableVersions tracks local variables by base name
                 // Also check if this is a module-level variable via CodeGenInfo
                 var symbol = _context.LookupSymbol(name.Name);
-                var existsAsModuleLevel = symbol?.CodeGenInfo?.IsModuleLevel == true;
+                var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
                 var existsAsLocal = _variableVersions.ContainsKey(baseName);
 
                 if (existsAsModuleLevel || existsAsLocal)

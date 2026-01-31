@@ -135,6 +135,7 @@ public class Compiler
             var builtinRegistry = new BuiltinRegistry();
             var symbolTable = new SymbolTable(builtinRegistry);
             var semanticInfo = new SemanticInfo();
+            var semanticBinding = new SemanticBinding();
 
             // Check for module registry errors
             if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
@@ -177,6 +178,7 @@ public class Compiler
             _logger.LogDebug($"Module search paths: [{string.Join(", ", moduleSearchPaths)}]");
             var moduleResolver = new ModuleResolver(_logger, moduleSearchPaths);
             var importResolver = new ImportResolver(_logger, _moduleRegistry, moduleResolver);
+            importResolver.SetSemanticBinding(semanticBinding);
             importResolver.SetCurrentModule(filePath);
 
             // Get the directory of the current file as the search path
@@ -304,7 +306,8 @@ public class Compiler
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline)
             {
-                CurrentFilePath = filePath
+                CurrentFilePath = filePath,
+                SemanticBinding = semanticBinding
             };
             try
             {
@@ -363,7 +366,8 @@ public class Compiler
                 // Single-file compilation is always an entry point - generate Main method
                 IsEntryPoint = true,
                 Logger = _logger,
-                SemanticInfo = semanticInfo
+                SemanticInfo = semanticInfo,
+                SemanticBinding = semanticBinding
             };
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);
@@ -527,26 +531,6 @@ public class Compiler
             .WithTypeResolver(typeResolver)
             .WithClrCache(clrCache ?? new ClrMemberCache())
             .Build();
-    }
-
-    /// <summary>
-    /// Resolve inheritance relationships for imported types.
-    /// Delegates to <see cref="InheritanceResolver"/>.
-    /// </summary>
-    [Obsolete("Use InheritanceResolver.ResolveImportedTypeInheritance() instead")]
-    internal static void ResolveImportedTypeInheritance(SymbolTable symbolTable, ICompilerLogger logger)
-    {
-        new InheritanceResolver(symbolTable, logger).ResolveImportedTypeInheritance();
-    }
-
-    /// <summary>
-    /// Auto-import transitive base types from loaded modules.
-    /// Delegates to <see cref="InheritanceResolver"/>.
-    /// </summary>
-    [Obsolete("Use InheritanceResolver.ResolveTransitiveBaseTypes() instead")]
-    internal static void ResolveTransitiveBaseTypes(SymbolTable symbolTable, ImportResolver importResolver, ICompilerLogger logger)
-    {
-        new InheritanceResolver(symbolTable, logger).ResolveTransitiveBaseTypes(importResolver);
     }
 
     /// <summary>

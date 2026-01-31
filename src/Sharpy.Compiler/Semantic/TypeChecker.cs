@@ -63,6 +63,11 @@ public partial class TypeChecker
     // Optional CompilerServices for centralized access
     private readonly CompilerServices? _services;
 
+    /// <summary>
+    /// Optional SemanticBinding for dual-write of CodeGenInfo during computation.
+    /// </summary>
+    public SemanticBinding? SemanticBinding { get; set; }
+
     public TypeChecker(
         SymbolTable symbolTable,
         SemanticInfo semanticInfo,
@@ -211,7 +216,7 @@ public partial class TypeChecker
         // Compute CodeGenInfo for all symbols if enabled
         if (computeCodeGenInfo)
         {
-            var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable);
+            var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable, SemanticBinding);
             codeGenInfoComputer.ComputeForModule(module);
         }
     }

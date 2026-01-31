@@ -13,12 +13,23 @@ namespace Sharpy.Compiler.Semantic;
 public class CodeGenInfoComputer
 {
     private readonly SymbolTable _symbolTable;
+    private readonly SemanticBinding? _semanticBinding;
     private readonly HashSet<string> _processedModuleLevelVars = new();
     private HashSet<string> _variablesWithExecutionOrderIssues = new();
 
-    public CodeGenInfoComputer(SymbolTable symbolTable)
+    public CodeGenInfoComputer(SymbolTable symbolTable, SemanticBinding? semanticBinding = null)
     {
         _symbolTable = symbolTable;
+        _semanticBinding = semanticBinding;
+    }
+
+    /// <summary>
+    /// Sets CodeGenInfo on both the symbol (legacy) and the SemanticBinding (new).
+    /// </summary>
+    private void SetCodeGenInfo(Symbol symbol, CodeGenInfo info)
+    {
+        symbol.CodeGenInfo = info;
+        _semanticBinding?.SetCodeGenInfo(symbol, info);
     }
 
     /// <summary>
@@ -93,7 +104,7 @@ public class CodeGenInfoComputer
                 ? NameMangler.ToCamelCase(varDecl.Name)
                 : NameMangler.ToPascalCase(varDecl.Name);
 
-            varSymbol.CodeGenInfo = new CodeGenInfo
+            SetCodeGenInfo(varSymbol, new CodeGenInfo
             {
                 CSharpName = csharpName,
                 OriginalName = varDecl.Name,
@@ -101,7 +112,7 @@ public class CodeGenInfoComputer
                 IsModuleLevel = !hasIssues,  // Not module-level if has execution order issues
                 IsConstant = false,
                 HasExecutionOrderIssues = hasIssues
-            };
+            });
             _processedModuleLevelVars.Add(varDecl.Name);
         }
     }
@@ -111,7 +122,7 @@ public class CodeGenInfoComputer
         var symbol = _symbolTable.Lookup(constDecl.Name);
         if (symbol is VariableSymbol varSymbol)
         {
-            varSymbol.CodeGenInfo = new CodeGenInfo
+            SetCodeGenInfo(varSymbol, new CodeGenInfo
             {
                 CSharpName = NameMangler.ToConstantCase(constDecl.Name),
                 OriginalName = constDecl.Name,
@@ -119,7 +130,7 @@ public class CodeGenInfoComputer
                 IsModuleLevel = true,
                 IsConstant = true,
                 HasExecutionOrderIssues = false // Constants are always compile-time
-            };
+            });
         }
     }
 
@@ -131,12 +142,12 @@ public class CodeGenInfoComputer
             var symbol = _symbolTable.Lookup(effectiveName);
             if (symbol is ModuleSymbol moduleSymbol)
             {
-                moduleSymbol.CodeGenInfo = new CodeGenInfo
+                SetCodeGenInfo(moduleSymbol, new CodeGenInfo
                 {
                     CSharpName = effectiveName.Replace(".", "_"),
                     OriginalName = effectiveName,
                     ImportKind = alias.AsName != null ? ImportKind.FromImportWithAlias : ImportKind.ModuleImport
-                };
+                });
             }
         }
     }
@@ -152,13 +163,13 @@ public class CodeGenInfoComputer
                 var originalName = imported.AsName != null ? imported.Name : null;
                 var csharpName = DetermineCSharpNameForFromImport(imported.Name, symbol);
 
-                symbol.CodeGenInfo = new CodeGenInfo
+                SetCodeGenInfo(symbol, new CodeGenInfo
                 {
                     CSharpName = csharpName,
                     OriginalName = effectiveName,
                     ImportKind = imported.AsName != null ? ImportKind.FromImportWithAlias : ImportKind.FromImport,
                     OriginalImportName = originalName
-                };
+                });
             }
         }
     }
@@ -187,11 +198,11 @@ public class CodeGenInfoComputer
         var typeSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
         if (typeSymbol != null)
         {
-            typeSymbol.CodeGenInfo = new CodeGenInfo
+            SetCodeGenInfo(typeSymbol, new CodeGenInfo
             {
                 CSharpName = NameMangler.ToPascalCase(classDef.Name),
                 OriginalName = classDef.Name
-            };
+            });
 
             // Process class members
             ProcessTypeMembers(typeSymbol, classDef.Body);
@@ -203,11 +214,11 @@ public class CodeGenInfoComputer
         var typeSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
         if (typeSymbol != null)
         {
-            typeSymbol.CodeGenInfo = new CodeGenInfo
+            SetCodeGenInfo(typeSymbol, new CodeGenInfo
             {
                 CSharpName = NameMangler.ToPascalCase(structDef.Name),
                 OriginalName = structDef.Name
-            };
+            });
 
             ProcessTypeMembers(typeSymbol, structDef.Body);
         }
@@ -219,11 +230,11 @@ public class CodeGenInfoComputer
         if (typeSymbol != null)
         {
             // Interfaces preserve their exact name (which should already have I prefix)
-            typeSymbol.CodeGenInfo = new CodeGenInfo
+            SetCodeGenInfo(typeSymbol, new CodeGenInfo
             {
                 CSharpName = NameMangler.ToInterfaceName(interfaceDef.Name),
                 OriginalName = interfaceDef.Name
-            };
+            });
 
             ProcessTypeMembers(typeSymbol, interfaceDef.Body);
         }
@@ -237,12 +248,12 @@ public class CodeGenInfoComputer
             // Determine if this is a string enum (has at least one string literal value)
             var isStringEnum = enumDef.Members.Any(m => m.Value is StringLiteral);
 
-            typeSymbol.CodeGenInfo = new CodeGenInfo
+            SetCodeGenInfo(typeSymbol, new CodeGenInfo
             {
                 CSharpName = NameMangler.ToPascalCase(enumDef.Name),
                 OriginalName = enumDef.Name,
                 IsStringEnum = isStringEnum
-            };
+            });
 
             // Enum members keep their exact names - no CodeGenInfo needed
             // as they are emitted as-is in C#
@@ -270,13 +281,13 @@ public class CodeGenInfoComputer
         var fieldSymbol = typeSymbol.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
         if (fieldSymbol != null)
         {
-            fieldSymbol.CodeGenInfo = new CodeGenInfo
+            SetCodeGenInfo(fieldSymbol, new CodeGenInfo
             {
                 CSharpName = NameMangler.ToCamelCase(fieldDecl.Name),
                 OriginalName = fieldDecl.Name,
                 IsModuleLevel = false,
                 IsConstant = fieldDecl.IsConst
-            };
+            });
         }
     }
 
@@ -285,12 +296,12 @@ public class CodeGenInfoComputer
         var methodSymbol = typeSymbol.Methods.FirstOrDefault(m => m.Name == funcDef.Name);
         if (methodSymbol != null)
         {
-            methodSymbol.CodeGenInfo = new CodeGenInfo
+            SetCodeGenInfo(methodSymbol, new CodeGenInfo
             {
                 CSharpName = NameMangler.ToPascalCase(funcDef.Name),
                 OriginalName = funcDef.Name,
                 IsModuleLevel = false
-            };
+            });
         }
     }
 
@@ -299,12 +310,12 @@ public class CodeGenInfoComputer
         var funcSymbol = _symbolTable.Lookup(funcDef.Name) as FunctionSymbol;
         if (funcSymbol != null)
         {
-            funcSymbol.CodeGenInfo = new CodeGenInfo
+            SetCodeGenInfo(funcSymbol, new CodeGenInfo
             {
                 CSharpName = NameMangler.ToPascalCase(funcDef.Name),
                 OriginalName = funcDef.Name,
                 IsModuleLevel = isModuleLevel
-            };
+            });
         }
     }
 

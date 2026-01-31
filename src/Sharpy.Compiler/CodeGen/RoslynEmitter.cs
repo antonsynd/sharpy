@@ -102,10 +102,12 @@ public partial class RoslynEmitter
     private string? TryGetCSharpNameFromCodeGenInfo(string sharpyName, bool isNewDeclaration)
     {
         var symbol = _context.LookupSymbol(sharpyName);
-        if (symbol?.CodeGenInfo == null)
+        if (symbol == null)
             return null;
 
-        var info = symbol.CodeGenInfo;
+        var info = GetCodeGenInfo(symbol);
+        if (info == null)
+            return null;
 
         // For new declarations, check if this is a local redeclaration
         // Local variable redeclarations still need runtime tracking via _variableVersions
@@ -222,19 +224,27 @@ public partial class RoslynEmitter
     // ============================================================
     // CodeGenInfo helper methods
     //
-    // These methods read from Symbol.CodeGenInfo which is computed
-    // during semantic analysis. CodeGenInfo is always populated for
-    // module-level symbols (via TypeChecker.CheckModule with computeCodeGenInfo: true).
+    // These methods read CodeGenInfo via SemanticBinding (preferred)
+    // with fallback to Symbol.CodeGenInfo (legacy). CodeGenInfo is
+    // always populated for module-level symbols (via TypeChecker.CheckModule
+    // with computeCodeGenInfo: true).
     // ============================================================
+
+    /// <summary>
+    /// Get CodeGenInfo for a symbol, preferring SemanticBinding over the symbol property.
+    /// </summary>
+    private CodeGenInfo? GetCodeGenInfo(Symbol symbol)
+        => _context.SemanticBinding?.GetCodeGenInfo(symbol) ?? symbol.CodeGenInfo;
 
     /// <summary>
     /// Get the C# name for a symbol using CodeGenInfo.
     /// </summary>
     private string GetCSharpNameForSymbol(Symbol symbol, bool isNewDeclaration = false)
     {
-        if (symbol.CodeGenInfo != null)
+        var info = GetCodeGenInfo(symbol);
+        if (info != null)
         {
-            return symbol.CodeGenInfo.GetVersionedCSharpName();
+            return info.GetVersionedCSharpName();
         }
 
         // CodeGenInfo not available - use fallback logic for symbol kind
@@ -256,7 +266,8 @@ public partial class RoslynEmitter
     /// </summary>
     private bool IsModuleLevelConstant(Symbol symbol)
     {
-        return symbol.CodeGenInfo?.IsModuleLevel == true && symbol.CodeGenInfo.IsConstant;
+        var info = GetCodeGenInfo(symbol);
+        return info?.IsModuleLevel == true && info.IsConstant;
     }
 
     /// <summary>
@@ -264,7 +275,8 @@ public partial class RoslynEmitter
     /// </summary>
     private bool IsModuleLevelVariable(Symbol symbol)
     {
-        return symbol.CodeGenInfo?.IsModuleLevel == true && !symbol.CodeGenInfo.IsConstant;
+        var info = GetCodeGenInfo(symbol);
+        return info?.IsModuleLevel == true && !info.IsConstant;
     }
 
     /// <summary>
@@ -272,7 +284,7 @@ public partial class RoslynEmitter
     /// </summary>
     private bool HasExecutionOrderIssues(Symbol symbol)
     {
-        return symbol.CodeGenInfo?.HasExecutionOrderIssues == true;
+        return GetCodeGenInfo(symbol)?.HasExecutionOrderIssues == true;
     }
 
     /// <summary>
@@ -280,8 +292,9 @@ public partial class RoslynEmitter
     /// </summary>
     private bool IsFromImportSymbol(Symbol symbol)
     {
-        return symbol.CodeGenInfo?.ImportKind == ImportKind.FromImport ||
-               symbol.CodeGenInfo?.ImportKind == ImportKind.FromImportWithAlias;
+        var info = GetCodeGenInfo(symbol);
+        return info?.ImportKind == ImportKind.FromImport ||
+               info?.ImportKind == ImportKind.FromImportWithAlias;
     }
 
     /// <summary>
@@ -289,7 +302,7 @@ public partial class RoslynEmitter
     /// </summary>
     private string? GetOriginalImportName(Symbol symbol)
     {
-        return symbol.CodeGenInfo?.OriginalImportName;
+        return GetCodeGenInfo(symbol)?.OriginalImportName;
     }
 
     // ============================================================

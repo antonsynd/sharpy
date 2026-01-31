@@ -586,7 +586,7 @@ public partial class RoslynEmitter
     /// </summary>
     private bool IsStringEnumSymbol(TypeSymbol enumSymbol)
     {
-        return enumSymbol.CodeGenInfo?.IsStringEnum == true;
+        return GetCodeGenInfo(enumSymbol)?.IsStringEnum == true;
     }
 
     /// <summary>

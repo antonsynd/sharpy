@@ -779,6 +779,13 @@ public class ImportResolver
         var accessLevel = GetAccessLevel(classDef.Name);
         bool isAbstract = classDef.Decorators.Any(d => d.Name == "abstract");
 
+        // Compute unresolved base class/interface names before construction
+        // The first base class is the parent class; the rest are interfaces
+        string? unresolvedBase = classDef.BaseClasses.Length > 0 ? classDef.BaseClasses[0].Name : null;
+        var unresolvedInterfaces = classDef.BaseClasses.Length > 1
+            ? classDef.BaseClasses.Skip(1).Select(b => b.Name).ToList()
+            : new List<string>();
+
         var classSymbol = new TypeSymbol
         {
             Name = classDef.Name,
@@ -791,24 +798,13 @@ public class ImportResolver
             DeclarationColumn = classDef.ColumnStart,
             // Set DefiningModule to the actual file where this class is defined.
             // This is preserved through re-export chains to enable proper namespace resolution.
-            DefiningModule = definingModulePath
+            DefiningModule = definingModulePath,
+            UnresolvedBaseName = unresolvedBase,
+            UnresolvedInterfaceNames = unresolvedInterfaces
         };
 
-        // Store unresolved base class names for deferred resolution
-        // The actual BaseType will be resolved after all types are registered
-        if (classDef.BaseClasses.Length > 0)
+        if (unresolvedBase != null)
         {
-            foreach (var baseAnnot in classDef.BaseClasses)
-            {
-                if (classSymbol.UnresolvedBaseName == null)
-                {
-                    classSymbol.UnresolvedBaseName = baseAnnot.Name;
-                }
-                else
-                {
-                    classSymbol.UnresolvedInterfaceNames.Add(baseAnnot.Name);
-                }
-            }
             _logger.LogDebug($"[ImportResolver] Stored unresolved base for {classDef.Name}: {classSymbol.UnresolvedBaseName}");
         }
 
@@ -870,14 +866,9 @@ public class ImportResolver
             DeclarationLine = structDef.LineStart,
             DeclarationColumn = structDef.ColumnStart,
             // Set DefiningModule to the actual file where this struct is defined.
-            DefiningModule = definingModulePath
+            DefiningModule = definingModulePath,
+            UnresolvedInterfaceNames = structDef.BaseClasses.Select(b => b.Name).ToList()
         };
-
-        // Store unresolved interface names for deferred resolution
-        foreach (var baseAnnot in structDef.BaseClasses)
-        {
-            structSymbol.UnresolvedInterfaceNames.Add(baseAnnot.Name);
-        }
 
         // Extract fields
         foreach (var stmt in structDef.Body)
@@ -937,14 +928,9 @@ public class ImportResolver
             DeclarationLine = interfaceDef.LineStart,
             DeclarationColumn = interfaceDef.ColumnStart,
             // Set DefiningModule to the actual file where this interface is defined.
-            DefiningModule = definingModulePath
+            DefiningModule = definingModulePath,
+            UnresolvedInterfaceNames = interfaceDef.BaseInterfaces.Select(b => b.Name).ToList()
         };
-
-        // Store unresolved base interface names for deferred resolution
-        foreach (var baseAnnot in interfaceDef.BaseInterfaces)
-        {
-            interfaceSymbol.UnresolvedInterfaceNames.Add(baseAnnot.Name);
-        }
 
         // Extract methods (interface methods are always abstract)
         foreach (var stmt in interfaceDef.Body)
