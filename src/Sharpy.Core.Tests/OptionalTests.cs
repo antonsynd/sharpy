@@ -10,22 +10,22 @@ public class OptionalTests
     {
         var opt = Optional<int>.Some(42);
         Assert.True(opt.IsSome);
-        Assert.False(opt.IsNothing);
+        Assert.False(opt.IsNone);
         Assert.Equal(42, opt.Unwrap());
     }
 
     [Fact]
-    public void Nothing_CreatesEmptyOptional()
+    public void None_CreatesEmptyOptional()
     {
-        var opt = Optional<int>.Nothing;
+        var opt = Optional<int>.None;
         Assert.False(opt.IsSome);
-        Assert.True(opt.IsNothing);
+        Assert.True(opt.IsNone);
     }
 
     [Fact]
-    public void Unwrap_ThrowsOnNothing()
+    public void Unwrap_ThrowsOnNone()
     {
-        var opt = Optional<int>.Nothing;
+        var opt = Optional<int>.None;
         Assert.Throws<InvalidOperationException>(() => opt.Unwrap());
     }
 
@@ -37,9 +37,9 @@ public class OptionalTests
     }
 
     [Fact]
-    public void UnwrapOr_ReturnsDefaultWhenNothing()
+    public void UnwrapOr_ReturnsDefaultWhenNone()
     {
-        var opt = Optional<int>.Nothing;
+        var opt = Optional<int>.None;
         Assert.Equal(0, opt.UnwrapOr(0));
     }
 
@@ -54,9 +54,9 @@ public class OptionalTests
     }
 
     [Fact]
-    public void UnwrapOrElse_CallsFuncWhenNothing()
+    public void UnwrapOrElse_CallsFuncWhenNone()
     {
-        var opt = Optional<int>.Nothing;
+        var opt = Optional<int>.None;
         var result = opt.UnwrapOrElse(() => 99);
         Assert.Equal(99, result);
     }
@@ -71,11 +71,11 @@ public class OptionalTests
     }
 
     [Fact]
-    public void Map_ReturnsNothingWhenNothing()
+    public void Map_ReturnsNoneWhenNone()
     {
-        var opt = Optional<int>.Nothing;
+        var opt = Optional<int>.None;
         var mapped = opt.Map(x => x.ToString());
-        Assert.True(mapped.IsNothing);
+        Assert.True(mapped.IsNone);
     }
 
     [Fact]
@@ -88,20 +88,20 @@ public class OptionalTests
     }
 
     [Fact]
-    public void Equality_NothingsEqual()
+    public void Equality_NonesEqual()
     {
-        var a = Optional<int>.Nothing;
-        var b = Optional<int>.Nothing;
+        var a = Optional<int>.None;
+        var b = Optional<int>.None;
         Assert.Equal(a, b);
     }
 
     [Fact]
-    public void Equality_SomeAndNothingNotEqual()
+    public void Equality_SomeAndNoneNotEqual()
     {
         var some = Optional<int>.Some(42);
-        var nothing = Optional<int>.Nothing;
-        Assert.NotEqual(some, nothing);
-        Assert.True(some != nothing);
+        var none = Optional<int>.None;
+        Assert.NotEqual(some, none);
+        Assert.True(some != none);
     }
 
     [Fact]
@@ -120,9 +120,9 @@ public class OptionalTests
     }
 
     [Fact]
-    public void ToString_ShowsNothingForEmpty()
+    public void ToString_ShowsNoneForEmpty()
     {
-        var opt = Optional<int>.Nothing;
-        Assert.Equal("Nothing", opt.ToString());
+        var opt = Optional<int>.None;
+        Assert.Equal("None", opt.ToString());
     }
 }

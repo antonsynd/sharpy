@@ -20,15 +20,15 @@ namespace Sharpy.Core
 
         // Factory methods
         public static Optional<T> Some(T value) => new Optional<T>(value, true);
-        public static Optional<T> Nothing => new Optional<T>(default!, false);
+        public static Optional<T> None => new Optional<T>(default!, false);
 
         // Properties
         public bool IsSome => _hasValue;
-        public bool IsNothing => !_hasValue;
+        public bool IsNone => !_hasValue;
 
         // Methods
         public T Unwrap() =>
-            _hasValue ? _value : throw new InvalidOperationException("Called Unwrap on Nothing");
+            _hasValue ? _value : throw new InvalidOperationException("Called Unwrap on empty Optional");
 
         public T UnwrapOr(T defaultValue) =>
             _hasValue ? _value : defaultValue;
@@ -37,7 +37,7 @@ namespace Sharpy.Core
             _hasValue ? _value : f();
 
         public Optional<U> Map<U>(Func<T, U> f) =>
-            _hasValue ? Optional<U>.Some(f(_value)) : Optional<U>.Nothing;
+            _hasValue ? Optional<U>.Some(f(_value)) : Optional<U>.None;
 
         // For pattern matching support (future)
         public void Deconstruct(out bool hasValue, out T value)
@@ -47,7 +47,7 @@ namespace Sharpy.Core
         }
 
         public override string ToString() =>
-            _hasValue ? $"Some({_value})" : "Nothing";
+            _hasValue ? $"Some({_value})" : "None";
 
         public override bool Equals(object? obj) =>
             obj is Optional<T> other && Equals(other);
@@ -81,12 +81,12 @@ namespace Sharpy.Core
         /// Converts a nullable reference type to Optional. Used by the 'maybe' expression.
         /// </summary>
         public static Optional<T> From<T>(T? value) where T : class
-            => value is null ? Optional<T>.Nothing : Optional<T>.Some(value);
+            => value is null ? Optional<T>.None : Optional<T>.Some(value);
 
         /// <summary>
         /// Converts a nullable value type to Optional. Used by the 'maybe' expression.
         /// </summary>
         public static Optional<T> From<T>(T? value) where T : struct
-            => value.HasValue ? Optional<T>.Some(value.Value) : Optional<T>.Nothing;
+            => value.HasValue ? Optional<T>.Some(value.Value) : Optional<T>.None;
     }
 }
