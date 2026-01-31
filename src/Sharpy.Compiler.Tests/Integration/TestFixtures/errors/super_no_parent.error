@@ -1,0 +1,1 @@
+super() cannot be used in class 'Foo' which has no parent class

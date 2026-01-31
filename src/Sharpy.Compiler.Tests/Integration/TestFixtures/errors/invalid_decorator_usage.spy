@@ -1,0 +1,2 @@
+@override
+x: int = 5
