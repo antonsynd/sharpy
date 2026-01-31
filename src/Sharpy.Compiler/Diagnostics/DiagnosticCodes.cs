@@ -117,6 +117,9 @@ public static class DiagnosticCodes
         public const string MissingParameterAnnotation = "SHP0249";
         public const string InvalidDefaultValue = "SHP0250";
         public const string InterfaceMethodBody = "SHP0251";
+        public const string UninitializedStructField = "SHP0252";
+        public const string InvalidEnumValue = "SHP0253";
+        public const string InvalidFunctionType = "SHP0254";
 
         // Return and control flow (SHP0260-SHP0279)
         public const string MissingReturnValue = "SHP0260";
@@ -135,6 +138,7 @@ public static class DiagnosticCodes
         public const string SuperOutsideClass = "SHP0284";
         public const string SuperNoParent = "SHP0285";
         public const string DuplicateClass = "SHP0286";
+        public const string InvalidSuperUsage = "SHP0287";
 
         // Import errors (SHP0300-SHP0319)
         public const string ModuleNotFound = "SHP0300";

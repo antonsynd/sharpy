@@ -325,7 +325,8 @@ public partial class TypeChecker
                 AddError(
                     $"Duplicate constructor signature in '{type.Name}': __init__({signature})",
                     ctor.DeclarationLine,
-                    ctor.DeclarationColumn);
+                    ctor.DeclarationColumn,
+                    code: DiagnosticCodes.Semantic.DuplicateDefinition);
             }
         }
     }
@@ -383,7 +384,8 @@ public partial class TypeChecker
                 $"Struct '{structSymbol.Name}' constructor must initialize all fields. " +
                 $"Missing initialization for: {fieldNames}",
                 constructorDef.LineStart,
-                constructorDef.ColumnStart);
+                constructorDef.ColumnStart,
+                code: DiagnosticCodes.Semantic.UninitializedStructField);
         }
     }
 
@@ -450,7 +452,8 @@ public partial class TypeChecker
                 AddError(
                     $"Enum member '{member.Name}' requires an explicit value. All enum members must have explicit constant values.",
                     member.LineStart,
-                    member.ColumnStart);
+                    member.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidEnumValue);
                 continue;
             }
 
@@ -463,7 +466,8 @@ public partial class TypeChecker
                 AddError(
                     $"Enum member '{member.Name}' has invalid value type '{valueType.GetDisplayName()}'. Enum values must be int or str.",
                     member.LineStart,
-                    member.ColumnStart);
+                    member.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidEnumValue);
                 continue;
             }
 
@@ -477,7 +481,8 @@ public partial class TypeChecker
                 AddError(
                     $"Enum member '{member.Name}' has type '{valueType.GetDisplayName()}' but previous members have type '{enumValueType.GetDisplayName()}'. All enum values must be the same type.",
                     member.LineStart,
-                    member.ColumnStart);
+                    member.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidEnumValue);
             }
         }
     }
@@ -496,7 +501,8 @@ public partial class TypeChecker
         // Standalone super() is not valid - must be used as super().method()
         // The parser allows it, but semantically it's invalid
         AddError("super() must be followed by a method call (e.g., super().__init__())",
-            superExpr.LineStart, superExpr.ColumnStart);
+            superExpr.LineStart, superExpr.ColumnStart,
+            code: DiagnosticCodes.Semantic.InvalidSuperUsage);
         return SemanticType.Unknown;
     }
 
@@ -511,7 +517,8 @@ public partial class TypeChecker
         if (_currentClass == null)
         {
             AddError("super() cannot be used outside of a class",
-                superExpr.LineStart, superExpr.ColumnStart);
+                superExpr.LineStart, superExpr.ColumnStart,
+                code: DiagnosticCodes.Semantic.SuperOutsideClass);
             return SemanticType.Unknown;
         }
 
@@ -519,7 +526,8 @@ public partial class TypeChecker
         if (_currentClass.BaseType == null)
         {
             AddError($"super() cannot be used in class '{_currentClass.Name}' which has no parent class",
-                superExpr.LineStart, superExpr.ColumnStart);
+                superExpr.LineStart, superExpr.ColumnStart,
+                code: DiagnosticCodes.Semantic.SuperNoParent);
             return SemanticType.Unknown;
         }
 
@@ -532,7 +540,8 @@ public partial class TypeChecker
             if (field != null)
             {
                 AddError("Cannot access parent fields via super(); only methods are allowed",
-                    memberAccess.LineStart, memberAccess.ColumnStart);
+                    memberAccess.LineStart, memberAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidSuperUsage);
                 return SemanticType.Unknown;
             }
             currentType = currentType.BaseType;
@@ -588,7 +597,8 @@ public partial class TypeChecker
         }
 
         AddError($"No method '{memberName}' found in parent class hierarchy of '{_currentClass.Name}'",
-            memberAccess.LineStart, memberAccess.ColumnStart);
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.UndefinedMember);
         return SemanticType.Unknown;
     }
 
@@ -600,7 +610,8 @@ public partial class TypeChecker
         if (_currentMethodName == null)
         {
             AddError("super() cannot be used outside of a method",
-                superExpr.LineStart, superExpr.ColumnStart);
+                superExpr.LineStart, superExpr.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidSuperUsage);
             return;
         }
 
@@ -610,17 +621,20 @@ public partial class TypeChecker
             if (calledMethodName != "__init__")
             {
                 AddError("super() in __init__ can only call super().__init__(...)",
-                    memberAccess.LineStart, memberAccess.ColumnStart);
+                    memberAccess.LineStart, memberAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidSuperUsage);
             }
             else if (_controlFlowDepth > 0)
             {
                 AddError("super().__init__() must be the first statement in the constructor, not inside control flow",
-                    superExpr.LineStart, superExpr.ColumnStart);
+                    superExpr.LineStart, superExpr.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidSuperUsage);
             }
             else if (_superInitCalled)
             {
                 AddError("super().__init__() can only be called once",
-                    superExpr.LineStart, superExpr.ColumnStart);
+                    superExpr.LineStart, superExpr.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidSuperUsage);
             }
             return;
         }
@@ -635,7 +649,8 @@ public partial class TypeChecker
                 if (!(_currentMethodIsDunder && IsDunderMethod(calledMethodName)))
                 {
                     AddError($"super() in @override method must call super().{_currentMethodName}(...)",
-                        memberAccess.LineStart, memberAccess.ColumnStart);
+                        memberAccess.LineStart, memberAccess.ColumnStart,
+                        code: DiagnosticCodes.Semantic.InvalidSuperUsage);
                 }
             }
             return;
@@ -648,14 +663,16 @@ public partial class TypeChecker
             if (!IsDunderMethod(calledMethodName))
             {
                 AddError("super() in dunder method must call a dunder method (e.g., super().__eq__(...))",
-                    memberAccess.LineStart, memberAccess.ColumnStart);
+                    memberAccess.LineStart, memberAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidSuperUsage);
             }
             return;
         }
 
         // Case 4: Regular method - super() not allowed
         AddError("super() cannot be used in regular methods; only in __init__, @override, or dunder methods",
-            superExpr.LineStart, superExpr.ColumnStart);
+            superExpr.LineStart, superExpr.ColumnStart,
+            code: DiagnosticCodes.Semantic.InvalidSuperUsage);
     }
 
     /// <summary>
@@ -701,7 +718,8 @@ public partial class TypeChecker
                     AddError(
                         $"Class '{typeSymbol.Name}' does not implement interface method '{iface.Name}.{interfaceMethod.Name}'",
                         declarationLine,
-                        declarationColumn);
+                        declarationColumn,
+                        code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
                     continue;
                 }
 
@@ -714,7 +732,8 @@ public partial class TypeChecker
                     AddError(
                         $"Class '{typeSymbol.Name}' method '{interfaceMethod.Name}' has {classParams.Count} parameters but interface '{iface.Name}' requires {interfaceParams.Count}",
                         declarationLine,
-                        declarationColumn);
+                        declarationColumn,
+                        code: DiagnosticCodes.Semantic.IncompatibleOverride);
                 }
             }
         }

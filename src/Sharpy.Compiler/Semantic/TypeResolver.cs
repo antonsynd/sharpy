@@ -182,7 +182,7 @@ public class TypeResolver
         {
             if (annotation.TypeArguments.Length == 0)
             {
-                AddError("Function type requires at least a return type", null, null);
+                AddError("Function type requires at least a return type", null, null, code: DiagnosticCodes.Semantic.InvalidFunctionType);
                 return SemanticType.Unknown;
             }
 
@@ -214,7 +214,7 @@ public class TypeResolver
         if (typeSymbol.IsGeneric && typeArgs.Count != typeSymbol.TypeParameters.Count)
         {
             AddError($"Type '{annotation.Name}' expects {typeSymbol.TypeParameters.Count} type arguments but got {typeArgs.Count}",
-                null, null);
+                null, null, code: DiagnosticCodes.Semantic.WrongArgumentCount);
             return SemanticType.Unknown;
         }
 
@@ -243,7 +243,7 @@ public class TypeResolver
         else
         {
             AddError($"Type alias '{aliasSymbol.Name}' has no type definition",
-                aliasSymbol.DeclarationLine, aliasSymbol.DeclarationColumn);
+                aliasSymbol.DeclarationLine, aliasSymbol.DeclarationColumn, code: DiagnosticCodes.Semantic.InvalidTypeAlias);
             return SemanticType.Unknown;
         }
 
