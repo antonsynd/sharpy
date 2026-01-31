@@ -1042,20 +1042,21 @@ class Program
             if (!assemblyResult.Success)
             {
                 Console.Error.WriteLine("Assembly compilation failed:");
-                foreach (var error in assemblyResult.Errors)
+                foreach (var error in assemblyResult.Diagnostics.GetErrors())
                 {
-                    Console.Error.WriteLine($"  {error}");
+                    Console.Error.WriteLine($"  {FormatDiagnostic(error)}");
                 }
                 Environment.Exit(1);
             }
 
             // Display warnings
-            if (assemblyResult.Warnings.Any())
+            var assemblyWarnings = assemblyResult.Diagnostics.GetWarnings();
+            if (assemblyWarnings.Count > 0)
             {
                 Console.WriteLine("Warnings:");
-                foreach (var warning in assemblyResult.Warnings)
+                foreach (var warning in assemblyWarnings)
                 {
-                    Console.WriteLine($"  {warning}");
+                    Console.WriteLine($"  {FormatDiagnostic(warning)}");
                 }
                 Console.WriteLine();
             }

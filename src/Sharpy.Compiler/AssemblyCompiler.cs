@@ -95,31 +95,22 @@ public class AssemblyCompiler
             }
             metrics.EndPhase();
 
+            var diagnostics = new DiagnosticBag();
+            foreach (var d in emitResult.Diagnostics.Where(d =>
+                         d.Severity == DiagnosticSeverity.Error || d.Severity == DiagnosticSeverity.Warning))
+            {
+                diagnostics.Add(ToCompilerDiagnostic(d));
+            }
+
             if (!emitResult.Success)
             {
-                var errors = emitResult.Diagnostics
-                    .Where(d => d.Severity == DiagnosticSeverity.Error)
-                    .Select(d => FormatDiagnostic(d))
-                    .ToList();
-
-                var warnings = emitResult.Diagnostics
-                    .Where(d => d.Severity == DiagnosticSeverity.Warning)
-                    .Select(d => FormatDiagnostic(d))
-                    .ToList();
-
                 return new AssemblyCompilationResult
                 {
                     Success = false,
-                    Errors = errors,
-                    Warnings = warnings,
+                    Diagnostics = diagnostics,
                     Metrics = metrics
                 };
             }
-
-            var allWarnings = emitResult.Diagnostics
-                .Where(d => d.Severity == DiagnosticSeverity.Warning)
-                .Select(d => FormatDiagnostic(d))
-                .ToList();
 
             _logger.LogInfo($"Successfully compiled assembly to: {outputPath}");
 
@@ -133,17 +124,21 @@ public class AssemblyCompiler
             {
                 Success = true,
                 OutputAssemblyPath = outputPath,
-                Warnings = allWarnings,
+                Diagnostics = diagnostics,
                 Metrics = metrics
             };
         }
         catch (Exception ex)
         {
             _logger.LogError($"Assembly compilation failed: {ex.Message}", 0, 0);
+            var errorDiagnostics = new DiagnosticBag();
+            errorDiagnostics.AddError($"Assembly compilation failed: {ex.Message}",
+                code: DiagnosticCodes.Infrastructure.AssemblyCompilationFailed,
+                phase: CompilerPhase.Assembly);
             return new AssemblyCompilationResult
             {
                 Success = false,
-                Errors = new List<string> { $"Assembly compilation failed: {ex.Message}" },
+                Diagnostics = errorDiagnostics,
                 Metrics = metrics
             };
         }
@@ -210,21 +205,37 @@ public class AssemblyCompiler
     }
 
     /// <summary>
-    /// Format a diagnostic message
+    /// Convert a Roslyn diagnostic to a structured CompilerDiagnostic
     /// </summary>
-    private string FormatDiagnostic(Diagnostic diagnostic)
+    private CompilerDiagnostic ToCompilerDiagnostic(Diagnostic diagnostic)
     {
+        var severity = diagnostic.Severity == DiagnosticSeverity.Error
+            ? CompilerDiagnosticSeverity.Error
+            : diagnostic.Severity == DiagnosticSeverity.Warning
+                ? CompilerDiagnosticSeverity.Warning
+                : CompilerDiagnosticSeverity.Info;
+
+        int? line = null;
+        int? column = null;
+        string? filePath = null;
+
         var location = diagnostic.Location;
         if (location.IsInSource)
         {
             var lineSpan = location.GetLineSpan();
-            var fileName = Path.GetFileName(lineSpan.Path);
-            var line = lineSpan.StartLinePosition.Line + 1;
-            var column = lineSpan.StartLinePosition.Character + 1;
-            return $"{fileName}({line},{column}): {diagnostic.Severity.ToString().ToLower()} {diagnostic.Id}: {diagnostic.GetMessage()}";
+            filePath = Path.GetFileName(lineSpan.Path);
+            line = lineSpan.StartLinePosition.Line + 1;
+            column = lineSpan.StartLinePosition.Character + 1;
         }
 
-        return $"{diagnostic.Severity.ToString().ToLower()} {diagnostic.Id}: {diagnostic.GetMessage()}";
+        return new CompilerDiagnostic(
+            diagnostic.GetMessage(),
+            severity,
+            line,
+            column,
+            filePath,
+            diagnostic.Id,
+            CompilerPhase.Assembly);
     }
 
     /// <summary>
@@ -344,8 +355,45 @@ public class AssemblyCompiler
 public class AssemblyCompilationResult
 {
     public bool Success { get; init; }
-    public List<string> Errors { get; init; } = new();
-    public List<string> Warnings { get; init; } = new();
+
+    /// <summary>
+    /// Structured diagnostics from assembly compilation.
+    /// This is the primary way to access errors, warnings, and other diagnostics.
+    /// </summary>
+    public DiagnosticBag Diagnostics { get; init; } = new();
+
+    /// <summary>
+    /// Backward-compatible convenience property for error messages as strings.
+    /// Prefer using <see cref="Diagnostics"/> for structured access.
+    /// </summary>
+    public List<string> Errors
+    {
+        get => Diagnostics.GetErrors().Select(d => d.ToString()).ToList();
+        init
+        {
+            foreach (var error in value)
+            {
+                Diagnostics.AddError(error, phase: CompilerPhase.Assembly);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Backward-compatible convenience property for warning messages as strings.
+    /// Prefer using <see cref="Diagnostics"/> for structured access.
+    /// </summary>
+    public List<string> Warnings
+    {
+        get => Diagnostics.GetWarnings().Select(d => d.ToString()).ToList();
+        init
+        {
+            foreach (var warning in value)
+            {
+                Diagnostics.AddWarning(warning, phase: CompilerPhase.Assembly);
+            }
+        }
+    }
+
     public string? OutputAssemblyPath { get; init; }
     public CompilationMetrics? Metrics { get; init; }
 }

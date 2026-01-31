@@ -670,18 +670,15 @@ public class ProjectCompiler
             _projectMetrics.SetAssemblyMetrics(assemblyResult.Metrics);
         }
 
+        // Merge assembly diagnostics into project diagnostics
+        _diagnostics.Merge(assemblyResult.Diagnostics);
+
         if (!assemblyResult.Success)
         {
-            // Add assembly errors to global diagnostics
-            foreach (var error in assemblyResult.Errors)
+            // Also add errors to project model global diagnostics for project-level access
+            foreach (var error in assemblyResult.Diagnostics.GetErrors())
             {
-                _projectModel!.GlobalDiagnostics.AddError(error, code: DiagnosticCodes.Infrastructure.AssemblyCompilationFailed);
-                _diagnostics.AddError(error, code: DiagnosticCodes.Infrastructure.AssemblyCompilationFailed, phase: CompilerPhase.Assembly);
-            }
-
-            foreach (var warning in assemblyResult.Warnings)
-            {
-                _diagnostics.AddWarning(warning, phase: CompilerPhase.Assembly);
+                _projectModel!.GlobalDiagnostics.Add(error);
             }
 
             return new ProjectCompilationResult
@@ -694,11 +691,6 @@ public class ProjectCompiler
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel
             };
-        }
-
-        foreach (var warning in assemblyResult.Warnings)
-        {
-            _diagnostics.AddWarning(warning, phase: CompilerPhase.Assembly);
         }
 
         return new ProjectCompilationResult
