@@ -93,7 +93,7 @@ public class TypeResolver
                 }
                 else
                 {
-                    AddError($"Type '{annotation.Name}' not found", null, null);
+                    AddError($"Type '{annotation.Name}' not found", null, null, code: Diagnostics.DiagnosticCodes.Semantic.UndefinedType);
                     result = SemanticType.Unknown;
                 }
             }
@@ -200,7 +200,7 @@ public class TypeResolver
         var typeSymbol = _symbolTable.LookupType(annotation.Name);
         if (typeSymbol == null)
         {
-            AddError($"Generic type '{annotation.Name}' not found", null, null);
+            AddError($"Generic type '{annotation.Name}' not found", null, null, code: Diagnostics.DiagnosticCodes.Semantic.UndefinedType);
             return SemanticType.Unknown;
         }
 
@@ -270,9 +270,9 @@ public class TypeResolver
         };
     }
 
-    private void AddError(string message, int? line = null, int? column = null)
+    private void AddError(string message, int? line = null, int? column = null, string? code = null)
     {
-        var error = new SemanticError(message, line, column);
+        var error = new SemanticError(message, line, column, code);
         _errors.Add(error);
         _logger.LogError(error.Message, line ?? 0, column ?? 0);
     }

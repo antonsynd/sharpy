@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Compiler.Semantic;
@@ -16,7 +17,7 @@ public partial class TypeChecker
         if (!IsValidAssignmentTarget(assignment.Target))
         {
             AddError($"Cannot assign to {GetAssignmentTargetDescription(assignment.Target)}",
-                assignment.Target.LineStart, assignment.Target.ColumnStart);
+                assignment.Target.LineStart, assignment.Target.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
             return;
         }
 
@@ -24,7 +25,7 @@ public partial class TypeChecker
         if (assignment.Target is Identifier selfId && selfId.Name == "self")
         {
             AddError("Cannot reassign 'self'",
-                assignment.LineStart, assignment.ColumnStart);
+                assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
             return;
         }
 
@@ -63,7 +64,7 @@ public partial class TypeChecker
                     if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
                     {
                         AddError($"Cannot reassign constant variable '{tupleTargetId.Name}' in tuple unpacking",
-                            tupleTargetId.LineStart, tupleTargetId.ColumnStart);
+                            tupleTargetId.LineStart, tupleTargetId.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
                         continue;
                     }
 
@@ -90,7 +91,7 @@ public partial class TypeChecker
                     if (!IsAssignable(valueElemType, targetElemType))
                     {
                         AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
-                            targetElem.LineStart, targetElem.ColumnStart);
+                            targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
                     }
                 }
             }
@@ -108,7 +109,7 @@ public partial class TypeChecker
             if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
             {
                 AddError($"Cannot reassign constant variable '{targetId.Name}'",
-                    assignment.LineStart, assignment.ColumnStart);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
                 return;
             }
 
@@ -117,7 +118,7 @@ public partial class TypeChecker
             if (parentSymbol is VariableSymbol parentVar && parentVar.IsConstant)
             {
                 AddError($"Cannot reassign constant variable '{targetId.Name}'",
-                    assignment.LineStart, assignment.ColumnStart);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
                 return;
             }
 
@@ -169,7 +170,7 @@ public partial class TypeChecker
                 if (symbol is VariableSymbol varSym && varSym.IsConstant)
                 {
                     AddError($"Cannot use augmented assignment on constant variable '{augTargetId.Name}'",
-                        assignment.LineStart, assignment.ColumnStart);
+                        assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
                     return;
                 }
             }
@@ -189,7 +190,8 @@ public partial class TypeChecker
                 AddError(
                     $"Result type '{resultType.GetDisplayName()}' of augmented assignment is not assignable to target type '{targetType.GetDisplayName()}'",
                     assignment.LineStart,
-                    assignment.ColumnStart);
+                    assignment.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch);
             }
             return;
         }
@@ -201,17 +203,17 @@ public partial class TypeChecker
             if (valueType is VoidType && targetType is OptionalType)
             {
                 AddError($"Cannot assign 'None' to '{targetType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
-                    assignment.LineStart, assignment.ColumnStart);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation);
             }
             else if (valueType is VoidType && targetType is not NullableType)
             {
                 AddError($"Cannot assign 'None' to non-nullable type '{targetType.GetDisplayName()}'",
-                    assignment.LineStart, assignment.ColumnStart);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation);
             }
             else
             {
                 AddError($"Cannot assign type '{valueType.GetDisplayName()}' to '{targetType.GetDisplayName()}'",
-                    assignment.LineStart, assignment.ColumnStart);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
             }
         }
     }
@@ -243,17 +245,17 @@ public partial class TypeChecker
                 if (initType is VoidType && declaredType is OptionalType)
                 {
                     AddError($"Cannot assign 'None' to '{declaredType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
-                        varDecl.LineStart, varDecl.ColumnStart);
+                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation);
                 }
                 else if (initType is VoidType && declaredType is not NullableType)
                 {
                     AddError($"Cannot assign 'None' to non-nullable type '{declaredType.GetDisplayName()}'",
-                        varDecl.LineStart, varDecl.ColumnStart);
+                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation);
                 }
                 else
                 {
                     AddError($"Cannot assign type '{initType.GetDisplayName()}' to variable of type '{declaredType.GetDisplayName()}'",
-                        varDecl.LineStart, varDecl.ColumnStart);
+                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
                 }
             }
         }
@@ -300,7 +302,7 @@ public partial class TypeChecker
             if (existingVar.IsConstant)
             {
                 AddError($"Cannot redefine constant variable '{varDecl.Name}'",
-                    varDecl.LineStart, varDecl.ColumnStart);
+                    varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
                 return;
             }
 
@@ -327,7 +329,7 @@ public partial class TypeChecker
         if (_currentFunctionReturnType == null)
         {
             AddError("Return statement outside of function",
-                returnStmt.LineStart, returnStmt.ColumnStart);
+                returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.ReturnOutsideFunction);
             return;
         }
 
@@ -343,19 +345,19 @@ public partial class TypeChecker
                 if (returnType is VoidType && _currentFunctionReturnType is OptionalType)
                 {
                     AddError($"Cannot return 'None' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
-                        returnStmt.LineStart, returnStmt.ColumnStart);
+                        returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue);
                 }
                 else
                 {
                     AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
-                        returnStmt.LineStart, returnStmt.ColumnStart);
+                        returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue);
                 }
             }
         }
         else if (_currentFunctionReturnType != SemanticType.Void)
         {
             AddError($"Function expects return type '{_currentFunctionReturnType.GetDisplayName()}' but got no return value",
-                returnStmt.LineStart, returnStmt.ColumnStart);
+                returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue);
         }
     }
 
@@ -365,7 +367,7 @@ public partial class TypeChecker
         if (condType != SemanticType.Bool && !(condType is UnknownType))
         {
             AddError($"If condition must be boolean, got '{condType.GetDisplayName()}'",
-                ifStmt.LineStart, ifStmt.ColumnStart);
+                ifStmt.LineStart, ifStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
         }
 
         // Check for type narrowing patterns
@@ -394,7 +396,7 @@ public partial class TypeChecker
             if (elifCondType != SemanticType.Bool && !(elifCondType is UnknownType))
             {
                 AddError($"Elif condition must be boolean, got '{elifCondType.GetDisplayName()}'",
-                    elif.LineStart, elif.ColumnStart);
+                    elif.LineStart, elif.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
             }
 
             _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
@@ -440,7 +442,7 @@ public partial class TypeChecker
         if (condType != SemanticType.Bool && !(condType is UnknownType))
         {
             AddError($"While condition must be boolean, got '{condType.GetDisplayName()}'",
-                whileStmt.LineStart, whileStmt.ColumnStart);
+                whileStmt.LineStart, whileStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
         }
 
         // Check for type narrowing patterns (similar to if statement)

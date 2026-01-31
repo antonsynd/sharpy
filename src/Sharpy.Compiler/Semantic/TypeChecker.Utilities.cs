@@ -881,7 +881,7 @@ public partial class TypeChecker
         return chain;
     }
 
-    private void AddError(string message, int? line = null, int? column = null)
+    private void AddError(string message, int? line = null, int? column = null, string? code = null)
     {
         if (_errors.Count >= MaxErrors)
         {
@@ -896,7 +896,7 @@ public partial class TypeChecker
             return;
         }
 
-        var error = new SemanticError(message, line, column);
+        var error = new SemanticError(message, line, column, code);
         _errors.Add(error);
         _logger.LogError(error.Message, line ?? 0, column ?? 0);
     }

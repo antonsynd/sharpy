@@ -8,11 +8,17 @@ public class SemanticError : Exception
     public int? Line { get; }
     public int? Column { get; }
 
-    public SemanticError(string message, int? line = null, int? column = null)
+    /// <summary>
+    /// Optional diagnostic error code (e.g., "SHP0200").
+    /// </summary>
+    public string? Code { get; }
+
+    public SemanticError(string message, int? line = null, int? column = null, string? code = null)
         : base(FormatMessage(message, line, column))
     {
         Line = line;
         Column = column;
+        Code = code;
     }
 
     private static string FormatMessage(string message, int? line, int? column)

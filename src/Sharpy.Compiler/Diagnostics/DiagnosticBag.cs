@@ -165,7 +165,7 @@ public class DiagnosticBag
             bag.AddError(error.Message.Replace("Semantic error: ", "")
                 .Replace($"Semantic error at line {error.Line}: ", "")
                 .Replace($"Semantic error at line {error.Line}, column {error.Column}: ", ""),
-                error.Line, error.Column, phase: CompilerPhase.TypeChecking);
+                error.Line, error.Column, code: error.Code, phase: CompilerPhase.TypeChecking);
         }
         return bag;
     }
@@ -212,7 +212,7 @@ public class DiagnosticBag
         foreach (var error in errors)
         {
             var rawMessage = ExtractRawMessage(error.Message, "Semantic error");
-            AddError(rawMessage, error.Line, error.Column, filePath, phase: phase);
+            AddError(rawMessage, error.Line, error.Column, filePath, code: error.Code, phase: phase);
         }
     }
 

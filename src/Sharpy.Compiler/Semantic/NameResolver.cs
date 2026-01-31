@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -121,7 +122,7 @@ public class NameResolver
         if (_symbolTable.Lookup(classDef.Name, searchParents: false) != null)
         {
             AddError($"Class '{classDef.Name}' is already defined",
-                classDef.LineStart, classDef.ColumnStart);
+                classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
             return;
         }
 
@@ -188,7 +189,7 @@ public class NameResolver
         if (_symbolTable.Lookup(structDef.Name, searchParents: false) != null)
         {
             AddError($"Struct '{structDef.Name}' is already defined",
-                structDef.LineStart, structDef.ColumnStart);
+                structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
             return;
         }
 
@@ -248,7 +249,7 @@ public class NameResolver
         if (_symbolTable.Lookup(interfaceDef.Name, searchParents: false) != null)
         {
             AddError($"Interface '{interfaceDef.Name}' is already defined",
-                interfaceDef.LineStart, interfaceDef.ColumnStart);
+                interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
             return;
         }
 
@@ -306,7 +307,7 @@ public class NameResolver
         if (_symbolTable.Lookup(enumDef.Name, searchParents: false) != null)
         {
             AddError($"Enum '{enumDef.Name}' is already defined",
-                enumDef.LineStart, enumDef.ColumnStart);
+                enumDef.LineStart, enumDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
             return;
         }
 
@@ -337,7 +338,7 @@ public class NameResolver
             if (!isBuiltin)
             {
                 AddError($"Function '{functionDef.Name}' is already defined",
-                    functionDef.LineStart, functionDef.ColumnStart);
+                    functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
                 return;
             }
             // For builtins, we'll replace the symbol below
@@ -502,7 +503,7 @@ public class NameResolver
         if (_symbolTable.Lookup(constDecl.Name, searchParents: false) != null)
         {
             AddError($"Constant '{constDecl.Name}' is already defined",
-                constDecl.LineStart, constDecl.ColumnStart);
+                constDecl.LineStart, constDecl.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
             return;
         }
 
@@ -527,7 +528,7 @@ public class NameResolver
         if (_symbolTable.Lookup(typeAlias.Name, searchParents: false) != null)
         {
             AddError($"Type alias '{typeAlias.Name}' is already defined",
-                typeAlias.LineStart, typeAlias.ColumnStart);
+                typeAlias.LineStart, typeAlias.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
             return;
         }
 
@@ -622,9 +623,9 @@ public class NameResolver
             method.LineStart, method.ColumnStart);
     }
 
-    private void AddError(string message, int? line = null, int? column = null)
+    private void AddError(string message, int? line = null, int? column = null, string? code = null)
     {
-        var error = new SemanticError(message, line, column);
+        var error = new SemanticError(message, line, column, code);
         _errors.Add(error);
         _logger.LogError(error.Message, line ?? 0, column ?? 0);
     }
@@ -648,14 +649,14 @@ public class NameResolver
             if (baseSymbol == null)
             {
                 AddError($"Base type '{baseAnnot.Name}' not found",
-                    classDef.LineStart, classDef.ColumnStart);
+                    classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType);
                 continue;
             }
 
             if (baseSymbol.TypeKind != TypeKind.Class && baseSymbol.TypeKind != TypeKind.Interface)
             {
                 AddError($"'{baseAnnot.Name}' is not a class or interface",
-                    classDef.LineStart, classDef.ColumnStart);
+                    classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance);
                 continue;
             }
 
@@ -665,7 +666,7 @@ public class NameResolver
                 if (hasSetBaseType)
                 {
                     AddError($"Class '{classDef.Name}' cannot have multiple base classes (only one class inheritance allowed)",
-                        classDef.LineStart, classDef.ColumnStart);
+                        classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance);
                     continue;
                 }
                 typeSymbol.BaseType = baseSymbol;
@@ -694,14 +695,14 @@ public class NameResolver
             if (interfaceSymbol == null)
             {
                 AddError($"Interface '{baseAnnot.Name}' not found",
-                    structDef.LineStart, structDef.ColumnStart);
+                    structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType);
                 continue;
             }
 
             if (interfaceSymbol.TypeKind != TypeKind.Interface)
             {
                 AddError($"Structs can only implement interfaces, '{baseAnnot.Name}' is not an interface",
-                    structDef.LineStart, structDef.ColumnStart);
+                    structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance);
                 continue;
             }
 
@@ -725,14 +726,14 @@ public class NameResolver
             if (baseInterfaceSymbol == null)
             {
                 AddError($"Interface '{baseAnnot.Name}' not found",
-                    interfaceDef.LineStart, interfaceDef.ColumnStart);
+                    interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType);
                 continue;
             }
 
             if (baseInterfaceSymbol.TypeKind != TypeKind.Interface)
             {
                 AddError($"'{baseAnnot.Name}' is not an interface",
-                    interfaceDef.LineStart, interfaceDef.ColumnStart);
+                    interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance);
                 continue;
             }
 

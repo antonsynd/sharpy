@@ -102,7 +102,7 @@ public class ImportResolver
                 if (modulePath == null)
                 {
                     AddError($"Cannot find module '{importAlias.Name}'",
-                        importAlias.LineStart, importAlias.ColumnStart);
+                        importAlias.LineStart, importAlias.ColumnStart, code: Diagnostics.DiagnosticCodes.Semantic.ModuleNotFound);
                     continue;
                 }
 
@@ -148,7 +148,7 @@ public class ImportResolver
             {
                 _logger.LogDebug($"[ImportResolver]   Module '{fromImport.Module}' not found");
                 AddError($"Cannot find module '{fromImport.Module}'",
-                    fromImport.LineStart, fromImport.ColumnStart);
+                    fromImport.LineStart, fromImport.ColumnStart, code: Diagnostics.DiagnosticCodes.Semantic.ModuleNotFound);
                 return null;
             }
 
@@ -220,7 +220,7 @@ public class ImportResolver
                     {
                         _logger.LogDebug($"[ImportResolver]     Symbol '{symbolName}' NOT FOUND in module exports");
                         AddError($"Module '{fromImport.Module}' has no exported symbol '{symbolName}'",
-                            importAlias.LineStart, importAlias.ColumnStart);
+                            importAlias.LineStart, importAlias.ColumnStart, code: Diagnostics.DiagnosticCodes.Semantic.ImportError);
                         continue;
                     }
 
@@ -228,7 +228,7 @@ public class ImportResolver
                     if (!IsDirectlyImportable(symbolName))
                     {
                         AddError($"Cannot import private symbol '{symbolName}' from module '{fromImport.Module}'",
-                            importAlias.LineStart, importAlias.ColumnStart);
+                            importAlias.LineStart, importAlias.ColumnStart, code: Diagnostics.DiagnosticCodes.Semantic.AccessViolation);
                     }
 
                     // Populate re-export symbols for code generation
@@ -286,7 +286,7 @@ public class ImportResolver
         {
             var chainMessage = FormatCircularImportChain(modulePath);
             _logger.LogDebug($"[ImportResolver] Circular import detected: {Path.GetFileName(modulePath)}");
-            AddError(chainMessage, lineStart, columnStart);
+            AddError(chainMessage, lineStart, columnStart, code: Diagnostics.DiagnosticCodes.Semantic.CircularImport);
             return null;
         }
 
@@ -317,7 +317,7 @@ public class ImportResolver
             // Read the source file
             if (!File.Exists(modulePath))
             {
-                AddError($"Module file not found: {modulePath}", lineStart, columnStart);
+                AddError($"Module file not found: {modulePath}", lineStart, columnStart, code: Diagnostics.DiagnosticCodes.Semantic.ModuleNotFound);
                 return null;
             }
 
@@ -1207,12 +1207,12 @@ public class ImportResolver
         return null;
     }
 
-    private void AddError(string message, int? line, int? column)
+    private void AddError(string message, int? line, int? column, string? code = null)
     {
         var errorMessage = _currentModulePath != null
             ? $"{message} (in {Path.GetFileName(_currentModulePath)})"
             : message;
-        _errors.Add(new SemanticError(errorMessage, line, column));
+        _errors.Add(new SemanticError(errorMessage, line, column, code));
     }
 
     /// <summary>
