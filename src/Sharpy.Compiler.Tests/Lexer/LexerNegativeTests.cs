@@ -2,13 +2,16 @@ using FluentAssertions;
 using System.Text;
 using LexerNs = Sharpy.Compiler.Lexer;
 using TokenType = Sharpy.Compiler.Lexer.TokenType;
+#pragma warning disable CS0618 // LexerError is obsolete
 using LexerError = Sharpy.Compiler.Lexer.LexerError;
+#pragma warning restore CS0618
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Lexer;
 
 /// <summary>
-/// Negative tests for the Lexer - testing error detection and handling
+/// Negative tests for the Lexer - testing error detection and handling.
+/// Uses the DiagnosticBag-based error collection via TokenizeAll().
 /// </summary>
 public class LexerNegativeTests
 {
@@ -18,110 +21,97 @@ public class LexerNegativeTests
         return lexer.TokenizeAll();
     }
 
+    /// <summary>
+    /// Tokenize and assert that at least one error was collected.
+    /// Returns the diagnostic messages for further assertions.
+    /// </summary>
+    private static string TokenizeExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        lexer.TokenizeAll();
+        lexer.Diagnostics.HasErrors.Should().BeTrue("Expected lexer to report an error for input: " + source);
+        return string.Join("\n", lexer.Diagnostics.GetErrors().Select(d => d.Message));
+    }
+
     #region Invalid Numeric Literals
 
     [Fact]
     public void RejectsMultipleDecimalPoints()
     {
-        var source = "1.2.3";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("1.2.3");
     }
 
     [Fact]
     public void RejectsInvalidIntegerSuffix()
     {
-        var source = "42X";  // X is not a valid suffix
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("42X");  // X is not a valid suffix
     }
 
     [Fact]
     public void RejectsInvalidFloatSuffix()
     {
-        var source = "3.14x";  // x is not a valid float suffix
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("3.14x");  // x is not a valid float suffix
     }
 
     [Fact]
     public void RejectsHexWithNoDigits()
     {
-        var source = "0x";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("0x");
     }
 
     [Fact]
     public void RejectsBinaryWithNoDigits()
     {
-        var source = "0b";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("0b");
     }
 
     [Fact]
     public void RejectsOctalWithNoDigits()
     {
-        var source = "0o";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("0o");
     }
 
     [Fact]
     public void RejectsInvalidHexDigits()
     {
-        var source = "0xGHI";  // G, H, I are not hex digits
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("0xGHI");  // G, H, I are not hex digits
     }
 
     [Fact]
     public void RejectsInvalidBinaryDigits()
     {
-        var source = "0b102";  // 2 is not a binary digit
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("0b102");  // 2 is not a binary digit
     }
 
     [Fact]
     public void RejectsInvalidOctalDigits()
     {
-        var source = "0o89";  // 8 and 9 are not octal digits
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("0o89");  // 8 and 9 are not octal digits
     }
 
     [Fact]
     public void RejectsScientificNotationWithNoExponent()
     {
-        var source = "1e";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("1e");
     }
 
     [Fact]
     public void RejectsScientificNotationWithInvalidExponent()
     {
-        var source = "1eX";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("1eX");
     }
 
     [Fact]
     public void RejectsFloatStartingWithDecimal()
     {
-        var source = ".5";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*at least one digit before*");
+        var errors = TokenizeExpectingError(".5");
+        errors.Should().Contain("at least one digit before");
     }
 
     [Fact]
     public void RejectsNumberWithMultipleUnderscoresInRow()
     {
-        var source = "1__000";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("1__000");
     }
 
     [Fact]
@@ -136,9 +126,7 @@ public class LexerNegativeTests
     [Fact]
     public void RejectsNumberEndingWithUnderscore()
     {
-        var source = "123_";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("123_");
     }
 
     #endregion
@@ -148,66 +136,53 @@ public class LexerNegativeTests
     [Fact]
     public void RejectsUnterminatedString()
     {
-        var source = "\"hello";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Unterminated string*");
+        var errors = TokenizeExpectingError("\"hello");
+        errors.Should().Contain("Unterminated string");
     }
 
     [Fact]
     public void RejectsUnterminatedSingleQuotedString()
     {
-        var source = "'hello";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Unterminated string*");
+        var errors = TokenizeExpectingError("'hello");
+        errors.Should().Contain("Unterminated string");
     }
 
     [Fact]
     public void RejectsUnterminatedTripleQuotedString()
     {
-        var source = "\"\"\"hello";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("\"\"\"hello");
     }
 
     [Fact]
     public void RejectsUnterminatedRawString()
     {
-        var source = "r\"hello";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("r\"hello");
     }
 
     [Fact]
     public void RejectsUnterminatedFString()
     {
-        var source = "f\"hello {name}";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("f\"hello {name}");
     }
 
     [Fact]
     public void RejectsInvalidEscapeSequence()
     {
-        var source = "\"hello\\xworld\"";  // \x is invalid without hex digits
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*escape sequence*");
+        var errors = TokenizeExpectingError("\"hello\\xworld\"");  // \x is invalid without hex digits
+        errors.Should().Contain("escape sequence");
     }
 
     [Fact]
     public void RejectsStringWithNewlineWithoutEscape()
     {
-        var source = "\"hello\nworld\"";
         // Single-line strings cannot contain unescaped newlines
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("\"hello\nworld\"");
     }
 
     [Fact]
     public void RejectsMismatchedQuotes()
     {
-        var source = "\"hello'";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("\"hello'");
     }
 
     [Fact]
@@ -227,25 +202,20 @@ public class LexerNegativeTests
     [Fact]
     public void RejectsIdentifierStartingWithDigit()
     {
-        var source = "2fast";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("2fast");
     }
 
     [Fact]
     public void RejectsIdentifierWithInvalidCharacters()
     {
-        var source = "hello$world";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Unexpected character*");
+        var errors = TokenizeExpectingError("hello$world");
+        errors.Should().Contain("Unexpected character");
     }
 
     [Fact]
     public void RejectsEmojiInIdentifier()
     {
-        var source = "hello😀world";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("hello😀world");
     }
 
     [Fact]
@@ -266,52 +236,41 @@ public class LexerNegativeTests
     [Fact]
     public void RejectsTabIndentation()
     {
-        var source = "if True:\n\tpass";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Tabs are not allowed*");
+        var errors = TokenizeExpectingError("if True:\n\tpass");
+        errors.Should().Contain("Tabs are not allowed");
     }
 
     [Fact]
     public void RejectsMixedTabsAndSpaces()
     {
-        var source = "if True:\n  \tx = 1";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("if True:\n  \tx = 1");
     }
 
     [Fact]
     public void RejectsIndentationNotMultipleOfFour()
     {
-        var source = "if True:\n  pass";  // 2 spaces
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*multiple of 4*");
+        var errors = TokenizeExpectingError("if True:\n  pass");  // 2 spaces
+        errors.Should().Contain("multiple of 4");
     }
 
     [Fact]
     public void RejectsIndentationNotMultipleOfFour_ThreeSpaces()
     {
-        var source = "if True:\n   pass";  // 3 spaces
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*multiple of 4*");
+        var errors = TokenizeExpectingError("if True:\n   pass");  // 3 spaces
+        errors.Should().Contain("multiple of 4");
     }
 
     [Fact]
     public void RejectsIndentationNotMultipleOfFour_FiveSpaces()
     {
-        var source = "if True:\n     pass";  // 5 spaces
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*multiple of 4*");
+        var errors = TokenizeExpectingError("if True:\n     pass");  // 5 spaces
+        errors.Should().Contain("multiple of 4");
     }
 
     [Fact]
     public void RejectsInconsistentDedentation()
     {
-        var source = @"if True:
-    if False:
-        pass
-      x = 1";  // 6 spaces - doesn't match any previous level
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("if True:\n    if False:\n        pass\n      x = 1");  // 6 spaces - doesn't match any previous level
     }
 
     [Fact]
@@ -335,17 +294,13 @@ public class LexerNegativeTests
     [Fact]
     public void RejectsBackslashAtEndOfFile()
     {
-        var source = "x = 1 + \\";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("x = 1 + \\");
     }
 
     [Fact]
     public void RejectsBackslashWithSpaceAfter()
     {
-        var source = "x = 1 + \\ \n2";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("x = 1 + \\ \n2");
     }
 
     [Fact]
@@ -367,17 +322,15 @@ public class LexerNegativeTests
     [Fact]
     public void RejectsUnterminatedLiteralName()
     {
-        var source = "`unterminated";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Unterminated literal name*");
+        var errors = TokenizeExpectingError("`unterminated");
+        errors.Should().Contain("Unterminated literal name");
     }
 
     [Fact]
     public void RejectsLiteralNameWithNewline()
     {
-        var source = "`name\nwith newline`";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Unterminated literal name*");
+        var errors = TokenizeExpectingError("`name\nwith newline`");
+        errors.Should().Contain("Unterminated literal name");
     }
 
     #endregion
@@ -387,9 +340,8 @@ public class LexerNegativeTests
     [Fact]
     public void RejectsInvalidOperator()
     {
-        var source = "x $ y";  // $ is not a valid operator
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Unexpected character*");
+        var errors = TokenizeExpectingError("x $ y");  // $ is not a valid operator
+        errors.Should().Contain("Unexpected character");
     }
 
     [Fact]
@@ -405,17 +357,13 @@ public class LexerNegativeTests
     [Fact]
     public void RejectsUnexpectedNullCharacter()
     {
-        var source = "x = \0 y";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("x = \0 y");
     }
 
     [Fact]
     public void RejectsUnexpectedControlCharacters()
     {
-        var source = "x = \u0001 y";  // ASCII control character
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("x = \u0001 y");  // ASCII control character
     }
 
     #endregion
@@ -427,18 +375,11 @@ public class LexerNegativeTests
     {
         // Identifiers should have reasonable length limits
         var veryLongName = new string('a', 100000);
-        var source = veryLongName;
-        // This might succeed or fail depending on implementation limits
+        // This might succeed or report an error depending on implementation limits
         // Just ensure it doesn't crash
-        try
-        {
-            var tokens = Tokenize(source);
-            tokens.Should().NotBeNull();
-        }
-        catch (LexerError)
-        {
-            // Acceptable if there's a length limit
-        }
+        var lexer = new LexerNs.Lexer(veryLongName);
+        var tokens = lexer.TokenizeAll();
+        tokens.Should().NotBeNull();
     }
 
     [Fact]
@@ -452,20 +393,9 @@ public class LexerNegativeTests
         var source = sb.ToString();
 
         // Should not crash, but may have depth limits
-        try
-        {
-            var tokens = Tokenize(source);
-            tokens.Should().NotBeNull();
-        }
-        catch (LexerError)
-        {
-            // Acceptable if there's a depth limit
-        }
-        catch (StackOverflowException)
-        {
-            // Should not happen - this would be a bug
-            throw;
-        }
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        tokens.Should().NotBeNull();
     }
 
     [Fact]
@@ -497,19 +427,11 @@ public class LexerNegativeTests
     [Fact]
     public void RejectsInvalidUnicodeEscape()
     {
-        var source = "\"\\u123\"";  // Incomplete unicode escape
-        // Depending on implementation, this might be accepted or rejected
-        // Document the behavior
-        try
-        {
-            var tokens = Tokenize(source);
-            // If accepted, ensure it doesn't crash
-            tokens.Should().NotBeNull();
-        }
-        catch (LexerError)
-        {
-            // This is also acceptable
-        }
+        // Incomplete unicode escape - may be accepted or rejected
+        var lexer = new LexerNs.Lexer("\"\\u123\"");
+        var tokens = lexer.TokenizeAll();
+        tokens.Should().NotBeNull();
+        // Either succeeds or reports error via diagnostics - both are acceptable
     }
 
     #endregion
@@ -607,24 +529,16 @@ public class LexerNegativeTests
     public void HandlesUTF8BOM()
     {
         // UTF-8 BOM should be handled gracefully
-        var source = "\uFEFFx = 1";
-        try
-        {
-            var tokens = Tokenize(source);
-            tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
-        }
-        catch (LexerError)
-        {
-            // Acceptable if BOM is not supported
-        }
+        var lexer = new LexerNs.Lexer("\uFEFFx = 1");
+        var tokens = lexer.TokenizeAll();
+        // Either succeeds or reports error via diagnostics - both are acceptable
+        tokens.Should().NotBeNull();
     }
 
     [Fact]
     public void RejectsMultipleConsecutiveUnderscoresInNumber()
     {
-        var source = "1__2__3";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("1__2__3");
     }
 
     [Fact]

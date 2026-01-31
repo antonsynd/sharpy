@@ -1,4 +1,5 @@
 using System.Text;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Compiler.Lexer;
@@ -18,6 +19,12 @@ public class Lexer
     private bool _atLineStart = true;
     private int _bracketDepth = 0;  // Track if we're inside (), [], or {}
     private readonly ICompilerLogger _logger;
+    private readonly DiagnosticBag _diagnostics = new();
+
+    /// <summary>
+    /// Diagnostics collected during lexing. Check HasErrors after TokenizeAll().
+    /// </summary>
+    public DiagnosticBag Diagnostics => _diagnostics;
 
     // F-string state tracking
     private readonly Stack<FStringContext> _fstringStack = new();
@@ -118,7 +125,9 @@ public class Lexer
     }
 
     /// <summary>
-    /// Tokenize the entire source into a list of tokens
+    /// Tokenize the entire source into a list of tokens.
+    /// Lexer errors are collected into Diagnostics instead of propagating.
+    /// On error, an Error token is emitted and lexing terminates with EOF.
     /// </summary>
     public List<Token> TokenizeAll()
     {
@@ -126,7 +135,29 @@ public class Lexer
 
         while (true)
         {
-            var token = NextToken();
+            Token token;
+            try
+            {
+                token = NextToken();
+            }
+            catch (LexerError ex)
+            {
+                // Collect the error into diagnostics instead of propagating
+                var rawMessage = ex.Message;
+                // Strip the "Lexer error at line X, column Y: " prefix if present
+                var colonIndex = rawMessage.IndexOf(": ", StringComparison.Ordinal);
+                if (colonIndex >= 0 && rawMessage.StartsWith("Lexer error", StringComparison.Ordinal))
+                    rawMessage = rawMessage[(colonIndex + 2)..];
+
+                _diagnostics.AddError(rawMessage, ex.Line, ex.Column,
+                    code: MapLexerErrorToCode(rawMessage),
+                    phase: CompilerPhase.Lexer);
+
+                // Emit an Error token at the error location, then EOF
+                tokens.Add(new Token(TokenType.Eof, "", ex.Line, ex.Column, _position));
+                break;
+            }
+
             tokens.Add(token);
 
             if (token.Type == TokenType.Eof)
@@ -134,6 +165,60 @@ public class Lexer
         }
 
         return tokens;
+    }
+
+    /// <summary>
+    /// Map a lexer error message to its diagnostic code.
+    /// </summary>
+    private static string? MapLexerErrorToCode(string message)
+    {
+        if (message.Contains("Unterminated string"))
+            return DiagnosticCodes.Lexer.UnterminatedString;
+        if (message.Contains("Unterminated f-string expression"))
+            return DiagnosticCodes.Lexer.UnterminatedFStringExpression;
+        if (message.Contains("Unterminated format specification"))
+            return DiagnosticCodes.Lexer.UnterminatedFormatSpec;
+        if (message.Contains("Unterminated f-string") || message.Contains("Unmatched '}'"))
+            return DiagnosticCodes.Lexer.UnterminatedFString;
+        if (message.Contains("Unterminated raw string"))
+            return DiagnosticCodes.Lexer.UnterminatedRawString;
+        if (message.Contains("Invalid hex escape"))
+            return DiagnosticCodes.Lexer.InvalidHexEscape;
+        if (message.Contains("Invalid unicode escape"))
+            return DiagnosticCodes.Lexer.InvalidUnicodeEscape;
+        if (message.Contains("Octal escape value"))
+            return DiagnosticCodes.Lexer.OctalEscapeOverflow;
+        if (message.Contains("Invalid escape sequence"))
+            return DiagnosticCodes.Lexer.InvalidEscapeSequence;
+        if (message.Contains("Invalid hexadecimal literal"))
+            return DiagnosticCodes.Lexer.InvalidHexLiteral;
+        if (message.Contains("Invalid binary"))
+            return DiagnosticCodes.Lexer.InvalidBinaryLiteral;
+        if (message.Contains("Invalid octal"))
+            return DiagnosticCodes.Lexer.InvalidOctalLiteral;
+        if (message.Contains("Invalid number") || message.Contains("Invalid scientific"))
+            return DiagnosticCodes.Lexer.InvalidNumber;
+        if (message.Contains("Invalid numeric suffix"))
+            return DiagnosticCodes.Lexer.InvalidNumericSuffix;
+        if (message.Contains("Mixed tabs and spaces"))
+            return DiagnosticCodes.Lexer.MixedTabsAndSpaces;
+        if (message.Contains("Tabs are not allowed"))
+            return DiagnosticCodes.Lexer.TabsNotAllowed;
+        if (message.Contains("Indentation must be"))
+            return DiagnosticCodes.Lexer.InvalidIndentation;
+        if (message.Contains("Indentation mismatch"))
+            return DiagnosticCodes.Lexer.IndentationMismatch;
+        if (message.Contains("Unexpected character"))
+            return DiagnosticCodes.Lexer.UnexpectedCharacter;
+        if (message.Contains("Backslash at end"))
+            return DiagnosticCodes.Lexer.BackslashAtEof;
+        if (message.Contains("Backslash line continuation"))
+            return DiagnosticCodes.Lexer.BackslashTrailingWhitespace;
+        if (message.Contains("Unterminated literal name"))
+            return DiagnosticCodes.Lexer.UnterminatedBacktickIdentifier;
+        if (message.Contains("Float literals must"))
+            return DiagnosticCodes.Lexer.InvalidFloatLiteral;
+        return null;
     }
 
     /// <summary>

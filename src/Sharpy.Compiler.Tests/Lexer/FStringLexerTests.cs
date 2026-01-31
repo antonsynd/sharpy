@@ -1,3 +1,5 @@
+#pragma warning disable CS0618 // LexerError is obsolete
+
 using FluentAssertions;
 using LexerNs = Sharpy.Compiler.Lexer;
 using TokenType = Sharpy.Compiler.Lexer.TokenType;
@@ -15,6 +17,14 @@ public class FStringLexerTests
     {
         var lexer = new LexerNs.Lexer(source);
         return lexer.TokenizeAll();
+    }
+
+    private static string TokenizeExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        lexer.TokenizeAll();
+        Assert.True(lexer.Diagnostics.HasErrors, "Expected lexer to report an error for input: " + source);
+        return string.Join("\n", lexer.Diagnostics.GetErrors().Select(d => d.Message));
     }
 
     #region Positive Tests
@@ -263,42 +273,37 @@ line2""""""";
     [Fact]
     public void FString_Unterminated_ThrowsError()
     {
-        Action act = () => Tokenize("f\"hello");
-        act.Should().Throw<LexerError>()
-            .WithMessage("*Unterminated f-string*");
+        var errors = TokenizeExpectingError("f\"hello");
+        errors.Should().Contain("Unterminated f-string");
     }
 
     [Fact]
     public void FString_UnterminatedExpression_ThrowsError()
     {
         // When the expression has an unterminated string inside it, we get "Unterminated string literal"
-        Action act = () => Tokenize("f\"hello {x\"");
-        act.Should().Throw<LexerError>()
-            .WithMessage("*Unterminated string*");
+        var errors = TokenizeExpectingError("f\"hello {x\"");
+        errors.Should().Contain("Unterminated string");
     }
 
     [Fact]
     public void FString_UnmatchedClosingBrace_ThrowsError()
     {
-        Action act = () => Tokenize("f\"hello }\"");
-        act.Should().Throw<LexerError>()
-            .WithMessage("*Unmatched '}'*");
+        var errors = TokenizeExpectingError("f\"hello }\"");
+        errors.Should().Contain("Unmatched '}'");
     }
 
     [Fact]
     public void FString_SingleQuoteUnterminated_ThrowsError()
     {
-        Action act = () => Tokenize("f'hello");
-        act.Should().Throw<LexerError>()
-            .WithMessage("*Unterminated f-string*");
+        var errors = TokenizeExpectingError("f'hello");
+        errors.Should().Contain("Unterminated f-string");
     }
 
     [Fact]
     public void FString_TripleQuotedUnterminated_ThrowsError()
     {
-        Action act = () => Tokenize("f\"\"\"hello");
-        act.Should().Throw<LexerError>()
-            .WithMessage("*Unterminated*");
+        var errors = TokenizeExpectingError("f\"\"\"hello");
+        errors.Should().Contain("Unterminated");
     }
 
     #endregion

@@ -1,7 +1,9 @@
 using FluentAssertions;
 using LexerNs = Sharpy.Compiler.Lexer;
 using TokenType = Sharpy.Compiler.Lexer.TokenType;
+#pragma warning disable CS0618 // LexerError is obsolete
 using LexerError = Sharpy.Compiler.Lexer.LexerError;
+#pragma warning restore CS0618
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Lexer;
@@ -24,6 +26,18 @@ public class Phase010ExitCriteriaTests
         tokens.Should().HaveCount(2);
         tokens[1].Type.Should().Be(LexerNs.TokenType.Eof);
         return tokens[0];
+    }
+
+    /// <summary>
+    /// Tokenize and assert that at least one error was collected.
+    /// Returns the diagnostic messages for further assertions.
+    /// </summary>
+    private static string TokenizeExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        lexer.TokenizeAll();
+        Assert.True(lexer.Diagnostics.HasErrors, "Expected lexer to report an error for input: " + source);
+        return string.Join("\n", lexer.Diagnostics.GetErrors().Select(d => d.Message));
     }
 
     #region Exit Criteria: All Token Types Recognized
@@ -255,16 +269,16 @@ final";
 
         // Invalid: 2-space indentation
         var invalidSource = "if x:\n  pass";
-        Action act = () => Tokenize(invalidSource);
-        act.Should().Throw<LexerError>().WithMessage("*multiple of 4*");
+        var errors = TokenizeExpectingError(invalidSource);
+        errors.Should().Contain("multiple of 4");
     }
 
     [Fact]
     public void ExitCriteria_TabsNotAllowed()
     {
         var source = "if x:\n\tpass";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Tabs are not allowed*");
+        var errors = TokenizeExpectingError(source);
+        errors.Should().Contain("Tabs are not allowed");
     }
 
     [Fact]
@@ -302,8 +316,7 @@ x = 1";
     {
         // Dedenting to a level that doesn't match any previous indent
         var source = "if x:\n    y = 1\n      z = 2";  // 6 spaces is invalid
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError(source);
     }
 
     #endregion
@@ -407,8 +420,7 @@ x = 1";
     public void ExitCriteria_FloatMustHaveDigitBeforeDecimal()
     {
         // .5 is not a valid float - must have digit before decimal
-        Action act = () => Tokenize(".5");
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError(".5");
     }
 
     #endregion
@@ -758,66 +770,67 @@ x = 1";
     [Fact]
     public void ExitCriteria_UnterminatedStringError()
     {
-        Action act = () => Tokenize("\"unterminated string");
-        act.Should().Throw<LexerError>().WithMessage("*Unterminated string*");
+        var errors = TokenizeExpectingError("\"unterminated string");
+        errors.Should().Contain("Unterminated string");
     }
 
     [Fact]
     public void ExitCriteria_UnterminatedTripleStringError()
     {
-        Action act = () => Tokenize("\"\"\"unterminated");
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("\"\"\"unterminated");
     }
 
     [Fact]
     public void ExitCriteria_InvalidEscapeSequenceError()
     {
-        Action act = () => Tokenize("\"invalid\\xescape\"");
-        act.Should().Throw<LexerError>().WithMessage("*escape sequence*");
+        var errors = TokenizeExpectingError("\"invalid\\xescape\"");
+        errors.Should().Contain("escape sequence");
     }
 
     [Fact]
     public void ExitCriteria_UnexpectedCharacterError()
     {
-        Action act = () => Tokenize("x $ y");
-        act.Should().Throw<LexerError>().WithMessage("*Unexpected character*");
+        var errors = TokenizeExpectingError("x $ y");
+        errors.Should().Contain("Unexpected character");
     }
 
     [Fact]
     public void ExitCriteria_InvalidIndentationError()
     {
-        Action act = () => Tokenize("if x:\n  pass");  // 2 spaces
-        act.Should().Throw<LexerError>().WithMessage("*multiple of 4*");
+        var errors = TokenizeExpectingError("if x:\n  pass");  // 2 spaces
+        errors.Should().Contain("multiple of 4");
     }
 
     [Fact]
     public void ExitCriteria_TabIndentationError()
     {
-        Action act = () => Tokenize("if x:\n\tpass");
-        act.Should().Throw<LexerError>().WithMessage("*Tabs are not allowed*");
+        var errors = TokenizeExpectingError("if x:\n\tpass");
+        errors.Should().Contain("Tabs are not allowed");
     }
 
     [Fact]
     public void ExitCriteria_ErrorIncludesLineAndColumn()
     {
-        Action act = () => Tokenize("x = 1\ny = $");
-        act.Should().Throw<LexerError>()
-            .WithMessage("*line*2*")
-            .WithMessage("*column*");
+        var source = "x = 1\ny = $";
+        var lexer = new LexerNs.Lexer(source);
+        lexer.TokenizeAll();
+        lexer.Diagnostics.HasErrors.Should().BeTrue("Expected lexer to report an error for input: " + source);
+        var errorDiagnostics = lexer.Diagnostics.GetErrors();
+        errorDiagnostics.Should().Contain(d => d.Line == 2);
+        errorDiagnostics.Should().Contain(d => d.Column != null);
     }
 
     [Fact]
     public void ExitCriteria_BackslashAtEndOfFileError()
     {
-        Action act = () => Tokenize("x = 1 \\");
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError("x = 1 \\");
     }
 
     [Fact]
     public void ExitCriteria_UnterminatedLiteralNameError()
     {
-        Action act = () => Tokenize("`unterminated");
-        act.Should().Throw<LexerError>().WithMessage("*Unterminated literal name*");
+        var errors = TokenizeExpectingError("`unterminated");
+        errors.Should().Contain("Unterminated literal name");
     }
 
     #endregion

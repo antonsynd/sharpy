@@ -66,12 +66,22 @@ public static class CompilationUnitFactory
         {
             var lexer = new Lexer.Lexer(unit.SourceText, logger ?? NullLogger.Instance);
             var tokens = lexer.TokenizeAll();
+
+            // Check if lexer collected any errors into DiagnosticBag
+            if (lexer.Diagnostics.HasErrors)
+            {
+                unit.Diagnostics.Merge(lexer.Diagnostics);
+                unit.Phase = CompilationPhase.Failed;
+                return false;
+            }
+
             unit.Tokens = tokens;
             unit.Phase = CompilationPhase.Lexed;
             return true;
         }
         catch (LexerError ex)
         {
+            // Safety net: should not be reached since TokenizeAll() catches LexerError internally
             unit.Diagnostics.AddError(ex.Message, ex.Line, ex.Column, unit.FilePath);
             unit.Phase = CompilationPhase.Failed;
             return false;

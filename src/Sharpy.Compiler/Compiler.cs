@@ -90,6 +90,18 @@ public class Compiler
             // Assertion: Lexer must produce at least an EOF token
             Debug.Assert(tokens.Count > 0, "Lexer should produce at least one token (EOF)");
 
+            // Check for lexer errors collected via DiagnosticBag
+            if (lexer.Diagnostics.HasErrors)
+            {
+                diagnostics.Merge(lexer.Diagnostics);
+                return new CompilationResult
+                {
+                    Success = false,
+                    Diagnostics = diagnostics,
+                    Metrics = metrics
+                };
+            }
+
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 2: Syntax Analysis

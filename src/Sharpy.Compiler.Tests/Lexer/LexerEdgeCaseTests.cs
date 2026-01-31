@@ -1,3 +1,5 @@
+#pragma warning disable CS0618 // LexerError is obsolete (diagnostics-based error handling)
+
 using FluentAssertions;
 using System.Text;
 using LexerNs = Sharpy.Compiler.Lexer;
@@ -16,6 +18,14 @@ public class LexerEdgeCaseTests
     {
         var lexer = new LexerNs.Lexer(source);
         return lexer.TokenizeAll();
+    }
+
+    private static string TokenizeExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        lexer.TokenizeAll();
+        Assert.True(lexer.Diagnostics.HasErrors, "Expected lexer to report an error for input: " + source);
+        return string.Join("\n", lexer.Diagnostics.GetErrors().Select(d => d.Message));
     }
 
     #region String Edge Cases
@@ -908,15 +918,10 @@ y = 2";
         // Zero-width space (U+200B)
         var source = "x\u200B = 1";
         // Behavior depends on whether zero-width chars are allowed
-        try
-        {
-            var tokens = Tokenize(source);
-            tokens.Should().NotBeNull();
-        }
-        catch (LexerError)
-        {
-            // Also acceptable
-        }
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        tokens.Should().NotBeNull();
+        // Error reported via diagnostics (if any) - both are acceptable
     }
 
     #endregion
@@ -1044,59 +1049,59 @@ y = 2";
     }
 
     [Fact]
-    public void ThrowsOnInvalidHexEscape()
+    public void ReportsErrorOnInvalidHexEscape()
     {
         var source = "\"\\xGG\"";  // Invalid hex digits
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        var errorMessage = TokenizeExpectingError(source);
+        errorMessage.Should().NotBeEmpty();
     }
 
     [Fact]
-    public void ThrowsOnIncompletehexEscape()
+    public void ReportsErrorOnIncompleteHexEscape()
     {
         var source = "\"\\x4\"";  // Only one hex digit
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        var errorMessage = TokenizeExpectingError(source);
+        errorMessage.Should().NotBeEmpty();
     }
 
     [Fact]
-    public void ThrowsOnIncompleteUnicodeEscape()
+    public void ReportsErrorOnIncompleteUnicodeEscape()
     {
         var source = "\"\\u004\"";  // Only 3 hex digits
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        var errorMessage = TokenizeExpectingError(source);
+        errorMessage.Should().NotBeEmpty();
     }
 
     [Fact]
-    public void ThrowsOnInvalidUnicodeEscape()
+    public void ReportsErrorOnInvalidUnicodeEscape()
     {
         var source = "\"\\u00GG\"";  // Invalid hex digits in Unicode
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        var errorMessage = TokenizeExpectingError(source);
+        errorMessage.Should().NotBeEmpty();
     }
 
     [Fact]
-    public void ThrowsOnOctalValueTooLarge()
+    public void ReportsErrorOnOctalValueTooLarge()
     {
         var source = "\"\\400\"";  // 256 in octal, exceeds max (255)
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        var errorMessage = TokenizeExpectingError(source);
+        errorMessage.Should().NotBeEmpty();
     }
 
     [Fact]
-    public void ThrowsOnInvalidEscapeCharacter()
+    public void ReportsErrorOnInvalidEscapeCharacter()
     {
         var source = "\"\\q\"";  // Invalid escape sequence
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        var errorMessage = TokenizeExpectingError(source);
+        errorMessage.Should().NotBeEmpty();
     }
 
     [Fact]
-    public void ThrowsOnUnterminatedStringWithEscape()
+    public void ReportsErrorOnUnterminatedStringWithEscape()
     {
         var source = "\"hello\\n";  // Unterminated string
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        var errorMessage = TokenizeExpectingError(source);
+        errorMessage.Should().NotBeEmpty();
     }
 
     #endregion

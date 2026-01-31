@@ -1,3 +1,4 @@
+#pragma warning disable CS0618
 using FluentAssertions;
 using LexerNs = Sharpy.Compiler.Lexer;
 using TokenType = Sharpy.Compiler.Lexer.TokenType;
@@ -21,6 +22,14 @@ public class LexerTests
         tokens.Should().HaveCount(2);
         tokens[1].Type.Should().Be(LexerNs.TokenType.Eof);
         return tokens[0];
+    }
+
+    private static string TokenizeExpectingError(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        lexer.TokenizeAll();
+        Assert.True(lexer.Diagnostics.HasErrors, "Expected lexer to report an error for input: " + source);
+        return string.Join("\n", lexer.Diagnostics.GetErrors().Select(d => d.Message));
     }
 
     #region Basic Tokens
@@ -119,8 +128,7 @@ public class LexerTests
     public void Tokenize_IdentifierStartingWithDigit_ThrowsLexerError()
     {
         var source = "2fast";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError(source);
     }
 
     // Note: According to the v0.1 spec, hyphens are not allowed in identifiers.
@@ -210,8 +218,7 @@ public class LexerTests
     {
         // v0.1 spec requires at least one digit before the decimal point
         var source = ".5";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError(source);
     }
 
     #endregion
@@ -291,8 +298,8 @@ public class LexerTests
     [Fact]
     public void Tokenize_UnterminatedString_ThrowsLexerError()
     {
-        Action act = () => Tokenize("\"unterminated");
-        act.Should().Throw<LexerError>().WithMessage("*Unterminated string*");
+        var errors = TokenizeExpectingError("\"unterminated");
+        errors.Should().Contain("Unterminated string");
     }
 
     #endregion
@@ -456,16 +463,16 @@ x = 1";
     public void Tokenize_TabIndentation_ThrowsLexerError()
     {
         var source = "if True:\n\tpass";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Tabs are not allowed*");
+        var errors = TokenizeExpectingError(source);
+        errors.Should().Contain("Tabs are not allowed");
     }
 
     [Fact]
     public void Tokenize_NonMultipleOf4Indentation_ThrowsLexerError()
     {
         var source = "if True:\n  pass";  // 2 spaces instead of 4
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*multiple of 4*");
+        var errors = TokenizeExpectingError(source);
+        errors.Should().Contain("multiple of 4");
     }
 
     [Fact]
@@ -473,9 +480,8 @@ x = 1";
     {
         // The mismatch check happens when dedenting.
         // Any invalid indentation (not multiple of 4 or not matching a previous level)
-        // will throw a LexerError.
-        Action act = () => Tokenize("if True:\n    pass\n      x = 1");
-        act.Should().Throw<LexerError>();  // Either "multiple of 4" or "mismatch" error is fine
+        // will report a LexerError.
+        TokenizeExpectingError("if True:\n    pass\n      x = 1");
     }
 
     #endregion
@@ -699,8 +705,8 @@ y = 2";
     public void Tokenize_UnexpectedCharacter_ThrowsLexerError()
     {
         var source = "x $ y";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Unexpected character*");
+        var errors = TokenizeExpectingError(source);
+        errors.Should().Contain("Unexpected character");
     }
 
     [Fact]
@@ -787,8 +793,7 @@ y = 2";
     public void Tokenize_EmojiInIdentifier_ThrowsError()
     {
         var source = "emoji😀name";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError(source);
     }
 
     #endregion
@@ -826,16 +831,16 @@ y = 2";
     public void Tokenize_StringWithInvalidEscape_ThrowsError()
     {
         var source = @"""invalid\xescape""";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*escape sequence*");
+        var errors = TokenizeExpectingError(source);
+        errors.Should().Contain("escape sequence");
     }
 
     [Fact]
     public void Tokenize_UnterminatedString_ThrowsError()
     {
         var source = "\"unterminated";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Unterminated string*");
+        var errors = TokenizeExpectingError(source);
+        errors.Should().Contain("Unterminated string");
     }
 
     [Fact]
@@ -862,8 +867,7 @@ y = 2";
     public void Tokenize_UnterminatedTripleQuotedString_ThrowsError()
     {
         var source = "\"\"\"unterminated";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>(); // Message is "Unterminated triple-quoted string"
+        TokenizeExpectingError(source);
     }
 
     #endregion
@@ -914,8 +918,7 @@ y = 2";
     public void Tokenize_UnterminatedFString_ThrowsError()
     {
         var source = "f\"unterminated";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError(source);
     }
 
     #endregion
@@ -1005,8 +1008,7 @@ y = 2";
 
         foreach (var source in invalidCases)
         {
-            Action act = () => Tokenize(source);
-            act.Should().Throw<LexerError>();
+            TokenizeExpectingError(source);
         }
     }
 
@@ -1018,16 +1020,14 @@ y = 2";
     public void Tokenize_MixedTabsAndSpaces_ThrowsError()
     {
         var source = "if x:\n\ty = 1\n    z = 2";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>(); // Tabs or mixed tabs/spaces error
+        TokenizeExpectingError(source);
     }
 
     [Fact]
     public void Tokenize_InconsistentIndentation_ThrowsError()
     {
         var source = "if x:\n  y = 1\n   z = 2";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>(); // Any indentation error is fine (multiple of 4 or inconsistent)
+        TokenizeExpectingError(source);
     }
 
     [Fact]
@@ -1148,16 +1148,14 @@ y = 2";
     public void Tokenize_BackslashAtEndOfFile_ThrowsError()
     {
         var source = "x = 1 \\";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError(source);
     }
 
     [Fact]
     public void Tokenize_BackslashWithSpaceAfter_ThrowsError()
     {
         var source = "x = 1 \\ \n2";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError(source);
     }
 
     #endregion
@@ -1194,18 +1192,19 @@ y = 2";
     public void Tokenize_UnexpectedNullCharacter_ThrowsError()
     {
         var source = "x = \0 1";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>();
+        TokenizeExpectingError(source);
     }
 
     [Fact]
     public void Tokenize_ErrorMessageIncludesLineAndColumn()
     {
         var source = "x = 1\ny = $";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>()
-            .WithMessage("*line*2*")
-            .WithMessage("*column*");
+        var lexer = new LexerNs.Lexer(source);
+        lexer.TokenizeAll();
+        Assert.True(lexer.Diagnostics.HasErrors, "Expected lexer to report an error for input: " + source);
+        var errorDiagnostics = lexer.Diagnostics.GetErrors();
+        errorDiagnostics.Should().Contain(d => d.Line == 2);
+        errorDiagnostics.Should().Contain(d => d.Column != null);
     }
 
     #endregion
@@ -1278,16 +1277,16 @@ y = 2";
     public void Tokenize_UnterminatedLiteralName_ThrowsError()
     {
         var source = "`unterminated";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Unterminated literal name*");
+        var errors = TokenizeExpectingError(source);
+        errors.Should().Contain("Unterminated literal name");
     }
 
     [Fact]
     public void Tokenize_LiteralNameWithNewline_ThrowsError()
     {
         var source = "`name\nwith newline`";
-        Action act = () => Tokenize(source);
-        act.Should().Throw<LexerError>().WithMessage("*Unterminated literal name*");
+        var errors = TokenizeExpectingError(source);
+        errors.Should().Contain("Unterminated literal name");
     }
 
     [Fact]

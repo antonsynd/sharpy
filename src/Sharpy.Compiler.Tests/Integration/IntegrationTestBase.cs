@@ -59,6 +59,16 @@ public abstract class IntegrationTestBase
             var lexer = new Sharpy.Compiler.Lexer.Lexer(sharpySource, logger);
             var tokens = lexer.TokenizeAll();
 
+            // Check for lexer errors collected via DiagnosticBag
+            if (lexer.Diagnostics.HasErrors)
+            {
+                return new ExecutionResult
+                {
+                    Success = false,
+                    CompilationErrors = lexer.Diagnostics.GetErrors().Select(d => d.Message).ToList()
+                };
+            }
+
             // Phase 2: Parse Sharpy code
             var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
             var module = parser.ParseModule();
