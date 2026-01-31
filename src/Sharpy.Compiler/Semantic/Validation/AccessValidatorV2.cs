@@ -21,7 +21,6 @@ public class AccessValidatorV2 : SemanticValidatorBase
 
     private ICompilerLogger _logger = NullLogger.Instance;
     private SemanticContext _context = null!;
-    private TypeSymbol? _currentClass = null;
 
     public override void Validate(Module module, SemanticContext context)
     {
@@ -64,30 +63,26 @@ public class AccessValidatorV2 : SemanticValidatorBase
 
     private void ValidateClass(ClassDef classDef)
     {
-        // Look up the class symbol
         var classSymbol = _context.SymbolTable.LookupType(classDef.Name);
-        _currentClass = classSymbol;
-
-        foreach (var member in classDef.Body)
+        using (_context.Traversal.EnterClass(classSymbol))
         {
-            ValidateStatement(member);
+            foreach (var member in classDef.Body)
+            {
+                ValidateStatement(member);
+            }
         }
-
-        _currentClass = null;
     }
 
     private void ValidateStruct(StructDef structDef)
     {
-        // Look up the struct symbol
         var structSymbol = _context.SymbolTable.LookupType(structDef.Name);
-        _currentClass = structSymbol;
-
-        foreach (var member in structDef.Body)
+        using (_context.Traversal.EnterClass(structSymbol))
         {
-            ValidateStatement(member);
+            foreach (var member in structDef.Body)
+            {
+                ValidateStatement(member);
+            }
         }
-
-        _currentClass = null;
     }
 
     private void ValidateFunction(FunctionDef funcDef)
@@ -282,7 +277,7 @@ public class AccessValidatorV2 : SemanticValidatorBase
         {
             case AccessLevel.Private:
                 // Private members only accessible within the same class
-                if (_currentClass != owningType)
+                if (_context.Traversal.CurrentClass != owningType)
                 {
                     AddError(_context,
                         $"Cannot access private member '{memberName}' of '{owningType.Name}' from outside the class",
@@ -292,7 +287,7 @@ public class AccessValidatorV2 : SemanticValidatorBase
 
             case AccessLevel.Protected:
                 // Protected members accessible within the class hierarchy
-                if (_currentClass == null || !IsInHierarchy(_currentClass, owningType))
+                if (_context.Traversal.CurrentClass == null || !IsInHierarchy(_context.Traversal.CurrentClass, owningType))
                 {
                     AddError(_context,
                         $"Cannot access protected member '{memberName}' of '{owningType.Name}' from outside the class hierarchy",
