@@ -343,8 +343,6 @@ public class Compiler
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // TODO: Pass 3: Semantic validation (will implement in Phase 3)
-
             // Phase 4: Code Generation - Generate C# code from AST using RoslynEmitter
             _logger.LogInfo("Phase 4: Code Generation");
             metrics.StartPhase("Code Generation");
