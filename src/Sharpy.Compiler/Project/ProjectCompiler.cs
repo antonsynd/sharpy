@@ -30,10 +30,6 @@ public class ProjectCompiler
     // Track errors and warnings using structured diagnostics
     private DiagnosticBag _diagnostics = new();
 
-    // Legacy error/warning lists for backward compatibility during migration
-    private List<string> _errors = new();
-    private List<string> _warnings = new();
-
     // Metrics tracking
     private ProjectCompilationMetrics _projectMetrics = null!;
 
@@ -58,8 +54,6 @@ public class ProjectCompiler
         _logger.LogInfo($"Starting project compilation: {config.RootNamespace}");
 
         _diagnostics = new DiagnosticBag();
-        _errors = new List<string>();
-        _warnings = new List<string>();
         _projectMetrics = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
         _projectModel = new ProjectModel(config);
 
@@ -197,7 +191,6 @@ public class ProjectCompiler
                 }
 
                 _diagnostics.AddLexerError(ex, sourceFile);
-                _errors.Add($"{sourceFile}({ex.Line},{ex.Column}): error: {ex.Message}");
                 _projectMetrics.AddFileMetrics(fileMetrics);
             }
             catch (ParserError ex)
@@ -211,7 +204,6 @@ public class ProjectCompiler
                 }
 
                 _diagnostics.AddParserError(ex, sourceFile);
-                _errors.Add($"{sourceFile}({ex.Line},{ex.Column}): error: {ex.Message}");
                 _projectMetrics.AddFileMetrics(fileMetrics);
             }
             catch (Exception ex)
@@ -225,12 +217,11 @@ public class ProjectCompiler
                 }
 
                 _diagnostics.AddError(ex.Message, filePath: sourceFile);
-                _errors.Add($"{sourceFile}: error: {ex.Message}");
                 _projectMetrics.AddFileMetrics(fileMetrics);
             }
         }
 
-        return !_errors.Any();
+        return !_diagnostics.HasErrors;
     }
 
     /// <summary>
@@ -313,10 +304,8 @@ public class ProjectCompiler
         {
             foreach (var error in _sharedNameResolver.Errors)
             {
-                var errorMsg = $"({error.Line},{error.Column}): error: {error.Message}";
                 _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column);
                 _diagnostics.AddError(error.Message, error.Line, error.Column, phase: CompilerPhase.NameResolution);
-                _errors.Add(errorMsg);
             }
         }
     }
@@ -343,10 +332,8 @@ public class ProjectCompiler
         var newErrors = _sharedNameResolver.Errors.Skip(previousErrorCount);
         foreach (var error in newErrors)
         {
-            var errorMsg = $"({error.Line},{error.Column}): error: {error.Message}";
             _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column);
             _diagnostics.AddError(error.Message, error.Line, error.Column, phase: CompilerPhase.NameResolution);
-            _errors.Add(errorMsg);
         }
     }
 
@@ -487,7 +474,6 @@ public class ProjectCompiler
                 var errorMsg = $"Circular dependency detected: {cycleDescription}";
                 _projectModel!.GlobalDiagnostics.AddError(errorMsg);
                 _diagnostics.AddError(errorMsg, phase: CompilerPhase.ImportResolution);
-                _errors.Add(errorMsg);
             }
             // Don't add import resolver errors when we have circular dependencies
             // as they would be redundant/confusing (e.g., "module not found" errors
@@ -502,11 +488,10 @@ public class ProjectCompiler
             {
                 _projectModel!.GlobalDiagnostics.AddError(error.Message);
                 _diagnostics.AddError(error.Message, error.Line, error.Column, phase: CompilerPhase.ImportResolution);
-                _errors.Add(error.Message);
             }
         }
 
-        return !_errors.Any();
+        return !_diagnostics.HasErrors;
     }
 
     /// <summary>
@@ -576,8 +561,6 @@ public class ProjectCompiler
                 unit.Phase = CompilationPhase.Failed;
 
                 _diagnostics.AddSemanticErrors(typeChecker.Errors, unit.FilePath, CompilerPhase.TypeChecking);
-                _errors.AddRange(typeChecker.Errors.Select(e =>
-                    $"{unit.FilePath}({e.Line},{e.Column}): error: {e.Message}"));
             }
             else
             {
@@ -591,7 +574,7 @@ public class ProjectCompiler
             }
         }
 
-        return !_errors.Any();
+        return !_diagnostics.HasErrors;
     }
 
     /// <summary>
@@ -648,7 +631,6 @@ public class ProjectCompiler
                 {
                     unit.Diagnostics.AddError(error, filePath: sourceFile);
                     _diagnostics.AddError(error, filePath: sourceFile, phase: CompilerPhase.CodeGeneration);
-                    _errors.Add($"{sourceFile}: error: {error}");
                 }
                 unit.Phase = CompilationPhase.Failed;
                 continue;
@@ -695,7 +677,6 @@ public class ProjectCompiler
                 _projectModel!.GlobalDiagnostics.AddError(error);
                 _diagnostics.AddError(error, phase: CompilerPhase.Assembly);
             }
-            _errors.AddRange(assemblyResult.Errors);
 
             foreach (var warning in assemblyResult.Warnings)
             {
@@ -714,7 +695,6 @@ public class ProjectCompiler
             };
         }
 
-        _warnings.AddRange(assemblyResult.Warnings);
         foreach (var warning in assemblyResult.Warnings)
         {
             _diagnostics.AddWarning(warning, phase: CompilerPhase.Assembly);
