@@ -55,16 +55,6 @@ public class SemanticContext
     /// </summary>
     public AstTraversalContext Traversal { get; } = new();
 
-    // Legacy state tracking (prefer using Traversal instead)
-    [Obsolete("Use Traversal.CurrentClass instead. This property will be removed in v0.2.")]
-    public TypeSymbol? CurrentClass { get; set; }
-    [Obsolete("Use Traversal.CurrentFunction instead. This property will be removed in v0.2.")]
-    public FunctionSymbol? CurrentFunction { get; set; }
-    [Obsolete("Use Traversal.InLoop instead. This property will be removed in v0.2.")]
-    public bool InLoop { get; set; }
-    [Obsolete("Use Traversal.LoopDepth instead. This property will be removed in v0.2.")]
-    public int LoopDepth { get; set; }
-
     public SemanticContext(
         SymbolTable symbolTable,
         SemanticInfo semanticInfo,
