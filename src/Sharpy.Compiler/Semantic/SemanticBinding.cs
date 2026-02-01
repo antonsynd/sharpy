@@ -197,7 +197,7 @@ public class SemanticBinding
             symbol.BaseType = baseType;
         foreach (var (symbol, queue) in _interfaces)
             foreach (var iface in queue)
-                if (!symbol.Interfaces.Contains(iface))
+                if (!symbol.Interfaces.Any(i => ReferenceEquals(i, iface) || i.Name == iface.Name))
                     symbol.Interfaces.Add(iface);
     }
 
