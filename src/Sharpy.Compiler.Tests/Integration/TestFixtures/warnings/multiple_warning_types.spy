@@ -1,0 +1,8 @@
+# Tests that multiple warning types can fire in the same file
+def foo() -> int:
+    unused: int = 99
+    return 42
+    print("unreachable")
+
+def main():
+    print(foo())

@@ -1,0 +1,9 @@
+# Variable defined in try-else body that is unused should warn
+def main():
+    try:
+        print("trying")
+    except Exception as e:
+        print("caught")
+    else:
+        cleanup: int = 42
+    print("done")
