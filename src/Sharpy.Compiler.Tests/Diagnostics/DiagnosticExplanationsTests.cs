@@ -11,6 +11,11 @@ public class DiagnosticExplanationsTests
     [InlineData("SHP0302")]
     [InlineData("SHP0001")]
     [InlineData("SHP0100")]
+    [InlineData("SHP0002")]
+    [InlineData("SHP0222")]
+    [InlineData("SHP0340")]
+    [InlineData("SHP0403")]
+    [InlineData("SHP0507")]
     public void Get_KnownCode_ReturnsExplanation(string code)
     {
         var explanation = DiagnosticExplanations.Get(code);
@@ -62,6 +67,9 @@ public class DiagnosticExplanationsTests
     [InlineData("SHP0001")]
     [InlineData("SHP0100")]
     [InlineData("SHP0302")]
+    [InlineData("SHP0263")]
+    [InlineData("SHP0281")]
+    [InlineData("SHP0403")]
     public void CommonCodes_HaveExamplesAndFixes(string code)
     {
         var explanation = DiagnosticExplanations.Get(code);
@@ -76,8 +84,8 @@ public class DiagnosticExplanationsTests
     {
         var all = DiagnosticExplanations.GetAll();
 
-        // We documented ~30 codes
-        Assert.True(all.Count >= 25, $"Expected at least 25 explanations, got {all.Count}");
+        // All diagnostic codes are documented
+        Assert.True(all.Count >= 100, $"Expected at least 100 explanations, got {all.Count}");
     }
 
     [Fact]
@@ -103,6 +111,31 @@ public class DiagnosticExplanationsTests
         {
             Assert.Matches(@"^SHP\d{4}$", code);
         }
+    }
+
+    [Fact]
+    public void AllDiagnosticCodes_HaveExplanations()
+    {
+        var all = DiagnosticExplanations.GetAll();
+
+        // Collect all codes from DiagnosticCodes via reflection
+        var codeFields = new List<string>();
+        foreach (var nestedType in typeof(DiagnosticCodes).GetNestedTypes())
+        {
+            foreach (var field in nestedType.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+            {
+                if (field.IsLiteral && field.FieldType == typeof(string))
+                {
+                    var code = (string)field.GetRawConstantValue()!;
+                    codeFields.Add(code);
+                }
+            }
+        }
+
+        var missing = codeFields.Where(c => !all.ContainsKey(c)).ToList();
+
+        Assert.True(missing.Count == 0,
+            $"The following diagnostic codes are missing explanations: {string.Join(", ", missing)}");
     }
 
     [Fact]

@@ -47,25 +47,120 @@ public static class DiagnosticExplanations
             "x: str = \"hello",
             "Add the closing quote:\n  x: str = \"hello\"");
 
+        Add(dict, DiagnosticCodes.Lexer.UnterminatedFString, "Unterminated f-string literal", "Lexer",
+            "An f-string literal was opened with f\" but never closed. The lexer reached the end of the line or file without finding a matching closing quote.",
+            "msg: str = f\"Hello, {name}",
+            "Add the closing quote:\n  msg: str = f\"Hello, {name}\"");
+
+        Add(dict, DiagnosticCodes.Lexer.UnterminatedRawString, "Unterminated raw string literal", "Lexer",
+            "A raw string literal was opened with r\" but never closed. Raw strings treat backslashes as literal characters.",
+            "path: str = r\"C:\\Users\\name",
+            "Add the closing quote:\n  path: str = r\"C:\\Users\\name\"");
+
         Add(dict, DiagnosticCodes.Lexer.InvalidEscapeSequence, "Invalid escape sequence", "Lexer",
             "A backslash in a string literal is followed by a character that is not a recognized escape sequence. Valid escapes include \\n, \\t, \\\\, \\\", \\', \\0, \\a, \\b, \\f, \\r, \\v, \\x, and \\u.",
             "path: str = \"C:\\new_folder\"",
             "Use a raw string or double the backslash:\n  path: str = r\"C:\\new_folder\"\n  path: str = \"C:\\\\new_folder\"");
+
+        Add(dict, DiagnosticCodes.Lexer.InvalidHexEscape, "Invalid hex escape sequence", "Lexer",
+            "A \\x escape sequence in a string is not followed by exactly two valid hexadecimal digits (0-9, a-f, A-F).",
+            "s: str = \"\\xZZ\"",
+            "Use valid hex digits:\n  s: str = \"\\x41\"  # 'A'");
+
+        Add(dict, DiagnosticCodes.Lexer.InvalidUnicodeEscape, "Invalid unicode escape sequence", "Lexer",
+            "A \\u escape sequence in a string is not followed by exactly four valid hexadecimal digits representing a Unicode code point.",
+            "s: str = \"\\u00GG\"",
+            "Use valid hex digits:\n  s: str = \"\\u0041\"  # 'A'");
+
+        Add(dict, DiagnosticCodes.Lexer.InvalidNumber, "Invalid number literal", "Lexer",
+            "A numeric literal is malformed. This may be caused by multiple decimal points, invalid digit sequences, or other formatting issues.",
+            "x: float = 3.14.15",
+            "Use a valid number format:\n  x: float = 3.1415");
+
+        Add(dict, DiagnosticCodes.Lexer.InvalidHexLiteral, "Invalid hex literal", "Lexer",
+            "A hexadecimal literal starting with 0x is not followed by valid hex digits (0-9, a-f, A-F).",
+            "x: int = 0xGG",
+            "Use valid hex digits:\n  x: int = 0xFF");
+
+        Add(dict, DiagnosticCodes.Lexer.InvalidBinaryLiteral, "Invalid binary literal", "Lexer",
+            "A binary literal starting with 0b is not followed by valid binary digits (0 or 1).",
+            "x: int = 0b1234",
+            "Use only 0 and 1:\n  x: int = 0b1010");
+
+        Add(dict, DiagnosticCodes.Lexer.InvalidOctalLiteral, "Invalid octal literal", "Lexer",
+            "An octal literal starting with 0o is not followed by valid octal digits (0-7).",
+            "x: int = 0o89",
+            "Use digits 0-7:\n  x: int = 0o77");
 
         Add(dict, DiagnosticCodes.Lexer.MixedTabsAndSpaces, "Mixed tabs and spaces", "Lexer",
             "The source file uses both tabs and spaces for indentation. Sharpy requires consistent indentation using spaces only (4 spaces per level).",
             null,
             "Convert all tabs to spaces. Most editors have a setting to convert tabs to spaces automatically.");
 
+        Add(dict, DiagnosticCodes.Lexer.TabsNotAllowed, "Tabs not allowed for indentation", "Lexer",
+            "Tab characters were used for indentation. Sharpy requires spaces only (4 spaces per indentation level).",
+            null,
+            "Replace tabs with 4 spaces per indentation level. Most editors can be configured to insert spaces when the Tab key is pressed.");
+
         Add(dict, DiagnosticCodes.Lexer.InvalidIndentation, "Invalid indentation", "Lexer",
             "The indentation level does not match any expected indentation. Each indentation level must be exactly 4 spaces.",
             "def foo():\n   return 1  # 3 spaces instead of 4",
             "Use exactly 4 spaces per indentation level:\ndef foo():\n    return 1");
 
+        Add(dict, DiagnosticCodes.Lexer.IndentationMismatch, "Indentation mismatch", "Lexer",
+            "The indentation level does not match the expected dedent level. When decreasing indentation, it must return to a previously established indentation level.",
+            "def foo():\n    if True:\n        x: int = 1\n  y: int = 2  # doesn't match any previous level",
+            "Align the indentation with a previous level:\ndef foo():\n    if True:\n        x: int = 1\n    y: int = 2");
+
         Add(dict, DiagnosticCodes.Lexer.UnexpectedCharacter, "Unexpected character", "Lexer",
             "The lexer encountered a character that is not part of any valid token. This may be a non-ASCII character, a stray symbol, or a character that is not valid in the current context.",
             "x: int = 42§",
             "Remove or replace the unexpected character.");
+
+        Add(dict, DiagnosticCodes.Lexer.BackslashAtEof, "Backslash at end of file", "Lexer",
+            "A line continuation backslash (\\) was found at the very end of the file with no following line.",
+            "x: int = 1 + \\",
+            "Remove the trailing backslash or add the continuation on the next line:\n  x: int = 1 + \\\n      2");
+
+        Add(dict, DiagnosticCodes.Lexer.BackslashTrailingWhitespace, "Backslash followed by whitespace", "Lexer",
+            "A line continuation backslash (\\) is followed by whitespace before the newline. The backslash must be the last character on the line.",
+            null,
+            "Remove any spaces or tabs after the backslash.");
+
+        Add(dict, DiagnosticCodes.Lexer.UnterminatedBacktickIdentifier, "Unterminated backtick identifier", "Lexer",
+            "A backtick-quoted identifier was opened with ` but never closed. Backtick identifiers allow using reserved words as names.",
+            "x: int = `class",
+            "Add the closing backtick:\n  x: int = `class`");
+
+        Add(dict, DiagnosticCodes.Lexer.InvalidFloatLiteral, "Invalid float literal", "Lexer",
+            "A floating-point literal is malformed. This may be caused by missing digits after the decimal point or invalid exponent notation.",
+            "x: float = 1.e",
+            "Use a valid float format:\n  x: float = 1.0\n  x: float = 1.0e10");
+
+        Add(dict, DiagnosticCodes.Lexer.UnterminatedFStringExpression, "Unterminated f-string expression", "Lexer",
+            "An expression inside an f-string (within { }) was not properly closed. The lexer reached the end of the string without finding the closing brace.",
+            "msg: str = f\"Value: {x + 1\"",
+            "Close the expression brace:\n  msg: str = f\"Value: {x + 1}\"");
+
+        Add(dict, DiagnosticCodes.Lexer.UnmatchedBraceInFString, "Unmatched brace in f-string", "Lexer",
+            "A closing brace } was found in an f-string without a matching opening brace, or vice versa. To include a literal brace in an f-string, use {{ or }}.",
+            "msg: str = f\"100%}\"",
+            "Escape literal braces by doubling them:\n  msg: str = f\"100%}}\"");
+
+        Add(dict, DiagnosticCodes.Lexer.UnterminatedFormatSpec, "Unterminated format specifier", "Lexer",
+            "A format specifier in an f-string expression (after the colon) was not properly terminated.",
+            "msg: str = f\"{value:.2f\"",
+            "Close the expression brace:\n  msg: str = f\"{value:.2f}\"");
+
+        Add(dict, DiagnosticCodes.Lexer.InvalidNumericSuffix, "Invalid numeric suffix", "Lexer",
+            "A numeric literal is followed by characters that form an invalid suffix. Numeric literals must not be immediately followed by identifier characters.",
+            "x: int = 42abc",
+            "Separate the number from the identifier:\n  x: int = 42\n  abc: str = \"value\"");
+
+        Add(dict, DiagnosticCodes.Lexer.OctalEscapeOverflow, "Octal escape overflow", "Lexer",
+            "An octal escape sequence (\\NNN) represents a value greater than 255 (\\377), which is out of range for a single byte.",
+            "s: str = \"\\400\"",
+            "Use a value within the valid range (\\000 to \\377):\n  s: str = \"\\377\"");
 
         // ── Parser errors (SHP0100-SHP0199) ─────────────────────────────
 
@@ -79,15 +174,55 @@ public static class DiagnosticExplanations
             "def 42():\n    pass",
             "Provide a valid identifier:\ndef my_function():\n    pass");
 
+        Add(dict, DiagnosticCodes.Parser.ExpectedNewline, "Expected newline", "Parser",
+            "The parser expected a newline (end of statement) but found additional tokens. Each statement must be on its own line.",
+            "x: int = 1 y: int = 2",
+            "Put each statement on its own line:\n  x: int = 1\n  y: int = 2");
+
+        Add(dict, DiagnosticCodes.Parser.ExpectedEndOfStatement, "Expected end of statement", "Parser",
+            "The parser reached a point where a statement should have ended but found additional tokens that don't form a valid continuation.",
+            "return 1 2 3",
+            "Remove the extra tokens or split into separate statements.");
+
         Add(dict, DiagnosticCodes.Parser.ExpectedToken, "Expected token", "Parser",
             "A specific token (such as a colon, parenthesis, or comma) was expected but not found. The error message will indicate which token was expected.",
             "def greet(name: str)\n    print(name)",
             "Add the missing token. In this example, add a colon after the parameter list:\ndef greet(name: str):\n    print(name)");
 
+        Add(dict, DiagnosticCodes.Parser.InvalidDecoratorTarget, "Invalid decorator target", "Parser",
+            "A decorator was applied to a statement that cannot be decorated. Decorators can only be applied to function definitions and class definitions.",
+            "@staticmethod\nx: int = 42",
+            "Apply the decorator to a function or class:\n@staticmethod\ndef my_method():\n    pass");
+
+        Add(dict, DiagnosticCodes.Parser.TupleAsStatement, "Tuple expression as statement", "Parser",
+            "A comma-separated expression (tuple) was used as a standalone statement, which has no effect. This is likely a mistake.",
+            "def main():\n    1, 2, 3",
+            "If you meant to create a tuple, assign it to a variable:\n  t: tuple[int, int, int] = (1, 2, 3)");
+
+        Add(dict, DiagnosticCodes.Parser.InvalidTypeAnnotationTarget, "Invalid type annotation target", "Parser",
+            "A type annotation was applied to an expression that cannot have one. Type annotations can only be applied to simple variable names.",
+            "x[0]: int = 42",
+            "Use a type annotation only on simple names:\n  x: list[int] = [42]");
+
         Add(dict, DiagnosticCodes.Parser.PositionalAfterKeyword, "Positional argument after keyword argument", "Parser",
             "A positional argument appeared after a keyword argument in a function call. Once you use a keyword argument, all subsequent arguments must also be keyword arguments.",
             "greet(name=\"Alice\", 42)",
             "Move positional arguments before keyword arguments, or use keyword syntax for all:\ngreet(42, name=\"Alice\")\ngreet(age=42, name=\"Alice\")");
+
+        Add(dict, DiagnosticCodes.Parser.MultipleVariadic, "Multiple variadic parameters", "Parser",
+            "A function has more than one variadic (*args) parameter. Only one variadic parameter is allowed per function.",
+            "def foo(*a: int, *b: str):\n    pass",
+            "Use only one variadic parameter:\ndef foo(*a: int, name: str = \"\"):\n    pass");
+
+        Add(dict, DiagnosticCodes.Parser.VariadicWithDefault, "Variadic parameter with default value", "Parser",
+            "A variadic (*args) parameter was given a default value. Variadic parameters collect zero or more arguments and cannot have defaults.",
+            "def foo(*args: int = [1, 2]):\n    pass",
+            "Remove the default value:\ndef foo(*args: int):\n    pass");
+
+        Add(dict, DiagnosticCodes.Parser.VariadicNotLast, "Variadic parameter not last", "Parser",
+            "A variadic (*args) parameter must be the last positional parameter in a function definition.",
+            "def foo(*args: int, x: int):\n    pass",
+            "Move the variadic parameter to the end:\ndef foo(x: int, *args: int):\n    pass");
 
         Add(dict, DiagnosticCodes.Parser.EmptyEnum, "Empty enum", "Parser",
             "An enum declaration has no members. Enums must have at least one member.",
@@ -98,6 +233,26 @@ public static class DiagnosticExplanations
             "A union type annotation like `int | str` was used outside of a supported context. Sharpy uses Optional[T] for nullable types and does not support arbitrary union types.",
             "x: int | str = 42",
             "Use a common base type, Optional[T] for nullable values, or redesign to avoid union types:\nx: Optional[int] = 42");
+
+        Add(dict, DiagnosticCodes.Parser.EmptyListShorthand, "Empty list shorthand not allowed", "Parser",
+            "An empty list type shorthand [] was used without a type parameter. List type annotations require an element type.",
+            "x: [] = []",
+            "Specify the element type:\n  x: list[int] = []");
+
+        Add(dict, DiagnosticCodes.Parser.EmptySetDictShorthand, "Empty set/dict shorthand not allowed", "Parser",
+            "An empty set or dict type shorthand {} was used without type parameters. Set and dict type annotations require element types.",
+            "x: {} = {}",
+            "Specify the types:\n  x: dict[str, int] = {}\n  x: set[int] = set()");
+
+        Add(dict, DiagnosticCodes.Parser.ExpectedModuleName, "Expected module name", "Parser",
+            "An import statement is missing the module name to import from.",
+            "from import foo",
+            "Provide the module name:\n  from my_module import foo");
+
+        Add(dict, DiagnosticCodes.Parser.ExpectedDecoratorName, "Expected decorator name", "Parser",
+            "A decorator (@) was not followed by a valid decorator name.",
+            "@\ndef foo():\n    pass",
+            "Add a valid decorator name:\n@staticmethod\ndef foo():\n    pass");
 
         // ── Semantic errors: Name resolution (SHP0200-SHP0219) ──────────
 
@@ -116,6 +271,11 @@ public static class DiagnosticExplanations
             "x: Widget = Widget()  # Widget not defined",
             "Define the type or import it:\nclass Widget:\n    name: str");
 
+        Add(dict, DiagnosticCodes.Semantic.UndefinedMember, "Undefined member", "Semantic",
+            "An attribute or method was accessed on a type that does not define it. This can occur with field access, method calls, or property access.",
+            "class Point:\n    x: int\n    y: int\n\np = Point(1, 2)\nprint(p.z)  # Point has no member 'z'",
+            "Check the type definition for available members. Fix the member name or add the missing member to the type.");
+
         Add(dict, DiagnosticCodes.Semantic.DuplicateDefinition, "Duplicate definition", "Semantic",
             "A name was defined more than once in the same scope. Each name can only be defined once per scope (function, class, or module level).",
             "x: int = 1\nx: str = \"hello\"  # duplicate",
@@ -131,6 +291,21 @@ public static class DiagnosticExplanations
             "def add(x: int, x: int) -> int:\n    return x + x",
             "Give each parameter a unique name:\ndef add(x: int, y: int) -> int:\n    return x + y");
 
+        Add(dict, DiagnosticCodes.Semantic.DuplicateConstant, "Duplicate constant", "Semantic",
+            "A constant was defined more than once in the same scope. Constants, like variables, must have unique names.",
+            "PI: float = 3.14\nPI: float = 3.14159  # duplicate",
+            "Remove the duplicate constant or use a different name.");
+
+        Add(dict, DiagnosticCodes.Semantic.DuplicateTypeAlias, "Duplicate type alias", "Semantic",
+            "A type alias was defined more than once. Each type alias name must be unique within its scope.",
+            "type IntList = list[int]\ntype IntList = list[int]  # duplicate",
+            "Remove the duplicate alias or use a different name.");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidTypeAlias, "Invalid type alias", "Semantic",
+            "A type alias definition is invalid. The target type may not be a valid type expression.",
+            "type Bad = 42",
+            "Use a valid type expression:\n  type IntList = list[int]\n  type Callback = Callable[[int], str]");
+
         // ── Semantic errors: Type checking (SHP0220-SHP0259) ────────────
 
         Add(dict, DiagnosticCodes.Semantic.TypeMismatch, "Type mismatch", "Semantic",
@@ -138,27 +313,192 @@ public static class DiagnosticExplanations
             "x: int = \"hello\"  # str assigned to int",
             "Ensure the types match. Either change the value, add a type conversion, or change the type annotation.");
 
+        Add(dict, DiagnosticCodes.Semantic.IncompatibleTypes, "Incompatible types", "Semantic",
+            "Two types are incompatible in the given context. This is similar to a type mismatch but may involve more complex type relationships such as generic constraints or inheritance hierarchies.",
+            "items: list[int] = [1, 2, 3]\nitems = \"hello\"  # list[int] and str are incompatible",
+            "Ensure the types are compatible. Use explicit conversions if needed.");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidBinaryOperation, "Invalid binary operation", "Semantic",
+            "A binary operator was used with operand types that do not support it. For example, using + between an int and a bool, or - with strings.",
+            "x: str = \"hello\" - \"world\"  # str doesn't support -",
+            "Use an operator that is supported for the given types, or convert the operands to compatible types.");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidUnaryOperation, "Invalid unary operation", "Semantic",
+            "A unary operator was used with an operand type that does not support it. For example, using the negation operator (-) on a string.",
+            "x: str = -\"hello\"",
+            "Use an operator that is supported for the given type.");
+
         Add(dict, DiagnosticCodes.Semantic.WrongArgumentCount, "Wrong argument count", "Semantic",
             "A function or method was called with the wrong number of arguments. The error message indicates how many arguments were expected and how many were provided.",
             "def greet(name: str) -> str:\n    return f\"Hello, {name}\"\n\ngreet()  # expected 1 argument",
             "Provide the correct number of arguments:\ngreet(\"Alice\")");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidAssignmentTarget, "Invalid assignment target", "Semantic",
+            "The left-hand side of an assignment is not a valid target. Assignments can only target variables, fields, and subscript expressions.",
+            "1 + 2 = 3  # cannot assign to expression",
+            "Assign to a variable or field:\n  result: int = 1 + 2");
 
         Add(dict, DiagnosticCodes.Semantic.MissingTypeAnnotation, "Missing type annotation", "Semantic",
             "A variable declaration is missing a type annotation. Sharpy requires explicit type annotations for all variable declarations to ensure static type safety.",
             "x = 42  # missing type annotation",
             "Add a type annotation:\nx: int = 42");
 
+        Add(dict, DiagnosticCodes.Semantic.CannotInferType, "Cannot infer type", "Semantic",
+            "The compiler cannot determine the type of an expression. This may occur with complex expressions or when type information is insufficient.",
+            "x: auto = some_complex_expression()",
+            "Add an explicit type annotation to help the compiler:\n  x: int = some_complex_expression()");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidCast, "Invalid cast", "Semantic",
+            "A type cast is invalid because the source and target types are not compatible. Only related types can be cast to each other.",
+            "x: int = int(\"not_a_number\")  # runtime error potential",
+            "Ensure the cast is between compatible types or use a conversion function.");
+
         Add(dict, DiagnosticCodes.Semantic.NullabilityViolation, "Nullability violation", "Semantic",
             "A potentially null value is being used in a context that requires a non-null value. Use Optional[T] for values that can be None, and handle the None case before using the value.",
             "def get_name() -> Optional[str]:\n    return None\n\nname: str = get_name()  # might be None",
             "Handle the null case:\nresult = get_name()\nif result is not None:\n    name: str = result");
+
+        Add(dict, DiagnosticCodes.Semantic.NotCallable, "Type is not callable", "Semantic",
+            "An expression was called like a function but its type does not support being called. Only functions, methods, and types with __call__ can be called.",
+            "x: int = 42\ny: int = x()  # int is not callable",
+            "Ensure you are calling a function or method, not a value.");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidPipeTarget, "Invalid pipe target", "Semantic",
+            "The right-hand side of a pipe operator (|>) is not a valid pipe target. The target must be a callable that accepts the piped value as its first argument.",
+            "42 |> \"hello\"  # str is not a valid pipe target",
+            "Pipe into a function:\n  42 |> str\n  items |> len");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidSelfUsage, "Invalid 'self' usage", "Semantic",
+            "'self' was used outside of an instance method or in an invalid context. 'self' is only available inside instance methods of a class.",
+            "def free_function():\n    print(self.x)  # no self outside a class",
+            "Move the code into a class method or pass the object as a parameter.");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidNothingUsage, "Invalid 'Nothing' usage", "Semantic",
+            "'Nothing' was used in an invalid context. Nothing is the bottom type and can only be used in specific type-level contexts.",
+            "x: Nothing = 42",
+            "Nothing is typically used as a return type for functions that never return:\ndef fail(msg: str) -> Nothing:\n    raise Error(msg)");
+
+        Add(dict, DiagnosticCodes.Semantic.UnknownKeywordArgument, "Unknown keyword argument", "Semantic",
+            "A keyword argument was passed to a function using a name that does not match any parameter. Check the function signature for the correct parameter names.",
+            "def greet(name: str):\n    print(name)\n\ngreet(nme=\"Alice\")  # typo in 'name'",
+            "Use the correct parameter name:\n  greet(name=\"Alice\")");
+
+        Add(dict, DiagnosticCodes.Semantic.DuplicateArgument, "Duplicate argument", "Semantic",
+            "The same argument was provided more than once in a function call, either as a duplicate keyword argument or as both a positional and keyword argument.",
+            "greet(\"Alice\", name=\"Bob\")  # name supplied twice",
+            "Remove the duplicate argument:\n  greet(name=\"Alice\")");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidNullConditional, "Invalid null-conditional access", "Semantic",
+            "The null-conditional operator (?.) was used on a type that is not nullable. This operator is only meaningful on Optional[T] types.",
+            "x: int = 42\ny = x?.to_string()  # int is never null",
+            "Use regular member access for non-nullable types:\n  y = x.to_string()");
+
+        Add(dict, DiagnosticCodes.Semantic.CannotInferGenericType, "Cannot infer generic type argument", "Semantic",
+            "The compiler cannot infer the type arguments for a generic type or function. Provide explicit type arguments.",
+            "items = []  # can't infer element type",
+            "Specify the type:\n  items: list[int] = []");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidComprehension, "Invalid comprehension", "Semantic",
+            "A list, set, or dict comprehension contains invalid syntax or type mismatches in its clauses.",
+            "result: list[int] = [x for x in \"hello\"]  # str elements, not int",
+            "Ensure the comprehension expression type matches the target type.");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidTupleUnpacking, "Invalid tuple unpacking", "Semantic",
+            "A tuple unpacking assignment has a mismatch between the number of variables and the number of tuple elements.",
+            "a, b = (1, 2, 3)  # 2 targets, 3 values",
+            "Match the number of variables to the tuple size:\n  a, b, c = (1, 2, 3)");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidAutoVariable, "Invalid auto variable", "Semantic",
+            "A variable declared with 'auto' type cannot have its type inferred from the initializer. The initializer expression's type is ambiguous or unresolvable.",
+            null,
+            "Add an explicit type annotation instead of using 'auto'.");
 
         Add(dict, DiagnosticCodes.Semantic.ConditionNotBoolean, "Condition is not boolean", "Semantic",
             "An expression used as a condition in an if, while, or similar statement does not evaluate to a boolean type. Conditions must be explicitly boolean in Sharpy.",
             "x: int = 42\nif x:  # int is not bool\n    print(\"truthy\")",
             "Use an explicit comparison:\nif x != 0:\n    print(\"non-zero\")");
 
+        Add(dict, DiagnosticCodes.Semantic.InvalidRaise, "Invalid raise statement", "Semantic",
+            "A raise statement is used incorrectly. Bare 'raise' can only be used inside an except block, and 'raise X' requires X to be an exception type.",
+            "def foo():\n    raise  # bare raise outside except block",
+            "Raise a specific exception:\n  raise ValueError(\"something went wrong\")\n\nOr use bare raise inside an except block:\n  try:\n      ...\n  except Exception as e:\n      raise");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidMaybeExpression, "Invalid Maybe expression", "Semantic",
+            "A Maybe expression is used incorrectly. Maybe wraps optional values and must be used with compatible types.",
+            null,
+            "Ensure the expression is compatible with the Maybe/Optional type pattern.");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidNoneConstructor, "Invalid None constructor usage", "Semantic",
+            "None was used in a context that requires a specific type. None can only be used where an Optional[T] type is expected.",
+            "x: int = None  # int is not nullable",
+            "Use Optional[T] for nullable types:\n  x: Optional[int] = None");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidSomeConstructor, "Invalid Some constructor usage", "Semantic",
+            "The Some() constructor for Optional types was used incorrectly. Some wraps a non-null value into an Optional.",
+            "x: Optional[int] = Some(None)  # Some cannot wrap None",
+            "Pass a non-null value to Some:\n  x: Optional[int] = Some(42)");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidOkErrConstructor, "Invalid Ok/Err constructor usage", "Semantic",
+            "An Ok() or Err() constructor for Result types was used incorrectly. Ok wraps a success value and Err wraps an error value.",
+            null,
+            "Ensure Ok/Err is used with compatible Result[T, E] types.");
+
+        Add(dict, DiagnosticCodes.Semantic.MissingMethodBody, "Missing method body", "Semantic",
+            "A non-abstract method in a class or struct is missing its body. Only abstract methods and interface methods can omit the body.",
+            "class Foo:\n    def bar(self) -> int:",
+            "Add a method body:\nclass Foo:\n    def bar(self) -> int:\n        return 42\n\nOr mark the method as abstract:\nabstract class Foo:\n    def bar(self) -> int: ...");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidOverride, "Invalid override", "Semantic",
+            "A method override is invalid. The overriding method must match the signature of the base class method in parameter types and return type.",
+            "class Base:\n    def foo(self) -> int:\n        return 1\n\nclass Sub(Base):\n    def foo(self) -> str:  # return type mismatch\n        return \"hello\"",
+            "Match the base class method signature:\nclass Sub(Base):\n    def foo(self) -> int:\n        return 2");
+
+        Add(dict, DiagnosticCodes.Semantic.MissingParameterAnnotation, "Missing parameter type annotation", "Semantic",
+            "A function parameter is missing its type annotation. All parameters in Sharpy must have explicit type annotations.",
+            "def add(a, b) -> int:\n    return a + b",
+            "Add type annotations to all parameters:\ndef add(a: int, b: int) -> int:\n    return a + b");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidDefaultValue, "Invalid default value", "Semantic",
+            "A parameter's default value is not compatible with its declared type.",
+            "def greet(name: int = \"hello\"):\n    print(name)",
+            "Ensure the default value matches the parameter type:\ndef greet(name: str = \"hello\"):\n    print(name)");
+
+        Add(dict, DiagnosticCodes.Semantic.InterfaceMethodBody, "Interface method has body", "Semantic",
+            "An interface method was defined with a body. Interface methods must be abstract (no implementation).",
+            "interface Printable:\n    def display(self) -> str:\n        return \"hello\"  # not allowed",
+            "Remove the body and use ... (ellipsis) for abstract methods:\ninterface Printable:\n    def display(self) -> str: ...");
+
+        Add(dict, DiagnosticCodes.Semantic.UninitializedStructField, "Uninitialized struct field", "Semantic",
+            "A struct field does not have a default value and is not initialized in the constructor. Struct fields must be initialized.",
+            "struct Point:\n    x: int\n    y: int\n    z: int  # no default, not set in __init__",
+            "Provide a default value or ensure all fields are set in the constructor:\nstruct Point:\n    x: int = 0\n    y: int = 0\n    z: int = 0");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidEnumValue, "Invalid enum value", "Semantic",
+            "An enum member has an invalid value. Enum values must be constant expressions of the correct type.",
+            "enum Status:\n    ACTIVE = some_function()  # not a constant",
+            "Use a constant value:\nenum Status:\n    ACTIVE = 1\n    INACTIVE = 0");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidFunctionType, "Invalid function type", "Semantic",
+            "A function type annotation is invalid. Function types must use the Callable syntax with proper parameter and return types.",
+            "f: int -> str = ...  # invalid syntax",
+            "Use Callable syntax:\n  f: Callable[[int], str] = my_func");
+
         // ── Semantic errors: Return and control flow (SHP0260-SHP0279) ──
+
+        Add(dict, DiagnosticCodes.Semantic.MissingReturnValue, "Missing return value", "Semantic",
+            "A return statement in a function with a non-void return type is missing the return value. Functions that declare a return type must return a value of that type.",
+            "def square(x: int) -> int:\n    return  # missing value",
+            "Return a value matching the declared type:\ndef square(x: int) -> int:\n    return x * x");
+
+        Add(dict, DiagnosticCodes.Semantic.MissingReturnType, "Missing return type annotation", "Semantic",
+            "A function definition is missing its return type annotation. Sharpy requires explicit return types on all functions. Use -> None for functions that don't return a value.",
+            "def greet(name: str):\n    print(f\"Hello, {name}\")",
+            "Add a return type:\ndef greet(name: str) -> None:\n    print(f\"Hello, {name}\")");
+
+        Add(dict, DiagnosticCodes.Semantic.ReturnOutsideFunction, "Return outside function", "Semantic",
+            "A return statement was used outside of a function body. Return can only be used inside functions and methods.",
+            "return 42  # at module level",
+            "Move the return inside a function:\ndef main():\n    return 42");
 
         Add(dict, DiagnosticCodes.Semantic.BreakOutsideLoop, "Break outside loop", "Semantic",
             "A break statement was used outside of a for or while loop. Break can only be used inside loop bodies.",
@@ -192,10 +532,35 @@ public static class DiagnosticExplanations
             "struct Point:\n    x: int\n    y: int\n\nclass Point3D(Point):  # cannot inherit from struct\n    z: int",
             "Use class inheritance only with other classes, or use composition instead.");
 
+        Add(dict, DiagnosticCodes.Semantic.IncompatibleOverride, "Incompatible method override", "Semantic",
+            "A method in a subclass overrides a base class method but with an incompatible signature. The parameter types and return type must be compatible with the base method.",
+            "class Base:\n    def process(self, x: int) -> str:\n        return str(x)\n\nclass Sub(Base):\n    def process(self, x: str) -> int:  # incompatible\n        return 0",
+            "Match the base method's signature:\nclass Sub(Base):\n    def process(self, x: int) -> str:\n        return f\"value: {x}\"");
+
         Add(dict, DiagnosticCodes.Semantic.AccessViolation, "Access violation", "Semantic",
             "Code attempted to access a member that is not accessible from the current context. Members prefixed with _ are protected (accessible in subclasses), and members prefixed with __ are private (accessible only within the defining class).",
             "class Secret:\n    __key: str = \"hidden\"\n\ns = Secret()\nprint(s.__key)  # private access",
             "Use a public method to expose the value, or change the access level.");
+
+        Add(dict, DiagnosticCodes.Semantic.SuperOutsideClass, "super() outside class", "Semantic",
+            "The super() call was used outside of a class method. super() is only valid inside instance methods of a class that has a base class.",
+            "def foo():\n    super().__init__()  # not in a class",
+            "Use super() only inside a class method:\nclass Sub(Base):\n    def __init__(self):\n        super().__init__()");
+
+        Add(dict, DiagnosticCodes.Semantic.SuperNoParent, "super() in class without parent", "Semantic",
+            "super() was called in a class that does not have a base class. super() is only meaningful in classes that inherit from another class.",
+            "class Root:\n    def __init__(self):\n        super().__init__()  # Root has no parent",
+            "Remove the super() call or add a base class:\nclass Root(Base):\n    def __init__(self):\n        super().__init__()");
+
+        Add(dict, DiagnosticCodes.Semantic.DuplicateClass, "Duplicate class definition", "Semantic",
+            "A class name was defined more than once in the same scope. Each class name must be unique.",
+            "class Foo:\n    x: int\n\nclass Foo:  # duplicate\n    y: str",
+            "Rename one of the classes or merge them into a single definition.");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidSuperUsage, "Invalid super() usage", "Semantic",
+            "super() was used in an invalid way. super() must be called as a function and used to access base class methods.",
+            "class Sub(Base):\n    def foo(self):\n        x = super  # not called as a function",
+            "Call super() as a function:\nclass Sub(Base):\n    def foo(self):\n        super().foo()");
 
         // ── Semantic errors: Import (SHP0300-SHP0319) ───────────────────
 
@@ -214,12 +579,81 @@ public static class DiagnosticExplanations
             "# a.spy\nfrom b import foo\n\n# b.spy\nfrom a import bar",
             "Break the cycle by:\n  1. Moving shared code to a third module\n  2. Restructuring the dependency graph\n  3. Using lazy imports where possible");
 
+        Add(dict, DiagnosticCodes.Semantic.ImportPrivateSymbol, "Cannot import private symbol", "Semantic",
+            "An import statement attempts to import a symbol that is private (prefixed with __ or _). Private and protected symbols cannot be imported from other modules.",
+            "from utils import _internal_helper  # protected symbol",
+            "Only import public symbols. If you need the functionality, use a public wrapper in the source module.");
+
+        Add(dict, DiagnosticCodes.Semantic.ModuleLoadError, "Module load error", "Semantic",
+            "A module was found but could not be loaded, typically due to syntax errors in the module's source file.",
+            null,
+            "Fix the errors in the imported module first, then retry the compilation.");
+
+        Add(dict, DiagnosticCodes.Semantic.AssemblyNotFound, "Assembly not found", "Semantic",
+            "A .NET assembly referenced in an import could not be found. The compiler searches configured assembly paths.",
+            "import SomeLibrary  # .NET assembly not found",
+            "Ensure the assembly DLL is available and the assembly search path is configured correctly.");
+
+        Add(dict, DiagnosticCodes.Semantic.AssemblyLoadError, "Assembly load error", "Semantic",
+            "A .NET assembly was found but could not be loaded, typically due to version incompatibility or missing dependencies.",
+            null,
+            "Check the assembly's target framework compatibility and ensure all dependencies are available.");
+
+        // ── Semantic errors: Protocol and operator (SHP0320-SHP0339) ────
+
+        Add(dict, DiagnosticCodes.Semantic.ProtocolMissingMethod, "Protocol method not implemented", "Semantic",
+            "A class claims to implement an interface (protocol) but is missing one or more required methods. All interface methods must be implemented.",
+            "interface Printable:\n    def display(self) -> str: ...\n\nclass Foo(Printable):  # missing display()\n    x: int",
+            "Implement all required methods:\nclass Foo(Printable):\n    x: int\n    def display(self) -> str:\n        return str(self.x)");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidOperatorSignature, "Invalid operator signature", "Semantic",
+            "An operator overload method has an incorrect signature. Operator methods must follow specific parameter and return type conventions.",
+            "class Vec:\n    def __add__(self) -> Vec:  # missing 'other' parameter\n        return self",
+            "Use the correct operator signature:\nclass Vec:\n    def __add__(self, other: Vec) -> Vec:\n        return Vec()");
+
+        Add(dict, DiagnosticCodes.Semantic.InvalidDecoratorUsage, "Invalid decorator usage", "Semantic",
+            "A decorator was used in an invalid context or with invalid arguments. Check that the decorator is appropriate for the target (function, method, or class).",
+            "@override\ndef top_level_func():  # @override only valid on class methods\n    pass",
+            "Use the decorator on an appropriate target, or remove it.");
+
+        // ── Semantic errors: Module level (SHP0340-SHP0349) ─────────────
+
+        Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",
+            "An executable statement (like a function call or expression) was found at module level. Only declarations (functions, classes, variables, imports) are allowed at module level. Executable code must be inside the main() function.",
+            "print(\"hello\")  # at module level\n\ndef main():\n    pass",
+            "Move executable code into the main() function:\ndef main():\n    print(\"hello\")");
+
+        Add(dict, DiagnosticCodes.Semantic.ModuleLevelNoTypeAnnotation, "Module-level variable without type annotation", "Semantic",
+            "A variable at module level is missing its type annotation. Module-level variables must always have explicit type annotations.",
+            "x = 42  # missing type annotation at module level",
+            "Add a type annotation:\n  x: int = 42");
+
         // ── Validation errors (SHP0400-SHP0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",
             "A function parameter has a mutable default value (list, dict, or set literal). In Python, mutable defaults are shared across calls, leading to subtle bugs. Sharpy prevents this pattern.",
             "def append_to(item: int, lst: list[int] = []) -> list[int]:\n    lst.append(item)\n    return lst",
             "Use None as the default and create the mutable object inside the function:\ndef append_to(item: int, lst: Optional[list[int]] = None) -> list[int]:\n    if lst is None:\n        lst = []\n    lst.append(item)\n    return lst");
+
+        Add(dict, DiagnosticCodes.Validation.NonConstDefault, "Non-constant default parameter value", "Validation",
+            "A function parameter has a default value that is not a compile-time constant. Default values must be literals or constants.",
+            "x: int = 10\ndef foo(n: int = x):  # x is not a constant\n    pass",
+            "Use a literal or constant default:\ndef foo(n: int = 10):\n    pass");
+
+        Add(dict, DiagnosticCodes.Validation.UnsupportedOperator, "Unsupported operator for type", "Validation",
+            "An operator was used with types that don't support it. The validation pipeline checks operator compatibility beyond basic type checking.",
+            null,
+            "Use an operator that is supported for the given types, or implement the corresponding dunder method on your class.");
+
+        Add(dict, DiagnosticCodes.Validation.MissingMainFunction, "Missing main() function", "Validation",
+            "The program does not define a main() function. Every Sharpy program must have a main() function as its entry point.",
+            "def helper() -> int:\n    return 42\n# no main function",
+            "Add a main function:\ndef main():\n    result: int = helper()\n    print(result)");
+
+        Add(dict, DiagnosticCodes.Validation.InvalidNullCoalesce, "Invalid null-coalescing operator usage", "Validation",
+            "The null-coalescing operator (??) was used with a left operand that is not nullable, or with incompatible types.",
+            "x: int = 42\ny: int = x ?? 0  # x is never null",
+            "Only use ?? with Optional types:\n  x: Optional[int] = get_value()\n  y: int = x ?? 0");
 
         // ── Code generation errors (SHP0500-SHP0599) ───────────────────
 
@@ -233,6 +667,36 @@ public static class DiagnosticExplanations
             null,
             "Check the language specification for supported features, or file a feature request.");
 
+        Add(dict, DiagnosticCodes.CodeGen.EmptyClassName, "Empty class name in code generation", "CodeGen",
+            "The code generator encountered a class with an empty name. This is an internal compiler error.",
+            null,
+            "Report this error at https://github.com/anthropics/sharpy/issues.");
+
+        Add(dict, DiagnosticCodes.CodeGen.DuplicateMember, "Duplicate member in generated code", "CodeGen",
+            "The code generator detected a duplicate member name in the generated C# class. This can happen when name mangling produces a collision.",
+            null,
+            "Rename one of the conflicting members to avoid the collision.");
+
+        Add(dict, DiagnosticCodes.CodeGen.EmptyMethodName, "Empty method name in code generation", "CodeGen",
+            "The code generator encountered a method with an empty name. This is an internal compiler error.",
+            null,
+            "Report this error at https://github.com/anthropics/sharpy/issues.");
+
+        Add(dict, DiagnosticCodes.CodeGen.AbstractMethodWithBody, "Abstract method with body in code generation", "CodeGen",
+            "The code generator encountered an abstract method that has a body. Abstract methods should not have implementations.",
+            null,
+            "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/anthropics/sharpy/issues.");
+
+        Add(dict, DiagnosticCodes.CodeGen.NonAbstractMethodWithoutBody, "Non-abstract method without body", "CodeGen",
+            "The code generator encountered a concrete (non-abstract) method that has no body. Only abstract and interface methods can omit the body.",
+            null,
+            "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/anthropics/sharpy/issues.");
+
+        Add(dict, DiagnosticCodes.CodeGen.VarWithoutInitializer, "Variable without initializer in code generation", "CodeGen",
+            "The code generator encountered a variable declaration without an initializer. All variables should have initializers by this point in the compilation pipeline.",
+            null,
+            "This is an internal compiler error. Report it at https://github.com/anthropics/sharpy/issues.");
+
         // ── Infrastructure errors (SHP0900-SHP0999) ────────────────────
 
         Add(dict, DiagnosticCodes.Infrastructure.CompilationFailed, "Compilation failed", "Infrastructure",
@@ -244,6 +708,16 @@ public static class DiagnosticExplanations
             "The compilation was cancelled, either by user request or by a timeout. No output was produced.",
             null,
             "Re-run the compilation. If it keeps timing out, check for very large files or circular dependencies.");
+
+        Add(dict, DiagnosticCodes.Infrastructure.AssemblyCompilationFailed, "Assembly compilation failed", "Infrastructure",
+            "The Roslyn C# compilation of the generated code failed. This means the compiler produced C# code that the .NET compiler could not compile.",
+            null,
+            "This is likely an internal compiler error. Report it at https://github.com/anthropics/sharpy/issues with the source file.");
+
+        Add(dict, DiagnosticCodes.Infrastructure.FileReadError, "File read error", "Infrastructure",
+            "A source file could not be read from disk. This may be due to missing files, permission issues, or invalid file paths.",
+            null,
+            "Verify the file exists, the path is correct, and you have read permissions.");
 
         return dict;
     }
