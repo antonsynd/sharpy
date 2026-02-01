@@ -1,3 +1,5 @@
+using Sharpy.Compiler.Text;
+
 namespace Sharpy.Compiler.Diagnostics;
 
 /// <summary>
@@ -39,7 +41,8 @@ public record CompilerDiagnostic(
     int? Column = null,
     string? FilePath = null,
     string? Code = null,
-    CompilerPhase Phase = CompilerPhase.Unknown
+    CompilerPhase Phase = CompilerPhase.Unknown,
+    TextSpan? Span = null
 )
 {
     public bool IsError => Severity == CompilerDiagnosticSeverity.Error;
@@ -64,8 +67,9 @@ public record CompilerDiagnostic(
 
         var file = !string.IsNullOrEmpty(FilePath) ? $"{FilePath}" : "";
         var code = !string.IsNullOrEmpty(Code) ? $" {Code}:" : ":";
+        var span = Span.HasValue ? $" {Span.Value}" : "";
 
-        return $"{file}{location}: {prefix}{code} {Message}";
+        return $"{file}{location}: {prefix}{code} {Message}{span}";
     }
 }
 
@@ -92,10 +96,36 @@ public class DiagnosticBag
         Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Error, line, column, filePath, code, phase));
     }
 
+    public void AddError(string message, TextSpan? span, int? line = null, int? column = null,
+        string? filePath = null, string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+    {
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Error, line, column, filePath, code, phase, span));
+    }
+
+    public void AddError(string message, ILocatable locatable, string? filePath = null,
+        string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+    {
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Error, Span: locatable.Span,
+            FilePath: filePath, Code: code, Phase: phase));
+    }
+
     public void AddWarning(string message, int? line = null, int? column = null, string? filePath = null,
         string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
     {
         Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Warning, line, column, filePath, code, phase));
+    }
+
+    public void AddWarning(string message, TextSpan? span, int? line = null, int? column = null,
+        string? filePath = null, string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+    {
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Warning, line, column, filePath, code, phase, span));
+    }
+
+    public void AddWarning(string message, ILocatable locatable, string? filePath = null,
+        string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+    {
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Warning, Span: locatable.Span,
+            FilePath: filePath, Code: code, Phase: phase));
     }
 
     public void AddRange(IEnumerable<CompilerDiagnostic> diagnostics)

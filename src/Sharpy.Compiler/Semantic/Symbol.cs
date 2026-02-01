@@ -1,11 +1,19 @@
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// Represents a symbol in the symbol table
+/// Represents a symbol in the symbol table.
 /// </summary>
+/// <remarks>
+/// Symbol uses reference-based equality (not value-based) because symbols have mutable
+/// properties (Type, BaseType, CodeGenInfo) that are set after creation during semantic analysis.
+/// Using value-based equality (the record default) would make hash codes unstable, causing
+/// dictionary/set lookups to fail silently after mutation. Reference equality makes symbols
+/// safe to use as dictionary keys in any collection without requiring ReferenceEqualityComparer.
+/// </remarks>
 public abstract record Symbol
 {
     public string Name { get; init; } = string.Empty;
@@ -34,6 +42,16 @@ public abstract record Symbol
     /// Readers should prefer SemanticBinding.GetCodeGenInfo when available.
     /// </remarks>
     public CodeGenInfo? CodeGenInfo { get; internal set; }
+
+    /// <summary>
+    /// Use reference equality for symbols. Record default (value equality) is unsafe
+    /// because mutable properties would make hash codes unstable.
+    /// </summary>
+    public virtual bool Equals(Symbol? other) => ReferenceEquals(this, other);
+
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+
+    public override string ToString() => $"{Kind} '{Name}'";
 }
 
 /// <summary>
@@ -52,6 +70,9 @@ public record VariableSymbol : Symbol
     public bool IsParameter { get; init; }
     public bool IsConstant { get; init; }
     public bool HasDefaultValue { get; init; }
+
+    public virtual bool Equals(VariableSymbol? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 /// <summary>
@@ -72,6 +93,9 @@ public record FunctionSymbol : Symbol
 
     // For .NET interop
     public System.Reflection.MethodInfo? ClrMethod { get; init; }
+
+    public virtual bool Equals(FunctionSymbol? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 /// <summary>
@@ -139,6 +163,9 @@ public record TypeSymbol : Symbol
     /// Unresolved interface names from AST, used for deferred inheritance resolution.
     /// </summary>
     public List<string> UnresolvedInterfaceNames { get; init; } = new();
+
+    public virtual bool Equals(TypeSymbol? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 /// <summary>
@@ -177,6 +204,9 @@ public record ModuleSymbol : Symbol
 {
     public string FilePath { get; init; } = string.Empty;
     public Dictionary<string, Symbol> Exports { get; init; } = new();
+
+    public virtual bool Equals(ModuleSymbol? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 /// <summary>
@@ -186,6 +216,9 @@ public record TypeAliasSymbol : Symbol
 {
     public TypeAnnotation? TypeAnnotation { get; init; }
     public Parser.Ast.FunctionType? FunctionType { get; init; }
+
+    public virtual bool Equals(TypeAliasSymbol? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 /// <summary>
@@ -203,6 +236,9 @@ public record TypeParameterSymbol : Symbol
     /// </summary>
     public ImmutableArray<ConstraintClause> Constraints { get; init; }
         = ImmutableArray<ConstraintClause>.Empty;
+
+    public virtual bool Equals(TypeParameterSymbol? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 public enum SymbolKind

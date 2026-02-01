@@ -199,7 +199,8 @@ public partial class TypeChecker
                     $"Result type '{resultType.GetDisplayName()}' of augmented assignment is not assignable to target type '{targetType.GetDisplayName()}'",
                     assignment.LineStart,
                     assignment.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch);
+                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: assignment.Span);
             }
             return;
         }
@@ -221,7 +222,8 @@ public partial class TypeChecker
             else
             {
                 AddError($"Cannot assign type '{valueType.GetDisplayName()}' to '{targetType.GetDisplayName()}'",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: assignment.Span);
             }
         }
     }
@@ -263,7 +265,8 @@ public partial class TypeChecker
                 else
                 {
                     AddError($"Cannot assign type '{initType.GetDisplayName()}' to variable of type '{declaredType.GetDisplayName()}'",
-                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: varDecl.Span);
                 }
             }
         }
@@ -377,7 +380,8 @@ public partial class TypeChecker
         if (condType != SemanticType.Bool && !(condType is UnknownType))
         {
             AddError($"If condition must be boolean, got '{condType.GetDisplayName()}'",
-                ifStmt.LineStart, ifStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                ifStmt.LineStart, ifStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: ifStmt.Test.Span);
         }
 
         // Check for type narrowing patterns
@@ -406,7 +410,8 @@ public partial class TypeChecker
             if (elifCondType != SemanticType.Bool && !(elifCondType is UnknownType))
             {
                 AddError($"Elif condition must be boolean, got '{elifCondType.GetDisplayName()}'",
-                    elif.LineStart, elif.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                    elif.LineStart, elif.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: elif.Test.Span);
             }
 
             _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
@@ -452,7 +457,8 @@ public partial class TypeChecker
         if (condType != SemanticType.Bool && !(condType is UnknownType))
         {
             AddError($"While condition must be boolean, got '{condType.GetDisplayName()}'",
-                whileStmt.LineStart, whileStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                whileStmt.LineStart, whileStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: whileStmt.Test.Span);
         }
 
         // Check for type narrowing patterns (similar to if statement)

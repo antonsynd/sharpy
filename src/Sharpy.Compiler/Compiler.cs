@@ -393,8 +393,8 @@ public class Compiler
             var compilationUnit = emitter.GenerateCompilationUnit(module);
             var csharpCode = compilationUnit.ToFullString();
 
-            // Assertion: Generated C# should parse without syntax errors
-            AssertGeneratedCSharpParses(csharpCode);
+            // Verify generated C# parses without syntax errors (always-on, not DEBUG-only)
+            AssertGeneratedCSharpParses(csharpCode, diagnostics);
 
             // Check for code generation errors
             if (codeGenContext.HasErrors)
@@ -576,17 +576,24 @@ public class Compiler
     /// <summary>
     /// Verify generated C# code parses without syntax errors.
     /// This catches codegen bugs that produce malformed C#.
+    /// Always-on (not DEBUG-only) because invalid generated C# in Release builds
+    /// would produce cryptic Roslyn compilation errors instead of a clear
+    /// "internal compiler error" diagnostic.
     /// </summary>
-    [Conditional("DEBUG")]
-    private static void AssertGeneratedCSharpParses(string csharpCode)
+    private static void AssertGeneratedCSharpParses(string csharpCode, DiagnosticBag diagnostics)
     {
         var tree = CSharpSyntaxTree.ParseText(csharpCode);
         var parseDiagnostics = tree.GetDiagnostics()
             .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
             .ToList();
-        Debug.Assert(parseDiagnostics.Count == 0,
-            $"Generated C# has {parseDiagnostics.Count} parse error(s): " +
-            string.Join("; ", parseDiagnostics.Take(3).Select(d => d.GetMessage())));
+        if (parseDiagnostics.Count > 0)
+        {
+            var details = string.Join("; ", parseDiagnostics.Take(3).Select(d => d.GetMessage()));
+            diagnostics.AddError(
+                $"Internal error: generated C# contains {parseDiagnostics.Count} syntax error(s): {details}. This is a compiler bug -- please report it.",
+                code: DiagnosticCodes.CodeGen.InternalGeneratedCSharpParseError,
+                phase: CompilerPhase.CodeGeneration);
+        }
     }
 
     /// <summary>

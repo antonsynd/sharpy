@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -34,6 +35,15 @@ namespace Sharpy.Compiler.Semantic;
 /// </remarks>
 public class SemanticBinding
 {
+    private readonly ICompilerLogger _logger;
+
+    public SemanticBinding() : this(NullLogger.Instance) { }
+
+    public SemanticBinding(ICompilerLogger logger)
+    {
+        _logger = logger;
+    }
+
     // Use ReferenceEqualityComparer for all symbol-keyed dictionaries.
     // Symbol types are records with mutable properties (BaseType, CodeGenInfo, etc.),
     // making their value-based GetHashCode/Equals unstable. Reference equality
@@ -69,23 +79,20 @@ public class SemanticBinding
 
     /// <summary>
     /// Freeze inheritance data (BaseType, Interfaces) after inheritance resolution completes.
-    /// Any subsequent SetBaseType/AddInterface calls will trigger a debug assertion failure.
+    /// Any subsequent SetBaseType/AddInterface calls will emit a logged warning.
     /// </summary>
-    [Conditional("DEBUG")]
     internal void FreezeInheritance() => _inheritanceFrozen = true;
 
     /// <summary>
     /// Freeze variable type data after type checking completes.
-    /// Any subsequent SetVariableType calls will trigger a debug assertion failure.
+    /// Any subsequent SetVariableType calls will emit a logged warning.
     /// </summary>
-    [Conditional("DEBUG")]
     internal void FreezeVariableTypes() => _variableTypesFrozen = true;
 
     /// <summary>
     /// Freeze CodeGenInfo data after type checking completes.
-    /// Any subsequent SetCodeGenInfo calls will trigger a debug assertion failure.
+    /// Any subsequent SetCodeGenInfo calls will emit a logged warning.
     /// </summary>
-    [Conditional("DEBUG")]
     internal void FreezeCodeGenInfo() => _codeGenInfoFrozen = true;
 
     #region CodeGenInfo
@@ -95,7 +102,8 @@ public class SemanticBinding
     /// </summary>
     public void SetCodeGenInfo(Symbol symbol, CodeGenInfo info)
     {
-        Debug.Assert(!_codeGenInfoFrozen, $"SetCodeGenInfo called after freeze for symbol '{symbol.Name}'");
+        if (_codeGenInfoFrozen)
+            _logger.LogWarning($"SetCodeGenInfo called after freeze for symbol '{symbol.Name}'", 0, 0);
         _codeGenInfo[symbol] = info;
     }
 
@@ -120,7 +128,8 @@ public class SemanticBinding
     /// </summary>
     public void SetVariableType(VariableSymbol symbol, SemanticType type)
     {
-        Debug.Assert(!_variableTypesFrozen, $"SetVariableType called after freeze for symbol '{symbol.Name}'");
+        if (_variableTypesFrozen)
+            _logger.LogWarning($"SetVariableType called after freeze for symbol '{symbol.Name}'", 0, 0);
         _variableTypes[symbol] = type;
     }
 
@@ -140,7 +149,8 @@ public class SemanticBinding
     /// </summary>
     public void SetBaseType(TypeSymbol symbol, TypeSymbol baseType)
     {
-        Debug.Assert(!_inheritanceFrozen, $"SetBaseType called after freeze for symbol '{symbol.Name}'");
+        if (_inheritanceFrozen)
+            _logger.LogWarning($"SetBaseType called after freeze for symbol '{symbol.Name}'", 0, 0);
         _baseTypes[symbol] = baseType;
     }
 
@@ -159,7 +169,8 @@ public class SemanticBinding
     /// </summary>
     public void AddInterface(TypeSymbol symbol, TypeSymbol iface)
     {
-        Debug.Assert(!_inheritanceFrozen, $"AddInterface called after freeze for symbol '{symbol.Name}'");
+        if (_inheritanceFrozen)
+            _logger.LogWarning($"AddInterface called after freeze for symbol '{symbol.Name}'", 0, 0);
         var queue = _interfaces.GetOrAdd(symbol, _ => new ConcurrentQueue<TypeSymbol>());
         queue.Enqueue(iface);
     }

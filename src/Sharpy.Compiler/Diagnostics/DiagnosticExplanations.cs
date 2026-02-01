@@ -697,6 +697,12 @@ public static class DiagnosticExplanations
             null,
             "This is an internal compiler error. Report it at https://github.com/anthropics/sharpy/issues.");
 
+        Add(dict, DiagnosticCodes.CodeGen.InternalGeneratedCSharpParseError, "Internal error: generated C# contains syntax errors", "CodeGen",
+            "The compiler generated C# code that fails to parse. This indicates a bug in the Sharpy compiler's code generation phase. " +
+            "The generated C# has syntax errors that would prevent compilation.",
+            null,
+            "This is an internal compiler error. Please report it at https://github.com/anthropics/sharpy/issues with the .spy file that triggered it.");
+
         // ── Infrastructure errors (SHP0900-SHP0999) ────────────────────
 
         Add(dict, DiagnosticCodes.Infrastructure.CompilationFailed, "Compilation failed", "Infrastructure",

@@ -904,7 +904,8 @@ public partial class TypeChecker
         return chain;
     }
 
-    private void AddError(string message, int? line = null, int? column = null, string? code = null)
+    private void AddError(string message, int? line = null, int? column = null, string? code = null,
+        Text.TextSpan? span = null)
     {
         if (_diagnostics.ErrorCount >= MaxErrors)
         {
@@ -919,7 +920,7 @@ public partial class TypeChecker
             return;
         }
 
-        _diagnostics.AddError(message, line, column, _currentFilePath, code: code, phase: CompilerPhase.TypeChecking);
+        _diagnostics.AddError(message, span, line, column, _currentFilePath, code: code, phase: CompilerPhase.TypeChecking);
         _logger.LogError(message, line ?? 0, column ?? 0);
     }
 }

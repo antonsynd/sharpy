@@ -1,5 +1,6 @@
 using Xunit;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Tests.Diagnostics;
 
@@ -139,5 +140,101 @@ public class DiagnosticBagTests
         Assert.False(warning.IsError);
         Assert.False(info.IsError);
         Assert.False(hint.IsError);
+    }
+
+    [Fact]
+    public void CompilerDiagnostic_SpanProperty_DefaultsToNull()
+    {
+        var diagnostic = new CompilerDiagnostic("Test", CompilerDiagnosticSeverity.Error);
+
+        Assert.Null(diagnostic.Span);
+    }
+
+    [Fact]
+    public void CompilerDiagnostic_SpanProperty_CanBeSet()
+    {
+        var span = new TextSpan(10, 5);
+        var diagnostic = new CompilerDiagnostic(
+            "Test", CompilerDiagnosticSeverity.Error, Span: span);
+
+        Assert.NotNull(diagnostic.Span);
+        Assert.Equal(10, diagnostic.Span.Value.Start);
+        Assert.Equal(5, diagnostic.Span.Value.Length);
+    }
+
+    [Fact]
+    public void DiagnosticToString_IncludesSpanWhenPresent()
+    {
+        var span = new TextSpan(10, 5);
+        var diagnostic = new CompilerDiagnostic(
+            "Test message",
+            CompilerDiagnosticSeverity.Error,
+            Line: 3,
+            Column: 5,
+            FilePath: "test.spy",
+            Span: span
+        );
+
+        var result = diagnostic.ToString();
+
+        Assert.Contains("[10..15)", result);
+        Assert.Contains("test.spy", result);
+        Assert.Contains("Test message", result);
+    }
+
+    [Fact]
+    public void DiagnosticToString_OmitsSpanWhenNull()
+    {
+        var diagnostic = new CompilerDiagnostic(
+            "Test message",
+            CompilerDiagnosticSeverity.Error,
+            Line: 3,
+            Column: 5,
+            FilePath: "test.spy"
+        );
+
+        var result = diagnostic.ToString();
+
+        Assert.DoesNotContain("[", result);
+    }
+
+    [Fact]
+    public void AddError_WithTextSpan_SetsSpanOnDiagnostic()
+    {
+        var bag = new DiagnosticBag();
+        var span = new TextSpan(20, 10);
+
+        bag.AddError("Test error", span, 5, 3, "test.spy", "SHP0001");
+
+        var errors = bag.GetErrors();
+        Assert.Single(errors);
+        Assert.Equal(span, errors[0].Span);
+        Assert.Equal(5, errors[0].Line);
+        Assert.Equal(3, errors[0].Column);
+    }
+
+    [Fact]
+    public void AddWarning_WithTextSpan_SetsSpanOnDiagnostic()
+    {
+        var bag = new DiagnosticBag();
+        var span = new TextSpan(30, 15);
+
+        bag.AddWarning("Test warning", span, 8, 2, "test.spy", "SHP0451");
+
+        var warnings = bag.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Equal(span, warnings[0].Span);
+    }
+
+    [Fact]
+    public void AddError_WithNullSpan_LeavesSpanNull()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddError("Test error", (TextSpan?)null, 5, 3);
+
+        var errors = bag.GetErrors();
+        Assert.Single(errors);
+        Assert.Null(errors[0].Span);
     }
 }

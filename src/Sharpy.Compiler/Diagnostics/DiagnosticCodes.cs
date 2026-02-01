@@ -184,6 +184,7 @@ public static class DiagnosticCodes
         public const string AbstractMethodWithBody = "SHP0505";
         public const string NonAbstractMethodWithoutBody = "SHP0506";
         public const string VarWithoutInitializer = "SHP0507";
+        public const string InternalGeneratedCSharpParseError = "SHP0599";
     }
 
     /// <summary>

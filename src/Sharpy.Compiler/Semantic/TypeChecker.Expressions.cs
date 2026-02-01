@@ -62,7 +62,8 @@ public partial class TypeChecker
             if (_currentClass == null)
             {
                 AddError("'self' can only be used inside instance methods",
-                    id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.InvalidSelfUsage);
+                    id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.InvalidSelfUsage,
+                    span: id.Span);
                 return SemanticType.Unknown;
             }
             // Normal identifier lookup will follow and find the self parameter
@@ -72,7 +73,8 @@ public partial class TypeChecker
         if (id.Name == "Nothing")
         {
             AddError("'Nothing' is not a valid identifier. Use 'None()' to construct an empty Optional, or 'None' for the null literal",
-                id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.InvalidNothingUsage);
+                id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.InvalidNothingUsage,
+                span: id.Span);
             return SemanticType.Unknown;
         }
 
@@ -85,11 +87,13 @@ public partial class TypeChecker
                 // These are function-call constructors, not bare identifiers.
                 // If we get here, it means the user wrote e.g. 'x = Some' without calling it.
                 AddError($"'{id.Name}' must be called as a function, e.g. '{id.Name}(value)'",
-                    id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.NotCallable);
+                    id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.NotCallable,
+                    span: id.Span);
                 return SemanticType.Unknown;
             }
             AddError($"Undefined identifier '{id.Name}'",
-                id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedVariable);
+                id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedVariable,
+                span: id.Span);
             return SemanticType.Unknown;
         }
 
@@ -146,7 +150,8 @@ public partial class TypeChecker
                 $"Type '{leftType.GetDisplayName()}' does not support operator '{GetOperatorSymbol(binOp.Operator)}' with operand of type '{rightType.GetDisplayName()}'",
                 binOp.LineStart,
                 binOp.ColumnStart,
-                code: DiagnosticCodes.Semantic.InvalidBinaryOperation);
+                code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                span: binOp.Span);
             return SemanticType.Unknown;
         }
 
@@ -1002,7 +1007,8 @@ public partial class TypeChecker
                         return required == total ? total.ToString() : $"{required}-{total}";
                     }).Distinct());
                     AddError($"Function '{id.Name}' expects {expectedCounts} arguments but got {totalArgCount}",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount);
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                        span: call.Span);
                     return SemanticType.Unknown;
                 }
             }
@@ -1084,12 +1090,14 @@ public partial class TypeChecker
                 if (requiredParamCount == totalParamCount)
                 {
                     AddError($"Function expects {totalParamCount} arguments but got {totalArgCount}",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount);
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                        span: call.Span);
                 }
                 else
                 {
                     AddError($"Function expects {requiredParamCount} to {totalParamCount} arguments but got {totalArgCount}",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount);
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                        span: call.Span);
                 }
             }
             else
@@ -1100,7 +1108,8 @@ public partial class TypeChecker
                     if (!IsAssignable(argTypes[i], funcSymbol.Parameters[i].Type))
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{funcSymbol.Parameters[i].Type.GetDisplayName()}'",
-                            call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                            call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: call.Arguments[i].Span);
                     }
                 }
 
@@ -1154,7 +1163,8 @@ public partial class TypeChecker
                 if (totalArgCount != ft.ParameterTypes.Count)
                 {
                     AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {totalArgCount}",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount);
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                        span: call.Span);
                 }
                 else
                 {
@@ -1164,7 +1174,8 @@ public partial class TypeChecker
                         if (!IsAssignable(argTypes[i], ft.ParameterTypes[i]))
                         {
                             AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{ft.ParameterTypes[i].GetDisplayName()}'",
-                                call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                                call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                                span: call.Arguments[i].Span);
                         }
                     }
                 }
