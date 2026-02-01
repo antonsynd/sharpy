@@ -1,0 +1,5 @@
+def greet(name: str) -> str:
+    return "Hello, " + name
+
+def farewell(name: str) -> str:
+    return "Goodbye, " + name

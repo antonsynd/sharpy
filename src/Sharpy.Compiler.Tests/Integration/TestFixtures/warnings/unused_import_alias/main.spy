@@ -1,0 +1,4 @@
+from helpers import greet, farewell as bye
+
+def main():
+    print(greet("world"))

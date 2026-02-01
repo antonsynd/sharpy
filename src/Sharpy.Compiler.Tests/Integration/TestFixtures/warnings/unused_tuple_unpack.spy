@@ -1,0 +1,6 @@
+def get_pair() -> tuple[int, int]:
+    return (10, 20)
+
+def main():
+    a, b = get_pair()
+    print(a)
