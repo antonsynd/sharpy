@@ -6,7 +6,8 @@ namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
 /// Stores semantic information that is computed after AST creation.
-/// This separates mutable semantic data from immutable syntax.
+/// This is the sole write target for semantic data during analysis; Symbol properties
+/// are populated later by materialization at phase boundaries.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -18,11 +19,17 @@ namespace Sharpy.Compiler.Semantic;
 /// - Base types for class inheritance
 /// </para>
 /// <para>
+/// All writes go exclusively to SemanticBinding stores. At phase boundaries (freeze points),
+/// MaterializeXxx() methods copy data onto Symbol properties for downstream consumers
+/// (SemanticType.cs, ImportResolver clones) that read Symbol properties directly.
+/// </para>
+/// <para>
 /// By storing this information in SemanticBinding instead of on the AST/Symbol directly,
 /// we enable:
 /// - Multiple bindings per AST (useful for LSP with incremental edits)
 /// - Thread-safe parallel compilation (ConcurrentDictionary)
 /// - Clear separation between parsing and semantic analysis
+/// - Phase-gating: freeze assertions prevent writes after a phase completes
 /// </para>
 /// </remarks>
 public class SemanticBinding
@@ -163,6 +170,45 @@ public class SemanticBinding
     /// </summary>
     public IReadOnlyList<TypeSymbol>? GetInterfaces(TypeSymbol symbol)
         => _interfaces.TryGetValue(symbol, out var bag) ? bag.ToList() : null;
+
+    #endregion
+
+    #region Materialization
+
+    /// <summary>
+    /// Copy inheritance data (BaseType, Interfaces) from SemanticBinding stores onto Symbol properties.
+    /// Called at the inheritance freeze point so downstream consumers that read Symbol properties directly
+    /// (e.g., SemanticType.cs, ImportResolver clones) see the correct values.
+    /// </summary>
+    internal void MaterializeInheritance()
+    {
+        foreach (var (symbol, baseType) in _baseTypes)
+            symbol.BaseType = baseType;
+        foreach (var (symbol, bag) in _interfaces)
+            foreach (var iface in bag)
+                if (!symbol.Interfaces.Contains(iface))
+                    symbol.Interfaces.Add(iface);
+    }
+
+    /// <summary>
+    /// Copy variable type data from SemanticBinding stores onto VariableSymbol.Type properties.
+    /// Called at the variable types freeze point.
+    /// </summary>
+    internal void MaterializeVariableTypes()
+    {
+        foreach (var (symbol, type) in _variableTypes)
+            symbol.Type = type;
+    }
+
+    /// <summary>
+    /// Copy CodeGenInfo data from SemanticBinding stores onto Symbol.CodeGenInfo properties.
+    /// Called at the CodeGenInfo freeze point.
+    /// </summary>
+    internal void MaterializeCodeGenInfo()
+    {
+        foreach (var (symbol, info) in _codeGenInfo)
+            symbol.CodeGenInfo = info;
+    }
 
     #endregion
 
