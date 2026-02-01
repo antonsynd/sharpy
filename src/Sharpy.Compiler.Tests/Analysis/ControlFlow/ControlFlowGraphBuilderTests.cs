@@ -407,13 +407,84 @@ public class ControlFlowGraphBuilderTests
 
         var cfg = _builder.Build(func);
 
-        // The pass statement shouldn't be in any block's statements
-        // because we stop processing after return
-        var hasPassAfterReturn = cfg.Blocks.Any(b =>
-            b.Statements.Count > 1 &&
-            b.Statements[0] is ReturnStatement);
+        // The pass statement should be in a disconnected "unreachable" block
+        var unreachableBlocks = cfg.FindUnreachableBlocks();
+        Assert.NotEmpty(unreachableBlocks);
 
-        Assert.False(hasPassAfterReturn);
+        // The unreachable block should contain the pass statement
+        var unreachableWithStatements = unreachableBlocks.Where(b => b.Statements.Count > 0).ToList();
+        Assert.NotEmpty(unreachableWithStatements);
+    }
+
+    [Fact]
+    public void Build_CodeAfterReturn_DetectedByAnalysis()
+    {
+        var func = CreateFunction("unreachable_analysis", ImmutableArray.Create<Statement>(
+            new ReturnStatement { Value = Id("x") },
+            Pass()
+        ));
+
+        var cfg = _builder.Build(func);
+
+        // ControlFlowAnalysis.FindUnreachableCode should find the unreachable statements
+        var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
+        Assert.Single(unreachable);
+        Assert.IsType<PassStatement>(unreachable[0].FirstUnreachableStatement);
+    }
+
+    [Fact]
+    public void Build_CodeAfterRaise_IsUnreachable()
+    {
+        var func = CreateFunction("unreachable_raise", ImmutableArray.Create<Statement>(
+            new RaiseStatement { Exception = Id("error") },
+            Pass()
+        ));
+
+        var cfg = _builder.Build(func);
+
+        var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
+        Assert.Single(unreachable);
+    }
+
+    [Fact]
+    public void Build_CodeAfterBreak_IsUnreachable()
+    {
+        var func = CreateFunction("unreachable_break", ImmutableArray.Create<Statement>(
+            new WhileStatement
+            {
+                Test = Bool(true),
+                Body = ImmutableArray.Create<Statement>(
+                    new BreakStatement(),
+                    Pass() // unreachable after break
+                )
+            }
+        ));
+
+        var cfg = _builder.Build(func);
+
+        var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
+        Assert.Single(unreachable);
+    }
+
+    [Fact]
+    public void Build_CodeAfterContinue_IsUnreachable()
+    {
+        var func = CreateFunction("unreachable_continue", ImmutableArray.Create<Statement>(
+            new ForStatement
+            {
+                Target = Id("i"),
+                Iterator = Id("items"),
+                Body = ImmutableArray.Create<Statement>(
+                    new ContinueStatement(),
+                    Pass() // unreachable after continue
+                )
+            }
+        ));
+
+        var cfg = _builder.Build(func);
+
+        var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
+        Assert.Single(unreachable);
     }
 
     #endregion

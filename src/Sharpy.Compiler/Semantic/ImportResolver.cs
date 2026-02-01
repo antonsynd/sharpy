@@ -256,19 +256,22 @@ public class ImportResolver
 
         try
         {
-            var moduleInfo = _moduleLoader.LoadModule(modulePath, lineStart, columnStart, ResolveModuleImports);
-
-            // Handle from-import re-exports that need ImportResolver context
-            if (moduleInfo != null && moduleInfo.Module != null)
-            {
-                foreach (var statement in moduleInfo.Module.Body)
+            var moduleInfo = _moduleLoader.LoadModule(modulePath, lineStart, columnStart,
+                (module, loadedModuleInfo, searchPath) =>
                 {
-                    if (statement is FromImportStatement fromImport)
+                    // Extract re-exported symbols from from-imports BEFORE resolving imports.
+                    // This ensures ExportedSymbols is populated for transitive resolution.
+                    foreach (var statement in module.Body)
                     {
-                        ExtractReExportedSymbols(fromImport, moduleInfo);
+                        if (statement is FromImportStatement fromImport)
+                        {
+                            ExtractReExportedSymbols(fromImport, loadedModuleInfo);
+                        }
                     }
-                }
-            }
+
+                    // Resolve imports to detect transitive circular dependencies
+                    ResolveModuleImports(module, searchPath);
+                });
 
             // Merge any diagnostics from the module loader
             _diagnostics.Merge(_moduleLoader.Diagnostics);

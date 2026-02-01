@@ -770,10 +770,10 @@ def find_target(items: list[int], target: int) -> str:
     for item in items:
         if item > 0:
             if item == target:
-                return ""found""
+                break
     else:
         return ""not found""
-    return ""exited via break""
+    return ""found""
 
 def main():
     print(find_target([1, 2, 3], 2))

@@ -108,13 +108,30 @@ public class ControlFlowGraphBuilder
 
     private void BuildStatements(IReadOnlyList<Statement> statements)
     {
-        foreach (var stmt in statements)
+        for (int i = 0; i < statements.Count; i++)
         {
-            BuildStatement(stmt);
+            BuildStatement(statements[i]);
 
-            // If current block is terminated, remaining statements are unreachable
-            if (_currentBlock.Terminator != null)
+            // If current block is terminated, remaining statements are unreachable.
+            // Create a disconnected block so FindUnreachableBlocks() can find them.
+            if (_currentBlock.Terminator != null && i + 1 < statements.Count)
+            {
+                var unreachableBlock = CreateBlock("unreachable");
+                _currentBlock = unreachableBlock;
+
+                // Add remaining statements to the unreachable block
+                for (int j = i + 1; j < statements.Count; j++)
+                {
+                    BuildStatement(statements[j]);
+                    if (_currentBlock.Terminator != null && j + 1 < statements.Count)
+                    {
+                        // If the unreachable block itself terminates, create another
+                        var nextUnreachable = CreateBlock("unreachable");
+                        _currentBlock = nextUnreachable;
+                    }
+                }
                 break;
+            }
         }
     }
 

@@ -43,10 +43,11 @@ public class ModuleLoader
     /// <param name="modulePath">Full path to the .spy file.</param>
     /// <param name="lineStart">Source line of the import statement (for diagnostics).</param>
     /// <param name="columnStart">Source column of the import statement (for diagnostics).</param>
-    /// <param name="resolveModuleImports">Callback to resolve imports within the loaded module
-    /// (avoids circular dependency between ModuleLoader and ImportResolver).</param>
+    /// <param name="resolveModuleImports">Callback to resolve imports within the loaded module.
+    /// Parameters: (Module, ModuleInfo, searchPath). The ModuleInfo is provided so callers
+    /// can add re-exported symbols before the module is cached.</param>
     public ModuleInfo? LoadModule(string modulePath, int? lineStart, int? columnStart,
-        Action<Module, string?>? resolveModuleImports = null)
+        Action<Module, ModuleInfo, string?>? resolveModuleImports = null)
     {
         // Check cache first
         if (_moduleCache.TryGetValue(modulePath, out var cached))
@@ -119,7 +120,7 @@ public class ModuleLoader
             }
 
             // Recursively resolve imports within this module to detect transitive cycles
-            resolveModuleImports?.Invoke(module, Path.GetDirectoryName(modulePath));
+            resolveModuleImports?.Invoke(module, moduleInfo, Path.GetDirectoryName(modulePath));
 
             _moduleCache[modulePath] = moduleInfo;
             _loadedModules.Add(modulePath);

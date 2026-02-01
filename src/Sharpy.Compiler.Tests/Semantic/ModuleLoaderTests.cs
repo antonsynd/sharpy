@@ -54,10 +54,10 @@ public class ModuleLoaderTests : IDisposable
         var pathB = CreateModule("b.spy", "from a import bar");
 
         // Load module A, which will try to load B via the callback
-        var result = _loader.LoadModule(pathA, 1, 1, (module, searchPath) =>
+        var result = _loader.LoadModule(pathA, 1, 1, (module, moduleInfo, searchPath) =>
         {
             // Simulate resolving imports within module A: it tries to load B
-            _loader.LoadModule(pathB, 1, 1, (innerModule, innerSearchPath) =>
+            _loader.LoadModule(pathB, 1, 1, (innerModule, innerModuleInfo, innerSearchPath) =>
             {
                 // B tries to load A again - this should be detected as circular
                 _loader.LoadModule(pathA, 1, 1);
