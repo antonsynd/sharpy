@@ -199,4 +199,25 @@ def main():
             .ToList();
         Assert.Equal(3, importWarnings.Count);
     }
+
+    [Fact]
+    public void ImportUsedInTypeAlias_NoWarning()
+    {
+        var code = @"
+from typing import Optional
+
+type MaybeInt = Optional[int]
+
+def main():
+    pass
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedImportValidator();
+        validator.Validate(module, context);
+
+        var importWarnings = context.Diagnostics.GetWarnings()
+            .Where(w => w.Code == DiagnosticCodes.Validation.UnusedImport)
+            .ToList();
+        Assert.Empty(importWarnings);
+    }
 }
