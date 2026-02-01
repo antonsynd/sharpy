@@ -282,7 +282,8 @@ public class Compiler
             var inheritanceResolver = new InheritanceResolver(symbolTable, _logger, semanticBinding);
             inheritanceResolver.ResolveAll(importResolver);
 
-            // Assertion: SemanticBinding must be consistent with Symbol properties after inheritance resolution
+            // Materialize inheritance data onto Symbol properties, then verify and freeze
+            semanticBinding.MaterializeInheritance();
             DualWriteAssertions.AssertInheritanceConsistency(symbolTable, semanticBinding);
             semanticBinding.FreezeInheritance();
 
@@ -336,9 +337,10 @@ public class Compiler
             // Assertion: Type checking should have processed at least some expressions
             Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0,
                 "Type checker should record at least one expression type for non-empty modules");
-            // Assertion: CodeGenInfo dual-write consistency after type checking
+            // Materialize CodeGenInfo and VariableType data onto Symbol properties, then verify and freeze
+            semanticBinding.MaterializeCodeGenInfo();
+            semanticBinding.MaterializeVariableTypes();
             DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, semanticBinding);
-            // Assertion: VariableType dual-write consistency after type checking
             DualWriteAssertions.AssertVariableTypeConsistency(symbolTable, semanticBinding);
             semanticBinding.FreezeVariableTypes();
             semanticBinding.FreezeCodeGenInfo();
