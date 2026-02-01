@@ -1,0 +1,7 @@
+# Error in struct header - missing name, recovery should reach main
+struct :
+    x: int
+    y: str
+
+def main():
+    pass

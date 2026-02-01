@@ -1,0 +1,5 @@
+# Incomplete expression inside a function body
+# Recovery should allow subsequent statements to be parsed
+def main():
+    x: int = 1 +
+    y: int = 2

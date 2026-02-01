@@ -1,0 +1,6 @@
+# Multiple consecutive broken statements followed by valid code
+def main():
+    def
+    class
+    struct
+    x: int = 42

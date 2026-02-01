@@ -1,0 +1,5 @@
+# Function with no body (no indent follows colon+newline)
+# Recovery should find the next def and parse it
+def broken():
+def main():
+    pass
