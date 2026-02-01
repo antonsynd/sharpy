@@ -88,6 +88,7 @@ public class ProjectCompiler
             // but imported types from external modules still have unresolved base names.
             var inheritanceResolver = new InheritanceResolver(_symbolTable, _logger, _projectModel.SemanticBinding);
             inheritanceResolver.ResolveAll(_importResolver);
+            DualWriteAssertions.AssertInheritanceConsistency(_symbolTable, _projectModel.SemanticBinding);
             _projectModel.SemanticBinding.FreezeInheritance();
 
             // Phase 5: Perform semantic analysis on all files
@@ -95,6 +96,8 @@ public class ProjectCompiler
             {
                 return CreateFailureResult();
             }
+            DualWriteAssertions.AssertCodeGenInfoConsistency(_symbolTable, _projectModel.SemanticBinding);
+            DualWriteAssertions.AssertVariableTypeConsistency(_symbolTable, _projectModel.SemanticBinding);
             _projectModel.SemanticBinding.FreezeVariableTypes();
             _projectModel.SemanticBinding.FreezeCodeGenInfo();
 
