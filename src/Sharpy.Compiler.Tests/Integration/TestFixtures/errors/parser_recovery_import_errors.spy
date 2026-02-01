@@ -1,0 +1,5 @@
+# Import with missing module name should error and recover
+from import x
+
+def main():
+    pass

@@ -1,0 +1,10 @@
+# Multiple errors in class methods should all be reported
+class MyClass:
+    def (self):
+        pass
+
+    def method_two(self)
+        pass
+
+    def valid(self):
+        pass

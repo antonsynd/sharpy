@@ -1,0 +1,7 @@
+# Loop with missing condition/colon should error and recover
+def main():
+    while :
+        pass
+    for x range(10):
+        pass
+    x: int = 42

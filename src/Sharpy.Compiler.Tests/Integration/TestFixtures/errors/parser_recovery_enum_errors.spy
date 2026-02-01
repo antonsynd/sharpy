@@ -1,0 +1,6 @@
+# Enum with invalid member name should error
+enum Color:
+    123
+
+def main():
+    pass

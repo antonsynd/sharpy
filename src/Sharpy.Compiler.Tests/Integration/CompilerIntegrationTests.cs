@@ -185,4 +185,107 @@ def main():
         var log = logOutput.ToString();
         Assert.Contains("Loaded module reference", log);
     }
+
+    #region Parser Error Recovery Pipeline Tests
+
+    [Fact]
+    public void Compiler_WithMultipleSyntaxErrors_ReportsAllAndDoesNotCrash()
+    {
+        // Verify that the full compiler pipeline handles source with multiple
+        // syntax errors: reports all errors without crashing or hanging.
+        var code = @"
+def ():
+    pass
+
+def ():
+    pass
+
+def main():
+    pass
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+        Assert.True(result.Diagnostics.HasErrors);
+
+        // Parser recovery should report at least 2 errors (one per broken def)
+        var errors = result.Diagnostics.GetErrors().ToList();
+        Assert.True(errors.Count >= 2, $"Expected at least 2 errors, got {errors.Count}: {string.Join("; ", errors.Select(e => e.Message))}");
+    }
+
+    [Fact]
+    public void Compiler_WithSyntaxErrors_BailsBeforeSemanticAnalysis()
+    {
+        // Verify that the compiler does not attempt semantic analysis when
+        // parser errors exist. The Module should not be populated.
+        var code = @"
+def 123():
+    pass
+
+def main():
+    pass
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+        Assert.True(result.Diagnostics.HasErrors);
+
+        // Semantic fields should not be populated
+        Assert.Null(result.SymbolTable);
+        Assert.Null(result.SemanticInfo);
+    }
+
+    [Fact]
+    public void Compiler_WithMixedErrorTypes_ReportsDistinctErrors()
+    {
+        // Source with different kinds of syntax errors. The compiler should
+        // report distinct error messages for each.
+        var code = @"
+def foo(x: int)
+    return x + 1
+
+def 456():
+    pass
+
+class :
+    pass
+
+def main():
+    pass
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+
+        var errors = result.Diagnostics.GetErrors().ToList();
+        Assert.True(errors.Count >= 2, $"Expected at least 2 distinct errors, got {errors.Count}");
+
+        // Errors should come from the Parser phase
+        Assert.All(errors, e => Assert.Equal(Sharpy.Compiler.Diagnostics.CompilerPhase.Parser, e.Phase));
+    }
+
+    [Fact]
+    public void Compiler_WithBlockLevelErrors_ReportsMultipleErrors()
+    {
+        // Errors inside a function body should all be reported.
+        var code = @"
+def main():
+    x: int = 10
+    def
+    class
+    y: int = 20
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+
+        var errors = result.Diagnostics.GetErrors().ToList();
+        Assert.True(errors.Count >= 2, $"Expected at least 2 errors, got {errors.Count}");
+    }
+
+    #endregion
 }

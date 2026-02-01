@@ -1,0 +1,7 @@
+# Decorator with missing name should recover to next definition
+@
+def foo():
+    pass
+
+def main():
+    pass

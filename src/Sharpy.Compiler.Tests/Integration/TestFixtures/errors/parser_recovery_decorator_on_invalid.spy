@@ -1,0 +1,6 @@
+# Decorator on non-function/class/struct should error and recover
+@staticmethod
+x = 1
+
+def main():
+    pass

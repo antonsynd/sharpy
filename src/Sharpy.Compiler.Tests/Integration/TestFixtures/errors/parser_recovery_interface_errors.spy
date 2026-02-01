@@ -1,0 +1,6 @@
+# Interface with missing name should error and recover
+interface :
+    def foo(self) -> str
+
+def main():
+    pass

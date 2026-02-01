@@ -1,0 +1,7 @@
+# Try without colon (parsed as try expression) should error and recover
+def main():
+    try
+        pass
+    except:
+        pass
+    x: int = 42

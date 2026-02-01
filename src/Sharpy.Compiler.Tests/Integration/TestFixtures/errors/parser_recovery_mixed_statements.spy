@@ -1,0 +1,7 @@
+# Multiple different statement-level errors within a function body
+def main():
+    x: int = 1
+    y: int = 1 +
+    if :
+        pass
+    z: int = 3

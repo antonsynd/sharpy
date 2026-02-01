@@ -1,0 +1,8 @@
+# Errors in deeply nested blocks should recover without corrupting outer blocks
+def outer():
+    for i in range(10):
+        if True:
+            while :
+                pass
+            x: int = i
+    return 0
