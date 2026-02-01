@@ -1,0 +1,6 @@
+# Negative test: unused parameters should not warn
+def greet(name: str, prefix: str) -> str:
+    return name
+
+def main():
+    print(greet("world", "hello"))

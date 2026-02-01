@@ -1,0 +1,4 @@
+# Negative test: underscore-prefixed variables should not warn
+def main():
+    _unused: int = 42
+    print("ok")

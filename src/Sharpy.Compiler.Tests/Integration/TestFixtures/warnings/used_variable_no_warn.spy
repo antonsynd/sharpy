@@ -1,0 +1,4 @@
+# Negative test: variable is used, no warning expected
+def main():
+    x: int = 42
+    print(x)
