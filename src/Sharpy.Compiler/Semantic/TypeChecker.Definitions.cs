@@ -103,13 +103,14 @@ public partial class TypeChecker
         }
 
         // Validate @override is required when a subclass method shadows a virtual base method
-        if (_currentClass != null && !_currentMethodIsOverride && _currentClass.BaseType != null)
+        var currentClassBaseType = _currentClass != null ? GetBaseType(_currentClass) : null;
+        if (_currentClass != null && !_currentMethodIsOverride && currentClassBaseType != null)
         {
-            var (baseMethod, baseOwner) = FindMethodInHierarchy(_currentClass.BaseType, functionDef.Name);
+            var (baseMethod, baseOwner) = FindMethodInHierarchy(currentClassBaseType, functionDef.Name);
             if (baseMethod != null && baseMethod.IsVirtual)
             {
                 AddError(
-                    $"Method '{functionDef.Name}' overrides a virtual method in base class '{baseOwner?.Name ?? _currentClass.BaseType.Name}' and requires the @override decorator",
+                    $"Method '{functionDef.Name}' overrides a virtual method in base class '{baseOwner?.Name ?? currentClassBaseType.Name}' and requires the @override decorator",
                     functionDef.LineStart,
                     functionDef.ColumnStart,
                     code: DiagnosticCodes.Semantic.InvalidOverride);
@@ -119,8 +120,8 @@ public partial class TypeChecker
         // Validate @override is only used when base class method is virtual, abstract, or override
         if (_currentClass != null && _currentMethodIsOverride && !_currentMethodIsDunder)
         {
-            var (baseMethod, baseOwner) = _currentClass.BaseType != null
-                ? FindMethodInHierarchy(_currentClass.BaseType, functionDef.Name)
+            var (baseMethod, baseOwner) = currentClassBaseType != null
+                ? FindMethodInHierarchy(currentClassBaseType, functionDef.Name)
                 : (null, null);
 
             if (baseMethod == null)
