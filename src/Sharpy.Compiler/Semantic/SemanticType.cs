@@ -274,6 +274,14 @@ public record UserDefinedType : SemanticType
 
     public override Type? ClrType => Symbol?.ClrType;
 
+    /// <remarks>
+    /// Note: This method reads Symbol.BaseType and Symbol.Interfaces directly rather than
+    /// going through SemanticBinding, because SemanticType is a data type without access to
+    /// the binding store. This is safe because:
+    /// 1. During the dual-write migration, both stores always contain the same data.
+    /// 2. When Symbol becomes fully immutable, BaseType/Interfaces will be set once at
+    ///    construction time and remain readable without mutation.
+    /// </remarks>
     public override bool IsAssignableTo(SemanticType other)
     {
         if (base.IsAssignableTo(other))
@@ -313,6 +321,9 @@ public record UserDefinedType : SemanticType
     /// Check if a type implements an interface, including interfaces
     /// inherited from base classes and interface inheritance chains.
     /// </summary>
+    /// <remarks>
+    /// Reads Symbol.BaseType/Interfaces directly (see IsAssignableTo remarks for rationale).
+    /// </remarks>
     private static bool ImplementsInterface(TypeSymbol type, UserDefinedType targetInterface)
     {
         // Use BFS to search all interfaces in the hierarchy
