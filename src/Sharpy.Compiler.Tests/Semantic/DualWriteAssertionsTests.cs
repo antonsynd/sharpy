@@ -297,6 +297,106 @@ public class DualWriteAssertionsTests
 
     #endregion
 
+    #region Reverse Direction: SemanticBinding → Symbol
+
+    [Fact]
+    public void AssertInheritanceConsistency_ReverseDirection_PassesAfterMaterialization()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var parent = new TypeSymbol { Name = "Parent", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        var child = new TypeSymbol { Name = "Child", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+
+        symbolTable.Define(parent);
+        symbolTable.Define(child);
+
+        binding.SetBaseType(child, parent);
+        binding.MaterializeInheritance();
+
+        // Reverse check: SemanticBinding has BaseType → Symbol should too
+        DualWriteAssertions.AssertInheritanceConsistency(symbolTable, binding);
+    }
+
+    [Fact]
+    public void AssertCodeGenInfoConsistency_ReverseDirection_PassesAfterMaterialization()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var symbol = new TypeSymbol { Name = "my_class", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        var info = new CodeGenInfo { CSharpName = "MyClass", OriginalName = "my_class" };
+
+        symbolTable.Define(symbol);
+        binding.SetCodeGenInfo(symbol, info);
+        binding.MaterializeCodeGenInfo();
+
+        // Reverse check: SemanticBinding has CodeGenInfo → Symbol should too
+        DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, binding);
+    }
+
+    [Fact]
+    public void AssertVariableTypeConsistency_ReverseDirection_PassesAfterMaterialization()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var varSymbol = new VariableSymbol { Name = "x", Kind = SymbolKind.Variable };
+        symbolTable.Define(varSymbol);
+        binding.SetVariableType(varSymbol, SemanticType.Int);
+        binding.MaterializeVariableTypes();
+
+        // Reverse check: SemanticBinding has Type → Symbol should too
+        DualWriteAssertions.AssertVariableTypeConsistency(symbolTable, binding);
+    }
+
+    [Fact]
+    public void AssertVariableTypeConsistency_ReverseDirection_PassesForFieldsAfterMaterialization()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var field = new VariableSymbol { Name = "value", Kind = SymbolKind.Variable };
+        var typeSymbol = new TypeSymbol
+        {
+            Name = "MyClass",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            Fields = new List<VariableSymbol> { field }
+        };
+
+        symbolTable.Define(typeSymbol);
+        binding.SetVariableType(field, SemanticType.Str);
+        binding.MaterializeVariableTypes();
+
+        // Reverse check: SemanticBinding has field Type → Symbol field should too
+        DualWriteAssertions.AssertVariableTypeConsistency(symbolTable, binding);
+    }
+
+    [Fact]
+    public void AssertInheritanceConsistency_ReverseDirection_PassesForInterfaces()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var iface1 = new TypeSymbol { Name = "IFoo", Kind = SymbolKind.Type, TypeKind = TypeKind.Interface };
+        var iface2 = new TypeSymbol { Name = "IBar", Kind = SymbolKind.Type, TypeKind = TypeKind.Interface };
+        var impl = new TypeSymbol { Name = "Impl", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+
+        symbolTable.Define(iface1);
+        symbolTable.Define(iface2);
+        symbolTable.Define(impl);
+
+        binding.AddInterface(impl, iface1);
+        binding.AddInterface(impl, iface2);
+        binding.MaterializeInheritance();
+
+        // Reverse check: SemanticBinding has interfaces → Symbol should too
+        DualWriteAssertions.AssertInheritanceConsistency(symbolTable, binding);
+    }
+
+    #endregion
+
     #region End-to-End Materialization Consistency
 
     [Fact]
