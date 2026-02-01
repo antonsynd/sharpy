@@ -1,0 +1,12 @@
+def foo(x: int)
+    return x + 1
+
+class MyClass:
+    def bar(self):
+        pass
+
+def 456():
+    pass
+
+def main():
+    pass

@@ -178,6 +178,8 @@ public partial class Parser
                 case TokenType.Continue:
                 case TokenType.Const:
                 case TokenType.Type:
+                case TokenType.Try:
+                case TokenType.Maybe:
                 case TokenType.At:
                 case TokenType.Dedent:
                     return;

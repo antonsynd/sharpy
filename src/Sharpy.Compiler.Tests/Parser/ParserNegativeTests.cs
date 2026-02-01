@@ -927,8 +927,9 @@ z = 3";
         var mainFn = module.Body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == "main");
         mainFn.Should().NotBeNull();
 
-        // At least the first valid statement should be in the body
+        // Both valid statements (before and after the error) should be in the body
         mainFn!.Body.OfType<VariableDeclaration>().Should().Contain(vd => vd.Name == "x");
+        mainFn!.Body.OfType<VariableDeclaration>().Should().Contain(vd => vd.Name == "y");
     }
 
     [Fact]
@@ -1032,6 +1033,116 @@ z = 3";
         // The outer function should still be parsed
         var outerFn = module.Body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == "outer");
         outerFn.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Recovery_MixedErrorTypes_ReportsDistinctErrors()
+    {
+        // Different kinds of syntax errors: missing colon on def, and bad identifier.
+        // The parser should report distinct errors and still parse the valid function.
+        var source = """
+            def foo(x: int)
+                return x + 1
+
+            def 456():
+                pass
+
+            def main():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        // At least two distinct errors
+        errors.Count.Should().BeGreaterThanOrEqualTo(2);
+
+        // The valid function 'main' should still be parsed
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "main");
+    }
+
+    [Fact]
+    public void Recovery_ErrorBeforeTryStatement_RecoverToTry()
+    {
+        // An error on one line, followed by a try statement.
+        // The parser should recover and parse the try block.
+        var source = """
+            def main():
+                x: int = 10
+                def
+                try:
+                    y: int = 20
+                except:
+                    pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+
+        // The function 'main' should be parsed
+        var mainFn = module.Body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == "main");
+        mainFn.Should().NotBeNull();
+
+        // The try statement should have been recovered
+        mainFn!.Body.OfType<TryStatement>().Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void Recovery_ErrorsInForLoopBody_ContinuesWithNextStatement()
+    {
+        // An error inside a for loop body should recover to the next statement
+        // in the loop body, not corrupt the loop or outer function.
+        var source = """
+            def main():
+                for i in range(10):
+                    x: int = i
+                    def
+                    y: int = i * 2
+                return 0
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+
+        var mainFn = module.Body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == "main");
+        mainFn.Should().NotBeNull();
+
+        // The for loop should be present
+        mainFn!.Body.OfType<ForStatement>().Should().NotBeEmpty();
+
+        // return statement after the for loop should be present
+        mainFn!.Body.OfType<ReturnStatement>().Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void Recovery_MultipleErrorsInClassBody_ReportsAll()
+    {
+        // Multiple different errors within a class body.
+        // The parser should report all of them and still produce the class.
+        var source = """
+            class Foo:
+                def (self):
+                    pass
+
+                def bar(self)
+                    pass
+
+                def baz(self):
+                    pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        // At least two errors (missing name, missing colon)
+        errors.Count.Should().BeGreaterThanOrEqualTo(2);
+
+        // The class should still be parsed
+        var cls = module.Body.OfType<ClassDef>().FirstOrDefault(c => c.Name == "Foo");
+        cls.Should().NotBeNull();
+
+        // The valid method 'baz' should be present
+        cls!.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "baz");
     }
 
     #endregion

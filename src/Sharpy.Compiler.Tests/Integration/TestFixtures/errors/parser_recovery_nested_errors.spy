@@ -1,0 +1,13 @@
+def outer():
+    for i in range(10):
+        def
+        x: int = i
+
+    if True:
+        class
+        y: int = 42
+
+    return 0
+
+def main():
+    pass
