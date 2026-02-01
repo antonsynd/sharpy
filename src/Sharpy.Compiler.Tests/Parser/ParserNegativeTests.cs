@@ -1632,5 +1632,60 @@ z = 3";
         mainFn.Should().NotBeNull();
     }
 
+    [Fact]
+    public void Recovery_ElifError_PreservesSubsequentDefinitions()
+    {
+        // An error in an elif clause should not prevent subsequent top-level
+        // definitions from being parsed. The else clause and code after
+        // the if block may be lost, but the next def should be recoverable.
+        var source = """
+            def main():
+                if True:
+                    pass
+                elif
+                    pass
+                else:
+                    pass
+                y: int = 2
+
+            def after():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        // Errors should be limited (elif error + at most a couple cascading)
+        errors.Count.Should().BeLessThanOrEqualTo(5,
+            $"Elif error produced too many cascading errors: {string.Join("; ", errors)}");
+
+        // The 'after' function should still be parsed
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "after");
+    }
+
+    [Fact]
+    public void Recovery_TryExceptError_PreservesSubsequentDefinitions()
+    {
+        // An error in a try/except construct should not prevent subsequent
+        // definitions from being parsed.
+        var source = """
+            def main():
+                try
+                    pass
+                except:
+                    pass
+
+            def after():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+
+        // The 'after' function should still be parsed
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "after");
+    }
+
     #endregion
 }
