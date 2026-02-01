@@ -213,7 +213,12 @@ public class UnusedImportValidator : SemanticValidatorBase
                     CollectReferencesFromTypeAnnotation(typeAlias.Type, refs);
                 break;
 
-            case EnumDef:
+            case EnumDef enumDef:
+                foreach (var member in enumDef.Members)
+                {
+                    if (member.Value != null)
+                        CollectReferencesFromExpression(member.Value, refs);
+                }
                 break;
         }
     }

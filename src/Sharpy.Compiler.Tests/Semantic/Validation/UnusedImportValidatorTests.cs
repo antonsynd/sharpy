@@ -284,4 +284,47 @@ def main():
             .ToList();
         Assert.Empty(importWarnings);
     }
+
+    [Fact]
+    public void ImportUsedInEnumMemberValue_NoWarning()
+    {
+        var code = @"
+from constants import MAX_ITEMS
+
+enum Limit:
+    LOW = 1
+    MEDIUM = 5
+    HIGH = MAX_ITEMS
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedImportValidator();
+        validator.Validate(module, context);
+
+        var importWarnings = context.Diagnostics.GetWarnings()
+            .Where(w => w.Code == DiagnosticCodes.Validation.UnusedImport)
+            .ToList();
+        Assert.Empty(importWarnings);
+    }
+
+    [Fact]
+    public void ImportNotUsedInEnum_ReportsWarning()
+    {
+        var code = @"
+from constants import MAX_ITEMS
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedImportValidator();
+        validator.Validate(module, context);
+
+        var importWarnings = context.Diagnostics.GetWarnings()
+            .Where(w => w.Code == DiagnosticCodes.Validation.UnusedImport)
+            .ToList();
+        Assert.Single(importWarnings);
+        Assert.Contains("'MAX_ITEMS'", importWarnings[0].Message);
+    }
 }
