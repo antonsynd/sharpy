@@ -1077,6 +1077,18 @@ class Program
                 Environment.Exit(1);
             }
 
+            // Display Sharpy compilation warnings
+            var compilationWarnings = result.Diagnostics.GetWarnings();
+            if (compilationWarnings.Count > 0)
+            {
+                Console.WriteLine("Warnings:");
+                foreach (var warning in compilationWarnings)
+                {
+                    Console.WriteLine($"  {FormatDiagnostic(warning)}");
+                }
+                Console.WriteLine();
+            }
+
             // Determine output path
             var inputFileName = Path.GetFileNameWithoutExtension(inputFile.Name);
             var outputDir = output != null

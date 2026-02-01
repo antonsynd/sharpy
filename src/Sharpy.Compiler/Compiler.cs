@@ -353,9 +353,12 @@ public class Compiler
             semanticBinding.FreezeVariableTypes();
             semanticBinding.FreezeCodeGenInfo();
 
-            if (typeChecker.Diagnostics.HasErrors)
+            // Always merge type checking/validation diagnostics so warnings are
+            // available in CompilationResult even when compilation succeeds.
+            diagnostics.Merge(typeChecker.Diagnostics);
+
+            if (diagnostics.HasErrors)
             {
-                diagnostics.Merge(typeChecker.Diagnostics);
                 return new CompilationResult
                 {
                     Success = false,

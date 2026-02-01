@@ -379,4 +379,61 @@ def main():
     }
 
     #endregion
+
+    #region Warning Pipeline Tests
+
+    [Fact]
+    public void Compiler_Compile_IncludesWarningsOnSuccessPath()
+    {
+        // Compile code that succeeds but should produce an unused variable warning.
+        // This verifies that warnings from the validation pipeline are included
+        // in CompilationResult.Diagnostics even when compilation succeeds.
+        var code = @"
+def foo() -> int:
+    unused_var: int = 42
+    return 0
+
+def main():
+    print(foo())
+";
+        var options = new CompilerOptions
+        {
+            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+        };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+
+        var warnings = result.Diagnostics.GetWarnings();
+        Assert.NotEmpty(warnings);
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Validation.UnusedVariable
+                                       && w.Message.Contains("unused_var"));
+    }
+
+    [Fact]
+    public void Compiler_Compile_IncludesUnreachableCodeWarning()
+    {
+        var code = @"
+def foo() -> int:
+    return 42
+    print(""unreachable"")
+
+def main():
+    print(foo())
+";
+        var options = new CompilerOptions
+        {
+            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+        };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+
+        var warnings = result.Diagnostics.GetWarnings();
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Validation.UnreachableCodeWarning);
+    }
+
+    #endregion
 }
