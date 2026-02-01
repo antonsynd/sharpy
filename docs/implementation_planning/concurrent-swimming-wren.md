@@ -245,7 +245,7 @@ Each phase is independently valuable and shippable. Phase A alone would be a sig
 
 The SemanticBinding pattern is fully implemented and production-ready:
 
-- **SemanticBinding** (`Semantic/SemanticBinding.cs`) is the sole write target for all mutable semantic data during analysis. Uses `ConcurrentDictionary` with `ReferenceEqualityComparer` for thread-safe, reference-stable lookups.
+- **SemanticBinding** (`Semantic/SemanticBinding.cs`) is the sole write target for all mutable semantic data during analysis. Uses `ConcurrentDictionary` with `ReferenceEqualityComparer` for thread-safe, reference-stable lookups. Interface collections use `ConcurrentQueue` (not `ConcurrentBag`) to preserve insertion order for deterministic builds.
 - **Materialization** at phase boundaries copies data from SemanticBinding stores onto Symbol properties (`MaterializeInheritance()`, `MaterializeVariableTypes()`, `MaterializeCodeGenInfo()`), enabling downstream consumers (RoslynEmitter, SemanticType) to read Symbol properties directly.
 - **Phase-gating** via `FreezeInheritance()`, `FreezeVariableTypes()`, `FreezeCodeGenInfo()` prevents writes after a phase completes (DEBUG-only assertions).
 - **DualWriteAssertions** (`Semantic/DualWriteAssertions.cs`) verify materialization consistency in DEBUG builds. Bidirectional checks: forward (Symbol → SemanticBinding) catches rogue Symbol writes, reverse (SemanticBinding → Symbol) catches materialization failures.
@@ -268,4 +268,4 @@ Inheritance resolution is consolidated into a clear two-tier architecture:
 - Wired into both `Compiler.Compile()` and `ProjectCompiler.Compile()` via `InheritanceResolver.ResolveAll()`.
 - The old scattered methods (`Compiler.ResolveImportedTypeInheritance()`, `Compiler.ResolveTransitiveBaseTypes()`) have been removed.
 
-**Test coverage:** 13 InheritanceResolver unit tests (resolution, edge cases, dual-read pattern) + 10 cross-module integration tests + 26 file-based test fixtures.
+**Test coverage:** 13 InheritanceResolver unit tests (resolution, edge cases, dual-read pattern) + 19 cross-module integration tests (10 Semantic + 9 Integration) + 26 file-based test fixtures.
