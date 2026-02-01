@@ -17,20 +17,20 @@ public class InheritanceResolver
 {
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
-    private readonly SemanticBinding? _semanticBinding;
+    private readonly SemanticBinding _semanticBinding;
 
     public InheritanceResolver(SymbolTable symbolTable, ICompilerLogger? logger = null, SemanticBinding? semanticBinding = null)
     {
         _symbolTable = symbolTable;
         _logger = logger ?? NullLogger.Instance;
-        _semanticBinding = semanticBinding;
+        _semanticBinding = semanticBinding ?? new SemanticBinding();
     }
 
     private TypeSymbol? GetBaseType(TypeSymbol symbol)
-        => _semanticBinding?.GetBaseType(symbol) ?? symbol.BaseType;
+        => _semanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
 
     private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-        => _semanticBinding?.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+        => _semanticBinding.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
 
     /// <summary>
     /// Resolve all inheritance relationships for imported types.
@@ -76,13 +76,13 @@ public class InheritanceResolver
                         if (!GetInterfaces(type).Contains(baseType))
                         {
                             type.Interfaces.Add(baseType);
-                            _semanticBinding?.AddInterface(type, baseType);
+                            _semanticBinding.AddInterface(type, baseType);
                         }
                     }
                     else
                     {
                         type.BaseType = baseType;
-                        _semanticBinding?.SetBaseType(type, baseType);
+                        _semanticBinding.SetBaseType(type, baseType);
                     }
                     _logger.LogDebug($"Resolved inheritance: {type.Name} : {baseType.Name}");
                 }
@@ -99,7 +99,7 @@ public class InheritanceResolver
                 if (ifaceType != null && !GetInterfaces(type).Contains(ifaceType))
                 {
                     type.Interfaces.Add(ifaceType);
-                    _semanticBinding?.AddInterface(type, ifaceType);
+                    _semanticBinding.AddInterface(type, ifaceType);
                     _logger.LogDebug($"Resolved interface: {type.Name} : {ifaceType.Name}");
                 }
                 else if (ifaceType == null)

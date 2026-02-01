@@ -40,7 +40,7 @@ public class ImportResolver
             .Where(kvp => !kvp.Value.IsNetModule && kvp.Value.Module != null)
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
     private DependencyGraphBuilder? _graphBuilder;
-    private SemanticBinding? _semanticBinding;
+    private SemanticBinding _semanticBinding = new();
 
     private string? _currentModulePath = null;
 
@@ -159,15 +159,7 @@ public class ImportResolver
             // Store the resolved module path for code generation
             // For relative imports like ".helpers", this gives the canonical name like "mypackage.helpers"
             var resolvedPath = resolution.CanonicalModuleName ?? resolution.ModuleName;
-            if (_semanticBinding != null)
-            {
-                _semanticBinding.SetResolvedModulePath(fromImport, resolvedPath);
-            }
-            else
-            {
-                // Legacy fallback: store directly on AST (will be removed in future)
-                fromImport.ResolvedModulePath = resolvedPath;
-            }
+            _semanticBinding.SetResolvedModulePath(fromImport, resolvedPath);
 
             // Track the dependency (current module depends on imported module)
             // Note: .NET modules are not tracked in the file dependency graph
@@ -255,15 +247,7 @@ public class ImportResolver
             if (reExportedSymbols.Count > 0)
             {
                 _logger.LogDebug($"[ImportResolver]   Storing {reExportedSymbols.Count} re-exported symbols");
-                if (_semanticBinding != null)
-                {
-                    _semanticBinding.SetReExportedSymbols(fromImport, reExportedSymbols);
-                }
-                else
-                {
-                    // Legacy fallback: store directly on AST (will be removed in future)
-                    fromImport.ReExportedSymbols = reExportedSymbols;
-                }
+                _semanticBinding.SetReExportedSymbols(fromImport, reExportedSymbols);
             }
         }
 
@@ -603,15 +587,7 @@ public class ImportResolver
         if (reExportedSymbols.Count > 0)
         {
             _logger.LogDebug($"[ImportResolver]   Added {reExportedSymbols.Count} re-exported symbols to {Path.GetFileName(moduleInfo.Path)}");
-            if (_semanticBinding != null)
-            {
-                _semanticBinding.SetReExportedSymbols(fromImport, reExportedSymbols);
-            }
-            else
-            {
-                // Legacy fallback: store directly on AST (will be removed in future)
-                fromImport.ReExportedSymbols = reExportedSymbols;
-            }
+            _semanticBinding.SetReExportedSymbols(fromImport, reExportedSymbols);
         }
     }
 
@@ -699,11 +675,8 @@ public class ImportResolver
     /// </summary>
     private string? GetResolvedModulePath(FromImportStatement fromImport)
     {
-        if (_semanticBinding != null)
-        {
-            return _semanticBinding.GetResolvedModulePath(fromImport);
-        }
-        return fromImport.ResolvedModulePath;
+        return _semanticBinding.GetResolvedModulePath(fromImport)
+            ?? fromImport.ResolvedModulePath;
     }
 
     /// <summary>

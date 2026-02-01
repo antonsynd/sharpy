@@ -11,7 +11,7 @@ public class NameResolver
 {
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
-    private readonly SemanticBinding? _semanticBinding;
+    private readonly SemanticBinding _semanticBinding;
     private readonly DiagnosticBag _diagnostics = new();
     private readonly List<ClassDef> _classDefs = new();
     private readonly List<StructDef> _structDefs = new();
@@ -22,7 +22,7 @@ public class NameResolver
     {
         _symbolTable = symbolTable;
         _logger = logger ?? NullLogger.Instance;
-        _semanticBinding = semanticBinding;
+        _semanticBinding = semanticBinding ?? new SemanticBinding();
     }
 
     public DiagnosticBag Diagnostics => _diagnostics;
@@ -670,13 +670,13 @@ public class NameResolver
                     continue;
                 }
                 typeSymbol.BaseType = baseSymbol;
-                _semanticBinding?.SetBaseType(typeSymbol, baseSymbol);
+                _semanticBinding.SetBaseType(typeSymbol, baseSymbol);
                 hasSetBaseType = true;
             }
             else // TypeKind.Interface
             {
                 typeSymbol.Interfaces.Add(baseSymbol);
-                _semanticBinding?.AddInterface(typeSymbol, baseSymbol);
+                _semanticBinding.AddInterface(typeSymbol, baseSymbol);
             }
         }
     }
@@ -709,7 +709,7 @@ public class NameResolver
             }
 
             typeSymbol.Interfaces.Add(interfaceSymbol);
-            _semanticBinding?.AddInterface(typeSymbol, interfaceSymbol);
+            _semanticBinding.AddInterface(typeSymbol, interfaceSymbol);
         }
     }
 
@@ -741,7 +741,7 @@ public class NameResolver
             }
 
             typeSymbol.Interfaces.Add(baseInterfaceSymbol);
-            _semanticBinding?.AddInterface(typeSymbol, baseInterfaceSymbol);
+            _semanticBinding.AddInterface(typeSymbol, baseInterfaceSymbol);
         }
 
         // Propagate inherited methods from base interfaces

@@ -13,14 +13,14 @@ namespace Sharpy.Compiler.Semantic;
 public class CodeGenInfoComputer
 {
     private readonly SymbolTable _symbolTable;
-    private readonly SemanticBinding? _semanticBinding;
+    private readonly SemanticBinding _semanticBinding;
     private readonly HashSet<string> _processedModuleLevelVars = new();
     private HashSet<string> _variablesWithExecutionOrderIssues = new();
 
     public CodeGenInfoComputer(SymbolTable symbolTable, SemanticBinding? semanticBinding = null)
     {
         _symbolTable = symbolTable;
-        _semanticBinding = semanticBinding;
+        _semanticBinding = semanticBinding ?? new SemanticBinding();
     }
 
     /// <summary>
@@ -29,7 +29,7 @@ public class CodeGenInfoComputer
     private void SetCodeGenInfo(Symbol symbol, CodeGenInfo info)
     {
         symbol.CodeGenInfo = info;
-        _semanticBinding?.SetCodeGenInfo(symbol, info);
+        _semanticBinding.SetCodeGenInfo(symbol, info);
     }
 
     /// <summary>
