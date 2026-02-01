@@ -277,10 +277,9 @@ public record UserDefinedType : SemanticType
     /// <remarks>
     /// Note: This method reads Symbol.BaseType and Symbol.Interfaces directly rather than
     /// going through SemanticBinding, because SemanticType is a data type without access to
-    /// the binding store. This is safe because:
-    /// 1. During the dual-write migration, both stores always contain the same data.
-    /// 2. When Symbol becomes fully immutable, BaseType/Interfaces will be set once at
-    ///    construction time and remain readable without mutation.
+    /// the binding store. This is safe because materialization (MaterializeInheritance) copies
+    /// data from SemanticBinding onto Symbol properties at the inheritance freeze point, which
+    /// occurs before type checking when this method is called.
     /// </remarks>
     public override bool IsAssignableTo(SemanticType other)
     {

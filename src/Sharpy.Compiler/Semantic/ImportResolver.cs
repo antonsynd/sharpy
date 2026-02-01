@@ -659,7 +659,7 @@ public class ImportResolver
             Properties = originalType.Properties,
             Constructors = originalType.Constructors,
             // Direct reads of BaseType/Interfaces are safe here: we're cloning the symbol
-            // for re-export, and these values were set during the source module's compilation.
+            // for re-export, and these values were materialized during the source module's compilation.
             BaseType = originalType.BaseType,
             Interfaces = originalType.Interfaces,
             UnresolvedBaseName = originalType.UnresolvedBaseName,

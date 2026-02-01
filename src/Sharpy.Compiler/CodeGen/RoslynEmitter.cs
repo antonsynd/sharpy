@@ -225,19 +225,22 @@ public partial class RoslynEmitter
     // CodeGenInfo helper methods
     //
     // These methods read CodeGenInfo via SemanticBinding (preferred)
-    // with fallback to Symbol.CodeGenInfo (legacy). CodeGenInfo is
-    // always populated for module-level symbols (via TypeChecker.CheckModule
-    // with computeCodeGenInfo: true).
+    // with fallback to Symbol.CodeGenInfo (post-materialization).
+    // Materialization copies data from SemanticBinding to Symbol
+    // properties at phase boundaries, so both sources should agree
+    // after materialization.
     // ============================================================
 
     /// <summary>
-    /// Get CodeGenInfo for a symbol, preferring SemanticBinding over the symbol property.
+    /// Get CodeGenInfo for a symbol from SemanticBinding.
+    /// Falls back to symbol.CodeGenInfo for symbols not tracked by this binding.
     /// </summary>
     private CodeGenInfo? GetCodeGenInfo(Symbol symbol)
         => _context.SemanticBinding.GetCodeGenInfo(symbol) ?? symbol.CodeGenInfo;
 
     /// <summary>
-    /// Get the type for a VariableSymbol, preferring SemanticBinding over the symbol property.
+    /// Get the type for a VariableSymbol from SemanticBinding.
+    /// Falls back to symbol.Type for symbols not tracked by this binding.
     /// </summary>
     private SemanticType GetVariableType(VariableSymbol symbol)
     {

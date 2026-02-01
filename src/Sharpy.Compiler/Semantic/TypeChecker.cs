@@ -64,7 +64,8 @@ public partial class TypeChecker
     private readonly CompilerServices? _services;
 
     /// <summary>
-    /// Optional SemanticBinding for dual-write of CodeGenInfo during computation.
+    /// SemanticBinding for storing semantic data (CodeGenInfo, VariableType, inheritance).
+    /// Writes go exclusively to SemanticBinding; Symbol properties are populated by materialization at freeze points.
     /// </summary>
     public SemanticBinding SemanticBinding { get; set; } = new();
 
@@ -134,22 +135,22 @@ public partial class TypeChecker
     }
 
     /// <summary>
-    /// Gets the base type for a TypeSymbol, preferring SemanticBinding when available.
-    /// Falls back to symbol.BaseType for backward compatibility during migration.
+    /// Gets the base type for a TypeSymbol from SemanticBinding.
+    /// Falls back to symbol.BaseType for symbols not tracked by this binding (e.g., CLR types).
     /// </summary>
     private TypeSymbol? GetBaseType(TypeSymbol symbol)
         => SemanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
 
     /// <summary>
-    /// Gets the interfaces for a TypeSymbol, preferring SemanticBinding when available.
-    /// Falls back to symbol.Interfaces for backward compatibility during migration.
+    /// Gets the interfaces for a TypeSymbol from SemanticBinding.
+    /// Falls back to symbol.Interfaces for symbols not tracked by this binding (e.g., CLR types).
     /// </summary>
     private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
         => SemanticBinding.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
 
     /// <summary>
-    /// Gets the type for a VariableSymbol, preferring SemanticBinding when available.
-    /// Falls back to symbol.Type for backward compatibility during migration.
+    /// Gets the type for a VariableSymbol from SemanticBinding.
+    /// Falls back to symbol.Type for symbols not tracked by this binding.
     /// </summary>
     private SemanticType GetVariableType(VariableSymbol symbol)
     {
