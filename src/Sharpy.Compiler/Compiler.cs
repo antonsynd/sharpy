@@ -63,10 +63,16 @@ public class Compiler
     /// <summary>
     /// Compile a Sharpy project from a .spyproj file
     /// </summary>
-    public ProjectCompilationResult CompileProject(ProjectConfig projectConfig)
+    public ProjectCompilationResult CompileProject(ProjectConfig projectConfig) =>
+        CompileProject(projectConfig, CancellationToken.None);
+
+    /// <summary>
+    /// Compile a Sharpy project from a .spyproj file with cancellation support
+    /// </summary>
+    public ProjectCompilationResult CompileProject(ProjectConfig projectConfig, CancellationToken cancellationToken)
     {
         var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry);
-        return projectCompiler.Compile(projectConfig);
+        return projectCompiler.Compile(projectConfig, cancellationToken);
     }
 
     public CompilationResult Compile(string sourceCode, string filePath) =>

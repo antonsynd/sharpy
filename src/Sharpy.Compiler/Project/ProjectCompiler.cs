@@ -1,3 +1,4 @@
+using System.Threading;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Semantic;
@@ -49,7 +50,13 @@ public class ProjectCompiler
     /// <summary>
     /// Compile a Sharpy project through the multi-file compilation pipeline
     /// </summary>
-    public ProjectCompilationResult Compile(ProjectConfig config)
+    public ProjectCompilationResult Compile(ProjectConfig config) =>
+        Compile(config, CancellationToken.None);
+
+    /// <summary>
+    /// Compile a Sharpy project through the multi-file compilation pipeline with cancellation support
+    /// </summary>
+    public ProjectCompilationResult Compile(ProjectConfig config, CancellationToken cancellationToken)
     {
         _logger.LogInfo($"Starting project compilation: {config.RootNamespace}");
 
@@ -64,18 +71,21 @@ public class ProjectCompiler
             {
                 return CreateFailureResult();
             }
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 2: Initialize shared symbol table and semantic info
             InitializeSharedState();
 
             // Phase 3: Collect type declarations from all files (first pass - type shells only)
             CollectTypeDeclarations(config);
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 4: Resolve imports and build dependency information
             if (!ResolveImports(config))
             {
                 return CreateFailureResult();
             }
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 4b: Resolve inheritance (now that imports are resolved)
             // This must happen AFTER imports are resolved so that imported base types
@@ -91,6 +101,7 @@ public class ProjectCompiler
             _projectModel.SemanticBinding.MaterializeInheritance();
             DualWriteAssertions.AssertInheritanceConsistency(_symbolTable, _projectModel.SemanticBinding);
             _projectModel.SemanticBinding.FreezeInheritance();
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 5: Perform semantic analysis on all files
             if (!PerformSemanticAnalysis(config))
@@ -103,12 +114,27 @@ public class ProjectCompiler
             DualWriteAssertions.AssertVariableTypeConsistency(_symbolTable, _projectModel.SemanticBinding);
             _projectModel.SemanticBinding.FreezeVariableTypes();
             _projectModel.SemanticBinding.FreezeCodeGenInfo();
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 6: Generate C# code for all files
             var generatedCSharp = GenerateCode(config);
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 7: Compile to assembly
             return CompileAssembly(config, generatedCSharp);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInfo("Project compilation cancelled");
+            _diagnostics.AddError("Compilation cancelled", code: DiagnosticCodes.Infrastructure.CompilationCancelled);
+            return new ProjectCompilationResult
+            {
+                Success = false,
+                Diagnostics = _diagnostics,
+                Metrics = _projectMetrics,
+                DependencyGraph = _dependencyGraph,
+                ProjectModel = _projectModel
+            };
         }
         catch (Exception ex)
         {
