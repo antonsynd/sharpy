@@ -285,7 +285,6 @@ public partial class TypeChecker
             {
                 // Module-level const was already created by NameResolver
                 // Update its type now that we've resolved it
-                existingConst.Type = declaredType;
                 SemanticBinding.SetVariableType(existingConst, declaredType);
                 return;
             }

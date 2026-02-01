@@ -672,13 +672,11 @@ public class NameResolver
                         classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance);
                     continue;
                 }
-                typeSymbol.BaseType = baseSymbol;
                 _semanticBinding.SetBaseType(typeSymbol, baseSymbol);
                 hasSetBaseType = true;
             }
             else // TypeKind.Interface
             {
-                typeSymbol.Interfaces.Add(baseSymbol);
                 _semanticBinding.AddInterface(typeSymbol, baseSymbol);
             }
         }
@@ -711,7 +709,6 @@ public class NameResolver
                 continue;
             }
 
-            typeSymbol.Interfaces.Add(interfaceSymbol);
             _semanticBinding.AddInterface(typeSymbol, interfaceSymbol);
         }
     }
@@ -743,7 +740,6 @@ public class NameResolver
                 continue;
             }
 
-            typeSymbol.Interfaces.Add(baseInterfaceSymbol);
             _semanticBinding.AddInterface(typeSymbol, baseInterfaceSymbol);
         }
 

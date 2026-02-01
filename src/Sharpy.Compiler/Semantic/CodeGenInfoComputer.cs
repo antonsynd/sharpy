@@ -24,11 +24,11 @@ public class CodeGenInfoComputer
     }
 
     /// <summary>
-    /// Sets CodeGenInfo on both the symbol (legacy) and the SemanticBinding (new).
+    /// Sets CodeGenInfo in SemanticBinding. Symbol properties are populated later
+    /// by MaterializeCodeGenInfo() at the freeze point.
     /// </summary>
     private void SetCodeGenInfo(Symbol symbol, CodeGenInfo info)
     {
-        symbol.CodeGenInfo = info;
         _semanticBinding.SetCodeGenInfo(symbol, info);
     }
 

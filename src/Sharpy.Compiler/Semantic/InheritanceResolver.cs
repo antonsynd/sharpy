@@ -75,13 +75,11 @@ public class InheritanceResolver
                     {
                         if (!GetInterfaces(type).Contains(baseType))
                         {
-                            type.Interfaces.Add(baseType);
                             _semanticBinding.AddInterface(type, baseType);
                         }
                     }
                     else
                     {
-                        type.BaseType = baseType;
                         _semanticBinding.SetBaseType(type, baseType);
                     }
                     _logger.LogDebug($"Resolved inheritance: {type.Name} : {baseType.Name}");
@@ -98,7 +96,6 @@ public class InheritanceResolver
                 var ifaceType = _symbolTable.LookupType(ifaceName);
                 if (ifaceType != null && !GetInterfaces(type).Contains(ifaceType))
                 {
-                    type.Interfaces.Add(ifaceType);
                     _semanticBinding.AddInterface(type, ifaceType);
                     _logger.LogDebug($"Resolved interface: {type.Name} : {ifaceType.Name}");
                 }
