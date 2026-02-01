@@ -269,3 +269,66 @@ Inheritance resolution is consolidated into a clear two-tier architecture:
 - The old scattered methods (`Compiler.ResolveImportedTypeInheritance()`, `Compiler.ResolveTransitiveBaseTypes()`) have been removed.
 
 **Test coverage:** 13 InheritanceResolver unit tests (resolution, edge cases, dual-read pattern) + 19 cross-module integration tests (10 Semantic + 9 Integration) + 26 file-based test fixtures.
+
+---
+
+## Phase D Completion Notes
+
+**Status: Complete**
+
+### Item 7: Unify Position Tracking on TextSpan
+
+TextSpan is now consistently populated across the compiler pipeline:
+
+- **Lexer** always populates `Position` (0-based char offset) on all tokens via the 5-parameter constructor. Every token has a valid `GetSpan()` result.
+- **Parser** propagates TextSpan from tokens to AST nodes using helper methods (`GetSpanFromToken`, `GetSpanFromTokens`, `CombineSpans`). All 110+ AST node creation sites now set `Span`.
+- **SourceText** (`Text/SourceText.cs`) provides O(log n) line/column ↔ position conversion with precomputed line starts, handling all line ending types (LF, CR, CRLF).
+- **ILocatable** interface enables polymorphic span access on both Tokens and AST Nodes.
+- **AssertStatementsHaveSpans** (`Compiler.cs`) verifies all top-level statements have TextSpan populated in DEBUG builds.
+
+Six AST node creation sites were missing Span and have been fixed:
+1. `Module` in `Parser.ParseModule()`
+2. `TupleLiteral` in `Parser.ParseSimpleStatement()` (tuple unpacking)
+3. `TupleLiteral` in `Parser.ParseForTarget()` (for loop targets)
+4. `ForClause` in `Parser.ParseComprehensionClauses()`
+5. `IfClause` in `Parser.ParseComprehensionClauses()`
+6. `TupleLiteral` in `Parser.ParseSliceOrIndex()` (type arguments)
+
+AST nodes retain both `LineStart/LineEnd/ColumnStart/ColumnEnd` (1-based) and `Span` (TextSpan, 0-based offsets). Both representations are populated consistently. Future LSP integration can use TextSpan directly; error messages can derive line/column from TextSpan + SourceText.
+
+**Test coverage:** 21 ParserSpan tests + TextSpan unit tests + SourceText unit tests + Lexer position tests.
+
+### Item 8: CancellationToken Threading Model
+
+CancellationToken support is threaded through both single-file and project compilation:
+
+- **Compiler.Compile(source, filePath, CancellationToken)** — already had 5 cancellation checkpoints between phases (lexer, parser, name resolution, import resolution, type checking). `OperationCanceledException` is caught and converted to a structured diagnostic with code `SHP0901` (CompilationCancelled).
+- **ProjectCompiler.Compile(config, CancellationToken)** — new overload with 6 cancellation checkpoints between phases (parse, declarations, imports, inheritance, semantic analysis, code generation). `OperationCanceledException` is caught and returned as a failure result.
+- **Compiler.CompileProject(config, CancellationToken)** — new overload that passes through to ProjectCompiler.
+- **ValidationPipeline.Validate(..., CancellationToken)** — already supported, checks at start of each validator loop.
+- Convenience overloads without CancellationToken delegate to `CancellationToken.None`.
+
+Individual phases (Lexer, Parser, NameResolver, TypeChecker, RoslynEmitter) do not accept CancellationToken directly — cancellation is checked at phase boundaries in the compiler driver, which is sufficient for responsive cancellation without adding complexity to phase internals.
+
+**Test coverage:** 6 CancellationToken integration tests (already-cancelled token, non-cancelled token, default overloads for both Compiler and ProjectCompiler).
+
+### Item 11: Internal Consistency Assertions
+
+Phase boundary assertions are comprehensive, all using `[Conditional("DEBUG")]` to compile out in Release:
+
+**Existing assertions (from Phase C):**
+- `AssertStatementsHaveSpans` — after Parser, verifies TextSpan on statements
+- `AssertAllSymbolsHaveNames` — after NameResolver, verifies symbol names
+- `DualWriteAssertions.AssertInheritanceConsistency` — bidirectional materialization check
+- `DualWriteAssertions.AssertCodeGenInfoConsistency` — bidirectional materialization check
+- `DualWriteAssertions.AssertVariableTypeConsistency` — bidirectional materialization check
+- `AssertGeneratedCSharpParses` — after CodeGen, parses generated C# for syntax errors
+- `ExpressionTypeCount > 0` — after TypeChecker, verifies some expressions typed
+- Freeze assertions (`FreezeInheritance`, `FreezeVariableTypes`, `FreezeCodeGenInfo`)
+
+**New assertions added in Phase D:**
+- `AssertNoDuplicateTypeNames` — after NameResolver, verifies no duplicate type definitions in symbol table (skips CLR re-exports)
+- `AssertNoUnresolvedInheritance` — after InheritanceResolver, warns if `UnresolvedBaseName`/`UnresolvedInterfaceNames` remain without corresponding resolved types
+- `WarnIfUnknownTypes` — after TypeChecker, warns if unknown expression types remain when no errors exist (kept as warning rather than hard assert, since the type checker doesn't record types for all intermediate expressions in class member access patterns)
+
+**Test coverage:** 9 PhaseBoundaryAssertionTests (exercises all assertion code paths with valid compilations: multiple classes, interfaces, inheritance, expressions, literals, nested scopes).
