@@ -217,12 +217,29 @@ class Program
         cacheCommand.Subcommands.Add(cacheClearCommand);
         cacheCommand.Subcommands.Add(cacheInfoCommand);
 
+        // === Explain Command ===
+        var explainCommand = new Command("explain", "Show detailed explanation for a diagnostic code");
+
+        var explainCodeArg = new Argument<string?>("code") { Description = "Diagnostic code to explain (e.g. SHP0200)", Arity = ArgumentArity.ZeroOrOne };
+        var explainListOpt = new Option<bool>("--list") { Description = "List all documented diagnostic codes" };
+
+        explainCommand.Arguments.Add(explainCodeArg);
+        explainCommand.Options.Add(explainListOpt);
+
+        explainCommand.SetAction((parseResult) =>
+        {
+            var code = parseResult.GetValue(explainCodeArg);
+            var list = parseResult.GetValue(explainListOpt);
+            HandleExplainCommand(code, list);
+        });
+
         // === Add all commands to root ===
         rootCommand.Subcommands.Add(buildCommand);
         rootCommand.Subcommands.Add(runCommand);
         rootCommand.Subcommands.Add(projectCommand);
         rootCommand.Subcommands.Add(emitCommand);
         rootCommand.Subcommands.Add(cacheCommand);
+        rootCommand.Subcommands.Add(explainCommand);
 
         return rootCommand.Parse(args).Invoke();
     }
@@ -823,6 +840,76 @@ class Program
             Console.Error.WriteLine($"Error retrieving cache info: {ex.Message}");
             Environment.Exit(1);
         }
+    }
+
+    static void HandleExplainCommand(string? code, bool list)
+    {
+        if (list)
+        {
+            var all = DiagnosticExplanations.GetAll();
+            Console.WriteLine("Documented Diagnostic Codes:");
+            Console.WriteLine(new string('=', 60));
+
+            string? lastCategory = null;
+            foreach (var entry in all.OrderBy(e => e.Key, StringComparer.Ordinal))
+            {
+                if (entry.Value.Category != lastCategory)
+                {
+                    if (lastCategory != null)
+                        Console.WriteLine();
+                    Console.WriteLine($"  [{entry.Value.Category}]");
+                    lastCategory = entry.Value.Category;
+                }
+                Console.WriteLine($"    {entry.Key}  {entry.Value.Title}");
+            }
+
+            Console.WriteLine(new string('=', 60));
+            Console.WriteLine($"Total: {all.Count} documented codes");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            Console.Error.WriteLine("Usage: sharpyc explain <code>");
+            Console.Error.WriteLine("       sharpyc explain --list");
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("Example: sharpyc explain SHP0200");
+            Environment.Exit(1);
+            return;
+        }
+
+        var explanation = DiagnosticExplanations.Get(code);
+        if (explanation == null)
+        {
+            Console.Error.WriteLine($"No explanation found for diagnostic code '{code}'.");
+            Console.Error.WriteLine("Use 'sharpyc explain --list' to see all documented codes.");
+            Environment.Exit(1);
+            return;
+        }
+
+        Console.WriteLine($"{explanation.Code}: {explanation.Title}");
+        Console.WriteLine(new string('=', 60));
+        Console.WriteLine();
+        Console.WriteLine(explanation.Description);
+
+        if (explanation.Example != null)
+        {
+            Console.WriteLine();
+            Console.WriteLine("Example:");
+            foreach (var line in explanation.Example.Split('\n'))
+                Console.WriteLine($"  {line}");
+        }
+
+        if (explanation.Fix != null)
+        {
+            Console.WriteLine();
+            Console.WriteLine("Fix:");
+            foreach (var line in explanation.Fix.Split('\n'))
+                Console.WriteLine($"  {line}");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine($"Category: {explanation.Category}");
     }
 
     /// <summary>
