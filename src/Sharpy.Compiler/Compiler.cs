@@ -284,6 +284,7 @@ public class Compiler
 
             // Assertion: SemanticBinding must be consistent with Symbol properties after inheritance resolution
             AssertInheritanceDualWriteConsistency(symbolTable, semanticBinding);
+            semanticBinding.FreezeInheritance();
 
             metrics.EndPhase();
 
@@ -339,6 +340,8 @@ public class Compiler
             AssertCodeGenInfoDualWriteConsistency(symbolTable, semanticBinding);
             // Assertion: VariableType dual-write consistency after type checking
             AssertVariableTypeDualWriteConsistency(symbolTable, semanticBinding);
+            semanticBinding.FreezeVariableTypes();
+            semanticBinding.FreezeCodeGenInfo();
 
             if (typeChecker.Diagnostics.HasErrors)
             {

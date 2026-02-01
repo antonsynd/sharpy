@@ -88,12 +88,15 @@ public class ProjectCompiler
             // but imported types from external modules still have unresolved base names.
             var inheritanceResolver = new InheritanceResolver(_symbolTable, _logger, _projectModel.SemanticBinding);
             inheritanceResolver.ResolveAll(_importResolver);
+            _projectModel.SemanticBinding.FreezeInheritance();
 
             // Phase 5: Perform semantic analysis on all files
             if (!PerformSemanticAnalysis(config))
             {
                 return CreateFailureResult();
             }
+            _projectModel.SemanticBinding.FreezeVariableTypes();
+            _projectModel.SemanticBinding.FreezeCodeGenInfo();
 
             // Phase 6: Generate C# code for all files
             var generatedCSharp = GenerateCode(config);

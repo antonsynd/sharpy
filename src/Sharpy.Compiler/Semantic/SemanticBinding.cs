@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -54,13 +55,42 @@ public class SemanticBinding
     // Maps FromImportStatement nodes to their re-exported symbols
     private readonly ConcurrentDictionary<FromImportStatement, Dictionary<string, Symbol>> _reExportedSymbols = new();
 
+    // Phase-gating freeze flags (DEBUG only) - prevent mutations after a phase completes
+    private bool _inheritanceFrozen;
+    private bool _variableTypesFrozen;
+    private bool _codeGenInfoFrozen;
+
+    /// <summary>
+    /// Freeze inheritance data (BaseType, Interfaces) after inheritance resolution completes.
+    /// Any subsequent SetBaseType/AddInterface calls will trigger a debug assertion failure.
+    /// </summary>
+    [Conditional("DEBUG")]
+    internal void FreezeInheritance() => _inheritanceFrozen = true;
+
+    /// <summary>
+    /// Freeze variable type data after type checking completes.
+    /// Any subsequent SetVariableType calls will trigger a debug assertion failure.
+    /// </summary>
+    [Conditional("DEBUG")]
+    internal void FreezeVariableTypes() => _variableTypesFrozen = true;
+
+    /// <summary>
+    /// Freeze CodeGenInfo data after type checking completes.
+    /// Any subsequent SetCodeGenInfo calls will trigger a debug assertion failure.
+    /// </summary>
+    [Conditional("DEBUG")]
+    internal void FreezeCodeGenInfo() => _codeGenInfoFrozen = true;
+
     #region CodeGenInfo
 
     /// <summary>
     /// Sets the CodeGenInfo for a symbol.
     /// </summary>
     public void SetCodeGenInfo(Symbol symbol, CodeGenInfo info)
-        => _codeGenInfo[symbol] = info;
+    {
+        Debug.Assert(!_codeGenInfoFrozen, $"SetCodeGenInfo called after freeze for symbol '{symbol.Name}'");
+        _codeGenInfo[symbol] = info;
+    }
 
     /// <summary>
     /// Gets the CodeGenInfo for a symbol, or null if not set.
@@ -82,7 +112,10 @@ public class SemanticBinding
     /// Sets the resolved type for a variable symbol.
     /// </summary>
     public void SetVariableType(VariableSymbol symbol, SemanticType type)
-        => _variableTypes[symbol] = type;
+    {
+        Debug.Assert(!_variableTypesFrozen, $"SetVariableType called after freeze for symbol '{symbol.Name}'");
+        _variableTypes[symbol] = type;
+    }
 
     /// <summary>
     /// Gets the resolved type for a variable symbol.
@@ -99,7 +132,10 @@ public class SemanticBinding
     /// Sets the base type for a type symbol.
     /// </summary>
     public void SetBaseType(TypeSymbol symbol, TypeSymbol baseType)
-        => _baseTypes[symbol] = baseType;
+    {
+        Debug.Assert(!_inheritanceFrozen, $"SetBaseType called after freeze for symbol '{symbol.Name}'");
+        _baseTypes[symbol] = baseType;
+    }
 
     /// <summary>
     /// Gets the base type for a type symbol, or null if not set.
@@ -116,6 +152,7 @@ public class SemanticBinding
     /// </summary>
     public void AddInterface(TypeSymbol symbol, TypeSymbol iface)
     {
+        Debug.Assert(!_inheritanceFrozen, $"AddInterface called after freeze for symbol '{symbol.Name}'");
         var bag = _interfaces.GetOrAdd(symbol, _ => new ConcurrentBag<TypeSymbol>());
         bag.Add(iface);
     }
