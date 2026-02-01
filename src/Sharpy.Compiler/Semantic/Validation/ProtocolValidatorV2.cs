@@ -114,7 +114,8 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +
                 "(missing '__iter__' method). Consider implementing IIterable<T> interface.",
-                forStmt.Iterator.LineStart, forStmt.Iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
+                forStmt.Iterator.LineStart, forStmt.Iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: forStmt.Iterator.Span);
         }
 
         // Also validate the iterator expression
@@ -233,7 +234,8 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +
                 "(missing '__iter__' method). Consider implementing IIterable<T> interface.",
-                iterator.LineStart, iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
+                iterator.LineStart, iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: iterator.Span);
         }
     }
 
@@ -248,7 +250,8 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"Type '{containerType.GetDisplayName()}' does not support indexing " +
                 "(missing '__getitem__' method). Consider implementing ISequence<T> interface.",
-                indexAccess.LineStart, indexAccess.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
+                indexAccess.LineStart, indexAccess.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: indexAccess.Span);
         }
     }
 
@@ -263,7 +266,8 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"Type '{containerType.GetDisplayName()}' does not support membership testing " +
                 "(missing '__contains__' method). Consider implementing IContainer<T> interface.",
-                binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
+                binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: binOp.Span);
         }
     }
 
@@ -281,7 +285,8 @@ public class ProtocolValidatorV2 : SemanticValidatorBase
                 AddError(_context,
                     $"Type '{argType.GetDisplayName()}' does not support len() " +
                     "(missing '__len__' method). Consider implementing ISized interface.",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                    span: call.Span);
             }
         }
     }

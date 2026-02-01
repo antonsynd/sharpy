@@ -94,7 +94,8 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
         {
             AddError(_context,
                 $"Function '{funcDef.Name}' must return a value of type '{returnType.GetDisplayName()}' in all code paths",
-                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.NotAllPathsReturn);
+                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.NotAllPathsReturn,
+                span: funcDef.Span);
         }
     }
 
@@ -131,7 +132,8 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
                 if (!hasUnreachableCode)
                 {
                     AddError(_context, "Unreachable code detected",
-                        statement.LineStart, statement.ColumnStart, code: DiagnosticCodes.Semantic.UnreachableCode);
+                        statement.LineStart, statement.ColumnStart, code: DiagnosticCodes.Semantic.UnreachableCode,
+                        span: statement.Span);
                     hasUnreachableCode = true;
                 }
                 continue;
@@ -166,7 +168,8 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
                 if (loopDepth == 0)
                 {
                     AddError(_context, "'break' statement outside loop",
-                        statement.LineStart, statement.ColumnStart, code: DiagnosticCodes.Semantic.BreakOutsideLoop);
+                        statement.LineStart, statement.ColumnStart, code: DiagnosticCodes.Semantic.BreakOutsideLoop,
+                        span: statement.Span);
                 }
                 return (false, true);
 
@@ -174,7 +177,8 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
                 if (loopDepth == 0)
                 {
                     AddError(_context, "'continue' statement outside loop",
-                        statement.LineStart, statement.ColumnStart, code: DiagnosticCodes.Semantic.ContinueOutsideLoop);
+                        statement.LineStart, statement.ColumnStart, code: DiagnosticCodes.Semantic.ContinueOutsideLoop,
+                        span: statement.Span);
                 }
                 return (false, true);
 

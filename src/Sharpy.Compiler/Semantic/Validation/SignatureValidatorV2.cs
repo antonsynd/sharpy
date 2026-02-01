@@ -110,7 +110,8 @@ public class SignatureValidatorV2 : SemanticValidatorBase
             var paramDesc = expectedParamCount.Value == 1 ? "(self)" : "(self, other)";
             AddError(_context,
                 $"{label} operator method '{methodName}' on '{owningType.Name}' must have exactly {expectedParamCount.Value} parameter{(expectedParamCount.Value == 1 ? "" : "s")} {paramDesc}, got {paramCount}",
-                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidOperatorSignature);
+                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidOperatorSignature,
+                span: funcDef.Span);
         }
 
         // Validate return type if we have the annotation
@@ -133,7 +134,8 @@ public class SignatureValidatorV2 : SemanticValidatorBase
             {
                 AddError(_context,
                     $"Comparison operator method '{methodName}' on '{owningTypeName}' must return 'bool', got '{TypeAnnotationHelper.GetName(returnType)}'",
-                    funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidOperatorSignature);
+                    funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidOperatorSignature,
+                    span: funcDef.Span);
             }
         }
         // For other operators, return type must be non-void
@@ -141,7 +143,8 @@ public class SignatureValidatorV2 : SemanticValidatorBase
         {
             AddError(_context,
                 $"Operator method '{methodName}' on '{owningTypeName}' must return a non-void type",
-                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidOperatorSignature);
+                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidOperatorSignature,
+                span: funcDef.Span);
         }
     }
 
@@ -192,7 +195,8 @@ public class SignatureValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"Protocol method '{protocol.DunderName}' on '{owningType.Name}' must have exactly " +
                 $"{expectedCount} parameter{(expectedCount == 1 ? "" : "s")} {paramDescription}, got {actualCount}.{interfaceHint}",
-                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
+                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: funcDef.Span);
         }
     }
 
@@ -221,7 +225,8 @@ public class SignatureValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"Protocol method '{protocol.DunderName}' on '{owningType.Name}' must return " +
                 $"'{protocol.ExpectedReturnType}', got '{actualReturnType}'.{interfaceHint}",
-                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
+                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: funcDef.Span);
         }
     }
 
@@ -235,7 +240,8 @@ public class SignatureValidatorV2 : SemanticValidatorBase
             {
                 AddError(_context,
                     $"Protocol method '{protocol.DunderName}' on '{owningType.Name}' must have 'self' as first parameter",
-                    funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
+                    funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                    span: funcDef.Span);
             }
             return;
         }
@@ -246,7 +252,8 @@ public class SignatureValidatorV2 : SemanticValidatorBase
             AddError(_context,
                 $"First parameter of protocol method '{protocol.DunderName}' on '{owningType.Name}' must be " +
                 $"'self', got '{funcDef.Parameters[0].Name}'",
-                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
+                funcDef.LineStart, funcDef.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: funcDef.Span);
         }
     }
 

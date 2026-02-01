@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -266,10 +267,11 @@ public class AccessValidatorV2 : SemanticValidatorBase
             return;
 
         ValidateMemberAccess(memberAccess.Member, owningType,
-            memberAccess.LineStart, memberAccess.ColumnStart);
+            memberAccess.LineStart, memberAccess.ColumnStart, memberAccess.Span);
     }
 
-    private void ValidateMemberAccess(string memberName, TypeSymbol owningType, int? lineStart, int? columnStart)
+    private void ValidateMemberAccess(string memberName, TypeSymbol owningType, int? lineStart, int? columnStart,
+        TextSpan? span = null)
     {
         var accessLevel = DetermineAccessLevel(memberName);
 
@@ -281,7 +283,8 @@ public class AccessValidatorV2 : SemanticValidatorBase
                 {
                     AddError(_context,
                         $"Cannot access private member '{memberName}' of '{owningType.Name}' from outside the class",
-                        lineStart, columnStart, code: DiagnosticCodes.Semantic.AccessViolation);
+                        lineStart, columnStart, code: DiagnosticCodes.Semantic.AccessViolation,
+                        span: span);
                 }
                 break;
 
@@ -291,7 +294,8 @@ public class AccessValidatorV2 : SemanticValidatorBase
                 {
                     AddError(_context,
                         $"Cannot access protected member '{memberName}' of '{owningType.Name}' from outside the class hierarchy",
-                        lineStart, columnStart, code: DiagnosticCodes.Semantic.AccessViolation);
+                        lineStart, columnStart, code: DiagnosticCodes.Semantic.AccessViolation,
+                        span: span);
                 }
                 break;
 

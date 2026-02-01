@@ -80,7 +80,8 @@ public class ControlFlowValidatorV3 : SemanticValidatorBase
         {
             AddError(_context, "Unreachable code detected",
                 info.FirstUnreachableStatement.LineStart,
-                info.FirstUnreachableStatement.ColumnStart, code: DiagnosticCodes.Semantic.UnreachableCode);
+                info.FirstUnreachableStatement.ColumnStart, code: DiagnosticCodes.Semantic.UnreachableCode,
+                span: info.FirstUnreachableStatement.Span);
         }
 
         // 2. Check return paths (if function has return type)
@@ -92,7 +93,8 @@ public class ControlFlowValidatorV3 : SemanticValidatorBase
             {
                 AddError(_context,
                     $"Function '{func.Name}' must return a value of type '{returnType.GetDisplayName()}' in all code paths",
-                    func.LineStart, func.ColumnStart, code: DiagnosticCodes.Semantic.NotAllPathsReturn);
+                    func.LineStart, func.ColumnStart, code: DiagnosticCodes.Semantic.NotAllPathsReturn,
+                    span: func.Span);
             }
         }
 
@@ -104,7 +106,8 @@ public class ControlFlowValidatorV3 : SemanticValidatorBase
                 ? DiagnosticCodes.Semantic.BreakOutsideLoop
                 : DiagnosticCodes.Semantic.ContinueOutsideLoop;
             AddError(_context, error.Message,
-                error.Statement.LineStart, error.Statement.ColumnStart, code: code);
+                error.Statement.LineStart, error.Statement.ColumnStart, code: code,
+                span: error.Statement.Span);
         }
     }
 

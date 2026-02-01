@@ -88,7 +88,8 @@ public class ModuleLevelValidatorV2 : SemanticValidatorBase
         {
             AddError(_context,
                 $"Top-level variable '{varDecl.Name}' requires a type annotation",
-                varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.ModuleLevelNoTypeAnnotation);
+                varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.ModuleLevelNoTypeAnnotation,
+                span: varDecl.Span);
         }
 
         // Report errors for executable statements at module level when:
@@ -105,7 +106,8 @@ public class ModuleLevelValidatorV2 : SemanticValidatorBase
             {
                 AddError(_context,
                     "Executable statements are not allowed at module level",
-                    stmt.LineStart, stmt.ColumnStart, code: DiagnosticCodes.Semantic.ModuleLevelExecutableStatement);
+                    stmt.LineStart, stmt.ColumnStart, code: DiagnosticCodes.Semantic.ModuleLevelExecutableStatement,
+                    span: stmt.Span);
             }
         }
 
@@ -114,7 +116,8 @@ public class ModuleLevelValidatorV2 : SemanticValidatorBase
         {
             AddError(_context,
                 "Entry point file requires a 'main()' function",
-                module.LineStart, module.ColumnStart, code: DiagnosticCodes.Validation.MissingMainFunction);
+                module.LineStart, module.ColumnStart, code: DiagnosticCodes.Validation.MissingMainFunction,
+                span: module.Span);
         }
     }
 }

@@ -2,7 +2,9 @@ using Xunit;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Tests.Diagnostics;
@@ -245,4 +247,148 @@ public class DiagnosticSpanTests
             span.Start.Should().Be(expectedStart, "span should start at 'raise'");
         }
     }
+
+    #region Validation Pipeline Span Tests
+
+    private SemanticContext CreateValidationContext(string source, bool isEntryPoint = false)
+    {
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
+        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
+        var module = parser.ParseModule();
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+        var semanticInfo = new SemanticInfo();
+        var semanticBinding = new SemanticBinding();
+
+        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance, semanticBinding);
+        nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance();
+        semanticBinding.MaterializeInheritance();
+
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance)
+        {
+            SemanticBinding = semanticBinding
+        };
+        typeChecker.CheckModule(module, isEntryPoint: isEntryPoint);
+
+        var context = new SemanticContext(symbolTable, semanticInfo, typeResolver)
+        {
+            IsEntryPoint = isEntryPoint,
+            SemanticBinding = semanticBinding
+        };
+        return context;
+    }
+
+    private (Module module, SemanticContext context) ParseForValidation(string source, bool isEntryPoint = false)
+    {
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
+        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
+        var module = parser.ParseModule();
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+        var semanticInfo = new SemanticInfo();
+        var semanticBinding = new SemanticBinding();
+
+        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance, semanticBinding);
+        nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance();
+        semanticBinding.MaterializeInheritance();
+
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance)
+        {
+            SemanticBinding = semanticBinding
+        };
+        typeChecker.CheckModule(module, isEntryPoint: isEntryPoint);
+
+        var context = new SemanticContext(symbolTable, semanticInfo, typeResolver)
+        {
+            IsEntryPoint = isEntryPoint,
+            SemanticBinding = semanticBinding
+        };
+        return (module, context);
+    }
+
+    [Fact]
+    public void ModuleLevelValidator_ExecutableStatement_DiagnosticHasSpan()
+    {
+        var source = "def main():\n    pass\n\nprint(\"hello\")\n";
+        var (module, context) = ParseForValidation(source, isEntryPoint: true);
+
+        var validator = new ModuleLevelValidatorV2();
+        validator.Validate(module, context);
+
+        var error = context.Diagnostics.GetErrors()
+            .FirstOrDefault(e => e.Code == DiagnosticCodes.Semantic.ModuleLevelExecutableStatement);
+
+        error.Should().NotBeNull("should report module-level executable statement error");
+        error!.Span.Should().NotBeNull("module-level statement error should carry span");
+        var span = error.Span!.Value;
+        var expectedStart = source.IndexOf("print(\"hello\")");
+        span.Start.Should().Be(expectedStart, "span should start at 'print(\"hello\")'");
+    }
+
+    [Fact]
+    public void SignatureValidator_WrongParamCount_DiagnosticHasSpan()
+    {
+        var source = "class Foo:\n    def __add__(self) -> Foo:\n        return self\n";
+        var (module, context) = ParseForValidation(source);
+
+        var validator = new SignatureValidatorV2();
+        validator.Validate(module, context);
+
+        var error = context.Diagnostics.GetErrors()
+            .FirstOrDefault(e => e.Code == DiagnosticCodes.Semantic.InvalidOperatorSignature);
+
+        error.Should().NotBeNull("should report wrong operator param count");
+        error!.Span.Should().NotBeNull("operator signature error should carry span");
+        var span = error.Span!.Value;
+        var expectedStart = source.IndexOf("def __add__");
+        span.Start.Should().Be(expectedStart, "span should start at 'def __add__'");
+    }
+
+    [Fact]
+    public void ControlFlowV3_UnreachableCode_DiagnosticHasSpan()
+    {
+        var source = "def foo() -> int:\n    return 1\n    x: int = 2\n";
+        var (module, context) = ParseForValidation(source);
+
+        var validator = new ControlFlowValidatorV3();
+        validator.Validate(module, context);
+
+        var error = context.Diagnostics.GetErrors()
+            .FirstOrDefault(e => e.Code == DiagnosticCodes.Semantic.UnreachableCode);
+
+        error.Should().NotBeNull("should detect unreachable code after return");
+        error!.Span.Should().NotBeNull("unreachable code error should carry span");
+        var span = error.Span!.Value;
+        var expectedStart = source.IndexOf("x: int = 2");
+        span.Start.Should().Be(expectedStart, "span should start at 'x: int = 2'");
+    }
+
+    [Fact]
+    public void DefaultParameterValidator_MutableDefault_DiagnosticHasSpan()
+    {
+        var source = "def foo(items: list[int] = []):\n    pass\n";
+        var (module, context) = ParseForValidation(source);
+
+        var validator = new DefaultParameterValidatorV2();
+        validator.Validate(module, context);
+
+        var error = context.Diagnostics.GetErrors()
+            .FirstOrDefault(e => e.Code == DiagnosticCodes.Validation.MutableDefault);
+
+        error.Should().NotBeNull("should detect mutable default value");
+        error!.Span.Should().NotBeNull("mutable default error should carry span");
+        var span = error.Span!.Value;
+        var expectedStart = source.IndexOf("items");
+        span.Start.Should().Be(expectedStart, "span should start at parameter 'items'");
+    }
+
+    #endregion
 }
