@@ -1,33 +1,19 @@
-using System.Collections.Immutable;
-using System.Text;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
-using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Project;
 
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// Entry in the import chain for error reporting
-/// </summary>
-internal record ImportChainEntry(
-    string ModulePath,
-    int? LineStart,
-    int? ColumnStart,
-    string? ImportingModule
-);
-
-/// <summary>
-/// Resolves imports and loads symbols from imported modules (both .spy files and .NET assemblies)
+/// Resolves imports and loads symbols from imported modules (both .spy files and .NET assemblies).
+/// Delegates module loading/caching/symbol-extraction to <see cref="ModuleLoader"/>.
 /// </summary>
 public class ImportResolver
 {
     private readonly ICompilerLogger _logger;
     private readonly DiagnosticBag _diagnostics = new();
-    private readonly HashSet<string> _loadedModules = new();
-    private readonly Stack<ImportChainEntry> _importChain = new(); // For detailed circular import detection
-    private readonly Dictionary<string, ModuleInfo> _moduleCache = new();
+    private readonly ModuleLoader _moduleLoader;
     private readonly ModuleRegistry? _moduleRegistry;
     private readonly ModuleResolver _moduleResolver;
 
@@ -35,17 +21,20 @@ public class ImportResolver
     /// All loaded .spy modules (excludes .NET modules).
     /// Key is the full file path, value is the ModuleInfo.
     /// </summary>
-    public IReadOnlyDictionary<string, ModuleInfo> LoadedSpyModules =>
-        _moduleCache
-            .Where(kvp => !kvp.Value.IsNetModule && kvp.Value.Module != null)
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+    public IReadOnlyDictionary<string, ModuleInfo> LoadedSpyModules => _moduleLoader.LoadedSpyModules;
     private DependencyGraphBuilder? _graphBuilder;
     private SemanticBinding _semanticBinding = new();
 
     private string? _currentModulePath = null;
 
     public ImportResolver(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null, ModuleResolver? moduleResolver = null)
+        : this(new ModuleLoader(logger), logger, moduleRegistry, moduleResolver)
     {
+    }
+
+    public ImportResolver(ModuleLoader moduleLoader, ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null, ModuleResolver? moduleResolver = null)
+    {
+        _moduleLoader = moduleLoader;
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = moduleRegistry;
         _moduleResolver = moduleResolver ?? new ModuleResolver(logger);
@@ -79,6 +68,7 @@ public class ImportResolver
     public void SetCurrentModule(string modulePath)
     {
         _currentModulePath = modulePath;
+        _moduleLoader.CurrentModulePath = modulePath;
         _moduleResolver.SetCurrentModulePath(modulePath);
     }
 
@@ -255,126 +245,44 @@ public class ImportResolver
     }
 
     /// <summary>
-    /// Load and parse a module
+    /// Load and parse a module (delegates to ModuleLoader).
     /// </summary>
     private ModuleInfo? LoadModule(string modulePath, int? lineStart, int? columnStart)
     {
-        // Check cache first
-        if (_moduleCache.TryGetValue(modulePath, out var cached))
-        {
-            _logger.LogDebug($"[ImportResolver] LoadModule: {Path.GetFileName(modulePath)} (from cache)");
-            return cached;
-        }
-
-        // Check for circular imports with detailed chain
-        if (IsModuleInChain(modulePath))
-        {
-            var chainMessage = FormatCircularImportChain(modulePath);
-            _logger.LogDebug($"[ImportResolver] Circular import detected: {Path.GetFileName(modulePath)}");
-            AddError(chainMessage, lineStart, columnStart, code: DiagnosticCodes.Semantic.CircularImport);
-            return null;
-        }
-
-        // Check if already loaded
-        if (_loadedModules.Contains(modulePath))
-        {
-            _logger.LogDebug($"[ImportResolver] LoadModule: {Path.GetFileName(modulePath)} (already loaded)");
-            return _moduleCache.GetValueOrDefault(modulePath);
-        }
-
-        _logger.LogInfo($"Loading module: {modulePath}");
-        _logger.LogDebug($"[ImportResolver] LoadModule: {Path.GetFileName(modulePath)} (parsing)");
-
-        // Compute the canonical module name for this file (used for DefiningModule tracking)
-        var canonicalModuleName = ComputeCanonicalModuleName(modulePath);
-        _logger.LogDebug($"[ImportResolver]   Canonical module name: {canonicalModuleName}");
-
-        // Push to import chain before loading
-        _importChain.Push(new ImportChainEntry(
-            modulePath,
-            lineStart,
-            columnStart,
-            _currentModulePath
-        ));
+        var previousModulePath = _currentModulePath;
+        _currentModulePath = modulePath;
+        _moduleLoader.CurrentModulePath = modulePath;
+        _moduleResolver.SetCurrentModulePath(modulePath);
 
         try
         {
-            // Read the source file
-            if (!File.Exists(modulePath))
+            var moduleInfo = _moduleLoader.LoadModule(modulePath, lineStart, columnStart, ResolveModuleImports);
+
+            // Handle from-import re-exports that need ImportResolver context
+            if (moduleInfo != null && moduleInfo.Module != null)
             {
-                AddError($"Module file not found: {modulePath}", lineStart, columnStart, code: DiagnosticCodes.Semantic.ModuleNotFound);
-                return null;
-            }
-
-            var source = File.ReadAllText(modulePath);
-
-            // Parse the module
-            var lexer = new Lexer.Lexer(source, _logger);
-            var tokens = lexer.TokenizeAll();
-            var parser = new Parser.Parser(tokens, _logger);
-            var module = parser.ParseModule();
-
-            // Create module info
-            var moduleInfo = new ModuleInfo
-            {
-                Path = modulePath,
-                Module = module,
-                ExportedSymbols = new Dictionary<string, Symbol>(),
-                CanonicalModuleName = canonicalModuleName
-            };
-
-            // Set current module path BEFORE extracting symbols (needed for relative imports in re-exports)
-            var previousModulePath = _currentModulePath;
-            _currentModulePath = modulePath;
-            _moduleResolver.SetCurrentModulePath(modulePath);
-
-            try
-            {
-                // Extract exported symbols (all top-level declarations)
-                foreach (var statement in module.Body)
+                foreach (var statement in moduleInfo.Module.Body)
                 {
-                    ExtractExportedSymbol(statement, moduleInfo);
-                }
-
-                // Recursively resolve imports within this module to detect transitive cycles
-                ResolveModuleImports(module, Path.GetDirectoryName(modulePath));
-            }
-            finally
-            {
-                _currentModulePath = previousModulePath;
-                if (previousModulePath != null)
-                {
-                    _moduleResolver.SetCurrentModulePath(previousModulePath);
+                    if (statement is FromImportStatement fromImport)
+                    {
+                        ExtractReExportedSymbols(fromImport, moduleInfo);
+                    }
                 }
             }
 
-            _moduleCache[modulePath] = moduleInfo;
-            _loadedModules.Add(modulePath);
-
-            // Log final exported symbols
-            _logger.LogDebug($"[ImportResolver] Module {Path.GetFileName(modulePath)} loaded with {moduleInfo.ExportedSymbols.Count} exports:");
-            foreach (var (name, symbol) in moduleInfo.ExportedSymbols)
-            {
-                if (symbol is TypeSymbol typeSymbol)
-                {
-                    _logger.LogDebug($"[ImportResolver]   - {name} ({symbol.Kind}:{typeSymbol.TypeKind}), DefiningModule: {typeSymbol.DefiningModule ?? "null"}, IsReExport: {typeSymbol.IsReExport}");
-                }
-                else
-                {
-                    _logger.LogDebug($"[ImportResolver]   - {name} ({symbol.Kind})");
-                }
-            }
+            // Merge any diagnostics from the module loader
+            _diagnostics.Merge(_moduleLoader.Diagnostics);
 
             return moduleInfo;
         }
-        catch (Exception ex)
-        {
-            AddError($"Error loading module '{modulePath}': {ex.Message}", lineStart, columnStart, code: DiagnosticCodes.Semantic.ModuleLoadError);
-            return null;
-        }
         finally
         {
-            _importChain.Pop();
+            _currentModulePath = previousModulePath;
+            _moduleLoader.CurrentModulePath = previousModulePath;
+            if (previousModulePath != null)
+            {
+                _moduleResolver.SetCurrentModulePath(previousModulePath);
+            }
         }
     }
 
@@ -398,110 +306,6 @@ public class ImportResolver
     }
 
     /// <summary>
-    /// Extract exported symbols from a statement.
-    /// All top-level symbols are added to ExportedSymbols, but visibility is enforced during import.
-    /// </summary>
-    private void ExtractExportedSymbol(Statement statement, ModuleInfo moduleInfo)
-    {
-        switch (statement)
-        {
-            case FunctionDef functionDef:
-                // All functions are tracked (visibility checked at import time)
-                var accessLevel = GetAccessLevel(functionDef.Name);
-
-                // Convert function parameters to parameter symbols
-                var parameters = functionDef.Parameters.Select(p => new ParameterSymbol
-                {
-                    Name = p.Name,
-                    // Convert type annotation to semantic type for primitive types
-                    Type = ConvertTypeAnnotationToSemanticType(p.Type),
-                    HasDefault = p.DefaultValue != null,
-                    DefaultValue = p.DefaultValue
-                }).ToList();
-
-                var funcSymbol = new FunctionSymbol
-                {
-                    Name = functionDef.Name,
-                    Kind = SymbolKind.Function,
-                    Parameters = parameters,
-                    // Convert return type annotation to semantic type
-                    ReturnType = ConvertTypeAnnotationToSemanticType(functionDef.ReturnType),
-                    AccessLevel = accessLevel,
-                    DeclarationLine = functionDef.LineStart,
-                    DeclarationColumn = functionDef.ColumnStart
-                };
-                moduleInfo.ExportedSymbols[functionDef.Name] = funcSymbol;
-                break;
-
-            case ClassDef classDef:
-                // Extract full class information including fields, methods, and type parameters
-                // Pass the canonical module name to set DefiningModule (critical for re-exports)
-                var classSymbol = ExtractFullClassSymbol(classDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
-                moduleInfo.ExportedSymbols[classDef.Name] = classSymbol;
-                break;
-
-            case StructDef structDef:
-                // Extract full struct information including fields, methods, and type parameters
-                // Pass the canonical module name to set DefiningModule (critical for re-exports)
-                var structSymbol = ExtractFullStructSymbol(structDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
-                moduleInfo.ExportedSymbols[structDef.Name] = structSymbol;
-                break;
-
-            case InterfaceDef interfaceDef:
-                // Extract full interface information including methods and type parameters
-                // Pass the canonical module name to set DefiningModule (critical for re-exports)
-                var interfaceSymbol = ExtractFullInterfaceSymbol(interfaceDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
-                moduleInfo.ExportedSymbols[interfaceDef.Name] = interfaceSymbol;
-                break;
-
-            case EnumDef enumDef:
-                // All enums are tracked
-                var enumAccessLevel = GetAccessLevel(enumDef.Name);
-                var enumSymbol = new TypeSymbol
-                {
-                    Name = enumDef.Name,
-                    Kind = SymbolKind.Type,
-                    TypeKind = TypeKind.Enum,
-                    AccessLevel = enumAccessLevel,
-                    DeclarationLine = enumDef.LineStart,
-                    DeclarationColumn = enumDef.ColumnStart,
-                    // Set DefiningModule for enums (critical for re-exports)
-                    DefiningModule = moduleInfo.CanonicalModuleName ?? moduleInfo.Path
-                };
-                moduleInfo.ExportedSymbols[enumDef.Name] = enumSymbol;
-                break;
-
-            case VariableDeclaration varDecl:
-                // All module-level variables are tracked (constants and regular)
-                var varAccessLevel = GetAccessLevel(varDecl.Name);
-                var varSymbol = new VariableSymbol
-                {
-                    Name = varDecl.Name,
-                    Kind = SymbolKind.Variable,
-                    // Convert type annotation to semantic type for primitive types
-                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
-                    IsConstant = varDecl.IsConst,
-                    AccessLevel = varAccessLevel,
-                    DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart
-                };
-                moduleInfo.ExportedSymbols[varDecl.Name] = varSymbol;
-                break;
-
-            case FromImportStatement fromImport:
-                // Re-export imported symbols from the module
-                // This enables patterns like: from .submodule import func
-                // which makes 'func' available as an export of this module
-                ExtractReExportedSymbols(fromImport, moduleInfo);
-                break;
-
-            default:
-                // Other statements don't export symbols
-                break;
-        }
-    }
-
-    /// <summary>
     /// Extract re-exported symbols from a from-import statement.
     /// When a module does "from .submodule import func", func becomes an export of that module.
     /// </summary>
@@ -516,7 +320,6 @@ public class ImportResolver
         if (sourceModulePath == null)
         {
             _logger.LogDebug($"[ImportResolver]   Source module '{fromImport.Module}' not found during re-export extraction");
-            // Module not found - error will be reported during full import resolution
             return;
         }
 
@@ -537,12 +340,10 @@ public class ImportResolver
 
         if (fromImport.ImportAll)
         {
-            // "from .module import *" - re-export all public symbols
             foreach (var (name, symbol) in sourceModule.ExportedSymbols)
             {
                 if (!name.StartsWith("_"))
                 {
-                    // Create a re-export symbol that references the original
                     var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
                     moduleInfo.ExportedSymbols[name] = reExportSymbol;
                     reExportedSymbols[name] = reExportSymbol;
@@ -552,7 +353,6 @@ public class ImportResolver
         }
         else
         {
-            // "from .module import name1, name2" - re-export specific symbols
             foreach (var importAlias in fromImport.Names)
             {
                 var sourceName = importAlias.Name;
@@ -560,12 +360,10 @@ public class ImportResolver
 
                 if (sourceModule.ExportedSymbols.TryGetValue(sourceName, out var symbol))
                 {
-                    // Create a re-export symbol, possibly with a different name (alias)
                     var reExportSymbol = CreateReExportSymbol(symbol, fromImport, targetName);
                     moduleInfo.ExportedSymbols[targetName] = reExportSymbol;
                     reExportedSymbols[targetName] = reExportSymbol;
 
-                    // Log detailed info for type symbols
                     if (symbol is TypeSymbol typeSymbol)
                     {
                         _logger.LogDebug($"[ImportResolver]     Re-exporting type: {sourceName} -> {targetName}, Original DefiningModule: {typeSymbol.DefiningModule ?? "null"}");
@@ -579,11 +377,9 @@ public class ImportResolver
                 {
                     _logger.LogDebug($"[ImportResolver]     Symbol '{sourceName}' NOT FOUND in source module exports");
                 }
-                // If symbol not found, error will be reported during full import resolution
             }
         }
 
-        // Store re-exported symbols
         if (reExportedSymbols.Count > 0)
         {
             _logger.LogDebug($"[ImportResolver]   Added {reExportedSymbols.Count} re-exported symbols to {Path.GetFileName(moduleInfo.Path)}");
@@ -598,7 +394,6 @@ public class ImportResolver
     {
         var effectiveName = newName ?? originalSymbol.Name;
 
-        // Clone the symbol with the new name if provided
         var result = originalSymbol switch
         {
             FunctionSymbol func => new FunctionSymbol
@@ -618,7 +413,7 @@ public class ImportResolver
             {
                 Name = effectiveName,
                 Kind = var.Kind,
-                Type = var.Type,  // Preserve the type from the original symbol
+                Type = var.Type,
                 IsConstant = var.IsConstant,
                 AccessLevel = var.AccessLevel,
                 DeclarationLine = fromImport.LineStart,
@@ -626,7 +421,7 @@ public class ImportResolver
                 IsReExport = true,
                 OriginalModule = fromImport.Module
             },
-            _ => originalSymbol // Fallback: use as-is
+            _ => originalSymbol
         };
 
         return result;
@@ -637,7 +432,6 @@ public class ImportResolver
     /// </summary>
     private TypeSymbol CreateReExportedTypeSymbol(TypeSymbol originalType, FromImportStatement fromImport, string effectiveName)
     {
-        // Determine the defining module - preserve original if set, otherwise use the resolved import path
         var definingModule = originalType.DefiningModule ?? GetResolvedModulePath(fromImport) ?? fromImport.Module;
 
         _logger.LogDebug($"[ImportResolver] CreateReExportedTypeSymbol: {originalType.Name} -> {effectiveName}");
@@ -658,8 +452,6 @@ public class ImportResolver
             Methods = originalType.Methods,
             Properties = originalType.Properties,
             Constructors = originalType.Constructors,
-            // Direct reads of BaseType/Interfaces are safe here: we're cloning the symbol
-            // for re-export, and these values were materialized during the source module's compilation.
             BaseType = originalType.BaseType,
             Interfaces = originalType.Interfaces,
             UnresolvedBaseName = originalType.UnresolvedBaseName,
@@ -682,306 +474,6 @@ public class ImportResolver
     }
 
     /// <summary>
-    /// Determine access level based on naming convention
-    /// </summary>
-    private AccessLevel GetAccessLevel(string name)
-    {
-        if (name.StartsWith("__"))
-            return AccessLevel.Private;
-        if (name.StartsWith("_"))
-            return AccessLevel.Protected;
-        return AccessLevel.Public;
-    }
-
-    /// <summary>
-    /// Convert a type annotation to a semantic type.
-    /// This is used during import resolution to provide type information before
-    /// full semantic analysis. For user-defined types, creates a UserDefinedType
-    /// that can be resolved later during code generation via symbol table lookup.
-    /// </summary>
-    private SemanticType ConvertTypeAnnotationToSemanticType(TypeAnnotation? typeAnnotation)
-    {
-        if (typeAnnotation == null)
-            return SemanticType.Unknown;
-
-        // Handle optional types (T? syntax) — during import resolution, we map to NullableType
-        // since we're operating before full semantic analysis in a .NET interop context
-        var isOptional = typeAnnotation.IsOptional;
-
-        // Map primitive type names
-        SemanticType? baseType = typeAnnotation.Name switch
-        {
-            "int" => SemanticType.Int,
-            "long" => SemanticType.Long,
-            "float" => SemanticType.Float,
-            "double" => SemanticType.Double,
-            "float32" => SemanticType.Float32,
-            "bool" => SemanticType.Bool,
-            "str" or "string" => SemanticType.Str,
-            "void" or "None" => SemanticType.Void,
-            "object" => SemanticType.Object,
-            _ => null // Handle non-primitive types below
-        };
-
-        // For non-primitive types, create a UserDefinedType
-        // The Symbol will be resolved during code generation via symbol table lookup
-        if (baseType == null)
-        {
-            baseType = new UserDefinedType { Name = typeAnnotation.Name };
-        }
-
-        // Wrap in nullable if needed
-        if (isOptional && baseType != SemanticType.Void)
-        {
-            return new NullableType { UnderlyingType = baseType };
-        }
-
-        return baseType;
-    }
-
-    /// <summary>
-    /// Extract full type information from a class definition including
-    /// fields, methods, constructors, and type parameters.
-    /// Note: Base class resolution happens later in NameResolver.ResolveInheritance()
-    /// after all types are registered in the symbol table.
-    /// </summary>
-    /// <param name="classDef">The class definition AST node.</param>
-    /// <param name="definingModulePath">The file path of the module where this class is defined.
-    /// This is critical for re-exports: when a class is re-exported through __init__.spy,
-    /// the DefiningModule tracks the original definition location.</param>
-    private TypeSymbol ExtractFullClassSymbol(ClassDef classDef, string definingModulePath)
-    {
-        var accessLevel = GetAccessLevel(classDef.Name);
-        bool isAbstract = classDef.Decorators.Any(d => d.Name == "abstract");
-
-        // Compute unresolved base class/interface names before construction
-        // The first base class is the parent class; the rest are interfaces
-        string? unresolvedBase = classDef.BaseClasses.Length > 0 ? classDef.BaseClasses[0].Name : null;
-        var unresolvedInterfaces = classDef.BaseClasses.Length > 1
-            ? classDef.BaseClasses.Skip(1).Select(b => b.Name).ToList()
-            : new List<string>();
-
-        // Collect all member data before construction so TypeSymbol properties are set at init
-
-        // Extract fields
-        var fields = new List<VariableSymbol>();
-        foreach (var stmt in classDef.Body)
-        {
-            if (stmt is VariableDeclaration varDecl)
-            {
-                fields.Add(new VariableSymbol
-                {
-                    Name = varDecl.Name,
-                    Kind = SymbolKind.Variable,
-                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
-                    IsConstant = varDecl.IsConst,
-                    AccessLevel = GetAccessLevel(varDecl.Name),
-                    DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart
-                });
-            }
-        }
-
-        // Extract methods and constructors
-        var methods = new List<FunctionSymbol>();
-        var ctors = new List<FunctionSymbol>();
-        foreach (var stmt in classDef.Body)
-        {
-            if (stmt is FunctionDef method)
-            {
-                var methodSymbol = ExtractMethodSymbol(method);
-                methods.Add(methodSymbol);
-
-                if (method.Name == "__init__")
-                {
-                    ctors.Add(methodSymbol);
-                }
-            }
-        }
-
-        var classSymbol = new TypeSymbol
-        {
-            Name = classDef.Name,
-            Kind = SymbolKind.Type,
-            TypeKind = TypeKind.Class,
-            AccessLevel = accessLevel,
-            IsAbstract = isAbstract,
-            TypeParameters = classDef.TypeParameters.ToList(),
-            DeclarationLine = classDef.LineStart,
-            DeclarationColumn = classDef.ColumnStart,
-            DefiningModule = definingModulePath,
-            UnresolvedBaseName = unresolvedBase,
-            UnresolvedInterfaceNames = unresolvedInterfaces,
-            Fields = fields,
-            Methods = methods,
-            Constructors = ctors
-        };
-
-        if (unresolvedBase != null)
-        {
-            _logger.LogDebug($"[ImportResolver] Stored unresolved base for {classDef.Name}: {classSymbol.UnresolvedBaseName}");
-        }
-
-        return classSymbol;
-    }
-
-    /// <summary>
-    /// Extract full type information from a struct definition including
-    /// fields, methods, and type parameters.
-    /// </summary>
-    /// <param name="structDef">The struct definition AST node.</param>
-    /// <param name="definingModulePath">The file path of the module where this struct is defined.</param>
-    private TypeSymbol ExtractFullStructSymbol(StructDef structDef, string definingModulePath)
-    {
-        var accessLevel = GetAccessLevel(structDef.Name);
-
-        // Collect all member data before construction so TypeSymbol properties are set at init
-
-        // Extract fields
-        var fields = new List<VariableSymbol>();
-        foreach (var stmt in structDef.Body)
-        {
-            if (stmt is VariableDeclaration varDecl)
-            {
-                fields.Add(new VariableSymbol
-                {
-                    Name = varDecl.Name,
-                    Kind = SymbolKind.Variable,
-                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
-                    IsConstant = varDecl.IsConst,
-                    AccessLevel = GetAccessLevel(varDecl.Name),
-                    DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart
-                });
-            }
-        }
-
-        // Extract methods and constructors
-        var methods = new List<FunctionSymbol>();
-        var ctors = new List<FunctionSymbol>();
-        foreach (var stmt in structDef.Body)
-        {
-            if (stmt is FunctionDef method)
-            {
-                var methodSymbol = ExtractMethodSymbol(method);
-                methods.Add(methodSymbol);
-
-                if (method.Name == "__init__")
-                {
-                    ctors.Add(methodSymbol);
-                }
-            }
-        }
-
-        var structSymbol = new TypeSymbol
-        {
-            Name = structDef.Name,
-            Kind = SymbolKind.Type,
-            TypeKind = TypeKind.Struct,
-            AccessLevel = accessLevel,
-            TypeParameters = structDef.TypeParameters.ToList(),
-            DeclarationLine = structDef.LineStart,
-            DeclarationColumn = structDef.ColumnStart,
-            DefiningModule = definingModulePath,
-            UnresolvedInterfaceNames = structDef.BaseClasses.Select(b => b.Name).ToList(),
-            Fields = fields,
-            Methods = methods,
-            Constructors = ctors
-        };
-
-        return structSymbol;
-    }
-
-    /// <summary>
-    /// Extract full type information from an interface definition including
-    /// methods and type parameters.
-    /// </summary>
-    /// <param name="interfaceDef">The interface definition AST node.</param>
-    /// <param name="definingModulePath">The file path of the module where this interface is defined.</param>
-    private TypeSymbol ExtractFullInterfaceSymbol(InterfaceDef interfaceDef, string definingModulePath)
-    {
-        var accessLevel = GetAccessLevel(interfaceDef.Name);
-
-        // Collect all member data before construction so TypeSymbol properties are set at init
-
-        // Extract methods (interface methods are always abstract)
-        var methods = new List<FunctionSymbol>();
-        foreach (var stmt in interfaceDef.Body)
-        {
-            if (stmt is FunctionDef method)
-            {
-                var methodSymbol = ExtractMethodSymbol(method);
-                // Interface methods are implicitly abstract unless they have an implementation
-                if (!methodSymbol.IsAbstract)
-                {
-                    bool hasEllipsisBody = method.Body.Length == 1
-                        && method.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
-                    if (hasEllipsisBody)
-                    {
-                        methodSymbol = methodSymbol with { IsAbstract = true };
-                    }
-                }
-                methods.Add(methodSymbol);
-            }
-        }
-
-        var interfaceSymbol = new TypeSymbol
-        {
-            Name = interfaceDef.Name,
-            Kind = SymbolKind.Type,
-            TypeKind = TypeKind.Interface,
-            AccessLevel = accessLevel,
-            TypeParameters = interfaceDef.TypeParameters.ToList(),
-            DeclarationLine = interfaceDef.LineStart,
-            DeclarationColumn = interfaceDef.ColumnStart,
-            DefiningModule = definingModulePath,
-            UnresolvedInterfaceNames = interfaceDef.BaseInterfaces.Select(b => b.Name).ToList(),
-            Methods = methods
-        };
-
-        return interfaceSymbol;
-    }
-
-    /// <summary>
-    /// Extract method symbol with parameter and return type information.
-    /// </summary>
-    private FunctionSymbol ExtractMethodSymbol(FunctionDef method)
-    {
-        var accessLevel = GetAccessLevel(method.Name);
-
-        bool hasSelfParameter = method.Parameters.Any(p =>
-            string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
-        bool hasStaticDecorator = method.Decorators.Any(d =>
-            d.Name == "static");
-        bool isStatic = hasStaticDecorator || !hasSelfParameter;
-
-        var parameters = method.Parameters.Select(p => new ParameterSymbol
-        {
-            Name = p.Name,
-            Type = ConvertTypeAnnotationToSemanticType(p.Type),
-            HasDefault = p.DefaultValue != null,
-            DefaultValue = p.DefaultValue,
-            IsVariadic = p.IsVariadic
-        }).ToList();
-
-        return new FunctionSymbol
-        {
-            Name = method.Name,
-            Kind = SymbolKind.Function,
-            Parameters = parameters,
-            ReturnType = ConvertTypeAnnotationToSemanticType(method.ReturnType),
-            IsStatic = isStatic,
-            IsAbstract = method.Decorators.Any(d => d.Name == "abstract"),
-            IsVirtual = method.Decorators.Any(d => d.Name == "virtual"),
-            IsOverride = method.Decorators.Any(d => d.Name == "override"),
-            TypeParameters = method.TypeParameters.ToList(),
-            AccessLevel = accessLevel,
-            DeclarationLine = method.LineStart,
-            DeclarationColumn = method.ColumnStart
-        };
-    }
-
-    /// <summary>
     /// Try to resolve a module from loaded .NET assemblies through ModuleRegistry,
     /// or from standard .NET namespaces (e.g., "system" -> "System").
     /// </summary>
@@ -992,7 +484,8 @@ public class ImportResolver
 
         // Check cache first
         var cacheKey = $".net:{moduleName}";
-        if (_moduleCache.TryGetValue(cacheKey, out var cached))
+        var cached = _moduleLoader.GetCachedModule(cacheKey);
+        if (cached != null)
             return cached;
 
         // Check if this is a .NET namespace (e.g., "system" -> "System")
@@ -1019,19 +512,17 @@ public class ImportResolver
         var moduleInfo = new ModuleInfo
         {
             Path = $".net:{moduleName}",
-            Module = null!, // No AST module exists for .NET assemblies; consumers must check IsNetModule before accessing Module
+            Module = null!,
             ExportedSymbols = new Dictionary<string, Symbol>(),
             IsNetModule = true
         };
 
-        // Add all functions as exported symbols
         foreach (var function in functions)
         {
             moduleInfo.ExportedSymbols[function.Name] = function;
         }
 
-        _moduleCache[cacheKey] = moduleInfo;
-        _loadedModules.Add(cacheKey);
+        _moduleLoader.CacheModule(cacheKey, moduleInfo);
 
         _logger.LogInfo($"Loaded .NET module '{moduleName}' with {functions.Count} functions");
 
@@ -1045,23 +536,20 @@ public class ImportResolver
     {
         _logger.LogDebug($"Resolving .NET namespace module: {moduleName}");
 
-        // Create ModuleInfo for the .NET namespace
         var moduleInfo = new ModuleInfo
         {
             Path = $".net:{moduleName}",
-            Module = null!, // No AST module exists for .NET namespaces
+            Module = null!,
             ExportedSymbols = new Dictionary<string, Symbol>(),
             IsNetModule = true
         };
 
-        // Get all types from the namespace
         var types = _moduleRegistry!.GetNamespaceTypes(moduleName);
         foreach (var typeSymbol in types)
         {
             moduleInfo.ExportedSymbols[typeSymbol.Name] = typeSymbol;
         }
 
-        // Also get any functions if this namespace has an Exports class
         if (_moduleRegistry.IsModuleLoaded(moduleName))
         {
             var functions = _moduleRegistry.GetModuleFunctions(moduleName);
@@ -1071,8 +559,7 @@ public class ImportResolver
             }
         }
 
-        _moduleCache[cacheKey] = moduleInfo;
-        _loadedModules.Add(cacheKey);
+        _moduleLoader.CacheModule(cacheKey, moduleInfo);
 
         _logger.LogInfo($"Loaded .NET namespace '{moduleName}' with {moduleInfo.ExportedSymbols.Count} exports");
 
@@ -1092,13 +579,11 @@ public class ImportResolver
     /// </summary>
     private ModuleResolutionResult? ResolveModuleWithResult(string moduleName, string? searchPath = null)
     {
-        // Add the optional search path if provided
         if (searchPath != null)
         {
             _moduleResolver.AddSearchPath(searchPath);
         }
 
-        // Use the ModuleResolver to find the module
         return _moduleResolver.Resolve(moduleName);
     }
 
@@ -1107,7 +592,6 @@ public class ImportResolver
     /// </summary>
     private bool IsDirectlyImportable(string symbolName)
     {
-        // Private symbols (starting with __) cannot be directly imported
         return !symbolName.StartsWith("__");
     }
 
@@ -1116,7 +600,6 @@ public class ImportResolver
     /// </summary>
     private bool IsExportedByImportAll(string symbolName)
     {
-        // Only public symbols (not starting with _) are exported by import *
         return !symbolName.StartsWith("_");
     }
 
@@ -1131,53 +614,12 @@ public class ImportResolver
     }
 
     /// <summary>
-    /// Check if a module is already in the current import chain
-    /// </summary>
-    private bool IsModuleInChain(string modulePath)
-    {
-        return _importChain.Any(e => e.ModulePath == modulePath);
-    }
-
-    /// <summary>
-    /// Format a detailed circular import error message showing the full chain
-    /// </summary>
-    private string FormatCircularImportChain(string cycleStartModule)
-    {
-        var chain = new StringBuilder();
-        chain.AppendLine("Circular import detected:");
-
-        var entries = _importChain.Reverse().ToList();
-
-        // Find where the cycle starts
-        var cycleStartIndex = entries.FindIndex(e => e.ModulePath == cycleStartModule);
-
-        // Show only the relevant part of the chain (from cycle start to current)
-        for (int i = cycleStartIndex; i < entries.Count; i++)
-        {
-            var entry = entries[i];
-            chain.AppendLine($"  -> {Path.GetFileName(entry.ModulePath)}");
-        }
-
-        // Show the closing of the cycle
-        chain.AppendLine($"  -> {Path.GetFileName(cycleStartModule)} (cycle)");
-
-        return chain.ToString().TrimEnd();
-    }
-
-    /// <summary>
     /// Search all loaded modules in the cache for a TypeSymbol with the given name.
     /// Used to discover transitive base types that were parsed but not explicitly imported.
     /// </summary>
     public TypeSymbol? FindTypeInLoadedModules(string typeName)
     {
-        foreach (var (_, moduleInfo) in _moduleCache)
-        {
-            if (moduleInfo.ExportedSymbols.TryGetValue(typeName, out var symbol) && symbol is TypeSymbol typeSymbol)
-            {
-                return typeSymbol;
-            }
-        }
-        return null;
+        return _moduleLoader.FindTypeInLoadedModules(typeName);
     }
 
     private void AddError(string message, int? line, int? column, string? code = null)
@@ -1187,79 +629,4 @@ public class ImportResolver
             : message;
         _diagnostics.AddError(errorMessage, line, column, _currentModulePath, code, CompilerPhase.ImportResolution);
     }
-
-    /// <summary>
-    /// Compute the canonical (fully-qualified) module name from a file path.
-    /// Uses directory structure and __init__.spy files to determine package path.
-    /// For example: /path/to/mypackage/submodule.spy -> "mypackage.submodule"
-    /// </summary>
-    private string ComputeCanonicalModuleName(string filePath)
-    {
-        // Normalize the path
-        var fullPath = Path.GetFullPath(filePath);
-        var fullPathDir = Path.GetDirectoryName(fullPath);
-        var fileName = Path.GetFileNameWithoutExtension(fullPath);
-
-        if (fullPathDir == null)
-            return fileName;
-
-        // Walk up the directory tree, collecting package names until we find a non-package directory.
-        // A package directory is one that contains __init__.spy
-        var packageParts = new List<string>();
-        var currentDir = fullPathDir;
-
-        while (currentDir != null)
-        {
-            var dirName = Path.GetFileName(currentDir);
-            var initFile = Path.Combine(currentDir, "__init__.spy");
-
-            // Check if this directory is a package (has __init__.spy)
-            if (File.Exists(initFile))
-            {
-                packageParts.Insert(0, dirName);
-                currentDir = Path.GetDirectoryName(currentDir);
-            }
-            else
-            {
-                // We've found the source root (non-package directory)
-                break;
-            }
-        }
-
-        // Build the canonical name
-        if (fileName != "__init__")
-        {
-            packageParts.Add(fileName);
-        }
-
-        // If no packages were found, just return the filename
-        if (packageParts.Count == 0)
-        {
-            return fileName;
-        }
-
-        return string.Join(".", packageParts);
-    }
-}
-
-/// <summary>
-/// Information about a loaded module
-/// </summary>
-/// <remarks>
-/// When <see cref="IsNetModule"/> is true, the <see cref="Module"/> property will be null
-/// because .NET assemblies don't have an AST representation. Always check <see cref="IsNetModule"/>
-/// before accessing <see cref="Module"/> to avoid null reference errors.
-/// </remarks>
-public class ModuleInfo
-{
-    public string Path { get; init; } = string.Empty;
-    public Module Module { get; init; } = null!;
-    public Dictionary<string, Symbol> ExportedSymbols { get; init; } = new();
-    public bool IsNetModule { get; init; } = false;
-
-    /// <summary>
-    /// The canonical module name (e.g., "mypackage.submodule") derived from the file path.
-    /// Used for DefiningModule tracking in re-exported symbols.
-    /// </summary>
-    public string? CanonicalModuleName { get; init; }
 }
