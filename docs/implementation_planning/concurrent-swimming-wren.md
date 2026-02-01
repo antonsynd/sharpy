@@ -332,3 +332,59 @@ Phase boundary assertions are comprehensive, all using `[Conditional("DEBUG")]` 
 - `WarnIfUnknownTypes` — after TypeChecker, warns if unknown expression types remain when no errors exist (kept as warning rather than hard assert, since the type checker doesn't record types for all intermediate expressions in class member access patterns)
 
 **Test coverage:** 9 PhaseBoundaryAssertionTests (exercises all assertion code paths with valid compilations: multiple classes, interfaces, inheritance, expressions, literals, nested scopes).
+
+---
+
+## Phase E Completion Notes
+
+**Status: Complete**
+
+### Item 9: Make ImportResolver Testable and Smaller
+
+ImportResolver (originally ~1,265 lines) has been decomposed into three focused components:
+
+- **ModuleInfo** (`Semantic/ModuleInfo.cs`, 35 lines) — data model for a loaded module: parsed AST, exported symbols, path, canonical module name, isNetModule flag. Also defines `ImportChainEntry` for circular import chain tracking.
+- **ModuleLoader** (`Semantic/ModuleLoader.cs`, 599 lines) — module loading, parsing, caching, and symbol extraction. Handles circular import detection, canonical module name computation (`__init__.spy` package resolution), and type discovery across loaded modules. Uses a callback pattern (`Action<Module, ModuleInfo, string?>`) to allow ImportResolver to trigger recursive import resolution without creating a circular dependency.
+- **ImportResolver** (`Semantic/ImportResolver.cs`, 635 lines) — high-level import resolution: `ResolveImport()`, `ResolveFromImport()`, .NET module resolution, re-export handling, and dependency graph tracking. Delegates module loading to ModuleLoader.
+
+The callback pattern is the key architectural decision: ModuleLoader remains fully independent of ImportResolver (no reverse imports), while ImportResolver can inject recursive resolution at the right point in the loading sequence. Two public constructors on ImportResolver support both normal use and dependency injection for testing.
+
+**Test coverage:** 21 ModuleLoader unit tests (caching, circular imports, symbol extraction for functions/classes/structs/enums/interfaces, canonical names, access levels, type annotation conversion, type discovery) + 10 ImportResolver .NET module tests + 9 dependency tracking tests.
+
+### Item 10: Integrate the Control Flow Graph
+
+The existing CFG infrastructure (`Analysis/ControlFlow/`) is now fully integrated into the validation pipeline via a new ControlFlowValidatorV3:
+
+- **ControlFlowGraphBuilder** constructs a CFG from function AST with basic blocks, terminators (Branch, ConditionalBranch, Return, Throw, Break, Continue), and proper handling of all control flow constructs (if/elif/else, while/for with else clauses, try/except/finally, nested loops).
+- **ControlFlowAnalysis** provides static analysis methods: `FindUnreachableCode()` (graph reachability from entry), `FindMissingReturnPaths()` (forward reachability to exit without return), `ValidateLoopControlFlow()` (break/continue target validation).
+- **ControlFlowValidatorV3** (`Semantic/Validation/ControlFlowValidatorV3.cs`) builds a CFG per function and runs all three analyses. Registered at Order 400 in `ValidationPipelineFactory.CreateDefault()`.
+- **Unreachable code detection** fixed: the builder now creates disconnected "unreachable" blocks for statements after terminators, enabling `FindUnreachableBlocks()` to detect them via BFS reachability.
+
+V2 (AST-walking) remains available via `CreateWithAstControlFlow()` as a fallback. V3 adds unreachable code detection that V2 cannot support.
+
+**Test coverage:** 21 ControlFlowValidatorV3 tests + 14 ControlFlowAnalysis tests + CFG builder tests + file-based test fixtures (`unreachable_code.spy`, `not_all_paths_return.spy`, `break_outside_loop.spy`, `continue_outside_loop.spy`).
+
+### Item 12: Compiler --explain Mode
+
+The `sharpyc explain` command provides detailed error documentation:
+
+- **`sharpyc explain <code>`** — displays title, description, code example, fix suggestion, and category for any diagnostic code (case-insensitive lookup).
+- **`sharpyc explain --list`** — lists all documented codes grouped by category.
+- **DiagnosticExplanations** (`Diagnostics/DiagnosticExplanations.cs`) — static registry of all 131 diagnostic code explanations covering every code in `DiagnosticCodes`. Each explanation includes a title, detailed description, example (where applicable), fix suggestion, and category.
+- **100% coverage** — every diagnostic code constant in `DiagnosticCodes` (Lexer, Parser, Semantic, Validation, CodeGen, Infrastructure) has a corresponding explanation. A test using reflection verifies no codes are missing.
+
+**Test coverage:** 29 DiagnosticExplanationsTests (known code lookup, unknown code null, case insensitivity, required fields validation, examples/fixes on common codes, count verification, category coverage, format validation, comprehensive explanation check, 100% code coverage assertion).
+
+### Item 13: CONTRIBUTING.md for Human Contributors
+
+`CONTRIBUTING.md` at the project root provides a human-oriented guide covering:
+
+- **Pipeline overview** — the full compilation pipeline from source to .NET IL, with all six stages described.
+- **Adding a language feature** — step-by-step walkthrough: Lexer tokens → Parser AST nodes → Semantic analysis (NameResolver + TypeChecker) → Validation rules → Code generation (RoslynEmitter with SyntaxFactory) → Test fixtures.
+- **Adding a validation rule** — implementing `ISemanticValidator`, setting Name/Order, registering in `ValidationPipelineFactory.CreateDefault()`, adding diagnostic codes and explanations.
+- **Test fixture format** — `.spy` + `.expected` pairs for success, `.spy` + `.error` pairs for errors, `.skip` files to skip tests.
+- **Debugging tools** — `emit tokens/ast/csharp/parse`, `explain`, logging.
+- **Code style** — C# 9.0 target, immutable AST records, SyntaxFactory-only codegen, axiom precedence.
+- **Project structure** — directory layout with component purposes.
+
+All file paths, class names, patterns, and commands verified against the actual codebase.
