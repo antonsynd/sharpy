@@ -615,9 +615,10 @@ class Program
             var builtins = new BuiltinRegistry();
             var symbolTable = new SymbolTable(builtins);
             var semanticInfo = new SemanticInfo();
+            var semanticBinding = new SemanticBinding();
 
             // Name resolution pass (registers type aliases, classes, functions, etc.)
-            var nameResolver = new NameResolver(symbolTable, logger);
+            var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
             nameResolver.ResolveDeclarations(module);
             nameResolver.ResolveInheritance();
 
@@ -633,7 +634,10 @@ class Program
 
             // Type checking pass
             var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
+            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
+            {
+                SemanticBinding = semanticBinding
+            };
             typeChecker.CheckModule(module, computeCodeGenInfo: true);
 
             if (typeChecker.Diagnostics.HasErrors)
@@ -653,6 +657,7 @@ class Program
                 // Single-file emit is treated as an entry point for consistency with run/build
                 IsEntryPoint = true,
                 Logger = logger,
+                SemanticBinding = semanticBinding,
                 SemanticInfo = semanticInfo
             };
 

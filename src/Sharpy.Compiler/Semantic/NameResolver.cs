@@ -25,6 +25,9 @@ public class NameResolver
         _semanticBinding = semanticBinding ?? new SemanticBinding();
     }
 
+    private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
+        => _semanticBinding.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+
     public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
@@ -759,7 +762,7 @@ public class NameResolver
             interfaceSymbol.Methods.Select(m => GetMethodSignature(m)));
 
         var visited = new HashSet<string> { interfaceSymbol.Name };
-        var queue = new Queue<TypeSymbol>(interfaceSymbol.Interfaces);
+        var queue = new Queue<TypeSymbol>(GetInterfaces(interfaceSymbol));
 
         while (queue.Count > 0)
         {
@@ -780,7 +783,7 @@ public class NameResolver
             }
 
             // Add base interface's bases to the queue
-            foreach (var grandBase in baseInterface.Interfaces)
+            foreach (var grandBase in GetInterfaces(baseInterface))
             {
                 queue.Enqueue(grandBase);
             }
