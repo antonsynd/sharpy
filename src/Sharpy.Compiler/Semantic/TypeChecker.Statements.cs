@@ -81,6 +81,7 @@ public partial class TypeChecker
                         AccessLevel = AccessLevel.Public
                     };
                     _symbolTable.Define(newSymbol);
+                    SemanticBinding.SetVariableType(newSymbol, valueElemType);
                     _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
                     _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
                 }
@@ -145,6 +146,7 @@ public partial class TypeChecker
                 AccessLevel = AccessLevel.Public
             };
             _symbolTable.Define(newSymbol);
+            SemanticBinding.SetVariableType(newSymbol, inferredType);
             _semanticInfo.SetIdentifierSymbol(targetId, newSymbol);
 
             // Cache the expression type for the identifier
@@ -293,6 +295,7 @@ public partial class TypeChecker
                 DeclarationColumn = varDecl.ColumnStart
             };
             _symbolTable.Define(constSymbol);
+            SemanticBinding.SetVariableType(constSymbol, declaredType);
             return;
         }
 
@@ -323,6 +326,7 @@ public partial class TypeChecker
             DeclarationColumn = varDecl.ColumnStart
         };
         _symbolTable.Define(newSymbol);
+        SemanticBinding.SetVariableType(newSymbol, declaredType);
     }
 
     private void CheckReturn(ReturnStatement returnStmt)
@@ -520,6 +524,7 @@ public partial class TypeChecker
                             if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
                             {
                                 _symbolTable.Define(loopVarSymbol);
+                                SemanticBinding.SetVariableType(loopVarSymbol, elemType);
                                 _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
                             }
 
@@ -555,6 +560,7 @@ public partial class TypeChecker
             if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
             {
                 _symbolTable.Define(loopVarSymbol);
+                SemanticBinding.SetVariableType(loopVarSymbol, elementType);
                 _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
             }
 

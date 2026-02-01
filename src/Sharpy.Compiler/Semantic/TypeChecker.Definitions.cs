@@ -250,6 +250,7 @@ public partial class TypeChecker
                 DeclarationColumn = null
             };
             _symbolTable.Define(paramSymbol);
+            SemanticBinding.SetVariableType(paramSymbol, paramType);
 
             // Update the function symbol's parameter type
             if (functionSymbol != null && i < functionSymbol.Parameters.Count)
@@ -347,6 +348,7 @@ public partial class TypeChecker
                 {
                     var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type);
                     classSymbol.Fields[i] = fieldSymbol with { Type = resolvedType };
+                    SemanticBinding.SetVariableType(classSymbol.Fields[i], resolvedType);
                 }
             }
         }
@@ -422,6 +424,7 @@ public partial class TypeChecker
                 {
                     var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type);
                     structSymbol.Fields[i] = fieldSymbol with { Type = resolvedType };
+                    SemanticBinding.SetVariableType(structSymbol.Fields[i], resolvedType);
                 }
             }
         }
