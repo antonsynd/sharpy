@@ -28,7 +28,9 @@ public class InheritanceResolverTests
         var parent = new TypeSymbol { Name = "Parent", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
         var child = new TypeSymbol
         {
-            Name = "Child", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Child",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             UnresolvedBaseName = "Parent"
         };
 
@@ -50,7 +52,9 @@ public class InheritanceResolverTests
         var iface = new TypeSymbol { Name = "ISerializable", Kind = SymbolKind.Type, TypeKind = TypeKind.Interface };
         var impl = new TypeSymbol
         {
-            Name = "Data", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Data",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             UnresolvedInterfaceNames = new List<string> { "ISerializable" }
         };
 
@@ -75,7 +79,9 @@ public class InheritanceResolverTests
         var iface = new TypeSymbol { Name = "IDrawable", Kind = SymbolKind.Type, TypeKind = TypeKind.Interface };
         var impl = new TypeSymbol
         {
-            Name = "Shape", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Shape",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             UnresolvedBaseName = "IDrawable"
         };
 
@@ -101,7 +107,9 @@ public class InheritanceResolverTests
         var iface2 = new TypeSymbol { Name = "IBar", Kind = SymbolKind.Type, TypeKind = TypeKind.Interface };
         var impl = new TypeSymbol
         {
-            Name = "Baz", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Baz",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             UnresolvedInterfaceNames = new List<string> { "IFoo", "IBar" }
         };
 
@@ -128,7 +136,9 @@ public class InheritanceResolverTests
         var iface = new TypeSymbol { Name = "IComparable", Kind = SymbolKind.Type, TypeKind = TypeKind.Interface };
         var child = new TypeSymbol
         {
-            Name = "Derived", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Derived",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             UnresolvedBaseName = "Base",
             UnresolvedInterfaceNames = new List<string> { "IComparable" }
         };
@@ -155,7 +165,9 @@ public class InheritanceResolverTests
         var parent = new TypeSymbol { Name = "Parent", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
         var child = new TypeSymbol
         {
-            Name = "Child", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Child",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             UnresolvedBaseName = "Parent"
         };
 
@@ -196,7 +208,9 @@ public class InheritanceResolverTests
 
         var child = new TypeSymbol
         {
-            Name = "Orphan", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Orphan",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             UnresolvedBaseName = "NonExistent"
         };
         symbolTable.Define(child);
@@ -217,7 +231,9 @@ public class InheritanceResolverTests
 
         var impl = new TypeSymbol
         {
-            Name = "Impl", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Impl",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             UnresolvedInterfaceNames = new List<string> { "IMissing" }
         };
         symbolTable.Define(impl);
@@ -239,7 +255,9 @@ public class InheritanceResolverTests
         var iface = new TypeSymbol { Name = "IFoo", Kind = SymbolKind.Type, TypeKind = TypeKind.Interface };
         var impl = new TypeSymbol
         {
-            Name = "Foo", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Foo",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             UnresolvedInterfaceNames = new List<string> { "IFoo" }
         };
 
@@ -270,7 +288,9 @@ public class InheritanceResolverTests
         var parent = new TypeSymbol { Name = "Base", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
         var child = new TypeSymbol
         {
-            Name = "Derived", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Derived",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             UnresolvedBaseName = "Base"
         };
 
@@ -299,7 +319,9 @@ public class InheritanceResolverTests
         var correctParent = new TypeSymbol { Name = "CorrectParent", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
         var child = new TypeSymbol
         {
-            Name = "Child", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Child",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             BaseType = staleParent, // Stale data on Symbol
             UnresolvedBaseName = "CorrectParent"
         };
@@ -327,7 +349,9 @@ public class InheritanceResolverTests
         var parent = new TypeSymbol { Name = "Parent", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
         var child = new TypeSymbol
         {
-            Name = "Child", Kind = SymbolKind.Type, TypeKind = TypeKind.Class,
+            Name = "Child",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
             BaseType = parent // Already set on Symbol (e.g., from import)
         };
 
