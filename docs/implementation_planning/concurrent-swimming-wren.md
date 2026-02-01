@@ -234,3 +234,38 @@ These are explicitly **not recommended now**, but the above work paves the way:
 | E | 9 (ImportResolver), 10 (CFG), 12-13 (Polish) | Quality of life |
 
 Each phase is independently valuable and shippable. Phase A alone would be a significant improvement to the compiler's robustness and usability.
+
+---
+
+## Phase C Completion Notes
+
+**Status: Complete**
+
+### Item 5: Symbol Immutability (SemanticBinding Pattern)
+
+The SemanticBinding pattern is fully implemented and production-ready:
+
+- **SemanticBinding** (`Semantic/SemanticBinding.cs`) is the sole write target for all mutable semantic data during analysis. Uses `ConcurrentDictionary` with `ReferenceEqualityComparer` for thread-safe, reference-stable lookups.
+- **Materialization** at phase boundaries copies data from SemanticBinding stores onto Symbol properties (`MaterializeInheritance()`, `MaterializeVariableTypes()`, `MaterializeCodeGenInfo()`), enabling downstream consumers (RoslynEmitter, SemanticType) to read Symbol properties directly.
+- **Phase-gating** via `FreezeInheritance()`, `FreezeVariableTypes()`, `FreezeCodeGenInfo()` prevents writes after a phase completes (DEBUG-only assertions).
+- **DualWriteAssertions** (`Semantic/DualWriteAssertions.cs`) verify materialization consistency in DEBUG builds.
+- **Dual-read pattern** throughout the codebase: readers prefer `SemanticBinding.GetXxx()` with fallback to Symbol properties.
+- **Zero direct Symbol property writes** outside of materialization — verified by grep.
+- **All writers** (NameResolver, InheritanceResolver, TypeChecker, CodeGenInfoComputer, ImportResolver) write exclusively to SemanticBinding.
+
+Symbol properties retain `internal set` accessors to support materialization. This is the pragmatic design: SemanticBinding is authoritative during analysis, materialization bridges to consumers that read Symbol properties. Removing `internal set` entirely would require all downstream consumers to accept a SemanticBinding parameter.
+
+**Test coverage:** 26 SemanticBinding unit tests (materialization, freeze, module resolution, HasCodeGenInfo, defaults) + 15 DualWriteAssertions tests.
+
+### Item 6: Consolidate Inheritance Resolution
+
+Inheritance resolution is consolidated into a clear two-tier architecture:
+
+- **NameResolver** handles local type inheritance (types defined in the current file) during `ResolveInheritance()`.
+- **InheritanceResolver** (`Semantic/InheritanceResolver.cs`) handles stages 2–3:
+  - `ResolveTransitiveBaseTypes()` — auto-imports base types from loaded modules (fixpoint iteration, max 100 rounds)
+  - `ResolveImportedTypeInheritance()` — resolves string-based `UnresolvedBaseName`/`UnresolvedInterfaceNames` to actual TypeSymbol references
+- Wired into both `Compiler.Compile()` and `ProjectCompiler.Compile()` via `InheritanceResolver.ResolveAll()`.
+- The old scattered methods (`Compiler.ResolveImportedTypeInheritance()`, `Compiler.ResolveTransitiveBaseTypes()`) have been removed.
+
+**Test coverage:** 13 InheritanceResolver unit tests (resolution, edge cases, dual-read pattern) + 10 cross-module integration tests + 26 file-based test fixtures.
