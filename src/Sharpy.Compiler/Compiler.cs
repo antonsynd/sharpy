@@ -162,8 +162,9 @@ public class Compiler
             nameResolver.ResolveInheritance(); // Second pass: resolve inheritance after all types are declared
             metrics.EndPhase();
 
-            // Assertion: After name resolution, all defined type symbols must have names
+            // Assertions: After name resolution, verify symbol table integrity
             AssertAllSymbolsHaveNames(symbolTable);
+            AssertNoDuplicateTypeNames(symbolTable);
 
             if (nameResolver.Diagnostics.HasErrors)
             {
@@ -291,6 +292,7 @@ public class Compiler
             // Materialize inheritance data onto Symbol properties, then verify and freeze
             semanticBinding.MaterializeInheritance();
             DualWriteAssertions.AssertInheritanceConsistency(symbolTable, semanticBinding);
+            AssertNoUnresolvedInheritance(symbolTable);
             semanticBinding.FreezeInheritance();
 
             metrics.EndPhase();
@@ -338,8 +340,8 @@ public class Compiler
             }
             metrics.EndPhase();
 
-            // Assertion: After successful type checking, warn if unknown types remain
-            WarnIfUnknownTypes(semanticInfo, typeChecker.Diagnostics);
+            // Assertion: After successful type checking, no unknown types should remain
+            AssertNoUnknownTypes(semanticInfo, typeChecker.Diagnostics, module);
             // Assertion: Type checking should have processed at least some expressions
             Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0,
                 "Type checker should record at least one expression type for non-empty modules");
@@ -503,17 +505,85 @@ public class Compiler
     }
 
     /// <summary>
-    /// Log a warning if unknown expression types remain after successful type checking.
+    /// Verify no duplicate type definitions exist in the symbol table.
+    /// NameResolver should have emitted errors for duplicates, but this asserts
+    /// the resulting symbol table is clean.
+    /// </summary>
+    [Conditional("DEBUG")]
+    private static void AssertNoDuplicateTypeNames(SymbolTable symbolTable)
+    {
+        var typeNames = new HashSet<string>();
+        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        {
+            // Skip CLR types - multiple modules can legitimately re-export the same CLR type
+            if (symbol.ClrType != null)
+                continue;
+
+            Debug.Assert(typeNames.Add(symbol.Name),
+                $"Duplicate type definition '{symbol.Name}' in symbol table after name resolution");
+        }
+    }
+
+    /// <summary>
+    /// Verify all UnresolvedBaseName/UnresolvedInterfaceNames have been resolved
+    /// after inheritance resolution. A dangling unresolved name means the inheritance
+    /// resolver failed to find or match a type.
+    /// </summary>
+    [Conditional("DEBUG")]
+    private void AssertNoUnresolvedInheritance(SymbolTable symbolTable)
+    {
+        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        {
+            // Skip CLR types - they don't go through our resolution pipeline
+            if (symbol.ClrType != null)
+                continue;
+
+            // If UnresolvedBaseName is set but BaseType is still null, resolution failed
+            if (symbol.UnresolvedBaseName != null && symbol.BaseType == null)
+            {
+                _logger.LogWarning(
+                    $"TypeSymbol '{symbol.Name}' has UnresolvedBaseName '{symbol.UnresolvedBaseName}' " +
+                    "but BaseType is null after inheritance resolution", 0, 0);
+            }
+
+            // If UnresolvedInterfaceNames has entries but Interfaces count doesn't match
+            if (symbol.UnresolvedInterfaceNames.Count > 0 && symbol.Interfaces.Count < symbol.UnresolvedInterfaceNames.Count)
+            {
+                _logger.LogWarning(
+                    $"TypeSymbol '{symbol.Name}' has {symbol.UnresolvedInterfaceNames.Count} unresolved interface names " +
+                    $"but only {symbol.Interfaces.Count} resolved interfaces after inheritance resolution", 0, 0);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Assert no unknown expression types remain after successful type checking.
     /// Unknown types are acceptable when there are semantic errors (error recovery)
     /// or in cross-module scenarios where imported types may not be fully resolved.
     /// </summary>
     [Conditional("DEBUG")]
-    private void WarnIfUnknownTypes(SemanticInfo semanticInfo, DiagnosticBag diagnostics)
+    private void AssertNoUnknownTypes(SemanticInfo semanticInfo, DiagnosticBag diagnostics, Module module)
     {
-        if (!diagnostics.HasErrors && semanticInfo.HasUnknownExpressionTypes())
+        if (diagnostics.HasErrors)
+            return;
+
+        if (!semanticInfo.HasUnknownExpressionTypes())
+            return;
+
+        // Cross-module compilations can legitimately have unknown types for imported
+        // symbols that weren't fully resolved. Only hard-assert for pure single-file
+        // compilations (no import statements).
+        var hasImports = module.Body.Any(s => s is ImportStatement or FromImportStatement);
+        if (hasImports)
         {
             _logger.LogWarning(
                 "Unknown expression types remain after type checking (possible cross-module resolution gap)", 0, 0);
+        }
+        else
+        {
+            Debug.Assert(false,
+                "Unknown expression types remain after successful type checking " +
+                "(no semantic errors reported and no imports, so all types should be resolved)");
         }
     }
 
