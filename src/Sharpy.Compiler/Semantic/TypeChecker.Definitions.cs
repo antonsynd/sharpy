@@ -379,7 +379,7 @@ public partial class TypeChecker
         // Validate interface implementations (skip for abstract classes)
         if (!classSymbol.IsAbstract)
         {
-            ValidateInterfaceImplementations(classSymbol, classDef.LineStart, classDef.ColumnStart);
+            ValidateInterfaceImplementations(classSymbol, classDef.LineStart, classDef.ColumnStart, classDef.Span);
         }
 
         // Restore previous class
@@ -454,7 +454,7 @@ public partial class TypeChecker
         ValidateStructRules(structSymbol, structDef);
 
         // Validate interface implementations (structs must implement all interface methods)
-        ValidateInterfaceImplementations(structSymbol, structDef.LineStart, structDef.ColumnStart);
+        ValidateInterfaceImplementations(structSymbol, structDef.LineStart, structDef.ColumnStart, structDef.Span);
 
         // Restore previous class
         _currentClass = previousClass;

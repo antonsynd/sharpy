@@ -714,7 +714,7 @@ public partial class TypeChecker
     /// Validate that a class or struct implements all required interface methods.
     /// This includes methods from directly implemented interfaces and their base interfaces.
     /// </summary>
-    private void ValidateInterfaceImplementations(TypeSymbol typeSymbol, int? declarationLine, int? declarationColumn)
+    private void ValidateInterfaceImplementations(TypeSymbol typeSymbol, int? declarationLine, int? declarationColumn, Text.TextSpan? declarationSpan = null)
     {
         // Collect all interfaces that need to be implemented
         var allInterfaces = CollectAllInterfaces(typeSymbol);
@@ -738,7 +738,8 @@ public partial class TypeChecker
                         $"Class '{typeSymbol.Name}' does not implement interface method '{iface.Name}.{interfaceMethod.Name}'",
                         declarationLine,
                         declarationColumn,
-                        code: DiagnosticCodes.Semantic.ProtocolMissingMethod);
+                        code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                        span: declarationSpan);
                     continue;
                 }
 
@@ -752,7 +753,8 @@ public partial class TypeChecker
                         $"Class '{typeSymbol.Name}' method '{interfaceMethod.Name}' has {classParams.Count} parameters but interface '{iface.Name}' requires {interfaceParams.Count}",
                         declarationLine,
                         declarationColumn,
-                        code: DiagnosticCodes.Semantic.IncompatibleOverride);
+                        code: DiagnosticCodes.Semantic.IncompatibleOverride,
+                        span: declarationSpan);
                 }
             }
         }
