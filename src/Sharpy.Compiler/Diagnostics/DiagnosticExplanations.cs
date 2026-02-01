@@ -655,6 +655,23 @@ public static class DiagnosticExplanations
             "x: int = 42\ny: int = x ?? 0  # x is never null",
             "Only use ?? with Optional types:\n  x: Optional[int] = get_value()\n  y: int = x ?? 0");
 
+        // ── Validation warnings (SHP0450-SHP0499) ──────────────────────
+
+        Add(dict, DiagnosticCodes.Validation.UnreachableCodeWarning, "Unreachable code detected", "Validation",
+            "Code after a return, raise, break, or continue statement can never be executed. This usually indicates dead code that should be removed.",
+            "def foo() -> int:\n    return 1\n    x: int = 2  # unreachable",
+            "Remove the unreachable code:\ndef foo() -> int:\n    return 1");
+
+        Add(dict, DiagnosticCodes.Validation.UnusedVariable, "Unused variable", "Validation",
+            "A local variable is assigned a value but never read. This often indicates a typo in a variable name or leftover debugging code.",
+            "def foo():\n    x: int = 42  # x is never used\n    print(\"hello\")",
+            "Remove the unused variable, or prefix it with underscore if intentionally unused:\ndef foo():\n    _x: int = 42  # intentionally unused\n    print(\"hello\")");
+
+        Add(dict, DiagnosticCodes.Validation.UnusedImport, "Unused import", "Validation",
+            "An imported name is never referenced in the module. Unused imports clutter the code and slow down compilation.",
+            "from math import sqrt, pi  # pi is never used\ndef main():\n    print(sqrt(4))",
+            "Remove the unused import:\nfrom math import sqrt\ndef main():\n    print(sqrt(4))");
+
         // ── Code generation errors (SHP0500-SHP0599) ───────────────────
 
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",

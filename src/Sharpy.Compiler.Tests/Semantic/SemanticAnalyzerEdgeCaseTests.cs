@@ -46,7 +46,7 @@ def foo() -> int:
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Unreachable code"));
+        typeChecker.Diagnostics.GetWarnings().Should().ContainSingle(w => w.Message.Contains("Unreachable code"));
     }
 
     [Fact]
@@ -60,7 +60,7 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Unreachable code"));
+        typeChecker.Diagnostics.GetWarnings().Should().ContainSingle(w => w.Message.Contains("Unreachable code"));
     }
 
     [Fact]

@@ -131,8 +131,8 @@ public class ControlFlowValidatorV2 : SemanticValidatorBase
             {
                 if (!hasUnreachableCode)
                 {
-                    AddError(_context, "Unreachable code detected",
-                        statement.LineStart, statement.ColumnStart, code: DiagnosticCodes.Semantic.UnreachableCode,
+                    AddWarning(_context, "Unreachable code detected",
+                        statement.LineStart, statement.ColumnStart, code: DiagnosticCodes.Validation.UnreachableCodeWarning,
                         span: statement.Span);
                     hasUnreachableCode = true;
                 }

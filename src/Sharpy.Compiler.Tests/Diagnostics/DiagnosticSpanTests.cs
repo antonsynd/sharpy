@@ -361,12 +361,12 @@ public class DiagnosticSpanTests
         var validator = new ControlFlowValidatorV3();
         validator.Validate(module, context);
 
-        var error = context.Diagnostics.GetErrors()
-            .FirstOrDefault(e => e.Code == DiagnosticCodes.Semantic.UnreachableCode);
+        var warning = context.Diagnostics.GetWarnings()
+            .FirstOrDefault(w => w.Code == DiagnosticCodes.Validation.UnreachableCodeWarning);
 
-        error.Should().NotBeNull("should detect unreachable code after return");
-        error!.Span.Should().NotBeNull("unreachable code error should carry span");
-        var span = error.Span!.Value;
+        warning.Should().NotBeNull("should detect unreachable code after return");
+        warning!.Span.Should().NotBeNull("unreachable code warning should carry span");
+        var span = warning.Span!.Value;
         var expectedStart = source.IndexOf("x: int = 2");
         span.Start.Should().Be(expectedStart, "span should start at 'x: int = 2'");
     }

@@ -288,7 +288,7 @@ def foo() -> None:
     #region Unreachable Code
 
     [Fact]
-    public void UnreachableCode_AfterReturn_ReportsError()
+    public void UnreachableCode_AfterReturn_ReportsWarning()
     {
         var code = @"
 def foo() -> int:
@@ -300,13 +300,13 @@ def foo() -> int:
         var validator = new ControlFlowValidatorV3();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("Unreachable code"));
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetWarnings(),
+            w => w.Message.Contains("Unreachable code"));
     }
 
     [Fact]
-    public void UnreachableCode_AfterRaise_ReportsError()
+    public void UnreachableCode_AfterRaise_ReportsWarning()
     {
         var code = @"
 def foo() -> None:
@@ -318,13 +318,13 @@ def foo() -> None:
         var validator = new ControlFlowValidatorV3();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("Unreachable code"));
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetWarnings(),
+            w => w.Message.Contains("Unreachable code"));
     }
 
     [Fact]
-    public void UnreachableCode_AfterBreak_ReportsError()
+    public void UnreachableCode_AfterBreak_ReportsWarning()
     {
         var code = @"
 def foo() -> None:
@@ -337,13 +337,13 @@ def foo() -> None:
         var validator = new ControlFlowValidatorV3();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("Unreachable code"));
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetWarnings(),
+            w => w.Message.Contains("Unreachable code"));
     }
 
     [Fact]
-    public void UnreachableCode_AfterContinue_ReportsError()
+    public void UnreachableCode_AfterContinue_ReportsWarning()
     {
         var code = @"
 def foo() -> None:
@@ -356,9 +356,9 @@ def foo() -> None:
         var validator = new ControlFlowValidatorV3();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("Unreachable code"));
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetWarnings(),
+            w => w.Message.Contains("Unreachable code"));
     }
 
     #endregion

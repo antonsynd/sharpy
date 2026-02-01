@@ -131,7 +131,7 @@ def foo() -> None:
     }
 
     [Fact]
-    public void UnreachableCode_ReportsError()
+    public void UnreachableCode_ReportsWarning()
     {
         var code = @"
 def foo() -> int:
@@ -143,9 +143,9 @@ def foo() -> int:
         var validator = new ControlFlowValidatorV2();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("Unreachable code"));
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetWarnings(),
+            w => w.Message.Contains("Unreachable code"));
     }
 
     [Fact]

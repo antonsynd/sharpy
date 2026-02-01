@@ -1,0 +1,10 @@
+# Negative test: code after if/return is reachable when else falls through
+def foo(x: int) -> int:
+    if x > 0:
+        return 1
+    # No else branch, so code below is reachable
+    return -1
+
+def main():
+    print(foo(5))
+    print(foo(-3))

@@ -1,0 +1,9 @@
+def foo() -> int:
+    raise Exception("error")
+    return 1
+
+def main():
+    try:
+        foo()
+    except Exception as e:
+        print("caught")
