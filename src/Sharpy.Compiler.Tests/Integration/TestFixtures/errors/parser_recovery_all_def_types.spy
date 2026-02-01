@@ -1,5 +1,7 @@
 # Errors across all definition types, with valid code between each
 # Recovery should report distinct errors for each broken definition
+# Each broken definition uses a distinct invalid token so errors
+# are independently verifiable.
 
 def 999():
     pass
@@ -7,7 +9,7 @@ def 999():
 class ():
     pass
 
-struct ():
+struct []:
     pass
 
 enum :

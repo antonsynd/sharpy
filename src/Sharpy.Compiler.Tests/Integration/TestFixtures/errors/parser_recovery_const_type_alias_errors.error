@@ -1,0 +1,3 @@
+# Error in const declaration (missing value) and type alias (missing type)
+Unexpected token: Newline
+Expected identifier, got Newline

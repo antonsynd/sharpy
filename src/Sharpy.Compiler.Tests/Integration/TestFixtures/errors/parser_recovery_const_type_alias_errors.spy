@@ -1,0 +1,9 @@
+# Errors in const and type alias declarations should recover
+const x =
+
+type Y =
+
+const z: int = 5
+
+def main():
+    pass

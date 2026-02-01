@@ -1,0 +1,5 @@
+# Pathological nested brackets should recover without hanging
+def main():
+    x = [[[[[[[[
+    y: int = 5
+    return 0

@@ -1,0 +1,18 @@
+# Diverse error types across different constructs.
+# Tests that recovery works for each construct type independently.
+
+def foo() -> :
+    pass
+
+const bad_const =
+
+class BadClass:
+    "docstring"
+    def (self):
+        pass
+
+for x range(10):
+    pass
+
+def valid():
+    pass

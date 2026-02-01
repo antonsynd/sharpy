@@ -1,0 +1,9 @@
+# Four distinct errors across different constructs:
+# 1. Return type annotation error
+# 2. Const declaration missing value
+# 3. Method missing name after docstring
+# 4. For loop missing 'in' keyword
+Expected identifier, got Colon
+Unexpected token: Newline
+Expected identifier, got LeftParen
+Expected In, got Identifier

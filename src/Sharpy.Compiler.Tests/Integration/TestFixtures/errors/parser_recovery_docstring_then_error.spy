@@ -1,0 +1,11 @@
+# Error after a class docstring should still parse subsequent methods
+class Foo:
+    "This is a docstring"
+    def (self):
+        pass
+
+    def valid(self):
+        pass
+
+def main():
+    pass

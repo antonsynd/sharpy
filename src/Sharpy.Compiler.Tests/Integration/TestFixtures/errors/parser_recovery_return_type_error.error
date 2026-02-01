@@ -1,0 +1,2 @@
+# Error after return type arrow: def foo() -> :
+Expected identifier, got Colon

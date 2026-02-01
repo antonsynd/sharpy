@@ -1475,5 +1475,162 @@ z = 3";
         addFn!.Parameters.Should().HaveCount(2);
     }
 
+    [Fact]
+    public void Recovery_FullPipeline_ShortCircuitsAfterParseErrors()
+    {
+        // The full compilation pipeline should short-circuit after parse errors,
+        // returning all parser errors without attempting semantic analysis.
+        // This verifies the spec requirement: "semantic analysis handles
+        // partially-parsed modules gracefully."
+        var source = """
+            def 123():
+                pass
+
+            class ():
+                pass
+
+            def valid():
+                x: int = undefined_var
+            """;
+
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "test.spy");
+
+        // Compilation should fail
+        result.Success.Should().BeFalse();
+
+        // Multiple parse errors should be reported
+        var errors = result.Diagnostics.GetErrors().ToList();
+        errors.Should().HaveCountGreaterThanOrEqualTo(2,
+            "parser should report errors for both broken definitions");
+
+        // All errors should be from the Parser phase (not semantic)
+        errors.Should().AllSatisfy(e =>
+            e.Phase.Should().Be(Sharpy.Compiler.Diagnostics.CompilerPhase.Parser,
+                $"error '{e.Message}' should be from Parser phase, not semantic"));
+
+        // No semantic errors should be present (proving short-circuit)
+        errors.Should().NotContain(e =>
+            e.Phase == Sharpy.Compiler.Diagnostics.CompilerPhase.TypeChecking ||
+            e.Phase == Sharpy.Compiler.Diagnostics.CompilerPhase.NameResolution,
+            "semantic analysis should not run when parser has errors");
+    }
+
+    [Fact]
+    public void Recovery_FullPipeline_MultipleDiverseErrors_NoException()
+    {
+        // Stress test: many different kinds of parse errors should not cause
+        // the compiler to throw an exception.
+        var source = """
+            def 999():
+                pass
+
+            class :
+                pass
+
+            struct :
+                pass
+
+            def foo(x: int)
+                return x
+
+            while :
+                pass
+
+            def valid():
+                pass
+            """;
+
+        var compiler = new Compiler();
+
+        // Should not throw
+        var result = compiler.Compile(source, "test.spy");
+
+        result.Success.Should().BeFalse();
+        result.Diagnostics.GetErrors().Should().HaveCountGreaterThanOrEqualTo(3);
+    }
+
+    [Fact]
+    public void Recovery_ReturnTypeAnnotationError_RecoverToNextDefinition()
+    {
+        // An error in a return type annotation (def foo() -> :) should
+        // recover and parse the next definition.
+        var source = """
+            def foo() -> :
+                pass
+
+            def bar() -> int:
+                return 42
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        errors.Should().Contain(e => e.Contains("Expected identifier"));
+
+        // The valid function 'bar' should still be parsed
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "bar");
+    }
+
+    [Fact]
+    public void Recovery_ConstAndTypeAliasErrors_RecoverToNextStatement()
+    {
+        // Errors in const and type alias declarations should recover.
+        var source = """
+            const x =
+            type Y =
+            def main():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Count.Should().BeGreaterThanOrEqualTo(2);
+
+        // The valid function 'main' should still be parsed
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "main");
+    }
+
+    [Fact]
+    public void Recovery_ErrorAfterDocstring_ContinuesParsingBody()
+    {
+        // An error in a method after a class docstring should not prevent
+        // subsequent methods from being parsed.
+        var source = """
+            class Foo:
+                "This is a docstring"
+                def (self):
+                    pass
+                def valid(self):
+                    pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+
+        var cls = module.Body.OfType<ClassDef>().FirstOrDefault(c => c.Name == "Foo");
+        cls.Should().NotBeNull();
+        cls!.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "valid");
+    }
+
+    [Fact]
+    public void Recovery_PathologicalNestedBrackets_DoesNotHang()
+    {
+        // Many unmatched nested brackets should recover without hanging.
+        var source = """
+            def main():
+                x = [[[[[[[[
+                y: int = 5
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        // The key assertion is that we get here at all (no infinite loop)
+        var mainFn = module.Body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == "main");
+        mainFn.Should().NotBeNull();
+    }
+
     #endregion
 }

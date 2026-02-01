@@ -1,4 +1,6 @@
 # Four errors: one per broken definition type (def, class, struct, enum)
+# Each uses a distinct invalid token so all four are independently verified.
 Expected identifier, got Integer
 Expected identifier, got LeftParen
+Expected identifier, got LeftBracket
 Expected identifier, got Colon

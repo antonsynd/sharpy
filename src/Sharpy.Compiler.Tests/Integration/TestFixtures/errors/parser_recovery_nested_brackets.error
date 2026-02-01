@@ -1,0 +1,2 @@
+# Unbalanced nested brackets should error without crashing or hanging
+Expected RightBracket

@@ -1,0 +1,6 @@
+# Error in return type annotation should recover to next definition
+def foo() -> :
+    pass
+
+def bar() -> int:
+    return 42
