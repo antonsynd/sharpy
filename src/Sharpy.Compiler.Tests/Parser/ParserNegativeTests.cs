@@ -1298,5 +1298,49 @@ z = 3";
         module.Body.Should().BeEmpty();
     }
 
+    [Fact]
+    public void Recovery_EnumWithBadMember_RecoversToNextDefinition()
+    {
+        // An error inside an enum body (invalid member name) should not
+        // produce excessive spurious errors. The next definition should
+        // still be parsed.
+        var source = """
+            enum Color:
+                123
+                RED = 1
+
+            def main():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        errors.Should().Contain(e => e.Contains("Expected identifier"));
+
+        // The valid function 'main' should still be parsed
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "main");
+    }
+
+    [Fact]
+    public void Recovery_EnumWithBadMember_DoesNotProduceManySpuriousErrors()
+    {
+        // A single error in an enum body should not cascade into many errors.
+        var source = """
+            enum Color:
+                123
+
+            def main():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        // Should not produce more than 3 errors for a single mistake
+        errors.Count.Should().BeLessThanOrEqualTo(3,
+            $"Enum error produced too many cascading errors: {string.Join("; ", errors)}");
+    }
+
     #endregion
 }

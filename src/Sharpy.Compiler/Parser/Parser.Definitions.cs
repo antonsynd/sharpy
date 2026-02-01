@@ -642,42 +642,56 @@ public partial class Parser
 
         while (Current.Type != TokenType.Dedent && !IsAtEnd)
         {
-            // Handle pass statement in empty enum
-            if (Current.Type == TokenType.Pass)
+            SkipNewlines();
+            if (Current.Type == TokenType.Dedent || IsAtEnd)
+                break;
+
+            try
             {
-                Advance();
+                // Handle pass statement in empty enum
+                if (Current.Type == TokenType.Pass)
+                {
+                    Advance();
+                    ExpectNewline();
+                    SkipNewlines();
+                    continue;
+                }
+
+                var memberStartLine = Current.Line;
+                var memberStartColumn = Current.Column;
+                var memberStartToken = Current;
+                var memberName = ExpectIdentifier();
+                Expression? value = null;
+
+                if (Current.Type == TokenType.Assign)
+                {
+                    Advance();
+                    value = ParseExpression();
+                }
+
+                var memberEndToken = Previous;
+                var memberEndLine = memberEndToken.Line;
+                var memberEndColumn = memberEndToken.Column + memberEndToken.Value.Length;
+
+                members.Add(new EnumMember
+                {
+                    Name = memberName,
+                    Value = value,
+                    LineStart = memberStartLine,
+                    ColumnStart = memberStartColumn,
+                    LineEnd = memberEndLine,
+                    ColumnEnd = memberEndColumn,
+                    Span = GetSpanFromTokens(memberStartToken, memberEndToken)
+                });
                 ExpectNewline();
-                SkipNewlines();
-                continue;
             }
-
-            var memberStartLine = Current.Line;
-            var memberStartColumn = Current.Column;
-            var memberStartToken = Current;
-            var memberName = ExpectIdentifier();
-            Expression? value = null;
-
-            if (Current.Type == TokenType.Assign)
+            catch (ParserAbortException)
             {
-                Advance();
-                value = ParseExpression();
+                // Error already recorded. Skip to the next line within the enum body.
+                if (_diagnostics.ErrorCount >= MaxErrors)
+                    break;
+                Synchronize();
             }
-
-            var memberEndToken = Previous;
-            var memberEndLine = memberEndToken.Line;
-            var memberEndColumn = memberEndToken.Column + memberEndToken.Value.Length;
-
-            members.Add(new EnumMember
-            {
-                Name = memberName,
-                Value = value,
-                LineStart = memberStartLine,
-                ColumnStart = memberStartColumn,
-                LineEnd = memberEndLine,
-                ColumnEnd = memberEndColumn,
-                Span = GetSpanFromTokens(memberStartToken, memberEndToken)
-            });
-            ExpectNewline();
             SkipNewlines();
         }
 

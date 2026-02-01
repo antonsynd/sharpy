@@ -1,0 +1,8 @@
+# Error inside enum body should recover and parse subsequent members
+enum Color:
+    123
+    RED = 1
+    GREEN = 2
+
+def main():
+    pass
