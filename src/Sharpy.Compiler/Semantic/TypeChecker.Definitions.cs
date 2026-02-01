@@ -337,7 +337,7 @@ public partial class TypeChecker
         for (int i = 0; i < classSymbol.Fields.Count; i++)
         {
             var fieldSymbol = classSymbol.Fields[i];
-            if (fieldSymbol.Type == SemanticType.Unknown)
+            if (GetVariableType(fieldSymbol) == SemanticType.Unknown)
             {
                 // Find the corresponding VariableDeclaration in the AST
                 var fieldDecl = classDef.Body
@@ -413,7 +413,7 @@ public partial class TypeChecker
         for (int i = 0; i < structSymbol.Fields.Count; i++)
         {
             var fieldSymbol = structSymbol.Fields[i];
-            if (fieldSymbol.Type == SemanticType.Unknown)
+            if (GetVariableType(fieldSymbol) == SemanticType.Unknown)
             {
                 // Find the corresponding VariableDeclaration in the AST
                 var fieldDecl = structDef.Body

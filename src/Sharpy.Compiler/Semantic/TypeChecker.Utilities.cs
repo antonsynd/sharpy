@@ -46,9 +46,10 @@ public partial class TypeChecker
                     var symbol = _symbolTable.Lookup(id.Name);
                     if (symbol is VariableSymbol varSymbol)
                     {
-                        if (varSymbol.Type is NullableType nullable)
+                        var resolvedType = GetVariableType(varSymbol);
+                        if (resolvedType is NullableType nullable)
                             narrowedTypes[id.Name] = nullable.UnderlyingType;
-                        else if (varSymbol.Type is OptionalType optional)
+                        else if (resolvedType is OptionalType optional)
                             narrowedTypes[id.Name] = optional.UnderlyingType;
                     }
                 }
@@ -65,9 +66,10 @@ public partial class TypeChecker
                     var symbol = _symbolTable.Lookup(id.Name);
                     if (symbol is VariableSymbol varSymbol)
                     {
-                        if (varSymbol.Type is NullableType nullable)
+                        var resolvedType = GetVariableType(varSymbol);
+                        if (resolvedType is NullableType nullable)
                             narrowedTypes[id.Name] = nullable.UnderlyingType;
-                        else if (varSymbol.Type is OptionalType optional)
+                        else if (resolvedType is OptionalType optional)
                             narrowedTypes[id.Name] = optional.UnderlyingType;
                     }
                 }

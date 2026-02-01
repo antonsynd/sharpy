@@ -554,7 +554,7 @@ public partial class TypeChecker
             {
                 // Access level validation is handled by AccessValidatorV2 in the validation pipeline
 
-                var fieldType = field.Type;
+                var fieldType = GetVariableType(field);
 
                 // Wrap result in nullable for null conditional access
                 if (memberAccess.IsNullConditional && fieldType is not NullableType)
