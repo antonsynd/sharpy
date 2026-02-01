@@ -234,9 +234,12 @@ public class UnusedImportValidator : SemanticValidatorBase
 
             case SliceAccess sliceAccess:
                 CollectReferencesFromExpression(sliceAccess.Object, refs);
-                if (sliceAccess.Start != null) CollectReferencesFromExpression(sliceAccess.Start, refs);
-                if (sliceAccess.Stop != null) CollectReferencesFromExpression(sliceAccess.Stop, refs);
-                if (sliceAccess.Step != null) CollectReferencesFromExpression(sliceAccess.Step, refs);
+                if (sliceAccess.Start != null)
+                    CollectReferencesFromExpression(sliceAccess.Start, refs);
+                if (sliceAccess.Stop != null)
+                    CollectReferencesFromExpression(sliceAccess.Stop, refs);
+                if (sliceAccess.Step != null)
+                    CollectReferencesFromExpression(sliceAccess.Step, refs);
                 break;
 
             case ListLiteral listLit:

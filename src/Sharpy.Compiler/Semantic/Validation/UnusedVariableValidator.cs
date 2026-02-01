@@ -283,9 +283,12 @@ public class UnusedVariableValidator : SemanticValidatorBase
 
             case SliceAccess sliceAccess:
                 CollectReadsFromExpression(sliceAccess.Object, read);
-                if (sliceAccess.Start != null) CollectReadsFromExpression(sliceAccess.Start, read);
-                if (sliceAccess.Stop != null) CollectReadsFromExpression(sliceAccess.Stop, read);
-                if (sliceAccess.Step != null) CollectReadsFromExpression(sliceAccess.Step, read);
+                if (sliceAccess.Start != null)
+                    CollectReadsFromExpression(sliceAccess.Start, read);
+                if (sliceAccess.Stop != null)
+                    CollectReadsFromExpression(sliceAccess.Stop, read);
+                if (sliceAccess.Step != null)
+                    CollectReadsFromExpression(sliceAccess.Step, read);
                 break;
 
             case ListLiteral listLit:
