@@ -22,6 +22,7 @@ public static class ValidationPipelineFactory
             .AddValidator(new DefaultParameterValidatorV2())  // Order: 250
             .AddValidator(new ControlFlowValidatorV3())       // Order: 400 (CFG-based, handles unreachable code)
             .AddValidator(new UnusedVariableValidator())      // Order: 420 (unused variable warnings)
+            .AddValidator(new UnusedImportValidator())       // Order: 430 (unused import warnings)
             .AddValidator(new AccessValidatorV2())            // Order: 450
             .AddValidator(new ProtocolValidatorV2())          // Order: 500
             .AddValidator(new OperatorValidatorV2())          // Order: 500
