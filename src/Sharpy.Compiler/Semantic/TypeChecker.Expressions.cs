@@ -320,12 +320,14 @@ public partial class TypeChecker
                     if (requiredParamCount == totalParamCount)
                     {
                         AddError($"Function '{id.Name}' expects {totalParamCount} arguments but got {totalArgCount} (including piped value)",
-                            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount);
+                            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                            span: call.Span);
                     }
                     else
                     {
                         AddError($"Function '{id.Name}' expects {requiredParamCount} to {totalParamCount} arguments but got {totalArgCount} (including piped value)",
-                            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount);
+                            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                            span: call.Span);
                     }
                     return SemanticType.Unknown;
                 }
@@ -339,10 +341,12 @@ public partial class TypeChecker
                     if (!argType.IsAssignableTo(paramType))
                     {
                         var argDesc = i == 0 ? "piped value" : $"argument {i}";
+                        var argNode = i == 0 ? binOp.Left : call.Arguments[i - 1];
                         AddError($"Cannot pass {argDesc} of type '{argType.GetDisplayName()}' to parameter '{funcSymbol.Parameters[i].Name}' of type '{paramType.GetDisplayName()}'",
-                            i == 0 ? binOp.Left.LineStart : call.Arguments[i - 1].LineStart,
-                            i == 0 ? binOp.Left.ColumnStart : call.Arguments[i - 1].ColumnStart,
-                            code: DiagnosticCodes.Semantic.TypeMismatch);
+                            argNode.LineStart,
+                            argNode.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: argNode.Span);
                     }
                 }
 
@@ -353,7 +357,8 @@ public partial class TypeChecker
                     if (param == null)
                     {
                         AddError($"Unknown keyword argument '{kwarg.Name}'",
-                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument);
+                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                            span: kwarg.Value.Span);
                     }
                     else
                     {
@@ -362,12 +367,14 @@ public partial class TypeChecker
                         if (paramIndex < allArgTypes.Count)
                         {
                             AddError($"Argument '{kwarg.Name}' was already provided positionally",
-                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument);
+                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
+                                span: kwarg.Value.Span);
                         }
                         else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
                         {
                             AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
-                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                                span: kwarg.Value.Span);
                         }
                     }
                 }
@@ -387,7 +394,8 @@ public partial class TypeChecker
             if (symbol != null)
             {
                 AddError($"'{id.Name}' is not callable",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction);
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction,
+                    span: call.Function.Span);
                 return SemanticType.Unknown;
             }
         }
@@ -398,7 +406,8 @@ public partial class TypeChecker
             if (totalArgCount != ft.ParameterTypes.Count)
             {
                 AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {totalArgCount} (including piped value)",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount);
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
                 return SemanticType.Unknown;
             }
 
@@ -408,10 +417,12 @@ public partial class TypeChecker
                 if (!allArgTypes[i].IsAssignableTo(ft.ParameterTypes[i]))
                 {
                     var argDesc = i == 0 ? "piped value" : $"argument {i}";
+                    var argNode = i == 0 ? binOp.Left : call.Arguments[i - 1];
                     AddError($"Cannot pass {argDesc} of type '{allArgTypes[i].GetDisplayName()}' where '{ft.ParameterTypes[i].GetDisplayName()}' is expected",
-                        i == 0 ? binOp.Left.LineStart : call.Arguments[i - 1].LineStart,
-                        i == 0 ? binOp.Left.ColumnStart : call.Arguments[i - 1].ColumnStart,
-                        code: DiagnosticCodes.Semantic.TypeMismatch);
+                        argNode.LineStart,
+                        argNode.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: argNode.Span);
                 }
             }
 
@@ -444,7 +455,8 @@ public partial class TypeChecker
                 $"Type '{operandType.GetDisplayName()}' does not support unary operator '{GetOperatorSymbol(unOp.Operator)}'",
                 unOp.LineStart,
                 unOp.ColumnStart,
-                code: DiagnosticCodes.Semantic.InvalidUnaryOperation);
+                code: DiagnosticCodes.Semantic.InvalidUnaryOperation,
+                span: unOp.Span);
             return SemanticType.Unknown;
         }
 
@@ -496,7 +508,8 @@ public partial class TypeChecker
                     $"Type '{leftType.GetDisplayName()}' does not support operator '{GetOperatorSymbol(binaryOp)}' with operand of type '{rightType.GetDisplayName()}'",
                     chain.Operands[i].LineStart,
                     chain.Operands[i].ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidBinaryOperation);
+                    code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                    span: chain.Span);
             }
         }
 
@@ -531,7 +544,8 @@ public partial class TypeChecker
             {
                 AddError(
                     $"Null conditional operator '?.' can only be used on nullable types, but got '{objectType.GetDisplayName()}'",
-                    memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.InvalidNullConditional);
+                    memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.InvalidNullConditional,
+                    span: memberAccess.Span);
                 return SemanticType.Unknown;
             }
         }
@@ -736,13 +750,15 @@ public partial class TypeChecker
             else if (_expectedType != null)
             {
                 AddError($"'None()' can only construct Optional types, not '{_expectedType.GetDisplayName()}'",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.InvalidNoneConstructor);
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.InvalidNoneConstructor,
+                    span: call.Span);
                 return SemanticType.Unknown;
             }
             else
             {
                 AddError("Cannot infer type for 'None()' without a type annotation. Add a type annotation like 'x: int? = None()'",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType);
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+                    span: call.Span);
                 return SemanticType.Unknown;
             }
         }
@@ -848,7 +864,8 @@ public partial class TypeChecker
                 if (genericTypeSymbol.IsAbstract)
                 {
                     AddError($"Cannot instantiate abstract class '{genericTypeSymbol.Name}'",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AbstractInstantiation);
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AbstractInstantiation,
+                        span: call.Span);
                     return SemanticType.Unknown;
                 }
 
@@ -908,7 +925,8 @@ public partial class TypeChecker
                     if (typeSymbol.IsAbstract)
                     {
                         AddError($"Cannot instantiate abstract class '{typeSymbol.Name}'",
-                            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AbstractInstantiation);
+                            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AbstractInstantiation,
+                            span: call.Span);
                         return SemanticType.Unknown;
                     }
 
@@ -931,7 +949,8 @@ public partial class TypeChecker
                 else
                 {
                     AddError($"'{id.Name}' is not callable (type: {calleeType.GetDisplayName()})",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction);
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction,
+                        span: call.Function.Span);
                     return SemanticType.Unknown;
                 }
             }
@@ -1087,7 +1106,8 @@ public partial class TypeChecker
                 {
                     // Inference failed - report error
                     AddError(inferenceResult.ErrorMessage ?? "Type arguments cannot be inferred",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferGenericType);
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferGenericType,
+                        span: call.Span);
                     return SemanticType.Unknown;
                 }
             }
@@ -1132,7 +1152,8 @@ public partial class TypeChecker
                     if (param == null)
                     {
                         AddError($"Unknown keyword argument '{kwarg.Name}'",
-                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument);
+                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                            span: kwarg.Value.Span);
                     }
                     else
                     {
@@ -1141,12 +1162,14 @@ public partial class TypeChecker
                         if (paramIndex < argTypes.Count)
                         {
                             AddError($"Argument '{kwarg.Name}' was already provided positionally",
-                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument);
+                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
+                                span: kwarg.Value.Span);
                         }
                         else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
                         {
                             AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
-                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                                span: kwarg.Value.Span);
                         }
                     }
                 }
@@ -1294,7 +1317,8 @@ public partial class TypeChecker
                 if (!IsAssignable(argType, opt.UnderlyingType))
                 {
                     AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Optional underlying type '{opt.UnderlyingType.GetDisplayName()}'",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: call.Arguments[0].Span);
                 }
                 return _expectedType;
             }
@@ -1302,7 +1326,8 @@ public partial class TypeChecker
             {
                 // No expected type and no user-defined 'Some' — error
                 AddError("Cannot infer type for 'Some()' without a type annotation. Add a type annotation like 'x: int? = Some(value)'",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType);
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+                    span: call.Span);
                 // Still check the argument to avoid cascading errors
                 CheckExpression(call.Arguments[0]);
                 return SemanticType.Unknown;
@@ -1318,14 +1343,16 @@ public partial class TypeChecker
                 if (!IsAssignable(argType, result.OkType))
                 {
                     AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Result Ok type '{result.OkType.GetDisplayName()}'",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: call.Arguments[0].Span);
                 }
                 return _expectedType;
             }
             else if (_expectedType == null && _symbolTable.Lookup("Ok") == null)
             {
                 AddError("Cannot infer type for 'Ok()' without a type annotation. Add a type annotation like 'x: int !str = Ok(value)'",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType);
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+                    span: call.Span);
                 CheckExpression(call.Arguments[0]);
                 return SemanticType.Unknown;
             }
@@ -1339,14 +1366,16 @@ public partial class TypeChecker
                 if (!IsAssignable(argType, result.ErrorType))
                 {
                     AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Result Error type '{result.ErrorType.GetDisplayName()}'",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: call.Arguments[0].Span);
                 }
                 return _expectedType;
             }
             else if (_expectedType == null && _symbolTable.Lookup("Err") == null)
             {
                 AddError("Cannot infer type for 'Err()' without a type annotation. Add a type annotation like 'x: int !str = Err(error)'",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType);
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+                    span: call.Span);
                 CheckExpression(call.Arguments[0]);
                 return SemanticType.Unknown;
             }
@@ -1468,7 +1497,8 @@ public partial class TypeChecker
                     // For tuple unpacking or other complex targets
                     // TODO: Implement tuple unpacking in comprehensions
                     AddError($"Tuple unpacking in comprehensions not yet supported",
-                        forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
+                        forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: forClause.Target.Span);
                 }
             }
             else if (clause is IfClause ifClause)
@@ -1478,7 +1508,8 @@ public partial class TypeChecker
                 if (!condType.IsAssignableTo(SemanticType.Bool))
                 {
                     AddError($"Comprehension filter must be bool, got '{condType.GetDisplayName()}'",
-                        ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean);
+                        ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean,
+                        span: ifClause.Condition.Span);
                 }
             }
         }
@@ -1529,7 +1560,8 @@ public partial class TypeChecker
                 {
                     // For tuple unpacking or other complex targets
                     AddError($"Tuple unpacking in comprehensions not yet supported",
-                        forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
+                        forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: forClause.Target.Span);
                 }
             }
             else if (clause is IfClause ifClause)
@@ -1539,7 +1571,8 @@ public partial class TypeChecker
                 if (!condType.IsAssignableTo(SemanticType.Bool))
                 {
                     AddError($"Comprehension filter must be bool, got '{condType.GetDisplayName()}'",
-                        ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean);
+                        ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean,
+                        span: ifClause.Condition.Span);
                 }
             }
         }
@@ -1590,7 +1623,8 @@ public partial class TypeChecker
                 {
                     // For tuple unpacking or other complex targets
                     AddError($"Tuple unpacking in comprehensions not yet supported",
-                        forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
+                        forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: forClause.Target.Span);
                 }
             }
             else if (clause is IfClause ifClause)
@@ -1600,7 +1634,8 @@ public partial class TypeChecker
                 if (!condType.IsAssignableTo(SemanticType.Bool))
                 {
                     AddError($"Comprehension filter must be bool, got '{condType.GetDisplayName()}'",
-                        ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean);
+                        ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean,
+                        span: ifClause.Condition.Span);
                 }
             }
         }
@@ -1749,7 +1784,8 @@ public partial class TypeChecker
                 AddError(
                     $"Cannot cast '{sourceType.GetDisplayName()}' to 'str'. Use str(...) instead.",
                     coercion.LineStart, coercion.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidCast);
+                    code: DiagnosticCodes.Semantic.InvalidCast,
+                    span: coercion.Span);
                 return;
             }
         }
@@ -1760,7 +1796,8 @@ public partial class TypeChecker
             AddError(
                 $"Cannot cast '{sourceType.GetDisplayName()}' to '{targetType.GetDisplayName()}' (no inheritance relationship).",
                 coercion.LineStart, coercion.ColumnStart,
-                code: DiagnosticCodes.Semantic.InvalidCast);
+                code: DiagnosticCodes.Semantic.InvalidCast,
+                span: coercion.Span);
         }
     }
 
@@ -1889,7 +1926,8 @@ public partial class TypeChecker
         {
             AddError(
                 $"'maybe' expression requires a nullable type (T | None), but got '{operandType.GetDisplayName()}'",
-                maybeExpr.LineStart, maybeExpr.ColumnStart, code: DiagnosticCodes.Semantic.InvalidMaybeExpression);
+                maybeExpr.LineStart, maybeExpr.ColumnStart, code: DiagnosticCodes.Semantic.InvalidMaybeExpression,
+                span: maybeExpr.Span);
             return SemanticType.Unknown;
         }
 

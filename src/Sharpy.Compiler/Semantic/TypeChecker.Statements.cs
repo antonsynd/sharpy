@@ -68,7 +68,8 @@ public partial class TypeChecker
                     if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
                     {
                         AddError($"Cannot reassign constant variable '{tupleTargetId.Name}' in tuple unpacking",
-                            tupleTargetId.LineStart, tupleTargetId.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
+                            tupleTargetId.LineStart, tupleTargetId.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                            span: tupleTargetId.Span);
                         continue;
                     }
 
@@ -96,7 +97,8 @@ public partial class TypeChecker
                     if (!IsAssignable(valueElemType, targetElemType))
                     {
                         AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
-                            targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                            targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: targetElem.Span);
                     }
                 }
             }
@@ -114,7 +116,8 @@ public partial class TypeChecker
             if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
             {
                 AddError($"Cannot reassign constant variable '{targetId.Name}'",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                    span: assignment.Span);
                 return;
             }
 
@@ -123,7 +126,8 @@ public partial class TypeChecker
             if (parentSymbol is VariableSymbol parentVar && parentVar.IsConstant)
             {
                 AddError($"Cannot reassign constant variable '{targetId.Name}'",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                    span: assignment.Span);
                 return;
             }
 
@@ -182,7 +186,8 @@ public partial class TypeChecker
                 if (symbol is VariableSymbol varSym && varSym.IsConstant)
                 {
                     AddError($"Cannot use augmented assignment on constant variable '{augTargetId.Name}'",
-                        assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
+                        assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                        span: assignment.Span);
                     return;
                 }
             }
@@ -216,12 +221,14 @@ public partial class TypeChecker
             if (valueType is VoidType && targetType is OptionalType)
             {
                 AddError($"Cannot assign 'None' to '{targetType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
+                    span: assignment.Value.Span);
             }
             else if (valueType is VoidType && targetType is not NullableType)
             {
                 AddError($"Cannot assign 'None' to non-nullable type '{targetType.GetDisplayName()}'",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
+                    span: assignment.Value.Span);
             }
             else
             {
@@ -259,12 +266,14 @@ public partial class TypeChecker
                 if (initType is VoidType && declaredType is OptionalType)
                 {
                     AddError($"Cannot assign 'None' to '{declaredType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
-                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation);
+                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
+                        span: varDecl.InitialValue!.Span);
                 }
                 else if (initType is VoidType && declaredType is not NullableType)
                 {
                     AddError($"Cannot assign 'None' to non-nullable type '{declaredType.GetDisplayName()}'",
-                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation);
+                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
+                        span: varDecl.InitialValue!.Span);
                 }
                 else
                 {
@@ -277,7 +286,8 @@ public partial class TypeChecker
         else if (declaredType is UnknownType)
         {
             AddError($"Variable '{varDecl.Name}' declared with 'auto' must have an initializer",
-                varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAutoVariable);
+                varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAutoVariable,
+                span: varDecl.Span);
         }
 
         // Check if symbol already exists in current scope
@@ -318,7 +328,8 @@ public partial class TypeChecker
             if (existingVar.IsConstant)
             {
                 AddError($"Cannot redefine constant variable '{varDecl.Name}'",
-                    varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
+                    varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                    span: varDecl.Span);
                 return;
             }
 
@@ -509,7 +520,8 @@ public partial class TypeChecker
             if (elementType is not TupleType tupleType)
             {
                 AddError($"Cannot unpack non-tuple type '{elementType.GetDisplayName()}' in for loop",
-                    forStmt.LineStart, forStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
+                    forStmt.LineStart, forStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                    span: forStmt.Target.Span);
             }
             else
             {
@@ -517,7 +529,8 @@ public partial class TypeChecker
                 if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
                 {
                     AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables in for loop",
-                        forStmt.LineStart, forStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
+                        forStmt.LineStart, forStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                        span: forStmt.Target.Span);
                 }
                 else
                 {

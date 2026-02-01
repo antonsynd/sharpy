@@ -387,7 +387,8 @@ public partial class TypeChecker
                 $"Missing initialization for: {fieldNames}",
                 constructorDef.LineStart,
                 constructorDef.ColumnStart,
-                code: DiagnosticCodes.Semantic.UninitializedStructField);
+                code: DiagnosticCodes.Semantic.UninitializedStructField,
+                span: constructorDef.Span);
         }
     }
 
