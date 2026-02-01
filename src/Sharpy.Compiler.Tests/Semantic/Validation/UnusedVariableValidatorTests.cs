@@ -365,4 +365,41 @@ def foo():
         Assert.Single(warnings);
         Assert.Contains("'y'", warnings[0].Message);
     }
+
+    [Fact]
+    public void VariableCapturedByClosure_NoWarning()
+    {
+        var code = @"
+def outer():
+    x: int = 42
+    def inner():
+        print(x)
+    inner()
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedVariableValidator();
+        validator.Validate(module, context);
+
+        // x is captured by the closure inner(), so it should not be warned about
+        Assert.Empty(GetUnusedVarWarnings(context));
+    }
+
+    [Fact]
+    public void NestedFunction_OwnUnusedVariable_ReportsWarning()
+    {
+        var code = @"
+def outer():
+    def inner():
+        y: int = 99
+        print(""hello"")
+    inner()
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedVariableValidator();
+        validator.Validate(module, context);
+
+        var warnings = GetUnusedVarWarnings(context);
+        Assert.Single(warnings);
+        Assert.Contains("'y'", warnings[0].Message);
+    }
 }

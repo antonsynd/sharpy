@@ -109,6 +109,43 @@ public class ControlFlowValidatorV3 : SemanticValidatorBase
                 error.Statement.LineStart, error.Statement.ColumnStart, code: code,
                 span: error.Statement.Span);
         }
+
+        // 4. Recursively validate nested functions
+        ValidateNestedFunctions(func.Body);
+    }
+
+    private void ValidateNestedFunctions(System.Collections.Immutable.ImmutableArray<Statement> statements)
+    {
+        foreach (var stmt in statements)
+        {
+            if (stmt is FunctionDef nestedFunc)
+                ValidateFunction(nestedFunc);
+            else if (stmt is IfStatement ifStmt)
+            {
+                ValidateNestedFunctions(ifStmt.ThenBody);
+                foreach (var elif in ifStmt.ElifClauses)
+                    ValidateNestedFunctions(elif.Body);
+                ValidateNestedFunctions(ifStmt.ElseBody);
+            }
+            else if (stmt is WhileStatement whileStmt)
+            {
+                ValidateNestedFunctions(whileStmt.Body);
+                ValidateNestedFunctions(whileStmt.ElseBody);
+            }
+            else if (stmt is ForStatement forStmt)
+            {
+                ValidateNestedFunctions(forStmt.Body);
+                ValidateNestedFunctions(forStmt.ElseBody);
+            }
+            else if (stmt is TryStatement tryStmt)
+            {
+                ValidateNestedFunctions(tryStmt.Body);
+                foreach (var handler in tryStmt.Handlers)
+                    ValidateNestedFunctions(handler.Body);
+                ValidateNestedFunctions(tryStmt.ElseBody);
+                ValidateNestedFunctions(tryStmt.FinallyBody);
+            }
+        }
     }
 
     private SemanticType GetFunctionReturnType(FunctionDef func)

@@ -231,12 +231,18 @@ public class UnusedVariableValidator : SemanticValidatorBase
                     CollectReadsFromExpression(assertStmt.Message, read);
                 break;
 
-            case FunctionDef:
+            case FunctionDef nestedFunc:
+                // Validate the nested function independently for its own unused variables
+                ValidateFunction(nestedFunc);
+                // Scan the nested function's body for reads of enclosing scope variables (closures)
+                CollectReadsFromNestedFunction(nestedFunc, read);
+                break;
+
             case ClassDef:
             case StructDef:
             case InterfaceDef:
             case EnumDef:
-                // Nested definitions have their own scope - don't analyze here
+                // These define their own scope and are validated at the top level
                 break;
         }
     }
@@ -253,6 +259,110 @@ public class UnusedVariableValidator : SemanticValidatorBase
         {
             foreach (var elem in tuple.Elements)
                 CollectForTarget(elem, defined, parameters, isLoopVariable);
+        }
+    }
+
+    /// <summary>
+    /// Scan a nested function's body for identifier reads that may reference
+    /// variables from an enclosing scope (closure captures).
+    /// </summary>
+    private void CollectReadsFromNestedFunction(FunctionDef func, HashSet<string> outerRead)
+    {
+        foreach (var stmt in func.Body)
+        {
+            CollectReadsFromStatement(stmt, outerRead);
+        }
+    }
+
+    /// <summary>
+    /// Recursively collect all identifier reads from a statement, without tracking definitions.
+    /// Used for scanning nested function bodies to detect closure captures.
+    /// </summary>
+    private void CollectReadsFromStatement(Statement stmt, HashSet<string> read)
+    {
+        switch (stmt)
+        {
+            case VariableDeclaration varDecl:
+                if (varDecl.InitialValue != null)
+                    CollectReadsFromExpression(varDecl.InitialValue, read);
+                break;
+
+            case Assignment assign:
+                CollectReadsFromExpression(assign.Value, read);
+                if (assign.Target is Identifier targetId && assign.Operator != AssignmentOperator.Assign)
+                    read.Add(targetId.Name);
+                else if (assign.Target is not Identifier)
+                    CollectReadsFromExpression(assign.Target, read);
+                break;
+
+            case ReturnStatement ret:
+                if (ret.Value != null)
+                    CollectReadsFromExpression(ret.Value, read);
+                break;
+
+            case ExpressionStatement exprStmt:
+                CollectReadsFromExpression(exprStmt.Expression, read);
+                break;
+
+            case IfStatement ifStmt:
+                CollectReadsFromExpression(ifStmt.Test, read);
+                foreach (var s in ifStmt.ThenBody)
+                    CollectReadsFromStatement(s, read);
+                foreach (var elif in ifStmt.ElifClauses)
+                {
+                    CollectReadsFromExpression(elif.Test, read);
+                    foreach (var s in elif.Body)
+                        CollectReadsFromStatement(s, read);
+                }
+                foreach (var s in ifStmt.ElseBody)
+                    CollectReadsFromStatement(s, read);
+                break;
+
+            case WhileStatement whileStmt:
+                CollectReadsFromExpression(whileStmt.Test, read);
+                foreach (var s in whileStmt.Body)
+                    CollectReadsFromStatement(s, read);
+                foreach (var s in whileStmt.ElseBody)
+                    CollectReadsFromStatement(s, read);
+                break;
+
+            case ForStatement forStmt:
+                CollectReadsFromExpression(forStmt.Iterator, read);
+                foreach (var s in forStmt.Body)
+                    CollectReadsFromStatement(s, read);
+                foreach (var s in forStmt.ElseBody)
+                    CollectReadsFromStatement(s, read);
+                break;
+
+            case TryStatement tryStmt:
+                foreach (var s in tryStmt.Body)
+                    CollectReadsFromStatement(s, read);
+                foreach (var handler in tryStmt.Handlers)
+                {
+                    foreach (var s in handler.Body)
+                        CollectReadsFromStatement(s, read);
+                }
+                foreach (var s in tryStmt.ElseBody)
+                    CollectReadsFromStatement(s, read);
+                foreach (var s in tryStmt.FinallyBody)
+                    CollectReadsFromStatement(s, read);
+                break;
+
+            case RaiseStatement raiseStmt:
+                if (raiseStmt.Exception != null)
+                    CollectReadsFromExpression(raiseStmt.Exception, read);
+                break;
+
+            case AssertStatement assertStmt:
+                CollectReadsFromExpression(assertStmt.Test, read);
+                if (assertStmt.Message != null)
+                    CollectReadsFromExpression(assertStmt.Message, read);
+                break;
+
+            case FunctionDef nestedFunc:
+                // Continue scanning deeper nested functions for closure reads
+                CollectReadsFromNestedFunction(nestedFunc, read);
+                break;
         }
     }
 
