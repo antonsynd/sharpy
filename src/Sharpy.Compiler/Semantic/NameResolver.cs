@@ -547,7 +547,7 @@ public class NameResolver
         if (typeAlias.Type != null && typeAlias.FunctionType != null)
         {
             AddError($"Type alias '{typeAlias.Name}' cannot have both Type and FunctionType",
-                typeAlias.LineStart, typeAlias.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTypeAlias);
+                typeAlias.LineStart, typeAlias.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTypeAlias, span: typeAlias.Span);
             return;
         }
 
@@ -605,7 +605,7 @@ public class NameResolver
         if (method.Body.Length == 0)
         {
             AddError($"Interface method '{method.Name}' in interface '{interfaceName}' must have a body with '...' or 'pass'",
-                method.LineStart, method.ColumnStart, code: DiagnosticCodes.Semantic.InterfaceMethodBody);
+                method.LineStart, method.ColumnStart, code: DiagnosticCodes.Semantic.InterfaceMethodBody, span: method.Span);
             return;
         }
 
@@ -624,7 +624,7 @@ public class NameResolver
 
         // If we get here, the method has an invalid body (implementation)
         AddError($"Interface method '{method.Name}' in interface '{interfaceName}' cannot have an implementation. Use '...' or 'pass' instead",
-            method.LineStart, method.ColumnStart, code: DiagnosticCodes.Semantic.InterfaceMethodBody);
+            method.LineStart, method.ColumnStart, code: DiagnosticCodes.Semantic.InterfaceMethodBody, span: method.Span);
     }
 
     private void AddError(string message, int? line = null, int? column = null, string? code = null,
@@ -653,14 +653,14 @@ public class NameResolver
             if (baseSymbol == null)
             {
                 AddError($"Base type '{baseAnnot.Name}' not found",
-                    classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType);
+                    classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType, span: classDef.Span);
                 continue;
             }
 
             if (baseSymbol.TypeKind != TypeKind.Class && baseSymbol.TypeKind != TypeKind.Interface)
             {
                 AddError($"'{baseAnnot.Name}' is not a class or interface",
-                    classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance);
+                    classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance, span: classDef.Span);
                 continue;
             }
 
@@ -670,7 +670,7 @@ public class NameResolver
                 if (hasSetBaseType)
                 {
                     AddError($"Class '{classDef.Name}' cannot have multiple base classes (only one class inheritance allowed)",
-                        classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance);
+                        classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance, span: classDef.Span);
                     continue;
                 }
                 _semanticBinding.SetBaseType(typeSymbol, baseSymbol);
@@ -699,14 +699,14 @@ public class NameResolver
             if (interfaceSymbol == null)
             {
                 AddError($"Interface '{baseAnnot.Name}' not found",
-                    structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType);
+                    structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType, span: structDef.Span);
                 continue;
             }
 
             if (interfaceSymbol.TypeKind != TypeKind.Interface)
             {
                 AddError($"Structs can only implement interfaces, '{baseAnnot.Name}' is not an interface",
-                    structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance);
+                    structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance, span: structDef.Span);
                 continue;
             }
 
@@ -730,14 +730,14 @@ public class NameResolver
             if (baseInterfaceSymbol == null)
             {
                 AddError($"Interface '{baseAnnot.Name}' not found",
-                    interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType);
+                    interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType, span: interfaceDef.Span);
                 continue;
             }
 
             if (baseInterfaceSymbol.TypeKind != TypeKind.Interface)
             {
                 AddError($"'{baseAnnot.Name}' is not an interface",
-                    interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance);
+                    interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.InvalidInheritance, span: interfaceDef.Span);
                 continue;
             }
 
