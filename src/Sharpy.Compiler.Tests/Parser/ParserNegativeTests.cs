@@ -1145,5 +1145,158 @@ z = 3";
         cls!.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "baz");
     }
 
+    [Fact]
+    public void Recovery_ErrorAtFileStart_RecoversToNextDefinition()
+    {
+        // An error at the very start of the file should not prevent
+        // subsequent definitions from being parsed.
+        var source = """
+            def
+            def main():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "main");
+    }
+
+    [Fact]
+    public void Recovery_ErrorAtFileEnd_DoesNotHang()
+    {
+        // An error at the very end of the file should not cause an
+        // infinite loop or crash. Valid definitions before it are preserved.
+        var source = """
+            def main():
+                pass
+            def
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "main");
+    }
+
+    [Fact]
+    public void Recovery_IncompleteExpression_RecoverToNextStatement()
+    {
+        // An incomplete expression (dangling operator) inside a function body
+        // should recover and parse subsequent statements.
+        var source = """
+            def main():
+                x: int = 1 +
+                y: int = 2
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        var mainFn = module.Body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == "main");
+        mainFn.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Recovery_UnbalancedBracket_RecoverToNextStatement()
+    {
+        // An unbalanced opening bracket should recover rather than
+        // consuming the rest of the file.
+        var source = """
+            def main():
+                x = [1, 2, 3
+                y: int = 5
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        var mainFn = module.Body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == "main");
+        mainFn.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Recovery_ErrorInStructHeader_RecoverToNextDefinition()
+    {
+        // A struct with an invalid name should skip the body and recover
+        // to the next definition.
+        var source = """
+            struct :
+                x: int
+
+            def main():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "main");
+    }
+
+    [Fact]
+    public void Recovery_ConsecutiveErrors_ReportsMultipleAndPreservesValid()
+    {
+        // Multiple consecutive error statements followed by a valid statement.
+        // All errors should be reported and the valid statement preserved.
+        var source = """
+            def main():
+                def
+                class
+                x: int = 1
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Count.Should().BeGreaterThanOrEqualTo(2);
+        var mainFn = module.Body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == "main");
+        mainFn.Should().NotBeNull();
+        mainFn!.Body.OfType<VariableDeclaration>().Should().Contain(v => v.Name == "x");
+    }
+
+    [Fact]
+    public void Recovery_MissingFunctionBody_RecoverToNextDefinition()
+    {
+        // A function with colon omitted and no body (just blank line
+        // before next def) should recover to the next definition.
+        var source = """
+            def foo():
+            def main():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "main");
+    }
+
+    [Fact]
+    public void Recovery_ErrorInWhileCondition_RecoverToNextStatement()
+    {
+        // A while statement with an empty condition (while :) should
+        // recover and allow subsequent statements to be parsed.
+        var source = """
+            def main():
+                while :
+                    pass
+                x: int = 5
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void Recovery_EmptyFile_NoCrash()
+    {
+        // An empty file should parse successfully with no errors or crashes.
+        var (module, errors) = ParseWithErrors("");
+
+        errors.Should().BeEmpty();
+        module.Body.Should().BeEmpty();
+    }
+
     #endregion
 }

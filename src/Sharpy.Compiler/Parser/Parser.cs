@@ -128,17 +128,25 @@ public partial class Parser
 
     /// <summary>
     /// Panic-mode recovery: skip tokens until a statement boundary is reached.
-    /// Advances at least one token to ensure progress and avoid infinite loops
-    /// when the error occurs right after a newline/dedent boundary.
     /// Also handles skipping over indented blocks that belong to broken definitions
     /// (e.g., a malformed function header followed by its indented body).
     /// </summary>
     private void Synchronize()
     {
+        // If we're already at a statement boundary and the current token starts
+        // a new statement, return immediately so the parser can try it.
+        // This handles the case where e.g. Expect(TokenType.Indent) fails right
+        // after a newline -- the next definition's keyword is already Current.
+        if ((Previous.Type == TokenType.Newline || Previous.Type == TokenType.Dedent)
+            && IsSyncToken(Current.Type))
+        {
+            return;
+        }
+
         // Advance past the token that caused the error to guarantee progress.
-        // Without this, errors detected right after a newline would cause
-        // Synchronize to return immediately at the same position, leading to
-        // repeated identical errors until MaxErrors is hit.
+        // Without this, errors where Current is not a sync token and Previous
+        // is a boundary would cause Synchronize to return immediately at the
+        // same position, leading to repeated identical errors.
         Advance();
 
         while (!IsAtEnd)
@@ -158,36 +166,43 @@ public partial class Parser
             }
 
             // These tokens begin a new statement
-            switch (Current.Type)
-            {
-                case TokenType.Def:
-                case TokenType.Class:
-                case TokenType.Struct:
-                case TokenType.Interface:
-                case TokenType.Enum:
-                case TokenType.If:
-                case TokenType.While:
-                case TokenType.For:
-                case TokenType.Return:
-                case TokenType.Import:
-                case TokenType.From:
-                case TokenType.Raise:
-                case TokenType.Assert:
-                case TokenType.Pass:
-                case TokenType.Break:
-                case TokenType.Continue:
-                case TokenType.Const:
-                case TokenType.Type:
-                case TokenType.Try:
-                case TokenType.Maybe:
-                case TokenType.At:
-                case TokenType.Dedent:
-                    return;
-            }
+            if (IsSyncToken(Current.Type))
+                return;
 
             Advance();
         }
     }
+
+    /// <summary>
+    /// Returns true if the given token type marks the start of a new statement,
+    /// making it a valid synchronization point for error recovery.
+    /// </summary>
+    private static bool IsSyncToken(TokenType type) => type switch
+    {
+        TokenType.Def => true,
+        TokenType.Class => true,
+        TokenType.Struct => true,
+        TokenType.Interface => true,
+        TokenType.Enum => true,
+        TokenType.If => true,
+        TokenType.While => true,
+        TokenType.For => true,
+        TokenType.Return => true,
+        TokenType.Import => true,
+        TokenType.From => true,
+        TokenType.Raise => true,
+        TokenType.Assert => true,
+        TokenType.Pass => true,
+        TokenType.Break => true,
+        TokenType.Continue => true,
+        TokenType.Const => true,
+        TokenType.Type => true,
+        TokenType.Try => true,
+        TokenType.Maybe => true,
+        TokenType.At => true,
+        TokenType.Dedent => true,
+        _ => false,
+    };
 
     /// <summary>
     /// Skip past an entire indented block by tracking INDENT/DEDENT nesting depth.
