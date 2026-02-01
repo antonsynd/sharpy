@@ -26,6 +26,12 @@ public class InheritanceResolver
         _semanticBinding = semanticBinding;
     }
 
+    private TypeSymbol? GetBaseType(TypeSymbol symbol)
+        => _semanticBinding?.GetBaseType(symbol) ?? symbol.BaseType;
+
+    private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
+        => _semanticBinding?.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+
     /// <summary>
     /// Resolve all inheritance relationships for imported types.
     /// This should be called after all imports are registered but before type checking.
@@ -60,14 +66,14 @@ public class InheritanceResolver
         foreach (var type in allTypes)
         {
             // Resolve base class
-            if (type.BaseType == null && !string.IsNullOrEmpty(type.UnresolvedBaseName))
+            if (GetBaseType(type) == null && !string.IsNullOrEmpty(type.UnresolvedBaseName))
             {
                 var baseType = _symbolTable.LookupType(type.UnresolvedBaseName);
                 if (baseType != null)
                 {
                     if (baseType.TypeKind == TypeKind.Interface)
                     {
-                        if (!type.Interfaces.Contains(baseType))
+                        if (!GetInterfaces(type).Contains(baseType))
                         {
                             type.Interfaces.Add(baseType);
                             _semanticBinding?.AddInterface(type, baseType);
@@ -90,7 +96,7 @@ public class InheritanceResolver
             foreach (var ifaceName in type.UnresolvedInterfaceNames)
             {
                 var ifaceType = _symbolTable.LookupType(ifaceName);
-                if (ifaceType != null && !type.Interfaces.Contains(ifaceType))
+                if (ifaceType != null && !GetInterfaces(type).Contains(ifaceType))
                 {
                     type.Interfaces.Add(ifaceType);
                     _semanticBinding?.AddInterface(type, ifaceType);
