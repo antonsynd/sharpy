@@ -248,14 +248,14 @@ The SemanticBinding pattern is fully implemented and production-ready:
 - **SemanticBinding** (`Semantic/SemanticBinding.cs`) is the sole write target for all mutable semantic data during analysis. Uses `ConcurrentDictionary` with `ReferenceEqualityComparer` for thread-safe, reference-stable lookups.
 - **Materialization** at phase boundaries copies data from SemanticBinding stores onto Symbol properties (`MaterializeInheritance()`, `MaterializeVariableTypes()`, `MaterializeCodeGenInfo()`), enabling downstream consumers (RoslynEmitter, SemanticType) to read Symbol properties directly.
 - **Phase-gating** via `FreezeInheritance()`, `FreezeVariableTypes()`, `FreezeCodeGenInfo()` prevents writes after a phase completes (DEBUG-only assertions).
-- **DualWriteAssertions** (`Semantic/DualWriteAssertions.cs`) verify materialization consistency in DEBUG builds.
+- **DualWriteAssertions** (`Semantic/DualWriteAssertions.cs`) verify materialization consistency in DEBUG builds. Bidirectional checks: forward (Symbol → SemanticBinding) catches rogue Symbol writes, reverse (SemanticBinding → Symbol) catches materialization failures.
 - **Dual-read pattern** throughout the codebase: readers prefer `SemanticBinding.GetXxx()` with fallback to Symbol properties.
 - **Zero direct Symbol property writes** outside of materialization — verified by grep.
 - **All writers** (NameResolver, InheritanceResolver, TypeChecker, CodeGenInfoComputer, ImportResolver) write exclusively to SemanticBinding.
 
 Symbol properties retain `internal set` accessors to support materialization. This is the pragmatic design: SemanticBinding is authoritative during analysis, materialization bridges to consumers that read Symbol properties. Removing `internal set` entirely would require all downstream consumers to accept a SemanticBinding parameter.
 
-**Test coverage:** 26 SemanticBinding unit tests (materialization, freeze, module resolution, HasCodeGenInfo, defaults) + 15 DualWriteAssertions tests.
+**Test coverage:** 26 SemanticBinding unit tests (materialization, freeze, module resolution, HasCodeGenInfo, defaults) + 20 DualWriteAssertions tests (15 forward-direction + 5 reverse-direction).
 
 ### Item 6: Consolidate Inheritance Resolution
 
