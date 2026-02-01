@@ -356,6 +356,31 @@ public class UnusedVariableValidator : SemanticValidatorBase
                 CollectReadsFromExpression(castExpr.Value, read);
                 break;
 
+            case TypeCoercion coercion:
+                CollectReadsFromExpression(coercion.Value, read);
+                break;
+
+            case TypeCheck typeCheck:
+                CollectReadsFromExpression(typeCheck.Value, read);
+                break;
+
+            case ComparisonChain chain:
+                foreach (var operand in chain.Operands)
+                    CollectReadsFromExpression(operand, read);
+                break;
+
+            case Parenthesized paren:
+                CollectReadsFromExpression(paren.Expression, read);
+                break;
+
+            case TryExpression tryExpr:
+                CollectReadsFromExpression(tryExpr.Operand, read);
+                break;
+
+            case MaybeExpression maybeExpr:
+                CollectReadsFromExpression(maybeExpr.Operand, read);
+                break;
+
             case WalrusExpression walrus:
                 CollectReadsFromExpression(walrus.Value, read);
                 break;
@@ -367,6 +392,7 @@ public class UnusedVariableValidator : SemanticValidatorBase
             case BooleanLiteral:
             case NoneLiteral:
             case EllipsisLiteral:
+            case SuperExpression:
                 break;
         }
     }

@@ -316,6 +316,35 @@ public class UnusedImportValidator : SemanticValidatorBase
                 CollectReferencesFromTypeAnnotation(castExpr.TargetType, refs);
                 break;
 
+            case TypeCoercion coercion:
+                CollectReferencesFromExpression(coercion.Value, refs);
+                CollectReferencesFromTypeAnnotation(coercion.TargetType, refs);
+                break;
+
+            case TypeCheck typeCheck:
+                CollectReferencesFromExpression(typeCheck.Value, refs);
+                CollectReferencesFromTypeAnnotation(typeCheck.CheckType, refs);
+                break;
+
+            case ComparisonChain chain:
+                foreach (var operand in chain.Operands)
+                    CollectReferencesFromExpression(operand, refs);
+                break;
+
+            case Parenthesized paren:
+                CollectReferencesFromExpression(paren.Expression, refs);
+                break;
+
+            case TryExpression tryExpr:
+                CollectReferencesFromExpression(tryExpr.Operand, refs);
+                if (tryExpr.ExceptionType != null)
+                    CollectReferencesFromTypeAnnotation(tryExpr.ExceptionType, refs);
+                break;
+
+            case MaybeExpression maybeExpr:
+                CollectReferencesFromExpression(maybeExpr.Operand, refs);
+                break;
+
             case WalrusExpression walrus:
                 CollectReferencesFromExpression(walrus.Value, refs);
                 break;
@@ -327,6 +356,7 @@ public class UnusedImportValidator : SemanticValidatorBase
             case BooleanLiteral:
             case NoneLiteral:
             case EllipsisLiteral:
+            case SuperExpression:
                 break;
         }
     }
