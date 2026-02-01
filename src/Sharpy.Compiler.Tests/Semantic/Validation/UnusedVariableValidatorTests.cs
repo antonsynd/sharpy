@@ -402,4 +402,44 @@ def outer():
         Assert.Single(warnings);
         Assert.Contains("'y'", warnings[0].Message);
     }
+
+    [Fact]
+    public void WalrusAfterNestedFunction_UnusedReportsWarning()
+    {
+        // Regression: ValidateFunction recursion used to corrupt _currentDefined,
+        // causing walrus-defined variables after a nested function to be lost.
+        var code = @"
+def outer():
+    def inner():
+        print(""hello"")
+    inner()
+    if (unused_w := 42) > 0:
+        print(""yes"")
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedVariableValidator();
+        validator.Validate(module, context);
+
+        var warnings = GetUnusedVarWarnings(context);
+        Assert.Single(warnings);
+        Assert.Contains("'unused_w'", warnings[0].Message);
+    }
+
+    [Fact]
+    public void WalrusAfterNestedFunction_UsedNoWarning()
+    {
+        var code = @"
+def outer():
+    def inner():
+        print(""hello"")
+    inner()
+    if (w := 42) > 0:
+        print(w)
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedVariableValidator();
+        validator.Validate(module, context);
+
+        Assert.Empty(GetUnusedVarWarnings(context));
+    }
 }

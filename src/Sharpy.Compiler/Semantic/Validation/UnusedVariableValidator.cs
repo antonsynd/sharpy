@@ -68,7 +68,12 @@ public class UnusedVariableValidator : SemanticValidatorBase
             parameters.Add(param.Name);
         }
 
-        // Set per-function state so expression walker can register walrus definitions
+        // Save and restore per-function instance state for walrus operator tracking.
+        // This is necessary because ValidateFunction is called recursively for nested
+        // functions, and without save/restore the instance fields would point to the
+        // nested function's data after the recursive call returns.
+        var savedDefined = _currentDefined;
+        var savedParameters = _currentParameters;
         _currentDefined = defined;
         _currentParameters = parameters;
 
@@ -77,6 +82,10 @@ public class UnusedVariableValidator : SemanticValidatorBase
         {
             CollectFromStatement(stmt, defined, read, parameters);
         }
+
+        // Restore outer scope state
+        _currentDefined = savedDefined;
+        _currentParameters = savedParameters;
 
         // Emit warnings for unused variables
         foreach (var (name, info) in defined)
