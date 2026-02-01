@@ -442,4 +442,45 @@ def outer():
 
         Assert.Empty(GetUnusedVarWarnings(context));
     }
+
+    [Fact]
+    public void VariableUsedAsNestedFunctionDefault_NoWarning()
+    {
+        // Parameter default values are evaluated in the enclosing scope,
+        // so the outer variable is "read" by the nested function's default.
+        var code = @"
+def outer():
+    default_val: int = 42
+    def inner(x: int = default_val) -> int:
+        return x
+    print(inner())
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedVariableValidator();
+        validator.Validate(module, context);
+
+        // default_val is used as a default parameter value, so no warning
+        Assert.Empty(GetUnusedVarWarnings(context));
+    }
+
+    [Fact]
+    public void VariableUsedAsNestedFunctionDefault_StillWarnsIfTrulyUnused()
+    {
+        // default_val is used as default, but other_var is truly unused
+        var code = @"
+def outer():
+    default_val: int = 42
+    other_var: int = 99
+    def inner(x: int = default_val) -> int:
+        return x
+    print(inner())
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedVariableValidator();
+        validator.Validate(module, context);
+
+        var warnings = GetUnusedVarWarnings(context);
+        Assert.Single(warnings);
+        Assert.Contains("'other_var'", warnings[0].Message);
+    }
 }

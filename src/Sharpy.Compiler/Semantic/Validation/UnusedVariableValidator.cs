@@ -272,11 +272,24 @@ public class UnusedVariableValidator : SemanticValidatorBase
     }
 
     /// <summary>
-    /// Scan a nested function's body for identifier reads that may reference
+    /// Scan a nested function for identifier reads that may reference
     /// variables from an enclosing scope (closure captures).
+    /// Includes parameter default values and decorator names, which are
+    /// evaluated in the enclosing scope, not the nested function's scope.
     /// </summary>
     private void CollectReadsFromNestedFunction(FunctionDef func, HashSet<string> outerRead)
     {
+        // Parameter default values are evaluated in the enclosing scope
+        foreach (var param in func.Parameters)
+        {
+            if (param.DefaultValue != null)
+                CollectReadsFromExpression(param.DefaultValue, outerRead);
+        }
+
+        // Decorator names may reference enclosing scope variables
+        foreach (var decorator in func.Decorators)
+            outerRead.Add(decorator.Name);
+
         foreach (var stmt in func.Body)
         {
             CollectReadsFromStatement(stmt, outerRead);
