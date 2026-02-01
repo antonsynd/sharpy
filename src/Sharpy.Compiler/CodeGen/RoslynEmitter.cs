@@ -237,6 +237,15 @@ public partial class RoslynEmitter
         => _context.SemanticBinding.GetCodeGenInfo(symbol) ?? symbol.CodeGenInfo;
 
     /// <summary>
+    /// Get the type for a VariableSymbol, preferring SemanticBinding over the symbol property.
+    /// </summary>
+    private SemanticType GetVariableType(VariableSymbol symbol)
+    {
+        var bindingType = _context.SemanticBinding.GetVariableType(symbol);
+        return bindingType != SemanticType.Unknown ? bindingType : symbol.Type;
+    }
+
+    /// <summary>
     /// Get the C# name for a symbol using CodeGenInfo.
     /// </summary>
     private string GetCSharpNameForSymbol(Symbol symbol, bool isNewDeclaration = false)

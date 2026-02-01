@@ -148,6 +148,16 @@ public partial class TypeChecker
         => SemanticBinding.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
 
     /// <summary>
+    /// Gets the type for a VariableSymbol, preferring SemanticBinding when available.
+    /// Falls back to symbol.Type for backward compatibility during migration.
+    /// </summary>
+    private SemanticType GetVariableType(VariableSymbol symbol)
+    {
+        var bindingType = SemanticBinding.GetVariableType(symbol);
+        return bindingType != SemanticType.Unknown ? bindingType : symbol.Type;
+    }
+
+    /// <summary>
     /// Gets diagnostics from type checking, type resolution, and validation pipeline.
     /// </summary>
     public DiagnosticBag Diagnostics => _diagnostics;

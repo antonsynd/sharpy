@@ -128,9 +128,15 @@ public partial class TypeChecker
             // Set expected type for constructor inference if the variable was previously declared
             var previousExpectedType2 = _expectedType;
             if (existingSymbol is VariableSymbol existingVarSym)
-                _expectedType = existingVarSym.Type is UnknownType ? null : existingVarSym.Type;
+            {
+                var existingType = GetVariableType(existingVarSym);
+                _expectedType = existingType is UnknownType ? null : existingType;
+            }
             else if (parentSymbol is VariableSymbol parentVarSym)
-                _expectedType = parentVarSym.Type is UnknownType ? null : parentVarSym.Type;
+            {
+                var parentType = GetVariableType(parentVarSym);
+                _expectedType = parentType is UnknownType ? null : parentType;
+            }
             var inferredType = CheckExpression(assignment.Value);
             _expectedType = previousExpectedType2;
 

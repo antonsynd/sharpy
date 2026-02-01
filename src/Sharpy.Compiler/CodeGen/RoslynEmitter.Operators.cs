@@ -454,7 +454,7 @@ public partial class RoslynEmitter
         {
             var symbol = _context.LookupSymbol(id.Name);
             if (symbol is VariableSymbol varSymbol &&
-                varSymbol.Type is Semantic.UserDefinedType udt &&
+                GetVariableType(varSymbol) is Semantic.UserDefinedType udt &&
                 udt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
             {
                 return true;

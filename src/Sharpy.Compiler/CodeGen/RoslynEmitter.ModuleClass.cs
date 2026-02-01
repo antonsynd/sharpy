@@ -412,7 +412,7 @@ public partial class RoslynEmitter
             : NameMangler.ToPascalCase(varSymbol.Name);
 
         // Map the type
-        var propertyType = _typeMapper.MapSemanticType(varSymbol.Type);
+        var propertyType = _typeMapper.MapSemanticType(GetVariableType(varSymbol));
 
         // Build the delegate access: SourceModule.Exports.Property
         var delegateAccess = MemberAccessExpression(

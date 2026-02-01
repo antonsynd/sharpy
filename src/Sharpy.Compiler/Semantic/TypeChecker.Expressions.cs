@@ -106,7 +106,7 @@ public partial class TypeChecker
 
         return symbol switch
         {
-            VariableSymbol varSymbol => varSymbol.Type,
+            VariableSymbol varSymbol => GetVariableType(varSymbol),
             FunctionSymbol funcSymbol => new FunctionType
             {
                 ParameterTypes = funcSymbol.Parameters.Select(p => p.Type).ToList(),
@@ -529,7 +529,7 @@ public partial class TypeChecker
             {
                 return exportedSymbol switch
                 {
-                    VariableSymbol varSymbol => varSymbol.Type,
+                    VariableSymbol varSymbol => GetVariableType(varSymbol),
                     FunctionSymbol funcSymbol => new FunctionType
                     {
                         ParameterTypes = funcSymbol.Parameters.Select(p => p.Type).ToList(),
@@ -907,7 +907,7 @@ public partial class TypeChecker
             if (symbol != null && funcSymbol == null && symbol is not TypeSymbol)
             {
                 // Check if it's a variable with a FunctionType - those are callable
-                if (symbol is VariableSymbol varSym && varSym.Type is FunctionType)
+                if (symbol is VariableSymbol varSym && GetVariableType(varSym) is FunctionType)
                 {
                     // Let the FunctionType handling below deal with this
                 }
