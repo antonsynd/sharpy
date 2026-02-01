@@ -36,6 +36,7 @@ public abstract class IntegrationTestBase
         public string StandardOutput { get; init; } = string.Empty;
         public string StandardError { get; init; } = string.Empty;
         public List<string> CompilationErrors { get; init; } = new();
+        public List<string> CompilationWarnings { get; init; } = new();
         public string? GeneratedCSharp { get; init; }
         public Exception? Exception { get; init; }
         public bool TimedOut { get; init; }
@@ -135,12 +136,16 @@ public abstract class IntegrationTestBase
             semanticBinding.FreezeVariableTypes();
             semanticBinding.FreezeCodeGenInfo();
 
+            // Collect warnings from type checking and validation pipeline
+            var compilationWarnings = typeChecker.Diagnostics.GetWarnings().Select(w => w.Message).ToList();
+
             if (typeChecker.Diagnostics.HasErrors)
             {
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = typeChecker.Diagnostics.GetErrors().Select(e => e.Message).ToList()
+                    CompilationErrors = typeChecker.Diagnostics.GetErrors().Select(e => e.Message).ToList(),
+                    CompilationWarnings = compilationWarnings
                 };
             }
 
@@ -381,7 +386,8 @@ public abstract class IntegrationTestBase
                     Success = true,
                     StandardOutput = stdout.ToString(),
                     StandardError = stderr.ToString(),
-                    GeneratedCSharp = generatedCSharp
+                    GeneratedCSharp = generatedCSharp,
+                    CompilationWarnings = compilationWarnings
                 };
             }
             finally
@@ -508,12 +514,16 @@ public abstract class IntegrationTestBase
             var projectCompiler = new ProjectCompiler(logger);
             var result = projectCompiler.Compile(projectConfig);
 
+            // Collect warnings from the project compilation
+            var projectWarnings = result.Diagnostics.GetWarnings().Select(d => d.Message).ToList();
+
             if (!result.Success)
             {
                 return new ExecutionResult
                 {
                     Success = false,
                     CompilationErrors = result.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
+                    CompilationWarnings = projectWarnings,
                     GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
                 };
             }
@@ -722,7 +732,8 @@ public abstract class IntegrationTestBase
                     Success = true,
                     StandardOutput = stdout.ToString(),
                     StandardError = stderr.ToString(),
-                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
+                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                    CompilationWarnings = projectWarnings
                 };
             }
             finally

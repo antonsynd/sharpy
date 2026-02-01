@@ -169,6 +169,11 @@ public static class DiagnosticCodes
         public const string UnsupportedOperator = "SHP0402";
         public const string MissingMainFunction = "SHP0403";
         public const string InvalidNullCoalesce = "SHP0404";
+
+        // Warnings (SHP0450-SHP0499)
+        public const string UnreachableCodeWarning = "SHP0450";
+        public const string UnusedVariable = "SHP0451";
+        public const string UnusedImport = "SHP0452";
     }
 
     /// <summary>

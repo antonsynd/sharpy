@@ -15,6 +15,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 ///       test_name.spy          - Sharpy source code
 ///       test_name.expected     - Expected stdout output
 ///       test_name.error        - (optional) Expected compilation error substring
+///       test_name.warning      - (optional) Expected compilation warning substring
 ///
 /// MULTI-FILE TESTS (for imports):
 ///   TestFixtures/
@@ -25,6 +26,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 ///         module2.spy          - Additional module
 ///         main.expected        - Expected stdout output (same base name as entry point)
 ///         main.error           - (optional) Expected compilation error substring
+///         main.warning         - (optional) Expected compilation warning substring
 ///
 /// A test passes if:
 ///   - The .spy file(s) compile and execute successfully
@@ -33,6 +35,11 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Error tests (when .error file exists):
 ///   - The .spy file(s) should fail to compile
 ///   - The error message should contain the text in .error
+///
+/// Warning tests (when .warning file exists):
+///   - Compilation should succeed (warnings don't cause failure)
+///   - Each non-empty, non-comment line in .warning must appear in compilation warnings
+///   - Can be combined with .expected for output verification, or stand alone
 /// </summary>
 public class FileBasedIntegrationTests : IntegrationTestBase
 {
@@ -191,6 +198,10 @@ public class FileBasedIntegrationTests : IntegrationTestBase
         // Check if this is an error test
         var isErrorTest = File.Exists(errorFilePath);
 
+        // Check for warning file (.warning) - same base name as .error/.expected
+        var warningFilePath = Path.ChangeExtension(errorFilePath, ".warning");
+        var hasWarningFile = File.Exists(warningFilePath);
+
         if (isErrorTest)
         {
             // Error test: compilation should fail
@@ -219,16 +230,42 @@ public class FileBasedIntegrationTests : IntegrationTestBase
         }
         else
         {
-            // Success test: compilation should succeed and output should match
-            Assert.True(File.Exists(expectedFilePath),
-                $"Missing expected output file: {expectedFilePath}");
-
-            var expectedOutput = File.ReadAllText(expectedFilePath);
-
+            // Success test: compilation should succeed
             Assert.True(result.Success,
                 $"Compilation failed: {string.Join("\n", result.CompilationErrors)}");
 
-            Assert.Equal(expectedOutput, result.StandardOutput);
+            // If there's an expected output file, verify stdout matches
+            if (File.Exists(expectedFilePath))
+            {
+                var expectedOutput = File.ReadAllText(expectedFilePath);
+                Assert.Equal(expectedOutput, result.StandardOutput);
+            }
+            else if (!hasWarningFile)
+            {
+                // Neither .expected nor .warning file found - test fixture is incomplete
+                Assert.Fail($"Missing expected output file: {expectedFilePath}");
+            }
+        }
+
+        // Warning verification (can apply to both error tests and success tests)
+        if (hasWarningFile)
+        {
+            var expectedWarningContent = File.ReadAllText(warningFilePath).Trim();
+            Output.WriteLine($"Expected warning patterns:\n{expectedWarningContent}");
+
+            var actualWarnings = string.Join("\n", result.CompilationWarnings);
+            Output.WriteLine($"Actual warnings:\n{actualWarnings}");
+
+            var expectedWarningLines = expectedWarningContent
+                .Split('\n')
+                .Select(line => line.Trim())
+                .Where(line => line.Length > 0 && !line.StartsWith('#'))
+                .ToList();
+
+            foreach (var expectedWarningLine in expectedWarningLines)
+            {
+                Assert.Contains(expectedWarningLine, actualWarnings, StringComparison.OrdinalIgnoreCase);
+            }
         }
     }
 
