@@ -711,7 +711,21 @@ public partial class Parser
             if (Current.Type == TokenType.Dedent || IsAtEnd)
                 break;
 
-            statements.Add(ParseStatement());
+            try
+            {
+                statements.Add(ParseStatement());
+            }
+            catch (ParserAbortException)
+            {
+                // Error already recorded in _diagnostics by ReportError()
+
+                // Stop after MaxErrors to avoid cascading false errors
+                if (_diagnostics.ErrorCount >= MaxErrors)
+                    break;
+
+                // Panic-mode recovery: synchronize to next statement boundary
+                Synchronize();
+            }
             SkipNewlines();
         }
 

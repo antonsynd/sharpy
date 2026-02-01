@@ -814,4 +814,225 @@ z = 3";
     }
 
     #endregion
+
+    #region Error Recovery
+
+    /// <summary>
+    /// Helper that returns both the parsed module and the list of parser error messages,
+    /// allowing tests to verify both the AST structure and reported errors.
+    /// </summary>
+    private static (Module module, List<string> errors) ParseWithErrors(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        var module = parser.ParseModule();
+
+        var allErrors = lexer.Diagnostics.GetErrors()
+            .Concat(parser.Diagnostics.GetErrors())
+            .Select(d => d.Message)
+            .ToList();
+
+        return (module, allErrors);
+    }
+
+    [Fact]
+    public void Recovery_MultipleBadDefinitionsAtTopLevel_ReportsMultipleErrors()
+    {
+        // Two broken function definitions followed by a valid one.
+        // The parser should recover after each broken def and report both errors.
+        var source = """
+            def ():
+                pass
+
+            def ():
+                pass
+
+            def main():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        // At least two errors reported (one per broken def)
+        errors.Count.Should().BeGreaterThanOrEqualTo(2);
+        errors.Should().AllSatisfy(e => e.Should().Contain("Expected identifier"));
+
+        // The valid function should still be parsed
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "main");
+    }
+
+    [Fact]
+    public void Recovery_BadFunctionHeader_SkipsBodyAndContinues()
+    {
+        // A function with an invalid name has its body skipped entirely.
+        // The following valid function should still be parsed.
+        var source = """
+            def 123(x: int):
+                return x * 2
+
+            def add(x: int, y: int) -> int:
+                return x + y
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        errors[0].Should().Contain("Expected identifier");
+
+        // The valid function 'add' should be in the AST
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "add");
+    }
+
+    [Fact]
+    public void Recovery_BadClassHeader_SkipsBodyAndContinues()
+    {
+        // A class with an invalid name. Its body should be skipped,
+        // and the following valid definition should be parsed.
+        var source = """
+            class (int):
+                def method(self):
+                    pass
+
+            def main():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        errors[0].Should().Contain("Expected identifier");
+
+        // The valid function 'main' should still appear
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "main");
+    }
+
+    [Fact]
+    public void Recovery_ErrorInsideFunctionBody_ContinuesWithNextStatement()
+    {
+        // An error mid-function should allow the remaining statements
+        // in the same function to be parsed.
+        var source = """
+            def main():
+                x: int = 10
+                def
+                y: int = 20
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+
+        // The function 'main' should still be parsed (with partial body)
+        var mainFn = module.Body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == "main");
+        mainFn.Should().NotBeNull();
+
+        // At least the first valid statement should be in the body
+        mainFn!.Body.OfType<VariableDeclaration>().Should().Contain(vd => vd.Name == "x");
+    }
+
+    [Fact]
+    public void Recovery_ErrorInsideClassBody_ContinuesWithNextMethod()
+    {
+        // An error in one method inside a class body should not prevent
+        // subsequent methods from being parsed.
+        var source = """
+            class Foo:
+                def bar(self):
+                    pass
+
+                def (self):
+                    pass
+
+                def baz(self):
+                    pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        errors.Should().Contain(e => e.Contains("Expected identifier"));
+
+        // The class should still be parsed
+        var cls = module.Body.OfType<ClassDef>().FirstOrDefault(c => c.Name == "Foo");
+        cls.Should().NotBeNull();
+
+        // bar and baz should be present in the class body
+        cls!.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "bar");
+        cls!.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "baz");
+    }
+
+    [Fact]
+    public void Recovery_MixOfValidAndInvalidTopLevel_PreservesValidStatements()
+    {
+        // Interleaved valid and invalid definitions at top level.
+        var source = """
+            def valid1():
+                pass
+
+            class :
+                pass
+
+            def valid2():
+                pass
+
+            def :
+                pass
+
+            def valid3():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Count.Should().BeGreaterThanOrEqualTo(2);
+
+        // All three valid functions should be in the AST
+        var functionNames = module.Body
+            .OfType<FunctionDef>()
+            .Select(f => f.Name)
+            .ToList();
+
+        functionNames.Should().Contain("valid1");
+        functionNames.Should().Contain("valid2");
+        functionNames.Should().Contain("valid3");
+    }
+
+    [Fact]
+    public void Recovery_DoesNotExceedMaxErrors()
+    {
+        // Generate enough errors to hit the MaxErrors limit (25).
+        // The parser should stop reporting new errors after the limit.
+        var lines = Enumerable.Range(0, 30)
+            .Select(i => $"def ():\n    pass\n")
+            .ToList();
+
+        var source = string.Join("\n", lines);
+        var (_, errors) = ParseWithErrors(source);
+
+        errors.Count.Should().BeLessThanOrEqualTo(25);
+    }
+
+    [Fact]
+    public void Recovery_NestedBlockError_DoesNotCorruptOuterBlock()
+    {
+        // An error deep inside a nested block (if inside function)
+        // should not prevent the outer function from being completed.
+        var source = """
+            def outer():
+                if True:
+                    def
+                x: int = 42
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+
+        // The outer function should still be parsed
+        var outerFn = module.Body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == "outer");
+        outerFn.Should().NotBeNull();
+    }
+
+    #endregion
 }

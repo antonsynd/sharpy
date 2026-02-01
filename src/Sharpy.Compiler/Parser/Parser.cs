@@ -60,8 +60,10 @@ public partial class Parser
 
     /// <summary>
     /// Maximum number of parser errors before aborting.
+    /// With panic-mode recovery at both module and block level, errors are more
+    /// independent and less likely to cascade, so a higher limit is practical.
     /// </summary>
-    private const int MaxErrors = 5;
+    private const int MaxErrors = 25;
 
     /// <summary>
     /// Parse the entire module
@@ -126,14 +128,34 @@ public partial class Parser
 
     /// <summary>
     /// Panic-mode recovery: skip tokens until a statement boundary is reached.
+    /// Advances at least one token to ensure progress and avoid infinite loops
+    /// when the error occurs right after a newline/dedent boundary.
+    /// Also handles skipping over indented blocks that belong to broken definitions
+    /// (e.g., a malformed function header followed by its indented body).
     /// </summary>
     private void Synchronize()
     {
+        // Advance past the token that caused the error to guarantee progress.
+        // Without this, errors detected right after a newline would cause
+        // Synchronize to return immediately at the same position, leading to
+        // repeated identical errors until MaxErrors is hit.
+        Advance();
+
         while (!IsAtEnd)
         {
-            // If we just passed a newline, we're at a statement boundary
+            // If we just passed a newline or dedent, we're at a statement boundary
             if (Previous.Type == TokenType.Newline || Previous.Type == TokenType.Dedent)
+            {
+                // If we're now at an INDENT, skip the entire indented block.
+                // This handles broken definitions (e.g., `def 123():`) where
+                // the body should be skipped entirely to reach the next definition.
+                if (Current.Type == TokenType.Indent)
+                {
+                    SkipIndentedBlock();
+                    continue;
+                }
                 return;
+            }
 
             // These tokens begin a new statement
             switch (Current.Type)
@@ -161,6 +183,30 @@ public partial class Parser
                     return;
             }
 
+            Advance();
+        }
+    }
+
+    /// <summary>
+    /// Skip past an entire indented block by tracking INDENT/DEDENT nesting depth.
+    /// Used during error recovery to skip the body of a broken definition.
+    /// </summary>
+    private void SkipIndentedBlock()
+    {
+        int depth = 0;
+        while (!IsAtEnd)
+        {
+            if (Current.Type == TokenType.Indent)
+                depth++;
+            else if (Current.Type == TokenType.Dedent)
+            {
+                depth--;
+                if (depth <= 0)
+                {
+                    Advance(); // consume the matching DEDENT
+                    return;
+                }
+            }
             Advance();
         }
     }

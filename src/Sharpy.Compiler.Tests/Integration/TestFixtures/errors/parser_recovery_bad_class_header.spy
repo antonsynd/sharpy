@@ -1,0 +1,6 @@
+class (int):
+    def method(self):
+        pass
+
+def main():
+    pass

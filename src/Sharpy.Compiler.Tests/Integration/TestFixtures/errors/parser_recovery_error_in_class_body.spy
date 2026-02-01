@@ -1,0 +1,12 @@
+class Foo:
+    def bar(self):
+        pass
+
+    def (self):
+        pass
+
+    def baz(self):
+        pass
+
+def main():
+    pass
