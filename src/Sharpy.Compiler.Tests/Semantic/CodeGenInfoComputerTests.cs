@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 
 public class CodeGenInfoComputerTests
 {
-    private (Module module, SymbolTable symbolTable) ParseAndResolve(string source)
+    private (Module module, SymbolTable symbolTable, SemanticBinding semanticBinding) ParseAndResolve(string source)
     {
         var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
         var tokens = lexer.TokenizeAll();
@@ -18,17 +18,23 @@ public class CodeGenInfoComputerTests
         var builtinRegistry = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtinRegistry);
         var semanticInfo = new SemanticInfo();
+        var semanticBinding = new SemanticBinding();
 
-        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance);
+        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance, semanticBinding);
         nameResolver.ResolveDeclarations(module);
         nameResolver.ResolveInheritance();
+        semanticBinding.MaterializeInheritance();
 
         // Run type checker to fully populate symbols
         var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance)
+        {
+            SemanticBinding = semanticBinding
+        };
         typeChecker.CheckModule(module, isEntryPoint: false);
+        semanticBinding.MaterializeVariableTypes();
 
-        return (module, symbolTable);
+        return (module, symbolTable, semanticBinding);
     }
 
     [Fact]
@@ -37,10 +43,11 @@ public class CodeGenInfoComputerTests
         var source = @"
 my_variable: int = 42
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("my_variable") as VariableSymbol;
         symbol.Should().NotBeNull();
@@ -59,10 +66,11 @@ my_variable: int = 42
         var source = @"
 MAX_VALUE: int = 100
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("MAX_VALUE") as VariableSymbol;
         symbol.Should().NotBeNull();
@@ -80,10 +88,11 @@ MAX_VALUE: int = 100
         var source = @"
 const MY_CONST: int = 100
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("MY_CONST") as VariableSymbol;
         symbol.Should().NotBeNull();
@@ -100,10 +109,11 @@ const MY_CONST: int = 100
 class my_class:
     pass
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("my_class") as TypeSymbol;
         symbol.Should().NotBeNull();
@@ -118,10 +128,11 @@ class my_class:
 class MyClass:
     pass
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("MyClass") as TypeSymbol;
         symbol.Should().NotBeNull();
@@ -136,10 +147,11 @@ class MyClass:
 def my_function() -> None:
     pass
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("my_function") as FunctionSymbol;
         symbol.Should().NotBeNull();
@@ -154,10 +166,11 @@ def my_function() -> None:
 interface IMyInterface:
     def do_something(self) -> None: ...
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("IMyInterface") as TypeSymbol;
         symbol.Should().NotBeNull();
@@ -172,10 +185,11 @@ interface IMyInterface:
 struct my_struct:
     x: int
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("my_struct") as TypeSymbol;
         symbol.Should().NotBeNull();
@@ -192,10 +206,11 @@ enum color:
     GREEN
     BLUE
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("color") as TypeSymbol;
         symbol.Should().NotBeNull();
@@ -210,10 +225,11 @@ enum color:
 class MyClass:
     my_field: int
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var typeSymbol = symbolTable.Lookup("MyClass") as TypeSymbol;
         typeSymbol.Should().NotBeNull();
@@ -232,10 +248,11 @@ class MyClass:
     def my_method(self) -> None:
         pass
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var typeSymbol = symbolTable.Lookup("MyClass") as TypeSymbol;
         typeSymbol.Should().NotBeNull();
@@ -257,10 +274,11 @@ def get_value() -> int:
 
 result: int = get_value()
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("result") as VariableSymbol;
         symbol.Should().NotBeNull();
@@ -278,10 +296,11 @@ result: int = get_value()
 x = 5
 x: int = 10
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("x") as VariableSymbol;
         symbol.Should().NotBeNull();
@@ -298,10 +317,11 @@ x: int = 10
 x = 5
 y: int = x
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("y") as VariableSymbol;
         symbol.Should().NotBeNull();
@@ -316,10 +336,11 @@ y: int = x
         var source = @"
 value: int = 42
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("value") as VariableSymbol;
         symbol.Should().NotBeNull();
@@ -333,10 +354,11 @@ value: int = 42
         var source = @"
 const CONST_VALUE: int = 100
 ";
-        var (module, symbolTable) = ParseAndResolve(source);
-        var computer = new CodeGenInfoComputer(symbolTable);
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding);
 
         computer.ComputeForModule(module);
+        semanticBinding.MaterializeCodeGenInfo();
 
         var symbol = symbolTable.Lookup("CONST_VALUE") as VariableSymbol;
         symbol.Should().NotBeNull();

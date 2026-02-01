@@ -87,9 +87,10 @@ public abstract class IntegrationTestBase
             var builtinRegistry = new BuiltinRegistry();
             var symbolTable = new SymbolTable(builtinRegistry);
             var semanticInfo = new SemanticInfo();
+            var semanticBinding = new SemanticBinding();
             var moduleRegistry = new ModuleRegistry(logger);
 
-            var nameResolver = new NameResolver(symbolTable, logger);
+            var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
             nameResolver.ResolveDeclarations(module);
 
             // Phase 3a: Resolve imports to register .NET types before inheritance resolution
@@ -97,6 +98,10 @@ public abstract class IntegrationTestBase
             ResolveImports(module, importResolver, symbolTable);
 
             nameResolver.ResolveInheritance(); // Second pass: resolve inheritance relationships
+
+            // Materialize inheritance onto Symbol properties and freeze
+            semanticBinding.MaterializeInheritance();
+            semanticBinding.FreezeInheritance();
 
             if (nameResolver.Diagnostics.HasErrors)
             {
@@ -117,9 +122,18 @@ public abstract class IntegrationTestBase
             }
 
             var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
+            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
+            {
+                SemanticBinding = semanticBinding
+            };
             // Integration tests are executable programs, so they're entry points
             typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
+
+            // Materialize CodeGenInfo and VariableType onto Symbol properties and freeze
+            semanticBinding.MaterializeCodeGenInfo();
+            semanticBinding.MaterializeVariableTypes();
+            semanticBinding.FreezeVariableTypes();
+            semanticBinding.FreezeCodeGenInfo();
 
             if (typeChecker.Diagnostics.HasErrors)
             {
@@ -136,7 +150,8 @@ public abstract class IntegrationTestBase
                 SourceFilePath = fileName,
                 IsEntryPoint = true,  // Integration tests are executable programs
                 Logger = logger,
-                SemanticInfo = semanticInfo
+                SemanticInfo = semanticInfo,
+                SemanticBinding = semanticBinding
             };
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);

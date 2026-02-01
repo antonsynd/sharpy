@@ -21,15 +21,20 @@ public class SuperValidationTests
         var builtinRegistry = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtinRegistry);
         var semanticInfo = new SemanticInfo();
+        var semanticBinding = new SemanticBinding();
 
         // Name resolution first
-        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance);
+        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance, semanticBinding);
         nameResolver.ResolveDeclarations(module);
         nameResolver.ResolveInheritance(); // Second pass: resolve inheritance
+        semanticBinding.MaterializeInheritance();
 
         // Type checking
         var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance)
+        {
+            SemanticBinding = semanticBinding
+        };
 
         return (module, symbolTable, semanticInfo, typeChecker);
     }

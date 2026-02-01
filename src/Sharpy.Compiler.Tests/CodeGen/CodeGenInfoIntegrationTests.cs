@@ -23,17 +23,26 @@ public class CodeGenInfoIntegrationTests
         var builtinRegistry = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtinRegistry);
         var semanticInfo = new SemanticInfo();
+        var semanticBinding = new SemanticBinding();
 
-        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance);
+        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance, semanticBinding);
         nameResolver.ResolveDeclarations(module);
         nameResolver.ResolveInheritance();
+        semanticBinding.MaterializeInheritance();
 
         var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
         var pipeline = ValidationPipelineFactory.CreateDefault(NullLogger.Instance);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance, pipeline);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance, pipeline)
+        {
+            SemanticBinding = semanticBinding
+        };
 
         // Enable CodeGenInfo computation
         typeChecker.CheckModule(module, computeCodeGenInfo: true);
+
+        // Materialize CodeGenInfo and VariableType onto Symbol properties
+        semanticBinding.MaterializeCodeGenInfo();
+        semanticBinding.MaterializeVariableTypes();
 
         return (module, symbolTable);
     }
