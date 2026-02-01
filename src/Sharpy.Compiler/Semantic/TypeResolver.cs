@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -94,7 +95,8 @@ public class TypeResolver
                 }
                 else
                 {
-                    AddError($"Type '{annotation.Name}' not found", null, null, code: DiagnosticCodes.Semantic.UndefinedType);
+                    AddError($"Type '{annotation.Name}' not found", annotation.LineStart, annotation.ColumnStart,
+                        code: DiagnosticCodes.Semantic.UndefinedType, span: annotation.Span);
                     result = SemanticType.Unknown;
                 }
             }
@@ -182,7 +184,8 @@ public class TypeResolver
         {
             if (annotation.TypeArguments.Length == 0)
             {
-                AddError("Function type requires at least a return type", null, null, code: DiagnosticCodes.Semantic.InvalidFunctionType);
+                AddError("Function type requires at least a return type", annotation.LineStart, annotation.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidFunctionType, span: annotation.Span);
                 return SemanticType.Unknown;
             }
 
@@ -201,7 +204,8 @@ public class TypeResolver
         var typeSymbol = _symbolTable.LookupType(annotation.Name);
         if (typeSymbol == null)
         {
-            AddError($"Generic type '{annotation.Name}' not found", null, null, code: DiagnosticCodes.Semantic.UndefinedType);
+            AddError($"Generic type '{annotation.Name}' not found", annotation.LineStart, annotation.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedType, span: annotation.Span);
             return SemanticType.Unknown;
         }
 
@@ -214,7 +218,8 @@ public class TypeResolver
         if (typeSymbol.IsGeneric && typeArgs.Count != typeSymbol.TypeParameters.Count)
         {
             AddError($"Type '{annotation.Name}' expects {typeSymbol.TypeParameters.Count} type arguments but got {typeArgs.Count}",
-                null, null, code: DiagnosticCodes.Semantic.WrongArgumentCount);
+                annotation.LineStart, annotation.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                span: annotation.Span);
             return SemanticType.Unknown;
         }
 
@@ -271,9 +276,10 @@ public class TypeResolver
         };
     }
 
-    private void AddError(string message, int? line = null, int? column = null, string? code = null)
+    private void AddError(string message, int? line = null, int? column = null, string? code = null,
+        TextSpan? span = null)
     {
-        _diagnostics.AddError(message, line, column, code: code, phase: CompilerPhase.TypeChecking);
+        _diagnostics.AddError(message, span, line, column, code: code, phase: CompilerPhase.TypeChecking);
         _logger.LogError(message, line ?? 0, column ?? 0);
     }
 }
