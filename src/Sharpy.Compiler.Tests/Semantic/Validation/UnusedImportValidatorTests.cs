@@ -118,4 +118,85 @@ class Child(BaseClass):
             .ToList();
         Assert.Empty(importWarnings);
     }
+
+    [Fact]
+    public void ImportUsedAsStructInterface_NoWarning()
+    {
+        var code = @"
+from protocols import IDrawable
+
+struct Point(IDrawable):
+    x: int
+    y: int
+
+    def draw(self) -> None:
+        pass
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedImportValidator();
+        validator.Validate(module, context);
+
+        var importWarnings = context.Diagnostics.GetWarnings()
+            .Where(w => w.Code == DiagnosticCodes.Validation.UnusedImport)
+            .ToList();
+        Assert.Empty(importWarnings);
+    }
+
+    [Fact]
+    public void ImportUsedAsBaseInterface_NoWarning()
+    {
+        var code = @"
+from protocols import ISerializable
+
+interface IAdvanced(ISerializable):
+    def process(self) -> None:
+        ...
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedImportValidator();
+        validator.Validate(module, context);
+
+        var importWarnings = context.Diagnostics.GetWarnings()
+            .Where(w => w.Code == DiagnosticCodes.Validation.UnusedImport)
+            .ToList();
+        Assert.Empty(importWarnings);
+    }
+
+    [Fact]
+    public void ImportUsedWithAlias_NoWarning()
+    {
+        var code = @"
+from math import sqrt as square_root
+
+def main():
+    print(square_root(4))
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedImportValidator();
+        validator.Validate(module, context);
+
+        var importWarnings = context.Diagnostics.GetWarnings()
+            .Where(w => w.Code == DiagnosticCodes.Validation.UnusedImport)
+            .ToList();
+        Assert.Empty(importWarnings);
+    }
+
+    [Fact]
+    public void MultipleUnusedImports_ReportsAll()
+    {
+        var code = @"
+from math import sqrt, pi, ceil
+
+def main():
+    pass
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedImportValidator();
+        validator.Validate(module, context);
+
+        var importWarnings = context.Diagnostics.GetWarnings()
+            .Where(w => w.Code == DiagnosticCodes.Validation.UnusedImport)
+            .ToList();
+        Assert.Equal(3, importWarnings.Count);
+    }
 }

@@ -1,0 +1,6 @@
+# Variable bound in except clause is never used - should warn
+def main():
+    try:
+        print("trying")
+    except Exception as e:
+        print("caught")

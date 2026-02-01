@@ -39,6 +39,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Warning tests (when .warning file exists):
 ///   - Compilation should succeed (warnings don't cause failure)
 ///   - Each non-empty, non-comment line in .warning must appear in compilation warnings
+///   - An empty .warning file (or one with only comments) asserts zero warnings
 ///   - Can be combined with .expected for output verification, or stand alone
 /// </summary>
 public class FileBasedIntegrationTests : IntegrationTestBase
@@ -262,9 +263,17 @@ public class FileBasedIntegrationTests : IntegrationTestBase
                 .Where(line => line.Length > 0 && !line.StartsWith('#'))
                 .ToList();
 
-            foreach (var expectedWarningLine in expectedWarningLines)
+            if (expectedWarningLines.Count == 0)
             {
-                Assert.Contains(expectedWarningLine, actualWarnings, StringComparison.OrdinalIgnoreCase);
+                // Empty .warning file (or only comments) means "no warnings expected"
+                Assert.Empty(result.CompilationWarnings);
+            }
+            else
+            {
+                foreach (var expectedWarningLine in expectedWarningLines)
+                {
+                    Assert.Contains(expectedWarningLine, actualWarnings, StringComparison.OrdinalIgnoreCase);
+                }
             }
         }
     }

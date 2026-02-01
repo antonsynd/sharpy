@@ -184,11 +184,15 @@ public class UnusedImportValidator : SemanticValidatorBase
                 break;
 
             case StructDef str:
+                foreach (var baseType in str.BaseClasses)
+                    CollectReferencesFromTypeAnnotation(baseType, refs);
                 foreach (var s in str.Body)
                     CollectReferencesFromStatement(s, refs);
                 break;
 
             case InterfaceDef iface:
+                foreach (var baseIface in iface.BaseInterfaces)
+                    CollectReferencesFromTypeAnnotation(baseIface, refs);
                 foreach (var s in iface.Body)
                     CollectReferencesFromStatement(s, refs);
                 break;
