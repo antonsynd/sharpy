@@ -52,7 +52,7 @@ public class SemanticContext
     /// Optional SemanticBinding for reading inheritance data.
     /// When set, validators should prefer this over direct symbol property access.
     /// </summary>
-    public SemanticBinding? SemanticBinding { get; set; }
+    public SemanticBinding SemanticBinding { get; set; } = new();
 
     // Centralized AST traversal state (recommended for new validators)
     /// <summary>

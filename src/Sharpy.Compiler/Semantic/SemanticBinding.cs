@@ -122,10 +122,10 @@ public class SemanticBinding
 
     /// <summary>
     /// Gets the resolved interfaces for a type symbol.
-    /// Returns an empty list if none are set.
+    /// Returns null if the symbol has no interfaces registered in this binding.
     /// </summary>
-    public IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-        => _interfaces.TryGetValue(symbol, out var bag) ? bag.ToList() : Array.Empty<TypeSymbol>();
+    public IReadOnlyList<TypeSymbol>? GetInterfaces(TypeSymbol symbol)
+        => _interfaces.TryGetValue(symbol, out var bag) ? bag.ToList() : null;
 
     #endregion
 

@@ -44,7 +44,7 @@ public class CompilerServices
     /// Optional SemanticBinding for reading inheritance data.
     /// When set, helpers prefer this over direct symbol property access.
     /// </summary>
-    public SemanticBinding? SemanticBinding { get; set; }
+    public SemanticBinding SemanticBinding { get; set; } = new();
 
     /// <summary>
     /// Current file path being processed. Can be updated as compilation progresses.
@@ -176,10 +176,10 @@ public class CompilerServices
     // =========================================================================
 
     private TypeSymbol? GetBaseType(TypeSymbol symbol)
-        => SemanticBinding?.GetBaseType(symbol) ?? symbol.BaseType;
+        => SemanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
 
     private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-        => SemanticBinding?.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+        => SemanticBinding.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
 
     private bool IsSubtypeOf(TypeSymbol? derived, TypeSymbol? baseType)
     {

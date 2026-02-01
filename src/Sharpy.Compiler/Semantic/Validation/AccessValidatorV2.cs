@@ -313,7 +313,7 @@ public class AccessValidatorV2 : SemanticValidatorBase
     }
 
     private TypeSymbol? GetBaseType(TypeSymbol symbol)
-        => _context.SemanticBinding?.GetBaseType(symbol) ?? symbol.BaseType;
+        => _context.SemanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
 
     private bool IsInHierarchy(TypeSymbol currentClass, TypeSymbol targetClass)
     {

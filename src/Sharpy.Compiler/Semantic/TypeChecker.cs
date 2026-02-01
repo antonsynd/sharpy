@@ -66,7 +66,7 @@ public partial class TypeChecker
     /// <summary>
     /// Optional SemanticBinding for dual-write of CodeGenInfo during computation.
     /// </summary>
-    public SemanticBinding? SemanticBinding { get; set; }
+    public SemanticBinding SemanticBinding { get; set; } = new();
 
     public TypeChecker(
         SymbolTable symbolTable,
@@ -138,14 +138,14 @@ public partial class TypeChecker
     /// Falls back to symbol.BaseType for backward compatibility during migration.
     /// </summary>
     private TypeSymbol? GetBaseType(TypeSymbol symbol)
-        => SemanticBinding?.GetBaseType(symbol) ?? symbol.BaseType;
+        => SemanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
 
     /// <summary>
     /// Gets the interfaces for a TypeSymbol, preferring SemanticBinding when available.
     /// Falls back to symbol.Interfaces for backward compatibility during migration.
     /// </summary>
     private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-        => SemanticBinding?.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+        => SemanticBinding.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
 
     /// <summary>
     /// Gets diagnostics from type checking, type resolution, and validation pipeline.

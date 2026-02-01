@@ -85,7 +85,7 @@ public class GenericTypeInferenceService
     /// Optional SemanticBinding for reading inheritance data.
     /// When set, helpers prefer this over direct symbol property access.
     /// </summary>
-    public SemanticBinding? SemanticBinding { get; set; }
+    public SemanticBinding SemanticBinding { get; set; } = new();
 
     public GenericTypeInferenceService(SymbolTable symbolTable)
     {
@@ -93,10 +93,10 @@ public class GenericTypeInferenceService
     }
 
     private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-        => SemanticBinding?.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+        => SemanticBinding.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
 
     private TypeSymbol? GetBaseType(TypeSymbol symbol)
-        => SemanticBinding?.GetBaseType(symbol) ?? symbol.BaseType;
+        => SemanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
 
     /// <summary>
     /// Attempt to infer type arguments for a generic function call.

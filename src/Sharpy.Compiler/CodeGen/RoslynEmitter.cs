@@ -234,7 +234,7 @@ public partial class RoslynEmitter
     /// Get CodeGenInfo for a symbol, preferring SemanticBinding over the symbol property.
     /// </summary>
     private CodeGenInfo? GetCodeGenInfo(Symbol symbol)
-        => _context.SemanticBinding?.GetCodeGenInfo(symbol) ?? symbol.CodeGenInfo;
+        => _context.SemanticBinding.GetCodeGenInfo(symbol) ?? symbol.CodeGenInfo;
 
     /// <summary>
     /// Get the C# name for a symbol using CodeGenInfo.
@@ -317,11 +317,8 @@ public partial class RoslynEmitter
     /// </summary>
     private string? GetResolvedModulePath(FromImportStatement fromImport)
     {
-        if (_context.SemanticBinding != null)
-        {
-            return _context.SemanticBinding.GetResolvedModulePath(fromImport);
-        }
-        return fromImport.ResolvedModulePath;
+        return _context.SemanticBinding.GetResolvedModulePath(fromImport)
+            ?? fromImport.ResolvedModulePath;
     }
 
     /// <summary>
@@ -329,11 +326,8 @@ public partial class RoslynEmitter
     /// </summary>
     private Dictionary<string, Symbol>? GetReExportedSymbols(FromImportStatement fromImport)
     {
-        if (_context.SemanticBinding != null)
-        {
-            return _context.SemanticBinding.GetReExportedSymbols(fromImport);
-        }
-        return fromImport.ReExportedSymbols;
+        return _context.SemanticBinding.GetReExportedSymbols(fromImport)
+            ?? fromImport.ReExportedSymbols;
     }
 
     /// <summary>

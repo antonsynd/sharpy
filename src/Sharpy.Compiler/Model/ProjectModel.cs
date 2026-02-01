@@ -145,7 +145,7 @@ public class ProjectModel
     /// This enables immutable AST while allowing semantic annotations.
     /// Null until semantic analysis begins.
     /// </summary>
-    public SemanticBinding? SemanticBinding { get; internal set; }
+    public SemanticBinding SemanticBinding { get; internal set; } = new();
 
     #endregion
 

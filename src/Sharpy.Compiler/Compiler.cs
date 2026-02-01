@@ -528,8 +528,8 @@ public class Compiler
             if (symbol.Interfaces.Count > 0)
             {
                 var bindingInterfaces = semanticBinding.GetInterfaces(symbol);
-                Debug.Assert(bindingInterfaces.Count == symbol.Interfaces.Count,
-                    $"TypeSymbol '{symbol.Name}' has {symbol.Interfaces.Count} interface(s) but SemanticBinding.GetInterfaces() returned {bindingInterfaces.Count} (dual-write inconsistency)");
+                Debug.Assert(bindingInterfaces != null && bindingInterfaces.Count == symbol.Interfaces.Count,
+                    $"TypeSymbol '{symbol.Name}' has {symbol.Interfaces.Count} interface(s) but SemanticBinding.GetInterfaces() returned {bindingInterfaces?.Count ?? 0} (dual-write inconsistency)");
             }
         }
     }
