@@ -455,7 +455,8 @@ public partial class TypeChecker
                     $"Enum member '{member.Name}' requires an explicit value. All enum members must have explicit constant values.",
                     member.LineStart,
                     member.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidEnumValue);
+                    code: DiagnosticCodes.Semantic.InvalidEnumValue,
+                    span: member.Span);
                 continue;
             }
 
@@ -469,7 +470,8 @@ public partial class TypeChecker
                     $"Enum member '{member.Name}' has invalid value type '{valueType.GetDisplayName()}'. Enum values must be int or str.",
                     member.LineStart,
                     member.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidEnumValue);
+                    code: DiagnosticCodes.Semantic.InvalidEnumValue,
+                    span: member.Span);
                 continue;
             }
 
@@ -484,7 +486,8 @@ public partial class TypeChecker
                     $"Enum member '{member.Name}' has type '{valueType.GetDisplayName()}' but previous members have type '{enumValueType.GetDisplayName()}'. All enum values must be the same type.",
                     member.LineStart,
                     member.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidEnumValue);
+                    code: DiagnosticCodes.Semantic.InvalidEnumValue,
+                    span: member.Span);
             }
         }
     }
@@ -504,7 +507,8 @@ public partial class TypeChecker
         // The parser allows it, but semantically it's invalid
         AddError("super() must be followed by a method call (e.g., super().__init__())",
             superExpr.LineStart, superExpr.ColumnStart,
-            code: DiagnosticCodes.Semantic.InvalidSuperUsage);
+            code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+            span: superExpr.Span);
         return SemanticType.Unknown;
     }
 
@@ -520,7 +524,8 @@ public partial class TypeChecker
         {
             AddError("super() cannot be used outside of a class",
                 superExpr.LineStart, superExpr.ColumnStart,
-                code: DiagnosticCodes.Semantic.SuperOutsideClass);
+                code: DiagnosticCodes.Semantic.SuperOutsideClass,
+                span: superExpr.Span);
             return SemanticType.Unknown;
         }
 
@@ -530,7 +535,8 @@ public partial class TypeChecker
         {
             AddError($"super() cannot be used in class '{_currentClass.Name}' which has no parent class",
                 superExpr.LineStart, superExpr.ColumnStart,
-                code: DiagnosticCodes.Semantic.SuperNoParent);
+                code: DiagnosticCodes.Semantic.SuperNoParent,
+                span: superExpr.Span);
             return SemanticType.Unknown;
         }
 
@@ -544,7 +550,8 @@ public partial class TypeChecker
             {
                 AddError("Cannot access parent fields via super(); only methods are allowed",
                     memberAccess.LineStart, memberAccess.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidSuperUsage);
+                    code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+                    span: memberAccess.Span);
                 return SemanticType.Unknown;
             }
             currentType = GetBaseType(currentType);
@@ -601,7 +608,8 @@ public partial class TypeChecker
 
         AddError($"No method '{memberName}' found in parent class hierarchy of '{_currentClass.Name}'",
             memberAccess.LineStart, memberAccess.ColumnStart,
-            code: DiagnosticCodes.Semantic.UndefinedMember);
+            code: DiagnosticCodes.Semantic.UndefinedMember,
+            span: memberAccess.Span);
         return SemanticType.Unknown;
     }
 
@@ -614,7 +622,8 @@ public partial class TypeChecker
         {
             AddError("super() cannot be used outside of a method",
                 superExpr.LineStart, superExpr.ColumnStart,
-                code: DiagnosticCodes.Semantic.InvalidSuperUsage);
+                code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+                span: superExpr.Span);
             return;
         }
 
@@ -625,19 +634,22 @@ public partial class TypeChecker
             {
                 AddError("super() in __init__ can only call super().__init__(...)",
                     memberAccess.LineStart, memberAccess.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidSuperUsage);
+                    code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+                    span: memberAccess.Span);
             }
             else if (_controlFlowDepth > 0)
             {
                 AddError("super().__init__() must be the first statement in the constructor, not inside control flow",
                     superExpr.LineStart, superExpr.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidSuperUsage);
+                    code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+                    span: superExpr.Span);
             }
             else if (_superInitCalled)
             {
                 AddError("super().__init__() can only be called once",
                     superExpr.LineStart, superExpr.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidSuperUsage);
+                    code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+                    span: superExpr.Span);
             }
             return;
         }
@@ -653,7 +665,8 @@ public partial class TypeChecker
                 {
                     AddError($"super() in @override method must call super().{_currentMethodName}(...)",
                         memberAccess.LineStart, memberAccess.ColumnStart,
-                        code: DiagnosticCodes.Semantic.InvalidSuperUsage);
+                        code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+                        span: memberAccess.Span);
                 }
             }
             return;
@@ -667,7 +680,8 @@ public partial class TypeChecker
             {
                 AddError("super() in dunder method must call a dunder method (e.g., super().__eq__(...))",
                     memberAccess.LineStart, memberAccess.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidSuperUsage);
+                    code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+                    span: memberAccess.Span);
             }
             return;
         }
@@ -675,7 +689,8 @@ public partial class TypeChecker
         // Case 4: Regular method - super() not allowed
         AddError("super() cannot be used in regular methods; only in __init__, @override, or dunder methods",
             superExpr.LineStart, superExpr.ColumnStart,
-            code: DiagnosticCodes.Semantic.InvalidSuperUsage);
+            code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+            span: superExpr.Span);
     }
 
     /// <summary>

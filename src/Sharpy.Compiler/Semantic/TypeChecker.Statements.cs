@@ -17,7 +17,8 @@ public partial class TypeChecker
         if (!IsValidAssignmentTarget(assignment.Target))
         {
             AddError($"Cannot assign to {GetAssignmentTargetDescription(assignment.Target)}",
-                assignment.Target.LineStart, assignment.Target.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
+                assignment.Target.LineStart, assignment.Target.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                span: assignment.Span);
             return;
         }
 
@@ -25,7 +26,8 @@ public partial class TypeChecker
         if (assignment.Target is Identifier selfId && selfId.Name == "self")
         {
             AddError("Cannot reassign 'self'",
-                assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget);
+                assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                span: assignment.Span);
             return;
         }
 
@@ -38,7 +40,8 @@ public partial class TypeChecker
             if (tupleValueType is not TupleType tupleType)
             {
                 AddError($"Cannot unpack non-tuple type '{tupleValueType.GetDisplayName()}' into tuple",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                    span: assignment.Span);
                 return;
             }
 
@@ -46,7 +49,8 @@ public partial class TypeChecker
             if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
             {
                 AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking);
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                    span: assignment.Span);
                 return;
             }
 
@@ -342,7 +346,8 @@ public partial class TypeChecker
         if (_currentFunctionReturnType == null)
         {
             AddError("Return statement outside of function",
-                returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.ReturnOutsideFunction);
+                returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.ReturnOutsideFunction,
+                span: returnStmt.Span);
             return;
         }
 
@@ -358,19 +363,22 @@ public partial class TypeChecker
                 if (returnType is VoidType && _currentFunctionReturnType is OptionalType)
                 {
                     AddError($"Cannot return 'None' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
-                        returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue);
+                        returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue,
+                        span: returnStmt.Span);
                 }
                 else
                 {
                     AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
-                        returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue);
+                        returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue,
+                        span: returnStmt.Span);
                 }
             }
         }
         else if (_currentFunctionReturnType != SemanticType.Void)
         {
             AddError($"Function expects return type '{_currentFunctionReturnType.GetDisplayName()}' but got no return value",
-                returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue);
+                returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue,
+                span: returnStmt.Span);
         }
     }
 
@@ -594,7 +602,8 @@ public partial class TypeChecker
         if (raiseStmt.Exception == null && !_inExceptBlock)
         {
             AddError("Bare 'raise' statement can only be used inside an exception handler",
-                raiseStmt.LineStart, raiseStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidRaise);
+                raiseStmt.LineStart, raiseStmt.ColumnStart, code: DiagnosticCodes.Semantic.InvalidRaise,
+                span: raiseStmt.Span);
         }
 
         if (raiseStmt.Exception != null)

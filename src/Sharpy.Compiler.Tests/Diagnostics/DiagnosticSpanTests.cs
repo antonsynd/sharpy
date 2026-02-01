@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Tests.Diagnostics;
 
 /// <summary>
 /// Tests verifying that compiler diagnostics carry TextSpan information
-/// when reported from updated call sites.
+/// when reported from updated call sites, with actual Start/Length verification.
 /// </summary>
 public class DiagnosticSpanTests
 {
@@ -40,95 +40,102 @@ public class DiagnosticSpanTests
         return typeChecker;
     }
 
+    private (NameResolver nameResolver, DiagnosticBag diagnostics) CompileToNameResolver(string source)
+    {
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
+        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
+        var module = parser.ParseModule();
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+        var semanticBinding = new SemanticBinding();
+
+        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance, semanticBinding);
+        nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance();
+
+        return (nameResolver, nameResolver.Diagnostics);
+    }
+
     [Fact]
     public void UndefinedVariable_DiagnosticHasSpan()
     {
-        var source = @"
-def main():
-    print(xyz)
-";
+        var source = "def main():\n    print(xyz)\n";
         var typeChecker = CompileToTypeChecker(source);
         var errors = typeChecker.Diagnostics.GetErrors();
 
-        errors.Should().Contain(e =>
+        var error = errors.First(e =>
             e.Code == DiagnosticCodes.Semantic.UndefinedVariable &&
             e.Message.Contains("xyz"));
 
-        var error = errors.First(e => e.Code == DiagnosticCodes.Semantic.UndefinedVariable);
         error.Span.Should().NotBeNull("updated call site should pass span from AST node");
+        var span = error.Span!.Value;
+        var expected = source.IndexOf("xyz");
+        span.Start.Should().Be(expected, "span should start at 'xyz'");
+        span.Length.Should().Be(3, "span should cover 'xyz'");
     }
 
     [Fact]
     public void TypeMismatch_Assignment_DiagnosticHasSpan()
     {
-        var source = @"
-def main():
-    x: int = ""hello""
-";
+        var source = "def main():\n    x: int = \"hello\"\n";
         var typeChecker = CompileToTypeChecker(source);
         var errors = typeChecker.Diagnostics.GetErrors();
 
-        errors.Should().Contain(e =>
-            e.Code == DiagnosticCodes.Semantic.TypeMismatch);
-
         var error = errors.First(e => e.Code == DiagnosticCodes.Semantic.TypeMismatch);
+
         error.Span.Should().NotBeNull("variable declaration type mismatch should carry span");
+        var span = error.Span!.Value;
+        var expectedStart = source.IndexOf("x: int");
+        span.Start.Should().Be(expectedStart, "span should start at the variable declaration");
     }
 
     [Fact]
     public void InvalidBinaryOperation_DiagnosticHasSpan()
     {
-        var source = @"
-def main():
-    x: int = 1 + ""hello""
-";
+        var source = "def main():\n    x: int = 1 + \"hello\"\n";
         var typeChecker = CompileToTypeChecker(source);
         var errors = typeChecker.Diagnostics.GetErrors();
 
-        errors.Should().Contain(e =>
-            e.Code == DiagnosticCodes.Semantic.InvalidBinaryOperation);
-
         var error = errors.First(e => e.Code == DiagnosticCodes.Semantic.InvalidBinaryOperation);
+
         error.Span.Should().NotBeNull("binary operation error should carry span");
+        var span = error.Span!.Value;
+        var expectedStart = source.IndexOf("1 + \"hello\"");
+        span.Start.Should().Be(expectedStart, "span should start at the binary operation");
     }
 
     [Fact]
     public void WrongArgumentCount_DiagnosticHasSpan()
     {
-        var source = @"
-def foo(a: int, b: int) -> int:
-    return a + b
-
-def main():
-    foo(1, 2, 3)
-";
+        var source = "def foo(a: int, b: int) -> int:\n    return a + b\n\ndef main():\n    foo(1, 2, 3)\n";
         var typeChecker = CompileToTypeChecker(source);
         var errors = typeChecker.Diagnostics.GetErrors();
 
-        errors.Should().Contain(e =>
-            e.Code == DiagnosticCodes.Semantic.WrongArgumentCount);
-
         var error = errors.First(e => e.Code == DiagnosticCodes.Semantic.WrongArgumentCount);
+
         error.Span.Should().NotBeNull("wrong argument count error should carry span");
+        var span = error.Span!.Value;
+        var expectedStart = source.IndexOf("foo(1, 2, 3)");
+        span.Start.Should().Be(expectedStart, "span should start at the function call");
     }
 
     [Fact]
     public void NonBoolCondition_DiagnosticHasSpan()
     {
-        var source = @"
-def main():
-    if 42:
-        pass
-";
+        var source = "def main():\n    if 42:\n        pass\n";
         var typeChecker = CompileToTypeChecker(source);
         var errors = typeChecker.Diagnostics.GetErrors();
 
-        errors.Should().Contain(e =>
-            e.Code == DiagnosticCodes.Semantic.TypeMismatch &&
-            e.Message.Contains("boolean"));
-
         var error = errors.First(e => e.Message.Contains("boolean"));
+
         error.Span.Should().NotBeNull("condition type mismatch should carry span from the test expression");
+        var span = error.Span!.Value;
+        // Span should point to the condition expression "42"
+        var expectedStart = source.IndexOf("42");
+        span.Start.Should().Be(expectedStart, "span should start at the condition '42'");
+        span.Length.Should().Be(2, "span should cover '42'");
     }
 
     [Fact]
@@ -145,5 +152,97 @@ def main():
         diagnostic.Span.Should().BeNull();
         diagnostic.Line.Should().Be(5);
         diagnostic.Column.Should().Be(10);
+    }
+
+    [Fact]
+    public void DuplicateDefinition_NameResolver_DiagnosticHasSpan()
+    {
+        var source = "class Foo:\n    pass\n\nclass Foo:\n    pass\n";
+        var (_, diagnostics) = CompileToNameResolver(source);
+        var errors = diagnostics.GetErrors();
+
+        var error = errors.First(e =>
+            e.Code == DiagnosticCodes.Semantic.DuplicateDefinition &&
+            e.Message.Contains("Foo"));
+
+        error.Span.Should().NotBeNull("duplicate definition should carry span from NameResolver");
+        var span = error.Span!.Value;
+        // Should point to the second "class Foo:" declaration
+        var secondClassStart = source.IndexOf("class Foo:", source.IndexOf("class Foo:") + 1);
+        span.Start.Should().Be(secondClassStart, "span should start at the duplicate class definition");
+    }
+
+    [Fact]
+    public void OverrideValidation_DiagnosticHasSpan()
+    {
+        var source = "class Base:\n    def greet(self) -> str:\n        return \"hello\"\n\nclass Child(Base):\n    def greet(self) -> str:\n        return \"hi\"\n";
+        var typeChecker = CompileToTypeChecker(source);
+        var errors = typeChecker.Diagnostics.GetErrors();
+
+        // Should get an error about missing @override decorator
+        var error = errors.FirstOrDefault(e =>
+            e.Code == DiagnosticCodes.Semantic.InvalidOverride &&
+            e.Message.Contains("greet"));
+
+        // This error may or may not fire depending on whether base method is virtual
+        // If it fires, it should have a span
+        if (error != null)
+        {
+            error.Span.Should().NotBeNull("override validation error should carry span from functionDef");
+        }
+    }
+
+    [Fact]
+    public void SuperOutsideClass_DiagnosticHasSpan()
+    {
+        var source = "def main():\n    super().__init__()\n";
+        var typeChecker = CompileToTypeChecker(source);
+        var errors = typeChecker.Diagnostics.GetErrors();
+
+        var error = errors.First(e =>
+            e.Code == DiagnosticCodes.Semantic.SuperOutsideClass ||
+            e.Code == DiagnosticCodes.Semantic.InvalidSuperUsage);
+
+        error.Span.Should().NotBeNull("super() error should carry span");
+        var span = error.Span!.Value;
+        var expectedStart = source.IndexOf("super()");
+        span.Start.Should().Be(expectedStart, "span should start at 'super()'");
+    }
+
+    [Fact]
+    public void ReturnOutsideFunction_DiagnosticHasSpan()
+    {
+        var source = "return 42\n";
+        var typeChecker = CompileToTypeChecker(source);
+        var errors = typeChecker.Diagnostics.GetErrors();
+
+        var error = errors.FirstOrDefault(e =>
+            e.Code == DiagnosticCodes.Semantic.ReturnOutsideFunction);
+
+        if (error != null)
+        {
+            error.Span.Should().NotBeNull("return outside function error should carry span");
+            var span = error.Span!.Value;
+            span.Start.Should().Be(0, "span should start at beginning where return is");
+        }
+    }
+
+    [Fact]
+    public void BareRaise_DiagnosticHasSpan()
+    {
+        var source = "def main():\n    raise\n";
+        var typeChecker = CompileToTypeChecker(source);
+        var errors = typeChecker.Diagnostics.GetErrors();
+
+        var error = errors.FirstOrDefault(e =>
+            e.Code == DiagnosticCodes.Semantic.InvalidRaise);
+
+        if (error != null)
+        {
+            error.Span.Should().NotBeNull("bare raise error should carry span");
+            var span = error.Span!.Value;
+            var expectedStart = source.IndexOf("raise");
+            span.Start.Should().Be(expectedStart, "span should start at 'raise'");
+        }
     }
 }

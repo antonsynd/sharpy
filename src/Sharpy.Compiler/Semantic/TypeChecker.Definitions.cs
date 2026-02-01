@@ -98,7 +98,8 @@ public partial class TypeChecker
                     $"Dunder method '{functionDef.Name}' overrides a System.Object method and requires the @override decorator",
                     functionDef.LineStart,
                     functionDef.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidOverride);
+                    code: DiagnosticCodes.Semantic.InvalidOverride,
+                    span: functionDef.Span);
             }
         }
 
@@ -113,7 +114,8 @@ public partial class TypeChecker
                     $"Method '{functionDef.Name}' overrides a virtual method in base class '{baseOwner?.Name ?? currentClassBaseType.Name}' and requires the @override decorator",
                     functionDef.LineStart,
                     functionDef.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidOverride);
+                    code: DiagnosticCodes.Semantic.InvalidOverride,
+                    span: functionDef.Span);
             }
         }
 
@@ -131,7 +133,8 @@ public partial class TypeChecker
                     $"Method '{functionDef.Name}' is marked @override but no matching method exists in base class",
                     functionDef.LineStart,
                     functionDef.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidOverride);
+                    code: DiagnosticCodes.Semantic.InvalidOverride,
+                    span: functionDef.Span);
             }
             else if (!baseMethod.IsVirtual && !baseMethod.IsAbstract && !baseMethod.IsOverride)
             {
@@ -145,7 +148,8 @@ public partial class TypeChecker
                         $"Cannot override '{functionDef.Name}' because the base class method in '{baseOwner?.Name}' is not marked @virtual or @abstract. Add @virtual to the method in the base class.",
                         functionDef.LineStart,
                         functionDef.ColumnStart,
-                        code: DiagnosticCodes.Semantic.InvalidOverride);
+                        code: DiagnosticCodes.Semantic.InvalidOverride,
+                        span: functionDef.Span);
                 }
             }
         }
@@ -165,13 +169,15 @@ public partial class TypeChecker
         if (hasAbstractDecorator && !hasEllipsisBody)
         {
             AddError($"Abstract method '{functionDef.Name}' must have '...' as its body",
-                functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.MissingMethodBody);
+                functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.MissingMethodBody,
+                span: functionDef.Span);
         }
 
         if (hasAbstractDecorator && !isInAbstractClass && _currentClass != null)
         {
             AddError($"Abstract method '{functionDef.Name}' can only be declared in an abstract class. Add @abstract decorator to class '{_currentClass.Name}'",
-                functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.MissingMethodBody);
+                functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.MissingMethodBody,
+                span: functionDef.Span);
         }
 
         // Note: Ellipsis body in concrete class is valid (generates NotImplementedException)
@@ -216,7 +222,8 @@ public partial class TypeChecker
             else if (hasSeenDefault)
             {
                 AddError($"Non-default parameter '{param.Name}' cannot follow default parameters",
-                    param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateParameter);
+                    param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateParameter,
+                    span: param.Span);
             }
         }
 
@@ -237,7 +244,8 @@ public partial class TypeChecker
             {
                 // Require type annotations on all parameters except 'self'
                 AddError($"Parameter '{param.Name}' requires a type annotation",
-                    param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.MissingTypeAnnotation);
+                    param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.MissingTypeAnnotation,
+                    span: param.Span);
             }
 
             var paramSymbol = new VariableSymbol
@@ -269,7 +277,8 @@ public partial class TypeChecker
                 if (!IsAssignable(defaultType, paramType))
                 {
                     AddError($"Default value type '{defaultType.GetDisplayName()}' is not assignable to parameter type '{paramType.GetDisplayName()}'",
-                        null, null, code: DiagnosticCodes.Semantic.TypeMismatch);
+                        param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: param.DefaultValue?.Span);
                 }
             }
         }
@@ -311,7 +320,8 @@ public partial class TypeChecker
         var classSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
         if (classSymbol == null)
         {
-            AddError($"Class symbol for '{classDef.Name}' not found", classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType);
+            AddError($"Class symbol for '{classDef.Name}' not found", classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType,
+                span: classDef.Span);
             return;
         }
 
@@ -387,7 +397,8 @@ public partial class TypeChecker
         var structSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
         if (structSymbol == null)
         {
-            AddError($"Struct symbol for '{structDef.Name}' not found", structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType);
+            AddError($"Struct symbol for '{structDef.Name}' not found", structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType,
+                span: structDef.Span);
             return;
         }
 
@@ -460,7 +471,8 @@ public partial class TypeChecker
         var interfaceSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;
         if (interfaceSymbol == null)
         {
-            AddError($"Interface symbol for '{interfaceDef.Name}' not found", interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType);
+            AddError($"Interface symbol for '{interfaceDef.Name}' not found", interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType,
+                span: interfaceDef.Span);
             return;
         }
 
@@ -517,7 +529,8 @@ public partial class TypeChecker
                         else if (param.Type == null && param.Name != "self")
                         {
                             AddError($"Interface method parameter '{param.Name}' requires a type annotation",
-                                param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.MissingTypeAnnotation);
+                                param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.MissingTypeAnnotation,
+                                span: param.Span);
                         }
 
                         updatedParameters.Add(new ParameterSymbol

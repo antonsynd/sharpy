@@ -237,4 +237,53 @@ public class DiagnosticBagTests
         Assert.Single(errors);
         Assert.Null(errors[0].Span);
     }
+
+    [Fact]
+    public void AddError_WithILocatable_ExtractsSpanCorrectly()
+    {
+        var bag = new DiagnosticBag();
+        var locatable = new TestLocatable(new TextSpan(42, 7));
+
+        bag.AddError("Locatable error", locatable, "test.spy", "SHP0001");
+
+        var errors = bag.GetErrors();
+        Assert.Single(errors);
+        Assert.NotNull(errors[0].Span);
+        Assert.Equal(42, errors[0].Span!.Value.Start);
+        Assert.Equal(7, errors[0].Span!.Value.Length);
+    }
+
+    [Fact]
+    public void AddWarning_WithILocatable_ExtractsSpanCorrectly()
+    {
+        var bag = new DiagnosticBag();
+        var locatable = new TestLocatable(new TextSpan(100, 12));
+
+        bag.AddWarning("Locatable warning", locatable, "test.spy", "SHP0451");
+
+        var warnings = bag.GetWarnings();
+        Assert.Single(warnings);
+        Assert.NotNull(warnings[0].Span);
+        Assert.Equal(100, warnings[0].Span!.Value.Start);
+        Assert.Equal(12, warnings[0].Span!.Value.Length);
+    }
+
+    [Fact]
+    public void AddError_WithILocatable_NullSpan_LeavesSpanNull()
+    {
+        var bag = new DiagnosticBag();
+        var locatable = new TestLocatable(null);
+
+        bag.AddError("Locatable error no span", locatable, "test.spy");
+
+        var errors = bag.GetErrors();
+        Assert.Single(errors);
+        Assert.Null(errors[0].Span);
+    }
+
+    private class TestLocatable : ILocatable
+    {
+        public TestLocatable(TextSpan? span) => Span = span;
+        public TextSpan? Span { get; }
+    }
 }

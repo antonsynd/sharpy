@@ -195,14 +195,16 @@ public partial class TypeChecker
             if (ft.ParameterTypes.Count < 1)
             {
                 AddError($"Pipe target function takes no arguments, cannot pipe a value to it",
-                    binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
+                    binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget,
+                    span: binOp.Right.Span);
                 return SemanticType.Unknown;
             }
 
             if (!leftType.IsAssignableTo(ft.ParameterTypes[0]))
             {
                 AddError($"Cannot pipe value of type '{leftType.GetDisplayName()}' to function expecting '{ft.ParameterTypes[0].GetDisplayName()}'",
-                    binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                    binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: binOp.Span);
                 return SemanticType.Unknown;
             }
 
@@ -222,7 +224,8 @@ public partial class TypeChecker
                 if (requiredParamCount < 1)
                 {
                     AddError($"Pipe target function '{id.Name}' takes no required arguments, cannot pipe a value to it",
-                        binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
+                        binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget,
+                        span: binOp.Right.Span);
                     return SemanticType.Unknown;
                 }
 
@@ -231,7 +234,8 @@ public partial class TypeChecker
                 if (!leftType.IsAssignableTo(firstParam.Type))
                 {
                     AddError($"Cannot pipe value of type '{leftType.GetDisplayName()}' to function '{id.Name}' expecting '{firstParam.Type.GetDisplayName()}'",
-                        binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch);
+                        binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: binOp.Span);
                     return SemanticType.Unknown;
                 }
 
@@ -239,7 +243,8 @@ public partial class TypeChecker
                 if (requiredParamCount > 1)
                 {
                     AddError($"Function '{id.Name}' requires {requiredParamCount} arguments but only 1 is provided via pipe",
-                        binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount);
+                        binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                        span: binOp.Right.Span);
                     return SemanticType.Unknown;
                 }
 
@@ -251,18 +256,21 @@ public partial class TypeChecker
                 // Constructor call via pipe - x |> SomeClass → SomeClass(x)
                 // This is allowed, handled similarly to function call
                 AddError($"Piping to constructors is not yet supported",
-                    binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
+                    binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget,
+                    span: binOp.Right.Span);
                 return SemanticType.Unknown;
             }
 
             AddError($"'{id.Name}' is not callable",
-                binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction);
+                binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction,
+                span: binOp.Right.Span);
             return SemanticType.Unknown;
         }
 
         // Right side is some other expression that's not callable
         AddError($"Pipe target must be callable, got '{rightType.GetDisplayName()}'",
-            binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
+            binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget,
+            span: binOp.Right.Span);
         return SemanticType.Unknown;
     }
 
@@ -371,7 +379,8 @@ public partial class TypeChecker
             {
                 // Constructor call via pipe - x |> SomeClass(y) → SomeClass(x, y)
                 AddError($"Piping to constructors is not yet supported",
-                    binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
+                    binOp.Right.LineStart, binOp.Right.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget,
+                    span: binOp.Right.Span);
                 return SemanticType.Unknown;
             }
 
@@ -410,7 +419,8 @@ public partial class TypeChecker
         }
 
         AddError($"Pipe target must be callable, got '{calleeType.GetDisplayName()}'",
-            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget);
+            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.InvalidPipeTarget,
+            span: binOp.Right.Span);
         return SemanticType.Unknown;
     }
 
@@ -547,7 +557,8 @@ public partial class TypeChecker
             }
 
             AddError($"Module '{moduleSymbol.Name}' has no member '{memberAccess.Member}'",
-                memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedMember);
+                memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedMember,
+                span: memberAccess.Span);
             return SemanticType.Unknown;
         }
 
@@ -591,7 +602,8 @@ public partial class TypeChecker
             }
 
             AddError($"Type '{memberLookupType.GetDisplayName()}' has no member '{memberAccess.Member}'",
-                memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedMember);
+                memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedMember,
+                span: memberAccess.Span);
         }
 
         return SemanticType.Unknown;

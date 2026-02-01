@@ -126,7 +126,7 @@ public class NameResolver
         if (_symbolTable.Lookup(classDef.Name, searchParents: false) != null)
         {
             AddError($"Class '{classDef.Name}' is already defined",
-                classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
+                classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: classDef.Span);
             return;
         }
 
@@ -193,7 +193,7 @@ public class NameResolver
         if (_symbolTable.Lookup(structDef.Name, searchParents: false) != null)
         {
             AddError($"Struct '{structDef.Name}' is already defined",
-                structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
+                structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: structDef.Span);
             return;
         }
 
@@ -253,7 +253,7 @@ public class NameResolver
         if (_symbolTable.Lookup(interfaceDef.Name, searchParents: false) != null)
         {
             AddError($"Interface '{interfaceDef.Name}' is already defined",
-                interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
+                interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: interfaceDef.Span);
             return;
         }
 
@@ -311,7 +311,7 @@ public class NameResolver
         if (_symbolTable.Lookup(enumDef.Name, searchParents: false) != null)
         {
             AddError($"Enum '{enumDef.Name}' is already defined",
-                enumDef.LineStart, enumDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
+                enumDef.LineStart, enumDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: enumDef.Span);
             return;
         }
 
@@ -342,7 +342,7 @@ public class NameResolver
             if (!isBuiltin)
             {
                 AddError($"Function '{functionDef.Name}' is already defined",
-                    functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
+                    functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: functionDef.Span);
                 return;
             }
             // For builtins, we'll replace the symbol below
@@ -507,7 +507,7 @@ public class NameResolver
         if (_symbolTable.Lookup(constDecl.Name, searchParents: false) != null)
         {
             AddError($"Constant '{constDecl.Name}' is already defined",
-                constDecl.LineStart, constDecl.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
+                constDecl.LineStart, constDecl.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: constDecl.Span);
             return;
         }
 
@@ -532,7 +532,7 @@ public class NameResolver
         if (_symbolTable.Lookup(typeAlias.Name, searchParents: false) != null)
         {
             AddError($"Type alias '{typeAlias.Name}' is already defined",
-                typeAlias.LineStart, typeAlias.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition);
+                typeAlias.LineStart, typeAlias.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: typeAlias.Span);
             return;
         }
 
@@ -540,7 +540,7 @@ public class NameResolver
         if (typeAlias.Type == null && typeAlias.FunctionType == null)
         {
             AddError($"Type alias '{typeAlias.Name}' must have a type",
-                typeAlias.LineStart, typeAlias.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTypeAlias);
+                typeAlias.LineStart, typeAlias.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTypeAlias, span: typeAlias.Span);
             return;
         }
 
@@ -627,9 +627,10 @@ public class NameResolver
             method.LineStart, method.ColumnStart, code: DiagnosticCodes.Semantic.InterfaceMethodBody);
     }
 
-    private void AddError(string message, int? line = null, int? column = null, string? code = null)
+    private void AddError(string message, int? line = null, int? column = null, string? code = null,
+        Text.TextSpan? span = null)
     {
-        _diagnostics.AddError(message, line, column, _currentFilePath, code, CompilerPhase.NameResolution);
+        _diagnostics.AddError(message, span, line, column, _currentFilePath, code: code, phase: CompilerPhase.NameResolution);
         _logger.LogError(message, line ?? 0, column ?? 0);
     }
 
