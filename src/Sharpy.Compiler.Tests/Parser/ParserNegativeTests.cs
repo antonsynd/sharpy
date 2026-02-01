@@ -1342,5 +1342,62 @@ z = 3";
             $"Enum error produced too many cascading errors: {string.Join("; ", errors)}");
     }
 
+    [Fact]
+    public void Recovery_MissingColonOnIf_DoesNotCascade()
+    {
+        // A missing colon on an if statement inside a function body should
+        // recover cleanly without excessive cascading errors.
+        var source = """
+            def main():
+                if True
+                    pass
+                x: int = 5
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        errors.Count.Should().BeLessThanOrEqualTo(3,
+            $"If colon error cascaded: {string.Join("; ", errors)}");
+    }
+
+    [Fact]
+    public void Recovery_MissingColonOnWhile_DoesNotCascade()
+    {
+        // A missing colon on a while statement should recover cleanly.
+        var source = """
+            def main():
+                while True
+                    pass
+                x: int = 5
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        errors.Count.Should().BeLessThanOrEqualTo(3,
+            $"While colon error cascaded: {string.Join("; ", errors)}");
+    }
+
+    [Fact]
+    public void Recovery_MissingColonOnExcept_DoesNotCascade()
+    {
+        // A missing colon on except should recover cleanly.
+        var source = """
+            def main():
+                try:
+                    pass
+                except Exception
+                    pass
+                x: int = 5
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        errors.Count.Should().BeLessThanOrEqualTo(3,
+            $"Except colon error cascaded: {string.Join("; ", errors)}");
+    }
+
     #endregion
 }
