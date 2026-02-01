@@ -821,7 +821,8 @@ public partial class Parser
                 LineStart = start!.LineStart,
                 ColumnStart = start!.ColumnStart,
                 LineEnd = Current.Line,
-                ColumnEnd = Current.Column
+                ColumnEnd = Current.Column,
+                Span = CombineSpans(elements[0].Span, elements[^1].Span)
             };
 
             return new IndexAccess

@@ -205,7 +205,8 @@ public partial class Parser
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = Current.Line,
-                ColumnEnd = Current.Column
+                ColumnEnd = Current.Column,
+                Span = CombineSpans(first.Span, elements[^1].Span)
             };
         }
 
@@ -226,6 +227,7 @@ public partial class Parser
             {
                 var startLine = Current.Line;
                 var startColumn = Current.Column;
+                var startToken = Current;
                 Advance();
 
                 // Parse target (single identifier for now)
@@ -241,13 +243,15 @@ public partial class Parser
                     LineStart = startLine,
                     ColumnStart = startColumn,
                     LineEnd = Current.Line,
-                    ColumnEnd = Current.Column
+                    ColumnEnd = Current.Column,
+                    Span = CombineSpans(GetSpanFromToken(startToken), iterator.Span)
                 });
             }
             else if (Current.Type == TokenType.If)
             {
                 var startLine = Current.Line;
                 var startColumn = Current.Column;
+                var startToken = Current;
                 Advance();
 
                 var condition = ParseLogicalOr(); // Use lower precedence to avoid consuming too much
@@ -258,7 +262,8 @@ public partial class Parser
                     LineStart = startLine,
                     ColumnStart = startColumn,
                     LineEnd = Current.Line,
-                    ColumnEnd = Current.Column
+                    ColumnEnd = Current.Column,
+                    Span = CombineSpans(GetSpanFromToken(startToken), condition.Span)
                 });
             }
             else

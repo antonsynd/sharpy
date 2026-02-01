@@ -46,7 +46,8 @@ public partial class Parser
                     LineStart = startLine,
                     ColumnStart = startColumn,
                     LineEnd = Current.Line,
-                    ColumnEnd = Current.Column
+                    ColumnEnd = Current.Column,
+                    Span = CombineSpans(elements[0].Span, elements[^1].Span)
                 };
 
                 var op = TokenTypeToAssignmentOperator(Current.Type);

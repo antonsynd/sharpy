@@ -119,7 +119,8 @@ public partial class Parser
             LineStart = 1,
             ColumnStart = 1,
             LineEnd = Current.Line,
-            ColumnEnd = Current.Column
+            ColumnEnd = Current.Column,
+            Span = GetSpanFromTokens(_tokens[0], Current)
         };
     }
 
