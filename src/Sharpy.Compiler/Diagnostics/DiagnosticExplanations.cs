@@ -510,11 +510,6 @@ public static class DiagnosticExplanations
             "def main():\n    continue  # not inside a loop",
             "Move the continue inside a loop.");
 
-        Add(dict, DiagnosticCodes.Semantic.UnreachableCode, "Unreachable code", "Semantic",
-            "Code was detected that can never be executed. This typically occurs after a return, raise, break, or continue statement. The compiler uses control flow graph analysis to detect these cases.",
-            "def foo() -> int:\n    return 1\n    print(\"never runs\")  # unreachable",
-            "Remove the unreachable code, or restructure the control flow so the code is reachable.");
-
         Add(dict, DiagnosticCodes.Semantic.NotAllPathsReturn, "Not all paths return a value", "Semantic",
             "A function declared with a non-void return type has execution paths that do not return a value. All possible paths through the function must end with a return statement.",
             "def abs_val(x: int) -> int:\n    if x >= 0:\n        return x\n    # missing return for x < 0",

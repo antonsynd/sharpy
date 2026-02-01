@@ -127,7 +127,6 @@ public static class DiagnosticCodes
         public const string ReturnOutsideFunction = "SHP0262";
         public const string BreakOutsideLoop = "SHP0263";
         public const string ContinueOutsideLoop = "SHP0264";
-        public const string UnreachableCode = "SHP0265";
         public const string NotAllPathsReturn = "SHP0266";
 
         // Class and inheritance (SHP0280-SHP0299)

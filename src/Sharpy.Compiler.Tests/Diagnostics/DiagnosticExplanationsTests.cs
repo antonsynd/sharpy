@@ -7,7 +7,6 @@ public class DiagnosticExplanationsTests
 {
     [Theory]
     [InlineData("SHP0200")]
-    [InlineData("SHP0265")]
     [InlineData("SHP0302")]
     [InlineData("SHP0001")]
     [InlineData("SHP0100")]
@@ -16,6 +15,7 @@ public class DiagnosticExplanationsTests
     [InlineData("SHP0340")]
     [InlineData("SHP0403")]
     [InlineData("SHP0507")]
+    [InlineData("SHP0450")]
     public void Get_KnownCode_ReturnsExplanation(string code)
     {
         var explanation = DiagnosticExplanations.Get(code);
@@ -63,7 +63,6 @@ public class DiagnosticExplanationsTests
     [Theory]
     [InlineData("SHP0200")]
     [InlineData("SHP0220")]
-    [InlineData("SHP0265")]
     [InlineData("SHP0001")]
     [InlineData("SHP0100")]
     [InlineData("SHP0302")]
