@@ -122,6 +122,8 @@ public class UnusedImportValidator : SemanticValidatorBase
                 CollectReferencesFromExpression(whileStmt.Test, refs);
                 foreach (var s in whileStmt.Body)
                     CollectReferencesFromStatement(s, refs);
+                foreach (var s in whileStmt.ElseBody)
+                    CollectReferencesFromStatement(s, refs);
                 break;
 
             case ForStatement forStmt:

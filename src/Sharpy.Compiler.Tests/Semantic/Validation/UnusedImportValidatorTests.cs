@@ -262,4 +262,26 @@ class Config:
             .ToList();
         Assert.Empty(importWarnings);
     }
+
+    [Fact]
+    public void ImportUsedInWhileElse_NoWarning()
+    {
+        var code = @"
+from math import sqrt
+
+def main():
+    while False:
+        pass
+    else:
+        print(sqrt(4))
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedImportValidator();
+        validator.Validate(module, context);
+
+        var importWarnings = context.Diagnostics.GetWarnings()
+            .Where(w => w.Code == DiagnosticCodes.Validation.UnusedImport)
+            .ToList();
+        Assert.Empty(importWarnings);
+    }
 }

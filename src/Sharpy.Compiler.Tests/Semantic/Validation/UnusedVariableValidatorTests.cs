@@ -327,4 +327,42 @@ def foo(obj):
         // obj.x = 42 reads obj (member access), doesn't define a new variable
         Assert.Empty(GetUnusedVarWarnings(context));
     }
+
+    [Fact]
+    public void VariableUsedInWhileElse_NoWarning()
+    {
+        var code = @"
+def foo():
+    x: int = 42
+    while False:
+        pass
+    else:
+        print(x)
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedVariableValidator();
+        validator.Validate(module, context);
+
+        Assert.Empty(GetUnusedVarWarnings(context));
+    }
+
+    [Fact]
+    public void VariableDefinedInWhileElse_UnusedReportsWarning()
+    {
+        var code = @"
+def foo():
+    while False:
+        pass
+    else:
+        y: int = 99
+    print(""done"")
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedVariableValidator();
+        validator.Validate(module, context);
+
+        var warnings = GetUnusedVarWarnings(context);
+        Assert.Single(warnings);
+        Assert.Contains("'y'", warnings[0].Message);
+    }
 }

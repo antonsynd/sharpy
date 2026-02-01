@@ -186,6 +186,8 @@ public class UnusedVariableValidator : SemanticValidatorBase
                 CollectReadsFromExpression(whileStmt.Test, read);
                 foreach (var s in whileStmt.Body)
                     CollectFromStatement(s, defined, read, parameters);
+                foreach (var s in whileStmt.ElseBody)
+                    CollectFromStatement(s, defined, read, parameters);
                 break;
 
             case ForStatement forStmt:
