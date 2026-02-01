@@ -1,4 +1,6 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using FluentAssertions;
 using Xunit;
@@ -269,6 +271,179 @@ public class SemanticBindingMaterializationTests
         // Both SemanticBinding and Symbol should agree after materialization
         binding.GetVariableType(varSymbol).Should().Be(SemanticType.Bool);
         varSymbol.Type.Should().Be(SemanticType.Bool);
+    }
+
+    #endregion
+
+    #region Module Resolution
+
+    [Fact]
+    public void SetResolvedModulePath_StoresPath()
+    {
+        var binding = new SemanticBinding();
+        var stmt = new FromImportStatement
+        {
+            Module = "helpers",
+            Names = ImmutableArray<ImportAlias>.Empty
+        };
+
+        binding.SetResolvedModulePath(stmt, "mypackage.helpers");
+
+        binding.GetResolvedModulePath(stmt).Should().Be("mypackage.helpers");
+    }
+
+    [Fact]
+    public void GetResolvedModulePath_ReturnsNull_WhenNotSet()
+    {
+        var binding = new SemanticBinding();
+        var stmt = new FromImportStatement
+        {
+            Module = "unknown",
+            Names = ImmutableArray<ImportAlias>.Empty
+        };
+
+        binding.GetResolvedModulePath(stmt).Should().BeNull();
+    }
+
+    [Fact]
+    public void SetResolvedModulePath_OverwritesPreviousValue()
+    {
+        var binding = new SemanticBinding();
+        var stmt = new FromImportStatement
+        {
+            Module = "helpers",
+            Names = ImmutableArray<ImportAlias>.Empty
+        };
+
+        binding.SetResolvedModulePath(stmt, "old.path");
+        binding.SetResolvedModulePath(stmt, "new.path");
+
+        binding.GetResolvedModulePath(stmt).Should().Be("new.path");
+    }
+
+    [Fact]
+    public void SetReExportedSymbols_StoresSymbols()
+    {
+        var binding = new SemanticBinding();
+        var stmt = new FromImportStatement
+        {
+            Module = "submodule",
+            Names = ImmutableArray<ImportAlias>.Empty
+        };
+        var symbols = new Dictionary<string, Symbol>
+        {
+            ["foo"] = new FunctionSymbol { Name = "foo", Kind = SymbolKind.Function },
+            ["Bar"] = new TypeSymbol { Name = "Bar", Kind = SymbolKind.Type, TypeKind = TypeKind.Class }
+        };
+
+        binding.SetReExportedSymbols(stmt, symbols);
+
+        var result = binding.GetReExportedSymbols(stmt);
+        result.Should().NotBeNull();
+        result.Should().HaveCount(2);
+        result!["foo"].Name.Should().Be("foo");
+        result["Bar"].Name.Should().Be("Bar");
+    }
+
+    [Fact]
+    public void GetReExportedSymbols_ReturnsNull_WhenNotSet()
+    {
+        var binding = new SemanticBinding();
+        var stmt = new FromImportStatement
+        {
+            Module = "unknown",
+            Names = ImmutableArray<ImportAlias>.Empty
+        };
+
+        binding.GetReExportedSymbols(stmt).Should().BeNull();
+    }
+
+    [Fact]
+    public void SetReExportedSymbols_OverwritesPreviousValue()
+    {
+        var binding = new SemanticBinding();
+        var stmt = new FromImportStatement
+        {
+            Module = "submodule",
+            Names = ImmutableArray<ImportAlias>.Empty
+        };
+        var oldSymbols = new Dictionary<string, Symbol>
+        {
+            ["old"] = new FunctionSymbol { Name = "old", Kind = SymbolKind.Function }
+        };
+        var newSymbols = new Dictionary<string, Symbol>
+        {
+            ["new1"] = new FunctionSymbol { Name = "new1", Kind = SymbolKind.Function },
+            ["new2"] = new FunctionSymbol { Name = "new2", Kind = SymbolKind.Function }
+        };
+
+        binding.SetReExportedSymbols(stmt, oldSymbols);
+        binding.SetReExportedSymbols(stmt, newSymbols);
+
+        var result = binding.GetReExportedSymbols(stmt);
+        result.Should().HaveCount(2);
+        result!.ContainsKey("new1").Should().BeTrue();
+        result.ContainsKey("old").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ModuleResolution_DifferentStatements_IndependentStorage()
+    {
+        var binding = new SemanticBinding();
+        var stmt1 = new FromImportStatement
+        {
+            Module = "module_a",
+            Names = ImmutableArray<ImportAlias>.Empty
+        };
+        var stmt2 = new FromImportStatement
+        {
+            Module = "module_b",
+            Names = ImmutableArray<ImportAlias>.Empty
+        };
+
+        binding.SetResolvedModulePath(stmt1, "path.a");
+        binding.SetResolvedModulePath(stmt2, "path.b");
+
+        binding.GetResolvedModulePath(stmt1).Should().Be("path.a");
+        binding.GetResolvedModulePath(stmt2).Should().Be("path.b");
+    }
+
+    #endregion
+
+    #region HasCodeGenInfo
+
+    [Fact]
+    public void HasCodeGenInfo_ReturnsFalse_WhenNotSet()
+    {
+        var binding = new SemanticBinding();
+        var symbol = new TypeSymbol { Name = "Foo", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+
+        binding.HasCodeGenInfo(symbol).Should().BeFalse();
+    }
+
+    [Fact]
+    public void HasCodeGenInfo_ReturnsTrue_WhenSet()
+    {
+        var binding = new SemanticBinding();
+        var symbol = new TypeSymbol { Name = "Foo", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        var info = new CodeGenInfo { CSharpName = "Foo", OriginalName = "foo" };
+
+        binding.SetCodeGenInfo(symbol, info);
+
+        binding.HasCodeGenInfo(symbol).Should().BeTrue();
+    }
+
+    #endregion
+
+    #region GetVariableType defaults
+
+    [Fact]
+    public void GetVariableType_ReturnsUnknown_WhenNotSet()
+    {
+        var binding = new SemanticBinding();
+        var varSymbol = new VariableSymbol { Name = "x", Kind = SymbolKind.Variable };
+
+        binding.GetVariableType(varSymbol).Should().Be(SemanticType.Unknown);
     }
 
     #endregion
