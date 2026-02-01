@@ -337,6 +337,8 @@ public class Compiler
                 "Type checker should record at least one expression type for non-empty modules");
             // Assertion: CodeGenInfo dual-write consistency after type checking
             AssertCodeGenInfoDualWriteConsistency(symbolTable, semanticBinding);
+            // Assertion: VariableType dual-write consistency after type checking
+            AssertVariableTypeDualWriteConsistency(symbolTable, semanticBinding);
 
             if (typeChecker.Diagnostics.HasErrors)
             {
@@ -548,6 +550,45 @@ public class Compiler
                 var bindingCodeGenInfo = semanticBinding.GetCodeGenInfo(symbol);
                 Debug.Assert(bindingCodeGenInfo != null,
                     $"Symbol '{symbol.Name}' has CodeGenInfo but SemanticBinding.GetCodeGenInfo() returned null (dual-write inconsistency)");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verify that SemanticBinding VariableType entries are consistent with VariableSymbol.Type.
+    /// This catches dual-write bugs where one path sets the symbol but not SemanticBinding.
+    /// Only checks global-scope variables (fields, module-level vars/consts). Local variables
+    /// and parameters are scoped and not accessible from the global scope.
+    /// </summary>
+    [Conditional("DEBUG")]
+    private static void AssertVariableTypeDualWriteConsistency(SymbolTable symbolTable, SemanticBinding semanticBinding)
+    {
+        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<VariableSymbol>())
+        {
+            if (symbol.Type != SemanticType.Unknown)
+            {
+                var bindingType = semanticBinding.GetVariableType(symbol);
+                Debug.Assert(bindingType != SemanticType.Unknown,
+                    $"VariableSymbol '{symbol.Name}' has Type '{symbol.Type.GetDisplayName()}' but SemanticBinding.GetVariableType() returned Unknown (dual-write inconsistency)");
+            }
+        }
+
+        // Also check fields on locally-defined type symbols
+        foreach (var typeSymbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        {
+            // Skip CLR types (from ModuleRegistry) and imported types (from other modules)
+            // - they have their fields typed in a different compilation's SemanticBinding
+            if (typeSymbol.ClrType != null || typeSymbol.DefiningModule != null)
+                continue;
+
+            foreach (var field in typeSymbol.Fields)
+            {
+                if (field.Type != SemanticType.Unknown)
+                {
+                    var bindingType = semanticBinding.GetVariableType(field);
+                    Debug.Assert(bindingType != SemanticType.Unknown,
+                        $"Field '{typeSymbol.Name}.{field.Name}' has Type '{field.Type.GetDisplayName()}' but SemanticBinding.GetVariableType() returned Unknown (dual-write inconsistency)");
+                }
             }
         }
     }
