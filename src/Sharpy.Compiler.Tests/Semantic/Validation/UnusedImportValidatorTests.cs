@@ -220,4 +220,46 @@ def main():
             .ToList();
         Assert.Empty(importWarnings);
     }
+
+    [Fact]
+    public void ImportUsedAsDecorator_NoWarning()
+    {
+        var code = @"
+from decorators import cached
+
+class Foo:
+    @cached
+    def bar(self) -> int:
+        return 42
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedImportValidator();
+        validator.Validate(module, context);
+
+        var importWarnings = context.Diagnostics.GetWarnings()
+            .Where(w => w.Code == DiagnosticCodes.Validation.UnusedImport)
+            .ToList();
+        Assert.Empty(importWarnings);
+    }
+
+    [Fact]
+    public void ImportUsedAsClassDecorator_NoWarning()
+    {
+        var code = @"
+from decorators import singleton
+
+@singleton
+class Config:
+    def get(self) -> str:
+        return ""value""
+";
+        var (module, context) = Parse(code);
+        var validator = new UnusedImportValidator();
+        validator.Validate(module, context);
+
+        var importWarnings = context.Diagnostics.GetWarnings()
+            .Where(w => w.Code == DiagnosticCodes.Validation.UnusedImport)
+            .ToList();
+        Assert.Empty(importWarnings);
+    }
 }

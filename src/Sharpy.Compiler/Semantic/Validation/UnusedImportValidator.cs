@@ -161,6 +161,9 @@ public class UnusedImportValidator : SemanticValidatorBase
                 break;
 
             case FunctionDef func:
+                // Check decorators (imported names used as decorators)
+                foreach (var decorator in func.Decorators)
+                    refs.Add(decorator.Name);
                 // Check parameter type annotations and return type
                 foreach (var param in func.Parameters)
                 {
@@ -176,6 +179,9 @@ public class UnusedImportValidator : SemanticValidatorBase
                 break;
 
             case ClassDef cls:
+                // Check decorators
+                foreach (var decorator in cls.Decorators)
+                    refs.Add(decorator.Name);
                 // Check base classes and interfaces
                 foreach (var baseType in cls.BaseClasses)
                     CollectReferencesFromTypeAnnotation(baseType, refs);
@@ -184,6 +190,9 @@ public class UnusedImportValidator : SemanticValidatorBase
                 break;
 
             case StructDef str:
+                // Check decorators
+                foreach (var decorator in str.Decorators)
+                    refs.Add(decorator.Name);
                 foreach (var baseType in str.BaseClasses)
                     CollectReferencesFromTypeAnnotation(baseType, refs);
                 foreach (var s in str.Body)

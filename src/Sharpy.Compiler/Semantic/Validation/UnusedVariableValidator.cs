@@ -13,6 +13,9 @@ public class UnusedVariableValidator : SemanticValidatorBase
     public override int Order => 420;
 
     private SemanticContext _context = null!;
+    // Per-function state for tracking definitions from within expressions (walrus operator)
+    private Dictionary<string, VariableInfo> _currentDefined = null!;
+    private HashSet<string> _currentParameters = null!;
 
     public override void Validate(Module module, SemanticContext context)
     {
@@ -64,6 +67,10 @@ public class UnusedVariableValidator : SemanticValidatorBase
         {
             parameters.Add(param.Name);
         }
+
+        // Set per-function state so expression walker can register walrus definitions
+        _currentDefined = defined;
+        _currentParameters = parameters;
 
         // Collect definitions and reads from the function body
         foreach (var stmt in func.Body)
@@ -382,6 +389,12 @@ public class UnusedVariableValidator : SemanticValidatorBase
                 break;
 
             case WalrusExpression walrus:
+                // Walrus (name := value) defines the target variable
+                if (!_currentParameters.Contains(walrus.Target))
+                {
+                    _currentDefined[walrus.Target] = new VariableInfo(
+                        walrus.LineStart, walrus.ColumnStart, walrus.Span, false);
+                }
                 CollectReadsFromExpression(walrus.Value, read);
                 break;
 
