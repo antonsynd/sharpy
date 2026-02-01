@@ -7,11 +7,15 @@ using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Text;
 
 namespace Sharpy.Cli;
 
 class Program
 {
+    // Rich diagnostic renderer for CLI output
+    private static readonly DiagnosticRenderer _renderer = new(DiagnosticRenderer.IsColorSupported());
+
     static int Main(string[] args)
     {
         var rootCommand = new RootCommand("sharpyc - Sharpy Compiler");
@@ -512,13 +516,13 @@ class Program
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
+            var sourceText = new SourceText(source, inputFile.FullName);
             var lexer = new Lexer(source, logger);
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
             {
-                foreach (var diag in lexer.Diagnostics.GetErrors())
-                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
+                RenderDiagnostics(lexer.Diagnostics.GetErrors(), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
@@ -547,13 +551,13 @@ class Program
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
+            var sourceText = new SourceText(source, inputFile.FullName);
             var lexer = new Lexer(source, logger);
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
             {
-                foreach (var diag in lexer.Diagnostics.GetErrors())
-                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
+                RenderDiagnostics(lexer.Diagnostics.GetErrors(), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
@@ -562,8 +566,7 @@ class Program
 
             if (parser.Diagnostics.HasErrors)
             {
-                foreach (var diag in parser.Diagnostics.GetErrors())
-                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
+                RenderDiagnostics(parser.Diagnostics.GetErrors(), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
@@ -588,13 +591,13 @@ class Program
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
+            var sourceText = new SourceText(source, inputFile.FullName);
             var lexer = new Lexer(source, logger);
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
             {
-                foreach (var diag in lexer.Diagnostics.GetErrors())
-                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
+                RenderDiagnostics(lexer.Diagnostics.GetErrors(), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
@@ -603,8 +606,7 @@ class Program
 
             if (parser.Diagnostics.HasErrors)
             {
-                foreach (var diag in parser.Diagnostics.GetErrors())
-                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
+                RenderDiagnostics(parser.Diagnostics.GetErrors(), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
@@ -623,6 +625,7 @@ class Program
         {
             // Parse the Sharpy source file
             var source = File.ReadAllText(inputFile.FullName);
+            var sourceText = new SourceText(source, inputFile.FullName);
             var lexer = new Lexer(source, logger);
             var tokens = lexer.TokenizeAll();
             var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
@@ -642,10 +645,8 @@ class Program
             if (nameResolver.Diagnostics.HasErrors)
             {
                 Console.Error.WriteLine("Name resolution errors:");
-                foreach (var diag in nameResolver.Diagnostics.GetErrors())
-                {
-                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
-                }
+                Console.Error.WriteLine();
+                RenderDiagnostics(nameResolver.Diagnostics.GetErrors(), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
@@ -660,10 +661,8 @@ class Program
             if (typeChecker.Diagnostics.HasErrors)
             {
                 Console.Error.WriteLine("Type checking errors:");
-                foreach (var diag in typeChecker.Diagnostics.GetErrors())
-                {
-                    Console.Error.WriteLine($"  {FormatDiagnostic(diag)}");
-                }
+                Console.Error.WriteLine();
+                RenderDiagnostics(typeChecker.Diagnostics.GetErrors(), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
@@ -913,7 +912,28 @@ class Program
     }
 
     /// <summary>
-    /// Format a diagnostic for CLI output.
+    /// Render a diagnostic with rich source context to stderr.
+    /// Falls back to simple format if no source text is available.
+    /// </summary>
+    static void RenderDiagnostic(CompilerDiagnostic diagnostic, SourceText? sourceText, TextWriter writer)
+    {
+        writer.WriteLine(_renderer.Render(diagnostic, sourceText));
+    }
+
+    /// <summary>
+    /// Render multiple diagnostics with rich source context.
+    /// </summary>
+    static void RenderDiagnostics(IEnumerable<CompilerDiagnostic> diagnostics, SourceText? sourceText, TextWriter writer)
+    {
+        foreach (var diagnostic in diagnostics)
+        {
+            RenderDiagnostic(diagnostic, sourceText, writer);
+            writer.WriteLine();
+        }
+    }
+
+    /// <summary>
+    /// Format a diagnostic for CLI output (simple single-line format).
     /// Format: file.spy(3,5): error SHP0201: Undefined variable 'x'
     /// </summary>
     static string FormatDiagnostic(CompilerDiagnostic diagnostic)
@@ -1054,6 +1074,7 @@ class Program
         {
             // Read source file
             var source = File.ReadAllText(inputFile.FullName);
+            var sourceText = new SourceText(source, inputFile.FullName);
 
             // Create compiler with options
             var compilerOptions = new CompilerOptions
@@ -1070,10 +1091,8 @@ class Program
             if (!result.Success)
             {
                 Console.Error.WriteLine("Compilation failed:");
-                foreach (var diagnostic in result.Diagnostics.GetErrors())
-                {
-                    Console.Error.WriteLine($"  {FormatDiagnostic(diagnostic)}");
-                }
+                Console.Error.WriteLine();
+                RenderDiagnostics(result.Diagnostics.GetErrors(), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
@@ -1081,12 +1100,7 @@ class Program
             var compilationWarnings = result.Diagnostics.GetWarnings();
             if (compilationWarnings.Count > 0)
             {
-                Console.WriteLine("Warnings:");
-                foreach (var warning in compilationWarnings)
-                {
-                    Console.WriteLine($"  {FormatDiagnostic(warning)}");
-                }
-                Console.WriteLine();
+                RenderDiagnostics(compilationWarnings, sourceText, Console.Out);
             }
 
             // Determine output path
