@@ -52,8 +52,8 @@ public class SemanticBinding
     private readonly ConcurrentDictionary<TypeSymbol, TypeSymbol> _baseTypes =
         new(ReferenceEqualityComparer.Instance);
 
-    // Maps type symbols to their resolved interface lists
-    private readonly ConcurrentDictionary<TypeSymbol, ConcurrentBag<TypeSymbol>> _interfaces =
+    // Maps type symbols to their resolved interface lists (ConcurrentQueue preserves insertion order)
+    private readonly ConcurrentDictionary<TypeSymbol, ConcurrentQueue<TypeSymbol>> _interfaces =
         new(ReferenceEqualityComparer.Instance);
 
     // Maps FromImportStatement nodes to their resolved module paths
@@ -160,8 +160,8 @@ public class SemanticBinding
     public void AddInterface(TypeSymbol symbol, TypeSymbol iface)
     {
         Debug.Assert(!_inheritanceFrozen, $"AddInterface called after freeze for symbol '{symbol.Name}'");
-        var bag = _interfaces.GetOrAdd(symbol, _ => new ConcurrentBag<TypeSymbol>());
-        bag.Add(iface);
+        var queue = _interfaces.GetOrAdd(symbol, _ => new ConcurrentQueue<TypeSymbol>());
+        queue.Enqueue(iface);
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ public class SemanticBinding
     /// Returns null if the symbol has no interfaces registered in this binding.
     /// </summary>
     public IReadOnlyList<TypeSymbol>? GetInterfaces(TypeSymbol symbol)
-        => _interfaces.TryGetValue(symbol, out var bag) ? bag.ToList() : null;
+        => _interfaces.TryGetValue(symbol, out var queue) ? queue.ToList() : null;
 
     #endregion
 
@@ -184,8 +184,8 @@ public class SemanticBinding
     {
         foreach (var (symbol, baseType) in _baseTypes)
             symbol.BaseType = baseType;
-        foreach (var (symbol, bag) in _interfaces)
-            foreach (var iface in bag)
+        foreach (var (symbol, queue) in _interfaces)
+            foreach (var iface in queue)
                 if (!symbol.Interfaces.Contains(iface))
                     symbol.Interfaces.Add(iface);
     }
