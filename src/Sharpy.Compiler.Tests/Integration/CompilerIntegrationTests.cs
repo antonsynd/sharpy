@@ -1,5 +1,6 @@
 using System.Linq;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Xunit;
 
@@ -285,6 +286,96 @@ def main():
 
         var errors = result.Diagnostics.GetErrors().ToList();
         Assert.True(errors.Count >= 2, $"Expected at least 2 errors, got {errors.Count}");
+    }
+
+    #endregion
+
+    #region Parser Error Recovery - Semantic Skipping
+
+    [Fact]
+    public void ParserErrors_PreventSemanticAnalysis_OnlyParserDiagnosticsPresent()
+    {
+        // Code with multiple parser errors - semantic analysis should be skipped entirely,
+        // so we should only see parser-phase diagnostics, never semantic-phase ones.
+        var code = @"
+def ():
+    pass
+
+def 456():
+    pass
+
+def main():
+    undefined_var + 1
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success, "Code with parser errors should not compile");
+
+        var errors = result.Diagnostics.GetErrors().ToList();
+        Assert.True(errors.Count >= 2, $"Expected at least 2 parser errors, got {errors.Count}");
+
+        // All diagnostics should be from the Parser phase - semantic analysis should be skipped
+        foreach (var error in errors)
+        {
+            Assert.Equal(CompilerPhase.Parser, error.Phase);
+        }
+    }
+
+    [Fact]
+    public void ParserRecovery_ReportsMultipleDistinctErrors()
+    {
+        // Code with distinct error types at different locations
+        var code = @"
+def ():
+    pass
+
+class :
+    pass
+
+def valid_function():
+    x: int = 42
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+
+        var errors = result.Diagnostics.GetErrors().ToList();
+
+        // Parser should recover from first error and report the second one too
+        Assert.True(errors.Count >= 2,
+            $"Expected at least 2 errors from recovery, got {errors.Count}: {string.Join("; ", errors.Select(e => e.Message))}");
+
+        // Errors should be on different lines (not cascading from the same problem)
+        var distinctLines = errors.Select(e => e.Line).Distinct().Count();
+        Assert.True(distinctLines >= 2,
+            $"Expected errors on at least 2 distinct lines, got {distinctLines}");
+    }
+
+    [Fact]
+    public void ParserRecovery_PartialAstDoesNotReachSemanticPhases()
+    {
+        // Code where the first definition fails but the second is valid.
+        // The compiler should return parser errors without attempting semantic analysis.
+        var code = @"
+def 123(x: int) -> int:
+    return x
+
+def main():
+    pass
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+
+        // Verify no semantic-phase diagnostics leaked through
+        var semanticErrors = result.Diagnostics.GetErrors()
+            .Where(e => e.Phase != CompilerPhase.Parser && e.Phase != CompilerPhase.Lexer)
+            .ToList();
+
+        Assert.Empty(semanticErrors);
     }
 
     #endregion

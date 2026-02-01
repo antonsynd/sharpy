@@ -1,1 +1,3 @@
-Expected identifier
+# Numeric enum member, then empty enum validation
+Expected identifier, got Integer
+must have at least one member

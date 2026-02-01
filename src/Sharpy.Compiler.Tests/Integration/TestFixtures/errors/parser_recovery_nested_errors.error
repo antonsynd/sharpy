@@ -1,1 +1,2 @@
-Expected identifier
+# Two broken definitions in nested scopes
+Expected identifier, got Newline

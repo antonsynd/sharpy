@@ -1,1 +1,3 @@
-Expected identifier
+# Two broken def headers - both should report missing identifier
+Expected identifier, got LeftParen
+Expected identifier, got LeftParen

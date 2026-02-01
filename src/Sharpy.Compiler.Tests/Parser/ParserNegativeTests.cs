@@ -1399,5 +1399,81 @@ z = 3";
             $"Except colon error cascaded: {string.Join("; ", errors)}");
     }
 
+    [Fact]
+    public void Recovery_ErrorInElifClause_DoesNotCascade()
+    {
+        // An error in an elif condition should recover cleanly
+        // without cascading into the else clause or subsequent statements.
+        var source = """
+            def main():
+                x: int = 5
+                if x > 3:
+                    pass
+                elif
+                    pass
+                else:
+                    pass
+                y: int = 10
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+        errors.Count.Should().BeLessThanOrEqualTo(4,
+            $"Elif error cascaded: {string.Join("; ", errors)}");
+    }
+
+    [Fact]
+    public void Recovery_MultipleDefinitionTypesWithErrors_ReportsAll()
+    {
+        // Errors in different definition types (def, class, struct, enum)
+        // should all be reported independently.
+        var source = """
+            def 111():
+                pass
+
+            class ():
+                pass
+
+            struct ():
+                pass
+
+            def valid():
+                pass
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Count.Should().BeGreaterThanOrEqualTo(3,
+            $"Expected at least 3 errors from 3 broken definitions, got: {string.Join("; ", errors)}");
+
+        // The valid function should still be parsed
+        module.Body.OfType<FunctionDef>().Should().Contain(f => f.Name == "valid");
+    }
+
+    [Fact]
+    public void Recovery_BrokenHeaderWithBody_SkipsBodyCompletely()
+    {
+        // A function with a broken header but valid indented body.
+        // Recovery should skip the entire body and parse the next definition.
+        var source = """
+            def (x: int, y: int):
+                z: int = x + y
+                return z
+
+            def add(a: int, b: int) -> int:
+                return a + b
+            """;
+
+        var (module, errors) = ParseWithErrors(source);
+
+        errors.Should().NotBeEmpty();
+
+        // The valid function should be parsed correctly
+        var addFn = module.Body.OfType<FunctionDef>().FirstOrDefault(f => f.Name == "add");
+        addFn.Should().NotBeNull("Recovery should skip broken function body and parse 'add'");
+        addFn!.Parameters.Should().HaveCount(2);
+    }
+
     #endregion
 }

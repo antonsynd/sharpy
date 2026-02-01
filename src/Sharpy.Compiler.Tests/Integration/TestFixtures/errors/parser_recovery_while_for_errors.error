@@ -1,1 +1,3 @@
-Expected
+# Malformed while condition, then missing 'in' keyword in for
+Unexpected token: Colon
+Expected In, got Identifier

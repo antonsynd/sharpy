@@ -1,0 +1,4 @@
+# Four errors: one per broken definition type (def, class, struct, enum)
+Expected identifier, got Integer
+Expected identifier, got LeftParen
+Expected identifier, got Colon

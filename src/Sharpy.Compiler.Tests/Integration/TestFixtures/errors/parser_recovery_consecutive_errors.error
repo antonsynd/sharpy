@@ -1,1 +1,2 @@
-Expected identifier
+# Three consecutive broken keyword-only statements
+Expected identifier, got Newline

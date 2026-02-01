@@ -1,0 +1,6 @@
+# Errors in compound statement chains (if/elif/else)
+def main():
+    x: int = 10
+    if x > 5
+        pass
+    y: int = 20

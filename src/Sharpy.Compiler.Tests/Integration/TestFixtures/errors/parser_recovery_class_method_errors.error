@@ -1,1 +1,3 @@
-Expected
+# Missing method name, then missing colon on second method
+Expected identifier, got LeftParen
+Expected Colon, got Newline

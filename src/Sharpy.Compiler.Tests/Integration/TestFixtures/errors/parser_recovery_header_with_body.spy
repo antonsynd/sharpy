@@ -1,0 +1,9 @@
+# Function with broken header but valid indented body
+# Recovery should skip the body and continue to the next definition
+
+def (x: int, y: int):
+    z: int = x + y
+    return z
+
+def valid():
+    pass

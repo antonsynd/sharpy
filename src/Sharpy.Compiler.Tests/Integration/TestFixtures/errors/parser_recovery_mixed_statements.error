@@ -1,1 +1,3 @@
-Unexpected token
+# Incomplete expression, then malformed assignment
+Unexpected token: Newline
+Unexpected token: Colon

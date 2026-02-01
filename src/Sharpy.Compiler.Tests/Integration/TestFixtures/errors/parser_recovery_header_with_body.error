@@ -1,0 +1,2 @@
+# Broken function header - recovery should skip the indented body
+Expected identifier, got LeftParen

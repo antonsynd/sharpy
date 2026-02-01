@@ -194,14 +194,28 @@ public class FileBasedIntegrationTests : IntegrationTestBase
         if (isErrorTest)
         {
             // Error test: compilation should fail
-            var expectedError = File.ReadAllText(errorFilePath).Trim();
-            Output.WriteLine($"Expected error: {expectedError}");
+            var expectedErrorContent = File.ReadAllText(errorFilePath).Trim();
+            Output.WriteLine($"Expected error patterns:\n{expectedErrorContent}");
 
             Assert.False(result.Success,
                 $"Expected compilation to fail, but it succeeded. Output: {result.StandardOutput}");
 
             var actualErrors = string.Join("\n", result.CompilationErrors);
-            Assert.Contains(expectedError, actualErrors, StringComparison.OrdinalIgnoreCase);
+            Output.WriteLine($"Actual errors:\n{actualErrors}");
+
+            // Each non-empty, non-comment line in the .error file is checked
+            // independently as a substring that must appear in the actual errors.
+            // This allows verifying that error recovery produces multiple distinct errors.
+            var expectedLines = expectedErrorContent
+                .Split('\n')
+                .Select(line => line.Trim())
+                .Where(line => line.Length > 0 && !line.StartsWith('#'))
+                .ToList();
+
+            foreach (var expectedLine in expectedLines)
+            {
+                Assert.Contains(expectedLine, actualErrors, StringComparison.OrdinalIgnoreCase);
+            }
         }
         else
         {

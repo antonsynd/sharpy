@@ -1,1 +1,3 @@
-Expected
+# Missing colon on first def, numeric function name on second
+Expected Colon, got Newline
+Expected identifier, got Integer

@@ -1,1 +1,3 @@
-Unexpected token
+# Missing colon on try, then unexpected except
+Unexpected token: Newline
+Unexpected token: Except
