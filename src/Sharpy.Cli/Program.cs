@@ -1146,7 +1146,7 @@ class Program
             {
                 Console.Error.WriteLine("Assembly compilation failed:");
                 Console.Error.WriteLine();
-                RenderDiagnostics(assemblyResult.Diagnostics.GetErrors(), null, Console.Error);
+                RenderDiagnostics(assemblyResult.Diagnostics.GetErrors(), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
@@ -1154,7 +1154,7 @@ class Program
             var assemblyWarnings = assemblyResult.Diagnostics.GetWarnings();
             if (assemblyWarnings.Count > 0)
             {
-                RenderDiagnostics(assemblyWarnings, null, Console.Out);
+                RenderDiagnostics(assemblyWarnings, sourceText, Console.Out);
             }
 
             // Success
