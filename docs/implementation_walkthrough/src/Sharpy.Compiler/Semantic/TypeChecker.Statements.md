@@ -32,7 +32,7 @@ The statement checking methods rely on these instance variables:
 - `_semanticInfo: SemanticInfo` - Stores type information for AST nodes (consumed by code generator)
 - `_typeResolver: TypeResolver` - Resolves type annotations to semantic types
 - `_typeInference: TypeInferenceService` - Infers types for operators and iterations (extracted from validators)
-- `_validationPipeline: ValidationPipeline` - Runs V2 validators after type checking (always enabled)
+- `_validationPipeline: ValidationPipeline` - Runs validators after type checking (always enabled)
 - `_currentFunctionReturnType: SemanticType?` - Tracks expected return type in current function context
 - `_currentClass: TypeSymbol?` - Track current class being checked (for self parameter typing)
 - `_narrowedTypes: Dictionary<string, SemanticType>` - Maps variable names to narrowed types in conditional contexts
@@ -83,7 +83,7 @@ The complete type checking pipeline in Sharpy follows these phases:
    - Check definitions (classes, functions)
    - Check statements (assignments, control flow) ← **THIS FILE**
    - Check expressions (calls, operators, literals)
-4. **Validation Pipeline** - Runs V2 validators for semantic rules
+4. **Validation Pipeline** - Runs validators for semantic rules
 5. **Code Generation Info** - Computes metadata for emission
 
 ### How Statements Connect to Expressions
@@ -185,7 +185,7 @@ _symbolTable.Define(newSymbol);  // Redefines if already exists
   - Falls back to binary operators (e.g., `__add__`)
   - Returns the result type of the operation
 - Verifies result type is assignable to target type (line 176-182)
-- **Note**: Detailed operator validation happens in the ValidationPipeline (V2 validators)
+- **Note**: Detailed operator validation happens in the ValidationPipeline (validators)
 
 #### Regular Assignment Type Checking (lines 186-201)
 - Validates that value type is assignable to target type using `IsAssignable()` helper
@@ -340,7 +340,7 @@ var elementType = _typeInference.InferIterableElementType(iterType) ?? SemanticT
 ```
 - Delegates to `TypeInferenceService` which infers the element type from the iterator
 - Returns the element type that will be yielded by the iterator
-- Errors for non-iterable types are reported by V2 validators in the pipeline
+- Errors for non-iterable types are reported by validators in the pipeline
 
 #### Scope Management
 **Important**: The `"for-body"` scope is entered BEFORE defining loop variables (line 441). This ensures loop variables are scoped to the loop.
@@ -442,7 +442,7 @@ assert x > 0, "x must be positive"
 - **`SemanticInfo`** - Stores type information for AST nodes via `SetExpressionType()`, `SetIdentifierSymbol()`
 - **`TypeResolver`** - Resolves type annotations via `ResolveTypeAnnotation()`
 - **`TypeInferenceService`** - Infers types for augmented assignments and iterable element types
-- **`ValidationPipeline`** - Runs V2 validators after type checking (operator, protocol, control flow validation)
+- **`ValidationPipeline`** - Runs validators after type checking (operator, protocol, control flow validation)
 
 ### AST Types (from `Sharpy.Compiler.Parser.Ast`)
 - `Assignment`, `VariableDeclaration`, `ReturnStatement`
@@ -503,7 +503,7 @@ Constants are enforced at multiple levels:
 The type checker continues after errors (configurable via `ContinueAfterError` property in main TypeChecker.cs, line 46). This allows finding multiple errors in a single pass, improving developer experience.
 
 ### 6. ValidationPipeline Integration
-After statement checking completes, `CheckModule()` in TypeChecker.cs (lines 133-137) runs the ValidationPipeline which includes V2 validators:
+After statement checking completes, `CheckModule()` in TypeChecker.cs (lines 133-137) runs the ValidationPipeline which includes validators:
 - **OperatorValidator** - Validates operator usage
 - **ProtocolValidator** - Validates protocol compliance  
 - **ControlFlowValidator** - Validates break/continue/return
@@ -596,9 +596,8 @@ When modifying this file, ensure you have tests for:
 - [`TypeChecker.Utilities.cs`](TypeChecker.Utilities.md) - Helper methods including `ExtractNarrowedTypes()`, `IsValidAssignmentTarget()`, `IsAssignable()`
 
 ### Related Validators
-- [`OperatorSignatureValidator.md`](OperatorSignatureValidator.md) - Validates operator signatures in V2 pipeline
-- [`ProtocolSignatureValidator.md`](ProtocolSignatureValidator.md) - Validates protocol signatures in V2 pipeline
-- [`ProtocolValidator.md`](ProtocolValidator.md) - Legacy protocol validator (V2 version used in pipeline)
+- [`OperatorValidator.md`](OperatorValidator.md) - Validates operator signatures in pipeline
+- [`ProtocolValidator.md`](ProtocolValidator.md) - Validates protocol compliance in pipeline
 - [`ControlFlowValidator.md`](ControlFlowValidator.md) - Validates control flow (break/continue/return)
 - [`AccessValidator.md`](AccessValidator.md) - Validates access levels
 - [`TypeInferenceService.md`](TypeInferenceService.md) - Infers types for operators and iterations
@@ -642,7 +641,7 @@ When modifying this file, ensure you have tests for:
 - **Upstream**: Receives AST from Parser, symbol table from NameResolver, resolved types from TypeResolver
 - **Downstream**: Populates SemanticInfo for RoslynEmitter code generation
 - **Horizontal**: Calls CheckExpression() for nested expressions, uses TypeInferenceService for type inference
-- **Validation**: Delegates complex semantic rules to ValidationPipeline (V2 validators)
+- **Validation**: Delegates complex semantic rules to ValidationPipeline (validators)
 
 ### When to Modify This File
 

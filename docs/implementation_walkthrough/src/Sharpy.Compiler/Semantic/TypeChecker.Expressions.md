@@ -113,7 +113,7 @@ While not defined in this file, these fields from the main `TypeChecker.cs` are 
 - **`_semanticInfo`**: Stores computed type information for AST nodes
 - **`_typeInference`**: TypeInferenceService for inferring result types of operations
 - **`_typeResolver`**: Resolves type annotations to semantic types
-- **`_validationPipeline`**: Pipeline of V2 validators for specialized checks
+- **`_validationPipeline`**: Pipeline of validators for specialized checks
 - **`_narrowedTypes`**: Dictionary tracking type narrowing in conditional branches
 - **`_currentClass`**: The class being analyzed (for `self` validation)
 - **`_currentFunctionReturnType`**: Tracks return type for return statement checking
@@ -270,7 +270,7 @@ if (leftType is UnknownType || rightType is UnknownType)
 }
 ```
 
-**Why Report Errors Directly?** (lines 120-126): The comment notes that "V2 validators may not catch all type incompatibilities", so this method reports errors when `InferBinaryOpType` returns null.
+**Why Report Errors Directly?** (lines 120-126): The comment notes that "validators may not catch all type incompatibilities", so this method reports errors when `InferBinaryOpType` returns null.
 
 **Examples**:
 ```python
@@ -1244,7 +1244,7 @@ var resultType = _typeInference.InferBinaryOpType(binOp.Operator, leftType, righ
 
 ### 4. **Validation Pipeline Integration**
 
-The V2 validation pipeline handles specialized checks:
+The validation pipeline handles specialized checks:
 - **OperatorValidator**: Operator overload validation
 - **ProtocolValidator**: Protocol support validation (`__iter__`, `__getitem__`, `__len__`)
 - **AccessValidator**: Access level validation (public/private/protected)
@@ -1252,7 +1252,7 @@ The V2 validation pipeline handles specialized checks:
 
 **This File's Role**: Type checking and type inference only. Detailed validation is done by the pipeline.
 
-**Error Reporting**: Some errors are reported directly in this file when type inference fails, since "V2 validators may not catch all type incompatibilities" (line 119 comment).
+**Error Reporting**: Some errors are reported directly in this file when type inference fails, since "validators may not catch all type incompatibilities" (line 119 comment).
 
 ---
 

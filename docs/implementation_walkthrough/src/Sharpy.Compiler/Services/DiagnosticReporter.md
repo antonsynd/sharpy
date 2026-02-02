@@ -689,9 +689,9 @@ public void ReportError_WithNode_ExtractsLocation()
 
 ## Migration Notes
 
-### Legacy to V2 Validation
+### Legacy to Current Validation
 
-The `DiagnosticReporter` is central to the **V2 Validation Architecture** migration:
+The `DiagnosticReporter` is central to the **Validation Architecture**:
 
 **Old Pattern (Direct SemanticError):**
 ```csharp
@@ -708,7 +708,7 @@ _reporter.ReportError("Type mismatch", node);
 - `DiagnosticBag.FromSemanticErrors()` converts legacy errors
 - Gradual migration phase-by-phase (Lexer → Parser → Semantic)
 
-**Cross-Reference:** See [ValidationPipeline.md](../Semantic/Validation/ValidationPipeline.md) for V2 architecture details.
+**Cross-Reference:** See [ValidationPipeline.md](../Semantic/Validation/ValidationPipeline.md) for validation architecture details.
 
 ---
 
@@ -766,7 +766,7 @@ public void ReportError(string message, Node node)
 2. **[DiagnosticBag.cs](../Diagnostics/DiagnosticBag.md)** - Underlying diagnostic collection
 3. **[CompilerDiagnostic.cs](../Diagnostics/CompilerDiagnostic.md)** - Diagnostic record structure
 4. **[ICompilerLogger.cs](../Logging/ICompilerLogger.md)** - Logging abstraction
-5. **[ValidationPipeline.md](../Semantic/Validation/ValidationPipeline.md)** - V2 validation architecture
+5. **[ValidationPipeline.md](../Semantic/Validation/ValidationPipeline.md)** - Validation pipeline architecture
 6. **[CompilerServices.md](./CompilerServices.md)** - Service container providing DiagnosticReporter
 
 ### Usage Examples

@@ -47,9 +47,12 @@ public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
     return new ValidationPipeline(logger)
         // Order values determine execution sequence
         .AddValidator(new ModuleLevelValidator())       // Order: 50 (earliest, validates module structure)
+        .AddValidator(new DecoratorValidator())         // Order: 60 (validates decorator usage)
         .AddValidator(new SignatureValidator())         // Order: 150 (early, validates dunder signatures)
         .AddValidator(new DefaultParameterValidator())  // Order: 250
-        .AddValidator(new ControlFlowValidator())       // Order: 400 (AST-walking, handles unreachable code)
+        .AddValidator(new ControlFlowValidator())       // Order: 400 (CFG-based, handles unreachable code)
+        .AddValidator(new UnusedVariableValidator())    // Order: 420 (unused variable warnings)
+        .AddValidator(new UnusedImportValidator())      // Order: 430 (unused import warnings)
         .AddValidator(new AccessValidator())            // Order: 450
         .AddValidator(new ProtocolValidator())          // Order: 500
         .AddValidator(new OperatorValidator())          // Order: 500
@@ -63,66 +66,27 @@ public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
 2. **Auto-Sorting**: Validators are automatically sorted by their `Order` property (lower numbers run first)
 3. **Validator Sequence** (in execution order):
    - **ModuleLevelValidator** (50): Validates module-level structure (earliest validator, ensures module is well-formed)
+   - **DecoratorValidator** (60): Validates decorator usage and syntax
    - **SignatureValidator** (150): Validates special method signatures (dunder methods like `__init__`, `__str__`)
    - **DefaultParameterValidator** (250): Checks default parameter rules (no mutable defaults, positional before keyword, etc.)
-   - **ControlFlowValidator** (400): AST-walking control flow analysis
+   - **ControlFlowValidator** (400): CFG-based control flow analysis (unreachable code, missing returns, break/continue validation)
+   - **UnusedVariableValidator** (420): Warns about assigned-but-never-read variables
+   - **UnusedImportValidator** (430): Warns about unused imports
    - **AccessValidator** (450): Validates member access (private/protected/public)
    - **ProtocolValidator** (500): Validates protocol implementations
    - **OperatorValidator** (500): Validates operator overloading
 
 **Why This Order Matters:**
 - Module-level validation runs **first** because structural errors can cascade into other validators
+- Decorator validation runs **early** to catch decorator misuse before deeper analysis
 - Signature validation runs **early** because invalid signatures can cause cascading errors
 - Control flow runs **before** access validation (need to understand code structure first)
+- Unused variable/import warnings run after control flow (need reachability info)
 - Protocol and operator validation run **last** (they depend on earlier validations)
 
-**Important Comments in Code:**
-```csharp
-// Uses AST-walking control flow analysis (V2) which correctly handles
-// unreachable code detection (V3 CFG-based approach can't detect unreachable
-// code because the CFG builder skips statements after terminators).
-```
-
-This explains a **critical architectural decision**: V2 is chosen over V3 for unreachable code detection capabilities, even though V3 might be faster.
-
 ---
 
-### 2. `CreateWithCfgControlFlow(ICompilerLogger? logger = null)`
-
-**Purpose**: Alternative pipeline using **CFG-based control flow analysis** (V3) instead of AST-walking (V2).
-
-```csharp
-public static ValidationPipeline CreateWithCfgControlFlow(ICompilerLogger? logger = null)
-{
-    return new ValidationPipeline(logger)
-        .AddValidator(new ModuleLevelValidator())       // Order: 50 (earliest)
-        .AddValidator(new SignatureValidator())
-        .AddValidator(new DefaultParameterValidator())
-        .AddValidator(new ControlFlowValidator())       // CFG-based validator
-        .AddValidator(new AccessValidator())
-        .AddValidator(new ProtocolValidator())
-        .AddValidator(new OperatorValidator())
-        ;
-}
-```
-
-**When to Use This:**
-- Scenarios where **performance matters** more than completeness
-- When unreachable code detection is not critical
-- Experimentation with CFG-based approaches
-
-**Trade-off**: V3 is faster but **cannot detect unreachable code** because the CFG builder skips statements after terminators (return, break, continue, etc.).
-
-**Example of What V3 Misses:**
-```python
-def foo():
-    return 42
-    print("unreachable")  # V2 detects this, V3 doesn't
-```
-
----
-
-### 3. `CreateMinimal(ICompilerLogger? logger = null)`
+### 2. `CreateMinimal(ICompilerLogger? logger = null)`
 
 **Purpose**: Creates an **empty pipeline** with no validators.
 
@@ -154,7 +118,7 @@ var pipeline = ValidationPipelineFactory.CreateMinimal()
 public static ValidationPipeline CreateFast(ICompilerLogger? logger = null)
 {
     return new ValidationPipeline(logger)
-        .AddValidator(new ControlFlowValidator());  // V2 is faster for quick checks
+        .AddValidator(new ControlFlowValidator());  // CFG-based for quick checks
     // Skip signature validators, protocol validators, etc.
 }
 ```
@@ -171,8 +135,6 @@ public static ValidationPipeline CreateFast(ICompilerLogger? logger = null)
 
 **Trade-off**: Users might see some errors only during full compilation, not in the IDE.
 
-**Comment Note**: The inline comment says "V2 is faster for quick checks" - this refers to V2 being the appropriate choice for fast scenarios, not that V2 is faster than V3 (V3 is actually faster, but V2 provides better error coverage).
-
 ---
 
 ## Dependencies
@@ -187,10 +149,12 @@ public static ValidationPipeline CreateFast(ICompilerLogger? logger = null)
 
 All validators referenced in this factory:
 - `ModuleLevelValidator`
+- `DecoratorValidator`
 - `SignatureValidator`
 - `DefaultParameterValidator`
 - `ControlFlowValidator`
-- `ControlFlowValidator`
+- `UnusedVariableValidator`
+- `UnusedImportValidator`
 - `AccessValidator`
 - `ProtocolValidator`
 - `OperatorValidator`
@@ -226,7 +190,6 @@ The factory creates instances of `ValidationPipeline`, which:
 Each factory method name clearly communicates **intent**:
 - `CreateDefault()` → "Give me the standard pipeline"
 - `CreateFast()` → "I need speed over completeness"
-- `CreateWithCfgControlFlow()` → "I want the CFG-based variant"
 - `CreateMinimal()` → "Give me an empty slate"
 
 **Benefit**: Clients don't need to understand validator details to choose the right pipeline.
@@ -319,18 +282,18 @@ var pipeline = ValidationPipelineFactory.CreateDefault(logger);
 
 ---
 
-### 4. **V2 vs V3 Control Flow Debugging**
+### 4. **Control Flow Debugging**
 
 If you're debugging unreachable code detection:
-- Use `CreateDefault()` (includes V2) for full unreachable code analysis
-- Use `CreateWithCfgControlFlow()` (uses V3) if you suspect V2 has false positives
+- Use `CreateDefault()` for full analysis including unreachable code warnings
+- Use `CreateMinimal().AddValidator(new ControlFlowValidator())` to isolate control flow checks
 
 **Symptom**: Code flagged as unreachable but it's actually reachable?
-- Likely a bug in `ControlFlowValidator`'s AST walking
+- Likely a bug in `ControlFlowValidator`'s CFG analysis
 
 **Symptom**: Unreachable code NOT detected?
-- You might be using V3 (check which factory method was called)
-- Or the code might actually be reachable through a path V2 missed
+- Check that `ControlFlowValidator` is in the pipeline
+- Verify the code is truly unreachable (all branches must terminate)
 
 ---
 
@@ -354,7 +317,6 @@ Compare with `CreateFast()` to see which validators are expensive.
 1. **Adding a New Validator**:
    - Add it to `CreateDefault()` at the appropriate order position
    - Consider whether it belongs in `CreateFast()` (usually no, unless it's critical for IDE scenarios)
-   - Consider whether it should be in `CreateWithCfgControlFlow()` (usually yes, if it's not the control flow validator itself)
    - Update comments with the validator's order value and brief description
 
 2. **Creating a New Pipeline Configuration**:
@@ -449,10 +411,12 @@ After modifying this file:
 ### Validators Referenced in This Factory
 
 - **[ModuleLevelValidator.md](ModuleLevelValidator.md)** - Validates module-level structure (runs first)
+- **[DecoratorValidator.md](DecoratorValidator.md)** - Validates decorator usage
 - **[SignatureValidator.md](SignatureValidator.md)** - Validates special method signatures
 - **[DefaultParameterValidator.md](DefaultParameterValidator.md)** - Checks default parameter rules
-- **[ControlFlowValidator.md](ControlFlowValidator.md)** - AST-walking control flow analysis (default)
-- **[ControlFlowValidator.md](ControlFlowValidator.md)** - CFG-based control flow analysis (alternative)
+- **[ControlFlowValidator.md](ControlFlowValidator.md)** - CFG-based control flow analysis
+- **[UnusedVariableValidator.md](UnusedVariableValidator.md)** - Unused variable warnings
+- **[UnusedImportValidator.md](UnusedImportValidator.md)** - Unused import warnings
 - **[AccessValidator.md](AccessValidator.md)** - Member access validation
 - **[ProtocolValidator.md](ProtocolValidator.md)** - Protocol implementation validation
 - **[OperatorValidator.md](OperatorValidator.md)** - Operator overloading validation
@@ -569,17 +533,7 @@ This would enable third-party validators without modifying Sharpy core.
 
 ---
 
-### 4. **Assuming V3 = Better**
-
-**Symptom**: Unreachable code not detected.
-
-**Cause**: Using `CreateWithCfgControlFlow()` which uses V3.
-
-**Fact**: V3 is faster but less complete. V2 is the default for a reason.
-
----
-
-### 5. **Skipping ModuleLevelValidator**
+### 4. **Skipping ModuleLevelValidator**
 
 **Symptom**: Cryptic errors in later validators about malformed AST
 
@@ -593,9 +547,8 @@ This would enable third-party validators without modifying Sharpy core.
 
 The `ValidationPipelineFactory` is a **simple, focused factory** that provides pre-configured validation pipelines for different scenarios. Key takeaways:
 
-1. **Four Configurations**:
-   - `CreateDefault()`: Standard, production-quality validation (7 validators)
-   - `CreateWithCfgControlFlow()`: CFG-based variant (faster, less complete)
+1. **Three Configurations**:
+   - `CreateDefault()`: Standard, production-quality validation (10 validators)
    - `CreateFast()`: Minimal validation for IDE/LSP (1 validator only)
    - `CreateMinimal()`: Empty pipeline for testing (0 validators)
 
@@ -606,15 +559,11 @@ The `ValidationPipelineFactory` is a **simple, focused factory** that provides p
    - Well-documented trade-offs
 
 3. **Validator Ordering Matters**:
-   - Module-level → Signature → Defaults → Control Flow → Access → Protocols/Operators
+   - Module-level → Decorators → Signature → Defaults → Control Flow → Unused Vars/Imports → Access → Protocols/Operators
    - Earlier validators catch problems that could cause cascading errors
    - `ModuleLevelValidator` (Order: 50) is the foundation that always runs first
 
-4. **V2 vs V3 Control Flow**:
-   - V2 (default): AST-walking, detects unreachable code
-   - V3 (optional): CFG-based, faster but misses unreachable code
-
-5. **Usage Pattern**:
+4. **Usage Pattern**:
    ```csharp
    // In Compiler.cs
    var pipeline = ValidationPipelineFactory.CreateDefault(_logger);

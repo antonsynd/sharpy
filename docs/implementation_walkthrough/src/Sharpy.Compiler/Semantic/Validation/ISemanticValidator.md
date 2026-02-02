@@ -20,7 +20,7 @@ After the TypeChecker completes its multi-pass analysis (declarations → inheri
 - Operator type compatibility (`OperatorValidator`)
 - Protocol method validation (`ProtocolValidator`)
 - Member access validation (`AccessValidator`)
-- Control flow analysis (`ControlFlowValidator/V3`)
+- Control flow analysis (`ControlFlowValidator`)
 - Function signature checks (`SignatureValidator`)
 
 This design separates concerns: the TypeChecker handles core type inference and checking, while validators handle more specialized rules.
@@ -186,16 +186,17 @@ using Sharpy.Compiler.Diagnostics;      // DiagnosticBag, error reporting
 - [`SemanticContext.cs`](./SemanticContext.md) - Shared context object
 - [`AstTraversalContext.cs`](./AstTraversalContext.md) - AST traversal state
 
-**Concrete Validators (V2 = current generation):**
+**Concrete Validators:**
+- [`ModuleLevelValidator.cs`](./ModuleLevelValidator.md) - Module-level structure validation
+- [`DecoratorValidator.cs`](./DecoratorValidator.md) - Decorator usage validation
+- [`SignatureValidator.cs`](./SignatureValidator.md) - Function signature validation
+- [`DefaultParameterValidator.cs`](./DefaultParameterValidator.md) - Default parameter validation
+- [`ControlFlowValidator.md`](./ControlFlowValidator.md) - CFG-based control flow analysis
+- [`UnusedVariableValidator.cs`](./UnusedVariableValidator.md) - Unused variable warnings
+- [`UnusedImportValidator.cs`](./UnusedImportValidator.md) - Unused import warnings
+- [`AccessValidator.md`](./AccessValidator.md) - Member access validation
 - [`OperatorValidator.cs`](./OperatorValidator.md) - Binary/unary operator validation
 - [`ProtocolValidator.cs`](./ProtocolValidator.md) - Protocol method validation
-- [`AccessValidator.md`](./AccessValidator.md) - Member access validation
-- [`SignatureValidator.cs`](./SignatureValidator.md) - Function signature validation
-- [`ControlFlowValidator.md`](./ControlFlowValidator.md) / [`V3.md`](./ControlFlowValidator.md) - Control flow analysis
-- [`DefaultParameterValidator.cs`](./DefaultParameterValidator.md) - Default parameter validation
-
-**Legacy Support:**
-- `LegacyValidatorAdapter.cs` - Wraps old-style validators for backward compatibility
 
 ---
 
@@ -278,7 +279,7 @@ The `ISemanticValidator` interface is designed for **post-pass validation**, not
 - **Validation** happens in `ValidationPipeline` after types are known
 
 **Historical Note:**
-Early validators (V1) performed both type inference and validation, creating circular dependencies and complexity. The V2 architecture cleanly separates these concerns.
+Early validators performed both type inference and validation, creating circular dependencies and complexity. The current architecture cleanly separates these concerns.
 
 Example:
 ```csharp
@@ -520,7 +521,7 @@ public class MyFeatureValidatorTests : IntegrationTestBase
 
 When replacing an old validator with a new version:
 
-1. Implement the new validator (e.g., `V2` or `V3` suffix)
+1. Implement the new validator
 2. Add both validators to the pipeline temporarily
 3. Verify the new validator catches all cases
 4. Remove the old validator from `ValidationPipelineFactory`

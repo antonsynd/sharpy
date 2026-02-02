@@ -54,7 +54,7 @@ public partial class TypeChecker
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
 
-    // Validation pipeline - V2 validators (always enabled)
+    // Validation pipeline (always enabled)
     private readonly ValidationPipeline _validationPipeline;
 
     // Type inference service - extracted for clean separation
@@ -81,7 +81,7 @@ public partial class TypeChecker
 ```
 
 **Key Evolution (2026)**: The TypeChecker has migrated from individual validator fields to:
-- **ValidationPipeline**: Orchestrates V2 validators (control flow, operators, protocols, access)
+- **ValidationPipeline**: Orchestrates validators (control flow, operators, protocols, access, unused warnings)
 - **TypeInferenceService**: Centralized type inference logic (was distributed across validators)
 - **CompilerServices**: Centralized service container (preferred constructor pattern)
 
@@ -89,7 +89,7 @@ public partial class TypeChecker
 
 ## Key Dependencies
 
-### Validation Architecture V2
+### Validation Architecture
 
 The TypeChecker uses a **two-phase validation** approach:
 
@@ -107,7 +107,7 @@ The TypeChecker uses a **two-phase validation** approach:
 - **ProtocolValidator** - Iteration, indexing, len protocols
 - **DefaultParameterValidator** - Default parameter constant validation
 
-**Design Pattern**: The TypeChecker is a **coordinator**, not a monolith. It delegates specialized validation to the ValidationPipeline, which runs all V2 validators in sequence.
+**Design Pattern**: The TypeChecker is a **coordinator**, not a monolith. It delegates specialized validation to the ValidationPipeline, which runs all validators in sequence.
 
 ### Type Inference Service
 
@@ -256,7 +256,7 @@ This is the **central dispatcher** for statement type checking. It uses pattern 
 
 ## Error Handling
 
-### Error Collection (V2 Architecture)
+### Error Collection
 
 **Location**: `TypeChecker.cs:113`
 
@@ -268,11 +268,11 @@ This is the **central dispatcher** for statement type checking. It uses pattern 
 /// Errors come from:
 /// 1. Direct TypeChecker errors (_errors) - includes type mismatch, undefined symbols
 /// 2. TypeResolver errors (unresolved types) - merged in CheckModule
-/// 3. V2 validators via ValidationPipeline (control flow, access, operators, protocols) - merged in CheckModule
+/// 3. validators via ValidationPipeline (control flow, access, operators, protocols) - merged in CheckModule
 ///
 /// Legacy validators are still instantiated but their errors are no longer collected here.
 /// They remain for backward compatibility with code that calls their validation methods directly.
-/// Error reporting is now handled by V2 validators and direct TypeChecker error reporting.
+/// Error reporting is now handled by validators and direct TypeChecker error reporting.
 /// </remarks>
 public IReadOnlyList<SemanticError> Errors => _errors;
 ```
@@ -280,7 +280,7 @@ public IReadOnlyList<SemanticError> Errors => _errors;
 **Important**: The `Errors` property returns only the merged errors from `_errors`. The actual merging happens in `CheckModule()`, which combines:
 1. Direct TypeChecker errors
 2. TypeResolver errors (unresolved type annotations)
-3. ValidationPipeline errors (from V2 validators)
+3. ValidationPipeline errors (from validators)
 
 **Migration Note**: Legacy validators (individual `ControlFlowValidator`, `OperatorValidator`, etc.) are no longer used for error collection. All validation now flows through the ValidationPipeline.
 
@@ -908,7 +908,7 @@ private SemanticType CheckBinaryOp(BinaryOp binOp)
     var resultType = _typeInference.InferBinaryOpType(binOp.Operator, leftType, rightType);
 
     // If type inference fails, report the error directly
-    // (V2 validators may not catch all type incompatibilities)
+    // (validators may not catch all type incompatibilities)
     if (resultType == null)
     {
         AddError(
@@ -953,7 +953,7 @@ if (resultType != null && !resultType.IsAssignableTo(targetType))
 ```csharp
 var iterType = CheckExpression(forStmt.Iterator);
 
-// Infer element type from the iterator (errors reported by V2 validator in pipeline)
+// Infer element type from the iterator (errors reported by validator in pipeline)
 var elementType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 ```
 
@@ -1049,7 +1049,7 @@ if (leftType is UnknownType || rightType is UnknownType)
 
 The TypeChecker is a **coordinator**, not a monolith. It delegates:
 - Type inference → `TypeInferenceService`
-- Specialized validation → `ValidationPipeline` (which runs individual V2 validators)
+- Specialized validation → `ValidationPipeline` (which runs individual validators)
 - Type resolution → `TypeResolver`
 - Symbol lookup → `SymbolTable`
 
@@ -1105,13 +1105,13 @@ var allErrors = typeChecker.Errors;  // Merged in CheckModule()
 // Includes:
 // 1. Direct TypeChecker errors (_errors)
 // 2. TypeResolver errors
-// 3. ValidationPipeline errors (from V2 validators)
+// 3. ValidationPipeline errors (from validators)
 ```
 
 If an error is missing, check:
 - Direct TypeChecker error reporting (`AddError()` calls)
 - TypeResolver error list
-- Individual V2 validator error reporting
+- Individual validator error reporting
 
 ### 4. Trace Context Changes
 
@@ -1213,7 +1213,7 @@ if (condition is BinaryOp { Operator: BinaryOperator.GreaterThan } gt &&
 
 For complex validation logic:
 
-1. Create a new V2 validator implementing `IModuleValidator`
+1. Create a new validator implementing `IModuleValidator`
 2. Add to `ValidationPipelineFactory.CreateDefault()`
 3. Ensure errors use `context.ReportError()` or `context.ReportWarning()`
 4. TypeChecker will automatically merge validator errors
@@ -1248,7 +1248,7 @@ For new operations or improved inference:
 - To add new symbols → Modify `Symbol` hierarchy and `NameResolver`
 - To change scoping rules → Modify `SymbolTable`
 - To change how types are resolved → Modify `TypeResolver`
-- To add specialized validation → Create a new V2 validator
+- To add specialized validation → Create a new validator
 - To change type inference → Modify `TypeInferenceService`
 
 ### Testing Expectations
@@ -1289,7 +1289,7 @@ New type checking features should include:
 - [NameResolver.md](./NameResolver.md) - Symbol registration (phase 1)
 - [SemanticInfo.md](./SemanticInfo.md) - Type information storage
 - [TypeInferenceService.md](./TypeInferenceService.md) - Type inference logic
-- [Validation/ValidationPipeline.md](./Validation/ValidationPipeline.md) - V2 validator orchestration
+- [Validation/ValidationPipeline.md](./Validation/ValidationPipeline.md) - validator orchestration
 - [CodeGenInfoComputer.md](./CodeGenInfoComputer.md) - Code generation metadata
 
 ### Specification Documents

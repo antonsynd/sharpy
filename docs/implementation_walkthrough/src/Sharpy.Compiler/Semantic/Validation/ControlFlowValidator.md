@@ -6,7 +6,7 @@
 
 ## 1. Overview
 
-`ControlFlowValidator` is a semantic validator that uses **Control Flow Graph (CFG)** analysis to perform sophisticated control flow validation. It represents a more accurate and robust approach compared to the older V2 validator, which relied on simple AST traversal.
+`ControlFlowValidator` is a semantic validator that uses **Control Flow Graph (CFG)** analysis to perform sophisticated control flow validation. It uses graph-based analysis rather than simple AST traversal, enabling more accurate detection of unreachable code, missing return paths, and control flow violations.
 
 ### Role in the Compiler Pipeline
 
@@ -70,7 +70,7 @@ public override int Order => 400;
 
 - **Name**: Identifier for logging and debugging
 - **Order**: Execution order in the validation pipeline (400 = after type checking at 300)
-  - **Note**: Same order as V2 validator—projects use one or the other, not both
+  - **Note**: Runs after type checking (300) and before access validation (450)
 
 ### Instance Fields
 
@@ -339,10 +339,10 @@ The validator implements the **Validator Pattern** from the pipeline architectur
 
 | Approach | Pros | Cons |
 |----------|------|------|
-| **AST Walking** (V2) | Simple, direct | Imprecise for complex control flow |
-| **CFG Analysis** (V3) | Mathematically precise, handles all cases | More complex, higher upfront cost |
+| **AST Walking** | Simple, direct | Imprecise for complex control flow |
+| **CFG Analysis** | Mathematically precise, handles all cases | More complex, higher upfront cost |
 
-**Trade-off**: V3 is preferred for production because correctness matters more than simplicity.
+**Trade-off**: CFG analysis is preferred for production because correctness matters more than simplicity.
 
 ### 5.3 Separation of Concerns
 
@@ -521,7 +521,6 @@ TestFixtures/control_flow/
 
 | File | Relationship |
 |------|--------------|
-| `ControlFlowValidatorV2.cs` (removed) | **Predecessor**: AST-based validator, replaced by current `ControlFlowValidator` |
 | `ControlFlowGraphBuilder.cs` | **Dependency**: Constructs the CFG this validator analyzes |
 | `ControlFlowAnalysis.cs` | **Dependency**: Provides analysis algorithms used by this validator |
 | `ISemanticValidator.cs` | **Interface**: Defines validator contract and base class |

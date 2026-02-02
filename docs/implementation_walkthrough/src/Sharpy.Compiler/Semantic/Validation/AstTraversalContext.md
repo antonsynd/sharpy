@@ -591,5 +591,5 @@ When adding new features, follow these patterns:
 
 **Next steps**:
 1. Read `SemanticContext.cs` to see how this integrates with the broader validation system
-2. Look at `AccessValidator.cs` or another V2 validator to see real usage
+2. Look at `AccessValidator.cs` or another validator to see real usage
 3. Try writing a simple validator that checks if `return` statements are inside functions (using `CurrentFunction`)

@@ -365,7 +365,7 @@ private bool IsNoneConstructorCall(FunctionCall call)
 
 ### Task 2.4: Update DefaultParameterValidator
 
-**File**: `src/Sharpy.Compiler/Semantic/Validation/DefaultParameterValidatorV2.cs`
+**File**: `src/Sharpy.Compiler/Semantic/Validation/DefaultParameterValidator.cs`
 
 **Current code** (checks for `Nothing` as compile-time constant):
 ```csharp

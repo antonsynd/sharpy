@@ -195,45 +195,7 @@ This checks:
 
 ---
 
-### 6. Factory Methods
-
-#### CreateDefault
-
-```csharp
-public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
-{
-    // Note: This will be populated as validators are migrated
-    return new ValidationPipeline(logger);
-}
-```
-
-**Purpose**: Create a standard production pipeline.
-
-**Current state**: Empty during migration period. Will eventually include all standard validators.
-
-**Future vision:**
-```csharp
-return new ValidationPipeline(logger)
-    .AddValidators(
-        new NameResolutionValidator(),
-        new TypeResolutionValidator(),
-        new TypeCheckingValidator(),
-        new ProtocolValidator(),
-        new OperatorValidator(),
-        // etc.
-    );
-```
-
-#### CreateEmpty
-
-```csharp
-public static ValidationPipeline CreateEmpty(ICompilerLogger? logger = null)
-{
-    return new ValidationPipeline(logger);
-}
-```
-
-**Purpose**: Create an empty pipeline for testing or custom configurations.
+**Note**: Factory methods for creating pre-configured pipelines are in `ValidationPipelineFactory` (see [ValidationPipelineFactory.md](ValidationPipelineFactory.md)). The factory provides `CreateDefault()`, `CreateMinimal()`, and `CreateFast()` configurations.
 
 ---
 
@@ -262,13 +224,16 @@ public static ValidationPipeline CreateEmpty(ICompilerLogger? logger = null)
 ### Related Validators
 
 Current validators in the system (as of this walkthrough):
-- `AccessValidator` - Validates access modifiers
-- `DefaultParameterValidator` - Validates default parameter rules
-- `OperatorValidator` - Validates operator overloading
-- `ProtocolValidator` - Validates protocol (interface) compliance
+- `ModuleLevelValidator` - Validates module-level structure
+- `DecoratorValidator` - Validates decorator usage
 - `SignatureValidator` - Validates function signatures
-- `ControlFlowValidator` - Validates control flow (return paths, unreachable code)
-- `LegacyValidatorAdapter` - Adapts old validators to new pipeline
+- `DefaultParameterValidator` - Validates default parameter rules
+- `ControlFlowValidator` - CFG-based control flow (return paths, unreachable code, break/continue)
+- `UnusedVariableValidator` - Warns about unused variables
+- `UnusedImportValidator` - Warns about unused imports
+- `AccessValidator` - Validates access modifiers
+- `ProtocolValidator` - Validates protocol (interface) compliance
+- `OperatorValidator` - Validates operator overloading
 
 ---
 
@@ -515,35 +480,9 @@ public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
 ### Related Validators
 - `OperatorValidator.md` - Example validator implementation
 - `ProtocolValidator.md` - Example validator implementation
-- `LegacyValidatorAdapter.md` - Adapter for legacy validators
+- `ControlFlowValidator.md` - CFG-based control flow analysis
 
 ### Upstream/Downstream
 - **Upstream**: `Parser` (produces AST)
 - **Downstream**: `RoslynEmitter` (consumes validated AST + SemanticInfo)
 - **Side input**: `TypeChecker`, `TypeResolver` (populate SemanticContext before validation)
-
----
-
-## Migration Status
-
-This file is part of a **v2 validation architecture**. The codebase is currently in a migration period:
-
-**Legacy approach:**
-- Monolithic `TypeChecker` class with all validation logic
-- Direct mutation of AST nodes
-- Ad-hoc error collection
-
-**New approach (ValidationPipeline):**
-- Modular validators implementing `ISemanticValidator`
-- Immutable AST with separate `SemanticInfo` annotations
-- Centralized `DiagnosticBag`
-
-**Current state:**
-- `CreateDefault()` is empty (validators being migrated incrementally)
-- `LegacyValidatorAdapter` bridges old and new systems
-- Validators with "V2" or "V3" suffix are new pipeline-compatible implementations
-
-**Watch for:**
-- Comments referencing "migration period"
-- Methods marked `[Obsolete]` in `SemanticContext`
-- Validators in both legacy and V2 versions
