@@ -762,4 +762,153 @@ def __private_func():
     }
 
     #endregion
+
+    #region ResolveAllImports Tests
+
+    [Fact]
+    public void ResolveAllImports_FromImport_RegistersSymbolsInSymbolTable()
+    {
+        CreateModuleFile("mathlib", @"
+def add(a: int, b: int) -> int:
+    return a + b
+
+PI: float = 3.14
+");
+
+        var resolver = new ImportResolver(_logger);
+        resolver.SetCurrentModule(_testDir);
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+
+        var fromImport = new FromImportStatement
+        {
+            Module = "mathlib",
+            Names = new List<ImportAlias>
+            {
+                new ImportAlias { Name = "add", AsName = null, LineStart = 1, ColumnStart = 1 },
+                new ImportAlias { Name = "PI", AsName = null, LineStart = 1, ColumnStart = 1 }
+            }.ToImmutableArray(),
+            ImportAll = false,
+            LineStart = 1,
+            ColumnStart = 1
+        };
+
+        var module = new Module { Body = ImmutableArray.Create<Statement>(fromImport) };
+
+        resolver.ResolveAllImports(module, symbolTable, _testDir);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+        var addSymbol = symbolTable.Lookup("add");
+        Assert.NotNull(addSymbol);
+        Assert.Equal(SymbolKind.Function, addSymbol.Kind);
+        var piSymbol = symbolTable.Lookup("PI");
+        Assert.NotNull(piSymbol);
+        Assert.Equal(SymbolKind.Variable, piSymbol.Kind);
+    }
+
+    [Fact]
+    public void ResolveAllImports_ImportStatement_RegistersModuleSymbol()
+    {
+        CreateModuleFile("utils", @"
+def helper():
+    pass
+");
+
+        var resolver = new ImportResolver(_logger);
+        resolver.SetCurrentModule(_testDir);
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+
+        var importStmt = new ImportStatement
+        {
+            Names = new List<ImportAlias>
+            {
+                new ImportAlias { Name = "utils", AsName = null, LineStart = 1, ColumnStart = 1 }
+            }.ToImmutableArray(),
+            LineStart = 1,
+            ColumnStart = 1
+        };
+
+        var module = new Module { Body = ImmutableArray.Create<Statement>(importStmt) };
+
+        resolver.ResolveAllImports(module, symbolTable, _testDir);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+        var moduleSymbol = symbolTable.Lookup("utils");
+        Assert.NotNull(moduleSymbol);
+        Assert.Equal(SymbolKind.Module, moduleSymbol.Kind);
+    }
+
+    [Fact]
+    public void ResolveAllImports_AliasedImport_RegistersAlias()
+    {
+        CreateModuleFile("mymod", @"
+def foo():
+    pass
+");
+
+        var resolver = new ImportResolver(_logger);
+        resolver.SetCurrentModule(_testDir);
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+
+        var importStmt = new ImportStatement
+        {
+            Names = new List<ImportAlias>
+            {
+                new ImportAlias { Name = "mymod", AsName = "m", LineStart = 1, ColumnStart = 1 }
+            }.ToImmutableArray(),
+            LineStart = 1,
+            ColumnStart = 1
+        };
+
+        var module = new Module { Body = ImmutableArray.Create<Statement>(importStmt) };
+
+        resolver.ResolveAllImports(module, symbolTable, _testDir);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+        // Should be registered under the alias, not the original name
+        var moduleSymbol = symbolTable.Lookup("m");
+        Assert.NotNull(moduleSymbol);
+        Assert.Equal(SymbolKind.Module, moduleSymbol.Kind);
+    }
+
+    [Fact]
+    public void ResolveAllImports_ImportAll_RegistersPublicSymbols()
+    {
+        CreateModuleFile("allmod", @"
+def public_func():
+    pass
+
+def _private_func():
+    pass
+");
+
+        var resolver = new ImportResolver(_logger);
+        resolver.SetCurrentModule(_testDir);
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+
+        var fromImport = new FromImportStatement
+        {
+            Module = "allmod",
+            Names = ImmutableArray<ImportAlias>.Empty,
+            ImportAll = true,
+            LineStart = 1,
+            ColumnStart = 1
+        };
+
+        var module = new Module { Body = ImmutableArray.Create<Statement>(fromImport) };
+
+        resolver.ResolveAllImports(module, symbolTable, _testDir);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+        Assert.NotNull(symbolTable.Lookup("public_func"));
+    }
+
+    #endregion
 }

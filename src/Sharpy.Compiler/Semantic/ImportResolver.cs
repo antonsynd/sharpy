@@ -73,6 +73,106 @@ public class ImportResolver
     }
 
     /// <summary>
+    /// Resolve all imports in a module and register the imported symbols in the symbol table.
+    /// This is the main entry point for import resolution during compilation.
+    /// </summary>
+    public void ResolveAllImports(Module module, SymbolTable symbolTable, string? currentDir)
+    {
+        foreach (var statement in module.Body)
+        {
+            if (statement is ImportStatement import)
+            {
+                var modules = ResolveImport(import, currentDir);
+
+                // Register module symbols and their exports
+                for (int i = 0; i < import.Names.Length && i < modules.Count; i++)
+                {
+                    var importAlias = import.Names[i];
+                    var moduleInfo = modules[i];
+
+                    // Handle aliased imports (import x as y)
+                    if (importAlias.AsName != null)
+                    {
+                        var aliasedModule = new ModuleSymbol
+                        {
+                            Name = importAlias.AsName,
+                            Kind = SymbolKind.Module,
+                            FilePath = moduleInfo.Path,
+                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
+                        };
+                        symbolTable.TryDefine(aliasedModule);
+                    }
+                    else
+                    {
+                        // Handle non-aliased imports by building nested module structure
+                        var parts = importAlias.Name.Split('.');
+
+                        var leafModule = new ModuleSymbol
+                        {
+                            Name = parts[^1],
+                            Kind = SymbolKind.Module,
+                            FilePath = moduleInfo.Path,
+                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
+                        };
+
+                        ModuleSymbol currentModule = leafModule;
+                        for (int j = parts.Length - 2; j >= 0; j--)
+                        {
+                            var parentModule = new ModuleSymbol
+                            {
+                                Name = parts[j],
+                                Kind = SymbolKind.Module,
+                                FilePath = "",
+                                Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } }
+                            };
+                            currentModule = parentModule;
+                        }
+
+                        symbolTable.TryDefine(currentModule);
+                    }
+                }
+            }
+            else if (statement is FromImportStatement fromImport)
+            {
+                _logger.LogDebug($"Processing from-import: from {fromImport.Module} import {string.Join(", ", fromImport.Names.Select(n => n.Name))}");
+                var moduleInfo = ResolveFromImport(fromImport, currentDir);
+                if (moduleInfo != null)
+                {
+                    _logger.LogDebug($"  Module resolved: {moduleInfo.Path}");
+                    _logger.LogDebug($"  Exported symbols: [{string.Join(", ", moduleInfo.ExportedSymbols.Keys)}]");
+                    var reExportedSymbols = fromImport.ReExportedSymbols ?? moduleInfo.ExportedSymbols;
+
+                    if (fromImport.ImportAll)
+                    {
+                        foreach (var (name, symbol) in reExportedSymbols)
+                        {
+                            _logger.LogDebug($"  Defining symbol (import *): {name}");
+                            symbolTable.TryDefine(symbol);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var importAlias in fromImport.Names)
+                        {
+                            var symbolName = importAlias.AsName ?? importAlias.Name;
+                            if (reExportedSymbols.TryGetValue(symbolName, out var symbol))
+                            {
+                                _logger.LogDebug($"  Defining imported symbol: {symbol.Name} ({symbol.Kind})");
+                                symbolTable.TryDefine(symbol);
+                            }
+                            else
+                            {
+                                _logger.LogWarning($"Symbol '{symbolName}' not found in module exports",
+                                    fromImport.LineStart, fromImport.ColumnStart);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Resolve an import statement
     /// </summary>
     public List<ModuleInfo> ResolveImport(ImportStatement importStmt, string? searchPath = null)
