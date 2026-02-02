@@ -307,7 +307,7 @@ importResolver.ResolveAllImports(module, symbolTable, currentDir);
 - [x] Add `IReadOnlyList<Token>? Tokens` to `CompilationResult`
 - [x] Add `SourceText? SourceText` to `CompilationResult`
 - [x] Populate these fields in `Compiler.Compile()`
-- [ ] Consider adding `ImportResolver? ImportResolver` for access to resolved module info
+- [x] Consider adding `ImportResolver? ImportResolver` for access to resolved module info
 
 ### 6.3: Add Fuzz Testing Harness
 
