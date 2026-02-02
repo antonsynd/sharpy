@@ -2,6 +2,7 @@ using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -349,5 +350,19 @@ public partial class RoslynEmitter
     {
         var symbols = GetReExportedSymbols(fromImport);
         return symbols != null && symbols.Count > 0;
+    }
+
+    /// <summary>
+    /// Emits a diagnostic for an unrecognized statement type in code generation.
+    /// Returns null so it can be used in switch expressions.
+    /// </summary>
+    private SyntaxNode? EmitUnrecognizedStatementDiagnostic(Statement stmt)
+    {
+        _context.AddError(
+            $"Internal: unrecognized statement type '{stmt.GetType().Name}' was not emitted. This is a compiler bug — please report it.",
+            DiagnosticCodes.CodeGen.UnrecognizedStatementType,
+            stmt.LineStart,
+            stmt.ColumnStart);
+        return null;
     }
 }

@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -107,7 +108,11 @@ public partial class RoslynEmitter
                     break;
 
                 default:
-                    // Ignore other statements for now
+                    _context.AddError(
+                        $"Internal: unrecognized statement type '{stmt.GetType().Name}' in class body was not emitted. This is a compiler bug — please report it.",
+                        DiagnosticCodes.CodeGen.UnrecognizedStatementType,
+                        stmt.LineStart,
+                        stmt.ColumnStart);
                     break;
             }
         }
@@ -570,7 +575,11 @@ public partial class RoslynEmitter
                     break;
 
                 default:
-                    // Ignore other statements
+                    _context.AddError(
+                        $"Internal: unrecognized statement type '{stmt.GetType().Name}' in interface body was not emitted. This is a compiler bug — please report it.",
+                        DiagnosticCodes.CodeGen.UnrecognizedStatementType,
+                        stmt.LineStart,
+                        stmt.ColumnStart);
                     break;
             }
         }

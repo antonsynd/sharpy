@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -32,8 +33,17 @@ public partial class RoslynEmitter
             WhileStatement whileStmt => GenerateWhile(whileStmt),
             ForStatement forStmt => GenerateFor(forStmt),
             TryStatement tryStmt => GenerateTry(tryStmt),
-            _ => (StatementSyntax?)null
+            _ => null
         };
+
+        if (result == null && stmt is not ImportStatement and not FromImportStatement and not TypeAlias)
+        {
+            _context.AddError(
+                $"Internal: unrecognized statement type '{stmt.GetType().Name}' was not emitted. This is a compiler bug — please report it.",
+                DiagnosticCodes.CodeGen.UnrecognizedStatementType,
+                stmt.LineStart,
+                stmt.ColumnStart);
+        }
 
         return result != null ? AttachLineDirective(result, stmt) : null;
     }

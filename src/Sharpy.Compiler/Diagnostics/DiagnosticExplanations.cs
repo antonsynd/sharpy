@@ -709,6 +709,13 @@ public static class DiagnosticExplanations
             null,
             "This is an internal compiler error. Report it at https://github.com/anthropics/sharpy/issues.");
 
+        Add(dict, DiagnosticCodes.CodeGen.UnrecognizedStatementType, "Unrecognized statement type not emitted", "CodeGen",
+            "The code generator encountered a statement type that it does not know how to emit. " +
+            "The statement was silently skipped, meaning the generated code does not include it. " +
+            "This is a compiler bug — the code generator is missing a handler for this AST node type.",
+            null,
+            "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
+
         Add(dict, DiagnosticCodes.CodeGen.InternalGeneratedCSharpParseError, "Internal error: generated C# contains syntax errors", "CodeGen",
             "The compiler generated C# code that fails to parse. This indicates a bug in the Sharpy compiler's code generation phase. " +
             "The generated C# has syntax errors that would prevent compilation.",
