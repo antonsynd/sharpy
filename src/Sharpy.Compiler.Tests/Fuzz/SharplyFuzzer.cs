@@ -289,39 +289,45 @@ public class SharplyFuzzer
     private void GenerateStatement(StringBuilder sb, int indent)
     {
         var prefix = new string(' ', indent * 4);
-        sb.Append(prefix);
 
         switch (_random.Next(8))
         {
-            case 0: // Assignment
+            case 0: // Assignment (GenerateAssignment handles its own prefix)
                 GenerateAssignment(sb, indent);
                 sb.AppendLine();
                 break;
             case 1: // Return
+                sb.Append(prefix);
                 sb.Append("return ");
                 sb.AppendLine(GenerateExpression());
                 break;
             case 2: // If
+                sb.Append(prefix);
                 sb.AppendLine($"if {GenerateExpression()}:");
                 GenerateStatement(sb, indent + 1);
                 break;
             case 3: // Pass
+                sb.Append(prefix);
                 sb.AppendLine("pass");
                 break;
             case 4: // Expression statement
+                sb.Append(prefix);
                 sb.AppendLine(GenerateExpression());
                 break;
             case 5: // For
+                sb.Append(prefix);
                 sb.AppendLine($"for {Identifiers[_random.Next(Identifiers.Length)]} in {GenerateExpression()}:");
                 sb.Append(new string(' ', (indent + 1) * 4));
                 sb.AppendLine("pass");
                 break;
             case 6: // While
+                sb.Append(prefix);
                 sb.AppendLine($"while {GenerateExpression()}:");
                 sb.Append(new string(' ', (indent + 1) * 4));
                 sb.AppendLine("pass");
                 break;
             default: // Break/continue (may be invalid outside loop)
+                sb.Append(prefix);
                 sb.AppendLine(_random.Next(2) == 0 ? "break" : "continue");
                 break;
         }

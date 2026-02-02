@@ -62,7 +62,8 @@ public static class CompilationUnitFactory
     {
         ArgumentNullException.ThrowIfNull(unit);
 
-        var lexer = new Lexer.Lexer(unit.SourceText, logger ?? NullLogger.Instance);
+        var sourceText = new Text.SourceText(unit.SourceText, unit.FilePath);
+        var lexer = new Lexer.Lexer(sourceText, logger ?? NullLogger.Instance);
         var tokens = lexer.TokenizeAll();
 
         // Check if lexer collected any errors into DiagnosticBag
