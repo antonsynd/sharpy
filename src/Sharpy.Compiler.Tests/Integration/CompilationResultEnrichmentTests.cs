@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 
 /// <summary>
 /// Tests verifying CompilationResult carries enriched artifacts (Phase 6.2):
-/// SourceText, Tokens, and SemanticBinding.
+/// SourceText, Tokens, SemanticBinding, and ImportResolver.
 /// </summary>
 public class CompilationResultEnrichmentTests
 {
@@ -120,5 +120,62 @@ def main():
         Assert.Equal(2, result.SourceText!.GetLineNumber(7));    // 'y' is on line 2
         Assert.Equal("x = 42", result.SourceText.GetLineText(1));
         Assert.Equal("y = 10", result.SourceText.GetLineText(2));
+    }
+
+    [Fact]
+    public void SuccessfulCompilation_PopulatesImportResolver()
+    {
+        var code = @"
+def main():
+    x: int = 42
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+        Assert.NotNull(result.ImportResolver);
+    }
+
+    [Fact]
+    public void FailedCompilation_SemanticError_StillPopulatesImportResolver()
+    {
+        // Type mismatch should cause semantic error, but ImportResolver is created before type checking
+        var code = @"
+def main():
+    x: int = ""hello""
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+        Assert.NotNull(result.ImportResolver);
+    }
+
+    [Fact]
+    public void FailedCompilation_LexerError_ImportResolverIsNull()
+    {
+        // Lexer errors happen before ImportResolver is created
+        var code = "x = \"unterminated\n";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+        Assert.Null(result.ImportResolver);
+    }
+
+    [Fact]
+    public void ImportResolver_ExposesLoadedSpyModules()
+    {
+        var code = @"
+def main():
+    x: int = 42
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+        Assert.NotNull(result.ImportResolver);
+        // With no imports, LoadedSpyModules should be empty
+        Assert.Empty(result.ImportResolver!.LoadedSpyModules);
     }
 }

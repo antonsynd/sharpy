@@ -161,7 +161,8 @@ public class Compiler
                     Metrics = metrics,
                     SourceText = sourceText,
                     Tokens = tokens,
-                    Module = module
+                    Module = module,
+                    SemanticBinding = semanticBinding
                 };
             }
 
@@ -231,7 +232,8 @@ public class Compiler
                     SourceText = sourceText,
                     Tokens = tokens,
                     Module = module,
-                    SemanticBinding = semanticBinding
+                    SemanticBinding = semanticBinding,
+                    ImportResolver = importResolver
                 };
             }
 
@@ -266,7 +268,8 @@ public class Compiler
                     SourceText = sourceText,
                     Tokens = tokens,
                     Module = module,
-                    SemanticBinding = semanticBinding
+                    SemanticBinding = semanticBinding,
+                    ImportResolver = importResolver
                 };
             }
             metrics.EndPhase();
@@ -298,7 +301,8 @@ public class Compiler
                     SourceText = sourceText,
                     Tokens = tokens,
                     Module = module,
-                    SemanticBinding = semanticBinding
+                    SemanticBinding = semanticBinding,
+                    ImportResolver = importResolver
                 };
             }
 
@@ -346,7 +350,8 @@ public class Compiler
                     SourceText = sourceText,
                     Tokens = tokens,
                     Module = module,
-                    SemanticBinding = semanticBinding
+                    SemanticBinding = semanticBinding,
+                    ImportResolver = importResolver
                 };
             }
 
@@ -390,7 +395,8 @@ public class Compiler
                 Metrics = metrics,
                 SourceText = sourceText,
                 Tokens = tokens,
-                SemanticBinding = semanticBinding
+                SemanticBinding = semanticBinding,
+                ImportResolver = importResolver
             };
         }
         catch (OperationCanceledException)
@@ -678,6 +684,12 @@ public class CompilationResult
     /// Available for tooling that needs semantic information (e.g., LSP go-to-definition, hover).
     /// </summary>
     public SemanticBinding? SemanticBinding { get; init; }
+
+    /// <summary>
+    /// The import resolver with loaded module information.
+    /// Available for tooling that needs resolved module info (e.g., LSP go-to-definition across modules).
+    /// </summary>
+    public ImportResolver? ImportResolver { get; init; }
 }
 
 /// <summary>
