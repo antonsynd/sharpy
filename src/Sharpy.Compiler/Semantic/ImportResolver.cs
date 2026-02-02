@@ -146,6 +146,10 @@ public class ImportResolver
                     {
                         foreach (var (name, symbol) in reExportedSymbols)
                         {
+                            // Only import public symbols (Python convention: no leading underscore)
+                            if (name.StartsWith("_"))
+                                continue;
+
                             _logger.LogDebug($"  Defining symbol (import *): {name}");
                             symbolTable.TryDefine(symbol);
                         }

@@ -945,6 +945,44 @@ def _private_func():
 
         Assert.False(resolver.Diagnostics.HasErrors);
         Assert.NotNull(symbolTable.Lookup("public_func"));
+        // Private symbols should NOT be registered by import *
+        Assert.Null(symbolTable.Lookup("_private_func"));
+    }
+
+    [Fact]
+    public void ResolveAllImports_ImportAll_AllPrivateModule_RegistersNothing()
+    {
+        CreateModuleFile("privatemod", @"
+def _internal():
+    pass
+
+def _helper():
+    pass
+");
+
+        var resolver = new ImportResolver(_logger);
+        resolver.SetCurrentModule(_testDir);
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+
+        var fromImport = new FromImportStatement
+        {
+            Module = "privatemod",
+            Names = ImmutableArray<ImportAlias>.Empty,
+            ImportAll = true,
+            LineStart = 1,
+            ColumnStart = 1
+        };
+
+        var module = new Module { Body = ImmutableArray.Create<Statement>(fromImport) };
+
+        resolver.ResolveAllImports(module, symbolTable, _testDir);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+        // Neither private symbol should be registered
+        Assert.Null(symbolTable.Lookup("_internal"));
+        Assert.Null(symbolTable.Lookup("_helper"));
     }
 
     #endregion
