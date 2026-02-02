@@ -4,6 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > **See also:** [.github/copilot-instructions.md](.github/copilot-instructions.md) for full architecture and patterns.
 
+## Repository
+
+- **GitHub owner:** `antonsynd`
+- **GitHub repo:** `antonsynd/sharpy`
+
 ## Quick Reference
 
 ```bash
