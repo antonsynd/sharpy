@@ -42,6 +42,71 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 3. **Immutable AST** — annotations go in `SemanticInfo`, not AST nodes
 4. **Axiom precedence**: .NET > Type Safety > Python Syntax
 5. **C# 9.0 target** — no global usings, file-scoped namespaces, or record structs
+6. **Always verify Python behavior first** — run `python3 -c "..."` before implementing Python semantics
+
+## Semantic Analysis Pipeline
+
+The semantic phase runs multiple ordered passes. Understanding this is critical for implementation work.
+
+**Pass 1 — Name Resolution** (`NameResolver.cs`): Collects all top-level declarations into `SymbolTable`. Runs `ResolveDeclarations()` then `ResolveInheritance()`.
+
+**Pass 1.5 — Import Resolution** (`ImportResolver.cs`): Loads imported modules via `ModuleLoader` (which caches parsed modules and detects circular imports). Registers imported symbols in SymbolTable. `PackageResolver` handles `__init__.spy` packages.
+
+**Pass 2 — Type Checking** (`TypeChecker.cs`, split into 4 partial files): Traverses AST, infers types, records them in `SemanticInfo`. Then runs `ValidationPipeline`.
+
+**Materialization Points**: After each major phase, computed data is frozen from `SemanticBinding` onto `Symbol` properties:
+1. After import resolution → `MaterializeInheritance()` (BaseType, Interfaces)
+2. After type checking → `MaterializeVariableTypes()`, `MaterializeCodeGenInfo()`
+
+### Key Data Structures
+
+- **`SemanticInfo`** — Maps AST nodes → types/symbols. Uses `ReferenceEqualityComparer` because AST nodes are records (value equality) but we need identity.
+- **`SemanticBinding`** — Stores computed semantic data (CodeGenInfo, variable types) separately from symbols, materialized at phase boundaries.
+- **`SymbolTable`** — Global scope of all declared symbols.
+
+### Symbol Hierarchy
+
+Symbols are mutable records that use **reference equality** (overridden from record default) because their properties (Type, BaseType, CodeGenInfo) are set progressively across passes.
+
+```
+Symbol (abstract)
+├── VariableSymbol   — Type set during type checking
+├── FunctionSymbol   — Parameters, ReturnType, IsStatic/Abstract/Virtual/Override
+├── TypeSymbol       — TypeKind, BaseType, Interfaces, Fields, Methods
+└── ModuleSymbol     — FilePath
+```
+
+### ValidationPipeline
+
+Pluggable validators implement `ISemanticValidator` with an `Order` property (lower runs first). Key validators:
+
+- **Order 50**: `ModuleLevelValidator` — Entry point validation
+- **Order 150**: `SignatureValidator` — Dunder method signatures
+- **Order 400**: `ControlFlowValidator` — CFG-based unreachable code, missing returns
+- **Order 450**: `AccessValidator` — Private/protected member access
+- **Order 500**: `ProtocolValidator`, `OperatorValidator` — Protocol/operator validation
+
+**Responsibility split**: TypeChecker handles type mismatches and in-progress inference. ValidationPipeline handles self-contained AST analyses that don't need active inference state.
+
+## Code Generation
+
+The `RoslynEmitter` is split into 8 partial classes (~220KB total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`.
+
+**Name resolution strategy**:
+- Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
+- Local variables → runtime tracking via `_variableVersions` (handles redeclarations: x, x_1, x_2)
+- Types → SymbolTable lookup
+
+**Type mappings** (`TypeMapper.cs`): `int` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `global::Sharpy.Core.List<T>`, `dict[K,V]` → `global::Sharpy.Core.Dict<K,V>`
+
+**Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__init__` → constructor, `__add__` → `operator+`, `__str__` → `ToString()`
+
+## Sharpy.Core Patterns
+
+- **Wrap .NET internally, expose Python API** — `list.append()` not `Add()`
+- **Partial class pattern**: Types split across `Partial.{Type}/` directories (e.g., `Partial.List/List.ISequence.cs`)
+- **Builtins**: `partial class Exports` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
+- **Python semantics**: Negative indexing, slicing, Python-matching exceptions
 
 ## Custom Slash Commands
 
@@ -59,30 +124,6 @@ Available in `.claude/commands/`:
 | `/project:add-test-fixture <desc>` | Create file-based test |
 | `/project:check-axioms <decision>` | Verify axiom compliance |
 
-## Specialized Agents
-
-Domain-specific guidance in `.github/agents/` (20 agents total):
-
-**Implementation Agents:**
-- `implementer` — Full implementation + PRs
-- `task-planner` — Task decomposition (read-only)
-- `code-reviewer` — PR review (read-only)
-- `test-expert` — Testing (`*Tests/` edits)
-
-**Compiler Component Experts:**
-- `lexer-expert`, `parser-expert`, `semantic-expert`, `codegen-expert`
-- `core-library-expert`, `cli-expert`
-
-**Axiom Guardians (Advisory, Read-Only):**
-- `net-axiom-guardian` — .NET/C# 9.0 compatibility
-- `python-axiom-guardian` — Python syntax fidelity
-- `type-safety-guardian` — Static typing, null safety
-- `axiom-arbiter` — Conflict resolution
-- `unity-compatibility-guardian`, `design-philosophy-guardian`
-
-**Verification Agents (Read-Only):**
-- `verification-expert`, `spec-adherence`, `hallucination-defense`, `documentation-sync`
-
 ## Testing
 
 ```bash
@@ -91,7 +132,23 @@ dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"  # File-base
 dotnet test --filter "DisplayName~test_name"               # By test name
 ```
 
-File-based tests in `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`:
-- `.spy` + `.expected` pairs for success tests
-- `.spy` + `.error` pairs for error tests
-- Add `.skip` file to skip a test
+### File-Based Tests
+
+Location: `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
+
+**Single-file tests**: `.spy` + `.expected` (exact stdout match) or `.spy` + `.error` (substring match in error)
+
+**Multi-file tests**: A subdirectory with multiple `.spy` files and a `main.spy` entry point, plus `main.expected` or `main.error`.
+
+**Warning tests**: `.warning` file — empty means expect no warnings, non-empty lines are expected substrings. Can combine with `.expected`.
+
+**Skip**: Add a `.skip` file next to the `.spy` file.
+
+### Integration Test Base
+
+Programmatic tests inherit `IntegrationTestBase` and use `CompileAndExecute(source)`:
+```csharp
+var result = CompileAndExecute("print(1 + 2)");
+Assert.True(result.Success);
+Assert.Equal("3\n", result.StandardOutput);
+```
