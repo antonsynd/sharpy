@@ -768,12 +768,7 @@ class Program
             var projectWarnings = result.Diagnostics.GetWarnings();
             if (projectWarnings.Count > 0)
             {
-                Console.WriteLine("Warnings:");
-                foreach (var warning in projectWarnings)
-                {
-                    Console.WriteLine($"  {FormatDiagnostic(warning)}");
-                }
-                Console.WriteLine();
+                RenderDiagnosticsFromFiles(projectWarnings, Console.Out);
             }
 
             // Check for errors
@@ -781,11 +776,7 @@ class Program
             {
                 Console.Error.WriteLine("Build FAILED.");
                 Console.Error.WriteLine();
-                Console.Error.WriteLine("Errors:");
-                foreach (var error in result.Diagnostics.GetErrors())
-                {
-                    Console.Error.WriteLine($"  {FormatDiagnostic(error)}");
-                }
+                RenderDiagnosticsFromFiles(result.Diagnostics.GetErrors(), Console.Error);
                 Environment.Exit(1);
             }
 
@@ -935,49 +926,40 @@ class Program
     }
 
     /// <summary>
-    /// Format a diagnostic for CLI output (simple single-line format).
-    /// Format: file.spy(3,5): error SHP0201: Undefined variable 'x'
+    /// Render diagnostics loading source text from each diagnostic's file path.
+    /// Used for multi-file compilation results where a single SourceText is not available.
     /// </summary>
-    static string FormatDiagnostic(CompilerDiagnostic diagnostic)
+    static void RenderDiagnosticsFromFiles(IEnumerable<CompilerDiagnostic> diagnostics, TextWriter writer)
     {
-        var parts = new List<string>();
+        var sourceCache = new Dictionary<string, SourceText?>();
 
-        // File and location
-        if (!string.IsNullOrEmpty(diagnostic.FilePath))
+        foreach (var diagnostic in diagnostics)
         {
-            var file = Path.GetFileName(diagnostic.FilePath);
-            if (diagnostic.Line.HasValue && diagnostic.Column.HasValue)
-                parts.Add($"{file}({diagnostic.Line},{diagnostic.Column})");
-            else if (diagnostic.Line.HasValue)
-                parts.Add($"{file}({diagnostic.Line})");
-            else
-                parts.Add(file);
+            SourceText? sourceText = null;
+
+            if (!string.IsNullOrEmpty(diagnostic.FilePath))
+            {
+                if (!sourceCache.TryGetValue(diagnostic.FilePath, out sourceText))
+                {
+                    try
+                    {
+                        if (File.Exists(diagnostic.FilePath))
+                        {
+                            var content = File.ReadAllText(diagnostic.FilePath);
+                            sourceText = new SourceText(content, diagnostic.FilePath);
+                        }
+                    }
+                    catch
+                    {
+                        // If we can't read the file, render without source context
+                    }
+                    sourceCache[diagnostic.FilePath] = sourceText;
+                }
+            }
+
+            RenderDiagnostic(diagnostic, sourceText, writer);
+            writer.WriteLine();
         }
-        else if (diagnostic.Line.HasValue)
-        {
-            if (diagnostic.Column.HasValue)
-                parts.Add($"({diagnostic.Line},{diagnostic.Column})");
-            else
-                parts.Add($"({diagnostic.Line})");
-        }
-
-        // Severity
-        var severity = diagnostic.Severity switch
-        {
-            CompilerDiagnosticSeverity.Error => "error",
-            CompilerDiagnosticSeverity.Warning => "warning",
-            CompilerDiagnosticSeverity.Info => "info",
-            CompilerDiagnosticSeverity.Hint => "hint",
-            _ => "diagnostic"
-        };
-
-        // Code and message
-        if (!string.IsNullOrEmpty(diagnostic.Code))
-            parts.Add($"{severity} {diagnostic.Code}: {diagnostic.Message}");
-        else
-            parts.Add($"{severity}: {diagnostic.Message}");
-
-        return string.Join(": ", parts);
     }
 
     static string FormatBytes(long bytes)
@@ -1163,10 +1145,8 @@ class Program
             if (!assemblyResult.Success)
             {
                 Console.Error.WriteLine("Assembly compilation failed:");
-                foreach (var error in assemblyResult.Diagnostics.GetErrors())
-                {
-                    Console.Error.WriteLine($"  {FormatDiagnostic(error)}");
-                }
+                Console.Error.WriteLine();
+                RenderDiagnostics(assemblyResult.Diagnostics.GetErrors(), null, Console.Error);
                 Environment.Exit(1);
             }
 
@@ -1174,12 +1154,7 @@ class Program
             var assemblyWarnings = assemblyResult.Diagnostics.GetWarnings();
             if (assemblyWarnings.Count > 0)
             {
-                Console.WriteLine("Warnings:");
-                foreach (var warning in assemblyWarnings)
-                {
-                    Console.WriteLine($"  {FormatDiagnostic(warning)}");
-                }
-                Console.WriteLine();
+                RenderDiagnostics(assemblyWarnings, null, Console.Out);
             }
 
             // Success
