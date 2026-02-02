@@ -297,6 +297,8 @@ importResolver.ResolveAllImports(module, symbolTable, currentDir);
 - [x] Update `Compiler.Compile()` to create `SourceText` from the source string and pass it down
 - [x] Store `SourceText` in `CompilationResult` for downstream use
 - [x] Verify all tests pass
+- [x] Thread `SourceText` to Lexer in `ProjectCompiler.ParseAllFiles()` (was using raw string constructor)
+- [x] Thread `SourceText` to Lexer in CLI emit commands (4 locations were creating SourceText but passing raw string)
 
 ### 6.2: Enrich `CompilationResult`
 
@@ -308,6 +310,7 @@ importResolver.ResolveAllImports(module, symbolTable, currentDir);
 - [x] Add `SourceText? SourceText` to `CompilationResult`
 - [x] Populate these fields in `Compiler.Compile()`
 - [x] Consider adding `ImportResolver? ImportResolver` for access to resolved module info
+- [x] Preserve artifacts in catch-all exception handlers (OperationCanceledException, generic Exception)
 
 ### 6.3: Add Fuzz Testing Harness
 
