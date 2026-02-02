@@ -359,7 +359,7 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 ## Tier 3: Usability & Ergonomics — COMPLETE
 
-> **Status:** All 6 items (3.1–3.6) implemented. Bugs found and fixed during verification: `GenerateCSharpForModule` missing `SemanticBinding` for imported modules (commit `edc8d610`), `DiagnosticBag` storing a shared reference to `_suppressedWarnings` instead of a defensive copy (commit `6c7ac0e3`).
+> **Status:** All 6 items (3.1–3.6) implemented. Bugs found and fixed during verification: `GenerateCSharpForModule` missing `SemanticBinding` for imported modules (commit `edc8d610`), `DiagnosticBag` storing a shared reference to `_suppressedWarnings` instead of a defensive copy (commit `6c7ac0e3`), `ResolveImport` index mismatch causing wrong module-to-name mapping on partial failures in multi-import statements (commit `cd736a59`).
 
 **Priority:** Address for real project usage. These are the features that make the compiler feel "production ready" to users.
 
@@ -475,6 +475,8 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 ---
 
 ### 3.6 Semantic Error Recovery Across Phases — COMPLETE
+
+> **Bug fix during verification:** `ResolveImport` returned a sparse list on partial failures, causing index misalignment between import names and resolved modules. For `import a, b` where 'a' fails and 'b' succeeds, module b was incorrectly registered under name 'a'. Fixed by returning `List<ModuleInfo?>` with positional alignment (commit `cd736a59`).
 
 **What:** The TypeChecker throws `SemanticAnalysisException` on structural errors (e.g., an unresolvable import), which is caught in `Compiler.cs:268` and aborts the entire semantic phase. A single bad import blocks all type error reporting for every function in the file.
 
