@@ -1,1 +1,2 @@
-Codegen for IComparable comparison operators needs CompareTo() call generation (separate feature)
+See: #117 (generate CompareTo() calls for IComparable comparison operators)
+Codegen for IComparable comparison operators needs CompareTo() call generation (separate feature).
