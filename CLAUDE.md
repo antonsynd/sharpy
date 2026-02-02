@@ -47,6 +47,7 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 4. **Axiom precedence**: .NET > Type Safety > Python Syntax
 5. **C# 9.0 target** — no global usings, file-scoped namespaces, or record structs
 6. **Always verify Python behavior first** — run `python3 -c "..."` before implementing Python semantics
+7. **Language spec is authoritative** — check `docs/language_specification/` before implementing; change implementation to match spec, not the other way around
 
 ## Semantic Analysis Pipeline
 
@@ -58,7 +59,7 @@ The semantic phase runs multiple ordered passes. Understanding this is critical 
 
 **Pass 2 — Type Resolution** (`TypeResolver.cs`): Resolves type annotations on declarations to concrete types.
 
-**Pass 3 — Type Checking** (`TypeChecker.cs`, split into 4 partial files): Traverses AST, infers types, records them in `SemanticInfo`. Then runs `ValidationPipeline`.
+**Pass 3 — Type Checking** (`TypeChecker.cs`, split into 5 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Statements.cs`, `.Utilities.cs`): Traverses AST, infers types, records them in `SemanticInfo`. Then runs `ValidationPipeline`. Type narrowing (e.g., `if x is not None:` narrows `T?` → `T`) is tracked via `_narrowedTypes` dictionary.
 
 **Materialization Points**: After each major phase, computed data is frozen from `SemanticBinding` onto `Symbol` properties:
 1. After import resolution → `MaterializeInheritance()` (BaseType, Interfaces)
@@ -80,6 +81,28 @@ Symbol (abstract)
 ├── FunctionSymbol   — Parameters, ReturnType, IsStatic/Abstract/Virtual/Override
 ├── TypeSymbol       — TypeKind, BaseType, Interfaces, Fields, Methods
 └── ModuleSymbol     — FilePath
+```
+
+### SemanticType Hierarchy
+
+All types are immutable records inheriting from `SemanticType` (`Semantic/SemanticType.cs`):
+
+```
+SemanticType (abstract)
+├── BuiltinType      — Int, Long, Float, Double, Float32, Bool, Str (singletons)
+├── GenericType       — list[int], dict[str, int] (Name + TypeArguments)
+├── UserDefinedType   — Classes, structs, interfaces (Name + Symbol)
+├── NullableType      — T? for .NET interop (UnderlyingType)
+├── OptionalType      — T? as safe tagged union (UnderlyingType)
+├── FunctionType      — Lambdas/delegates (ParameterTypes + ReturnType)
+├── TupleType         — tuple[int, str] (ElementTypes)
+├── ModuleType        — Imported modules as namespaces
+├── TypeParameterType — Generic type parameters (T in class Box[T])
+├── ResultType        — T !E tagged union (OkType + ErrorType)
+├── UnionType         — Tagged unions (v0.2.x placeholder)
+├── TaskType          — Async Task types (v0.2.x placeholder)
+├── VoidType          — None return type
+└── UnknownType       — Error recovery
 ```
 
 ### ValidationPipeline
@@ -106,6 +129,29 @@ The `RoslynEmitter` is split into 8 partial classes (~220KB total): `RoslynEmitt
 **Type mappings** (`TypeMapper.cs`): `int` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `global::Sharpy.Core.List<T>`, `dict[K,V]` → `global::Sharpy.Core.Dict<K,V>`
 
 **Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__init__` → constructor, `__add__` → `operator+`, `__str__` → `ToString()`
+
+## Design Anti-Patterns
+
+Avoid these patterns (from `.github/agents/design-philosophy-guardian.agent.md`):
+
+| Pattern | Problem |
+|---------|---------|
+| "Add X because Python has it" | Feature creep — each feature must earn its complexity |
+| Runtime type checking | Should be compile-time |
+| Wrapper types for Pythonic API | Use extension methods instead |
+| Multiple ways to do same thing | Consistency issue |
+| Magic behavior | Unpredictable; prefer explicit |
+
+## Axiom Conflict Resolutions
+
+When the three axioms conflict, precedence is: **Axiom 1 (.NET) > Axiom 3 (Types) > Axiom 2 (Python)**. If a conflict can be resolved at zero cost, satisfy all axioms. Common resolved conflicts:
+
+| Conflict | Resolution |
+|----------|------------|
+| Integer division (`//`) | Axiom 1 wins — provide `math.floor_div()` helper |
+| String indexing (code points vs UTF-16) | Axiom 1 wins — use UTF-16 with helper methods |
+| `global`/`nonlocal` keywords | Axiom 1 wins — C# scoping rules apply |
+| Duck typing | Axiom 1+3 win — use explicit interfaces |
 
 ## Feature Implementation Order
 
