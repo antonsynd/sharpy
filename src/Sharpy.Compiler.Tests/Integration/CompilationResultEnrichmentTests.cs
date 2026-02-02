@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Threading;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Lexer;
 using Xunit;
@@ -177,5 +178,47 @@ def main():
         Assert.NotNull(result.ImportResolver);
         // With no imports, LoadedSpyModules should be empty
         Assert.Empty(result.ImportResolver!.LoadedSpyModules);
+    }
+
+    [Fact]
+    public void CancelledCompilation_StillPopulatesSourceTextAndTokens()
+    {
+        // A pre-cancelled token causes OperationCanceledException after lexing
+        // (first ThrowIfCancellationRequested is after lexer phase)
+        var code = @"
+def main():
+    x: int = 42
+";
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy", cts.Token);
+
+        Assert.False(result.Success);
+        // SourceText and Tokens should still be available since they're created before
+        // the first cancellation check point
+        Assert.NotNull(result.SourceText);
+        Assert.Equal(code, result.SourceText!.ToString());
+        Assert.NotNull(result.Tokens);
+        Assert.True(result.Tokens!.Count > 0);
+    }
+
+    [Fact]
+    public void CancelledCompilation_HasCancellationDiagnostic()
+    {
+        var code = @"
+def main():
+    x: int = 42
+";
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy", cts.Token);
+
+        Assert.False(result.Success);
+        var errors = result.Diagnostics.GetErrors().ToList();
+        Assert.Contains(errors, d => d.Message.Contains("cancelled"));
     }
 }

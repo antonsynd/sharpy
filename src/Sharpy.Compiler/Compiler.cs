@@ -85,14 +85,23 @@ public class Compiler
         var metrics = new CompilationMetrics(fileName: filePath);
         var diagnostics = new DiagnosticBag();
 
+        // Declare artifact variables outside the try block so they are accessible
+        // in catch handlers. This ensures cancelled or crashed compilations still
+        // return whatever artifacts were created before the failure point.
+        SourceText? sourceText = null;
+        List<Lexer.Token>? tokens = null;
+        Module? module = null;
+        SemanticBinding? semanticBinding = null;
+        ImportResolver? importResolver = null;
+
         try
         {
             // Phase 1: Lexical Analysis
             _logger.LogInfo("Phase 1: Lexical Analysis");
             metrics.StartPhase("Lexical Analysis");
-            var sourceText = new SourceText(sourceCode, filePath);
+            sourceText = new SourceText(sourceCode, filePath);
             var lexer = new Lexer.Lexer(sourceText, _logger);
-            var tokens = lexer.TokenizeAll();
+            tokens = lexer.TokenizeAll();
             metrics.EndPhase();
 
             // Assertion: Lexer must produce at least an EOF token
@@ -118,7 +127,7 @@ public class Compiler
             _logger.LogInfo("Phase 2: Syntax Analysis");
             metrics.StartPhase("Syntax Analysis");
             var parser = new Parser.Parser(tokens, _logger);
-            var module = parser.ParseModule();
+            module = parser.ParseModule();
             metrics.EndPhase();
 
             // Check if parser collected any errors into DiagnosticBag
@@ -148,7 +157,7 @@ public class Compiler
             var builtinRegistry = new BuiltinRegistry();
             var symbolTable = new SymbolTable(builtinRegistry);
             var semanticInfo = new SemanticInfo();
-            var semanticBinding = new SemanticBinding();
+            semanticBinding = new SemanticBinding();
 
             // Check for module registry errors
             if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
@@ -199,7 +208,7 @@ public class Compiler
             var moduleSearchPaths = _moduleRegistry?.GetModulePaths()?.ToArray() ?? Array.Empty<string>();
             _logger.LogDebug($"Module search paths: [{string.Join(", ", moduleSearchPaths)}]");
             var moduleResolver = new ModuleResolver(_logger, moduleSearchPaths);
-            var importResolver = new ImportResolver(_logger, _moduleRegistry, moduleResolver);
+            importResolver = new ImportResolver(_logger, _moduleRegistry, moduleResolver);
             importResolver.SetSemanticBinding(semanticBinding);
             importResolver.SetCurrentModule(filePath);
 
@@ -407,7 +416,12 @@ public class Compiler
             {
                 Success = false,
                 Diagnostics = diagnostics,
-                Metrics = metrics
+                Metrics = metrics,
+                SourceText = sourceText,
+                Tokens = tokens,
+                Module = module,
+                SemanticBinding = semanticBinding,
+                ImportResolver = importResolver
             };
         }
         catch (Exception ex)
@@ -418,7 +432,12 @@ public class Compiler
             {
                 Success = false,
                 Diagnostics = diagnostics,
-                Metrics = metrics
+                Metrics = metrics,
+                SourceText = sourceText,
+                Tokens = tokens,
+                Module = module,
+                SemanticBinding = semanticBinding,
+                ImportResolver = importResolver
             };
         }
     }
