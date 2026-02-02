@@ -89,7 +89,11 @@ public class DiagnosticBag
     public DiagnosticBag(bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null)
     {
         _warningsAsErrors = warningsAsErrors;
-        _suppressedWarnings = suppressedWarnings ?? new HashSet<string>();
+        // Defensive copy: DiagnosticBag claims thread-safety via lock(_lock),
+        // so the suppressed set must not be shared with callers.
+        _suppressedWarnings = suppressedWarnings != null
+            ? new HashSet<string>(suppressedWarnings, StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
     public void Add(CompilerDiagnostic diagnostic)
