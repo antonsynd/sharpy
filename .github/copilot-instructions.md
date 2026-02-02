@@ -2,7 +2,7 @@
 
 Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files compile to C# via Roslyn.
 
-> **Specialized Guidance:** See [agents/](agents/) for domain experts and [instructions/](instructions/) for component guides.
+> **See also:** [CLAUDE.md](../CLAUDE.md) for detailed architecture, [agents/](agents/) for domain experts.
 
 ## Architecture
 
@@ -14,15 +14,24 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 | Stage | Key Files | Purpose |
 |-------|-----------|---------|
 | Lexer | `Lexer/Lexer.cs`, `Token.cs` | Tokenization, indentation tracking |
-| Parser | `Parser/Parser.cs`, `Parser/Ast/*.cs` | Recursive descent → immutable AST records |
+| Parser | `Parser/Parser*.cs` (6 partials), `Ast/*.cs` | Recursive descent → immutable AST records |
 | Semantic | `Semantic/{NameResolver,TypeResolver,TypeChecker}.cs` | Multi-pass: declarations → inheritance → types |
 | Validation | `Semantic/Validation/ValidationPipeline.cs` | Pluggable validators (operators, protocols, access) |
-| CodeGen | `CodeGen/RoslynEmitter*.cs`, `TypeMapper.cs`, `NameMangler.cs` | Roslyn `SyntaxFactory` → C# AST |
+| CodeGen | `CodeGen/RoslynEmitter*.cs` (8 partials), `TypeMapper.cs` | Roslyn `SyntaxFactory` → C# AST |
+
+### Semantic Analysis Pipeline (Critical)
+Understanding the pass order is essential for compiler work:
+1. **NameResolver.ResolveDeclarations()** — Build symbol table
+2. **NameResolver.ResolveInheritance()** — Resolve base classes
+3. **ImportResolver** — Load imported modules, detect circular imports
+4. **TypeResolver** — Resolve type annotations to concrete types
+5. **TypeChecker** (5 partials) — Infer types, run ValidationPipeline
+
+**Key data structures**: `SemanticInfo` (AST node → type/symbol), `SymbolTable` (global scope), `SemanticBinding` (computed data frozen at phase boundaries)
 
 ### Standard Library (`src/Sharpy.Core/`)
-- **Partial class pattern**: `Partial.{Type}/` directories (e.g., `Partial.List/List.ISequence.cs`)
+- **Partial class pattern**: `Partial.{Type}/` directories (e.g., `Partial.List/`)
 - **Builtins**: `partial class Exports` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
-- **Operator protocols**: `I*.cs` interfaces (`IAddable`, `IEquatable`, etc.)
 
 ## Essential Commands
 
@@ -33,6 +42,7 @@ dotnet format whitespace                             # Format before committing
 dotnet run --project src/Sharpy.Cli -- run file.spy # Compile and execute
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
 dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser
+dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Debug lexer
 ```
 
 **Filtered tests:**
@@ -52,17 +62,18 @@ python3 -c "print([1,2,3][-1])"  # Verify expected behavior
 2. **RoslynEmitter uses SyntaxFactory exclusively** — no string templating
 3. **Immutable AST** — annotations go in `SemanticInfo`, not AST nodes
 4. **Axiom precedence**: .NET > Type Safety > Python Syntax
-5. **C# 9.0 target** — no global usings, file-scoped namespaces, or record structs
+5. **C# targets**: `Sharpy.Core` → C# 9.0 (`netstandard2.0;2.1`); Compiler/CLI → `net10.0` with `LangVersion latest`
+6. **Language spec is authoritative** — check `docs/language_specification/` before implementing
+
+## The Three Axioms
+
+| Priority | Axiom | Principle |
+|----------|-------|-----------|
+| Highest | **.NET** | Compiles to valid C# for .NET CLR |
+| Medium | **Types** | Explicit static typing, non-nullable by default |
+| Yields | **Python** | Python 3 syntax and idioms |
 
 ## Testing
-
-### Integration Tests
-Inherit `IntegrationTestBase`, use `CompileAndExecute(source)`:
-```csharp
-var result = CompileAndExecute("print(1 + 2)");
-Assert.True(result.Success);
-Assert.Equal("3\n", result.StandardOutput);
-```
 
 ### File-Based Tests (`Integration/TestFixtures/`)
 ```
@@ -72,34 +83,36 @@ TestFixtures/
 ├── errors/undefined_var.spy    # Error case
 └── errors/undefined_var.error  # Substring in error message
 ```
-Add `.spy` + `.expected` (or `.error`) pairs—auto-discovered. Skip with `.skip` file.
+Add `.spy` + `.expected` (or `.error`) pairs—auto-discovered. Skip with `.skip` file. Warnings: `.warning` file.
+
+### Programmatic Tests
+Inherit `IntegrationTestBase`, use `CompileAndExecute(source)`:
+```csharp
+var result = CompileAndExecute("print(1 + 2)");
+Assert.True(result.Success);
+Assert.Equal("3\n", result.StandardOutput);
+```
 
 ## Code Patterns
-
-**AST nodes** are immutable records:
-```csharp
-public record FunctionDef : Statement { public string Name { get; init; } ... }
-```
 
 **RoslynEmitter** uses SyntaxFactory exclusively:
 ```csharp
 // ✅ Correct
 ReturnStatement(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(42)))
-// ❌ Wrong
+// ❌ Wrong — no string templating
 $"return {value};"
 ```
 
-**Type mappings** (`TypeMapper.cs`): `list[T]` → `global::Sharpy.Core.List<T>`
+**Type mappings** (`CodeGen/TypeMapper.cs`): `int` → `long`, `str` → `string`, `list[T]` → `global::Sharpy.Core.List<T>`
 
-**Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__str__` → `ToString()`
+**Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__init__` → constructor, `__str__` → `ToString()`
 
-## The Three Axioms
+## Feature Implementation Order
 
-| Axiom | Principle | Priority |
-|-------|-----------|----------|
-| **1 (.NET)** | Sharpy compiles to C# 9.0 for the .NET CLR | Highest |
-| **3 (Types)** | Explicit static typing, non-nullable by default | Medium |
-| **2 (Python)** | Sharpy uses Python 3 syntax and idioms | Yields |
+For new language features, touch components in dependency order:
+```
+Lexer → Parser → Semantic → Validation → CodeGen → Tests
+```
 
 ## Project Layout
 
@@ -109,12 +122,10 @@ $"return {value};"
 | `src/Sharpy.Core/` | Runtime stdlib (collections, builtins) |
 | `src/Sharpy.Cli/` | CLI entry point (`System.CommandLine`) |
 | `src/*.Tests/` | Test projects |
-| `docs/language_specification/` | Authoritative language spec |
+| `docs/language_specification/` | **Authoritative** language spec |
 | `snippets/*.spy` | Quick test programs |
-| `samples/` | Example projects |
 | `.github/agents/` | Domain-specific agent guidance |
-| `.github/instructions/` | Component contribution guides |
 
 ## CI/CD
 
-`.github/workflows/`: `dotnet9.yml` (tests on .NET 9), `dotnet10.yml` (tests on .NET 10).
+`.github/workflows/dotnet10.yml` runs tests on .NET 10. An `.editorconfig` enforces formatting.
