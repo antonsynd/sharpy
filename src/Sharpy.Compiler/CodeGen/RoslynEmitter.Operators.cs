@@ -382,9 +382,21 @@ public partial class RoslynEmitter
     /// <summary>
     /// Checks if an expression evaluates to a floating-point type.
     /// Used to determine floor division semantics.
+    /// Consults SemanticInfo for resolved types when available (variables, function calls, etc.).
+    /// Falls back to AST-based heuristic for literals and compound expressions.
     /// </summary>
     private bool IsFloatExpression(Expression expr)
     {
+        // First, try to resolve via SemanticInfo (handles variables, function calls, etc.)
+        var semanticType = GetExpressionSemanticType(expr);
+        if (semanticType != null)
+        {
+            return semanticType == SemanticType.Float
+                || semanticType == SemanticType.Double
+                || semanticType == SemanticType.Float32;
+        }
+
+        // Fallback to AST-based heuristic for cases where SemanticInfo is not available
         return expr switch
         {
             FloatLiteral => true,
@@ -401,8 +413,6 @@ public partial class RoslynEmitter
                 _ => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right)
             },
             Parenthesized paren => IsFloatExpression(paren.Expression),
-            // For other expressions (variables, function calls, etc.), assume integer
-            // A full type system would resolve these properly
             _ => false
         };
     }
