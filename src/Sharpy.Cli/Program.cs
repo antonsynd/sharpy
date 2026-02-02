@@ -708,6 +708,22 @@ class Program
             // Write C# code to output file
             File.WriteAllText(outputFile.FullName, csharpCode);
             Console.WriteLine($"Generated C# code written to: {outputFile.FullName}");
+
+            // Write imported modules' generated C# alongside the entry file
+            var outputDir = outputFile.DirectoryName ?? ".";
+            foreach (var (modulePath, moduleCode) in result.GeneratedCSharpFiles)
+            {
+                // Skip the entry file (already written above)
+                if (string.Equals(Path.GetFullPath(modulePath), Path.GetFullPath(inputFile.FullName),
+                    StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var moduleFileName = Path.GetFileNameWithoutExtension(modulePath) + ".cs";
+                var moduleOutputPath = Path.Combine(outputDir, moduleFileName);
+                var cleanModuleCode = StripLineDirectives(moduleCode);
+                File.WriteAllText(moduleOutputPath, cleanModuleCode);
+                Console.WriteLine($"Generated C# code written to: {moduleOutputPath}");
+            }
         }
         catch (Exception ex)
         {

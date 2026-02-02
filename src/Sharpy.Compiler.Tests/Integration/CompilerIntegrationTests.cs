@@ -688,4 +688,69 @@ def main():
     }
 
     #endregion
+
+    #region Emit CSharp with Imports (3.4) Tests
+
+    [Fact]
+    public void Compiler_EmitCSharp_IncludesImportedModuleCode()
+    {
+        // When a file imports from another .spy module, the compilation result
+        // should include generated C# for both the entry file and the imported module
+        // in GeneratedCSharpFiles.
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // Create an imported module
+            File.WriteAllText(Path.Combine(tempDir, "math_helpers.spy"), @"
+def double_it(x: int) -> int:
+    return x * 2
+");
+
+            // Create entry file that imports from the module
+            var mainPath = Path.Combine(tempDir, "main.spy");
+            File.WriteAllText(mainPath, @"
+from math_helpers import double_it
+
+def main():
+    print(double_it(21))
+");
+
+            var options = new CompilerOptions
+            {
+                References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+                ModulePaths = new[] { tempDir }
+            };
+            var compiler = new Compiler(options);
+            var result = compiler.Compile(File.ReadAllText(mainPath), mainPath);
+
+            Assert.True(result.Success,
+                $"Compilation failed: {string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+
+            // GeneratedCSharpCode should be the entry file
+            Assert.NotNull(result.GeneratedCSharpCode);
+            Assert.NotEmpty(result.GeneratedCSharpCode);
+
+            // GeneratedCSharpFiles should contain both the entry file and the imported module
+            Assert.True(result.GeneratedCSharpFiles.Count >= 2,
+                $"Expected at least 2 generated files (entry + import), got {result.GeneratedCSharpFiles.Count}: " +
+                string.Join(", ", result.GeneratedCSharpFiles.Keys.Select(Path.GetFileName)));
+
+            // The imported module should have generated C#
+            var importedModuleEntry = result.GeneratedCSharpFiles
+                .FirstOrDefault(kvp => Path.GetFileName(kvp.Key).Contains("math_helpers"));
+            Assert.False(string.IsNullOrEmpty(importedModuleEntry.Value),
+                "Imported module 'math_helpers' should have generated C# code");
+
+            // The generated C# for the imported module should contain the function
+            Assert.Contains("DoubleIt", importedModuleEntry.Value); // snake_case -> PascalCase
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    #endregion
 }
