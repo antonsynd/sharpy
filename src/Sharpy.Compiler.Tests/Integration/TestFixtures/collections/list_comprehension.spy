@@ -1,0 +1,6 @@
+# Test: basic list comprehension
+def main():
+    result: list[int] = [x * 2 for x in range(5)]
+    for item in result:
+        print(item)
+    print(len(result))

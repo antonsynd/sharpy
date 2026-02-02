@@ -1,0 +1,5 @@
+# Test: basic set comprehension (deduplicates elements)
+def main():
+    items: list[int] = [1, 2, 2, 3, 3, 3]
+    result: set[int] = {x for x in items}
+    print(len(result))

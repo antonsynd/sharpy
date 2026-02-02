@@ -1,0 +1,9 @@
+# Test: dict comprehension with single variable
+def main():
+    result: dict[int, int] = {i: i * 2 for i in range(5)}
+    print(len(result))
+    print(result[0])
+    print(result[1])
+    print(result[2])
+    print(result[3])
+    print(result[4])
