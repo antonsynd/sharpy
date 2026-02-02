@@ -102,14 +102,6 @@ public class NameResolver
                 ResolveConstantDeclaration(varDecl);
                 break;
 
-            case ImportStatement import:
-                ResolveImport(import);
-                break;
-
-            case FromImportStatement fromImport:
-                ResolveFromImport(fromImport);
-                break;
-
             case TypeAlias typeAlias:
                 ResolveTypeAliasDeclaration(typeAlias);
                 break;
@@ -564,20 +556,6 @@ public class NameResolver
         };
 
         _symbolTable.Define(aliasSymbol);
-    }
-
-    private void ResolveImport(ImportStatement import)
-    {
-        _logger.LogDebug($"Resolving import: {string.Join(", ", import.Names.Select(n => n.Name))}");
-
-        // See: #102 (stale stub - ImportResolver handles this now)
-    }
-
-    private void ResolveFromImport(FromImportStatement fromImport)
-    {
-        _logger.LogDebug($"Resolving from-import: from {fromImport.Module} import ...");
-
-        // See: #102 (stale stub - ImportResolver handles this now)
     }
 
     private AccessLevel DetermineAccessLevel(string name)
