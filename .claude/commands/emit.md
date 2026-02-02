@@ -17,6 +17,9 @@ dotnet run --project src/Sharpy.Cli -- emit ast $ARGUMENTS
 
 # Emit lexer tokens (for debugging lexer)
 dotnet run --project src/Sharpy.Cli -- emit tokens $ARGUMENTS
+
+# Validate lexing and parsing only (no semantic analysis or codegen)
+dotnet run --project src/Sharpy.Cli -- emit parse $ARGUMENTS
 ```
 
 ## Use Cases
@@ -27,6 +30,7 @@ dotnet run --project src/Sharpy.Cli -- emit tokens $ARGUMENTS
 4. **Validate dunder methods** - Verify `__str__` → `ToString()` mappings
 5. **Debug parser issues** - Inspect AST structure with `emit ast`
 6. **Debug lexer issues** - Inspect token stream with `emit tokens`
+7. **Validate syntax only** - Check lexing and parsing without full compilation via `emit parse`
 
 ## Key Mappings
 

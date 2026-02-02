@@ -47,7 +47,7 @@ Each command is a Markdown file that:
 
 ## Related Resources
 
-- **CLAUDE.md**: `CLAUDE.md` (quick reference for Claude Code)
+- **Project instructions**: `CLAUDE.md` (quick reference for Claude Code)
 - **Specialized agents**: `.github/agents/` (20 domain-specific agents)
 - **Agent registry**: `.github/agents.md` (agent quick reference)
 - **Contribution guides**: `.github/instructions/` (per-component guides)
