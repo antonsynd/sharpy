@@ -15,8 +15,25 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace Sharpy.Compiler;
 
 /// <summary>
-/// Main compiler driver orchestrating the compilation pipeline
+/// Main compiler driver orchestrating the compilation pipeline.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This class is the primary public entry point for all compilation operations.
+/// Use <see cref="Compile(string, string)"/> for single-file compilation and
+/// <see cref="CompileProject(ProjectConfig)"/> for multi-file project compilation.
+/// Both return comprehensive result objects (<see cref="CompilationResult"/> and
+/// <see cref="ProjectCompilationResult"/>) that expose all intermediate artifacts
+/// (tokens, AST, semantic info, generated C#, diagnostics) for tooling consumption.
+/// </para>
+/// <para>
+/// Internal compiler components (<see cref="Lexer.Lexer"/>, <see cref="Parser.Parser"/>,
+/// <see cref="Semantic.NameResolver"/>, <see cref="Semantic.TypeChecker"/>,
+/// <see cref="CodeGen.RoslynEmitter"/>, etc.) should not be used directly by external
+/// consumers. The only exception is diagnostic-only tools (e.g., <c>emit tokens</c>,
+/// <c>emit ast</c>) that intentionally use only the lexer or parser stages.
+/// </para>
+/// </remarks>
 public class Compiler
 {
     private readonly ICompilerLogger _logger;
