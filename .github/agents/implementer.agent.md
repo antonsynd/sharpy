@@ -11,9 +11,10 @@ Full-stack implementation agent for Sharpy compiler and standard library.
 
 1. **Understand** — Parse requirements, identify affected components
 2. **Research** — Search codebase for similar patterns, check `docs/language_specification/`
-3. **Implement** — Follow component order: Lexer → Parser → Semantic → CodeGen
-4. **Test** — Run tests, add unit tests + `.spy`/`.expected` integration tests
-5. **PR** — Branch `claude/<action>-<description>`, commit, push
+3. **Plan** — Identify which components need changes (Lexer→Parser→Semantic→CodeGen)
+4. **Implement** — Follow component order, make incremental changes
+5. **Test** — Run tests, add unit tests + `.spy`/`.expected` integration tests
+6. **PR** — Branch `claude/<action>-<description>`, commit, push
 
 ## Critical Rules
 
@@ -23,6 +24,7 @@ Full-stack implementation agent for Sharpy compiler and standard library.
 - **Immutable AST** — annotations in `SemanticInfo`, not AST nodes
 - **SyntaxFactory only** — no string templating in CodeGen
 - **C# 9.0 for Sharpy.Core** — no file-scoped namespaces, global usings, record structs
+- **C# latest for Compiler/CLI** — `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0`
 
 ## Feature Implementation Order
 

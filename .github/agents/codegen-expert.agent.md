@@ -27,6 +27,13 @@ Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type 
 
 **Does NOT modify:** Lexer, Parser, Semantic analysis, or Sharpy.Core
 
+## Debugging Commands
+
+```bash
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C#
+dotnet test --filter "FullyQualifiedName~CodeGen"            # Run codegen tests
+```
+
 ## Core Principle
 
 Sharpy compiles to C# AST via Roslyn, **not** to IL directly. This enables:
@@ -62,7 +69,7 @@ $"public {returnType} MyMethod() {{ {body} }}"
 | `None` | `void` |
 | `T?` | `T?` (nullable) |
 
-**Note:** There's a separate `Discovery/TypeMapper.cs` that maps CLR types back to Sharpy `SemanticType` instances.
+**Note:** There's a separate `Discovery/TypeMapper.cs` that maps CLR types back to Sharpy `SemanticType` instances during import resolution.
 
 ## Name Mangling (`NameMangler.cs`)
 

@@ -64,6 +64,7 @@ All agents follow this priority order when axioms conflict:
 4. **Language spec is authoritative** — check `docs/language_specification/` before implementing
 5. **Follow existing patterns** — search codebase for similar code
 6. Run tests before/after changes
+7. **C# targets**: `Sharpy.Core` uses C# 9.0 (`netstandard2.0;netstandard2.1`); other projects use `net10.0` with `LangVersion latest`
 
 ## Commands
 
@@ -111,3 +112,15 @@ Symbols use **reference equality** (overridden from record default) because prop
 - `SemanticInfo` — Maps AST nodes → types/symbols (uses `ReferenceEqualityComparer`)
 - `SemanticBinding` — Stores computed data separately, materialized at phase boundaries
 - `Symbol.CodeGenInfo` — Precomputed during semantic analysis for emitter use
+
+
+## Testing Quick Reference
+
+| Test Type | Location | Format |
+|-----------|----------|--------|
+| Unit tests | `*Tests/` | xUnit `[Fact]`/`[Theory]` |
+| Integration | `Integration/` | Inherit `IntegrationTestBase` |
+| File-based | `Integration/TestFixtures/` | `.spy` + `.expected` or `.error` |
+| Multi-file | `Integration/TestFixtures/{dir}/` | `main.spy` + siblings + `main.expected` |
+| Warnings | `Integration/TestFixtures/` | `.spy` + `.warning` |
+| Skip | Add `.skip` file | Contains skip reason |

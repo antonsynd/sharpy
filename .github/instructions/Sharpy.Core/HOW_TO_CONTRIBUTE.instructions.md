@@ -2,6 +2,8 @@
 
 Standard library with Pythonic APIs for .NET. Location: `src/Sharpy.Core/`
 
+**Target:** `netstandard2.0;netstandard2.1` with C# 9.0 (LangVersion 9.0) — no file-scoped namespaces, global usings, or record structs.
+
 ## Directory Structure
 
 ```
@@ -14,6 +16,8 @@ Sharpy.Core/
 ├── Enumerate.cs        # enumerate() builtin
 ├── Filter.cs, Map.cs   # Collection operations
 ├── I*.cs               # Operator protocols (IAddable, IEquatable, etc.)
+├── IndexError.cs       # Python-style exceptions
+├── KeyError.cs
 └── *.cs (root)         # Builtins via partial class Exports
 ```
 
@@ -22,6 +26,7 @@ Sharpy.Core/
 1. **Wrap .NET internally, expose Python API** — `list.append()` not `list.Add()`
 2. **Match Python semantics** — Negative indices, slicing, same exceptions
 3. **Prefer .NET when zero-cost abstraction impossible** — Axiom 1 wins
+4. **Python exception names** — `IndexError`, `KeyError`, not `IndexOutOfRangeException`
 
 ## Partial Class Pattern
 
@@ -69,6 +74,7 @@ public T this[int index]
    ```bash
    python3 -c "print([1,2,3].pop())"     # Expected: 3
    python3 -c "print([1,2,3][-1])"       # Expected: 3
+   python3 -c "print(list(range(5)))"    # Expected: [0, 1, 2, 3, 4]
    ```
 2. **Implement matching behavior in C#**
 3. **Add tests** in `Sharpy.Core.Tests/`

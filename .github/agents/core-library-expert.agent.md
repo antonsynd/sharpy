@@ -8,12 +8,15 @@ infer: false
 
 Specializes in the Sharpy standard library (`Sharpy.Core`). Implements Pythonic APIs wrapping .NET types.
 
+**Target:** `netstandard2.0;netstandard2.1` with C# 9.0 — no file-scoped namespaces, global usings, or record structs.
+
 ## Scope
 
 **Owns:** `src/Sharpy.Core/`
 - `Partial.{Type}/` — Collection types split by interface
 - `I*.cs` — Operator protocol interfaces
 - `*.cs` (root) — Builtin functions
+- `IndexError.cs`, `KeyError.cs` — Python-style exceptions
 
 **Does NOT modify:** Compiler code (Lexer, Parser, Semantic, CodeGen)
 
@@ -22,6 +25,7 @@ Specializes in the Sharpy standard library (`Sharpy.Core`). Implements Pythonic 
 1. **Wrap .NET internally, expose Python API** — `list.append()` not `list.Add()`
 2. **Match Python semantics** — Negative indices, slicing, same exceptions
 3. **Axiom 1 wins** — Prefer .NET when zero-cost abstraction impossible
+4. **Python exception names** — `IndexError`, `KeyError`, not `IndexOutOfRangeException`
 
 ## Directory Structure
 

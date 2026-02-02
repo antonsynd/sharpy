@@ -85,7 +85,7 @@ TestFixtures/
 
 **Multi-file tests:** A subdirectory with multiple `.spy` files and a `main.spy` entry point, plus `main.expected` or `main.error`.
 
-**Test categories:** `basics/`, `functions/`, `classes/`, `control_flow/`, `errors/`, `imports/`, `generics/`
+**Test categories:** `basics/`, `functions/`, `classes/`, `control_flow/`, `errors/`, `imports/`, `generics/`, `structs/`, `enums/`, `interfaces/`, `warnings/`
 
 ## Critical Rules
 
@@ -95,6 +95,7 @@ TestFixtures/
    [Fact(Skip = "TODO: Implement feature. See issue #42")]
    ```
 3. **Test names describe behavior:** `TestParser_Parses_IfElseStatement`
+4. **Newline sensitivity:** `.expected` files must have exact trailing newlines
 
 ## Adding a File-Based Test
 
@@ -102,6 +103,20 @@ TestFixtures/
 2. Create `my_feature.expected` with exact expected stdout (including trailing newlines)
 3. For error tests: create `my_feature.error` with substring to match
 4. Tests are auto-discovered — no registration needed
+5. Organize by feature: `basics/`, `functions/`, `classes/`, etc.
+
+## Debugging Failed Tests
+
+```bash
+# Run specific test and see output
+dotnet test --filter "DisplayName~my_test_name" --logger "console;verbosity=detailed"
+
+# Debug codegen for a test file
+dotnet run --project src/Sharpy.Cli -- emit csharp path/to/test.spy
+
+# Debug AST
+dotnet run --project src/Sharpy.Cli -- emit ast path/to/test.spy
+```
 
 ```bash
 dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"

@@ -6,15 +6,15 @@ Component-specific guides for the Sharpy codebase. Each guide covers patterns, w
 
 ## Quick Reference
 
-| Working on | Guide |
-|------------|-------|
-| New language feature | [Sharpy.Compiler](./Sharpy.Compiler/HOW_TO_CONTRIBUTE.instructions.md) |
-| Builtin function or collection | [Sharpy.Core](./Sharpy.Core/HOW_TO_CONTRIBUTE.instructions.md) |
-| Compiler tests | [Sharpy.Compiler.Tests](./Sharpy.Compiler.Tests/HOW_TO_CONTRIBUTE.instructions.md) |
-| Library tests | [Sharpy.Core.Tests](./Sharpy.Core.Tests/HOW_TO_CONTRIBUTE.instructions.md) |
-| CLI options | [Sharpy.Cli](./Sharpy.Cli/HOW_TO_CONTRIBUTE.instructions.md) |
-| Example programs | [samples](./samples/HOW_TO_CONTRIBUTE.instructions.md) |
-| VS Code extension | [lsp](./lsp/HOW_TO_CONTRIBUTE.instructions.md) |
+| Working on | Guide | Key Patterns |
+|------------|-------|--------------|
+| New language feature | [Sharpy.Compiler](./Sharpy.Compiler/HOW_TO_CONTRIBUTE.instructions.md) | Lexer→Parser→Semantic→CodeGen flow |
+| Builtin function or collection | [Sharpy.Core](./Sharpy.Core/HOW_TO_CONTRIBUTE.instructions.md) | Partial class pattern, Python naming |
+| Compiler tests | [Sharpy.Compiler.Tests](./Sharpy.Compiler.Tests/HOW_TO_CONTRIBUTE.instructions.md) | File-based tests, `IntegrationTestBase` |
+| Library tests | [Sharpy.Core.Tests](./Sharpy.Core.Tests/HOW_TO_CONTRIBUTE.instructions.md) | Python verification workflow |
+| CLI options | [Sharpy.Cli](./Sharpy.Cli/HOW_TO_CONTRIBUTE.instructions.md) | `System.CommandLine` patterns |
+| Example programs | [samples](./samples/HOW_TO_CONTRIBUTE.instructions.md) | `.spyproj` format |
+| VS Code extension | [lsp](./lsp/HOW_TO_CONTRIBUTE.instructions.md) | LSP architecture (planned) |
 
 ## The Three Axioms (Priority Order)
 
@@ -33,6 +33,7 @@ When axioms conflict: **.NET > Type Safety > Python**
 3. **Verify Python semantics first** — `python3 -c "..."` before implementing
 4. **Follow existing patterns** — search codebase for similar code
 5. **C# 9.0 target for Sharpy.Core** — no file-scoped namespaces, global usings, record structs
+6. **C# latest for Compiler/CLI** — `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0`
 
 ## Feature Implementation Flow
 
@@ -45,7 +46,7 @@ Lexer → Parser → Semantic → Validation → CodeGen → Tests
 1. **Lexer** (`Lexer/`) — Add `TokenType` and recognition
 2. **Parser** (`Parser/Ast/`) — Add AST record, parsing rule (6 partial files)
 3. **Semantic** (`Semantic/`) — Add type checking in `TypeChecker*.cs` (5 partial files)
-4. **Validation** (`Semantic/Validation/`) — Add validator if needed
+4. **Validation** (`Semantic/Validation/`) — Add validator if needed (pluggable pipeline)
 5. **CodeGen** (`CodeGen/RoslynEmitter*.cs`) — Emit via `SyntaxFactory` (8 partial files)
 6. **Tests** — Unit tests per component + `.spy`/`.expected` file-based tests
 
@@ -64,7 +65,17 @@ Lexer → Parser → Semantic → Validation → CodeGen → Tests
 dotnet build sharpy.sln && dotnet test           # Build + test all
 dotnet format whitespace                         # Format before commit
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
+dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser
+dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Debug lexer
 python3 -c "..."                                 # Verify Python behavior
 ```
+
+## Debugging Workflow
+
+When something doesn't compile or behave correctly:
+1. `emit tokens` — Is the lexer producing correct tokens?
+2. `emit ast` — Is the parser building the correct AST?
+3. `emit csharp` — Is the generated C# code correct?
+4. Run tests for the specific component to isolate the issue
 
 See [copilot-instructions.md](../copilot-instructions.md) for repository-wide guidance.

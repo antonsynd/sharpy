@@ -18,6 +18,7 @@ Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, 
 - `SemanticInfo.cs` — Type/symbol annotations (separate from AST)
 - `SemanticBinding.cs` — Computed data, materialized at phase boundaries
 - `Symbol.cs` — Symbol hierarchy (VariableSymbol, FunctionSymbol, TypeSymbol, etc.)
+- `PrimitiveCatalog.cs` — Source of truth for primitive types and CLR mappings
 - `Validation/` — Pluggable validators
 
 **Does NOT modify:** Lexer, Parser, CodeGen, or Sharpy.Core
@@ -40,6 +41,12 @@ TypeResolver.ResolveTypes()         → Pass 3: resolve type annotations
 TypeChecker.CheckModule()           → Pass 4: type checking + inference
 ValidationPipeline.Validate()       → Pass 5: operators/protocols/access
 ```
+
+### Materialization Points
+
+After each major phase, computed data is frozen from `SemanticBinding` onto `Symbol` properties:
+1. After import resolution → `MaterializeInheritance()` (BaseType, Interfaces)
+2. After type checking → `MaterializeVariableTypes()`, `MaterializeCodeGenInfo()`
 
 ### Materialization Points
 

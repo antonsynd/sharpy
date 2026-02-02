@@ -32,6 +32,8 @@ Touch components **in order** (dependencies flow left→right):
 4. **CodeGen:** `RoslynEmitter*.cs` (C# emission via SyntaxFactory)
 5. **Tests:** Unit tests per component + `.spy`/`.expected` integration tests
 
+**Before implementing:** Check `docs/language_specification/` for spec compliance.
+
 ## Key Design Patterns
 
 **AST nodes are immutable records:**
@@ -75,6 +77,8 @@ TypeChecker.CheckModule()           → Pass 4: type checking + inference
 ValidationPipeline.Validate()       → Pass 5: operators/protocols/access
 ```
 
+**Materialization points:** After each phase, computed data is frozen from `SemanticBinding` onto `Symbol` properties.
+
 ## Validation Pipeline Architecture
 
 After `TypeChecker`, pluggable validators run via `ValidationPipeline`. Validators implement `ISemanticValidator` with an `Order` property (lower runs first):
@@ -85,6 +89,8 @@ After `TypeChecker`, pluggable validators run via `ValidationPipeline`. Validato
 | 60 | `DecoratorValidator` | Decorator validation |
 | 150 | `SignatureValidator` | Dunder method signatures |
 | 400 | `ControlFlowValidator` | CFG-based unreachable code, missing returns |
+| 420 | `UnusedVariableValidator` | Unused variable warnings |
+| 430 | `UnusedImportValidator` | Unused import warnings |
 | 450 | `AccessValidator` | Private/protected member access |
 | 500 | `ProtocolValidator`, `OperatorValidator` | Protocol/operator validation |
 

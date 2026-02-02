@@ -24,6 +24,11 @@ Assert.Equal(wrong_value, result);
 Assert.Equal(correct_value, result);
 ```
 
+If a test must be skipped temporarily:
+```csharp
+[Fact(Skip = "TODO: Implement feature. See issue #42")]
+```
+
 ## Test Types
 
 ### Unit Tests
