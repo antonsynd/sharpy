@@ -39,21 +39,23 @@ The compiler driver (`Compiler.cs:349`) catches `Exception` generically, discard
 
 ### 2. Complete the Validation Pipeline Migration
 
-**Problem:** `ValidationPipelineFactory.CreateDefault()` returns an **empty pipeline** — no validators are registered. All validation is hardcoded inside `TypeChecker.CheckModule()`. V2 validators exist (`ControlFlowValidatorV2`, `AccessValidatorV2`, `OperatorValidatorV2`, etc.) alongside legacy validators, but they aren't wired into the pipeline.
+> **Status: Complete.** All validators are wired into `ValidationPipelineFactory.CreateDefault()` with clean names (no version suffixes). V2 validators have been removed; legacy validators and `LegacyValidatorAdapter` are gone. See Phase E completion notes for details.
 
-**What this costs you:**
+**Problem (original):** `ValidationPipelineFactory.CreateDefault()` returned an **empty pipeline** — no validators were registered. All validation was hardcoded inside `TypeChecker.CheckModule()`. V2 validators existed alongside legacy validators, but they weren't wired into the pipeline.
+
+**What this cost:**
 - Can't selectively run/skip validators (needed for incremental/LSP)
 - Can't add new validation rules without touching the TypeChecker monolith
 - Contributors must understand the TypeChecker internals to add validation
 - Legacy+V2 coexistence means duplicated logic and confusion about which is canonical
 
-**Recommendation:**
-- Wire all V2 validators into `ValidationPipelineFactory.CreateDefault()`
-- Extract remaining inline validation from TypeChecker into validators
-- Remove legacy validators and `LegacyValidatorAdapter`
-- The pipeline is already well-designed (ordered execution, error limits, logging) — just needs to be used
+**What was done:**
+- All validators wired into `ValidationPipelineFactory.CreateDefault()` (10 validators, ordered by execution priority)
+- Remaining inline validation extracted from TypeChecker into validators
+- Legacy validators and `LegacyValidatorAdapter` removed
+- V2 version suffixes dropped from all validators
 
-**Files:** `ValidationPipelineFactory.cs`, `TypeChecker.cs`, all `*Validator.cs` and `*ValidatorV2.cs` files
+**Files:** `ValidationPipelineFactory.cs`, `TypeChecker.cs`, all `*Validator.cs` files
 
 ---
 
@@ -168,13 +170,15 @@ This is called from `Compiler.Compile()` between import resolution and type chec
 
 ### 10. Integrate the Control Flow Graph
 
-**Problem:** A `ControlFlowGraph` infrastructure exists in `Analysis/ControlFlow/` with immutable CFG, basic blocks, entry/exit nodes — but it's not used. `ControlFlowValidatorV2` does manual AST traversal instead.
+> **Status: Complete.** CFG is now integrated via `ControlFlowValidator`. The V2 AST-walking validator has been removed. See Phase E completion notes for details.
 
-**Recommendation:**
-- Wire the CFG into `ControlFlowValidatorV2`
-- This enables more sophisticated analysis: unreachable code detection, definite assignment, exhaustive return checking
-- CFG is also a prerequisite for future optimizations and data flow analysis
-- The infrastructure is already built — this is about integration, not new development
+**Problem (original):** A `ControlFlowGraph` infrastructure existed in `Analysis/ControlFlow/` with immutable CFG, basic blocks, entry/exit nodes — but it wasn't used. The AST-walking validator did manual traversal instead.
+
+**What was done:**
+- CFG wired into `ControlFlowValidator` (registered at Order 400)
+- Enables unreachable code detection, exhaustive return checking, break/continue validation
+- V2 AST-walking validator removed; CFG-based validator is the sole implementation
+- CFG is ready for future optimizations and data flow analysis
 
 ---
 
@@ -353,16 +357,16 @@ The callback pattern is the key architectural decision: ModuleLoader remains ful
 
 ### Item 10: Integrate the Control Flow Graph
 
-The existing CFG infrastructure (`Analysis/ControlFlow/`) is now fully integrated into the validation pipeline via a new ControlFlowValidatorV3:
+The existing CFG infrastructure (`Analysis/ControlFlow/`) is now fully integrated into the validation pipeline via `ControlFlowValidator`:
 
 - **ControlFlowGraphBuilder** constructs a CFG from function AST with basic blocks, terminators (Branch, ConditionalBranch, Return, Throw, Break, Continue), and proper handling of all control flow constructs (if/elif/else, while/for with else clauses, try/except/finally, nested loops).
 - **ControlFlowAnalysis** provides static analysis methods: `FindUnreachableCode()` (graph reachability from entry), `FindMissingReturnPaths()` (forward reachability to exit without return), `ValidateLoopControlFlow()` (break/continue target validation).
-- **ControlFlowValidatorV3** (`Semantic/Validation/ControlFlowValidatorV3.cs`) builds a CFG per function and runs all three analyses. Registered at Order 400 in `ValidationPipelineFactory.CreateDefault()`.
+- **ControlFlowValidator** (`Semantic/Validation/ControlFlowValidator.cs`) builds a CFG per function and runs all three analyses. Registered at Order 400 in `ValidationPipelineFactory.CreateDefault()`.
 - **Unreachable code detection** fixed: the builder now creates disconnected "unreachable" blocks for statements after terminators, enabling `FindUnreachableBlocks()` to detect them via BFS reachability.
 
-V2 (AST-walking) remains available via `CreateWithAstControlFlow()` as a fallback. V3 adds unreachable code detection that V2 cannot support.
+The previous V2 (AST-walking) validator and `CreateWithAstControlFlow()` factory method have been removed as part of Phase 5 cleanup. The CFG-based validator is now the sole implementation.
 
-**Test coverage:** 21 ControlFlowValidatorV3 tests + 14 ControlFlowAnalysis tests + CFG builder tests + file-based test fixtures (`unreachable_code.spy`, `not_all_paths_return.spy`, `break_outside_loop.spy`, `continue_outside_loop.spy`).
+**Test coverage:** 21 ControlFlowValidator tests + 14 ControlFlowAnalysis tests + CFG builder tests + file-based test fixtures (`unreachable_code.spy`, `not_all_paths_return.spy`, `break_outside_loop.spy`, `continue_outside_loop.spy`).
 
 ### Item 12: Compiler --explain Mode
 

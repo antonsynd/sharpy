@@ -133,16 +133,16 @@ Alternatively, if value equality on symbols is never actually needed (check usag
 
 **Goal:** Have the compiler emit warnings for common issues that aren't errors but indicate probable bugs.
 
-**Why now:** The diagnostic infrastructure from Phase 1 supports warnings, the CFG from the existing `ControlFlowValidatorV3` can detect unreachable code, and adding warnings exercises the warning path of the diagnostic system (which is currently nearly unused, meaning any bug in warning handling has been latent).
+**Why now:** The diagnostic infrastructure from Phase 1 supports warnings, the CFG from the existing `ControlFlowValidator` can detect unreachable code, and adding warnings exercises the warning path of the diagnostic system (which is currently nearly unused, meaning any bug in warning handling has been latent).
 
 ### 3.1: Unreachable Code Warning
 
 **Problem:** Code after `return`, `raise`, `break`, or `continue` is dead code. The CFG's `FindUnreachableBlocks()` already detects this, but nothing emits a warning.
 
-**Direction:** Add a new validator or extend `ControlFlowValidatorV3` to emit `SHP04xx` warnings for unreachable basic blocks. Only warn about blocks that contain user-written code (not synthetic blocks added by the CFG builder).
+**Direction:** Add a new validator or extend `ControlFlowValidator` to emit `SHP04xx` warnings for unreachable basic blocks. Only warn about blocks that contain user-written code (not synthetic blocks added by the CFG builder).
 
 **Tasks:**
-- [ ] In `ControlFlowValidatorV3` (or a new `UnreachableCodeWarningValidator`), after building the CFG, call `FindUnreachableBlocks()`. For each unreachable block that contains statements, emit a warning with the line number of the first statement.
+- [ ] In `ControlFlowValidator` (or a new `UnreachableCodeWarningValidator`), after building the CFG, call `FindUnreachableBlocks()`. For each unreachable block that contains statements, emit a warning with the line number of the first statement.
 - [ ] Choose a diagnostic code (e.g., `SHP0450: Unreachable code detected`)
 - [ ] Add to `DiagnosticCodes.cs`
 - [ ] Add 3-5 file-based test fixtures: unreachable after return, after raise, after break, and a case where code IS reachable (if/else where both branches return but code follows -- this should warn)
