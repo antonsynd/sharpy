@@ -403,7 +403,7 @@ public class Compiler
 
                 var moduleCs = GenerateCSharpForModule(
                     moduleInfo, symbolTable, builtinRegistry,
-                    codeGenContext.ProjectNamespace, diagnostics, semanticInfo);
+                    codeGenContext.ProjectNamespace, diagnostics, semanticInfo, semanticBinding);
 
                 if (moduleCs != null)
                 {
@@ -674,7 +674,8 @@ public class Compiler
         BuiltinRegistry builtinRegistry,
         string? projectNamespace,
         DiagnosticBag diagnostics,
-        SemanticInfo? semanticInfo = null)
+        SemanticInfo? semanticInfo = null,
+        SemanticBinding? semanticBinding = null)
     {
         if (moduleInfo.Module == null || moduleInfo.IsNetModule)
             return null;
@@ -686,7 +687,8 @@ public class Compiler
             // Imported modules are NOT entry points - no Main method
             IsEntryPoint = false,
             Logger = _logger,
-            SemanticInfo = semanticInfo
+            SemanticInfo = semanticInfo,
+            SemanticBinding = semanticBinding ?? new SemanticBinding()
         };
 
         var emitter = new RoslynEmitter(codeGenContext);
