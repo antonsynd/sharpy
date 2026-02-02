@@ -674,7 +674,9 @@ class Program
                 IsEntryPoint = true,
                 Logger = logger,
                 SemanticBinding = semanticBinding,
-                SemanticInfo = semanticInfo
+                SemanticInfo = semanticInfo,
+                // Disable #line directives for emit csharp so users see clean generated C#
+                EmitLineDirectives = false
             };
 
             // Generate C# code using RoslynEmitter

@@ -18,6 +18,13 @@ public class CodeGenContext
     public string? SourceFilePath { get; set; }
 
     /// <summary>
+    /// When true, emits #line directives in generated C# for source mapping.
+    /// This enables .spy file names and line numbers in runtime stack traces.
+    /// Defaults to true. Set to false when inspecting raw generated C#.
+    /// </summary>
+    public bool EmitLineDirectives { get; set; } = true;
+
+    /// <summary>
     /// Structured diagnostics from code generation.
     /// </summary>
     public DiagnosticBag Diagnostics => _diagnostics;

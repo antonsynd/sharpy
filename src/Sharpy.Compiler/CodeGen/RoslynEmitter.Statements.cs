@@ -16,7 +16,7 @@ public partial class RoslynEmitter
 {
     private StatementSyntax? GenerateBodyStatement(Statement stmt)
     {
-        return stmt switch
+        var result = stmt switch
         {
             ReturnStatement ret => GenerateReturn(ret),
             Assignment assign => GenerateAssignment(assign),
@@ -32,8 +32,40 @@ public partial class RoslynEmitter
             WhileStatement whileStmt => GenerateWhile(whileStmt),
             ForStatement forStmt => GenerateFor(forStmt),
             TryStatement tryStmt => GenerateTry(tryStmt),
-            _ => null
+            _ => (StatementSyntax?)null
         };
+
+        return result != null ? AttachLineDirective(result, stmt) : null;
+    }
+
+    /// <summary>
+    /// Attaches a #line directive as leading trivia to a generated C# statement.
+    /// This enables .spy file names and line numbers in runtime stack traces.
+    /// </summary>
+    private StatementSyntax AttachLineDirective(StatementSyntax csharpStatement, Statement astNode)
+    {
+        if (!_context.EmitLineDirectives)
+            return csharpStatement;
+
+        if (string.IsNullOrEmpty(_context.SourceFilePath))
+            return csharpStatement;
+
+        if (astNode.LineStart <= 0)
+            return csharpStatement;
+
+        var lineDirective = CreateLineDirectiveTrivia(astNode.LineStart, _context.SourceFilePath);
+        return csharpStatement.WithLeadingTrivia(lineDirective);
+    }
+
+    /// <summary>
+    /// Creates #line directive trivia for source mapping.
+    /// Produces: #line N "file.spy"
+    /// </summary>
+    private static SyntaxTriviaList CreateLineDirectiveTrivia(int line, string filePath)
+    {
+        // Escape backslashes in file path for the #line directive string
+        var escapedPath = filePath.Replace("\\", "\\\\");
+        return ParseLeadingTrivia($"#line {line} \"{escapedPath}\"\n");
     }
 
     /// <summary>
