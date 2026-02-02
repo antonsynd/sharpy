@@ -31,9 +31,13 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 |-----------|----------|---------|
 | Compiler | `src/Sharpy.Compiler/` | Lexer, Parser, Semantic, CodeGen |
 | Stdlib | `src/Sharpy.Core/` | Runtime library (partial class pattern in `Partial.{Type}/`) |
-| CLI | `src/Sharpy.Cli/` | Command-line interface (`sharpyc`) |
+| CLI | `src/Sharpy.Cli/` | Command-line interface (`sharpyc`, uses `System.CommandLine`) |
 | Tests | `src/*.Tests/` | Unit and integration tests |
 | Specs | `docs/language_specification/` | Authoritative language specification |
+| Agents | `.github/agents/` | Domain-specific agent guidance (copilot/AI) |
+| Instructions | `.github/instructions/` | Per-component contribution guides |
+| Snippets | `snippets/*.spy` | Quick test programs |
+| Samples | `samples/` | Example projects with `.spyproj` files |
 
 ## Critical Rules
 
@@ -52,7 +56,9 @@ The semantic phase runs multiple ordered passes. Understanding this is critical 
 
 **Pass 1.5 — Import Resolution** (`ImportResolver.cs`): Loads imported modules via `ModuleLoader` (which caches parsed modules and detects circular imports). Registers imported symbols in SymbolTable. `PackageResolver` handles `__init__.spy` packages.
 
-**Pass 2 — Type Checking** (`TypeChecker.cs`, split into 4 partial files): Traverses AST, infers types, records them in `SemanticInfo`. Then runs `ValidationPipeline`.
+**Pass 2 — Type Resolution** (`TypeResolver.cs`): Resolves type annotations on declarations to concrete types.
+
+**Pass 3 — Type Checking** (`TypeChecker.cs`, split into 4 partial files): Traverses AST, infers types, records them in `SemanticInfo`. Then runs `ValidationPipeline`.
 
 **Materialization Points**: After each major phase, computed data is frozen from `SemanticBinding` onto `Symbol` properties:
 1. After import resolution → `MaterializeInheritance()` (BaseType, Interfaces)
@@ -100,6 +106,38 @@ The `RoslynEmitter` is split into 8 partial classes (~220KB total): `RoslynEmitt
 **Type mappings** (`TypeMapper.cs`): `int` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `global::Sharpy.Core.List<T>`, `dict[K,V]` → `global::Sharpy.Core.Dict<K,V>`
 
 **Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__init__` → constructor, `__add__` → `operator+`, `__str__` → `ToString()`
+
+## Feature Implementation Order
+
+For new language features, touch components **in this order** (dependencies flow left→right):
+
+```
+Lexer → Parser → Semantic → Validation → CodeGen → Tests
+```
+
+1. **Lexer** (`Lexer/`) — Add `TokenType` and recognition
+2. **Parser** (`Parser/Ast/`) — Add AST record, parsing rule
+3. **Semantic** (`Semantic/`) — Add type checking in `TypeChecker*.cs`
+4. **Validation** (`Semantic/Validation/`) — Add validator if needed
+5. **CodeGen** (`CodeGen/RoslynEmitter*.cs`) — Emit via `SyntaxFactory`
+6. **Tests** — Unit tests per component + `.spy`/`.expected` integration tests
+
+## Multi-File Compilation
+
+`AssemblyCompiler` handles multi-file projects using `.spyproj` files:
+```bash
+dotnet run --project src/Sharpy.Cli -- project samples/calculator_app/calculator.spyproj
+```
+
+Programmatic multi-file tests use `ProjectCompilationHelper`:
+```csharp
+using var helper = new ProjectCompilationHelper(output);
+helper.WithRootNamespace("Test")
+    .AddSourceFile("main.spy", "...")
+    .AddSourceFile("lib.spy", "...")
+    .CreateProjectFile();
+var result = helper.Compile();
+```
 
 ## Sharpy.Core Patterns
 
@@ -152,3 +190,7 @@ var result = CompileAndExecute("print(1 + 2)");
 Assert.True(result.Success);
 Assert.Equal("3\n", result.StandardOutput);
 ```
+
+## CI/CD
+
+`.github/workflows/`: `dotnet9.yml` (tests on .NET 9), `dotnet10.yml` (tests on .NET 10).
