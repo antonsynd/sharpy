@@ -293,26 +293,26 @@ importResolver.ResolveAllImports(module, symbolTable, currentDir);
 **Problem:** The lexer takes `string sourceCode`. For LSP, you need `SourceText` which supports efficient incremental editing (replace a range, re-lex only the changed region). The `SourceText` class already exists in `Text/SourceText.cs`.
 
 **Tasks:**
-- [ ] Change `Lexer` constructor to accept `SourceText` instead of `string`
-- [ ] Update `Compiler.Compile()` to create `SourceText` from the source string and pass it down
-- [ ] Store `SourceText` in `CompilationResult` for downstream use
-- [ ] Verify all tests pass
+- [x] Change `Lexer` constructor to accept `SourceText` instead of `string`
+- [x] Update `Compiler.Compile()` to create `SourceText` from the source string and pass it down
+- [x] Store `SourceText` in `CompilationResult` for downstream use
+- [x] Verify all tests pass
 
 ### 6.2: Enrich `CompilationResult`
 
 **Problem:** `CompilationResult` doesn't carry all intermediate artifacts. For tooling, you need the token list, `SemanticBinding`, and resolved imports.
 
 **Tasks:**
-- [ ] Add `SemanticBinding? SemanticBinding` to `CompilationResult`
-- [ ] Add `IReadOnlyList<Token>? Tokens` to `CompilationResult`
-- [ ] Add `SourceText? SourceText` to `CompilationResult`
-- [ ] Populate these fields in `Compiler.Compile()`
+- [x] Add `SemanticBinding? SemanticBinding` to `CompilationResult`
+- [x] Add `IReadOnlyList<Token>? Tokens` to `CompilationResult`
+- [x] Add `SourceText? SourceText` to `CompilationResult`
+- [x] Populate these fields in `Compiler.Compile()`
 - [ ] Consider adding `ImportResolver? ImportResolver` for access to resolved module info
 
 ### 6.3: Add Fuzz Testing Harness
 
 **Tasks:**
-- [ ] Create a random `.spy` program generator (random valid/invalid token sequences, random indentation)
-- [ ] Run `Compiler.Compile()` on generated inputs, assert no unhandled exceptions
-- [ ] Track inputs that cause crashes as regression tests
-- [ ] Focus initially on lexer and parser (highest surface area for unexpected input)
+- [x] Create a random `.spy` program generator (random valid/invalid token sequences, random indentation)
+- [x] Run `Compiler.Compile()` on generated inputs, assert no unhandled exceptions
+- [x] Track inputs that cause crashes as regression tests
+- [x] Focus initially on lexer and parser (highest surface area for unexpected input)
