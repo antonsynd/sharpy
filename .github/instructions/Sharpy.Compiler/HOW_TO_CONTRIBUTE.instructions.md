@@ -9,7 +9,7 @@ Sharpy.Compiler/
 ├── Lexer/           # Tokenization (Lexer.cs, Token.cs)
 ├── Parser/          # Recursive descent → AST (Parser.cs, Ast/*.cs)
 ├── Semantic/        # NameResolver → TypeResolver → TypeChecker
-│   └── Validation/  # Pluggable validators (OperatorValidatorV2, etc.)
+│   └── Validation/  # Pluggable validators (OperatorValidator, etc.)
 ├── CodeGen/         # RoslynEmitter*.cs (partial classes), TypeMapper.cs, NameMangler.cs
 ├── Discovery/       # Module imports, caching
 ├── Analysis/        # Control flow analysis

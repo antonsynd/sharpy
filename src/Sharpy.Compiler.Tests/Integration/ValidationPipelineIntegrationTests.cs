@@ -324,7 +324,7 @@ def foo() -> int:
         var (_, typeChecker) = CompileAndCheck(code);
 
         // Should have exactly one "must return" error, not duplicates from both
-        // legacy validator and V2 validator
+        // legacy validator and pipeline validator
         var returnErrors = typeChecker.Diagnostics.GetErrors()
             .Where(e => e.Message.Contains("must return"))
             .ToList();

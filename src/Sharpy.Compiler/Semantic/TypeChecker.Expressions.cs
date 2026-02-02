@@ -143,7 +143,7 @@ public partial class TypeChecker
         var resultType = _typeInference.InferBinaryOpType(binOp.Operator, leftType, rightType);
 
         // If type inference fails, report the error directly
-        // (V2 validators may not catch all type incompatibilities)
+        // (validators may not catch all type incompatibilities)
         if (resultType == null)
         {
             AddError(
@@ -731,7 +731,7 @@ public partial class TypeChecker
         var objectType = CheckExpression(indexAccess.Object);
         var indexType = CheckExpression(indexAccess.Index);
 
-        // Use TypeInferenceService for type inference (errors reported by V2 validator in pipeline)
+        // Use TypeInferenceService for type inference (errors reported by validator in pipeline)
         var resultType = _typeInference.InferIndexAccessType(objectType, indexType);
 
         // TypeInferenceService covers all supported operations - return Unknown for unsupported
@@ -898,7 +898,7 @@ public partial class TypeChecker
             // See: #103 (use BuiltinNames constant instead of hardcoded string)
             if (id.Name == "len" && argTypes.Count == 1)
             {
-                // Use TypeInferenceService for type inference (errors reported by V2 validator in pipeline)
+                // Use TypeInferenceService for type inference (errors reported by validator in pipeline)
                 var lenType = _typeInference.InferLenType(argTypes[0]);
 
                 // TypeInferenceService always returns Int for len() - return Unknown only if completely unsupported
@@ -1472,7 +1472,7 @@ public partial class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type and infer element type (errors reported by V2 validator in pipeline)
+                // Check iterator type and infer element type (errors reported by validator in pipeline)
                 var iterType = CheckExpression(forClause.Iterator);
                 var elemType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
@@ -1536,7 +1536,7 @@ public partial class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type and infer element type (errors reported by V2 validator in pipeline)
+                // Check iterator type and infer element type (errors reported by validator in pipeline)
                 var iterType = CheckExpression(forClause.Iterator);
                 var elemType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
@@ -1599,7 +1599,7 @@ public partial class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type and infer element type (errors reported by V2 validator in pipeline)
+                // Check iterator type and infer element type (errors reported by validator in pipeline)
                 var iterType = CheckExpression(forClause.Iterator);
                 var elemType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 

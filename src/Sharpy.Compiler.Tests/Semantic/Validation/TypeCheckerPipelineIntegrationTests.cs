@@ -101,7 +101,7 @@ def foo() -> int:
 ";
         var (symbolTable, semanticInfo, typeResolver, module) = SetupWithNameResolution(code);
 
-        // Empty pipeline - no V2 validators added
+        // Empty pipeline - no validators added
         var pipeline = new ValidationPipeline();
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,

@@ -55,9 +55,9 @@ public record UserDefinedType : SemanticType { public string Name { get; init; }
 
 ### Validation Pipeline
 Pluggable validators run after `TypeChecker.CheckModule()`:
-- `OperatorValidatorV2` — Binary/unary operator type checking
-- `ProtocolValidatorV2` — Protocol method validation (`__len__`, `__iter__`)
-- `AccessValidatorV2` — Member access validation
+- `OperatorValidator` — Binary/unary operator type checking
+- `ProtocolValidator` — Protocol method validation (`__len__`, `__iter__`)
+- `AccessValidator` — Member access validation
 - `ControlFlowValidatorV3` — CFG-based analysis
 
 ## Commands

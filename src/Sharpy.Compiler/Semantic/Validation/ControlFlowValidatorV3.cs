@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 
 /// <summary>
 /// Control flow validator using CFG analysis.
-/// Provides more accurate analysis than the AST-walking V2 validator.
+/// Provides accurate analysis using CFG-based graph traversal.
 /// </summary>
 /// <remarks>
 /// This validator builds a Control Flow Graph for each function and uses
@@ -19,7 +19,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 public class ControlFlowValidatorV3 : SemanticValidatorBase
 {
     public override string Name => "ControlFlowValidatorV3";
-    public override int Order => 400; // Same slot as V2 - use one or the other
+    public override int Order => 400; // After type checking (300)
 
     private readonly ControlFlowGraphBuilder _cfgBuilder = new();
     private SemanticContext _context = null!;

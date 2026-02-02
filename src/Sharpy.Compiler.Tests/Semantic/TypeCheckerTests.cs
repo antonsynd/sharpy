@@ -1179,7 +1179,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
-        // Check for either legacy or V2 error format
+        // Check for either legacy or pipeline error format
         var errorMsg = typeChecker.Diagnostics.GetErrors()[0].Message;
         (errorMsg.Contains("does not support") || errorMsg.Contains("Unsupported operand types"))
             .Should().BeTrue($"Expected operator error message but got: {errorMsg}");
@@ -1197,7 +1197,7 @@ def main():
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
-        // Check for either legacy or V2 error format
+        // Check for either legacy or pipeline error format
         var errorMsg = typeChecker.Diagnostics.GetErrors()[0].Message;
         (errorMsg.Contains("does not support") || errorMsg.Contains("Unsupported operand types"))
             .Should().BeTrue($"Expected operator error message but got: {errorMsg}");

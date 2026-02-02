@@ -192,7 +192,7 @@ public partial class TypeChecker
                 }
             }
 
-            // For augmented assignments, use TypeInferenceService (errors reported by V2 validator in pipeline)
+            // For augmented assignments, use TypeInferenceService (errors reported by validator in pipeline)
             // This handles:
             // - Preferring in-place dunder methods (e.g., __iadd__) when available
             // - Falling back to binary operators (e.g., __add__) otherwise
@@ -506,7 +506,7 @@ public partial class TypeChecker
     {
         var iterType = CheckExpression(forStmt.Iterator);
 
-        // Infer element type from the iterator (errors reported by V2 validator in pipeline)
+        // Infer element type from the iterator (errors reported by validator in pipeline)
         var elementType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
         // Enter scope for for-body block FIRST
