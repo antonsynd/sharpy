@@ -1,6 +1,7 @@
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Lexer;
 
@@ -27,6 +28,7 @@ public class Lexer
     }
 
     private readonly string _source;
+    private readonly SourceText? _sourceText;
     private int _position;
     private int _line = 1;
     private int _column = 1;
@@ -41,6 +43,12 @@ public class Lexer
     /// Diagnostics collected during lexing. Check HasErrors after TokenizeAll().
     /// </summary>
     public DiagnosticBag Diagnostics => _diagnostics;
+
+    /// <summary>
+    /// The SourceText being lexed, if one was provided.
+    /// Available for downstream pipeline stages that need structured source access.
+    /// </summary>
+    public SourceText? SourceText => _sourceText;
 
     // F-string state tracking
     private readonly Stack<FStringContext> _fstringStack = new();
@@ -126,6 +134,7 @@ public class Lexer
     public Lexer(string source, ICompilerLogger? logger = null, int startLine = 1, int startColumn = 1)
     {
         _source = source;
+        _sourceText = null;
         _line = startLine;
         _column = startColumn;
         _indentStack.Push(0);  // Base indentation level
@@ -138,6 +147,21 @@ public class Lexer
         {
             _atLineStart = false;
         }
+    }
+
+    /// <summary>
+    /// Creates a new Lexer from a SourceText, enabling structured source access
+    /// for downstream pipeline stages (e.g., LSP, diagnostic rendering).
+    /// </summary>
+    /// <param name="sourceText">The source text to lex.</param>
+    /// <param name="logger">Optional compiler logger.</param>
+    public Lexer(SourceText sourceText, ICompilerLogger? logger = null)
+    {
+        _source = sourceText.ToString();
+        _sourceText = sourceText;
+        _indentStack.Push(0);
+        _logger = logger ?? NullLogger.Instance;
+        _logger.LogInfo($"Lexer initialized from SourceText, source length: {_source.Length}");
     }
 
     /// <summary>

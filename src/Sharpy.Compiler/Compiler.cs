@@ -9,6 +9,7 @@ using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Text;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace Sharpy.Compiler;
@@ -89,7 +90,8 @@ public class Compiler
             // Phase 1: Lexical Analysis
             _logger.LogInfo("Phase 1: Lexical Analysis");
             metrics.StartPhase("Lexical Analysis");
-            var lexer = new Lexer.Lexer(sourceCode, _logger);
+            var sourceText = new SourceText(sourceCode, filePath);
+            var lexer = new Lexer.Lexer(sourceText, _logger);
             var tokens = lexer.TokenizeAll();
             metrics.EndPhase();
 
@@ -104,7 +106,9 @@ public class Compiler
                 {
                     Success = false,
                     Diagnostics = diagnostics,
-                    Metrics = metrics
+                    Metrics = metrics,
+                    SourceText = sourceText,
+                    Tokens = tokens
                 };
             }
 
@@ -125,7 +129,10 @@ public class Compiler
                 {
                     Success = false,
                     Diagnostics = diagnostics,
-                    Metrics = metrics
+                    Metrics = metrics,
+                    SourceText = sourceText,
+                    Tokens = tokens,
+                    Module = module
                 };
             }
 
@@ -151,7 +158,10 @@ public class Compiler
                 {
                     Success = false,
                     Diagnostics = diagnostics,
-                    Metrics = metrics
+                    Metrics = metrics,
+                    SourceText = sourceText,
+                    Tokens = tokens,
+                    Module = module
                 };
             }
 
@@ -173,7 +183,11 @@ public class Compiler
                 {
                     Success = false,
                     Diagnostics = diagnostics,
-                    Metrics = metrics
+                    Metrics = metrics,
+                    SourceText = sourceText,
+                    Tokens = tokens,
+                    Module = module,
+                    SemanticBinding = semanticBinding
                 };
             }
 
@@ -213,7 +227,11 @@ public class Compiler
                 {
                     Success = false,
                     Diagnostics = diagnostics,
-                    Metrics = metrics
+                    Metrics = metrics,
+                    SourceText = sourceText,
+                    Tokens = tokens,
+                    Module = module,
+                    SemanticBinding = semanticBinding
                 };
             }
 
@@ -244,7 +262,11 @@ public class Compiler
                 {
                     Success = false,
                     Diagnostics = diagnostics,
-                    Metrics = metrics
+                    Metrics = metrics,
+                    SourceText = sourceText,
+                    Tokens = tokens,
+                    Module = module,
+                    SemanticBinding = semanticBinding
                 };
             }
             metrics.EndPhase();
@@ -272,7 +294,11 @@ public class Compiler
                 {
                     Success = false,
                     Diagnostics = diagnostics,
-                    Metrics = metrics
+                    Metrics = metrics,
+                    SourceText = sourceText,
+                    Tokens = tokens,
+                    Module = module,
+                    SemanticBinding = semanticBinding
                 };
             }
 
@@ -316,7 +342,11 @@ public class Compiler
                 {
                     Success = false,
                     Diagnostics = diagnostics,
-                    Metrics = metrics
+                    Metrics = metrics,
+                    SourceText = sourceText,
+                    Tokens = tokens,
+                    Module = module,
+                    SemanticBinding = semanticBinding
                 };
             }
 
@@ -357,7 +387,10 @@ public class Compiler
                 ModuleRegistry = _moduleRegistry,
                 GeneratedCSharpCode = csharpCode,  // Keep for backward compatibility
                 GeneratedCSharpFiles = allGeneratedFiles,
-                Metrics = metrics
+                Metrics = metrics,
+                SourceText = sourceText,
+                Tokens = tokens,
+                SemanticBinding = semanticBinding
             };
         }
         catch (OperationCanceledException)
@@ -627,6 +660,24 @@ public class CompilationResult
     public Dictionary<string, string> GeneratedCSharpFiles { get; init; } = new();
 
     public CompilationMetrics? Metrics { get; init; }
+
+    /// <summary>
+    /// The source text used for compilation.
+    /// Available for tooling that needs structured source access (e.g., LSP, diagnostic rendering).
+    /// </summary>
+    public Text.SourceText? SourceText { get; init; }
+
+    /// <summary>
+    /// The token list produced by the lexer.
+    /// Available for tooling that needs token-level access (e.g., syntax highlighting, LSP).
+    /// </summary>
+    public IReadOnlyList<Lexer.Token>? Tokens { get; init; }
+
+    /// <summary>
+    /// The semantic binding data from semantic analysis.
+    /// Available for tooling that needs semantic information (e.g., LSP go-to-definition, hover).
+    /// </summary>
+    public SemanticBinding? SemanticBinding { get; init; }
 }
 
 /// <summary>
