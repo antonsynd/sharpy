@@ -242,7 +242,7 @@ public sealed partial class ByteArray
             _data.EnsureCapacity(_data.Count + (int)numExtraElems);
         }
 
-        // TODO: Can optimize for fewer element shifts
+        // See: #113 (optimize for fewer element shifts)
         _data.RemoveRange((int)start, (int)numOldElems);
         _data.InsertRange((int)start, other);
     }
