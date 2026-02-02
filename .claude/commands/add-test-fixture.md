@@ -26,6 +26,7 @@ TestFixtures/
 ├── generic_function/          # Generic function tests
 ├── imports/                   # Import/module tests
 ├── inheritance/               # Inheritance tests
+├── interface_definition/      # Interface definition tests
 ├── interfaces/                # Interface tests
 ├── module_imports/            # Module import tests
 ├── strings/                   # String operation tests
