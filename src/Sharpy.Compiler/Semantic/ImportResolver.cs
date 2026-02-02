@@ -90,6 +90,10 @@ public class ImportResolver
                     var importAlias = import.Names[i];
                     var moduleInfo = modules[i];
 
+                    // Skip failed imports (null entries maintain positional alignment)
+                    if (moduleInfo == null)
+                        continue;
+
                     // Handle aliased imports (import x as y)
                     if (importAlias.AsName != null)
                     {
@@ -179,11 +183,11 @@ public class ImportResolver
     /// <summary>
     /// Resolve an import statement
     /// </summary>
-    public List<ModuleInfo> ResolveImport(ImportStatement importStmt, string? searchPath = null)
+    public List<ModuleInfo?> ResolveImport(ImportStatement importStmt, string? searchPath = null)
     {
         _logger.LogDebug($"Resolving import: {string.Join(", ", importStmt.Names.Select(n => n.Name))}");
 
-        var result = new List<ModuleInfo>();
+        var result = new List<ModuleInfo?>();
 
         foreach (var importAlias in importStmt.Names)
         {
@@ -198,6 +202,7 @@ public class ImportResolver
                 {
                     AddError($"Cannot find module '{importAlias.Name}'",
                         importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.ModuleNotFound);
+                    result.Add(null);
                     continue;
                 }
 
@@ -211,10 +216,8 @@ public class ImportResolver
                 moduleInfo = LoadModule(modulePath, importAlias.LineStart, importAlias.ColumnStart);
             }
 
-            if (moduleInfo != null)
-            {
-                result.Add(moduleInfo);
-            }
+            // Always add to maintain positional alignment with importStmt.Names
+            result.Add(moduleInfo);
         }
 
         return result;

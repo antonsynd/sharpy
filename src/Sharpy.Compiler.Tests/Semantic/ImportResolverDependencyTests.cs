@@ -146,6 +146,50 @@ import utils
         AssertContainsPath(deps, modelsPath);
     }
 
+    [Fact]
+    public void ResolveImport_PartialFailure_MaintainsPositionalAlignment()
+    {
+        // Create only the second module; the first does not exist
+        var modelsPath = CreateModuleFile("models", "def helper(): pass");
+        var mainPath = CreateModuleFile("main", "import nonexistent, models");
+
+        var builder = new DependencyGraphBuilder();
+        var resolver = new ImportResolver(_logger);
+        resolver.SetDependencyGraphBuilder(builder);
+        resolver.SetCurrentModule(mainPath);
+
+        var importStmt = new ImportStatement
+        {
+            Names = new List<ImportAlias>
+            {
+                new ImportAlias { Name = "nonexistent", AsName = null, LineStart = 1, ColumnStart = 1 },
+                new ImportAlias { Name = "models", AsName = null, LineStart = 1, ColumnStart = 14 }
+            }.ToImmutableArray(),
+            LineStart = 1,
+            ColumnStart = 1
+        };
+
+        var result = resolver.ResolveImport(importStmt, _testDir);
+
+        // Result should maintain positional alignment with Names
+        Assert.Equal(2, result.Count);
+        Assert.Null(result[0]);     // "nonexistent" failed
+        Assert.NotNull(result[1]);  // "models" succeeded
+
+        // Verify the resolved module path is for models, not misaligned
+        Assert.Contains("models", result[1]!.Path);
+
+        // Only the successful import should be in the dependency graph
+        var graph = builder.Build();
+        var deps = graph.GetDirectDependencies(mainPath);
+        Assert.Single(deps);
+        AssertContainsPath(deps, modelsPath);
+
+        // Verify error was reported for the failed import
+        Assert.True(resolver.Diagnostics.HasErrors);
+        Assert.Contains(resolver.Diagnostics.GetErrors(), e => e.Message.Contains("nonexistent"));
+    }
+
     #endregion
 
     #region ResolveFromImport Dependency Tracking

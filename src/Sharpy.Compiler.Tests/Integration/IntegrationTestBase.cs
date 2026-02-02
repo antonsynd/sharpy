@@ -822,6 +822,8 @@ public abstract class IntegrationTestBase
                 var modules = importResolver.ResolveImport(import);
                 foreach (var moduleInfo in modules)
                 {
+                    if (moduleInfo == null)
+                        continue;
                     // For regular imports, the module itself is the symbol
                     var moduleSymbol = new ModuleSymbol
                     {

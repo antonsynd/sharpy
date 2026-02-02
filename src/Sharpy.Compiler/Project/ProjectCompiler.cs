@@ -410,6 +410,10 @@ public class ProjectCompiler
                         var importAlias = import.Names[i];
                         var moduleInfo = modules[i];
 
+                        // Skip failed imports (null entries maintain positional alignment)
+                        if (moduleInfo == null)
+                            continue;
+
                         // Handle aliased imports (import x as y)
                         if (importAlias.AsName != null)
                         {
