@@ -252,11 +252,12 @@ public partial class RoslynEmitter
                         }
                     }
 
-                    bodyStatements.Add(ExpressionStatement(
+                    var selfAssign = ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
                             thisAccess,
-                            assignValue)));
+                            assignValue));
+                    bodyStatements.Add(AttachLineDirective(selfAssign, stmt));
                 }
                 else
                 {

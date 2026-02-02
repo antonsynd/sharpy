@@ -216,4 +216,137 @@ def main():
 
         context.EmitLineDirectives.Should().BeFalse();
     }
+
+    [Fact]
+    public void Compile_WithLineDirectives_ClassMethodBodies()
+    {
+        var source = @"class Counter:
+    value: int
+
+    def __init__(self, start: int):
+        self.value = start
+
+    def increment(self) -> int:
+        self.value += 1
+        return self.value
+
+def main():
+    c: Counter = Counter(0)
+    print(c.increment())
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "class_test.spy");
+
+        result.Success.Should().BeTrue(
+            $"compilation should succeed, errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+        var code = result.GeneratedCSharpCode!;
+
+        // Class constructor body (line 5: self.value = start)
+        code.Should().Contain("#line 5");
+        // Class method body (line 8: self.value += 1)
+        code.Should().Contain("#line 8");
+        // Class method return (line 9: return self.value)
+        code.Should().Contain("#line 9");
+        // All should reference the .spy file
+        code.Should().Contain("\"class_test.spy\"");
+    }
+
+    [Fact]
+    public void Compile_WithLineDirectives_ModuleLevelStatements()
+    {
+        // Module-level variable declarations become fields, but executable
+        // statements in main() should get #line directives
+        var source = @"x: int = 42
+
+def main():
+    y: int = x + 1
+    print(y)
+    print(x)
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "module.spy");
+
+        result.Success.Should().BeTrue(
+            $"compilation should succeed, errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+        var code = result.GeneratedCSharpCode!;
+
+        // main() body: y = x + 1 on line 4
+        code.Should().Contain("#line 4");
+        // main() body: print(y) on line 5
+        code.Should().Contain("#line 5");
+        // main() body: print(x) on line 6
+        code.Should().Contain("#line 6");
+        code.Should().Contain("\"module.spy\"");
+    }
+
+    [Fact]
+    public void Compile_WithLineDirectives_NestedControlFlow()
+    {
+        var source = @"def process(items: list[int]) -> int:
+    total: int = 0
+    for item in items:
+        if item > 0:
+            total += item
+        else:
+            total -= item
+    return total
+
+def main():
+    result: int = process([1, -2, 3])
+    print(result)
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "nested.spy");
+
+        result.Success.Should().BeTrue(
+            $"compilation should succeed, errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+        var code = result.GeneratedCSharpCode!;
+
+        // Variable declaration on line 2
+        code.Should().Contain("#line 2");
+        // For loop on line 3
+        code.Should().Contain("#line 3");
+        // If statement on line 4
+        code.Should().Contain("#line 4");
+        // Augmented assignment on line 5
+        code.Should().Contain("#line 5");
+        // Return on line 8
+        code.Should().Contain("#line 8");
+    }
+
+    [Fact]
+    public void Compile_WithLineDirectives_TryExceptFinally()
+    {
+        var source = @"def safe_divide(a: int, b: int) -> int:
+    result: int = 0
+    try:
+        result = a // b
+    except ZeroDivisionError:
+        result = -1
+    finally:
+        print(result)
+    return result
+
+def main():
+    print(safe_divide(10, 2))
+    print(safe_divide(10, 0))
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "tryexcept.spy");
+
+        result.Success.Should().BeTrue(
+            $"compilation should succeed, errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+        var code = result.GeneratedCSharpCode!;
+
+        // Variable decl on line 2
+        code.Should().Contain("#line 2");
+        // Assignment inside try on line 4
+        code.Should().Contain("#line 4");
+        // Assignment inside except on line 6
+        code.Should().Contain("#line 6");
+        // Print inside finally on line 8
+        code.Should().Contain("#line 8");
+        // Return on line 9
+        code.Should().Contain("#line 9");
+    }
 }

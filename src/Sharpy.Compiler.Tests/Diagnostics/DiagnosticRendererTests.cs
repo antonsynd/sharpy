@@ -299,4 +299,79 @@ public class DiagnosticRendererTests
         // No source context since no source text
         result.Should().NotContain("|");
     }
+
+    [Fact]
+    public void Render_MultiLineSpan_ShowsFirstLineOnly()
+    {
+        // A span that covers multiple lines should only underline the first line's portion
+        var source = "if x > 0:\n    y = 1\n    z = 2";
+        var sourceText = new SourceText(source, "test.spy");
+        // Span covers "x > 0:\n    y = 1\n    z = 2" (from column 4 to end)
+        var span = new TextSpan(3, source.Length - 3);
+
+        var diagnostic = new CompilerDiagnostic(
+            "Multi-line expression",
+            CompilerDiagnosticSeverity.Error,
+            Code: "SHP0100",
+            Span: span);
+
+        var result = _renderer.Render(diagnostic, sourceText);
+
+        // Should show the first line of the span
+        result.Should().Contain("if x > 0:");
+        // Underline should only cover the first line, not extend beyond
+        result.Should().Contain("^");
+        // Should not crash or produce garbage
+        result.Should().Contain("--> test.spy:1:");
+    }
+
+    [Fact]
+    public void Render_TabsInSourceLine_DoesNotThrow()
+    {
+        var source = "\tif x > 0:\n\t\ty = 1";
+        var sourceText = new SourceText(source, "test.spy");
+
+        var diagnostic = new CompilerDiagnostic(
+            "Tab test",
+            CompilerDiagnosticSeverity.Error,
+            Line: 1, Column: 2,
+            FilePath: "test.spy",
+            Code: "SHP0100");
+
+        var result = _renderer.Render(diagnostic, sourceText);
+
+        // Should render without throwing, even with tabs
+        result.Should().Contain("Tab test");
+        result.Should().Contain("if x > 0:");
+    }
+
+    [Fact]
+    public void Render_MultipleDiagnostics_EachRenderedIndependently()
+    {
+        var source = "x = 1\ny = 'bad'\nz = true";
+        var sourceText = new SourceText(source, "test.spy");
+
+        var diag1 = new CompilerDiagnostic(
+            "First error",
+            CompilerDiagnosticSeverity.Error,
+            Line: 1, Column: 1,
+            FilePath: "test.spy",
+            Code: "SHP0001");
+
+        var diag2 = new CompilerDiagnostic(
+            "Second error",
+            CompilerDiagnosticSeverity.Error,
+            Line: 2, Column: 5,
+            FilePath: "test.spy",
+            Code: "SHP0002");
+
+        var result1 = _renderer.Render(diag1, sourceText);
+        var result2 = _renderer.Render(diag2, sourceText);
+
+        // Each should be independent and contain its own info
+        result1.Should().Contain("First error");
+        result1.Should().Contain("x = 1");
+        result2.Should().Contain("Second error");
+        result2.Should().Contain("y = 'bad'");
+    }
 }
