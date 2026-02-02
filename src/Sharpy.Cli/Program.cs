@@ -4,8 +4,6 @@ using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Discovery.Caching;
-using Sharpy.Compiler.CodeGen;
-using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Text;
 
@@ -184,16 +182,24 @@ class Program
         var emitCsharpInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
         var emitCsharpOutputOpt = new Option<FileInfo?>("--output") { Description = "Output file path" };
         emitCsharpOutputOpt.Aliases.Add("-o");
+        var emitCsharpRefOpt = new Option<string[]>("--reference") { Description = "Add .NET assembly references", AllowMultipleArgumentsPerToken = true };
+        emitCsharpRefOpt.Aliases.Add("-r");
+        var emitCsharpModPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
+        emitCsharpModPathOpt.Aliases.Add("-m");
         emitCsharpCommand.Arguments.Add(emitCsharpInputArg);
         emitCsharpCommand.Options.Add(emitCsharpOutputOpt);
+        emitCsharpCommand.Options.Add(emitCsharpRefOpt);
+        emitCsharpCommand.Options.Add(emitCsharpModPathOpt);
         emitCsharpCommand.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(emitCsharpInputArg)!;
             var output = parseResult.GetValue(emitCsharpOutputOpt);
+            var reference = parseResult.GetValue(emitCsharpRefOpt) ?? Array.Empty<string>();
+            var modulePath = parseResult.GetValue(emitCsharpModPathOpt) ?? Array.Empty<string>();
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitCSharp(input, output, logger);
+            EmitCSharp(input, output, reference, modulePath, logger);
         });
 
         var emitParseCommand = new Command("parse", "Validate lexing and parsing only");
@@ -642,70 +648,41 @@ class Program
         }
     }
 
-    static void EmitCSharp(FileInfo inputFile, FileInfo? output, ICompilerLogger logger)
+    static void EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths, ICompilerLogger logger)
     {
         try
         {
-            // Parse the Sharpy source file
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
-            var lexer = new Lexer(sourceText, logger);
-            var tokens = lexer.TokenizeAll();
-            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
-            var module = parser.ParseModule();
 
-            // Run semantic analysis to register type aliases and resolve types
-            var builtins = new BuiltinRegistry();
-            var symbolTable = new SymbolTable(builtins);
-            var semanticInfo = new SemanticInfo();
-            var semanticBinding = new SemanticBinding();
-
-            // Name resolution pass (registers type aliases, classes, functions, etc.)
-            var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
-            nameResolver.ResolveDeclarations(module);
-            nameResolver.ResolveInheritance();
-
-            if (nameResolver.Diagnostics.HasErrors)
+            // Use the full compilation pipeline (including import resolution)
+            var compilerOptions = new CompilerOptions
             {
-                Console.Error.WriteLine("Name resolution errors:");
+                References = references,
+                ModulePaths = modulePaths
+            };
+            var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
+            var result = compiler.Compile(source, inputFile.FullName);
+
+            if (!result.Success)
+            {
+                Console.Error.WriteLine("Compilation errors:");
                 Console.Error.WriteLine();
-                RenderDiagnostics(nameResolver.Diagnostics.GetErrors(), sourceText, Console.Error);
+                RenderDiagnostics(result.Diagnostics.GetErrors(), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
-            // Type checking pass
-            var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
+            // Display warnings
+            var warnings = result.Diagnostics.GetWarnings();
+            if (warnings.Count > 0)
             {
-                SemanticBinding = semanticBinding
-            };
-            typeChecker.CheckModule(module, computeCodeGenInfo: true);
-
-            if (typeChecker.Diagnostics.HasErrors)
-            {
-                Console.Error.WriteLine("Type checking errors:");
-                Console.Error.WriteLine();
-                RenderDiagnostics(typeChecker.Diagnostics.GetErrors(), sourceText, Console.Error);
-                Environment.Exit(1);
+                RenderDiagnostics(warnings, sourceText, Console.Out);
             }
 
-            // Set up code generation context with the analyzed symbol table
-            var context = new CodeGenContext(symbolTable, builtins)
-            {
-                SourceFilePath = inputFile.FullName,
-                // Single-file emit is treated as an entry point for consistency with run/build
-                IsEntryPoint = true,
-                Logger = logger,
-                SemanticBinding = semanticBinding,
-                SemanticInfo = semanticInfo,
-                // Disable #line directives for emit csharp so users see clean generated C#
-                EmitLineDirectives = false
-            };
-
-            // Generate C# code using RoslynEmitter
-            var emitter = new RoslynEmitter(context);
-            var compilationUnit = emitter.GenerateCompilationUnit(module);
-            var csharpCode = compilationUnit.ToFullString();
+            // The generated C# includes #line directives by default.
+            // For emit csharp, strip them so users see clean generated C#.
+            var csharpCode = result.GeneratedCSharpCode ?? "";
+            csharpCode = StripLineDirectives(csharpCode);
 
             // Determine output file
             FileInfo outputFile;
@@ -729,6 +706,16 @@ class Program
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
             Environment.Exit(1);
         }
+    }
+
+    /// <summary>
+    /// Strip #line directives from generated C# for clean emit output.
+    /// </summary>
+    static string StripLineDirectives(string csharpCode)
+    {
+        var lines = csharpCode.Split('\n');
+        var filtered = lines.Where(line => !line.TrimStart().StartsWith("#line "));
+        return string.Join('\n', filtered);
     }
 
     static void ClearCache(string? cacheDir)
