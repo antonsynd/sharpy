@@ -104,7 +104,14 @@ public partial class Parser
 
                 // Stop after MaxErrors to avoid cascading false errors
                 if (_diagnostics.ErrorCount >= MaxErrors)
+                {
+                    _diagnostics.AddWarning(
+                        $"Too many errors ({MaxErrors}); further errors suppressed. Use '--max-errors' to increase the limit.",
+                        Current.Line, Current.Column,
+                        code: DiagnosticCodes.Infrastructure.TooManyErrors,
+                        phase: CompilerPhase.Parser);
                     break;
+                }
 
                 // Panic-mode recovery: synchronize to next statement boundary
                 Synchronize();

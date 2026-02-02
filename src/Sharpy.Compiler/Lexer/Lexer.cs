@@ -192,6 +192,14 @@ public class Lexer
                 // Error already recorded in _diagnostics by ReportError()
                 if (_diagnostics.ErrorCount >= MaxErrors || _position >= _source.Length)
                 {
+                    if (_diagnostics.ErrorCount >= MaxErrors)
+                    {
+                        _diagnostics.AddWarning(
+                            $"Too many errors ({MaxErrors}); further errors suppressed. Use '--max-errors' to increase the limit.",
+                            _line, _column,
+                            code: DiagnosticCodes.Infrastructure.TooManyErrors,
+                            phase: CompilerPhase.Lexer);
+                    }
                     tokens.Add(new Token(TokenType.Eof, "", _line, _column, _position));
                     break;
                 }
