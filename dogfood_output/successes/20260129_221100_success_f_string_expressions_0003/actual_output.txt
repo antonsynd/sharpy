@@ -1,8 +1,0 @@
-Player: Alice, Level: 12
-Base: 80, Bonus: 25
-Score: 157 (1.5x multiplier)
-Rank: Master, Status: True
-Player: Bob, Games: 8
-Average: 9 per game
-Total Score: 90
-Rank: Beginner, Next level at: 3 games

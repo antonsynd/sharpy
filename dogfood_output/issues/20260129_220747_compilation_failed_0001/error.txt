@@ -1,2 +1,0 @@
-Assembly compilation failed:
-  main.cs(28,47): error CS0229: Ambiguity between 'Exports.PI_APPROXIMATION' and 'Exports.PI_APPROXIMATION'

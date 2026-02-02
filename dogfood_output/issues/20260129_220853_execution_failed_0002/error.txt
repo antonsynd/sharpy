@@ -1,3 +1,0 @@
-Compilation failed:
-  Semantic error at line 18, column 19: Undefined identifier 'RuntimeError'
-  Semantic error at line 20, column 19: Undefined identifier 'ValueError'

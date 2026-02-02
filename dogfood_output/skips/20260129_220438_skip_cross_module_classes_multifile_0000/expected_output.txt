@@ -1,6 +1,0 @@
-A red shape
-Rendering canvas: MyArtwork
-Drawing a red circle with radius 5.0
-Drawing a blue rectangle 10.0x20.0
-Drawing a green circle with radius 3.0
-Total area: 306.796
