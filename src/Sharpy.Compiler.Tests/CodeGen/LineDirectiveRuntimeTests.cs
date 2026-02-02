@@ -272,11 +272,13 @@ def main():
 
         process.OutputDataReceived += (_, e) =>
         {
-            if (e.Data != null) stdout.AppendLine(e.Data);
+            if (e.Data != null)
+                stdout.AppendLine(e.Data);
         };
         process.ErrorDataReceived += (_, e) =>
         {
-            if (e.Data != null) stderr.AppendLine(e.Data);
+            if (e.Data != null)
+                stderr.AppendLine(e.Data);
         };
 
         process.Start();
@@ -285,7 +287,9 @@ def main():
 
         if (!process.WaitForExit(30000))
         {
-            try { process.Kill(entireProcessTree: true); } catch { }
+            try
+            { process.Kill(entireProcessTree: true); }
+            catch { }
             return new ExecResult(false, stdout.ToString(), "Execution timed out");
         }
 
