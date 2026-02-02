@@ -1082,7 +1082,8 @@ class Program
     static string CliBold(string text) => _useColor ? $"\x1b[1m{text}\x1b[0m" : text;
     static string CliColor(string text, string code, bool bold = false)
     {
-        if (!_useColor) return text;
+        if (!_useColor)
+            return text;
         var boldCode = bold ? "1;" : "";
         return $"\x1b[{boldCode}{code}m{text}\x1b[0m";
     }
