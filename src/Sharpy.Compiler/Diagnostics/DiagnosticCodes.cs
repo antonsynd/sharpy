@@ -191,6 +191,11 @@ public static class DiagnosticCodes
         public const string NonAbstractMethodWithoutBody = "SHP0506";
         public const string VarWithoutInitializer = "SHP0507";
         public const string UnrecognizedStatementType = "SHP0510";
+        public const string NestedComprehension = "SHP0515";
+        public const string TupleUnpackingComprehension = "SHP0516";
+        public const string ComplexTupleUnpacking = "SHP0517";
+        public const string UnsupportedExpressionType = "SHP0518";
+        public const string UnsupportedOperator = "SHP0519";
         public const string InternalGeneratedCSharpParseError = "SHP0599";
     }
 

@@ -365,4 +365,29 @@ public partial class RoslynEmitter
             stmt.ColumnStart);
         return null;
     }
+
+    /// <summary>
+    /// Emits a diagnostic for a not-yet-implemented feature in code generation and returns
+    /// a ThrowExpression that generates <c>throw new NotImplementedException("...")</c> in the
+    /// output C#. This way the generated code still compiles, and if the code path is reached
+    /// at runtime the user gets a clear exception.
+    /// </summary>
+    private ExpressionSyntax EmitNotImplementedExpression(string message, string code, int? line = null, int? column = null)
+    {
+        _context.AddError(message, code, line, column);
+        return ThrowExpression(
+            ObjectCreationExpression(ParseTypeName("System.NotImplementedException"))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(message)))))));
+    }
+
+    /// <summary>
+    /// Emits a diagnostic for a not-yet-implemented feature in code generation and returns
+    /// an empty statement as a safe fallback.
+    /// </summary>
+    private StatementSyntax EmitNotImplementedStatement(string message, string code, int? line = null, int? column = null)
+    {
+        _context.AddError(message, code, line, column);
+        return EmptyStatement();
+    }
 }

@@ -290,10 +290,14 @@ public partial class RoslynEmitter
                         value));
             }
 
-            throw new NotImplementedException("Complex tuple unpacking (non-identifier targets) not yet supported");
+            return EmitNotImplementedStatement(
+                "Complex tuple unpacking (non-identifier targets) is not yet supported. Use intermediate variables to unpack in multiple steps.",
+                DiagnosticCodes.CodeGen.ComplexTupleUnpacking, assign.LineStart, assign.ColumnStart);
         }
 
-        throw new NotImplementedException($"Assignment target type not supported: {assign.Target.GetType().Name}");
+        return EmitNotImplementedStatement(
+            $"Unsupported expression type in code generation: assignment target type '{assign.Target.GetType().Name}'",
+            DiagnosticCodes.CodeGen.UnsupportedExpressionType, assign.LineStart, assign.ColumnStart);
     }
 
     private SyntaxKind GetAugmentedAssignmentOperator(AssignmentOperator op)
@@ -314,7 +318,7 @@ public partial class RoslynEmitter
             AssignmentOperator.DoubleSlashAssign => SyntaxKind.None,
             AssignmentOperator.PowerAssign => SyntaxKind.None,
             AssignmentOperator.NullCoalesceAssign => SyntaxKind.None,
-            _ => throw new NotImplementedException($"Augmented assignment operator not supported: {op}")
+            _ => SyntaxKind.None
         };
     }
 
@@ -362,8 +366,20 @@ public partial class RoslynEmitter
                 BinaryExpression(SyntaxKind.CoalesceExpression, left, right),
 
             // All other operators use simple binary expressions
-            _ => BinaryExpression(GetAugmentedAssignmentOperator(op), left, right)
+            _ => GenerateAugmentedBinaryExpression(op, left, right)
         };
+    }
+
+    private ExpressionSyntax GenerateAugmentedBinaryExpression(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right)
+    {
+        var kind = GetAugmentedAssignmentOperator(op);
+        if (kind == SyntaxKind.None)
+        {
+            return EmitNotImplementedExpression(
+                $"Unsupported operator in code generation: augmented assignment operator '{op}'",
+                DiagnosticCodes.CodeGen.UnsupportedOperator);
+        }
+        return BinaryExpression(kind, left, right);
     }
 
     /// <summary>
@@ -876,10 +892,14 @@ public partial class RoslynEmitter
                     body);
             }
 
-            throw new NotImplementedException("Complex for loop tuple unpacking (non-identifier targets) not yet supported");
+            return EmitNotImplementedStatement(
+                "Complex tuple unpacking (non-identifier targets) is not yet supported. Use intermediate variables to unpack in multiple steps.",
+                DiagnosticCodes.CodeGen.ComplexTupleUnpacking, target.LineStart, target.ColumnStart);
         }
 
-        throw new NotImplementedException($"For loop target type not supported: {target.GetType().Name}");
+        return EmitNotImplementedStatement(
+            $"Unsupported expression type in code generation: for loop target type '{target.GetType().Name}'",
+            DiagnosticCodes.CodeGen.UnsupportedExpressionType, target.LineStart, target.ColumnStart);
     }
 
     private StatementSyntax GenerateTry(TryStatement tryStmt)

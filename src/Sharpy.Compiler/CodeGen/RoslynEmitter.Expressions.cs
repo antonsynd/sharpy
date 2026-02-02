@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -74,7 +75,9 @@ public partial class RoslynEmitter
             TryExpression tryExpr => GenerateTryExpression(tryExpr),
             MaybeExpression maybeExpr => GenerateMaybeExpression(maybeExpr),
 
-            _ => throw new NotImplementedException($"Expression type not implemented: {expr.GetType().Name}")
+            _ => EmitNotImplementedExpression(
+                $"Unsupported expression type in code generation: '{expr.GetType().Name}'",
+                DiagnosticCodes.CodeGen.UnsupportedExpressionType, expr.LineStart, expr.ColumnStart)
         };
     }
 
@@ -238,7 +241,9 @@ public partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
-        throw new NotImplementedException("Complex function expressions not yet supported");
+        return EmitNotImplementedExpression(
+            "Unsupported expression type in code generation: complex function expressions are not yet supported",
+            DiagnosticCodes.CodeGen.UnsupportedExpressionType, call.LineStart, call.ColumnStart);
     }
 
     private ExpressionSyntax GenerateBinaryOp(BinaryOp binOp)
@@ -388,8 +393,15 @@ public partial class RoslynEmitter
             // Null coalescing
             BinaryOperator.NullCoalesce => SyntaxKind.CoalesceExpression,
 
-            _ => throw new NotImplementedException($"Binary operator not implemented: {binOp.Operator}")
+            _ => SyntaxKind.None
         };
+
+        if (kind == SyntaxKind.None)
+        {
+            return EmitNotImplementedExpression(
+                $"Unsupported operator in code generation: binary operator '{binOp.Operator}'",
+                DiagnosticCodes.CodeGen.UnsupportedOperator, binOp.LineStart, binOp.ColumnStart);
+        }
 
         return BinaryExpression(kind, left, right);
     }
@@ -458,8 +470,15 @@ public partial class RoslynEmitter
             UnaryOperator.Minus => SyntaxKind.UnaryMinusExpression,
             UnaryOperator.Not => SyntaxKind.LogicalNotExpression,
             UnaryOperator.BitwiseNot => SyntaxKind.BitwiseNotExpression,
-            _ => throw new NotImplementedException($"Unary operator not implemented: {unaryOp.Operator}")
+            _ => SyntaxKind.None
         };
+
+        if (kind == SyntaxKind.None)
+        {
+            return EmitNotImplementedExpression(
+                $"Unsupported operator in code generation: unary operator '{unaryOp.Operator}'",
+                DiagnosticCodes.CodeGen.UnsupportedOperator, unaryOp.LineStart, unaryOp.ColumnStart);
+        }
 
         return PrefixUnaryExpression(kind, operand);
     }
@@ -596,7 +615,9 @@ public partial class RoslynEmitter
         // Get the loop variable name (single identifier only)
         if (firstFor.Target is not Identifier loopVar)
         {
-            throw new NotImplementedException("Tuple unpacking in comprehensions not yet supported");
+            return EmitNotImplementedExpression(
+                "Tuple unpacking in comprehensions is not yet supported. Use a for loop instead.",
+                DiagnosticCodes.CodeGen.TupleUnpackingComprehension, listComp.LineStart, listComp.ColumnStart);
         }
 
         var varName = NameMangler.ToCamelCase(loopVar.Name);
@@ -623,9 +644,9 @@ public partial class RoslynEmitter
             }
             else if (clause is ForClause)
             {
-                // Multiple for clauses (nested iteration) - requires more complex LINQ
-                // For now, throw NotImplementedException
-                throw new NotImplementedException("Nested comprehensions (multiple for clauses) not yet supported");
+                return EmitNotImplementedExpression(
+                    "Nested comprehensions (multiple 'for' clauses) are not yet supported. Use a for loop instead.",
+                    DiagnosticCodes.CodeGen.NestedComprehension, listComp.LineStart, listComp.ColumnStart);
             }
         }
 
@@ -666,7 +687,9 @@ public partial class RoslynEmitter
         // Get the loop variable name (single identifier only)
         if (firstFor.Target is not Identifier loopVar)
         {
-            throw new NotImplementedException("Tuple unpacking in comprehensions not yet supported");
+            return EmitNotImplementedExpression(
+                "Tuple unpacking in comprehensions is not yet supported. Use a for loop instead.",
+                DiagnosticCodes.CodeGen.TupleUnpackingComprehension, setComp.LineStart, setComp.ColumnStart);
         }
 
         var varName = NameMangler.ToCamelCase(loopVar.Name);
@@ -693,7 +716,9 @@ public partial class RoslynEmitter
             }
             else if (clause is ForClause)
             {
-                throw new NotImplementedException("Nested comprehensions (multiple for clauses) not yet supported");
+                return EmitNotImplementedExpression(
+                    "Nested comprehensions (multiple 'for' clauses) are not yet supported. Use a for loop instead.",
+                    DiagnosticCodes.CodeGen.NestedComprehension, setComp.LineStart, setComp.ColumnStart);
             }
         }
 
@@ -735,7 +760,9 @@ public partial class RoslynEmitter
         // Get the loop variable name (single identifier only)
         if (firstFor.Target is not Identifier loopVar)
         {
-            throw new NotImplementedException("Tuple unpacking in comprehensions not yet supported");
+            return EmitNotImplementedExpression(
+                "Tuple unpacking in comprehensions is not yet supported. Use a for loop instead.",
+                DiagnosticCodes.CodeGen.TupleUnpackingComprehension, dictComp.LineStart, dictComp.ColumnStart);
         }
 
         var varName = NameMangler.ToCamelCase(loopVar.Name);
@@ -762,7 +789,9 @@ public partial class RoslynEmitter
             }
             else if (clause is ForClause)
             {
-                throw new NotImplementedException("Nested comprehensions (multiple for clauses) not yet supported");
+                return EmitNotImplementedExpression(
+                    "Nested comprehensions (multiple 'for' clauses) are not yet supported. Use a for loop instead.",
+                    DiagnosticCodes.CodeGen.NestedComprehension, dictComp.LineStart, dictComp.ColumnStart);
             }
         }
 
@@ -1150,6 +1179,13 @@ public partial class RoslynEmitter
             var op = chain.Operators[i];
             var kind = MapComparisonOperator(op);
 
+            if (kind == SyntaxKind.None)
+            {
+                return EmitNotImplementedExpression(
+                    $"Unsupported operator in code generation: comparison operator '{op}' in chains",
+                    DiagnosticCodes.CodeGen.UnsupportedOperator, chain.LineStart, chain.ColumnStart);
+            }
+
             var comparison = BinaryExpression(kind, left, right);
 
             result = result == null
@@ -1163,7 +1199,7 @@ public partial class RoslynEmitter
     /// <summary>
     /// Maps a comparison operator to the corresponding C# syntax kind.
     /// </summary>
-    private static SyntaxKind MapComparisonOperator(ComparisonOperator op)
+    private SyntaxKind MapComparisonOperator(ComparisonOperator op)
     {
         return op switch
         {
@@ -1173,7 +1209,7 @@ public partial class RoslynEmitter
             ComparisonOperator.LessThanOrEqual => SyntaxKind.LessThanOrEqualExpression,
             ComparisonOperator.GreaterThan => SyntaxKind.GreaterThanExpression,
             ComparisonOperator.GreaterThanOrEqual => SyntaxKind.GreaterThanOrEqualExpression,
-            _ => throw new NotImplementedException($"Comparison operator {op} not supported in chains")
+            _ => SyntaxKind.None
         };
     }
 
