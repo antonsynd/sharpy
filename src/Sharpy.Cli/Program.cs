@@ -199,8 +199,11 @@ class Program
             var modulePath = parseResult.GetValue(emitCsharpModPathOpt) ?? Array.Empty<string>();
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var warnAsError = parseResult.GetValue(warnAsErrorOption);
+            var nowarn = parseResult.GetValue(nowarnOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitCSharp(input, output, reference, modulePath, logger);
+            EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors);
         });
 
         var emitParseCommand = new Command("parse", "Validate lexing and parsing only");
@@ -649,7 +652,8 @@ class Program
         }
     }
 
-    static void EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths, ICompilerLogger logger)
+    static void EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths,
+        ICompilerLogger logger, bool warnAsError = false, string? nowarn = null, int? maxErrors = null)
     {
         try
         {
@@ -660,7 +664,10 @@ class Program
             var compilerOptions = new CompilerOptions
             {
                 References = references,
-                ModulePaths = modulePaths
+                ModulePaths = modulePaths,
+                WarningsAsErrors = warnAsError,
+                SuppressedWarnings = ParseNowarnCodes(nowarn),
+                MaxErrors = maxErrors ?? 0
             };
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
             var result = compiler.Compile(source, inputFile.FullName);
@@ -889,10 +896,11 @@ class Program
             return;
         }
 
-        var explanation = DiagnosticExplanations.Get(code!.Trim());
+        var trimmedCode = code!.Trim();
+        var explanation = DiagnosticExplanations.Get(trimmedCode);
         if (explanation == null)
         {
-            Console.Error.WriteLine($"No explanation found for diagnostic code '{code}'.");
+            Console.Error.WriteLine($"No explanation found for diagnostic code '{trimmedCode}'.");
             Console.Error.WriteLine("Use 'sharpyc explain --list' to see all documented codes.");
             Environment.Exit(1);
             return;
