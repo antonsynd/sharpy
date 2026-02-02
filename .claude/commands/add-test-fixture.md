@@ -12,18 +12,28 @@ Test fixtures go in `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`:
 
 ```
 TestFixtures/
-├── basics/           # Core language features
-├── classes/          # Class-related tests
-├── control_flow/     # Control flow tests
-├── enums/            # Enum tests
-├── errors/           # Error cases (.error files)
-├── functions/        # Function-related tests
-├── imports/          # Import/module tests
-├── inheritance/      # Inheritance tests
-├── interfaces/       # Interface tests
-├── structs/          # Struct tests
-├── type_system/      # Type system tests
-└── type_shorthand/   # Type shorthand tests
+├── access_modifiers/          # Access modifier tests
+├── basics/                    # Core language features
+├── class_with_init/           # Class initialization tests
+├── classes/                   # Class-related tests
+├── collections/               # Collection type tests
+├── control_flow/              # Control flow tests
+├── cross_module_inheritance/  # Cross-module inheritance tests
+├── enums/                     # Enum tests
+├── errors/                    # Error cases (.error files)
+├── fstrings/                  # F-string tests
+├── functions/                 # Function-related tests
+├── generic_function/          # Generic function tests
+├── imports/                   # Import/module tests
+├── inheritance/               # Inheritance tests
+├── interfaces/                # Interface tests
+├── module_imports/            # Module import tests
+├── strings/                   # String operation tests
+├── structs/                   # Struct tests
+├── structs_enums/             # Struct and enum combined tests
+├── type_shorthand/            # Type shorthand tests
+├── type_system/               # Type system tests
+└── warnings/                  # Warning tests
 ```
 
 ## Creating a Success Test

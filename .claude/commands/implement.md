@@ -27,7 +27,7 @@ $ARGUMENTS
 When axioms conflict: **Axiom 1 (.NET) > Axiom 3 (Type Safety) > Axiom 2 (Python Syntax)**
 
 ### C# Style
-- **C# 9.0 target** — no global usings, file-scoped namespaces, or record structs
+- **C# 9.0 target for Sharpy.Core only** — `Sharpy.Core` targets `netstandard2.1;netstandard2.0` with `LangVersion 9.0` (no global usings, file-scoped namespaces, or record structs). `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` with `LangVersion latest`.
 - PascalCase public, `_camelCase` private fields
 - Nullable annotations used correctly
 - XML docs on public APIs

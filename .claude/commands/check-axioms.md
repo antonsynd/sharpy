@@ -9,7 +9,7 @@ $ARGUMENTS
 ## The Three Axioms
 
 1. **Axiom 1: .NET Runtime Compatibility**
-   - Sharpy compiles to C# 9.0 for the .NET CLR
+   - Sharpy compiles to C# for the .NET CLR
    - Must produce valid, efficient .NET code
    - Must interoperate with .NET libraries
 
@@ -38,7 +38,7 @@ $ARGUMENTS
 
 ```markdown
 ### Axiom 1 (.NET Compatibility)
-- [ ] Compiles to valid C# 9.0
+- [ ] Compiles to valid C#
 - [ ] Works with .NET type system
 - [ ] Interops with .NET libraries
 
