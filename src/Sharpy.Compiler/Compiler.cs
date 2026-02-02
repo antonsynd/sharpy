@@ -148,7 +148,10 @@ public class Compiler
             // Assertion: Parser must produce a valid module with span info
             Debug.Assert(module != null, "Parser should produce a non-null Module");
             Debug.Assert(module.Body != null, "Module.Body should not be null");
+            var assertionTimer = Stopwatch.StartNew();
             AssertStatementsHaveSpans(module, diagnostics);
+            assertionTimer.Stop();
+            _logger.LogDebug($"Post-parse assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -183,8 +186,11 @@ public class Compiler
             metrics.EndPhase();
 
             // Assertions: After name resolution, verify symbol table integrity
+            assertionTimer.Restart();
             AssertAllSymbolsHaveNames(symbolTable, diagnostics);
             AssertNoDuplicateTypeNames(symbolTable, diagnostics);
+            assertionTimer.Stop();
+            _logger.LogDebug($"Post-name-resolution assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
 
             if (nameResolver.Diagnostics.HasErrors)
             {
@@ -225,7 +231,10 @@ public class Compiler
             // Materialize inheritance data onto Symbol properties, then verify and freeze
             semanticBinding.MaterializeInheritance();
             DualWriteAssertions.AssertInheritanceConsistency(symbolTable, semanticBinding);
+            assertionTimer.Restart();
             AssertNoUnresolvedInheritance(symbolTable, diagnostics);
+            assertionTimer.Stop();
+            _logger.LogDebug($"Post-inheritance assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
             semanticBinding.FreezeInheritance();
 
             metrics.EndPhase();
@@ -284,7 +293,10 @@ public class Compiler
             metrics.EndPhase();
 
             // Assertion: After successful type checking, warn if unknown types remain
+            assertionTimer.Restart();
             WarnIfUnknownTypes(semanticInfo, typeChecker.Diagnostics);
+            assertionTimer.Stop();
+            _logger.LogDebug($"Post-type-checking assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
             // Assertion: Type checking should have processed at least some expressions
             Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0,
                 "Type checker should record at least one expression type for non-empty modules");
