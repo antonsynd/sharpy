@@ -46,12 +46,27 @@ public partial class TypeChecker
             MaybeExpression maybeExpr => CheckMaybeExpression(maybeExpr),
             TryExpression tryExpr => CheckTryExpression(tryExpr),
             Parenthesized paren => CheckExpression(paren.Expression),
-            _ => SemanticType.Unknown
+            FStringLiteral fstr => CheckFStringLiteral(fstr),
+            EllipsisLiteral => SemanticType.Void,
+            SliceAccess sliceAccess => CheckSliceAccess(sliceAccess),
+            WalrusExpression walrus => CheckWalrusExpression(walrus),
+            _ => HandleUnrecognizedExpression(expr)
         };
 
         // Cache the result
         _semanticInfo.SetExpressionType(expr, type);
         return type;
+    }
+
+    private SemanticType HandleUnrecognizedExpression(Expression expr)
+    {
+        AddError(
+            $"Internal: unrecognized expression type '{expr.GetType().Name}'. This is a compiler bug — please report it.",
+            expr.LineStart,
+            expr.ColumnStart,
+            DiagnosticCodes.Semantic.UnrecognizedExpressionType,
+            expr.Span);
+        return SemanticType.Unknown;
     }
 
     private SemanticType CheckIdentifier(Identifier id)
@@ -2028,4 +2043,41 @@ public partial class TypeChecker
         UnaryOperator.BitwiseNot => "~",
         _ => op.ToString()
     };
+
+    private SemanticType CheckFStringLiteral(FStringLiteral fstr)
+    {
+        // Type-check all interpolated expressions within the f-string
+        foreach (var part in fstr.Parts)
+        {
+            if (part.Expression != null)
+            {
+                CheckExpression(part.Expression);
+            }
+        }
+        return SemanticType.Str;
+    }
+
+    private SemanticType CheckSliceAccess(SliceAccess sliceAccess)
+    {
+        var objType = CheckExpression(sliceAccess.Object);
+        if (sliceAccess.Start != null) CheckExpression(sliceAccess.Start);
+        if (sliceAccess.Stop != null) CheckExpression(sliceAccess.Stop);
+        if (sliceAccess.Step != null) CheckExpression(sliceAccess.Step);
+
+        // Slicing a list returns a list, slicing a str returns a str
+        if (objType is GenericType gt && gt.Name == "list")
+            return objType;
+        if (objType == SemanticType.Str)
+            return SemanticType.Str;
+
+        // For other types, return the same type (best effort)
+        return objType;
+    }
+
+    private SemanticType CheckWalrusExpression(WalrusExpression walrus)
+    {
+        var valueType = CheckExpression(walrus.Value);
+        // The walrus expression both assigns and returns the value
+        return valueType;
+    }
 }

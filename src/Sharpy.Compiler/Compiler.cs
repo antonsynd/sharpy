@@ -538,8 +538,12 @@ public class Compiler
     {
         if (!diagnostics.HasErrors && semanticInfo.HasUnknownExpressionTypes())
         {
+            // Invariant (aspirational): if SemanticInfo contains UnknownType entries,
+            // DiagnosticBag should contain at least one error from the source of that Unknown.
+            // Currently, some intermediate expressions (member access chains, CLR interop)
+            // may produce Unknown without errors. This warning tracks those gaps.
             _logger.LogWarning(
-                "Unknown expression types remain after type checking (possible resolution gap)", 0, 0);
+                "Unknown expression types remain after type checking with no errors (possible resolution gap)", 0, 0);
         }
     }
 

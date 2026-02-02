@@ -483,6 +483,20 @@ public static class DiagnosticExplanations
             "f: int -> str = ...  # invalid syntax",
             "Use Callable syntax:\n  f: Callable[[int], str] = my_func");
 
+        Add(dict, DiagnosticCodes.Semantic.UnrecognizedStatementType, "Unrecognized statement type in type checker", "Semantic",
+            "The type checker encountered a statement type that it does not have a handler for. " +
+            "This is a compiler bug — the type checker is missing a case for this AST node type, " +
+            "which means the statement was not type-checked.",
+            null,
+            "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
+
+        Add(dict, DiagnosticCodes.Semantic.UnrecognizedExpressionType, "Unrecognized expression type in type checker", "Semantic",
+            "The type checker encountered an expression type that it does not have a handler for. " +
+            "The expression was assigned the Unknown type, which passes all type checks and may mask errors. " +
+            "This is a compiler bug — the type checker is missing a case for this AST node type.",
+            null,
+            "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
+
         // ── Semantic errors: Return and control flow (SHP0260-SHP0279) ──
 
         Add(dict, DiagnosticCodes.Semantic.MissingReturnValue, "Missing return value", "Semantic",

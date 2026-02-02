@@ -120,6 +120,8 @@ public static class DiagnosticCodes
         public const string UninitializedStructField = "SHP0252";
         public const string InvalidEnumValue = "SHP0253";
         public const string InvalidFunctionType = "SHP0254";
+        public const string UnrecognizedStatementType = "SHP0255";
+        public const string UnrecognizedExpressionType = "SHP0256";
 
         // Return and control flow (SHP0260-SHP0279)
         public const string MissingReturnValue = "SHP0260";

@@ -328,8 +328,18 @@ public partial class TypeChecker
                 // Import validation handled elsewhere
                 break;
 
+            case TypeAlias:
+                // Type aliases are compile-time only, no type checking needed
+                break;
+
             default:
                 _logger.LogWarning($"Unhandled statement type: {statement.GetType().Name}", 0, 0);
+                AddError(
+                    $"Internal: unrecognized statement type '{statement.GetType().Name}'. This is a compiler bug — please report it.",
+                    statement.LineStart,
+                    statement.ColumnStart,
+                    DiagnosticCodes.Semantic.UnrecognizedStatementType,
+                    statement.Span);
                 break;
         }
     }
