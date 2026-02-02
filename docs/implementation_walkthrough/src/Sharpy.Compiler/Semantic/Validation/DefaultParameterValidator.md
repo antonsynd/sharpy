@@ -1,12 +1,12 @@
-# Walkthrough: DefaultParameterValidatorV2.cs
+# Walkthrough: DefaultParameterValidator.cs
 
-**Source File**: `src/Sharpy.Compiler/Semantic/Validation/DefaultParameterValidatorV2.cs`
+**Source File**: `src/Sharpy.Compiler/Semantic/Validation/DefaultParameterValidator.cs`
 
 ---
 
 ## Overview
 
-`DefaultParameterValidatorV2` is a **semantic validator** that enforces Python-style rules for function parameter default values. It runs during the **Semantic Analysis** phase of the Sharpy compiler pipeline, specifically during the **Validation Pipeline** (Pass 5).
+`DefaultParameterValidator` is a **semantic validator** that enforces Python-style rules for function parameter default values. It runs during the **Semantic Analysis** phase of the Sharpy compiler pipeline, specifically during the **Validation Pipeline** (Pass 5).
 
 ### What It Does
 
@@ -21,7 +21,7 @@ This validator catches three critical categories of default parameter errors:
 ```
 Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → ValidationPipeline → RoslynEmitter → C#
                                               ↓
-                                    [Order 250: DefaultParameterValidatorV2]
+                                    [Order 250: DefaultParameterValidator]
                                     [Order 300: TypeChecker]
 ```
 
@@ -40,7 +40,7 @@ ISemanticValidator
     ↑
 SemanticValidatorBase (provides AddError/AddWarning helpers)
     ↑
-DefaultParameterValidatorV2
+DefaultParameterValidator
 ```
 
 ### Key Properties
@@ -56,7 +56,7 @@ DefaultParameterValidatorV2
 
 - **Stateless between calls**: Fields `_logger` and `_context` are set fresh on each `Validate()` call
 - **Pipeline-compatible**: Implements `ISemanticValidator` for use in `ValidationPipeline`
-- **V2 suffix**: This is the newer pipeline-compatible version; the original `DefaultParameterValidator` exists for backward compatibility
+- **Pipeline-compatible**: This is the pipeline-compatible version using `ValidationPipeline` and `SemanticContext`
 
 ---
 
@@ -460,7 +460,7 @@ This validator follows the **Validator Pipeline Pattern** introduced in Sharpy v
 
 ```csharp
 ValidationPipeline
-    .AddValidator(new DefaultParameterValidatorV2())
+    .AddValidator(new DefaultParameterValidator())
     .AddValidator(new TypeChecker())
     .Validate(module, context);
 ```
@@ -549,7 +549,7 @@ You'll see:
 
 ### 2. **Check Validator Order**
 
-If validation seems to fail unexpectedly, verify that `DefaultParameterValidatorV2` runs **before** `TypeChecker`:
+If validation seems to fail unexpectedly, verify that `DefaultParameterValidator` runs **before** `TypeChecker`:
 
 ```csharp
 var pipeline = new ValidationPipeline();
@@ -567,10 +567,10 @@ TypeChecker: Order 300
 
 ### 3. **Isolate Validators in Tests**
 
-Test `DefaultParameterValidatorV2` alone:
+Test `DefaultParameterValidator` alone:
 ```csharp
 var pipeline = ValidationPipeline.CreateEmpty()
-    .AddValidator(new DefaultParameterValidatorV2());
+    .AddValidator(new DefaultParameterValidator());
 
 var diagnostics = pipeline.Validate(module, context);
 ```
@@ -712,7 +712,7 @@ var defaultCode = GenerateDefaultParameter(param);
 
 ### Testing Requirements
 
-When modifying this file, add tests to `src/Sharpy.Compiler.Tests/Semantic/Validation/DefaultParameterValidatorV2Tests.cs`:
+When modifying this file, add tests to `src/Sharpy.Compiler.Tests/Semantic/Validation/DefaultParameterValidatorTests.cs`:
 
 #### Test Categories
 
@@ -781,8 +781,8 @@ When modifying this file, add tests to `src/Sharpy.Compiler.Tests/Semantic/Valid
 
 ### Related Validators
 
-- **[AccessValidatorV2.md](./AccessValidatorV2.md)** - Validates access modifiers (private, protected, public)
-- **[ControlFlowValidatorV2.md](./ControlFlowValidatorV2.md)** - Validates control flow (break/continue, return paths)
+- **[AccessValidator.md](./AccessValidator.md)** - Validates access modifiers (private, protected, public)
+- **[ControlFlowValidator.md](./ControlFlowValidator.md)** - Validates control flow (break/continue, return paths)
 - **[ControlFlowValidatorV3.md](./ControlFlowValidatorV3.md)** - Enhanced control flow validation
 
 ### Validation Infrastructure
@@ -802,13 +802,13 @@ When modifying this file, add tests to `src/Sharpy.Compiler.Tests/Semantic/Valid
 
 ### Testing
 
-- Test file: `src/Sharpy.Compiler.Tests/Semantic/Validation/DefaultParameterValidatorV2Tests.cs`
+- Test file: `src/Sharpy.Compiler.Tests/Semantic/Validation/DefaultParameterValidatorTests.cs`
 
 ### Legacy Comparison
 
 - **Old validator**: `src/Sharpy.Compiler/Semantic/DefaultParameterValidator.cs`
 - **Walkthrough**: [DefaultParameterValidator.md](../DefaultParameterValidator.md)
-- **Differences**: V2 uses `ValidationPipeline` and `SemanticContext`; old version was standalone
+- **Differences**: Uses `ValidationPipeline` and `SemanticContext`; old version was standalone
 
 ---
 

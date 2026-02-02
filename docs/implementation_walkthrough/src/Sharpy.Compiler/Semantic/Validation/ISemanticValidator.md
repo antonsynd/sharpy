@@ -17,11 +17,11 @@ Parser (AST) → NameResolver → TypeResolver → TypeChecker → ValidationPip
 ```
 
 After the TypeChecker completes its multi-pass analysis (declarations → inheritance → types), the ValidationPipeline runs a series of specialized validators. Each validator implements `ISemanticValidator` to perform focused semantic checks like:
-- Operator type compatibility (`OperatorValidatorV2`)
-- Protocol method validation (`ProtocolValidatorV2`)
-- Member access validation (`AccessValidatorV2`)
-- Control flow analysis (`ControlFlowValidatorV2/V3`)
-- Function signature checks (`SignatureValidatorV2`)
+- Operator type compatibility (`OperatorValidator`)
+- Protocol method validation (`ProtocolValidator`)
+- Member access validation (`AccessValidator`)
+- Control flow analysis (`ControlFlowValidatorV3/V3`)
+- Function signature checks (`SignatureValidator`)
 
 This design separates concerns: the TypeChecker handles core type inference and checking, while validators handle more specialized rules.
 
@@ -187,12 +187,12 @@ using Sharpy.Compiler.Diagnostics;      // DiagnosticBag, error reporting
 - [`AstTraversalContext.cs`](./AstTraversalContext.md) - AST traversal state
 
 **Concrete Validators (V2 = current generation):**
-- [`OperatorValidatorV2.cs`](./OperatorValidatorV2.md) - Binary/unary operator validation
-- [`ProtocolValidatorV2.cs`](./ProtocolValidatorV2.md) - Protocol method validation
-- [`AccessValidatorV2.md`](./AccessValidatorV2.md) - Member access validation
-- [`SignatureValidatorV2.cs`](./SignatureValidatorV2.md) - Function signature validation
-- [`ControlFlowValidatorV2.md`](./ControlFlowValidatorV2.md) / [`V3.md`](./ControlFlowValidatorV3.md) - Control flow analysis
-- [`DefaultParameterValidatorV2.cs`](./DefaultParameterValidatorV2.md) - Default parameter validation
+- [`OperatorValidator.cs`](./OperatorValidator.md) - Binary/unary operator validation
+- [`ProtocolValidator.cs`](./ProtocolValidator.md) - Protocol method validation
+- [`AccessValidator.md`](./AccessValidator.md) - Member access validation
+- [`SignatureValidator.cs`](./SignatureValidator.md) - Function signature validation
+- [`ControlFlowValidatorV3.md`](./ControlFlowValidatorV3.md) / [`V3.md`](./ControlFlowValidatorV3.md) - Control flow analysis
+- [`DefaultParameterValidator.cs`](./DefaultParameterValidator.md) - Default parameter validation
 
 **Legacy Support:**
 - `LegacyValidatorAdapter.cs` - Wraps old-style validators for backward compatibility
@@ -268,7 +268,7 @@ public class GoodValidator : ISemanticValidator
 - **Parallelism**: Future versions could run validators in parallel
 - **Predictability**: Each validation run is independent
 
-**Note:** The `_context` and `_logger` fields in concrete validators (like `OperatorValidatorV2`) are set at the start of each `Validate()` call, effectively making them call-scoped.
+**Note:** The `_context` and `_logger` fields in concrete validators (like `OperatorValidator`) are set at the start of each `Validate()` call, effectively making them call-scoped.
 
 ### 4. **Separation of Type Inference and Validation**
 
@@ -283,7 +283,7 @@ Early validators (V1) performed both type inference and validation, creating cir
 Example:
 ```csharp
 // Legacy OperatorValidator (V1): Infers types AND validates
-// Modern OperatorValidatorV2: Only validates (types already inferred by TypeChecker)
+// Modern OperatorValidator: Only validates (types already inferred by TypeChecker)
 ```
 
 ### 5. **Base Class as Optional Convenience**
@@ -354,9 +354,9 @@ In `ValidationPipelineFactory.cs`, comment out specific validators:
 public static ValidationPipeline CreateDefault(ICompilerLogger logger)
 {
     var pipeline = new ValidationPipeline(logger);
-    pipeline.AddValidator(new OperatorValidatorV2());
-    // pipeline.AddValidator(new ProtocolValidatorV2()); // Temporarily disabled
-    pipeline.AddValidator(new AccessValidatorV2());
+    pipeline.AddValidator(new OperatorValidator());
+    // pipeline.AddValidator(new ProtocolValidator()); // Temporarily disabled
+    pipeline.AddValidator(new AccessValidator());
     return pipeline;
 }
 ```
@@ -431,7 +431,7 @@ public override void Validate(Module module, SemanticContext context)
 1. **Create the validator class:**
 
 ```csharp
-// src/Sharpy.Compiler/Semantic/Validation/MyFeatureValidatorV2.cs
+// src/Sharpy.Compiler/Semantic/Validation/MyFeatureValidator.cs
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic.Validation;
@@ -443,7 +443,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - [Key design decisions]
 /// - [Future extensibility considerations]
 /// </summary>
-public class MyFeatureValidatorV2 : SemanticValidatorBase
+public class MyFeatureValidator : SemanticValidatorBase
 {
     public override string Name => "MyFeatureValidator";
     
@@ -465,7 +465,7 @@ public static ValidationPipeline CreateDefault(ICompilerLogger logger)
 {
     var pipeline = new ValidationPipeline(logger);
     // ... existing validators
-    pipeline.AddValidator(new MyFeatureValidatorV2());
+    pipeline.AddValidator(new MyFeatureValidator());
     return pipeline;
 }
 ```
@@ -473,8 +473,8 @@ public static ValidationPipeline CreateDefault(ICompilerLogger logger)
 3. **Add tests:**
 
 ```csharp
-// src/Sharpy.Compiler.Tests/Semantic/Validation/MyFeatureValidatorV2Tests.cs
-public class MyFeatureValidatorV2Tests : IntegrationTestBase
+// src/Sharpy.Compiler.Tests/Semantic/Validation/MyFeatureValidatorTests.cs
+public class MyFeatureValidatorTests : IntegrationTestBase
 {
     [Fact]
     public void ValidCode_NoErrors()
@@ -529,7 +529,7 @@ When replacing an old validator with a new version:
 
 Example:
 ```csharp
-[Obsolete("Use OperatorValidatorV2 instead. This will be removed in v2.0.")]
+[Obsolete("Use OperatorValidator instead. This will be removed in v2.0.")]
 public class OperatorValidator : ISemanticValidator { ... }
 ```
 
@@ -598,10 +598,10 @@ The interface includes design notes for planned features:
 - [AstTraversalContext.md](./AstTraversalContext.md) - AST traversal utilities
 
 ### Concrete Validators
-- [OperatorValidatorV2.md](./OperatorValidatorV2.md) - Operator type checking
-- [ProtocolValidatorV2.md](./ProtocolValidatorV2.md) - Protocol validation
-- [AccessValidatorV2.md](./AccessValidatorV2.md) - Member access checks
-- [ControlFlowValidatorV2.md](./ControlFlowValidatorV2.md) - Control flow analysis
+- [OperatorValidator.md](./OperatorValidator.md) - Operator type checking
+- [ProtocolValidator.md](./ProtocolValidator.md) - Protocol validation
+- [AccessValidator.md](./AccessValidator.md) - Member access checks
+- [ControlFlowValidatorV3.md](./ControlFlowValidatorV3.md) - Control flow analysis
 
 ### Semantic Analysis Core
 - [TypeChecker.md](../TypeChecker.md) - Core type checking (runs before validators)
@@ -630,4 +630,4 @@ The interface includes design notes for planned features:
 5. **Report clear errors** - Include source locations and actionable messages
 6. **Test thoroughly** - Validators are the last line of defense before code generation
 
-When in doubt, look at existing validators like `OperatorValidatorV2` or `AccessValidatorV2` as templates for your own implementations.
+When in doubt, look at existing validators like `OperatorValidator` or `AccessValidator` as templates for your own implementations.

@@ -262,11 +262,11 @@ public static ValidationPipeline CreateEmpty(ICompilerLogger? logger = null)
 ### Related Validators
 
 Current validators in the system (as of this walkthrough):
-- `AccessValidatorV2` - Validates access modifiers
-- `DefaultParameterValidatorV2` - Validates default parameter rules
-- `OperatorValidatorV2` - Validates operator overloading
-- `ProtocolValidatorV2` - Validates protocol (interface) compliance
-- `SignatureValidatorV2` - Validates function signatures
+- `AccessValidator` - Validates access modifiers
+- `DefaultParameterValidator` - Validates default parameter rules
+- `OperatorValidator` - Validates operator overloading
+- `ProtocolValidator` - Validates protocol (interface) compliance
+- `SignatureValidator` - Validates function signatures
 - `ControlFlowValidatorV3` - Validates control flow (return paths, unreachable code)
 - `LegacyValidatorAdapter` - Adapts old validators to new pipeline
 
@@ -513,8 +513,8 @@ public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
 - [AstTraversalContext.md](./AstTraversalContext.md) - AST traversal state management
 
 ### Related Validators
-- `OperatorValidatorV2.md` - Example validator implementation
-- `ProtocolValidatorV2.md` - Example validator implementation
+- `OperatorValidator.md` - Example validator implementation
+- `ProtocolValidator.md` - Example validator implementation
 - `LegacyValidatorAdapter.md` - Adapter for legacy validators
 
 ### Upstream/Downstream

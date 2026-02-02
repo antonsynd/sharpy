@@ -1,12 +1,12 @@
-# Walkthrough: ProtocolValidatorV2.cs
+# Walkthrough: ProtocolValidator.cs
 
-**Source File**: `src/Sharpy.Compiler/Semantic/Validation/ProtocolValidatorV2.cs`
+**Source File**: `src/Sharpy.Compiler/Semantic/Validation/ProtocolValidator.cs`
 
 ---
 
 ## Overview
 
-`ProtocolValidatorV2` is a **semantic validator** responsible for ensuring that Python protocol methods (dunder methods like `__iter__`, `__contains__`, `__getitem__`, etc.) are properly implemented when used in Sharpy code. This validator runs as part of the **validation pipeline** during semantic analysis, after type checking has been completed.
+`ProtocolValidator` is a **semantic validator** responsible for ensuring that Python protocol methods (dunder methods like `__iter__`, `__contains__`, `__getitem__`, etc.) are properly implemented when used in Sharpy code. This validator runs as part of the **validation pipeline** during semantic analysis, after type checking has been completed.
 
 **Key Responsibilities:**
 - Validates iteration protocols (`__iter__`) for `for` loops and comprehensions
@@ -16,16 +16,16 @@
 
 **Pipeline Position**: This is a **post-pass validator** (Order: 500) that runs after type checking and access validation. It doesn't perform type inference—it only validates that required protocols exist.
 
-**Legacy vs V2**: There's an older `ProtocolValidator` that was tightly coupled with type inference. This V2 version is designed for the pipeline architecture and focuses solely on validation.
+This validator is designed for the pipeline architecture and focuses solely on validation, with type inference handled separately.
 
 ---
 
 ## Class/Type Structure
 
-### ProtocolValidatorV2 : SemanticValidatorBase
+### ProtocolValidator : SemanticValidatorBase
 
 ```csharp
-public class ProtocolValidatorV2 : SemanticValidatorBase
+public class ProtocolValidator : SemanticValidatorBase
 {
     public override string Name => "ProtocolValidator";
     public override int Order => 500;  // After access validation (450)
@@ -347,7 +347,7 @@ The comment in the class summary explains an important architectural decision:
 /// this validator performs post-pass validation only.
 ```
 
-**Historical Context**: The original `ProtocolValidator` was entangled with type inference logic. V2 cleanly separates concerns:
+**Historical Context**: The original protocol validator was entangled with type inference logic. The current design cleanly separates concerns:
 - **Type inference** happens in the type checker
 - **Protocol validation** happens in this post-pass validator
 
@@ -450,7 +450,7 @@ If CLR protocol detection is failing, write a minimal test:
 [Fact]
 public void TestClrProtocol()
 {
-    var validator = new ProtocolValidatorV2();
+    var validator = new ProtocolValidator();
     var listType = typeof(List<int>);
     Assert.True(validator.HasClrProtocol(listType, "__iter__"));
 }
@@ -535,7 +535,7 @@ To handle more .NET types:
 
 **5. Integration with Legacy ProtocolValidator**
 
-Currently, both `ProtocolValidator` (legacy) and `ProtocolValidatorV2` exist. Future work:
+Currently, both `ProtocolValidator` (legacy) and `ProtocolValidator` exist. Future work:
 - Migrate all type inference out of legacy validator
 - Deprecate and remove legacy validator
 - Ensure 100% feature parity
@@ -602,7 +602,7 @@ TestFixtures/Validation/Protocols/
 
 ### Legacy Protocol Validation
 
-- **ProtocolValidator** (legacy): The original protocol validator that combines validation with type inference. Review this file to understand the full set of protocol checks that should eventually migrate to V2.
+- **ProtocolValidator** (legacy): The original protocol validator that combined validation with type inference has been superseded by this pipeline-based version.
 
 ### Runtime Protocol Implementation
 
@@ -614,7 +614,7 @@ TestFixtures/Validation/Protocols/
 
 ## Summary
 
-`ProtocolValidatorV2` is a **focused, post-pass validator** that ensures Python protocols are properly implemented wherever they're used in Sharpy code. It's part of the modern validation pipeline architecture, separating protocol validation from type inference.
+`ProtocolValidator` is a **focused, post-pass validator** that ensures Python protocols are properly implemented wherever they're used in Sharpy code. It's part of the modern validation pipeline architecture, separating protocol validation from type inference.
 
 **Key Takeaways:**
 - Runs **after type checking** (Order: 500)

@@ -201,8 +201,8 @@ public static LegacyValidatorAdapter ForAccessValidator(
 - `ValidationPipelineFactory.cs` — Shows how the default pipeline uses V2 validators instead of this adapter
 
 **Migration Path:**
-- `ControlFlowValidatorV2.cs` — Modern replacement for `ControlFlowValidator`
-- `AccessValidatorV2.cs` — Modern replacement for `AccessValidator`
+- `ControlFlowValidatorV3.cs` — Modern replacement for `ControlFlowValidator`
+- `AccessValidator.cs` — Modern replacement for `AccessValidator`
 
 ---
 
@@ -219,7 +219,7 @@ The `ForControlFlowValidator()` method implements an implicit Visitor pattern by
 
 ### 4. **Explicit Deprecation**
 ```csharp
-[Obsolete("Use ControlFlowValidatorV2 via ValidationPipelineFactory.CreateDefault() instead")]
+[Obsolete("Use ControlFlowValidatorV3 via ValidationPipelineFactory.CreateDefault() instead")]
 ```
 The code uses C# attributes and XML comments to clearly signal that this is transitional code. The `#pragma warning disable CS0618` (line 14) acknowledges intentional use of deprecated types during the migration period.
 
@@ -315,8 +315,8 @@ dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
 **Why This Exists**: Early versions of Sharpy had validators tightly coupled to specific components (e.g., `TypeChecker` calling validators directly). The introduction of `ISemanticValidator` and `ValidationPipeline` created a more modular, testable architecture. This adapter allowed the migration to happen incrementally without breaking existing functionality.
 
 **Migration Status** (as of this writing):
-- ✅ `ControlFlowValidator` → Migrated to `ControlFlowValidatorV2` (AST-walking) and `ControlFlowValidatorV3` (CFG-based)
-- ✅ `AccessValidator` → Migrated to `AccessValidatorV2`
+- ✅ `ControlFlowValidator` → Migrated to `ControlFlowValidatorV3` (AST-walking) and `ControlFlowValidatorV3` (CFG-based)
+- ✅ `AccessValidator` → Migrated to `AccessValidator`
 - ✅ Default pipeline uses V2 validators exclusively
 - ⏳ Legacy validators still exist for backward compatibility but are marked obsolete
 
@@ -332,8 +332,8 @@ dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
 ### ❌ "Order 400 means it's the 400th validator"
 **✅ Reality**: Order is just a sorting key. Common values are 100 (name resolution), 200 (type resolution), 300 (type checking), 400 (control flow), 500 (other semantic checks). The gaps allow inserting new validators between existing ones.
 
-### ❌ "AccessValidatorV2 doesn't need traversal logic"
-**✅ Reality**: `AccessValidatorV2` handles traversal internally as part of the validator implementation. The adapter's no-op behavior (line 125-128) is specific to how the legacy `AccessValidator` was called on-demand rather than as a batch pass.
+### ❌ "AccessValidator doesn't need traversal logic"
+**✅ Reality**: `AccessValidator` handles traversal internally as part of the validator implementation. The adapter's no-op behavior (line 125-128) is specific to how the legacy `AccessValidator` was called on-demand rather than as a batch pass.
 
 ---
 

@@ -560,7 +560,7 @@ When adding new features, follow these patterns:
 - **[SemanticContext.md](../SemanticContext.md)** *(if exists)* - The container for this class
 - **[ISemanticValidator.md](../ISemanticValidator.md)** *(if exists)* - Interface that uses this context
 - **[ValidationPipeline.md](../ValidationPipeline.md)** *(if exists)* - How validators are orchestrated
-- **[AccessValidatorV2.md](./AccessValidatorV2.md)** - Example validator using traversal context
+- **[AccessValidator.md](./AccessValidator.md)** - Example validator using traversal context
 
 ### Related Semantic Analysis Documentation
 
@@ -572,7 +572,7 @@ When adding new features, follow these patterns:
 
 - **Primary file**: [`src/Sharpy.Compiler/Semantic/Validation/AstTraversalContext.cs`](../../../../../../src/Sharpy.Compiler/Semantic/Validation/AstTraversalContext.cs)
 - **Container**: [`src/Sharpy.Compiler/Semantic/Validation/SemanticContext.cs`](../../../../../../src/Sharpy.Compiler/Semantic/Validation/SemanticContext.cs)
-- **Usage example**: [`src/Sharpy.Compiler/Semantic/Validation/AccessValidatorV2.cs`](../../../../../../src/Sharpy.Compiler/Semantic/Validation/AccessValidatorV2.cs)
+- **Usage example**: [`src/Sharpy.Compiler/Semantic/Validation/AccessValidator.cs`](../../../../../../src/Sharpy.Compiler/Semantic/Validation/AccessValidator.cs)
 
 ---
 
@@ -591,5 +591,5 @@ When adding new features, follow these patterns:
 
 **Next steps**:
 1. Read `SemanticContext.cs` to see how this integrates with the broader validation system
-2. Look at `AccessValidatorV2.cs` or another V2 validator to see real usage
+2. Look at `AccessValidator.cs` or another V2 validator to see real usage
 3. Try writing a simple validator that checks if `return` statements are inside functions (using `CurrentFunction`)

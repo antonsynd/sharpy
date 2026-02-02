@@ -449,7 +449,7 @@ a < b < c
 4. **Class/Struct Member Access** (lines 518-559):
    - Searches for fields using `FindFieldInHierarchy()` (includes inherited fields)
    - Searches for methods using `FindMethodInHierarchy()` (includes inherited methods and interface methods)
-   - Access level validation delegated to `AccessValidatorV2` in the validation pipeline
+   - Access level validation delegated to `AccessValidator` in the validation pipeline
 
 **Method Binding** (lines 542-550):
 When accessing a method via `obj.method`, the object is implicitly bound as `self`:
@@ -460,7 +460,7 @@ var paramTypes = method.Parameters.Skip(1).Select(p => p.Type).ToList();
 
 **Null Conditional with Methods**: For `obj?.method()`, the method `FunctionType` itself is not wrapped in nullable, but the eventual call result will be (handled in `CheckFunctionCall`).
 
-**Connection to Validation Pipeline**: Access level validation (public/private/protected) is handled by `AccessValidatorV2` in the validation pipeline, not here.
+**Connection to Validation Pipeline**: Access level validation (public/private/protected) is handled by `AccessValidator` in the validation pipeline, not here.
 
 ---
 
@@ -1245,10 +1245,10 @@ var resultType = _typeInference.InferBinaryOpType(binOp.Operator, leftType, righ
 ### 4. **Validation Pipeline Integration**
 
 The V2 validation pipeline handles specialized checks:
-- **OperatorValidatorV2**: Operator overload validation
-- **ProtocolValidatorV2**: Protocol support validation (`__iter__`, `__getitem__`, `__len__`)
-- **AccessValidatorV2**: Access level validation (public/private/protected)
-- **ControlFlowValidatorV2**: Control flow validation (unreachable code, missing returns)
+- **OperatorValidator**: Operator overload validation
+- **ProtocolValidator**: Protocol support validation (`__iter__`, `__getitem__`, `__len__`)
+- **AccessValidator**: Access level validation (public/private/protected)
+- **ControlFlowValidatorV3**: Control flow validation (unreachable code, missing returns)
 
 **This File's Role**: Type checking and type inference only. Detailed validation is done by the pipeline.
 
@@ -1526,7 +1526,7 @@ private SemanticType CheckSlice(SliceExpression slice)
 
 **Example**: Adding `__contains__` protocol for `in` operator:
 1. Add inference to `TypeInferenceService.InferBinaryOpType()`
-2. Add validation to `ProtocolValidatorV2`
+2. Add validation to `ProtocolValidator`
 3. No changes needed in this file
 
 ---

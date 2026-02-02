@@ -510,11 +510,11 @@ if (context.Traversal.CurrentFunction == null)
 
 ### Validator Examples Using This Context
 
-- **[ControlFlowValidatorV2.md](ControlFlowValidatorV2.md)** — Uses `Traversal.InLoop` to validate `break`/`continue`
-- **[AccessValidatorV2.md](AccessValidatorV2.md)** — Uses `Traversal.CurrentClass` to validate `self` usage
-- **[DefaultParameterValidatorV2.md](DefaultParameterValidatorV2.md)** — Uses `TypeResolver` to check default parameter types
-- **[ProtocolValidatorV2.md](ProtocolValidatorV2.md)** — Uses `SymbolTable` to validate protocol implementations
-- **[OperatorValidatorV2.md](OperatorValidatorV2.md)** — Uses `ClrCache` to validate operator overloads
+- **[ControlFlowValidatorV3.md](ControlFlowValidatorV3.md)** — Uses `Traversal.InLoop` to validate `break`/`continue`
+- **[AccessValidator.md](AccessValidator.md)** — Uses `Traversal.CurrentClass` to validate `self` usage
+- **[DefaultParameterValidator.md](DefaultParameterValidator.md)** — Uses `TypeResolver` to check default parameter types
+- **[ProtocolValidator.md](ProtocolValidator.md)** — Uses `SymbolTable` to validate protocol implementations
+- **[OperatorValidator.md](OperatorValidator.md)** — Uses `ClrCache` to validate operator overloads
 
 ---
 

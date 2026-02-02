@@ -276,7 +276,7 @@ private static bool IsTypeAnnotationVoid(TypeAnnotation typeAnnotation)
 
 - **`OperatorValidator.cs`** (deprecated): Legacy validator that combined signature checking with type inference
 - **`ProtocolSignatureValidator.cs`**: Similar validator for protocol methods (like `__iter__`, `__len__`)
-- **`Validation/SignatureValidatorV2.cs`**: New V2 wrapper that uses this validator in the modern pipeline
+- **`Validation/SignatureValidator.cs`**: New V2 wrapper that uses this validator in the modern pipeline
 
 ---
 
@@ -489,7 +489,7 @@ In-place operators (`__iadd__`, `__isub__`, etc.) follow the same rules as binar
 ### Related Source Files
 
 - **`src/Sharpy.Compiler/Semantic/OperatorValidator.cs`** (deprecated): Legacy validator - being phased out
-- **`src/Sharpy.Compiler/Semantic/Validation/SignatureValidatorV2.cs`**: V2 wrapper that uses this validator
+- **`src/Sharpy.Compiler/Semantic/Validation/SignatureValidator.cs`**: V2 wrapper that uses this validator
 - **`src/Sharpy.Compiler/Semantic/TypeAnnotationHelper.cs`**: Shared utility for type name formatting
 - **`src/Sharpy.Compiler/CodeGen/RoslynEmitter*.cs`**: Consumes validated operators to generate C# code
 

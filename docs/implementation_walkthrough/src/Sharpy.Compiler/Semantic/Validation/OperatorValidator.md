@@ -1,12 +1,12 @@
-# Walkthrough: OperatorValidatorV2.cs
+# Walkthrough: OperatorValidator.cs
 
-**Source File**: `src/Sharpy.Compiler/Semantic/Validation/OperatorValidatorV2.cs`
+**Source File**: `src/Sharpy.Compiler/Semantic/Validation/OperatorValidator.cs`
 
 ---
 
 ## Overview
 
-`OperatorValidatorV2` is a semantic validation pass that ensures operators are used correctly in Sharpy code. It validates:
+`OperatorValidator` is a semantic validation pass that ensures operators are used correctly in Sharpy code. It validates:
 
 - **Binary operators**: arithmetic (`+`, `-`, `*`, `/`), comparison (`==`, `!=`, `<`, `>`), bitwise (`&`, `|`, `^`), and logical operators
 - **Unary operators**: negation (`-`), positive (`+`), logical not (`not`), bitwise not (`~`)
@@ -15,11 +15,11 @@
 This is the **pipeline-compatible** version of the original `OperatorValidator`. The key architectural difference is:
 
 - **Legacy `OperatorValidator`**: Performed type inference *during* type-checking (now deprecated)
-- **`OperatorValidatorV2`**: Performs **post-pass validation only**, assuming types have already been inferred by `TypeInferenceService`
+- **`OperatorValidator`**: Performs **post-pass validation only**, assuming types have already been inferred by `TypeInferenceService`
 
 The validator runs at **Order 500** in the semantic analysis pipeline, after type checking and access validation have completed. It examines the types attached to expressions in `SemanticInfo` and reports errors when operators are applied to incompatible types.
 
-**Pipeline Position**: Parser → ... → Type Checker → OperatorValidatorV2 → CodeGen
+**Pipeline Position**: Parser → ... → Type Checker → OperatorValidator → CodeGen
 
 ---
 
@@ -28,10 +28,10 @@ The validator runs at **Order 500** in the semantic analysis pipeline, after typ
 ### Inheritance
 
 ```csharp
-public class OperatorValidatorV2 : SemanticValidatorBase
+public class OperatorValidator : SemanticValidatorBase
 ```
 
-`OperatorValidatorV2` inherits from `SemanticValidatorBase`, which implements the `ISemanticValidator` interface. This base class provides:
+`OperatorValidator` inherits from `SemanticValidatorBase`, which implements the `ISemanticValidator` interface. This base class provides:
 
 - Common error/warning reporting methods (`AddError`, `AddWarning`)
 - A standardized interface for the validation pipeline
@@ -463,7 +463,7 @@ If you suspect an operator is mapped to the wrong dunder method:
 
 ### When to Modify This File
 
-You should modify `OperatorValidatorV2.cs` when:
+You should modify `OperatorValidator.cs` when:
 
 1. **Adding new operators**: If Sharpy adds new operators (e.g., matrix multiplication `@`), add cases to:
    - `BinaryOperatorToDunder` (if binary) or `UnaryOperatorToDunder` (if unary)
@@ -491,7 +491,7 @@ You should modify `OperatorValidatorV2.cs` when:
 
 ### Testing Changes
 
-1. **Unit tests**: Add tests to `src/Sharpy.Compiler.Tests/Semantic/Validation/OperatorValidatorV2Tests.cs`
+1. **Unit tests**: Add tests to `src/Sharpy.Compiler.Tests/Semantic/Validation/OperatorValidatorTests.cs`
 2. **Integration tests**: Add `.spy` + `.error` test fixtures to `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
 3. **Verify Python compatibility**: Test against Python to ensure Sharpy's behavior matches
 
@@ -533,7 +533,7 @@ If you modify operator semantics, you may need to update:
 
 ### Related Tests
 
-- **`src/Sharpy.Compiler.Tests/Semantic/Validation/OperatorValidatorV2Tests.cs`**: Unit tests (if exists)
+- **`src/Sharpy.Compiler.Tests/Semantic/Validation/OperatorValidatorTests.cs`**: Unit tests (if exists)
 - **`src/Sharpy.Compiler.Tests/Integration/ValidationPipelineIntegrationTests.cs`**: Integration tests for the validation pipeline
 - **`src/Sharpy.Compiler.Tests/Integration/TestFixtures/operator_validation/`**: File-based integration tests
 
@@ -551,7 +551,7 @@ This file is **not** a partial class. It is a standalone validator.
 
 ## Summary
 
-`OperatorValidatorV2` is a critical post-type-checking validation pass that ensures operators are used correctly in Sharpy. It:
+`OperatorValidator` is a critical post-type-checking validation pass that ensures operators are used correctly in Sharpy. It:
 
 - **Validates** binary, unary, and augmented assignment operators
 - **Implements** Python's operator resolution semantics (forward, reflected, in-place)

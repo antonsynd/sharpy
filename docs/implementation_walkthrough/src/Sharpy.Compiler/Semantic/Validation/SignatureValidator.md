@@ -1,12 +1,12 @@
-# Walkthrough: SignatureValidatorV2.cs
+# Walkthrough: SignatureValidator.cs
 
-**Source File**: `src/Sharpy.Compiler/Semantic/Validation/SignatureValidatorV2.cs`
+**Source File**: `src/Sharpy.Compiler/Semantic/Validation/SignatureValidator.cs`
 
 ---
 
 ## Overview
 
-The `SignatureValidatorV2` is a semantic validator that enforces correct method signatures for special "dunder" methods (double-underscore methods like `__add__`, `__len__`, etc.) in Sharpy classes and structs. It consolidates the logic previously split between `OperatorSignatureValidator` and `ProtocolSignatureValidator` into a unified validator.
+The `SignatureValidator` is a semantic validator that enforces correct method signatures for special "dunder" methods (double-underscore methods like `__add__`, `__len__`, etc.) in Sharpy classes and structs. It consolidates the logic previously split between `OperatorSignatureValidator` and `ProtocolSignatureValidator` into a unified validator.
 
 **Pipeline Position**: Runs early in the semantic analysis phase (Order 150) to catch signature errors **before** type checking (Order 300) attempts to use these methods.
 
@@ -23,7 +23,7 @@ The `SignatureValidatorV2` is a semantic validator that enforces correct method 
 
 ## Class/Type Structure
 
-### SignatureValidatorV2 : SemanticValidatorBase
+### SignatureValidator : SemanticValidatorBase
 
 The main validator class inheriting from `SemanticValidatorBase`, which provides the `ISemanticValidator` interface.
 
@@ -395,7 +395,7 @@ If you see "Type symbol not found for class: X", it means:
 ### 3. Validator Not Running
 
 If signature errors aren't being caught:
-- Check that `SignatureValidatorV2` is registered in the `ValidationPipeline`
+- Check that `SignatureValidator` is registered in the `ValidationPipeline`
 - Verify the `Order` is correct (should be 150)
 - Check that `ValidationPipeline` is being invoked by the compiler
 
@@ -452,7 +452,7 @@ private static readonly HashSet<string> BinaryArithmeticOps = new()
 If Sharpy adds a new protocol (e.g., `__enter__` and `__exit__` for context managers):
 
 1. Register the protocol in `ProtocolRegistry` (not this file)
-2. No changes needed in `SignatureValidatorV2` (it delegates to the registry)
+2. No changes needed in `SignatureValidator` (it delegates to the registry)
 
 **Why separation?**: The registry is the single source of truth for protocol metadata.
 
@@ -510,7 +510,7 @@ Python supports "reflected" operators like `__radd__` for `other + self`. To add
 
 When modifying this validator:
 
-1. **Add unit tests** in `Sharpy.Compiler.Tests/Semantic/Validation/SignatureValidatorV2Tests.cs`
+1. **Add unit tests** in `Sharpy.Compiler.Tests/Semantic/Validation/SignatureValidatorTests.cs`
 2. **Add integration tests** using file-based fixtures in `TestFixtures/`
    - Create `.spy` files with invalid signatures
    - Create `.error` files with expected error messages
@@ -537,8 +537,8 @@ Follow existing patterns:
 ### Related Validation Components
 
 - **[ISemanticValidator.md](./ISemanticValidator.md)**: Base interface and `SemanticValidatorBase` class
-- **[OperatorValidatorV2.md](./OperatorValidatorV2.md)**: Validates operator usage in expressions (downstream)
-- **[ProtocolValidatorV2.md](./ProtocolValidatorV2.md)**: Validates protocol implementations (downstream)
+- **[OperatorValidator.md](./OperatorValidator.md)**: Validates operator usage in expressions (downstream)
+- **[ProtocolValidator.md](./ProtocolValidator.md)**: Validates protocol implementations (downstream)
 
 ### Related Semantic Components
 
@@ -553,14 +553,14 @@ Follow existing patterns:
 
 ### Testing
 
-- **Unit Tests**: `src/Sharpy.Compiler.Tests/Semantic/Validation/SignatureValidatorV2Tests.cs`
+- **Unit Tests**: `src/Sharpy.Compiler.Tests/Semantic/Validation/SignatureValidatorTests.cs`
 - **Integration Tests**: `src/Sharpy.Compiler.Tests/Integration/TestFixtures/` (`.spy` + `.error` pairs)
 
 ---
 
 ## Summary
 
-The `SignatureValidatorV2` is a focused, early-stage validator that ensures dunder methods have correct signatures before they're used by downstream compiler phases. By running at Order 150 (before type checking), it provides clear, actionable error messages and prevents cascading errors.
+The `SignatureValidator` is a focused, early-stage validator that ensures dunder methods have correct signatures before they're used by downstream compiler phases. By running at Order 150 (before type checking), it provides clear, actionable error messages and prevents cascading errors.
 
 **Key Takeaways**:
 - **Operators**: Must have correct parameter counts (1 for unary, 2 for binary) and return types

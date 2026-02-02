@@ -11,7 +11,7 @@
 The `ProtocolValidator` class has been replaced by a new validation architecture:
 
 - **Type inference** has been extracted to `TypeInferenceService` (see `Semantic/TypeInferenceService.cs`)
-- **Validation** has been migrated to `ProtocolValidatorV2` implementing `ISemanticValidator` (see `Semantic/Validation/ProtocolValidatorV2.cs`)
+- **Validation** has been migrated to `ProtocolValidator` implementing `ISemanticValidator` (see `Semantic/Validation/ProtocolValidator.cs`)
 - **New code** should use `ValidationPipelineFactory.CreateDefault()` instead of directly instantiating validators
 
 **Migration Path**:
@@ -32,7 +32,7 @@ var elementType = inferenceService.InferIterableElementType(iterableType);
 - Better testability and composability
 - Consistent with the new `ValidationPipeline` architecture
 
-**For New Contributors**: Read this document to understand protocol validation concepts, but refer to `ProtocolValidatorV2.cs` and `TypeInferenceService.cs` for the current implementation.
+**For New Contributors**: Read this document to understand protocol validation concepts, but refer to `ProtocolValidator.cs` and `TypeInferenceService.cs` for the current implementation.
 
 ---
 
@@ -704,7 +704,7 @@ if (elementType == SemanticType.Unknown)
 This legacy validator has been superseded by:
 
 - **`Semantic/TypeInferenceService.cs`** - Pure type inference without error reporting ([See Walkthrough](../TypeInferenceService.md))
-- **`Semantic/Validation/ProtocolValidatorV2.cs`** - Protocol validation implementing `ISemanticValidator` ([See Walkthrough](../Validation/ProtocolValidatorV2.md))
+- **`Semantic/Validation/ProtocolValidator.cs`** - Protocol validation implementing `ISemanticValidator` ([See Walkthrough](../Validation/ProtocolValidator.md))
 - **`Semantic/Validation/ValidationPipeline.cs`** - Orchestrates all validators ([See Walkthrough](../Validation/ValidationPipeline.md))
 - **`Semantic/Validation/ISemanticValidator.cs`** - Validator interface for pluggable validation
 
@@ -723,7 +723,7 @@ This legacy validator has been superseded by:
 
 **This class is deprecated and should not receive new features.** If you need to add protocol support:
 
-1. **Add to `ProtocolValidatorV2`** in `Semantic/Validation/` directory
+1. **Add to `ProtocolValidator`** in `Semantic/Validation/` directory
 2. **Add type inference to `TypeInferenceService`** if needed
 3. **Update `ProtocolRegistry`** to register the new protocol
 4. **Do NOT modify this legacy class** unless fixing a critical bug
@@ -737,7 +737,7 @@ If you must fix a bug in this class:
 
 ### Adding New Protocol Support (Legacy Reference Only)
 
-**Note**: This section is retained for historical reference. **Do not add protocols here - use ProtocolValidatorV2 instead.**
+**Note**: This section is retained for historical reference. **Do not add protocols here - use ProtocolValidator instead.**
 
 **Example**: Adding `__reversed__` protocol for reverse iteration
 
@@ -960,7 +960,7 @@ If `my_list` is a .NET `List<T>`, generates the same code due to protocol mappin
 3. **Optimized with caching** to minimize expensive reflection calls
 4. **Provided helpful errors** to guide users toward correct protocol implementations
 
-**Historical Significance**: This class established the patterns and infrastructure that the new validation architecture builds upon. The core concepts (protocol detection, CLR mapping, caching strategies) remain relevant in `ProtocolValidatorV2` and `TypeInferenceService`.
+**Historical Significance**: This class established the patterns and infrastructure that the new validation architecture builds upon. The core concepts (protocol detection, CLR mapping, caching strategies) remain relevant in `ProtocolValidator` and `TypeInferenceService`.
 
 ### For Newcomers: What You Should Do
 
@@ -969,7 +969,7 @@ If `my_list` is a .NET `List<T>`, generates the same code due to protocol mappin
 - Study the `HasProtocol` method to understand protocol detection logic
 - Understand the CLR-to-Python protocol mapping strategy
 - Learn from the caching patterns used here
-- **Then move to `ProtocolValidatorV2.cs` and `TypeInferenceService.cs` for current code**
+- **Then move to `ProtocolValidator.cs` and `TypeInferenceService.cs` for current code**
 
 **❌ DON'T**:
 - Add new features to this class
@@ -994,6 +994,6 @@ If `my_list` is a .NET `List<T>`, generates the same code due to protocol mappin
 
 - **New Validation Architecture**: See `Semantic/Validation/README.md`
 - **Type Inference**: See `TypeInferenceService.cs` walkthrough
-- **Tests**: Look at `Sharpy.Compiler.Tests/Semantic/Validation/ProtocolValidatorV2Tests.cs` for current usage patterns
+- **Tests**: Look at `Sharpy.Compiler.Tests/Semantic/Validation/ProtocolValidatorTests.cs` for current usage patterns
 
-When debugging issues, check if they're in the legacy path (this class) or the new path (`ProtocolValidatorV2`). The new architecture is the source of truth going forward.
+When debugging issues, check if they're in the legacy path (this class) or the new path (`ProtocolValidator`). The new architecture is the source of truth going forward.

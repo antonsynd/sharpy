@@ -8,4 +8,4 @@
 
 `OperatorValidator.cs` is a **deprecated** semantic analysis component that validates operator usage in Sharpy code and infers result types. While marked obsolete, it contains important static utility methods still in use and demonstrates the operator resolution strategy used in Sharpy.
 
-**Status**: ⚠️ **DEPRECATED** - Being replaced by `OperatorValidatorV2` and `TypeInferenceService`
+**Status**: ⚠️ **DEPRECATED** - Being replaced by `OperatorValidator` and `TypeInferenceService`

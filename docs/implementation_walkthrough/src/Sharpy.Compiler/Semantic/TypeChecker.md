@@ -101,11 +101,11 @@ The TypeChecker uses a **two-phase validation** approach:
 - Type narrowing extraction
 
 **Phase 2: Specialized Validators (ValidationPipeline)**
-- **ControlFlowValidatorV2** - Return paths, unreachable code, break/continue
-- **AccessValidatorV2** - Field/method access level enforcement
-- **OperatorValidatorV2** - Operator support via protocol methods
-- **ProtocolValidatorV2** - Iteration, indexing, len protocols
-- **DefaultParameterValidatorV2** - Default parameter constant validation
+- **ControlFlowValidatorV3** - Return paths, unreachable code, break/continue
+- **AccessValidator** - Field/method access level enforcement
+- **OperatorValidator** - Operator support via protocol methods
+- **ProtocolValidator** - Iteration, indexing, len protocols
+- **DefaultParameterValidator** - Default parameter constant validation
 
 **Design Pattern**: The TypeChecker is a **coordinator**, not a monolith. It delegates specialized validation to the ValidationPipeline, which runs all V2 validators in sequence.
 

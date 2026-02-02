@@ -504,8 +504,8 @@ The type checker continues after errors (configurable via `ContinueAfterError` p
 
 ### 6. ValidationPipeline Integration
 After statement checking completes, `CheckModule()` in TypeChecker.cs (lines 133-137) runs the ValidationPipeline which includes V2 validators:
-- **OperatorValidatorV2** - Validates operator usage
-- **ProtocolValidatorV2** - Validates protocol compliance  
+- **OperatorValidator** - Validates operator usage
+- **ProtocolValidator** - Validates protocol compliance  
 - **ControlFlowValidator** - Validates break/continue/return
 - **AccessValidator** - Validates access levels
 - This separation keeps TypeChecker focused on type checking while validators handle semantic rules.

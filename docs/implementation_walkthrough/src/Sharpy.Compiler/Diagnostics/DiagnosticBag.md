@@ -123,7 +123,7 @@ public void Merge(DiagnosticBag other)
 }
 ```
 
-**Critical Pattern**: Used extensively in validation pipeline where sub-validators (like `OperatorValidatorV2`) collect their own diagnostics and merge them into a parent bag.
+**Critical Pattern**: Used extensively in validation pipeline where sub-validators (like `OperatorValidator`) collect their own diagnostics and merge them into a parent bag.
 
 **Example from ValidationPipeline**:
 ```csharp

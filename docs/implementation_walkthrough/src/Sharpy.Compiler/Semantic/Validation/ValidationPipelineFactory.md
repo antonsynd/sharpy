@@ -46,13 +46,13 @@ public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
 {
     return new ValidationPipeline(logger)
         // Order values determine execution sequence
-        .AddValidator(new ModuleLevelValidatorV2())       // Order: 50 (earliest, validates module structure)
-        .AddValidator(new SignatureValidatorV2())         // Order: 150 (early, validates dunder signatures)
-        .AddValidator(new DefaultParameterValidatorV2())  // Order: 250
-        .AddValidator(new ControlFlowValidatorV2())       // Order: 400 (AST-walking, handles unreachable code)
-        .AddValidator(new AccessValidatorV2())            // Order: 450
-        .AddValidator(new ProtocolValidatorV2())          // Order: 500
-        .AddValidator(new OperatorValidatorV2())          // Order: 500
+        .AddValidator(new ModuleLevelValidator())       // Order: 50 (earliest, validates module structure)
+        .AddValidator(new SignatureValidator())         // Order: 150 (early, validates dunder signatures)
+        .AddValidator(new DefaultParameterValidator())  // Order: 250
+        .AddValidator(new ControlFlowValidatorV3())       // Order: 400 (AST-walking, handles unreachable code)
+        .AddValidator(new AccessValidator())            // Order: 450
+        .AddValidator(new ProtocolValidator())          // Order: 500
+        .AddValidator(new OperatorValidator())          // Order: 500
         ;
 }
 ```
@@ -62,13 +62,13 @@ public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
 1. **Fluent Builder Pattern**: Uses method chaining via `ValidationPipeline.AddValidator()` which returns `this`
 2. **Auto-Sorting**: Validators are automatically sorted by their `Order` property (lower numbers run first)
 3. **Validator Sequence** (in execution order):
-   - **ModuleLevelValidatorV2** (50): Validates module-level structure (earliest validator, ensures module is well-formed)
-   - **SignatureValidatorV2** (150): Validates special method signatures (dunder methods like `__init__`, `__str__`)
-   - **DefaultParameterValidatorV2** (250): Checks default parameter rules (no mutable defaults, positional before keyword, etc.)
-   - **ControlFlowValidatorV2** (400): AST-walking control flow analysis
-   - **AccessValidatorV2** (450): Validates member access (private/protected/public)
-   - **ProtocolValidatorV2** (500): Validates protocol implementations
-   - **OperatorValidatorV2** (500): Validates operator overloading
+   - **ModuleLevelValidator** (50): Validates module-level structure (earliest validator, ensures module is well-formed)
+   - **SignatureValidator** (150): Validates special method signatures (dunder methods like `__init__`, `__str__`)
+   - **DefaultParameterValidator** (250): Checks default parameter rules (no mutable defaults, positional before keyword, etc.)
+   - **ControlFlowValidatorV3** (400): AST-walking control flow analysis
+   - **AccessValidator** (450): Validates member access (private/protected/public)
+   - **ProtocolValidator** (500): Validates protocol implementations
+   - **OperatorValidator** (500): Validates operator overloading
 
 **Why This Order Matters:**
 - Module-level validation runs **first** because structural errors can cascade into other validators
@@ -95,13 +95,13 @@ This explains a **critical architectural decision**: V2 is chosen over V3 for un
 public static ValidationPipeline CreateWithCfgControlFlow(ICompilerLogger? logger = null)
 {
     return new ValidationPipeline(logger)
-        .AddValidator(new ModuleLevelValidatorV2())       // Order: 50 (earliest)
-        .AddValidator(new SignatureValidatorV2())
-        .AddValidator(new DefaultParameterValidatorV2())
+        .AddValidator(new ModuleLevelValidator())       // Order: 50 (earliest)
+        .AddValidator(new SignatureValidator())
+        .AddValidator(new DefaultParameterValidator())
         .AddValidator(new ControlFlowValidatorV3())       // CFG-based validator
-        .AddValidator(new AccessValidatorV2())
-        .AddValidator(new ProtocolValidatorV2())
-        .AddValidator(new OperatorValidatorV2())
+        .AddValidator(new AccessValidator())
+        .AddValidator(new ProtocolValidator())
+        .AddValidator(new OperatorValidator())
         ;
 }
 ```
@@ -154,14 +154,14 @@ var pipeline = ValidationPipelineFactory.CreateMinimal()
 public static ValidationPipeline CreateFast(ICompilerLogger? logger = null)
 {
     return new ValidationPipeline(logger)
-        .AddValidator(new ControlFlowValidatorV2());  // V2 is faster for quick checks
+        .AddValidator(new ControlFlowValidatorV3());  // V2 is faster for quick checks
     // Skip signature validators, protocol validators, etc.
 }
 ```
 
 **Design Philosophy:**
 - **Speed over completeness**: Only include validators that provide high value for IDE scenarios
-- Currently includes only `ControlFlowValidatorV2` (catches unreachable code and missing returns)
+- Currently includes only `ControlFlowValidatorV3` (catches unreachable code and missing returns)
 - Skips expensive validators like module-level validation, protocol checking, operator validation, signature validation
 
 **Use Case**: Language Server Protocol (LSP) scenarios where the IDE needs fast feedback:
@@ -186,14 +186,14 @@ public static ValidationPipeline CreateFast(ICompilerLogger? logger = null)
 ### Indirect Dependencies (Validators)
 
 All validators referenced in this factory:
-- `ModuleLevelValidatorV2`
-- `SignatureValidatorV2`
-- `DefaultParameterValidatorV2`
-- `ControlFlowValidatorV2`
+- `ModuleLevelValidator`
+- `SignatureValidator`
+- `DefaultParameterValidator`
 - `ControlFlowValidatorV3`
-- `AccessValidatorV2`
-- `ProtocolValidatorV2`
-- `OperatorValidatorV2`
+- `ControlFlowValidatorV3`
+- `AccessValidator`
+- `ProtocolValidator`
+- `OperatorValidator`
 
 Each implements `ISemanticValidator` interface.
 
@@ -248,9 +248,9 @@ The factory **delegates** the actual builder pattern to `ValidationPipeline` its
 ### 4. **Explicit Ordering Comments**
 
 ```csharp
-.AddValidator(new ModuleLevelValidatorV2())       // Order: 50 (earliest, validates module structure)
-.AddValidator(new SignatureValidatorV2())         // Order: 150 (early, validates dunder signatures)
-.AddValidator(new DefaultParameterValidatorV2())  // Order: 250
+.AddValidator(new ModuleLevelValidator())       // Order: 50 (earliest, validates module structure)
+.AddValidator(new SignatureValidator())         // Order: 150 (early, validates dunder signatures)
+.AddValidator(new DefaultParameterValidator())  // Order: 250
 ```
 
 **Why Comments?**
@@ -297,9 +297,9 @@ If you suspect a specific validator is causing issues:
 ```csharp
 // Start with minimal and add validators one by one
 var pipeline = ValidationPipelineFactory.CreateMinimal()
-    .AddValidator(new ModuleLevelValidatorV2())
-    .AddValidator(new SignatureValidatorV2())
-    .AddValidator(new ControlFlowValidatorV2());
+    .AddValidator(new ModuleLevelValidator())
+    .AddValidator(new SignatureValidator())
+    .AddValidator(new ControlFlowValidatorV3());
 ```
 
 ---
@@ -312,8 +312,8 @@ Pass a logger to see what's happening:
 var logger = new ConsoleLogger(LogLevel.Debug);
 var pipeline = ValidationPipelineFactory.CreateDefault(logger);
 // Logs will show:
-// "Running validator: ModuleLevelValidatorV2 (order: 50)"
-// "Running validator: SignatureValidatorV2 (order: 150)"
+// "Running validator: ModuleLevelValidator (order: 50)"
+// "Running validator: SignatureValidator (order: 150)"
 // etc.
 ```
 
@@ -326,7 +326,7 @@ If you're debugging unreachable code detection:
 - Use `CreateWithCfgControlFlow()` (uses V3) if you suspect V2 has false positives
 
 **Symptom**: Code flagged as unreachable but it's actually reachable?
-- Likely a bug in `ControlFlowValidatorV2`'s AST walking
+- Likely a bug in `ControlFlowValidatorV3`'s AST walking
 
 **Symptom**: Unreachable code NOT detected?
 - You might be using V3 (check which factory method was called)
@@ -361,13 +361,13 @@ Compare with `CreateFast()` to see which validators are expensive.
    - Add a new static method (e.g., `CreateForLsp()`, `CreateForTesting()`)
    - Document the purpose clearly in XML comments
    - Explain trade-offs in the method summary
-   - Consider whether this configuration should include `ModuleLevelValidatorV2` (almost always yes)
+   - Consider whether this configuration should include `ModuleLevelValidator` (almost always yes)
 
 3. **Changing Validator Order**:
    - Update the order comment if the validator's `Order` property changes
    - Consider dependencies between validators (does A depend on B's output?)
    - Run full test suite to catch ordering issues
-   - Verify that `ModuleLevelValidatorV2` remains first (Order: 50)
+   - Verify that `ModuleLevelValidator` remains first (Order: 50)
 
 4. **Deprecating a Validator**:
    - Don't remove it immediately (breaks existing code)
@@ -400,7 +400,7 @@ Compare with `CreateFast()` to see which validators are expensive.
    - Validators should be stateless and immutable
    - Don't try to configure validators here (do it in their constructors)
 
-4. **Don't Remove ModuleLevelValidatorV2**:
+4. **Don't Remove ModuleLevelValidator**:
    - It's the foundation validator that ensures module structure is sound
    - It must always be first (Order: 50)
    - Other validators may depend on its guarantees
@@ -448,14 +448,14 @@ After modifying this file:
 
 ### Validators Referenced in This Factory
 
-- **[ModuleLevelValidatorV2.md](ModuleLevelValidatorV2.md)** - Validates module-level structure (runs first)
-- **[SignatureValidatorV2.md](SignatureValidatorV2.md)** - Validates special method signatures
-- **[DefaultParameterValidatorV2.md](DefaultParameterValidatorV2.md)** - Checks default parameter rules
-- **[ControlFlowValidatorV2.md](ControlFlowValidatorV2.md)** - AST-walking control flow analysis (default)
+- **[ModuleLevelValidator.md](ModuleLevelValidator.md)** - Validates module-level structure (runs first)
+- **[SignatureValidator.md](SignatureValidator.md)** - Validates special method signatures
+- **[DefaultParameterValidator.md](DefaultParameterValidator.md)** - Checks default parameter rules
+- **[ControlFlowValidatorV3.md](ControlFlowValidatorV3.md)** - AST-walking control flow analysis (default)
 - **[ControlFlowValidatorV3.md](ControlFlowValidatorV3.md)** - CFG-based control flow analysis (alternative)
-- **[AccessValidatorV2.md](AccessValidatorV2.md)** - Member access validation
-- **[ProtocolValidatorV2.md](ProtocolValidatorV2.md)** - Protocol implementation validation
-- **[OperatorValidatorV2.md](OperatorValidatorV2.md)** - Operator overloading validation
+- **[AccessValidator.md](AccessValidator.md)** - Member access validation
+- **[ProtocolValidator.md](ProtocolValidator.md)** - Protocol implementation validation
+- **[OperatorValidator.md](OperatorValidator.md)** - Operator overloading validation
 
 ### Upstream Components (Callers)
 
@@ -516,8 +516,8 @@ public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
     var pipeline = new ValidationPipeline(logger);
 
     // Load built-in validators
-    pipeline.AddValidator(new ModuleLevelValidatorV2());
-    pipeline.AddValidator(new SignatureValidatorV2());
+    pipeline.AddValidator(new ModuleLevelValidator());
+    pipeline.AddValidator(new SignatureValidator());
     // ...
 
     // Load plugins from assemblies
@@ -551,8 +551,8 @@ This would enable third-party validators without modifying Sharpy core.
 **Example**:
 ```csharp
 // BAD: AccessValidator needs control flow info
-.AddValidator(new AccessValidatorV2())        // Order: 450
-.AddValidator(new ControlFlowValidatorV2())   // Order: 400 (runs AFTER access!)
+.AddValidator(new AccessValidator())        // Order: 450
+.AddValidator(new ControlFlowValidatorV3())   // Order: 400 (runs AFTER access!)
 ```
 
 **Solution**: Check validator `Order` values. Earlier validators (lower numbers) run first.
@@ -563,7 +563,7 @@ This would enable third-party validators without modifying Sharpy core.
 
 **Symptom**: Users report errors during full build that weren't shown in IDE.
 
-**Cause**: `CreateFast()` skips many validators (including `ModuleLevelValidatorV2`, signatures, protocols, operators, access, defaults).
+**Cause**: `CreateFast()` skips many validators (including `ModuleLevelValidator`, signatures, protocols, operators, access, defaults).
 
 **Solution**: Use `CreateFast()` only for IDE/LSP scenarios, never for final builds.
 
@@ -579,13 +579,13 @@ This would enable third-party validators without modifying Sharpy core.
 
 ---
 
-### 5. **Skipping ModuleLevelValidatorV2**
+### 5. **Skipping ModuleLevelValidator**
 
 **Symptom**: Cryptic errors in later validators about malformed AST
 
-**Cause**: Creating custom pipelines without including `ModuleLevelValidatorV2`
+**Cause**: Creating custom pipelines without including `ModuleLevelValidator`
 
-**Solution**: Almost every pipeline should start with `ModuleLevelValidatorV2` (Order: 50)
+**Solution**: Almost every pipeline should start with `ModuleLevelValidator` (Order: 50)
 
 ---
 
@@ -608,7 +608,7 @@ The `ValidationPipelineFactory` is a **simple, focused factory** that provides p
 3. **Validator Ordering Matters**:
    - Module-level → Signature → Defaults → Control Flow → Access → Protocols/Operators
    - Earlier validators catch problems that could cause cascading errors
-   - `ModuleLevelValidatorV2` (Order: 50) is the foundation that always runs first
+   - `ModuleLevelValidator` (Order: 50) is the foundation that always runs first
 
 4. **V2 vs V3 Control Flow**:
    - V2 (default): AST-walking, detects unreachable code

@@ -1,18 +1,18 @@
-# Walkthrough: AccessValidatorV2.cs
+# Walkthrough: AccessValidator.cs
 
-**Source File**: `src/Sharpy.Compiler/Semantic/Validation/AccessValidatorV2.cs`
+**Source File**: `src/Sharpy.Compiler/Semantic/Validation/AccessValidator.cs`
 
 ---
 
 ## Overview
 
-`AccessValidatorV2` is a semantic validation pass that enforces Sharpy's access control rules based on Python-style naming conventions:
+`AccessValidator` is a semantic validation pass that enforces Sharpy's access control rules based on Python-style naming conventions:
 
 - **Private members** (`__name`): Only accessible within the defining class
 - **Protected members** (`_name`): Accessible within the class hierarchy (class and its subclasses/superclasses)
 - **Public members** (`name`): Accessible everywhere
 
-This validator runs as part of the **ValidationPipeline** after the AST is parsed and types are resolved. Unlike the legacy `AccessValidator` (which runs during type-checking), this V2 version performs a **post-pass traversal** over the entire AST, making it more modular and pipeline-friendly.
+This validator runs as part of the **ValidationPipeline** after the AST is parsed and types are resolved. It performs a **post-pass traversal** over the entire AST, making it modular and pipeline-friendly.
 
 **Position in Pipeline**: Runs at Order 450 (after control flow validation at 400, before code generation)
 
@@ -20,10 +20,10 @@ This validator runs as part of the **ValidationPipeline** after the AST is parse
 
 ## Class Structure
 
-### AccessValidatorV2
+### AccessValidator
 
 ```csharp
-public class AccessValidatorV2 : SemanticValidatorBase
+public class AccessValidator : SemanticValidatorBase
 ```
 
 Inherits from `SemanticValidatorBase` which provides:
@@ -272,10 +272,10 @@ class Base:
 
 ### Related Validators
 
-- **OperatorValidatorV2**: Validates operator usage
-- **ProtocolValidatorV2**: Validates protocol implementations
+- **OperatorValidator**: Validates operator usage
+- **ProtocolValidator**: Validates protocol implementations
 - **ControlFlowValidatorV3**: Validates control flow (runs before this)
-- **SignatureValidatorV2**: Validates function signatures
+- **SignatureValidator**: Validates function signatures
 
 All validators are orchestrated by `ValidationPipeline`.
 
@@ -321,14 +321,11 @@ def external_func():
 
 ---
 
-### 3. Two-Phase Design (Legacy vs V2)
+### 3. Pipeline-Based Design
 
-The comment mentions a "legacy version which is called during expression type-checking." This reflects a **refactoring from inline validation to pipeline-based validation**:
+This validator uses a **pipeline-based validation** approach with a separate post-pass after type checking:
 
-**Legacy approach**: Check access during type checking  
-**V2 approach**: Separate post-pass after type checking
-
-**Benefits of V2**:
+**Benefits**:
 - **Separation of concerns**: Type checking and access validation are independent
 - **Pipeline composability**: Can enable/disable validators independently
 - **Future-ready**: Supports incremental compilation for LSP
@@ -542,8 +539,8 @@ public void TestPrivateAccess_ExternalClass_Denied()
 - **`ISemanticValidator.cs`**: Interface this validator implements
 - **`SemanticValidatorBase.cs`**: Base class providing error reporting (inline in `ISemanticValidator.cs`)
 - **`ValidationPipeline.cs`**: Orchestrates all validators including this one
-- **`OperatorValidatorV2.cs`**: Validates operator usage (sibling validator)
-- **`ProtocolValidatorV2.cs`**: Validates protocol implementations (sibling validator)
+- **`OperatorValidator.cs`**: Validates operator usage (sibling validator)
+- **`ProtocolValidator.cs`**: Validates protocol implementations (sibling validator)
 - **`ControlFlowValidatorV3.cs`**: Runs before this (Order 400)
 
 ### Related Semantic Components
@@ -570,7 +567,7 @@ public void TestPrivateAccess_ExternalClass_Denied()
 
 ## Summary
 
-`AccessValidatorV2` is a focused, single-responsibility validator that enforces Sharpy's access control rules:
+`AccessValidator` is a focused, single-responsibility validator that enforces Sharpy's access control rules:
 
 ✅ **Clean separation**: Post-pass validation, not mixed with type checking  
 ✅ **Context-aware**: Tracks current class for accurate hierarchy checks  

@@ -1,12 +1,12 @@
-# Walkthrough: ModuleLevelValidatorV2.cs
+# Walkthrough: ModuleLevelValidator.cs
 
-**Source File**: `src/Sharpy.Compiler/Semantic/Validation/ModuleLevelValidatorV2.cs`
+**Source File**: `src/Sharpy.Compiler/Semantic/Validation/ModuleLevelValidator.cs`
 
 ---
 
 ## Overview
 
-`ModuleLevelValidatorV2` is an early-stage semantic validator that enforces structural rules for module-level code in Sharpy. It acts as a gatekeeper, catching violations of module organization rules before other validators attempt to process potentially invalid code.
+`ModuleLevelValidator` is an early-stage semantic validator that enforces structural rules for module-level code in Sharpy. It acts as a gatekeeper, catching violations of module organization rules before other validators attempt to process potentially invalid code.
 
 **Role in Pipeline**: This validator runs at **Order 50**, which is very early in the validation pipeline (before signature validation at Order 150). This early execution ensures that downstream validators can assume well-formed module structure.
 
@@ -25,7 +25,7 @@
 ## Class Structure
 
 ```csharp
-public class ModuleLevelValidatorV2 : SemanticValidatorBase
+public class ModuleLevelValidator : SemanticValidatorBase
 ```
 
 ### Inheritance
@@ -329,7 +329,7 @@ If module-level errors aren't being caught, verify the validator is registered i
 
 ```csharp
 // In ValidationPipelineFactory or similar
-pipeline.AddValidator(new ModuleLevelValidatorV2());
+pipeline.AddValidator(new ModuleLevelValidator());
 ```
 
 ### 2. Enable Debug Logging
@@ -362,7 +362,7 @@ Output will show:
 
 ### 4. Testing Specific Scenarios
 
-Use the test file `ModuleLevelValidatorV2Tests.cs` as a reference for expected behavior. Key test categories:
+Use the test file `ModuleLevelValidatorTests.cs` as a reference for expected behavior. Key test categories:
 
 - **Entry point rules**: `EntryPointWithMain_NoErrors()`, `EntryPointWithoutMain_NoErrorForBackwardCompatibility()`
 - **Type annotations**: `ModuleLevelWithTypeAnnotation_NoErrors()`, `ModuleLevelConstWithoutTypeAnnotation_NoErrors()`
@@ -453,7 +453,7 @@ If you need to add a new module-level rule:
 
 ### Testing Changes
 
-Always add tests to `ModuleLevelValidatorV2Tests.cs`:
+Always add tests to `ModuleLevelValidatorTests.cs`:
 
 ```csharp
 [Fact]
@@ -463,7 +463,7 @@ public void YourNewRule_ValidCase_NoErrors()
 // Valid code here
 ";
     var (module, context) = Parse(code, isEntryPoint: true);
-    var validator = new ModuleLevelValidatorV2();
+    var validator = new ModuleLevelValidator();
     validator.Validate(module, context);
 
     Assert.False(context.Diagnostics.HasErrors);
@@ -476,7 +476,7 @@ public void YourNewRule_InvalidCase_Error()
 // Invalid code here
 ";
     var (module, context) = Parse(code, isEntryPoint: true);
-    var validator = new ModuleLevelValidatorV2();
+    var validator = new ModuleLevelValidator();
     validator.Validate(module, context);
 
     Assert.True(context.Diagnostics.HasErrors);
@@ -491,7 +491,7 @@ public void YourNewRule_InvalidCase_Error()
 
 ### Related Validators
 
-- **`SignatureValidatorV2.cs`** (Order 150): Validates function signatures after module structure is confirmed valid
+- **`SignatureValidator.cs`** (Order 150): Validates function signatures after module structure is confirmed valid
 - **`ControlFlowValidatorV3.cs`**: Validates control flow statements (runs later in pipeline)
 - **`ISemanticValidator.cs`**: Base interface and abstract class definition
 
@@ -515,7 +515,7 @@ public void YourNewRule_InvalidCase_Error()
 
 ### Test Files
 
-- **`src/Sharpy.Compiler.Tests/Semantic/Validation/ModuleLevelValidatorV2Tests.cs`**: Comprehensive test suite
+- **`src/Sharpy.Compiler.Tests/Semantic/Validation/ModuleLevelValidatorTests.cs`**: Comprehensive test suite
 - **`src/Sharpy.Compiler.Tests/Semantic/Validation/ValidationPipelineTests.cs`**: Integration tests showing validator pipeline behavior
 
 ---
@@ -527,8 +527,8 @@ Here's how the validator is used in practice:
 ```csharp
 // Build the validation pipeline
 var pipeline = new ValidationPipeline(logger);
-pipeline.AddValidator(new ModuleLevelValidatorV2());
-pipeline.AddValidator(new SignatureValidatorV2());
+pipeline.AddValidator(new ModuleLevelValidator());
+pipeline.AddValidator(new SignatureValidator());
 // ... other validators
 
 // Create semantic context
@@ -682,7 +682,7 @@ The type can be safely inferred from the literal value.
 
 ## Summary
 
-`ModuleLevelValidatorV2` is a **structural firewall** that ensures Sharpy modules conform to the constraints imposed by C# code generation. By running early in the validation pipeline (Order 50), it catches violations before they can confuse downstream validators or the code generator.
+`ModuleLevelValidator` is a **structural firewall** that ensures Sharpy modules conform to the constraints imposed by C# code generation. By running early in the validation pipeline (Order 50), it catches violations before they can confuse downstream validators or the code generator.
 
 **Key Takeaways**:
 - Enforces three critical rules: typed variables, no bare executables, and (advisorily) `main()` functions
