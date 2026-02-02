@@ -938,12 +938,13 @@ class Program
         var diagList = diagnostics.ToList();
         var phases = diagList.Select(d => d.Phase).Distinct().ToList();
         var groupByPhase = phases.Count > 1;
+        var isWarnings = diagList.Count > 0 && diagList.All(d => d.IsWarning);
 
         if (groupByPhase)
         {
             foreach (var phase in PhaseOrder.Where(p => diagList.Any(d => d.Phase == p)))
             {
-                writer.WriteLine($"{PhaseLabel(phase)}:");
+                writer.WriteLine($"{PhaseLabel(phase, isWarnings)}:");
                 foreach (var diagnostic in diagList.Where(d => d.Phase == phase))
                 {
                     RenderDiagnostic(diagnostic, sourceText, writer);
@@ -972,12 +973,13 @@ class Program
         var diagList = diagnostics.ToList();
         var phases = diagList.Select(d => d.Phase).Distinct().ToList();
         var groupByPhase = phases.Count > 1;
+        var isWarnings = diagList.Count > 0 && diagList.All(d => d.IsWarning);
 
         if (groupByPhase)
         {
             foreach (var phase in PhaseOrder.Where(p => diagList.Any(d => d.Phase == p)))
             {
-                writer.WriteLine($"{PhaseLabel(phase)}:");
+                writer.WriteLine($"{PhaseLabel(phase, isWarnings)}:");
                 foreach (var diagnostic in diagList.Where(d => d.Phase == phase))
                 {
                     RenderDiagnosticFromFile(diagnostic, sourceCache, writer);
@@ -1037,19 +1039,23 @@ class Program
         CompilerPhase.Unknown
     };
 
-    static string PhaseLabel(CompilerPhase phase) => phase switch
+    static string PhaseLabel(CompilerPhase phase, bool isWarnings = false)
     {
-        CompilerPhase.Lexer => "Lexer errors",
-        CompilerPhase.Parser => "Parse errors",
-        CompilerPhase.NameResolution => "Name resolution errors",
-        CompilerPhase.ImportResolution => "Import resolution errors",
-        CompilerPhase.TypeChecking => "Type errors",
-        CompilerPhase.Validation => "Validation errors",
-        CompilerPhase.CodeGeneration => "Code generation errors",
-        CompilerPhase.Assembly => "Assembly errors",
-        CompilerPhase.Unknown => "Other errors",
-        _ => "Other errors",
-    };
+        var suffix = isWarnings ? "warnings" : "errors";
+        return phase switch
+        {
+            CompilerPhase.Lexer => $"Lexer {suffix}",
+            CompilerPhase.Parser => $"Parse {suffix}",
+            CompilerPhase.NameResolution => $"Name resolution {suffix}",
+            CompilerPhase.ImportResolution => $"Import resolution {suffix}",
+            CompilerPhase.TypeChecking => $"Type {suffix}",
+            CompilerPhase.Validation => $"Validation {suffix}",
+            CompilerPhase.CodeGeneration => $"Code generation {suffix}",
+            CompilerPhase.Assembly => $"Assembly {suffix}",
+            CompilerPhase.Unknown => $"Other {suffix}",
+            _ => $"Other {suffix}",
+        };
+    }
 
     static HashSet<string> ParseNowarnCodes(string? nowarn)
     {
