@@ -299,6 +299,7 @@ importResolver.ResolveAllImports(module, symbolTable, currentDir);
 - [x] Verify all tests pass
 - [x] Thread `SourceText` to Lexer in `ProjectCompiler.ParseAllFiles()` (was using raw string constructor)
 - [x] Thread `SourceText` to Lexer in CLI emit commands (4 locations were creating SourceText but passing raw string)
+- [x] Thread `SourceText` to Lexer in `ModuleLoader.LoadModule()` and `PackageResolver.ResolvePackage()` (were using raw string constructor)
 
 ### 6.2: Enrich `CompilationResult`
 
