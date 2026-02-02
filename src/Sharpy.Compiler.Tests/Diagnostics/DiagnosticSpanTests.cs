@@ -320,7 +320,7 @@ public class DiagnosticSpanTests
         var source = "def main():\n    pass\n\nprint(\"hello\")\n";
         var (module, context) = ParseForValidation(source, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         var error = context.Diagnostics.GetErrors()
@@ -339,7 +339,7 @@ public class DiagnosticSpanTests
         var source = "class Foo:\n    def __add__(self) -> Foo:\n        return self\n";
         var (module, context) = ParseForValidation(source);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         var error = context.Diagnostics.GetErrors()
@@ -377,7 +377,7 @@ public class DiagnosticSpanTests
         var source = "def foo(items: list[int] = []):\n    pass\n";
         var (module, context) = ParseForValidation(source);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         var error = context.Diagnostics.GetErrors()

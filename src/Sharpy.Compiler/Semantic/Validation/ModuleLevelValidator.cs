@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// This validator runs early in the pipeline (Order 50) to catch structural
 /// errors before other validators attempt to process invalid code.
 /// </summary>
-public class ModuleLevelValidatorV2 : SemanticValidatorBase
+public class ModuleLevelValidator : SemanticValidatorBase
 {
     public override string Name => "ModuleLevelValidator";
     public override int Order => 50; // Very early, before signature validation (150)

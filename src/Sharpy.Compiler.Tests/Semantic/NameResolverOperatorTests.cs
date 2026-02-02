@@ -217,16 +217,16 @@ class Example:
     #endregion
 
     #region Invalid Operator Registration Tests
-    // NOTE: Signature validation has been moved from NameResolver to SignatureValidatorV2.
+    // NOTE: Signature validation has been moved from NameResolver to SignatureValidator.
     // NameResolver now registers all operator methods regardless of signature validity.
     // Signature errors are reported by the validation pipeline, not NameResolver.
-    // See SignatureValidatorV2Tests for signature validation tests.
+    // See SignatureValidatorTests for signature validation tests.
 
     [Fact]
     public void RegistersOperatorEvenWithWrongParameterCount()
     {
         // Previously this tested rejection; now NameResolver registers all operators
-        // and validation happens in SignatureValidatorV2
+        // and validation happens in SignatureValidator
         var source = @"
 class BadVector:
     def __add__(self, x, y, z) -> BadVector:

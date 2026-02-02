@@ -5,7 +5,7 @@ using Sharpy.Compiler.Semantic.Validation;
 
 namespace Sharpy.Compiler.Tests.Semantic.Validation;
 
-public class ControlFlowValidatorV2Tests
+public class ProtocolValidatorTests
 {
     private (Module module, SemanticContext context) Parse(string code)
     {
@@ -33,322 +33,326 @@ public class ControlFlowValidatorV2Tests
     }
 
     [Fact]
-    public void Function_WithoutReturn_ReportsError()
-    {
-        var code = @"
-def foo() -> int:
-    x = 5
-";
-        var (module, context) = Parse(code);
-
-        var validator = new ControlFlowValidatorV2();
-        validator.Validate(module, context);
-
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("must return a value"));
-    }
-
-    [Fact]
-    public void Function_WithReturn_NoError()
-    {
-        var code = @"
-def foo() -> int:
-    return 5
-";
-        var (module, context) = Parse(code);
-
-        var validator = new ControlFlowValidatorV2();
-        validator.Validate(module, context);
-
-        Assert.False(context.Diagnostics.HasErrors);
-    }
-
-    [Fact]
-    public void BreakOutsideLoop_ReportsError()
+    public void ForLoop_IterableList_NoError()
     {
         var code = @"
 def foo() -> None:
-    break
+    items: list[int] = [1, 2, 3]
+    for x in items:
+        pass
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV2();
+        var validator = new ProtocolValidator();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("'break' statement outside loop"));
+        Assert.False(context.Diagnostics.HasErrors);
     }
 
     [Fact]
-    public void BreakInsideLoop_NoError()
+    public void ForLoop_IterableString_NoError()
     {
         var code = @"
 def foo() -> None:
-    while True:
-        break
+    for c in ""hello"":
+        pass
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV2();
+        var validator = new ProtocolValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
     }
 
     [Fact]
-    public void ContinueOutsideLoop_ReportsError()
+    public void ForLoop_IterableDict_NoError()
     {
         var code = @"
 def foo() -> None:
-    continue
+    data: dict[str, int] = {}
+    for key in data:
+        pass
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV2();
+        var validator = new ProtocolValidator();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("'continue' statement outside loop"));
+        Assert.False(context.Diagnostics.HasErrors);
     }
 
     [Fact]
-    public void ContinueInsideLoop_NoError()
+    public void ForLoop_IterableSet_NoError()
     {
         var code = @"
 def foo() -> None:
-    for i in range(10):
-        continue
+    s: set[int] = {1, 2, 3}
+    for x in s:
+        pass
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV2();
+        var validator = new ProtocolValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
     }
 
     [Fact]
-    public void UnreachableCode_ReportsWarning()
-    {
-        var code = @"
-def foo() -> int:
-    return 5
-    x = 10
-";
-        var (module, context) = Parse(code);
-
-        var validator = new ControlFlowValidatorV2();
-        validator.Validate(module, context);
-
-        Assert.False(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetWarnings(),
-            w => w.Message.Contains("Unreachable code"));
-    }
-
-    [Fact]
-    public void AbstractMethod_SkipsValidation()
-    {
-        var code = @"
-@abstract
-class Base:
-    @abstract
-    def foo(self) -> int:
-        ...
-";
-        var (module, context) = Parse(code);
-
-        var validator = new ControlFlowValidatorV2();
-        validator.Validate(module, context);
-
-        Assert.False(context.Diagnostics.HasErrors);
-    }
-
-    [Fact]
-    public void IfElseAllBranchesReturn_NoError()
-    {
-        var code = @"
-def foo(x: int) -> int:
-    if x > 0:
-        return 1
-    else:
-        return -1
-";
-        var (module, context) = Parse(code);
-
-        var validator = new ControlFlowValidatorV2();
-        validator.Validate(module, context);
-
-        Assert.False(context.Diagnostics.HasErrors);
-    }
-
-    [Fact]
-    public void IfWithoutElse_MissingReturn_ReportsError()
-    {
-        var code = @"
-def foo(x: int) -> int:
-    if x > 0:
-        return 1
-";
-        var (module, context) = Parse(code);
-
-        var validator = new ControlFlowValidatorV2();
-        validator.Validate(module, context);
-
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("must return a value"));
-    }
-
-    [Fact]
-    public void VoidFunction_NoReturnNeeded()
+    public void IndexAccess_List_NoError()
     {
         var code = @"
 def foo() -> None:
-    x = 5
+    items: list[int] = [1, 2, 3]
+    x: int = items[0]
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV2();
+        var validator = new ProtocolValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
     }
 
     [Fact]
-    public void TryCatchAllBranchesReturn_NoError()
-    {
-        var code = @"
-def foo() -> int:
-    try:
-        return 1
-    except Exception:
-        return 2
-";
-        var (module, context) = Parse(code);
-
-        var validator = new ControlFlowValidatorV2();
-        validator.Validate(module, context);
-
-        Assert.False(context.Diagnostics.HasErrors);
-    }
-
-    [Fact]
-    public void FinallyReturn_CoversAllPaths()
-    {
-        var code = @"
-def foo() -> int:
-    try:
-        x = 1
-    except Exception:
-        y = 2
-    finally:
-        return 3
-";
-        var (module, context) = Parse(code);
-
-        var validator = new ControlFlowValidatorV2();
-        validator.Validate(module, context);
-
-        Assert.False(context.Diagnostics.HasErrors);
-    }
-
-    [Fact]
-    public void NestedLoops_BreakValidation()
+    public void IndexAccess_Dict_NoError()
     {
         var code = @"
 def foo() -> None:
-    for i in range(10):
-        for j in range(10):
-            break
-        break
+    data: dict[str, int] = {}
+    x: int = data[""key""]
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV2();
+        var validator = new ProtocolValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
     }
 
     [Fact]
-    public void IfElifElse_AllBranchesReturn_NoError()
+    public void IndexAccess_String_NoError()
     {
         var code = @"
-def foo(x: int) -> int:
-    if x > 0:
-        return 1
-    elif x < 0:
-        return -1
-    else:
+def foo() -> None:
+    s: str = ""hello""
+    c: str = s[0]
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void MembershipTest_List_NoError()
+    {
+        var code = @"
+def foo() -> None:
+    items: list[int] = [1, 2, 3]
+    result: bool = 1 in items
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void MembershipTest_Dict_NoError()
+    {
+        var code = @"
+def foo() -> None:
+    data: dict[str, int] = {}
+    result: bool = ""key"" in data
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void MembershipTest_Set_NoError()
+    {
+        var code = @"
+def foo() -> None:
+    s: set[int] = {1, 2, 3}
+    result: bool = 1 in s
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void MembershipTest_String_NoError()
+    {
+        var code = @"
+def foo() -> None:
+    s: str = ""hello""
+    result: bool = ""h"" in s
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void LenCall_List_NoError()
+    {
+        var code = @"
+def foo() -> None:
+    items: list[int] = [1, 2, 3]
+    n: int = len(items)
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void LenCall_String_NoError()
+    {
+        var code = @"
+def foo() -> None:
+    s: str = ""hello""
+    n: int = len(s)
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void ListComprehension_NoError()
+    {
+        var code = @"
+def foo() -> None:
+    items: list[int] = [1, 2, 3]
+    doubled: list[int] = [x * 2 for x in items]
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void NotIn_Operator_NoError()
+    {
+        var code = @"
+def foo() -> None:
+    items: list[int] = [1, 2, 3]
+    result: bool = 5 not in items
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void ClassWithIterMethod_NoError()
+    {
+        var code = @"
+class MyIterable:
+    def __iter__(self) -> MyIterable:
+        return self
+
+def foo() -> None:
+    obj: MyIterable = MyIterable()
+    for x in obj:
+        pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void ClassWithContainsMethod_NoError()
+    {
+        var code = @"
+class MyContainer:
+    def __contains__(self, item: int) -> bool:
+        return True
+
+def foo() -> None:
+    obj: MyContainer = MyContainer()
+    result: bool = 5 in obj
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void ClassWithGetitemMethod_NoError()
+    {
+        var code = @"
+class MySequence:
+    def __getitem__(self, index: int) -> int:
         return 0
+
+def foo() -> None:
+    obj: MySequence = MySequence()
+    x: int = obj[0]
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV2();
+        var validator = new ProtocolValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
     }
 
     [Fact]
-    public void IfElifNoElse_MissingReturn_ReportsError()
+    public void ClassWithLenMethod_NoError()
     {
         var code = @"
-def foo(x: int) -> int:
-    if x > 0:
-        return 1
-    elif x < 0:
-        return -1
+class MySized:
+    def __len__(self) -> int:
+        return 0
+
+def foo() -> None:
+    obj: MySized = MySized()
+    n: int = len(obj)
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV2();
+        var validator = new ProtocolValidator();
         validator.Validate(module, context);
 
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("must return a value"));
-    }
-
-    [Fact]
-    public void ClassMethod_ValidatesControlFlow()
-    {
-        var code = @"
-class Foo:
-    def bar(self) -> int:
-        pass
-";
-        var (module, context) = Parse(code);
-
-        var validator = new ControlFlowValidatorV2();
-        validator.Validate(module, context);
-
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("must return a value"));
-    }
-
-    [Fact]
-    public void StructMethod_ValidatesControlFlow()
-    {
-        var code = @"
-struct Point:
-    x: int
-    y: int
-
-    def magnitude(self) -> int:
-        pass
-";
-        var (module, context) = Parse(code);
-
-        var validator = new ControlFlowValidatorV2();
-        validator.Validate(module, context);
-
-        Assert.True(context.Diagnostics.HasErrors);
-        Assert.Contains(context.Diagnostics.GetErrors(),
-            e => e.Message.Contains("must return a value"));
+        Assert.False(context.Diagnostics.HasErrors);
     }
 }

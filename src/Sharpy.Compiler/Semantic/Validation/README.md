@@ -16,26 +16,26 @@ of semantic rules.
 - `SemanticContext.cs` - Shared context passed to validators
 - `AstTraversalContext.cs` - Tracks traversal state
 
-### Validators (V2 = current generation)
+### Validators
 
-- `ModuleLevelValidatorV2.cs` - Entry point rules, module-level type annotations
-- `DecoratorValidatorV2.cs` - Decorator usage validation
-- `SignatureValidatorV2.cs` - Function/method signature checks (dunders, protocols)
-- `DefaultParameterValidatorV2.cs` - Default parameter constraints
-- `ControlFlowValidatorV2.cs` / `V3.cs` - Control flow analysis
-- `AccessValidatorV2.cs` - Member access validation
-- `ProtocolValidatorV2.cs` - Protocol method validation (__len__, __iter__, etc.)
-- `OperatorValidatorV2.cs` - Binary/unary operator type checking
+- `ModuleLevelValidator.cs` - Entry point rules, module-level type annotations
+- `DecoratorValidator.cs` - Decorator usage validation
+- `SignatureValidator.cs` - Function/method signature checks (dunders, protocols)
+- `DefaultParameterValidator.cs` - Default parameter constraints
+- `ControlFlowValidatorV3.cs` - CFG-based control flow analysis
+- `AccessValidator.cs` - Member access validation
+- `ProtocolValidator.cs` - Protocol method validation (__len__, __iter__, etc.)
+- `OperatorValidator.cs` - Binary/unary operator type checking
 
 ## Architecture
 
 ```
 TypeChecker
-    ↓
+    |
 ValidationPipeline
-    ↓
-[Validator1] → [Validator2] → [Validator3] → ...
-    ↓
+    |
+[Validator1] -> [Validator2] -> [Validator3] -> ...
+    |
 DiagnosticBag (errors/warnings)
 ```
 
@@ -69,20 +69,20 @@ type inference walk and depend on in-progress type resolution state:
 These validations run after type checking as independent AST passes.
 They do not require in-progress type inference state:
 
-- **Module-level rules** — entry point validation, top-level type annotations (ModuleLevelValidatorV2)
-- **Decorator usage** — valid decorator targets and known decorators (DecoratorValidatorV2)
-- **Signature checks** — dunder method signatures, protocol conformance (SignatureValidatorV2)
-- **Default parameters** — mutable defaults, non-constant defaults (DefaultParameterValidatorV2)
-- **Control flow** — unreachable code, missing returns, break/continue outside loops (ControlFlowValidatorV2/V3)
-- **Member access** — private member access from outside class (AccessValidatorV2)
-- **Protocol methods** — __len__/__iter__/etc. signature validation (ProtocolValidatorV2)
-- **Operator validation** — unsupported operators for known types (OperatorValidatorV2, SHP0402)
+- **Module-level rules** — entry point validation, top-level type annotations (ModuleLevelValidator)
+- **Decorator usage** — valid decorator targets and known decorators (DecoratorValidator)
+- **Signature checks** — dunder method signatures, protocol conformance (SignatureValidator)
+- **Default parameters** — mutable defaults, non-constant defaults (DefaultParameterValidator)
+- **Control flow** — unreachable code, missing returns, break/continue outside loops (ControlFlowValidatorV3)
+- **Member access** — private member access from outside class (AccessValidator)
+- **Protocol methods** — __len__/__iter__/etc. signature validation (ProtocolValidator)
+- **Operator validation** — unsupported operators for known types (OperatorValidator, SHP0402)
 
 ### Deduplication
 
 Some validations overlap between TypeChecker and the ValidationPipeline—notably
 operator errors where TypeChecker reports SHP0222 (InvalidBinaryOperation) and
-OperatorValidatorV2 reports SHP0402 (UnsupportedOperator) for the same expression.
+OperatorValidator reports SHP0402 (UnsupportedOperator) for the same expression.
 
 Deduplication is handled in `TypeChecker.CheckModule()` when merging pipeline
 diagnostics. The merge logic:
@@ -97,12 +97,12 @@ operator expression, regardless of whether it was caught by TypeChecker or the p
 
 ## Adding a New Validator
 
-1. Create `MyValidatorV2.cs` implementing `ISemanticValidator`
+1. Create `MyValidator.cs` implementing `ISemanticValidator`
 2. Register in `ValidationPipelineFactory.CreateDefault()`
 3. Add tests in `Sharpy.Compiler.Tests/Semantic/`
 
 ```csharp
-public class MyValidatorV2 : ISemanticValidator
+public class MyValidator : ISemanticValidator
 {
     public string Name => "MyValidator";
 
@@ -118,5 +118,5 @@ public class MyValidatorV2 : ISemanticValidator
 
 - Validators run after `TypeChecker.CheckModule()` completes
 - Order matters: control flow runs after type checking
-- V2 validators use the unified `SemanticContext`
-- V3 validators add additional capabilities (e.g., CFG analysis)
+- Validators use the unified `SemanticContext`
+- ControlFlowValidatorV3 uses CFG analysis for more precise control flow checking

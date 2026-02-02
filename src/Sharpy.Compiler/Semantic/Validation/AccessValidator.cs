@@ -15,7 +15,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// Unlike the legacy version which is called during expression type-checking,
 /// this validator performs a post-pass over the AST.
 /// </summary>
-public class AccessValidatorV2 : SemanticValidatorBase
+public class AccessValidator : SemanticValidatorBase
 {
     public override string Name => "AccessValidator";
     public override int Order => 450; // After control flow (400)

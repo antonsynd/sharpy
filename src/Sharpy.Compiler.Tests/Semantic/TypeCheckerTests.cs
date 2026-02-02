@@ -618,11 +618,11 @@ class Person:
     def __init__(self, name: str) -> int:
         self.name = name
 ";
-        // Protocol signature validation now happens in SignatureValidatorV2 pipeline
+        // Protocol signature validation now happens in SignatureValidator pipeline
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        // The error is raised by SignatureValidatorV2 during type checking
+        // The error is raised by SignatureValidator during type checking
         typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
         typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("__init__") && e.Message.Contains("must return"));
     }
@@ -637,11 +637,11 @@ class Person:
     def __init__(self, name: str) -> str:
         self.name = name
 ";
-        // Protocol signature validation now happens in SignatureValidatorV2 pipeline
+        // Protocol signature validation now happens in SignatureValidator pipeline
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        // The error is raised by SignatureValidatorV2 during type checking
+        // The error is raised by SignatureValidator during type checking
         typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
         typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("__init__"));
     }

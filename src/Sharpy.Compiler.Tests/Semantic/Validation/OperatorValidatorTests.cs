@@ -5,7 +5,7 @@ using Sharpy.Compiler.Semantic.Validation;
 
 namespace Sharpy.Compiler.Tests.Semantic.Validation;
 
-public class OperatorValidatorV2Tests
+public class OperatorValidatorTests
 {
     private (Module module, SemanticContext context) Parse(string code)
     {
@@ -45,7 +45,7 @@ def foo() -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -60,7 +60,7 @@ def foo() -> float:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -75,7 +75,7 @@ def foo() -> str:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -92,7 +92,7 @@ def foo() -> list[int]:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -107,7 +107,7 @@ def foo() -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -122,7 +122,7 @@ def foo() -> bool:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -142,7 +142,7 @@ def foo() -> set[int]:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -161,7 +161,7 @@ def foo(x: int?) -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -176,7 +176,7 @@ def foo(x: int) -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -197,7 +197,7 @@ def foo() -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -212,7 +212,7 @@ def foo() -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -227,7 +227,7 @@ def foo() -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -242,7 +242,7 @@ def foo() -> bool:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -263,7 +263,7 @@ def foo() -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -280,7 +280,7 @@ def foo() -> list[int]:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -297,7 +297,7 @@ def foo() -> set[int]:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -316,7 +316,7 @@ def foo() -> bool:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -332,7 +332,7 @@ def foo() -> bool:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new OperatorValidatorV2();
+        var validator = new OperatorValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);

@@ -15,7 +15,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// type inference during type-checking; this validator catches missing
 /// protocol implementations after types are resolved.
 /// </summary>
-public class ProtocolValidatorV2 : SemanticValidatorBase
+public class ProtocolValidator : SemanticValidatorBase
 {
     public override string Name => "ProtocolValidator";
     public override int Order => 500; // After access validation (450)

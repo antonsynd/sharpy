@@ -155,16 +155,16 @@ public class ValidationPipelineTests
         var validators = pipeline.Validators.ToList();
 
         Assert.Equal(10, validators.Count);  // Includes warning validators
-        Assert.Contains(validators, v => v is ModuleLevelValidatorV2);
-        Assert.Contains(validators, v => v is DecoratorValidatorV2);
-        Assert.Contains(validators, v => v is SignatureValidatorV2);
-        Assert.Contains(validators, v => v is DefaultParameterValidatorV2);
+        Assert.Contains(validators, v => v is ModuleLevelValidator);
+        Assert.Contains(validators, v => v is DecoratorValidator);
+        Assert.Contains(validators, v => v is SignatureValidator);
+        Assert.Contains(validators, v => v is DefaultParameterValidator);
         Assert.Contains(validators, v => v is ControlFlowValidatorV3);  // V3 CFG-based is default
         Assert.Contains(validators, v => v is UnusedVariableValidator);
         Assert.Contains(validators, v => v is UnusedImportValidator);
-        Assert.Contains(validators, v => v is AccessValidatorV2);
-        Assert.Contains(validators, v => v is ProtocolValidatorV2);
-        Assert.Contains(validators, v => v is OperatorValidatorV2);
+        Assert.Contains(validators, v => v is AccessValidator);
+        Assert.Contains(validators, v => v is ProtocolValidator);
+        Assert.Contains(validators, v => v is OperatorValidator);
     }
 
     [Fact]
@@ -187,7 +187,7 @@ public class ValidationPipelineTests
         var firstValidator = pipeline.Validators.FirstOrDefault();
 
         Assert.NotNull(firstValidator);
-        Assert.IsType<ModuleLevelValidatorV2>(firstValidator);
+        Assert.IsType<ModuleLevelValidator>(firstValidator);
         Assert.Equal("ModuleLevelValidator", firstValidator.Name);
     }
 

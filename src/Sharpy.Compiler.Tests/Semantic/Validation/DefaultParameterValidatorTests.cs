@@ -5,7 +5,7 @@ using Sharpy.Compiler.Semantic.Validation;
 
 namespace Sharpy.Compiler.Tests.Semantic.Validation;
 
-public class DefaultParameterValidatorV2Tests
+public class DefaultParameterValidatorTests
 {
     private (Module module, SemanticContext context) Parse(string code)
     {
@@ -41,7 +41,7 @@ def foo(x: int = 42) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -56,7 +56,7 @@ def greet(name: str = ""World"") -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -71,7 +71,7 @@ def check(enabled: bool = True) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -86,7 +86,7 @@ def process(value: int? = None) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -101,7 +101,7 @@ def process(value: int = None) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -118,7 +118,7 @@ def foo(items: list[int] = []) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -135,7 +135,7 @@ def foo(items: list[int] = [1, 2, 3]) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -152,7 +152,7 @@ def foo(data: dict[str, int] = {}) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -170,7 +170,7 @@ def foo(point: tuple[int, int] = (0, 0)) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -185,7 +185,7 @@ def foo(x: int = -1) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -200,7 +200,7 @@ def foo(x: int = 1 + 2) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -218,7 +218,7 @@ def foo(x: int = helper()) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -236,7 +236,7 @@ class Foo:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -252,7 +252,7 @@ class Foo:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -269,7 +269,7 @@ def foo(a: int, b: str = ""default"", c: int = 10) -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -285,7 +285,7 @@ def outer() -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DefaultParameterValidatorV2();
+        var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);

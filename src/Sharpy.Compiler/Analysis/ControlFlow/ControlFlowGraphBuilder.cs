@@ -217,7 +217,7 @@ public class ControlFlowGraphBuilder
         if (stmt.Exception == null)
         {
             // Bare 'raise' - re-raises current exception
-            // Only valid inside an except handler (validated by ControlFlowValidatorV2)
+            // Only valid inside an except handler (validated by ControlFlowValidatorV3)
             _currentBlock.Terminator = new RethrowTerminator
             {
                 SourceStatement = stmt

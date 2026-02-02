@@ -6,9 +6,9 @@ using Sharpy.Compiler.Semantic.Validation;
 namespace Sharpy.Compiler.Tests.Semantic.Validation;
 
 /// <summary>
-/// Tests for SignatureValidatorV2, which validates operator and protocol dunder signatures.
+/// Tests for SignatureValidator, which validates operator and protocol dunder signatures.
 /// </summary>
-public class SignatureValidatorV2Tests
+public class SignatureValidatorTests
 {
     private (Module module, SemanticContext context) Parse(string code)
     {
@@ -43,7 +43,7 @@ class Number:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -59,7 +59,7 @@ class Number:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -77,7 +77,7 @@ class Number:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -99,7 +99,7 @@ class Number:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -115,7 +115,7 @@ class Number:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -133,7 +133,7 @@ class Number:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -155,7 +155,7 @@ class Number:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -171,7 +171,7 @@ class Number:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -189,7 +189,7 @@ class Number:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -211,7 +211,7 @@ class Container:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -227,7 +227,7 @@ class Container:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -245,7 +245,7 @@ class Container:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -263,7 +263,7 @@ class MyClass:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -279,7 +279,7 @@ class MyClass:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -299,7 +299,7 @@ class Container:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -315,7 +315,7 @@ class Container:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -333,7 +333,7 @@ class Container:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -353,7 +353,7 @@ class Container:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -369,7 +369,7 @@ class Container:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -391,7 +391,7 @@ class MyClass:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -407,7 +407,7 @@ class MyClass:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -423,7 +423,7 @@ class MyClass:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -445,7 +445,7 @@ class MyClass:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -470,7 +470,7 @@ struct Point:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -489,7 +489,7 @@ struct Point:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -511,7 +511,7 @@ class Number:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         // Only validates parameter count when no return type annotation
@@ -528,7 +528,7 @@ class Container:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         // Only validates parameter count when no return type annotation
@@ -542,14 +542,14 @@ class Container:
     [Fact]
     public void Name_ReturnsSignatureValidator()
     {
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         Assert.Equal("SignatureValidator", validator.Name);
     }
 
     [Fact]
     public void Order_Returns150()
     {
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         Assert.Equal(150, validator.Order);
     }
 
@@ -567,7 +567,7 @@ class MyCustomClass:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -585,7 +585,7 @@ class Container:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new SignatureValidatorV2();
+        var validator = new SignatureValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);

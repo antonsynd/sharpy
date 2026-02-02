@@ -211,13 +211,13 @@ public partial class TypeChecker
 
         // Merge only pipeline-added diagnostics (those added after the snapshot).
         // Dedup against existing errors to avoid duplicates where both TypeChecker
-        // (via type inference) and OperatorValidatorV2 report the same issue.
+        // (via type inference) and OperatorValidator report the same issue.
         var existingErrors = _diagnostics.GetErrors();
         var exactErrors = new HashSet<(int?, int?, string)>(
             existingErrors.Select(e => (e.Line, e.Column, e.Message)));
 
         // Track positions of operator errors by diagnostic code (not message content)
-        // to match near-duplicates where TypeChecker (SHP0222) and OperatorValidatorV2
+        // to match near-duplicates where TypeChecker (SHP0222) and OperatorValidator
         // (SHP0402) report the same operator issue with slightly different wording.
         var operatorErrorPositions = new HashSet<(int?, int?)>(
             existingErrors

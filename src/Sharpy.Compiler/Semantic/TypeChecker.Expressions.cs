@@ -582,7 +582,7 @@ public partial class TypeChecker
             var (field, fieldOwner) = FindFieldInHierarchy(udt.Symbol, memberAccess.Member);
             if (field != null && fieldOwner != null)
             {
-                // Access level validation is handled by AccessValidatorV2 in the validation pipeline
+                // Access level validation is handled by AccessValidator in the validation pipeline
 
                 var fieldType = GetVariableType(field);
 
@@ -598,7 +598,7 @@ public partial class TypeChecker
             var (method, methodOwner) = FindMethodInHierarchy(udt.Symbol, memberAccess.Member);
             if (method != null && methodOwner != null)
             {
-                // Access level validation is handled by AccessValidatorV2 in the validation pipeline
+                // Access level validation is handled by AccessValidator in the validation pipeline
 
                 // When accessing a method via member access (obj.method), the object is implicitly
                 // bound as the first parameter (self), so we skip it when creating the FunctionType

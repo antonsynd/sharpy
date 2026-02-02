@@ -456,7 +456,7 @@ public class NameResolver
             _symbolTable.Define(funcSymbol);
         }
 
-        // Register operator dunder methods in cache (validation moved to SignatureValidatorV2)
+        // Register operator dunder methods in cache (validation moved to SignatureValidator)
         if (OperatorRegistry.IsOperatorDunder(method.Name))
         {
             if (!owningType.OperatorMethods.TryGetValue(method.Name, out var overloads))
@@ -467,7 +467,7 @@ public class NameResolver
             overloads.Add(funcSymbol);
             _logger.LogDebug($"Registered operator method: {owningType.Name}.{method.Name}");
         }
-        // Register protocol dunder methods in cache (validation moved to SignatureValidatorV2)
+        // Register protocol dunder methods in cache (validation moved to SignatureValidator)
         else if (ProtocolRegistry.IsProtocolDunder(method.Name))
         {
             if (!owningType.ProtocolMethods.TryGetValue(method.Name, out var overloads))

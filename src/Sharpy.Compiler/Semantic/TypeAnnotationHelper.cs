@@ -4,7 +4,7 @@ namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
 /// Shared utility for converting TypeAnnotation to string representation.
-/// Used by SignatureValidatorV2 for dunder signature validation.
+/// Used by SignatureValidator for dunder signature validation.
 /// </summary>
 public static class TypeAnnotationHelper
 {

@@ -14,7 +14,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// type inference during type-checking; this validator catches additional
 /// constraint violations after types are resolved.
 /// </summary>
-public class OperatorValidatorV2 : SemanticValidatorBase
+public class OperatorValidator : SemanticValidatorBase
 {
     public override string Name => "OperatorValidator";
     public override int Order => 500; // Same as ProtocolValidator (after access validation)

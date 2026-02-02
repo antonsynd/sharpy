@@ -61,7 +61,7 @@ public partial class TypeChecker
         var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
 
         // Special case: __init__ always returns None/void
-        // (signature validation is in SignatureValidatorV2)
+        // (signature validation is in SignatureValidator)
         if (functionDef.Name == "__init__")
         {
             returnType = SemanticType.Void;
@@ -227,7 +227,7 @@ public partial class TypeChecker
             }
         }
 
-        // Default parameter validation is handled by DefaultParameterValidatorV2 in the validation pipeline
+        // Default parameter validation is handled by DefaultParameterValidator in the validation pipeline
 
         // Register parameters in scope and update the function symbol's parameter types
         for (int i = 0; i < functionDef.Parameters.Length; i++)
@@ -299,7 +299,7 @@ public partial class TypeChecker
         }
 
         // Control flow validation (break/continue, unreachable code, missing return)
-        // is handled by ControlFlowValidatorV2 in the validation pipeline
+        // is handled by ControlFlowValidatorV3 in the validation pipeline
 
         // Restore previous method context
         _currentMethodName = previousMethodName;
@@ -384,7 +384,7 @@ public partial class TypeChecker
 
         // Restore previous class
         _currentClass = previousClass;
-        // Access validation is handled by AccessValidatorV2 in the validation pipeline
+        // Access validation is handled by AccessValidator in the validation pipeline
 
         _symbolTable.ExitScope();
     }
@@ -458,7 +458,7 @@ public partial class TypeChecker
 
         // Restore previous class
         _currentClass = previousClass;
-        // Access validation is handled by AccessValidatorV2 in the validation pipeline
+        // Access validation is handled by AccessValidator in the validation pipeline
 
         _symbolTable.ExitScope();
     }

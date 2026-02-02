@@ -5,7 +5,7 @@ using Sharpy.Compiler.Semantic.Validation;
 
 namespace Sharpy.Compiler.Tests.Semantic.Validation;
 
-public class ModuleLevelValidatorV2Tests
+public class ModuleLevelValidatorTests
 {
     private (Module module, SemanticContext context) Parse(string code, bool isEntryPoint = true)
     {
@@ -46,7 +46,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -62,7 +62,7 @@ def helper() -> int:
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -82,7 +82,7 @@ def helper() -> int:
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -102,7 +102,7 @@ class Utility:
 ";
         var (module, context) = Parse(code, isEntryPoint: false);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -124,7 +124,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -144,7 +144,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -165,7 +165,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -186,7 +186,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -208,7 +208,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -228,7 +228,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -250,7 +250,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -275,7 +275,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -294,7 +294,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -313,7 +313,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -333,7 +333,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -352,7 +352,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -373,7 +373,7 @@ def main():
 ";
         var (module, context) = Parse(code, isEntryPoint: true);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -397,7 +397,7 @@ const VERSION = ""1.0.0""
 ";
         var (module, context) = Parse(code, isEntryPoint: false);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -415,7 +415,7 @@ utility()
 ";
         var (module, context) = Parse(code, isEntryPoint: false);
 
-        var validator = new ModuleLevelValidatorV2();
+        var validator = new ModuleLevelValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
