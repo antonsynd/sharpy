@@ -1089,33 +1089,66 @@ public partial class RoslynEmitter
 
     private ExpressionSyntax GenerateComparisonChain(ComparisonChain chain)
     {
-        // a < b < c → a < b && b < c (with b evaluated once)
-        // For simplicity in v0.6, we'll allow re-evaluation
-        // See: #101 (store intermediate values in temp variables)
+        // a < b < c → a < b && b < c
+        // Python guarantees intermediate expressions are evaluated exactly once.
+        // For non-trivial intermediate expressions (function calls, member access, etc.),
+        // we use the C# "is var" pattern to capture the value inline:
+        //   a < (f() is var __cmp_0 ? __cmp_0 : __cmp_0) && __cmp_0 < c
 
         if (chain.Operands.Length < 2 || chain.Operators.Length != chain.Operands.Length - 1)
         {
             throw new InvalidOperationException("Invalid comparison chain");
         }
 
+        // For intermediate operands (indices 1..n-2), decide if they need a temp variable.
+        // First and last operands are only used once and don't need temps.
+        var tempNames = new string?[chain.Operands.Length];
+        for (int i = 1; i < chain.Operands.Length - 1; i++)
+        {
+            if (!IsTrivialExpression(chain.Operands[i]))
+            {
+                tempNames[i] = GenerateTempVarName("cmp");
+            }
+        }
+
         ExpressionSyntax? result = null;
 
         for (int i = 0; i < chain.Operators.Length; i++)
         {
-            var left = GenerateExpression(chain.Operands[i]);
-            var right = GenerateExpression(chain.Operands[i + 1]);
-            var op = chain.Operators[i];
+            ExpressionSyntax left;
+            ExpressionSyntax right;
 
-            var kind = op switch
+            // Left operand: use temp name from previous iteration if available
+            if (i > 0 && tempNames[i] != null)
             {
-                ComparisonOperator.Equal => SyntaxKind.EqualsExpression,
-                ComparisonOperator.NotEqual => SyntaxKind.NotEqualsExpression,
-                ComparisonOperator.LessThan => SyntaxKind.LessThanExpression,
-                ComparisonOperator.LessThanOrEqual => SyntaxKind.LessThanOrEqualExpression,
-                ComparisonOperator.GreaterThan => SyntaxKind.GreaterThanExpression,
-                ComparisonOperator.GreaterThanOrEqual => SyntaxKind.GreaterThanOrEqualExpression,
-                _ => throw new NotImplementedException($"Comparison operator {op} not supported in chains")
-            };
+                left = IdentifierName(tempNames[i]!);
+            }
+            else
+            {
+                left = GenerateExpression(chain.Operands[i]);
+            }
+
+            // Right operand: capture into temp if this is an intermediate with side effects
+            var rightExpr = GenerateExpression(chain.Operands[i + 1]);
+            if (tempNames[i + 1] != null)
+            {
+                // Wrap in: (expr is var __cmp_N ? __cmp_N : __cmp_N)
+                // This evaluates expr once, binds to __cmp_N, and returns the value
+                right = ParenthesizedExpression(
+                    ConditionalExpression(
+                        IsPatternExpression(
+                            rightExpr,
+                            VarPattern(SingleVariableDesignation(Identifier(tempNames[i + 1]!)))),
+                        IdentifierName(tempNames[i + 1]!),
+                        IdentifierName(tempNames[i + 1]!)));
+            }
+            else
+            {
+                right = rightExpr;
+            }
+
+            var op = chain.Operators[i];
+            var kind = MapComparisonOperator(op);
 
             var comparison = BinaryExpression(kind, left, right);
 
@@ -1125,6 +1158,37 @@ public partial class RoslynEmitter
         }
 
         return result ?? throw new InvalidOperationException("Empty comparison chain");
+    }
+
+    /// <summary>
+    /// Maps a comparison operator to the corresponding C# syntax kind.
+    /// </summary>
+    private static SyntaxKind MapComparisonOperator(ComparisonOperator op)
+    {
+        return op switch
+        {
+            ComparisonOperator.Equal => SyntaxKind.EqualsExpression,
+            ComparisonOperator.NotEqual => SyntaxKind.NotEqualsExpression,
+            ComparisonOperator.LessThan => SyntaxKind.LessThanExpression,
+            ComparisonOperator.LessThanOrEqual => SyntaxKind.LessThanOrEqualExpression,
+            ComparisonOperator.GreaterThan => SyntaxKind.GreaterThanExpression,
+            ComparisonOperator.GreaterThanOrEqual => SyntaxKind.GreaterThanOrEqualExpression,
+            _ => throw new NotImplementedException($"Comparison operator {op} not supported in chains")
+        };
+    }
+
+    /// <summary>
+    /// Returns true if the expression is trivial (identifier, literal) and
+    /// safe to evaluate multiple times without side effects.
+    /// </summary>
+    private static bool IsTrivialExpression(Expression expr)
+    {
+        return expr is Parser.Ast.Identifier
+            or IntegerLiteral
+            or FloatLiteral
+            or StringLiteral
+            or BooleanLiteral
+            or NoneLiteral;
     }
 
     private ExpressionSyntax GenerateConditionalExpression(ConditionalExpression cond)
