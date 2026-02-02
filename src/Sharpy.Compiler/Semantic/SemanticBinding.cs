@@ -72,10 +72,22 @@ public class SemanticBinding
     // Maps FromImportStatement nodes to their re-exported symbols
     private readonly ConcurrentDictionary<FromImportStatement, Dictionary<string, Symbol>> _reExportedSymbols = new();
 
-    // Phase-gating freeze flags (DEBUG only) - prevent mutations after a phase completes
+    // Phase-gating freeze flags - prevent mutations after a phase completes
     private bool _inheritanceFrozen;
     private bool _variableTypesFrozen;
     private bool _codeGenInfoFrozen;
+
+    /// <summary>
+    /// In DEBUG builds, fires Debug.Fail when a frozen store is written to.
+    /// This makes freeze violations immediately visible during development
+    /// rather than hiding behind NullLogger.
+    /// </summary>
+    [Conditional("DEBUG")]
+    private static void AssertNotFrozen(string storeName, string symbolName)
+    {
+        Debug.Fail($"SemanticBinding freeze violation: {storeName} written after freeze for symbol '{symbolName}'. " +
+                   "This indicates a phase ordering bug — data was written after the phase boundary that froze this store.");
+    }
 
     /// <summary>
     /// Freeze inheritance data (BaseType, Interfaces) after inheritance resolution completes.
@@ -103,7 +115,10 @@ public class SemanticBinding
     public void SetCodeGenInfo(Symbol symbol, CodeGenInfo info)
     {
         if (_codeGenInfoFrozen)
+        {
+            AssertNotFrozen("CodeGenInfo", symbol.Name);
             _logger.LogWarning($"SetCodeGenInfo called after freeze for symbol '{symbol.Name}'", 0, 0);
+        }
         _codeGenInfo[symbol] = info;
     }
 
@@ -129,7 +144,10 @@ public class SemanticBinding
     public void SetVariableType(VariableSymbol symbol, SemanticType type)
     {
         if (_variableTypesFrozen)
+        {
+            AssertNotFrozen("VariableTypes", symbol.Name);
             _logger.LogWarning($"SetVariableType called after freeze for symbol '{symbol.Name}'", 0, 0);
+        }
         _variableTypes[symbol] = type;
     }
 
@@ -150,7 +168,10 @@ public class SemanticBinding
     public void SetBaseType(TypeSymbol symbol, TypeSymbol baseType)
     {
         if (_inheritanceFrozen)
+        {
+            AssertNotFrozen("Inheritance", symbol.Name);
             _logger.LogWarning($"SetBaseType called after freeze for symbol '{symbol.Name}'", 0, 0);
+        }
         _baseTypes[symbol] = baseType;
     }
 
@@ -170,7 +191,10 @@ public class SemanticBinding
     public void AddInterface(TypeSymbol symbol, TypeSymbol iface)
     {
         if (_inheritanceFrozen)
+        {
+            AssertNotFrozen("Inheritance", symbol.Name);
             _logger.LogWarning($"AddInterface called after freeze for symbol '{symbol.Name}'", 0, 0);
+        }
         var queue = _interfaces.GetOrAdd(symbol, _ => new ConcurrentQueue<TypeSymbol>());
         queue.Enqueue(iface);
     }

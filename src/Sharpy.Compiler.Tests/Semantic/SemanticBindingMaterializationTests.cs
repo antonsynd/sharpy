@@ -447,4 +447,90 @@ public class SemanticBindingMaterializationTests
     }
 
     #endregion
+
+    #region Freeze Violation Detection
+
+    [Fact]
+    public void SetCodeGenInfo_AfterFreeze_FiresDebugAssert()
+    {
+        var logger = new TestLogger();
+        var binding = new SemanticBinding(logger);
+        var symbol = new FunctionSymbol { Name = "test_fn", Kind = SymbolKind.Function };
+
+        binding.SetCodeGenInfo(symbol, new CodeGenInfo { CSharpName = "TestFn", OriginalName = "test_fn" });
+        binding.MaterializeCodeGenInfo();
+        binding.FreezeCodeGenInfo();
+
+        // In DEBUG builds, Debug.Fail fires as an exception in the test host
+        var ex = Assert.ThrowsAny<Exception>(() =>
+            binding.SetCodeGenInfo(symbol, new CodeGenInfo { CSharpName = "TestFn2", OriginalName = "test_fn" }));
+        ex.Message.Should().Contain("freeze violation");
+    }
+
+    [Fact]
+    public void SetVariableType_AfterFreeze_FiresDebugAssert()
+    {
+        var logger = new TestLogger();
+        var binding = new SemanticBinding(logger);
+        var symbol = new VariableSymbol { Name = "x", Kind = SymbolKind.Variable };
+
+        binding.SetVariableType(symbol, SemanticType.Int);
+        binding.MaterializeVariableTypes();
+        binding.FreezeVariableTypes();
+
+        var ex = Assert.ThrowsAny<Exception>(() =>
+            binding.SetVariableType(symbol, SemanticType.Str));
+        ex.Message.Should().Contain("freeze violation");
+    }
+
+    [Fact]
+    public void SetBaseType_AfterFreeze_FiresDebugAssert()
+    {
+        var logger = new TestLogger();
+        var binding = new SemanticBinding(logger);
+        var child = new TypeSymbol { Name = "Child", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        var parent = new TypeSymbol { Name = "Parent", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+
+        binding.SetBaseType(child, parent);
+        binding.MaterializeInheritance();
+        binding.FreezeInheritance();
+
+        var ex = Assert.ThrowsAny<Exception>(() =>
+            binding.SetBaseType(child, parent));
+        ex.Message.Should().Contain("freeze violation");
+    }
+
+    [Fact]
+    public void AddInterface_AfterFreeze_FiresDebugAssert()
+    {
+        var logger = new TestLogger();
+        var binding = new SemanticBinding(logger);
+        var classSymbol = new TypeSymbol { Name = "MyClass", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        var iface = new TypeSymbol { Name = "IFoo", Kind = SymbolKind.Type, TypeKind = TypeKind.Interface };
+
+        binding.MaterializeInheritance();
+        binding.FreezeInheritance();
+
+        var ex = Assert.ThrowsAny<Exception>(() =>
+            binding.AddInterface(classSymbol, iface));
+        ex.Message.Should().Contain("freeze violation");
+    }
+
+    private class TestLogger : Logging.ICompilerLogger
+    {
+        public List<string> Warnings { get; } = new();
+        public void LogTokenRead(string tokenType, int line, int column, string value) { }
+        public void LogIndentChange(int oldLevel, int newLevel) { }
+        public void LogParseEnter(string rule, int tokenPosition) { }
+        public void LogParseExit(string rule, bool success) { }
+        public void LogError(string message, int line, int column) { }
+        public void LogWarning(string message, int line, int column) => Warnings.Add(message);
+        public void LogInfo(string message) { }
+        public void LogDebug(string message) { }
+        public void LogTrace(string message) { }
+        public void LogMetrics(string metricsOutput) { }
+        public bool IsEnabled(Logging.CompilerLogLevel level) => true;
+    }
+
+    #endregion
 }
