@@ -492,7 +492,7 @@ public void YourNewRule_InvalidCase_Error()
 ### Related Validators
 
 - **`SignatureValidator.cs`** (Order 150): Validates function signatures after module structure is confirmed valid
-- **`ControlFlowValidatorV3.cs`**: Validates control flow statements (runs later in pipeline)
+- **`ControlFlowValidator.cs`**: Validates control flow statements (runs later in pipeline)
 - **`ISemanticValidator.cs`**: Base interface and abstract class definition
 
 ### Related Pipeline Components

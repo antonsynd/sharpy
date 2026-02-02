@@ -501,7 +501,7 @@ public class ControlFlowGraphBuilderTests
         var cfg = _builder.Build(func);
 
         // Break outside loop now creates BreakTerminator with null target
-        // so ControlFlowValidatorV3 can detect and report the error
+        // so ControlFlowValidator can detect and report the error
         var breakBlock = cfg.Blocks.FirstOrDefault(b =>
             b.Terminator is BreakTerminator bt && bt.Target == null);
 
@@ -518,7 +518,7 @@ public class ControlFlowGraphBuilderTests
         var cfg = _builder.Build(func);
 
         // Continue outside loop now creates ContinueTerminator with null target
-        // so ControlFlowValidatorV3 can detect and report the error
+        // so ControlFlowValidator can detect and report the error
         var continueBlock = cfg.Blocks.FirstOrDefault(b =>
             b.Terminator is ContinueTerminator ct && ct.Target == null);
 

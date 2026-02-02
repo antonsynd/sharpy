@@ -101,7 +101,7 @@ The TypeChecker uses a **two-phase validation** approach:
 - Type narrowing extraction
 
 **Phase 2: Specialized Validators (ValidationPipeline)**
-- **ControlFlowValidatorV3** - Return paths, unreachable code, break/continue
+- **ControlFlowValidator** - Return paths, unreachable code, break/continue
 - **AccessValidator** - Field/method access level enforcement
 - **OperatorValidator** - Operator support via protocol methods
 - **ProtocolValidator** - Iteration, indexing, len protocols

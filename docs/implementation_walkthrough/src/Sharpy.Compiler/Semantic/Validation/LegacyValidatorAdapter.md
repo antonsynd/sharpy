@@ -201,7 +201,7 @@ public static LegacyValidatorAdapter ForAccessValidator(
 - `ValidationPipelineFactory.cs` — Shows how the default pipeline uses V2 validators instead of this adapter
 
 **Migration Path:**
-- `ControlFlowValidatorV3.cs` — Modern replacement for `ControlFlowValidator`
+- `ControlFlowValidator.cs` — Modern replacement for `ControlFlowValidator`
 - `AccessValidator.cs` — Modern replacement for `AccessValidator`
 
 ---
@@ -219,7 +219,7 @@ The `ForControlFlowValidator()` method implements an implicit Visitor pattern by
 
 ### 4. **Explicit Deprecation**
 ```csharp
-[Obsolete("Use ControlFlowValidatorV3 via ValidationPipelineFactory.CreateDefault() instead")]
+[Obsolete("Use ControlFlowValidator via ValidationPipelineFactory.CreateDefault() instead")]
 ```
 The code uses C# attributes and XML comments to clearly signal that this is transitional code. The `#pragma warning disable CS0618` (line 14) acknowledges intentional use of deprecated types during the migration period.
 
@@ -315,7 +315,7 @@ dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
 **Why This Exists**: Early versions of Sharpy had validators tightly coupled to specific components (e.g., `TypeChecker` calling validators directly). The introduction of `ISemanticValidator` and `ValidationPipeline` created a more modular, testable architecture. This adapter allowed the migration to happen incrementally without breaking existing functionality.
 
 **Migration Status** (as of this writing):
-- ✅ `ControlFlowValidator` → Migrated to `ControlFlowValidatorV3` (AST-walking) and `ControlFlowValidatorV3` (CFG-based)
+- ✅ `ControlFlowValidator` → Migrated to `ControlFlowValidator` (AST-walking) and `ControlFlowValidator` (CFG-based)
 - ✅ `AccessValidator` → Migrated to `AccessValidator`
 - ✅ Default pipeline uses V2 validators exclusively
 - ⏳ Legacy validators still exist for backward compatibility but are marked obsolete

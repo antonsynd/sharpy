@@ -49,7 +49,7 @@ public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
         .AddValidator(new ModuleLevelValidator())       // Order: 50 (earliest, validates module structure)
         .AddValidator(new SignatureValidator())         // Order: 150 (early, validates dunder signatures)
         .AddValidator(new DefaultParameterValidator())  // Order: 250
-        .AddValidator(new ControlFlowValidatorV3())       // Order: 400 (AST-walking, handles unreachable code)
+        .AddValidator(new ControlFlowValidator())       // Order: 400 (AST-walking, handles unreachable code)
         .AddValidator(new AccessValidator())            // Order: 450
         .AddValidator(new ProtocolValidator())          // Order: 500
         .AddValidator(new OperatorValidator())          // Order: 500
@@ -65,7 +65,7 @@ public static ValidationPipeline CreateDefault(ICompilerLogger? logger = null)
    - **ModuleLevelValidator** (50): Validates module-level structure (earliest validator, ensures module is well-formed)
    - **SignatureValidator** (150): Validates special method signatures (dunder methods like `__init__`, `__str__`)
    - **DefaultParameterValidator** (250): Checks default parameter rules (no mutable defaults, positional before keyword, etc.)
-   - **ControlFlowValidatorV3** (400): AST-walking control flow analysis
+   - **ControlFlowValidator** (400): AST-walking control flow analysis
    - **AccessValidator** (450): Validates member access (private/protected/public)
    - **ProtocolValidator** (500): Validates protocol implementations
    - **OperatorValidator** (500): Validates operator overloading
@@ -98,7 +98,7 @@ public static ValidationPipeline CreateWithCfgControlFlow(ICompilerLogger? logge
         .AddValidator(new ModuleLevelValidator())       // Order: 50 (earliest)
         .AddValidator(new SignatureValidator())
         .AddValidator(new DefaultParameterValidator())
-        .AddValidator(new ControlFlowValidatorV3())       // CFG-based validator
+        .AddValidator(new ControlFlowValidator())       // CFG-based validator
         .AddValidator(new AccessValidator())
         .AddValidator(new ProtocolValidator())
         .AddValidator(new OperatorValidator())
@@ -154,14 +154,14 @@ var pipeline = ValidationPipelineFactory.CreateMinimal()
 public static ValidationPipeline CreateFast(ICompilerLogger? logger = null)
 {
     return new ValidationPipeline(logger)
-        .AddValidator(new ControlFlowValidatorV3());  // V2 is faster for quick checks
+        .AddValidator(new ControlFlowValidator());  // V2 is faster for quick checks
     // Skip signature validators, protocol validators, etc.
 }
 ```
 
 **Design Philosophy:**
 - **Speed over completeness**: Only include validators that provide high value for IDE scenarios
-- Currently includes only `ControlFlowValidatorV3` (catches unreachable code and missing returns)
+- Currently includes only `ControlFlowValidator` (catches unreachable code and missing returns)
 - Skips expensive validators like module-level validation, protocol checking, operator validation, signature validation
 
 **Use Case**: Language Server Protocol (LSP) scenarios where the IDE needs fast feedback:
@@ -189,8 +189,8 @@ All validators referenced in this factory:
 - `ModuleLevelValidator`
 - `SignatureValidator`
 - `DefaultParameterValidator`
-- `ControlFlowValidatorV3`
-- `ControlFlowValidatorV3`
+- `ControlFlowValidator`
+- `ControlFlowValidator`
 - `AccessValidator`
 - `ProtocolValidator`
 - `OperatorValidator`
@@ -299,7 +299,7 @@ If you suspect a specific validator is causing issues:
 var pipeline = ValidationPipelineFactory.CreateMinimal()
     .AddValidator(new ModuleLevelValidator())
     .AddValidator(new SignatureValidator())
-    .AddValidator(new ControlFlowValidatorV3());
+    .AddValidator(new ControlFlowValidator());
 ```
 
 ---
@@ -326,7 +326,7 @@ If you're debugging unreachable code detection:
 - Use `CreateWithCfgControlFlow()` (uses V3) if you suspect V2 has false positives
 
 **Symptom**: Code flagged as unreachable but it's actually reachable?
-- Likely a bug in `ControlFlowValidatorV3`'s AST walking
+- Likely a bug in `ControlFlowValidator`'s AST walking
 
 **Symptom**: Unreachable code NOT detected?
 - You might be using V3 (check which factory method was called)
@@ -451,8 +451,8 @@ After modifying this file:
 - **[ModuleLevelValidator.md](ModuleLevelValidator.md)** - Validates module-level structure (runs first)
 - **[SignatureValidator.md](SignatureValidator.md)** - Validates special method signatures
 - **[DefaultParameterValidator.md](DefaultParameterValidator.md)** - Checks default parameter rules
-- **[ControlFlowValidatorV3.md](ControlFlowValidatorV3.md)** - AST-walking control flow analysis (default)
-- **[ControlFlowValidatorV3.md](ControlFlowValidatorV3.md)** - CFG-based control flow analysis (alternative)
+- **[ControlFlowValidator.md](ControlFlowValidator.md)** - AST-walking control flow analysis (default)
+- **[ControlFlowValidator.md](ControlFlowValidator.md)** - CFG-based control flow analysis (alternative)
 - **[AccessValidator.md](AccessValidator.md)** - Member access validation
 - **[ProtocolValidator.md](ProtocolValidator.md)** - Protocol implementation validation
 - **[OperatorValidator.md](OperatorValidator.md)** - Operator overloading validation
@@ -552,7 +552,7 @@ This would enable third-party validators without modifying Sharpy core.
 ```csharp
 // BAD: AccessValidator needs control flow info
 .AddValidator(new AccessValidator())        // Order: 450
-.AddValidator(new ControlFlowValidatorV3())   // Order: 400 (runs AFTER access!)
+.AddValidator(new ControlFlowValidator())   // Order: 400 (runs AFTER access!)
 ```
 
 **Solution**: Check validator `Order` values. Earlier validators (lower numbers) run first.

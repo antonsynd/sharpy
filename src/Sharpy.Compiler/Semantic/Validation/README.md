@@ -22,7 +22,7 @@ of semantic rules.
 - `DecoratorValidator.cs` - Decorator usage validation
 - `SignatureValidator.cs` - Function/method signature checks (dunders, protocols)
 - `DefaultParameterValidator.cs` - Default parameter constraints
-- `ControlFlowValidatorV3.cs` - CFG-based control flow analysis
+- `ControlFlowValidator.cs` - CFG-based control flow analysis
 - `AccessValidator.cs` - Member access validation
 - `ProtocolValidator.cs` - Protocol method validation (__len__, __iter__, etc.)
 - `OperatorValidator.cs` - Binary/unary operator type checking
@@ -73,7 +73,7 @@ They do not require in-progress type inference state:
 - **Decorator usage** — valid decorator targets and known decorators (DecoratorValidator)
 - **Signature checks** — dunder method signatures, protocol conformance (SignatureValidator)
 - **Default parameters** — mutable defaults, non-constant defaults (DefaultParameterValidator)
-- **Control flow** — unreachable code, missing returns, break/continue outside loops (ControlFlowValidatorV3)
+- **Control flow** — unreachable code, missing returns, break/continue outside loops (ControlFlowValidator)
 - **Member access** — private member access from outside class (AccessValidator)
 - **Protocol methods** — __len__/__iter__/etc. signature validation (ProtocolValidator)
 - **Operator validation** — unsupported operators for known types (OperatorValidator, SHP0402)
@@ -119,4 +119,4 @@ public class MyValidator : ISemanticValidator
 - Validators run after `TypeChecker.CheckModule()` completes
 - Order matters: control flow runs after type checking
 - Validators use the unified `SemanticContext`
-- ControlFlowValidatorV3 uses CFG analysis for more precise control flow checking
+- ControlFlowValidator uses CFG analysis for more precise control flow checking

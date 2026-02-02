@@ -20,7 +20,7 @@ After the TypeChecker completes its multi-pass analysis (declarations → inheri
 - Operator type compatibility (`OperatorValidator`)
 - Protocol method validation (`ProtocolValidator`)
 - Member access validation (`AccessValidator`)
-- Control flow analysis (`ControlFlowValidatorV3/V3`)
+- Control flow analysis (`ControlFlowValidator/V3`)
 - Function signature checks (`SignatureValidator`)
 
 This design separates concerns: the TypeChecker handles core type inference and checking, while validators handle more specialized rules.
@@ -191,7 +191,7 @@ using Sharpy.Compiler.Diagnostics;      // DiagnosticBag, error reporting
 - [`ProtocolValidator.cs`](./ProtocolValidator.md) - Protocol method validation
 - [`AccessValidator.md`](./AccessValidator.md) - Member access validation
 - [`SignatureValidator.cs`](./SignatureValidator.md) - Function signature validation
-- [`ControlFlowValidatorV3.md`](./ControlFlowValidatorV3.md) / [`V3.md`](./ControlFlowValidatorV3.md) - Control flow analysis
+- [`ControlFlowValidator.md`](./ControlFlowValidator.md) / [`V3.md`](./ControlFlowValidator.md) - Control flow analysis
 - [`DefaultParameterValidator.cs`](./DefaultParameterValidator.md) - Default parameter validation
 
 **Legacy Support:**
@@ -601,7 +601,7 @@ The interface includes design notes for planned features:
 - [OperatorValidator.md](./OperatorValidator.md) - Operator type checking
 - [ProtocolValidator.md](./ProtocolValidator.md) - Protocol validation
 - [AccessValidator.md](./AccessValidator.md) - Member access checks
-- [ControlFlowValidatorV3.md](./ControlFlowValidatorV3.md) - Control flow analysis
+- [ControlFlowValidator.md](./ControlFlowValidator.md) - Control flow analysis
 
 ### Semantic Analysis Core
 - [TypeChecker.md](../TypeChecker.md) - Core type checking (runs before validators)

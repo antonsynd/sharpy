@@ -217,7 +217,7 @@ public class ControlFlowGraphBuilder
         if (stmt.Exception == null)
         {
             // Bare 'raise' - re-raises current exception
-            // Only valid inside an except handler (validated by ControlFlowValidatorV3)
+            // Only valid inside an except handler (validated by ControlFlowValidator)
             _currentBlock.Terminator = new RethrowTerminator
             {
                 SourceStatement = stmt
@@ -242,7 +242,7 @@ public class ControlFlowGraphBuilder
         if (_loopStack.Count == 0)
         {
             // Error: break outside loop - use BreakTerminator with null target
-            // so ControlFlowValidatorV3 can detect and report the error
+            // so ControlFlowValidator can detect and report the error
             _currentBlock.Terminator = new BreakTerminator(null!)
             {
                 SourceStatement = stmt
@@ -291,7 +291,7 @@ public class ControlFlowGraphBuilder
         if (_loopStack.Count == 0)
         {
             // Error: continue outside loop - use ContinueTerminator with null target
-            // so ControlFlowValidatorV3 can detect and report the error
+            // so ControlFlowValidator can detect and report the error
             _currentBlock.Terminator = new ContinueTerminator(null!)
             {
                 SourceStatement = stmt

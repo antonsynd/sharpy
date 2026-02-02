@@ -358,7 +358,7 @@ public class DiagnosticSpanTests
         var source = "def foo() -> int:\n    return 1\n    x: int = 2\n";
         var (module, context) = ParseForValidation(source);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         var warning = context.Diagnostics.GetWarnings()

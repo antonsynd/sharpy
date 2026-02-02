@@ -5,7 +5,7 @@ using Sharpy.Compiler.Semantic.Validation;
 
 namespace Sharpy.Compiler.Tests.Semantic.Validation;
 
-public class ControlFlowValidatorV3Tests
+public class ControlFlowValidatorTests
 {
     private (Module module, SemanticContext context) Parse(string code)
     {
@@ -43,7 +43,7 @@ def foo() -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -60,7 +60,7 @@ def foo() -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -76,7 +76,7 @@ def foo(x: int) -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -96,7 +96,7 @@ def foo(x: int) -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -116,7 +116,7 @@ def foo(x: int) -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -134,7 +134,7 @@ def foo(x: int) -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -154,7 +154,7 @@ def foo() -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -174,7 +174,7 @@ def foo() -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -189,7 +189,7 @@ def foo() -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -208,7 +208,7 @@ def foo() -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -226,7 +226,7 @@ def foo() -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -241,7 +241,7 @@ def foo() -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -259,7 +259,7 @@ def foo() -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -277,7 +277,7 @@ def foo() -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -297,7 +297,7 @@ def foo() -> int:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -315,7 +315,7 @@ def foo() -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -334,7 +334,7 @@ def foo() -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -353,7 +353,7 @@ def foo() -> None:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -377,7 +377,7 @@ class Base:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
@@ -397,7 +397,7 @@ class Foo:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -418,7 +418,7 @@ struct Point:
 ";
         var (module, context) = Parse(code);
 
-        var validator = new ControlFlowValidatorV3();
+        var validator = new ControlFlowValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);

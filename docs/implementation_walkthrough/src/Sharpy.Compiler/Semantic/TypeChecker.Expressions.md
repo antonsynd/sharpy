@@ -1248,7 +1248,7 @@ The V2 validation pipeline handles specialized checks:
 - **OperatorValidator**: Operator overload validation
 - **ProtocolValidator**: Protocol support validation (`__iter__`, `__getitem__`, `__len__`)
 - **AccessValidator**: Access level validation (public/private/protected)
-- **ControlFlowValidatorV3**: Control flow validation (unreachable code, missing returns)
+- **ControlFlowValidator**: Control flow validation (unreachable code, missing returns)
 
 **This File's Role**: Type checking and type inference only. Detailed validation is done by the pipeline.
 

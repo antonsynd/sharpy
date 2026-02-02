@@ -58,7 +58,7 @@ Pluggable validators run after `TypeChecker.CheckModule()`:
 - `OperatorValidator` — Binary/unary operator type checking
 - `ProtocolValidator` — Protocol method validation (`__len__`, `__iter__`)
 - `AccessValidator` — Member access validation
-- `ControlFlowValidatorV3` — CFG-based analysis
+- `ControlFlowValidator` — CFG-based analysis
 
 ## Commands
 

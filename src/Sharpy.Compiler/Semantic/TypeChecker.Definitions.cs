@@ -299,7 +299,7 @@ public partial class TypeChecker
         }
 
         // Control flow validation (break/continue, unreachable code, missing return)
-        // is handled by ControlFlowValidatorV3 in the validation pipeline
+        // is handled by ControlFlowValidator in the validation pipeline
 
         // Restore previous method context
         _currentMethodName = previousMethodName;

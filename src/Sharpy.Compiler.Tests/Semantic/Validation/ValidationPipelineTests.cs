@@ -159,7 +159,7 @@ public class ValidationPipelineTests
         Assert.Contains(validators, v => v is DecoratorValidator);
         Assert.Contains(validators, v => v is SignatureValidator);
         Assert.Contains(validators, v => v is DefaultParameterValidator);
-        Assert.Contains(validators, v => v is ControlFlowValidatorV3);  // V3 CFG-based is default
+        Assert.Contains(validators, v => v is ControlFlowValidator);
         Assert.Contains(validators, v => v is UnusedVariableValidator);
         Assert.Contains(validators, v => v is UnusedImportValidator);
         Assert.Contains(validators, v => v is AccessValidator);
@@ -195,8 +195,7 @@ public class ValidationPipelineTests
     public void DefaultPipeline_ControlFlowValidatorPresent()
     {
         var pipeline = ValidationPipelineFactory.CreateDefault();
-        // Default pipeline uses V3 (CFG-based) for control flow validation including unreachable code
-        var controlFlowValidator = pipeline.Validators.FirstOrDefault(v => v is ControlFlowValidatorV3);
+        var controlFlowValidator = pipeline.Validators.FirstOrDefault(v => v is ControlFlowValidator);
 
         Assert.NotNull(controlFlowValidator);
         Assert.Equal(400, controlFlowValidator.Order);
@@ -209,7 +208,7 @@ public class ValidationPipelineTests
         var validators = pipeline.Validators.ToList();
 
         Assert.Single(validators);
-        Assert.IsType<ControlFlowValidatorV3>(validators[0]);
+        Assert.IsType<ControlFlowValidator>(validators[0]);
     }
 
     [Fact]

@@ -783,7 +783,7 @@ When modifying this file, add tests to `src/Sharpy.Compiler.Tests/Semantic/Valid
 
 - **[AccessValidator.md](./AccessValidator.md)** - Validates access modifiers (private, protected, public)
 - **[ControlFlowValidator.md](./ControlFlowValidator.md)** - Validates control flow (break/continue, return paths)
-- **[ControlFlowValidatorV3.md](./ControlFlowValidatorV3.md)** - Enhanced control flow validation
+- **[ControlFlowValidator.md](./ControlFlowValidator.md)** - Enhanced control flow validation
 
 ### Validation Infrastructure
 

@@ -267,7 +267,7 @@ Current validators in the system (as of this walkthrough):
 - `OperatorValidator` - Validates operator overloading
 - `ProtocolValidator` - Validates protocol (interface) compliance
 - `SignatureValidator` - Validates function signatures
-- `ControlFlowValidatorV3` - Validates control flow (return paths, unreachable code)
+- `ControlFlowValidator` - Validates control flow (return paths, unreachable code)
 - `LegacyValidatorAdapter` - Adapts old validators to new pipeline
 
 ---

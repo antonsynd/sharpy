@@ -20,7 +20,7 @@ public static class ValidationPipelineFactory
             .AddValidator(new DecoratorValidator())         // Order: 60 (validates decorator usage)
             .AddValidator(new SignatureValidator())         // Order: 150 (early, validates dunder signatures)
             .AddValidator(new DefaultParameterValidator())  // Order: 250
-            .AddValidator(new ControlFlowValidatorV3())       // Order: 400 (CFG-based, handles unreachable code)
+            .AddValidator(new ControlFlowValidator())       // Order: 400 (CFG-based, handles unreachable code)
             .AddValidator(new UnusedVariableValidator())      // Order: 420 (unused variable warnings)
             .AddValidator(new UnusedImportValidator())       // Order: 430 (unused import warnings)
             .AddValidator(new AccessValidator())            // Order: 450
@@ -44,7 +44,7 @@ public static class ValidationPipelineFactory
     public static ValidationPipeline CreateFast(ICompilerLogger? logger = null)
     {
         return new ValidationPipeline(logger)
-            .AddValidator(new ControlFlowValidatorV3());  // V3 CFG-based for quick checks
+            .AddValidator(new ControlFlowValidator());  // CFG-based for quick checks
         // Skip signature validators, protocol validators, etc.
     }
 }

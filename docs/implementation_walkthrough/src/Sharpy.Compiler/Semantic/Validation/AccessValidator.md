@@ -274,7 +274,7 @@ class Base:
 
 - **OperatorValidator**: Validates operator usage
 - **ProtocolValidator**: Validates protocol implementations
-- **ControlFlowValidatorV3**: Validates control flow (runs before this)
+- **ControlFlowValidator**: Validates control flow (runs before this)
 - **SignatureValidator**: Validates function signatures
 
 All validators are orchestrated by `ValidationPipeline`.
@@ -541,7 +541,7 @@ public void TestPrivateAccess_ExternalClass_Denied()
 - **`ValidationPipeline.cs`**: Orchestrates all validators including this one
 - **`OperatorValidator.cs`**: Validates operator usage (sibling validator)
 - **`ProtocolValidator.cs`**: Validates protocol implementations (sibling validator)
-- **`ControlFlowValidatorV3.cs`**: Runs before this (Order 400)
+- **`ControlFlowValidator.cs`**: Runs before this (Order 400)
 
 ### Related Semantic Components
 

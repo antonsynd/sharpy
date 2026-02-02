@@ -12,7 +12,7 @@
 2. **Return path validation** - Ensures functions with non-void return types return values on all code paths
 3. **Loop context validation** - Verifies `break` and `continue` statements only appear inside loops
 
-**⚠️ Deprecation Notice**: This class is being replaced by `ControlFlowValidatorV3` (located in `Semantic/Validation/`), which integrates with the new `ValidationPipeline` architecture. New code should use `ValidationPipelineFactory.CreateDefault()` instead of instantiating this class directly.
+**⚠️ Deprecation Notice**: This class is being replaced by `ControlFlowValidator` (located in `Semantic/Validation/`), which integrates with the new `ValidationPipeline` architecture. New code should use `ValidationPipelineFactory.CreateDefault()` instead of instantiating this class directly.
 
 ### Role in the Compiler Pipeline
 
@@ -31,7 +31,7 @@ The validator runs **after type checking** completes, ensuring all control flow 
 ### Main Class: `ControlFlowValidator`
 
 ```csharp
-[Obsolete("Use ControlFlowValidatorV3 via ValidationPipelineFactory.CreateDefault() instead")]
+[Obsolete("Use ControlFlowValidator via ValidationPipelineFactory.CreateDefault() instead")]
 public class ControlFlowValidator
 ```
 
@@ -423,7 +423,7 @@ If unreachable code isn't detected:
 
 ### What Kinds of Changes?
 
-**⚠️ WARNING**: This file is deprecated! Changes should go to `ControlFlowValidatorV3` instead.
+**⚠️ WARNING**: This file is deprecated! Changes should go to `ControlFlowValidator` instead.
 
 However, if maintaining this legacy code:
 
@@ -511,7 +511,7 @@ Follow existing patterns:
 
 ### Related Files
 
-1. **`Semantic/Validation/ControlFlowValidatorV3.cs`** - Modern replacement implementing `ISemanticValidator`
+1. **`Semantic/Validation/ControlFlowValidator.cs`** - Modern replacement implementing `ISemanticValidator`
    - Located in `Validation/` subdirectory
    - Integrates with `ValidationPipeline`
    - Should be used for new code
@@ -565,6 +565,6 @@ pipeline.Validate(module, context);
 - **Conservative analysis**: When uncertain, assumes no guarantee (safe default)
 - **Depth tracking**: Uses `_loopDepth` counter for loop context validation
 - **Tuple returns**: Methods return `(alwaysReturns, alwaysExits)` for composable analysis
-- **Deprecated**: Use `ControlFlowValidatorV3` for new code
+- **Deprecated**: Use `ControlFlowValidator` for new code
 
 The validator's simple recursive descent over the AST makes it easy to understand and maintain, though the newer V2 architecture provides better integration with the broader validation pipeline.

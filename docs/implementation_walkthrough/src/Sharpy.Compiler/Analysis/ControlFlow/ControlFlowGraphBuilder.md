@@ -312,7 +312,7 @@ This maintains both forward (successors) and backward (predecessors) edges, enab
 ### Downstream Consumers
 
 The produced `ControlFlowGraph` is consumed by:
-- **`ControlFlowValidatorV3`**: Validates unreachable code, break/continue placement, return paths
+- **`ControlFlowValidator`**: Validates unreachable code, break/continue placement, return paths
 - **Definite assignment analysis**: Checks that variables are assigned before use
 - **Async analysis**: Validates `await` usage
 - **Code optimization**: Dead code elimination, loop analysis
@@ -463,7 +463,7 @@ When modifying this file:
 - **[BasicBlock.cs](BasicBlock.md)** - Definition of basic blocks (nodes in the CFG)
 - **[ControlFlowGraph.cs](ControlFlowGraph.md)** - The output structure with analysis utilities
 - **[BlockTerminator.cs](BlockTerminator.md)** - All terminator types (how blocks exit)
-- **`ControlFlowValidatorV3.cs`** - Consumes the CFG for semantic validation
+- **`ControlFlowValidator.cs`** - Consumes the CFG for semantic validation
 - **`Sharpy.Compiler.Parser.Ast` namespace** - All AST node definitions
 
 ### External Documentation

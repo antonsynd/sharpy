@@ -1,17 +1,17 @@
-# Walkthrough: ControlFlowValidatorV3.cs
+# Walkthrough: ControlFlowValidator.cs
 
-**Source File**: `src/Sharpy.Compiler/Semantic/Validation/ControlFlowValidatorV3.cs`
+**Source File**: `src/Sharpy.Compiler/Semantic/Validation/ControlFlowValidator.cs`
 
 ---
 
 ## 1. Overview
 
-`ControlFlowValidatorV3` is a semantic validator that uses **Control Flow Graph (CFG)** analysis to perform sophisticated control flow validation. It represents a more accurate and robust approach compared to the older V2 validator, which relied on simple AST traversal.
+`ControlFlowValidator` is a semantic validator that uses **Control Flow Graph (CFG)** analysis to perform sophisticated control flow validation. It represents a more accurate and robust approach compared to the older V2 validator, which relied on simple AST traversal.
 
 ### Role in the Compiler Pipeline
 
 ```
-Parser → AST → Semantic Analysis → [ControlFlowValidatorV3] → CodeGen
+Parser → AST → Semantic Analysis → [ControlFlowValidator] → CodeGen
                       ↓
               ValidationPipeline
          (runs at Order=400, after type checking)
@@ -54,7 +54,7 @@ CFG-based analysis explicitly models all possible execution paths, making it mat
 ### Class Declaration
 
 ```csharp
-public class ControlFlowValidatorV3 : SemanticValidatorBase
+public class ControlFlowValidator : SemanticValidatorBase
 ```
 
 **Inheritance**: Inherits from `SemanticValidatorBase`, which provides:
@@ -64,7 +64,7 @@ public class ControlFlowValidatorV3 : SemanticValidatorBase
 ### Key Properties
 
 ```csharp
-public override string Name => "ControlFlowValidatorV3";
+public override string Name => "ControlFlowValidator";
 public override int Order => 400;
 ```
 
@@ -349,7 +349,7 @@ The validator implements the **Validator Pattern** from the pipeline architectur
 Notice the clean separation:
 - **Builder** (`ControlFlowGraphBuilder`): Constructs CFGs
 - **Analysis** (`ControlFlowAnalysis`): Pure algorithms on CFGs
-- **Validator** (`ControlFlowValidatorV3`): Orchestrates and reports errors
+- **Validator** (`ControlFlowValidator`): Orchestrates and reports errors
 
 **Benefits**:
 - Testable in isolation
@@ -494,7 +494,7 @@ public void UnreachableCodeAfterReturn_ReportsError()
             return 1
             print('unreachable')
     ");
-    var validator = new ControlFlowValidatorV3();
+    var validator = new ControlFlowValidator();
     validator.Validate(module, context);
     Assert.Contains("Unreachable code", context.Diagnostics.Errors);
 }
@@ -536,7 +536,7 @@ TestFixtures/control_flow/
 
 ### Related Tests
 
-- `src/Sharpy.Compiler.Tests/Semantic/ControlFlowValidatorV3Tests.cs` *(if exists)*
+- `src/Sharpy.Compiler.Tests/Semantic/ControlFlowValidatorTests.cs` *(if exists)*
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/control_flow/` (file-based integration tests)
 
 ---
@@ -607,7 +607,7 @@ def bad():
 
 ## Summary
 
-`ControlFlowValidatorV3` is a critical component of Sharpy's semantic analysis that ensures code correctness through graph-based control flow analysis. By building a CFG and applying standard compiler algorithms, it provides accurate, comprehensive validation of:
+`ControlFlowValidator` is a critical component of Sharpy's semantic analysis that ensures code correctness through graph-based control flow analysis. By building a CFG and applying standard compiler algorithms, it provides accurate, comprehensive validation of:
 
 - Unreachable code
 - Return path completeness  

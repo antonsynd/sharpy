@@ -54,7 +54,7 @@ def foo() -> int:
         var (symbolTable, semanticInfo, typeResolver, module) = SetupWithNameResolution(code);
 
         var pipeline = new ValidationPipeline()
-            .AddValidator(new ControlFlowValidatorV3());
+            .AddValidator(new ControlFlowValidator());
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,
             validationPipeline: pipeline);
@@ -74,7 +74,7 @@ def foo() -> int:
         var (symbolTable, semanticInfo, typeResolver, module) = SetupWithNameResolution(code);
 
         var pipeline = new ValidationPipeline()
-            .AddValidator(new ControlFlowValidatorV3());
+            .AddValidator(new ControlFlowValidator());
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,
             validationPipeline: pipeline);
@@ -109,7 +109,7 @@ def foo() -> int:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // With empty pipeline, control flow errors are NOT detected
-        // (missing return value won't be caught without ControlFlowValidatorV3/V3)
+        // (missing return value won't be caught without ControlFlowValidator/V3)
         Assert.DoesNotContain(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("must return"));
     }
 
@@ -142,7 +142,7 @@ def foo() -> int:
         var (symbolTable, semanticInfo, typeResolver, module) = SetupWithNameResolution(code);
 
         var pipeline = new ValidationPipeline()
-            .AddValidator(new ControlFlowValidatorV3());
+            .AddValidator(new ControlFlowValidator());
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,
             validationPipeline: pipeline);
@@ -162,7 +162,7 @@ def foo() -> int:
         var (symbolTable, semanticInfo, typeResolver, module) = SetupWithNameResolution(code);
 
         var pipeline = new ValidationPipeline()
-            .AddValidator(new ControlFlowValidatorV3());
+            .AddValidator(new ControlFlowValidator());
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,
             validationPipeline: pipeline);
@@ -183,7 +183,7 @@ def foo() -> int:
         var (symbolTable, semanticInfo, typeResolver, module) = SetupWithNameResolution(code);
 
         var pipeline = new ValidationPipeline()
-            .AddValidator(new ControlFlowValidatorV3());
+            .AddValidator(new ControlFlowValidator());
 
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver,
             validationPipeline: pipeline);
