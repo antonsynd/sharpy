@@ -303,8 +303,11 @@ public class Compiler
             // Materialize CodeGenInfo and VariableType data onto Symbol properties, then verify and freeze
             semanticBinding.MaterializeCodeGenInfo();
             semanticBinding.MaterializeVariableTypes();
+            assertionTimer.Restart();
             DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, semanticBinding);
             DualWriteAssertions.AssertVariableTypeConsistency(symbolTable, semanticBinding);
+            assertionTimer.Stop();
+            _logger.LogDebug($"Post-materialization assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
             semanticBinding.FreezeVariableTypes();
             semanticBinding.FreezeCodeGenInfo();
 
