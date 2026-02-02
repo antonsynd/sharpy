@@ -152,7 +152,8 @@ class Program
         });
 
         // === Emit Command (with subcommands) ===
-        // Note: emit commands intentionally do NOT support --warn-as-error/--nowarn/--max-errors
+        // Note: emit tokens/ast/parse do NOT support --warn-as-error/--nowarn (no semantic analysis),
+        // but DO support --max-errors (lexer/parser have MaxErrors). emit csharp supports all three.
         var emitCommand = new Command("emit", "Emit compiler intermediate representations");
 
         var emitTokensCommand = new Command("tokens", "Emit tokenized output");
@@ -163,8 +164,9 @@ class Program
             var input = parseResult.GetValue(emitTokensInputArg)!;
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitTokens(input, logger);
+            EmitTokens(input, logger, maxErrors);
         });
 
         var emitAstCommand = new Command("ast", "Emit abstract syntax tree");
@@ -175,8 +177,9 @@ class Program
             var input = parseResult.GetValue(emitAstInputArg)!;
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitAst(input, logger);
+            EmitAst(input, logger, maxErrors);
         });
 
         var emitCsharpCommand = new Command("csharp", "Emit generated C# code");
@@ -214,8 +217,9 @@ class Program
             var input = parseResult.GetValue(emitParseInputArg)!;
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitParse(input, logger);
+            EmitParse(input, logger, maxErrors);
         });
 
         emitCommand.Subcommands.Add(emitTokensCommand);
@@ -544,13 +548,17 @@ class Program
         }
     }
 
-    static void EmitTokens(FileInfo inputFile, ICompilerLogger logger)
+    static void EmitTokens(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
     {
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
             var lexer = new Lexer(sourceText, logger);
+            if (maxErrors is > 0)
+            {
+                lexer.MaxErrors = maxErrors.Value;
+            }
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
@@ -579,13 +587,17 @@ class Program
         }
     }
 
-    static void EmitAst(FileInfo inputFile, ICompilerLogger logger)
+    static void EmitAst(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
     {
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
             var lexer = new Lexer(sourceText, logger);
+            if (maxErrors is > 0)
+            {
+                lexer.MaxErrors = maxErrors.Value;
+            }
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
@@ -594,7 +606,8 @@ class Program
                 Environment.Exit(1);
             }
 
-            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
+            var parserMaxErrors = maxErrors is > 0 ? maxErrors.Value : 25;
+            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger, parserMaxErrors);
             var module = parser.ParseModule();
 
             if (parser.Diagnostics.HasErrors)
@@ -619,13 +632,17 @@ class Program
         }
     }
 
-    static void EmitParse(FileInfo inputFile, ICompilerLogger logger)
+    static void EmitParse(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
     {
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
             var lexer = new Lexer(sourceText, logger);
+            if (maxErrors is > 0)
+            {
+                lexer.MaxErrors = maxErrors.Value;
+            }
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
@@ -634,7 +651,8 @@ class Program
                 Environment.Exit(1);
             }
 
-            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
+            var parserMaxErrors = maxErrors is > 0 ? maxErrors.Value : 25;
+            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger, parserMaxErrors);
             parser.ParseModule();
 
             if (parser.Diagnostics.HasErrors)
