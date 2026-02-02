@@ -45,7 +45,7 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 2. **RoslynEmitter uses SyntaxFactory exclusively** — no string templating
 3. **Immutable AST** — annotations go in `SemanticInfo`, not AST nodes
 4. **Axiom precedence**: .NET > Type Safety > Python Syntax
-5. **C# 9.0 target for Sharpy.Core only** — `Sharpy.Core` targets `netstandard2.0;netstandard2.1` with `LangVersion 9.0` (no global usings, file-scoped namespaces, or record structs). `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` with `LangVersion latest`.
+5. **C# 9.0 target for Sharpy.Core only** — `Sharpy.Core` targets `netstandard2.1;netstandard2.0` with `LangVersion 9.0` (no global usings, file-scoped namespaces, or record structs). `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` with `LangVersion latest`.
 6. **Always verify Python behavior first** — run `python3 -c "..."` before implementing Python semantics
 7. **Language spec is authoritative** — check `docs/language_specification/` before implementing; change implementation to match spec, not the other way around
 
