@@ -317,7 +317,6 @@ public partial class Parser
         Advance(); // consume '('
 
         var types = new List<TypeAnnotation>();
-        var hasTrailingComma = false;
 
         // Parse type list
         if (Current.Type != TokenType.RightParen)
@@ -328,12 +327,10 @@ public partial class Parser
 
                 if (Current.Type == TokenType.Comma)
                 {
-                    hasTrailingComma = true;
                     Advance();
                 }
                 else
                 {
-                    hasTrailingComma = false;
                     break;
                 }
             } while (Current.Type != TokenType.RightParen);

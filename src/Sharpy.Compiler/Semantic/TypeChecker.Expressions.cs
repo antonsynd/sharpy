@@ -982,7 +982,7 @@ public partial class TypeChecker
             if (needsOverloadResolution)
             {
                 // First pass: filter by argument count (considering default parameters and variadic parameters)
-                var candidateOverloads = overloads.Where(o =>
+                var candidateOverloads = overloads!.Where(o =>
                 {
                     var requiredParams = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
                     var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
@@ -1043,7 +1043,7 @@ public partial class TypeChecker
                 else
                 {
                     // No matching overload found
-                    var expectedCounts = string.Join(" or ", overloads.Select(o =>
+                    var expectedCounts = string.Join(" or ", overloads!.Select(o =>
                     {
                         var required = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
                         var total = o.Parameters.Count;
@@ -2060,9 +2060,12 @@ public partial class TypeChecker
     private SemanticType CheckSliceAccess(SliceAccess sliceAccess)
     {
         var objType = CheckExpression(sliceAccess.Object);
-        if (sliceAccess.Start != null) CheckExpression(sliceAccess.Start);
-        if (sliceAccess.Stop != null) CheckExpression(sliceAccess.Stop);
-        if (sliceAccess.Step != null) CheckExpression(sliceAccess.Step);
+        if (sliceAccess.Start != null)
+            CheckExpression(sliceAccess.Start);
+        if (sliceAccess.Stop != null)
+            CheckExpression(sliceAccess.Stop);
+        if (sliceAccess.Step != null)
+            CheckExpression(sliceAccess.Step);
 
         // Slicing a list returns a list, slicing a str returns a str
         if (objType is GenericType gt && gt.Name == "list")

@@ -305,7 +305,7 @@ public class ProjectCompiler
 
         // Create a SINGLE NameResolver for ALL files to preserve type definition lists
         // across files for correct inheritance resolution
-        _sharedNameResolver = new NameResolver(_symbolTable, _logger, _projectModel.SemanticBinding);
+        _sharedNameResolver = new NameResolver(_symbolTable, _logger, _projectModel!.SemanticBinding);
 
         // Collect all type declarations (shells only)
         foreach (var (_, unit) in _projectModel!.Units)

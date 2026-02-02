@@ -10,7 +10,7 @@ public class FrozenSetConversionTests
     {
         var result = Exports.FrozenSet<int>();
         Assert.NotNull(result);
-        Assert.Equal(0, result.Count);
+        Assert.Empty(result);
     }
 
     [Fact]
