@@ -32,6 +32,13 @@ namespace Sharpy.Compiler.Semantic;
 /// - Clear separation between parsing and semantic analysis
 /// - Phase-gating: freeze assertions prevent writes after a phase completes
 /// </para>
+/// <para>
+/// <b>Threading:</b> This type is thread-safe. All internal stores use
+/// <see cref="ConcurrentDictionary{TKey,TValue}"/> to support cross-file symbol
+/// materialization in project compilation, where multiple files may need to read/write
+/// binding data concurrently. In contrast, <see cref="SemanticInfo"/> is not thread-safe
+/// and should be created per-file for parallel analysis scenarios.
+/// </para>
 /// </remarks>
 public class SemanticBinding
 {

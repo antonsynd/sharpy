@@ -23,7 +23,10 @@ public class ProjectCompiler
     private readonly HashSet<string> _suppressedWarnings;
     private readonly int _maxErrors;
 
-    // Shared symbol table and semantic info across all files
+    // Shared symbol table and semantic info across all files.
+    // SemanticInfo is shared (not per-file) because files are processed sequentially
+    // in dependency order. For parallel per-file analysis (e.g., LSP), SemanticInfo
+    // should be created per-file while SymbolTable and SemanticBinding remain shared.
     private SymbolTable _symbolTable = null!;
     private SemanticInfo _semanticInfo = null!;
     private ImportResolver _importResolver = null!;

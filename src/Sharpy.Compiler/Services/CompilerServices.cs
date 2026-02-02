@@ -44,7 +44,7 @@ public class CompilerServices
     /// Optional SemanticBinding for reading inheritance data.
     /// When set, helpers prefer this over direct symbol property access.
     /// </summary>
-    public SemanticBinding SemanticBinding { get; set; } = new();
+    public SemanticBinding SemanticBinding { get; internal set; } = new();
 
     /// <summary>
     /// Current file path being processed. Can be updated as compilation progresses.
