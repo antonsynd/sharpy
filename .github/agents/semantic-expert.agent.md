@@ -48,12 +48,6 @@ After each major phase, computed data is frozen from `SemanticBinding` onto `Sym
 1. After import resolution → `MaterializeInheritance()` (BaseType, Interfaces)
 2. After type checking → `MaterializeVariableTypes()`, `MaterializeCodeGenInfo()`
 
-### Materialization Points
-
-After each major phase, computed data is frozen from `SemanticBinding` onto `Symbol` properties:
-1. After import resolution → `MaterializeInheritance()` (BaseType, Interfaces)
-2. After type checking → `MaterializeVariableTypes()`, `MaterializeCodeGenInfo()`
-
 ### Key Registries
 
 - `OperatorRegistry` — Binary/unary operator rules
@@ -81,7 +75,7 @@ All types are immutable records:
 
 ```
 SemanticType (abstract)
-├── BuiltinType       — Int, Long, Float, Double, Bool, Str (singletons)
+├── BuiltinType       — Int, Long, Float, Float32, Double, Bool, Str (singletons)
 ├── GenericType       — list[int], dict[str, int]
 ├── UserDefinedType   — Classes, structs, interfaces
 ├── NullableType      — T? for .NET interop

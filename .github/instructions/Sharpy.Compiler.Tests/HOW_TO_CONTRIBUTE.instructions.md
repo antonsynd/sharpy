@@ -85,7 +85,7 @@ TestFixtures/
 
 **Multi-file tests:** A subdirectory with multiple `.spy` files and a `main.spy` entry point, plus `main.expected` or `main.error`.
 
-**Test categories:** `basics/`, `functions/`, `classes/`, `control_flow/`, `errors/`, `imports/`, `generics/`, `structs/`, `enums/`, `interfaces/`, `warnings/`
+**Test categories:** `basics/`, `functions/`, `classes/`, `control_flow/`, `errors/`, `imports/`, `generic_function/`, `structs/`, `enums/`, `interfaces/`, `warnings/`, `collections/`, `fstrings/`, `inheritance/`, `strings/`, `type_system/`
 
 ## Critical Rules
 

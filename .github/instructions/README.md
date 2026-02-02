@@ -21,10 +21,10 @@ Component-specific guides for the Sharpy codebase. Each guide covers patterns, w
 | Priority | Axiom | Principle |
 |----------|-------|-----------|
 | 1 (Highest) | .NET Runtime | Compiles to valid C# 9.0 for .NET CLR |
-| 2 | Static Typing | Non-nullable by default, explicit types |
-| 3 (Yields) | Python Syntax | Python 3 syntax and idioms |
+| 2 | Python Syntax | Python 3 syntax and idioms |
+| 3 (Yields) | Static Typing | Non-nullable by default, explicit types |
 
-When axioms conflict: **.NET > Type Safety > Python**
+When axioms conflict: **.NET > Python > Type Safety**
 
 ## Core Rules
 

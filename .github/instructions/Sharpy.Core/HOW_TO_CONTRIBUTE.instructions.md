@@ -15,7 +15,7 @@ Sharpy.Core/
 ├── Range.cs            # range() builtin
 ├── Enumerate.cs        # enumerate() builtin
 ├── Filter.cs, Map.cs   # Collection operations
-├── I*.cs               # Operator protocols (IAddable, IEquatable, etc.)
+├── Operator/           # Operator protocols (IAdd, IMul, etc.)
 ├── IndexError.cs       # Python-style exceptions
 ├── KeyError.cs
 └── *.cs (root)         # Builtins via partial class Exports
@@ -30,13 +30,14 @@ Sharpy.Core/
 
 ## Partial Class Pattern
 
-Types split across `Partial.{Type}/` directories by interface:
+Types split across `Partial.{Type}/` directories by functionality:
 ```
 Partial.List/
 ├── List.cs              # Main class + constructor
-├── List.ISequence.cs    # ISequence implementation
-├── List.IEnumerable.cs  # IEnumerable implementation
-└── List.IBoolConvertible.cs
+├── List.Methods.cs      # Python methods (append, pop, extend, etc.)
+├── List.Slicing.cs      # Slicing operations
+├── List.Interfaces.cs   # Interface implementations
+└── List.operators.cs    # Operator overloads
 ```
 
 ## Adding a Builtin Function

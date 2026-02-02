@@ -31,17 +31,18 @@ Specializes in the Sharpy standard library (`Sharpy.Core`). Implements Pythonic 
 
 ```
 Sharpy.Core/
-├── Partial.List/       # list[T] - split by interface
+├── Partial.List/       # list[T] - split by functionality
 │   ├── List.cs              # Main class + constructor
-│   ├── List.ISequence.cs    # Sequence operations
-│   ├── List.IEnumerable.cs  # Enumeration
-│   └── List.IBoolConvertible.cs
+│   ├── List.Methods.cs      # Python methods (append, pop, extend)
+│   ├── List.Slicing.cs      # Slicing operations
+│   ├── List.Interfaces.cs   # Interface implementations
+│   └── List.operators.cs    # Operator overloads
 ├── Partial.Set/        # set[T]
 ├── Partial.Str/        # String methods
 ├── Dict.cs             # dict[K,V]
 ├── Range.cs            # range()
 ├── Enumerate.cs        # enumerate()
-├── I*.cs               # Operator protocols
+├── Operator/           # Operator protocols (IAdd, IMul, etc.)
 └── *.cs                # Builtins via partial class Exports
 ```
 

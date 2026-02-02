@@ -63,6 +63,7 @@ $"public {returnType} MyMethod() {{ {body} }}"
 | `int` | `long` |
 | `str` | `string` |
 | `float` | `double` |
+| `float32` | `float` |
 | `bool` | `bool` |
 | `list[T]` | `global::Sharpy.Core.List<T>` |
 | `dict[K, V]` | `global::Sharpy.Core.Dict<K, V>` |

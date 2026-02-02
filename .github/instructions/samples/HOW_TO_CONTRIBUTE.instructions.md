@@ -23,7 +23,7 @@ dotnet run --project src/Sharpy.Cli -- build samples/type_system_showcase.spy
 dotnet run --project src/Sharpy.Cli -- project samples/calculator_app/calculator.spyproj
 
 # Run compiled output
-dotnet samples/calculator_app/bin/Debug/net9.0/calculator.dll
+dotnet samples/calculator_app/bin/Debug/net10.0/calculator.dll
 ```
 
 ## Adding a Sample

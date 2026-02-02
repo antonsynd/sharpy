@@ -103,7 +103,10 @@ dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
 | `control_flow/` | if/elif/else, while, for, match |
 | `errors/` | Expected compilation failures (`.error` files) |
 | `imports/` | Module imports, packages |
-| `generics/` | Generic types and functions |
+| `generic_function/` | Generic functions |
+| `collections/` | List, dict, set operations |
+| `inheritance/` | Class inheritance tests |
+| `type_system/` | Type checking, inference |
 
 ## Sharpy.Core.Tests Workflow
 
