@@ -460,7 +460,7 @@ public class Compiler
     /// Verify top-level statements have TextSpan populated.
     /// Emits SHP0904 if any statement is missing its span.
     /// </summary>
-    private static void AssertStatementsHaveSpans(Module module, DiagnosticBag diagnostics)
+    internal static void AssertStatementsHaveSpans(Module module, DiagnosticBag diagnostics)
     {
         foreach (var stmt in module.Body)
         {
@@ -482,7 +482,7 @@ public class Compiler
     /// Verify all symbols in the global scope have non-empty names.
     /// Emits SHP0904 for any symbol with a null/empty name.
     /// </summary>
-    private static void AssertAllSymbolsHaveNames(SymbolTable symbolTable, DiagnosticBag diagnostics)
+    internal static void AssertAllSymbolsHaveNames(SymbolTable symbolTable, DiagnosticBag diagnostics)
     {
         foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols())
         {
@@ -501,7 +501,7 @@ public class Compiler
     /// NameResolver should have emitted errors for duplicates, but this checks
     /// the resulting symbol table is clean.
     /// </summary>
-    private static void AssertNoDuplicateTypeNames(SymbolTable symbolTable, DiagnosticBag diagnostics)
+    internal static void AssertNoDuplicateTypeNames(SymbolTable symbolTable, DiagnosticBag diagnostics)
     {
         var typeNames = new HashSet<string>();
         foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
@@ -525,7 +525,7 @@ public class Compiler
     /// after inheritance resolution. A dangling unresolved name means the inheritance
     /// resolver failed to find or match a type.
     /// </summary>
-    private static void AssertNoUnresolvedInheritance(SymbolTable symbolTable, DiagnosticBag diagnostics)
+    internal static void AssertNoUnresolvedInheritance(SymbolTable symbolTable, DiagnosticBag diagnostics)
     {
         foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
         {
@@ -560,7 +560,7 @@ public class Compiler
     /// and in some class member access patterns where the type checker doesn't
     /// record types for all intermediate expressions.
     /// </summary>
-    private static void WarnIfUnknownTypes(SemanticInfo semanticInfo, DiagnosticBag diagnostics)
+    internal static void WarnIfUnknownTypes(SemanticInfo semanticInfo, DiagnosticBag diagnostics)
     {
         if (!diagnostics.HasErrors && semanticInfo.HasUnknownExpressionTypes())
         {
