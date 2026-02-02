@@ -45,11 +45,12 @@ public partial class Parser
     /// </summary>
     private bool _parsingInterface;
 
-    public Parser(List<Token> tokens, ICompilerLogger? logger = null)
+    public Parser(List<Token> tokens, ICompilerLogger? logger = null, int maxErrors = 25)
     {
         _tokens = tokens;
         _position = 0;
         _logger = logger ?? NullLogger.Instance;
+        _maxErrors = maxErrors > 0 ? maxErrors : 25;
         _logger.LogInfo($"Parser initialized, token count: {tokens.Count}");
     }
 
@@ -63,7 +64,7 @@ public partial class Parser
     /// With panic-mode recovery at both module and block level, errors are more
     /// independent and less likely to cascade, so a higher limit is practical.
     /// </summary>
-    private const int MaxErrors = 25;
+    private readonly int _maxErrors = 25;
 
     /// <summary>
     /// Parse the entire module
@@ -102,11 +103,11 @@ public partial class Parser
             {
                 // Error already recorded in _diagnostics by ReportError()
 
-                // Stop after MaxErrors to avoid cascading false errors
-                if (_diagnostics.ErrorCount >= MaxErrors)
+                // Stop after _maxErrors to avoid cascading false errors
+                if (_diagnostics.ErrorCount >= _maxErrors)
                 {
                     _diagnostics.AddWarning(
-                        $"Too many errors ({MaxErrors}); further errors suppressed. Use '--max-errors' to increase the limit.",
+                        $"Too many errors ({_maxErrors}); further errors suppressed. Use '--max-errors' to increase the limit.",
                         Current.Line, Current.Column,
                         code: DiagnosticCodes.Infrastructure.TooManyErrors,
                         phase: CompilerPhase.Parser);

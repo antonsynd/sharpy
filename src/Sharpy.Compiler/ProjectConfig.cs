@@ -66,6 +66,18 @@ public class ProjectConfig
     public string Configuration { get; init; } = "Debug";
 
     /// <summary>
+    /// Treat all warnings as errors during compilation.
+    /// Set via &lt;WarningsAsErrors&gt;true&lt;/WarningsAsErrors&gt; in .spyproj.
+    /// </summary>
+    public bool WarningsAsErrors { get; init; }
+
+    /// <summary>
+    /// Warning codes to suppress (e.g., "SHP0451", "SHP0452").
+    /// Set via &lt;NoWarn&gt;SHP0451,SHP0452&lt;/NoWarn&gt; in .spyproj.
+    /// </summary>
+    public HashSet<string> SuppressedWarnings { get; init; } = new();
+
+    /// <summary>
     /// Output directory for compiled assemblies (relative to project directory)
     /// </summary>
     public string OutputPath
@@ -141,6 +153,14 @@ public class ProjectFileParser
         var targetFramework = propertyGroup.Element("TargetFramework")?.Value ?? "net8.0";
         var assemblyName = propertyGroup.Element("AssemblyName")?.Value;
         var entryPoint = propertyGroup.Element("EntryPoint")?.Value;
+        var warningsAsErrors = bool.TryParse(propertyGroup.Element("WarningsAsErrors")?.Value, out var wae) && wae;
+        var noWarnValue = propertyGroup.Element("NoWarn")?.Value;
+        var suppressedWarnings = new HashSet<string>();
+        if (!string.IsNullOrWhiteSpace(noWarnValue))
+        {
+            foreach (var code in noWarnValue.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
+                suppressedWarnings.Add(code.Trim());
+        }
 
         // Parse ItemGroup for source files
         var sourceFiles = new List<string>();
@@ -224,7 +244,9 @@ public class ProjectFileParser
             SourceFiles = sourceFiles,
             References = references,
             ModulePaths = modulePaths,
-            Configuration = configuration ?? "Debug"
+            Configuration = configuration ?? "Debug",
+            WarningsAsErrors = warningsAsErrors,
+            SuppressedWarnings = suppressedWarnings
         };
     }
 

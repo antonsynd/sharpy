@@ -436,4 +436,84 @@ def main():
     }
 
     #endregion
+
+    #region Warning Suppression and Warning-as-Error Tests
+
+    [Fact]
+    public void Compiler_WarningsAsErrors_FailsOnWarning()
+    {
+        // Code that produces an unused variable warning
+        var code = @"
+def foo() -> int:
+    unused_var: int = 42
+    return 0
+
+def main():
+    print(foo())
+";
+        var options = new CompilerOptions
+        {
+            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+            WarningsAsErrors = true
+        };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        // Should fail because warnings are promoted to errors
+        Assert.False(result.Success);
+        Assert.True(result.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void Compiler_SuppressedWarning_NotReported()
+    {
+        // Code that produces an unused variable warning
+        var code = @"
+def foo() -> int:
+    unused_var: int = 42
+    return 0
+
+def main():
+    print(foo())
+";
+        var options = new CompilerOptions
+        {
+            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+            SuppressedWarnings = new HashSet<string> { DiagnosticCodes.Validation.UnusedVariable }
+        };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain(result.Diagnostics.GetWarnings(),
+            w => w.Code == DiagnosticCodes.Validation.UnusedVariable);
+    }
+
+    [Fact]
+    public void Compiler_MaxErrors_LimitsErrorCount()
+    {
+        // Code with many errors
+        var code = @"
+def main():
+    x: int = ""hello""
+    y: int = ""world""
+    z: int = ""foo""
+    w: int = ""bar""
+    v: int = ""baz""
+";
+        var options = new CompilerOptions
+        {
+            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+            MaxErrors = 2
+        };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+        // Should have at most MaxErrors + 1 (the truncation warning)
+        var errors = result.Diagnostics.GetErrors();
+        Assert.True(errors.Count <= 3, $"Expected at most 3 diagnostics (2 errors + truncation), got {errors.Count}");
+    }
+
+    #endregion
 }

@@ -688,7 +688,7 @@ public partial class Parser
             catch (ParserAbortException)
             {
                 // Error already recorded. Skip to the next line within the enum body.
-                if (_diagnostics.ErrorCount >= MaxErrors)
+                if (_diagnostics.ErrorCount >= _maxErrors)
                     break;
                 Synchronize();
             }

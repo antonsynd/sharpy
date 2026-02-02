@@ -19,6 +19,9 @@ public class ProjectCompiler
 {
     private readonly ICompilerLogger _logger;
     private readonly ModuleRegistry? _moduleRegistry;
+    private readonly bool _warningsAsErrors;
+    private readonly HashSet<string> _suppressedWarnings;
+    private readonly int _maxErrors;
 
     // Shared symbol table and semantic info across all files
     private SymbolTable _symbolTable = null!;
@@ -41,10 +44,14 @@ public class ProjectCompiler
     // Unified project model containing all CompilationUnits
     private ProjectModel? _projectModel;
 
-    public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null)
+    public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null,
+        bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null, int maxErrors = 0)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = moduleRegistry;
+        _warningsAsErrors = warningsAsErrors;
+        _suppressedWarnings = suppressedWarnings ?? new HashSet<string>();
+        _maxErrors = maxErrors;
     }
 
     /// <summary>
@@ -60,7 +67,7 @@ public class ProjectCompiler
     {
         _logger.LogInfo($"Starting project compilation: {config.RootNamespace}");
 
-        _diagnostics = new DiagnosticBag();
+        _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings);
         _projectMetrics = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
         _projectModel = new ProjectModel(config);
 

@@ -21,22 +21,25 @@ public class Compiler
 {
     private readonly ICompilerLogger _logger;
     private readonly ModuleRegistry? _moduleRegistry;
+    private readonly CompilerOptions _options;
 
     public Compiler(ICompilerLogger? logger = null)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = null;
+        _options = new CompilerOptions();
     }
 
     public Compiler(CompilerOptions options, ICompilerLogger? logger = null)
     {
         _logger = logger ?? NullLogger.Instance;
+        _options = options ?? new CompilerOptions();
         _moduleRegistry = new ModuleRegistry(_logger);
 
         // Add module search paths
-        if (options.ModulePaths != null)
+        if (_options.ModulePaths != null)
         {
-            foreach (var path in options.ModulePaths)
+            foreach (var path in _options.ModulePaths)
             {
                 _moduleRegistry.AddModulePath(path);
                 _logger.LogDebug($"Added module search path: {path}");
@@ -44,9 +47,9 @@ public class Compiler
         }
 
         // Load referenced assemblies
-        if (options.References != null)
+        if (_options.References != null)
         {
-            foreach (var reference in options.References)
+            foreach (var reference in _options.References)
             {
                 var success = _moduleRegistry.LoadReference(reference);
                 if (success)
@@ -72,7 +75,13 @@ public class Compiler
     /// </summary>
     public ProjectCompilationResult CompileProject(ProjectConfig projectConfig, CancellationToken cancellationToken)
     {
-        var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry);
+        // Merge project-level and compiler-level warning/error settings
+        var mergedSuppressed = new HashSet<string>(_options.SuppressedWarnings);
+        mergedSuppressed.UnionWith(projectConfig.SuppressedWarnings);
+        var warnAsErrors = _options.WarningsAsErrors || projectConfig.WarningsAsErrors;
+
+        var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
+            warnAsErrors, mergedSuppressed, _options.MaxErrors);
         return projectCompiler.Compile(projectConfig, cancellationToken);
     }
 
@@ -83,7 +92,7 @@ public class Compiler
     {
         _logger.LogInfo($"Starting compilation of {filePath}");
         var metrics = new CompilationMetrics(fileName: filePath);
-        var diagnostics = new DiagnosticBag();
+        var diagnostics = new DiagnosticBag(_options.WarningsAsErrors, _options.SuppressedWarnings);
 
         // Declare artifact variables outside the try block so they are accessible
         // in catch handlers. This ensures cancelled or crashed compilations still
@@ -126,7 +135,8 @@ public class Compiler
             // Phase 2: Syntax Analysis
             _logger.LogInfo("Phase 2: Syntax Analysis");
             metrics.StartPhase("Syntax Analysis");
-            var parser = new Parser.Parser(tokens, _logger);
+            var parserMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 25;
+            var parser = new Parser.Parser(tokens, _logger, parserMaxErrors);
             module = parser.ParseModule();
             metrics.EndPhase();
 
@@ -264,10 +274,12 @@ public class Compiler
 
             metrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
+            var semanticMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 100;
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline)
             {
                 CurrentFilePath = filePath,
-                SemanticBinding = semanticBinding
+                SemanticBinding = semanticBinding,
+                MaxErrors = semanticMaxErrors
             };
             try
             {
@@ -790,4 +802,23 @@ public class CompilerOptions
     /// Paths to .NET assemblies to reference
     /// </summary>
     public string[]? References { get; set; }
+
+    /// <summary>
+    /// Treat all warnings as errors. When true, any warning causes compilation
+    /// to report failure (warnings are promoted to error severity).
+    /// </summary>
+    public bool WarningsAsErrors { get; set; }
+
+    /// <summary>
+    /// Warning codes to suppress (e.g., "SHP0451", "SHP0452").
+    /// Suppressed warnings are silently discarded and do not appear in diagnostics.
+    /// </summary>
+    public HashSet<string> SuppressedWarnings { get; set; } = new();
+
+    /// <summary>
+    /// Maximum number of errors before the compiler stops reporting.
+    /// Applies to both parser and semantic analysis.
+    /// Default: 0 (use component defaults: 25 for parser, 100 for semantic).
+    /// </summary>
+    public int MaxErrors { get; set; }
 }

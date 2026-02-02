@@ -25,11 +25,17 @@ class Program
         var logFileOption = new Option<FileInfo?>("--log-file") { Description = "Write compiler logs to the specified file" };
         var metricsFormatOption = new Option<string?>("--metrics-format") { Description = "Output compilation metrics (text or json)" };
         var metricsOutputOption = new Option<FileInfo?>("--metrics-output") { Description = "Write metrics to the specified file" };
+        var warnAsErrorOption = new Option<bool>("--warn-as-error") { Description = "Treat all warnings as errors" };
+        var nowarnOption = new Option<string?>("--nowarn") { Description = "Suppress warnings by code (comma-separated, e.g., SHP0451,SHP0452)" };
+        var maxErrorsOption = new Option<int?>("--max-errors") { Description = "Maximum number of errors before stopping (default: 25 for parser, 100 for semantic)" };
 
         rootCommand.Options.Add(logLevelOption);
         rootCommand.Options.Add(logFileOption);
         rootCommand.Options.Add(metricsFormatOption);
         rootCommand.Options.Add(metricsOutputOption);
+        rootCommand.Options.Add(warnAsErrorOption);
+        rootCommand.Options.Add(nowarnOption);
+        rootCommand.Options.Add(maxErrorsOption);
 
         // === Build Command ===
         var buildCommand = new Command("build", "Compile a Sharpy source file to a binary or library");
@@ -65,9 +71,12 @@ class Program
             var logFile = parseResult.GetValue(logFileOption);
             var metricsFormat = parseResult.GetValue(metricsFormatOption);
             var metricsOutput = parseResult.GetValue(metricsOutputOption);
+            var warnAsError = parseResult.GetValue(warnAsErrorOption);
+            var nowarn = parseResult.GetValue(nowarnOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
 
             var logger = CreateLogger(logLevel, logFile);
-            HandleBuildCommand(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput);
+            HandleBuildCommand(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
         });
 
         // === Run Command ===
@@ -103,9 +112,12 @@ class Program
             var logFile = parseResult.GetValue(logFileOption);
             var metricsFormat = parseResult.GetValue(metricsFormatOption);
             var metricsOutput = parseResult.GetValue(metricsOutputOption);
+            var warnAsError = parseResult.GetValue(warnAsErrorOption);
+            var nowarn = parseResult.GetValue(nowarnOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
 
             var logger = CreateLogger(logLevel, logFile);
-            HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput);
+            HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
         });
 
         // === Project Command ===
@@ -132,12 +144,16 @@ class Program
             var logFile = parseResult.GetValue(logFileOption);
             var metricsFormat = parseResult.GetValue(metricsFormatOption);
             var metricsOutput = parseResult.GetValue(metricsOutputOption);
+            var warnAsError = parseResult.GetValue(warnAsErrorOption);
+            var nowarn = parseResult.GetValue(nowarnOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
 
             var logger = CreateLogger(logLevel, logFile);
-            HandleProjectCommand(project, configuration, clean, emitCsTo, logger, logLevel, metricsFormat, metricsOutput);
+            HandleProjectCommand(project, configuration, clean, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
         });
 
         // === Emit Command (with subcommands) ===
+        // Note: emit commands intentionally do NOT support --warn-as-error/--nowarn/--max-errors
         var emitCommand = new Command("emit", "Emit compiler intermediate representations");
 
         var emitTokensCommand = new Command("tokens", "Emit tokenized output");
@@ -342,10 +358,13 @@ class Program
         string[] modulePaths,
         ICompilerLogger logger,
         string? metricsFormat,
-        FileInfo? metricsOutput)
+        FileInfo? metricsOutput,
+        bool warnAsError = false,
+        string? nowarn = null,
+        int? maxErrors = null)
     {
         ValidateInputFile(inputFile);
-        CompileToBinary(inputFile, outputType, output, references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput);
+        CompileToBinary(inputFile, outputType, output, references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
     }
 
     static void HandleRunCommand(
@@ -357,7 +376,10 @@ class Program
         string[] args,
         ICompilerLogger logger,
         string? metricsFormat,
-        FileInfo? metricsOutput)
+        FileInfo? metricsOutput,
+        bool warnAsError = false,
+        string? nowarn = null,
+        int? maxErrors = null)
     {
         ValidateInputFile(inputFile);
 
@@ -378,7 +400,7 @@ class Program
         try
         {
             // Compile to executable
-            CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput);
+            CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
 
             // Copy Sharpy.Core.dll to the output directory so the executable can find it
             var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
@@ -470,7 +492,10 @@ class Program
         ICompilerLogger logger,
         CompilerLogLevel logLevel,
         string? metricsFormat,
-        FileInfo? metricsOutput)
+        FileInfo? metricsOutput,
+        bool warnAsError = false,
+        string? nowarn = null,
+        int? maxErrors = null)
     {
         FileInfo? resolvedProjectFile = projectFile;
 
@@ -492,7 +517,7 @@ class Program
             Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
         }
 
-        CompileProject(resolvedProjectFile, configuration, clean, emitCsTo, logger, logLevel, metricsFormat, metricsOutput);
+        CompileProject(resolvedProjectFile, configuration, clean, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
     }
 
     static void ValidateInputFile(FileInfo inputFile)
@@ -725,7 +750,7 @@ class Program
         }
     }
 
-    static void CompileProject(FileInfo projectFile, string configuration, bool clean, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null)
+    static void CompileProject(FileInfo projectFile, string configuration, bool clean, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null)
     {
         try
         {
@@ -744,11 +769,17 @@ class Program
             Console.WriteLine($"Source files: {projectConfig.SourceFiles.Count}");
             Console.WriteLine();
 
-            // Create compiler with options
+            // Create compiler with options (CLI flags override project file settings)
+            var mergedSuppressed = new HashSet<string>(projectConfig.SuppressedWarnings);
+            mergedSuppressed.UnionWith(ParseNowarnCodes(nowarn));
+
             var compilerOptions = new CompilerOptions
             {
                 References = projectConfig.References.ToArray(),
-                ModulePaths = projectConfig.ModulePaths.ToArray()
+                ModulePaths = projectConfig.ModulePaths.ToArray(),
+                WarningsAsErrors = warnAsError || projectConfig.WarningsAsErrors,
+                SuppressedWarnings = mergedSuppressed,
+                MaxErrors = maxErrors ?? 0
             };
 
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
@@ -960,6 +991,14 @@ class Program
         }
     }
 
+    static HashSet<string> ParseNowarnCodes(string? nowarn)
+    {
+        if (string.IsNullOrWhiteSpace(nowarn))
+            return new HashSet<string>();
+        return new HashSet<string>(
+            nowarn.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    }
+
     static string FormatBytes(long bytes)
     {
         string[] sizes = { "B", "KB", "MB", "GB" };
@@ -1050,7 +1089,10 @@ class Program
         string[] modulePaths,
         ICompilerLogger logger,
         string? metricsFormat,
-        FileInfo? metricsOutput)
+        FileInfo? metricsOutput,
+        bool warnAsError = false,
+        string? nowarn = null,
+        int? maxErrors = null)
     {
         try
         {
@@ -1062,7 +1104,10 @@ class Program
             var compilerOptions = new CompilerOptions
             {
                 References = references,
-                ModulePaths = modulePaths
+                ModulePaths = modulePaths,
+                WarningsAsErrors = warnAsError,
+                SuppressedWarnings = ParseNowarnCodes(nowarn),
+                MaxErrors = maxErrors ?? 0
             };
 
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
