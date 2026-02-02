@@ -665,7 +665,7 @@ class Foo:
         listComp.Clauses[1].Should().BeOfType<IfClause>();
     }
 
-    [Fact(Skip = "TODO: Nested list comprehensions (multiple for clauses) not yet supported")]
+    [Fact(Skip = "See: #114 (nested list comprehensions with multiple for clauses not yet supported)")]
     public void ParsesNestedListComprehension()
     {
         var source = "x = [[j for j in range(i)] for i in range(5)]";
@@ -673,7 +673,7 @@ class Foo:
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "TODO: Tuple unpacking in comprehensions not yet supported")]
+    [Fact(Skip = "See: #104 (tuple unpacking in comprehensions not yet supported)")]
     public void ParsesDictComprehension()
     {
         var source = "x = {k: v for k, v in items}";

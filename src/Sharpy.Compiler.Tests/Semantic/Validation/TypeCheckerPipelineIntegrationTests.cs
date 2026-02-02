@@ -109,7 +109,7 @@ def foo() -> int:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         // With empty pipeline, control flow errors are NOT detected
-        // (missing return value won't be caught without ControlFlowValidator/V3)
+        // (missing return value won't be caught without ControlFlowValidator)
         Assert.DoesNotContain(typeChecker.Diagnostics.GetErrors(), e => e.Message.Contains("must return"));
     }
 

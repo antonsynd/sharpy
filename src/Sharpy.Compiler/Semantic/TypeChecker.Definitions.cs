@@ -181,7 +181,7 @@ public partial class TypeChecker
         }
 
         // Note: Ellipsis body in concrete class is valid (generates NotImplementedException)
-        // So we don't error on that case - it's a TODO stub
+        // So we don't error on that case - it generates a stub that throws at runtime
 
         // Validate self parameter for instance methods
         // In Sharpy, methods without 'self' as the first parameter are treated as static methods
