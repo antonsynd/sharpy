@@ -176,7 +176,7 @@ public class CachedModuleDiscovery
                     Type = p.IsVariadic ? GetVariadicElementType(p.Type) : ConvertTypeSignature(p.Type),
                     HasDefault = p.HasDefault,
                     // Note: DefaultValue Expression reconstruction is simplified
-                    DefaultValue = null,  // TODO: Reconstruct from cached string
+                    DefaultValue = null,  // See: #106
                     IsVariadic = p.IsVariadic
                 })
                 .ToList(),

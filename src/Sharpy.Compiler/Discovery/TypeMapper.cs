@@ -104,7 +104,7 @@ public class TypeMapper
     /// Returns null otherwise.
     /// </summary>
     /// <remarks>
-    /// TODO: Consider consolidating with similar logic in ProtocolValidator.
+    /// See: #110 (consider consolidating with ProtocolValidator)
     /// </remarks>
     private Type? GetIteratorElementType(Type clrType)
     {

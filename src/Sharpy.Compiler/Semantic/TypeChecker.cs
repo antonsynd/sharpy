@@ -307,9 +307,7 @@ public partial class TypeChecker
                 CheckTry(tryStmt);
                 break;
 
-            // TODO: When 'with' statement is implemented, ensure it creates its own scope
-            // similar to try/except/finally blocks. The context manager's __enter__ and
-            // __exit__ should be called, and the body should be in its own scope.
+            // See: #98 (with statement scope handling)
 
             case AssertStatement assertStmt:
                 CheckAssert(assertStmt);

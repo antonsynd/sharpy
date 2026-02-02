@@ -387,9 +387,7 @@ class Program
             var sharpyCoreDestPath = Path.Combine(outputDir, "Sharpy.Core.dll");
             File.Copy(sharpyCorePath, sharpyCoreDestPath, overwrite: true);
 
-            // TODO: Implement self-contained publish mode to bundle runtime + all dependencies
-            // instead of manually copying Sharpy.Core.dll. This would make the run command
-            // truly standalone without requiring dotnet to be installed.
+            // See: #107 (self-contained publish mode)
 
             // Run the compiled executable
             Console.WriteLine();

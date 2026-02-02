@@ -19,11 +19,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// 1. Type parameters (T, U, V) as valid types in NameResolver/TypeChecker
 /// 2. Generic type instantiation syntax (Box[int]) in expressions
 ///
-/// TODO: Implement semantic analysis for generics:
-/// - Add type parameter symbols to symbol table during class/method resolution
-/// - Recognize type parameters as valid types in TypeResolver
-/// - Support generic instantiation (Box[int]) in TypeChecker
-/// - Track type arguments for generic types in SemanticInfo
+/// See: #112 (semantic analysis for generic types)
 /// </summary>
 public class Phase019IntegrationTests : IntegrationTestBase
 {

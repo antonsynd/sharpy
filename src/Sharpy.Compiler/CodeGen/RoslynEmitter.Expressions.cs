@@ -580,9 +580,7 @@ public partial class RoslynEmitter
             elements.Select(e => Argument(e))));
     }
 
-    // TODO: For nested or complex comprehensions, consider switching to imperative code generation
-    // (using foreach loops and temporary lists) to improve readability and handle edge cases.
-    // A complexity heuristic could be: multiple for clauses, or deeply nested comprehensions.
+    // See: #100 (consider imperative code generation for complex comprehensions)
 
     private ExpressionSyntax GenerateListComprehension(ListComprehension listComp)
     {
@@ -1093,7 +1091,7 @@ public partial class RoslynEmitter
     {
         // a < b < c → a < b && b < c (with b evaluated once)
         // For simplicity in v0.6, we'll allow re-evaluation
-        // TODO: Store intermediate values in temp variables
+        // See: #101 (store intermediate values in temp variables)
 
         if (chain.Operands.Length < 2 || chain.Operators.Length != chain.Operands.Length - 1)
         {

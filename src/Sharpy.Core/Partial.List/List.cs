@@ -80,7 +80,7 @@ namespace Sharpy.Core
             // use https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.orderby?view=net-9.0&redirectedfrom=MSDN#System_Linq_Enumerable_OrderBy__2_System_Collections_Generic_IEnumerable___0__System_Func___0___1__
             _list.Sort(KeyComparerFactory<T, TKey>.Create(key));
 
-            // TODO: Make this more efficient with the reverse
+            // See: #111
             if (reverse)
             {
                 _list.Reverse();

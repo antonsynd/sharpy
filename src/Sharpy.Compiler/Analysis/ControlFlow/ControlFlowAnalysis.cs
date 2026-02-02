@@ -137,8 +137,7 @@ public static class ControlFlowAnalysis
             ));
         }
 
-        // TODO: Full implementation for async state machine
-        // This is a placeholder for v0.2.x async/await support
+        // See: #105 (async state machine implementation)
 
         var regions = new List<AsyncStateRegion>();
         int stateId = 0;
@@ -149,7 +148,7 @@ public static class ControlFlowAnalysis
             regions.Add(new AsyncStateRegion(
                 stateId++,
                 ImmutableArray.Create(block),
-                null // TODO: extract await expression
+                null // See: #105 (extract await expression)
             ));
         }
 

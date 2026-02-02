@@ -570,15 +570,14 @@ public class NameResolver
     {
         _logger.LogDebug($"Resolving import: {string.Join(", ", import.Names.Select(n => n.Name))}");
 
-        // TODO: Implement module loading and resolution
-        // For now, just log that we encountered an import
+        // See: #102 (stale stub - ImportResolver handles this now)
     }
 
     private void ResolveFromImport(FromImportStatement fromImport)
     {
         _logger.LogDebug($"Resolving from-import: from {fromImport.Module} import ...");
 
-        // TODO: Implement selective import resolution
+        // See: #102 (stale stub - ImportResolver handles this now)
     }
 
     private AccessLevel DetermineAccessLevel(string name)

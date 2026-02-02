@@ -186,7 +186,7 @@ namespace Sharpy.Core
 
         private void _SetSliceSingleStepReplacement(List<T> other, int start, int numOldElems, int numNewElems)
         {
-            // TODO: Can optimize for fewer element shifts
+            // See: #109
             _list.RemoveRange(start, numOldElems);
             _list.InsertRange(start, other);
         }

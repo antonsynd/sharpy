@@ -895,7 +895,7 @@ public partial class TypeChecker
         if (call.Function is Identifier id)
         {
             // Special handling for builtin len() - validate that argument supports __len__ protocol
-            // TODO: Consider using a constant from BuiltinRegistry or BuiltinNames class instead of hardcoded string
+            // See: #103 (use BuiltinNames constant instead of hardcoded string)
             if (id.Name == "len" && argTypes.Count == 1)
             {
                 // Use TypeInferenceService for type inference (errors reported by V2 validator in pipeline)
@@ -1495,7 +1495,7 @@ public partial class TypeChecker
                 else
                 {
                     // For tuple unpacking or other complex targets
-                    // TODO: Implement tuple unpacking in comprehensions
+                    // See: #104 (tuple unpacking in comprehensions)
                     AddError($"Tuple unpacking in comprehensions not yet supported",
                         forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                         span: forClause.Target.Span);

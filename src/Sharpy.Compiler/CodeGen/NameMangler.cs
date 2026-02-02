@@ -48,12 +48,7 @@ public static class NameMangler
     // Python list method mappings to C# equivalents
     // These are needed because Python and C# have different names for the same operations
     //
-    // TODO: Remove this unconditional mapping. The proper fix is to use type information
-    // from semantic analysis to determine when the receiver is a list type, then apply
-    // the mapping only in that case. This requires passing SemanticInfo to the emitter
-    // or storing resolved method names in SemanticBinding. The current approach works
-    // because user-defined classes rarely have methods named "append" with list semantics,
-    // but it's not correct in the general case.
+    // See: #99 (unconditional mapping should use type information from semantic analysis)
     private static readonly Dictionary<string, string> _listMethodMap = new()
     {
         { "append", "Add" },      // Python list.append() -> C# List.Add()

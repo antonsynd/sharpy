@@ -127,7 +127,7 @@ public class CompilationMetrics
         var data = new
         {
             timestamp = _startTime.ToString("o"),
-            compiler_version = "0.5.0", // TODO: Get from assembly version
+            compiler_version = "0.5.0", // See: #97
             project_name = _projectName,
             file_name = _fileName,
             configuration = _configuration,
@@ -343,7 +343,7 @@ public class ProjectCompilationMetrics
         var data = new
         {
             timestamp = _startTime.ToString("o"),
-            compiler_version = "0.5.0", // TODO: Get from assembly version
+            compiler_version = "0.5.0", // See: #97
             project_name = _projectName,
             configuration = _configuration,
             total_files = TotalFiles,
