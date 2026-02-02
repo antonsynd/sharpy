@@ -118,6 +118,7 @@ public class SemanticBinding
         {
             AssertNotFrozen("CodeGenInfo", symbol.Name);
             _logger.LogWarning($"SetCodeGenInfo called after freeze for symbol '{symbol.Name}'", 0, 0);
+            return;
         }
         _codeGenInfo[symbol] = info;
     }
@@ -147,6 +148,7 @@ public class SemanticBinding
         {
             AssertNotFrozen("VariableTypes", symbol.Name);
             _logger.LogWarning($"SetVariableType called after freeze for symbol '{symbol.Name}'", 0, 0);
+            return;
         }
         _variableTypes[symbol] = type;
     }
@@ -171,6 +173,7 @@ public class SemanticBinding
         {
             AssertNotFrozen("Inheritance", symbol.Name);
             _logger.LogWarning($"SetBaseType called after freeze for symbol '{symbol.Name}'", 0, 0);
+            return;
         }
         _baseTypes[symbol] = baseType;
     }
@@ -194,6 +197,7 @@ public class SemanticBinding
         {
             AssertNotFrozen("Inheritance", symbol.Name);
             _logger.LogWarning($"AddInterface called after freeze for symbol '{symbol.Name}'", 0, 0);
+            return;
         }
         var queue = _interfaces.GetOrAdd(symbol, _ => new ConcurrentQueue<TypeSymbol>());
         queue.Enqueue(iface);

@@ -470,6 +470,8 @@ public class SemanticBindingMaterializationTests
         // In Release builds, Debug.Fail is compiled out; the logger warning fires instead
         binding.SetCodeGenInfo(symbol, new CodeGenInfo { CSharpName = "TestFn2", OriginalName = "test_fn" });
         logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("test_fn"));
+        // Write must be prevented — value should remain "TestFn"
+        binding.GetCodeGenInfo(symbol)!.CSharpName.Should().Be("TestFn");
 #endif
     }
 
@@ -491,6 +493,8 @@ public class SemanticBindingMaterializationTests
 #else
         binding.SetVariableType(symbol, SemanticType.Str);
         logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("x"));
+        // Write must be prevented — type should remain Int
+        binding.GetVariableType(symbol).Should().Be(SemanticType.Int);
 #endif
     }
 
@@ -501,6 +505,7 @@ public class SemanticBindingMaterializationTests
         var binding = new SemanticBinding(logger);
         var child = new TypeSymbol { Name = "Child", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
         var parent = new TypeSymbol { Name = "Parent", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        var otherParent = new TypeSymbol { Name = "OtherParent", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
 
         binding.SetBaseType(child, parent);
         binding.MaterializeInheritance();
@@ -508,11 +513,13 @@ public class SemanticBindingMaterializationTests
 
 #if DEBUG
         var ex = Assert.ThrowsAny<Exception>(() =>
-            binding.SetBaseType(child, parent));
+            binding.SetBaseType(child, otherParent));
         ex.Message.Should().Contain("freeze violation");
 #else
-        binding.SetBaseType(child, parent);
+        binding.SetBaseType(child, otherParent);
         logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("Child"));
+        // Write must be prevented — base type should remain Parent
+        binding.GetBaseType(child).Should().BeSameAs(parent);
 #endif
     }
 
@@ -534,6 +541,8 @@ public class SemanticBindingMaterializationTests
 #else
         binding.AddInterface(classSymbol, iface);
         logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("MyClass"));
+        // Write must be prevented — no interfaces should be added
+        binding.GetInterfaces(classSymbol).Should().BeNull();
 #endif
     }
 
