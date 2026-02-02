@@ -1315,5 +1315,108 @@ def main():
     }
 
     #endregion
+
+    #region Project Config Warnings/Errors Settings
+
+    [Fact]
+    public void ProjectFileParser_Load_ParsesWarningsAsErrors()
+    {
+        var projectContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+    <PropertyGroup>
+        <RootNamespace>TestApp</RootNamespace>
+        <OutputType>exe</OutputType>
+        <WarningsAsErrors>true</WarningsAsErrors>
+    </PropertyGroup>
+    <ItemGroup>
+        <SourceFile Include=""*.spy"" />
+    </ItemGroup>
+</Project>";
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), "def main():\n    pass\n");
+            File.WriteAllText(Path.Combine(tempDir, "test.spyproj"), projectContent);
+
+            var config = ProjectFileParser.Load(Path.Combine(tempDir, "test.spyproj"));
+
+            Assert.True(config.WarningsAsErrors);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void ProjectFileParser_Load_ParsesNoWarnCodes()
+    {
+        var projectContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+    <PropertyGroup>
+        <RootNamespace>TestApp</RootNamespace>
+        <OutputType>exe</OutputType>
+        <NoWarn>SHP0451,SHP0452;SHP0453</NoWarn>
+    </PropertyGroup>
+    <ItemGroup>
+        <SourceFile Include=""*.spy"" />
+    </ItemGroup>
+</Project>";
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), "def main():\n    pass\n");
+            File.WriteAllText(Path.Combine(tempDir, "test.spyproj"), projectContent);
+
+            var config = ProjectFileParser.Load(Path.Combine(tempDir, "test.spyproj"));
+
+            Assert.Contains("SHP0451", config.SuppressedWarnings);
+            Assert.Contains("SHP0452", config.SuppressedWarnings);
+            Assert.Contains("SHP0453", config.SuppressedWarnings);
+            Assert.Equal(3, config.SuppressedWarnings.Count);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void ProjectFileParser_Load_DefaultsWarningsAsErrorsFalse()
+    {
+        var projectContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+    <PropertyGroup>
+        <RootNamespace>TestApp</RootNamespace>
+        <OutputType>exe</OutputType>
+    </PropertyGroup>
+    <ItemGroup>
+        <SourceFile Include=""*.spy"" />
+    </ItemGroup>
+</Project>";
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), "def main():\n    pass\n");
+            File.WriteAllText(Path.Combine(tempDir, "test.spyproj"), projectContent);
+
+            var config = ProjectFileParser.Load(Path.Combine(tempDir, "test.spyproj"));
+
+            Assert.False(config.WarningsAsErrors);
+            Assert.Empty(config.SuppressedWarnings);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    #endregion
 }
 
