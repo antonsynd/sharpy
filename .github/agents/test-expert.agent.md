@@ -112,3 +112,18 @@ python3 -c "lst = [1, 2, 3]; print(lst.pop())"  # Verify expected behavior
 - Single element: `[1]`
 - Negative indices: `lst[-1]`
 - Out of range: `lst[100]` → `IndexError`
+
+## Warning Tests
+
+Use `.warning` file for tests that check compiler warnings:
+- Empty `.warning` = expect no warnings
+- Non-empty lines = expected warning substrings
+- Can combine `.warning` with `.expected` for tests that produce output AND warnings
+
+## Boundaries
+
+- ✅ Design and implement tests for all components
+- ✅ File-based tests in `Integration/TestFixtures/`
+- ✅ Multi-file project tests via `ProjectCompilationHelper`
+- ❌ Fix implementation bugs (→ component experts)
+- ❌ Never change test expectations to match bugs

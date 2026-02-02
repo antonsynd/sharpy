@@ -81,6 +81,10 @@ TestFixtures/
 
 **Skip test:** Add `.skip` file with reason.
 
+**Warning tests:** `.warning` file — empty means expect no warnings, non-empty lines are expected substrings. Can combine with `.expected`.
+
+**Multi-file tests:** A subdirectory with multiple `.spy` files and a `main.spy` entry point, plus `main.expected` or `main.error`.
+
 **Test categories:** `basics/`, `functions/`, `classes/`, `control_flow/`, `errors/`, `imports/`, `generics/`
 
 ## Critical Rules

@@ -2,7 +2,7 @@
 
 Specialized agents for Sharpy development. Each agent has domain expertise and clear boundaries.
 
-> **See also:** [copilot-instructions.md](copilot-instructions.md) for architecture and patterns.
+> **See also:** [copilot-instructions.md](copilot-instructions.md) for architecture, [instructions/](instructions/) for component guides.
 
 ## The Three Axioms
 
@@ -31,7 +31,7 @@ All agents follow this priority order when axioms conflict:
 |-------|-----------|-----------|
 | `lexer-expert` | Tokenization | `Compiler/Lexer/`, `Token.cs` |
 | `parser-expert` | AST construction | `Compiler/Parser/`, `Ast/*.cs` |
-| `semantic-expert` | Type checking, name resolution | `Compiler/Semantic/`, `TypeChecker*.cs` |
+| `semantic-expert` | Type checking, name resolution, symbols | `Compiler/Semantic/`, `TypeChecker*.cs` |
 | `codegen-expert` | C# emission via Roslyn | `Compiler/CodeGen/`, `RoslynEmitter*.cs` |
 | `core-library-expert` | Standard library | `Sharpy.Core/`, `Partial.*/` |
 | `cli-expert` | CLI commands | `Sharpy.Cli/`, `Program.cs` |
@@ -61,8 +61,9 @@ All agents follow this priority order when axioms conflict:
 1. **Never modify test expectations to pass** — fix the implementation
 2. **Axiom precedence**: .NET > Type Safety > Python Syntax
 3. **Verify Python behavior** — `python3 -c "..."` before implementing
-4. **Follow existing patterns** — search codebase for similar code
-5. Run tests before/after changes
+4. **Language spec is authoritative** — check `docs/language_specification/` before implementing
+5. **Follow existing patterns** — search codebase for similar code
+6. Run tests before/after changes
 
 ## Commands
 
@@ -71,6 +72,7 @@ dotnet build sharpy.sln && dotnet test               # Build + test all
 dotnet format whitespace                             # Format before commit
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
 dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser
+dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Debug lexer
 python3 -c "..."                                     # Verify Python behavior
 ```
 
@@ -83,7 +85,29 @@ lexer-expert → parser-expert → semantic-expert → codegen-expert → test-e
 ```
 
 1. **Lexer** — Add tokens if needed (`Token.cs`, `Lexer.cs`)
-2. **Parser** — Add AST nodes (`Ast/*.cs`, `Parser.cs`)
-3. **Semantic** — Add type rules (`TypeChecker*.cs`, validators)
-4. **CodeGen** — Emit C# via SyntaxFactory (`RoslynEmitter*.cs`)
-5. **Tests** — Unit tests + `.spy`/`.expected` integration tests
+2. **Parser** — Add AST records (`Ast/*.cs`), parsing rules in `Parser*.cs` (6 partial files)
+3. **Semantic** — Add type rules (`TypeChecker*.cs` — 5 partial files), validators if needed
+4. **CodeGen** — Emit C# via SyntaxFactory (`RoslynEmitter*.cs` — 8 partial files)
+5. **Tests** — Unit tests per component + `.spy`/`.expected` file-based tests
+
+## Semantic Analysis Pipeline (Critical Knowledge)
+
+The semantic phase runs **five ordered passes**. Understanding this is critical:
+
+```
+NameResolver.ResolveDeclarations()  → Pass 1: build symbol table
+NameResolver.ResolveInheritance()   → Pass 2: resolve base classes
+TypeResolver.ResolveTypes()         → Pass 3: resolve type annotations
+TypeChecker.CheckModule()           → Pass 4: type checking + inference
+ValidationPipeline.Validate()       → Pass 5: operators/protocols/access
+```
+
+**Key registries**: `OperatorRegistry`, `ProtocolRegistry`, `BuiltinRegistry`, `PrimitiveCatalog`
+
+## Symbol Architecture
+
+Symbols use **reference equality** (overridden from record default) because properties are set progressively across passes:
+
+- `SemanticInfo` — Maps AST nodes → types/symbols (uses `ReferenceEqualityComparer`)
+- `SemanticBinding` — Stores computed data separately, materialized at phase boundaries
+- `Symbol.CodeGenInfo` — Precomputed during semantic analysis for emitter use

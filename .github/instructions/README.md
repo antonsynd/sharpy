@@ -2,6 +2,8 @@
 
 Component-specific guides for the Sharpy codebase. Each guide covers patterns, workflows, and conventions for its domain.
 
+> **See also:** [../copilot-instructions.md](../copilot-instructions.md) for repository-wide guidance, [../agents.md](../agents.md) for domain-specific agents.
+
 ## Quick Reference
 
 | Working on | Guide |
@@ -27,9 +29,10 @@ When axioms conflict: **.NET > Type Safety > Python**
 ## Core Rules
 
 1. **Never modify test expectations to pass** — fix the implementation instead
-2. **Verify Python semantics first** — `python3 -c "..."` before implementing
-3. **Follow existing patterns** — search codebase for similar code
-4. **C# 9.0 target** — no file-scoped namespaces, global usings, record structs
+2. **Language spec is authoritative** — check `docs/language_specification/` before implementing
+3. **Verify Python semantics first** — `python3 -c "..."` before implementing
+4. **Follow existing patterns** — search codebase for similar code
+5. **C# 9.0 target for Sharpy.Core** — no file-scoped namespaces, global usings, record structs
 
 ## Feature Implementation Flow
 
@@ -40,11 +43,11 @@ Lexer → Parser → Semantic → Validation → CodeGen → Tests
 ```
 
 1. **Lexer** (`Lexer/`) — Add `TokenType` and recognition
-2. **Parser** (`Parser/Ast/`) — Add AST record, parsing rule
-3. **Semantic** (`Semantic/`) — Add type checking in `TypeChecker*.cs`
+2. **Parser** (`Parser/Ast/`) — Add AST record, parsing rule (6 partial files)
+3. **Semantic** (`Semantic/`) — Add type checking in `TypeChecker*.cs` (5 partial files)
 4. **Validation** (`Semantic/Validation/`) — Add validator if needed
-5. **CodeGen** (`CodeGen/RoslynEmitter*.cs`) — Emit via `SyntaxFactory`
-6. **Tests** — Unit tests per component + `.spy`/`.expected` integration tests
+5. **CodeGen** (`CodeGen/RoslynEmitter*.cs`) — Emit via `SyntaxFactory` (8 partial files)
+6. **Tests** — Unit tests per component + `.spy`/`.expected` file-based tests
 
 ## Key Directories
 

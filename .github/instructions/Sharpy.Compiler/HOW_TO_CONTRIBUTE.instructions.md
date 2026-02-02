@@ -7,13 +7,17 @@ Core compiler: Lexer → Parser → Semantic → ValidationPipeline → CodeGen.
 ```
 Sharpy.Compiler/
 ├── Lexer/           # Tokenization (Lexer.cs, Token.cs)
-├── Parser/          # Recursive descent → AST (Parser.cs, Ast/*.cs)
-├── Semantic/        # NameResolver → TypeResolver → TypeChecker
+├── Parser/          # Recursive descent → AST (Parser*.cs — 6 files, Ast/*.cs)
+├── Semantic/        # NameResolver → TypeResolver → TypeChecker (5 partial files)
 │   └── Validation/  # Pluggable validators (OperatorValidator, etc.)
-├── CodeGen/         # RoslynEmitter*.cs (partial classes), TypeMapper.cs, NameMangler.cs
-├── Discovery/       # Module imports, caching
-├── Analysis/        # Control flow analysis
-├── Model/           # Shared data structures
+├── CodeGen/         # RoslynEmitter*.cs (8 partial files), TypeMapper.cs, NameMangler.cs
+├── Discovery/       # CLR type discovery, module imports, caching
+├── Analysis/        # Control flow analysis (ControlFlowGraph, BasicBlock)
+├── Diagnostics/     # DiagnosticBag, DiagnosticCodes, DiagnosticRenderer
+├── Model/           # CompilationUnit, ProjectModel
+├── Project/         # ProjectCompiler, SpyProject, DependencyGraph
+├── Services/        # CompilerServices, CompilerServicesBuilder
+├── Text/            # SourceText, TextSpan, ILocatable
 ├── Compiler.cs      # Single-file compilation
 └── AssemblyCompiler.cs  # Multi-file projects
 ```
@@ -73,14 +77,18 @@ ValidationPipeline.Validate()       → Pass 5: operators/protocols/access
 
 ## Validation Pipeline Architecture
 
-After `TypeChecker`, pluggable validators run via `ValidationPipeline`:
-- `ModuleLevelValidator` — entry point rules, module-level type annotations
-- `OperatorValidator` — binary/unary operator type checking
-- `ProtocolValidator` — `__len__`, `__iter__` signature validation
-- `AccessValidator` — private member access validation
-- `ControlFlowValidator` — unreachable code, missing returns
+After `TypeChecker`, pluggable validators run via `ValidationPipeline`. Validators implement `ISemanticValidator` with an `Order` property (lower runs first):
 
-See `Semantic/Validation/README.md` for the TypeChecker vs ValidationPipeline split.
+| Order | Validator | Purpose |
+|-------|-----------|---------|
+| 50 | `ModuleLevelValidator` | Entry point validation |
+| 60 | `DecoratorValidator` | Decorator validation |
+| 150 | `SignatureValidator` | Dunder method signatures |
+| 400 | `ControlFlowValidator` | CFG-based unreachable code, missing returns |
+| 450 | `AccessValidator` | Private/protected member access |
+| 500 | `ProtocolValidator`, `OperatorValidator` | Protocol/operator validation |
+
+**Responsibility split:** TypeChecker handles type mismatches and in-progress inference. ValidationPipeline handles self-contained AST analyses. See `Semantic/Validation/README.md`.
 
 ## Type Narrowing
 
@@ -115,13 +123,18 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect tokens
 | `TypeMapper.cs` | Sharpy→C# types: `list[T]` → `global::Sharpy.Core.List<T>` |
 | `NameMangler.cs` | `snake_case` → `PascalCase`, `__str__` → `ToString()` |
 | `SemanticInfo.cs` | Type/symbol annotations (separate from AST) |
+| `SemanticBinding.cs` | Computed data, materialized at phase boundaries |
 | `CodeGenInfo.cs` | Per-symbol codegen metadata (invocation style, etc.) |
-| `RoslynEmitter*.cs` | Partial classes by AST category (Expressions, Statements, etc.) |
+| `RoslynEmitter*.cs` | 8 partial classes by AST category |
+| `PrimitiveCatalog.cs` | Source of truth for primitive types and CLR mappings |
+| `OperatorRegistry.cs` | Operator type rules |
 
-## C# 9.0 Constraints
+## C# 9.0 Constraints (Sharpy.Core Only)
 
-| ✅ Available | ❌ Not Available (C# 10+) |
-|-------------|-------------------------|
+`Sharpy.Core` targets `netstandard2.1;netstandard2.0` with `LangVersion 9.0`. `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` with `LangVersion latest`.
+
+| ✅ C# 9.0 Available | ❌ Not Available (C# 10+) |
+|---------------------|-------------------------|
 | Records | File-scoped namespaces |
 | Init-only setters | Global usings |
 | Target-typed new | Record structs |

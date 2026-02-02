@@ -29,11 +29,14 @@ Always check specs before implementing:
 | File | Purpose |
 |------|---------|
 | `Parser.cs` | Main parser, statement dispatch |
-| `Parser.Expressions.cs` | Expression parsing, Pratt parsing |
+| `Parser.Expressions.cs` | Expression parsing, Pratt precedence |
 | `Parser.Statements.cs` | Statement parsing |
 | `Parser.Definitions.cs` | Function/class definitions |
 | `Parser.Types.cs` | Type annotation parsing |
+| `Parser.Primaries.cs` | Primary expressions (literals, calls, indexing) |
 | `Ast/*.cs` | AST node definitions (immutable records) |
+
+**Note:** Parser is split into 6 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Primaries.cs`, `.Statements.cs`, `.Types.cs`
 
 ## AST Nodes Pattern
 
@@ -94,10 +97,31 @@ dotnet test --filter "FullyQualifiedName~Parser"
 dotnet run --project src/Sharpy.Cli -- emit ast file.spy  # Inspect AST
 ```
 
+## Critical Pattern: Immutable AST
+
+AST nodes are **immutable records**. Never store semantic information on AST nodes — that goes in `SemanticInfo`:
+
+```csharp
+// ✅ Correct — AST captures syntax only
+public record FunctionDef : Statement {
+    public string Name { get; init; }
+    public List<Parameter> Parameters { get; init; }
+    public TypeAnnotation? ReturnType { get; init; }
+    public Block Body { get; init; }
+}
+
+// ❌ Wrong — don't add computed/semantic info to AST
+public record FunctionDef : Statement {
+    public SemanticType ResolvedType { get; set; }  // NO!
+}
+```
+
 ## Boundaries
 
 - ✅ Grammar and AST construction
 - ✅ Operator precedence
 - ✅ Syntax error messages
+- ❌ Type resolution (→ semantic-expert)
+- ❌ Tokenization (→ lexer-expert)
 - ❌ Lexer (→ lexer-expert)
 - ❌ Type checking (→ semantic-expert)
