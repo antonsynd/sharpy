@@ -201,7 +201,8 @@ public class ProjectCompiler
                 compilationUnit.Phase = CompilationPhase.Lexed;
 
                 fileMetrics.StartPhase("Syntax Analysis");
-                var parser = new Parser.Parser(tokens, _logger);
+                var parserMaxErrors = _maxErrors > 0 ? _maxErrors : 25;
+                var parser = new Parser.Parser(tokens, _logger, parserMaxErrors);
                 var module = parser.ParseModule();
                 fileMetrics.EndPhase();
 
@@ -581,10 +582,12 @@ public class ProjectCompiler
             // Type checking
             fileMetrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
+            var semanticMaxErrors = _maxErrors > 0 ? _maxErrors : 100;
             var typeChecker = new TypeChecker(_symbolTable, _semanticInfo, typeResolver, _logger, pipeline)
             {
                 CurrentFilePath = unit.FilePath,
-                SemanticBinding = _projectModel.SemanticBinding
+                SemanticBinding = _projectModel.SemanticBinding,
+                MaxErrors = semanticMaxErrors
             };
 
             // Determine if this file is the entry point for module-level validation

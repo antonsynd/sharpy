@@ -520,6 +520,60 @@ def main():
         Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Infrastructure.TooManyErrors);
     }
 
+    [Fact]
+    public void CompileProject_MaxErrors_LimitsErrorCount()
+    {
+        // Multi-file project with many type errors but MaxErrors=2.
+        // Verifies ProjectCompiler threads MaxErrors to TypeChecker.
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), @"
+def main():
+    a: int = ""hello""
+    b: int = ""world""
+    c: int = ""foo""
+    d: int = ""bar""
+    e: int = ""baz""
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                SourceFiles = new System.Collections.Generic.List<string>
+                {
+                    Path.Combine(tempDir, "main.spy")
+                }
+            };
+
+            var options = new CompilerOptions
+            {
+                References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+                MaxErrors = 2
+            };
+            var compiler = new Compiler(options);
+            var result = compiler.CompileProject(config);
+
+            Assert.False(result.Success);
+
+            // Should have exactly MaxErrors actual errors
+            var errors = result.Diagnostics.GetErrors();
+            Assert.Equal(2, errors.Count);
+
+            // Should have a truncation warning
+            var warnings = result.Diagnostics.GetWarnings();
+            Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Infrastructure.TooManyErrors);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
     #endregion
 
     #region Semantic Error Recovery (3.6) Tests
