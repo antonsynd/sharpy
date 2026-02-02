@@ -13,6 +13,7 @@ class Program
 {
     // Rich diagnostic renderer for CLI output
     private static readonly DiagnosticRenderer _renderer = new(DiagnosticRenderer.IsColorSupported());
+    private static readonly bool _useColor = DiagnosticRenderer.IsColorSupported();
 
     static int Main(string[] args)
     {
@@ -855,8 +856,8 @@ class Program
         if (list)
         {
             var all = DiagnosticExplanations.GetAll();
-            Console.WriteLine("Documented Diagnostic Codes:");
-            Console.WriteLine(new string('=', 60));
+            Console.WriteLine(CliBold("Documented Diagnostic Codes:"));
+            Console.WriteLine(CliColor(new string('=', 60), "36")); // cyan
 
             string? lastCategory = null;
             foreach (var entry in all.OrderBy(e => e.Key, StringComparer.Ordinal))
@@ -865,14 +866,16 @@ class Program
                 {
                     if (lastCategory != null)
                         Console.WriteLine();
-                    Console.WriteLine($"  [{entry.Value.Category}]");
+                    var catColor = CategoryColor(entry.Value.Category);
+                    Console.WriteLine($"  {CliColor($"[{entry.Value.Category}]", catColor, bold: true)}");
                     lastCategory = entry.Value.Category;
                 }
-                Console.WriteLine($"    {entry.Key}  {entry.Value.Title}");
+                var entryColor = CategoryColor(entry.Value.Category);
+                Console.WriteLine($"    {CliColor(entry.Key, entryColor)}  {entry.Value.Title}");
             }
 
-            Console.WriteLine(new string('=', 60));
-            Console.WriteLine($"Total: {all.Count} documented codes");
+            Console.WriteLine(CliColor(new string('=', 60), "36"));
+            Console.WriteLine($"Total: {CliBold(all.Count.ToString())} documented codes");
             return;
         }
 
@@ -895,15 +898,16 @@ class Program
             return;
         }
 
-        Console.WriteLine($"{explanation.Code}: {explanation.Title}");
-        Console.WriteLine(new string('=', 60));
+        var color = CategoryColor(explanation.Category);
+        Console.WriteLine($"{CliColor(explanation.Code, color, bold: true)}: {CliBold(explanation.Title)}");
+        Console.WriteLine(CliColor(new string('=', 60), "36"));
         Console.WriteLine();
         Console.WriteLine(explanation.Description);
 
         if (explanation.Example != null)
         {
             Console.WriteLine();
-            Console.WriteLine("Example:");
+            Console.WriteLine(CliColor("Example:", "36", bold: true));
             foreach (var line in explanation.Example.Split('\n'))
                 Console.WriteLine($"  {line}");
         }
@@ -911,13 +915,13 @@ class Program
         if (explanation.Fix != null)
         {
             Console.WriteLine();
-            Console.WriteLine("Fix:");
+            Console.WriteLine(CliColor("Fix:", "36", bold: true));
             foreach (var line in explanation.Fix.Split('\n'))
                 Console.WriteLine($"  {line}");
         }
 
         Console.WriteLine();
-        Console.WriteLine($"Category: {explanation.Category}");
+        Console.WriteLine($"{CliColor("Category:", "36", bold: true)} {CliColor(explanation.Category, color, bold: true)}");
     }
 
     /// <summary>
@@ -1064,6 +1068,26 @@ class Program
         return new HashSet<string>(
             nowarn.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
     }
+
+    // ANSI color helpers for CLI formatting (explain command, etc.)
+    static string CliBold(string text) => _useColor ? $"\x1b[1m{text}\x1b[0m" : text;
+    static string CliColor(string text, string code, bool bold = false)
+    {
+        if (!_useColor) return text;
+        var boldCode = bold ? "1;" : "";
+        return $"\x1b[{boldCode}{code}m{text}\x1b[0m";
+    }
+
+    static string CategoryColor(string category) => category switch
+    {
+        "Lexer" => "33",    // yellow
+        "Parser" => "33",   // yellow
+        "Semantic" => "31", // red
+        "Validation" => "34", // blue
+        "CodeGen" => "32",  // green
+        "Infrastructure" => "36", // cyan
+        _ => "37"           // white
+    };
 
     static string FormatBytes(long bytes)
     {
