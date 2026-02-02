@@ -559,4 +559,92 @@ public class LexerNegativeTests
     }
 
     #endregion
+
+    #region Error Recovery
+
+    [Fact]
+    public void RecoverFromUnterminatedString_TokenizesNextLine()
+    {
+        // Unterminated string on line 1, valid code on line 2
+        var source = "x = \"hello\ny = 42";
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+
+        // Should report an error for the unterminated string
+        lexer.Diagnostics.HasErrors.Should().BeTrue();
+
+        // Should have recovered and produced tokens beyond the error
+        // The key assertion: we get more than just an EOF token
+        tokens.Count.Should().BeGreaterThan(1);
+        tokens.Last().Type.Should().Be(TokenType.Eof);
+    }
+
+    [Fact]
+    public void ReportsMultipleLexerErrors()
+    {
+        // Multiple lines with lexer errors
+        var source = "x = \"unterminated\ny = \"also unterminated\nz = 42";
+        var lexer = new LexerNs.Lexer(source);
+        lexer.TokenizeAll();
+
+        // Should report more than one error
+        lexer.Diagnostics.GetErrors().Count.Should().BeGreaterThan(1);
+    }
+
+    [Fact]
+    public void RecoveryStopsAtMaxErrors()
+    {
+        // Generate many lines with errors
+        var lines = Enumerable.Range(1, 30).Select(i => $"x{i} = \"unterminated");
+        var source = string.Join("\n", lines);
+
+        var lexer = new LexerNs.Lexer(source);
+        lexer.MaxErrors = 5;
+        var tokens = lexer.TokenizeAll();
+
+        // Should stop at MaxErrors
+        lexer.Diagnostics.GetErrors().Count.Should().BeLessThanOrEqualTo(5);
+        tokens.Last().Type.Should().Be(TokenType.Eof);
+    }
+
+    [Fact]
+    public void RecoveryProducesEofToken()
+    {
+        // Error followed by EOF
+        var source = "x = \"unterminated";
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+
+        tokens.Last().Type.Should().Be(TokenType.Eof);
+    }
+
+    [Fact]
+    public void RecoveryFromInvalidCharacter_TokenizesNextLine()
+    {
+        // Invalid character on line 1, valid identifier on line 2
+        var source = "$\nvalid_name";
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+
+        lexer.Diagnostics.HasErrors.Should().BeTrue();
+        // Should have recovered and tokenized the second line
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "valid_name");
+        tokens.Last().Type.Should().Be(TokenType.Eof);
+    }
+
+    [Fact]
+    public void RecoveryFromInvalidEscape_TokenizesNextLine()
+    {
+        // Invalid escape on line 1, valid code on line 2
+        var source = "x = \"\\q\"\ny = 42";
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+
+        lexer.Diagnostics.HasErrors.Should().BeTrue();
+        tokens.Last().Type.Should().Be(TokenType.Eof);
+        // Should have tokens from the recovery
+        tokens.Count.Should().BeGreaterThan(1);
+    }
+
+    #endregion
 }
