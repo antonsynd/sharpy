@@ -110,7 +110,7 @@ public class CompilerServicesBuilder
     /// </summary>
     public static CompilerServices CreateForTesting(ICompilerLogger? logger = null)
     {
-        var builtinRegistry = new BuiltinRegistry();
+        var builtinRegistry = new BuiltinRegistry(logger);
         var symbolTable = new SymbolTable(builtinRegistry);
         var semanticInfo = new SemanticInfo();
 

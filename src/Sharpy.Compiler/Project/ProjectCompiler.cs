@@ -259,7 +259,7 @@ public class ProjectCompiler
     /// </summary>
     private void InitializeSharedState()
     {
-        var builtinRegistry = new BuiltinRegistry();
+        var builtinRegistry = new BuiltinRegistry(_logger);
         _symbolTable = new SymbolTable(builtinRegistry);
         _semanticInfo = new SemanticInfo();
         _importResolver = new ImportResolver(_logger, _moduleRegistry);
@@ -625,7 +625,7 @@ public class ProjectCompiler
     {
         _logger.LogInfo("Phase 5: Code Generation");
         var generatedCSharp = new Dictionary<string, string>();
-        var builtinRegistry = new BuiltinRegistry();
+        var builtinRegistry = new BuiltinRegistry(_logger);
 
         foreach (var (_, unit) in _projectModel!.Units)
         {

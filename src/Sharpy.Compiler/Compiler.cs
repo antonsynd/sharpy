@@ -154,7 +154,7 @@ public class Compiler
 
             // Phase 3: Semantic Analysis
             _logger.LogInfo("Phase 3: Semantic Analysis");
-            var builtinRegistry = new BuiltinRegistry();
+            var builtinRegistry = new BuiltinRegistry(_logger);
             var symbolTable = new SymbolTable(builtinRegistry);
             var semanticInfo = new SemanticInfo();
             semanticBinding = new SemanticBinding();

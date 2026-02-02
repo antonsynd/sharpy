@@ -216,17 +216,29 @@ public class Lexer
     /// </summary>
     private void RecoverFromError()
     {
-        // Skip to the next newline character
-        while (_position < _source.Length && _source[_position] != '\n')
+        // Skip to the next newline character (\n or \r)
+        while (_position < _source.Length && _source[_position] != '\n' && _source[_position] != '\r')
         {
             _position++;
             _column++;
         }
 
-        // Advance past the newline if present
-        if (_position < _source.Length && _source[_position] == '\n')
+        // Advance past the newline if present (handle \n, \r\n, and bare \r)
+        if (_position < _source.Length)
         {
-            _position++;
+            if (_source[_position] == '\r')
+            {
+                _position++;
+                // Handle \r\n sequence
+                if (_position < _source.Length && _source[_position] == '\n')
+                {
+                    _position++;
+                }
+            }
+            else if (_source[_position] == '\n')
+            {
+                _position++;
+            }
             _line++;
             _column = 1;
         }
