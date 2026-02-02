@@ -2,7 +2,17 @@
 
 Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files compile to C# via Roslyn.
 
-> **See also:** [CLAUDE.md](../CLAUDE.md) for detailed architecture, [agents/](agents/) for domain experts.
+> **See also:** [CLAUDE.md](../CLAUDE.md) for detailed architecture, [agents/](agents/) for domain experts, [agents.md](agents.md) for agent reference.
+
+## The Three Axioms
+
+When design decisions conflict, this precedence applies:
+
+| Priority | Axiom | Principle |
+|----------|-------|-----------|
+| 1 (Highest) | **.NET** | Compiles to valid C# for .NET CLR |
+| 2 | **Types** | Explicit static typing, non-nullable by default |
+| 3 (Yields) | **Python** | Python 3 syntax and idioms |
 
 ## Architecture
 
@@ -27,11 +37,14 @@ Understanding the pass order is essential for compiler work:
 4. **TypeResolver** — Resolve type annotations to concrete types
 5. **TypeChecker** (5 partials) — Infer types, run ValidationPipeline
 
-**Key data structures**: `SemanticInfo` (AST node → type/symbol), `SymbolTable` (global scope), `SemanticBinding` (computed data frozen at phase boundaries)
+**Key data structures**: `SemanticInfo` (AST node → type/symbol using `ReferenceEqualityComparer`), `SymbolTable` (global scope), `SemanticBinding` (computed data frozen at phase boundaries)
+
+**Key registries**: `OperatorRegistry`, `ProtocolRegistry`, `BuiltinRegistry`, `PrimitiveCatalog` (source of truth for primitive types)
 
 ### Standard Library (`src/Sharpy.Core/`)
-- **Partial class pattern**: `Partial.{Type}/` directories (e.g., `Partial.List/`)
+- **Partial class pattern**: `Partial.{Type}/` directories (e.g., `Partial.List/List.Methods.cs`, `List.Slicing.cs`)
 - **Builtins**: `partial class Exports` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
+- **Python semantics**: Negative indexing, slicing, Python-matching exceptions
 
 ## Essential Commands
 
@@ -49,11 +62,12 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Debug lexer
 ```bash
 dotnet test --filter "FullyQualifiedName~Lexer"                  # By component
 dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"  # File-based
+dotnet test --filter "DisplayName~test_name"                     # By test name
 ```
 
 **Python verification** (always verify Python semantics first):
 ```bash
-python3 -c "print([1,2,3][-1])"  # Verify expected behavior
+python3 -c "print([1,2,3][-1])"  # Verify expected behavior before implementing
 ```
 
 ## Critical Rules
@@ -64,14 +78,7 @@ python3 -c "print([1,2,3][-1])"  # Verify expected behavior
 4. **Axiom precedence**: .NET > Type Safety > Python Syntax
 5. **C# targets**: `Sharpy.Core` → C# 9.0 (`netstandard2.0;2.1`); Compiler/CLI → `net10.0` with `LangVersion latest`
 6. **Language spec is authoritative** — check `docs/language_specification/` before implementing
-
-## The Three Axioms
-
-| Priority | Axiom | Principle |
-|----------|-------|-----------|
-| Highest | **.NET** | Compiles to valid C# for .NET CLR |
-| Medium | **Types** | Explicit static typing, non-nullable by default |
-| Yields | **Python** | Python 3 syntax and idioms |
+7. **Always verify Python behavior first** — run `python3 -c "..."` before implementing Python semantics
 
 ## Testing
 
@@ -85,12 +92,24 @@ TestFixtures/
 ```
 Add `.spy` + `.expected` (or `.error`) pairs—auto-discovered. Skip with `.skip` file. Warnings: `.warning` file.
 
+**Multi-file tests**: A subdirectory with multiple `.spy` files + `main.spy` entry point + `main.expected` or `main.error`.
+
 ### Programmatic Tests
 Inherit `IntegrationTestBase`, use `CompileAndExecute(source)`:
 ```csharp
 var result = CompileAndExecute("print(1 + 2)");
 Assert.True(result.Success);
 Assert.Equal("3\n", result.StandardOutput);
+```
+
+For multi-file programmatic tests, use `ProjectCompilationHelper`:
+```csharp
+using var helper = new ProjectCompilationHelper(output);
+helper.WithRootNamespace("Test")
+    .AddSourceFile("main.spy", "...")
+    .AddSourceFile("lib.spy", "...")
+    .CreateProjectFile();
+var result = helper.Compile();
 ```
 
 ## Code Patterns
@@ -106,6 +125,8 @@ $"return {value};"
 **Type mappings** (`CodeGen/TypeMapper.cs`): `int` → `long`, `str` → `string`, `list[T]` → `global::Sharpy.Core.List<T>`
 
 **Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__init__` → constructor, `__str__` → `ToString()`
+
+**Sharpy.Core patterns**: Wrap .NET internally, expose Python API (`list.append()` not `Add()`)
 
 ## Feature Implementation Order
 
