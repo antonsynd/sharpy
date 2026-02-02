@@ -110,6 +110,10 @@ public class Compiler
             metrics.StartPhase("Lexical Analysis");
             sourceText = new SourceText(sourceCode, filePath);
             var lexer = new Lexer.Lexer(sourceText, _logger);
+            if (_options.MaxErrors > 0)
+            {
+                lexer.MaxErrors = _options.MaxErrors;
+            }
             tokens = lexer.TokenizeAll();
             metrics.EndPhase();
 

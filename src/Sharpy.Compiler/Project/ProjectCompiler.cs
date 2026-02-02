@@ -183,6 +183,10 @@ public class ProjectCompiler
                 fileMetrics.StartPhase("Lexical Analysis");
                 var sourceText = new Text.SourceText(source, sourceFile);
                 var lexer = new Lexer.Lexer(sourceText, _logger);
+                if (_maxErrors > 0)
+                {
+                    lexer.MaxErrors = _maxErrors;
+                }
                 var tokens = lexer.TokenizeAll();
                 fileMetrics.EndPhase();
 

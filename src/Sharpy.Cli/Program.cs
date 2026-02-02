@@ -889,7 +889,7 @@ class Program
             return;
         }
 
-        var explanation = DiagnosticExplanations.Get(code);
+        var explanation = DiagnosticExplanations.Get(code!.Trim());
         if (explanation == null)
         {
             Console.Error.WriteLine($"No explanation found for diagnostic code '{code}'.");
