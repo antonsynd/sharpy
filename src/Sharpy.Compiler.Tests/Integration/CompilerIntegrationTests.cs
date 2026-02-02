@@ -492,7 +492,7 @@ def main():
     [Fact]
     public void Compiler_MaxErrors_LimitsErrorCount()
     {
-        // Code with many errors
+        // Code with many errors (5 type mismatches, but MaxErrors=2)
         var code = @"
 def main():
     x: int = ""hello""
@@ -510,9 +510,14 @@ def main():
         var result = compiler.Compile(code, "test.spy");
 
         Assert.False(result.Success);
-        // Should have at most MaxErrors + 1 (the truncation warning)
+
+        // Should have exactly MaxErrors actual errors (truncation notice is a warning)
         var errors = result.Diagnostics.GetErrors();
-        Assert.True(errors.Count <= 3, $"Expected at most 3 diagnostics (2 errors + truncation), got {errors.Count}");
+        Assert.Equal(2, errors.Count);
+
+        // Should have a truncation warning with the TooManyErrors code
+        var warnings = result.Diagnostics.GetWarnings();
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Infrastructure.TooManyErrors);
     }
 
     #endregion
