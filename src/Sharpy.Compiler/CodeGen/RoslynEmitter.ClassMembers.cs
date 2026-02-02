@@ -262,7 +262,11 @@ public partial class RoslynEmitter
                 else
                 {
                     // Other assignments, generate normally
-                    bodyStatements.Add(GenerateBodyStatement(stmt));
+                    var genStmt = GenerateBodyStatement(stmt);
+                    if (genStmt != null)
+                    {
+                        bodyStatements.Add(genStmt);
+                    }
                 }
             }
             else
