@@ -357,13 +357,15 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 ---
 
-## Tier 3: Usability & Ergonomics
+## Tier 3: Usability & Ergonomics — COMPLETE
+
+> **Status:** All 6 items (3.1–3.6) implemented. Bugs found and fixed during verification: `GenerateCSharpForModule` missing `SemanticBinding` for imported modules (commit `edc8d610`), `DiagnosticBag` storing a shared reference to `_suppressedWarnings` instead of a defensive copy (commit `6c7ac0e3`).
 
 **Priority:** Address for real project usage. These are the features that make the compiler feel "production ready" to users.
 
 ---
 
-### 3.1 Warning Suppression and Warning-as-Error
+### 3.1 Warning Suppression and Warning-as-Error — COMPLETE
 
 **What:** No way to suppress specific warnings or treat warnings as errors. For CI pipelines and real projects, this is table stakes.
 
@@ -371,12 +373,12 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 **Tasks:**
 
-- [ ] **3.1a** Add `WarningsAsErrors` (bool) and `SuppressedWarnings` (list of string codes) to `CompilerOptions`
-- [ ] **3.1b** Add `--warn-as-error` and `--nowarn=SHP0451,SHP0452` CLI flags
-- [ ] **3.1c** In `DiagnosticBag.AddWarning()`, check if the warning code is in the suppressed list; if so, skip adding it
-- [ ] **3.1d** In `DiagnosticBag.AddWarning()`, if `WarningsAsErrors` is true, promote the warning to an error (change severity to `Error`)
-- [ ] **3.1e** Add `warn-as-error` and `nowarn` properties to `.spyproj` project file schema
-- [ ] **3.1f** Add tests: suppress a specific warning, verify it's gone; enable warn-as-error, verify compilation fails on warning
+- [x] **3.1a** Add `WarningsAsErrors` (bool) and `SuppressedWarnings` (list of string codes) to `CompilerOptions`
+- [x] **3.1b** Add `--warn-as-error` and `--nowarn=SHP0451,SHP0452` CLI flags
+- [x] **3.1c** In `DiagnosticBag.AddWarning()`, check if the warning code is in the suppressed list; if so, skip adding it
+- [x] **3.1d** In `DiagnosticBag.AddWarning()`, if `WarningsAsErrors` is true, promote the warning to an error (change severity to `Error`)
+- [x] **3.1e** Add `warn-as-error` and `nowarn` properties to `.spyproj` project file schema
+- [x] **3.1f** Add tests: suppress a specific warning, verify it's gone; enable warn-as-error, verify compilation fails on warning
 - [ ] **3.1g** (Future consideration) Add inline suppression syntax (`# noqa: SHP0451` or similar) — this can be a separate issue
 
 **Guidance:**
@@ -386,7 +388,7 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 ---
 
-### 3.2 Configurable Error Limits
+### 3.2 Configurable Error Limits — COMPLETE
 
 **What:** TypeChecker's `MaxErrors` (100) and Parser's `MaxErrors` (25) are hardcoded constants.
 
@@ -394,17 +396,17 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 **Tasks:**
 
-- [ ] **3.2a** Add `MaxParserErrors` and `MaxSemanticErrors` to `CompilerOptions` with defaults matching current values (25 and 100)
-- [ ] **3.2b** Thread these through to `Parser` constructor and `TypeChecker` constructor
-- [ ] **3.2c** Add `--max-errors=N` CLI flag (applies to both parser and semantic; or two separate flags if you prefer)
-- [ ] **3.2d** Add a test that sets `MaxErrors=1` and verifies only one error is reported
+- [x] **3.2a** Add `MaxParserErrors` and `MaxSemanticErrors` to `CompilerOptions` with defaults matching current values (25 and 100) — Implemented as a single `MaxErrors` field (0 = use component defaults)
+- [x] **3.2b** Thread these through to `Parser` constructor and `TypeChecker` constructor — Also threaded to Lexer
+- [x] **3.2c** Add `--max-errors=N` CLI flag (applies to both parser and semantic; or two separate flags if you prefer) — Single flag, also threaded to emit commands
+- [x] **3.2d** Add a test that sets `MaxErrors=1` and verifies only one error is reported — Tests exist for MaxErrors=2 (single-file and project)
 
 **Guidance:**
 - Use a single `--max-errors` flag that sets both parser and semantic limits. Power users who need separate control can use `CompilerOptions` directly via the library API. Don't over-expose knobs in the CLI.
 
 ---
 
-### 3.3 Phase Labels in Build/Run Error Output
+### 3.3 Phase Labels in Build/Run Error Output — COMPLETE
 
 **What:** The `emit` commands label errors by phase ("Name resolution errors:", "Type checking errors:") but `build` and `run` do not. Users see an undifferentiated list of errors.
 
@@ -412,9 +414,9 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 **Tasks:**
 
-- [ ] **3.3a** In `Program.cs`, modify the diagnostic rendering for `build` and `run` commands to group errors by `CompilerPhase`
-- [ ] **3.3b** Only add phase headers if there are errors from multiple phases (don't add noise for the common single-phase case)
-- [ ] **3.3c** Add integration test verifying grouped output format
+- [x] **3.3a** In `Program.cs`, modify the diagnostic rendering for `build` and `run` commands to group errors by `CompilerPhase`
+- [x] **3.3b** Only add phase headers if there are errors from multiple phases (don't add noise for the common single-phase case)
+- [x] **3.3c** Add integration test verifying grouped output format — Phase isolation and consistency tests exist
 
 **Guidance:**
 - Keep it simple. Something like:
@@ -429,7 +431,9 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 ---
 
-### 3.4 Fix `emit csharp` Skipping Import Resolution
+### 3.4 Fix `emit csharp` Skipping Import Resolution — COMPLETE
+
+> **Bug fix during verification:** `GenerateCSharpForModule` was not threading `SemanticBinding` to `CodeGenContext` for imported modules. Fixed in commit `edc8d610`.
 
 **What:** `Program.cs:620-706` — The CLI's `EmitCSharp` method manually constructs the pipeline and skips Pass 1.5 (import resolution). `emit csharp` fails for any file with imports.
 
@@ -437,10 +441,10 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 **Tasks:**
 
-- [ ] **3.4a** Replace the manual pipeline construction in `EmitCSharp` with a call to `Compiler.Compile()`, then extract `result.GeneratedCSharpCode`
-- [ ] **3.4b** Keep the intermediate output (tokens, AST, per-phase errors) by also checking `result.Tokens`, `result.Module`, and `result.Diagnostics` for the verbose emit output
-- [ ] **3.4c** Add a test: create a two-file project, run `emit csharp` on the entry point, verify it succeeds
-- [ ] **3.4d** This also partially addresses Tier 4 item 4.1 (API unification)
+- [x] **3.4a** Replace the manual pipeline construction in `EmitCSharp` with a call to `Compiler.Compile()`, then extract `result.GeneratedCSharpCode`
+- [x] **3.4b** Keep the intermediate output (tokens, AST, per-phase errors) by also checking `result.Tokens`, `result.Module`, and `result.Diagnostics` for the verbose emit output
+- [x] **3.4c** Add a test: create a two-file project, run `emit csharp` on the entry point, verify it succeeds — `Compiler_EmitCSharp_IncludesImportedModuleCode` test verifies this
+- [x] **3.4d** This also partially addresses Tier 4 item 4.1 (API unification)
 
 **Guidance:**
 - `CompilationResult` already exposes everything the emit path needs: `Tokens`, `Module` (AST), `GeneratedCSharpCode`, `Diagnostics`. There's no reason to bypass the facade.
@@ -448,7 +452,7 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 ---
 
-### 3.5 Add `--explain` CLI Command
+### 3.5 Add `--explain` CLI Command — COMPLETE
 
 **What:** `DiagnosticExplanations.cs` has detailed explanations (description, example, fix, category) for all 134+ diagnostic codes, but there's no CLI way to access them. Users who see `error[SHP0201]` have no way to look up what it means beyond reading the error message.
 
@@ -456,12 +460,12 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 **Tasks:**
 
-- [ ] **3.5a** Add an `explain` subcommand to the CLI: `sharpyc explain SHP0201`
-- [ ] **3.5b** The command should print: code, title, description, example (if present), fix (if present), and category
-- [ ] **3.5c** Format output for terminal readability (use the existing color support from `DiagnosticRenderer`)
-- [ ] **3.5d** Handle unknown codes gracefully: "Unknown diagnostic code 'SHP9999'. Use `sharpyc explain --list` to see all codes."
-- [ ] **3.5e** Add `--list` flag to print all codes with their titles (one line each)
-- [ ] **3.5f** Add test for a known code and an unknown code
+- [x] **3.5a** Add an `explain` subcommand to the CLI: `sharpyc explain SHP0201`
+- [x] **3.5b** The command should print: code, title, description, example (if present), fix (if present), and category
+- [x] **3.5c** Format output for terminal readability (use the existing color support from `DiagnosticRenderer`) — ANSI color formatting with category-aware colors
+- [x] **3.5d** Handle unknown codes gracefully: "Unknown diagnostic code 'SHP9999'. Use `sharpyc explain --list` to see all codes." — Also shows usage when no arguments given
+- [x] **3.5e** Add `--list` flag to print all codes with their titles (one line each) — Grouped by category with color
+- [x] **3.5f** Add test for a known code and an unknown code — 13 tests including reflection-based completeness check
 
 **Guidance:**
 - This is a small, self-contained feature with no dependencies on other items. Good candidate for a first contribution.
@@ -470,7 +474,7 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 ---
 
-### 3.6 Semantic Error Recovery Across Phases
+### 3.6 Semantic Error Recovery Across Phases — COMPLETE
 
 **What:** The TypeChecker throws `SemanticAnalysisException` on structural errors (e.g., an unresolvable import), which is caught in `Compiler.cs:268` and aborts the entire semantic phase. A single bad import blocks all type error reporting for every function in the file.
 
@@ -478,10 +482,10 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 **Tasks:**
 
-- [ ] **3.6a** In `Compiler.cs`, when import resolution fails, record the diagnostics but continue to type checking rather than aborting
-- [ ] **3.6b** Ensure unresolved imports produce `Unknown`-typed module symbols so the type checker can continue (the `Unknown` type's `IsAssignableTo` returning `true` means downstream code won't cascade)
-- [ ] **3.6c** Add a file-based test: file with one bad import and one valid function with a type error → both errors should be reported
-- [ ] **3.6d** Verify that circular import detection still aborts cleanly (infinite loops must still be caught)
+- [x] **3.6a** In `Compiler.cs`, when import resolution fails, record the diagnostics but continue to type checking rather than aborting
+- [x] **3.6b** Ensure unresolved imports produce `Unknown`-typed module symbols so the type checker can continue (the `Unknown` type's `IsAssignableTo` returning `true` means downstream code won't cascade)
+- [x] **3.6c** Add a file-based test: file with one bad import and one valid function with a type error → both errors should be reported — `import_error_with_type_error.spy` and `import_error_with_symbol_usage.spy`
+- [x] **3.6d** Verify that circular import detection still aborts cleanly (infinite loops must still be caught) — `ProjectCompiler.ResolveImports` returns `false` only for circular imports
 
 **Guidance:**
 - This is more complex than most items because it touches the phase boundary logic in `Compiler.cs`. The key principle: individual phase failures should produce diagnostics, not exceptions. The `SemanticAnalysisException` pattern is the anti-pattern here — it converts a recoverable situation (bad import) into an unrecoverable one (abort all analysis).
