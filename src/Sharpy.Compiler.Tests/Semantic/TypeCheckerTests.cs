@@ -1453,4 +1453,48 @@ class EmptyClass:
     }
 
     #endregion
+
+    #region MaxErrors Truncation
+
+    [Fact]
+    public void CheckModule_MaxErrorsReached_EmitsTruncationWarning()
+    {
+        // Source with many type errors (each line is an independent error)
+        var source = @"
+def main() -> None:
+    x: int = ""a""
+    y: int = ""b""
+    z: int = ""c""
+    w: int = ""d""
+    v: int = ""e""
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.MaxErrors = 3;
+        typeChecker.CheckModule(module, isEntryPoint: true);
+
+        var errors = typeChecker.Diagnostics.GetErrors().ToList();
+        var warnings = typeChecker.Diagnostics.GetWarnings().ToList();
+
+        errors.Should().HaveCount(3, "only MaxErrors errors should be recorded");
+        warnings.Should().Contain(w => w.Code == "SHP0905",
+            "a truncation warning should be emitted when MaxErrors is reached");
+    }
+
+    [Fact]
+    public void CheckModule_BelowMaxErrors_NoTruncationWarning()
+    {
+        var source = @"
+def main() -> None:
+    x: int = ""a""
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.MaxErrors = 100;
+        typeChecker.CheckModule(module, isEntryPoint: true);
+
+        var warnings = typeChecker.Diagnostics.GetWarnings().ToList();
+        warnings.Should().NotContain(w => w.Code == "SHP0905",
+            "no truncation warning should appear when under the limit");
+    }
+
+    #endregion
 }

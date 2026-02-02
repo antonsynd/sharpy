@@ -209,5 +209,6 @@ public static class DiagnosticCodes
         public const string CompilationCancelled = "SHP0901";
         public const string AssemblyCompilationFailed = "SHP0902";
         public const string FileReadError = "SHP0903";
+        public const string TooManyErrors = "SHP0905";
     }
 }

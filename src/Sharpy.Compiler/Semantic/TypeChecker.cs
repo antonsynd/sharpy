@@ -53,6 +53,7 @@ public partial class TypeChecker
     // Configuration
     public bool ContinueAfterError { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
+    private bool _maxErrorsReported = false;
 
     // Whether the current module is an entry point file
     private bool _isEntryPoint = false;

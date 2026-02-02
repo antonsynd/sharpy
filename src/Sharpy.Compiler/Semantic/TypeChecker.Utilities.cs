@@ -927,8 +927,14 @@ public partial class TypeChecker
     {
         if (_diagnostics.ErrorCount >= MaxErrors)
         {
-            if (_diagnostics.ErrorCount == MaxErrors)
+            if (!_maxErrorsReported)
             {
+                _maxErrorsReported = true;
+                _diagnostics.AddWarning(
+                    $"Too many errors ({MaxErrors}); further errors suppressed. Use '--max-errors' to increase the limit.",
+                    line, column, _currentFilePath,
+                    code: DiagnosticCodes.Infrastructure.TooManyErrors,
+                    phase: CompilerPhase.TypeChecking);
                 _logger.LogError("Maximum error count reached, stopping type checking", 0, 0);
             }
             if (!ContinueAfterError)

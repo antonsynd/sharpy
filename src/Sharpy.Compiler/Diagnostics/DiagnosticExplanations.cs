@@ -788,6 +788,13 @@ public static class DiagnosticExplanations
             null,
             "Verify the file exists, the path is correct, and you have read permissions.");
 
+        Add(dict, DiagnosticCodes.Infrastructure.TooManyErrors, "Too many errors", "Infrastructure",
+            "The compiler stopped reporting errors because the maximum error limit was reached. " +
+            "Additional errors may exist but were suppressed. The reported errors should be fixed first, " +
+            "as later errors are often caused by earlier ones.",
+            null,
+            "Fix the reported errors and re-compile. Use '--max-errors N' to increase the limit if needed.");
+
         return dict;
     }
 
