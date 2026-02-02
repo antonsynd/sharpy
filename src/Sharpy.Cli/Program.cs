@@ -944,52 +944,125 @@ class Program
 
     /// <summary>
     /// Render multiple diagnostics with rich source context.
+    /// Groups by compiler phase when diagnostics come from multiple phases.
     /// </summary>
     static void RenderDiagnostics(IEnumerable<CompilerDiagnostic> diagnostics, SourceText? sourceText, TextWriter writer)
     {
-        foreach (var diagnostic in diagnostics)
+        var diagList = diagnostics.ToList();
+        var phases = diagList.Select(d => d.Phase).Distinct().ToList();
+        var groupByPhase = phases.Count > 1;
+
+        if (groupByPhase)
         {
-            RenderDiagnostic(diagnostic, sourceText, writer);
-            writer.WriteLine();
+            foreach (var phase in PhaseOrder.Where(p => diagList.Any(d => d.Phase == p)))
+            {
+                writer.WriteLine($"{PhaseLabel(phase)}:");
+                foreach (var diagnostic in diagList.Where(d => d.Phase == phase))
+                {
+                    RenderDiagnostic(diagnostic, sourceText, writer);
+                    writer.WriteLine();
+                }
+            }
+        }
+        else
+        {
+            foreach (var diagnostic in diagList)
+            {
+                RenderDiagnostic(diagnostic, sourceText, writer);
+                writer.WriteLine();
+            }
         }
     }
 
     /// <summary>
     /// Render diagnostics loading source text from each diagnostic's file path.
     /// Used for multi-file compilation results where a single SourceText is not available.
+    /// Groups by compiler phase when diagnostics come from multiple phases.
     /// </summary>
     static void RenderDiagnosticsFromFiles(IEnumerable<CompilerDiagnostic> diagnostics, TextWriter writer)
     {
         var sourceCache = new Dictionary<string, SourceText?>();
+        var diagList = diagnostics.ToList();
+        var phases = diagList.Select(d => d.Phase).Distinct().ToList();
+        var groupByPhase = phases.Count > 1;
 
-        foreach (var diagnostic in diagnostics)
+        if (groupByPhase)
         {
-            SourceText? sourceText = null;
-
-            if (!string.IsNullOrEmpty(diagnostic.FilePath))
+            foreach (var phase in PhaseOrder.Where(p => diagList.Any(d => d.Phase == p)))
             {
-                if (!sourceCache.TryGetValue(diagnostic.FilePath, out sourceText))
+                writer.WriteLine($"{PhaseLabel(phase)}:");
+                foreach (var diagnostic in diagList.Where(d => d.Phase == phase))
                 {
-                    try
-                    {
-                        if (File.Exists(diagnostic.FilePath))
-                        {
-                            var content = File.ReadAllText(diagnostic.FilePath);
-                            sourceText = new SourceText(content, diagnostic.FilePath);
-                        }
-                    }
-                    catch
-                    {
-                        // If we can't read the file, render without source context
-                    }
-                    sourceCache[diagnostic.FilePath] = sourceText;
+                    RenderDiagnosticFromFile(diagnostic, sourceCache, writer);
                 }
             }
-
-            RenderDiagnostic(diagnostic, sourceText, writer);
-            writer.WriteLine();
+        }
+        else
+        {
+            foreach (var diagnostic in diagList)
+            {
+                RenderDiagnosticFromFile(diagnostic, sourceCache, writer);
+            }
         }
     }
+
+    static void RenderDiagnosticFromFile(CompilerDiagnostic diagnostic, Dictionary<string, SourceText?> sourceCache, TextWriter writer)
+    {
+        SourceText? sourceText = null;
+
+        if (!string.IsNullOrEmpty(diagnostic.FilePath))
+        {
+            if (!sourceCache.TryGetValue(diagnostic.FilePath, out sourceText))
+            {
+                try
+                {
+                    if (File.Exists(diagnostic.FilePath))
+                    {
+                        var content = File.ReadAllText(diagnostic.FilePath);
+                        sourceText = new SourceText(content, diagnostic.FilePath);
+                    }
+                }
+                catch
+                {
+                    // If we can't read the file, render without source context
+                }
+                sourceCache[diagnostic.FilePath] = sourceText;
+            }
+        }
+
+        RenderDiagnostic(diagnostic, sourceText, writer);
+        writer.WriteLine();
+    }
+
+    /// <summary>
+    /// Ordered list of compiler phases for grouped diagnostic output.
+    /// </summary>
+    static readonly CompilerPhase[] PhaseOrder = new[]
+    {
+        CompilerPhase.Lexer,
+        CompilerPhase.Parser,
+        CompilerPhase.NameResolution,
+        CompilerPhase.ImportResolution,
+        CompilerPhase.TypeChecking,
+        CompilerPhase.Validation,
+        CompilerPhase.CodeGeneration,
+        CompilerPhase.Assembly,
+        CompilerPhase.Unknown
+    };
+
+    static string PhaseLabel(CompilerPhase phase) => phase switch
+    {
+        CompilerPhase.Lexer => "Lexer errors",
+        CompilerPhase.Parser => "Parse errors",
+        CompilerPhase.NameResolution => "Name resolution errors",
+        CompilerPhase.ImportResolution => "Import resolution errors",
+        CompilerPhase.TypeChecking => "Type errors",
+        CompilerPhase.Validation => "Validation errors",
+        CompilerPhase.CodeGeneration => "Code generation errors",
+        CompilerPhase.Assembly => "Assembly errors",
+        CompilerPhase.Unknown => "Other errors",
+        _ => "Other errors",
+    };
 
     static HashSet<string> ParseNowarnCodes(string? nowarn)
     {
