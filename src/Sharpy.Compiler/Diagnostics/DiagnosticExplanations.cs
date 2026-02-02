@@ -686,7 +686,7 @@ public static class DiagnosticExplanations
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",
             "An error occurred during C# code generation. This is typically an internal compiler error that should be reported as a bug.",
             null,
-            "Report this error at https://github.com/anthropics/sharpy/issues with the source file that triggered it.");
+            "Report this error at https://github.com/antonsynd/sharpy/issues with the source file that triggered it.");
 
         Add(dict, DiagnosticCodes.CodeGen.UnsupportedFeature, "Unsupported feature in code generation", "CodeGen",
             "The code uses a language feature that the code generator does not yet support. The feature is valid Sharpy syntax but cannot be compiled to C# yet.",
@@ -696,7 +696,7 @@ public static class DiagnosticExplanations
         Add(dict, DiagnosticCodes.CodeGen.EmptyClassName, "Empty class name in code generation", "CodeGen",
             "The code generator encountered a class with an empty name. This is an internal compiler error.",
             null,
-            "Report this error at https://github.com/anthropics/sharpy/issues.");
+            "Report this error at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.DuplicateMember, "Duplicate member in generated code", "CodeGen",
             "The code generator detected a duplicate member name in the generated C# class. This can happen when name mangling produces a collision.",
@@ -706,22 +706,22 @@ public static class DiagnosticExplanations
         Add(dict, DiagnosticCodes.CodeGen.EmptyMethodName, "Empty method name in code generation", "CodeGen",
             "The code generator encountered a method with an empty name. This is an internal compiler error.",
             null,
-            "Report this error at https://github.com/anthropics/sharpy/issues.");
+            "Report this error at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.AbstractMethodWithBody, "Abstract method with body in code generation", "CodeGen",
             "The code generator encountered an abstract method that has a body. Abstract methods should not have implementations.",
             null,
-            "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/anthropics/sharpy/issues.");
+            "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.NonAbstractMethodWithoutBody, "Non-abstract method without body", "CodeGen",
             "The code generator encountered a concrete (non-abstract) method that has no body. Only abstract and interface methods can omit the body.",
             null,
-            "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/anthropics/sharpy/issues.");
+            "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.VarWithoutInitializer, "Variable without initializer in code generation", "CodeGen",
             "The code generator encountered a variable declaration without an initializer. All variables should have initializers by this point in the compilation pipeline.",
             null,
-            "This is an internal compiler error. Report it at https://github.com/anthropics/sharpy/issues.");
+            "This is an internal compiler error. Report it at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.UnrecognizedStatementType, "Unrecognized statement type not emitted", "CodeGen",
             "The code generator encountered a statement type that it does not know how to emit. " +
@@ -734,7 +734,7 @@ public static class DiagnosticExplanations
             "The compiler generated C# code that fails to parse. This indicates a bug in the Sharpy compiler's code generation phase. " +
             "The generated C# has syntax errors that would prevent compilation.",
             null,
-            "This is an internal compiler error. Please report it at https://github.com/anthropics/sharpy/issues with the .spy file that triggered it.");
+            "This is an internal compiler error. Please report it at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
 
         // ── Infrastructure errors (SHP0900-SHP0999) ────────────────────
 
@@ -751,7 +751,7 @@ public static class DiagnosticExplanations
         Add(dict, DiagnosticCodes.Infrastructure.AssemblyCompilationFailed, "Assembly compilation failed", "Infrastructure",
             "The Roslyn C# compilation of the generated code failed. This means the compiler produced C# code that the .NET compiler could not compile.",
             null,
-            "This is likely an internal compiler error. Report it at https://github.com/anthropics/sharpy/issues with the source file.");
+            "This is likely an internal compiler error. Report it at https://github.com/antonsynd/sharpy/issues with the source file.");
 
         Add(dict, DiagnosticCodes.Infrastructure.FileReadError, "File read error", "Infrastructure",
             "A source file could not be read from disk. This may be due to missing files, permission issues, or invalid file paths.",

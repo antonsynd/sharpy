@@ -1,0 +1,27 @@
+# Regression test: comparison chains with literals and identifiers
+# should work without introducing temp variables.
+
+def main():
+    # Literal chains
+    print(1 < 2 < 3)
+    print(1 < 2 < 2)
+    print(3 > 2 > 1)
+    print(1 <= 1 <= 2)
+
+    # Identifier chains
+    x: int = 10
+    y: int = 20
+    z: int = 30
+    print(x < y < z)
+    print(x < y > z)
+
+    # Mixed operators
+    a: int = 1
+    b: int = 2
+    c: int = 3
+    print(a < b <= c)
+    print(a <= b < c)
+
+    # Longer chains
+    print(1 < 2 < 3 < 4)
+    print(1 < 2 < 3 < 2)
