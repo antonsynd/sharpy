@@ -6,49 +6,57 @@ infer: false
 ---
 # Core Library Expert
 
-Specializes in the Sharpy standard library (`Sharpy.Core`). Implements Pythonic APIs that wrap .NET types.
+Specializes in the Sharpy standard library (`Sharpy.Core`). Implements Pythonic APIs wrapping .NET types.
 
 ## Scope
 
 **Owns:** `src/Sharpy.Core/`
-- `Partial.{Type}/` — Collection types split by facet
+- `Partial.{Type}/` — Collection types split by interface
 - `I*.cs` — Operator protocol interfaces
-- `*.cs` (root) — Builtin functions, utilities
+- `*.cs` (root) — Builtin functions
 
 **Does NOT modify:** Compiler code (Lexer, Parser, Semantic, CodeGen)
 
 ## Core Principles
 
-- Match Python behavior where possible
-- Zero overhead for .NET interop
-- `partial class Exports` pattern for builtins
-- Use `.NET` internally, expose Python API externally
+1. **Wrap .NET internally, expose Python API** — `list.append()` not `list.Add()`
+2. **Match Python semantics** — Negative indices, slicing, same exceptions
+3. **Axiom 1 wins** — Prefer .NET when zero-cost abstraction impossible
 
-## Key Patterns
+## Directory Structure
 
-### Partial Class Directory Pattern
-Types are split across `Partial.{Type}/` directories:
 ```
-Partial.List/
-├── List.cs              # Main class + constructor
-├── List.ISequence.cs    # ISequence implementation
-├── List.IEnumerable.cs  # IEnumerable implementation
-└── List.IBoolConvertible.cs
+Sharpy.Core/
+├── Partial.List/       # list[T] - split by interface
+│   ├── List.cs              # Main class + constructor
+│   ├── List.ISequence.cs    # Sequence operations
+│   ├── List.IEnumerable.cs  # Enumeration
+│   └── List.IBoolConvertible.cs
+├── Partial.Set/        # set[T]
+├── Partial.Str/        # String methods
+├── Dict.cs             # dict[K,V]
+├── Range.cs            # range()
+├── Enumerate.cs        # enumerate()
+├── I*.cs               # Operator protocols
+└── *.cs                # Builtins via partial class Exports
 ```
 
-### Builtins via Partial Exports
+## Builtins Pattern
+
+Add to `partial class Exports` (split across files):
 ```csharp
-// Distributed across files: Print.cs, Len.cs, Range.cs, etc.
+// Print.cs
 namespace Sharpy.Core;
 
 public static partial class Exports
 {
     public static void Print(object? value) => Console.WriteLine(value);
-    public static int Len<T>(ICollection<T> collection) => collection.Count;
 }
 ```
 
-### Python-style Indexing
+## Python-style Indexing
+
+Always support negative indices:
 ```csharp
 public T this[int index]
 {
@@ -62,35 +70,37 @@ public T this[int index]
 }
 ```
 
-### Python Method Names
-Use Python naming, not .NET:
+## Python Method Names
+
+Use Python naming:
 - `append()` not `Add()`
 - `pop()` not `RemoveAt()`
 - `extend()` not `AddRange()`
+- `__len__` not `get_Count`
 
-## Python Behavior Verification
+## Workflow
 
-**Always check Python behavior first:**
+1. **Verify Python behavior first:**
+   ```bash
+   python3 -c "print([1,2,3].pop())"     # Expected: 3
+   python3 -c "print([1,2,3][-1])"       # Expected: 3
+   python3 -c "print(list(range(5)))"    # Expected: [0, 1, 2, 3, 4]
+   ```
+2. **Implement matching behavior in C#**
+3. **Add tests** in `Sharpy.Core.Tests/`
+4. **Test edge cases:** empty, single-element, negative indices, out-of-range
+
+## Commands
+
 ```bash
-python3 -c "print([1,2,3].pop())"     # Verify expected behavior
-python3 -c "print(list(range(5)))"    # Check range semantics
-python3 -c "print([1,2,3][-1])"       # Negative indexing
-```
-
-## Testing
-
-```bash
-dotnet test --filter "FullyQualifiedName~Core"
 dotnet test --filter "FullyQualifiedName~ListTests"
 dotnet test --filter "FullyQualifiedName~DictTests"
+dotnet test --filter "FullyQualifiedName~Core.Tests"
 ```
-
-**CRITICAL:** Test against Python to ensure parity. Fix bugs, don't change test expectations.
 
 ## Boundaries
 
-- ✅ Pythonic collection methods
+- ✅ Pythonic collection wrappers
 - ✅ Builtin functions
-- ✅ Python behavior parity
-- ❌ Compiler code
-- ❌ Non-Pythonic APIs
+- ✅ Operator protocol interfaces
+- ❌ Compiler (→ component experts)

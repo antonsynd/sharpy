@@ -6,7 +6,7 @@ infer: false
 ---
 # Parser Expert
 
-Specializes in the Sharpy parser. Handles EBNF grammar translation, AST node construction, operator precedence, and syntax error recovery.
+Specializes in the Sharpy parser. Handles EBNF grammar translation, AST node construction, and operator precedence.
 
 ## Scope
 
@@ -16,6 +16,7 @@ Specializes in the Sharpy parser. Handles EBNF grammar translation, AST node con
 
 ## Specs to Consult
 
+Always check specs before implementing:
 - `docs/language_specification/expressions.md`
 - `docs/language_specification/statements.md`
 - `docs/language_specification/operator_precedence.md`
@@ -23,11 +24,21 @@ Specializes in the Sharpy parser. Handles EBNF grammar translation, AST node con
 - `docs/language_specification/classes.md`
 - `docs/language_specification/comprehensions.md`
 
-## Key Patterns
+## Key Files
 
-### AST Nodes (`Parser/Ast/`)
+| File | Purpose |
+|------|---------|
+| `Parser.cs` | Main parser, statement dispatch |
+| `Parser.Expressions.cs` | Expression parsing, Pratt parsing |
+| `Parser.Statements.cs` | Statement parsing |
+| `Parser.Definitions.cs` | Function/class definitions |
+| `Parser.Types.cs` | Type annotation parsing |
+| `Ast/*.cs` | AST node definitions (immutable records) |
+
+## AST Nodes Pattern
+
 ```csharp
-// Immutable records with source locations
+// All nodes are immutable records with source locations
 public abstract record Node
 {
     public int LineStart { get; init; }
@@ -37,27 +48,40 @@ public abstract record Node
 }
 public abstract record Expression : Node;
 public abstract record Statement : Node;
+
+// Example: FunctionDef
+public record FunctionDef : Statement {
+    public string Name { get; init; }
+    public List<Parameter> Parameters { get; init; }
+    public TypeAnnotation? ReturnType { get; init; }
+    public Block Body { get; init; }
+}
 ```
 
-### Recursive Descent
+## Recursive Descent Pattern
+
 ```csharp
 private Statement ParseStatement()
 {
     if (Match(TokenType.If)) return ParseIfStatement();
     if (Match(TokenType.While)) return ParseWhileStatement();
     if (Match(TokenType.Def)) return ParseFunctionDefinition();
+    if (Match(TokenType.Class)) return ParseClassDefinition();
     return ParseExpressionStatement();
 }
 ```
 
-### Pratt Parsing for Expressions
+## Pratt Parsing for Expressions
+
 ```csharp
 private Expression ParseExpression(int minPrecedence = 0)
 {
     var left = ParseUnaryExpression();
     while (GetPrecedence(CurrentOperator()) >= minPrecedence)
     {
-        // precedence climbing...
+        var op = Advance();
+        var right = ParseExpression(GetPrecedence(op) + 1);
+        left = new BinaryOp { Left = left, Operator = op, Right = right };
     }
     return left;
 }
@@ -67,11 +91,13 @@ private Expression ParseExpression(int minPrecedence = 0)
 
 ```bash
 dotnet test --filter "FullyQualifiedName~Parser"
+dotnet run --project src/Sharpy.Cli -- emit ast file.spy  # Inspect AST
 ```
 
 ## Boundaries
 
-- Will implement grammar and AST construction
-- Will handle operator precedence
-- Will NOT modify lexer (→ lexer-expert)
-- Will NOT implement type checking (→ semantic-expert)
+- ✅ Grammar and AST construction
+- ✅ Operator precedence
+- ✅ Syntax error messages
+- ❌ Lexer (→ lexer-expert)
+- ❌ Type checking (→ semantic-expert)

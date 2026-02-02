@@ -6,41 +6,49 @@ infer: false
 ---
 # CodeGen Expert
 
-Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, lowering transformations, .NET type mapping, and output formatting.
+Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type mapping, and name mangling.
 
 ## Scope
 
 **Owns:** `src/Sharpy.Compiler/CodeGen/`
-- `RoslynEmitter*.cs` — Partial classes for different AST node types
+- `RoslynEmitter.cs` — Main emitter orchestration
+- `RoslynEmitter.*.cs` — Partial classes by AST node type:
+  - `.Expressions.cs` — Expression generation
+  - `.Statements.cs` — Statement generation
+  - `.TypeDeclarations.cs` — Class/struct/interface/enum
+  - `.ClassMembers.cs` — Methods, properties, constructors
+  - `.ModuleClass.cs` — Module-level Exports class
+  - `.Operators.cs` — Binary/unary operators
 - `TypeMapper.cs` — Sharpy types → C# types
-- `NameMangler.cs` — Name transformations (snake_case → PascalCase)
+- `NameMangler.cs` — Name transformations
 - `CodeValidator.cs` — Validates generated code compiles
 
 **Does NOT modify:** Lexer, Parser, Semantic analysis, or Sharpy.Core
 
 ## Core Principle
 
-Sharpy compiles to C# AST via Roslyn, **not** to IL directly. This:
-- Leverages Roslyn's optimization pipeline
-- Preserves source-level debugging
-- Enables human-readable output via `emit csharp`
+Sharpy compiles to C# AST via Roslyn, **not** to IL directly. This enables:
+- Roslyn's optimization pipeline
+- Source-level debugging
+- Human-readable `emit csharp` output
 
-## Key Patterns
+## Key Pattern: SyntaxFactory Only
 
-**Always use SyntaxFactory — never string templating:**
+**NEVER use string templating:**
 ```csharp
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-// ✅ Correct
+// ✅ Correct — use SyntaxFactory
 return MethodDeclaration(returnType, Identifier("MyMethod"))
     .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
     .WithBody(Block(statements));
 
-// ❌ Wrong - never do this
+// ❌ Wrong — NEVER do this
 $"public {returnType} MyMethod() {{ {body} }}"
 ```
 
-**Type mapping:**
+## Type Mapping (`TypeMapper.cs`)
+
 ```csharp
 MapType(type) => type switch {
     PrimitiveType { Name: "int" } => PredefinedType(Token(SyntaxKind.IntKeyword)),
@@ -50,10 +58,12 @@ MapType(type) => type switch {
 };
 ```
 
-**Name mangling:**
+## Name Mangling (`NameMangler.cs`)
+
 - `snake_case` → `PascalCase`
 - `__str__` → `ToString()`
 - `__add__` → `operator+`
+- `__init__` → constructor
 
 ## C# 9.0 Constraints
 
@@ -61,8 +71,14 @@ MapType(type) => type switch {
 |-------------|-------------------------|
 | Records | File-scoped namespaces |
 | Pattern matching | Global usings |
-| Target-typed new | Record structs |
-| Init-only setters | Required members |
+| Init-only setters | Record structs |
+| Target-typed new | Required members |
+
+## Generated Code Structure
+
+A Sharpy module generates:
+1. **Module Class** (`Exports` or `Program`) — static fields, methods, `Main()`
+2. **Type Declarations** at namespace level — classes, structs, interfaces, enums
 
 ## Commands
 
@@ -74,7 +90,7 @@ dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect output
 ## Boundaries
 
 - ✅ C# AST emission via Roslyn SyntaxFactory
-- ✅ Lowering transformations
-- ✅ C# 9.0 compatibility
+- ✅ Type mapping Sharpy→C#
+- ✅ Name mangling Python→C#
 - ❌ AST structure (→ parser-expert)
 - ❌ Type inference (→ semantic-expert)

@@ -4,17 +4,29 @@ Command-line interface for the Sharpy compiler. Location: `src/Sharpy.Cli/`
 
 ## Key Files
 
-- `Program.cs` - Entry point using System.CommandLine
-- Delegates to `Sharpy.Compiler.Compiler` and `AssemblyCompiler`
+- `Program.cs` — Entry point using `System.CommandLine`
+- Delegates to `Sharpy.Compiler.Compiler` (single-file) and `AssemblyCompiler` (projects)
 
 ## Commands
 
 ```bash
-# Build single file
+# Run a single file
+dotnet run --project src/Sharpy.Cli -- run snippets/hello.spy
+
+# Build a single file
 dotnet run --project src/Sharpy.Cli -- build snippets/hello.spy
 
-# Build project
+# Build a project
 dotnet run --project src/Sharpy.Cli -- project samples/calculator_app/calculator.spyproj
+
+# Debug: inspect generated C#
+dotnet run --project src/Sharpy.Cli -- emit csharp snippets/hello.spy
+
+# Debug: inspect AST
+dotnet run --project src/Sharpy.Cli -- emit ast snippets/hello.spy
+
+# Debug: inspect tokens
+dotnet run --project src/Sharpy.Cli -- emit tokens snippets/hello.spy
 
 # Help
 dotnet run --project src/Sharpy.Cli -- --help
@@ -22,18 +34,16 @@ dotnet run --project src/Sharpy.Cli -- --help
 
 ## Adding a CLI Option
 
-1. Define option in `Program.cs` using System.CommandLine API
-2. Add handler logic
+1. Define option in `Program.cs` using `System.CommandLine` API:
+   ```csharp
+   var myOption = new Option<string>("--my-option", "Description");
+   command.AddOption(myOption);
+   ```
+2. Add handler logic in the command handler
 3. Test manually (no automated CLI tests)
-4. Update `README.md`
+4. Update `src/Sharpy.Cli/README.md`
 
-## Error Handling
-
-- Write errors to stderr
-- Return non-zero exit codes on failure
-- Include file/line context in error messages
-
-## Project File Format
+## Project File Format (`.spyproj`)
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -48,8 +58,21 @@ dotnet run --project src/Sharpy.Cli -- --help
 </Project>
 ```
 
-## Related Documentation
+## Error Handling
 
-- **Main README:** `README.md` (repository root)
-- **CLI README:** `src/Sharpy.Cli/README.md`
-- **Compiler Guide:** `.github/instructions/Sharpy.Compiler/HOW_TO_CONTRIBUTE.instructions.md`
+- Write errors to stderr
+- Return non-zero exit codes on failure
+- Include file/line context in error messages
+
+## Debugging Compilation Issues
+
+```bash
+# Check generated C# for codegen bugs
+dotnet run --project src/Sharpy.Cli -- emit csharp problematic.spy
+
+# Check AST for parser bugs
+dotnet run --project src/Sharpy.Cli -- emit ast problematic.spy
+
+# Check tokens for lexer bugs
+dotnet run --project src/Sharpy.Cli -- emit tokens problematic.spy
+```

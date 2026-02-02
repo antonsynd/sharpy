@@ -6,40 +6,40 @@ infer: false
 ---
 # Semantic Expert
 
-Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, name resolution, scope management, and semantic error reporting.
+Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, name resolution, and validation.
 
 ## Scope
 
 **Owns:** `src/Sharpy.Compiler/Semantic/`
 - `NameResolver.cs` — Symbol table construction, name binding
 - `TypeResolver.cs` — Type annotation resolution
-- `TypeChecker*.cs` — Type checking, inference
-- `Validation/` — Pluggable validators (operators, protocols, access)
+- `TypeChecker*.cs` — Type checking (split into partial classes)
 - `SemanticInfo.cs` — Type/symbol annotations (separate from AST)
+- `Validation/` — Pluggable validators
 
 **Does NOT modify:** Lexer, Parser, CodeGen, or Sharpy.Core
 
 ## Core Principles
 
-- Static typing with explicit nullability
-- Non-nullable by default (`T` is non-null, `T?` is nullable)
-- C# scoping rules (no `global`/`nonlocal`)
-- .NET type system compatibility
 - **Immutable AST** — annotations stored in `SemanticInfo`, never on AST nodes
+- **Static typing** — explicit nullability, non-nullable by default
+- **C# scoping rules** — no Python `global`/`nonlocal`
+- **.NET type system** — compatible with .NET generics and interfaces
 
 ## Semantic Analysis Pipeline
 
+Five-pass architecture (order matters):
+
 ```
-NameResolver.ResolveDeclarations()  → Pass 1: declarations
-NameResolver.ResolveInheritance()   → Pass 2: inheritance
-TypeResolver.ResolveTypes()         → Pass 3: type annotations
-TypeChecker.CheckModule()           → Pass 4: type checking
-ValidationPipeline.Validate()       → Pass 5: operator/protocol/access
+NameResolver.ResolveDeclarations()  → Pass 1: build symbol table
+NameResolver.ResolveInheritance()   → Pass 2: resolve base classes
+TypeResolver.ResolveTypes()         → Pass 3: resolve type annotations
+TypeChecker.CheckModule()           → Pass 4: type checking + inference
+ValidationPipeline.Validate()       → Pass 5: operators/protocols/access
 ```
 
-## Key Patterns
+## Type Representation
 
-### Type Representation
 ```csharp
 public abstract record SemanticType;
 public record BuiltinType : SemanticType { public string Name { get; init; } }
@@ -48,17 +48,33 @@ public record GenericType : SemanticType { public string Name; public List<Seman
 public record UserDefinedType : SemanticType { public string Name { get; init; } }
 ```
 
-### Type Narrowing
-`TypeChecker._narrowedTypes` tracks types narrowed by control flow:
+## Type Narrowing
+
+`TypeChecker._narrowedTypes` tracks flow-sensitive types:
 - `if x is not None:` → narrows `T?` to `T` in branch
 - `isinstance(x, SomeClass)` → narrows to `SomeClass`
 
-### Validation Pipeline
+## Validation Pipeline
+
 Pluggable validators run after `TypeChecker.CheckModule()`:
-- `OperatorValidator` — Binary/unary operator type checking
-- `ProtocolValidator` — Protocol method validation (`__len__`, `__iter__`)
-- `AccessValidator` — Member access validation
-- `ControlFlowValidator` — CFG-based analysis
+- `ModuleLevelValidator` — entry point rules, module-level type annotations
+- `OperatorValidator` — binary/unary operator type checking
+- `ProtocolValidator` — `__len__`, `__iter__` signature validation
+- `AccessValidator` — private member access validation
+- `ControlFlowValidator` — unreachable code, missing returns
+
+**Split rationale:** See `Semantic/Validation/README.md` for what belongs in TypeChecker vs ValidationPipeline.
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `SemanticInfo.cs` | Type/symbol annotations storage |
+| `TypeChecker.cs` | Main type checking entry point |
+| `TypeChecker.Expressions.cs` | Expression type inference |
+| `TypeChecker.Statements.cs` | Statement type checking |
+| `SymbolTable.cs` | Symbol storage and lookup |
+| `Scope.cs` | Scope management |
 
 ## Commands
 
@@ -70,8 +86,9 @@ dotnet test --filter "FullyQualifiedName~ValidationPipeline"
 
 ## Boundaries
 
-- ✅ Type checking and name resolution
+- ✅ Type checking and inference
+- ✅ Name resolution and symbol tables
 - ✅ Nullable type narrowing
 - ✅ Validation pipeline
-- ❌ Parser (→ parser-expert)
+- ❌ Parser/AST structure (→ parser-expert)
 - ❌ Code generation (→ codegen-expert)

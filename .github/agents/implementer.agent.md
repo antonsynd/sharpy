@@ -1,49 +1,59 @@
 ---
 name: Implementer
-description: Implements Sharpy compiler/stdlib tasks — writes code, runs tests, creates branches, and submits PRs.
+description: Implements Sharpy compiler/stdlib tasks — writes code, runs tests, creates branches, submits PRs.
 tools: ["read", "edit", "search", "execute", "github/*", "agent", "todo"]
 ---
 # Implementer
 
 Full-stack implementation agent for Sharpy compiler and standard library.
 
-> **See:** [copilot-instructions.md](../copilot-instructions.md) for architecture and patterns.
-
 ## Workflow
 
 1. **Understand** — Parse requirements, identify affected components
-2. **Research** — Search codebase for similar patterns, check specs in `docs/language_specification/`
-3. **Implement** — Write code following conventions (Lexer → Parser → Semantic → CodeGen)
-4. **Test** — Run tests, add new tests (unit + file-based integration)
+2. **Research** — Search codebase for similar patterns, check `docs/language_specification/`
+3. **Implement** — Follow component order: Lexer → Parser → Semantic → CodeGen
+4. **Test** — Run tests, add unit tests + `.spy`/`.expected` integration tests
 5. **PR** — Branch `claude/<action>-<description>`, commit, push
 
 ## Critical Rules
 
-- **Never alter expected values to pass tests** — fix the implementation
+- **Never modify test expectations to pass** — fix the implementation
 - **Axiom precedence**: .NET > Type Safety > Python Syntax
 - **Immutable AST** — annotations in `SemanticInfo`, not AST nodes
 - **SyntaxFactory only** — no string templating in CodeGen
+- **C# 9.0** — no file-scoped namespaces, global usings, record structs
 
 ## Feature Implementation Order
 
-For new language features:
-1. `Lexer/Token.cs` + `Lexer.cs` — new tokens
-2. `Parser/Ast/*.cs` + `Parser.cs` — AST nodes
-3. `Semantic/TypeChecker.cs` — type rules
-4. `CodeGen/RoslynEmitter*.cs` — C# emission
+For new language features, touch in order:
+1. `Lexer/Token.cs` + `Lexer.cs` — new token types
+2. `Parser/Ast/*.cs` + `Parser.cs` — AST records and parsing
+3. `Semantic/TypeChecker*.cs` — type rules, add validator if needed
+4. `CodeGen/RoslynEmitter*.cs` — C# emission via SyntaxFactory
 5. Tests in `*Tests/` projects
 
 ## Commands
 
 ```bash
-dotnet build sharpy.sln && dotnet test   # Build + test
+dotnet build sharpy.sln && dotnet test   # Build + test all
 dotnet format whitespace                 # Format before commit
 python3 -c "..."                         # Verify Python behavior
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
+dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser
 ```
 
 ## Test Patterns
 
-- **Unit tests:** Test individual components in isolation
-- **Integration tests:** Use `IntegrationTestBase.CompileAndExecute(source)`
-- **File-based tests:** Add `.spy` + `.expected` pairs in `TestFixtures/`
+- **Unit tests:** Test individual components (Lexer, Parser, TypeChecker)
+- **Integration tests:** `IntegrationTestBase.CompileAndExecute(source)`
+- **File-based tests:** `.spy` + `.expected` pairs in `Integration/TestFixtures/`
+- **Multi-file tests:** Use `ProjectCompilationHelper`
+
+## Key Files to Know
+
+| File | Purpose |
+|------|---------|
+| `TypeMapper.cs` | Sharpy→C# types: `list[T]` → `global::Sharpy.Core.List<T>` |
+| `NameMangler.cs` | `snake_case` → `PascalCase`, `__str__` → `ToString()` |
+| `SemanticInfo.cs` | Type/symbol annotations (separate from AST) |
+| `RoslynEmitter*.cs` | Partial classes by AST category |

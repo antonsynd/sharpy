@@ -14,26 +14,54 @@ Component-specific guides for the Sharpy codebase. Each guide covers patterns, w
 | Example programs | [samples](./samples/HOW_TO_CONTRIBUTE.instructions.md) |
 | VS Code extension | [lsp](./lsp/HOW_TO_CONTRIBUTE.instructions.md) |
 
-## Core Principles
+## The Three Axioms (Priority Order)
 
-1. **Fix root causes** — Never artificially make tests pass
-2. **Match Python semantics** — Test against `python3 -c "..."` for expected behavior
-3. **Follow existing patterns** — Check similar code in the codebase
-4. **C# 9.0 target** — No file-scoped namespaces, global usings, or record structs
+| Priority | Axiom | Principle |
+|----------|-------|-----------|
+| 1 (Highest) | .NET Runtime | Compiles to valid C# 9.0 for .NET CLR |
+| 2 | Static Typing | Non-nullable by default, explicit types |
+| 3 (Yields) | Python Syntax | Python 3 syntax and idioms |
+
+When axioms conflict: **.NET > Type Safety > Python**
+
+## Core Rules
+
+1. **Never modify test expectations to pass** — fix the implementation instead
+2. **Verify Python semantics first** — `python3 -c "..."` before implementing
+3. **Follow existing patterns** — search codebase for similar code
+4. **C# 9.0 target** — no file-scoped namespaces, global usings, record structs
 
 ## Feature Implementation Flow
 
-For new language features, touch these components in order:
+For new language features, touch components **in this order** (dependencies flow left→right):
 
-1. **Lexer** (`Lexer/`) — Add tokens if needed
-2. **Parser** (`Parser/`) — Add AST nodes and parsing rules
-3. **Semantic** (`Semantic/`) — Add type checking rules
-4. **Validation** (`Semantic/Validation/`) — Add validators if needed
-5. **CodeGen** (`CodeGen/`) — Emit C# via Roslyn SyntaxFactory
-6. **Tests** — Unit tests + file-based integration tests
+```
+Lexer → Parser → Semantic → Validation → CodeGen → Tests
+```
 
-## Key Specs
+1. **Lexer** (`Lexer/`) — Add `TokenType` and recognition
+2. **Parser** (`Parser/Ast/`) — Add AST record, parsing rule
+3. **Semantic** (`Semantic/`) — Add type checking in `TypeChecker*.cs`
+4. **Validation** (`Semantic/Validation/`) — Add validator if needed
+5. **CodeGen** (`CodeGen/RoslynEmitter*.cs`) — Emit via `SyntaxFactory`
+6. **Tests** — Unit tests per component + `.spy`/`.expected` integration tests
 
-Language specification lives in `docs/language_specification/`. Always check specs before implementing.
+## Key Directories
+
+| Path | Purpose |
+|------|---------|
+| `docs/language_specification/` | Authoritative language spec — check before implementing |
+| `src/Sharpy.Compiler/Semantic/Validation/` | Pluggable validators (operators, protocols, access) |
+| `src/Sharpy.Compiler.Tests/Integration/TestFixtures/` | File-based tests auto-discovered |
+| `src/Sharpy.Core/Partial.*/` | Partial class pattern for stdlib types |
+
+## Commands
+
+```bash
+dotnet build sharpy.sln && dotnet test           # Build + test all
+dotnet format whitespace                         # Format before commit
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
+python3 -c "..."                                 # Verify Python behavior
+```
 
 See [copilot-instructions.md](../copilot-instructions.md) for repository-wide guidance.

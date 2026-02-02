@@ -20,13 +20,13 @@ Sharpy.Compiler/
 
 ## Adding a Language Feature
 
-Touch these components **in order** (dependencies flow left to right):
+Touch components **in order** (dependencies flow left→right):
 
 1. **Lexer:** `Token.cs` (add `TokenType`), `Lexer.cs` (recognize it)
-2. **Parser:** `Parser/Ast/*.cs` (add AST node), `Parser.cs` (parsing rules)
-3. **Semantic:** `TypeChecker.cs` (type rules), add validator if needed
+2. **Parser:** `Parser/Ast/*.cs` (add AST record), `Parser.cs` (parsing rules)
+3. **Semantic:** `TypeChecker*.cs` (type rules), add validator if needed
 4. **CodeGen:** `RoslynEmitter*.cs` (C# emission via SyntaxFactory)
-5. **Tests:** Unit tests per component + file-based integration tests
+5. **Tests:** Unit tests per component + `.spy`/`.expected` integration tests
 
 ## Key Design Patterns
 
@@ -35,41 +35,56 @@ Touch these components **in order** (dependencies flow left to right):
 public record FunctionDef : Statement {
     public string Name { get; init; }
     public List<Parameter> Parameters { get; init; }
-    // Source location tracked automatically
+    // Source location tracked via Node base class
 }
 ```
 
 **Semantic info stored in `SemanticInfo`, never on AST:**
 ```csharp
-var semanticInfo = new SemanticInfo();
+// SemanticInfo is the single source of truth for resolved types/symbols
 semanticInfo.SetType(expression, resolvedType);
 semanticInfo.SetSymbol(name, symbol);
+// AST nodes remain immutable throughout compilation
 ```
 
 **Code generation uses Roslyn `SyntaxFactory` exclusively:**
 ```csharp
-// ✅ Correct
+// ✅ Correct — use SyntaxFactory methods
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 return MethodDeclaration(returnType, Identifier("MyMethod"))
+    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
     .WithBody(Block(statements));
 
-// ❌ Never use string templating
+// ❌ NEVER use string templating
 $"public {returnType} MyMethod() {{ }}"
 ```
 
 ## Semantic Analysis Pipeline
 
+Five-pass architecture (order matters):
+
 ```
-NameResolver.ResolveDeclarations()  → Pass 1: declarations
-NameResolver.ResolveInheritance()   → Pass 2: inheritance
-TypeResolver.ResolveTypes()         → Pass 3: type annotations
-TypeChecker.CheckModule()           → Pass 4: type checking
-ValidationPipeline.Validate()       → Pass 5: operator/protocol/access validation
+NameResolver.ResolveDeclarations()  → Pass 1: build symbol table
+NameResolver.ResolveInheritance()   → Pass 2: resolve base classes
+TypeResolver.ResolveTypes()         → Pass 3: resolve type annotations
+TypeChecker.CheckModule()           → Pass 4: type checking + inference
+ValidationPipeline.Validate()       → Pass 5: operators/protocols/access
 ```
+
+## Validation Pipeline Architecture
+
+After `TypeChecker`, pluggable validators run via `ValidationPipeline`:
+- `ModuleLevelValidator` — entry point rules, module-level type annotations
+- `OperatorValidator` — binary/unary operator type checking
+- `ProtocolValidator` — `__len__`, `__iter__` signature validation
+- `AccessValidator` — private member access validation
+- `ControlFlowValidator` — unreachable code, missing returns
+
+See `Semantic/Validation/README.md` for the TypeChecker vs ValidationPipeline split.
 
 ## Type Narrowing
 
-`TypeChecker._narrowedTypes` tracks narrowed types:
+`TypeChecker._narrowedTypes` tracks flow-sensitive types:
 - `if x is not None:` → narrows `T?` to `T` in branch
 - `isinstance(x, SomeClass)` → narrows to `SomeClass`
 
@@ -93,11 +108,21 @@ dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Inspect AST
 dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect tokens
 ```
 
-## Key Files to Know
+## Key Files
 
 | File | Purpose |
 |------|---------|
-| `TypeMapper.cs` | Sharpy types → C# types (`list[T]` → `List<T>`) |
+| `TypeMapper.cs` | Sharpy→C# types: `list[T]` → `global::Sharpy.Core.List<T>` |
 | `NameMangler.cs` | `snake_case` → `PascalCase`, `__str__` → `ToString()` |
 | `SemanticInfo.cs` | Type/symbol annotations (separate from AST) |
-| `CodeGenInfo.cs` | Per-symbol codegen metadata |
+| `CodeGenInfo.cs` | Per-symbol codegen metadata (invocation style, etc.) |
+| `RoslynEmitter*.cs` | Partial classes by AST category (Expressions, Statements, etc.) |
+
+## C# 9.0 Constraints
+
+| ✅ Available | ❌ Not Available (C# 10+) |
+|-------------|-------------------------|
+| Records | File-scoped namespaces |
+| Init-only setters | Global usings |
+| Target-typed new | Record structs |
+| Pattern matching | Required members |

@@ -1,22 +1,21 @@
-````instructions
 # Sharpy.Compiler.Tests
 
 Compiler test suite. Location: `src/Sharpy.Compiler.Tests/`
 
-## Test Organization
+## Directory Structure
 
 ```
 Sharpy.Compiler.Tests/
-├── Lexer/          # Tokenization tests
-├── Parser/         # AST generation tests
-├── Semantic/       # Type checking, name resolution
-├── CodeGen/        # C# generation tests
-├── Integration/    # End-to-end: Sharpy → C# → execute
-│   ├── TestFixtures/  # File-based tests (.spy + .expected)
+├── Lexer/           # Tokenization tests
+├── Parser/          # AST generation tests
+├── Semantic/        # Type checking, name resolution
+├── CodeGen/         # C# generation tests
+├── Integration/     # End-to-end: Sharpy → C# → execute
+│   ├── TestFixtures/   # File-based tests (.spy + .expected)
 │   └── IntegrationTestBase.cs
-├── Discovery/      # Module import tests
-├── Analysis/       # Control flow analysis tests
-└── Helpers/        # Test infrastructure (ProjectCompilationHelper)
+├── Discovery/       # Module import tests
+├── Analysis/        # Control flow analysis tests
+└── Helpers/         # ProjectCompilationHelper for multi-file tests
 ```
 
 ## Running Tests
@@ -43,7 +42,7 @@ public void TestTokenizeIdentifier()
 }
 ```
 
-**Integration test:**
+**Integration test (inherit `IntegrationTestBase`):**
 ```csharp
 public class MyTests : IntegrationTestBase
 {
@@ -57,47 +56,21 @@ public class MyTests : IntegrationTestBase
 }
 ```
 
-**File-based test:** Add `.spy` + `.expected` pair to `TestFixtures/`:
-```
-TestFixtures/my_category/
-├── my_test.spy       # Sharpy source
-└── my_test.expected  # Expected stdout (exact match)
-```
-
-**Multi-file project test:**
+**Multi-file project test (use `ProjectCompilationHelper`):**
 ```csharp
 using var helper = new ProjectCompilationHelper(output);
 helper.WithRootNamespace("Test")
-    .AddSourceFile("main.spy", "...")
-    .AddSourceFile("lib.spy", "...")
+    .AddSourceFile("main.spy", "def main(): print('hello')")
+    .AddSourceFile("lib.spy", "def helper() -> int: return 42")
     .CreateProjectFile();
 var result = helper.Compile();
+Assert.True(result.Success);
 ```
 
-## Critical Rules
+## File-Based Tests (`Integration/TestFixtures/`)
 
-1. **Never change test expectations to match bugs** — fix the implementation
-2. **Skip with reason if blocked:**
-   ```csharp
-   [Fact(Skip = "TODO: Implement feature. See issue #42")]
-   ```
-3. **Test names describe behavior:** `TestParser_Parses_IfElseStatement`
+Auto-discovered tests via `.spy` + `.expected` (or `.error`) pairs:
 
-## Test Fixture Categories
-
-| Directory | Tests |
-|-----------|-------|
-| `basics/` | Hello world, simple expressions |
-| `functions/` | Function definitions, calls |
-| `classes/` | Class definitions, inheritance |
-| `control_flow/` | if/while/for/match |
-| `errors/` | Expected compilation failures (`.error` files) |
-| `imports/` | Module imports |
-| `generics/` | Generic types and functions |
-
-## File-Based Tests
-
-Auto-discovered tests in `Integration/TestFixtures/`:
 ```
 TestFixtures/
 ├── basics/hello_world.spy      # Source
@@ -106,9 +79,26 @@ TestFixtures/
 └── errors/undefined_var.error  # Substring to match in error
 ```
 
-**Run file-based tests:**
+**Skip test:** Add `.skip` file with reason.
+
+**Test categories:** `basics/`, `functions/`, `classes/`, `control_flow/`, `errors/`, `imports/`, `generics/`
+
+## Critical Rules
+
+1. **NEVER change test expectations to match bugs** — fix the implementation
+2. **Skip with reason if blocked:**
+   ```csharp
+   [Fact(Skip = "TODO: Implement feature. See issue #42")]
+   ```
+3. **Test names describe behavior:** `TestParser_Parses_IfElseStatement`
+
+## Adding a File-Based Test
+
+1. Create `my_feature.spy` in appropriate `TestFixtures/` subdirectory
+2. Create `my_feature.expected` with exact expected stdout (including trailing newlines)
+3. For error tests: create `my_feature.error` with substring to match
+4. Tests are auto-discovered — no registration needed
+
 ```bash
 dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
 ```
-
-````

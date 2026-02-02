@@ -6,29 +6,66 @@ infer: false
 ---
 # .NET Axiom Guardian
 
-Guards **Axiom 1: .NET Runtime Compatibility**. **Advisory only.**
+Guards **Axiom 1: .NET Runtime Compatibility**. **Advisory only — does not modify code.**
 
-## C# Version Rules
+## C# 9.0 Rules
 
-| C# 9.0 Allowed | C# 10+ Not Allowed |
-|----------------|-------------------|
+**Must use C# 9.0 for Unity compatibility.**
+
+| ✅ C# 9.0 Allowed | ❌ C# 10+ Not Allowed |
+|-------------------|----------------------|
 | Records | File-scoped namespaces |
 | Init-only setters | Global usings |
 | Target-typed new | Record structs |
 | Pattern matching | Required members |
+| Nullable reference types | Raw string literals |
 
 ## .NET Interop Rules
 
-- ✅ Extension methods, direct .NET types
-- ❌ Custom wrappers adding overhead, dynamic typing
+| ✅ Allowed | ❌ Not Allowed |
+|------------|----------------|
+| Extension methods | Custom wrappers adding overhead |
+| Direct .NET type usage | Dynamic typing |
+| Standard BCL types | Runtime type discovery |
+| Generics | Reflection-heavy patterns |
+
+## Patterns to Flag
+
+```csharp
+// ❌ C# 10+ file-scoped namespace
+namespace MyNamespace;  // WRONG
+
+// ✅ C# 9.0 block namespace
+namespace MyNamespace   // CORRECT
+{
+}
+
+// ❌ Global usings
+global using System;    // WRONG
+
+// ✅ Regular usings
+using System;           // CORRECT
+```
 
 ## Verification
 
 ```bash
-dotnet build -p:LangVersion=9.0  # Verify C# 9.0 compatibility
+# Verify generated C# compiles as 9.0
+dotnet build -p:LangVersion=9.0
 ```
+
+## Common Issues
+
+| Issue | Problem | Solution |
+|-------|---------|----------|
+| File-scoped namespace | C# 10+ | Use block-scoped `namespace X { }` |
+| Record struct | C# 10+ | Use regular record or struct |
+| Raw string `"""` | C# 11+ | Use `@""` or regular strings |
+| Required members | C# 11+ | Use constructor parameters |
 
 ## Boundaries
 
-- ✅ Catch C# 10+ features, validate type mappings
-- ❌ Code modification
+- ✅ Flag C# 10+ features in generated code
+- ✅ Validate type mappings
+- ✅ Check .NET interop correctness
+- ❌ Modify code (advisory only)

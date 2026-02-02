@@ -12,21 +12,19 @@ Designs and implements comprehensive tests for the Sharpy compiler and standard 
 
 **Owns:** All test files in `src/*.Tests/`
 
-**Creates tests for:** Compiler (Lexer, Parser, Semantic, CodeGen), Sharpy.Core, CLI
-
 ## Critical Rule
 
-**NEVER alter expected values to pass tests. Fix the implementation.**
+**NEVER modify test expectations to pass. Fix the implementation.**
 
 ```csharp
-// ❌ WRONG
-Assert.Equal(wrong_value, result);  // Changed to match broken output
+// ❌ WRONG — changing expected value to match broken output
+Assert.Equal(wrong_value, result);
 
-// ✅ RIGHT
-Assert.Equal(correct_value, result);  // Fix the function, not the test
+// ✅ RIGHT — fix the implementation, test expectation is correct
+Assert.Equal(correct_value, result);
 ```
 
-## Test Categories
+## Test Types
 
 ### Unit Tests
 ```csharp
@@ -41,14 +39,10 @@ public void TokenizeAll_IntegerLiteral_ReturnsCorrectToken()
 [Theory]
 [InlineData("0b1010", 10)]
 [InlineData("0xFF", 255)]
-public void TokenizeAll_NumericBases_ParsesCorrectly(string input, int expected)
-{
-    // ...
-}
+public void TokenizeAll_NumericBases_ParsesCorrectly(string input, int expected) { }
 ```
 
-### Integration Tests
-Inherit from `IntegrationTestBase` and use `CompileAndExecute()`:
+### Integration Tests (inherit `IntegrationTestBase`)
 ```csharp
 public class MyTests : IntegrationTestBase
 {
@@ -63,47 +57,58 @@ public class MyTests : IntegrationTestBase
 ```
 
 ### File-Based Tests (`Integration/TestFixtures/`)
-Auto-discovered tests via `.spy` + `.expected` (or `.error`) pairs:
+Auto-discovered via `.spy` + `.expected` (or `.error`) pairs:
 ```
-TestFixtures/
-├── basics/hello_world.spy      # Source
-├── basics/hello_world.expected # Expected stdout (exact match)
-├── errors/undefined_var.spy    # Error case
-└── errors/undefined_var.error  # Substring to match in error
+TestFixtures/basics/hello_world.spy      # Source
+TestFixtures/basics/hello_world.expected # Expected stdout (exact match)
+TestFixtures/errors/undefined_var.spy    # Error case
+TestFixtures/errors/undefined_var.error  # Substring to match in error
 ```
 
-To skip a test, add `.skip` file with reason.
+Skip with `.skip` file containing reason.
 
 ### Multi-File Project Tests
-Use `ProjectCompilationHelper` for projects:
 ```csharp
 using var helper = new ProjectCompilationHelper(output);
-helper
-    .WithRootNamespace("MyTest")
-    .AddSourceFile("main.spy", "...")
+helper.WithRootNamespace("Test")
+    .AddSourceFile("main.spy", "def main(): print('hello')")
+    .AddSourceFile("lib.spy", "def helper() -> int: return 42")
     .CreateProjectFile();
 var result = helper.Compile();
+Assert.True(result.Success);
 ```
 
-## Commands
+## Running Tests
 
 ```bash
-dotnet test                                                  # All tests
-dotnet test --filter "FullyQualifiedName~Lexer"              # By component
-dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"  # File-based only
-dotnet test --collect:"XPlat Code Coverage"                  # With coverage
+dotnet test --filter "FullyQualifiedName~Lexer"
+dotnet test --filter "FullyQualifiedName~Parser"
+dotnet test --filter "FullyQualifiedName~Semantic"
+dotnet test --filter "FullyQualifiedName~CodeGen"
+dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
 ```
 
-## Testing Python Semantics
+## Test Categories in TestFixtures/
 
-Always verify expected behavior against Python first:
+| Directory | Tests |
+|-----------|-------|
+| `basics/` | Hello world, simple expressions |
+| `functions/` | Function definitions, calls, lambdas |
+| `classes/` | Class definitions, inheritance, methods |
+| `control_flow/` | if/elif/else, while, for, match |
+| `errors/` | Expected compilation failures (`.error` files) |
+| `imports/` | Module imports, packages |
+| `generics/` | Generic types and functions |
+
+## Sharpy.Core.Tests Workflow
+
+**Always verify against Python first:**
 ```bash
-python3 -c "print([1,2,3][-1])"  # Verify Python behavior, then write test
+python3 -c "lst = [1, 2, 3]; print(lst.pop())"  # Verify expected behavior
 ```
 
-## Boundaries
-
-- Will write comprehensive tests
-- Will identify coverage gaps
-- Will create regression tests for bugs
-- Will NOT modify production code to make tests pass
+**Required edge cases for collections:**
+- Empty: `[]`
+- Single element: `[1]`
+- Negative indices: `lst[-1]`
+- Out of range: `lst[100]` → `IndexError`
