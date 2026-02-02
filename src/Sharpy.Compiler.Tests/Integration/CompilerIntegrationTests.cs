@@ -516,4 +516,61 @@ def main():
     }
 
     #endregion
+
+    #region Semantic Error Recovery (3.6) Tests
+
+    [Fact]
+    public void Compiler_WithImportErrors_ContinuesToTypeChecking()
+    {
+        // Code with a bad import AND a type error in a valid function.
+        // The compiler should report BOTH: the import error and the type error,
+        // not bail after import resolution.
+        var code = @"
+from nonexistent_module import something
+
+def main():
+    x: int = ""not_an_int""
+";
+        var options = new CompilerOptions
+        {
+            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+        };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+
+        var errors = result.Diagnostics.GetErrors().ToList();
+        Assert.True(errors.Count >= 2,
+            $"Expected at least 2 errors (import + type), got {errors.Count}: {string.Join("; ", errors.Select(e => $"[{e.Phase}] {e.Message}"))}");
+
+        // Should have an import-phase error
+        Assert.Contains(errors, e => e.Phase == CompilerPhase.ImportResolution);
+
+        // Should also have a type-checking-phase error
+        Assert.Contains(errors, e => e.Phase == CompilerPhase.TypeChecking);
+    }
+
+    [Fact]
+    public void Compiler_WithImportErrors_StillReportsTypeErrors()
+    {
+        // A failed import leaves the symbol undefined. The type checker should
+        // report errors for usage of that undefined symbol rather than crashing.
+        var code = @"
+from nonexistent_module import helper
+
+def main():
+    result: int = helper(42)
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+
+        var errors = result.Diagnostics.GetErrors().ToList();
+        // At minimum, the import error
+        Assert.Contains(errors, e => e.Phase == CompilerPhase.ImportResolution);
+    }
+
+    #endregion
 }

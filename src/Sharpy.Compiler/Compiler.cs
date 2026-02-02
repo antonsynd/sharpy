@@ -249,20 +249,12 @@ public class Compiler
 
             metrics.EndPhase();
 
-            if (importResolver.Diagnostics.HasErrors)
+            // Always merge import diagnostics (errors + warnings) so they appear
+            // in the final result. Continue to type checking even if imports failed,
+            // so users see the full picture (import errors + type errors).
+            if (importResolver.Diagnostics.GetAll().Count > 0)
             {
                 diagnostics.Merge(importResolver.Diagnostics);
-                return new CompilationResult
-                {
-                    Success = false,
-                    Diagnostics = diagnostics,
-                    Metrics = metrics,
-                    SourceText = sourceText,
-                    Tokens = tokens,
-                    Module = module,
-                    SemanticBinding = semanticBinding,
-                    ImportResolver = importResolver
-                };
             }
 
             cancellationToken.ThrowIfCancellationRequested();

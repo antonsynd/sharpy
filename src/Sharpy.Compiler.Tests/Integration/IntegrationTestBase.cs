@@ -113,13 +113,11 @@ public abstract class IntegrationTestBase
                 };
             }
 
+            // Collect import errors but continue to type checking so users see all errors
+            var allErrors = new List<string>();
             if (importResolver.Diagnostics.HasErrors)
             {
-                return new ExecutionResult
-                {
-                    Success = false,
-                    CompilationErrors = importResolver.Diagnostics.GetErrors().Select(d => d.Message).ToList()
-                };
+                allErrors.AddRange(importResolver.Diagnostics.GetErrors().Select(d => d.Message));
             }
 
             var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
@@ -128,7 +126,14 @@ public abstract class IntegrationTestBase
                 SemanticBinding = semanticBinding
             };
             // Integration tests are executable programs, so they're entry points
-            typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
+            try
+            {
+                typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
+            }
+            catch (SemanticAnalysisException)
+            {
+                // MaxErrors exceeded — collect whatever diagnostics exist
+            }
 
             // Materialize CodeGenInfo and VariableType onto Symbol properties and freeze
             semanticBinding.MaterializeCodeGenInfo();
@@ -141,10 +146,15 @@ public abstract class IntegrationTestBase
 
             if (typeChecker.Diagnostics.HasErrors)
             {
+                allErrors.AddRange(typeChecker.Diagnostics.GetErrors().Select(e => e.Message));
+            }
+
+            if (allErrors.Count > 0)
+            {
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = typeChecker.Diagnostics.GetErrors().Select(e => e.Message).ToList(),
+                    CompilationErrors = allErrors,
                     CompilationWarnings = compilationWarnings
                 };
             }
