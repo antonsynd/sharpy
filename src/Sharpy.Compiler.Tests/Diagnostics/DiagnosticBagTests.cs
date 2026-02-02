@@ -406,6 +406,19 @@ public class DiagnosticBagTests
         Assert.Equal(1, bag.WarningCount);
     }
 
+    [Fact]
+    public void SuppressedWarning_CaseInsensitive()
+    {
+        // When suppressed codes are in a case-insensitive set, lowercase codes should match
+        var suppressed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "shp0451" };
+        var bag = new DiagnosticBag(suppressedWarnings: suppressed);
+
+        bag.AddWarning("Unused variable", code: "SHP0451");
+
+        Assert.Equal(0, bag.WarningCount);
+        Assert.Empty(bag.GetAll());
+    }
+
     private class TestLocatable : ILocatable
     {
         public TestLocatable(TextSpan? span) => Span = span;

@@ -76,7 +76,7 @@ public class Compiler
     public ProjectCompilationResult CompileProject(ProjectConfig projectConfig, CancellationToken cancellationToken)
     {
         // Merge project-level and compiler-level warning/error settings
-        var mergedSuppressed = new HashSet<string>(_options.SuppressedWarnings);
+        var mergedSuppressed = new HashSet<string>(_options.SuppressedWarnings, StringComparer.OrdinalIgnoreCase);
         mergedSuppressed.UnionWith(projectConfig.SuppressedWarnings);
         var warnAsErrors = _options.WarningsAsErrors || projectConfig.WarningsAsErrors;
 
@@ -809,7 +809,7 @@ public class CompilerOptions
     /// Warning codes to suppress (e.g., "SHP0451", "SHP0452").
     /// Suppressed warnings are silently discarded and do not appear in diagnostics.
     /// </summary>
-    public HashSet<string> SuppressedWarnings { get; set; } = new();
+    public HashSet<string> SuppressedWarnings { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Maximum number of errors before the compiler stops reporting.

@@ -1072,9 +1072,10 @@ class Program
     static HashSet<string> ParseNowarnCodes(string? nowarn)
     {
         if (string.IsNullOrWhiteSpace(nowarn))
-            return new HashSet<string>();
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         return new HashSet<string>(
-            nowarn.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            nowarn.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            StringComparer.OrdinalIgnoreCase);
     }
 
     // ANSI color helpers for CLI formatting (explain command, etc.)

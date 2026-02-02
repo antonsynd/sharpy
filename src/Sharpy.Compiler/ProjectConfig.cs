@@ -75,7 +75,7 @@ public class ProjectConfig
     /// Warning codes to suppress (e.g., "SHP0451", "SHP0452").
     /// Set via &lt;NoWarn&gt;SHP0451,SHP0452&lt;/NoWarn&gt; in .spyproj.
     /// </summary>
-    public HashSet<string> SuppressedWarnings { get; init; } = new();
+    public HashSet<string> SuppressedWarnings { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Output directory for compiled assemblies (relative to project directory)
@@ -155,7 +155,7 @@ public class ProjectFileParser
         var entryPoint = propertyGroup.Element("EntryPoint")?.Value;
         var warningsAsErrors = bool.TryParse(propertyGroup.Element("WarningsAsErrors")?.Value, out var wae) && wae;
         var noWarnValue = propertyGroup.Element("NoWarn")?.Value;
-        var suppressedWarnings = new HashSet<string>();
+        var suppressedWarnings = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(noWarnValue))
         {
             foreach (var code in noWarnValue.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
