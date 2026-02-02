@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Tests that verify internal consistency assertions at phase boundaries
 /// do not fire for valid compilations. These tests exercise the code paths
 /// in AssertNoDuplicateTypeNames, AssertNoUnresolvedInheritance, and
-/// AssertNoUnknownTypes (all [Conditional("DEBUG")]).
+/// WarnIfUnknownTypes (always-on, emit SHP0904 diagnostics).
 /// </summary>
 public class PhaseBoundaryAssertionTests
 {

@@ -788,6 +788,13 @@ public static class DiagnosticExplanations
             null,
             "Verify the file exists, the path is correct, and you have read permissions.");
 
+        Add(dict, DiagnosticCodes.Infrastructure.InvariantViolation, "Internal invariant violation", "Infrastructure",
+            "An internal compiler invariant was violated. This is a compiler bug — " +
+            "the semantic pipeline produced data that fails a post-phase consistency check. " +
+            "The compilation may still succeed, but the generated code could be incorrect.",
+            null,
+            "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
+
         Add(dict, DiagnosticCodes.Infrastructure.TooManyErrors, "Too many errors", "Infrastructure",
             "The compiler stopped reporting errors because the maximum error limit was reached. " +
             "Additional errors may exist but were suppressed. The reported errors should be fixed first, " +
