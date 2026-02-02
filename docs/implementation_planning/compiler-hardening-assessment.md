@@ -3,7 +3,8 @@
 > **Author:** Staff Compiler Engineer Assessment (Claude Opus 4.5)
 > **Date:** 2026-02-02
 > **Reviewed:** 2026-02-02 (independent verification pass — see Verification Notes below)
-> **Branch:** `dev` (commit `578d0dd3`)
+> **Second review:** 2026-02-02 (independent deep-dive with 4 parallel codebase explorations — see Second Review Notes below)
+> **Branch:** `dev` (commit `e7942574`)
 > **Scope:** Robustness, usability, ergonomics, efficiency, debuggability, contributability
 
 ---
@@ -12,21 +13,23 @@
 
 The Sharpy compiler has strong fundamentals: clean architecture, ~4,800 test annotations + 315 file-based fixtures + fuzz testing, zero TODO/FIXME/HACK comments, zero mutable static state, a Rust-style diagnostic system, and CancellationToken-aware pipeline. The codebase is ahead of most compilers at this stage.
 
-This document identifies 25 improvements across 5 priority tiers. Each item includes rationale, actionable subtasks suitable for a junior engineer or Claude Sonnet, and implementation guidance aligned with the codebase's axioms (`.NET > Type Safety > Python Syntax`).
+This document identifies 29 items across 5 priority tiers (1.5 is mostly complete; 28 remain open). Each item includes rationale, actionable subtasks suitable for a junior engineer or Claude Sonnet, and implementation guidance aligned with the codebase's axioms (`.NET > Type Safety > Python Syntax`).
 
 ### Metrics at Time of Assessment
 
-| Metric | Value |
-|--------|-------|
-| C# source files | 533 |
-| Compiler lines | ~42,700 |
-| Test annotations | ~4,800 |
-| File-based fixtures | 315 `.spy` files |
-| Build warnings | 57 |
-| Skipped tests | 16 (3 file-based + 13 unit) |
-| `NotImplementedException` in codegen | 15 |
-| Silent statement drops in emitter | 4 locations |
-| Open `See: #NNN` references | 22 across 14 files |
+| Metric | Value | Updated |
+|--------|-------|---------|
+| C# source files | 533 | |
+| Compiler lines | ~42,700 | |
+| Test annotations | ~4,800 | |
+| File-based fixtures | 315 `.spy` files | |
+| Build warnings | ~~57~~ **0** | Fixed by hardening commits `ae9d722a`–`e7942574` |
+| Skipped tests | 16 (3 file-based + 13 unit) | |
+| `NotImplementedException` in codegen | ~~15~~ **16** | Recount confirmed 16 throw sites (see 2.1) |
+| Silent statement drops in emitter | 4 locations | |
+| Open `See: #NNN` references | 22 across 14 files | |
+| Public types in Sharpy.Compiler | ~212 | Added by second review (see 4.3) |
+| Internal types in Sharpy.Compiler | 1–2 | Added by second review (see 4.3) |
 
 ### Verification Notes (2026-02-02)
 
@@ -47,6 +50,39 @@ An independent verification pass confirmed the assessment's accuracy with the fo
 - Diagnostic deduplication logic (`TypeChecker.cs:216-244`) uses position+message and position+code matching — more fragile than the 5.5 description implies, but the recommended fix (prevent duplication at source) is correct.
 - `ImportResolver` logs warnings to `ICompilerLogger` instead of `DiagnosticBag` for missing re-exported symbols. This could be a separate item but is minor.
 - Semantic data materialization is duplicated between `Compiler.cs` and `ProjectCompiler.cs`. Not a correctness issue but a maintenance concern for future refactoring.
+
+### Second Review Notes (2026-02-02)
+
+A second independent review ran 4 parallel deep-dive explorations covering: (1) general architecture and error handling, (2) diagnostic system, (3) testing patterns, and (4) codegen and LSP readiness. Each agent independently examined the codebase and reported findings.
+
+**Corrections made:**
+1. **Metrics table** — Build warnings updated from 57 to **0** (fixed by hardening commits `ae9d722a`–`e7942574`). The entire 1.5 section is now largely complete, except possibly 1.5h (`TreatWarningsAsErrors`).
+2. **2.1 count** — `NotImplementedException` throw sites updated from 15 to **16**. Full recount: `RoslynEmitter.Statements.cs` lines 283, 286, 307, 869, 872 (5); `RoslynEmitter.Expressions.cs` lines 77, 241, 391, 461, 599, 628, 669, 696, 738, 765, 1117 (11). Excluded: lines 92 and 469-473 which *generate* `throw new NotImplementedException()` in the output C# for ellipsis (`...`) syntax — these are intentional runtime behavior, not compiler limitations.
+3. **4.3** — Public type count updated from "~80+" to **~212**. The original significantly understated the surface area, making 4.3 more impactful than described.
+
+**Items added by second review:**
+4. **3.5** — `--explain SHP0201` CLI command. The `DiagnosticExplanations.cs` already has detailed explanations for all 134+ codes but there's no CLI way to access them.
+5. **3.6** — Semantic error recovery across phases. The TypeChecker throws `SemanticAnalysisException` on structural errors (e.g., unresolvable import), aborting the entire semantic phase. A bad import blocks all type error reporting for every function.
+6. **4.6** — Comprehension execution test coverage. Comprehensions are implemented but only have 1 error test fixture. Given that nested comprehensions and tuple unpacking in comprehensions are known `NotImplementedException` sites, there should be success-path and failure-path test fixtures.
+
+**Confirmed accurate by second review (with specific file:line verification):**
+- `UnknownType.IsAssignableTo` returning `true` at `SemanticType.cs:139`
+- `IsFloatExpression` heuristic at `RoslynEmitter.Operators.cs:406` falling back to `false` with comment "A full type system would resolve these properly"
+- `TypeChecker.Expressions.cs:49` returning `SemanticType.Unknown` for unrecognized expressions
+- `TypeChecker.cs:332` logging to `_logger.LogWarning` instead of emitting a diagnostic
+- `CodeGenContext` having `_diagnostics`, `Diagnostics`, and `AddError` (already noted in first verification)
+- `SemanticBinding` freeze violations only logging warnings, not asserting
+- CancellationToken threading through both `Compiler.Compile()` (5+ checkpoints) and `ProjectCompiler.Compile()` (6+ checkpoints)
+- Source mapping via `#line` directives at `RoslynEmitter.Statements.cs:45-69`
+- DiagnosticBag thread-safety with `lock(_lock)`
+- Zero TODO/FIXME/HACK comments in production code (only in test data)
+- All AST nodes use `init`-only properties and `ImmutableArray` — truly immutable post-construction
+- `RoslynEmitter` uses `SyntaxFactory` exclusively — no string templating for code generation
+
+**Additional architectural observations:**
+- Source mapping (`#line` directives) is already implemented at `RoslynEmitter.Statements.cs:45-69`, controlled by `CodeGenContext.EmitLineDirectives`. This means `.spy` file names and line numbers appear in runtime stack traces — a debuggability feature not explicitly called out elsewhere in this document.
+- The `CompilerServices` adapter pattern (`ITypeResolver`, `ISymbolLookup`, `IClrTypeMapper`) is well-positioned for LSP consumption. The main gaps for LSP are: no `FindReferences()` (needs reverse index), no scope-based symbol enumeration, and `SemanticInfo` is shared rather than per-file in `ProjectCompiler`.
+- Incremental compilation infrastructure is more complete than described: `CompilationUnit.ContentHash` (SHA-256), `CompilationUnit.IsStale()`, `DependencyGraph.GetAffectedFiles()`, `DependencyGraph.GetParallelizableGroups()`, and `DependencyGraphBuilder` with concurrent collections are all implemented but not wired into the compilation flow.
 
 ---
 
@@ -141,28 +177,28 @@ An independent verification pass confirmed the assessment's accuracy with the fo
 
 ---
 
-### 1.5 Fix Build Warnings (57 warnings)
+### 1.5 Fix Build Warnings ~~(57 warnings)~~ — MOSTLY COMPLETE
 
-**What:** The solution builds with 57 warnings, including nullable reference warnings (CS8604, CS8602) that indicate potential `NullReferenceException` at runtime.
+> **Status:** Items 1.5a–1.5g completed by hardening commits `ae9d722a`–`e7942574`. Build now reports **0 Warning(s)**. Only 1.5h (`TreatWarningsAsErrors`) may remain — verify and add if not already present.
 
-**Why it matters:** Warnings erode signal-to-noise ratio. The CS8602 in `ProjectCompiler.cs:308` is a genuine null dereference risk. Zero-warning builds should be enforced in CI.
+**What:** ~~The solution builds with 57 warnings, including nullable reference warnings (CS8604, CS8602) that indicate potential `NullReferenceException` at runtime.~~ The warnings have been fixed. The remaining action is to enforce zero warnings permanently via `TreatWarningsAsErrors`.
+
+**Why it matters:** `TreatWarningsAsErrors` prevents future regressions permanently. Without it, new warnings can silently accumulate.
 
 **Tasks:**
 
-- [ ] **1.5a** Fix CS8602 in `ProjectCompiler.cs:308` — add proper null check rather than null-forgiving operator
-- [ ] **1.5b** Fix CS8604 warnings in `Sharpy.Core` (DictItemsView, DictValuesView, Dict, List.operators) — these are all `Exports.Eq()` calls that may pass null. Add null guards or use `!` with a comment explaining why null is safe in context
-- [ ] **1.5c** Fix CS8604 in `TypeChecker.Expressions.cs:970` — `overloads` null check before `.Where()`
-- [ ] **1.5d** Fix CS0219 in `Parser.Types.cs:320` — remove unused `hasTrailingComma` variable
-- [ ] **1.5e** Fix CS1574/CS1580 XML doc cref in `Dict.cs:330` (use angle brackets `<>` not `{}`) and `Str.cs:31`
-- [ ] **1.5f** Fix xUnit2013 in `FrozenSetConversionTests.cs:13` and xUnit2012 in `ModuleLoaderTests.cs:320`
-- [ ] **1.5g** For the intentional CS0252/CS0253 and CS1718 warnings in test code (reference comparison tests), add `#pragma warning disable`/`restore` around the specific lines with a comment explaining they're intentional
-- [ ] **1.5h** Add `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` to `Directory.Build.props` or each `.csproj` to enforce zero warnings going forward
-- [ ] **1.5i** Verify CI passes with zero warnings
+- [x] **1.5a** ~~Fix CS8602 in `ProjectCompiler.cs:308`~~ — Done
+- [x] **1.5b** ~~Fix CS8604 warnings in `Sharpy.Core`~~ — Done
+- [x] **1.5c** ~~Fix CS8604 in `TypeChecker.Expressions.cs:970`~~ — Done
+- [x] **1.5d** ~~Fix CS0219 in `Parser.Types.cs:320`~~ — Done
+- [x] **1.5e** ~~Fix CS1574/CS1580 XML doc cref~~ — Done
+- [x] **1.5f** ~~Fix xUnit2013 and xUnit2012~~ — Done
+- [x] **1.5g** ~~Add `#pragma warning disable` for intentional test warnings~~ — Done
+- [ ] **1.5h** Add `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` to `Directory.Build.props` or each `.csproj` to enforce zero warnings going forward — **Verify whether this is already in place; add if not**
+- [x] **1.5i** ~~Verify CI passes with zero warnings~~ — Build reports 0 Warning(s)
 
 **Guidance:**
-- For the CS8604 warnings in `Sharpy.Core`, the `Exports.Eq()` null handling depends on whether the Python semantics of `==` should support `None` comparisons. Check Python behavior first (`python3 -c "print([1,2] == None)"`). If Python returns `False` for `x == None`, the `Eq()` function should handle null gracefully.
-- Do NOT use `#pragma warning disable` for the compiler source warnings — fix them properly. `#pragma` is only acceptable for the intentional test cases.
-- The `TreatWarningsAsErrors` in 1.5h is the most impactful sub-task: it prevents future regressions permanently.
+- If `TreatWarningsAsErrors` is not yet in `Directory.Build.props`, adding it is the single highest-leverage preventive measure in this entire document. It costs nothing and prevents entire categories of future bugs.
 
 ---
 
@@ -174,7 +210,7 @@ An independent verification pass confirmed the assessment's accuracy with the fo
 
 ### 2.1 Convert `NotImplementedException` Throws to Proper Diagnostics
 
-**What:** 15 `NotImplementedException` throws in `RoslynEmitter` surface as generic "Compilation failed: [message]" via the top-level `catch (Exception)` in `Compiler.cs:427`. Users can't tell if they wrote bad code or hit a compiler limitation.
+**What:** 16 `NotImplementedException` throws in `RoslynEmitter` surface as generic "Compilation failed: [message]" via the top-level `catch (Exception)` in `Compiler.cs:427`. Users can't tell if they wrote bad code or hit a compiler limitation.
 
 **Why it matters:** User trust. A compiler that says "Compilation failed" for valid-looking code with no actionable suggestion is a compiler people stop using. These are known limitations, not bugs — they deserve their own diagnostic codes with helpful messages.
 
@@ -412,6 +448,49 @@ An independent verification pass confirmed the assessment's accuracy with the fo
 
 ---
 
+### 3.5 Add `--explain` CLI Command
+
+**What:** `DiagnosticExplanations.cs` has detailed explanations (description, example, fix, category) for all 134+ diagnostic codes, but there's no CLI way to access them. Users who see `error[SHP0201]` have no way to look up what it means beyond reading the error message.
+
+**Why it matters:** Rust's `rustc --explain E0308` is one of its most-loved features. It turns cryptic error codes into learning moments. The infrastructure is already built — this just exposes it.
+
+**Tasks:**
+
+- [ ] **3.5a** Add an `explain` subcommand to the CLI: `sharpyc explain SHP0201`
+- [ ] **3.5b** The command should print: code, title, description, example (if present), fix (if present), and category
+- [ ] **3.5c** Format output for terminal readability (use the existing color support from `DiagnosticRenderer`)
+- [ ] **3.5d** Handle unknown codes gracefully: "Unknown diagnostic code 'SHP9999'. Use `sharpyc explain --list` to see all codes."
+- [ ] **3.5e** Add `--list` flag to print all codes with their titles (one line each)
+- [ ] **3.5f** Add test for a known code and an unknown code
+
+**Guidance:**
+- This is a small, self-contained feature with no dependencies on other items. Good candidate for a first contribution.
+- The `DiagnosticExplanations.GetExplanation(string code)` method already exists — the CLI just needs to call it and format the output.
+- Model after `rustc --explain` for familiarity.
+
+---
+
+### 3.6 Semantic Error Recovery Across Phases
+
+**What:** The TypeChecker throws `SemanticAnalysisException` on structural errors (e.g., an unresolvable import), which is caught in `Compiler.cs:268` and aborts the entire semantic phase. A single bad import blocks all type error reporting for every function in the file.
+
+**Why it matters:** Users who have 10 functions and one bad import see only the import error — zero type errors from any function. Other compilers (Roslyn, TypeScript) continue type-checking the rest of the file with the unresolved import treated as `Unknown`, giving users the full picture. This is distinct from the within-phase `ContinueAfterError` mechanism (which works well) — the issue is cross-phase abort.
+
+**Tasks:**
+
+- [ ] **3.6a** In `Compiler.cs`, when import resolution fails, record the diagnostics but continue to type checking rather than aborting
+- [ ] **3.6b** Ensure unresolved imports produce `Unknown`-typed module symbols so the type checker can continue (the `Unknown` type's `IsAssignableTo` returning `true` means downstream code won't cascade)
+- [ ] **3.6c** Add a file-based test: file with one bad import and one valid function with a type error → both errors should be reported
+- [ ] **3.6d** Verify that circular import detection still aborts cleanly (infinite loops must still be caught)
+
+**Guidance:**
+- This is more complex than most items because it touches the phase boundary logic in `Compiler.cs`. The key principle: individual phase failures should produce diagnostics, not exceptions. The `SemanticAnalysisException` pattern is the anti-pattern here — it converts a recoverable situation (bad import) into an unrecoverable one (abort all analysis).
+- The `ContinueAfterError` mechanism in the TypeChecker already handles the within-phase case well. This item extends that philosophy to cross-phase boundaries.
+- Be conservative: if import resolution fails, type checking runs with missing symbols. If type resolution fails, type checking runs with `Unknown` types. If type checking fails, codegen is skipped (errors are errors). The point is to maximize the diagnostics the user sees.
+- This is a significant UX improvement for multi-file projects where import errors are common during development.
+
+---
+
 ## Tier 4: LSP & Tooling Readiness
 
 **Priority:** Address to prepare for LSP server, IDE integration, and advanced tooling. These don't build the tools themselves but remove blockers and establish the right contracts.
@@ -457,9 +536,9 @@ An independent verification pass confirmed the assessment's accuracy with the fo
 
 ### 4.3 Tighten Public API Surface
 
-**What:** ~80+ public types in `Sharpy.Compiler`, many are implementation details (`ControlFlowGraphBuilder`, `OverloadIndex`, `NameMangler`, `TypeMapper`, etc.). Only 2 types are `internal`.
+**What:** ~212 public types in `Sharpy.Compiler`, many are implementation details (`ControlFlowGraphBuilder`, `OverloadIndex`, `NameMangler`, `TypeMapper`, etc.). Only 1–2 types are `internal`.
 
-**Why it matters:** A large public API surface is a maintenance burden. Every public type is a compatibility promise. External tools (LSP, build systems) should use a curated API, not reach into internals.
+**Why it matters:** A large public API surface is a maintenance burden. Every public type is a compatibility promise. With ~212 public types and only 1–2 internal, almost nothing is hidden. External tools (LSP, build systems) should use a curated API, not reach into internals.
 
 **Tasks:**
 
@@ -524,6 +603,30 @@ An independent verification pass confirmed the assessment's accuracy with the fo
 
 ---
 
+### 4.6 Add Comprehension Test Coverage
+
+**What:** List/dict/set comprehensions are implemented in the emitter, but the file-based test fixtures have only 1 error test (`comprehension_condition_not_bool.spy`). No success-path fixtures test that basic comprehensions compile and execute correctly. Nested comprehensions and tuple unpacking in comprehensions are known `NotImplementedException` sites (see 2.1) with no test fixtures verifying the error diagnostic.
+
+**Why it matters:** Comprehensions are a core Python feature that Sharpy users will expect to work. Without test fixtures, regressions in comprehension codegen would be invisible. Additionally, the `NotImplementedException` sites for nested/tuple-unpacking comprehensions should have `.error` fixtures so that when 2.1 converts them to proper diagnostics, the tests automatically verify the new codes.
+
+**Tasks:**
+
+- [ ] **4.6a** Add success-path file-based tests:
+  - `collections/list_comprehension.spy` — basic `[x * 2 for x in range(5)]`
+  - `collections/dict_comprehension.spy` — basic `{k: v for k, v in items}`
+  - `collections/set_comprehension.spy` — basic `{x for x in items}`
+  - `collections/comprehension_with_condition.spy` — `[x for x in range(10) if x > 5]`
+- [ ] **4.6b** Add error-path file-based tests:
+  - `errors/nested_comprehension.spy` + `.error` — should report `SHP0515` (or current error message) for `[x for row in matrix for x in row]`
+  - `errors/tuple_unpacking_comprehension.spy` + `.error` — should report `SHP0516` for `[v for k, v in items]`
+- [ ] **4.6c** Verify Python behavior for each test case before writing expected output
+
+**Guidance:**
+- The success-path tests are the more important ones — they protect the working codegen from regression. The error-path tests are forward-looking for item 2.1.
+- Keep the test programs simple and focused. One comprehension per file.
+
+---
+
 ## Tier 5: Efficiency & Contributability
 
 **Priority:** Longer-term quality of life. These improve the development experience and compiler performance for multi-file projects.
@@ -561,7 +664,7 @@ An independent verification pass confirmed the assessment's accuracy with the fo
 
 - [ ] **5.2a** Remove `CodeGenContext._indentLevel`, `Indent()`, `Dedent()`, `GetIndent()` — legacy string-based codegen, confirmed unused
 - [ ] **5.2b** Either repurpose `CodeGenException` (see 2.1e) or remove it if still unused after 2.1
-- [ ] **5.2c** Remove unused `hasTrailingComma` variable in `Parser.Types.cs:320` (also fixes build warning)
+- [ ] **5.2c** Remove `hasTrailingComma` variable in `Parser.Types.cs:320` — assigned at lines 320, 331, 336 but never read. The build warning was fixed (possibly by SDK change) but the dead variable remains.
 - [ ] **5.2d** Consider moving `Expression.Future.cs`, `Statement.Future.cs`, `Pattern.cs` (419 lines of v0.2.x placeholder AST nodes) to a `future/` branch or behind a `#if FUTURE_FEATURES` conditional. If keeping them, add a prominent comment: "These types are defined for forward compatibility but have NO parser, semantic, or codegen support. Do not reference them."
 
 **Guidance:**
@@ -726,13 +829,17 @@ Items ordered by impact-to-effort ratio, accounting for dependencies. Earlier it
 |---|------|-----------|
 | 1 | **1.1** Silent statement drops | Highest severity: wrong output with no indication. Small fix (4 call sites). |
 | 2 | **1.2** UnknownType pass-through | Second highest severity: same class of silent-wrong-output bug. |
-| 3 | **1.5** Fix build warnings + `TreatWarningsAsErrors` | 1.5h alone prevents entire categories of future bugs. High leverage. |
-| 4 | **2.1** NotImplementedException → diagnostics | Biggest UX improvement. Uses infrastructure proven by #1. |
+| 3 | **1.5h** `TreatWarningsAsErrors` | Warnings already fixed; verify and add TreatWarningsAsErrors to lock it in. One-line change, prevents entire categories of future bugs. |
+| 4 | **2.1** NotImplementedException → diagnostics | Biggest UX improvement. Uses infrastructure proven by #1. 16 throw sites → proper diagnostics. |
 | 5 | **2.6** MaxErrors truncation notice | Small fix, disproportionate UX value. |
 | 6 | **2.2** SemanticBinding freeze assertions | Protects the most critical architectural invariant. Small change. |
-| 7 | **2.4** Lexer error recovery | High UX impact for multi-error workflows. Medium complexity. |
-| 8 | **1.3** Comparison chain re-evaluation | Correctness bug with spec violation. Moderate complexity. |
-| 9 | **5.4** Compiler determinism test | Small test, prerequisite for incremental compilation (5.1). |
-| 10 | **1.4** IsFloatExpression heuristic | Correctness bug, but narrower impact than 1.3. |
+| 7 | **5.4** Compiler determinism test | Small test, hard prerequisite for incremental compilation (5.1). Promoted from Tier 5. |
+| 8 | **2.4** Lexer error recovery | High UX impact for multi-error workflows. Medium complexity. |
+| 9 | **1.3** Comparison chain re-evaluation | Correctness bug with spec violation. Moderate complexity. |
+| 10 | **1.4** IsFloatExpression heuristic | Correctness bug, but narrower impact than 1.3. Simple fix using existing SemanticInfo. |
+| 11 | **3.5** `--explain` CLI command | Low effort, high UX value. Infrastructure already exists. Good first contribution. |
+| 12 | **3.6** Semantic error recovery across phases | High UX impact for multi-file projects. More complex but addresses a major frustration. |
+| 13 | **5.5** Diagnostic deduplication cleanup | Fragile dedup logic actively risks confusing users. Promote above dunder names. |
+| 14 | **4.6** Comprehension test coverage | Protects working codegen, creates test scaffolding for 2.1 error-path fixtures. |
 
-Items 11–25 (remaining) can be addressed in tier order after the top 10. Items 3.4 and 4.1 (unify compilation paths) are high-value prerequisites for LSP work and should be prioritized when LSP becomes a focus.
+Items 15–29 (remaining) can be addressed in tier order after the top 14. Items 3.4 and 4.1 (unify compilation paths) are high-value prerequisites for LSP work and should be prioritized when LSP becomes a focus. Item 4.3 (tighten API surface) is more impactful than originally assessed given ~212 public types — sequence it after 4.1.
