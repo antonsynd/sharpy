@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text.Json;
+using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Compiler.Discovery.Caching;
 
@@ -11,6 +12,7 @@ namespace Sharpy.Compiler.Discovery.Caching;
 public class OverloadIndexCache
 {
     private readonly string _cacheDirectory;
+    private readonly ICompilerLogger _logger;
     private const int MaxRetries = 3;
     private const int RetryDelayMs = 100;
     private const int CurrentCacheFormatVersion = 2;
@@ -27,7 +29,7 @@ public class OverloadIndexCache
     /// <summary>
     /// Create a cache using the default cache directory (~/.sharpy/cache/overload-index/).
     /// </summary>
-    public OverloadIndexCache() : this(null)
+    public OverloadIndexCache() : this(null, null)
     {
     }
 
@@ -38,8 +40,11 @@ public class OverloadIndexCache
     /// Custom cache directory path. If null, uses the default location.
     /// Useful for tests to avoid conflicts between parallel test runs.
     /// </param>
-    public OverloadIndexCache(string? cacheDirectory)
+    /// <param name="logger">Optional logger. If null, uses NullLogger.</param>
+    public OverloadIndexCache(string? cacheDirectory, ICompilerLogger? logger = null)
     {
+        _logger = logger ?? NullLogger.Instance;
+
         if (cacheDirectory != null)
         {
             _cacheDirectory = cacheDirectory;
@@ -193,7 +198,7 @@ public class OverloadIndexCache
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine($"Warning: Failed to delete cache file '{file}': {ex.Message}");
+                    _logger.LogWarning($"Failed to delete cache file '{file}': {ex.Message}", 0, 0);
                 }
             }
         }
@@ -226,7 +231,7 @@ public class OverloadIndexCache
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Failed to delete old cache file '{file}': {ex.Message}");
+                _logger.LogWarning($"Failed to delete old cache file '{file}': {ex.Message}", 0, 0);
             }
         }
     }

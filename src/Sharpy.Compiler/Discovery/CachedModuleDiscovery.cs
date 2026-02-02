@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Sharpy.Compiler.Discovery.Caching;
+using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.Discovery;
@@ -20,18 +21,19 @@ public class CachedModuleDiscovery
     /// <summary>
     /// Create a discovery instance using the default cache directory.
     /// </summary>
-    public CachedModuleDiscovery() : this(null)
+    public CachedModuleDiscovery() : this(null, null)
     {
     }
 
     /// <summary>
-    /// Create a discovery instance with a custom cache.
+    /// Create a discovery instance with a custom cache and logger.
     /// </summary>
     /// <param name="cache">Custom cache instance. If null, creates a default cache.</param>
-    public CachedModuleDiscovery(OverloadIndexCache? cache)
+    /// <param name="logger">Optional logger. If null, uses NullLogger.</param>
+    public CachedModuleDiscovery(OverloadIndexCache? cache, ICompilerLogger? logger = null)
     {
-        _cache = cache ?? new OverloadIndexCache();
-        _builder = new OverloadIndexBuilder();
+        _cache = cache ?? new OverloadIndexCache(null, logger);
+        _builder = new OverloadIndexBuilder(logger);
         _typeMapper = new TypeMapper();
     }
 

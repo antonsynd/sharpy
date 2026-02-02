@@ -22,8 +22,8 @@ public class ModuleRegistry
 
     public ModuleRegistry(ICompilerLogger? logger = null, OverloadIndexCache? cache = null)
     {
-        _discovery = new CachedModuleDiscovery(cache);
         _logger = logger ?? NullLogger.Instance;
+        _discovery = new CachedModuleDiscovery(cache, _logger);
     }
 
     public DiagnosticBag Diagnostics => _diagnostics;
@@ -231,9 +231,10 @@ public class ModuleRegistry
                     }
                 }
             }
-            catch (ReflectionTypeLoadException)
+            catch (ReflectionTypeLoadException ex)
             {
                 // Skip assemblies that can't be fully loaded
+                _logger.LogDebug($"Skipping assembly '{assembly.GetName().Name}': {ex.Message}");
             }
         }
 

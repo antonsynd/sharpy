@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Discovery;
+using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -31,9 +32,9 @@ public class BuiltinRegistry
         "Some", "Ok", "Err"
     };
 
-    public BuiltinRegistry()
+    public BuiltinRegistry(ICompilerLogger? logger = null)
     {
-        _discovery = new CachedModuleDiscovery();
+        _discovery = new CachedModuleDiscovery(null, logger);
         LoadBuiltins();
     }
 
