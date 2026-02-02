@@ -140,7 +140,7 @@ public class ImportResolver
                 {
                     _logger.LogDebug($"  Module resolved: {moduleInfo.Path}");
                     _logger.LogDebug($"  Exported symbols: [{string.Join(", ", moduleInfo.ExportedSymbols.Keys)}]");
-                    var reExportedSymbols = fromImport.ReExportedSymbols ?? moduleInfo.ExportedSymbols;
+                    var reExportedSymbols = _semanticBinding.GetReExportedSymbols(fromImport) ?? moduleInfo.ExportedSymbols;
 
                     if (fromImport.ImportAll)
                     {

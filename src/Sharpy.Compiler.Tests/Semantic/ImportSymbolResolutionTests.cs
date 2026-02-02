@@ -877,6 +877,43 @@ def foo():
     }
 
     [Fact]
+    public void ResolveAllImports_FromImportAlias_RegistersUnderAlias()
+    {
+        CreateModuleFile("aliasmod", @"
+def original_func():
+    pass
+");
+
+        var resolver = new ImportResolver(_logger);
+        resolver.SetCurrentModule(_testDir);
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+
+        var fromImport = new FromImportStatement
+        {
+            Module = "aliasmod",
+            Names = new List<ImportAlias>
+            {
+                new ImportAlias { Name = "original_func", AsName = "aliased_func", LineStart = 1, ColumnStart = 1 }
+            }.ToImmutableArray(),
+            ImportAll = false,
+            LineStart = 1,
+            ColumnStart = 1
+        };
+
+        var module = new Module { Body = ImmutableArray.Create<Statement>(fromImport) };
+
+        resolver.ResolveAllImports(module, symbolTable, _testDir);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+        // Should be registered under the alias, not the original name
+        var aliasedSymbol = symbolTable.Lookup("aliased_func");
+        Assert.NotNull(aliasedSymbol);
+        Assert.Equal(SymbolKind.Function, aliasedSymbol.Kind);
+    }
+
+    [Fact]
     public void ResolveAllImports_ImportAll_RegistersPublicSymbols()
     {
         CreateModuleFile("allmod", @"
