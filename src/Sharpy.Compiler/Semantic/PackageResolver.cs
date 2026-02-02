@@ -48,7 +48,8 @@ public class PackageResolver
             }
 
             var source = File.ReadAllText(initPath);
-            var lexer = new Lexer.Lexer(source, _logger);
+            var sourceText = new Text.SourceText(source, initPath);
+            var lexer = new Lexer.Lexer(sourceText, _logger);
             var tokens = lexer.TokenizeAll();
             var parser = new Parser.Parser(tokens, _logger);
             var module = parser.ParseModule();
