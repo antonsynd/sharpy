@@ -2,6 +2,7 @@
 
 > **Author:** Staff Compiler Engineer Assessment (Claude Opus 4.5)
 > **Date:** 2026-02-02
+> **Reviewed:** 2026-02-02 (independent verification pass — see Verification Notes below)
 > **Branch:** `dev` (commit `578d0dd3`)
 > **Scope:** Robustness, usability, ergonomics, efficiency, debuggability, contributability
 
@@ -11,7 +12,7 @@
 
 The Sharpy compiler has strong fundamentals: clean architecture, ~4,800 test annotations + 315 file-based fixtures + fuzz testing, zero TODO/FIXME/HACK comments, zero mutable static state, a Rust-style diagnostic system, and CancellationToken-aware pipeline. The codebase is ahead of most compilers at this stage.
 
-This document identifies 23 improvements across 5 priority tiers. Each item includes rationale, actionable subtasks suitable for a junior engineer or Claude Sonnet, and implementation guidance aligned with the codebase's axioms (`.NET > Type Safety > Python Syntax`).
+This document identifies 25 improvements across 5 priority tiers. Each item includes rationale, actionable subtasks suitable for a junior engineer or Claude Sonnet, and implementation guidance aligned with the codebase's axioms (`.NET > Type Safety > Python Syntax`).
 
 ### Metrics at Time of Assessment
 
@@ -26,6 +27,26 @@ This document identifies 23 improvements across 5 priority tiers. Each item incl
 | `NotImplementedException` in codegen | 15 |
 | Silent statement drops in emitter | 4 locations |
 | Open `See: #NNN` references | 22 across 14 files |
+
+### Verification Notes (2026-02-02)
+
+An independent verification pass confirmed the assessment's accuracy with the following corrections and additions:
+
+**Corrections made:**
+1. **1.1c, 1.1 Guidance** — Original text stated `CodeGenContext` doesn't have a `DiagnosticBag`. Verified this is incorrect: `CodeGenContext.cs` already has `_diagnostics` (line 14), `Diagnostics` property (line 30), and `AddError` method (line 40). The real issue is that the 4 silent-drop locations don't call `_context.AddError()`. Text updated.
+2. **2.1a** — Diagnostic codes `SHP0510`–`SHP0514` conflicted with `SHP0510` already allocated to item 1.1a. Renumbered to `SHP0515`–`SHP0519`.
+3. **2.1c** — Referenced a prerequisite from 1.1c that doesn't exist (adding DiagnosticBag to CodeGenContext). Rewritten to say "use `_context.AddError()`" since the infrastructure already exists.
+
+**Items added by verification:**
+4. **2.6** — TypeChecker silently discards errors after `MaxErrors` when `ContinueAfterError=true` (`TypeChecker.Utilities.cs:934-938`). No truncation notice.
+5. **5.4** — Priority promotion note added. Determinism is a hard prerequisite for incremental compilation (5.1).
+6. **5.6** — ~227 scattered dunder method name string literals should be extracted to a constants class.
+7. **Appendix D** — Recommended implementation order added.
+
+**Additional observations (not added as items):**
+- Diagnostic deduplication logic (`TypeChecker.cs:216-244`) uses position+message and position+code matching — more fragile than the 5.5 description implies, but the recommended fix (prevent duplication at source) is correct.
+- `ImportResolver` logs warnings to `ICompilerLogger` instead of `DiagnosticBag` for missing re-exported symbols. This could be a separate item but is minor.
+- Semantic data materialization is duplicated between `Compiler.cs` and `ProjectCompiler.cs`. Not a correctness issue but a maintenance concern for future refactoring.
 
 ---
 
@@ -51,12 +72,12 @@ This document identifies 23 improvements across 5 priority tiers. Each item incl
 
 - [ ] **1.1a** Add a new diagnostic code `SHP0510` ("Internal: unrecognized statement type '{0}' was not emitted. This is a compiler bug — please report it.") to `DiagnosticCodes.cs`
 - [ ] **1.1b** Add a corresponding entry in `DiagnosticExplanations.cs` with the "compiler bug" category, linking to the GitHub issues page
-- [ ] **1.1c** In each of the 4 locations, replace the silent null/ignore with a call that emits `SHP0510` to the diagnostic bag (the `RoslynEmitter` has access to `_context` which should be extended to carry a `DiagnosticBag` if it doesn't already; check `CodeGenContext`)
+- [ ] **1.1c** In each of the 4 locations, replace the silent null/ignore with a call to `_context.AddError(...)` emitting `SHP0510`. (`CodeGenContext` already has a `DiagnosticBag` via the `_diagnostics` field, a `Diagnostics` property, and an `AddError` method — see `CodeGenContext.cs:14,30,40`.)
 - [ ] **1.1d** Add a unit test that constructs a mock AST with a custom statement type and verifies the diagnostic is emitted
 - [ ] **1.1e** Verify all existing tests still pass — no existing statement type should be hitting these default cases
 
 **Guidance:**
-- The emitter currently doesn't have direct access to `DiagnosticBag`. You'll need to either (a) add a `DiagnosticBag` property to `CodeGenContext`, or (b) collect emitter warnings in a list on `RoslynEmitter` and expose them post-emission. Option (a) is cleaner and aligns with how every other pipeline phase works.
+- `CodeGenContext` already has a `DiagnosticBag` (`_diagnostics` field at line 14, `Diagnostics` property at line 30, `AddError` method at line 40 of `CodeGenContext.cs`). The fix is simply calling `_context.AddError(...)` at each of the 4 silent-drop locations.
 - Do NOT throw an exception here. The compiler should emit the diagnostic and continue generating the rest of the file, so the user sees the full picture.
 - The `SHP0510` code should use the `SHP05xx` range reserved for codegen errors, consistent with existing codes like `SHP0500`–`SHP0507`.
 
@@ -172,14 +193,14 @@ This document identifies 23 improvements across 5 priority tiers. Each item incl
 
 **Tasks:**
 
-- [ ] **2.1a** Define new diagnostic codes in `DiagnosticCodes.cs`:
-  - `SHP0510` — "Nested comprehensions (multiple `for` clauses) are not yet supported"
-  - `SHP0511` — "Tuple unpacking in comprehensions is not yet supported"
-  - `SHP0512` — "Complex tuple unpacking (non-identifier targets) is not yet supported"
-  - `SHP0513` — "Unsupported expression/statement type in code generation"
-  - `SHP0514` — "Unsupported operator in code generation"
+- [ ] **2.1a** Define new diagnostic codes in `DiagnosticCodes.cs` (note: `SHP0510` is already allocated to 1.1a for silent statement drops):
+  - `SHP0515` — "Nested comprehensions (multiple `for` clauses) are not yet supported"
+  - `SHP0516` — "Tuple unpacking in comprehensions is not yet supported"
+  - `SHP0517` — "Complex tuple unpacking (non-identifier targets) is not yet supported"
+  - `SHP0518` — "Unsupported expression/statement type in code generation"
+  - `SHP0519` — "Unsupported operator in code generation"
 - [ ] **2.1b** Add entries in `DiagnosticExplanations.cs` for each code. Include a workaround in the "Fix" field (e.g., "Use a `for` loop instead of a nested comprehension")
-- [ ] **2.1c** Ensure `CodeGenContext` has a `DiagnosticBag` (see 1.1c — these share the same prerequisite)
+- [ ] **2.1c** Use `_context.AddError(...)` at each throw site (`CodeGenContext` already has a `DiagnosticBag` — see 1.1c verification note)
 - [ ] **2.1d** Replace each `throw new NotImplementedException(...)` with a diagnostic emission + a safe fallback:
   - For expression-position throws: emit the diagnostic, then return a `ThrowExpression` of `NotImplementedException` (so the generated C# at least compiles and throws at runtime with a clear message)
   - For statement-position throws: emit the diagnostic, then return an empty statement or a comment
@@ -279,6 +300,24 @@ This document identifies 23 improvements across 5 priority tiers. Each item incl
 **Guidance:**
 - Use `LogDebug` for messages that are only interesting during development (e.g., "Skipping unmappable method"). Use `LogWarning` for conditions that might indicate a problem (e.g., "Failed to delete cache file").
 - The `ICompilerLogger` is already threaded through most of the compiler. The `Discovery/Caching/` classes are outliers because they predate the logging infrastructure.
+
+---
+
+### 2.6 TypeChecker Silent Error Discarding After MaxErrors
+
+**What:** `TypeChecker.Utilities.cs:934-938` — When `ContinueAfterError=true` and the error count reaches `MaxErrors`, the `AddError` method silently returns without recording the diagnostic. No truncation notice is emitted.
+
+**Why it matters:** The user sees N errors but has no indication that additional errors were suppressed. Other compilers (GCC, Clang, Roslyn) emit a "too many errors; stopping" diagnostic so the user knows the output is truncated.
+
+**Tasks:**
+
+- [ ] **2.6a** When `MaxErrors` is reached, emit one final diagnostic: `SHP0905` ("Too many errors ({0}); further errors suppressed. Use `--max-errors` to increase the limit.")
+- [ ] **2.6b** Add a boolean flag `_maxErrorsReported` to prevent emitting the truncation notice more than once
+- [ ] **2.6c** Add a test: set `MaxErrors=3`, produce 5 errors, verify exactly 4 diagnostics (3 errors + 1 truncation notice)
+
+**Guidance:**
+- The truncation notice should be a warning, not an error, so it doesn't count toward the error limit.
+- This also applies to the Lexer and Parser if they adopt `MaxErrors` (see 2.4c).
 
 ---
 
@@ -559,6 +598,8 @@ This document identifies 23 improvements across 5 priority tiers. Each item incl
 
 ### 5.4 Compiler Determinism Test
 
+> **Priority note:** Consider promoting this to Tier 2. Determinism is a hard prerequisite for incremental compilation (5.1) — if the compiler isn't deterministic, content-hash-based caching will always miss. Implementing this test early catches non-determinism before it becomes entrenched.
+
 **What:** No test verifying that the same input always produces the same generated C# output.
 
 **Why it matters:** Determinism is a prerequisite for content-based caching (incremental compilation). If the compiler produces different C# for the same input, the content hash will change and the cache will always miss.
@@ -591,6 +632,26 @@ This document identifies 23 improvements across 5 priority tiers. Each item incl
 **Guidance:**
 - The principle is: each error should be reported by exactly one component. The TypeChecker reports type-level errors during traversal; validators report structural/pattern errors post-traversal. If there's overlap, the later component should check whether the error was already reported.
 - A simple approach: `OperatorValidator` checks `diagnostics.GetErrors().Any(e => e.Span == currentSpan)` before adding a new error. This is O(n) per check but the error list is typically small.
+
+---
+
+### 5.6 Extract Dunder Method Name Constants
+
+**What:** ~227 scattered string literals like `"__init__"`, `"__len__"`, `"__iter__"`, `"__str__"`, `"__add__"`, etc. across semantic analysis, validators, and code generation. Each is a separate typo risk.
+
+**Why it matters:** A typo in a dunder name string (e.g., `"__inti__"` instead of `"__init__"`) creates a silent bug — the method won't be recognized as special, and no error is emitted. Extracting these to a constants class provides compile-time safety and a single source of truth.
+
+**Tasks:**
+
+- [ ] **5.6a** Create `Semantic/DunderNames.cs` (or `Constants/DunderNames.cs`) with `internal static class DunderNames` containing `public const string Init = "__init__";`, `public const string Len = "__len__";`, etc.
+- [ ] **5.6b** Replace all scattered string literals with references to `DunderNames.*` across the codebase. Use `replace_all` or a bulk search-and-replace to catch all instances.
+- [ ] **5.6c** Verify all tests pass — this is a mechanical refactor with no behavior change
+- [ ] **5.6d** Add a code review note or analyzer rule that prohibits new dunder name string literals outside `DunderNames.cs`
+
+**Guidance:**
+- This is a tedious but safe refactor. Do it in a single commit to avoid churn.
+- Include names used in `NameMangler`, `TypeChecker`, `SignatureValidator`, `ProtocolValidator`, `OperatorValidator`, `BuiltinRegistry`, and `RoslynEmitter`.
+- Don't go overboard extracting every string — focus on dunder names (`__xxx__`) which have the highest typo risk and semantic significance.
 
 ---
 
@@ -654,3 +715,24 @@ When implementing these items, always verify Python behavior (`python3 -c "..."`
 | File-based tests | `src/Sharpy.Compiler.Tests/Integration/FileBasedIntegrationTests.cs` |
 | Test fixtures | `src/Sharpy.Compiler.Tests/Integration/TestFixtures/` |
 | Fuzz tests | `src/Sharpy.Compiler.Tests/Fuzz/FuzzTests.cs` |
+
+---
+
+## Appendix D: Recommended Implementation Order
+
+Items ordered by impact-to-effort ratio, accounting for dependencies. Earlier items unblock later ones.
+
+| # | Item | Rationale |
+|---|------|-----------|
+| 1 | **1.1** Silent statement drops | Highest severity: wrong output with no indication. Small fix (4 call sites). |
+| 2 | **1.2** UnknownType pass-through | Second highest severity: same class of silent-wrong-output bug. |
+| 3 | **1.5** Fix build warnings + `TreatWarningsAsErrors` | 1.5h alone prevents entire categories of future bugs. High leverage. |
+| 4 | **2.1** NotImplementedException → diagnostics | Biggest UX improvement. Uses infrastructure proven by #1. |
+| 5 | **2.6** MaxErrors truncation notice | Small fix, disproportionate UX value. |
+| 6 | **2.2** SemanticBinding freeze assertions | Protects the most critical architectural invariant. Small change. |
+| 7 | **2.4** Lexer error recovery | High UX impact for multi-error workflows. Medium complexity. |
+| 8 | **1.3** Comparison chain re-evaluation | Correctness bug with spec violation. Moderate complexity. |
+| 9 | **5.4** Compiler determinism test | Small test, prerequisite for incremental compilation (5.1). |
+| 10 | **1.4** IsFloatExpression heuristic | Correctness bug, but narrower impact than 1.3. |
+
+Items 11–25 (remaining) can be addressed in tier order after the top 10. Items 3.4 and 4.1 (unify compilation paths) are high-value prerequisites for LSP work and should be prioritized when LSP becomes a focus.
