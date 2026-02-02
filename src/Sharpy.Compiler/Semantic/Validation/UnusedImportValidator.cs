@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// Warns about imported names that are never referenced in the module.
 /// Skips wildcard imports (from X import *) since tracking individual usage is complex.
 /// </summary>
-public class UnusedImportValidator : SemanticValidatorBase
+internal class UnusedImportValidator : SemanticValidatorBase
 {
     public override string Name => "UnusedImportValidator";
     public override int Order => 430;

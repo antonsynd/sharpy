@@ -5,7 +5,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// Converts Sharpy naming conventions to C# naming conventions
 /// </summary>
-public static class NameMangler
+internal static class NameMangler
 {
     // C# keywords that need @ prefix when used as identifiers
     private static readonly HashSet<string> _csharpKeywords = new()

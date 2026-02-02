@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Statement generation (control flow, assignments, try/catch)
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     private StatementSyntax? GenerateBodyStatement(Statement stmt)
     {

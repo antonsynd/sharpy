@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.Semantic;
 /// Handles loading and discovery of functions from external assemblies.
 /// Thread-safe for concurrent use.
 /// </summary>
-public class ModuleRegistry
+internal class ModuleRegistry
 {
     private readonly CachedModuleDiscovery _discovery;
     private readonly ICompilerLogger _logger;

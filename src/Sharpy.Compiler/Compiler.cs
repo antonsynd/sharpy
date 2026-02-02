@@ -737,7 +737,7 @@ public class CompilationResult
     public Module? Module { get; init; }
     public SymbolTable? SymbolTable { get; init; }
     public SemanticInfo? SemanticInfo { get; init; }
-    public ModuleRegistry? ModuleRegistry { get; init; }
+    internal ModuleRegistry? ModuleRegistry { get; init; }
     public string? GeneratedCSharpCode { get; init; }
 
     /// <summary>
@@ -770,7 +770,7 @@ public class CompilationResult
     /// The import resolver with loaded module information.
     /// Available for tooling that needs resolved module info (e.g., LSP go-to-definition across modules).
     /// </summary>
-    public ImportResolver? ImportResolver { get; init; }
+    internal ImportResolver? ImportResolver { get; init; }
 }
 
 /// <summary>
@@ -794,7 +794,7 @@ public class ProjectCompilationResult
     /// The dependency graph built during compilation.
     /// Available for tooling/analysis (e.g., incremental compilation, build order visualization).
     /// </summary>
-    public Project.DependencyGraph? DependencyGraph { get; init; }
+    internal Project.DependencyGraph? DependencyGraph { get; init; }
 
     /// <summary>
     /// The ProjectModel containing all CompilationUnits.

@@ -11,7 +11,7 @@ namespace Sharpy.Compiler.Discovery;
 /// Uses reflection on first load, then caches results for subsequent loads.
 /// Thread-safe for concurrent use.
 /// </summary>
-public class CachedModuleDiscovery
+internal class CachedModuleDiscovery
 {
     private readonly OverloadIndexCache _cache;
     private readonly OverloadIndexBuilder _builder;

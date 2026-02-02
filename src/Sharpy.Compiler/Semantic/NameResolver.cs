@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// First pass: Resolve all names and build symbol tables
 /// </summary>
-public class NameResolver
+internal class NameResolver
 {
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;

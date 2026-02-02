@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// TypeChecker partial class: Type checking utilities and validation
 /// </summary>
-public partial class TypeChecker
+internal partial class TypeChecker
 {
     private Dictionary<string, SemanticType> ExtractNarrowedTypes(Expression condition, bool isPositiveBranch)
     {

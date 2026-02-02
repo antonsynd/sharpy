@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// TypeChecker partial class: Expression checking (operators, member access, calls, collections)
 /// </summary>
-public partial class TypeChecker
+internal partial class TypeChecker
 {
     public SemanticType CheckExpression(Expression expr)
     {

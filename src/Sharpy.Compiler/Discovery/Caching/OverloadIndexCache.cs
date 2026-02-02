@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Discovery.Caching;
 /// Cache location: ~/.sharpy/cache/overload-index/ (or custom directory if specified)
 /// Thread-safe for concurrent access from multiple processes.
 /// </summary>
-public class OverloadIndexCache
+internal class OverloadIndexCache
 {
     private readonly string _cacheDirectory;
     private readonly ICompilerLogger _logger;
@@ -266,7 +266,7 @@ public class OverloadIndexCache
 /// <summary>
 /// Information about the cache state.
 /// </summary>
-public class CacheInfo
+internal class CacheInfo
 {
     public string CacheDirectory { get; set; } = string.Empty;
     public int CachedAssemblies { get; set; }

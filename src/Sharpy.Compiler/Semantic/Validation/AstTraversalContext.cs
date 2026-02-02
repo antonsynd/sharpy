@@ -15,7 +15,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// // CurrentClass is automatically restored
 /// </code>
 /// </remarks>
-public class AstTraversalContext
+internal class AstTraversalContext
 {
     private readonly Stack<TypeSymbol?> _classStack = new();
     private readonly Stack<FunctionSymbol?> _functionStack = new();

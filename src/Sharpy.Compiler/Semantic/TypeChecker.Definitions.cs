@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// TypeChecker partial class: Type definition checking (functions, classes, structs, interfaces, enums)
 /// </summary>
-public partial class TypeChecker
+internal partial class TypeChecker
 {
     private void CheckFunction(FunctionDef functionDef)
     {

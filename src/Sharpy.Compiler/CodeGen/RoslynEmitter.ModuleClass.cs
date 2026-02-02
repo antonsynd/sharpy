@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Module class generation
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     private string ConvertModuleNameToNamespace(string moduleName)
     {

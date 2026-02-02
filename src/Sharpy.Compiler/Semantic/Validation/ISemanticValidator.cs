@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - Parallel: Validators should not hold state between calls
 /// - ADTs: New validators (e.g., ExhaustivenessValidator) can be added
 /// </summary>
-public interface ISemanticValidator
+internal interface ISemanticValidator
 {
     /// <summary>
     /// Unique identifier for this validator (for logging/debugging).
@@ -38,7 +38,7 @@ public interface ISemanticValidator
 /// Base class providing common functionality for validators.
 /// Validators can inherit from this or implement ISemanticValidator directly.
 /// </summary>
-public abstract class SemanticValidatorBase : ISemanticValidator
+internal abstract class SemanticValidatorBase : ISemanticValidator
 {
     public abstract string Name { get; }
     public abstract int Order { get; }

@@ -36,7 +36,7 @@ namespace Sharpy.Compiler.Project;
 /// var groups = graph.GetParallelizableGroups(); // [{utils.spy}, {models.spy}, {main.spy}]
 /// </code>
 /// </example>
-public class DependencyGraph
+internal class DependencyGraph
 {
     private static readonly ImmutableHashSet<string> EmptySet = ImmutableHashSet<string>.Empty;
 

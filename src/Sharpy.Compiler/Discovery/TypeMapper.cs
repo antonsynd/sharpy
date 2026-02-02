@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Discovery;
 /// Maps CLR types to Sharpy SemanticType instances.
 /// Thread-safe for concurrent use.
 /// </summary>
-public class TypeMapper
+internal class TypeMapper
 {
     private readonly ConcurrentDictionary<Type, SemanticType> _typeCache = new();
 

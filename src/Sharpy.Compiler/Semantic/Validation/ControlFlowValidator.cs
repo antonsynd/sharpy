@@ -16,7 +16,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - Missing return path detection (via exit reachability)
 /// - Break/continue validation (via loop context tracking)
 /// </remarks>
-public class ControlFlowValidator : SemanticValidatorBase
+internal class ControlFlowValidator : SemanticValidatorBase
 {
     public override string Name => "ControlFlowValidator";
     public override int Order => 400; // After type checking (300)

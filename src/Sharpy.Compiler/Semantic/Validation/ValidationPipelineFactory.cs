@@ -5,7 +5,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// <summary>
 /// Factory for creating pre-configured validation pipelines.
 /// </summary>
-public static class ValidationPipelineFactory
+internal static class ValidationPipelineFactory
 {
     /// <summary>
     /// Create the default pipeline with all standard validators.

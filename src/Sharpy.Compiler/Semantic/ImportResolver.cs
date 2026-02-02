@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Semantic;
 /// Resolves imports and loads symbols from imported modules (both .spy files and .NET assemblies).
 /// Delegates module loading/caching/symbol-extraction to <see cref="ModuleLoader"/>.
 /// </summary>
-public class ImportResolver
+internal class ImportResolver
 {
     private readonly ICompilerLogger _logger;
     private readonly DiagnosticBag _diagnostics = new();

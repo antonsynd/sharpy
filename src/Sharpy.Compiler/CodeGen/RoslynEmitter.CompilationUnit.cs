@@ -11,7 +11,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Compilation unit, namespace and import generation
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     public CompilationUnitSyntax GenerateCompilationUnit(Module module)
     {

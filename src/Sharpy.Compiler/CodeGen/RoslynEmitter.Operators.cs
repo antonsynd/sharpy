@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Operator overloads and utility methods
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     /// <summary>
     /// Determines if a dunder method should generate a C# method (for overrides or special methods)

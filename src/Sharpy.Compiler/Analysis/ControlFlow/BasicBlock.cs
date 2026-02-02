@@ -14,7 +14,7 @@ namespace Sharpy.Compiler.Analysis.ControlFlow;
 /// we need reference identity (two blocks with same content are different blocks)
 /// and mutable predecessor/successor lists during construction.
 /// </remarks>
-public sealed class BasicBlock
+internal sealed class BasicBlock
 {
     /// <summary>
     /// Unique identifier for this block within a CFG.

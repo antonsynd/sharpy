@@ -11,7 +11,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// Maps Sharpy types to C# types using Roslyn syntax nodes
 /// </summary>
-public class TypeMapper
+internal class TypeMapper
 {
     private readonly CodeGenContext _context;
 

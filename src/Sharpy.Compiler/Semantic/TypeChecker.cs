@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// Type checks expressions and statements
 /// </summary>
-public partial class TypeChecker
+internal partial class TypeChecker
 {
     private readonly SymbolTable _symbolTable;
     private readonly SemanticInfo _semanticInfo;

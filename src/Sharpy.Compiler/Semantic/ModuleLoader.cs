@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Semantic;
 /// Loads, parses, and caches .spy modules. Extracts exported symbols from parsed AST.
 /// Separated from ImportResolver to isolate module loading/caching/symbol-extraction concerns.
 /// </summary>
-public class ModuleLoader
+internal class ModuleLoader
 {
     private readonly ICompilerLogger _logger;
     private readonly DiagnosticBag _diagnostics = new();

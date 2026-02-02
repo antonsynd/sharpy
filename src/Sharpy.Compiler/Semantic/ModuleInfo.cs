@@ -20,7 +20,7 @@ internal record ImportChainEntry(
 /// because .NET assemblies don't have an AST representation. Always check <see cref="IsNetModule"/>
 /// before accessing <see cref="Module"/> to avoid null reference errors.
 /// </remarks>
-public class ModuleInfo
+internal class ModuleInfo
 {
     public string Path { get; init; } = string.Empty;
     public Module Module { get; init; } = null!;

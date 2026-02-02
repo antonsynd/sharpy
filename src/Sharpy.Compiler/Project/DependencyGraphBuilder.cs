@@ -35,7 +35,7 @@ namespace Sharpy.Compiler.Project;
 /// var graph = builder.Build();
 /// </code>
 /// </example>
-public class DependencyGraphBuilder
+internal class DependencyGraphBuilder
 {
     private readonly ConcurrentDictionary<string, ConcurrentBag<string>> _dependencies = new();
     private readonly ConcurrentDictionary<string, string> _fileHashes = new();

@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Expression generation (literals, operators, calls, comprehensions)
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     private ExpressionSyntax GenerateExpression(Sharpy.Compiler.Parser.Ast.Expression expr)
     {

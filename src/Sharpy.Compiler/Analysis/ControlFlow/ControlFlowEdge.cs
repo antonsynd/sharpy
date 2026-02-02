@@ -3,7 +3,7 @@ namespace Sharpy.Compiler.Analysis.ControlFlow;
 /// <summary>
 /// Describes the kind of edge in the CFG.
 /// </summary>
-public enum EdgeKind
+internal enum EdgeKind
 {
     /// <summary>Unconditional transfer of control.</summary>
     Unconditional,
@@ -36,7 +36,7 @@ public enum EdgeKind
 /// <summary>
 /// Represents an edge in the control flow graph.
 /// </summary>
-public record ControlFlowEdge(
+internal record ControlFlowEdge(
     BasicBlock From,
     BasicBlock To,
     EdgeKind Kind

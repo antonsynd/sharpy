@@ -20,7 +20,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// - Type detection (class/struct instantiation): Use SymbolTable lookup
 /// - String enum detection: Use CodeGenInfo.IsStringEnum
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     private readonly CodeGenContext _context;
     private readonly TypeMapper _typeMapper;

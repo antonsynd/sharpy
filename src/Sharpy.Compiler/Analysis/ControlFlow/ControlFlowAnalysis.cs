@@ -6,7 +6,7 @@ namespace Sharpy.Compiler.Analysis.ControlFlow;
 /// <summary>
 /// Provides control flow analysis utilities using the CFG.
 /// </summary>
-public static class ControlFlowAnalysis
+internal static class ControlFlowAnalysis
 {
     /// <summary>
     /// Check if all paths through the function return a value.
@@ -178,7 +178,7 @@ public static class ControlFlowAnalysis
 /// <summary>
 /// Information about unreachable code.
 /// </summary>
-public record UnreachableCodeInfo(
+internal record UnreachableCodeInfo(
     BasicBlock Block,
     Statement FirstUnreachableStatement
 );
@@ -186,7 +186,7 @@ public record UnreachableCodeInfo(
 /// <summary>
 /// A control flow validation error.
 /// </summary>
-public record ControlFlowError(
+internal record ControlFlowError(
     string Message,
     Statement Statement
 );
@@ -194,7 +194,7 @@ public record ControlFlowError(
 /// <summary>
 /// A region of code between await points for async state machine generation.
 /// </summary>
-public record AsyncStateRegion(
+internal record AsyncStateRegion(
     int StateId,
     ImmutableArray<BasicBlock> Blocks,
     Expression? AwaitExpression

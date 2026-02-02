@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Discovery.Caching;
 /// <summary>
 /// Builds an OverloadIndex from assembly reflection.
 /// </summary>
-public class OverloadIndexBuilder
+internal class OverloadIndexBuilder
 {
     private readonly TypeMapper _typeMapper = new();
     private readonly ICompilerLogger _logger;

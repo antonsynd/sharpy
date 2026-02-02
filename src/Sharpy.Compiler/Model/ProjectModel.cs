@@ -155,7 +155,7 @@ public class ProjectModel
     /// The project-wide dependency graph.
     /// Null until import resolution completes.
     /// </summary>
-    public DependencyGraph? DependencyGraph { get; internal set; }
+    internal DependencyGraph? DependencyGraph { get; set; }
 
     /// <summary>
     /// Gets the build order for compilation (dependencies before dependents).

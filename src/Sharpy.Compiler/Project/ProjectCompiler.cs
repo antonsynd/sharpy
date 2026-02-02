@@ -15,7 +15,7 @@ namespace Sharpy.Compiler.Project;
 /// Handles multi-file project compilation with proper dependency management
 /// and two-phase type declaration collection for cross-file visibility
 /// </summary>
-public class ProjectCompiler
+internal class ProjectCompiler
 {
     private readonly ICompilerLogger _logger;
     private readonly ModuleRegistry? _moduleRegistry;

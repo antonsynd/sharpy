@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Class member generation (constructors, methods, fields, interface members)
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     #region Class Member Generation
 

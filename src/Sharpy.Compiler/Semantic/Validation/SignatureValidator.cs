@@ -11,7 +11,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// This validator runs early in the pipeline (Order 150) to catch signature
 /// errors before type checking attempts to use the methods.
 /// </summary>
-public class SignatureValidator : SemanticValidatorBase
+internal class SignatureValidator : SemanticValidatorBase
 {
     public override string Name => "SignatureValidator";
     public override int Order => 150; // Before type checking (300)

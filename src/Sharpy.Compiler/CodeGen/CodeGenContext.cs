@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// Maintains state during code generation
 /// </summary>
-public class CodeGenContext
+internal class CodeGenContext
 {
     private int _indentLevel = 0;
     private const int IndentSize = 4;
