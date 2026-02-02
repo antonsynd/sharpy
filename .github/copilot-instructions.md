@@ -74,9 +74,10 @@ Assert.Equal("3\n", result.StandardOutput);
 
 | Sharpy | C# | Notes |
 |--------|-----|-------|
-| `int` | `long` | 64-bit default |
+| `int` | `int` | 32-bit |
+| `long` | `long` | 64-bit |
 | `str` | `string` | |
-| `list[T]` | `Sharpy.Core.List<T>` | |
+| `list[T]` | `System.Collections.Generic.List<T>` | v0.1.x; `Sharpy.Core.List<T>` in v0.2.x+ |
 | `snake_case` | `PascalCase` | Via `NameMangler` |
 | `__init__` | constructor | |
 | `__str__` | `ToString()` | |
