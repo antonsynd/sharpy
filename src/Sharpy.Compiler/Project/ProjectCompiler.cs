@@ -88,6 +88,9 @@ public class ProjectCompiler
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 4: Resolve imports and build dependency information
+            // Returns false only for circular imports (which break the dependency graph).
+            // Non-circular import errors are merged into diagnostics but compilation
+            // continues to type checking so users see the full picture.
             if (!ResolveImports(config))
             {
                 return CreateFailureResult();
@@ -523,17 +526,28 @@ public class ProjectCompiler
             return false;
         }
 
-        // Add import resolver errors only if no circular dependencies were detected
-        if (_importResolver.Diagnostics.HasErrors)
+        // Merge all import diagnostics (errors + warnings) so they appear in the
+        // final result. Continue to type checking even if imports failed, so users
+        // see the full picture (import errors + type errors) — matching the
+        // single-file Compiler.Compile() behavior.
+        foreach (var diag in _importResolver.Diagnostics.GetAll())
         {
-            foreach (var error in _importResolver.Diagnostics.GetErrors())
+            if (diag.IsError)
             {
-                _projectModel!.GlobalDiagnostics.AddError(error.Message, code: error.Code);
-                _diagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code, phase: CompilerPhase.ImportResolution);
+                _projectModel!.GlobalDiagnostics.AddError(diag.Message, code: diag.Code);
+                _diagnostics.AddError(diag.Message, diag.Line, diag.Column, code: diag.Code, phase: CompilerPhase.ImportResolution);
+            }
+            else if (diag.IsWarning)
+            {
+                _projectModel!.GlobalDiagnostics.AddWarning(diag.Message, code: diag.Code);
+                _diagnostics.AddWarning(diag.Message, diag.Line, diag.Column, code: diag.Code, phase: CompilerPhase.ImportResolution);
             }
         }
 
-        return !_diagnostics.HasErrors;
+        // Continue to type checking even with non-circular import errors.
+        // Missing imports produce Unknown types, which prevents cascading errors
+        // in the type checker (UnknownType.IsAssignableTo returns true).
+        return true;
     }
 
     /// <summary>

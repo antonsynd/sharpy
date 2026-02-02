@@ -631,5 +631,61 @@ def main():
         Assert.Contains(errors, e => e.Phase == CompilerPhase.ImportResolution);
     }
 
+    [Fact]
+    public void CompileProject_WithImportErrors_ContinuesToTypeChecking()
+    {
+        // Multi-file project where one file has a bad import and another file has a type error.
+        // The ProjectCompiler should report BOTH: the import error AND the type error,
+        // not bail after import resolution.
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // main.spy has a bad import AND a type error in a local function
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), @"
+from nonexistent_module import helper
+
+def main():
+    x: int = ""not_an_int""
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                SourceFiles = new System.Collections.Generic.List<string>
+                {
+                    Path.Combine(tempDir, "main.spy")
+                }
+            };
+
+            var options = new CompilerOptions
+            {
+                References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+            };
+            var compiler = new Compiler(options);
+            var result = compiler.CompileProject(config);
+
+            Assert.False(result.Success);
+
+            var errors = result.Diagnostics.GetErrors().ToList();
+            Assert.True(errors.Count >= 2,
+                $"Expected at least 2 errors (import + type), got {errors.Count}: {string.Join("; ", errors.Select(e => $"[{e.Phase}] {e.Message}"))}");
+
+            // Should have an import-phase error
+            Assert.Contains(errors, e => e.Phase == CompilerPhase.ImportResolution);
+
+            // Should also have a type-checking-phase error (the str -> int mismatch)
+            Assert.Contains(errors, e =>
+                e.Phase == CompilerPhase.TypeChecking || e.Phase == CompilerPhase.Validation);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
     #endregion
 }
