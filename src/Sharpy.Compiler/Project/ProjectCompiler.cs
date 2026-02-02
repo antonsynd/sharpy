@@ -174,7 +174,8 @@ public class ProjectCompiler
                 var compilationUnit = _projectModel!.CreateUnit(sourceFile, modulePath, source);
 
                 fileMetrics.StartPhase("Lexical Analysis");
-                var lexer = new Lexer.Lexer(source, _logger);
+                var sourceText = new Text.SourceText(source, sourceFile);
+                var lexer = new Lexer.Lexer(sourceText, _logger);
                 var tokens = lexer.TokenizeAll();
                 fileMetrics.EndPhase();
 

@@ -515,7 +515,7 @@ class Program
         {
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
-            var lexer = new Lexer(source, logger);
+            var lexer = new Lexer(sourceText, logger);
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
@@ -550,7 +550,7 @@ class Program
         {
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
-            var lexer = new Lexer(source, logger);
+            var lexer = new Lexer(sourceText, logger);
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
@@ -590,7 +590,7 @@ class Program
         {
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
-            var lexer = new Lexer(source, logger);
+            var lexer = new Lexer(sourceText, logger);
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
@@ -624,7 +624,7 @@ class Program
             // Parse the Sharpy source file
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
-            var lexer = new Lexer(source, logger);
+            var lexer = new Lexer(sourceText, logger);
             var tokens = lexer.TokenizeAll();
             var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
             var module = parser.ParseModule();
