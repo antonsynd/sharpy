@@ -245,11 +245,11 @@ error[SHP0201]: Type 'str' is not assignable to 'int'
 **Decision guidance:** If all tests pass with V3 only (they should -- V3 is already the default), remove V2. If there are edge cases where V2 catches something V3 doesn't, fix V3 rather than keeping V2.
 
 **Tasks:**
-- [ ] Run full test suite confirming V3 is the default and all tests pass
-- [ ] Search for any references to V2 validators (imports, factory registrations, tests)
-- [ ] Remove `ControlFlowValidatorV2.cs` and any V2-specific tests
-- [ ] Update `ValidationPipelineFactory` if it still references V2
-- [ ] If other V2 validators exist (e.g., `ModuleLevelValidatorV2`, `DecoratorValidatorV2`), determine if corresponding V3s exist. If not, the "V2" suffix is misleading -- rename them to drop the version suffix.
+- [x] Run full test suite confirming V3 is the default and all tests pass
+- [x] Search for any references to V2 validators (imports, factory registrations, tests)
+- [x] Remove `ControlFlowValidatorV2.cs` and any V2-specific tests
+- [x] Update `ValidationPipelineFactory` if it still references V2
+- [x] If other V2 validators exist (e.g., `ModuleLevelValidatorV2`, `DecoratorValidatorV2`), determine if corresponding V3s exist. If not, the "V2" suffix is misleading -- rename them to drop the version suffix.
 
 ### 5.2: Extract Import Logic from Compiler.cs
 
@@ -261,26 +261,26 @@ importResolver.ResolveAllImports(module, symbolTable, currentDir);
 ```
 
 **Tasks:**
-- [ ] Create a method on `ImportResolver` (e.g., `ResolveAllImports(Module, SymbolTable, string currentDir)`) that encapsulates the import loop currently in `Compiler.cs`
-- [ ] Move the import/from-import handling logic there
-- [ ] Update `Compiler.Compile()` to call the new method
-- [ ] Verify existing import-related tests still pass
-- [ ] Add a unit test for `ImportResolver.ResolveAllImports()` that doesn't require a full compilation
+- [x] Create a method on `ImportResolver` (e.g., `ResolveAllImports(Module, SymbolTable, string currentDir)`) that encapsulates the import loop currently in `Compiler.cs`
+- [x] Move the import/from-import handling logic there
+- [x] Update `Compiler.Compile()` to call the new method
+- [x] Verify existing import-related tests still pass
+- [x] Add a unit test for `ImportResolver.ResolveAllImports()` that doesn't require a full compilation
 
 ### 5.3: Convert TODOs to Issues
 
 **Problem:** There are 15 TODO comments in the compiler source. Some are trivial, some are real feature gaps. They're invisible to project management.
 
 **Tasks:**
-- [ ] For each TODO in the codebase, create a GitHub issue with the TODO text, file path, and line number
-- [ ] Label each issue appropriately (enhancement, bug, tech-debt)
-- [ ] Replace the TODO comment with `// See: #<issue-number>` (or remove if the context is obvious from the issue)
-- [ ] Key TODOs to address:
-  - `NameResolver.cs:573` -- Module loading stub (feature gap)
-  - `ControlFlowAnalysis.cs:140` -- Async state machine (feature gap)
-  - `NameMangler.cs:51` -- Unconditional string mapping (tech debt/bug risk)
-  - `CompilationMetrics.cs:130` -- Hardcoded version string (trivial)
-  - `TypeChecker.Expressions.cs:1446` -- Tuple unpacking in comprehensions (feature gap)
+- [x] For each TODO in the codebase, create a GitHub issue with the TODO text, file path, and line number
+- [x] Label each issue appropriately (enhancement, bug, tech-debt)
+- [x] Replace the TODO comment with `// See: #<issue-number>` (or remove if the context is obvious from the issue)
+- [x] Key TODOs to address:
+  - `NameResolver.cs:573` -- Module loading stub (feature gap) → #102
+  - `ControlFlowAnalysis.cs:140` -- Async state machine (feature gap) → #105
+  - `NameMangler.cs:51` -- Unconditional string mapping (tech debt/bug risk) → #99
+  - `CompilationMetrics.cs:130` -- Hardcoded version string (trivial) → #97
+  - `TypeChecker.Expressions.cs:1446` -- Tuple unpacking in comprehensions (feature gap) → #104
 
 ---
 
