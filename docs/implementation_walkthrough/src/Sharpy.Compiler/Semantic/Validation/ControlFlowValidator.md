@@ -521,7 +521,7 @@ TestFixtures/control_flow/
 
 | File | Relationship |
 |------|--------------|
-| `ControlFlowValidatorV2.cs` (removed) | **Predecessor**: AST-based validator, replaced by V3 |
+| `ControlFlowValidatorV2.cs` (removed) | **Predecessor**: AST-based validator, replaced by current `ControlFlowValidator` |
 | `ControlFlowGraphBuilder.cs` | **Dependency**: Constructs the CFG this validator analyzes |
 | `ControlFlowAnalysis.cs` | **Dependency**: Provides analysis algorithms used by this validator |
 | `ISemanticValidator.cs` | **Interface**: Defines validator contract and base class |

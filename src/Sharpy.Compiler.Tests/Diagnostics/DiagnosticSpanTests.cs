@@ -353,7 +353,7 @@ public class DiagnosticSpanTests
     }
 
     [Fact]
-    public void ControlFlowV3_UnreachableCode_DiagnosticHasSpan()
+    public void ControlFlow_UnreachableCode_DiagnosticHasSpan()
     {
         var source = "def foo() -> int:\n    return 1\n    x: int = 2\n";
         var (module, context) = ParseForValidation(source);
