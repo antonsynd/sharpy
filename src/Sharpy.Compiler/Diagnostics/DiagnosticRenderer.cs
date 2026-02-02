@@ -130,10 +130,11 @@ public class DiagnosticRenderer
             // Empty gutter line
             lines.Add($" {gutter} {pipe}");
 
-            // Source line
+            // Source line (expand tabs for consistent display)
             var sourceLineText = sourceText.GetLineText(line.Value);
+            var displayLine = ExpandTabs(sourceLineText);
             var lineNumStr = line.Value.ToString().PadLeft(lineNumberWidth);
-            lines.Add($" {Colorize(lineNumStr, AnsiColor.Cyan)} {pipe} {sourceLineText}");
+            lines.Add($" {Colorize(lineNumStr, AnsiColor.Cyan)} {pipe} {displayLine}");
 
             // Underline/caret line
             var underline = RenderUnderline(diagnostic, sourceText, sourceLineText, line.Value, column);
@@ -202,27 +203,31 @@ public class DiagnosticRenderer
     /// <summary>
     /// Renders underline markers (^^^) for a text span on a single source line.
     /// For multi-line spans, underlines only the portion on the first line.
+    /// Tab characters are accounted for in the display position calculation.
     /// </summary>
     private string RenderSpanUnderline(TextSpan span, SourceText sourceText, string sourceLineText, int lineNumber, CompilerDiagnosticSeverity severity)
     {
         var lineStartPos = sourceText.GetPosition(lineNumber, 1);
 
-        // Calculate the underline start column (0-based within the line)
-        var underlineStart = System.Math.Max(0, span.Start - lineStartPos);
-        // Calculate the underline end (clamped to the line)
-        var underlineEnd = System.Math.Min(sourceLineText.Length, span.End - lineStartPos);
+        // Calculate the underline start and end (0-based character offsets within the line)
+        var charStart = System.Math.Max(0, span.Start - lineStartPos);
+        var charEnd = System.Math.Min(sourceLineText.Length, span.End - lineStartPos);
 
-        // Ensure underline length is at least 1
-        var underlineLength = System.Math.Max(1, underlineEnd - underlineStart);
-
-        // Clamp underlineStart to line length
-        if (underlineStart > sourceLineText.Length)
+        // Clamp charStart to line length
+        if (charStart > sourceLineText.Length)
         {
-            underlineStart = sourceLineText.Length;
-            underlineLength = 1;
+            charStart = sourceLineText.Length;
+            charEnd = charStart + 1;
         }
 
-        var padding = new string(' ', underlineStart);
+        // Convert character offsets to display columns (accounting for tabs)
+        var displayStart = ExpandedColumn(sourceLineText, charStart);
+        var displayEnd = ExpandedColumn(sourceLineText, System.Math.Min(charEnd, sourceLineText.Length));
+
+        // Ensure underline length is at least 1
+        var underlineLength = System.Math.Max(1, displayEnd - displayStart);
+
+        var padding = new string(' ', displayStart);
         var markers = new string('^', underlineLength);
 
         var severityColor = severity switch
@@ -237,13 +242,65 @@ public class DiagnosticRenderer
 
     /// <summary>
     /// Renders a single caret (^) at the specified column.
+    /// Tab characters are accounted for in the display position calculation.
     /// </summary>
     private string RenderCaretAtColumn(int column, string sourceLineText)
     {
-        // Column is 1-based, convert to 0-based for padding
-        var paddingLength = System.Math.Min(System.Math.Max(0, column - 1), sourceLineText.Length);
-        var padding = new string(' ', paddingLength);
+        // Column is 1-based, convert to 0-based character offset
+        var charOffset = System.Math.Min(System.Math.Max(0, column - 1), sourceLineText.Length);
+        // Convert to display position (accounting for tabs)
+        var displayCol = ExpandedColumn(sourceLineText, charOffset);
+        var padding = new string(' ', displayCol);
         return $"{padding}{Colorize("^", AnsiColor.Red, bold: true)}";
+    }
+
+    private const int TabWidth = 4;
+
+    /// <summary>
+    /// Expands tab characters to spaces using fixed-width tab stops.
+    /// This ensures consistent display regardless of terminal tab settings.
+    /// </summary>
+    private static string ExpandTabs(string line)
+    {
+        if (!line.Contains('\t'))
+            return line;
+
+        var sb = new System.Text.StringBuilder(line.Length + 8);
+        foreach (var ch in line)
+        {
+            if (ch == '\t')
+            {
+                var spaces = TabWidth - (sb.Length % TabWidth);
+                sb.Append(' ', spaces);
+            }
+            else
+            {
+                sb.Append(ch);
+            }
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Converts a 0-based character offset within a line to the corresponding
+    /// display column, accounting for tab expansion.
+    /// </summary>
+    private static int ExpandedColumn(string line, int charOffset)
+    {
+        int display = 0;
+        var limit = System.Math.Min(charOffset, line.Length);
+        for (int i = 0; i < limit; i++)
+        {
+            if (line[i] == '\t')
+            {
+                display += TabWidth - (display % TabWidth);
+            }
+            else
+            {
+                display++;
+            }
+        }
+        return display;
     }
 
     /// <summary>

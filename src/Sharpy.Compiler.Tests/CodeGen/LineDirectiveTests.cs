@@ -69,22 +69,17 @@ def main():
 def main():
     print(greet(""World""))
 ";
-        // Use direct emitter with disabled line directives
-        var builtins = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtins);
-        var context = new CodeGenContext(symbolTable, builtins)
-        {
-            SourceFilePath = "test.spy",
-            EmitLineDirectives = false,
-            IsEntryPoint = true
-        };
-
+        // First verify that directives ARE emitted by default
         var compiler = new Compiler();
-        var result = compiler.Compile(source, "test.spy");
+        var enabledResult = compiler.Compile(source, "test.spy");
+        enabledResult.Success.Should().BeTrue();
+        enabledResult.GeneratedCSharpCode.Should().Contain("#line");
 
-        // The Compiler.Compile uses default (true), but we can verify the flag works
-        // by testing the CodeGenContext property
-        context.EmitLineDirectives.Should().BeFalse();
+        // Now run the pipeline with EmitLineDirectives = false
+        var code = GenerateWithDirectivesDisabled(source, "test.spy");
+
+        // Verify no #line directives appear in the generated C#
+        code.Should().NotContain("#line");
     }
 
     [Fact]
@@ -348,5 +343,49 @@ def main():
         code.Should().Contain("#line 8");
         // Return on line 9
         code.Should().Contain("#line 9");
+    }
+
+    /// <summary>
+    /// Runs the full compilation pipeline with EmitLineDirectives = false,
+    /// mirroring the CLI's "emit csharp" path.
+    /// </summary>
+    private static string GenerateWithDirectivesDisabled(string source, string filePath)
+    {
+        var logger = NullLogger.Instance;
+        var lexer = new Sharpy.Compiler.Lexer.Lexer(source, logger);
+        var tokens = lexer.TokenizeAll();
+        var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
+        var module = parser.ParseModule();
+
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var semanticInfo = new SemanticInfo();
+        var semanticBinding = new SemanticBinding();
+
+        var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
+        nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance();
+        semanticBinding.MaterializeInheritance();
+
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
+        {
+            SemanticBinding = semanticBinding
+        };
+        typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
+        semanticBinding.MaterializeCodeGenInfo();
+        semanticBinding.MaterializeVariableTypes();
+
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = filePath,
+            IsEntryPoint = true,
+            EmitLineDirectives = false,
+            SemanticBinding = semanticBinding,
+            SemanticInfo = semanticInfo
+        };
+        var emitter = new RoslynEmitter(context);
+        var compilationUnit = emitter.GenerateCompilationUnit(module);
+        return compilationUnit.ToFullString();
     }
 }

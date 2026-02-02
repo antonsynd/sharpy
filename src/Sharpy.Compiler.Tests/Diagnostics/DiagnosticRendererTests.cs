@@ -326,8 +326,9 @@ public class DiagnosticRendererTests
     }
 
     [Fact]
-    public void Render_TabsInSourceLine_DoesNotThrow()
+    public void Render_TabsInSourceLine_ExpandedAndAligned()
     {
+        // Source: "\tif x > 0:" — tab before 'if'
         var source = "\tif x > 0:\n\t\ty = 1";
         var sourceText = new SourceText(source, "test.spy");
 
@@ -340,9 +341,33 @@ public class DiagnosticRendererTests
 
         var result = _renderer.Render(diagnostic, sourceText);
 
-        // Should render without throwing, even with tabs
-        result.Should().Contain("Tab test");
-        result.Should().Contain("if x > 0:");
+        // Tabs should be expanded to spaces in the displayed source line
+        result.Should().Contain("    if x > 0:");
+        // The caret should be at the expanded position (column 2 = after 1 tab = position 4)
+        result.Should().Contain("    ^");
+    }
+
+    [Fact]
+    public void Render_TabsInSourceLine_SpanUnderlineAligned()
+    {
+        // Source: "\tx = \"bad\"" — tab before 'x', span on "bad" (including quotes)
+        var source = "\tx = \"bad\"";
+        var sourceText = new SourceText(source, "test.spy");
+        // Span covers "bad" (chars 5..10 = the "bad" portion)
+        var span = new TextSpan(5, 5);
+
+        var diagnostic = new CompilerDiagnostic(
+            "Span after tab",
+            CompilerDiagnosticSeverity.Error,
+            Code: "SHP0100",
+            Span: span);
+
+        var result = _renderer.Render(diagnostic, sourceText);
+
+        // Tab expanded: "    x = \"bad\""
+        // Span starts at char offset 4 (after tab) in original = display column 8
+        result.Should().Contain("    x = \"bad\"");
+        result.Should().Contain("        ^^^^^");
     }
 
     [Fact]
