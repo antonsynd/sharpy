@@ -2,7 +2,9 @@
 
 Example programs demonstrating Sharpy features. Location: `samples/`
 
-## Current Samples
+**Status:** The `samples/` directory is planned but not yet created. Use `snippets/*.spy` for quick test programs.
+
+## Planned Samples
 
 | Sample | Purpose |
 |--------|---------|

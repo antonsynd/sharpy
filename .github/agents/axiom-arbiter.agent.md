@@ -18,11 +18,11 @@ Resolves conflicts between Sharpy's three core axioms. **Advisory only — does 
 
 ## Precedence Rule
 
-> **When axioms conflict: Axiom 1 > Axiom 3 > Axiom 2**
+> **When axioms conflict: Axiom 1 > Axiom 2 > Axiom 3**
 
 - **Axiom 1 wins** — broken .NET interop defeats the project's purpose
-- **Axiom 3 usually aligns with Axiom 1** — both favor static typing
-- **Axiom 2 can often be approximated** — even when exact Python semantics aren't possible
+- **Axiom 2 usually aligns with Axiom 1** — both favor static typing
+- **Axiom 3 can often be approximated** — even when exact Python semantics aren't possible
 
 **Exception:** If conflict can be resolved at zero cost, satisfy all axioms.
 

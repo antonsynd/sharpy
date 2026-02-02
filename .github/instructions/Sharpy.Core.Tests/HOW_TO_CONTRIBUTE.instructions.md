@@ -9,11 +9,13 @@ Tests mirror `Sharpy.Core` layout:
 Sharpy.Core.Tests/
 ├── Partial.ListTests/  # List tests split by facet
 ├── Partial.SetTests/   # Set tests
-├── Partial.StrTests/   # String method tests
+├── StrTests.cs         # String type tests
+├── StrMethodsTests.cs  # String method tests
 ├── DictTests.cs        # Dictionary tests
 ├── RangeTests.cs       # Range tests
 ├── EnumerateTests.cs   # Enumerate tests
-└── BuiltinTests.cs     # General builtin tests
+├── PrintTests.cs       # print() builtin tests
+└── *Tests.cs           # Other builtin/type tests
 ```
 
 ## Running Tests

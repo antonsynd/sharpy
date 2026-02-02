@@ -16,8 +16,8 @@ dotnet run --project src/Sharpy.Cli -- run snippets/hello.spy
 # Build a single file
 dotnet run --project src/Sharpy.Cli -- build snippets/hello.spy
 
-# Build a project
-dotnet run --project src/Sharpy.Cli -- project samples/calculator_app/calculator.spyproj
+# Build a project (when samples/ exists)
+# dotnet run --project src/Sharpy.Cli -- project samples/calculator_app/calculator.spyproj
 
 # Debug: inspect generated C#
 dotnet run --project src/Sharpy.Cli -- emit csharp snippets/hello.spy
