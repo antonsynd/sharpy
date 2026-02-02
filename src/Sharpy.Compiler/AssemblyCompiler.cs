@@ -222,8 +222,10 @@ public class AssemblyCompiler
         var location = diagnostic.Location;
         if (location.IsInSource)
         {
-            var lineSpan = location.GetLineSpan();
-            filePath = Path.GetFileName(lineSpan.Path);
+            // Use GetMappedLineSpan to respect #line directives, which map
+            // generated C# locations back to original .spy source files.
+            var lineSpan = location.GetMappedLineSpan();
+            filePath = lineSpan.HasMappedPath ? lineSpan.Path : Path.GetFileName(lineSpan.Path);
             line = lineSpan.StartLinePosition.Line + 1;
             column = lineSpan.StartLinePosition.Character + 1;
         }
