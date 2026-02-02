@@ -1,0 +1,5 @@
+from nonexistent_module import helper
+
+def main():
+    result: int = helper(42)
+    print(result)

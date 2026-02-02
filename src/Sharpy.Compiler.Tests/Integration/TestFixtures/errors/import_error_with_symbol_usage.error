@@ -1,0 +1,4 @@
+# Import resolution error
+Cannot find module
+# Type checking error - imported symbol is undefined since import failed
+Undefined
