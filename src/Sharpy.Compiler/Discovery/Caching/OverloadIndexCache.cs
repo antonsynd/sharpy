@@ -106,7 +106,7 @@ public class OverloadIndexCache
             catch (Exception ex)
             {
                 // Cache file is corrupted, incompatible, or inaccessible
-                System.Diagnostics.Debug.WriteLine($"Failed to load cache from '{cachePath}': {ex.GetType().Name} - {ex.Message}");
+                _logger.LogDebug($"Failed to load cache from '{cachePath}': {ex.GetType().Name} - {ex.Message}");
                 TryDeleteFile(cachePath);
                 return null;
             }
@@ -156,13 +156,13 @@ public class OverloadIndexCache
                 TryDeleteFile(tempPath);
 
                 // Log but don't fail - caching is optional
-                System.Diagnostics.Debug.WriteLine($"Warning: Failed to save cache (attempt {attempt + 1}/{MaxRetries}): {ex.Message}");
+                _logger.LogDebug($"Failed to save cache (attempt {attempt + 1}/{MaxRetries}): {ex.Message}");
 
                 if (attempt >= MaxRetries - 1)
                 {
                     // Only warn user on final failure, and make the message less alarming
                     // since cache failures are non-critical
-                    System.Diagnostics.Debug.WriteLine($"Cache save failed after {MaxRetries} attempts: {ex.Message}");
+                    _logger.LogWarning($"Cache save failed after {MaxRetries} attempts: {ex.Message}", 0, 0);
                 }
             }
         }

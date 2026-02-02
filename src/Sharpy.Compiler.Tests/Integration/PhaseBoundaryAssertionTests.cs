@@ -20,6 +20,23 @@ public class PhaseBoundaryAssertionTests
         return result;
     }
 
+    /// <summary>
+    /// Compile and assert that no SHP0904 invariant violation warnings are emitted.
+    /// Only use for programs that do not involve class member access patterns
+    /// (which can produce aspirational UnknownType gaps tracked by WarnIfUnknownTypes).
+    /// </summary>
+    private static CompilationResult CompileWithNoInvariantViolations(string source)
+    {
+        var result = CompileSuccessfully(source);
+
+        var invariantViolations = result.Diagnostics.GetWarnings()
+            .Where(w => w.Code == "SHP0904")
+            .ToList();
+        Assert.Empty(invariantViolations);
+
+        return result;
+    }
+
     [Fact]
     public void NoDuplicateTypeNames_MultipleClasses_NoAssertionFires()
     {
@@ -122,7 +139,7 @@ def main():
     [Fact]
     public void NoUnknownTypes_SimpleExpressions_NoAssertionFires()
     {
-        // Single-file, no imports — exercises the hard assert path
+        // Single-file, no imports, no class member access — verifies no SHP0904 warnings
         var source = @"
 def compute(x: int, y: int) -> int:
     z: int = x + y
@@ -131,7 +148,7 @@ def compute(x: int, y: int) -> int:
 def main():
     result: int = compute(3, 4)
 ";
-        CompileSuccessfully(source);
+        CompileWithNoInvariantViolations(source);
     }
 
     [Fact]
@@ -145,7 +162,7 @@ def main():
     d: bool = True
     e: list[int] = [1, 2, 3]
 ";
-        CompileSuccessfully(source);
+        CompileWithNoInvariantViolations(source);
     }
 
     [Fact]
@@ -184,7 +201,7 @@ def main():
     [Fact]
     public void StatementsHaveSpans_AllStatementTypes_NoAssertionFires()
     {
-        // Exercises AssertStatementsHaveSpans
+        // Exercises AssertStatementsHaveSpans — simple function, no class member access
         var source = @"
 def factorial(n: int) -> int:
     if n <= 1:
@@ -194,7 +211,7 @@ def factorial(n: int) -> int:
 def main():
     x: int = factorial(5)
 ";
-        CompileSuccessfully(source);
+        CompileWithNoInvariantViolations(source);
     }
 
     [Fact]
@@ -218,5 +235,28 @@ def main():
     result: int = c.increment()
 ";
         CompileSuccessfully(source);
+    }
+
+    [Fact]
+    public void ErrorCompilation_NoInvariantViolationWarnings()
+    {
+        // When compilation has semantic errors, unknown types from error recovery
+        // should NOT trigger SHP0904 invariant violation warnings
+        var source = @"
+def main():
+    x: int = ""not_an_int""
+    y: int = True + ""string""
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "test.spy");
+
+        // Compilation should fail (semantic errors expected)
+        Assert.False(result.Success);
+
+        // But no SHP0904 invariant violation warnings should appear
+        var invariantViolations = result.Diagnostics.GetWarnings()
+            .Where(w => w.Code == "SHP0904")
+            .ToList();
+        Assert.Empty(invariantViolations);
     }
 }

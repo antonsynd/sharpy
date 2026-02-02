@@ -1476,8 +1476,8 @@ def main() -> None:
         var warnings = typeChecker.Diagnostics.GetWarnings().ToList();
 
         errors.Should().HaveCount(3, "only MaxErrors errors should be recorded");
-        warnings.Should().Contain(w => w.Code == "SHP0905",
-            "a truncation warning should be emitted when MaxErrors is reached");
+        warnings.Where(w => w.Code == "SHP0905").Should().HaveCount(1,
+            "exactly one truncation warning should be emitted when MaxErrors is reached");
     }
 
     [Fact]

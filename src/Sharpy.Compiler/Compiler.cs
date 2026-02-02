@@ -513,7 +513,7 @@ public class Compiler
     /// after inheritance resolution. A dangling unresolved name means the inheritance
     /// resolver failed to find or match a type.
     /// </summary>
-    private void AssertNoUnresolvedInheritance(SymbolTable symbolTable, DiagnosticBag diagnostics)
+    private static void AssertNoUnresolvedInheritance(SymbolTable symbolTable, DiagnosticBag diagnostics)
     {
         foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
         {

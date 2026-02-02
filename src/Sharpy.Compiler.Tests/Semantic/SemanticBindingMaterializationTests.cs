@@ -461,10 +461,16 @@ public class SemanticBindingMaterializationTests
         binding.MaterializeCodeGenInfo();
         binding.FreezeCodeGenInfo();
 
-        // In DEBUG builds, Debug.Fail fires as an exception in the test host
+#if DEBUG
+        // In DEBUG builds, Debug.Fail fires as an exception before the logger is reached
         var ex = Assert.ThrowsAny<Exception>(() =>
             binding.SetCodeGenInfo(symbol, new CodeGenInfo { CSharpName = "TestFn2", OriginalName = "test_fn" }));
         ex.Message.Should().Contain("freeze violation");
+#else
+        // In Release builds, Debug.Fail is compiled out; the logger warning fires instead
+        binding.SetCodeGenInfo(symbol, new CodeGenInfo { CSharpName = "TestFn2", OriginalName = "test_fn" });
+        logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("test_fn"));
+#endif
     }
 
     [Fact]
@@ -478,9 +484,14 @@ public class SemanticBindingMaterializationTests
         binding.MaterializeVariableTypes();
         binding.FreezeVariableTypes();
 
+#if DEBUG
         var ex = Assert.ThrowsAny<Exception>(() =>
             binding.SetVariableType(symbol, SemanticType.Str));
         ex.Message.Should().Contain("freeze violation");
+#else
+        binding.SetVariableType(symbol, SemanticType.Str);
+        logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("x"));
+#endif
     }
 
     [Fact]
@@ -495,9 +506,14 @@ public class SemanticBindingMaterializationTests
         binding.MaterializeInheritance();
         binding.FreezeInheritance();
 
+#if DEBUG
         var ex = Assert.ThrowsAny<Exception>(() =>
             binding.SetBaseType(child, parent));
         ex.Message.Should().Contain("freeze violation");
+#else
+        binding.SetBaseType(child, parent);
+        logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("Child"));
+#endif
     }
 
     [Fact]
@@ -511,9 +527,14 @@ public class SemanticBindingMaterializationTests
         binding.MaterializeInheritance();
         binding.FreezeInheritance();
 
+#if DEBUG
         var ex = Assert.ThrowsAny<Exception>(() =>
             binding.AddInterface(classSymbol, iface));
         ex.Message.Should().Contain("freeze violation");
+#else
+        binding.AddInterface(classSymbol, iface);
+        logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("MyClass"));
+#endif
     }
 
     private class TestLogger : Logging.ICompilerLogger

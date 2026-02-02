@@ -608,6 +608,23 @@ public class LexerNegativeTests
     }
 
     [Fact]
+    public void RecoveryEmitsTruncationWarningAtMaxErrors()
+    {
+        // Generate many lines with errors to exceed MaxErrors
+        var lines = Enumerable.Range(1, 30).Select(i => $"x{i} = \"unterminated");
+        var source = string.Join("\n", lines);
+
+        var lexer = new LexerNs.Lexer(source);
+        lexer.MaxErrors = 3;
+        lexer.TokenizeAll();
+
+        // Should emit exactly one SHP0905 truncation warning
+        var warnings = lexer.Diagnostics.GetWarnings().ToList();
+        warnings.Where(w => w.Code == "SHP0905").Should().HaveCount(1,
+            "a single truncation warning should be emitted when MaxErrors is reached");
+    }
+
+    [Fact]
     public void RecoveryProducesEofToken()
     {
         // Error followed by EOF
