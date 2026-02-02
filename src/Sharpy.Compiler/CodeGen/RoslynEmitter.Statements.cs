@@ -366,18 +366,19 @@ public partial class RoslynEmitter
                 BinaryExpression(SyntaxKind.CoalesceExpression, left, right),
 
             // All other operators use simple binary expressions
-            _ => GenerateAugmentedBinaryExpression(op, left, right)
+            _ => GenerateAugmentedBinaryExpression(op, left, right, targetAst)
         };
     }
 
-    private ExpressionSyntax GenerateAugmentedBinaryExpression(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right)
+    private ExpressionSyntax GenerateAugmentedBinaryExpression(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right, Expression? sourceAst = null)
     {
         var kind = GetAugmentedAssignmentOperator(op);
         if (kind == SyntaxKind.None)
         {
             return EmitNotImplementedExpression(
                 $"Unsupported operator in code generation: augmented assignment operator '{op}'",
-                DiagnosticCodes.CodeGen.UnsupportedOperator);
+                DiagnosticCodes.CodeGen.UnsupportedOperator,
+                sourceAst?.LineStart, sourceAst?.ColumnStart);
         }
         return BinaryExpression(kind, left, right);
     }
