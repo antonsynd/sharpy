@@ -1,0 +1,4 @@
+def main() -> None:
+    matrix: list[list[int]] = [[1, 2], [3, 4]]
+    flat: list[int] = [x for row in matrix for x in row]
+    print(flat)
