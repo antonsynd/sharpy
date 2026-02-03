@@ -315,13 +315,31 @@ internal static class SymbolSerializer
             DeclarationLine = cached.DeclarationLine,
             DeclarationColumn = cached.DeclarationColumn,
             Type = typeResolver(cached.TypeId ?? "unknown:"),
-            IsParameter = props.TryGetValue("IsParameter", out var ip) && Convert.ToBoolean(ip),
-            IsConstant = props.TryGetValue("IsConstant", out var ic) && Convert.ToBoolean(ic),
-            HasDefaultValue = props.TryGetValue("HasDefaultValue", out var hd) && Convert.ToBoolean(hd),
+            IsParameter = GetBoolProperty(props, "IsParameter"),
+            IsConstant = GetBoolProperty(props, "IsConstant"),
+            HasDefaultValue = GetBoolProperty(props, "HasDefaultValue"),
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
         };
+    }
+
+    /// <summary>
+    /// Safely extracts a boolean property from the dictionary, handling JsonElement.
+    /// </summary>
+    private static bool GetBoolProperty(Dictionary<string, object> props, string key)
+    {
+        if (!props.TryGetValue(key, out var value))
+            return false;
+
+        // Handle JsonElement (from JSON deserialization)
+        if (value is System.Text.Json.JsonElement jsonElement)
+        {
+            return jsonElement.ValueKind == System.Text.Json.JsonValueKind.True;
+        }
+
+        // Handle direct boolean or other IConvertible
+        return Convert.ToBoolean(value);
     }
 
     private static ModuleSymbol DeserializeModuleSymbol(
