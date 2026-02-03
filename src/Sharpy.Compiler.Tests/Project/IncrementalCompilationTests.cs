@@ -26,16 +26,21 @@ public class IncrementalCompilationTests : IDisposable
     {
         foreach (var file in _tempFiles)
         {
-            try { File.Delete(file); } catch { }
+            try
+            { File.Delete(file); }
+            catch { }
         }
-        try { Directory.Delete(_tempDir, recursive: true); } catch { }
+        try
+        { Directory.Delete(_tempDir, recursive: true); }
+        catch { }
     }
 
     private string CreateTempFile(string name, string content)
     {
         var path = Path.Combine(_tempDir, name);
         var dir = Path.GetDirectoryName(path);
-        if (dir != null) Directory.CreateDirectory(dir);
+        if (dir != null)
+            Directory.CreateDirectory(dir);
         File.WriteAllText(path, content);
         _tempFiles.Add(path);
         return path;

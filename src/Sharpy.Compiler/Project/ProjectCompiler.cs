@@ -394,7 +394,8 @@ internal class ProjectCompiler
     /// </summary>
     private void RestoreCachedSymbols()
     {
-        if (_incrementalCache == null) return;
+        if (_incrementalCache == null)
+            return;
 
         var restoredCount = 0;
         foreach (var filePath in _filesToSkip)
@@ -427,7 +428,8 @@ internal class ProjectCompiler
     /// </summary>
     private void SaveIncrementalCaches(ProjectConfig config)
     {
-        if (_incrementalCache == null) return;
+        if (_incrementalCache == null)
+            return;
 
         var savedCount = 0;
 

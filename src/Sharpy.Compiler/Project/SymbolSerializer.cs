@@ -202,7 +202,8 @@ internal static class SymbolSerializer
 
     private static CachedCodeGenInfo? SerializeCodeGenInfo(CodeGenInfo? cgi)
     {
-        if (cgi == null) return null;
+        if (cgi == null)
+            return null;
 
         return new CachedCodeGenInfo
         {
@@ -412,7 +413,8 @@ internal static class SymbolSerializer
 
     private static CodeGenInfo? DeserializeCodeGenInfo(CachedCodeGenInfo? cached)
     {
-        if (cached == null) return null;
+        if (cached == null)
+            return null;
 
         return new CodeGenInfo
         {
