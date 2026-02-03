@@ -262,9 +262,9 @@ public class FileBasedIntegrationTests : IntegrationTestBase
 
             var updateSnapshots = Environment.GetEnvironmentVariable("UPDATE_SNAPSHOTS") == "true";
 
-            if (updateSnapshots)
+            if (updateSnapshots && File.Exists(snapshotFilePath))
             {
-                // Regenerate snapshot
+                // Regenerate existing snapshot (does not create new snapshot files)
                 var normalized = NormalizeCSharp(result.GeneratedCSharp);
                 File.WriteAllText(snapshotFilePath, normalized);
                 Output.WriteLine($"Updated snapshot: {snapshotFilePath}");
