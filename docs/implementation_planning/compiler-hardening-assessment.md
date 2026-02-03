@@ -28,8 +28,8 @@ This document identifies 29 items across 5 priority tiers (Tiers 1.5, 3, and 4 a
 | `NotImplementedException` in codegen | ~~15~~ **16** | Recount confirmed 16 throw sites (see 2.1) |
 | Silent statement drops in emitter | 4 locations | |
 | Open `See: #NNN` references | 22 across 14 files | |
-| Public types in Sharpy.Compiler | ~~212~~ **~169** | Reduced by 4.3 (two passes: `b912a5ec`, `6a4b25e3`) |
-| Internal types in Sharpy.Compiler | ~~1–2~~ **~62** | Increased by 4.3 (two passes) |
+| Public types in Sharpy.Compiler | ~~212~~ **~157** | Reduced by 4.3 (three passes: `b912a5ec`, `6a4b25e3`, `7e8ba20c`) |
+| Internal types in Sharpy.Compiler | ~~1–2~~ **~74** | Increased by 4.3 (three passes) |
 
 ### Verification Notes (2026-02-02)
 
@@ -549,7 +549,7 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 **Tasks:**
 
 - [x] **4.3a** ~~Complete 4.1 first (unify compilation paths)~~ — Done
-- [x] **4.3b** ~~Mark type groups as `internal`~~ — Done (~69 types made internal across Analysis, Discovery, CodeGen, Semantic, Validation, Project, Services, and Parser namespaces). Second pass made TypeResolver, CompilerServicesBuilder, TypeResolverAdapter, SymbolLookupAdapter, ClrTypeMapperAdapter, DiagnosticReporter, ClrMemberCache, TypeInferenceService, GenericTypeInferenceService, and InferenceResult internal (commit `6a4b25e3`). Public interfaces (ITypeResolver, ISymbolLookup, IClrTypeMapper, IDiagnosticReporter) remain the public contract.
+- [x] **4.3b** ~~Mark type groups as `internal`~~ — Done (~74 types made internal across three passes). Pass 1 (commit `b912a5ec`): ~60 types across Analysis, Discovery, CodeGen, Semantic, Validation, Project, and Parser. Pass 2 (commit `6a4b25e3`): TypeResolver, CompilerServicesBuilder, TypeResolverAdapter, SymbolLookupAdapter, ClrTypeMapperAdapter, DiagnosticReporter, ClrMemberCache, TypeInferenceService, GenericTypeInferenceService, InferenceResult. Pass 3 (commit `7e8ba20c`): TypeRegistry, SemanticAnalysisException, ModuleResolutionKind. Public interfaces (ITypeResolver, ISymbolLookup, IClrTypeMapper, IDiagnosticReporter) remain the public contract.
 - [x] **4.3c** ~~Add `InternalsVisibleTo` for CLI~~ — Done (uses assembly name `sharpyc`)
 - [x] **4.3d** ~~Verify all tests still compile~~ — Done (4805 pass, 0 fail)
 - [x] **4.3e** ~~Keep listed types public for LSP/tooling~~ — Done (Compiler, CompilationResult, SemanticInfo, SemanticBinding, Symbol hierarchy, DiagnosticBag, Lexer, Parser, AST nodes, etc. all remain public)
