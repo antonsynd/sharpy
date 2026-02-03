@@ -1,0 +1,26 @@
+# List and dict comprehensions
+def squares(n: int) -> list[int]:
+    return [x * x for x in range(n)]
+
+def even_squares(n: int) -> list[int]:
+    return [x * x for x in range(n) if x % 2 == 0]
+
+def create_mapping(keys: list[str], values: list[int]) -> dict[str, int]:
+    result: dict[str, int] = {}
+    i: int = 0
+    while i < len(keys) and i < len(values):
+        result[keys[i]] = values[i]
+        i = i + 1
+    return result
+
+def main():
+    nums: list[int] = squares(10)
+    print(nums)
+
+    evens: list[int] = even_squares(10)
+    print(evens)
+
+    keys: list[str] = ["a", "b", "c"]
+    values: list[int] = [1, 2, 3]
+    mapping: dict[str, int] = create_mapping(keys, values)
+    print(mapping)

@@ -1,0 +1,65 @@
+# Larger program with multiple functions and control flow
+def is_prime(n: int) -> bool:
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+    i: int = 3
+    while i * i <= n:
+        if n % i == 0:
+            return False
+        i = i + 2
+    return True
+
+def count_primes(limit: int) -> int:
+    count: int = 0
+    n: int = 2
+    while n < limit:
+        if is_prime(n):
+            count = count + 1
+        n = n + 1
+    return count
+
+def sum_digits(n: int) -> int:
+    total: int = 0
+    while n > 0:
+        total = total + n % 10
+        n = n // 10
+    return total
+
+def is_happy_number(n: int) -> bool:
+    seen: set[int] = set()
+    while n != 1 and n not in seen:
+        seen.add(n)
+        total: int = 0
+        while n > 0:
+            digit: int = n % 10
+            total = total + digit * digit
+            n = n // 10
+        n = total
+    return n == 1
+
+def factorial(n: int) -> int:
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+def gcd(a: int, b: int) -> int:
+    while b != 0:
+        temp: int = b
+        b = a % b
+        a = temp
+    return a
+
+def lcm(a: int, b: int) -> int:
+    return (a * b) // gcd(a, b)
+
+def main():
+    print(f"Primes under 100: {count_primes(100)}")
+    print(f"Sum of digits of 12345: {sum_digits(12345)}")
+    print(f"Is 19 happy? {is_happy_number(19)}")
+    print(f"10! = {factorial(10)}")
+    print(f"GCD(48, 18) = {gcd(48, 18)}")
+    print(f"LCM(4, 6) = {lcm(4, 6)}")
