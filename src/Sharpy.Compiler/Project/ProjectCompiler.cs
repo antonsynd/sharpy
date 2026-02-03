@@ -22,6 +22,7 @@ internal class ProjectCompiler
     private readonly bool _warningsAsErrors;
     private readonly HashSet<string> _suppressedWarnings;
     private readonly int _maxErrors;
+    private readonly bool _incremental;
 
     // Shared symbol table and semantic info across all files.
     // SemanticInfo is shared (not per-file) because files are processed sequentially
@@ -47,14 +48,19 @@ internal class ProjectCompiler
     // Unified project model containing all CompilationUnits
     private ProjectModel? _projectModel;
 
+    // Incremental compilation cache
+    private IncrementalCompilationCache? _incrementalCache;
+
     public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null,
-        bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null, int maxErrors = 0)
+        bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null, int maxErrors = 0,
+        bool incremental = false)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = moduleRegistry;
         _warningsAsErrors = warningsAsErrors;
         _suppressedWarnings = suppressedWarnings ?? new HashSet<string>();
         _maxErrors = maxErrors;
+        _incremental = incremental;
     }
 
     /// <summary>
@@ -73,6 +79,19 @@ internal class ProjectCompiler
         _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings);
         _projectMetrics = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
         _projectModel = new ProjectModel(config);
+
+        // Initialize incremental compilation cache if enabled
+        if (_incremental)
+        {
+            _incrementalCache = new IncrementalCompilationCache(config, _logger);
+            var staleFiles = _incrementalCache.GetFilesToRecompile(config.SourceFiles, null);
+            _logger.LogInfo($"Incremental mode: {_incrementalCache.StaleFileCount} file(s) changed, {_incrementalCache.UpToDateFileCount} up-to-date");
+
+            // Note: Full incremental compilation (skipping unchanged files) requires caching
+            // the symbol table entries from previous builds. For now, we recompile everything
+            // but track metrics and save hashes for future use. See item 5.1d in the hardening
+            // assessment for the full implementation plan.
+        }
 
         try
         {
@@ -763,6 +782,17 @@ internal class ProjectCompiler
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel
             };
+        }
+
+        // Save incremental compilation cache on success
+        if (_incrementalCache != null)
+        {
+            foreach (var sourceFile in config.SourceFiles)
+            {
+                _incrementalCache.UpdateHash(sourceFile);
+            }
+            _incrementalCache.SaveCache();
+            _logger.LogInfo("Incremental cache saved");
         }
 
         return new ProjectCompilationResult

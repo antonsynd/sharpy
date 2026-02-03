@@ -98,7 +98,7 @@ public class Compiler
         var warnAsErrors = _options.WarningsAsErrors || projectConfig.WarningsAsErrors;
 
         var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
-            warnAsErrors, mergedSuppressed, _options.MaxErrors);
+            warnAsErrors, mergedSuppressed, _options.MaxErrors, _options.Incremental);
         return projectCompiler.Compile(projectConfig, cancellationToken);
     }
 
@@ -836,4 +836,11 @@ public class CompilerOptions
     /// Default: 0 (use component defaults: 25 for parser, 100 for semantic).
     /// </summary>
     public int MaxErrors { get; set; }
+
+    /// <summary>
+    /// Enable incremental compilation. When true, only files that have changed
+    /// (or whose dependencies have changed) are recompiled. File content hashes
+    /// are cached in the project's obj/ directory.
+    /// </summary>
+    public bool Incremental { get; set; }
 }

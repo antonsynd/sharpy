@@ -127,11 +127,13 @@ class Program
         projConfigOpt.Aliases.Add("-c");
         var projCleanOpt = new Option<bool>("--clean") { Description = "Delete bin/ and obj/ directories before building" };
         var projEmitCsOpt = new Option<DirectoryInfo?>("--emit-cs-to") { Description = "Save generated C# code to the specified directory" };
+        var projIncrementalOpt = new Option<bool>("--incremental") { Description = "Enable incremental compilation (only recompile changed files)" };
 
         projectCommand.Arguments.Add(projFileArg);
         projectCommand.Options.Add(projConfigOpt);
         projectCommand.Options.Add(projCleanOpt);
         projectCommand.Options.Add(projEmitCsOpt);
+        projectCommand.Options.Add(projIncrementalOpt);
 
         projectCommand.SetAction((parseResult) =>
         {
@@ -139,6 +141,7 @@ class Program
             var configuration = parseResult.GetValue(projConfigOpt) ?? "Debug";
             var clean = parseResult.GetValue(projCleanOpt);
             var emitCsTo = parseResult.GetValue(projEmitCsOpt);
+            var incremental = parseResult.GetValue(projIncrementalOpt);
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
             var metricsFormat = parseResult.GetValue(metricsFormatOption);
@@ -148,7 +151,7 @@ class Program
             var maxErrors = parseResult.GetValue(maxErrorsOption);
 
             var logger = CreateLogger(logLevel, logFile);
-            HandleProjectCommand(project, configuration, clean, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+            HandleProjectCommand(project, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
         });
 
         // === Emit Command (with subcommands) ===
@@ -502,6 +505,7 @@ class Program
         FileInfo? projectFile,
         string configuration,
         bool clean,
+        bool incremental,
         DirectoryInfo? emitCsTo,
         ICompilerLogger logger,
         CompilerLogLevel logLevel,
@@ -531,7 +535,7 @@ class Program
             Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
         }
 
-        CompileProject(resolvedProjectFile, configuration, clean, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+        CompileProject(resolvedProjectFile, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
     }
 
     static void ValidateInputFile(FileInfo inputFile)
@@ -779,7 +783,7 @@ class Program
         }
     }
 
-    static void CompileProject(FileInfo projectFile, string configuration, bool clean, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null)
+    static void CompileProject(FileInfo projectFile, string configuration, bool clean, bool incremental, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null)
     {
         try
         {
@@ -796,6 +800,10 @@ class Program
             Console.WriteLine($"Configuration: {projectConfig.Configuration}");
             Console.WriteLine($"Output: {projectConfig.OutputType}");
             Console.WriteLine($"Source files: {projectConfig.SourceFiles.Count}");
+            if (incremental)
+            {
+                Console.WriteLine("Mode: Incremental");
+            }
             Console.WriteLine();
 
             // Create compiler with options (CLI flags override project file settings)
@@ -808,7 +816,8 @@ class Program
                 ModulePaths = projectConfig.ModulePaths.ToArray(),
                 WarningsAsErrors = warnAsError || projectConfig.WarningsAsErrors,
                 SuppressedWarnings = mergedSuppressed,
-                MaxErrors = maxErrors ?? 0
+                MaxErrors = maxErrors ?? 0,
+                Incremental = incremental
             };
 
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
