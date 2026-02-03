@@ -89,4 +89,24 @@ public class Scope
     {
         return _symbols.Values;
     }
+
+    /// <summary>
+    /// Removes a symbol from this scope or a parent scope.
+    /// Used during incremental compilation to invalidate stale cached symbols.
+    /// </summary>
+    public bool Remove(string name)
+    {
+        if (_symbols.ContainsKey(name))
+        {
+            _symbols.Remove(name);
+            return true;
+        }
+
+        if (_parent != null)
+        {
+            return _parent.Remove(name);
+        }
+
+        return false;
+    }
 }

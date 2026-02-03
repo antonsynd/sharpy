@@ -142,6 +142,13 @@ public class SemanticBinding
     public bool HasCodeGenInfo(Symbol symbol)
         => _codeGenInfo.ContainsKey(symbol);
 
+    /// <summary>
+    /// Removes the CodeGenInfo for a symbol.
+    /// Used during incremental compilation to invalidate stale cached symbols.
+    /// </summary>
+    public bool RemoveCodeGenInfo(Symbol symbol)
+        => _codeGenInfo.TryRemove(symbol, out _);
+
     #endregion
 
     #region Variable Types
@@ -166,6 +173,13 @@ public class SemanticBinding
     /// </summary>
     public SemanticType GetVariableType(VariableSymbol symbol)
         => _variableTypes.TryGetValue(symbol, out var type) ? type : SemanticType.Unknown;
+
+    /// <summary>
+    /// Removes the resolved type for a variable symbol.
+    /// Used during incremental compilation to invalidate stale cached symbols.
+    /// </summary>
+    public bool RemoveVariableType(VariableSymbol symbol)
+        => _variableTypes.TryRemove(symbol, out _);
 
     #endregion
 

@@ -144,6 +144,36 @@ internal class ProjectCompiler
             CollectTypeDeclarations(config);
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Phase 3b: Validate restored symbols against current symbol table (DISABLED)
+            //
+            // The validation logic is implemented but currently disabled because:
+            // 1. The existing dependency graph already handles most stale reference cases
+            //    via transitive invalidation (if A imports B and B changes, A is recompiled)
+            // 2. The validation has edge cases that need more work (e.g., correctly handling
+            //    symbols that reference other cached symbols vs. newly compiled symbols)
+            //
+            // The validation infrastructure is kept for future use when we need to catch
+            // subtle signature changes that don't affect the dependency graph.
+            //
+            // Scenarios the validation would catch (once fixed):
+            // - Type renamed in a dependency (file A imports B.MyClass, B renames to NewClass)
+            // - Function signature changed (return type, parameter types)
+            // - Base class removed or changed incompatibly
+            //
+            // To re-enable: Remove the #if false and fix the validation edge cases
+            #if false
+            if (_incremental && ValidateRestoredSymbols())
+            {
+                _logger.LogInfo("Parsing invalidated files after symbol validation");
+                if (!ParseInvalidatedFiles(config))
+                {
+                    return CreateFailureResult();
+                }
+                CollectTypeDeclarations(config);
+            }
+            #endif
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Phase 4: Resolve imports and build dependency information
             // Returns false only for circular imports (which break the dependency graph).
             // Non-circular import errors are merged into diagnostics but compilation
@@ -352,6 +382,109 @@ internal class ProjectCompiler
     }
 
     /// <summary>
+    /// Parses files that were invalidated after symbol validation.
+    /// These files were previously skipped but their cached symbols are now stale.
+    /// </summary>
+    private bool ParseInvalidatedFiles(ProjectConfig config)
+    {
+        foreach (var sourceFile in config.SourceFiles)
+        {
+            var unit = _projectModel!.GetUnit(sourceFile);
+            if (unit == null)
+                continue;
+
+            // Only parse files that need recompilation (phase was reset from Skipped)
+            // Skip files that are still Skipped or already processed
+            if (unit.Phase != CompilationPhase.Parsed && !_filesToSkip.Contains(sourceFile))
+            {
+                // This file was invalidated and needs to be parsed
+                var fileMetrics = new CompilationMetrics(
+                    fileName: Path.GetRelativePath(config.ProjectDirectory, sourceFile),
+                    projectName: config.RootNamespace,
+                    configuration: config.Configuration);
+
+                try
+                {
+                    // The source text is already in the unit (created during initial parsing)
+                    // We just need to re-parse it
+                    var source = unit.SourceText;
+                    unit.GeneratedCSharp = null; // Clear cached C#
+
+                    fileMetrics.StartPhase("Lexical Analysis");
+                    var sourceText = new Text.SourceText(source, sourceFile);
+                    var lexer = new Lexer.Lexer(sourceText, _logger);
+                    if (_maxErrors > 0)
+                    {
+                        lexer.MaxErrors = _maxErrors;
+                    }
+                    var tokens = lexer.TokenizeAll();
+                    fileMetrics.EndPhase();
+
+                    if (lexer.Diagnostics.HasErrors)
+                    {
+                        unit.Diagnostics.Merge(lexer.Diagnostics);
+                        unit.Phase = CompilationPhase.Failed;
+                        _diagnostics.Merge(lexer.Diagnostics);
+                        _projectMetrics.AddFileMetrics(fileMetrics);
+                        continue;
+                    }
+
+                    unit.Tokens = tokens;
+                    unit.Phase = CompilationPhase.Lexed;
+
+                    fileMetrics.StartPhase("Syntax Analysis");
+                    var parserMaxErrors = _maxErrors > 0 ? _maxErrors : 25;
+                    var parser = new Parser.Parser(tokens, _logger, parserMaxErrors);
+                    var module = parser.ParseModule();
+                    fileMetrics.EndPhase();
+
+                    if (parser.Diagnostics.HasErrors)
+                    {
+                        unit.Diagnostics.Merge(parser.Diagnostics);
+                        unit.Phase = CompilationPhase.Failed;
+                        _diagnostics.Merge(parser.Diagnostics);
+                        _projectMetrics.AddFileMetrics(fileMetrics);
+                        continue;
+                    }
+
+                    unit.Ast = module;
+                    unit.Phase = CompilationPhase.Parsed;
+
+                    // Extract imports from AST
+                    var imports = new List<ImportStatement>();
+                    var fromImports = new List<FromImportStatement>();
+                    foreach (var stmt in module.Body)
+                    {
+                        if (stmt is ImportStatement import)
+                            imports.Add(import);
+                        else if (stmt is FromImportStatement fromImport)
+                            fromImports.Add(fromImport);
+                    }
+                    unit.Imports = imports;
+                    unit.FromImports = fromImports;
+                    unit.Metrics = fileMetrics;
+
+                    if (_logger.IsEnabled(CompilerLogLevel.Debug))
+                    {
+                        _logger.LogDebug($"Re-parsed {Path.GetFileName(sourceFile)} (invalidated): {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
+                    }
+
+                    _projectMetrics.AddFileMetrics(fileMetrics);
+                }
+                catch (Exception ex)
+                {
+                    unit.Diagnostics.AddError(ex.Message, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
+                    unit.Phase = CompilationPhase.Failed;
+                    _diagnostics.AddError(ex.Message, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
+                    _projectMetrics.AddFileMetrics(fileMetrics);
+                }
+            }
+        }
+
+        return !_diagnostics.HasErrors;
+    }
+
+    /// <summary>
     /// Phase 2: Initialize shared state (symbol table, semantic info)
     /// </summary>
     private void InitializeSharedState()
@@ -484,6 +617,285 @@ internal class ProjectCompiler
         {
             _logger.LogInfo($"Restored symbols from {restoredCount} cached file(s)");
         }
+    }
+
+    /// <summary>
+    /// Validates restored symbols against the current symbol table after all declarations are collected.
+    /// If a restored symbol has stale references (e.g., to a type that was renamed or a function
+    /// whose signature changed), the file is marked for recompilation.
+    /// </summary>
+    /// <returns>True if any files were invalidated and need recompilation.</returns>
+    private bool ValidateRestoredSymbols()
+    {
+        if (_restoredSymbols.Count == 0)
+            return false;
+
+        var invalidFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var semanticBinding = _projectModel!.SemanticBinding;
+
+        foreach (var (symbolId, symbol) in _restoredSymbols)
+        {
+            if (!ValidateRestoredSymbol(symbol))
+            {
+                var filePath = GetSymbolFilePath(symbol);
+                if (filePath != null)
+                {
+                    var normalizedPath = NormalizePath(filePath);
+                    invalidFiles.Add(normalizedPath);
+                    _logger.LogInfo($"Restored symbol validation failed for '{symbol.Name}'; will recompile: {Path.GetFileName(filePath)}");
+                }
+            }
+        }
+
+        if (invalidFiles.Count == 0)
+            return false;
+
+        // Remove invalidated files from skip list so they get recompiled
+        foreach (var file in invalidFiles)
+        {
+            // Find the original file path (before normalization) in _filesToSkip
+            var originalPath = _filesToSkip.FirstOrDefault(f => NormalizePath(f) == file);
+            if (originalPath != null)
+            {
+                _filesToSkip.Remove(originalPath);
+
+                // Mark the unit as needing recompilation
+                var unit = _projectModel!.GetUnit(originalPath);
+                if (unit != null && unit.Phase == CompilationPhase.Skipped)
+                {
+                    unit.Phase = CompilationPhase.Parsed; // Reset to parsed so it gets processed
+                }
+            }
+
+            // Remove invalidated symbols from the symbol table and restored set
+            var symbolsToRemove = _restoredSymbols
+                .Where(kvp =>
+                {
+                    var path = GetSymbolFilePath(kvp.Value);
+                    return path != null && NormalizePath(path) == file;
+                })
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in symbolsToRemove)
+            {
+                var symbolToRemove = _restoredSymbols[key];
+                _symbolTable.Remove(symbolToRemove.Name);
+                _restoredSymbols.Remove(key);
+
+                // Also remove from semantic binding
+                if (symbolToRemove is TypeSymbol ts)
+                {
+                    semanticBinding.RemoveCodeGenInfo(ts);
+                    foreach (var field in ts.Fields)
+                    {
+                        semanticBinding.RemoveVariableType(field);
+                        semanticBinding.RemoveCodeGenInfo(field);
+                    }
+                    foreach (var method in ts.Methods)
+                    {
+                        semanticBinding.RemoveCodeGenInfo(method);
+                    }
+                    foreach (var ctor in ts.Constructors)
+                    {
+                        semanticBinding.RemoveCodeGenInfo(ctor);
+                    }
+                }
+                else if (symbolToRemove is FunctionSymbol fs)
+                {
+                    semanticBinding.RemoveCodeGenInfo(fs);
+                }
+                else if (symbolToRemove is VariableSymbol vs)
+                {
+                    semanticBinding.RemoveVariableType(vs);
+                    semanticBinding.RemoveCodeGenInfo(vs);
+                }
+            }
+        }
+
+        _logger.LogInfo($"Invalidated {invalidFiles.Count} cached file(s) due to stale symbol references");
+        return true;
+    }
+
+    /// <summary>
+    /// Validates that a restored symbol's type references resolve in the current SymbolTable.
+    /// Returns false if any reference is stale (type renamed, removed, signature changed, etc.).
+    /// </summary>
+    private bool ValidateRestoredSymbol(Symbol symbol)
+    {
+        return symbol switch
+        {
+            VariableSymbol v => ValidateType(v.Type),
+            FunctionSymbol f => ValidateFunctionSymbol(f),
+            TypeSymbol t => ValidateTypeSymbol(t),
+            _ => true // Other symbol types (Module, etc.) don't have type refs to validate
+        };
+    }
+
+    /// <summary>
+    /// Validates that a type reference still resolves to a valid type.
+    /// </summary>
+    private bool ValidateType(SemanticType? type)
+    {
+        if (type == null)
+            return true;
+
+        return type switch
+        {
+            UserDefinedType udt => _symbolTable.Lookup(udt.Name) is TypeSymbol,
+            GenericType gt => ValidateGenericType(gt),
+            NullableType nt => ValidateType(nt.UnderlyingType),
+            OptionalType ot => ValidateType(ot.UnderlyingType),
+            Semantic.FunctionType ft => ValidateType(ft.ReturnType) && ft.ParameterTypes.All(ValidateType),
+            Semantic.TupleType tt => tt.ElementTypes.All(ValidateType),
+            ResultType rt => ValidateType(rt.OkType) && ValidateType(rt.ErrorType),
+            // Builtin types are always valid
+            BuiltinType => true,
+            VoidType => true,
+            UnknownType => true,
+            ModuleType => true,
+            TypeParameterType => true,
+            _ => true
+        };
+    }
+
+    /// <summary>
+    /// Validates a generic type (e.g., list[MyClass]).
+    /// </summary>
+    private bool ValidateGenericType(GenericType gt)
+    {
+        // Validate all type arguments
+        return gt.TypeArguments.All(ValidateType);
+    }
+
+    /// <summary>
+    /// Validates a function symbol's signature (return type and parameters).
+    /// </summary>
+    private bool ValidateFunctionSymbol(FunctionSymbol cached)
+    {
+        // Validate return type exists
+        if (!ValidateType(cached.ReturnType))
+        {
+            _logger.LogDebug($"Function '{cached.Name}' has invalid return type");
+            return false;
+        }
+
+        // Validate parameter types exist
+        foreach (var param in cached.Parameters)
+        {
+            if (!ValidateType(param.Type))
+            {
+                _logger.LogDebug($"Function '{cached.Name}' has invalid parameter type for '{param.Name}'");
+                return false;
+            }
+        }
+
+        // If this function references an imported function, verify the current version has matching signature
+        // Look up by the function's fully qualified name or just name
+        var lookupName = cached.Name;
+        var current = _symbolTable.Lookup(lookupName);
+
+        // If the same function exists in a dependency that was recompiled, check signatures match
+        if (current is FunctionSymbol currentFunc && !ReferenceEquals(cached, currentFunc))
+        {
+            if (!SignaturesMatch(cached, currentFunc))
+            {
+                _logger.LogDebug($"Function signature changed for '{cached.Name}'");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Validates a type symbol (class/struct) for valid base type and interface references.
+    /// </summary>
+    private bool ValidateTypeSymbol(TypeSymbol cached)
+    {
+        // Validate base type still exists
+        if (cached.BaseType != null)
+        {
+            var currentBase = _symbolTable.Lookup(cached.BaseType.Name);
+            if (currentBase == null)
+            {
+                _logger.LogDebug($"Type '{cached.Name}' has invalid base type '{cached.BaseType.Name}'");
+                return false;
+            }
+
+            // Verify the base type hasn't changed in incompatible ways
+            if (currentBase is TypeSymbol currentBaseType && !ReferenceEquals(cached.BaseType, currentBaseType))
+            {
+                // Check that the base type still has compatible members
+                // (A full signature check would be expensive; for now just check it exists)
+            }
+        }
+
+        // Validate interface implementations still exist
+        foreach (var iface in cached.Interfaces)
+        {
+            if (_symbolTable.Lookup(iface.Name) == null)
+            {
+                _logger.LogDebug($"Type '{cached.Name}' implements non-existent interface '{iface.Name}'");
+                return false;
+            }
+        }
+
+        // Validate field types
+        foreach (var field in cached.Fields)
+        {
+            if (!ValidateType(field.Type))
+            {
+                _logger.LogDebug($"Type '{cached.Name}' has field '{field.Name}' with invalid type");
+                return false;
+            }
+        }
+
+        // Validate method signatures
+        foreach (var method in cached.Methods)
+        {
+            if (!ValidateFunctionSymbol(method))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Checks if two function signatures match (return type and parameter types).
+    /// </summary>
+    private bool SignaturesMatch(FunctionSymbol cached, FunctionSymbol current)
+    {
+        // Return type must match
+        if (!TypesEqual(cached.ReturnType, current.ReturnType))
+            return false;
+
+        // Parameter count must match
+        if (cached.Parameters.Count != current.Parameters.Count)
+            return false;
+
+        // Each parameter type must match
+        for (int i = 0; i < cached.Parameters.Count; i++)
+        {
+            if (!TypesEqual(cached.Parameters[i].Type, current.Parameters[i].Type))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Compares two types for equality.
+    /// </summary>
+    private static bool TypesEqual(SemanticType? a, SemanticType? b)
+    {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+
+        // SemanticType records use structural equality
+        return a.Equals(b);
     }
 
     /// <summary>

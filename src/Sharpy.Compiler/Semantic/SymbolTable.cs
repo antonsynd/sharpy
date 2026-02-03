@@ -115,4 +115,13 @@ public class SymbolTable
     public Scope GlobalScope => _globalScope;
     public int ScopeDepth => _scopeStack.Count;
     internal BuiltinRegistry BuiltinRegistry => _builtins;
+
+    /// <summary>
+    /// Removes a symbol from the scope chain.
+    /// Used during incremental compilation to invalidate stale cached symbols.
+    /// </summary>
+    public bool Remove(string name)
+    {
+        return CurrentScope.Remove(name);
+    }
 }
