@@ -378,7 +378,7 @@ internal class ModuleResolutionResult
 /// <summary>
 /// Indicates how a module was resolved
 /// </summary>
-public enum ModuleResolutionKind
+internal enum ModuleResolutionKind
 {
     /// <summary>
     /// Found relative to the importing file's directory

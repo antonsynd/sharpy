@@ -949,7 +949,7 @@ internal partial class TypeChecker
     }
 }
 
-public class SemanticAnalysisException : Exception
+internal class SemanticAnalysisException : Exception
 {
     public SemanticAnalysisException(string message) : base(message) { }
 }
