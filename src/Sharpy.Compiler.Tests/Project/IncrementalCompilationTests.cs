@@ -1157,4 +1157,156 @@ def main():
     }
 
     #endregion
+
+    #region Schema Version Tests
+
+    [Fact]
+    public void CurrentSchemaVersion_IsPositive()
+    {
+        Assert.True(IncrementalCompilationCache.CurrentSchemaVersion > 0,
+            "Schema version should be a positive integer");
+    }
+
+    [Fact]
+    public void SymbolCache_SavesWithSchemaVersion()
+    {
+        var config = CreateTestConfig("def main():\n    print('hello')");
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "main",
+            Kind = SymbolKind.Function,
+            Parameters = new List<ParameterSymbol>(),
+            ReturnType = SemanticType.Void
+        };
+
+        cache.SaveFileCache(config.SourceFiles[0], new List<Symbol> { funcSymbol }, "generated code", new List<string>());
+        cache.SaveAllCaches();
+
+        // Read and verify the symbol cache contains SchemaVersion
+        var symbolCachePath = Path.Combine(config.ProjectDirectory, "obj", config.Configuration, ".sharpy-symbols");
+        var json = File.ReadAllText(symbolCachePath);
+
+        Assert.Contains("SchemaVersion", json);
+        Assert.Contains("Files", json);
+        Assert.Contains($"\"SchemaVersion\": {IncrementalCompilationCache.CurrentSchemaVersion}", json);
+    }
+
+    [Fact]
+    public void SymbolCache_InvalidatesOnSchemaVersionChange()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "main",
+            Kind = SymbolKind.Function,
+            Parameters = new List<ParameterSymbol>(),
+            ReturnType = SemanticType.Void
+        };
+
+        cache.SaveFileCache(config.SourceFiles[0], new List<Symbol> { funcSymbol }, "generated code", new List<string>());
+        cache.SaveAllCaches();
+
+        // Manually modify the symbol cache to have an older schema version
+        var symbolCachePath = Path.Combine(config.ProjectDirectory, "obj", config.Configuration, ".sharpy-symbols");
+        var json = File.ReadAllText(symbolCachePath);
+        json = json.Replace($"\"SchemaVersion\": {IncrementalCompilationCache.CurrentSchemaVersion}", "\"SchemaVersion\": 0");
+        File.WriteAllText(symbolCachePath, json);
+
+        // Reload cache - should be empty due to schema version mismatch
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        var hasValidCache = cache2.HasValidFileCache(config.SourceFiles[0]);
+        Assert.False(hasValidCache, "Symbol cache should be invalidated when schema version changes");
+    }
+
+    [Fact]
+    public void SymbolCache_PreservesOnSameSchemaVersion()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "main",
+            Kind = SymbolKind.Function,
+            Parameters = new List<ParameterSymbol>(),
+            ReturnType = SemanticType.Void
+        };
+
+        cache.SaveFileCache(config.SourceFiles[0], new List<Symbol> { funcSymbol }, "generated code", new List<string>());
+        cache.SaveAllCaches();
+
+        // Reload cache - should be preserved because schema version matches
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        var hasValidCache = cache2.HasValidFileCache(config.SourceFiles[0]);
+        Assert.True(hasValidCache, "Symbol cache should be preserved when schema version matches");
+    }
+
+    [Fact]
+    public void SymbolCache_InvalidatesOnCorruptedJson()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "main",
+            Kind = SymbolKind.Function,
+            Parameters = new List<ParameterSymbol>(),
+            ReturnType = SemanticType.Void
+        };
+
+        cache.SaveFileCache(config.SourceFiles[0], new List<Symbol> { funcSymbol }, "generated code", new List<string>());
+        cache.SaveAllCaches();
+
+        // Corrupt the symbol cache file
+        var symbolCachePath = Path.Combine(config.ProjectDirectory, "obj", config.Configuration, ".sharpy-symbols");
+        File.WriteAllText(symbolCachePath, "{ invalid json }");
+
+        // Reload cache - should start fresh
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        var hasValidCache = cache2.HasValidFileCache(config.SourceFiles[0]);
+        Assert.False(hasValidCache, "Symbol cache should be invalidated when JSON is corrupted");
+    }
+
+    [Fact]
+    public void SymbolCache_InvalidatesOnLegacyFormat()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "main",
+            Kind = SymbolKind.Function,
+            Parameters = new List<ParameterSymbol>(),
+            ReturnType = SemanticType.Void
+        };
+
+        cache.SaveFileCache(config.SourceFiles[0], new List<Symbol> { funcSymbol }, "generated code", new List<string>());
+        cache.SaveAllCaches();
+
+        // Write symbol cache in legacy format (plain dictionary without envelope)
+        var symbolCachePath = Path.Combine(config.ProjectDirectory, "obj", config.Configuration, ".sharpy-symbols");
+        var legacyFormat = "{\"some/path.spy\": {\"ContentHash\": \"abc\", \"Symbols\": [], \"GeneratedCSharp\": \"code\", \"Dependencies\": []}}";
+        File.WriteAllText(symbolCachePath, legacyFormat);
+
+        // Reload cache - should be empty due to legacy format
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache2.LoadAllCaches();
+
+        var hasValidCache = cache2.HasValidFileCache(config.SourceFiles[0]);
+        Assert.False(hasValidCache, "Symbol cache should be invalidated when legacy format is detected");
+    }
+
+    #endregion
 }

@@ -12,11 +12,31 @@ namespace Sharpy.Compiler.Project;
 internal record CacheMetadata(string CompilerVersion, Dictionary<string, string> FileHashes);
 
 /// <summary>
+/// Versioned envelope for the symbol cache to handle schema evolution.
+/// </summary>
+/// <remarks>
+/// Schema version history:
+///   v1 (2026-02): Initial versioned format
+///
+/// When making breaking changes:
+///   1. Increment CurrentSchemaVersion
+///   2. Add migration logic if data can be upgraded
+///   3. Document the change here
+/// </remarks>
+internal record SymbolCacheEnvelope(int SchemaVersion, Dictionary<string, FileCacheEntry> Files);
+
+/// <summary>
 /// Manages file content hashes and symbol caches for incremental compilation.
 /// Persists hashes and compiled artifacts to disk between builds to enable skipping unchanged files.
 /// </summary>
 internal class IncrementalCompilationCache
 {
+    /// <summary>
+    /// Current schema version for the symbol cache.
+    /// Increment this when making breaking changes to FileCacheEntry or CachedSymbol structures.
+    /// </summary>
+    internal const int CurrentSchemaVersion = 1;
+
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
     private readonly ICompilerLogger _logger;
@@ -436,8 +456,46 @@ internal class IncrementalCompilationCache
         try
         {
             var json = File.ReadAllText(_symbolCachePath);
-            return JsonSerializer.Deserialize<Dictionary<string, FileCacheEntry>>(json, s_jsonOptions)
-                   ?? new Dictionary<string, FileCacheEntry>(StringComparer.OrdinalIgnoreCase);
+
+            // Try to deserialize as new versioned envelope format
+            var envelope = JsonSerializer.Deserialize<SymbolCacheEnvelope>(json, s_jsonOptions);
+            if (envelope != null)
+            {
+                if (envelope.SchemaVersion != CurrentSchemaVersion)
+                {
+                    _logger.LogInfo($"Symbol cache schema version {envelope.SchemaVersion} != {CurrentSchemaVersion}; rebuilding");
+                    return new Dictionary<string, FileCacheEntry>(StringComparer.OrdinalIgnoreCase);
+                }
+
+                // Convert to case-insensitive dictionary
+                var result = new Dictionary<string, FileCacheEntry>(StringComparer.OrdinalIgnoreCase);
+                foreach (var kvp in envelope.Files)
+                {
+                    result[kvp.Key] = kvp.Value;
+                }
+                return result;
+            }
+
+            return new Dictionary<string, FileCacheEntry>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            // Try to load as legacy format (plain dictionary without version)
+            try
+            {
+                var legacyJson = File.ReadAllText(_symbolCachePath);
+                var legacyCache = JsonSerializer.Deserialize<Dictionary<string, FileCacheEntry>>(legacyJson, s_jsonOptions);
+                if (legacyCache != null)
+                {
+                    _logger.LogInfo("Legacy symbol cache format detected; rebuilding");
+                    return new Dictionary<string, FileCacheEntry>(StringComparer.OrdinalIgnoreCase);
+                }
+            }
+            catch
+            {
+                // Ignore nested exception
+            }
+            return new Dictionary<string, FileCacheEntry>(StringComparer.OrdinalIgnoreCase);
         }
         catch (Exception ex)
         {
@@ -455,12 +513,20 @@ internal class IncrementalCompilationCache
 
         try
         {
-            var json = JsonSerializer.Serialize(_fileCache, s_jsonOptions);
+            var envelope = new SymbolCacheEnvelope(CurrentSchemaVersion, _fileCache);
+            var json = JsonSerializer.Serialize(envelope, s_jsonOptions);
+
+            var directory = Path.GetDirectoryName(_symbolCachePath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
             File.WriteAllText(_symbolCachePath, json);
 
             if (_logger.IsEnabled(CompilerLogLevel.Debug))
             {
-                _logger.LogDebug($"Saved symbol cache with {_fileCache.Count} entries");
+                _logger.LogDebug($"Saved symbol cache v{CurrentSchemaVersion} with {_fileCache.Count} entries");
             }
         }
         catch (Exception ex)
