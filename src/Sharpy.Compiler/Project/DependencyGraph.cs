@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Project;
 
@@ -79,8 +80,8 @@ internal class DependencyGraph
 
         foreach (var (file, deps) in fileDependencies)
         {
-            var normalizedFile = NormalizePath(file);
-            var normalizedDepSet = deps.Select(NormalizePath).ToImmutableHashSet();
+            var normalizedFile = PathNormalizer.Normalize(file);
+            var normalizedDepSet = deps.Select(PathNormalizer.Normalize).ToImmutableHashSet();
             normalizedDeps[normalizedFile] = normalizedDepSet;
             allFiles.Add(normalizedFile);
             allFiles.UnionWith(normalizedDepSet);
@@ -121,7 +122,7 @@ internal class DependencyGraph
         if (fileHashes != null)
         {
             FileHashes = fileHashes
-                .ToDictionary(kvp => NormalizePath(kvp.Key), kvp => kvp.Value);
+                .ToDictionary(kvp => PathNormalizer.Normalize(kvp.Key), kvp => kvp.Value);
         }
     }
 
@@ -135,7 +136,7 @@ internal class DependencyGraph
     /// </returns>
     public ImmutableHashSet<string> GetDirectDependencies(string filePath)
     {
-        var normalized = NormalizePath(filePath);
+        var normalized = PathNormalizer.Normalize(filePath);
         return FileDependencies.TryGetValue(normalized, out var deps) ? deps : EmptySet;
     }
 
@@ -149,7 +150,7 @@ internal class DependencyGraph
     /// </returns>
     public ImmutableHashSet<string> GetDirectDependents(string filePath)
     {
-        var normalized = NormalizePath(filePath);
+        var normalized = PathNormalizer.Normalize(filePath);
         return ReverseDependencies.TryGetValue(normalized, out var deps) ? deps : EmptySet;
     }
 
@@ -301,7 +302,7 @@ internal class DependencyGraph
         // Initialize with changed files
         foreach (var file in changedFiles)
         {
-            var normalized = NormalizePath(file);
+            var normalized = PathNormalizer.Normalize(file);
             if (AllFiles.Contains(normalized))
             {
                 affected.Add(normalized);
@@ -435,7 +436,7 @@ internal class DependencyGraph
             return true; // No hashes available, assume stale
         }
 
-        var normalized = NormalizePath(filePath);
+        var normalized = PathNormalizer.Normalize(filePath);
         if (!FileHashes.TryGetValue(normalized, out var storedHash))
         {
             return true; // File not in graph, assume stale
@@ -444,20 +445,4 @@ internal class DependencyGraph
         return !string.Equals(storedHash, currentHash, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// Normalizes a file path for consistent comparison.
-    /// </summary>
-    private static string NormalizePath(string path)
-    {
-        // Normalize directory separators to forward slash for cross-platform consistency
-        var normalized = path.Replace('\\', '/');
-
-        // Normalize to lowercase on case-insensitive systems (Windows/macOS)
-        if (!OperatingSystem.IsLinux())
-        {
-            normalized = normalized.ToLowerInvariant();
-        }
-
-        return normalized;
-    }
 }

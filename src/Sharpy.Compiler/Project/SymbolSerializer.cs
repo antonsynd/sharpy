@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Project;
 
@@ -13,7 +14,7 @@ internal static class SymbolSerializer
     /// </summary>
     public static string ComputeSymbolId(Symbol symbol, string filePath)
     {
-        var normalizedPath = NormalizePath(filePath);
+        var normalizedPath = PathNormalizer.Normalize(filePath);
         return $"{normalizedPath}:{symbol.Kind}:{symbol.Name}";
     }
 
@@ -94,7 +95,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "Type",
             Name = ts.Name,
-            FilePath = NormalizePath(filePath),
+            FilePath = PathNormalizer.Normalize(filePath),
             AccessLevel = ts.AccessLevel.ToString(),
             DeclarationLine = ts.DeclarationLine,
             DeclarationColumn = ts.DeclarationColumn,
@@ -121,7 +122,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "Function",
             Name = fs.Name,
-            FilePath = NormalizePath(filePath),
+            FilePath = PathNormalizer.Normalize(filePath),
             AccessLevel = fs.AccessLevel.ToString(),
             DeclarationLine = fs.DeclarationLine,
             DeclarationColumn = fs.DeclarationColumn,
@@ -144,7 +145,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "Variable",
             Name = vs.Name,
-            FilePath = NormalizePath(filePath),
+            FilePath = PathNormalizer.Normalize(filePath),
             AccessLevel = vs.AccessLevel.ToString(),
             DeclarationLine = vs.DeclarationLine,
             DeclarationColumn = vs.DeclarationColumn,
@@ -168,7 +169,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "Module",
             Name = ms.Name,
-            FilePath = NormalizePath(ms.FilePath),
+            FilePath = PathNormalizer.Normalize(ms.FilePath),
             AccessLevel = ms.AccessLevel.ToString(),
             DeclarationLine = ms.DeclarationLine,
             DeclarationColumn = ms.DeclarationColumn,
@@ -188,7 +189,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "TypeAlias",
             Name = tas.Name,
-            FilePath = NormalizePath(filePath),
+            FilePath = PathNormalizer.Normalize(filePath),
             AccessLevel = tas.AccessLevel.ToString(),
             DeclarationLine = tas.DeclarationLine,
             DeclarationColumn = tas.DeclarationColumn,
@@ -206,7 +207,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "TypeParameter",
             Name = tps.Name,
-            FilePath = NormalizePath(filePath),
+            FilePath = PathNormalizer.Normalize(filePath),
             AccessLevel = tps.AccessLevel.ToString(),
             DeclarationLine = tps.DeclarationLine,
             DeclarationColumn = tps.DeclarationColumn,
@@ -620,19 +621,6 @@ internal static class SymbolSerializer
     #endregion
 
     #region Helpers
-
-    /// <summary>
-    /// Normalizes a file path for consistent comparison.
-    /// </summary>
-    private static string NormalizePath(string path)
-    {
-        var normalized = Path.GetFullPath(path).Replace('\\', '/');
-        if (!OperatingSystem.IsLinux())
-        {
-            normalized = normalized.ToLowerInvariant();
-        }
-        return normalized;
-    }
 
     /// <summary>
     /// Resolves cross-references for symbols that were deserialized.

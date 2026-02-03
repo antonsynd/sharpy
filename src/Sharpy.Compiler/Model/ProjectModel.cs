@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Model;
 
@@ -57,7 +58,7 @@ public class ProjectModel
     /// <returns>The CompilationUnit, or null if not found.</returns>
     public CompilationUnit? GetUnit(string filePath)
     {
-        var normalized = NormalizePath(filePath);
+        var normalized = PathNormalizer.Normalize(filePath);
         return _units.TryGetValue(normalized, out var unit) ? unit : null;
     }
 
@@ -69,7 +70,7 @@ public class ProjectModel
     public void AddUnit(CompilationUnit unit)
     {
         ArgumentNullException.ThrowIfNull(unit);
-        var normalized = NormalizePath(unit.FilePath);
+        var normalized = PathNormalizer.Normalize(unit.FilePath);
         if (!_units.TryAdd(normalized, unit))
         {
             throw new ArgumentException($"A compilation unit for '{unit.FilePath}' already exists.", nameof(unit));
@@ -320,19 +321,6 @@ public class ProjectModel
     #endregion
 
     #region Helpers
-
-    /// <summary>
-    /// Normalizes a file path for consistent comparison.
-    /// </summary>
-    private static string NormalizePath(string path)
-    {
-        var normalized = path.Replace('\\', '/');
-        if (!OperatingSystem.IsLinux())
-        {
-            normalized = normalized.ToLowerInvariant();
-        }
-        return normalized;
-    }
 
     /// <summary>
     /// Invalidates the cached build order.

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Project;
 
@@ -97,7 +98,7 @@ internal class IncrementalCompilationCache
         if (!File.Exists(filePath))
             return true;
 
-        var normalizedPath = NormalizePath(filePath);
+        var normalizedPath = PathNormalizer.Normalize(filePath);
         var currentHash = ComputeFileHash(filePath);
 
         if (!_fileHashes.TryGetValue(normalizedPath, out var cachedHash))
@@ -165,7 +166,7 @@ internal class IncrementalCompilationCache
         if (!File.Exists(filePath))
             return;
 
-        var normalizedPath = NormalizePath(filePath);
+        var normalizedPath = PathNormalizer.Normalize(filePath);
         var hash = ComputeFileHash(filePath);
         _fileHashes[normalizedPath] = hash;
     }
@@ -225,7 +226,7 @@ internal class IncrementalCompilationCache
     {
         EnsureFileCacheLoaded();
 
-        var normalizedPath = NormalizePath(filePath);
+        var normalizedPath = PathNormalizer.Normalize(filePath);
         var contentHash = File.Exists(filePath) ? ComputeFileHash(filePath) : string.Empty;
 
         var cachedSymbols = symbols
@@ -237,7 +238,7 @@ internal class IncrementalCompilationCache
             ContentHash = contentHash,
             Symbols = cachedSymbols,
             GeneratedCSharp = generatedCSharp,
-            Dependencies = dependencies.Select(NormalizePath).ToList(),
+            Dependencies = dependencies.Select(PathNormalizer.Normalize).ToList(),
             ModulePath = modulePath
         };
 
@@ -253,7 +254,7 @@ internal class IncrementalCompilationCache
     {
         EnsureFileCacheLoaded();
 
-        var normalizedPath = NormalizePath(filePath);
+        var normalizedPath = PathNormalizer.Normalize(filePath);
         if (!_fileCache!.TryGetValue(normalizedPath, out var entry))
         {
             return null;
@@ -320,7 +321,7 @@ internal class IncrementalCompilationCache
         // Add cached dependency edges
         foreach (var file in allFiles)
         {
-            var normalizedPath = NormalizePath(file);
+            var normalizedPath = PathNormalizer.Normalize(file);
             if (_fileCache.TryGetValue(normalizedPath, out var entry))
             {
                 foreach (var dep in entry.Dependencies)
@@ -548,16 +549,6 @@ internal class IncrementalCompilationCache
                 // Ignore deletion failures
             }
         }
-    }
-
-    private static string NormalizePath(string path)
-    {
-        var normalized = Path.GetFullPath(path).Replace('\\', '/');
-        if (!OperatingSystem.IsLinux())
-        {
-            normalized = normalized.ToLowerInvariant();
-        }
-        return normalized;
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Model;
+using Sharpy.Compiler.Utilities;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Model;
@@ -79,15 +80,28 @@ public class ProjectModelTests
     public void GetUnit_PathNormalization_FindsUnit()
     {
         var model = new ProjectModel(CreateTestConfig());
-        model.CreateUnit("/test/src/module.spy", "test.module", "x = 1");
+        // Use a path relative to current directory so normalization works consistently
+        var basePath = Path.Combine(Directory.GetCurrentDirectory(), "test", "src");
+        var filePath = Path.Combine(basePath, "module.spy");
+        model.CreateUnit(filePath, "test.module", "x = 1");
 
-        // Should find with forward slashes
-        var unit = model.GetUnit("/test/src/module.spy");
+        // Should find with same path
+        var unit = model.GetUnit(filePath);
         Assert.NotNull(unit);
 
-        // Should find with different path separator
-        var unit2 = model.GetUnit("\\test\\src\\module.spy");
+        // Should find with path converted to forward slashes
+        var pathWithForwardSlash = filePath.Replace('\\', '/');
+        var unit2 = model.GetUnit(pathWithForwardSlash);
         Assert.NotNull(unit2);
+
+        // On Windows, backslash paths should also work
+        // On Unix, backslash is a valid filename character, not a separator
+        if (OperatingSystem.IsWindows())
+        {
+            var pathWithBackslash = filePath.Replace('/', '\\');
+            var unit3 = model.GetUnit(pathWithBackslash);
+            Assert.NotNull(unit3);
+        }
     }
 
     [Fact]

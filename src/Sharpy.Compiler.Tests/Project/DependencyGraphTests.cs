@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Utilities;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Project;
@@ -7,6 +8,11 @@ namespace Sharpy.Compiler.Tests.Project;
 public class DependencyGraphTests
 {
     #region Helper Methods
+
+    /// <summary>
+    /// Shorthand for PathNormalizer.Normalize to make test assertions more readable.
+    /// </summary>
+    private static string N(string path) => PathNormalizer.Normalize(path);
 
     /// <summary>
     /// Find the index of an item in a read-only list.
@@ -76,8 +82,8 @@ public class DependencyGraphTests
         var deps = graph.GetDirectDependencies("a.spy");
 
         Assert.Equal(2, deps.Count);
-        Assert.Contains("b.spy", deps);
-        Assert.Contains("c.spy", deps);
+        Assert.Contains(N("b.spy"), deps);
+        Assert.Contains(N("c.spy"), deps);
     }
 
     [Fact]
@@ -113,8 +119,8 @@ public class DependencyGraphTests
         var dependents = graph.GetDirectDependents("b.spy");
 
         Assert.Equal(2, dependents.Count);
-        Assert.Contains("a.spy", dependents);
-        Assert.Contains("c.spy", dependents);
+        Assert.Contains(N("a.spy"), dependents);
+        Assert.Contains(N("c.spy"), dependents);
     }
 
     [Fact]
@@ -140,9 +146,9 @@ public class DependencyGraphTests
         var order = graph.GetBuildOrder();
 
         Assert.Equal(3, order.Count);
-        Assert.True(IndexOf(order, "c.spy") < IndexOf(order, "b.spy"),
+        Assert.True(IndexOf(order, N("c.spy")) < IndexOf(order, N("b.spy")),
             "c.spy should come before b.spy");
-        Assert.True(IndexOf(order, "b.spy") < IndexOf(order, "a.spy"),
+        Assert.True(IndexOf(order, N("b.spy")) < IndexOf(order, N("a.spy")),
             "b.spy should come before a.spy");
     }
 
@@ -165,7 +171,7 @@ public class DependencyGraphTests
         var order = graph.GetBuildOrder();
 
         Assert.Single(order);
-        Assert.Equal("only.spy", order[0]);
+        Assert.Equal(N("only.spy"), order[0]);
     }
 
     [Fact]
@@ -180,10 +186,10 @@ public class DependencyGraphTests
         var order = graph.GetBuildOrder();
 
         Assert.Equal(4, order.Count);
-        Assert.Equal("d.spy", order[0]);
-        Assert.Equal("c.spy", order[1]);
-        Assert.Equal("b.spy", order[2]);
-        Assert.Equal("a.spy", order[3]);
+        Assert.Equal(N("d.spy"), order[0]);
+        Assert.Equal(N("c.spy"), order[1]);
+        Assert.Equal(N("b.spy"), order[2]);
+        Assert.Equal(N("a.spy"), order[3]);
     }
 
     [Fact]
@@ -201,12 +207,12 @@ public class DependencyGraphTests
 
         Assert.Equal(4, order.Count);
         // d must come first
-        Assert.Equal("d.spy", order[0]);
+        Assert.Equal(N("d.spy"), order[0]);
         // b and c must come after d but before a
-        Assert.True(IndexOf(order, "b.spy") > IndexOf(order, "d.spy"));
-        Assert.True(IndexOf(order, "c.spy") > IndexOf(order, "d.spy"));
-        Assert.True(IndexOf(order, "a.spy") > IndexOf(order, "b.spy"));
-        Assert.True(IndexOf(order, "a.spy") > IndexOf(order, "c.spy"));
+        Assert.True(IndexOf(order, N("b.spy")) > IndexOf(order, N("d.spy")));
+        Assert.True(IndexOf(order, N("c.spy")) > IndexOf(order, N("d.spy")));
+        Assert.True(IndexOf(order, N("a.spy")) > IndexOf(order, N("b.spy")));
+        Assert.True(IndexOf(order, N("a.spy")) > IndexOf(order, N("c.spy")));
     }
 
     [Fact]
@@ -218,9 +224,9 @@ public class DependencyGraphTests
         var order = graph.GetBuildOrder();
 
         Assert.Equal(3, order.Count);
-        Assert.Contains("a.spy", order);
-        Assert.Contains("b.spy", order);
-        Assert.Contains("c.spy", order);
+        Assert.Contains(N("a.spy"), order);
+        Assert.Contains(N("b.spy"), order);
+        Assert.Contains(N("c.spy"), order);
     }
 
     #endregion
@@ -249,9 +255,9 @@ public class DependencyGraphTests
         var cycles = graph.DetectCycles();
 
         Assert.Single(cycles);
-        Assert.Contains("a.spy", cycles[0]);
-        Assert.Contains("b.spy", cycles[0]);
-        Assert.Contains("c.spy", cycles[0]);
+        Assert.Contains(N("a.spy"), cycles[0]);
+        Assert.Contains(N("b.spy"), cycles[0]);
+        Assert.Contains(N("c.spy"), cycles[0]);
     }
 
     [Fact]
@@ -267,7 +273,7 @@ public class DependencyGraphTests
         var cycles = graph.DetectCycles();
 
         Assert.Single(cycles);
-        Assert.Contains("a.spy", cycles[0]);
+        Assert.Contains(N("a.spy"), cycles[0]);
     }
 
     [Fact]
@@ -299,9 +305,9 @@ public class DependencyGraphTests
         var affected = graph.GetAffectedFiles("b.spy");
 
         Assert.Equal(3, affected.Count);
-        Assert.Contains("a.spy", affected);
-        Assert.Contains("b.spy", affected);
-        Assert.Contains("c.spy", affected);
+        Assert.Contains(N("a.spy"), affected);
+        Assert.Contains(N("b.spy"), affected);
+        Assert.Contains(N("c.spy"), affected);
     }
 
     [Fact]
@@ -313,9 +319,9 @@ public class DependencyGraphTests
         var affected = graph.GetAffectedFiles("c.spy");
 
         Assert.Equal(3, affected.Count);
-        Assert.Contains("a.spy", affected);
-        Assert.Contains("b.spy", affected);
-        Assert.Contains("c.spy", affected);
+        Assert.Contains(N("a.spy"), affected);
+        Assert.Contains(N("b.spy"), affected);
+        Assert.Contains(N("c.spy"), affected);
     }
 
     [Fact]
@@ -327,7 +333,7 @@ public class DependencyGraphTests
         var affected = graph.GetAffectedFiles("a.spy");
 
         Assert.Single(affected);
-        Assert.Contains("a.spy", affected);
+        Assert.Contains(N("a.spy"), affected);
     }
 
     [Fact]
@@ -339,10 +345,10 @@ public class DependencyGraphTests
         var affected = graph.GetAffectedFiles(new[] { "b.spy", "d.spy" });
 
         Assert.Equal(4, affected.Count);
-        Assert.Contains("a.spy", affected);
-        Assert.Contains("b.spy", affected);
-        Assert.Contains("c.spy", affected);
-        Assert.Contains("d.spy", affected);
+        Assert.Contains(N("a.spy"), affected);
+        Assert.Contains(N("b.spy"), affected);
+        Assert.Contains(N("c.spy"), affected);
+        Assert.Contains(N("d.spy"), affected);
     }
 
     [Fact]
@@ -368,9 +374,9 @@ public class DependencyGraphTests
 
         Assert.Single(groups);
         Assert.Equal(3, groups[0].Count);
-        Assert.Contains("a.spy", groups[0]);
-        Assert.Contains("b.spy", groups[0]);
-        Assert.Contains("c.spy", groups[0]);
+        Assert.Contains(N("a.spy"), groups[0]);
+        Assert.Contains(N("b.spy"), groups[0]);
+        Assert.Contains(N("c.spy"), groups[0]);
     }
 
     [Fact]
@@ -383,11 +389,11 @@ public class DependencyGraphTests
 
         Assert.Equal(3, groups.Count);
         Assert.Single(groups[0]);
-        Assert.Contains("c.spy", groups[0]);
+        Assert.Contains(N("c.spy"), groups[0]);
         Assert.Single(groups[1]);
-        Assert.Contains("b.spy", groups[1]);
+        Assert.Contains(N("b.spy"), groups[1]);
         Assert.Single(groups[2]);
-        Assert.Contains("a.spy", groups[2]);
+        Assert.Contains(N("a.spy"), groups[2]);
     }
 
     [Fact]
@@ -401,11 +407,11 @@ public class DependencyGraphTests
         Assert.Equal(2, groups.Count);
         // Group 0: b and c (no dependencies)
         Assert.Equal(2, groups[0].Count);
-        Assert.Contains("b.spy", groups[0]);
-        Assert.Contains("c.spy", groups[0]);
+        Assert.Contains(N("b.spy"), groups[0]);
+        Assert.Contains(N("c.spy"), groups[0]);
         // Group 1: a (depends on b and c)
         Assert.Single(groups[1]);
-        Assert.Contains("a.spy", groups[1]);
+        Assert.Contains(N("a.spy"), groups[1]);
     }
 
     [Fact]
@@ -437,15 +443,15 @@ public class DependencyGraphTests
         Assert.Equal(3, groups.Count);
         // Group 0: d (no dependencies)
         Assert.Single(groups[0]);
-        Assert.Contains("d.spy", groups[0]);
+        Assert.Contains(N("d.spy"), groups[0]);
         // Group 1: b, c, e (all depend only on d)
         Assert.Equal(3, groups[1].Count);
-        Assert.Contains("b.spy", groups[1]);
-        Assert.Contains("c.spy", groups[1]);
-        Assert.Contains("e.spy", groups[1]);
+        Assert.Contains(N("b.spy"), groups[1]);
+        Assert.Contains(N("c.spy"), groups[1]);
+        Assert.Contains(N("e.spy"), groups[1]);
         // Group 2: a (depends on b and c)
         Assert.Single(groups[2]);
-        Assert.Contains("a.spy", groups[2]);
+        Assert.Contains(N("a.spy"), groups[2]);
     }
 
     #endregion
@@ -462,7 +468,7 @@ public class DependencyGraphTests
         var deps = graph.GetDirectDependencies("src\\a.spy");
 
         Assert.Single(deps);
-        Assert.Contains("src/b.spy", deps);
+        Assert.Contains(N("src/b.spy"), deps);
     }
 
     [Fact]
@@ -565,8 +571,8 @@ public class DependencyGraphTests
         // a depends on b, b is a leaf
         var graph = BuildGraph(("a.spy", "b.spy"));
 
-        Assert.Contains("a.spy", graph.AllFiles);
-        Assert.Contains("b.spy", graph.AllFiles);
+        Assert.Contains(N("a.spy"), graph.AllFiles);
+        Assert.Contains(N("b.spy"), graph.AllFiles);
     }
 
     [Fact]
@@ -579,8 +585,8 @@ public class DependencyGraphTests
         };
         var graph = new DependencyGraph(deps);
 
-        Assert.Contains("a.spy", graph.AllFiles);
-        Assert.Contains("external.spy", graph.AllFiles);
+        Assert.Contains(N("a.spy"), graph.AllFiles);
+        Assert.Contains(N("external.spy"), graph.AllFiles);
     }
 
     #endregion

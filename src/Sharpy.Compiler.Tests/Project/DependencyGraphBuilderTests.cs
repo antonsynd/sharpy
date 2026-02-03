@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Utilities;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Project;
@@ -28,9 +29,9 @@ public class DependencyGraphBuilderTests
         var graph = builder.Build();
 
         Assert.Equal(3, graph.AllFiles.Count);
-        Assert.Contains("a.spy", graph.AllFiles);
-        Assert.Contains("b.spy", graph.AllFiles);
-        Assert.Contains("c.spy", graph.AllFiles);
+        Assert.Contains(PathNormalizer.Normalize("a.spy"), graph.AllFiles);
+        Assert.Contains(PathNormalizer.Normalize("b.spy"), graph.AllFiles);
+        Assert.Contains(PathNormalizer.Normalize("c.spy"), graph.AllFiles);
     }
 
     [Fact]
@@ -44,8 +45,8 @@ public class DependencyGraphBuilderTests
 
         var deps = graph.GetDirectDependencies("a.spy");
         Assert.Equal(2, deps.Count);
-        Assert.Contains("b.spy", deps);
-        Assert.Contains("c.spy", deps);
+        Assert.Contains(PathNormalizer.Normalize("b.spy"), deps);
+        Assert.Contains(PathNormalizer.Normalize("c.spy"), deps);
     }
 
     [Fact]
@@ -57,8 +58,8 @@ public class DependencyGraphBuilderTests
 
         var graph = builder.Build();
 
-        Assert.Contains("a.spy", graph.AllFiles);
-        Assert.Contains("b.spy", graph.AllFiles);
+        Assert.Contains(PathNormalizer.Normalize("a.spy"), graph.AllFiles);
+        Assert.Contains(PathNormalizer.Normalize("b.spy"), graph.AllFiles);
     }
 
     [Fact]
@@ -102,7 +103,7 @@ public class DependencyGraphBuilderTests
         var deps = graph.GetDirectDependencies("src\\a.spy");
 
         Assert.Single(deps);
-        Assert.Contains("src/b.spy", deps);
+        Assert.Contains(PathNormalizer.Normalize("src/b.spy"), deps);
     }
 
     [Fact]
@@ -160,7 +161,7 @@ public class DependencyGraphBuilderTests
 
         var graph = builder.Build(validateTargets: false);
 
-        Assert.Contains("external.spy", graph.AllFiles);
+        Assert.Contains(PathNormalizer.Normalize("external.spy"), graph.AllFiles);
     }
 
     #endregion

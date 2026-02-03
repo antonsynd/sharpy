@@ -8,6 +8,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Model;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Project;
 
@@ -640,7 +641,7 @@ internal class ProjectCompiler
                 var filePath = GetSymbolFilePath(symbol);
                 if (filePath != null)
                 {
-                    var normalizedPath = NormalizePath(filePath);
+                    var normalizedPath = PathNormalizer.Normalize(filePath);
                     invalidFiles.Add(normalizedPath);
                     _logger.LogInfo($"Restored symbol validation failed for '{symbol.Name}'; will recompile: {Path.GetFileName(filePath)}");
                 }
@@ -654,7 +655,7 @@ internal class ProjectCompiler
         foreach (var file in invalidFiles)
         {
             // Find the original file path (before normalization) in _filesToSkip
-            var originalPath = _filesToSkip.FirstOrDefault(f => NormalizePath(f) == file);
+            var originalPath = _filesToSkip.FirstOrDefault(f => PathNormalizer.Normalize(f) == file);
             if (originalPath != null)
             {
                 _filesToSkip.Remove(originalPath);
@@ -672,7 +673,7 @@ internal class ProjectCompiler
                 .Where(kvp =>
                 {
                     var path = GetSymbolFilePath(kvp.Value);
-                    return path != null && NormalizePath(path) == file;
+                    return path != null && PathNormalizer.Normalize(path) == file;
                 })
                 .Select(kvp => kvp.Key)
                 .ToList();
@@ -962,7 +963,7 @@ internal class ProjectCompiler
             // Check if the symbol was declared in this file
             var symbolFilePath = GetSymbolFilePath(symbol);
             if (symbolFilePath != null &&
-                string.Equals(NormalizePath(symbolFilePath), NormalizePath(filePath), StringComparison.OrdinalIgnoreCase))
+                string.Equals(PathNormalizer.Normalize(symbolFilePath), PathNormalizer.Normalize(filePath), StringComparison.OrdinalIgnoreCase))
             {
                 symbols.Add(symbol);
             }
@@ -1253,7 +1254,7 @@ internal class ProjectCompiler
             var normalizedToOriginal = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var path in _projectModel!.Units.Keys)
             {
-                var normalized = NormalizePath(path);
+                var normalized = PathNormalizer.Normalize(path);
                 normalizedToOriginal[normalized] = path;
             }
 
@@ -1580,20 +1581,6 @@ internal class ProjectCompiler
         }
 
         return string.Join(Path.DirectorySeparatorChar.ToString(), commonParts);
-    }
-
-    /// <summary>
-    /// Normalizes a file path for consistent comparison.
-    /// Uses the same normalization logic as DependencyGraph.
-    /// </summary>
-    private static string NormalizePath(string path)
-    {
-        var normalized = path.Replace('\\', '/');
-        if (!OperatingSystem.IsLinux())
-        {
-            normalized = normalized.ToLowerInvariant();
-        }
-        return normalized;
     }
 
     /// <summary>

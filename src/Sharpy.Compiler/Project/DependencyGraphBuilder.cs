@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Project;
 
@@ -53,7 +54,7 @@ internal class DependencyGraphBuilder
     public void AddFile(string filePath)
     {
         ArgumentNullException.ThrowIfNull(filePath);
-        var normalized = NormalizePath(filePath);
+        var normalized = PathNormalizer.Normalize(filePath);
         _dependencies.TryAdd(normalized, new ConcurrentBag<string>());
         _cachedGraph = null; // Invalidate cache
     }
@@ -77,8 +78,8 @@ internal class DependencyGraphBuilder
         ArgumentNullException.ThrowIfNull(fromFile);
         ArgumentNullException.ThrowIfNull(toFile);
 
-        var normalizedFrom = NormalizePath(fromFile);
-        var normalizedTo = NormalizePath(toFile);
+        var normalizedFrom = PathNormalizer.Normalize(fromFile);
+        var normalizedTo = PathNormalizer.Normalize(toFile);
 
         // Ensure both files exist in the dictionary
         var deps = _dependencies.GetOrAdd(normalizedFrom, _ => new ConcurrentBag<string>());
@@ -102,7 +103,7 @@ internal class DependencyGraphBuilder
         ArgumentNullException.ThrowIfNull(filePath);
         ArgumentNullException.ThrowIfNull(hash);
 
-        var normalized = NormalizePath(filePath);
+        var normalized = PathNormalizer.Normalize(filePath);
         _fileHashes[normalized] = hash;
         _cachedGraph = null; // Invalidate cache
     }
@@ -211,20 +212,4 @@ internal class DependencyGraphBuilder
     /// </summary>
     public int FileCount => _dependencies.Count;
 
-    /// <summary>
-    /// Normalizes a file path for consistent comparison.
-    /// </summary>
-    private static string NormalizePath(string path)
-    {
-        // Normalize directory separators to forward slash for cross-platform consistency
-        var normalized = path.Replace('\\', '/');
-
-        // Normalize to lowercase on case-insensitive systems (Windows/macOS)
-        if (!OperatingSystem.IsLinux())
-        {
-            normalized = normalized.ToLowerInvariant();
-        }
-
-        return normalized;
-    }
 }
