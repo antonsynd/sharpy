@@ -20,7 +20,7 @@ message = "Value: " + str(value)  # Must convert int to str
 
 # String repetition (both directions work, matching Python)
 separator = "-" * 40
-print(separator)       # "----------------------------------------"
+print(separator)  # "----------------------------------------"
 
 also_separator = 40 * "-"  # Also valid
 print(also_separator)  # "----------------------------------------"
@@ -44,4 +44,4 @@ f"Count: {42}"           # F-strings handle conversion
 ```
 
 *Implementation*
-- *✅ Native - Maps to `+` operator for `str` and `string`.*
+- *✅ Native - Maps to C# `+` operator and `string.Concat()`.*
