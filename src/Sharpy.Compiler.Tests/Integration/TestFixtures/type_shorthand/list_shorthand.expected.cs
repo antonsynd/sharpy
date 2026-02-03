@@ -1,0 +1,43 @@
+#nullable enable
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using global::Sharpy.Core;
+
+namespace Sharpy.ListShorthand
+{
+    public static class Program
+    {
+        public static int SumList(System.Collections.Generic.List<int> items)
+        {
+#line 3 "list_shorthand.spy"
+            int total = 0;
+#line 4 "list_shorthand.spy"
+            foreach (var __loopVar_0 in items)
+            {
+                var item = __loopVar_0;
+#line 5 "list_shorthand.spy"
+                total = total + item;
+            }
+
+#line 6 "list_shorthand.spy"
+            return total;
+        }
+
+        public static void Main()
+        {
+#line 9 "list_shorthand.spy"
+            System.Collections.Generic.List<int> numbers = new System.Collections.Generic.List<int>()
+            {
+                1,
+                2,
+                3,
+                4,
+                5
+            };
+#line 10 "list_shorthand.spy"
+            global::Sharpy.Core.Exports.Print(SumList(numbers));
+        }
+    }
+}
