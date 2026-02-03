@@ -20,6 +20,12 @@ internal partial class RoslynEmitter
         _declaredVariables.Clear();
         _variableVersions.Clear();
         _constVariables.Clear();
+        _sourceVariableNames.Clear();
+
+        // Pre-scan the function body to collect all variable names that will be declared.
+        // This enables us to avoid generating versioned names (x_1, x_2) that collide
+        // with user-declared variables.
+        CollectSourceVariableNames(func.Body);
 
         // Transform name using NameMangler
         // Special case: only convert "main" to "Main" if this is the entry point file

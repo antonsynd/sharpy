@@ -492,4 +492,135 @@ public class RoslynEmitterVariableRedefinitionTests
     }
 
     #endregion
+
+    #region Variable Name Collision Tests
+
+    [Fact]
+    public void GenerateFunction_UserDeclaredX1_NoCollision()
+    {
+        // In this scenario, user declares x, x_1, then redeclares x.
+        // Since x_1 is mangled to x1 (camelCase removes underscore),
+        // and the generated versioned name is x_1 (underscore preserved),
+        // there is NO collision. This tests that the naming is correct.
+        var func = new FunctionDef
+        {
+            Name = "test_collision",
+            Parameters = ImmutableArray<Parameter>.Empty,
+            ReturnType = null,
+            Body = new List<Statement>
+            {
+                // x = 1
+                new Assignment
+                {
+                    Target = new Identifier { Name = "x" },
+                    Operator = AssignmentOperator.Assign,
+                    Value = new IntegerLiteral { Value = "1" }
+                },
+                // x_1 = "user" (mangled to x1)
+                new Assignment
+                {
+                    Target = new Identifier { Name = "x_1" },
+                    Operator = AssignmentOperator.Assign,
+                    Value = new StringLiteral { Value = "user" }
+                },
+                // x = 2 (redeclaration - generates x_1, which is different from user's x1)
+                new VariableDeclaration
+                {
+                    Name = "x",
+                    Type = new TypeAnnotation { Name = "auto" },
+                    InitialValue = new IntegerLiteral { Value = "2" }
+                },
+                new ExpressionStatement
+                {
+                    Expression = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "print" },
+                        Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>
+                        {
+                            new Identifier { Name = "x" }
+                        }.ToImmutableArray()
+                    }
+                },
+                new ExpressionStatement
+                {
+                    Expression = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "print" },
+                        Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>
+                        {
+                            new Identifier { Name = "x_1" }
+                        }.ToImmutableArray()
+                    }
+                }
+            }.ToImmutableArray(),
+            Decorators = ImmutableArray<Decorator>.Empty
+        };
+
+        var result = GenerateFunctionCode(func);
+
+        // x_1 (user's) is mangled to x1, x_1 (generated) stays as x_1 - no collision
+        Assert.Contains("var x = 1;", result);
+        Assert.Contains("var x1 = \"user\";", result);  // x_1 mangled to x1
+        Assert.Contains("var x_1 = 2;", result);        // Generated version name
+        Assert.Contains("Sharpy.Core.Exports.Print(x_1);", result);
+        Assert.Contains("Sharpy.Core.Exports.Print(x1);", result);
+    }
+
+    [Fact]
+    public void GenerateFunction_UserDeclaredSameAsVersioned_SkipsCollision()
+    {
+        // This tests the actual collision scenario where user declares x1 (without underscore),
+        // which matches the pattern of a mangled versioned name if it existed.
+        // The collision detection should still work for edge cases like backtick-escaped names.
+        var func = new FunctionDef
+        {
+            Name = "test_no_collision",
+            Parameters = ImmutableArray<Parameter>.Empty,
+            ReturnType = null,
+            Body = new List<Statement>
+            {
+                // x = 1
+                new Assignment
+                {
+                    Target = new Identifier { Name = "x" },
+                    Operator = AssignmentOperator.Assign,
+                    Value = new IntegerLiteral { Value = "1" }
+                },
+                // x1 = "user" (stays as x1, but generated versioned names use x_1 pattern)
+                new Assignment
+                {
+                    Target = new Identifier { Name = "x1" },
+                    Operator = AssignmentOperator.Assign,
+                    Value = new StringLiteral { Value = "user" }
+                },
+                // x = 2 (redeclaration - generates x_1, different from x1)
+                new VariableDeclaration
+                {
+                    Name = "x",
+                    Type = new TypeAnnotation { Name = "auto" },
+                    InitialValue = new IntegerLiteral { Value = "2" }
+                },
+                new ReturnStatement
+                {
+                    Value = new BinaryOp
+                    {
+                        Left = new Identifier { Name = "x" },
+                        Operator = BinaryOperator.Add,
+                        Right = new IntegerLiteral { Value = "10" }
+                    }
+                }
+            }.ToImmutableArray(),
+            Decorators = ImmutableArray<Decorator>.Empty
+        };
+
+        var result = GenerateFunctionCode(func);
+
+        // x1 (user's) stays as x1, x_1 (generated) has underscore - no collision
+        Assert.Contains("var x = 1;", result);
+        Assert.Contains("var x1 = \"user\";", result);  // stays as x1
+        Assert.Contains("var x_1 = 2;", result);        // Generated version has underscore
+        Assert.Contains("return x_1 + 10;", result);
+    }
+
+    #endregion
 }

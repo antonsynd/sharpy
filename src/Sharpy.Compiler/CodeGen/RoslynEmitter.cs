@@ -44,6 +44,13 @@ internal partial class RoslynEmitter
     private readonly Dictionary<string, int> _variableVersions = new();
 
     /// <summary>
+    /// Tracks all source variable names (C# camelCase) declared in the current function scope.
+    /// Used to avoid generating versioned names (x_1, x_2) that collide with user-declared variables.
+    /// Pre-populated by scanning the function body before emission.
+    /// </summary>
+    private readonly HashSet<string> _sourceVariableNames = new();
+
+    /// <summary>
     /// Tracks const variable names (original Sharpy names) within local scopes.
     /// Needed for local const declarations within functions.
     /// </summary>
@@ -159,10 +166,20 @@ internal partial class RoslynEmitter
             if (isNewDeclaration)
             {
                 // This is a redefinition of an existing local variable
+                // Find the next available version that doesn't collide with user-declared names
                 var currentVersion = _variableVersions[baseName];
                 var newVersion = currentVersion + 1;
+                var candidateName = $"{baseName}_{newVersion}";
+
+                // Skip versions that collide with user-declared variable names
+                while (_sourceVariableNames.Contains(candidateName))
+                {
+                    newVersion++;
+                    candidateName = $"{baseName}_{newVersion}";
+                }
+
                 _variableVersions[baseName] = newVersion;
-                return $"{baseName}_{newVersion}";
+                return candidateName;
             }
             else
             {
@@ -219,6 +236,158 @@ internal partial class RoslynEmitter
             // Reference to a variable not yet declared (shouldn't happen in valid code)
             // Fall back to just returning the base name
             return baseName;
+        }
+    }
+
+    /// <summary>
+    /// Pre-scans statements to collect all variable names that will be declared.
+    /// This is used to avoid generating versioned names (x_1, x_2) that collide
+    /// with user-declared variables.
+    /// </summary>
+    private void CollectSourceVariableNames(IEnumerable<Statement> statements)
+    {
+        foreach (var stmt in statements)
+        {
+            CollectSourceVariableNamesFromStatement(stmt);
+        }
+    }
+
+    /// <summary>
+    /// Recursively collects variable names from a single statement and its nested statements.
+    /// </summary>
+    private void CollectSourceVariableNamesFromStatement(Statement stmt)
+    {
+        switch (stmt)
+        {
+            case Assignment assign:
+                CollectVariableNamesFromExpression(assign.Target);
+                break;
+
+            case VariableDeclaration varDecl:
+                var mangledName = NameMangler.ToCamelCase(varDecl.Name);
+                _sourceVariableNames.Add(mangledName);
+                break;
+
+            case ForStatement forStmt:
+                CollectVariableNamesFromExpression(forStmt.Target);
+                CollectSourceVariableNames(forStmt.Body);
+                break;
+
+            case IfStatement ifStmt:
+                CollectSourceVariableNames(ifStmt.ThenBody);
+                CollectSourceVariableNames(ifStmt.ElseBody);
+                foreach (var elif in ifStmt.ElifClauses)
+                {
+                    CollectSourceVariableNames(elif.Body);
+                }
+                break;
+
+            case WhileStatement whileStmt:
+                CollectSourceVariableNames(whileStmt.Body);
+                break;
+
+            case TryStatement tryStmt:
+                CollectSourceVariableNames(tryStmt.Body);
+                foreach (var handler in tryStmt.Handlers)
+                {
+                    if (handler.Name != null)
+                    {
+                        var handlerMangledName = NameMangler.ToCamelCase(handler.Name);
+                        _sourceVariableNames.Add(handlerMangledName);
+                    }
+                    CollectSourceVariableNames(handler.Body);
+                }
+                CollectSourceVariableNames(tryStmt.FinallyBody);
+                break;
+
+            case MatchStatement matchStmt:
+                foreach (var caseClause in matchStmt.Cases)
+                {
+                    CollectVariableNamesFromPattern(caseClause.Pattern);
+                    CollectSourceVariableNames(caseClause.Body);
+                }
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Collects variable names from an expression (used for assignment targets).
+    /// </summary>
+    private void CollectVariableNamesFromExpression(Expression expr)
+    {
+        switch (expr)
+        {
+            case Identifier id:
+                var mangledName = NameMangler.ToCamelCase(id.Name);
+                _sourceVariableNames.Add(mangledName);
+                break;
+
+            case TupleLiteral tuple:
+                foreach (var elem in tuple.Elements)
+                {
+                    CollectVariableNamesFromExpression(elem);
+                }
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Collects variable names from match patterns.
+    /// </summary>
+    private void CollectVariableNamesFromPattern(Pattern pattern)
+    {
+        switch (pattern)
+        {
+            case BindingPattern binding:
+                var mangledName = NameMangler.ToCamelCase(binding.Name);
+                _sourceVariableNames.Add(mangledName);
+                break;
+
+            case TuplePattern tuplePattern:
+                foreach (var elem in tuplePattern.Elements)
+                {
+                    CollectVariableNamesFromPattern(elem);
+                }
+                break;
+
+            case UnionCasePattern unionCase:
+                foreach (var fieldPattern in unionCase.FieldPatterns)
+                {
+                    CollectVariableNamesFromPattern(fieldPattern);
+                }
+                break;
+
+            case ListPattern listPattern:
+                foreach (var elem in listPattern.Elements)
+                {
+                    CollectVariableNamesFromPattern(elem);
+                }
+                if (listPattern.RestPattern != null)
+                {
+                    CollectVariableNamesFromPattern(listPattern.RestPattern);
+                }
+                break;
+
+            case TypePattern typePattern when typePattern.BindingName != null:
+                var typeBindingName = NameMangler.ToCamelCase(typePattern.BindingName);
+                _sourceVariableNames.Add(typeBindingName);
+                break;
+
+            case OrPattern orPattern:
+                foreach (var alt in orPattern.Alternatives)
+                {
+                    CollectVariableNamesFromPattern(alt);
+                }
+                break;
+
+            case AndPattern andPattern:
+                CollectVariableNamesFromPattern(andPattern.Left);
+                CollectVariableNamesFromPattern(andPattern.Right);
+                break;
+
+            case GuardPattern guardPattern:
+                CollectVariableNamesFromPattern(guardPattern.Inner);
+                break;
         }
     }
 

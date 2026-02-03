@@ -1,0 +1,6 @@
+def main():
+    x = 1
+    x_1 = "user"
+    x = 2
+    print(x)
+    print(x_1)
