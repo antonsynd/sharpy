@@ -1053,4 +1053,108 @@ def main():
     }
 
     #endregion
+
+    #region Compiler Version Cache Invalidation Tests
+
+    [Fact]
+    public void GetCompilerVersion_ReturnsNonEmptyString()
+    {
+        var version = IncrementalCompilationCache.GetCompilerVersion();
+
+        Assert.NotNull(version);
+        Assert.NotEmpty(version);
+    }
+
+    [Fact]
+    public void GetCompilerVersion_IncludesVersionAndHash()
+    {
+        var version = IncrementalCompilationCache.GetCompilerVersion();
+
+        // Should contain at least one dot (version) and one dash (hash separator)
+        Assert.Contains('.', version);
+        Assert.Contains('-', version);
+    }
+
+    [Fact]
+    public void Cache_InvalidatesOnVersionChange()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        // Update and save
+        cache.UpdateHash(config.SourceFiles[0]);
+        cache.SaveCache();
+
+        // Manually modify the cache file to have a different compiler version
+        var cacheFilePath = Path.Combine(config.ProjectDirectory, "obj", config.Configuration, ".sharpy-cache");
+        var json = File.ReadAllText(cacheFilePath);
+
+        // Replace the version with a fake old version
+        var fakeVersion = "0.0.0-fakeversion";
+        var currentVersion = IncrementalCompilationCache.GetCompilerVersion();
+        json = json.Replace(currentVersion, fakeVersion);
+        File.WriteAllText(cacheFilePath, json);
+
+        // Reload cache - should be empty due to version mismatch
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var isStale = cache2.IsStale(config.SourceFiles[0]);
+
+        Assert.True(isStale, "Cache should be invalidated when compiler version changes");
+    }
+
+    [Fact]
+    public void Cache_PreservesOnSameVersion()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        // Update and save
+        cache.UpdateHash(config.SourceFiles[0]);
+        cache.SaveCache();
+
+        // Reload cache - should be preserved because version matches
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var isStale = cache2.IsStale(config.SourceFiles[0]);
+
+        Assert.False(isStale, "Cache should be preserved when compiler version is the same");
+    }
+
+    [Fact]
+    public void Cache_SavesWithVersionMetadata()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        cache.UpdateHash(config.SourceFiles[0]);
+        cache.SaveCache();
+
+        // Read and verify the cache file contains CompilerVersion
+        var cacheFilePath = Path.Combine(config.ProjectDirectory, "obj", config.Configuration, ".sharpy-cache");
+        var json = File.ReadAllText(cacheFilePath);
+
+        Assert.Contains("CompilerVersion", json);
+        Assert.Contains("FileHashes", json);
+    }
+
+    [Fact]
+    public void Cache_InvalidatesOnCorruptedJson()
+    {
+        var config = CreateTestConfig("def main():\n    pass");
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        cache.UpdateHash(config.SourceFiles[0]);
+        cache.SaveCache();
+
+        // Corrupt the cache file
+        var cacheFilePath = Path.Combine(config.ProjectDirectory, "obj", config.Configuration, ".sharpy-cache");
+        File.WriteAllText(cacheFilePath, "{ invalid json }");
+
+        // Reload cache - should start fresh
+        var cache2 = new IncrementalCompilationCache(config, NullLogger.Instance);
+        var isStale = cache2.IsStale(config.SourceFiles[0]);
+
+        Assert.True(isStale, "Cache should be invalidated when JSON is corrupted");
+    }
+
+    #endregion
 }

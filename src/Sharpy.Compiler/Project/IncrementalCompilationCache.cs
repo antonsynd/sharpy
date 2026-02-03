@@ -7,6 +7,11 @@ using Sharpy.Compiler.Semantic;
 namespace Sharpy.Compiler.Project;
 
 /// <summary>
+/// Metadata wrapper for the hash cache, including compiler version for cache invalidation.
+/// </summary>
+internal record CacheMetadata(string CompilerVersion, Dictionary<string, string> FileHashes);
+
+/// <summary>
 /// Manages file content hashes and symbol caches for incremental compilation.
 /// Persists hashes and compiled artifacts to disk between builds to enable skipping unchanged files.
 /// </summary>
@@ -152,7 +157,15 @@ internal class IncrementalCompilationCache
     {
         try
         {
-            var json = JsonSerializer.Serialize(_fileHashes, s_jsonOptions);
+            var metadata = new CacheMetadata(GetCompilerVersion(), _fileHashes);
+            var json = JsonSerializer.Serialize(metadata, s_jsonOptions);
+
+            var directory = Path.GetDirectoryName(_cacheFilePath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
             File.WriteAllText(_cacheFilePath, json);
         }
         catch (Exception ex)
@@ -364,8 +377,47 @@ internal class IncrementalCompilationCache
         try
         {
             var json = File.ReadAllText(_cacheFilePath);
-            return JsonSerializer.Deserialize<Dictionary<string, string>>(json, s_jsonOptions)
-                   ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            // Try to deserialize as new CacheMetadata format (with compiler version)
+            var metadata = JsonSerializer.Deserialize<CacheMetadata>(json, s_jsonOptions);
+            if (metadata != null)
+            {
+                var currentVersion = GetCompilerVersion();
+                if (metadata.CompilerVersion != currentVersion)
+                {
+                    _logger.LogInfo($"Compiler version changed ({metadata.CompilerVersion} -> {currentVersion}); invalidating cache");
+                    return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                }
+
+                // Convert to case-insensitive dictionary
+                var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var kvp in metadata.FileHashes)
+                {
+                    result[kvp.Key] = kvp.Value;
+                }
+                return result;
+            }
+
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            // Try to load as legacy format (plain dictionary without version)
+            try
+            {
+                var json = File.ReadAllText(_cacheFilePath);
+                var legacyCache = JsonSerializer.Deserialize<Dictionary<string, string>>(json, s_jsonOptions);
+                if (legacyCache != null)
+                {
+                    _logger.LogInfo("Legacy cache format detected; invalidating to upgrade");
+                    return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                }
+            }
+            catch
+            {
+                // Ignore nested exception
+            }
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
         catch (Exception ex)
         {
@@ -440,6 +492,35 @@ internal class IncrementalCompilationCache
             normalized = normalized.ToLowerInvariant();
         }
         return normalized;
+    }
+
+    /// <summary>
+    /// Gets the current compiler version string for cache invalidation.
+    /// Includes assembly version and a hash of the assembly content for development builds.
+    /// </summary>
+    internal static string GetCompilerVersion()
+    {
+        var assembly = typeof(IncrementalCompilationCache).Assembly;
+        var version = assembly.GetName().Version?.ToString() ?? "0.0.0";
+
+        // Include assembly content hash for debug builds where version doesn't change
+        // This ensures cache invalidation during development
+        var assemblyPath = assembly.Location;
+        if (!string.IsNullOrEmpty(assemblyPath) && File.Exists(assemblyPath))
+        {
+            try
+            {
+                var bytes = File.ReadAllBytes(assemblyPath);
+                var hash = Convert.ToHexStringLower(SHA256.HashData(bytes)[..8]);
+                return $"{version}-{hash}";
+            }
+            catch
+            {
+                // If we can't read the assembly, just use the version
+            }
+        }
+
+        return version;
     }
 
     #endregion
