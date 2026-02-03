@@ -397,7 +397,9 @@ internal class ProjectCompiler
         if (_incrementalCache == null)
             return;
 
+        var semanticBinding = _projectModel!.SemanticBinding;
         var restoredCount = 0;
+
         foreach (var filePath in _filesToSkip)
         {
             if (_incrementalCache.RestoreSymbols(filePath, _restoredSymbols))
@@ -407,10 +409,33 @@ internal class ProjectCompiler
                 {
                     // Only register top-level symbols (types, functions, variables)
                     // Skip parameters and other nested symbols
-                    if (symbol is TypeSymbol || symbol is FunctionSymbol ||
-                        (symbol is VariableSymbol vs && !vs.IsParameter))
+                    if (symbol is TypeSymbol typeSymbol)
                     {
                         _symbolTable.TryDefine(symbol);
+
+                        // Also register variable types for fields in SemanticBinding
+                        // This ensures DualWriteAssertions pass for restored symbols
+                        foreach (var field in typeSymbol.Fields)
+                        {
+                            if (field.Type != SemanticType.Unknown)
+                            {
+                                semanticBinding.SetVariableType(field, field.Type);
+                            }
+                        }
+                    }
+                    else if (symbol is FunctionSymbol)
+                    {
+                        _symbolTable.TryDefine(symbol);
+                    }
+                    else if (symbol is VariableSymbol vs && !vs.IsParameter)
+                    {
+                        _symbolTable.TryDefine(symbol);
+
+                        // Also register variable type in SemanticBinding
+                        if (vs.Type != SemanticType.Unknown)
+                        {
+                            semanticBinding.SetVariableType(vs, vs.Type);
+                        }
                     }
                 }
                 restoredCount++;

@@ -871,5 +871,123 @@ def main():
             $"Expected skipped files, got SkippedFileCount={metrics.SkippedFileCount}");
     }
 
+    [Fact]
+    public void IncrementalMode_ImporterChangedImporteeUnchanged_BuildsSuccessfully()
+    {
+        // Test the scenario where the importing file changes but the imported file does not.
+        // This verifies that import resolution correctly parses the unchanged imported file.
+
+        var libFile = CreateTempFile("lib.spy", @"
+def get_value() -> int:
+    return 42
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from lib import get_value
+
+def main():
+    x: int = get_value()
+    print(x)
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, libFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build - both files compiled
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Modify only main.spy (add another print)
+        File.WriteAllText(mainFile, @"
+from lib import get_value
+
+def main():
+    x: int = get_value()
+    print(x)
+    print('done')
+");
+
+        // Second build - lib.spy should be skipped, main.spy should be recompiled
+        var result2 = compiler.CompileProject(config);
+        Assert.True(result2.Success, string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Verify at least one file was skipped (lib.spy)
+        var metrics = result2.Metrics;
+        Assert.NotNull(metrics);
+        Assert.True(metrics!.SkippedFileCount > 0,
+            $"Expected lib.spy to be skipped, got SkippedFileCount={metrics.SkippedFileCount}");
+    }
+
+    [Fact]
+    public void IncrementalMode_ImporterChangedWithClass_BuildsSuccessfully()
+    {
+        // Test the scenario with a class import: importing file changes, imported file (with class) does not.
+        // This verifies that type symbols from unchanged files are accessible during semantic analysis.
+
+        var libFile = CreateTempFile("lib.spy", @"
+class Counter:
+    value: int
+
+    def __init__(self):
+        self.value = 0
+
+    def increment(self):
+        self.value += 1
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from lib import Counter
+
+def main():
+    c: Counter = Counter()
+    c.increment()
+    print(c.value)
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, libFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build - both files compiled
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Modify only main.spy (call increment twice)
+        File.WriteAllText(mainFile, @"
+from lib import Counter
+
+def main():
+    c: Counter = Counter()
+    c.increment()
+    c.increment()
+    print(c.value)
+");
+
+        // Second build - lib.spy should be skipped, main.spy should be recompiled
+        var result2 = compiler.CompileProject(config);
+        Assert.True(result2.Success, string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Verify at least one file was skipped (lib.spy)
+        var metrics = result2.Metrics;
+        Assert.NotNull(metrics);
+        Assert.True(metrics!.SkippedFileCount > 0,
+            $"Expected lib.spy to be skipped, got SkippedFileCount={metrics.SkippedFileCount}");
+    }
+
     #endregion
 }

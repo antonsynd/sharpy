@@ -65,6 +65,30 @@ internal static class SymbolSerializer
 
     private static CachedSymbol SerializeTypeSymbol(TypeSymbol ts, string id, string filePath)
     {
+        // Serialize fields as nested CachedSymbols
+        List<CachedSymbol>? fields = null;
+        if (ts.Fields.Count > 0)
+        {
+            fields = ts.Fields.Select(f =>
+                SerializeVariableSymbol(f, ComputeSymbolId(f, filePath), filePath)).ToList();
+        }
+
+        // Serialize methods as nested CachedSymbols
+        List<CachedSymbol>? methods = null;
+        if (ts.Methods.Count > 0)
+        {
+            methods = ts.Methods.Select(m =>
+                SerializeFunctionSymbol(m, ComputeSymbolId(m, filePath), filePath)).ToList();
+        }
+
+        // Serialize constructors as nested CachedSymbols
+        List<CachedSymbol>? constructors = null;
+        if (ts.Constructors.Count > 0)
+        {
+            constructors = ts.Constructors.Select(c =>
+                SerializeFunctionSymbol(c, ComputeSymbolId(c, filePath), filePath)).ToList();
+        }
+
         return new CachedSymbol
         {
             Id = id,
@@ -81,6 +105,9 @@ internal static class SymbolSerializer
             InterfaceIds = ts.Interfaces.Count > 0
                 ? ts.Interfaces.Select(i => ComputeSymbolId(i, i.DefiningFilePath ?? filePath)).ToList()
                 : null,
+            Fields = fields,
+            Methods = methods,
+            Constructors = constructors,
             IsReExport = ts.IsReExport,
             OriginalModule = ts.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(ts.CodeGenInfo)
@@ -254,6 +281,18 @@ internal static class SymbolSerializer
         var typeKind = Enum.Parse<TypeKind>(cached.TypeKind ?? "Class");
         var accessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel);
 
+        // Deserialize fields
+        var fields = cached.Fields?.Select(f => DeserializeVariableSymbol(f, typeResolver)).ToList()
+            ?? new List<VariableSymbol>();
+
+        // Deserialize methods
+        var methods = cached.Methods?.Select(m => DeserializeFunctionSymbol(m, typeResolver)).ToList()
+            ?? new List<FunctionSymbol>();
+
+        // Deserialize constructors
+        var constructors = cached.Constructors?.Select(c => DeserializeFunctionSymbol(c, typeResolver)).ToList()
+            ?? new List<FunctionSymbol>();
+
         var symbol = new TypeSymbol
         {
             Name = cached.Name,
@@ -265,6 +304,9 @@ internal static class SymbolSerializer
             IsAbstract = cached.IsAbstract,
             DefiningModule = cached.DefiningModule,
             DefiningFilePath = cached.FilePath,
+            Fields = fields,
+            Methods = methods,
+            Constructors = constructors,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)

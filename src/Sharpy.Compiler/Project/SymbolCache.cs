@@ -72,6 +72,21 @@ internal record CachedSymbol
     public string? DefiningModule { get; init; }
 
     /// <summary>
+    /// For TypeSymbol: fields (serialized as CachedSymbol with Kind=Variable)
+    /// </summary>
+    public List<CachedSymbol>? Fields { get; init; }
+
+    /// <summary>
+    /// For TypeSymbol: methods (serialized as CachedSymbol with Kind=Function)
+    /// </summary>
+    public List<CachedSymbol>? Methods { get; init; }
+
+    /// <summary>
+    /// For TypeSymbol: constructors (serialized as CachedSymbol with Kind=Function)
+    /// </summary>
+    public List<CachedSymbol>? Constructors { get; init; }
+
+    /// <summary>
     /// For FunctionSymbol: parameters
     /// </summary>
     public List<CachedParameter>? Parameters { get; init; }
