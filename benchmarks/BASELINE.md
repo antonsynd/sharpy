@@ -86,6 +86,20 @@ Located in `src/Sharpy.Compiler.Benchmarks/Corpus/`:
 
 4. **Incremental compilation**: Not yet wired up (see hardening item 5.1). When enabled, expect 2-10x speedup for unchanged files.
 
+## CI Integration
+
+Benchmarks run automatically on PRs that touch compiler code via `.github/workflows/benchmarks.yml`.
+
+- **Trigger**: PRs to `mainline` modifying `src/Sharpy.Compiler/**` or `src/Sharpy.Compiler.Benchmarks/**`
+- **Manual trigger**: Use "Run workflow" button in GitHub Actions
+- **Results**: Uploaded as artifacts (JSON + Markdown), retained for 30 days
+- **Scope**: Runs `CompilerBenchmarks` only (not full suite) for speed
+
+To view results from a PR:
+1. Go to the PR's "Checks" tab
+2. Click "Benchmarks" workflow
+3. Download "benchmark-results-N" artifact
+
 ## Updating Baselines
 
 After significant compiler changes, run full benchmarks and update this file:
