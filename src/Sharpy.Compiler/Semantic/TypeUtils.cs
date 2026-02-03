@@ -4,7 +4,7 @@ namespace Sharpy.Compiler.Semantic;
 /// Utility methods for working with types.
 /// Centralizes common operations to avoid duplication.
 /// </summary>
-public static class TypeUtils
+internal static class TypeUtils
 {
     /// <summary>
     /// Check if a type is numeric (int, long, float, double, decimal).

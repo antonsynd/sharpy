@@ -38,7 +38,7 @@ internal record InferenceResult
 /// <summary>
 /// Types of inference errors.
 /// </summary>
-public enum InferenceErrorKind
+internal enum InferenceErrorKind
 {
     /// <summary>
     /// No arguments provide type information for a type parameter.
