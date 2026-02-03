@@ -1,273 +1,422 @@
 # Remaining Compiler Hardening Concerns
 
-> **Date:** 2026-02-03
-> **Status:** Analysis complete, ready for implementation
-> **Context:** Follow-up to `compiler-hardening-assessment.md` after reviewing completed work
+> **Date:** 2026-02-03 (updated)
+> **Status:** Previous P0/P1 items completed; new concerns identified
+> **Context:** Follow-up assessment after reviewing implementation progress
 
 ---
 
 ## Executive Summary
 
-The compiler is in excellent shape after the hardening work. Four concerns remain:
+The compiler is in **excellent shape**. The three correctness/UX concerns from the original assessment have been implemented. This document now tracks new hardening concerns identified during a comprehensive architecture review.
+
+### Completed Items (Archive)
+
+| # | Concern | Status | Completed |
+|---|---------|--------|-----------|
+| ~~1~~ | ~~Comparison chain re-evaluation~~ | **DONE** | 2026-02 |
+| ~~2~~ | ~~`IsFloatExpression` heuristic~~ | **DONE** | 2026-02 |
+| ~~3~~ | ~~Lexer error recovery~~ | **DONE** | 2026-02 |
+
+### Current Concerns
 
 | # | Concern | Type | Impact | Effort |
 |---|---------|------|--------|--------|
-| 1 | Comparison chain re-evaluation | Correctness | HIGH | Medium |
-| 2 | `IsFloatExpression` heuristic | Correctness | Medium | Low |
-| 3 | Lexer error recovery | UX | Medium | Medium |
-| 4 | TypeChecker size | Maintainability | Low | High |
+| 1 | Incremental cache lacks compiler version | Correctness | HIGH | Low |
+| 2 | SymbolSerializer format not versioned | Correctness | HIGH | Medium |
+| 3 | Restored symbols lack transitive validation | Correctness | HIGH | Medium |
+| 4 | `null!` usage in ProjectCompiler | Robustness | Medium | Low |
+| 5 | No fuzzing/property-based tests | Robustness | Medium | Medium |
+| 6 | TypeChecker size (~4,600 lines) | Maintainability | Low | High |
 
-**Recommendation:** Address #1 and #2 immediately (correctness bugs). Address #3 for UX improvement. Defer #4 unless actively adding type system features.
+**Recommendation:** Address #1-3 before v1.0 (production correctness). Address #4-5 for robustness. Defer #6 until LSP work begins.
 
 ---
 
-## Concern 1: Comparison Chain Re-evaluation (Issue #101)
+## Completed: Comparison Chain Re-evaluation
+
+> **Status:** IMPLEMENTED
+> **Location:** `RoslynEmitter.Expressions.cs:1119-1197`
+
+The implementation uses the C# `is var` pattern to capture intermediate values inline:
+
+```csharp
+// a < f() < c now generates:
+// a < (f() is var __cmp_0 ? __cmp_0 : __cmp_0) && __cmp_0 < c
+```
+
+Key implementation details:
+- `IsTrivialExpression()` identifies expressions safe to evaluate multiple times (line 1220-1228)
+- `GenerateTempVarName("cmp")` creates unique temp names
+- Only intermediate operands (not first/last) are captured
+
+---
+
+## Completed: IsFloatExpression Heuristic
+
+> **Status:** IMPLEMENTED
+> **Location:** `RoslynEmitter.Operators.cs:388-418`
+
+The method now consults `SemanticInfo` first:
+
+```csharp
+private bool IsFloatExpression(Expression expr)
+{
+    // First, try to resolve via SemanticInfo (handles variables, function calls, etc.)
+    var semanticType = GetExpressionSemanticType(expr);
+    if (semanticType != null)
+    {
+        return semanticType == SemanticType.Float
+            || semanticType == SemanticType.Double
+            || semanticType == SemanticType.Float32;
+    }
+    // Fallback to AST-based heuristic...
+}
+```
+
+---
+
+## Completed: Lexer Error Recovery
+
+> **Status:** IMPLEMENTED
+> **Location:** `Lexer.cs:175-265`
+
+The lexer now:
+- Catches `LexerAbortException` in `TokenizeAll()` loop
+- Calls `RecoverFromError()` to skip to next line
+- Respects `MaxErrors` limit (default 25)
+- Resets indentation and bracket state after recovery
+
+---
+
+## Concern 1: Incremental Cache Lacks Compiler Version
 
 ### Analysis
 
-**What:** For chained comparisons like `a < f() < c`, the generated C# evaluates `f()` twice.
+**What:** `IncrementalCompilationCache` hashes file contents but not the compiler version. After upgrading the compiler, the cache may contain stale generated C# from the old compiler.
 
 **Current behavior:**
-```python
-# Sharpy source
-result = a < get_value() < c
 ```
-```csharp
-// Generated C# (WRONG)
-result = a < get_value() && get_value() < c;  // f() called twice
+obj/Debug/.sharpy-cache    — file content hashes (SHA-256)
+obj/Debug/.sharpy-symbols  — serialized symbols + generated C#
 ```
 
-**Python behavior:**
-```python
-# Python guarantees single evaluation
-a < f() < c  # f() is called exactly once
-```
+Neither file includes a compiler version identifier.
 
-### Rationale
+**Problem:** If the compiler's code generation changes (e.g., bug fix in operator emission), cached C# won't reflect the fix until the cache is manually deleted.
 
-This is a **spec violation** with observable side effects:
-- Functions with side effects (incrementing counters, I/O, state mutation) behave incorrectly
-- The bug is silent — no error, just wrong behavior
-- Users familiar with Python will expect single evaluation
+### Impact
 
-**Risk assessment:** Medium-high. Any code using comparison chains with non-pure expressions is affected.
+- **Silent correctness bugs** — Old generated C# used after compiler upgrade
+- **CI/CD risk** — Build caches from old compiler versions reused
+- **Hard to diagnose** — "It works after clean build" is a symptom
 
 ### Plan
 
-**Approach:** Introduce temp variables for non-trivial intermediate expressions.
+**Approach:** Add compiler version hash to cache metadata; invalidate on mismatch.
 
 **Files to modify:**
-- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs` — comparison chain generation (~line 1093)
+- `src/Sharpy.Compiler/Project/IncrementalCompilationCache.cs`
 
 **Implementation:**
 
-1. **Identify non-trivial expressions** — anything that isn't:
-   - `Identifier`
-   - `IntLiteral`, `FloatLiteral`, `StringLiteral`, `BoolLiteral`
-   - Simple member access on identifier (e.g., `obj.field`)
-
-2. **Generate temp variables** using existing `_variableVersions` pattern:
+1. **Add version to cache structure:**
    ```csharp
-   // Before comparison chain
-   var __cmp_0 = get_value();
-   // In comparison
-   result = a < __cmp_0 && __cmp_0 < c;
+   private record CacheMetadata(string CompilerVersion, Dictionary<string, string> FileHashes);
+
+   private static string GetCompilerVersion()
+   {
+       var assembly = typeof(IncrementalCompilationCache).Assembly;
+       var version = assembly.GetName().Version?.ToString() ?? "0.0.0";
+       // Include assembly hash for debug builds where version doesn't change
+       var hash = Convert.ToHexStringLower(
+           SHA256.HashData(File.ReadAllBytes(assembly.Location))[..8]);
+       return $"{version}-{hash}";
+   }
    ```
 
-3. **Edge cases:**
-   - Nested function calls: `a < f(g()) < c` — only outer call needs temp
-   - Multiple intermediates: `a < f() < g() < c` — temp for both f() and g()
-   - Short chains: `a < b` — no temp needed (not a chain)
+2. **Check version on load:**
+   ```csharp
+   private Dictionary<string, string> LoadHashCache()
+   {
+       if (!File.Exists(_cacheFilePath))
+           return new();
+
+       var metadata = JsonSerializer.Deserialize<CacheMetadata>(...);
+       if (metadata?.CompilerVersion != GetCompilerVersion())
+       {
+           _logger.LogInfo("Compiler version changed; invalidating cache");
+           return new();  // Invalidate entire cache
+       }
+       return metadata.FileHashes;
+   }
+   ```
 
 **Tests to add:**
-- `type_system/comparison_chain_side_effects.spy` — function incrementing counter
-- `type_system/comparison_chain_multiple_calls.spy` — multiple function calls
-- `type_system/comparison_chain_simple.spy` — literals/identifiers (no temp needed)
+- `IncrementalCompilationCacheTests.InvalidatesOnVersionChange`
+- `IncrementalCompilationCacheTests.PreservesOnSameVersion`
 
-**Verification:**
-```bash
-python3 -c "
-counter = 0
-def f():
-    global counter
-    counter += 1
-    return counter
-result = 0 < f() < 10
-print(f'result={result}, counter={counter}')  # Should print counter=1
-"
-```
-
-**Estimated effort:** 2-4 hours
+**Estimated effort:** 2-3 hours
 
 ---
 
-## Concern 2: `IsFloatExpression` Heuristic
+## Concern 2: SymbolSerializer Format Not Versioned
 
 ### Analysis
 
-**What:** `RoslynEmitter.Operators.cs:406` — For floor division (`//`), `IsFloatExpression` guesses the operand type from AST shape instead of consulting `SemanticInfo`.
+**What:** `SymbolSerializer` persists symbols and generated C# to `.sharpy-symbols` but includes no schema version. If the serialization format changes, old caches silently produce corrupt data.
 
 **Current behavior:**
-```csharp
-private bool IsFloatExpression(Expression expr)
-{
-    return expr switch
-    {
-        FloatLiteral => true,
-        // ... other literal checks
-        _ => false  // Variables, function calls default to int!
-    };
-}
-```
+- JSON serialization via `System.Text.Json`
+- No version field in serialized data
+- `PropertyNameCaseInsensitive = true` but no `JsonUnmappedMemberHandling`
 
-**Problem:** `x // get_float()` generates integer division behavior when `get_float()` returns a float.
+**Problem:** Adding/removing/renaming a field in `FileCacheEntry` or symbol types breaks deserialization silently (missing fields get default values).
 
-### Rationale
+### Impact
 
-- **Correctness bug** — produces wrong numerical results
-- **Silent failure** — no error, just wrong answer
-- **Easy fix** — `SemanticInfo` already has the type information
-
-**Risk assessment:** Medium. Affects any floor division with non-literal float operands.
+- **Schema evolution blocked** — Can't safely add fields to cached data
+- **Silent corruption** — Old cache produces symbols with wrong default values
+- **No migration path** — Can't upgrade cache format gracefully
 
 ### Plan
 
-**Approach:** Consult `SemanticInfo` for resolved types instead of guessing.
+**Approach:** Add version header; implement migration or invalidation on version mismatch.
 
 **Files to modify:**
-- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Operators.cs` — `IsFloatExpression` method
+- `src/Sharpy.Compiler/Project/SymbolSerializer.cs`
+- `src/Sharpy.Compiler/Project/SymbolCache.cs`
 
 **Implementation:**
 
-```csharp
-private bool IsFloatExpression(Expression expr)
-{
-    // First, try to get the resolved type from SemanticInfo
-    if (_context.SemanticInfo.TryGetExpressionType(expr, out var type))
-    {
-        return type == BuiltinType.Float || type == BuiltinType.Double || type == BuiltinType.Float32;
-    }
+1. **Add version to serialization:**
+   ```csharp
+   private const int CurrentSchemaVersion = 1;
 
-    // Fallback to heuristic for edge cases (shouldn't happen for well-typed code)
-    _context.Logger?.LogDebug($"IsFloatExpression falling back to heuristic for {expr.GetType().Name}");
-    return expr switch
-    {
-        FloatLiteral => true,
-        // ... existing heuristics
-        _ => false
-    };
+   private record SymbolCacheEnvelope(int SchemaVersion, Dictionary<string, FileCacheEntry> Files);
+   ```
+
+2. **Validate on load:**
+   ```csharp
+   public SymbolCache? Load()
+   {
+       var envelope = JsonSerializer.Deserialize<SymbolCacheEnvelope>(...);
+       if (envelope?.SchemaVersion != CurrentSchemaVersion)
+       {
+           _logger.LogInfo($"Symbol cache schema {envelope?.SchemaVersion} != {CurrentSchemaVersion}; rebuilding");
+           return null;
+       }
+       return new SymbolCache(envelope.Files);
+   }
+   ```
+
+3. **Add strict JSON options:**
+   ```csharp
+   private static readonly JsonSerializerOptions s_strictOptions = new()
+   {
+       PropertyNameCaseInsensitive = true,
+       UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow  // .NET 8+
+   };
+   ```
+
+**Estimated effort:** 3-4 hours
+
+---
+
+## Concern 3: Restored Symbols Lack Transitive Validation
+
+### Analysis
+
+**What:** When incremental compilation skips an unchanged file, it restores cached symbols without verifying that their type references are still valid.
+
+**Scenario:**
+1. `A.spy` imports `B.spy` and uses `B.MyClass`
+2. First build: both compiled, symbols cached
+3. `B.spy` changes: `MyClass` renamed to `MyNewClass`
+4. Second build: `A.spy` unchanged (same hash), restored from cache
+5. **Bug:** `A`'s restored symbol still references `MyClass` (no longer exists)
+
+**Current behavior:**
+```csharp
+// ProjectCompiler.cs:386-389
+if (_incremental && _incrementalCache != null && _filesToSkip.Count > 0)
+{
+    RestoreCachedSymbols();  // No validation of restored symbol references
 }
 ```
 
-**Tests to add:**
-- `operators/floor_division_float_function.spy` — `def get_float() -> float: return 7.5; print(get_float() // 2)`
-- `operators/floor_division_float_variable.spy` — `x: float = 7.5; print(x // 2)`
+### Impact
 
-**Verification:**
-```bash
-python3 -c "print(7.5 // 2.0)"  # Should print 3.0
-python3 -c "def f(): return 7.5
-print(f() // 2)"  # Should print 3.0
+- **Silent type mismatches** — Restored symbols have stale type references
+- **Incremental builds differ from clean builds** — Hard to diagnose
+- **Only affects cross-file references** — Single-file projects unaffected
+
+### Plan
+
+**Approach:** After restoring symbols, validate that all type references resolve in current SymbolTable.
+
+**Files to modify:**
+- `src/Sharpy.Compiler/Project/ProjectCompiler.cs`
+
+**Implementation:**
+
+1. **Add validation after restore:**
+   ```csharp
+   private void RestoreCachedSymbols()
+   {
+       // ... existing restore logic ...
+
+       // Validate restored symbols have valid type references
+       var invalidFiles = new List<string>();
+       foreach (var (file, symbols) in _restoredSymbols.GroupBy(s => s.Value.FilePath))
+       {
+           foreach (var symbol in symbols)
+           {
+               if (!ValidateSymbolReferences(symbol.Value))
+               {
+                   invalidFiles.Add(file);
+                   break;
+               }
+           }
+       }
+
+       // Re-add invalid files to recompile set
+       foreach (var file in invalidFiles)
+       {
+           _logger.LogInfo($"Restored symbol validation failed for {file}; recompiling");
+           _filesToSkip.Remove(file);
+           // Remove from _restoredSymbols
+       }
+   }
+
+   private bool ValidateSymbolReferences(Symbol symbol)
+   {
+       // Check that all type references resolve
+       return symbol switch
+       {
+           VariableSymbol v => v.Type == null || ResolveType(v.Type),
+           FunctionSymbol f => f.ReturnType == null || ResolveType(f.ReturnType),
+           TypeSymbol t => t.BaseType == null || _symbolTable.Lookup(t.BaseType.Name) != null,
+           _ => true
+       };
+   }
+   ```
+
+**Tests to add:**
+- `IncrementalCompilationTests.RecompilesWhenImportedTypeChanges`
+- `IncrementalCompilationTests.RecompilesWhenBaseClassChanges`
+
+**Estimated effort:** 4-6 hours
+
+---
+
+## Concern 4: `null!` Usage in ProjectCompiler
+
+### Analysis
+
+**What:** `ProjectCompiler` uses `null!` (null-forgiving operator) for fields that are initialized in `Compile()` rather than the constructor.
+
+**Current code:**
+```csharp
+// ProjectCompiler.cs:31-46
+private SymbolTable _symbolTable = null!;
+private SemanticInfo _semanticInfo = null!;
+private SemanticBinding _semanticBinding = null!;
+private ProjectModel _projectModel = null!;
 ```
+
+**Problem:** If `Compile()` throws early (e.g., no source files), subsequent code accessing these fields gets `NullReferenceException` instead of a clear error.
+
+### Impact
+
+- **Unclear error messages** — NRE instead of "compilation not started"
+- **Defensive code burden** — Callers must handle unexpected NRE
+- **IDE analysis weakened** — Nullability warnings suppressed
+
+### Plan
+
+**Approach:** Replace `null!` with explicit initialization or guard checks.
+
+**Option A — Lazy initialization with guard:**
+```csharp
+private SymbolTable? _symbolTable;
+private SymbolTable SymbolTable => _symbolTable
+    ?? throw new InvalidOperationException("Compile() has not been called");
+```
+
+**Option B — Initialize in constructor with empty defaults:**
+```csharp
+private SymbolTable _symbolTable = new();  // Empty, replaced in Compile()
+```
+
+**Option C — Make Compile() return a result object:**
+```csharp
+public ProjectCompilationResult Compile() =>
+    new ProjectCompilationResultBuilder(config)
+        .Parse()
+        .ResolveTypes()
+        .Generate()
+        .Build();
+```
+
+**Recommendation:** Option A is simplest and makes errors clear.
 
 **Estimated effort:** 1-2 hours
 
 ---
 
-## Concern 3: Lexer Error Recovery
+## Concern 5: No Fuzzing/Property-Based Tests
 
 ### Analysis
 
-**What:** The lexer aborts on the first error (`Lexer.cs:183-187`). An unterminated string on line 1 prevents reporting any parser errors on subsequent lines.
+**What:** The test suite has 332+ file-based integration tests but no:
+- Fuzz tests (random/malformed input)
+- Property-based tests (QuickCheck-style)
+- Stress tests (large files, many symbols)
 
-**Current behavior:**
-```python
-# Line 1: unterminated string
-x = "hello
-# Line 2: valid code
-y = 42
-# Line 3: type error
-z: int = "world"
-```
-**Output:** Only the unterminated string error. User can't see the type error on line 3.
-
-### Rationale
-
-- **UX impact** — Users fix one error at a time in a loop. Blocking all downstream errors slows the edit-compile cycle.
-- **Consistency** — Parser and TypeChecker already have `MaxErrors` and recovery. Lexer is the outlier.
-- **Common scenario** — Unterminated strings are one of the most common typos.
-
-**Risk assessment:** Low (no correctness impact), but high UX value for real-world usage.
+**Risk:** Lexer/Parser may crash or hang on malformed input not covered by handwritten tests.
 
 ### Plan
 
-**Approach:** Skip to next newline on lexer error, then resume tokenization.
-
-**Files to modify:**
-- `src/Sharpy.Compiler/Lexer/Lexer.cs`
-
-**Implementation:**
-
-1. **Add recovery method:**
-   ```csharp
-   private void RecoverFromError()
-   {
-       // Skip to next newline
-       while (_position < _source.Length && _source[_position] != '\n')
-           _position++;
-
-       // Skip the newline itself
-       if (_position < _source.Length)
-       {
-           _position++;
-           _line++;
-           _column = 1;
-       }
-
-       // Reset indent tracking to base level (conservative)
-       while (_indentStack.Count > 1)
-           _indentStack.Pop();
-   }
-   ```
-
-2. **Modify `TokenizeAll()` loop:**
-   ```csharp
-   while (!IsAtEnd())
-   {
-       try
-       {
-           var token = NextToken();
-           if (token != null)
-               tokens.Add(token);
-       }
-       catch (LexerAbortException)
-       {
-           if (_diagnostics.Errors.Count() >= MaxErrors)
-           {
-               // Already reported truncation notice
-               break;
-           }
-           RecoverFromError();
-           // Continue tokenizing
-       }
-   }
-   ```
-
-3. **Edge cases:**
-   - Multi-line strings: Recovery should handle `"""` strings that span lines
-   - Indentation corruption: Reset indent stack to prevent cascading INDENT/DEDENT errors
-   - Error at EOF: Don't infinite loop
+**Approach:** Add property-based tests using a library like FsCheck or Hedgehog.
 
 **Tests to add:**
-- `errors/lexer_recovery_unterminated_string.spy` + `.error` — verify both lexer and parser errors reported
-- `errors/lexer_recovery_multiple_errors.spy` + `.error` — verify multiple lexer errors reported
-- `errors/lexer_recovery_valid_after_error.spy` + `.expected` — verify code after error still works
 
-**Estimated effort:** 3-5 hours (including edge case handling)
+1. **Lexer robustness:**
+   ```csharp
+   [Property]
+   public bool LexerNeverCrashes(string randomInput)
+   {
+       var lexer = new Lexer(randomInput);
+       try { lexer.TokenizeAll(); return true; }
+       catch (Exception) { return false; }  // Should never throw
+   }
+   ```
+
+2. **Parser robustness:**
+   ```csharp
+   [Property]
+   public bool ParserNeverCrashes(List<Token> tokens)
+   {
+       var parser = new Parser(tokens);
+       try { parser.ParseModule(); return true; }
+       catch (Exception) { return false; }
+   }
+   ```
+
+3. **Stress tests:**
+   - 10,000-line file with deeply nested scopes
+   - 1,000 imports in a single file
+   - 10,000 symbols in SymbolTable
+
+**Estimated effort:** 4-8 hours
 
 ---
 
-## Concern 4: TypeChecker Size (~4,600 lines)
+## Concern 6: TypeChecker Size (~4,600 lines)
+
+> **Status:** DEFERRED
+> **Trigger:** LSP implementation or major type system changes
 
 ### Analysis
 
@@ -287,9 +436,9 @@ z: int = "world"
 - No immediate plans to add major type system features
 
 **Why it would matter for future work:**
-- Adding `ErrorType` sentinel (distinct from `UnknownType`) requires touching narrowing logic
-- Adding generic constraints requires modifying inference
 - LSP "hover" and "go to definition" need to extract logic from TypeChecker
+- Adding `ErrorType` sentinel requires touching narrowing logic
+- Adding generic constraints requires modifying inference
 
 **Current state:** The 5 partial files are well-organized by concern:
 - `TypeChecker.cs` — orchestration, statement dispatch
@@ -298,14 +447,9 @@ z: int = "world"
 - `TypeChecker.Definitions.cs` — class/function definitions
 - `TypeChecker.Utilities.cs` — error helpers, narrowing utilities
 
-### Plan (Deferred)
+### Plan (When Triggered)
 
-**Recommendation:** Defer this refactoring unless one of these triggers occurs:
-1. Adding `ErrorType` sentinel for better cascading error handling
-2. Adding generic type constraints
-3. Starting LSP implementation
-
-**When triggered, extract in this order:**
+**Extract in this order:**
 
 1. **TypeNarrower** (~200 lines)
    - `_narrowedTypes` dictionary
@@ -321,7 +465,7 @@ z: int = "world"
    - Currently interleaved with type checking
    - Should run after all types are resolved
 
-**Estimated effort:** 8-16 hours (significant refactoring with test updates)
+**Estimated effort:** 8-16 hours
 
 ---
 
@@ -329,27 +473,36 @@ z: int = "world"
 
 | Priority | Item | Rationale |
 |----------|------|-----------|
-| **P0** | 1.3 Comparison chains | Correctness bug with spec violation |
-| **P0** | 1.4 IsFloatExpression | Correctness bug, easy fix |
-| **P1** | 2.4 Lexer recovery | High UX impact, medium effort |
-| **P2** | TypeChecker refactor | Deferred until triggered |
+| **P0** | Cache compiler version (#1) | Silent correctness bugs in incremental builds |
+| **P0** | SymbolSerializer versioning (#2) | Schema evolution safety |
+| **P1** | Restored symbol validation (#3) | Incremental build correctness |
+| **P1** | Replace `null!` (#4) | Clearer error messages |
+| **P2** | Fuzz/property tests (#5) | Robustness against malformed input |
+| **P3** | TypeChecker refactor (#6) | Deferred until LSP |
 
-**Total estimated effort for P0+P1:** 6-11 hours
+**Total estimated effort for P0+P1:** 10-15 hours
 
 ---
 
-## Verification Checklist
+## Future Considerations (Not Yet Concerns)
 
-After implementing P0 items:
-- [ ] All existing tests pass
-- [ ] New test fixtures added for comparison chains
-- [ ] New test fixtures added for floor division with floats
-- [ ] Python behavior verified for each test case
+These items are well-designed but worth noting for future tooling:
 
-After implementing P1:
-- [ ] Lexer recovery tests pass
-- [ ] Fuzz tests still pass (lexer never crashes)
-- [ ] Multi-error scenarios show all errors
+### LSP Readiness
+
+- **SemanticInfo not thread-safe** — Documented; use per-file instances for LSP
+- **Parser lacks CancellationToken** — Add when implementing LSP
+- **Type narrowing not persisted in SemanticBinding** — Add for cross-file LSP analysis
+
+### Parallel Compilation
+
+- **ProjectCompiler loops are sequential** — SemanticBinding is thread-safe, ready for parallelization
+- **ImportResolver uses Stack for cycle detection** — Would need thread-local for parallel imports
+
+### Performance
+
+- **No benchmarks** — Add BenchmarkDotNet harness when optimizing
+- **Large file stress tests** — Add when targeting enterprise codebases
 
 ---
 
@@ -357,7 +510,8 @@ After implementing P1:
 
 | Concern | Primary Files |
 |---------|---------------|
-| Comparison chains | `CodeGen/RoslynEmitter.Expressions.cs:~1093` |
-| IsFloatExpression | `CodeGen/RoslynEmitter.Operators.cs:406` |
-| Lexer recovery | `Lexer/Lexer.cs:183-187` |
+| Cache versioning | `Project/IncrementalCompilationCache.cs` |
+| Symbol serialization | `Project/SymbolSerializer.cs`, `Project/SymbolCache.cs` |
+| Restored symbol validation | `Project/ProjectCompiler.cs:386-389` |
+| Null-forgiving operators | `Project/ProjectCompiler.cs:31-46` |
 | TypeChecker | `Semantic/TypeChecker*.cs` (5 files) |
