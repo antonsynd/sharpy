@@ -157,9 +157,9 @@ dotnet test -c Release
 Use this section to track implementation progress:
 
 ### Phase 1: Incremental Build Correctness
-- [ ] Task 1.1: Compiler version in cache
-- [ ] Task 1.2: SymbolSerializer versioning
-- [ ] Task 1.3: Restored symbol validation
+- [x] Task 1.1: Compiler version in cache
+- [x] Task 1.2: SymbolSerializer versioning
+- [x] Task 1.3: Restored symbol validation (infrastructure only, disabled pending edge case fixes)
 
 ### Phase 2: Path and Name Consistency
 - [ ] Task 2.1: PathNormalizer utility (consolidate 6 implementations)

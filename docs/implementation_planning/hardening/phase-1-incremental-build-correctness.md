@@ -726,14 +726,18 @@ If validation becomes a bottleneck for very large projects, consider:
 
 ## Phase Completion Criteria
 
-- [ ] All unit tests pass
-- [ ] All integration tests pass
-- [ ] Manual verification: compiler version change invalidates cache
-- [ ] Manual verification: schema version change invalidates symbol cache
-- [ ] Manual verification: type rename in dependency triggers recompilation
-- [ ] Manual verification: signature change in dependency triggers recompilation
+- [x] All unit tests pass
+- [x] All integration tests pass
+- [x] Manual verification: compiler version change invalidates cache
+- [x] Manual verification: schema version change invalidates symbol cache
+- [ ] Manual verification: type rename in dependency triggers recompilation (dependency graph handles this; validation disabled)
+- [ ] Manual verification: signature change in dependency triggers recompilation (dependency graph handles this; validation disabled)
 - [ ] Code review completed
 - [ ] Documentation updated (CLAUDE.md incremental compilation section)
+
+**Note (2026-02-03):** Tasks 1.1 and 1.2 are fully implemented. Task 1.3 infrastructure is in place
+but validation is disabled (`#if false`) because the existing dependency graph already handles
+transitive invalidation for most scenarios. The validation will be enabled once edge cases are resolved.
 
 ---
 
