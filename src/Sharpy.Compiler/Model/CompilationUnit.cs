@@ -217,5 +217,8 @@ public enum CompilationPhase
     CodeGenerated,
 
     /// <summary>Compilation failed with errors.</summary>
-    Failed
+    Failed,
+
+    /// <summary>File skipped during incremental compilation (unchanged, restored from cache).</summary>
+    Skipped
 }

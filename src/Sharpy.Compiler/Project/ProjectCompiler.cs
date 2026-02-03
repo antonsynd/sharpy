@@ -51,6 +51,12 @@ internal class ProjectCompiler
     // Incremental compilation cache
     private IncrementalCompilationCache? _incrementalCache;
 
+    // Files to skip during incremental compilation (unchanged with valid cache)
+    private HashSet<string> _filesToSkip = new(StringComparer.OrdinalIgnoreCase);
+
+    // Registry of restored symbols from cache (for resolving cross-references)
+    private Dictionary<string, Symbol> _restoredSymbols = new();
+
     public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null,
         bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null, int maxErrors = 0,
         bool incremental = false)
@@ -81,16 +87,39 @@ internal class ProjectCompiler
         _projectModel = new ProjectModel(config);
 
         // Initialize incremental compilation cache if enabled
+        _filesToSkip.Clear();
+        _restoredSymbols.Clear();
+
         if (_incremental)
         {
             _incrementalCache = new IncrementalCompilationCache(config, _logger);
-            var staleFiles = _incrementalCache.GetFilesToRecompile(config.SourceFiles, null);
-            _logger.LogInfo($"Incremental mode: {_incrementalCache.StaleFileCount} file(s) changed, {_incrementalCache.UpToDateFileCount} up-to-date");
+            _incrementalCache.LoadAllCaches();
 
-            // Note: Full incremental compilation (skipping unchanged files) requires caching
-            // the symbol table entries from previous builds. For now, we recompile everything
-            // but track metrics and save hashes for future use. See item 5.1d in the hardening
-            // assessment for the full implementation plan.
+            // Determine which files can potentially be skipped (unchanged with valid cache)
+            var staleFiles = _incrementalCache.GetFilesToRecompile(config.SourceFiles, null);
+
+            foreach (var sourceFile in config.SourceFiles)
+            {
+                // A file can be skipped if:
+                // 1. It's not in the stale files list (unchanged content)
+                // 2. It has a valid file cache with symbols and generated C#
+                if (!staleFiles.Contains(sourceFile) && _incrementalCache.HasValidFileCache(sourceFile))
+                {
+                    _filesToSkip.Add(sourceFile);
+                }
+            }
+
+            var skippedCount = _filesToSkip.Count;
+            var compiledCount = config.SourceFiles.Count - skippedCount;
+            _logger.LogInfo($"Incremental mode: {compiledCount} file(s) to compile, {skippedCount} skipped (unchanged)");
+
+            if (_logger.IsEnabled(CompilerLogLevel.Debug))
+            {
+                foreach (var file in _filesToSkip)
+                {
+                    _logger.LogDebug($"  Skipping: {Path.GetFileName(file)}");
+                }
+            }
         }
 
         try
@@ -188,7 +217,8 @@ internal class ProjectCompiler
     /// </summary>
     private bool ParseAllFiles(ProjectConfig config)
     {
-        _logger.LogInfo($"Phase 1: Parsing {config.SourceFiles.Count} source files");
+        var filesToParse = config.SourceFiles.Count - _filesToSkip.Count;
+        _logger.LogInfo($"Phase 1: Parsing {filesToParse} source files ({_filesToSkip.Count} skipped)");
 
         foreach (var sourceFile in config.SourceFiles)
         {
@@ -199,6 +229,30 @@ internal class ProjectCompiler
 
             try
             {
+                // Skip unchanged files in incremental mode
+                if (_filesToSkip.Contains(sourceFile))
+                {
+                    var skippedModulePath = CompilationUnitFactory.ComputeModulePath(sourceFile, config.ProjectDirectory);
+                    var skippedSource = File.ReadAllText(sourceFile);
+                    var unit = _projectModel!.CreateUnit(sourceFile, skippedModulePath, skippedSource);
+
+                    // Restore cached generated C# code
+                    var cached = _incrementalCache?.GetFileCache(sourceFile);
+                    if (cached != null)
+                    {
+                        unit.GeneratedCSharp = cached.GeneratedCSharp;
+                    }
+
+                    unit.Phase = CompilationPhase.Skipped;
+                    _projectMetrics.AddSkippedFile(sourceFile);
+
+                    if (_logger.IsEnabled(CompilerLogLevel.Debug))
+                    {
+                        _logger.LogDebug($"Skipping {Path.GetFileName(sourceFile)} (unchanged)");
+                    }
+                    continue;
+                }
+
                 var source = File.ReadAllText(sourceFile);
 
                 // Create CompilationUnit for this file
@@ -321,6 +375,128 @@ internal class ProjectCompiler
         {
             _graphBuilder.AddFile(sourceFile);
         }
+
+        // Restore cached symbols for skipped files (incremental compilation)
+        if (_incremental && _incrementalCache != null && _filesToSkip.Count > 0)
+        {
+            RestoreCachedSymbols();
+        }
+    }
+
+    /// <summary>
+    /// Restore symbols from cache for files that were skipped during incremental compilation.
+    /// </summary>
+    private void RestoreCachedSymbols()
+    {
+        if (_incrementalCache == null) return;
+
+        var restoredCount = 0;
+        foreach (var filePath in _filesToSkip)
+        {
+            if (_incrementalCache.RestoreSymbols(filePath, _restoredSymbols))
+            {
+                // Register the restored symbols in the symbol table
+                foreach (var symbol in _restoredSymbols.Values)
+                {
+                    // Only register top-level symbols (types, functions, variables)
+                    // Skip parameters and other nested symbols
+                    if (symbol is TypeSymbol || symbol is FunctionSymbol ||
+                        (symbol is VariableSymbol vs && !vs.IsParameter))
+                    {
+                        _symbolTable.TryDefine(symbol);
+                    }
+                }
+                restoredCount++;
+            }
+        }
+
+        if (restoredCount > 0)
+        {
+            _logger.LogInfo($"Restored symbols from {restoredCount} cached file(s)");
+        }
+    }
+
+    /// <summary>
+    /// Save incremental compilation caches for all successfully compiled files.
+    /// </summary>
+    private void SaveIncrementalCaches(ProjectConfig config)
+    {
+        if (_incrementalCache == null) return;
+
+        var savedCount = 0;
+
+        foreach (var (_, unit) in _projectModel!.Units)
+        {
+            var sourceFile = unit.FilePath;
+
+            // Update hash for all files
+            _incrementalCache.UpdateHash(sourceFile);
+
+            // Save file cache for newly compiled files (not skipped)
+            if (unit.Phase == CompilationPhase.CodeGenerated && !_filesToSkip.Contains(sourceFile))
+            {
+                // Extract symbols declared in this file
+                var fileSymbols = ExtractFileSymbols(sourceFile);
+
+                // Extract dependencies from the dependency graph
+                var dependencies = _dependencyGraph != null
+                    ? _dependencyGraph.GetDirectDependencies(sourceFile).ToList()
+                    : new List<string>();
+
+                // Save the file cache
+                _incrementalCache.SaveFileCache(
+                    sourceFile,
+                    fileSymbols,
+                    unit.GeneratedCSharp ?? string.Empty,
+                    dependencies,
+                    unit.ModulePath);
+
+                savedCount++;
+            }
+        }
+
+        // Persist caches to disk
+        _incrementalCache.SaveAllCaches();
+
+        if (savedCount > 0)
+        {
+            _logger.LogInfo($"Saved incremental cache for {savedCount} file(s)");
+        }
+    }
+
+    /// <summary>
+    /// Extract all symbols declared in a specific file.
+    /// </summary>
+    private List<Symbol> ExtractFileSymbols(string filePath)
+    {
+        var symbols = new List<Symbol>();
+
+        // Get all symbols from the global scope that were declared in this file
+        foreach (var symbol in _symbolTable.GlobalScope.GetAllSymbols())
+        {
+            // Check if the symbol was declared in this file
+            var symbolFilePath = GetSymbolFilePath(symbol);
+            if (symbolFilePath != null &&
+                string.Equals(NormalizePath(symbolFilePath), NormalizePath(filePath), StringComparison.OrdinalIgnoreCase))
+            {
+                symbols.Add(symbol);
+            }
+        }
+
+        return symbols;
+    }
+
+    /// <summary>
+    /// Get the file path where a symbol was declared.
+    /// </summary>
+    private static string? GetSymbolFilePath(Symbol symbol)
+    {
+        return symbol switch
+        {
+            TypeSymbol ts => ts.DefiningFilePath,
+            ModuleSymbol ms => ms.FilePath,
+            _ => null
+        };
     }
 
     /// <summary>
@@ -683,16 +859,31 @@ internal class ProjectCompiler
 
         foreach (var (_, unit) in _projectModel!.Units)
         {
+            var sourceFile = unit.FilePath;
+            var relativePath = Path.GetRelativePath(config.ProjectDirectory, sourceFile);
+            var csharpFileName = Path.ChangeExtension(relativePath, ".cs");
+
+            // Include cached C# code for skipped files
+            if (unit.Phase == CompilationPhase.Skipped)
+            {
+                if (!string.IsNullOrEmpty(unit.GeneratedCSharp))
+                {
+                    generatedCSharp[csharpFileName] = unit.GeneratedCSharp;
+
+                    if (_logger.IsEnabled(CompilerLogLevel.Debug))
+                    {
+                        _logger.LogDebug($"Using cached C# for {Path.GetFileName(sourceFile)}");
+                    }
+                }
+                continue;
+            }
+
             // Only generate code for successfully type-checked units
             if (unit.Phase != CompilationPhase.TypeChecked || unit.Ast == null)
                 continue;
 
-            // Use unit.FilePath for original path (Units dictionary keys are normalized)
-            var sourceFile = unit.FilePath;
-
             // Get the file metrics we created during parsing
             var fileMetrics = unit.Metrics;
-            var relativePath = Path.GetRelativePath(config.ProjectDirectory, sourceFile);
 
             fileMetrics?.StartPhase("Code Generation");
 
@@ -738,8 +929,6 @@ internal class ProjectCompiler
                 _logger.LogDebug($"Generated {Path.GetFileName(sourceFile)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
             }
 
-            // Use relative path for C# file name
-            var csharpFileName = Path.ChangeExtension(relativePath, ".cs");
             generatedCSharp[csharpFileName] = csharpCode;
         }
 
@@ -787,12 +976,7 @@ internal class ProjectCompiler
         // Save incremental compilation cache on success
         if (_incrementalCache != null)
         {
-            foreach (var sourceFile in config.SourceFiles)
-            {
-                _incrementalCache.UpdateHash(sourceFile);
-            }
-            _incrementalCache.SaveCache();
-            _logger.LogInfo("Incremental cache saved");
+            SaveIncrementalCaches(config);
         }
 
         return new ProjectCompilationResult

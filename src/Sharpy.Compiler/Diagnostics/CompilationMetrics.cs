@@ -189,6 +189,7 @@ public class PhaseMetric
 public class ProjectCompilationMetrics
 {
     private readonly List<CompilationMetrics> _fileMetrics = new();
+    private readonly List<string> _skippedFiles = new();
     private readonly string _projectName;
     private readonly string _configuration;
     private readonly DateTime _startTime;
@@ -210,6 +211,14 @@ public class ProjectCompilationMetrics
     }
 
     /// <summary>
+    /// Add a file that was skipped during incremental compilation
+    /// </summary>
+    public void AddSkippedFile(string filePath)
+    {
+        _skippedFiles.Add(filePath);
+    }
+
+    /// <summary>
     /// Set assembly compilation metrics
     /// </summary>
     public void SetAssemblyMetrics(CompilationMetrics metrics)
@@ -223,14 +232,24 @@ public class ProjectCompilationMetrics
     public IReadOnlyList<CompilationMetrics> FileMetrics => _fileMetrics.AsReadOnly();
 
     /// <summary>
+    /// Get list of files skipped during incremental compilation
+    /// </summary>
+    public IReadOnlyList<string> SkippedFiles => _skippedFiles.AsReadOnly();
+
+    /// <summary>
     /// Get assembly compilation metrics
     /// </summary>
     public CompilationMetrics? AssemblyMetrics => _assemblyMetrics;
 
     /// <summary>
-    /// Get total files compiled
+    /// Get total files compiled (not including skipped)
     /// </summary>
     public int TotalFiles => _fileMetrics.Count;
+
+    /// <summary>
+    /// Get number of files skipped during incremental compilation
+    /// </summary>
+    public int SkippedFileCount => _skippedFiles.Count;
 
     /// <summary>
     /// Get aggregate metrics across all phases
