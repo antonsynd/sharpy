@@ -28,8 +28,8 @@ This document identifies 29 items across 5 priority tiers (Tiers 1.5, 3, and 4 a
 | `NotImplementedException` in codegen | ~~15~~ **16** | Recount confirmed 16 throw sites (see 2.1) |
 | Silent statement drops in emitter | 4 locations | |
 | Open `See: #NNN` references | 22 across 14 files | |
-| Public types in Sharpy.Compiler | ~~212~~ **~153** | Reduced by 4.3 (four passes: `b912a5ec`, `6a4b25e3`, `7e8ba20c`, `82eb5f0e`) |
-| Internal types in Sharpy.Compiler | ~~1–2~~ **~78** | Increased by 4.3 (four passes) |
+| Public types in Sharpy.Compiler | ~~212~~ **~148** | Reduced by 4.3 (five passes: `b912a5ec`, `6a4b25e3`, `7e8ba20c`, `82eb5f0e`, `a6e494d9`) |
+| Internal types in Sharpy.Compiler | ~~1–2~~ **~83** | Increased by 4.3 (five passes) |
 
 ### Verification Notes (2026-02-02)
 
@@ -549,7 +549,7 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 **Tasks:**
 
 - [x] **4.3a** ~~Complete 4.1 first (unify compilation paths)~~ — Done
-- [x] **4.3b** ~~Mark type groups as `internal`~~ — Done (~78 types made internal across four passes). Pass 1 (commit `b912a5ec`): ~60 types across Analysis, Discovery, CodeGen, Semantic, Validation, Project, and Parser. Pass 2 (commit `6a4b25e3`): TypeResolver, CompilerServicesBuilder, TypeResolverAdapter, SymbolLookupAdapter, ClrTypeMapperAdapter, DiagnosticReporter, ClrMemberCache, TypeInferenceService, GenericTypeInferenceService, InferenceResult. Pass 3 (commit `7e8ba20c`): TypeRegistry, SemanticAnalysisException, ModuleResolutionKind. Pass 4 (commits `fbaa2bd2`, `82eb5f0e`): InferenceErrorKind, TypeAnnotationHelper, TypeUtils, AstExtensions. Public interfaces (ITypeResolver, ISymbolLookup, IClrTypeMapper, IDiagnosticReporter) remain the public contract.
+- [x] **4.3b** ~~Mark type groups as `internal`~~ — Done (~83 types made internal across five passes). Pass 1 (commit `b912a5ec`): ~60 types across Analysis, Discovery, CodeGen, Semantic, Validation, Project, and Parser. Pass 2 (commit `6a4b25e3`): TypeResolver, CompilerServicesBuilder, TypeResolverAdapter, SymbolLookupAdapter, ClrTypeMapperAdapter, DiagnosticReporter, ClrMemberCache, TypeInferenceService, GenericTypeInferenceService, InferenceResult. Pass 3 (commit `7e8ba20c`): TypeRegistry, SemanticAnalysisException, ModuleResolutionKind. Pass 4 (commits `fbaa2bd2`, `82eb5f0e`): InferenceErrorKind, TypeAnnotationHelper, TypeUtils, AstExtensions. Pass 5 (commit `a6e494d9`): AssemblyCompiler, AssemblyCompilationResult, ProjectFileParser, BuiltinRegistry, CompilerServicesConfiguration; also made SymbolTable constructor/BuiltinRegistry property and CompilerServices.Configuration internal. Public interfaces (ITypeResolver, ISymbolLookup, IClrTypeMapper, IDiagnosticReporter) remain the public contract.
 - [x] **4.3c** ~~Add `InternalsVisibleTo` for CLI~~ — Done (uses assembly name `sharpyc`)
 - [x] **4.3d** ~~Verify all tests still compile~~ — Done (4805 pass, 0 fail)
 - [x] **4.3e** ~~Keep listed types public for LSP/tooling~~ — Done (Compiler, CompilationResult, SemanticInfo, SemanticBinding, Symbol hierarchy, DiagnosticBag, Lexer, Parser, AST nodes, etc. all remain public)
