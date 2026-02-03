@@ -1,0 +1,9 @@
+# Test: comprehension with function call in element expression
+def triple(n: int) -> int:
+    return n * 3
+
+def main():
+    result: list[int] = [triple(x) for x in range(5)]
+    for item in result:
+        print(item)
+    print(len(result))
