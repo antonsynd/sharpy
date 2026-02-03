@@ -5,7 +5,7 @@ namespace Sharpy.Compiler.Parser.Ast;
 /// <summary>
 /// Extension methods to help with AST immutability migration.
 /// </summary>
-public static class AstExtensions
+internal static class AstExtensions
 {
     /// <summary>
     /// Converts a list to an immutable array.
