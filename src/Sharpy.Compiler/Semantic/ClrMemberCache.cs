@@ -11,7 +11,7 @@ namespace Sharpy.Compiler.Semantic;
 ///
 /// NOTE: Not designed for cross-compilation reuse.
 /// </summary>
-public class ClrMemberCache
+internal class ClrMemberCache
 {
     // Operator methods cache: Type -> (operator name like "op_Addition" -> MethodInfo list)
     private readonly Dictionary<Type, Dictionary<string, IReadOnlyList<MethodInfo>>> _operatorCache = new();

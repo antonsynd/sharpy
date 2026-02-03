@@ -17,7 +17,7 @@ namespace Sharpy.Compiler.Semantic;
 /// - Results are cached for performance (operator results are highly repetitive)
 /// - Thread-safe caching could be added in future if needed
 /// </remarks>
-public class TypeInferenceService
+internal class TypeInferenceService
 {
     private readonly SymbolTable _symbolTable;
     private readonly ClrMemberCache _clrMemberCache;

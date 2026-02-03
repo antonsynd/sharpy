@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Services;
 /// Implementation of IDiagnosticReporter using DiagnosticBag.
 /// Provides centralized, consistent error reporting.
 /// </summary>
-public class DiagnosticReporter : IDiagnosticReporter
+internal class DiagnosticReporter : IDiagnosticReporter
 {
     private readonly DiagnosticBag _diagnostics;
     private readonly ICompilerLogger _logger;

@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Services;
 /// <summary>
 /// Adapter that provides CLR type mapping using the existing ClrMemberCache.
 /// </summary>
-public class ClrTypeMapperAdapter : IClrTypeMapper
+internal class ClrTypeMapperAdapter : IClrTypeMapper
 {
     private readonly ClrMemberCache _clrCache;
 

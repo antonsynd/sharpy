@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Services;
 /// Builder for constructing CompilerServices with proper initialization.
 /// Ensures all required components are available.
 /// </summary>
-public class CompilerServicesBuilder
+internal class CompilerServicesBuilder
 {
     private CompilerServicesConfiguration _config = CompilerServicesConfiguration.Default;
     private ICompilerLogger? _logger;

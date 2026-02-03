@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Services;
 /// Adapter that wraps the existing TypeResolver to implement ITypeResolver.
 /// This enables gradual migration to the new services architecture.
 /// </summary>
-public class TypeResolverAdapter : ITypeResolver
+internal class TypeResolverAdapter : ITypeResolver
 {
     private readonly TypeResolver _typeResolver;
 
