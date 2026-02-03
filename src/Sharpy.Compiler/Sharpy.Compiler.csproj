@@ -12,6 +12,8 @@
     <InternalsVisibleTo Include="Sharpy.Compiler.Tests" />
     <!-- Allow CLI to access internal types (e.g., OverloadIndexCache's internal dependencies) -->
     <InternalsVisibleTo Include="sharpyc" />
+    <!-- Allow benchmarks to access internal types for isolation benchmarks -->
+    <InternalsVisibleTo Include="Sharpy.Compiler.Benchmarks" />
   </ItemGroup>
 
   <ItemGroup>
