@@ -180,10 +180,10 @@ internal class SignatureValidator : SemanticValidatorBase
             var paramDescription = (expectedCount, protocol.DunderName) switch
             {
                 (1, _) => "(self)",
-                (2, "__contains__") => "(self, item)",
-                (2, "__getitem__" or "__delitem__") => "(self, index)",
+                (2, DunderNames.Contains) => "(self, item)",
+                (2, DunderNames.GetItem or DunderNames.DelItem) => "(self, index)",
                 (2, _) => "(self, other)",
-                (3, "__setitem__") => "(self, index, value)",
+                (3, DunderNames.SetItem) => "(self, index, value)",
                 (3, _) => "(self, key, value)",
                 _ => $"({expectedCount} parameters)"
             };

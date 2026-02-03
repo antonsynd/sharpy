@@ -279,7 +279,7 @@ internal class ModuleResolver
         }
 
         // Build the canonical name
-        if (fileName != "__init__")
+        if (fileName != DunderNames.Init)
         {
             packageParts.Add(fileName);
         }

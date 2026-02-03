@@ -109,7 +109,7 @@ internal class ProtocolValidator : SemanticValidatorBase
         if (iterableType == null || iterableType is UnknownType)
             return;
 
-        if (!HasProtocol(iterableType, "__iter__"))
+        if (!HasProtocol(iterableType, DunderNames.Iter))
         {
             AddError(_context,
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +
@@ -229,7 +229,7 @@ internal class ProtocolValidator : SemanticValidatorBase
         if (iterableType == null || iterableType is UnknownType)
             return;
 
-        if (!HasProtocol(iterableType, "__iter__"))
+        if (!HasProtocol(iterableType, DunderNames.Iter))
         {
             AddError(_context,
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +
@@ -245,7 +245,7 @@ internal class ProtocolValidator : SemanticValidatorBase
         if (containerType == null || containerType is UnknownType)
             return;
 
-        if (!HasProtocol(containerType, "__getitem__"))
+        if (!HasProtocol(containerType, DunderNames.GetItem))
         {
             AddError(_context,
                 $"Type '{containerType.GetDisplayName()}' does not support indexing " +
@@ -261,7 +261,7 @@ internal class ProtocolValidator : SemanticValidatorBase
         if (containerType == null || containerType is UnknownType)
             return;
 
-        if (!HasProtocol(containerType, "__contains__"))
+        if (!HasProtocol(containerType, DunderNames.Contains))
         {
             AddError(_context,
                 $"Type '{containerType.GetDisplayName()}' does not support membership testing " +
@@ -280,7 +280,7 @@ internal class ProtocolValidator : SemanticValidatorBase
             if (argType == null || argType is UnknownType)
                 return;
 
-            if (!HasProtocol(argType, "__len__"))
+            if (!HasProtocol(argType, DunderNames.Len))
             {
                 AddError(_context,
                     $"Type '{argType.GetDisplayName()}' does not support len() " +
@@ -300,13 +300,13 @@ internal class ProtocolValidator : SemanticValidatorBase
         // Check Sharpy built-in types first
         if (type == SemanticType.Str)
         {
-            return dunderName is "__len__" or "__iter__" or "__contains__" or "__getitem__";
+            return dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem;
         }
 
         // Check TupleType
         if (type is TupleType)
         {
-            return dunderName is "__len__" or "__iter__" or "__getitem__";
+            return dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.GetItem;
         }
 
         // Check generic container types
@@ -314,10 +314,10 @@ internal class ProtocolValidator : SemanticValidatorBase
         {
             return generic.Name switch
             {
-                "list" => dunderName is "__len__" or "__iter__" or "__contains__" or "__getitem__" or "__setitem__",
-                "dict" => dunderName is "__len__" or "__iter__" or "__contains__" or "__getitem__" or "__setitem__",
-                "set" => dunderName is "__len__" or "__iter__" or "__contains__",
-                "tuple" => dunderName is "__len__" or "__iter__" or "__getitem__",
+                "list" => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem or DunderNames.SetItem,
+                "dict" => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem or DunderNames.SetItem,
+                "set" => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains,
+                "tuple" => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.GetItem,
                 _ => false
             };
         }
@@ -345,7 +345,7 @@ internal class ProtocolValidator : SemanticValidatorBase
 
         // For other types (including int, bool, etc.), default to false for most protocols
         // except __str__ and __hash__ which all objects have
-        if (dunderName is "__str__" or "__hash__")
+        if (dunderName is DunderNames.Str or DunderNames.Hash)
             return true;
 
         return false;
@@ -357,7 +357,7 @@ internal class ProtocolValidator : SemanticValidatorBase
     private bool HasClrProtocol(System.Type clrType, string dunderName)
     {
         // Check for IEnumerable<T> or IEnumerable -> __iter__
-        if (dunderName == "__iter__")
+        if (dunderName == DunderNames.Iter)
         {
             if (typeof(System.Collections.IEnumerable).IsAssignableFrom(clrType))
                 return true;
@@ -384,21 +384,21 @@ internal class ProtocolValidator : SemanticValidatorBase
         }
 
         // ICollection -> __len__, __contains__
-        if (dunderName is "__len__" or "__contains__")
+        if (dunderName is DunderNames.Len or DunderNames.Contains)
         {
             if (typeof(System.Collections.ICollection).IsAssignableFrom(clrType))
                 return true;
         }
 
         // IList -> __getitem__, __setitem__
-        if (dunderName is "__getitem__" or "__setitem__")
+        if (dunderName is DunderNames.GetItem or DunderNames.SetItem)
         {
             if (typeof(System.Collections.IList).IsAssignableFrom(clrType))
                 return true;
         }
 
         // IDictionary -> __getitem__, __setitem__, __contains__, __len__
-        if (dunderName is "__getitem__" or "__setitem__" or "__contains__" or "__len__")
+        if (dunderName is DunderNames.GetItem or DunderNames.SetItem or DunderNames.Contains or DunderNames.Len)
         {
             if (typeof(System.Collections.IDictionary).IsAssignableFrom(clrType))
                 return true;

@@ -307,7 +307,7 @@ internal class ModuleLoader
             {
                 var methodSymbol = ExtractMethodSymbol(method);
                 methods.Add(methodSymbol);
-                if (method.Name == "__init__")
+                if (method.Name == DunderNames.Init)
                     ctors.Add(methodSymbol);
             }
         }
@@ -371,7 +371,7 @@ internal class ModuleLoader
             {
                 var methodSymbol = ExtractMethodSymbol(method);
                 methods.Add(methodSymbol);
-                if (method.Name == "__init__")
+                if (method.Name == DunderNames.Init)
                     ctors.Add(methodSymbol);
             }
         }
@@ -553,7 +553,7 @@ internal class ModuleLoader
             }
         }
 
-        if (fileName != "__init__")
+        if (fileName != DunderNames.Init)
         {
             packageParts.Add(fileName);
         }

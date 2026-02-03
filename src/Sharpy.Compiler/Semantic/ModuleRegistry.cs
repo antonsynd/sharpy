@@ -338,7 +338,7 @@ internal class ModuleRegistry
 
         return new FunctionSymbol
         {
-            Name = "__init__",
+            Name = DunderNames.Init,
             Kind = SymbolKind.Function,
             ReturnType = SemanticType.Void,
             Parameters = parameters,

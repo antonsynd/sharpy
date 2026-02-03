@@ -19,7 +19,7 @@ internal partial class TypeChecker
         FunctionSymbol? functionSymbol = null;
         if (_currentClass != null)
         {
-            if (functionDef.Name == "__init__")
+            if (functionDef.Name == DunderNames.Init)
             {
                 // Find the matching constructor by declaration line number
                 // This uniquely identifies which overload we're checking
@@ -62,7 +62,7 @@ internal partial class TypeChecker
 
         // Special case: __init__ always returns None/void
         // (signature validation is in SignatureValidator)
-        if (functionDef.Name == "__init__")
+        if (functionDef.Name == DunderNames.Init)
         {
             returnType = SemanticType.Void;
         }

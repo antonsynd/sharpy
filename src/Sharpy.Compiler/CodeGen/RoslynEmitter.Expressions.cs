@@ -1586,7 +1586,7 @@ internal partial class RoslynEmitter
             }
 
             // Add file name part (skip __init__ as it represents the package itself)
-            if (!string.Equals(fileName, "__init__", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(fileName, DunderNames.Init, StringComparison.OrdinalIgnoreCase))
             {
                 namespaceParts.Add(NameMangler.ToPascalCase(fileName));
             }

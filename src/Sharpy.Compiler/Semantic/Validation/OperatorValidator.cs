@@ -382,7 +382,7 @@ internal class OperatorValidator : SemanticValidatorBase
         // String supports concatenation and comparison (check first, before BuiltinType)
         if (type == SemanticType.Str)
         {
-            return dunderName is "__add__" or "__mul__" or "__eq__" or "__ne__" or "__lt__" or "__le__" or "__gt__" or "__ge__";
+            return dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne or DunderNames.Lt or DunderNames.Le or DunderNames.Gt or DunderNames.Ge;
         }
 
         // Builtin numeric types support arithmetic operations
@@ -391,16 +391,16 @@ internal class OperatorValidator : SemanticValidatorBase
             return dunderName switch
             {
                 // Arithmetic - supported by int, float, etc.
-                "__add__" or "__sub__" or "__mul__" or "__truediv__" or "__floordiv__" or "__mod__" or "__pow__"
+                DunderNames.Add or DunderNames.Sub or DunderNames.Mul or DunderNames.TrueDiv or DunderNames.FloorDiv or DunderNames.Mod or DunderNames.Pow
                     => IsNumericType(type),
                 // Bitwise - supported by int
-                "__and__" or "__or__" or "__xor__" or "__lshift__" or "__rshift__"
+                DunderNames.And or DunderNames.Or or DunderNames.Xor or DunderNames.LShift or DunderNames.RShift
                     => type == SemanticType.Int || type == SemanticType.Long,
                 // Unary
-                "__neg__" or "__pos__" => IsNumericType(type),
-                "__invert__" => type == SemanticType.Int || type == SemanticType.Long,
+                DunderNames.Neg or DunderNames.Pos => IsNumericType(type),
+                DunderNames.Invert => type == SemanticType.Int || type == SemanticType.Long,
                 // Comparison - supported by all primitives
-                "__eq__" or "__ne__" or "__lt__" or "__le__" or "__gt__" or "__ge__" => true,
+                DunderNames.Eq or DunderNames.Ne or DunderNames.Lt or DunderNames.Le or DunderNames.Gt or DunderNames.Ge => true,
                 _ => false
             };
         }
@@ -410,10 +410,10 @@ internal class OperatorValidator : SemanticValidatorBase
         {
             return generic.Name switch
             {
-                "list" => dunderName is "__add__" or "__iadd__" or "__mul__" or "__imul__" or "__eq__" or "__ne__",
-                "tuple" => dunderName is "__add__" or "__mul__" or "__eq__" or "__ne__",
-                "set" => dunderName is "__or__" or "__and__" or "__sub__" or "__xor__" or "__ior__" or "__iand__" or "__isub__" or "__ixor__" or "__eq__" or "__ne__",
-                "dict" => dunderName is "__or__" or "__ior__" or "__eq__" or "__ne__",
+                "list" => dunderName is DunderNames.Add or DunderNames.IAdd or DunderNames.Mul or DunderNames.IMul or DunderNames.Eq or DunderNames.Ne,
+                "tuple" => dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne,
+                "set" => dunderName is DunderNames.Or or DunderNames.And or DunderNames.Sub or DunderNames.Xor or DunderNames.IOr or DunderNames.IAnd or DunderNames.ISub or DunderNames.IXor or DunderNames.Eq or DunderNames.Ne,
+                "dict" => dunderName is DunderNames.Or or DunderNames.IOr or DunderNames.Eq or DunderNames.Ne,
                 _ => false
             };
         }
@@ -458,24 +458,24 @@ internal class OperatorValidator : SemanticValidatorBase
     {
         return op switch
         {
-            BinaryOperator.Add => "__add__",
-            BinaryOperator.Subtract => "__sub__",
-            BinaryOperator.Multiply => "__mul__",
-            BinaryOperator.Divide => "__truediv__",
-            BinaryOperator.FloorDivide => "__floordiv__",
-            BinaryOperator.Modulo => "__mod__",
-            BinaryOperator.Power => "__pow__",
-            BinaryOperator.BitwiseAnd => "__and__",
-            BinaryOperator.BitwiseOr => "__or__",
-            BinaryOperator.BitwiseXor => "__xor__",
-            BinaryOperator.LeftShift => "__lshift__",
-            BinaryOperator.RightShift => "__rshift__",
-            BinaryOperator.Equal => "__eq__",
-            BinaryOperator.NotEqual => "__ne__",
-            BinaryOperator.LessThan => "__lt__",
-            BinaryOperator.LessThanOrEqual => "__le__",
-            BinaryOperator.GreaterThan => "__gt__",
-            BinaryOperator.GreaterThanOrEqual => "__ge__",
+            BinaryOperator.Add => DunderNames.Add,
+            BinaryOperator.Subtract => DunderNames.Sub,
+            BinaryOperator.Multiply => DunderNames.Mul,
+            BinaryOperator.Divide => DunderNames.TrueDiv,
+            BinaryOperator.FloorDivide => DunderNames.FloorDiv,
+            BinaryOperator.Modulo => DunderNames.Mod,
+            BinaryOperator.Power => DunderNames.Pow,
+            BinaryOperator.BitwiseAnd => DunderNames.And,
+            BinaryOperator.BitwiseOr => DunderNames.Or,
+            BinaryOperator.BitwiseXor => DunderNames.Xor,
+            BinaryOperator.LeftShift => DunderNames.LShift,
+            BinaryOperator.RightShift => DunderNames.RShift,
+            BinaryOperator.Equal => DunderNames.Eq,
+            BinaryOperator.NotEqual => DunderNames.Ne,
+            BinaryOperator.LessThan => DunderNames.Lt,
+            BinaryOperator.LessThanOrEqual => DunderNames.Le,
+            BinaryOperator.GreaterThan => DunderNames.Gt,
+            BinaryOperator.GreaterThanOrEqual => DunderNames.Ge,
             _ => null
         };
     }
@@ -484,18 +484,18 @@ internal class OperatorValidator : SemanticValidatorBase
     {
         return dunderName switch
         {
-            "__add__" => "__radd__",
-            "__sub__" => "__rsub__",
-            "__mul__" => "__rmul__",
-            "__truediv__" => "__rtruediv__",
-            "__floordiv__" => "__rfloordiv__",
-            "__mod__" => "__rmod__",
-            "__pow__" => "__rpow__",
-            "__and__" => "__rand__",
-            "__or__" => "__ror__",
-            "__xor__" => "__rxor__",
-            "__lshift__" => "__rlshift__",
-            "__rshift__" => "__rrshift__",
+            DunderNames.Add => DunderNames.RAdd,
+            DunderNames.Sub => DunderNames.RSub,
+            DunderNames.Mul => DunderNames.RMul,
+            DunderNames.TrueDiv => DunderNames.RTrueDiv,
+            DunderNames.FloorDiv => DunderNames.RFloorDiv,
+            DunderNames.Mod => DunderNames.RMod,
+            DunderNames.Pow => DunderNames.RPow,
+            DunderNames.And => DunderNames.RAnd,
+            DunderNames.Or => DunderNames.ROr,
+            DunderNames.Xor => DunderNames.RXor,
+            DunderNames.LShift => DunderNames.RLShift,
+            DunderNames.RShift => DunderNames.RRShift,
             _ => null
         };
     }
@@ -504,9 +504,9 @@ internal class OperatorValidator : SemanticValidatorBase
     {
         return op switch
         {
-            UnaryOperator.Minus => "__neg__",
-            UnaryOperator.Plus => "__pos__",
-            UnaryOperator.BitwiseNot => "__invert__",
+            UnaryOperator.Minus => DunderNames.Neg,
+            UnaryOperator.Plus => DunderNames.Pos,
+            UnaryOperator.BitwiseNot => DunderNames.Invert,
             _ => null
         };
     }
@@ -515,18 +515,18 @@ internal class OperatorValidator : SemanticValidatorBase
     {
         return op switch
         {
-            AssignmentOperator.PlusAssign => "__iadd__",
-            AssignmentOperator.MinusAssign => "__isub__",
-            AssignmentOperator.StarAssign => "__imul__",
-            AssignmentOperator.SlashAssign => "__itruediv__",
-            AssignmentOperator.DoubleSlashAssign => "__ifloordiv__",
-            AssignmentOperator.PercentAssign => "__imod__",
-            AssignmentOperator.PowerAssign => "__ipow__",
-            AssignmentOperator.AndAssign => "__iand__",
-            AssignmentOperator.OrAssign => "__ior__",
-            AssignmentOperator.XorAssign => "__ixor__",
-            AssignmentOperator.LeftShiftAssign => "__ilshift__",
-            AssignmentOperator.RightShiftAssign => "__irshift__",
+            AssignmentOperator.PlusAssign => DunderNames.IAdd,
+            AssignmentOperator.MinusAssign => DunderNames.ISub,
+            AssignmentOperator.StarAssign => DunderNames.IMul,
+            AssignmentOperator.SlashAssign => DunderNames.ITrueDiv,
+            AssignmentOperator.DoubleSlashAssign => DunderNames.IFloorDiv,
+            AssignmentOperator.PercentAssign => DunderNames.IMod,
+            AssignmentOperator.PowerAssign => DunderNames.IPow,
+            AssignmentOperator.AndAssign => DunderNames.IAnd,
+            AssignmentOperator.OrAssign => DunderNames.IOr,
+            AssignmentOperator.XorAssign => DunderNames.IXor,
+            AssignmentOperator.LeftShiftAssign => DunderNames.ILShift,
+            AssignmentOperator.RightShiftAssign => DunderNames.IRShift,
             _ => null
         };
     }

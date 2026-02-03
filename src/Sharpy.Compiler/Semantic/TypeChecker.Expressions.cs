@@ -794,7 +794,7 @@ internal partial class TypeChecker
 
         // Track super().__init__() calls AFTER validation completes
         // (do this after CheckExpression so the validation doesn't see it as already called)
-        if (call.Function is MemberAccess ma && ma.Object is SuperExpression && ma.Member == "__init__")
+        if (call.Function is MemberAccess ma && ma.Object is SuperExpression && ma.Member == DunderNames.Init)
         {
             _superInitCalled = true;
         }

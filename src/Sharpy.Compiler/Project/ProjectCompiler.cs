@@ -680,7 +680,7 @@ internal class ProjectCompiler
             // Determine if this file is the entry point
             var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
 
-            var isPackageInit = Path.GetFileNameWithoutExtension(sourceFile) == "__init__";
+            var isPackageInit = Path.GetFileNameWithoutExtension(sourceFile) == DunderNames.Init;
 
             var codeGenContext = new CodeGenContext(_symbolTable, builtinRegistry)
             {

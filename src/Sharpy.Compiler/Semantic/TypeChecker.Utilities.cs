@@ -361,7 +361,7 @@ internal partial class TypeChecker
         // Find the constructor function definition in the struct body
         var constructorDef = structDef.Body
             .OfType<FunctionDef>()
-            .FirstOrDefault(f => f.Name == "__init__" && f.LineStart == constructor.DeclarationLine);
+            .FirstOrDefault(f => f.Name == DunderNames.Init && f.LineStart == constructor.DeclarationLine);
 
         if (constructorDef == null)
         {
@@ -564,7 +564,7 @@ internal partial class TypeChecker
         // Look up the method in the parent class hierarchy and return its type
         // Use FindMethodInHierarchy to traverse the full inheritance chain
         var (parentMethod, methodOwner) = FindMethodInHierarchy(classBaseType, memberName);
-        if (parentMethod == null && memberName == "__init__")
+        if (parentMethod == null && memberName == DunderNames.Init)
         {
             // __init__ might be in Constructors list - check full hierarchy
             currentType = classBaseType;
@@ -629,9 +629,9 @@ internal partial class TypeChecker
         }
 
         // Case 1: Inside __init__
-        if (_currentMethodName == "__init__")
+        if (_currentMethodName == DunderNames.Init)
         {
-            if (calledMethodName != "__init__")
+            if (calledMethodName != DunderNames.Init)
             {
                 AddError("super() in __init__ can only call super().__init__(...)",
                     memberAccess.LineStart, memberAccess.ColumnStart,

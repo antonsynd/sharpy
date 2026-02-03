@@ -59,7 +59,7 @@ public static class ProtocolRegistry
     {
         // 2.2.1 Lifecycle protocols
         Register(protocols, new ProtocolInfo(
-            DunderName: "__init__",
+            DunderName: DunderNames.Init,
             Kind: ProtocolKind.Lifecycle,
             SharpyCoreInterface: null,  // Special: maps to constructor
             InterfaceMethodName: null,  // No interface method; constructor is special-cased
@@ -73,7 +73,7 @@ public static class ProtocolRegistry
         // because that's the common Sharpy/Python return type for len(). The code generator
         // handles the uint-to-int conversion when emitting calls to __Len__().
         Register(protocols, new ProtocolInfo(
-            DunderName: "__len__",
+            DunderName: DunderNames.Len,
             Kind: ProtocolKind.Container,
             SharpyCoreInterface: "ISized",
             InterfaceMethodName: "__Len__",
@@ -83,7 +83,7 @@ public static class ProtocolRegistry
         ));
 
         Register(protocols, new ProtocolInfo(
-            DunderName: "__contains__",
+            DunderName: DunderNames.Contains,
             Kind: ProtocolKind.Container,
             SharpyCoreInterface: "IContainer",
             InterfaceMethodName: "__Contains__",
@@ -93,7 +93,7 @@ public static class ProtocolRegistry
         ));
 
         Register(protocols, new ProtocolInfo(
-            DunderName: "__getitem__",
+            DunderName: DunderNames.GetItem,
             Kind: ProtocolKind.Container,
             SharpyCoreInterface: "ISequence",
             InterfaceMethodName: "__GetItem__",
@@ -103,7 +103,7 @@ public static class ProtocolRegistry
         ));
 
         Register(protocols, new ProtocolInfo(
-            DunderName: "__setitem__",
+            DunderName: DunderNames.SetItem,
             Kind: ProtocolKind.Container,
             SharpyCoreInterface: "IMutableSequence",
             InterfaceMethodName: "__SetItem__",
@@ -113,7 +113,7 @@ public static class ProtocolRegistry
         ));
 
         Register(protocols, new ProtocolInfo(
-            DunderName: "__delitem__",
+            DunderName: DunderNames.DelItem,
             Kind: ProtocolKind.Container,
             SharpyCoreInterface: "IMutableSequence",
             InterfaceMethodName: "__DelItem__",
@@ -124,7 +124,7 @@ public static class ProtocolRegistry
 
         // 2.2.3 Iterator protocols
         Register(protocols, new ProtocolInfo(
-            DunderName: "__iter__",
+            DunderName: DunderNames.Iter,
             Kind: ProtocolKind.Iterator,
             SharpyCoreInterface: "IIterable",
             InterfaceMethodName: "__Iter__",
@@ -134,7 +134,7 @@ public static class ProtocolRegistry
         ));
 
         Register(protocols, new ProtocolInfo(
-            DunderName: "__next__",
+            DunderName: DunderNames.Next,
             Kind: ProtocolKind.Iterator,
             SharpyCoreInterface: null,  // Part of Iterator<T> class, not an interface
             InterfaceMethodName: "__Next__",
@@ -145,7 +145,7 @@ public static class ProtocolRegistry
 
         // 2.2.4 Representation protocols
         Register(protocols, new ProtocolInfo(
-            DunderName: "__str__",
+            DunderName: DunderNames.Str,
             Kind: ProtocolKind.Representation,
             SharpyCoreInterface: "IStrConvertible",
             InterfaceMethodName: "__Str__",
@@ -155,7 +155,7 @@ public static class ProtocolRegistry
         ));
 
         Register(protocols, new ProtocolInfo(
-            DunderName: "__repr__",
+            DunderName: DunderNames.Repr,
             Kind: ProtocolKind.Representation,
             SharpyCoreInterface: "IRepresentable",
             InterfaceMethodName: "__Repr__",
@@ -166,7 +166,7 @@ public static class ProtocolRegistry
 
         // 2.2.5 Hashing protocols
         Register(protocols, new ProtocolInfo(
-            DunderName: "__hash__",
+            DunderName: DunderNames.Hash,
             Kind: ProtocolKind.Hashing,
             SharpyCoreInterface: "IHashable",
             InterfaceMethodName: "__Hash__",
@@ -177,7 +177,7 @@ public static class ProtocolRegistry
 
         // 2.2.6 Conversion protocols
         Register(protocols, new ProtocolInfo(
-            DunderName: "__bool__",
+            DunderName: DunderNames.Bool,
             Kind: ProtocolKind.Conversion,
             SharpyCoreInterface: "IBoolConvertible",
             InterfaceMethodName: "__Bool__",
@@ -284,5 +284,5 @@ public static class ProtocolRegistry
     /// - __hash__ → Object.GetHashCode()
     /// </summary>
     public static bool IsObjectOverrideDunder(string methodName)
-        => methodName is "__str__" or "__eq__" or "__hash__";
+        => methodName is DunderNames.Str or DunderNames.Eq or DunderNames.Hash;
 }

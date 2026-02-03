@@ -419,7 +419,7 @@ internal class NameResolver
 
         // Register constructors (__init__ methods)
         // For constructors, we allow multiple overloads with the same name
-        if (method.Name == "__init__")
+        if (method.Name == DunderNames.Init)
         {
             owningType.Constructors.Add(funcSymbol);
             _logger.LogDebug($"Registered constructor overload: {owningType.Name}.__init__ (params: {method.Parameters.Length})");

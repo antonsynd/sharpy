@@ -69,7 +69,7 @@ internal partial class RoslynEmitter
             {
                 case FunctionDef funcDef:
                     // Check if this is a constructor (__init__)
-                    if (funcDef.Name == "__init__")
+                    if (funcDef.Name == DunderNames.Init)
                     {
                         // Collect for later generation (supports multiple overloads)
                         initMethods.Add(funcDef);
@@ -125,12 +125,12 @@ internal partial class RoslynEmitter
 
         // Generate complementary operators for C# requirements
         // If __eq__ is defined but not __ne__, generate operator !=
-        if (dunders.Contains("__eq__") && !dunders.Contains("__ne__"))
+        if (dunders.Contains(DunderNames.Eq) && !dunders.Contains(DunderNames.Ne))
         {
             members.Add(GenerateComplementaryNotEqualsOperator(className));
         }
         // If __ne__ is defined but not __eq__, generate operator ==
-        if (dunders.Contains("__ne__") && !dunders.Contains("__eq__"))
+        if (dunders.Contains(DunderNames.Ne) && !dunders.Contains(DunderNames.Eq))
         {
             members.Add(GenerateComplementaryEqualsOperator(className));
         }
@@ -188,7 +188,7 @@ internal partial class RoslynEmitter
             if (exprStmt.Expression is FunctionCall call &&
                 call.Function is MemberAccess memberAccess &&
                 memberAccess.Object is SuperExpression &&
-                memberAccess.Member == "__init__")
+                memberAccess.Member == DunderNames.Init)
             {
                 // Generate the base constructor arguments
                 var baseArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg))).ToArray();
@@ -345,9 +345,9 @@ internal partial class RoslynEmitter
         // Uses the protocol variable already fetched above, plus special handling for operator dunders
         var shouldAddOverride = protocol?.ClrMethodName is "ToString" or "GetHashCode"
             // __repr__ maps to ToString but has ClrMethodName: null, so check explicitly
-            || func.Name == "__repr__"
+            || func.Name == DunderNames.Repr
             // __eq__ is an operator dunder (not in ProtocolRegistry) but maps to Equals() override
-            || func.Name == "__eq__";
+            || func.Name == DunderNames.Eq;
 
         if (shouldAddOverride && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
         {
@@ -373,7 +373,7 @@ internal partial class RoslynEmitter
             .ToArray();
 
         // Special handling for Equals() - parameter should be object type
-        if (func.Name == "__eq__" && parameters.Length > 0)
+        if (func.Name == DunderNames.Eq && parameters.Length > 0)
         {
             var objParam = Parameter(Identifier(parameters[0].Identifier.Text))
                 .WithType(PredefinedType(Token(SyntaxKind.ObjectKeyword)));
