@@ -27,6 +27,11 @@
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj" />
   </ItemGroup>
 
+  <!-- Exclude .expected.cs snapshot files from compilation (they are test data, not source) -->
+  <ItemGroup>
+    <Compile Remove="Integration\TestFixtures\**\*.expected.cs" />
+  </ItemGroup>
+
   <!-- Copy test fixture files to output directory -->
   <ItemGroup>
     <None Include="Integration\TestFixtures\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Integration\TestFixtures" />

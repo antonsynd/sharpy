@@ -1,4 +1,7 @@
 using System.Reflection;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Formatting;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -14,6 +17,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 ///     feature_name/
 ///       test_name.spy          - Sharpy source code
 ///       test_name.expected     - Expected stdout output
+///       test_name.expected.cs  - (optional) Expected generated C# snapshot
 ///       test_name.error        - (optional) Expected compilation error substring
 ///       test_name.warning      - (optional) Expected compilation warning substring
 ///
@@ -25,6 +29,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 ///         module1.spy          - Additional module
 ///         module2.spy          - Additional module
 ///         main.expected        - Expected stdout output (same base name as entry point)
+///         main.expected.cs     - (optional) Expected generated C# snapshot
 ///         main.error           - (optional) Expected compilation error substring
 ///         main.warning         - (optional) Expected compilation warning substring
 ///
@@ -248,6 +253,36 @@ public class FileBasedIntegrationTests : IntegrationTestBase
             }
         }
 
+        // C# snapshot verification (when .expected.cs file exists)
+        if (!isErrorTest && result.Success && result.GeneratedCSharp != null)
+        {
+            var snapshotFilePath = isMultiFile
+                ? Path.Combine(path, $"{Path.GetFileNameWithoutExtension(FindEntryPoint(path))}.expected.cs")
+                : Path.ChangeExtension(path, ".expected.cs");
+
+            var updateSnapshots = Environment.GetEnvironmentVariable("UPDATE_SNAPSHOTS") == "true";
+
+            if (updateSnapshots)
+            {
+                // Regenerate snapshot
+                var normalized = NormalizeCSharp(result.GeneratedCSharp);
+                File.WriteAllText(snapshotFilePath, normalized);
+                Output.WriteLine($"Updated snapshot: {snapshotFilePath}");
+            }
+            else if (File.Exists(snapshotFilePath))
+            {
+                var expectedCSharp = File.ReadAllText(snapshotFilePath);
+                var actualNormalized = NormalizeCSharp(result.GeneratedCSharp);
+                var expectedNormalized = NormalizeCSharp(expectedCSharp);
+
+                Output.WriteLine("=== Generated C# (normalized) ===");
+                Output.WriteLine(actualNormalized);
+                Output.WriteLine("=================================");
+
+                Assert.Equal(expectedNormalized, actualNormalized);
+            }
+        }
+
         // Warning verification (can apply to both error tests and success tests)
         if (hasWarningFile)
         {
@@ -308,6 +343,21 @@ public class FileBasedIntegrationTests : IntegrationTestBase
         }
 
         throw new InvalidOperationException($"No .spy files found in {projectDir}");
+    }
+
+    /// <summary>
+    /// Normalizes generated C# code for snapshot comparison.
+    /// Uses Roslyn formatting to ensure consistent whitespace regardless of emitter formatting changes.
+    /// </summary>
+    private static string NormalizeCSharp(string csharpCode)
+    {
+        var tree = CSharpSyntaxTree.ParseText(csharpCode);
+        var root = tree.GetRoot();
+
+        // Use Roslyn's built-in formatter to normalize whitespace
+        using var workspace = new AdhocWorkspace();
+        var formatted = Formatter.Format(root, workspace);
+        return formatted.ToFullString().TrimEnd() + "\n";
     }
 
     /// <summary>
