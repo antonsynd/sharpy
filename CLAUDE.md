@@ -197,6 +197,28 @@ helper.WithRootNamespace("Test")
 var result = helper.Compile();
 ```
 
+### Incremental Compilation
+
+Enable incremental compilation with `--incremental` to skip unchanged files:
+
+```bash
+dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --incremental
+```
+
+**How it works:**
+
+1. **First build**: All files are compiled, symbols and generated C# are cached to `obj/{Config}/.sharpy-symbols`
+2. **Subsequent builds**: Files are skipped if their content hash matches the cache AND no dependencies changed
+3. **Transitive dependencies**: If file A imports B and B changes, A is recompiled (uses cached dependency graph)
+
+**Cache files** (in `obj/{Config}/`):
+- `.sharpy-cache` — File content hashes (SHA-256)
+- `.sharpy-symbols` — Serialized symbols and generated C# per file
+
+**Force full rebuild**: Delete the cache files or use `--clean` flag.
+
+**Implementation**: `IncrementalCompilationCache`, `SymbolSerializer`, `SymbolCache` (all in `Project/`)
+
 ## Sharpy.Core Patterns
 
 - **Wrap .NET internally, expose Python API** — `list.append()` not `Add()`
