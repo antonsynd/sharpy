@@ -2,13 +2,13 @@
 
 > **Date:** 2026-02-03 (updated)
 > **Status:** Previous P0/P1 items completed; new concerns identified
-> **Context:** Follow-up assessment after reviewing implementation progress
+> **Context:** Follow-up assessment after comprehensive architecture review
 
 ---
 
 ## Executive Summary
 
-The compiler is in **excellent shape**. The three correctness/UX concerns from the original assessment have been implemented. This document now tracks new hardening concerns identified during a comprehensive architecture review.
+The compiler is **architecturally sound** with excellent separation of concerns. The three correctness/UX concerns from the original assessment have been implemented. This document now tracks hardening concerns identified during a comprehensive architecture review, covering correctness, robustness, debuggability, and contributability.
 
 ### Completed Items (Archive)
 
@@ -25,11 +25,15 @@ The compiler is in **excellent shape**. The three correctness/UX concerns from t
 | 1 | Incremental cache lacks compiler version | Correctness | HIGH | Low |
 | 2 | SymbolSerializer format not versioned | Correctness | HIGH | Medium |
 | 3 | Restored symbols lack transitive validation | Correctness | HIGH | Medium |
-| 4 | `null!` usage in ProjectCompiler | Robustness | Medium | Low |
-| 5 | No fuzzing/property-based tests | Robustness | Medium | Medium |
-| 6 | TypeChecker size (~4,600 lines) | Maintainability | Low | High |
+| 4 | Path normalization inconsistent | Correctness | Medium | Low |
+| 5 | Name collision in variable versioning | Correctness | Medium | Low |
+| 6 | `null!` usage in ProjectCompiler | Robustness | Medium | Low |
+| 7 | Dual-write assertions DEBUG-only | Robustness | Medium | Low |
+| 8 | No grammar-aware fuzzing/property tests | Robustness | Medium | Medium |
+| 9 | Missing multi-file integration tests | Coverage | Medium | Medium |
+| 10 | TypeChecker size (~4,600 lines) | Maintainability | Low | High |
 
-**Recommendation:** Address #1-3 before v1.0 (production correctness). Address #4-5 for robustness. Defer #6 until LSP work begins.
+**Recommendation:** Address #1-3 before v1.0 (production correctness). Address #4-7 for robustness. Address #8-9 for comprehensive coverage. Defer #10 until LSP work begins.
 
 ---
 
@@ -310,7 +314,178 @@ if (_incremental && _incrementalCache != null && _filesToSkip.Count > 0)
 
 ---
 
-## Concern 4: `null!` Usage in ProjectCompiler
+## Concern 4: Path Normalization Inconsistent
+
+### Analysis
+
+**What:** Three different `NormalizePath()` implementations exist across the codebase with subtle differences.
+
+**Current implementations:**
+
+```csharp
+// IncrementalCompilationCache.cs:435-443
+private static string NormalizePath(string path)
+{
+    var normalized = Path.GetFullPath(path).Replace('\\', '/');  // ✓ GetFullPath
+    if (!OperatingSystem.IsLinux())
+        normalized = normalized.ToLowerInvariant();
+    return normalized;
+}
+
+// ProjectCompiler.cs:1175-1183
+private static string NormalizePath(string path)
+{
+    var normalized = path.Replace('\\', '/');  // ✗ NO GetFullPath
+    if (!OperatingSystem.IsLinux())
+        normalized = normalized.ToLowerInvariant();
+    return normalized;
+}
+
+// SymbolSerializer.cs:627-635
+private static string NormalizePath(string path)
+{
+    var normalized = Path.GetFullPath(path).Replace('\\', '/');  // ✓ GetFullPath
+    if (!OperatingSystem.IsLinux())
+        normalized = normalized.ToLowerInvariant();
+    return normalized;
+}
+```
+
+**Problem:** `ProjectCompiler.NormalizePath()` doesn't call `Path.GetFullPath()`, so relative paths aren't normalized consistently. Two paths referring to the same file might hash differently if one is relative and one absolute.
+
+### Impact
+
+- **Cache key mismatches** — Same file may have different keys across build invocations
+- **Subtle incremental build bugs** — File appears "changed" due to path difference
+- **Cross-platform inconsistency** — Relative vs absolute paths behave differently
+
+### Plan
+
+**Approach:** Extract single `NormalizePath()` to shared utility class.
+
+**Files to modify:**
+- Create `src/Sharpy.Compiler/Utilities/PathNormalizer.cs`
+- Update `IncrementalCompilationCache.cs`, `ProjectCompiler.cs`, `SymbolSerializer.cs`
+
+**Implementation:**
+
+```csharp
+// Utilities/PathNormalizer.cs
+namespace Sharpy.Compiler.Utilities;
+
+public static class PathNormalizer
+{
+    /// <summary>
+    /// Normalizes a file path for use as cache keys and cross-platform comparison.
+    /// </summary>
+    public static string Normalize(string path)
+    {
+        // Always resolve to absolute path first
+        var normalized = Path.GetFullPath(path).Replace('\\', '/');
+
+        // Case-insensitive on Windows/macOS, case-sensitive on Linux
+        if (!OperatingSystem.IsLinux())
+        {
+            normalized = normalized.ToLowerInvariant();
+        }
+
+        return normalized;
+    }
+}
+```
+
+**Estimated effort:** 1-2 hours
+
+---
+
+## Concern 5: Name Collision in Variable Versioning
+
+### Analysis
+
+**What:** `RoslynEmitter` generates versioned names for variable redeclarations (e.g., `x`, `x_1`, `x_2`) but doesn't check if the generated name collides with a user-declared variable.
+
+**Current code:**
+```csharp
+// RoslynEmitter.cs:155-165
+if (isNewDeclaration)
+{
+    var currentVersion = _variableVersions[baseName];
+    var newVersion = currentVersion + 1;
+    _variableVersions[baseName] = newVersion;
+    return $"{baseName}_{newVersion}";  // No collision check!
+}
+```
+
+**Problem scenario:**
+```spy
+x = 1
+x_1 = 2      # User-defined variable
+x = 3        # Redeclaration — compiler generates x_1
+```
+
+**Generated C#:**
+```csharp
+long x = 1;
+long x_1 = 2;   // User's variable
+long x_1 = 3;   // ERROR: Compiler's versioned name collides!
+```
+
+### Impact
+
+- **C# compilation errors** — Users see cryptic Roslyn errors about duplicate definitions
+- **Unusual but valid code breaks** — Users naming variables with `_N` suffix hit this
+- **Hard to diagnose** — Error message doesn't explain the collision
+
+### Plan
+
+**Approach:** Track all declared variable names; skip version numbers that collide.
+
+**Files to modify:**
+- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
+
+**Implementation:**
+
+```csharp
+private readonly HashSet<string> _declaredNames = new();
+
+private string GetUniqueVariableName(string baseName, bool isNewDeclaration)
+{
+    if (!isNewDeclaration && _variableVersions.TryGetValue(baseName, out var version))
+    {
+        return version == 0 ? baseName : $"{baseName}_{version}";
+    }
+
+    if (!_variableVersions.ContainsKey(baseName))
+    {
+        _variableVersions[baseName] = 0;
+        _declaredNames.Add(baseName);
+        return baseName;
+    }
+
+    // Find next version that doesn't collide
+    var currentVersion = _variableVersions[baseName];
+    string newName;
+    do
+    {
+        currentVersion++;
+        newName = $"{baseName}_{currentVersion}";
+    } while (_declaredNames.Contains(newName));
+
+    _variableVersions[baseName] = currentVersion;
+    _declaredNames.Add(newName);
+    return newName;
+}
+```
+
+**Tests to add:**
+- `RoslynEmitterTests.HandlesVariableNameCollision`
+- `RoslynEmitterTests.SkipsCollidingVersionNumbers`
+
+**Estimated effort:** 1-2 hours
+
+---
+
+## Concern 6: `null!` Usage in ProjectCompiler
 
 ### Analysis
 
@@ -318,11 +493,14 @@ if (_incremental && _incrementalCache != null && _filesToSkip.Count > 0)
 
 **Current code:**
 ```csharp
-// ProjectCompiler.cs:31-46
+// ProjectCompiler.cs:31-49
 private SymbolTable _symbolTable = null!;
 private SemanticInfo _semanticInfo = null!;
 private SemanticBinding _semanticBinding = null!;
 private ProjectModel _projectModel = null!;
+private ImportResolver _importResolver = null!;
+private ProjectCompilationMetrics _projectMetrics = null!;
+private DependencyGraphBuilder _graphBuilder = null!;
 ```
 
 **Problem:** If `Compile()` throws early (e.g., no source files), subsequent code accessing these fields gets `NullReferenceException` instead of a clear error.
@@ -337,7 +515,7 @@ private ProjectModel _projectModel = null!;
 
 **Approach:** Replace `null!` with explicit initialization or guard checks.
 
-**Option A — Lazy initialization with guard:**
+**Option A — Lazy initialization with guard (Recommended):**
 ```csharp
 private SymbolTable? _symbolTable;
 private SymbolTable SymbolTable => _symbolTable
@@ -365,55 +543,259 @@ public ProjectCompilationResult Compile() =>
 
 ---
 
-## Concern 5: No Fuzzing/Property-Based Tests
+## Concern 7: Dual-Write Assertions DEBUG-Only
+
+### Analysis
+
+**What:** The compiler uses `SemanticBinding` as the source of truth during analysis, then materializes data onto `Symbol` properties at phase boundaries. Assertions verify consistency, but they're DEBUG-only.
+
+**Current code:**
+```csharp
+// SemanticBinding.cs:92-97
+[Conditional("DEBUG")]
+private static void AssertNotFrozen(string storeName, string symbolName)
+{
+    Debug.Fail($"SemanticBinding freeze violation: {storeName} for {symbolName}");
+}
+
+// DualWriteAssertions.cs — all methods use [Conditional("DEBUG")]
+[Conditional("DEBUG")]
+public static void AssertCodeGenInfoConsistency(SymbolTable table, SemanticBinding binding) { ... }
+```
+
+**Problem:** In Release builds, phase violations (writing after freeze) are logged as warnings but don't error. If `IncrementalCompilationCache` restoration writes after freeze, the violation is silent.
+
+### Impact
+
+- **Silent data loss in Release** — Writes after freeze silently discarded
+- **Phase violations invisible** — Only caught if running DEBUG builds
+- **False confidence** — Tests pass in DEBUG, bugs lurk in Release
+
+### Plan
+
+**Approach:** Make critical assertions runtime-checked with configurable behavior.
+
+**Implementation:**
+
+```csharp
+// SemanticBinding.cs
+public enum FreezeViolationBehavior { Ignore, Warn, Throw }
+
+private static FreezeViolationBehavior s_freezeViolationBehavior =
+#if DEBUG
+    FreezeViolationBehavior.Throw;
+#else
+    FreezeViolationBehavior.Warn;
+#endif
+
+public static void SetFreezeViolationBehavior(FreezeViolationBehavior behavior)
+    => s_freezeViolationBehavior = behavior;
+
+private static void AssertNotFrozen(string storeName, string symbolName)
+{
+    switch (s_freezeViolationBehavior)
+    {
+        case FreezeViolationBehavior.Throw:
+            throw new InvalidOperationException(
+                $"SemanticBinding freeze violation: {storeName} for {symbolName}");
+        case FreezeViolationBehavior.Warn:
+            // Log warning (already implemented)
+            break;
+    }
+}
+```
+
+**Alternative (simpler):** Remove `[Conditional("DEBUG")]` and always throw.
+
+**Estimated effort:** 1-2 hours
+
+---
+
+## Concern 8: No Grammar-Aware Fuzzing/Property-Based Tests
 
 ### Analysis
 
 **What:** The test suite has 332+ file-based integration tests but no:
-- Fuzz tests (random/malformed input)
+- Grammar-aware fuzz tests
 - Property-based tests (QuickCheck-style)
 - Stress tests (large files, many symbols)
 
 **Risk:** Lexer/Parser may crash or hang on malformed input not covered by handwritten tests.
 
+**Why grammar-aware matters:** Random strings are mostly garbage and won't exercise interesting code paths. Grammar-aware fuzzing generates structurally valid-ish input, then mutates it to find edge cases.
+
 ### Plan
 
-**Approach:** Add property-based tests using a library like FsCheck or Hedgehog.
+**Approach:** Use grammar-aware fuzzing with [SharpFuzz](https://github.com/Metalnem/sharpfuzz) for coverage-guided testing, and [FsCheck](https://fscheck.github.io/FsCheck/) for property-based tests with structured generators.
 
-**Tests to add:**
+**Implementation:**
 
-1. **Lexer robustness:**
+1. **Grammar-aware lexer fuzzing:**
    ```csharp
-   [Property]
-   public bool LexerNeverCrashes(string randomInput)
+   // Generate valid-ish token sequences, then mutate
+   public class TokenSequenceGenerator : Arbitrary<List<Token>>
    {
-       var lexer = new Lexer(randomInput);
-       try { lexer.TokenizeAll(); return true; }
-       catch (Exception) { return false; }  // Should never throw
+       public override Gen<List<Token>> Generator =>
+           from count in Gen.Choose(1, 100)
+           from tokens in Gen.ListOf(count, GenToken())
+           select MutateTokens(tokens);
    }
-   ```
 
-2. **Parser robustness:**
-   ```csharp
    [Property]
-   public bool ParserNeverCrashes(List<Token> tokens)
+   public bool LexerNeverCrashes(string input)
    {
-       var parser = new Parser(tokens);
-       try { parser.ParseModule(); return true; }
+       var lexer = new Lexer(input);
+       try { lexer.TokenizeAll(); return true; }
        catch (Exception) { return false; }
    }
    ```
 
-3. **Stress tests:**
-   - 10,000-line file with deeply nested scopes
+2. **AST-based parser fuzzing:**
+   ```csharp
+   // Generate valid AST trees, serialize to source, then mutate
+   public class SourceGenerator : Arbitrary<string>
+   {
+       public override Gen<string> Generator =>
+           from ast in GenValidAst()
+           from source in Gen.Constant(AstSerializer.ToSource(ast))
+           from mutated in Gen.OneOf(
+               Gen.Constant(source),
+               DeleteRandomChars(source),
+               SwapRandomLines(source),
+               CorruptIndentation(source))
+           select mutated;
+   }
+   ```
+
+3. **Coverage-guided fuzzing (AFL-style):**
+   ```csharp
+   // Using SharpFuzz for coverage-guided input generation
+   [Fact]
+   public void FuzzLexer()
+   {
+       Fuzzer.Run(input =>
+       {
+           var lexer = new Lexer(Encoding.UTF8.GetString(input));
+           lexer.TokenizeAll();  // Should never throw unhandled
+       });
+   }
+   ```
+
+4. **Stress tests:**
+   - 10,000-line file with 100-level nesting depth
    - 1,000 imports in a single file
    - 10,000 symbols in SymbolTable
+   - Deeply nested expression: `(((((...((1))...)))))` (1000 levels)
 
-**Estimated effort:** 4-8 hours
+**Files to add:**
+- `src/Sharpy.Compiler.Tests/Fuzzing/LexerFuzzTests.cs`
+- `src/Sharpy.Compiler.Tests/Fuzzing/ParserFuzzTests.cs`
+- `src/Sharpy.Compiler.Tests/Fuzzing/Generators/TokenSequenceGenerator.cs`
+- `src/Sharpy.Compiler.Tests/Fuzzing/Generators/SourceGenerator.cs`
+- `src/Sharpy.Compiler.Tests/Stress/LargeFileTests.cs`
+
+**Estimated effort:** 6-10 hours
 
 ---
 
-## Concern 6: TypeChecker Size (~4,600 lines)
+## Concern 9: Missing Multi-File Integration Tests
+
+### Analysis
+
+**What:** The test suite has extensive single-file coverage but sparse multi-file project tests.
+
+**Current multi-file tests:**
+- `simple_import_test/` (2-3 files)
+- `import_with_classes/` (2-3 files)
+- `module_import_access/` (2-3 files)
+
+**Missing scenarios:**
+- Circular import detection and error messages
+- Transitive import resolution (A imports B imports C imports D)
+- Deep import chains with type references
+- Diamond dependency patterns
+- Cross-file type reference after rename (incremental build)
+- File deletion affecting importers (incremental build)
+- Package (`__init__.spy`) import scenarios
+
+### Impact
+
+- **Import bugs invisible** — No tests for complex import graphs
+- **Incremental build bugs** — No tests for cache invalidation scenarios
+- **Cross-file type errors** — Regressions in type reference resolution
+
+### Plan
+
+**Approach:** Add comprehensive multi-file test fixtures.
+
+**Test fixtures to add:**
+
+```
+TestFixtures/
+  multi_file/
+    circular_import_error/
+      a.spy           # from b import foo
+      b.spy           # from a import bar
+      main.spy        # from a import foo
+      main.error      # "Circular import detected"
+
+    transitive_imports/
+      a.spy           # def a_func(): return 1
+      b.spy           # from a import a_func; def b_func(): return a_func()
+      c.spy           # from b import b_func; def c_func(): return b_func()
+      main.spy        # from c import c_func; print(c_func())
+      main.expected   # "1\n"
+
+    diamond_dependency/
+      base.spy        # class Base: pass
+      left.spy        # from base import Base; class Left(Base): pass
+      right.spy       # from base import Base; class Right(Base): pass
+      main.spy        # from left import Left; from right import Right
+      main.expected   # (no output, just verify compilation)
+
+    cross_file_type_reference/
+      types.spy       # class MyType: pass
+      user.spy        # from types import MyType; x: MyType = MyType()
+      main.spy        # from user import x; print(type(x).__name__)
+      main.expected   # "MyType\n"
+
+    package_import/
+      mypackage/
+        __init__.spy  # from .module import helper
+        module.spy    # def helper(): return 42
+      main.spy        # from mypackage import helper; print(helper())
+      main.expected   # "42\n"
+```
+
+**Incremental build tests (programmatic):**
+
+```csharp
+[Fact]
+public void RecompilesWhenImportedTypeChanges()
+{
+    using var helper = new ProjectCompilationHelper(output);
+    helper.AddSourceFile("types.spy", "class MyClass:\n    x: int = 1");
+    helper.AddSourceFile("main.spy", "from types import MyClass\nprint(MyClass().x)");
+    helper.CreateProjectFile();
+
+    // First build
+    var result1 = helper.Compile(incremental: true);
+    Assert.Equal("1\n", result1.StandardOutput);
+
+    // Modify types.spy
+    helper.UpdateSourceFile("types.spy", "class MyClass:\n    x: int = 99");
+
+    // Second build — main.spy should recompile even though unchanged
+    var result2 = helper.Compile(incremental: true);
+    Assert.Equal("99\n", result2.StandardOutput);
+}
+```
+
+**Estimated effort:** 3-6 hours
+
+---
+
+## Concern 10: TypeChecker Size (~4,600 lines)
 
 > **Status:** DEFERRED
 > **Trigger:** LSP implementation or major type system changes
@@ -465,22 +847,162 @@ public ProjectCompilationResult Compile() =>
    - Currently interleaved with type checking
    - Should run after all types are resolved
 
+4. **OverloadResolver** (extract from call checking)
+   - Currently inlined in `CallExpression` checking
+   - Needed for LSP completion suggestions
+
+5. **TypeCompatibilityChecker** (consolidate scattered logic)
+   - `IsAssignableTo`, `FindCommonType` scattered across files
+   - Extract for testability and reuse
+
 **Estimated effort:** 8-16 hours
 
 ---
 
 ## Implementation Order
 
-| Priority | Item | Rationale |
-|----------|------|-----------|
-| **P0** | Cache compiler version (#1) | Silent correctness bugs in incremental builds |
-| **P0** | SymbolSerializer versioning (#2) | Schema evolution safety |
-| **P1** | Restored symbol validation (#3) | Incremental build correctness |
-| **P1** | Replace `null!` (#4) | Clearer error messages |
-| **P2** | Fuzz/property tests (#5) | Robustness against malformed input |
-| **P3** | TypeChecker refactor (#6) | Deferred until LSP |
+| Priority | Item | Effort | Rationale |
+|----------|------|--------|-----------|
+| **P0** | Cache compiler version (#1) | 2-3h | Silent correctness bugs in incremental builds |
+| **P0** | SymbolSerializer versioning (#2) | 3-4h | Schema evolution safety |
+| **P0** | Restored symbol validation (#3) | 4-6h | Incremental build correctness |
+| **P1** | Path normalization utility (#4) | 1-2h | Subtle cache key bugs |
+| **P1** | Name collision fix (#5) | 1-2h | User-facing C# errors |
+| **P1** | Replace `null!` (#6) | 1-2h | Better error messages |
+| **P1** | Dual-write assertions (#7) | 1-2h | Release build safety |
+| **P2** | Multi-file integration tests (#9) | 3-6h | Import graph coverage |
+| **P2** | Grammar-aware fuzzing (#8) | 6-10h | Robustness against malformed input |
+| **Deferred** | TypeChecker refactor (#10) | 8-16h | Wait for LSP work |
 
-**Total estimated effort for P0+P1:** 10-15 hours
+**Total estimated effort:**
+- **P0 (Critical):** 9-13 hours
+- **P1 (Important):** 4-8 hours
+- **P2 (Recommended):** 9-16 hours
+- **Total P0+P1+P2:** 22-37 hours (~3-4 weeks)
+
+---
+
+## Debuggability Improvements
+
+For "bugs being obvious without discovery months later," consider these improvements:
+
+### Structured Logging in Semantic Analysis
+
+**Current state:** Sparse `_logger.LogInfo()` calls in semantic analysis.
+
+**Improvement:** Add trace-level logging for type inference decisions:
+
+```csharp
+// Before: silent inference
+var inferredType = InferExpressionType(expr);
+
+// After: traceable inference
+_logger.LogTrace($"Inferring type for {expr.GetType().Name} at {expr.Location}");
+var inferredType = InferExpressionType(expr);
+_logger.LogTrace($"Inferred: {inferredType} (expected: {_expectedType})");
+```
+
+**Benefit:** Diagnose "why did the compiler infer X instead of Y?"
+
+### Deterministic Error Ordering
+
+**Current state:** Errors from different validators may interleave non-deterministically.
+
+**Improvement:** Sort errors by source location before reporting:
+
+```csharp
+// DiagnosticBag.cs
+public IEnumerable<Diagnostic> GetOrderedDiagnostics() =>
+    _diagnostics.OrderBy(d => d.Location.Line).ThenBy(d => d.Location.Column);
+```
+
+**Benefit:** Reproducible error output for diffing and testing.
+
+### AST Node Identity Tracking
+
+**Current state:** Errors mention "expression at line 5, col 10" — ambiguous when multiple expressions on same line.
+
+**Improvement:** Include breadcrumb path in error context:
+
+```csharp
+// Error: Type mismatch in FunctionDef[process].body[2].value.args[0]
+//        Expected int, got str at line 5, col 10
+```
+
+**Benefit:** Unambiguous error location for complex expressions.
+
+---
+
+## Contributability Improvements
+
+For external contributors, consider these additions:
+
+### Architecture Diagram
+
+CLAUDE.md is excellent for AI assistants, but humans benefit from visual diagrams. Add a Mermaid diagram to docs:
+
+```mermaid
+graph LR
+    Source[".spy source"] --> Lexer
+    Lexer --> Tokens
+    Tokens --> Parser
+    Parser --> AST
+    AST --> NameResolver
+    NameResolver --> ImportResolver
+    ImportResolver --> TypeResolver
+    TypeResolver --> TypeChecker
+    TypeChecker --> ValidationPipeline
+    ValidationPipeline --> RoslynEmitter
+    RoslynEmitter --> CSharp["C# code"]
+    CSharp --> AssemblyCompiler
+    AssemblyCompiler --> IL[".NET IL"]
+```
+
+### "How to Add a New AST Node" Guide
+
+Currently requires reading 6+ files. Add a checklist document:
+
+```markdown
+## Adding a New AST Node
+
+1. **Lexer** (`Lexer/Lexer.cs`)
+   - Add `TokenType` if new keyword/operator
+   - Add recognition in `ScanToken()`
+
+2. **Parser** (`Parser/Ast/*.cs`, `Parser/Parser.*.cs`)
+   - Add AST record in appropriate `Ast/` file
+   - Add parsing rule in appropriate `Parser.*.cs` partial
+
+3. **Semantic** (`Semantic/TypeChecker.*.cs`)
+   - Add type checking in appropriate partial file
+   - Register in visitor dispatch
+
+4. **CodeGen** (`CodeGen/RoslynEmitter.*.cs`)
+   - Add C# emission in appropriate partial file
+
+5. **Tests**
+   - Add unit tests for each component
+   - Add `.spy`/`.expected` integration test
+```
+
+### Integration Test Helper Script
+
+Add a script to quickly create test fixtures:
+
+```bash
+#!/bin/bash
+# scripts/add-test.sh
+NAME=$1
+SOURCE=$2
+EXPECTED=$3
+
+mkdir -p src/Sharpy.Compiler.Tests/Integration/TestFixtures/$NAME
+echo "$SOURCE" > src/Sharpy.Compiler.Tests/Integration/TestFixtures/$NAME/main.spy
+echo "$EXPECTED" > src/Sharpy.Compiler.Tests/Integration/TestFixtures/$NAME/main.expected
+
+echo "Created test fixture: $NAME"
+echo "Run: dotnet test --filter \"DisplayName~$NAME\""
+```
 
 ---
 
@@ -490,19 +1012,52 @@ These items are well-designed but worth noting for future tooling:
 
 ### LSP Readiness
 
+Beyond thread-safety, LSP requires **incremental re-analysis**:
+
 - **SemanticInfo not thread-safe** — Documented; use per-file instances for LSP
 - **Parser lacks CancellationToken** — Add when implementing LSP
 - **Type narrowing not persisted in SemanticBinding** — Add for cross-file LSP analysis
+- **No incremental re-analysis API** — Currently batch-oriented; need single-file analysis
+
+**Future API shape for LSP:**
+```csharp
+interface IIncrementalSemanticAnalyzer
+{
+    void InvalidateFile(string path);
+    SemanticInfo GetSemanticInfoForFile(string path, SourceText newText);
+    IEnumerable<CompletionItem> GetCompletions(string path, int line, int column);
+    HoverInfo? GetHoverInfo(string path, int line, int column);
+}
+```
 
 ### Parallel Compilation
 
 - **ProjectCompiler loops are sequential** — SemanticBinding is thread-safe, ready for parallelization
 - **ImportResolver uses Stack for cycle detection** — Would need thread-local for parallel imports
+- **DependencyGraph enables parallel file processing** — Files with no dependencies can compile in parallel
 
 ### Performance
 
 - **No benchmarks** — Add BenchmarkDotNet harness when optimizing
 - **Large file stress tests** — Add when targeting enterprise codebases
+- **Memory profiling** — Track allocations in hot paths (TypeChecker, RoslynEmitter)
+
+---
+
+## Positive Findings
+
+Despite identified concerns, the compiler demonstrates **strong design decisions**:
+
+1. **SemanticBinding Pattern** — Elegant separation of semantic data from AST, enabling multiple bindings
+2. **Dual-write assertions** — Catches phase violations during DEBUG builds
+3. **Immutable dependency graph** — Thread-safe for future parallelization
+4. **RoslynEmitter using SyntaxFactory** — Prevents invalid C# generation (type-safe API)
+5. **Error recovery in Lexer/Parser** — Panic-mode synchronization for good UX
+6. **Comprehensive file-based integration tests** — 332+ test fixtures
+7. **Clear phase pipeline** — Parse → Semantic → CodeGen → Assembly
+8. **Module-level validation** — Distinguishes entry-point vs. library files
+9. **Reference equality for mutable symbols** — Correctly handles mutable record identity
+10. **Well-documented threading constraints** — SemanticInfo vs SemanticBinding clearly documented
 
 ---
 
@@ -510,8 +1065,13 @@ These items are well-designed but worth noting for future tooling:
 
 | Concern | Primary Files |
 |---------|---------------|
-| Cache versioning | `Project/IncrementalCompilationCache.cs` |
-| Symbol serialization | `Project/SymbolSerializer.cs`, `Project/SymbolCache.cs` |
-| Restored symbol validation | `Project/ProjectCompiler.cs:386-389` |
-| Null-forgiving operators | `Project/ProjectCompiler.cs:31-46` |
-| TypeChecker | `Semantic/TypeChecker*.cs` (5 files) |
+| Cache versioning (#1) | `Project/IncrementalCompilationCache.cs` |
+| Symbol serialization (#2) | `Project/SymbolSerializer.cs`, `Project/SymbolCache.cs` |
+| Restored symbol validation (#3) | `Project/ProjectCompiler.cs:385-487` |
+| Path normalization (#4) | `Project/IncrementalCompilationCache.cs`, `Project/ProjectCompiler.cs`, `Project/SymbolSerializer.cs` |
+| Name collision (#5) | `CodeGen/RoslynEmitter.cs:143-200` |
+| Null-forgiving operators (#6) | `Project/ProjectCompiler.cs:31-49` |
+| Dual-write assertions (#7) | `Semantic/SemanticBinding.cs`, `Semantic/DualWriteAssertions.cs` |
+| Fuzzing (#8) | `src/Sharpy.Compiler.Tests/` (new files) |
+| Multi-file tests (#9) | `src/Sharpy.Compiler.Tests/Integration/TestFixtures/` |
+| TypeChecker (#10) | `Semantic/TypeChecker*.cs` (5 files) |
