@@ -229,8 +229,31 @@ internal class OperatorValidator : SemanticValidatorBase
         }
     }
 
+    /// <summary>
+    /// Checks whether an error has already been reported at the given position.
+    /// Used to avoid duplicate diagnostics when the TypeChecker has already reported
+    /// an operator error (SHP0222) during type inference — this validator should not
+    /// re-report it as SHP0402.
+    /// </summary>
+    private bool HasErrorAtPosition(int? line, int? column)
+    {
+        if (line == null && column == null)
+            return false;
+        var errors = _context.Diagnostics.GetErrors();
+        for (int i = 0; i < errors.Count; i++)
+        {
+            if (errors[i].Line == line && errors[i].Column == column)
+                return true;
+        }
+        return false;
+    }
+
     private void ValidateNullCoalesce(BinaryOp binOp, SemanticType leftType, SemanticType rightType)
     {
+        // No HasErrorAtPosition guard here: this validator provides a more specific
+        // diagnostic (SHP0403: "must be nullable") than the TypeChecker's generic
+        // SHP0222 ("does not support operator ??"). Both may fire but the specific
+        // one is more actionable for the user.
         if (leftType is not NullableType and not OptionalType)
         {
             AddError(_context,
@@ -261,10 +284,13 @@ internal class OperatorValidator : SemanticValidatorBase
                 var reflectedDunder = GetReflectedDunder(dunderName);
                 if (reflectedDunder == null || !SupportsOperator(rightType, reflectedDunder))
                 {
-                    AddError(_context,
-                        $"Type '{leftType.GetDisplayName()}' does not support operator '{OperatorToString(binOp.Operator)}' with right operand of type '{rightType.GetDisplayName()}'",
-                        binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
-                        span: binOp.Span);
+                    if (!HasErrorAtPosition(binOp.LineStart, binOp.ColumnStart))
+                    {
+                        AddError(_context,
+                            $"Type '{leftType.GetDisplayName()}' does not support operator '{OperatorToString(binOp.Operator)}' with right operand of type '{rightType.GetDisplayName()}'",
+                            binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
+                            span: binOp.Span);
+                    }
                 }
             }
         }
@@ -310,10 +336,13 @@ internal class OperatorValidator : SemanticValidatorBase
 
         if (!SupportsOperator(operandType, dunderName))
         {
-            AddError(_context,
-                $"Type '{operandType.GetDisplayName()}' does not support unary operator '{OperatorToString(unaryOp.Operator)}'",
-                unaryOp.LineStart, unaryOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
-                span: unaryOp.Span);
+            if (!HasErrorAtPosition(unaryOp.LineStart, unaryOp.ColumnStart))
+            {
+                AddError(_context,
+                    $"Type '{operandType.GetDisplayName()}' does not support unary operator '{OperatorToString(unaryOp.Operator)}'",
+                    unaryOp.LineStart, unaryOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
+                    span: unaryOp.Span);
+            }
         }
     }
 
@@ -337,10 +366,13 @@ internal class OperatorValidator : SemanticValidatorBase
             var regularDunder = dunderName.Replace("__i", "__");
             if (!SupportsOperator(targetType, regularDunder))
             {
-                AddError(_context,
-                    $"Unsupported operand types for {OperatorToString(assignment.Operator)}: '{targetType.GetDisplayName()}' and '{valueType.GetDisplayName()}'",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
-                    span: assignment.Span);
+                if (!HasErrorAtPosition(assignment.LineStart, assignment.ColumnStart))
+                {
+                    AddError(_context,
+                        $"Unsupported operand types for {OperatorToString(assignment.Operator)}: '{targetType.GetDisplayName()}' and '{valueType.GetDisplayName()}'",
+                        assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
+                        span: assignment.Span);
+                }
             }
         }
     }
