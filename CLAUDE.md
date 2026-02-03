@@ -212,8 +212,13 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 3. **Transitive dependencies**: If file A imports B and B changes, A is recompiled (uses cached dependency graph)
 
 **Cache files** (in `obj/{Config}/`):
-- `.sharpy-cache` — File content hashes (SHA-256)
-- `.sharpy-symbols` — Serialized symbols and generated C# per file
+- `.sharpy-cache` — File content hashes (SHA-256) with compiler version
+- `.sharpy-symbols` — Serialized symbols and generated C# per file with schema version
+
+**Cache invalidation**: Caches are automatically invalidated when:
+- Compiler version changes (assembly hash changes)
+- Symbol cache schema version changes
+- Source file content changes
 
 **Force full rebuild**: Delete the cache files or use `--clean` flag.
 
