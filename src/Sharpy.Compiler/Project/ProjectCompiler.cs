@@ -413,7 +413,13 @@ internal class ProjectCompiler
                     {
                         _symbolTable.TryDefine(symbol);
 
-                        // Also register variable types for fields in SemanticBinding
+                        // Register CodeGenInfo to maintain dual-write consistency
+                        if (typeSymbol.CodeGenInfo != null)
+                        {
+                            semanticBinding.SetCodeGenInfo(typeSymbol, typeSymbol.CodeGenInfo);
+                        }
+
+                        // Also register variable types and CodeGenInfo for fields
                         // This ensures DualWriteAssertions pass for restored symbols
                         foreach (var field in typeSymbol.Fields)
                         {
@@ -421,20 +427,52 @@ internal class ProjectCompiler
                             {
                                 semanticBinding.SetVariableType(field, field.Type);
                             }
+                            if (field.CodeGenInfo != null)
+                            {
+                                semanticBinding.SetCodeGenInfo(field, field.CodeGenInfo);
+                            }
+                        }
+
+                        // Register CodeGenInfo for methods
+                        foreach (var method in typeSymbol.Methods)
+                        {
+                            if (method.CodeGenInfo != null)
+                            {
+                                semanticBinding.SetCodeGenInfo(method, method.CodeGenInfo);
+                            }
+                        }
+
+                        // Register CodeGenInfo for constructors
+                        foreach (var ctor in typeSymbol.Constructors)
+                        {
+                            if (ctor.CodeGenInfo != null)
+                            {
+                                semanticBinding.SetCodeGenInfo(ctor, ctor.CodeGenInfo);
+                            }
                         }
                     }
-                    else if (symbol is FunctionSymbol)
+                    else if (symbol is FunctionSymbol fs)
                     {
                         _symbolTable.TryDefine(symbol);
+
+                        // Register CodeGenInfo for functions
+                        if (fs.CodeGenInfo != null)
+                        {
+                            semanticBinding.SetCodeGenInfo(fs, fs.CodeGenInfo);
+                        }
                     }
                     else if (symbol is VariableSymbol vs && !vs.IsParameter)
                     {
                         _symbolTable.TryDefine(symbol);
 
-                        // Also register variable type in SemanticBinding
+                        // Register variable type and CodeGenInfo in SemanticBinding
                         if (vs.Type != SemanticType.Unknown)
                         {
                             semanticBinding.SetVariableType(vs, vs.Type);
+                        }
+                        if (vs.CodeGenInfo != null)
+                        {
+                            semanticBinding.SetCodeGenInfo(vs, vs.CodeGenInfo);
                         }
                     }
                 }
