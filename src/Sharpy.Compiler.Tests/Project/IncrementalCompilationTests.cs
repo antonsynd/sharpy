@@ -989,5 +989,68 @@ def main():
             $"Expected lib.spy to be skipped, got SkippedFileCount={metrics.SkippedFileCount}");
     }
 
+    [Fact]
+    public void IncrementalMode_AllFilesUnchanged_WithClass_BuildsSuccessfully()
+    {
+        // Regression test: When ALL files are unchanged and restored from cache,
+        // the DualWriteAssertions must not fail due to CodeGenInfo mismatch.
+        // This was broken before the fix to register CodeGenInfo in SemanticBinding
+        // for restored symbols.
+
+        var libFile = CreateTempFile("lib.spy", @"
+class Counter:
+    value: int
+    name: str
+
+    def __init__(self, name: str, start: int = 0):
+        self.name = name
+        self.value = start
+
+    def increment(self):
+        self.value += 1
+
+    def get_status(self) -> str:
+        return self.name + ': ' + str(self.value)
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from lib import Counter
+
+def main():
+    c: Counter = Counter('test', 5)
+    c.increment()
+    print(c.get_status())
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, libFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build - both files compiled
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Second build - NO changes, both files should be skipped
+        // This should succeed without assertion failures
+        var result2 = compiler.CompileProject(config);
+        Assert.True(result2.Success, string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Verify both files were skipped
+        var metrics = result2.Metrics;
+        Assert.NotNull(metrics);
+        Assert.Equal(2, metrics!.SkippedFileCount);
+
+        // Third build - still no changes, should still succeed
+        var result3 = compiler.CompileProject(config);
+        Assert.True(result3.Success, string.Join("; ", result3.Diagnostics.GetErrors().Select(e => e.Message)));
+    }
+
     #endregion
 }
