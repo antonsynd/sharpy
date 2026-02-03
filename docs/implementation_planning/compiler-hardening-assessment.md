@@ -22,14 +22,14 @@ This document identifies 29 items across 5 priority tiers (Tiers 1.5, 3, and 4 a
 | C# source files | 533 | |
 | Compiler lines | ~42,700 | |
 | Test annotations | ~4,800 | |
-| File-based fixtures | 315 `.spy` files | |
+| File-based fixtures | ~~315~~ **332** `.spy` files | 6 comprehension fixtures added by 4.6 verification pass |
 | Build warnings | ~~57~~ **0** | Fixed by hardening commits `ae9d722a`–`e7942574` |
 | Skipped tests | 16 (3 file-based + 13 unit) | |
 | `NotImplementedException` in codegen | ~~15~~ **16** | Recount confirmed 16 throw sites (see 2.1) |
 | Silent statement drops in emitter | 4 locations | |
 | Open `See: #NNN` references | 22 across 14 files | |
-| Public types in Sharpy.Compiler | ~~212~~ **~148** | Reduced by 4.3 (five passes: `b912a5ec`, `6a4b25e3`, `7e8ba20c`, `82eb5f0e`, `a6e494d9`) |
-| Internal types in Sharpy.Compiler | ~~1–2~~ **~83** | Increased by 4.3 (five passes) |
+| Public types in Sharpy.Compiler | ~~212~~ **~144** | Reduced by 4.3 (six passes: `b912a5ec`, `6a4b25e3`, `7e8ba20c`, `82eb5f0e`, `a6e494d9`, `c679aa11`) |
+| Internal types in Sharpy.Compiler | ~~1–2~~ **~87** | Increased by 4.3 (six passes) |
 
 ### Verification Notes (2026-02-02)
 
@@ -549,7 +549,7 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 **Tasks:**
 
 - [x] **4.3a** ~~Complete 4.1 first (unify compilation paths)~~ — Done
-- [x] **4.3b** ~~Mark type groups as `internal`~~ — Done (~83 types made internal across five passes). Pass 1 (commit `b912a5ec`): ~60 types across Analysis, Discovery, CodeGen, Semantic, Validation, Project, and Parser. Pass 2 (commit `6a4b25e3`): TypeResolver, CompilerServicesBuilder, TypeResolverAdapter, SymbolLookupAdapter, ClrTypeMapperAdapter, DiagnosticReporter, ClrMemberCache, TypeInferenceService, GenericTypeInferenceService, InferenceResult. Pass 3 (commit `7e8ba20c`): TypeRegistry, SemanticAnalysisException, ModuleResolutionKind. Pass 4 (commits `fbaa2bd2`, `82eb5f0e`): InferenceErrorKind, TypeAnnotationHelper, TypeUtils, AstExtensions. Pass 5 (commit `a6e494d9`): AssemblyCompiler, AssemblyCompilationResult, ProjectFileParser, BuiltinRegistry, CompilerServicesConfiguration; also made SymbolTable constructor/BuiltinRegistry property and CompilerServices.Configuration internal. Public interfaces (ITypeResolver, ISymbolLookup, IClrTypeMapper, IDiagnosticReporter) remain the public contract.
+- [x] **4.3b** ~~Mark type groups as `internal`~~ — Done (~87 types made internal across six passes). Pass 1 (commit `b912a5ec`): ~60 types across Analysis, Discovery, CodeGen, Semantic, Validation, Project, and Parser. Pass 2 (commit `6a4b25e3`): TypeResolver, CompilerServicesBuilder, TypeResolverAdapter, SymbolLookupAdapter, ClrTypeMapperAdapter, DiagnosticReporter, ClrMemberCache, TypeInferenceService, GenericTypeInferenceService, InferenceResult. Pass 3 (commit `7e8ba20c`): TypeRegistry, SemanticAnalysisException, ModuleResolutionKind. Pass 4 (commits `fbaa2bd2`, `82eb5f0e`): InferenceErrorKind, TypeAnnotationHelper, TypeUtils, AstExtensions. Pass 5 (commit `a6e494d9`): AssemblyCompiler, AssemblyCompilationResult, ProjectFileParser, BuiltinRegistry, CompilerServicesConfiguration; also made SymbolTable constructor/BuiltinRegistry property and CompilerServices.Configuration internal. Pass 6 (commit `c679aa11`): CompilationUnitFactory, DiagnosticRenderer, ConsoleCompilerLogger, NullLogger. Public interfaces (ITypeResolver, ISymbolLookup, IClrTypeMapper, IDiagnosticReporter) remain the public contract.
 - [x] **4.3c** ~~Add `InternalsVisibleTo` for CLI~~ — Done (uses assembly name `sharpyc`)
 - [x] **4.3d** ~~Verify all tests still compile~~ — Done (4805 pass, 0 fail)
 - [x] **4.3e** ~~Keep listed types public for LSP/tooling~~ — Done (Compiler, CompilationResult, SemanticInfo, SemanticBinding, Symbol hierarchy, DiagnosticBag, Lexer, Parser, AST nodes, etc. all remain public)
@@ -572,7 +572,7 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 - [x] **4.4a** ~~Create a new test fixture pattern: `.spy` + `.expected.cs`~~ — Done
 - [x] **4.4b** ~~Update `FileBasedIntegrationTests` to recognize `.expected.cs` files~~ — Done (Roslyn-normalized comparison via `Microsoft.CodeAnalysis.Formatting`)
 - [x] **4.4c** ~~Add snapshots for 10-15 representative fixtures~~ — Done (15 snapshots: hello world, arithmetic, type inference, recursion, defaults, class init, static methods, inheritance, comprehensions, for loops, if/elif, f-strings, enums, structs, generics)
-- [x] **4.4d** ~~Add a test helper to regenerate snapshots~~ — Done (`UPDATE_SNAPSHOTS=true` env var)
+- [x] **4.4d** ~~Add a test helper to regenerate snapshots~~ — Done (`UPDATE_SNAPSHOTS=true` env var). Bug fix (commit `62bfb377`): `UPDATE_SNAPSHOTS=true` was unconditionally creating `.expected.cs` for all passing tests; now only regenerates existing snapshots.
 - [x] **4.4e** ~~Document the snapshot update workflow in CLAUDE.md~~ — Done
 
 **Guidance:**
@@ -605,7 +605,7 @@ A second independent review ran 4 parallel deep-dive explorations covering: (1) 
 
 **Tasks:**
 
-- [x] **4.6a** ~~Add success-path file-based tests~~ — Done (4 fixtures: list_comprehension, dict_comprehension, set_comprehension, comprehension_with_condition)
+- [x] **4.6a** ~~Add success-path file-based tests~~ — Done (10 fixtures: list_comprehension, dict_comprehension, set_comprehension, comprehension_with_condition, plus 6 added in commit `bf084a1e`: comprehension_outer_scope, comprehension_func_call, comprehension_multiple_conditions, comprehension_conditional_expr, set_comprehension_with_condition, dict_comprehension_with_condition)
 - [x] **4.6b** ~~Add error-path file-based tests~~ — Done (2 fixtures: `errors/nested_comprehension.spy` and `errors/tuple_unpacking_comprehension.spy` verify the current error messages for unsupported features)
 - [x] **4.6c** ~~Verify Python behavior for each test case~~ — Done (ran `python3 -c` for all test cases)
 
