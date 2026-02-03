@@ -1,14 +1,16 @@
 # Remaining Compiler Hardening Concerns
 
 > **Date:** 2026-02-03 (updated)
-> **Status:** Previous P0/P1 items completed; new concerns identified
-> **Context:** Follow-up assessment after comprehensive architecture review
+> **Status:** Previous P0/P1 items completed; comprehensive review conducted
+> **Context:** Follow-up assessment after architecture review by staff compiler expert
 
 ---
 
 ## Executive Summary
 
 The compiler is **architecturally sound** with excellent separation of concerns. The three correctness/UX concerns from the original assessment have been implemented. This document now tracks hardening concerns identified during a comprehensive architecture review, covering correctness, robustness, debuggability, and contributability.
+
+The codebase demonstrates strong design decisions: SemanticBinding pattern, immutable dependency graph, SyntaxFactory-only code generation, and comprehensive test coverage (332+ file-based tests, 317 error cases). The concerns below are tactical fixes, not fundamental redesigns.
 
 ### Completed Items (Archive)
 
@@ -29,11 +31,16 @@ The compiler is **architecturally sound** with excellent separation of concerns.
 | 5 | Name collision in variable versioning | Correctness | Medium | Low |
 | 6 | `null!` usage in ProjectCompiler | Robustness | Medium | Low |
 | 7 | Dual-write assertions DEBUG-only | Robustness | Medium | Low |
-| 8 | No grammar-aware fuzzing/property tests | Robustness | Medium | Medium |
+| 8 | No grammar-aware fuzzing/property tests | Robustness | Low | Medium |
 | 9 | Missing multi-file integration tests | Coverage | Medium | Medium |
 | 10 | TypeChecker size (~4,600 lines) | Maintainability | Low | High |
+| 11 | No CancellationToken in semantic analysis | LSP-readiness | Medium | Low |
+| 12 | DiagnosticBag deduplication uses strings | UX | Low | Low |
+| 13 | Type narrowing not persisted | LSP-readiness | Low | Medium |
+| 14 | No Roslyn error mapping to Sharpy source | UX | Medium | Medium |
+| 15 | Missing match exhaustiveness warnings | Type Safety | Low | Medium |
 
-**Recommendation:** Address #1-3 before v1.0 (production correctness). Address #4-7 for robustness. Address #8-9 for comprehensive coverage. Defer #10 until LSP work begins.
+**Recommendation:** Address #1-3 before v1.0 (production correctness). Address #4-5, #9, #12 for robustness and coverage. Consider #11, #14 if LSP is on the roadmap. Defer #8, #10, #13, #15 as lower priority.
 
 ---
 
@@ -94,6 +101,8 @@ The lexer now:
 ---
 
 ## Concern 1: Incremental Cache Lacks Compiler Version
+
+> **Priority:** P0
 
 ### Analysis
 
@@ -166,6 +175,8 @@ Neither file includes a compiler version identifier.
 
 ## Concern 2: SymbolSerializer Format Not Versioned
 
+> **Priority:** P0
+
 ### Analysis
 
 **What:** `SymbolSerializer` persists symbols and generated C# to `.sharpy-symbols` but includes no schema version. If the serialization format changes, old caches silently produce corrupt data.
@@ -229,16 +240,26 @@ Neither file includes a compiler version identifier.
 
 ## Concern 3: Restored Symbols Lack Transitive Validation
 
+> **Priority:** P0
+
 ### Analysis
 
 **What:** When incremental compilation skips an unchanged file, it restores cached symbols without verifying that their type references are still valid.
 
-**Scenario:**
+**Scenario 1 — Type Existence:**
 1. `A.spy` imports `B.spy` and uses `B.MyClass`
 2. First build: both compiled, symbols cached
 3. `B.spy` changes: `MyClass` renamed to `MyNewClass`
 4. Second build: `A.spy` unchanged (same hash), restored from cache
 5. **Bug:** `A`'s restored symbol still references `MyClass` (no longer exists)
+
+**Scenario 2 — Signature Staleness (additional concern identified in review):**
+1. `A.spy`: `class Foo: def bar(self) -> int: return 1`
+2. `B.spy`: `from A import Foo; x = Foo().bar()`
+3. First build: cached, B knows `bar()` returns `int`
+4. `A.spy` changes: `def bar(self) -> str: return "x"`
+5. Second build: A recompiles, B skips (unchanged)
+6. **Bug:** B's cached symbol still thinks `bar()` returns `int`
 
 **Current behavior:**
 ```csharp
@@ -257,7 +278,7 @@ if (_incremental && _incrementalCache != null && _filesToSkip.Count > 0)
 
 ### Plan
 
-**Approach:** After restoring symbols, validate that all type references resolve in current SymbolTable.
+**Approach:** After restoring symbols, validate that all type references resolve in current SymbolTable AND that signatures match.
 
 **Files to modify:**
 - `src/Sharpy.Compiler/Project/ProjectCompiler.cs`
@@ -306,15 +327,54 @@ if (_incremental && _incrementalCache != null && _filesToSkip.Count > 0)
    }
    ```
 
+2. **Add signature compatibility check (critical addition):**
+   ```csharp
+   private bool ValidateRestoredFunctionSymbol(FunctionSymbol cached)
+   {
+       // Look up current version of the function in SymbolTable
+       var current = _symbolTable.Lookup(cached.Name) as FunctionSymbol;
+       if (current == null)
+           return false;  // Function no longer exists
+
+       // Validate return type matches
+       if (!TypesMatch(cached.ReturnType, current.ReturnType))
+           return false;
+
+       // Validate parameter count and types match
+       if (cached.Parameters.Count != current.Parameters.Count)
+           return false;
+
+       for (int i = 0; i < cached.Parameters.Count; i++)
+       {
+           if (!TypesMatch(cached.Parameters[i].Type, current.Parameters[i].Type))
+               return false;
+       }
+
+       return true;
+   }
+
+   private bool TypesMatch(SemanticType? a, SemanticType? b)
+   {
+       if (a == null && b == null) return true;
+       if (a == null || b == null) return false;
+       // Use structural equality for semantic types
+       return a.Equals(b);
+   }
+   ```
+
 **Tests to add:**
 - `IncrementalCompilationTests.RecompilesWhenImportedTypeChanges`
 - `IncrementalCompilationTests.RecompilesWhenBaseClassChanges`
+- `IncrementalCompilationTests.RecompilesWhenMethodSignatureChanges`
+- `IncrementalCompilationTests.RecompilesWhenReturnTypeChanges`
 
-**Estimated effort:** 4-6 hours
+**Estimated effort:** 6-8 hours (increased due to signature validation)
 
 ---
 
 ## Concern 4: Path Normalization Inconsistent
+
+> **Priority:** P1
 
 ### Analysis
 
@@ -399,6 +459,8 @@ public static class PathNormalizer
 ---
 
 ## Concern 5: Name Collision in Variable Versioning
+
+> **Priority:** P1
 
 ### Analysis
 
@@ -487,6 +549,8 @@ private string GetUniqueVariableName(string baseName, bool isNewDeclaration)
 
 ## Concern 6: `null!` Usage in ProjectCompiler
 
+> **Priority:** P2
+
 ### Analysis
 
 **What:** `ProjectCompiler` uses `null!` (null-forgiving operator) for fields that are initialized in `Compile()` rather than the constructor.
@@ -515,7 +579,7 @@ private DependencyGraphBuilder _graphBuilder = null!;
 
 **Approach:** Replace `null!` with explicit initialization or guard checks.
 
-**Option A — Lazy initialization with guard (Recommended):**
+**Option A — Lazy initialization with guard (Recommended for simplicity):**
 ```csharp
 private SymbolTable? _symbolTable;
 private SymbolTable SymbolTable => _symbolTable
@@ -527,7 +591,7 @@ private SymbolTable SymbolTable => _symbolTable
 private SymbolTable _symbolTable = new();  // Empty, replaced in Compile()
 ```
 
-**Option C — Make Compile() return a result object:**
+**Option C — Make Compile() return a result object (Best for API design):**
 ```csharp
 public ProjectCompilationResult Compile() =>
     new ProjectCompilationResultBuilder(config)
@@ -537,13 +601,15 @@ public ProjectCompilationResult Compile() =>
         .Build();
 ```
 
-**Recommendation:** Option A is simplest and makes errors clear.
+**Recommendation:** Option A for immediate fix; consider Option C for future API improvements.
 
-**Estimated effort:** 1-2 hours
+**Estimated effort:** 2-3 hours
 
 ---
 
 ## Concern 7: Dual-Write Assertions DEBUG-Only
+
+> **Priority:** P2
 
 ### Analysis
 
@@ -573,45 +639,37 @@ public static void AssertCodeGenInfoConsistency(SymbolTable table, SemanticBindi
 
 ### Plan
 
-**Approach:** Make critical assertions runtime-checked with configurable behavior.
+**Approach:** Remove `[Conditional("DEBUG")]` and always throw. Phase violations are bugs that should fail loudly.
 
-**Implementation:**
-
+**Simpler implementation (recommended):**
 ```csharp
 // SemanticBinding.cs
+private static void AssertNotFrozen(string storeName, string symbolName)
+{
+    throw new InvalidOperationException(
+        $"SemanticBinding freeze violation: attempted to write {storeName} for {symbolName} after freeze");
+}
+```
+
+**Alternative — Configurable behavior (if backward compatibility needed):**
+```csharp
 public enum FreezeViolationBehavior { Ignore, Warn, Throw }
 
 private static FreezeViolationBehavior s_freezeViolationBehavior =
 #if DEBUG
     FreezeViolationBehavior.Throw;
 #else
-    FreezeViolationBehavior.Warn;
+    FreezeViolationBehavior.Throw;  // Changed: also throw in Release
 #endif
-
-public static void SetFreezeViolationBehavior(FreezeViolationBehavior behavior)
-    => s_freezeViolationBehavior = behavior;
-
-private static void AssertNotFrozen(string storeName, string symbolName)
-{
-    switch (s_freezeViolationBehavior)
-    {
-        case FreezeViolationBehavior.Throw:
-            throw new InvalidOperationException(
-                $"SemanticBinding freeze violation: {storeName} for {symbolName}");
-        case FreezeViolationBehavior.Warn:
-            // Log warning (already implemented)
-            break;
-    }
-}
 ```
 
-**Alternative (simpler):** Remove `[Conditional("DEBUG")]` and always throw.
-
-**Estimated effort:** 1-2 hours
+**Estimated effort:** 1 hour
 
 ---
 
 ## Concern 8: No Grammar-Aware Fuzzing/Property-Based Tests
+
+> **Priority:** P3
 
 ### Analysis
 
@@ -621,6 +679,8 @@ private static void AssertNotFrozen(string storeName, string symbolName)
 - Stress tests (large files, many symbols)
 
 **Risk:** Lexer/Parser may crash or hang on malformed input not covered by handwritten tests.
+
+**Mitigating factor:** The existing 317 error test cases provide strong negative coverage. This concern is lower priority given the comprehensive error testing already in place.
 
 **Why grammar-aware matters:** Random strings are mostly garbage and won't exercise interesting code paths. Grammar-aware fuzzing generates structurally valid-ish input, then mutates it to find edge cases.
 
@@ -667,21 +727,7 @@ private static void AssertNotFrozen(string storeName, string symbolName)
    }
    ```
 
-3. **Coverage-guided fuzzing (AFL-style):**
-   ```csharp
-   // Using SharpFuzz for coverage-guided input generation
-   [Fact]
-   public void FuzzLexer()
-   {
-       Fuzzer.Run(input =>
-       {
-           var lexer = new Lexer(Encoding.UTF8.GetString(input));
-           lexer.TokenizeAll();  // Should never throw unhandled
-       });
-   }
-   ```
-
-4. **Stress tests:**
+3. **Stress tests:**
    - 10,000-line file with 100-level nesting depth
    - 1,000 imports in a single file
    - 10,000 symbols in SymbolTable
@@ -690,8 +736,6 @@ private static void AssertNotFrozen(string storeName, string symbolName)
 **Files to add:**
 - `src/Sharpy.Compiler.Tests/Fuzzing/LexerFuzzTests.cs`
 - `src/Sharpy.Compiler.Tests/Fuzzing/ParserFuzzTests.cs`
-- `src/Sharpy.Compiler.Tests/Fuzzing/Generators/TokenSequenceGenerator.cs`
-- `src/Sharpy.Compiler.Tests/Fuzzing/Generators/SourceGenerator.cs`
 - `src/Sharpy.Compiler.Tests/Stress/LargeFileTests.cs`
 
 **Estimated effort:** 6-10 hours
@@ -699,6 +743,8 @@ private static void AssertNotFrozen(string storeName, string symbolName)
 ---
 
 ## Concern 9: Missing Multi-File Integration Tests
+
+> **Priority:** P1
 
 ### Analysis
 
@@ -859,32 +905,367 @@ public void RecompilesWhenImportedTypeChanges()
 
 ---
 
+## Concern 11: No CancellationToken in Semantic Analysis
+
+> **Priority:** P2
+> **Type:** LSP-readiness
+
+### Analysis
+
+**What:** Only 3 files reference `CancellationToken` (Compiler.cs, ProjectCompiler.cs, ValidationPipeline.cs), but the actual analysis passes (TypeChecker, NameResolver, TypeResolver) don't accept it.
+
+**Current state:**
+```csharp
+// TypeChecker has no cancellation support
+public void Check(Module module)
+{
+    // Long-running analysis with no cancellation points
+}
+```
+
+**Problem:** For LSP, you need to cancel in-progress analysis when the user types. Without threading `CancellationToken` through the pipeline, you can't cancel mid-analysis.
+
+### Impact
+
+- **Blocks responsive LSP implementation** — Can't cancel stale analysis
+- **UI freezes** — Long files block until analysis completes
+- **Resource waste** — Completing obsolete analysis
+
+### Plan
+
+**Approach:** Add `CancellationToken` parameter to analysis passes with periodic checks.
+
+**Files to modify:**
+- `src/Sharpy.Compiler/Semantic/TypeChecker.cs`
+- `src/Sharpy.Compiler/Semantic/NameResolver.cs`
+- `src/Sharpy.Compiler/Semantic/TypeResolver.cs`
+
+**Implementation:**
+
+```csharp
+public void Check(Module module, CancellationToken cancellationToken = default)
+{
+    foreach (var statement in module.Body)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        CheckStatement(statement);
+    }
+}
+```
+
+**Estimated effort:** 3-4 hours
+
+---
+
+## Concern 12: DiagnosticBag Deduplication Uses String Comparison
+
+> **Priority:** P1
+> **Type:** UX
+
+### Analysis
+
+**What:** Duplicate prevention during merge uses `(Line, Column, Message)` tuple:
+
+```csharp
+var existingExact = new HashSet<(int?, int?, string)>(
+    _diagnostics.GetAll().Select(e => (e.Line, e.Column, e.Message)));
+```
+
+**Problem:** If two validators report the same conceptual error with slightly different wording, both appear. If the same validator emits the same error with a whitespace difference, it's not deduplicated.
+
+### Impact
+
+- **Duplicate errors** — Same problem reported multiple times with variant messages
+- **Fragile deduplication** — Whitespace changes break deduplication
+- **Noisy output** — Users see redundant diagnostics
+
+### Plan
+
+**Approach:** Deduplicate by `(DiagnosticCode, Line, Column)`, not message text.
+
+**Files to modify:**
+- `src/Sharpy.Compiler/Diagnostics/DiagnosticBag.cs`
+
+**Implementation:**
+
+```csharp
+var existingByCodeAndLocation = new HashSet<(string?, int?, int?)>(
+    _diagnostics.GetAll().Select(e => (e.Code, e.Line, e.Column)));
+
+// When adding:
+if (existingByCodeAndLocation.Contains((diagnostic.Code, diagnostic.Line, diagnostic.Column)))
+    return;  // Skip duplicate
+```
+
+**Estimated effort:** 1 hour
+
+---
+
+## Concern 13: Type Narrowing Not Persisted
+
+> **Priority:** P3
+> **Type:** LSP-readiness
+
+### Analysis
+
+**What:** `_narrowedTypes` dictionary in TypeChecker is local and doesn't propagate to `SemanticInfo` or `SemanticBinding`.
+
+**Example:**
+```python
+def process(x: int?) -> int:
+    if x is not None:
+        return helper(x)  # x narrowed to int here
+    return 0
+```
+
+The narrowed type at the call site isn't persisted, so LSP hover/completions won't know `x` is `int` (not `int?`) after the guard.
+
+### Impact
+
+- **LSP hover shows wrong type** — Shows declared type, not narrowed type
+- **Completions incomplete** — Won't suggest non-nullable methods after null check
+- **Type information lost** — Analysis results not preserved for tooling
+
+### Plan
+
+**Approach:** Store narrowing info in `SemanticInfo` with scope tracking.
+
+**Implementation:**
+
+```csharp
+// SemanticInfo.cs
+public void SetNarrowedType(Expression expr, SemanticType narrowedTo, TextSpan scope);
+public SemanticType? GetNarrowedType(Expression expr, int position);
+```
+
+**Estimated effort:** 4-6 hours
+
+---
+
+## Concern 14: No Roslyn Error Mapping to Sharpy Source
+
+> **Priority:** P2
+> **Type:** UX
+
+### Analysis
+
+**What:** If Roslyn compilation fails (malformed generated C#), the error is opaque:
+
+```
+error CS0103: The name 'x_1' does not exist in the current context
+```
+
+**Problem:** Users see C# errors, not Sharpy errors. This breaks the abstraction and makes debugging hard.
+
+**Current code path:** `Compiler.cs` → `AssemblyCompiler.Compile()` → returns raw Roslyn diagnostics.
+
+### Impact
+
+- **Confusing errors** — Users must understand generated C# to debug
+- **Abstraction leak** — Implementation details exposed to users
+- **Hard to diagnose** — No mapping back to `.spy` source
+
+### Plan
+
+**Approach:** Add source mapping to generated C# and a diagnostic mapper.
+
+**Implementation options:**
+
+**Option A — `#line` directives (Recommended):**
+```csharp
+// RoslynEmitter generates:
+#line 42 "main.spy"
+long x = 1;
+#line hidden
+```
+
+**Option B — Structured comments for mapping:**
+```csharp
+// Generated:
+long x = 1; // @source:main.spy:42:5
+```
+
+**Option C — Internal compiler error fallback:**
+```csharp
+public class RoslynDiagnosticMapper
+{
+    public CompilerDiagnostic? MapToSharpyDiagnostic(Diagnostic roslynDiag)
+    {
+        // Attempt to map; if fails, return ICE diagnostic
+        return new CompilerDiagnostic(
+            $"Internal compiler error: {roslynDiag.GetMessage()}",
+            Severity.Error,
+            code: "SHP9999"
+        );
+    }
+}
+```
+
+**Estimated effort:** 6-8 hours
+
+---
+
+## Concern 15: Missing Match Exhaustiveness Warnings
+
+> **Priority:** P3
+> **Type:** Type Safety
+
+### Analysis
+
+**What:** No warning when pattern matching doesn't cover all cases:
+
+```python
+match x:
+    case 1: print("one")
+    case 2: print("two")
+    # No case 3, no default — no warning
+```
+
+**Why it matters:** Python doesn't warn, but a statically-typed language should (matches Axiom 3: Type Safety).
+
+**Current state:** Match statement codegen exists but exhaustiveness checking is missing.
+
+### Impact
+
+- **Runtime errors** — Unhandled cases cause exceptions
+- **Type safety gap** — Compiler doesn't catch missing cases
+- **Inconsistent with Axiom 3** — Type system should prevent this
+
+### Plan
+
+**Approach:** Add `ExhaustivenessValidator` to `ValidationPipeline`.
+
+**Implementation:**
+
+```csharp
+public class ExhaustivenessValidator : ISemanticValidator
+{
+    public int Order => 350;  // After type checking, before control flow
+
+    public void Validate(Module module, SemanticContext context)
+    {
+        // For each match statement:
+        // - If matching on enum: check all variants covered
+        // - If matching on int/str: require case _ default
+        // - If matching on union type (future): check all members covered
+    }
+}
+```
+
+**Estimated effort:** 4-6 hours
+
+---
+
 ## Implementation Order
 
 | Priority | Item | Effort | Rationale |
 |----------|------|--------|-----------|
 | **P0** | Cache compiler version (#1) | 2-3h | Silent correctness bugs in incremental builds |
 | **P0** | SymbolSerializer versioning (#2) | 3-4h | Schema evolution safety |
-| **P0** | Restored symbol validation (#3) | 4-6h | Incremental build correctness |
+| **P0** | Restored symbol validation (#3) | 6-8h | Incremental build correctness |
 | **P1** | Path normalization utility (#4) | 1-2h | Subtle cache key bugs |
 | **P1** | Name collision fix (#5) | 1-2h | User-facing C# errors |
-| **P1** | Replace `null!` (#6) | 1-2h | Better error messages |
-| **P1** | Dual-write assertions (#7) | 1-2h | Release build safety |
-| **P2** | Multi-file integration tests (#9) | 3-6h | Import graph coverage |
-| **P2** | Grammar-aware fuzzing (#8) | 6-10h | Robustness against malformed input |
+| **P1** | Multi-file integration tests (#9) | 3-6h | Import graph coverage |
+| **P1** | Diagnostic deduplication (#12) | 1h | Cleaner error output |
+| **P2** | Replace `null!` (#6) | 2-3h | Better error messages |
+| **P2** | Dual-write assertions (#7) | 1h | Phase violation detection |
+| **P2** | CancellationToken threading (#11) | 3-4h | LSP-readiness |
+| **P2** | Roslyn error mapping (#14) | 6-8h | Debuggability |
+| **P3** | Grammar-aware fuzzing (#8) | 6-10h | Edge case coverage |
+| **P3** | Type narrowing persistence (#13) | 4-6h | LSP hover/completion accuracy |
+| **P3** | Match exhaustiveness (#15) | 4-6h | Type safety |
 | **Deferred** | TypeChecker refactor (#10) | 8-16h | Wait for LSP work |
 
 **Total estimated effort:**
-- **P0 (Critical):** 9-13 hours
-- **P1 (Important):** 4-8 hours
-- **P2 (Recommended):** 9-16 hours
-- **Total P0+P1+P2:** 22-37 hours (~3-4 weeks)
+- **P0 (Critical):** 11-15 hours
+- **P1 (Important):** 6-11 hours
+- **P2 (Recommended):** 12-16 hours
+- **P3 (Nice-to-have):** 14-22 hours
+- **Total P0+P1:** 17-26 hours (~2 weeks)
+- **Total P0+P1+P2:** 29-42 hours (~3-4 weeks)
+
+---
+
+## High-Impact Structural Improvements
+
+Beyond the tactical fixes above, these **architectural improvements** would have the biggest long-term impact:
+
+### 1. Introduce `ErrorType` Sentinel
+
+**Current state:** Type errors propagate as `UnknownType`. The problem: you can't distinguish "I don't know the type yet" from "type checking failed."
+
+**Benefit:** Error cascading becomes explicit. Validators can skip nodes with `ErrorType` instead of re-reporting.
+
+```csharp
+public sealed record ErrorType : SemanticType
+{
+    public static readonly ErrorType Instance = new();
+    public string Message { get; init; } = "Type error";
+    public TextSpan? OriginatingLocation { get; init; }
+}
+```
+
+**Effort:** 4-6 hours
+
+### 2. Source Mapping for Generated C#
+
+Add `#line` directives to generated C# that map back to `.spy` source:
+
+```csharp
+// Generated:
+#line 42 "main.spy"
+long x = 1;
+#line hidden
+```
+
+**Benefit:** Roslyn errors become mappable. Stack traces in runtime exceptions point to `.spy` files.
+
+**Effort:** 8-12 hours
+
+### 3. Typed Diagnostic Parameters
+
+Current diagnostics use string interpolation. Better: structured parameters.
+
+```csharp
+// Current
+Diagnostics.ReportError($"Cannot assign {actualType} to {expectedType}");
+
+// Better
+Diagnostics.ReportTypeMismatch(
+    code: DiagnosticCodes.TypeMismatch,
+    expected: expectedType,
+    actual: actualType,
+    location: expr.Location);
+```
+
+**Benefit:** Enables programmatic error analysis, better LSP integration, machine-readable diagnostics.
+
+**Effort:** 4-6 hours
+
+### 4. Immutable Symbol Snapshot for Cache
+
+Currently, mutable `Symbol` instances are serialized. If any code mutates a symbol after serialization, the cache becomes inconsistent.
+
+**Fix:** Create `FrozenSymbol` record types that are true snapshots:
+
+```csharp
+public record FrozenTypeSymbol(
+    string Name,
+    FrozenTypeSymbol? BaseType,
+    ImmutableArray<FrozenMethodSymbol> Methods,
+    // ... all data, no mutation possible
+);
+```
+
+**Benefit:** Cache serialization is provably correct. No race conditions during multi-file compilation.
+
+**Effort:** 6-8 hours
 
 ---
 
 ## Debuggability Improvements
 
-For "bugs being obvious without discovery months later," consider these improvements:
+For "bugs being obvious without discovery months later":
 
 ### Structured Logging in Semantic Analysis
 
@@ -931,11 +1312,35 @@ public IEnumerable<Diagnostic> GetOrderedDiagnostics() =>
 
 **Benefit:** Unambiguous error location for complex expressions.
 
+### Debug Dump Mode
+
+**Current state:** `emit ast`, `emit tokens`, `emit csharp` commands exist.
+
+**Improvement:** Add `--dump-semantic` flag to dump SemanticInfo and SymbolTable:
+
+```bash
+dotnet run --project src/Sharpy.Cli -- run file.spy --dump-semantic
+```
+
+**Output:**
+```
+=== SymbolTable ===
+  main (FunctionSymbol) -> () -> None
+  x (VariableSymbol) -> int
+
+=== SemanticInfo ===
+  Line 2: x = 1
+    Expression: IntegerLiteral(1) -> int
+    Assignment target: x (VariableSymbol)
+```
+
+**Benefit:** Inspect semantic analysis results for debugging.
+
 ---
 
 ## Contributability Improvements
 
-For external contributors, consider these additions:
+For external contributors:
 
 ### Architecture Diagram
 
@@ -1053,11 +1458,12 @@ Despite identified concerns, the compiler demonstrates **strong design decisions
 3. **Immutable dependency graph** — Thread-safe for future parallelization
 4. **RoslynEmitter using SyntaxFactory** — Prevents invalid C# generation (type-safe API)
 5. **Error recovery in Lexer/Parser** — Panic-mode synchronization for good UX
-6. **Comprehensive file-based integration tests** — 332+ test fixtures
+6. **Comprehensive file-based integration tests** — 332+ test fixtures, 317 error tests
 7. **Clear phase pipeline** — Parse → Semantic → CodeGen → Assembly
 8. **Module-level validation** — Distinguishes entry-point vs. library files
 9. **Reference equality for mutable symbols** — Correctly handles mutable record identity
 10. **Well-documented threading constraints** — SemanticInfo vs SemanticBinding clearly documented
+11. **No TODOs/FIXMEs in codebase** — Clean, maintained code
 
 ---
 
@@ -1075,3 +1481,8 @@ Despite identified concerns, the compiler demonstrates **strong design decisions
 | Fuzzing (#8) | `src/Sharpy.Compiler.Tests/` (new files) |
 | Multi-file tests (#9) | `src/Sharpy.Compiler.Tests/Integration/TestFixtures/` |
 | TypeChecker (#10) | `Semantic/TypeChecker*.cs` (5 files) |
+| CancellationToken (#11) | `Semantic/TypeChecker.cs`, `Semantic/NameResolver.cs`, `Semantic/TypeResolver.cs` |
+| Diagnostic deduplication (#12) | `Diagnostics/DiagnosticBag.cs` |
+| Type narrowing (#13) | `Semantic/TypeChecker.cs`, `Semantic/SemanticInfo.cs` |
+| Roslyn error mapping (#14) | `CodeGen/RoslynEmitter*.cs`, `Compiler.cs` |
+| Match exhaustiveness (#15) | `Semantic/Validation/` (new validator) |
