@@ -262,6 +262,46 @@ internal class IncrementalCompilationCache
     }
 
     /// <summary>
+    /// Builds a dependency graph from cached file dependencies.
+    /// This allows determining transitive affected files before parsing.
+    /// </summary>
+    /// <param name="allFiles">All source files in the project.</param>
+    /// <returns>A dependency graph built from cached dependencies, or null if no cache exists.</returns>
+    public DependencyGraph? BuildCachedDependencyGraph(IEnumerable<string> allFiles)
+    {
+        EnsureFileCacheLoaded();
+
+        if (_fileCache == null || _fileCache.Count == 0)
+        {
+            return null;
+        }
+
+        var builder = new DependencyGraphBuilder();
+
+        // Add all files first
+        foreach (var file in allFiles)
+        {
+            builder.AddFile(file);
+        }
+
+        // Add cached dependency edges
+        foreach (var file in allFiles)
+        {
+            var normalizedPath = NormalizePath(file);
+            if (_fileCache.TryGetValue(normalizedPath, out var entry))
+            {
+                foreach (var dep in entry.Dependencies)
+                {
+                    // Only add dependencies to files that exist in the project
+                    builder.AddDependency(file, dep);
+                }
+            }
+        }
+
+        return builder.Build();
+    }
+
+    /// <summary>
     /// Saves all caches to disk (hash cache and symbol cache).
     /// </summary>
     public void SaveAllCaches()

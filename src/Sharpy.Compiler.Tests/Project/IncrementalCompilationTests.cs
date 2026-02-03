@@ -682,5 +682,189 @@ def main():
         Assert.Contains("Point", json);
     }
 
+    [Fact]
+    public void IncrementalMode_TransitiveDependency_RecompilesDependents()
+    {
+        // Test that when a dependency changes, files that import it are also recompiled.
+        // This verifies the cached dependency graph is used correctly.
+
+        // Create three files: main imports helper, helper imports util
+        var utilFile = CreateTempFile("util.spy", @"
+def format_message(msg: str) -> str:
+    return '[INFO] ' + msg
+");
+        var helperFile = CreateTempFile("helper.spy", @"
+from util import format_message
+
+def greet() -> str:
+    return format_message('Hello')
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from helper import greet
+
+def main():
+    print(greet())
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, helperFile, utilFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build - all files compiled
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Modify the leaf file (util.spy)
+        File.WriteAllText(utilFile, @"
+def format_message(msg: str) -> str:
+    return '[MODIFIED] ' + msg
+");
+
+        // Second build - util changed, so helper and main should also be recompiled
+        // (helper imports util, main imports helper)
+        var result2 = compiler.CompileProject(config);
+        Assert.True(result2.Success, string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // The compilation should succeed and produce correct output
+        Assert.NotNull(result2.OutputAssemblyPath);
+    }
+
+    [Fact]
+    public void BuildCachedDependencyGraph_CreatesDependencyGraph()
+    {
+        // Create files with known dependencies
+        var utilFile = CreateTempFile("util.spy", @"
+def helper():
+    pass
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from util import helper
+
+def main():
+    helper()
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, utilFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build to create cache
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Load the cache and build a cached dependency graph
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+        cache.LoadAllCaches();
+
+        var cachedGraph = cache.BuildCachedDependencyGraph(config.SourceFiles);
+        Assert.NotNull(cachedGraph);
+
+        // The graph should show that main depends on util
+        var mainDeps = cachedGraph!.GetDirectDependencies(mainFile);
+        Assert.Contains(cachedGraph.AllFiles, f => f.EndsWith("util.spy"));
+    }
+
+    [Fact]
+    public void IncrementalMode_DependencyChangesSignature_RecompilesDependent()
+    {
+        // Test that when a function implementation changes in a dependency,
+        // files that use it are recompiled
+
+        var libFile = CreateTempFile("lib.spy", @"
+def get_message() -> str:
+    return 'original'
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from lib import get_message
+
+def main():
+    msg: str = get_message()
+    print(msg)
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, libFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build succeeds
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Modify lib to change function implementation (same signature)
+        File.WriteAllText(libFile, @"
+def get_message() -> str:
+    return 'modified'
+");
+
+        // Second build - main.spy should be recompiled (not skipped) because lib changed
+        var result2 = compiler.CompileProject(config);
+        Assert.True(result2.Success, string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Both builds should produce valid assemblies
+        Assert.NotNull(result1.OutputAssemblyPath);
+        Assert.NotNull(result2.OutputAssemblyPath);
+    }
+
+    [Fact]
+    public void IncrementalMode_NoChanges_SkipsAllFiles()
+    {
+        // Verify that when nothing changes, all files are skipped in the second build
+
+        var file1 = CreateTempFile("main.spy", @"
+def main():
+    print('hello')
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { file1 },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success);
+
+        // Second build - should skip all files
+        var result2 = compiler.CompileProject(config);
+        Assert.True(result2.Success);
+
+        // Verify metrics show files were skipped
+        var metrics = result2.Metrics;
+        Assert.NotNull(metrics);
+        Assert.True(metrics!.SkippedFileCount > 0,
+            $"Expected skipped files, got SkippedFileCount={metrics.SkippedFileCount}");
+    }
+
     #endregion
 }

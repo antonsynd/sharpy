@@ -95,13 +95,19 @@ internal class ProjectCompiler
             _incrementalCache = new IncrementalCompilationCache(config, _logger);
             _incrementalCache.LoadAllCaches();
 
-            // Determine which files can potentially be skipped (unchanged with valid cache)
-            var staleFiles = _incrementalCache.GetFilesToRecompile(config.SourceFiles, null);
+            // Build a dependency graph from cached dependencies to determine transitive affected files.
+            // This is critical for correctness: if file A imports B and B changes, A must be recompiled
+            // even though A's hash hasn't changed. Without using the cached dependency graph,
+            // we would incorrectly skip A.
+            var cachedDepGraph = _incrementalCache.BuildCachedDependencyGraph(config.SourceFiles);
+
+            // Determine which files need to be recompiled, including transitive dependents
+            var staleFiles = _incrementalCache.GetFilesToRecompile(config.SourceFiles, cachedDepGraph);
 
             foreach (var sourceFile in config.SourceFiles)
             {
                 // A file can be skipped if:
-                // 1. It's not in the stale files list (unchanged content)
+                // 1. It's not in the stale files list (unchanged content AND not transitively affected)
                 // 2. It has a valid file cache with symbols and generated C#
                 if (!staleFiles.Contains(sourceFile) && _incrementalCache.HasValidFileCache(sourceFile))
                 {
