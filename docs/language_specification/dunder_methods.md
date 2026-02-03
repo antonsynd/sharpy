@@ -13,6 +13,8 @@ Also, unless stated otherwise:
   - *The chosen operator is based on the static declared type of the operands.*
   - *Lookup considers the availability of implicit conversions and/or casting up the class inheritance chain.*
 
+In general, Sharpy dunder methods are compiler aliases to C# methods/properties or compiler-intrinsic synthesis of inherited code patterns from Python (e.g. `__iter__()` and `__next__()`, or `__enter__()` and `__exit__()`). With the exception of cross-dunder synthesis (e.g. `__le__()` possibly invoking `__lt__()` and `__eq__()`, or `__init__()` invoking the super class's, `super().__init__()`, or `__init__()` calling another constructor overload in the same class as dispatch, etc.), dunders are only a compile-time construct and do not exist with their dunder name at runtime.
+
 ## Constructor Method
 
 The `__init__` dunder method maps directly to C#'s constructor methods. Like
@@ -196,52 +198,53 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | Dunder | C# Output | Notes |
 |--------|-----------|-------|
 | `__bool__(self) -> bool` | `public static bool operator true(T self)` and `public static bool operator false(T self)` | The latter invokes the former and returns the negated value |
-| `__str__(self) -> str` | `public override string ToString()` and `public static explicit operator string(T self)` | The latter invokes the former |
+| `__str__(self) -> str` | `public static explicit operator Str(T self)` | |
+| `__string__(self) -> string` | `public override string ToString()` and `public static explicit operator string(T self)` | The latter invokes the former |
 
 ## Special Methods
 
-| Dunder | Required Return Type | C# Mapping | Notes |
-|--------|----------------------|------------|-------|
-| `__contains__(self, item: T)` | `bool` | `Contains(T item)` method | Membership test (`in` operator) |
-| `__hash__(self)` | `int` | `GetHashCode()` override | Hash code |
-| `__format__(self, spec: str)` | `str` | `IFormattable.ToString(format, provider)` | Custom formatting |
-| `__getitem__(self, key: K)` | `V` | `this[K key] { get; }` indexer | Index access |
-| `__index__(self)` | `int` | Used for integer conversion in slice contexts | |
-| `__iter__(self)` | `Iterator[T]` | `IEnumerable<T>.GetEnumerator()` | Iteration |
-| `__len__(self)` | `int` | `Count` property | Length/count |
-| `__next__(self)` | `T` | `IEnumerator<T>.MoveNext()` + `Current` | Iterator protocol |
-| `__reversed__(self)` | `Iterator[T]` | `Reverse()` method or custom | Reverse iteration |
-| `__setitem__(self, key: K, value: V)` | `None` | `this[K key] { set; }` indexer | Index assignment |
+| Dunder | C# Output | Notes |
+|--------|------------|-------|
+| `__contains__(self, item: T) -> bool` | `bool Contains(T item)` method | Membership test (`in` operator) |
+| `__hash__(self) -> int` | `int GetHashCode()` override | Hash code |
+| `__getitem__(self, key: K) -> V` | `this[K key] { get; }` indexer | Index access |
+| `__iter__(self) -> Iterator[T]` | `IEnumerator<T> IEnumerable<T>.GetEnumerator()` | Iteration. Note that `Iterator<T>` is an interface that inherits from `IEnumerable<T>` |
+| `__len__(self) -> int` | `int Count` property | Length/count |
+| `__next__(self) -> T` | `void IEnumerator<T>.MoveNext()` + `T Current` | Iterator protocol |
+| `__reversed__(self) -> Iterator[T]` | Custom method `IEnumerator<T> GetReverseEnumerator()` | Reverse iteration |
+| `__setitem__(self, key: K, value: V) -> None` | `this[K key] { set; }` indexer | Index assignment |
 
 ## Unsupported Dunders
 
 | Dunder | Status | Rationale |
 |--------|--------|-----------|
-| `__abs__(self)` | Not supported | `Math.Abs()` doesn't dispatch to this |
+| `__abs__(self) -> T` | Not supported | `Math.Abs()` doesn't dispatch to this |
 | `__aenter__(self)` | Not supported yet | Complex feature |
 | `__aexit__(self, exc_type, exc_val, exc_tb)` | Not supported yet | Complex feature |
 | `__aiter__(self)` | Not supported yet | Complex feature |
 | `__anext__(self)` | Not supported yet | Complex feature |
 | `__await__(self)` | Not supported yet | Complex feature |
 | `__call__` | Not supported | C# has no callable object protocol; use explicit `Invoke()` method |
-| `__ceil__(self)` | Not supported | `Math.Ceiling()` doesn't dispatch to this |
-| `__complex__` | Not supported | Use explicit conversion methods |
-| `__copy__` | Not supported | Use `ICloneable.Clone()` or explicit copy methods |
-| `__deepcopy__` | Not supported | Use serialization or explicit deep copy methods |
-| `__del__` | Not supported | Use `IDisposable` instead. |
-| `__delitem__(self, key: K)` | Not supported yet | Use `Remove(K key)` method directly |
-| `__divmod__(self, other)` | Not supported | `Math.DivRem` doesn't dispatch to this |
-| `__enter__(self)` | Not supported yet | Use `IDisposable` instead |
-| `__exit__(self, exc_type, exc_val, exc_tb)` | Not supported yet | Use `IDisposable` instead |
-| `__float__(self)` | Not supported | `Math.Floor()` doesn't dispatch to this |
-| `__floor__(self)` | Not supported | Not yet designed |
+| `__ceil__(self) -> float` | Not supported | `Math.Ceiling()` doesn't dispatch to this |
+| `__complex__(self) -> complex` | Not supported | Use explicit conversion methods |
+| `__copy__(self) -> T` | Not supported | Use `ICloneable.Clone()` or explicit copy methods |
+| `__deepcopy__(self) -> T` | Not supported | Use serialization or explicit deep copy methods |
+| `__del__(self) -> None` | Not supported | Use `IDisposable` instead. |
+| `__delitem__(self, key: K) -> None` | Not supported yet | Use `Remove(K key)` method directly |
+| `__divmod__(self, other: int) -> int` | Not supported | `Math.DivRem` doesn't dispatch to this |
+| `__enter__(self) -> T` | Not supported yet | Use `IDisposable` instead |
+| `__exit__(self, exc_type: System.Type, exc_val: Exception?, exc_tb: object)` | Not supported yet | Use `IDisposable` instead |
+| `__float__(self) -> float` | Not supported | Not yet designed |
+| `__floor__(self) -> float` | Not supported | `Math.Floor()` doesn't dispatch to this |
 | `__floordiv__` | Not supported | Use `__div__` for `/` operator; `//` handled specially |
-| `__int__` | Not supported | Not yet designed |
-| `__matmul__` | Not supported | `@` operator not available in C# |
-| `__round__(self, ndigits: int?)` | Not supported | `Math.Round()` doesn't dispatch to this |
-| `__trunc__(self)` | Not supported | `Math.Truncate()` doesn't dispatch to this |
-| `__pow__` | Not supported | `**` is not an overloadable operator in C# |
-| `__repr__` | Not supported | No direct C# equivalent; use `__str__` for string representation |
+| `__format__(self, spec: str)` | Not supported | Not yet designed, but possibly synthesizes `IFormattable.ToString(format, provider)` |
+| `__index__(self) -> int` | Not supported | Not yet designed, but should be used for integer conversion in slice contexts | |
+| `__int__(self) -> int` | Not supported | Not yet designed |
+| `__matmul__(self, other: T) -> U` | Not supported | `@` operator not available in C# |
+| `__round__(self, ndigits: int?) -> T` | Not supported | `Math.Round()` doesn't dispatch to this |
+| `__trunc__(self) -> T` | Not supported | `Math.Truncate()` doesn't dispatch to this |
+| `__pow__(self, exponent: int) -> float` | Not supported | `Math.Pow()` doesn't dispatch to this |
+| `__repr__(self) -> str` | Not supported | No direct C# equivalent; use `__str__` and `__string__` for string representation |
 
 ## Dunder Method Invocation Rules
 

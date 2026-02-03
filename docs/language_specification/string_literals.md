@@ -1,5 +1,7 @@
 # String Literals
 
+As mentioned in [string_type.md](string_type.md), Sharpy has two string types, `str` and `string`. By default, all string literals (regular, multiline, raw strings, and f-strings) are of type `string`.
+
 ```python
 # Single-quoted strings
 name = 'Alice'
