@@ -281,6 +281,144 @@ public class DiagnosticBagTests
         Assert.Null(errors[0].Span);
     }
 
+    // --- Warning Suppression Tests ---
+
+    [Fact]
+    public void SuppressedWarning_IsNotAdded()
+    {
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+
+        bag.AddWarning("Unused variable", code: "SHP0451");
+
+        Assert.Equal(0, bag.WarningCount);
+        Assert.Empty(bag.GetAll());
+    }
+
+    [Fact]
+    public void SuppressedWarning_OtherWarningsStillAdded()
+    {
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+
+        bag.AddWarning("Unused variable", code: "SHP0451");
+        bag.AddWarning("Unused import", code: "SHP0452");
+
+        Assert.Equal(1, bag.WarningCount);
+        Assert.Equal("SHP0452", bag.GetWarnings()[0].Code);
+    }
+
+    [Fact]
+    public void SuppressedWarning_WithSpan_IsNotAdded()
+    {
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+
+        bag.AddWarning("Unused variable", new TextSpan(10, 5), code: "SHP0451");
+
+        Assert.Equal(0, bag.WarningCount);
+    }
+
+    [Fact]
+    public void SuppressedWarning_WithLocatable_IsNotAdded()
+    {
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+
+        bag.AddWarning("Unused variable", new TestLocatable(new TextSpan(10, 5)), code: "SHP0451");
+
+        Assert.Equal(0, bag.WarningCount);
+    }
+
+    [Fact]
+    public void SuppressedWarning_ErrorsNotAffected()
+    {
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+
+        bag.AddError("Some error", code: "SHP0200");
+
+        Assert.Equal(1, bag.ErrorCount);
+    }
+
+    // --- Warnings-as-Errors Tests ---
+
+    [Fact]
+    public void WarningsAsErrors_PromotesWarningToError()
+    {
+        var bag = new DiagnosticBag(warningsAsErrors: true);
+
+        bag.AddWarning("Unused variable", code: "SHP0451");
+
+        Assert.True(bag.HasErrors);
+        Assert.Equal(1, bag.ErrorCount);
+        Assert.Equal(0, bag.WarningCount);
+    }
+
+    [Fact]
+    public void WarningsAsErrors_WithSpan_PromotesWarningToError()
+    {
+        var bag = new DiagnosticBag(warningsAsErrors: true);
+
+        bag.AddWarning("Unused variable", new TextSpan(10, 5), code: "SHP0451");
+
+        Assert.True(bag.HasErrors);
+        Assert.Equal(1, bag.ErrorCount);
+    }
+
+    [Fact]
+    public void WarningsAsErrors_WithLocatable_PromotesWarningToError()
+    {
+        var bag = new DiagnosticBag(warningsAsErrors: true);
+
+        bag.AddWarning("Unused variable", new TestLocatable(new TextSpan(10, 5)), code: "SHP0451");
+
+        Assert.True(bag.HasErrors);
+        Assert.Equal(1, bag.ErrorCount);
+    }
+
+    [Fact]
+    public void WarningsAsErrors_ErrorsNotDoubled()
+    {
+        var bag = new DiagnosticBag(warningsAsErrors: true);
+
+        bag.AddError("Some error", code: "SHP0200");
+
+        Assert.Equal(1, bag.ErrorCount);
+    }
+
+    [Fact]
+    public void WarningsAsErrors_CombinedWithSuppression()
+    {
+        var bag = new DiagnosticBag(warningsAsErrors: true, suppressedWarnings: new HashSet<string> { "SHP0451" });
+
+        bag.AddWarning("Unused variable", code: "SHP0451");
+        bag.AddWarning("Unused import", code: "SHP0452");
+
+        // SHP0451 suppressed, SHP0452 promoted to error
+        Assert.Equal(1, bag.ErrorCount);
+        Assert.Equal(0, bag.WarningCount);
+        Assert.Equal("SHP0452", bag.GetErrors()[0].Code);
+    }
+
+    [Fact]
+    public void WarningWithNoCode_NotSuppressed()
+    {
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+
+        bag.AddWarning("Some warning without code");
+
+        Assert.Equal(1, bag.WarningCount);
+    }
+
+    [Fact]
+    public void SuppressedWarning_CaseInsensitive()
+    {
+        // When suppressed codes are in a case-insensitive set, lowercase codes should match
+        var suppressed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "shp0451" };
+        var bag = new DiagnosticBag(suppressedWarnings: suppressed);
+
+        bag.AddWarning("Unused variable", code: "SHP0451");
+
+        Assert.Equal(0, bag.WarningCount);
+        Assert.Empty(bag.GetAll());
+    }
+
     private class TestLocatable : ILocatable
     {
         public TestLocatable(TextSpan? span) => Span = span;

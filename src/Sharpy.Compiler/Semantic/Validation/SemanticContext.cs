@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - Parallel: Context is designed to be shared across validators (caches are thread-safe)
 /// - Incremental: Context can track which parts have changed since last validation
 /// </summary>
-public class SemanticContext
+internal class SemanticContext
 {
     // Core semantic data
     public SymbolTable SymbolTable { get; }

@@ -17,7 +17,7 @@ namespace Sharpy.Compiler.Semantic;
 /// - Results are cached for performance (operator results are highly repetitive)
 /// - Thread-safe caching could be added in future if needed
 /// </remarks>
-public class TypeInferenceService
+internal class TypeInferenceService
 {
     private readonly SymbolTable _symbolTable;
     private readonly ClrMemberCache _clrMemberCache;
@@ -310,19 +310,19 @@ public class TypeInferenceService
         if (udt.Symbol == null)
             return null;
 
-        bool hasEq = udt.Symbol.OperatorMethods.ContainsKey("__eq__");
-        bool hasNe = udt.Symbol.OperatorMethods.ContainsKey("__ne__");
+        bool hasEq = udt.Symbol.OperatorMethods.ContainsKey(DunderNames.Eq);
+        bool hasNe = udt.Symbol.OperatorMethods.ContainsKey(DunderNames.Ne);
 
         if (op == BinaryOperator.Equal && hasNe && !hasEq)
         {
-            var neMethods = udt.Symbol.OperatorMethods["__ne__"];
+            var neMethods = udt.Symbol.OperatorMethods[DunderNames.Ne];
             var bestOverload = FindBestOverload(neMethods, right);
             if (bestOverload != null)
                 return SemanticType.Bool;
         }
         else if (op == BinaryOperator.NotEqual && hasEq && !hasNe)
         {
-            var eqMethods = udt.Symbol.OperatorMethods["__eq__"];
+            var eqMethods = udt.Symbol.OperatorMethods[DunderNames.Eq];
             var bestOverload = FindBestOverload(eqMethods, right);
             if (bestOverload != null)
                 return SemanticType.Bool;
@@ -549,18 +549,18 @@ public class TypeInferenceService
     {
         return op switch
         {
-            AssignmentOperator.PlusAssign => "__iadd__",
-            AssignmentOperator.MinusAssign => "__isub__",
-            AssignmentOperator.StarAssign => "__imul__",
-            AssignmentOperator.SlashAssign => "__itruediv__",
-            AssignmentOperator.DoubleSlashAssign => "__ifloordiv__",
-            AssignmentOperator.PercentAssign => "__imod__",
-            AssignmentOperator.PowerAssign => "__ipow__",
-            AssignmentOperator.AndAssign => "__iand__",
-            AssignmentOperator.OrAssign => "__ior__",
-            AssignmentOperator.XorAssign => "__ixor__",
-            AssignmentOperator.LeftShiftAssign => "__ilshift__",
-            AssignmentOperator.RightShiftAssign => "__irshift__",
+            AssignmentOperator.PlusAssign => DunderNames.IAdd,
+            AssignmentOperator.MinusAssign => DunderNames.ISub,
+            AssignmentOperator.StarAssign => DunderNames.IMul,
+            AssignmentOperator.SlashAssign => DunderNames.ITrueDiv,
+            AssignmentOperator.DoubleSlashAssign => DunderNames.IFloorDiv,
+            AssignmentOperator.PercentAssign => DunderNames.IMod,
+            AssignmentOperator.PowerAssign => DunderNames.IPow,
+            AssignmentOperator.AndAssign => DunderNames.IAnd,
+            AssignmentOperator.OrAssign => DunderNames.IOr,
+            AssignmentOperator.XorAssign => DunderNames.IXor,
+            AssignmentOperator.LeftShiftAssign => DunderNames.ILShift,
+            AssignmentOperator.RightShiftAssign => DunderNames.IRShift,
             _ => null
         };
     }
@@ -771,24 +771,24 @@ public class TypeInferenceService
     {
         return op switch
         {
-            BinaryOperator.Add => "__add__",
-            BinaryOperator.Subtract => "__sub__",
-            BinaryOperator.Multiply => "__mul__",
-            BinaryOperator.Divide => "__truediv__",
-            BinaryOperator.FloorDivide => "__floordiv__",
-            BinaryOperator.Modulo => "__mod__",
-            BinaryOperator.Power => "__pow__",
-            BinaryOperator.BitwiseAnd => "__and__",
-            BinaryOperator.BitwiseOr => "__or__",
-            BinaryOperator.BitwiseXor => "__xor__",
-            BinaryOperator.LeftShift => "__lshift__",
-            BinaryOperator.RightShift => "__rshift__",
-            BinaryOperator.Equal => "__eq__",
-            BinaryOperator.NotEqual => "__ne__",
-            BinaryOperator.LessThan => "__lt__",
-            BinaryOperator.LessThanOrEqual => "__le__",
-            BinaryOperator.GreaterThan => "__gt__",
-            BinaryOperator.GreaterThanOrEqual => "__ge__",
+            BinaryOperator.Add => DunderNames.Add,
+            BinaryOperator.Subtract => DunderNames.Sub,
+            BinaryOperator.Multiply => DunderNames.Mul,
+            BinaryOperator.Divide => DunderNames.TrueDiv,
+            BinaryOperator.FloorDivide => DunderNames.FloorDiv,
+            BinaryOperator.Modulo => DunderNames.Mod,
+            BinaryOperator.Power => DunderNames.Pow,
+            BinaryOperator.BitwiseAnd => DunderNames.And,
+            BinaryOperator.BitwiseOr => DunderNames.Or,
+            BinaryOperator.BitwiseXor => DunderNames.Xor,
+            BinaryOperator.LeftShift => DunderNames.LShift,
+            BinaryOperator.RightShift => DunderNames.RShift,
+            BinaryOperator.Equal => DunderNames.Eq,
+            BinaryOperator.NotEqual => DunderNames.Ne,
+            BinaryOperator.LessThan => DunderNames.Lt,
+            BinaryOperator.LessThanOrEqual => DunderNames.Le,
+            BinaryOperator.GreaterThan => DunderNames.Gt,
+            BinaryOperator.GreaterThanOrEqual => DunderNames.Ge,
             _ => null
         };
     }
@@ -797,9 +797,9 @@ public class TypeInferenceService
     {
         return op switch
         {
-            UnaryOperator.Plus => "__pos__",
-            UnaryOperator.Minus => "__neg__",
-            UnaryOperator.BitwiseNot => "__invert__",
+            UnaryOperator.Plus => DunderNames.Pos,
+            UnaryOperator.Minus => DunderNames.Neg,
+            UnaryOperator.BitwiseNot => DunderNames.Invert,
             _ => null
         };
     }

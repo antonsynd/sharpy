@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Type declarations (functions, classes, structs, interfaces, enums)
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     private MethodDeclarationSyntax GenerateFunctionDeclaration(FunctionDef func)
     {

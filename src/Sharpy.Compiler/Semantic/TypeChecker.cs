@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// Type checks expressions and statements
 /// </summary>
-public partial class TypeChecker
+internal partial class TypeChecker
 {
     private readonly SymbolTable _symbolTable;
     private readonly SemanticInfo _semanticInfo;
@@ -53,6 +53,7 @@ public partial class TypeChecker
     // Configuration
     public bool ContinueAfterError { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
+    private bool _maxErrorsReported = false;
 
     // Whether the current module is an entry point file
     private bool _isEntryPoint = false;
@@ -202,44 +203,25 @@ public partial class TypeChecker
         context.Diagnostics.Merge(_diagnostics);
         context.Diagnostics.Merge(_typeResolver.Diagnostics);
 
-        var diagnosticCountBeforePipeline = context.Diagnostics.GetAll().Count;
-
         _validationPipeline.Validate(module, context);
 
         // Merge TypeResolver diagnostics
         _diagnostics.Merge(_typeResolver.Diagnostics);
 
-        // Merge only pipeline-added diagnostics (those added after the snapshot).
-        // Dedup against existing errors to avoid duplicates where both TypeChecker
-        // (via type inference) and OperatorValidator report the same issue.
-        var existingErrors = _diagnostics.GetErrors();
-        var exactErrors = new HashSet<(int?, int?, string)>(
-            existingErrors.Select(e => (e.Line, e.Column, e.Message)));
-
-        // Track positions of operator errors by diagnostic code (not message content)
-        // to match near-duplicates where TypeChecker (SHP0222) and OperatorValidator
-        // (SHP0402) report the same operator issue with slightly different wording.
-        var operatorErrorPositions = new HashSet<(int?, int?)>(
-            existingErrors
-                .Where(e => e.Code is DiagnosticCodes.Semantic.InvalidBinaryOperation
-                                   or DiagnosticCodes.Validation.UnsupportedOperator)
-                .Select(e => (e.Line, e.Column)));
-
-        var allDiagnostics = context.Diagnostics.GetAll();
-        for (int i = diagnosticCountBeforePipeline; i < allDiagnostics.Count; i++)
+        // Merge pipeline-added diagnostics. Validators are responsible for checking
+        // whether an error already exists at a given position before adding new ones
+        // (see OperatorValidator.HasErrorAtPosition). This prevents duplicate reporting
+        // where TypeChecker (SHP0222) and OperatorValidator (SHP0402) both flag the
+        // same operator issue.
+        var diagnosticCountBeforeMerge = _diagnostics.GetAll().Count;
+        var existingExact = new HashSet<(int?, int?, string)>(
+            _diagnostics.GetAll().Select(e => (e.Line, e.Column, e.Message)));
+        foreach (var diag in context.Diagnostics.GetAll())
         {
-            var diag = allDiagnostics[i];
-            if (diag.IsError)
-            {
-                // Skip exact duplicates (same position and message)
-                if (exactErrors.Contains((diag.Line, diag.Column, diag.Message)))
-                    continue;
-                // Skip near-duplicate operator errors at the same position
-                if (diag.Code is DiagnosticCodes.Semantic.InvalidBinaryOperation
-                              or DiagnosticCodes.Validation.UnsupportedOperator
-                    && operatorErrorPositions.Contains((diag.Line, diag.Column)))
-                    continue;
-            }
+            // Skip diagnostics that were merged into the context at the start
+            // (they are already in _diagnostics) — only add truly new ones.
+            if (existingExact.Contains((diag.Line, diag.Column, diag.Message)))
+                continue;
             _diagnostics.Add(diag);
         }
 
@@ -328,8 +310,18 @@ public partial class TypeChecker
                 // Import validation handled elsewhere
                 break;
 
+            case TypeAlias:
+                // Type aliases are compile-time only, no type checking needed
+                break;
+
             default:
                 _logger.LogWarning($"Unhandled statement type: {statement.GetType().Name}", 0, 0);
+                AddError(
+                    $"Internal: unrecognized statement type '{statement.GetType().Name}'. This is a compiler bug — please report it.",
+                    statement.LineStart,
+                    statement.ColumnStart,
+                    DiagnosticCodes.Semantic.UnrecognizedStatementType,
+                    statement.Span);
                 break;
         }
     }

@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// TypeChecker partial class: Statement checking (assignments, control flow, try/catch)
 /// </summary>
-public partial class TypeChecker
+internal partial class TypeChecker
 {
     private void CheckAssignment(Assignment assignment)
     {

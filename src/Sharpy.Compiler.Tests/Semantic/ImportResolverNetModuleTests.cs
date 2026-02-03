@@ -36,11 +36,11 @@ public class ImportResolverNetModuleTests
 
         Assert.Single(result);
         Assert.NotNull(result[0]);
-        Assert.True(result[0].IsNetModule);
-        Assert.NotEmpty(result[0].ExportedSymbols);
-        Assert.Contains("print", result[0].ExportedSymbols.Keys);
-        Assert.Contains("range", result[0].ExportedSymbols.Keys);
-        Assert.Contains("len", result[0].ExportedSymbols.Keys);
+        Assert.True(result[0]!.IsNetModule);
+        Assert.NotEmpty(result[0]!.ExportedSymbols);
+        Assert.Contains("print", result[0]!.ExportedSymbols.Keys);
+        Assert.Contains("range", result[0]!.ExportedSymbols.Keys);
+        Assert.Contains("len", result[0]!.ExportedSymbols.Keys);
     }
 
     [Fact]
@@ -74,17 +74,17 @@ public class ImportResolverNetModuleTests
 
         Assert.Single(result);
         Assert.NotNull(result[0]);
-        Assert.True(result[0].IsNetModule);
-        Assert.NotEmpty(result[0].ExportedSymbols);
-        Assert.Contains("square", result[0].ExportedSymbols.Keys);
-        Assert.Contains("cube", result[0].ExportedSymbols.Keys);
-        Assert.Contains("average", result[0].ExportedSymbols.Keys);
-        Assert.Contains("is_prime", result[0].ExportedSymbols.Keys);
-        Assert.Contains("factorial", result[0].ExportedSymbols.Keys);
+        Assert.True(result[0]!.IsNetModule);
+        Assert.NotEmpty(result[0]!.ExportedSymbols);
+        Assert.Contains("square", result[0]!.ExportedSymbols.Keys);
+        Assert.Contains("cube", result[0]!.ExportedSymbols.Keys);
+        Assert.Contains("average", result[0]!.ExportedSymbols.Keys);
+        Assert.Contains("is_prime", result[0]!.ExportedSymbols.Keys);
+        Assert.Contains("factorial", result[0]!.ExportedSymbols.Keys);
     }
 
     [Fact]
-    public void ImportResolver_WithNonExistentNetModule_ReturnsEmpty()
+    public void ImportResolver_WithNonExistentNetModule_ReturnsNullEntry()
     {
         var logger = NullLogger.Instance;
         var registry = new ModuleRegistry(logger);
@@ -100,7 +100,8 @@ public class ImportResolverNetModuleTests
 
         var result = resolver.ResolveImport(importStmt);
 
-        Assert.Empty(result);
+        Assert.Single(result);
+        Assert.Null(result[0]);
         Assert.True(resolver.Diagnostics.HasErrors);
         Assert.Contains(resolver.Diagnostics.GetErrors(), e => e.Message.Contains("nonexistent"));
     }
@@ -239,7 +240,8 @@ public class ImportResolverNetModuleTests
         var result = resolver.ResolveImport(importStmt);
 
         // Without ModuleRegistry, it should try .spy files and fail
-        Assert.Empty(result);
+        Assert.Single(result);
+        Assert.Null(result[0]);
         Assert.True(resolver.Diagnostics.HasErrors);
     }
 }

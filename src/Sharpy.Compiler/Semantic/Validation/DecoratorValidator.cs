@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// This validator runs early (Order 60) to catch decorator errors before
 /// other validators attempt to process the decorated definitions.
 /// </summary>
-public class DecoratorValidator : SemanticValidatorBase
+internal class DecoratorValidator : SemanticValidatorBase
 {
     public override string Name => "DecoratorValidator";
     public override int Order => 60; // After ModuleLevelValidator (50), before SignatureValidator (150)

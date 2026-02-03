@@ -1,0 +1,6 @@
+# Test: list comprehension with filter condition
+def main():
+    result: list[int] = [x for x in range(10) if x > 5]
+    for item in result:
+        print(item)
+    print(len(result))

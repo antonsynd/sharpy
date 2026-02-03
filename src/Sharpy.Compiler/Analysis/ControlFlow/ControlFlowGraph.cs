@@ -10,7 +10,7 @@ namespace Sharpy.Compiler.Analysis.ControlFlow;
 /// Once constructed, a ControlFlowGraph is effectively immutable.
 /// The blocks list and block connections don't change after construction.
 /// </remarks>
-public sealed class ControlFlowGraph
+internal sealed class ControlFlowGraph
 {
     private int _nextBlockId;
 

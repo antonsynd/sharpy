@@ -15,12 +15,19 @@ namespace Sharpy.Compiler.Project;
 /// Handles multi-file project compilation with proper dependency management
 /// and two-phase type declaration collection for cross-file visibility
 /// </summary>
-public class ProjectCompiler
+internal class ProjectCompiler
 {
     private readonly ICompilerLogger _logger;
     private readonly ModuleRegistry? _moduleRegistry;
+    private readonly bool _warningsAsErrors;
+    private readonly HashSet<string> _suppressedWarnings;
+    private readonly int _maxErrors;
+    private readonly bool _incremental;
 
-    // Shared symbol table and semantic info across all files
+    // Shared symbol table and semantic info across all files.
+    // SemanticInfo is shared (not per-file) because files are processed sequentially
+    // in dependency order. For parallel per-file analysis (e.g., LSP), SemanticInfo
+    // should be created per-file while SymbolTable and SemanticBinding remain shared.
     private SymbolTable _symbolTable = null!;
     private SemanticInfo _semanticInfo = null!;
     private ImportResolver _importResolver = null!;
@@ -41,10 +48,19 @@ public class ProjectCompiler
     // Unified project model containing all CompilationUnits
     private ProjectModel? _projectModel;
 
-    public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null)
+    // Incremental compilation cache
+    private IncrementalCompilationCache? _incrementalCache;
+
+    public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null,
+        bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null, int maxErrors = 0,
+        bool incremental = false)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = moduleRegistry;
+        _warningsAsErrors = warningsAsErrors;
+        _suppressedWarnings = suppressedWarnings ?? new HashSet<string>();
+        _maxErrors = maxErrors;
+        _incremental = incremental;
     }
 
     /// <summary>
@@ -60,9 +76,22 @@ public class ProjectCompiler
     {
         _logger.LogInfo($"Starting project compilation: {config.RootNamespace}");
 
-        _diagnostics = new DiagnosticBag();
+        _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings);
         _projectMetrics = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
         _projectModel = new ProjectModel(config);
+
+        // Initialize incremental compilation cache if enabled
+        if (_incremental)
+        {
+            _incrementalCache = new IncrementalCompilationCache(config, _logger);
+            var staleFiles = _incrementalCache.GetFilesToRecompile(config.SourceFiles, null);
+            _logger.LogInfo($"Incremental mode: {_incrementalCache.StaleFileCount} file(s) changed, {_incrementalCache.UpToDateFileCount} up-to-date");
+
+            // Note: Full incremental compilation (skipping unchanged files) requires caching
+            // the symbol table entries from previous builds. For now, we recompile everything
+            // but track metrics and save hashes for future use. See item 5.1d in the hardening
+            // assessment for the full implementation plan.
+        }
 
         try
         {
@@ -81,6 +110,9 @@ public class ProjectCompiler
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 4: Resolve imports and build dependency information
+            // Returns false only for circular imports (which break the dependency graph).
+            // Non-circular import errors are merged into diagnostics but compilation
+            // continues to type checking so users see the full picture.
             if (!ResolveImports(config))
             {
                 return CreateFailureResult();
@@ -176,6 +208,10 @@ public class ProjectCompiler
                 fileMetrics.StartPhase("Lexical Analysis");
                 var sourceText = new Text.SourceText(source, sourceFile);
                 var lexer = new Lexer.Lexer(sourceText, _logger);
+                if (_maxErrors > 0)
+                {
+                    lexer.MaxErrors = _maxErrors;
+                }
                 var tokens = lexer.TokenizeAll();
                 fileMetrics.EndPhase();
 
@@ -194,7 +230,8 @@ public class ProjectCompiler
                 compilationUnit.Phase = CompilationPhase.Lexed;
 
                 fileMetrics.StartPhase("Syntax Analysis");
-                var parser = new Parser.Parser(tokens, _logger);
+                var parserMaxErrors = _maxErrors > 0 ? _maxErrors : 25;
+                var parser = new Parser.Parser(tokens, _logger, parserMaxErrors);
                 var module = parser.ParseModule();
                 fileMetrics.EndPhase();
 
@@ -259,7 +296,7 @@ public class ProjectCompiler
     /// </summary>
     private void InitializeSharedState()
     {
-        var builtinRegistry = new BuiltinRegistry();
+        var builtinRegistry = new BuiltinRegistry(_logger);
         _symbolTable = new SymbolTable(builtinRegistry);
         _semanticInfo = new SemanticInfo();
         _importResolver = new ImportResolver(_logger, _moduleRegistry);
@@ -305,7 +342,7 @@ public class ProjectCompiler
 
         // Create a SINGLE NameResolver for ALL files to preserve type definition lists
         // across files for correct inheritance resolution
-        _sharedNameResolver = new NameResolver(_symbolTable, _logger, _projectModel.SemanticBinding);
+        _sharedNameResolver = new NameResolver(_symbolTable, _logger, _projectModel!.SemanticBinding);
 
         // Collect all type declarations (shells only)
         foreach (var (_, unit) in _projectModel!.Units)
@@ -394,6 +431,10 @@ public class ProjectCompiler
                     {
                         var importAlias = import.Names[i];
                         var moduleInfo = modules[i];
+
+                        // Skip failed imports (null entries maintain positional alignment)
+                        if (moduleInfo == null)
+                            continue;
 
                         // Handle aliased imports (import x as y)
                         if (importAlias.AsName != null)
@@ -511,17 +552,28 @@ public class ProjectCompiler
             return false;
         }
 
-        // Add import resolver errors only if no circular dependencies were detected
-        if (_importResolver.Diagnostics.HasErrors)
+        // Merge all import diagnostics (errors + warnings) so they appear in the
+        // final result. Continue to type checking even if imports failed, so users
+        // see the full picture (import errors + type errors) — matching the
+        // single-file Compiler.Compile() behavior.
+        foreach (var diag in _importResolver.Diagnostics.GetAll())
         {
-            foreach (var error in _importResolver.Diagnostics.GetErrors())
+            if (diag.IsError)
             {
-                _projectModel!.GlobalDiagnostics.AddError(error.Message, code: error.Code);
-                _diagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code, phase: CompilerPhase.ImportResolution);
+                _projectModel!.GlobalDiagnostics.AddError(diag.Message, code: diag.Code);
+                _diagnostics.AddError(diag.Message, diag.Line, diag.Column, code: diag.Code, phase: CompilerPhase.ImportResolution);
+            }
+            else if (diag.IsWarning)
+            {
+                _projectModel!.GlobalDiagnostics.AddWarning(diag.Message, code: diag.Code);
+                _diagnostics.AddWarning(diag.Message, diag.Line, diag.Column, code: diag.Code, phase: CompilerPhase.ImportResolution);
             }
         }
 
-        return !_diagnostics.HasErrors;
+        // Continue to type checking even with non-circular import errors.
+        // Missing imports produce Unknown types, which prevents cascading errors
+        // in the type checker (UnknownType.IsAssignableTo returns true).
+        return true;
     }
 
     /// <summary>
@@ -574,10 +626,12 @@ public class ProjectCompiler
             // Type checking
             fileMetrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
+            var semanticMaxErrors = _maxErrors > 0 ? _maxErrors : 100;
             var typeChecker = new TypeChecker(_symbolTable, _semanticInfo, typeResolver, _logger, pipeline)
             {
                 CurrentFilePath = unit.FilePath,
-                SemanticBinding = _projectModel.SemanticBinding
+                SemanticBinding = _projectModel.SemanticBinding,
+                MaxErrors = semanticMaxErrors
             };
 
             // Determine if this file is the entry point for module-level validation
@@ -625,7 +679,7 @@ public class ProjectCompiler
     {
         _logger.LogInfo("Phase 5: Code Generation");
         var generatedCSharp = new Dictionary<string, string>();
-        var builtinRegistry = new BuiltinRegistry();
+        var builtinRegistry = new BuiltinRegistry(_logger);
 
         foreach (var (_, unit) in _projectModel!.Units)
         {
@@ -645,7 +699,7 @@ public class ProjectCompiler
             // Determine if this file is the entry point
             var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
 
-            var isPackageInit = Path.GetFileNameWithoutExtension(sourceFile) == "__init__";
+            var isPackageInit = Path.GetFileNameWithoutExtension(sourceFile) == DunderNames.Init;
 
             var codeGenContext = new CodeGenContext(_symbolTable, builtinRegistry)
             {
@@ -728,6 +782,17 @@ public class ProjectCompiler
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel
             };
+        }
+
+        // Save incremental compilation cache on success
+        if (_incrementalCache != null)
+        {
+            foreach (var sourceFile in config.SourceFiles)
+            {
+                _incrementalCache.UpdateHash(sourceFile);
+            }
+            _incrementalCache.SaveCache();
+            _logger.LogInfo("Incremental cache saved");
         }
 
         return new ProjectCompilationResult

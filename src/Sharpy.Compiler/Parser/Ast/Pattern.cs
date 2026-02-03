@@ -5,6 +5,11 @@ namespace Sharpy.Compiler.Parser.Ast;
 // =============================================================================
 // PATTERN AST NODES (v0.2.x)
 // Pattern matching for match expressions/statements and other future uses.
+//
+// WARNING: These types are defined for forward compatibility but have NO parser,
+// semantic analysis, or code generation support. Do not reference them in
+// production code paths. Unrecognized AST nodes will trigger diagnostics
+// in TypeChecker and RoslynEmitter (see items 1.1 and 1.2).
 // =============================================================================
 
 /// <summary>

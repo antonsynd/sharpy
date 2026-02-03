@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Discovery;
+using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -7,7 +8,7 @@ namespace Sharpy.Compiler.Semantic;
 /// Registry of builtin types and functions from Sharpy.Core
 /// Now uses cached reflection-based discovery for functions.
 /// </summary>
-public class BuiltinRegistry
+internal class BuiltinRegistry
 {
     private readonly Dictionary<string, TypeSymbol> _types = new();
     private readonly Dictionary<string, List<FunctionSymbol>> _functions = new();
@@ -31,9 +32,9 @@ public class BuiltinRegistry
         "Some", "Ok", "Err"
     };
 
-    public BuiltinRegistry()
+    public BuiltinRegistry(ICompilerLogger? logger = null)
     {
-        _discovery = new CachedModuleDiscovery();
+        _discovery = new CachedModuleDiscovery(null, logger);
         LoadBuiltins();
     }
 

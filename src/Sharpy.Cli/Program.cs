@@ -4,8 +4,6 @@ using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Discovery.Caching;
-using Sharpy.Compiler.CodeGen;
-using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Text;
 
@@ -15,6 +13,7 @@ class Program
 {
     // Rich diagnostic renderer for CLI output
     private static readonly DiagnosticRenderer _renderer = new(DiagnosticRenderer.IsColorSupported());
+    private static readonly bool _useColor = DiagnosticRenderer.IsColorSupported();
 
     static int Main(string[] args)
     {
@@ -25,11 +24,17 @@ class Program
         var logFileOption = new Option<FileInfo?>("--log-file") { Description = "Write compiler logs to the specified file" };
         var metricsFormatOption = new Option<string?>("--metrics-format") { Description = "Output compilation metrics (text or json)" };
         var metricsOutputOption = new Option<FileInfo?>("--metrics-output") { Description = "Write metrics to the specified file" };
+        var warnAsErrorOption = new Option<bool>("--warn-as-error") { Description = "Treat all warnings as errors" };
+        var nowarnOption = new Option<string?>("--nowarn") { Description = "Suppress warnings by code (comma-separated, e.g., SHP0451,SHP0452)" };
+        var maxErrorsOption = new Option<int?>("--max-errors") { Description = "Maximum number of errors before stopping (default: 25 for parser, 100 for semantic)" };
 
         rootCommand.Options.Add(logLevelOption);
         rootCommand.Options.Add(logFileOption);
         rootCommand.Options.Add(metricsFormatOption);
         rootCommand.Options.Add(metricsOutputOption);
+        rootCommand.Options.Add(warnAsErrorOption);
+        rootCommand.Options.Add(nowarnOption);
+        rootCommand.Options.Add(maxErrorsOption);
 
         // === Build Command ===
         var buildCommand = new Command("build", "Compile a Sharpy source file to a binary or library");
@@ -65,9 +70,12 @@ class Program
             var logFile = parseResult.GetValue(logFileOption);
             var metricsFormat = parseResult.GetValue(metricsFormatOption);
             var metricsOutput = parseResult.GetValue(metricsOutputOption);
+            var warnAsError = parseResult.GetValue(warnAsErrorOption);
+            var nowarn = parseResult.GetValue(nowarnOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
 
             var logger = CreateLogger(logLevel, logFile);
-            HandleBuildCommand(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput);
+            HandleBuildCommand(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
         });
 
         // === Run Command ===
@@ -103,9 +111,12 @@ class Program
             var logFile = parseResult.GetValue(logFileOption);
             var metricsFormat = parseResult.GetValue(metricsFormatOption);
             var metricsOutput = parseResult.GetValue(metricsOutputOption);
+            var warnAsError = parseResult.GetValue(warnAsErrorOption);
+            var nowarn = parseResult.GetValue(nowarnOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
 
             var logger = CreateLogger(logLevel, logFile);
-            HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput);
+            HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
         });
 
         // === Project Command ===
@@ -116,11 +127,13 @@ class Program
         projConfigOpt.Aliases.Add("-c");
         var projCleanOpt = new Option<bool>("--clean") { Description = "Delete bin/ and obj/ directories before building" };
         var projEmitCsOpt = new Option<DirectoryInfo?>("--emit-cs-to") { Description = "Save generated C# code to the specified directory" };
+        var projIncrementalOpt = new Option<bool>("--incremental") { Description = "Enable incremental compilation (only recompile changed files)" };
 
         projectCommand.Arguments.Add(projFileArg);
         projectCommand.Options.Add(projConfigOpt);
         projectCommand.Options.Add(projCleanOpt);
         projectCommand.Options.Add(projEmitCsOpt);
+        projectCommand.Options.Add(projIncrementalOpt);
 
         projectCommand.SetAction((parseResult) =>
         {
@@ -128,16 +141,22 @@ class Program
             var configuration = parseResult.GetValue(projConfigOpt) ?? "Debug";
             var clean = parseResult.GetValue(projCleanOpt);
             var emitCsTo = parseResult.GetValue(projEmitCsOpt);
+            var incremental = parseResult.GetValue(projIncrementalOpt);
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
             var metricsFormat = parseResult.GetValue(metricsFormatOption);
             var metricsOutput = parseResult.GetValue(metricsOutputOption);
+            var warnAsError = parseResult.GetValue(warnAsErrorOption);
+            var nowarn = parseResult.GetValue(nowarnOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
 
             var logger = CreateLogger(logLevel, logFile);
-            HandleProjectCommand(project, configuration, clean, emitCsTo, logger, logLevel, metricsFormat, metricsOutput);
+            HandleProjectCommand(project, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
         });
 
         // === Emit Command (with subcommands) ===
+        // Note: emit tokens/ast/parse do NOT support --warn-as-error/--nowarn (no semantic analysis),
+        // but DO support --max-errors (lexer/parser have MaxErrors). emit csharp supports all three.
         var emitCommand = new Command("emit", "Emit compiler intermediate representations");
 
         var emitTokensCommand = new Command("tokens", "Emit tokenized output");
@@ -148,8 +167,9 @@ class Program
             var input = parseResult.GetValue(emitTokensInputArg)!;
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitTokens(input, logger);
+            EmitTokens(input, logger, maxErrors);
         });
 
         var emitAstCommand = new Command("ast", "Emit abstract syntax tree");
@@ -160,24 +180,36 @@ class Program
             var input = parseResult.GetValue(emitAstInputArg)!;
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitAst(input, logger);
+            EmitAst(input, logger, maxErrors);
         });
 
         var emitCsharpCommand = new Command("csharp", "Emit generated C# code");
         var emitCsharpInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
         var emitCsharpOutputOpt = new Option<FileInfo?>("--output") { Description = "Output file path" };
         emitCsharpOutputOpt.Aliases.Add("-o");
+        var emitCsharpRefOpt = new Option<string[]>("--reference") { Description = "Add .NET assembly references", AllowMultipleArgumentsPerToken = true };
+        emitCsharpRefOpt.Aliases.Add("-r");
+        var emitCsharpModPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
+        emitCsharpModPathOpt.Aliases.Add("-m");
         emitCsharpCommand.Arguments.Add(emitCsharpInputArg);
         emitCsharpCommand.Options.Add(emitCsharpOutputOpt);
+        emitCsharpCommand.Options.Add(emitCsharpRefOpt);
+        emitCsharpCommand.Options.Add(emitCsharpModPathOpt);
         emitCsharpCommand.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(emitCsharpInputArg)!;
             var output = parseResult.GetValue(emitCsharpOutputOpt);
+            var reference = parseResult.GetValue(emitCsharpRefOpt) ?? Array.Empty<string>();
+            var modulePath = parseResult.GetValue(emitCsharpModPathOpt) ?? Array.Empty<string>();
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var warnAsError = parseResult.GetValue(warnAsErrorOption);
+            var nowarn = parseResult.GetValue(nowarnOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitCSharp(input, output, logger);
+            EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors);
         });
 
         var emitParseCommand = new Command("parse", "Validate lexing and parsing only");
@@ -188,8 +220,9 @@ class Program
             var input = parseResult.GetValue(emitParseInputArg)!;
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var maxErrors = parseResult.GetValue(maxErrorsOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitParse(input, logger);
+            EmitParse(input, logger, maxErrors);
         });
 
         emitCommand.Subcommands.Add(emitTokensCommand);
@@ -342,10 +375,13 @@ class Program
         string[] modulePaths,
         ICompilerLogger logger,
         string? metricsFormat,
-        FileInfo? metricsOutput)
+        FileInfo? metricsOutput,
+        bool warnAsError = false,
+        string? nowarn = null,
+        int? maxErrors = null)
     {
         ValidateInputFile(inputFile);
-        CompileToBinary(inputFile, outputType, output, references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput);
+        CompileToBinary(inputFile, outputType, output, references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
     }
 
     static void HandleRunCommand(
@@ -357,7 +393,10 @@ class Program
         string[] args,
         ICompilerLogger logger,
         string? metricsFormat,
-        FileInfo? metricsOutput)
+        FileInfo? metricsOutput,
+        bool warnAsError = false,
+        string? nowarn = null,
+        int? maxErrors = null)
     {
         ValidateInputFile(inputFile);
 
@@ -378,7 +417,7 @@ class Program
         try
         {
             // Compile to executable
-            CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput);
+            CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
 
             // Copy Sharpy.Core.dll to the output directory so the executable can find it
             var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
@@ -466,11 +505,15 @@ class Program
         FileInfo? projectFile,
         string configuration,
         bool clean,
+        bool incremental,
         DirectoryInfo? emitCsTo,
         ICompilerLogger logger,
         CompilerLogLevel logLevel,
         string? metricsFormat,
-        FileInfo? metricsOutput)
+        FileInfo? metricsOutput,
+        bool warnAsError = false,
+        string? nowarn = null,
+        int? maxErrors = null)
     {
         FileInfo? resolvedProjectFile = projectFile;
 
@@ -492,7 +535,7 @@ class Program
             Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
         }
 
-        CompileProject(resolvedProjectFile, configuration, clean, emitCsTo, logger, logLevel, metricsFormat, metricsOutput);
+        CompileProject(resolvedProjectFile, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
     }
 
     static void ValidateInputFile(FileInfo inputFile)
@@ -509,13 +552,17 @@ class Program
         }
     }
 
-    static void EmitTokens(FileInfo inputFile, ICompilerLogger logger)
+    static void EmitTokens(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
     {
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
             var lexer = new Lexer(sourceText, logger);
+            if (maxErrors is > 0)
+            {
+                lexer.MaxErrors = maxErrors.Value;
+            }
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
@@ -544,13 +591,17 @@ class Program
         }
     }
 
-    static void EmitAst(FileInfo inputFile, ICompilerLogger logger)
+    static void EmitAst(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
     {
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
             var lexer = new Lexer(sourceText, logger);
+            if (maxErrors is > 0)
+            {
+                lexer.MaxErrors = maxErrors.Value;
+            }
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
@@ -559,7 +610,8 @@ class Program
                 Environment.Exit(1);
             }
 
-            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
+            var parserMaxErrors = maxErrors is > 0 ? maxErrors.Value : 25;
+            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger, parserMaxErrors);
             var module = parser.ParseModule();
 
             if (parser.Diagnostics.HasErrors)
@@ -584,13 +636,17 @@ class Program
         }
     }
 
-    static void EmitParse(FileInfo inputFile, ICompilerLogger logger)
+    static void EmitParse(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
     {
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
             var lexer = new Lexer(sourceText, logger);
+            if (maxErrors is > 0)
+            {
+                lexer.MaxErrors = maxErrors.Value;
+            }
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
@@ -599,7 +655,8 @@ class Program
                 Environment.Exit(1);
             }
 
-            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
+            var parserMaxErrors = maxErrors is > 0 ? maxErrors.Value : 25;
+            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger, parserMaxErrors);
             parser.ParseModule();
 
             if (parser.Diagnostics.HasErrors)
@@ -617,70 +674,45 @@ class Program
         }
     }
 
-    static void EmitCSharp(FileInfo inputFile, FileInfo? output, ICompilerLogger logger)
+    static void EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths,
+        ICompilerLogger logger, bool warnAsError = false, string? nowarn = null, int? maxErrors = null)
     {
         try
         {
-            // Parse the Sharpy source file
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
-            var lexer = new Lexer(sourceText, logger);
-            var tokens = lexer.TokenizeAll();
-            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
-            var module = parser.ParseModule();
 
-            // Run semantic analysis to register type aliases and resolve types
-            var builtins = new BuiltinRegistry();
-            var symbolTable = new SymbolTable(builtins);
-            var semanticInfo = new SemanticInfo();
-            var semanticBinding = new SemanticBinding();
-
-            // Name resolution pass (registers type aliases, classes, functions, etc.)
-            var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
-            nameResolver.ResolveDeclarations(module);
-            nameResolver.ResolveInheritance();
-
-            if (nameResolver.Diagnostics.HasErrors)
+            // Use the full compilation pipeline (including import resolution)
+            var compilerOptions = new CompilerOptions
             {
-                Console.Error.WriteLine("Name resolution errors:");
+                References = references,
+                ModulePaths = modulePaths,
+                WarningsAsErrors = warnAsError,
+                SuppressedWarnings = ParseNowarnCodes(nowarn),
+                MaxErrors = maxErrors ?? 0
+            };
+            var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
+            var result = compiler.Compile(source, inputFile.FullName);
+
+            if (!result.Success)
+            {
+                Console.Error.WriteLine("Compilation errors:");
                 Console.Error.WriteLine();
-                RenderDiagnostics(nameResolver.Diagnostics.GetErrors(), sourceText, Console.Error);
+                RenderDiagnostics(result.Diagnostics.GetErrors(), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
-            // Type checking pass
-            var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
+            // Display warnings
+            var warnings = result.Diagnostics.GetWarnings();
+            if (warnings.Count > 0)
             {
-                SemanticBinding = semanticBinding
-            };
-            typeChecker.CheckModule(module, computeCodeGenInfo: true);
-
-            if (typeChecker.Diagnostics.HasErrors)
-            {
-                Console.Error.WriteLine("Type checking errors:");
-                Console.Error.WriteLine();
-                RenderDiagnostics(typeChecker.Diagnostics.GetErrors(), sourceText, Console.Error);
-                Environment.Exit(1);
+                RenderDiagnostics(warnings, sourceText, Console.Out);
             }
 
-            // Set up code generation context with the analyzed symbol table
-            var context = new CodeGenContext(symbolTable, builtins)
-            {
-                SourceFilePath = inputFile.FullName,
-                // Single-file emit is treated as an entry point for consistency with run/build
-                IsEntryPoint = true,
-                Logger = logger,
-                SemanticBinding = semanticBinding,
-                SemanticInfo = semanticInfo,
-                // Disable #line directives for emit csharp so users see clean generated C#
-                EmitLineDirectives = false
-            };
-
-            // Generate C# code using RoslynEmitter
-            var emitter = new RoslynEmitter(context);
-            var compilationUnit = emitter.GenerateCompilationUnit(module);
-            var csharpCode = compilationUnit.ToFullString();
+            // The generated C# includes #line directives by default.
+            // For emit csharp, strip them so users see clean generated C#.
+            var csharpCode = result.GeneratedCSharpCode ?? "";
+            csharpCode = StripLineDirectives(csharpCode);
 
             // Determine output file
             FileInfo outputFile;
@@ -698,12 +730,38 @@ class Program
             // Write C# code to output file
             File.WriteAllText(outputFile.FullName, csharpCode);
             Console.WriteLine($"Generated C# code written to: {outputFile.FullName}");
+
+            // Write imported modules' generated C# alongside the entry file
+            var outputDir = outputFile.DirectoryName ?? ".";
+            foreach (var (modulePath, moduleCode) in result.GeneratedCSharpFiles)
+            {
+                // Skip the entry file (already written above)
+                if (string.Equals(Path.GetFullPath(modulePath), Path.GetFullPath(inputFile.FullName),
+                    StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var moduleFileName = Path.GetFileNameWithoutExtension(modulePath) + ".cs";
+                var moduleOutputPath = Path.Combine(outputDir, moduleFileName);
+                var cleanModuleCode = StripLineDirectives(moduleCode);
+                File.WriteAllText(moduleOutputPath, cleanModuleCode);
+                Console.WriteLine($"Generated C# code written to: {moduleOutputPath}");
+            }
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
             Environment.Exit(1);
         }
+    }
+
+    /// <summary>
+    /// Strip #line directives from generated C# for clean emit output.
+    /// </summary>
+    static string StripLineDirectives(string csharpCode)
+    {
+        var lines = csharpCode.Split('\n');
+        var filtered = lines.Where(line => !line.TrimStart().StartsWith("#line "));
+        return string.Join('\n', filtered);
     }
 
     static void ClearCache(string? cacheDir)
@@ -725,7 +783,7 @@ class Program
         }
     }
 
-    static void CompileProject(FileInfo projectFile, string configuration, bool clean, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null)
+    static void CompileProject(FileInfo projectFile, string configuration, bool clean, bool incremental, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null)
     {
         try
         {
@@ -742,13 +800,24 @@ class Program
             Console.WriteLine($"Configuration: {projectConfig.Configuration}");
             Console.WriteLine($"Output: {projectConfig.OutputType}");
             Console.WriteLine($"Source files: {projectConfig.SourceFiles.Count}");
+            if (incremental)
+            {
+                Console.WriteLine("Mode: Incremental");
+            }
             Console.WriteLine();
 
-            // Create compiler with options
+            // Create compiler with options (CLI flags override project file settings)
+            var mergedSuppressed = new HashSet<string>(projectConfig.SuppressedWarnings);
+            mergedSuppressed.UnionWith(ParseNowarnCodes(nowarn));
+
             var compilerOptions = new CompilerOptions
             {
                 References = projectConfig.References.ToArray(),
-                ModulePaths = projectConfig.ModulePaths.ToArray()
+                ModulePaths = projectConfig.ModulePaths.ToArray(),
+                WarningsAsErrors = warnAsError || projectConfig.WarningsAsErrors,
+                SuppressedWarnings = mergedSuppressed,
+                MaxErrors = maxErrors ?? 0,
+                Incremental = incremental
             };
 
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
@@ -837,8 +906,8 @@ class Program
         if (list)
         {
             var all = DiagnosticExplanations.GetAll();
-            Console.WriteLine("Documented Diagnostic Codes:");
-            Console.WriteLine(new string('=', 60));
+            Console.WriteLine(CliBold("Documented Diagnostic Codes:"));
+            Console.WriteLine(CliColor(new string('=', 60), "36")); // cyan
 
             string? lastCategory = null;
             foreach (var entry in all.OrderBy(e => e.Key, StringComparer.Ordinal))
@@ -847,14 +916,16 @@ class Program
                 {
                     if (lastCategory != null)
                         Console.WriteLine();
-                    Console.WriteLine($"  [{entry.Value.Category}]");
+                    var catColor = CategoryColor(entry.Value.Category);
+                    Console.WriteLine($"  {CliColor($"[{entry.Value.Category}]", catColor, bold: true)}");
                     lastCategory = entry.Value.Category;
                 }
-                Console.WriteLine($"    {entry.Key}  {entry.Value.Title}");
+                var entryColor = CategoryColor(entry.Value.Category);
+                Console.WriteLine($"    {CliColor(entry.Key, entryColor)}  {entry.Value.Title}");
             }
 
-            Console.WriteLine(new string('=', 60));
-            Console.WriteLine($"Total: {all.Count} documented codes");
+            Console.WriteLine(CliColor(new string('=', 60), "36"));
+            Console.WriteLine($"Total: {CliBold(all.Count.ToString())} documented codes");
             return;
         }
 
@@ -868,24 +939,26 @@ class Program
             return;
         }
 
-        var explanation = DiagnosticExplanations.Get(code);
+        var trimmedCode = code!.Trim();
+        var explanation = DiagnosticExplanations.Get(trimmedCode);
         if (explanation == null)
         {
-            Console.Error.WriteLine($"No explanation found for diagnostic code '{code}'.");
+            Console.Error.WriteLine($"No explanation found for diagnostic code '{trimmedCode}'.");
             Console.Error.WriteLine("Use 'sharpyc explain --list' to see all documented codes.");
             Environment.Exit(1);
             return;
         }
 
-        Console.WriteLine($"{explanation.Code}: {explanation.Title}");
-        Console.WriteLine(new string('=', 60));
+        var color = CategoryColor(explanation.Category);
+        Console.WriteLine($"{CliColor(explanation.Code, color, bold: true)}: {CliBold(explanation.Title)}");
+        Console.WriteLine(CliColor(new string('=', 60), "36"));
         Console.WriteLine();
         Console.WriteLine(explanation.Description);
 
         if (explanation.Example != null)
         {
             Console.WriteLine();
-            Console.WriteLine("Example:");
+            Console.WriteLine(CliColor("Example:", "36", bold: true));
             foreach (var line in explanation.Example.Split('\n'))
                 Console.WriteLine($"  {line}");
         }
@@ -893,13 +966,13 @@ class Program
         if (explanation.Fix != null)
         {
             Console.WriteLine();
-            Console.WriteLine("Fix:");
+            Console.WriteLine(CliColor("Fix:", "36", bold: true));
             foreach (var line in explanation.Fix.Split('\n'))
                 Console.WriteLine($"  {line}");
         }
 
         Console.WriteLine();
-        Console.WriteLine($"Category: {explanation.Category}");
+        Console.WriteLine($"{CliColor("Category:", "36", bold: true)} {CliColor(explanation.Category, color, bold: true)}");
     }
 
     /// <summary>
@@ -913,52 +986,161 @@ class Program
 
     /// <summary>
     /// Render multiple diagnostics with rich source context.
+    /// Groups by compiler phase when diagnostics come from multiple phases.
     /// </summary>
     static void RenderDiagnostics(IEnumerable<CompilerDiagnostic> diagnostics, SourceText? sourceText, TextWriter writer)
     {
-        foreach (var diagnostic in diagnostics)
+        var diagList = diagnostics.ToList();
+        var phases = diagList.Select(d => d.Phase).Distinct().ToList();
+        var groupByPhase = phases.Count > 1;
+        var isWarnings = diagList.Count > 0 && diagList.All(d => d.IsWarning);
+
+        if (groupByPhase)
         {
-            RenderDiagnostic(diagnostic, sourceText, writer);
-            writer.WriteLine();
+            foreach (var phase in PhaseOrder.Where(p => diagList.Any(d => d.Phase == p)))
+            {
+                writer.WriteLine($"{PhaseLabel(phase, isWarnings)}:");
+                foreach (var diagnostic in diagList.Where(d => d.Phase == phase))
+                {
+                    RenderDiagnostic(diagnostic, sourceText, writer);
+                    writer.WriteLine();
+                }
+            }
+        }
+        else
+        {
+            foreach (var diagnostic in diagList)
+            {
+                RenderDiagnostic(diagnostic, sourceText, writer);
+                writer.WriteLine();
+            }
         }
     }
 
     /// <summary>
     /// Render diagnostics loading source text from each diagnostic's file path.
     /// Used for multi-file compilation results where a single SourceText is not available.
+    /// Groups by compiler phase when diagnostics come from multiple phases.
     /// </summary>
     static void RenderDiagnosticsFromFiles(IEnumerable<CompilerDiagnostic> diagnostics, TextWriter writer)
     {
         var sourceCache = new Dictionary<string, SourceText?>();
+        var diagList = diagnostics.ToList();
+        var phases = diagList.Select(d => d.Phase).Distinct().ToList();
+        var groupByPhase = phases.Count > 1;
+        var isWarnings = diagList.Count > 0 && diagList.All(d => d.IsWarning);
 
-        foreach (var diagnostic in diagnostics)
+        if (groupByPhase)
         {
-            SourceText? sourceText = null;
-
-            if (!string.IsNullOrEmpty(diagnostic.FilePath))
+            foreach (var phase in PhaseOrder.Where(p => diagList.Any(d => d.Phase == p)))
             {
-                if (!sourceCache.TryGetValue(diagnostic.FilePath, out sourceText))
+                writer.WriteLine($"{PhaseLabel(phase, isWarnings)}:");
+                foreach (var diagnostic in diagList.Where(d => d.Phase == phase))
                 {
-                    try
-                    {
-                        if (File.Exists(diagnostic.FilePath))
-                        {
-                            var content = File.ReadAllText(diagnostic.FilePath);
-                            sourceText = new SourceText(content, diagnostic.FilePath);
-                        }
-                    }
-                    catch
-                    {
-                        // If we can't read the file, render without source context
-                    }
-                    sourceCache[diagnostic.FilePath] = sourceText;
+                    RenderDiagnosticFromFile(diagnostic, sourceCache, writer);
                 }
             }
-
-            RenderDiagnostic(diagnostic, sourceText, writer);
-            writer.WriteLine();
+        }
+        else
+        {
+            foreach (var diagnostic in diagList)
+            {
+                RenderDiagnosticFromFile(diagnostic, sourceCache, writer);
+            }
         }
     }
+
+    static void RenderDiagnosticFromFile(CompilerDiagnostic diagnostic, Dictionary<string, SourceText?> sourceCache, TextWriter writer)
+    {
+        SourceText? sourceText = null;
+
+        if (!string.IsNullOrEmpty(diagnostic.FilePath))
+        {
+            if (!sourceCache.TryGetValue(diagnostic.FilePath, out sourceText))
+            {
+                try
+                {
+                    if (File.Exists(diagnostic.FilePath))
+                    {
+                        var content = File.ReadAllText(diagnostic.FilePath);
+                        sourceText = new SourceText(content, diagnostic.FilePath);
+                    }
+                }
+                catch
+                {
+                    // If we can't read the file, render without source context
+                }
+                sourceCache[diagnostic.FilePath] = sourceText;
+            }
+        }
+
+        RenderDiagnostic(diagnostic, sourceText, writer);
+        writer.WriteLine();
+    }
+
+    /// <summary>
+    /// Ordered list of compiler phases for grouped diagnostic output.
+    /// </summary>
+    static readonly CompilerPhase[] PhaseOrder = new[]
+    {
+        CompilerPhase.Lexer,
+        CompilerPhase.Parser,
+        CompilerPhase.NameResolution,
+        CompilerPhase.ImportResolution,
+        CompilerPhase.TypeChecking,
+        CompilerPhase.Validation,
+        CompilerPhase.CodeGeneration,
+        CompilerPhase.Assembly,
+        CompilerPhase.Unknown
+    };
+
+    static string PhaseLabel(CompilerPhase phase, bool isWarnings = false)
+    {
+        var suffix = isWarnings ? "warnings" : "errors";
+        return phase switch
+        {
+            CompilerPhase.Lexer => $"Lexer {suffix}",
+            CompilerPhase.Parser => $"Parse {suffix}",
+            CompilerPhase.NameResolution => $"Name resolution {suffix}",
+            CompilerPhase.ImportResolution => $"Import resolution {suffix}",
+            CompilerPhase.TypeChecking => $"Type {suffix}",
+            CompilerPhase.Validation => $"Validation {suffix}",
+            CompilerPhase.CodeGeneration => $"Code generation {suffix}",
+            CompilerPhase.Assembly => $"Assembly {suffix}",
+            CompilerPhase.Unknown => $"Other {suffix}",
+            _ => $"Other {suffix}",
+        };
+    }
+
+    static HashSet<string> ParseNowarnCodes(string? nowarn)
+    {
+        if (string.IsNullOrWhiteSpace(nowarn))
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        return new HashSet<string>(
+            nowarn.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            StringComparer.OrdinalIgnoreCase);
+    }
+
+    // ANSI color helpers for CLI formatting (explain command, etc.)
+    static string CliBold(string text) => _useColor ? $"\x1b[1m{text}\x1b[0m" : text;
+    static string CliColor(string text, string code, bool bold = false)
+    {
+        if (!_useColor)
+            return text;
+        var boldCode = bold ? "1;" : "";
+        return $"\x1b[{boldCode}{code}m{text}\x1b[0m";
+    }
+
+    static string CategoryColor(string category) => category switch
+    {
+        "Lexer" => "33",    // yellow
+        "Parser" => "33",   // yellow
+        "Semantic" => "31", // red
+        "Validation" => "34", // blue
+        "CodeGen" => "32",  // green
+        "Infrastructure" => "36", // cyan
+        _ => "37"           // white
+    };
 
     static string FormatBytes(long bytes)
     {
@@ -1050,7 +1232,10 @@ class Program
         string[] modulePaths,
         ICompilerLogger logger,
         string? metricsFormat,
-        FileInfo? metricsOutput)
+        FileInfo? metricsOutput,
+        bool warnAsError = false,
+        string? nowarn = null,
+        int? maxErrors = null)
     {
         try
         {
@@ -1062,7 +1247,10 @@ class Program
             var compilerOptions = new CompilerOptions
             {
                 References = references,
-                ModulePaths = modulePaths
+                ModulePaths = modulePaths,
+                WarningsAsErrors = warnAsError,
+                SuppressedWarnings = ParseNowarnCodes(nowarn),
+                MaxErrors = maxErrors ?? 0
             };
 
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);

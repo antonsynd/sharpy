@@ -238,6 +238,8 @@ Location: `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
 
 **Warning tests**: `.warning` file — empty means expect no warnings, non-empty lines are expected substrings. Can combine with `.expected`.
 
+**C# snapshot tests**: `.expected.cs` file — the expected generated C# output (Roslyn-normalized). Used selectively for ~15 representative fixtures to detect codegen changes that don't affect runtime output. To regenerate: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`.
+
 **Skip**: Add a `.skip` file next to the `.spy` file.
 
 ### Integration Test Base

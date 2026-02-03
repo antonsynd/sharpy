@@ -6,7 +6,7 @@ namespace Sharpy.Compiler.Services;
 /// Adapter that wraps the existing SymbolTable to implement ISymbolLookup.
 /// Provides a read-only view of the symbol table.
 /// </summary>
-public class SymbolLookupAdapter : ISymbolLookup
+internal class SymbolLookupAdapter : ISymbolLookup
 {
     private readonly SymbolTable _symbolTable;
 

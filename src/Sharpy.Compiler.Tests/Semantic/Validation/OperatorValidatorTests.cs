@@ -1,3 +1,4 @@
+using System.Linq;
 using Xunit;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
@@ -336,5 +337,39 @@ def foo() -> bool:
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    // ======================================
+    // Diagnostic Deduplication Tests
+    // ======================================
+
+    [Fact]
+    public void UnsupportedOperator_ReportedExactlyOnce()
+    {
+        // This test verifies the deduplication between TypeChecker (SHP0222)
+        // and OperatorValidator (SHP0402). When a custom class doesn't support
+        // an operator, both phases detect it. The HasErrorAtPosition check in
+        // OperatorValidator should prevent duplicate reporting.
+        var code = @"
+class Foo:
+    pass
+
+def bar() -> int:
+    a: Foo = Foo()
+    b: Foo = Foo()
+    return a + b
+";
+        var (module, context) = Parse(code);
+
+        var validator = new OperatorValidator();
+        validator.Validate(module, context);
+
+        var errors = context.Diagnostics.GetErrors();
+        var operatorErrors = errors.Where(e =>
+            e.Message.Contains("does not support operator") ||
+            e.Message.Contains("Unsupported operand")).ToList();
+
+        // Should have exactly one error, not two (deduplication works)
+        Assert.Single(operatorErrors);
     }
 }

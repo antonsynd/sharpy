@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// Warns about local variables that are assigned but never read.
 /// Skips parameters, underscore-prefixed variables, and loop variables.
 /// </summary>
-public class UnusedVariableValidator : SemanticValidatorBase
+internal class UnusedVariableValidator : SemanticValidatorBase
 {
     public override string Name => "UnusedVariableValidator";
     public override int Order => 420;

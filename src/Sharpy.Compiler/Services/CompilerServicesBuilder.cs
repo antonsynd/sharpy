@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Services;
 /// Builder for constructing CompilerServices with proper initialization.
 /// Ensures all required components are available.
 /// </summary>
-public class CompilerServicesBuilder
+internal class CompilerServicesBuilder
 {
     private CompilerServicesConfiguration _config = CompilerServicesConfiguration.Default;
     private ICompilerLogger? _logger;
@@ -110,7 +110,7 @@ public class CompilerServicesBuilder
     /// </summary>
     public static CompilerServices CreateForTesting(ICompilerLogger? logger = null)
     {
-        var builtinRegistry = new BuiltinRegistry();
+        var builtinRegistry = new BuiltinRegistry(logger);
         var symbolTable = new SymbolTable(builtinRegistry);
         var semanticInfo = new SemanticInfo();
 

@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Discovery.Caching;
 /// Uniquely identifies an assembly for caching purposes.
 /// Includes version and content hash to detect changes.
 /// </summary>
-public class AssemblyIdentity
+internal class AssemblyIdentity
 {
     public string Name { get; set; } = string.Empty;
     public string Version { get; set; } = string.Empty;

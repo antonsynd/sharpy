@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic;
 /// This addresses the problem of type information being scattered across
 /// TypeAnnotation, SemanticType, and TypeSymbol.
 /// </summary>
-public class TypeRegistry
+internal class TypeRegistry
 {
     private readonly Dictionary<string, SemanticType> _builtinTypes = new();
     private readonly Dictionary<string, TypeSymbol> _userTypes = new();

@@ -165,9 +165,16 @@ public class Lexer
     }
 
     /// <summary>
+    /// Maximum number of lexer errors before aborting tokenization.
+    /// Default is 25, matching the parser's error budget.
+    /// </summary>
+    public int MaxErrors { get; set; } = 25;
+
+    /// <summary>
     /// Tokenize the entire source into a list of tokens.
     /// Lexer errors are collected into Diagnostics instead of propagating.
-    /// On error, an Error token is emitted and lexing terminates with EOF.
+    /// On error, the lexer attempts to recover by skipping to the next newline
+    /// and continuing tokenization. Stops after MaxErrors lexer errors.
     /// </summary>
     public List<Token> TokenizeAll()
     {
@@ -183,8 +190,22 @@ public class Lexer
             catch (LexerAbortException)
             {
                 // Error already recorded in _diagnostics by ReportError()
-                tokens.Add(new Token(TokenType.Eof, "", _line, _column, _position));
-                break;
+                if (_diagnostics.ErrorCount >= MaxErrors || _position >= _source.Length)
+                {
+                    if (_diagnostics.ErrorCount >= MaxErrors)
+                    {
+                        _diagnostics.AddWarning(
+                            $"Too many errors ({MaxErrors}); further errors suppressed. Use '--max-errors' to increase the limit.",
+                            _line, _column,
+                            code: DiagnosticCodes.Infrastructure.TooManyErrors,
+                            phase: CompilerPhase.Lexer);
+                    }
+                    tokens.Add(new Token(TokenType.Eof, "", _line, _column, _position));
+                    break;
+                }
+
+                RecoverFromError();
+                continue;
             }
 
             tokens.Add(token);
@@ -194,6 +215,57 @@ public class Lexer
         }
 
         return tokens;
+    }
+
+    /// <summary>
+    /// Attempt to recover from a lexer error by advancing to the next newline.
+    /// Resets indentation and bracket state to avoid cascading errors from
+    /// the corrupted line.
+    /// </summary>
+    private void RecoverFromError()
+    {
+        // Skip to the next newline character (\n or \r)
+        while (_position < _source.Length && _source[_position] != '\n' && _source[_position] != '\r')
+        {
+            _position++;
+            _column++;
+        }
+
+        // Advance past the newline if present (handle \n, \r\n, and bare \r)
+        if (_position < _source.Length)
+        {
+            if (_source[_position] == '\r')
+            {
+                _position++;
+                // Handle \r\n sequence
+                if (_position < _source.Length && _source[_position] == '\n')
+                {
+                    _position++;
+                }
+            }
+            else if (_source[_position] == '\n')
+            {
+                _position++;
+            }
+            _line++;
+            _column = 1;
+        }
+
+        // Reset line-start state so indentation processing restarts cleanly
+        _atLineStart = true;
+
+        // Reset indent stack to base level to avoid cascading indent errors
+        _indentStack.Clear();
+        _indentStack.Push(0);
+
+        // Clear any pending indent/dedent tokens that may be stale
+        _pendingTokens.Clear();
+
+        // Reset bracket depth — unmatched brackets from the error line shouldn't persist
+        _bracketDepth = 0;
+
+        // Clear f-string state — unterminated f-strings shouldn't affect recovery
+        _fstringStack.Clear();
     }
 
     /// <summary>

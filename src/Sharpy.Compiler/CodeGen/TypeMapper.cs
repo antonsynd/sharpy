@@ -11,7 +11,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// Maps Sharpy types to C# types using Roslyn syntax nodes
 /// </summary>
-public class TypeMapper
+internal class TypeMapper
 {
     private readonly CodeGenContext _context;
 
@@ -365,7 +365,7 @@ public class TypeMapper
             }
 
             // Add file name part (skip __init__ as it represents the package itself)
-            if (!string.Equals(fileName, "__init__", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(fileName, DunderNames.Init, StringComparison.OrdinalIgnoreCase))
             {
                 namespaceParts.Add(SimpleToPascalCase(fileName));
             }

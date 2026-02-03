@@ -719,8 +719,8 @@ public partial class Parser
             {
                 // Error already recorded in _diagnostics by ReportError()
 
-                // Stop after MaxErrors to avoid cascading false errors
-                if (_diagnostics.ErrorCount >= MaxErrors)
+                // Stop after _maxErrors to avoid cascading false errors
+                if (_diagnostics.ErrorCount >= _maxErrors)
                     break;
 
                 // Panic-mode recovery: synchronize to next statement boundary

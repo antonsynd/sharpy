@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// First pass: Resolve all names and build symbol tables
 /// </summary>
-public class NameResolver
+internal class NameResolver
 {
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
@@ -419,7 +419,7 @@ public class NameResolver
 
         // Register constructors (__init__ methods)
         // For constructors, we allow multiple overloads with the same name
-        if (method.Name == "__init__")
+        if (method.Name == DunderNames.Init)
         {
             owningType.Constructors.Add(funcSymbol);
             _logger.LogDebug($"Registered constructor overload: {owningType.Name}.__init__ (params: {method.Parameters.Length})");

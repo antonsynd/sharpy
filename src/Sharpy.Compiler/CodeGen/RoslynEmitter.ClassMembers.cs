@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -12,7 +13,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Class member generation (constructors, methods, fields, interface members)
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     #region Class Member Generation
 
@@ -68,7 +69,7 @@ public partial class RoslynEmitter
             {
                 case FunctionDef funcDef:
                     // Check if this is a constructor (__init__)
-                    if (funcDef.Name == "__init__")
+                    if (funcDef.Name == DunderNames.Init)
                     {
                         // Collect for later generation (supports multiple overloads)
                         initMethods.Add(funcDef);
@@ -107,7 +108,11 @@ public partial class RoslynEmitter
                     break;
 
                 default:
-                    // Ignore other statements for now
+                    _context.AddError(
+                        $"Internal: unrecognized statement type '{stmt.GetType().Name}' in class body was not emitted. This is a compiler bug — please report it.",
+                        DiagnosticCodes.CodeGen.UnrecognizedStatementType,
+                        stmt.LineStart,
+                        stmt.ColumnStart);
                     break;
             }
         }
@@ -120,12 +125,12 @@ public partial class RoslynEmitter
 
         // Generate complementary operators for C# requirements
         // If __eq__ is defined but not __ne__, generate operator !=
-        if (dunders.Contains("__eq__") && !dunders.Contains("__ne__"))
+        if (dunders.Contains(DunderNames.Eq) && !dunders.Contains(DunderNames.Ne))
         {
             members.Add(GenerateComplementaryNotEqualsOperator(className));
         }
         // If __ne__ is defined but not __eq__, generate operator ==
-        if (dunders.Contains("__ne__") && !dunders.Contains("__eq__"))
+        if (dunders.Contains(DunderNames.Ne) && !dunders.Contains(DunderNames.Eq))
         {
             members.Add(GenerateComplementaryEqualsOperator(className));
         }
@@ -183,7 +188,7 @@ public partial class RoslynEmitter
             if (exprStmt.Expression is FunctionCall call &&
                 call.Function is MemberAccess memberAccess &&
                 memberAccess.Object is SuperExpression &&
-                memberAccess.Member == "__init__")
+                memberAccess.Member == DunderNames.Init)
             {
                 // Generate the base constructor arguments
                 var baseArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg))).ToArray();
@@ -340,9 +345,9 @@ public partial class RoslynEmitter
         // Uses the protocol variable already fetched above, plus special handling for operator dunders
         var shouldAddOverride = protocol?.ClrMethodName is "ToString" or "GetHashCode"
             // __repr__ maps to ToString but has ClrMethodName: null, so check explicitly
-            || func.Name == "__repr__"
+            || func.Name == DunderNames.Repr
             // __eq__ is an operator dunder (not in ProtocolRegistry) but maps to Equals() override
-            || func.Name == "__eq__";
+            || func.Name == DunderNames.Eq;
 
         if (shouldAddOverride && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
         {
@@ -368,7 +373,7 @@ public partial class RoslynEmitter
             .ToArray();
 
         // Special handling for Equals() - parameter should be object type
-        if (func.Name == "__eq__" && parameters.Length > 0)
+        if (func.Name == DunderNames.Eq && parameters.Length > 0)
         {
             var objParam = Parameter(Identifier(parameters[0].Identifier.Text))
                 .WithType(PredefinedType(Token(SyntaxKind.ObjectKeyword)));
@@ -570,7 +575,11 @@ public partial class RoslynEmitter
                     break;
 
                 default:
-                    // Ignore other statements
+                    _context.AddError(
+                        $"Internal: unrecognized statement type '{stmt.GetType().Name}' in interface body was not emitted. This is a compiler bug — please report it.",
+                        DiagnosticCodes.CodeGen.UnrecognizedStatementType,
+                        stmt.LineStart,
+                        stmt.ColumnStart);
                     break;
             }
         }

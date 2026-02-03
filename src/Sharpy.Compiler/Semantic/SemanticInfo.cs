@@ -4,9 +4,22 @@ using Sharpy.Compiler.Parser.Ast;
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// Maps AST nodes to their semantic information
-/// Provides a way to annotate the AST without modifying it
+/// Maps AST nodes to their semantic information.
+/// Provides a way to annotate the AST without modifying it.
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>Threading:</b> This type is not thread-safe. It uses <see cref="Dictionary{TKey,TValue}"/>
+/// internally, so concurrent reads and writes will cause data corruption. Each compilation
+/// creates its own instance. In <see cref="Project.ProjectCompiler"/>, a single shared instance
+/// is used because files are processed sequentially in dependency order.
+/// </para>
+/// <para>
+/// For parallel per-file analysis (e.g., an LSP server), create one <see cref="SemanticInfo"/>
+/// per file. The shared <see cref="SemanticBinding"/> and <see cref="SymbolTable"/> are
+/// thread-safe and can be accessed concurrently.
+/// </para>
+/// </remarks>
 public class SemanticInfo
 {
     // Use ReferenceEqualityComparer because AST nodes are records with value-based equality,

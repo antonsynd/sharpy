@@ -20,7 +20,7 @@ namespace Sharpy.Compiler.Semantic;
 /// enabling removal of legacy tracking fields from RoslynEmitter.
 /// </para>
 /// </summary>
-public class ExecutionOrderAnalyzer
+internal class ExecutionOrderAnalyzer
 {
     private readonly SymbolTable _symbolTable;
 

@@ -10,7 +10,7 @@ namespace Sharpy.Compiler.Analysis.ControlFlow;
 /// It does NOT modify the AST. The resulting CFG references AST nodes
 /// but is a separate data structure.
 /// </remarks>
-public class ControlFlowGraphBuilder
+internal class ControlFlowGraphBuilder
 {
     private readonly List<BasicBlock> _blocks = new();
     private BasicBlock _currentBlock = null!;

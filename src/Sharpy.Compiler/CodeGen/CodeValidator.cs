@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// Validates generated C# code for common issues and correctness
 /// </summary>
-public class CodeValidator
+internal class CodeValidator
 {
     private readonly DiagnosticBag _diagnostics = new();
 

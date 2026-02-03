@@ -22,28 +22,28 @@ public static class OperatorRegistry
 {
     private static readonly FrozenSet<string> BinaryArithmeticOps = new[]
     {
-        "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__"
+        DunderNames.Add, DunderNames.Sub, DunderNames.Mul, DunderNames.TrueDiv, DunderNames.FloorDiv, DunderNames.Mod, DunderNames.Pow
     }.ToFrozenSet();
 
     private static readonly FrozenSet<string> BinaryBitwiseOps = new[]
     {
-        "__and__", "__or__", "__xor__", "__lshift__", "__rshift__"
+        DunderNames.And, DunderNames.Or, DunderNames.Xor, DunderNames.LShift, DunderNames.RShift
     }.ToFrozenSet();
 
     private static readonly FrozenSet<string> InPlaceOps = new[]
     {
-        "__iadd__", "__isub__", "__imul__", "__itruediv__", "__ifloordiv__", "__imod__", "__ipow__",
-        "__iand__", "__ior__", "__ixor__", "__ilshift__", "__irshift__"
+        DunderNames.IAdd, DunderNames.ISub, DunderNames.IMul, DunderNames.ITrueDiv, DunderNames.IFloorDiv, DunderNames.IMod, DunderNames.IPow,
+        DunderNames.IAnd, DunderNames.IOr, DunderNames.IXor, DunderNames.ILShift, DunderNames.IRShift
     }.ToFrozenSet();
 
     private static readonly FrozenSet<string> ComparisonOps = new[]
     {
-        "__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"
+        DunderNames.Eq, DunderNames.Ne, DunderNames.Lt, DunderNames.Le, DunderNames.Gt, DunderNames.Ge
     }.ToFrozenSet();
 
     private static readonly FrozenSet<string> UnaryOps = new[]
     {
-        "__pos__", "__neg__", "__invert__"
+        DunderNames.Pos, DunderNames.Neg, DunderNames.Invert
     }.ToFrozenSet();
 
     private static readonly FrozenDictionary<string, OperatorKind> AllOperatorDunders;

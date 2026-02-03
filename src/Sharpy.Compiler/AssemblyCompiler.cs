@@ -9,7 +9,7 @@ namespace Sharpy.Compiler;
 /// <summary>
 /// Compiles generated C# code into .NET assemblies
 /// </summary>
-public class AssemblyCompiler
+internal class AssemblyCompiler
 {
     private readonly ICompilerLogger _logger;
 
@@ -354,7 +354,7 @@ public class AssemblyCompiler
 /// <summary>
 /// Result of assembly compilation
 /// </summary>
-public class AssemblyCompilationResult
+internal class AssemblyCompilationResult
 {
     public bool Success { get; init; }
 

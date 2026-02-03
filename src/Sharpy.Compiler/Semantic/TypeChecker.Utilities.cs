@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// TypeChecker partial class: Type checking utilities and validation
 /// </summary>
-public partial class TypeChecker
+internal partial class TypeChecker
 {
     private Dictionary<string, SemanticType> ExtractNarrowedTypes(Expression condition, bool isPositiveBranch)
     {
@@ -361,7 +361,7 @@ public partial class TypeChecker
         // Find the constructor function definition in the struct body
         var constructorDef = structDef.Body
             .OfType<FunctionDef>()
-            .FirstOrDefault(f => f.Name == "__init__" && f.LineStart == constructor.DeclarationLine);
+            .FirstOrDefault(f => f.Name == DunderNames.Init && f.LineStart == constructor.DeclarationLine);
 
         if (constructorDef == null)
         {
@@ -564,7 +564,7 @@ public partial class TypeChecker
         // Look up the method in the parent class hierarchy and return its type
         // Use FindMethodInHierarchy to traverse the full inheritance chain
         var (parentMethod, methodOwner) = FindMethodInHierarchy(classBaseType, memberName);
-        if (parentMethod == null && memberName == "__init__")
+        if (parentMethod == null && memberName == DunderNames.Init)
         {
             // __init__ might be in Constructors list - check full hierarchy
             currentType = classBaseType;
@@ -629,9 +629,9 @@ public partial class TypeChecker
         }
 
         // Case 1: Inside __init__
-        if (_currentMethodName == "__init__")
+        if (_currentMethodName == DunderNames.Init)
         {
-            if (calledMethodName != "__init__")
+            if (calledMethodName != DunderNames.Init)
             {
                 AddError("super() in __init__ can only call super().__init__(...)",
                     memberAccess.LineStart, memberAccess.ColumnStart,
@@ -927,8 +927,14 @@ public partial class TypeChecker
     {
         if (_diagnostics.ErrorCount >= MaxErrors)
         {
-            if (_diagnostics.ErrorCount == MaxErrors)
+            if (!_maxErrorsReported)
             {
+                _maxErrorsReported = true;
+                _diagnostics.AddWarning(
+                    $"Too many errors ({MaxErrors}); further errors suppressed. Use '--max-errors' to increase the limit.",
+                    line, column, _currentFilePath,
+                    code: DiagnosticCodes.Infrastructure.TooManyErrors,
+                    phase: CompilerPhase.TypeChecking);
                 _logger.LogError("Maximum error count reached, stopping type checking", 0, 0);
             }
             if (!ContinueAfterError)
@@ -943,7 +949,7 @@ public partial class TypeChecker
     }
 }
 
-public class SemanticAnalysisException : Exception
+internal class SemanticAnalysisException : Exception
 {
     public SemanticAnalysisException(string message) : base(message) { }
 }

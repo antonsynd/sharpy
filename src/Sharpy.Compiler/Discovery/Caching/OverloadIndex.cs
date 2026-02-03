@@ -5,7 +5,7 @@ namespace Sharpy.Compiler.Discovery.Caching;
 /// <summary>
 /// Serializable index of function overloads discovered from an assembly.
 /// </summary>
-public class OverloadIndex
+internal class OverloadIndex
 {
     public AssemblyIdentity Identity { get; set; } = new();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -16,7 +16,7 @@ public class OverloadIndex
 /// <summary>
 /// Overloads for functions in a module.
 /// </summary>
-public class ModuleOverloads
+internal class ModuleOverloads
 {
     public string ModuleName { get; set; } = string.Empty;
     public Dictionary<string, List<FunctionSignature>> Functions { get; set; } = new();
@@ -26,7 +26,7 @@ public class ModuleOverloads
 /// <summary>
 /// Information about a public type discovered from an assembly.
 /// </summary>
-public class DiscoveredTypeInfo
+internal class DiscoveredTypeInfo
 {
     public string Name { get; set; } = string.Empty;
     public string Namespace { get; set; } = string.Empty;
@@ -39,7 +39,7 @@ public class DiscoveredTypeInfo
 /// <summary>
 /// Signature of a single function overload.
 /// </summary>
-public class FunctionSignature
+internal class FunctionSignature
 {
     public string Name { get; set; } = string.Empty;
     public List<ParameterSignature> Parameters { get; set; } = new();
@@ -54,7 +54,7 @@ public class FunctionSignature
 /// <summary>
 /// Signature of a parameter.
 /// </summary>
-public class ParameterSignature
+internal class ParameterSignature
 {
     public string Name { get; set; } = string.Empty;
     public TypeSignature Type { get; set; } = new();
@@ -66,7 +66,7 @@ public class ParameterSignature
 /// <summary>
 /// Signature of a type.
 /// </summary>
-public class TypeSignature
+internal class TypeSignature
 {
     public string Name { get; set; } = string.Empty;
     public bool IsGeneric { get; set; }

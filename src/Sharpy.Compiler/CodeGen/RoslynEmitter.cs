@@ -2,6 +2,7 @@ using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -19,7 +20,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// - Type detection (class/struct instantiation): Use SymbolTable lookup
 /// - String enum detection: Use CodeGenInfo.IsStringEnum
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     private readonly CodeGenContext _context;
     private readonly TypeMapper _typeMapper;
@@ -349,5 +350,44 @@ public partial class RoslynEmitter
     {
         var symbols = GetReExportedSymbols(fromImport);
         return symbols != null && symbols.Count > 0;
+    }
+
+    /// <summary>
+    /// Emits a diagnostic for an unrecognized statement type in code generation.
+    /// Returns null so it can be used in switch expressions.
+    /// </summary>
+    private SyntaxNode? EmitUnrecognizedStatementDiagnostic(Statement stmt)
+    {
+        _context.AddError(
+            $"Internal: unrecognized statement type '{stmt.GetType().Name}' was not emitted. This is a compiler bug — please report it.",
+            DiagnosticCodes.CodeGen.UnrecognizedStatementType,
+            stmt.LineStart,
+            stmt.ColumnStart);
+        return null;
+    }
+
+    /// <summary>
+    /// Emits a diagnostic for a not-yet-implemented feature in code generation and returns
+    /// a ThrowExpression that generates <c>throw new NotImplementedException("...")</c> in the
+    /// output C#. This way the generated code still compiles, and if the code path is reached
+    /// at runtime the user gets a clear exception.
+    /// </summary>
+    private ExpressionSyntax EmitNotImplementedExpression(string message, string code, int? line = null, int? column = null)
+    {
+        _context.AddError(message, code, line, column);
+        return ThrowExpression(
+            ObjectCreationExpression(ParseTypeName("System.NotImplementedException"))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(message)))))));
+    }
+
+    /// <summary>
+    /// Emits a diagnostic for a not-yet-implemented feature in code generation and returns
+    /// an empty statement as a safe fallback.
+    /// </summary>
+    private StatementSyntax EmitNotImplementedStatement(string message, string code, int? line = null, int? column = null)
+    {
+        _context.AddError(message, code, line, column);
+        return EmptyStatement();
     }
 }

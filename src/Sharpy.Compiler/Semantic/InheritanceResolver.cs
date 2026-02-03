@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.Semantic;
 /// This class handles stages 2 and 3. Stage 1 is handled by NameResolver which has access to the AST
 /// definitions needed for local type inheritance.
 /// </summary>
-public class InheritanceResolver
+internal class InheritanceResolver
 {
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;

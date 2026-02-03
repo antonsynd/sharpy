@@ -5,7 +5,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// Converts Sharpy naming conventions to C# naming conventions
 /// </summary>
-public static class NameMangler
+internal static class NameMangler
 {
     // C# keywords that need @ prefix when used as identifiers
     private static readonly HashSet<string> _csharpKeywords = new()
@@ -29,17 +29,17 @@ public static class NameMangler
     // Operator-related dunder methods should preserve their dunder name
     private static readonly Dictionary<string, string> _dunderMethodMap = new()
     {
-        { "__init__", "Constructor" },  // Special handling needed
-        { "__str__", "ToString" },
-        { "__repr__", "ToString" },
-        { "__eq__", "Equals" },
-        { "__hash__", "GetHashCode" },
-        { "__getitem__", "GetItem" },  // For indexer properties
-        { "__setitem__", "SetItem" },  // For indexer properties
-        { "__len__", "Length" },  // For Length property
-        { "__contains__", "Contains" },  // For Contains method
-        { "__iter__", "GetEnumerator" },  // For IEnumerable
-        { "__bool__", "ToBoolean" },  // For explicit boolean conversion
+        { DunderNames.Init, "Constructor" },  // Special handling needed
+        { DunderNames.Str, "ToString" },
+        { DunderNames.Repr, "ToString" },
+        { DunderNames.Eq, "Equals" },
+        { DunderNames.Hash, "GetHashCode" },
+        { DunderNames.GetItem, "GetItem" },  // For indexer properties
+        { DunderNames.SetItem, "SetItem" },  // For indexer properties
+        { DunderNames.Len, "Length" },  // For Length property
+        { DunderNames.Contains, "Contains" },  // For Contains method
+        { DunderNames.Iter, "GetEnumerator" },  // For IEnumerable
+        { DunderNames.Bool, "ToBoolean" },  // For explicit boolean conversion
         // Operator dunder methods are NOT in this map - they preserve their dunder name
         // e.g., __add__ becomes __Add__, __sub__ becomes __Sub__, etc.
         // This avoids conflicts with user-defined Add(), Sub(), etc. methods

@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Model;
 /// <summary>
 /// Factory methods for creating and populating CompilationUnits.
 /// </summary>
-public static class CompilationUnitFactory
+internal static class CompilationUnitFactory
 {
     /// <summary>
     /// Computes the module path from a file path and project root.

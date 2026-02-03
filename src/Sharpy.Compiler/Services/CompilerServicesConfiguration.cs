@@ -4,7 +4,7 @@ namespace Sharpy.Compiler.Services;
 /// Immutable configuration for CompilerServices.
 /// Set once at construction time.
 /// </summary>
-public sealed class CompilerServicesConfiguration
+internal sealed class CompilerServicesConfiguration
 {
     /// <summary>
     /// Maximum number of errors before stopping compilation.

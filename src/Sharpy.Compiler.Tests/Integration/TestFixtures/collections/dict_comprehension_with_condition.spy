@@ -1,0 +1,9 @@
+# Test: dict comprehension with filter condition
+def main():
+    result: dict[int, int] = {i: i * i for i in range(10) if i % 2 == 0}
+    print(len(result))
+    print(result[0])
+    print(result[2])
+    print(result[4])
+    print(result[6])
+    print(result[8])

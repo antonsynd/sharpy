@@ -5,7 +5,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// Result of generic type argument inference.
 /// </summary>
-public record InferenceResult
+internal record InferenceResult
 {
     /// <summary>
     /// Whether inference succeeded.
@@ -38,7 +38,7 @@ public record InferenceResult
 /// <summary>
 /// Types of inference errors.
 /// </summary>
-public enum InferenceErrorKind
+internal enum InferenceErrorKind
 {
     /// <summary>
     /// No arguments provide type information for a type parameter.
@@ -77,7 +77,7 @@ public enum InferenceErrorKind
 /// - Does NOT report errors directly (caller handles that)
 /// - Checks type constraints after inference
 /// </remarks>
-public class GenericTypeInferenceService
+internal class GenericTypeInferenceService
 {
     private readonly SymbolTable _symbolTable;
 

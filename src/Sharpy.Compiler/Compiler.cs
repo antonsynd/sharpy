@@ -15,28 +15,48 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace Sharpy.Compiler;
 
 /// <summary>
-/// Main compiler driver orchestrating the compilation pipeline
+/// Main compiler driver orchestrating the compilation pipeline.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This class is the primary public entry point for all compilation operations.
+/// Use <see cref="Compile(string, string)"/> for single-file compilation and
+/// <see cref="CompileProject(ProjectConfig)"/> for multi-file project compilation.
+/// Both return comprehensive result objects (<see cref="CompilationResult"/> and
+/// <see cref="ProjectCompilationResult"/>) that expose all intermediate artifacts
+/// (tokens, AST, semantic info, generated C#, diagnostics) for tooling consumption.
+/// </para>
+/// <para>
+/// Internal compiler components (<see cref="Lexer.Lexer"/>, <see cref="Parser.Parser"/>,
+/// <see cref="Semantic.NameResolver"/>, <see cref="Semantic.TypeChecker"/>,
+/// <see cref="CodeGen.RoslynEmitter"/>, etc.) should not be used directly by external
+/// consumers. The only exception is diagnostic-only tools (e.g., <c>emit tokens</c>,
+/// <c>emit ast</c>) that intentionally use only the lexer or parser stages.
+/// </para>
+/// </remarks>
 public class Compiler
 {
     private readonly ICompilerLogger _logger;
     private readonly ModuleRegistry? _moduleRegistry;
+    private readonly CompilerOptions _options;
 
     public Compiler(ICompilerLogger? logger = null)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = null;
+        _options = new CompilerOptions();
     }
 
     public Compiler(CompilerOptions options, ICompilerLogger? logger = null)
     {
         _logger = logger ?? NullLogger.Instance;
+        _options = options ?? new CompilerOptions();
         _moduleRegistry = new ModuleRegistry(_logger);
 
         // Add module search paths
-        if (options.ModulePaths != null)
+        if (_options.ModulePaths != null)
         {
-            foreach (var path in options.ModulePaths)
+            foreach (var path in _options.ModulePaths)
             {
                 _moduleRegistry.AddModulePath(path);
                 _logger.LogDebug($"Added module search path: {path}");
@@ -44,9 +64,9 @@ public class Compiler
         }
 
         // Load referenced assemblies
-        if (options.References != null)
+        if (_options.References != null)
         {
-            foreach (var reference in options.References)
+            foreach (var reference in _options.References)
             {
                 var success = _moduleRegistry.LoadReference(reference);
                 if (success)
@@ -72,7 +92,13 @@ public class Compiler
     /// </summary>
     public ProjectCompilationResult CompileProject(ProjectConfig projectConfig, CancellationToken cancellationToken)
     {
-        var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry);
+        // Merge project-level and compiler-level warning/error settings
+        var mergedSuppressed = new HashSet<string>(_options.SuppressedWarnings, StringComparer.OrdinalIgnoreCase);
+        mergedSuppressed.UnionWith(projectConfig.SuppressedWarnings);
+        var warnAsErrors = _options.WarningsAsErrors || projectConfig.WarningsAsErrors;
+
+        var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
+            warnAsErrors, mergedSuppressed, _options.MaxErrors, _options.Incremental);
         return projectCompiler.Compile(projectConfig, cancellationToken);
     }
 
@@ -83,7 +109,7 @@ public class Compiler
     {
         _logger.LogInfo($"Starting compilation of {filePath}");
         var metrics = new CompilationMetrics(fileName: filePath);
-        var diagnostics = new DiagnosticBag();
+        var diagnostics = new DiagnosticBag(_options.WarningsAsErrors, _options.SuppressedWarnings);
 
         // Declare artifact variables outside the try block so they are accessible
         // in catch handlers. This ensures cancelled or crashed compilations still
@@ -101,6 +127,10 @@ public class Compiler
             metrics.StartPhase("Lexical Analysis");
             sourceText = new SourceText(sourceCode, filePath);
             var lexer = new Lexer.Lexer(sourceText, _logger);
+            if (_options.MaxErrors > 0)
+            {
+                lexer.MaxErrors = _options.MaxErrors;
+            }
             tokens = lexer.TokenizeAll();
             metrics.EndPhase();
 
@@ -126,7 +156,8 @@ public class Compiler
             // Phase 2: Syntax Analysis
             _logger.LogInfo("Phase 2: Syntax Analysis");
             metrics.StartPhase("Syntax Analysis");
-            var parser = new Parser.Parser(tokens, _logger);
+            var parserMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 25;
+            var parser = new Parser.Parser(tokens, _logger, parserMaxErrors);
             module = parser.ParseModule();
             metrics.EndPhase();
 
@@ -148,13 +179,16 @@ public class Compiler
             // Assertion: Parser must produce a valid module with span info
             Debug.Assert(module != null, "Parser should produce a non-null Module");
             Debug.Assert(module.Body != null, "Module.Body should not be null");
-            AssertStatementsHaveSpans(module);
+            var assertionTimer = Stopwatch.StartNew();
+            AssertStatementsHaveSpans(module, diagnostics);
+            assertionTimer.Stop();
+            _logger.LogDebug($"Post-parse assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
 
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 3: Semantic Analysis
             _logger.LogInfo("Phase 3: Semantic Analysis");
-            var builtinRegistry = new BuiltinRegistry();
+            var builtinRegistry = new BuiltinRegistry(_logger);
             var symbolTable = new SymbolTable(builtinRegistry);
             var semanticInfo = new SemanticInfo();
             semanticBinding = new SemanticBinding();
@@ -183,8 +217,11 @@ public class Compiler
             metrics.EndPhase();
 
             // Assertions: After name resolution, verify symbol table integrity
-            AssertAllSymbolsHaveNames(symbolTable);
-            AssertNoDuplicateTypeNames(symbolTable);
+            assertionTimer.Restart();
+            AssertAllSymbolsHaveNames(symbolTable, diagnostics);
+            AssertNoDuplicateTypeNames(symbolTable, diagnostics);
+            assertionTimer.Stop();
+            _logger.LogDebug($"Post-name-resolution assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
 
             if (nameResolver.Diagnostics.HasErrors)
             {
@@ -225,25 +262,20 @@ public class Compiler
             // Materialize inheritance data onto Symbol properties, then verify and freeze
             semanticBinding.MaterializeInheritance();
             DualWriteAssertions.AssertInheritanceConsistency(symbolTable, semanticBinding);
-            AssertNoUnresolvedInheritance(symbolTable);
+            assertionTimer.Restart();
+            AssertNoUnresolvedInheritance(symbolTable, diagnostics);
+            assertionTimer.Stop();
+            _logger.LogDebug($"Post-inheritance assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
             semanticBinding.FreezeInheritance();
 
             metrics.EndPhase();
 
-            if (importResolver.Diagnostics.HasErrors)
+            // Always merge import diagnostics (errors + warnings) so they appear
+            // in the final result. Continue to type checking even if imports failed,
+            // so users see the full picture (import errors + type errors).
+            if (importResolver.Diagnostics.GetAll().Count > 0)
             {
                 diagnostics.Merge(importResolver.Diagnostics);
-                return new CompilationResult
-                {
-                    Success = false,
-                    Diagnostics = diagnostics,
-                    Metrics = metrics,
-                    SourceText = sourceText,
-                    Tokens = tokens,
-                    Module = module,
-                    SemanticBinding = semanticBinding,
-                    ImportResolver = importResolver
-                };
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -255,10 +287,12 @@ public class Compiler
 
             metrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
+            var semanticMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 100;
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline)
             {
                 CurrentFilePath = filePath,
-                SemanticBinding = semanticBinding
+                SemanticBinding = semanticBinding,
+                MaxErrors = semanticMaxErrors
             };
             try
             {
@@ -284,15 +318,21 @@ public class Compiler
             metrics.EndPhase();
 
             // Assertion: After successful type checking, warn if unknown types remain
+            assertionTimer.Restart();
             WarnIfUnknownTypes(semanticInfo, typeChecker.Diagnostics);
+            assertionTimer.Stop();
+            _logger.LogDebug($"Post-type-checking assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
             // Assertion: Type checking should have processed at least some expressions
             Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0,
                 "Type checker should record at least one expression type for non-empty modules");
             // Materialize CodeGenInfo and VariableType data onto Symbol properties, then verify and freeze
             semanticBinding.MaterializeCodeGenInfo();
             semanticBinding.MaterializeVariableTypes();
+            assertionTimer.Restart();
             DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, semanticBinding);
             DualWriteAssertions.AssertVariableTypeConsistency(symbolTable, semanticBinding);
+            assertionTimer.Stop();
+            _logger.LogDebug($"Post-materialization assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
             semanticBinding.FreezeVariableTypes();
             semanticBinding.FreezeCodeGenInfo();
 
@@ -380,7 +420,7 @@ public class Compiler
 
                 var moduleCs = GenerateCSharpForModule(
                     moduleInfo, symbolTable, builtinRegistry,
-                    codeGenContext.ProjectNamespace, diagnostics, semanticInfo);
+                    codeGenContext.ProjectNamespace, diagnostics, semanticInfo, semanticBinding);
 
                 if (moduleCs != null)
                 {
@@ -442,13 +482,13 @@ public class Compiler
         }
     }
 
-    // ----- Phase Boundary Assertions (compiled out in Release) -----
+    // ----- Phase Boundary Assertions (always-on, emit diagnostics) -----
 
     /// <summary>
     /// Verify top-level statements have TextSpan populated.
+    /// Emits SHP0904 if any statement is missing its span.
     /// </summary>
-    [Conditional("DEBUG")]
-    private static void AssertStatementsHaveSpans(Module module)
+    internal static void AssertStatementsHaveSpans(Module module, DiagnosticBag diagnostics)
     {
         foreach (var stmt in module.Body)
         {
@@ -456,31 +496,40 @@ public class Compiler
             if (stmt is ImportStatement or FromImportStatement)
                 continue;
 
-            Debug.Assert(stmt.Span.HasValue,
-                $"Statement {stmt.GetType().Name} at line {stmt.LineStart} is missing TextSpan");
+            if (!stmt.Span.HasValue)
+            {
+                diagnostics.AddWarning(
+                    $"Internal invariant violation: statement {stmt.GetType().Name} at line {stmt.LineStart} is missing TextSpan. This is a compiler bug — please report it.",
+                    stmt.LineStart, stmt.ColumnStart, code: DiagnosticCodes.Infrastructure.InvariantViolation,
+                    phase: CompilerPhase.Unknown);
+            }
         }
     }
 
     /// <summary>
     /// Verify all symbols in the global scope have non-empty names.
+    /// Emits SHP0904 for any symbol with a null/empty name.
     /// </summary>
-    [Conditional("DEBUG")]
-    private static void AssertAllSymbolsHaveNames(SymbolTable symbolTable)
+    internal static void AssertAllSymbolsHaveNames(SymbolTable symbolTable, DiagnosticBag diagnostics)
     {
         foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols())
         {
-            Debug.Assert(!string.IsNullOrEmpty(symbol.Name),
-                $"Symbol with kind {symbol.Kind} has null/empty name");
+            if (string.IsNullOrEmpty(symbol.Name))
+            {
+                diagnostics.AddWarning(
+                    $"Internal invariant violation: symbol with kind {symbol.Kind} has null/empty name. This is a compiler bug — please report it.",
+                    code: DiagnosticCodes.Infrastructure.InvariantViolation,
+                    phase: CompilerPhase.NameResolution);
+            }
         }
     }
 
     /// <summary>
     /// Verify no duplicate type definitions exist in the symbol table.
-    /// NameResolver should have emitted errors for duplicates, but this asserts
+    /// NameResolver should have emitted errors for duplicates, but this checks
     /// the resulting symbol table is clean.
     /// </summary>
-    [Conditional("DEBUG")]
-    private static void AssertNoDuplicateTypeNames(SymbolTable symbolTable)
+    internal static void AssertNoDuplicateTypeNames(SymbolTable symbolTable, DiagnosticBag diagnostics)
     {
         var typeNames = new HashSet<string>();
         foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
@@ -489,8 +538,13 @@ public class Compiler
             if (symbol.ClrType != null)
                 continue;
 
-            Debug.Assert(typeNames.Add(symbol.Name),
-                $"Duplicate type definition '{symbol.Name}' in symbol table after name resolution");
+            if (!typeNames.Add(symbol.Name))
+            {
+                diagnostics.AddWarning(
+                    $"Internal invariant violation: duplicate type definition '{symbol.Name}' in symbol table after name resolution. This is a compiler bug — please report it.",
+                    code: DiagnosticCodes.Infrastructure.InvariantViolation,
+                    phase: CompilerPhase.NameResolution);
+            }
         }
     }
 
@@ -499,8 +553,7 @@ public class Compiler
     /// after inheritance resolution. A dangling unresolved name means the inheritance
     /// resolver failed to find or match a type.
     /// </summary>
-    [Conditional("DEBUG")]
-    private void AssertNoUnresolvedInheritance(SymbolTable symbolTable)
+    internal static void AssertNoUnresolvedInheritance(SymbolTable symbolTable, DiagnosticBag diagnostics)
     {
         foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
         {
@@ -511,17 +564,19 @@ public class Compiler
             // If UnresolvedBaseName is set but BaseType is still null, resolution failed
             if (symbol.UnresolvedBaseName != null && symbol.BaseType == null)
             {
-                _logger.LogWarning(
-                    $"TypeSymbol '{symbol.Name}' has UnresolvedBaseName '{symbol.UnresolvedBaseName}' " +
-                    "but BaseType is null after inheritance resolution", 0, 0);
+                diagnostics.AddWarning(
+                    $"Internal invariant violation: type '{symbol.Name}' has UnresolvedBaseName '{symbol.UnresolvedBaseName}' but BaseType is null after inheritance resolution. This is a compiler bug — please report it.",
+                    code: DiagnosticCodes.Infrastructure.InvariantViolation,
+                    phase: CompilerPhase.NameResolution);
             }
 
             // If UnresolvedInterfaceNames has entries but Interfaces count doesn't match
             if (symbol.UnresolvedInterfaceNames.Count > 0 && symbol.Interfaces.Count < symbol.UnresolvedInterfaceNames.Count)
             {
-                _logger.LogWarning(
-                    $"TypeSymbol '{symbol.Name}' has {symbol.UnresolvedInterfaceNames.Count} unresolved interface names " +
-                    $"but only {symbol.Interfaces.Count} resolved interfaces after inheritance resolution", 0, 0);
+                diagnostics.AddWarning(
+                    $"Internal invariant violation: type '{symbol.Name}' has {symbol.UnresolvedInterfaceNames.Count} unresolved interface names but only {symbol.Interfaces.Count} resolved interfaces after inheritance resolution. This is a compiler bug — please report it.",
+                    code: DiagnosticCodes.Infrastructure.InvariantViolation,
+                    phase: CompilerPhase.NameResolution);
             }
         }
     }
@@ -533,13 +588,18 @@ public class Compiler
     /// and in some class member access patterns where the type checker doesn't
     /// record types for all intermediate expressions.
     /// </summary>
-    [Conditional("DEBUG")]
-    private void WarnIfUnknownTypes(SemanticInfo semanticInfo, DiagnosticBag diagnostics)
+    internal static void WarnIfUnknownTypes(SemanticInfo semanticInfo, DiagnosticBag diagnostics)
     {
         if (!diagnostics.HasErrors && semanticInfo.HasUnknownExpressionTypes())
         {
-            _logger.LogWarning(
-                "Unknown expression types remain after type checking (possible resolution gap)", 0, 0);
+            // Invariant (aspirational): if SemanticInfo contains UnknownType entries,
+            // DiagnosticBag should contain at least one error from the source of that Unknown.
+            // Currently, some intermediate expressions (member access chains, CLR interop)
+            // may produce Unknown without errors. This warning tracks those gaps.
+            diagnostics.AddWarning(
+                "Internal invariant violation: unknown expression types remain after type checking with no errors (possible resolution gap). This is a compiler bug — please report it.",
+                code: DiagnosticCodes.Infrastructure.InvariantViolation,
+                phase: CompilerPhase.TypeChecking);
         }
     }
 
@@ -631,7 +691,8 @@ public class Compiler
         BuiltinRegistry builtinRegistry,
         string? projectNamespace,
         DiagnosticBag diagnostics,
-        SemanticInfo? semanticInfo = null)
+        SemanticInfo? semanticInfo = null,
+        SemanticBinding? semanticBinding = null)
     {
         if (moduleInfo.Module == null || moduleInfo.IsNetModule)
             return null;
@@ -643,7 +704,8 @@ public class Compiler
             // Imported modules are NOT entry points - no Main method
             IsEntryPoint = false,
             Logger = _logger,
-            SemanticInfo = semanticInfo
+            SemanticInfo = semanticInfo,
+            SemanticBinding = semanticBinding ?? new SemanticBinding()
         };
 
         var emitter = new RoslynEmitter(codeGenContext);
@@ -675,7 +737,7 @@ public class CompilationResult
     public Module? Module { get; init; }
     public SymbolTable? SymbolTable { get; init; }
     public SemanticInfo? SemanticInfo { get; init; }
-    public ModuleRegistry? ModuleRegistry { get; init; }
+    internal ModuleRegistry? ModuleRegistry { get; init; }
     public string? GeneratedCSharpCode { get; init; }
 
     /// <summary>
@@ -708,7 +770,7 @@ public class CompilationResult
     /// The import resolver with loaded module information.
     /// Available for tooling that needs resolved module info (e.g., LSP go-to-definition across modules).
     /// </summary>
-    public ImportResolver? ImportResolver { get; init; }
+    internal ImportResolver? ImportResolver { get; init; }
 }
 
 /// <summary>
@@ -732,7 +794,7 @@ public class ProjectCompilationResult
     /// The dependency graph built during compilation.
     /// Available for tooling/analysis (e.g., incremental compilation, build order visualization).
     /// </summary>
-    public Project.DependencyGraph? DependencyGraph { get; init; }
+    internal Project.DependencyGraph? DependencyGraph { get; init; }
 
     /// <summary>
     /// The ProjectModel containing all CompilationUnits.
@@ -755,4 +817,30 @@ public class CompilerOptions
     /// Paths to .NET assemblies to reference
     /// </summary>
     public string[]? References { get; set; }
+
+    /// <summary>
+    /// Treat all warnings as errors. When true, any warning causes compilation
+    /// to report failure (warnings are promoted to error severity).
+    /// </summary>
+    public bool WarningsAsErrors { get; set; }
+
+    /// <summary>
+    /// Warning codes to suppress (e.g., "SHP0451", "SHP0452").
+    /// Suppressed warnings are silently discarded and do not appear in diagnostics.
+    /// </summary>
+    public HashSet<string> SuppressedWarnings { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Maximum number of errors before the compiler stops reporting.
+    /// Applies to both parser and semantic analysis.
+    /// Default: 0 (use component defaults: 25 for parser, 100 for semantic).
+    /// </summary>
+    public int MaxErrors { get; set; }
+
+    /// <summary>
+    /// Enable incremental compilation. When true, only files that have changed
+    /// (or whose dependencies have changed) are recompiled. File content hashes
+    /// are cached in the project's obj/ directory.
+    /// </summary>
+    public bool Incremental { get; set; }
 }

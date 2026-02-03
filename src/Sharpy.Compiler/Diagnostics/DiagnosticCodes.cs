@@ -120,6 +120,8 @@ public static class DiagnosticCodes
         public const string UninitializedStructField = "SHP0252";
         public const string InvalidEnumValue = "SHP0253";
         public const string InvalidFunctionType = "SHP0254";
+        public const string UnrecognizedStatementType = "SHP0255";
+        public const string UnrecognizedExpressionType = "SHP0256";
 
         // Return and control flow (SHP0260-SHP0279)
         public const string MissingReturnValue = "SHP0260";
@@ -188,6 +190,12 @@ public static class DiagnosticCodes
         public const string AbstractMethodWithBody = "SHP0505";
         public const string NonAbstractMethodWithoutBody = "SHP0506";
         public const string VarWithoutInitializer = "SHP0507";
+        public const string UnrecognizedStatementType = "SHP0510";
+        public const string NestedComprehension = "SHP0515";
+        public const string TupleUnpackingComprehension = "SHP0516";
+        public const string ComplexTupleUnpacking = "SHP0517";
+        public const string UnsupportedExpressionType = "SHP0518";
+        public const string UnsupportedOperator = "SHP0519";
         public const string InternalGeneratedCSharpParseError = "SHP0599";
     }
 
@@ -201,5 +209,7 @@ public static class DiagnosticCodes
         public const string CompilationCancelled = "SHP0901";
         public const string AssemblyCompilationFailed = "SHP0902";
         public const string FileReadError = "SHP0903";
+        public const string InvariantViolation = "SHP0904";
+        public const string TooManyErrors = "SHP0905";
     }
 }

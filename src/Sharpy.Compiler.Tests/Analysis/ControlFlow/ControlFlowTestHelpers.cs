@@ -6,7 +6,7 @@ namespace Sharpy.Compiler.Tests.Analysis.ControlFlow;
 /// <summary>
 /// Helper methods for creating CFG test fixtures.
 /// </summary>
-public static class ControlFlowTestHelpers
+internal static class ControlFlowTestHelpers
 {
     /// <summary>
     /// Creates a simple linear CFG: entry -> body -> exit

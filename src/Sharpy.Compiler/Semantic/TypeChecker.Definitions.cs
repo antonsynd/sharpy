@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// TypeChecker partial class: Type definition checking (functions, classes, structs, interfaces, enums)
 /// </summary>
-public partial class TypeChecker
+internal partial class TypeChecker
 {
     private void CheckFunction(FunctionDef functionDef)
     {
@@ -19,7 +19,7 @@ public partial class TypeChecker
         FunctionSymbol? functionSymbol = null;
         if (_currentClass != null)
         {
-            if (functionDef.Name == "__init__")
+            if (functionDef.Name == DunderNames.Init)
             {
                 // Find the matching constructor by declaration line number
                 // This uniquely identifies which overload we're checking
@@ -62,7 +62,7 @@ public partial class TypeChecker
 
         // Special case: __init__ always returns None/void
         // (signature validation is in SignatureValidator)
-        if (functionDef.Name == "__init__")
+        if (functionDef.Name == DunderNames.Init)
         {
             returnType = SemanticType.Void;
         }

@@ -483,6 +483,20 @@ public static class DiagnosticExplanations
             "f: int -> str = ...  # invalid syntax",
             "Use Callable syntax:\n  f: Callable[[int], str] = my_func");
 
+        Add(dict, DiagnosticCodes.Semantic.UnrecognizedStatementType, "Unrecognized statement type in type checker", "Semantic",
+            "The type checker encountered a statement type that it does not have a handler for. " +
+            "This is a compiler bug — the type checker is missing a case for this AST node type, " +
+            "which means the statement was not type-checked.",
+            null,
+            "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
+
+        Add(dict, DiagnosticCodes.Semantic.UnrecognizedExpressionType, "Unrecognized expression type in type checker", "Semantic",
+            "The type checker encountered an expression type that it does not have a handler for. " +
+            "The expression was assigned the Unknown type, which passes all type checks and may mask errors. " +
+            "This is a compiler bug — the type checker is missing a case for this AST node type.",
+            null,
+            "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
+
         // ── Semantic errors: Return and control flow (SHP0260-SHP0279) ──
 
         Add(dict, DiagnosticCodes.Semantic.MissingReturnValue, "Missing return value", "Semantic",
@@ -672,7 +686,7 @@ public static class DiagnosticExplanations
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",
             "An error occurred during C# code generation. This is typically an internal compiler error that should be reported as a bug.",
             null,
-            "Report this error at https://github.com/anthropics/sharpy/issues with the source file that triggered it.");
+            "Report this error at https://github.com/antonsynd/sharpy/issues with the source file that triggered it.");
 
         Add(dict, DiagnosticCodes.CodeGen.UnsupportedFeature, "Unsupported feature in code generation", "CodeGen",
             "The code uses a language feature that the code generator does not yet support. The feature is valid Sharpy syntax but cannot be compiled to C# yet.",
@@ -682,7 +696,7 @@ public static class DiagnosticExplanations
         Add(dict, DiagnosticCodes.CodeGen.EmptyClassName, "Empty class name in code generation", "CodeGen",
             "The code generator encountered a class with an empty name. This is an internal compiler error.",
             null,
-            "Report this error at https://github.com/anthropics/sharpy/issues.");
+            "Report this error at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.DuplicateMember, "Duplicate member in generated code", "CodeGen",
             "The code generator detected a duplicate member name in the generated C# class. This can happen when name mangling produces a collision.",
@@ -692,28 +706,65 @@ public static class DiagnosticExplanations
         Add(dict, DiagnosticCodes.CodeGen.EmptyMethodName, "Empty method name in code generation", "CodeGen",
             "The code generator encountered a method with an empty name. This is an internal compiler error.",
             null,
-            "Report this error at https://github.com/anthropics/sharpy/issues.");
+            "Report this error at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.AbstractMethodWithBody, "Abstract method with body in code generation", "CodeGen",
             "The code generator encountered an abstract method that has a body. Abstract methods should not have implementations.",
             null,
-            "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/anthropics/sharpy/issues.");
+            "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.NonAbstractMethodWithoutBody, "Non-abstract method without body", "CodeGen",
             "The code generator encountered a concrete (non-abstract) method that has no body. Only abstract and interface methods can omit the body.",
             null,
-            "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/anthropics/sharpy/issues.");
+            "This is an internal compiler error. The semantic analyzer should have caught this. Report it at https://github.com/antonsynd/sharpy/issues.");
 
         Add(dict, DiagnosticCodes.CodeGen.VarWithoutInitializer, "Variable without initializer in code generation", "CodeGen",
             "The code generator encountered a variable declaration without an initializer. All variables should have initializers by this point in the compilation pipeline.",
             null,
-            "This is an internal compiler error. Report it at https://github.com/anthropics/sharpy/issues.");
+            "This is an internal compiler error. Report it at https://github.com/antonsynd/sharpy/issues.");
+
+        Add(dict, DiagnosticCodes.CodeGen.UnrecognizedStatementType, "Unrecognized statement type not emitted", "CodeGen",
+            "The code generator encountered a statement type that it does not know how to emit. " +
+            "The statement was silently skipped, meaning the generated code does not include it. " +
+            "This is a compiler bug — the code generator is missing a handler for this AST node type.",
+            null,
+            "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
+
+        Add(dict, DiagnosticCodes.CodeGen.NestedComprehension, "Nested comprehensions not yet supported", "CodeGen",
+            "Nested comprehensions with multiple 'for' clauses (e.g., [x for row in matrix for x in row]) " +
+            "are not yet supported in code generation. The compiler recognizes the syntax but cannot emit the equivalent C# LINQ expression.",
+            "[x for row in matrix for x in row]",
+            "Use a for loop instead:\n  result: list[int] = []\n  for row in matrix:\n      for x in row:\n          result.append(x)");
+
+        Add(dict, DiagnosticCodes.CodeGen.TupleUnpackingComprehension, "Tuple unpacking in comprehensions not yet supported", "CodeGen",
+            "Tuple unpacking in comprehension for-clauses (e.g., [v for k, v in items]) is not yet supported " +
+            "in code generation. Only single-variable iteration is currently supported.",
+            "[v for k, v in items]",
+            "Use a for loop instead:\n  result: list[int] = []\n  for k, v in items:\n      result.append(v)");
+
+        Add(dict, DiagnosticCodes.CodeGen.ComplexTupleUnpacking, "Complex tuple unpacking not yet supported", "CodeGen",
+            "Complex tuple unpacking with non-identifier targets (e.g., nested tuples) is not yet supported " +
+            "in code generation. Only simple identifier targets are supported for tuple unpacking.",
+            null,
+            "Use intermediate variables to unpack in multiple steps.");
+
+        Add(dict, DiagnosticCodes.CodeGen.UnsupportedExpressionType, "Unsupported expression type in code generation", "CodeGen",
+            "The code generator encountered an expression or statement type that it does not know how to emit. " +
+            "This is either a not-yet-implemented feature or a compiler bug.",
+            null,
+            "If you believe this is valid Sharpy code, report it at https://github.com/antonsynd/sharpy/issues.");
+
+        Add(dict, DiagnosticCodes.CodeGen.UnsupportedOperator, "Unsupported operator in code generation", "CodeGen",
+            "The code generator encountered an operator that it does not know how to emit. " +
+            "This is either a not-yet-implemented operator or a compiler bug.",
+            null,
+            "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
 
         Add(dict, DiagnosticCodes.CodeGen.InternalGeneratedCSharpParseError, "Internal error: generated C# contains syntax errors", "CodeGen",
             "The compiler generated C# code that fails to parse. This indicates a bug in the Sharpy compiler's code generation phase. " +
             "The generated C# has syntax errors that would prevent compilation.",
             null,
-            "This is an internal compiler error. Please report it at https://github.com/anthropics/sharpy/issues with the .spy file that triggered it.");
+            "This is an internal compiler error. Please report it at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
 
         // ── Infrastructure errors (SHP0900-SHP0999) ────────────────────
 
@@ -730,12 +781,26 @@ public static class DiagnosticExplanations
         Add(dict, DiagnosticCodes.Infrastructure.AssemblyCompilationFailed, "Assembly compilation failed", "Infrastructure",
             "The Roslyn C# compilation of the generated code failed. This means the compiler produced C# code that the .NET compiler could not compile.",
             null,
-            "This is likely an internal compiler error. Report it at https://github.com/anthropics/sharpy/issues with the source file.");
+            "This is likely an internal compiler error. Report it at https://github.com/antonsynd/sharpy/issues with the source file.");
 
         Add(dict, DiagnosticCodes.Infrastructure.FileReadError, "File read error", "Infrastructure",
             "A source file could not be read from disk. This may be due to missing files, permission issues, or invalid file paths.",
             null,
             "Verify the file exists, the path is correct, and you have read permissions.");
+
+        Add(dict, DiagnosticCodes.Infrastructure.InvariantViolation, "Internal invariant violation", "Infrastructure",
+            "An internal compiler invariant was violated. This is a compiler bug — " +
+            "the semantic pipeline produced data that fails a post-phase consistency check. " +
+            "The compilation may still succeed, but the generated code could be incorrect.",
+            null,
+            "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
+
+        Add(dict, DiagnosticCodes.Infrastructure.TooManyErrors, "Too many errors", "Infrastructure",
+            "The compiler stopped reporting errors because the maximum error limit was reached. " +
+            "Additional errors may exist but were suppressed. The reported errors should be fixed first, " +
+            "as later errors are often caused by earlier ones.",
+            null,
+            "Fix the reported errors and re-compile. Use '--max-errors N' to increase the limit if needed.");
 
         return dict;
     }

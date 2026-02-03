@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Module class generation
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     private string ConvertModuleNameToNamespace(string moduleName)
     {
@@ -442,8 +442,9 @@ public partial class RoslynEmitter
             TypeAlias => null,  // Type aliases are compile-time only, no C# output
             ReturnStatement ret => GenerateReturn(ret),
             Assignment assign => GenerateAssignment(assign),
-            // Add more statement types...
-            _ => null
+            ImportStatement => null,       // Imports are resolved at semantic level, no C# output
+            FromImportStatement => null,   // Imports are resolved at semantic level, no C# output
+            _ => EmitUnrecognizedStatementDiagnostic(stmt)
         };
     }
 

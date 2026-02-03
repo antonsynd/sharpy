@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -12,7 +13,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Statement generation (control flow, assignments, try/catch)
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     private StatementSyntax? GenerateBodyStatement(Statement stmt)
     {
@@ -32,8 +33,17 @@ public partial class RoslynEmitter
             WhileStatement whileStmt => GenerateWhile(whileStmt),
             ForStatement forStmt => GenerateFor(forStmt),
             TryStatement tryStmt => GenerateTry(tryStmt),
-            _ => (StatementSyntax?)null
+            _ => null
         };
+
+        if (result == null && stmt is not ImportStatement and not FromImportStatement and not TypeAlias)
+        {
+            _context.AddError(
+                $"Internal: unrecognized statement type '{stmt.GetType().Name}' was not emitted. This is a compiler bug — please report it.",
+                DiagnosticCodes.CodeGen.UnrecognizedStatementType,
+                stmt.LineStart,
+                stmt.ColumnStart);
+        }
 
         return result != null ? AttachLineDirective(result, stmt) : null;
     }
@@ -280,10 +290,14 @@ public partial class RoslynEmitter
                         value));
             }
 
-            throw new NotImplementedException("Complex tuple unpacking (non-identifier targets) not yet supported");
+            return EmitNotImplementedStatement(
+                "Complex tuple unpacking (non-identifier targets) is not yet supported. Use intermediate variables to unpack in multiple steps.",
+                DiagnosticCodes.CodeGen.ComplexTupleUnpacking, assign.LineStart, assign.ColumnStart);
         }
 
-        throw new NotImplementedException($"Assignment target type not supported: {assign.Target.GetType().Name}");
+        return EmitNotImplementedStatement(
+            $"Unsupported expression type in code generation: assignment target type '{assign.Target.GetType().Name}'",
+            DiagnosticCodes.CodeGen.UnsupportedExpressionType, assign.LineStart, assign.ColumnStart);
     }
 
     private SyntaxKind GetAugmentedAssignmentOperator(AssignmentOperator op)
@@ -304,7 +318,7 @@ public partial class RoslynEmitter
             AssignmentOperator.DoubleSlashAssign => SyntaxKind.None,
             AssignmentOperator.PowerAssign => SyntaxKind.None,
             AssignmentOperator.NullCoalesceAssign => SyntaxKind.None,
-            _ => throw new NotImplementedException($"Augmented assignment operator not supported: {op}")
+            _ => SyntaxKind.None
         };
     }
 
@@ -352,8 +366,21 @@ public partial class RoslynEmitter
                 BinaryExpression(SyntaxKind.CoalesceExpression, left, right),
 
             // All other operators use simple binary expressions
-            _ => BinaryExpression(GetAugmentedAssignmentOperator(op), left, right)
+            _ => GenerateAugmentedBinaryExpression(op, left, right, targetAst)
         };
+    }
+
+    private ExpressionSyntax GenerateAugmentedBinaryExpression(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right, Expression? sourceAst = null)
+    {
+        var kind = GetAugmentedAssignmentOperator(op);
+        if (kind == SyntaxKind.None)
+        {
+            return EmitNotImplementedExpression(
+                $"Unsupported operator in code generation: augmented assignment operator '{op}'",
+                DiagnosticCodes.CodeGen.UnsupportedOperator,
+                sourceAst?.LineStart, sourceAst?.ColumnStart);
+        }
+        return BinaryExpression(kind, left, right);
     }
 
     /// <summary>
@@ -866,10 +893,14 @@ public partial class RoslynEmitter
                     body);
             }
 
-            throw new NotImplementedException("Complex for loop tuple unpacking (non-identifier targets) not yet supported");
+            return EmitNotImplementedStatement(
+                "Complex tuple unpacking (non-identifier targets) is not yet supported. Use intermediate variables to unpack in multiple steps.",
+                DiagnosticCodes.CodeGen.ComplexTupleUnpacking, target.LineStart, target.ColumnStart);
         }
 
-        throw new NotImplementedException($"For loop target type not supported: {target.GetType().Name}");
+        return EmitNotImplementedStatement(
+            $"Unsupported expression type in code generation: for loop target type '{target.GetType().Name}'",
+            DiagnosticCodes.CodeGen.UnsupportedExpressionType, target.LineStart, target.ColumnStart);
     }
 
     private StatementSyntax GenerateTry(TryStatement tryStmt)

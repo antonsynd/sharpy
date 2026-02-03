@@ -81,9 +81,33 @@ public class DiagnosticBag
 {
     private readonly List<CompilerDiagnostic> _diagnostics = new();
     private readonly object _lock = new();
+    private readonly HashSet<string> _suppressedWarnings;
+    private readonly bool _warningsAsErrors;
+
+    public DiagnosticBag() : this(warningsAsErrors: false, suppressedWarnings: null) { }
+
+    public DiagnosticBag(bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null)
+    {
+        _warningsAsErrors = warningsAsErrors;
+        // Defensive copy: DiagnosticBag claims thread-safety via lock(_lock),
+        // so the suppressed set must not be shared with callers.
+        _suppressedWarnings = suppressedWarnings != null
+            ? new HashSet<string>(suppressedWarnings, StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    }
 
     public void Add(CompilerDiagnostic diagnostic)
     {
+        // Apply suppression: skip warnings whose code is in the suppressed set
+        if (diagnostic.IsWarning && !string.IsNullOrEmpty(diagnostic.Code) && _suppressedWarnings.Contains(diagnostic.Code))
+            return;
+
+        // Apply promotion: warnings become errors when WarningsAsErrors is enabled
+        if (diagnostic.IsWarning && _warningsAsErrors)
+        {
+            diagnostic = diagnostic with { Severity = CompilerDiagnosticSeverity.Error };
+        }
+
         lock (_lock)
         {
             _diagnostics.Add(diagnostic);
@@ -112,27 +136,36 @@ public class DiagnosticBag
     public void AddWarning(string message, int? line = null, int? column = null, string? filePath = null,
         string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
     {
-        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Warning, line, column, filePath, code, phase));
+        if (!string.IsNullOrEmpty(code) && _suppressedWarnings.Contains(code))
+            return;
+        var severity = _warningsAsErrors ? CompilerDiagnosticSeverity.Error : CompilerDiagnosticSeverity.Warning;
+        Add(new CompilerDiagnostic(message, severity, line, column, filePath, code, phase));
     }
 
     public void AddWarning(string message, TextSpan? span, int? line = null, int? column = null,
         string? filePath = null, string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
     {
-        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Warning, line, column, filePath, code, phase, span));
+        if (!string.IsNullOrEmpty(code) && _suppressedWarnings.Contains(code))
+            return;
+        var severity = _warningsAsErrors ? CompilerDiagnosticSeverity.Error : CompilerDiagnosticSeverity.Warning;
+        Add(new CompilerDiagnostic(message, severity, line, column, filePath, code, phase, span));
     }
 
     public void AddWarning(string message, ILocatable locatable, string? filePath = null,
         string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
     {
-        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Warning, Span: locatable.Span,
+        if (!string.IsNullOrEmpty(code) && _suppressedWarnings.Contains(code))
+            return;
+        var severity = _warningsAsErrors ? CompilerDiagnosticSeverity.Error : CompilerDiagnosticSeverity.Warning;
+        Add(new CompilerDiagnostic(message, severity, Span: locatable.Span,
             FilePath: filePath, Code: code, Phase: phase));
     }
 
     public void AddRange(IEnumerable<CompilerDiagnostic> diagnostics)
     {
-        lock (_lock)
+        foreach (var diagnostic in diagnostics)
         {
-            _diagnostics.AddRange(diagnostics);
+            Add(diagnostic);
         }
     }
 

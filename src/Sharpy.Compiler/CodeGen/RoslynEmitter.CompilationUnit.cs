@@ -11,7 +11,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Compilation unit, namespace and import generation
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     public CompilationUnitSyntax GenerateCompilationUnit(Module module)
     {
@@ -139,7 +139,7 @@ public partial class RoslynEmitter
 
         // Add file name as final namespace component
         // EXCEPT for __init__.spy files, which represent the package itself
-        if (!string.IsNullOrEmpty(fileName) && fileName != "__init__")
+        if (!string.IsNullOrEmpty(fileName) && fileName != DunderNames.Init)
         {
             namespaceParts.Add(SimpleToPascalCase(fileName));
         }

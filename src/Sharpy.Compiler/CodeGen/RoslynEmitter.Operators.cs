@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Operator overloads and utility methods
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     /// <summary>
     /// Determines if a dunder method should generate a C# method (for overrides or special methods)
@@ -22,7 +22,7 @@ public partial class RoslynEmitter
     {
         // __init__ is explicitly checked here for clarity, even though it IS in ProtocolRegistry.
         // This makes the special constructor handling obvious to readers.
-        if (dunderName == "__init__")
+        if (dunderName == DunderNames.Init)
             return true;
 
         // Protocol dunders that map to .NET methods should be generated
@@ -37,36 +37,36 @@ public partial class RoslynEmitter
         return funcDef.Name switch
         {
             // Arithmetic operators (binary)
-            "__add__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.PlusToken),
-            "__sub__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.MinusToken),
-            "__mul__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.AsteriskToken),
-            "__truediv__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.SlashToken),
-            "__mod__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.PercentToken),
+            DunderNames.Add => GenerateBinaryOperator(funcDef, className, SyntaxKind.PlusToken),
+            DunderNames.Sub => GenerateBinaryOperator(funcDef, className, SyntaxKind.MinusToken),
+            DunderNames.Mul => GenerateBinaryOperator(funcDef, className, SyntaxKind.AsteriskToken),
+            DunderNames.TrueDiv => GenerateBinaryOperator(funcDef, className, SyntaxKind.SlashToken),
+            DunderNames.Mod => GenerateBinaryOperator(funcDef, className, SyntaxKind.PercentToken),
 
             // Bitwise operators (binary)
-            "__and__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.AmpersandToken),
-            "__or__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.BarToken),
-            "__xor__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.CaretToken),
-            "__lshift__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.LessThanLessThanToken),
-            "__rshift__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.GreaterThanGreaterThanToken),
+            DunderNames.And => GenerateBinaryOperator(funcDef, className, SyntaxKind.AmpersandToken),
+            DunderNames.Or => GenerateBinaryOperator(funcDef, className, SyntaxKind.BarToken),
+            DunderNames.Xor => GenerateBinaryOperator(funcDef, className, SyntaxKind.CaretToken),
+            DunderNames.LShift => GenerateBinaryOperator(funcDef, className, SyntaxKind.LessThanLessThanToken),
+            DunderNames.RShift => GenerateBinaryOperator(funcDef, className, SyntaxKind.GreaterThanGreaterThanToken),
 
             // Comparison operators (binary)
-            "__eq__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.EqualsEqualsToken),
-            "__ne__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.ExclamationEqualsToken),
-            "__lt__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.LessThanToken),
-            "__le__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.LessThanEqualsToken),
-            "__gt__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.GreaterThanToken),
-            "__ge__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.GreaterThanEqualsToken),
+            DunderNames.Eq => GenerateComparisonOperator(funcDef, className, SyntaxKind.EqualsEqualsToken),
+            DunderNames.Ne => GenerateComparisonOperator(funcDef, className, SyntaxKind.ExclamationEqualsToken),
+            DunderNames.Lt => GenerateComparisonOperator(funcDef, className, SyntaxKind.LessThanToken),
+            DunderNames.Le => GenerateComparisonOperator(funcDef, className, SyntaxKind.LessThanEqualsToken),
+            DunderNames.Gt => GenerateComparisonOperator(funcDef, className, SyntaxKind.GreaterThanToken),
+            DunderNames.Ge => GenerateComparisonOperator(funcDef, className, SyntaxKind.GreaterThanEqualsToken),
 
             // Unary operators
-            "__neg__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.MinusToken),
-            "__pos__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.PlusToken),
-            "__invert__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.TildeToken),
+            DunderNames.Neg => GenerateUnaryOperator(funcDef, className, SyntaxKind.MinusToken),
+            DunderNames.Pos => GenerateUnaryOperator(funcDef, className, SyntaxKind.PlusToken),
+            DunderNames.Invert => GenerateUnaryOperator(funcDef, className, SyntaxKind.TildeToken),
 
             // Not supported as operators (handled as methods)
-            "__pow__" => null,     // No ** operator in C#, use Math.Pow
-            "__getitem__" => null, // Requires indexer syntax, not operator
-            "__setitem__" => null, // Requires indexer syntax, not operator
+            DunderNames.Pow => null,     // No ** operator in C#, use Math.Pow
+            DunderNames.GetItem => null, // Requires indexer syntax, not operator
+            DunderNames.SetItem => null, // Requires indexer syntax, not operator
 
             _ => null
         };
@@ -382,9 +382,21 @@ public partial class RoslynEmitter
     /// <summary>
     /// Checks if an expression evaluates to a floating-point type.
     /// Used to determine floor division semantics.
+    /// Consults SemanticInfo for resolved types when available (variables, function calls, etc.).
+    /// Falls back to AST-based heuristic for literals and compound expressions.
     /// </summary>
     private bool IsFloatExpression(Expression expr)
     {
+        // First, try to resolve via SemanticInfo (handles variables, function calls, etc.)
+        var semanticType = GetExpressionSemanticType(expr);
+        if (semanticType != null)
+        {
+            return semanticType == SemanticType.Float
+                || semanticType == SemanticType.Double
+                || semanticType == SemanticType.Float32;
+        }
+
+        // Fallback to AST-based heuristic for cases where SemanticInfo is not available
         return expr switch
         {
             FloatLiteral => true,
@@ -401,8 +413,6 @@ public partial class RoslynEmitter
                 _ => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right)
             },
             Parenthesized paren => IsFloatExpression(paren.Expression),
-            // For other expressions (variables, function calls, etc.), assume integer
-            // A full type system would resolve these properly
             _ => false
         };
     }

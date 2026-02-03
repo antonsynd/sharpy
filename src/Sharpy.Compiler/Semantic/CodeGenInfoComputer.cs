@@ -10,7 +10,7 @@ namespace Sharpy.Compiler.Semantic;
 /// The computation mirrors what RoslynEmitter currently does at emission time,
 /// but does it once during semantic analysis instead of dynamically during emission.
 /// </summary>
-public class CodeGenInfoComputer
+internal class CodeGenInfoComputer
 {
     private readonly SymbolTable _symbolTable;
     private readonly SemanticBinding _semanticBinding;

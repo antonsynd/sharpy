@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - Parallel: Validators at same order level could potentially run in parallel
 /// - Extensibility: New validators can be registered at runtime
 /// </summary>
-public class ValidationPipeline
+internal class ValidationPipeline
 {
     private readonly List<ISemanticValidator> _validators = new();
     private readonly ICompilerLogger _logger;

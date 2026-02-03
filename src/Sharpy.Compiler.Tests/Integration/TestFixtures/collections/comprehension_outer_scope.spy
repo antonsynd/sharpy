@@ -1,0 +1,8 @@
+# Test: comprehension capturing outer scope variables
+def main():
+    multiplier: int = 3
+    threshold: int = 5
+    result: list[int] = [x * multiplier for x in range(10) if x > threshold]
+    for item in result:
+        print(item)
+    print(len(result))

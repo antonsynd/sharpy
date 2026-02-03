@@ -8,7 +8,8 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <!-- Suppress nullable warnings in tests - test framework handles assertion failures -->
-    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618</NoWarn>
+    <!-- CS1718: intentional self-comparison in equality tests -->
+    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618;CS1718</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,6 +25,11 @@
   <ItemGroup>
     <ProjectReference Include="../Sharpy.Compiler/Sharpy.Compiler.csproj" />
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Exclude .expected.cs snapshot files from compilation (they are test data, not source) -->
+  <ItemGroup>
+    <Compile Remove="Integration\TestFixtures\**\*.expected.cs" />
   </ItemGroup>
 
   <!-- Copy test fixture files to output directory -->

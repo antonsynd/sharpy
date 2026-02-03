@@ -10,7 +10,7 @@ namespace Sharpy.Compiler.Semantic;
 /// Resolves package-level symbols from __init__.spy files.
 /// Handles package initialization and re-exports.
 /// </summary>
-public class PackageResolver
+internal class PackageResolver
 {
     private readonly ICompilerLogger _logger;
     private readonly ImportResolver _importResolver;
@@ -284,7 +284,7 @@ public class PackageResolver
 /// <summary>
 /// Information about a resolved package.
 /// </summary>
-public class PackageInfo
+internal class PackageInfo
 {
     /// <summary>
     /// Package name (dotted notation, e.g., "utils.math")

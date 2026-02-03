@@ -6,7 +6,7 @@ namespace Sharpy.Compiler.Parser;
 /// <summary>
 /// Utility class for dumping AST nodes in a human-readable tree format
 /// </summary>
-public class AstDumper
+internal class AstDumper
 {
     private readonly StringBuilder _output;
     private const string IndentUnit = "  ";

@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 ///
 /// This is the pipeline-compatible version of DefaultParameterValidator.
 /// </summary>
-public class DefaultParameterValidator : SemanticValidatorBase
+internal class DefaultParameterValidator : SemanticValidatorBase
 {
     public override string Name => "DefaultParameterValidator";
     public override int Order => 250; // Before type checking (300)

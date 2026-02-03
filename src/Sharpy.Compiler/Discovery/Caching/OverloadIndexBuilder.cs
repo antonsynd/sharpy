@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.Discovery.Caching;
@@ -7,9 +8,15 @@ namespace Sharpy.Compiler.Discovery.Caching;
 /// <summary>
 /// Builds an OverloadIndex from assembly reflection.
 /// </summary>
-public class OverloadIndexBuilder
+internal class OverloadIndexBuilder
 {
     private readonly TypeMapper _typeMapper = new();
+    private readonly ICompilerLogger _logger;
+
+    public OverloadIndexBuilder(ICompilerLogger? logger = null)
+    {
+        _logger = logger ?? NullLogger.Instance;
+    }
 
     /// <summary>
     /// Build an index from an assembly by discovering all public static methods
@@ -151,17 +158,17 @@ public class OverloadIndexBuilder
                 catch (ArgumentException ex)
                 {
                     // Skip methods that can't be mapped
-                    Console.Error.WriteLine($"Warning: Skipping {exportType.Name}.{method.Name}: {ex.Message}");
+                    _logger.LogDebug($"Skipping {exportType.Name}.{method.Name}: {ex.Message}");
                 }
                 catch (InvalidOperationException ex)
                 {
                     // Skip methods that can't be mapped
-                    Console.Error.WriteLine($"Warning: Skipping {exportType.Name}.{method.Name}: {ex.Message}");
+                    _logger.LogDebug($"Skipping {exportType.Name}.{method.Name}: {ex.Message}");
                 }
                 catch (NotSupportedException ex)
                 {
                     // Skip methods that can't be mapped
-                    Console.Error.WriteLine($"Warning: Skipping {exportType.Name}.{method.Name}: {ex.Message}");
+                    _logger.LogDebug($"Skipping {exportType.Name}.{method.Name}: {ex.Message}");
                 }
             }
 

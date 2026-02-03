@@ -1,0 +1,7 @@
+# Test: comprehension with conditional (ternary) expression in element
+def main():
+    data: list[int] = [-3, -1, 0, 2, 4]
+    result: list[int] = [x if x > 0 else -x for x in data]
+    for item in result:
+        print(item)
+    print(len(result))

@@ -1,0 +1,6 @@
+# Test: comprehension with multiple if clauses
+def main():
+    result: list[int] = [x for x in range(20) if x > 5 if x < 15]
+    for item in result:
+        print(item)
+    print(len(result))

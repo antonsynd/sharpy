@@ -6,7 +6,7 @@ namespace Sharpy.Compiler.Semantic;
 /// Resolves module paths to actual source files (.spy files).
 /// Supports multiple search paths and package directory resolution.
 /// </summary>
-public class ModuleResolver
+internal class ModuleResolver
 {
     private readonly ICompilerLogger _logger;
     private readonly List<string> _searchPaths = new();
@@ -279,7 +279,7 @@ public class ModuleResolver
         }
 
         // Build the canonical name
-        if (fileName != "__init__")
+        if (fileName != DunderNames.Init)
         {
             packageParts.Add(fileName);
         }
@@ -345,7 +345,7 @@ public class ModuleResolver
 /// <summary>
 /// Result of module resolution
 /// </summary>
-public class ModuleResolutionResult
+internal class ModuleResolutionResult
 {
     /// <summary>
     /// Absolute path to the resolved .spy file
@@ -378,7 +378,7 @@ public class ModuleResolutionResult
 /// <summary>
 /// Indicates how a module was resolved
 /// </summary>
-public enum ModuleResolutionKind
+internal enum ModuleResolutionKind
 {
     /// <summary>
     /// Found relative to the importing file's directory

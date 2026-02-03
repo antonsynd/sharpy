@@ -436,4 +436,321 @@ def main():
     }
 
     #endregion
+
+    #region Warning Suppression and Warning-as-Error Tests
+
+    [Fact]
+    public void Compiler_WarningsAsErrors_FailsOnWarning()
+    {
+        // Code that produces an unused variable warning
+        var code = @"
+def foo() -> int:
+    unused_var: int = 42
+    return 0
+
+def main():
+    print(foo())
+";
+        var options = new CompilerOptions
+        {
+            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+            WarningsAsErrors = true
+        };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        // Should fail because warnings are promoted to errors
+        Assert.False(result.Success);
+        Assert.True(result.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void Compiler_SuppressedWarning_NotReported()
+    {
+        // Code that produces an unused variable warning
+        var code = @"
+def foo() -> int:
+    unused_var: int = 42
+    return 0
+
+def main():
+    print(foo())
+";
+        var options = new CompilerOptions
+        {
+            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+            SuppressedWarnings = new HashSet<string> { DiagnosticCodes.Validation.UnusedVariable }
+        };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain(result.Diagnostics.GetWarnings(),
+            w => w.Code == DiagnosticCodes.Validation.UnusedVariable);
+    }
+
+    [Fact]
+    public void Compiler_MaxErrors_LimitsErrorCount()
+    {
+        // Code with many errors (5 type mismatches, but MaxErrors=2)
+        var code = @"
+def main():
+    x: int = ""hello""
+    y: int = ""world""
+    z: int = ""foo""
+    w: int = ""bar""
+    v: int = ""baz""
+";
+        var options = new CompilerOptions
+        {
+            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+            MaxErrors = 2
+        };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+
+        // Should have exactly MaxErrors actual errors (truncation notice is a warning)
+        var errors = result.Diagnostics.GetErrors();
+        Assert.Equal(2, errors.Count);
+
+        // Should have a truncation warning with the TooManyErrors code
+        var warnings = result.Diagnostics.GetWarnings();
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Infrastructure.TooManyErrors);
+    }
+
+    [Fact]
+    public void CompileProject_MaxErrors_LimitsErrorCount()
+    {
+        // Multi-file project with many type errors but MaxErrors=2.
+        // Verifies ProjectCompiler threads MaxErrors to TypeChecker.
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), @"
+def main():
+    a: int = ""hello""
+    b: int = ""world""
+    c: int = ""foo""
+    d: int = ""bar""
+    e: int = ""baz""
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                SourceFiles = new System.Collections.Generic.List<string>
+                {
+                    Path.Combine(tempDir, "main.spy")
+                }
+            };
+
+            var options = new CompilerOptions
+            {
+                References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+                MaxErrors = 2
+            };
+            var compiler = new Compiler(options);
+            var result = compiler.CompileProject(config);
+
+            Assert.False(result.Success);
+
+            // Should have exactly MaxErrors actual errors
+            var errors = result.Diagnostics.GetErrors();
+            Assert.Equal(2, errors.Count);
+
+            // Should have a truncation warning
+            var warnings = result.Diagnostics.GetWarnings();
+            Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Infrastructure.TooManyErrors);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    #endregion
+
+    #region Semantic Error Recovery (3.6) Tests
+
+    [Fact]
+    public void Compiler_WithImportErrors_ContinuesToTypeChecking()
+    {
+        // Code with a bad import AND a type error in a valid function.
+        // The compiler should report BOTH: the import error and the type error,
+        // not bail after import resolution.
+        var code = @"
+from nonexistent_module import something
+
+def main():
+    x: int = ""not_an_int""
+";
+        var options = new CompilerOptions
+        {
+            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+        };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+
+        var errors = result.Diagnostics.GetErrors().ToList();
+        Assert.True(errors.Count >= 2,
+            $"Expected at least 2 errors (import + type), got {errors.Count}: {string.Join("; ", errors.Select(e => $"[{e.Phase}] {e.Message}"))}");
+
+        // Should have an import-phase error
+        Assert.Contains(errors, e => e.Phase == CompilerPhase.ImportResolution);
+
+        // Should also have a type-checking-phase error
+        Assert.Contains(errors, e => e.Phase == CompilerPhase.TypeChecking);
+    }
+
+    [Fact]
+    public void Compiler_WithImportErrors_StillReportsTypeErrors()
+    {
+        // A failed import leaves the symbol undefined. The type checker should
+        // report errors for usage of that undefined symbol rather than crashing.
+        var code = @"
+from nonexistent_module import helper
+
+def main():
+    result: int = helper(42)
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+
+        var errors = result.Diagnostics.GetErrors().ToList();
+        // At minimum, the import error
+        Assert.Contains(errors, e => e.Phase == CompilerPhase.ImportResolution);
+    }
+
+    [Fact]
+    public void CompileProject_WithImportErrors_ContinuesToTypeChecking()
+    {
+        // Multi-file project where one file has a bad import and another file has a type error.
+        // The ProjectCompiler should report BOTH: the import error AND the type error,
+        // not bail after import resolution.
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // main.spy has a bad import AND a type error in a local function
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), @"
+from nonexistent_module import helper
+
+def main():
+    x: int = ""not_an_int""
+");
+
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = tempDir,
+                RootNamespace = "TestApp",
+                OutputType = "exe",
+                SourceFiles = new System.Collections.Generic.List<string>
+                {
+                    Path.Combine(tempDir, "main.spy")
+                }
+            };
+
+            var options = new CompilerOptions
+            {
+                References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+            };
+            var compiler = new Compiler(options);
+            var result = compiler.CompileProject(config);
+
+            Assert.False(result.Success);
+
+            var errors = result.Diagnostics.GetErrors().ToList();
+            Assert.True(errors.Count >= 2,
+                $"Expected at least 2 errors (import + type), got {errors.Count}: {string.Join("; ", errors.Select(e => $"[{e.Phase}] {e.Message}"))}");
+
+            // Should have an import-phase error
+            Assert.Contains(errors, e => e.Phase == CompilerPhase.ImportResolution);
+
+            // Should also have a type-checking-phase error (the str -> int mismatch)
+            Assert.Contains(errors, e =>
+                e.Phase == CompilerPhase.TypeChecking || e.Phase == CompilerPhase.Validation);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    #endregion
+
+    #region Emit CSharp with Imports (3.4) Tests
+
+    [Fact]
+    public void Compiler_EmitCSharp_IncludesImportedModuleCode()
+    {
+        // When a file imports from another .spy module, the compilation result
+        // should include generated C# for both the entry file and the imported module
+        // in GeneratedCSharpFiles.
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // Create an imported module
+            File.WriteAllText(Path.Combine(tempDir, "math_helpers.spy"), @"
+def double_it(x: int) -> int:
+    return x * 2
+");
+
+            // Create entry file that imports from the module
+            var mainPath = Path.Combine(tempDir, "main.spy");
+            File.WriteAllText(mainPath, @"
+from math_helpers import double_it
+
+def main():
+    print(double_it(21))
+");
+
+            var options = new CompilerOptions
+            {
+                References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+                ModulePaths = new[] { tempDir }
+            };
+            var compiler = new Compiler(options);
+            var result = compiler.Compile(File.ReadAllText(mainPath), mainPath);
+
+            Assert.True(result.Success,
+                $"Compilation failed: {string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+
+            // GeneratedCSharpCode should be the entry file
+            Assert.NotNull(result.GeneratedCSharpCode);
+            Assert.NotEmpty(result.GeneratedCSharpCode);
+
+            // GeneratedCSharpFiles should contain both the entry file and the imported module
+            Assert.True(result.GeneratedCSharpFiles.Count >= 2,
+                $"Expected at least 2 generated files (entry + import), got {result.GeneratedCSharpFiles.Count}: " +
+                string.Join(", ", result.GeneratedCSharpFiles.Keys.Select(Path.GetFileName)));
+
+            // The imported module should have generated C#
+            var importedModuleEntry = result.GeneratedCSharpFiles
+                .FirstOrDefault(kvp => Path.GetFileName(kvp.Key).Contains("math_helpers"));
+            Assert.False(string.IsNullOrEmpty(importedModuleEntry.Value),
+                "Imported module 'math_helpers' should have generated C# code");
+
+            // The generated C# for the imported module should contain the function
+            Assert.Contains("DoubleIt", importedModuleEntry.Value); // snake_case -> PascalCase
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    #endregion
 }

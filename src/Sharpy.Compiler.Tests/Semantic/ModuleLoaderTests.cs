@@ -317,6 +317,6 @@ class Widget:
 
         var spyModules = _loader.LoadedSpyModules;
         Assert.Single(spyModules);
-        Assert.False(spyModules.Values.Any(m => m.IsNetModule));
+        Assert.DoesNotContain(spyModules.Values, m => m.IsNetModule);
     }
 }

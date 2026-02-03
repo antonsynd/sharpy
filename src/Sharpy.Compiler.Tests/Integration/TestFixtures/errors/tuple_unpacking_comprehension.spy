@@ -1,0 +1,4 @@
+def main() -> None:
+    items: list[tuple[str, int]] = [("a", 1), ("b", 2)]
+    values: list[int] = [v for k, v in items]
+    print(values)

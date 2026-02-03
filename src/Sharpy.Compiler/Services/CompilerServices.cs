@@ -38,13 +38,13 @@ public class CompilerServices
     public SemanticInfo SemanticInfo { get; }
 
     // Configuration
-    public CompilerServicesConfiguration Configuration => _config;
+    internal CompilerServicesConfiguration Configuration => _config;
 
     /// <summary>
     /// Optional SemanticBinding for reading inheritance data.
     /// When set, helpers prefer this over direct symbol property access.
     /// </summary>
-    public SemanticBinding SemanticBinding { get; set; } = new();
+    public SemanticBinding SemanticBinding { get; internal set; } = new();
 
     /// <summary>
     /// Current file path being processed. Can be updated as compilation progresses.

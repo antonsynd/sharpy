@@ -130,7 +130,7 @@ public class CompilationUnit
     /// The generated C# source code for this file.
     /// Null until code generation completes.
     /// </summary>
-    public string? GeneratedCSharp { get; set; }
+    public string? GeneratedCSharp { get; internal set; }
 
     #endregion
 

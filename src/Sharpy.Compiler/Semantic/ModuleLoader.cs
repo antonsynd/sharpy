@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Semantic;
 /// Loads, parses, and caches .spy modules. Extracts exported symbols from parsed AST.
 /// Separated from ImportResolver to isolate module loading/caching/symbol-extraction concerns.
 /// </summary>
-public class ModuleLoader
+internal class ModuleLoader
 {
     private readonly ICompilerLogger _logger;
     private readonly DiagnosticBag _diagnostics = new();
@@ -307,7 +307,7 @@ public class ModuleLoader
             {
                 var methodSymbol = ExtractMethodSymbol(method);
                 methods.Add(methodSymbol);
-                if (method.Name == "__init__")
+                if (method.Name == DunderNames.Init)
                     ctors.Add(methodSymbol);
             }
         }
@@ -371,7 +371,7 @@ public class ModuleLoader
             {
                 var methodSymbol = ExtractMethodSymbol(method);
                 methods.Add(methodSymbol);
-                if (method.Name == "__init__")
+                if (method.Name == DunderNames.Init)
                     ctors.Add(methodSymbol);
             }
         }
@@ -553,7 +553,7 @@ public class ModuleLoader
             }
         }
 
-        if (fileName != "__init__")
+        if (fileName != DunderNames.Init)
         {
             packageParts.Add(fileName);
         }

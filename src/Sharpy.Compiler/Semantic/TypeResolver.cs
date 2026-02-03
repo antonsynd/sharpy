@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// Resolves type annotations to semantic types
 /// </summary>
-public class TypeResolver
+internal class TypeResolver
 {
     private readonly SymbolTable _symbolTable;
     private readonly SemanticInfo _semanticInfo;

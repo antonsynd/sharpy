@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -12,7 +13,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// RoslynEmitter partial class: Expression generation (literals, operators, calls, comprehensions)
 /// </summary>
-public partial class RoslynEmitter
+internal partial class RoslynEmitter
 {
     private ExpressionSyntax GenerateExpression(Sharpy.Compiler.Parser.Ast.Expression expr)
     {
@@ -74,7 +75,9 @@ public partial class RoslynEmitter
             TryExpression tryExpr => GenerateTryExpression(tryExpr),
             MaybeExpression maybeExpr => GenerateMaybeExpression(maybeExpr),
 
-            _ => throw new NotImplementedException($"Expression type not implemented: {expr.GetType().Name}")
+            _ => EmitNotImplementedExpression(
+                $"Unsupported expression type in code generation: '{expr.GetType().Name}'",
+                DiagnosticCodes.CodeGen.UnsupportedExpressionType, expr.LineStart, expr.ColumnStart)
         };
     }
 
@@ -238,7 +241,9 @@ public partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
-        throw new NotImplementedException("Complex function expressions not yet supported");
+        return EmitNotImplementedExpression(
+            "Unsupported expression type in code generation: complex function expressions are not yet supported",
+            DiagnosticCodes.CodeGen.UnsupportedExpressionType, call.LineStart, call.ColumnStart);
     }
 
     private ExpressionSyntax GenerateBinaryOp(BinaryOp binOp)
@@ -388,8 +393,15 @@ public partial class RoslynEmitter
             // Null coalescing
             BinaryOperator.NullCoalesce => SyntaxKind.CoalesceExpression,
 
-            _ => throw new NotImplementedException($"Binary operator not implemented: {binOp.Operator}")
+            _ => SyntaxKind.None
         };
+
+        if (kind == SyntaxKind.None)
+        {
+            return EmitNotImplementedExpression(
+                $"Unsupported operator in code generation: binary operator '{binOp.Operator}'",
+                DiagnosticCodes.CodeGen.UnsupportedOperator, binOp.LineStart, binOp.ColumnStart);
+        }
 
         return BinaryExpression(kind, left, right);
     }
@@ -458,8 +470,15 @@ public partial class RoslynEmitter
             UnaryOperator.Minus => SyntaxKind.UnaryMinusExpression,
             UnaryOperator.Not => SyntaxKind.LogicalNotExpression,
             UnaryOperator.BitwiseNot => SyntaxKind.BitwiseNotExpression,
-            _ => throw new NotImplementedException($"Unary operator not implemented: {unaryOp.Operator}")
+            _ => SyntaxKind.None
         };
+
+        if (kind == SyntaxKind.None)
+        {
+            return EmitNotImplementedExpression(
+                $"Unsupported operator in code generation: unary operator '{unaryOp.Operator}'",
+                DiagnosticCodes.CodeGen.UnsupportedOperator, unaryOp.LineStart, unaryOp.ColumnStart);
+        }
 
         return PrefixUnaryExpression(kind, operand);
     }
@@ -596,7 +615,9 @@ public partial class RoslynEmitter
         // Get the loop variable name (single identifier only)
         if (firstFor.Target is not Identifier loopVar)
         {
-            throw new NotImplementedException("Tuple unpacking in comprehensions not yet supported");
+            return EmitNotImplementedExpression(
+                "Tuple unpacking in comprehensions is not yet supported. Use a for loop instead.",
+                DiagnosticCodes.CodeGen.TupleUnpackingComprehension, listComp.LineStart, listComp.ColumnStart);
         }
 
         var varName = NameMangler.ToCamelCase(loopVar.Name);
@@ -623,9 +644,9 @@ public partial class RoslynEmitter
             }
             else if (clause is ForClause)
             {
-                // Multiple for clauses (nested iteration) - requires more complex LINQ
-                // For now, throw NotImplementedException
-                throw new NotImplementedException("Nested comprehensions (multiple for clauses) not yet supported");
+                return EmitNotImplementedExpression(
+                    "Nested comprehensions (multiple 'for' clauses) are not yet supported. Use a for loop instead.",
+                    DiagnosticCodes.CodeGen.NestedComprehension, listComp.LineStart, listComp.ColumnStart);
             }
         }
 
@@ -666,7 +687,9 @@ public partial class RoslynEmitter
         // Get the loop variable name (single identifier only)
         if (firstFor.Target is not Identifier loopVar)
         {
-            throw new NotImplementedException("Tuple unpacking in comprehensions not yet supported");
+            return EmitNotImplementedExpression(
+                "Tuple unpacking in comprehensions is not yet supported. Use a for loop instead.",
+                DiagnosticCodes.CodeGen.TupleUnpackingComprehension, setComp.LineStart, setComp.ColumnStart);
         }
 
         var varName = NameMangler.ToCamelCase(loopVar.Name);
@@ -693,7 +716,9 @@ public partial class RoslynEmitter
             }
             else if (clause is ForClause)
             {
-                throw new NotImplementedException("Nested comprehensions (multiple for clauses) not yet supported");
+                return EmitNotImplementedExpression(
+                    "Nested comprehensions (multiple 'for' clauses) are not yet supported. Use a for loop instead.",
+                    DiagnosticCodes.CodeGen.NestedComprehension, setComp.LineStart, setComp.ColumnStart);
             }
         }
 
@@ -735,7 +760,9 @@ public partial class RoslynEmitter
         // Get the loop variable name (single identifier only)
         if (firstFor.Target is not Identifier loopVar)
         {
-            throw new NotImplementedException("Tuple unpacking in comprehensions not yet supported");
+            return EmitNotImplementedExpression(
+                "Tuple unpacking in comprehensions is not yet supported. Use a for loop instead.",
+                DiagnosticCodes.CodeGen.TupleUnpackingComprehension, dictComp.LineStart, dictComp.ColumnStart);
         }
 
         var varName = NameMangler.ToCamelCase(loopVar.Name);
@@ -762,7 +789,9 @@ public partial class RoslynEmitter
             }
             else if (clause is ForClause)
             {
-                throw new NotImplementedException("Nested comprehensions (multiple for clauses) not yet supported");
+                return EmitNotImplementedExpression(
+                    "Nested comprehensions (multiple 'for' clauses) are not yet supported. Use a for loop instead.",
+                    DiagnosticCodes.CodeGen.NestedComprehension, dictComp.LineStart, dictComp.ColumnStart);
             }
         }
 
@@ -1089,33 +1118,73 @@ public partial class RoslynEmitter
 
     private ExpressionSyntax GenerateComparisonChain(ComparisonChain chain)
     {
-        // a < b < c → a < b && b < c (with b evaluated once)
-        // For simplicity in v0.6, we'll allow re-evaluation
-        // See: #101 (store intermediate values in temp variables)
+        // a < b < c → a < b && b < c
+        // Python guarantees intermediate expressions are evaluated exactly once.
+        // For non-trivial intermediate expressions (function calls, member access, etc.),
+        // we use the C# "is var" pattern to capture the value inline:
+        //   a < (f() is var __cmp_0 ? __cmp_0 : __cmp_0) && __cmp_0 < c
 
         if (chain.Operands.Length < 2 || chain.Operators.Length != chain.Operands.Length - 1)
         {
             throw new InvalidOperationException("Invalid comparison chain");
         }
 
+        // For intermediate operands (indices 1..n-2), decide if they need a temp variable.
+        // First and last operands are only used once and don't need temps.
+        var tempNames = new string?[chain.Operands.Length];
+        for (int i = 1; i < chain.Operands.Length - 1; i++)
+        {
+            if (!IsTrivialExpression(chain.Operands[i]))
+            {
+                tempNames[i] = GenerateTempVarName("cmp");
+            }
+        }
+
         ExpressionSyntax? result = null;
 
         for (int i = 0; i < chain.Operators.Length; i++)
         {
-            var left = GenerateExpression(chain.Operands[i]);
-            var right = GenerateExpression(chain.Operands[i + 1]);
-            var op = chain.Operators[i];
+            ExpressionSyntax left;
+            ExpressionSyntax right;
 
-            var kind = op switch
+            // Left operand: use temp name from previous iteration if available
+            if (i > 0 && tempNames[i] != null)
             {
-                ComparisonOperator.Equal => SyntaxKind.EqualsExpression,
-                ComparisonOperator.NotEqual => SyntaxKind.NotEqualsExpression,
-                ComparisonOperator.LessThan => SyntaxKind.LessThanExpression,
-                ComparisonOperator.LessThanOrEqual => SyntaxKind.LessThanOrEqualExpression,
-                ComparisonOperator.GreaterThan => SyntaxKind.GreaterThanExpression,
-                ComparisonOperator.GreaterThanOrEqual => SyntaxKind.GreaterThanOrEqualExpression,
-                _ => throw new NotImplementedException($"Comparison operator {op} not supported in chains")
-            };
+                left = IdentifierName(tempNames[i]!);
+            }
+            else
+            {
+                left = GenerateExpression(chain.Operands[i]);
+            }
+
+            // Right operand: capture into temp if this is an intermediate with side effects
+            var rightExpr = GenerateExpression(chain.Operands[i + 1]);
+            if (tempNames[i + 1] != null)
+            {
+                // Wrap in: (expr is var __cmp_N ? __cmp_N : __cmp_N)
+                // This evaluates expr once, binds to __cmp_N, and returns the value
+                right = ParenthesizedExpression(
+                    ConditionalExpression(
+                        IsPatternExpression(
+                            rightExpr,
+                            VarPattern(SingleVariableDesignation(Identifier(tempNames[i + 1]!)))),
+                        IdentifierName(tempNames[i + 1]!),
+                        IdentifierName(tempNames[i + 1]!)));
+            }
+            else
+            {
+                right = rightExpr;
+            }
+
+            var op = chain.Operators[i];
+            var kind = MapComparisonOperator(op);
+
+            if (kind == SyntaxKind.None)
+            {
+                return EmitNotImplementedExpression(
+                    $"Unsupported operator in code generation: comparison operator '{op}' in chains",
+                    DiagnosticCodes.CodeGen.UnsupportedOperator, chain.LineStart, chain.ColumnStart);
+            }
 
             var comparison = BinaryExpression(kind, left, right);
 
@@ -1125,6 +1194,37 @@ public partial class RoslynEmitter
         }
 
         return result ?? throw new InvalidOperationException("Empty comparison chain");
+    }
+
+    /// <summary>
+    /// Maps a comparison operator to the corresponding C# syntax kind.
+    /// </summary>
+    private SyntaxKind MapComparisonOperator(ComparisonOperator op)
+    {
+        return op switch
+        {
+            ComparisonOperator.Equal => SyntaxKind.EqualsExpression,
+            ComparisonOperator.NotEqual => SyntaxKind.NotEqualsExpression,
+            ComparisonOperator.LessThan => SyntaxKind.LessThanExpression,
+            ComparisonOperator.LessThanOrEqual => SyntaxKind.LessThanOrEqualExpression,
+            ComparisonOperator.GreaterThan => SyntaxKind.GreaterThanExpression,
+            ComparisonOperator.GreaterThanOrEqual => SyntaxKind.GreaterThanOrEqualExpression,
+            _ => SyntaxKind.None
+        };
+    }
+
+    /// <summary>
+    /// Returns true if the expression is trivial (identifier, literal) and
+    /// safe to evaluate multiple times without side effects.
+    /// </summary>
+    private static bool IsTrivialExpression(Expression expr)
+    {
+        return expr is Parser.Ast.Identifier
+            or IntegerLiteral
+            or FloatLiteral
+            or StringLiteral
+            or BooleanLiteral
+            or NoneLiteral;
     }
 
     private ExpressionSyntax GenerateConditionalExpression(ConditionalExpression cond)
@@ -1486,7 +1586,7 @@ public partial class RoslynEmitter
             }
 
             // Add file name part (skip __init__ as it represents the package itself)
-            if (!string.Equals(fileName, "__init__", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(fileName, DunderNames.Init, StringComparison.OrdinalIgnoreCase))
             {
                 namespaceParts.Add(NameMangler.ToPascalCase(fileName));
             }

@@ -9,7 +9,7 @@ public class SymbolTable
     private readonly Scope _globalScope;
     private readonly BuiltinRegistry _builtins;
 
-    public SymbolTable(BuiltinRegistry builtins)
+    internal SymbolTable(BuiltinRegistry builtins)
     {
         _builtins = builtins;
         _globalScope = new Scope("global");
@@ -114,5 +114,5 @@ public class SymbolTable
     public Scope CurrentScope => _scopeStack.Peek();
     public Scope GlobalScope => _globalScope;
     public int ScopeDepth => _scopeStack.Count;
-    public BuiltinRegistry BuiltinRegistry => _builtins;
+    internal BuiltinRegistry BuiltinRegistry => _builtins;
 }
