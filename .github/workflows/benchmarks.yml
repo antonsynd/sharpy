@@ -1,0 +1,43 @@
+# Benchmark workflow for Sharpy compiler
+# Runs BenchmarkDotNet suite and uploads results as artifacts
+
+name: Benchmarks
+
+on:
+  pull_request:
+    branches: [ "mainline" ]
+    paths:
+      - 'src/Sharpy.Compiler/**'
+      - 'src/Sharpy.Compiler.Benchmarks/**'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore src/Sharpy.Compiler.Benchmarks/Sharpy.Compiler.Benchmarks.csproj
+
+    - name: Run Benchmarks
+      run: |
+        dotnet run --project src/Sharpy.Compiler.Benchmarks -c Release --no-restore \
+          -- --filter "*CompilerBenchmarks*" --exporters json markdown \
+          --artifacts ./BenchmarkResults
+
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results-${{ github.run_number }}
+        path: BenchmarkResults/
+        retention-days: 30
