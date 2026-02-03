@@ -6,7 +6,7 @@ namespace Sharpy.Compiler.Logging;
 /// Null object pattern implementation - all methods are no-ops.
 /// Methods are aggressively inlined for zero overhead.
 /// </summary>
-public sealed class NullLogger : ICompilerLogger
+internal sealed class NullLogger : ICompilerLogger
 {
     public static readonly NullLogger Instance = new();
 

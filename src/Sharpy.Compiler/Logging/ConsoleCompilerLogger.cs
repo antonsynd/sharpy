@@ -3,7 +3,7 @@ namespace Sharpy.Compiler.Logging;
 /// <summary>
 /// Console-based logger for compiler operations
 /// </summary>
-public sealed class ConsoleCompilerLogger : ICompilerLogger
+internal sealed class ConsoleCompilerLogger : ICompilerLogger
 {
     private readonly CompilerLogLevel _minLevel;
     private readonly TextWriter _output;

@@ -30,7 +30,7 @@ namespace Sharpy.Compiler.Diagnostics;
 /// error[SHP0201]: Type 'str' is not assignable to 'int'
 /// </code>
 /// </summary>
-public class DiagnosticRenderer
+internal class DiagnosticRenderer
 {
     private readonly bool _useColor;
 
