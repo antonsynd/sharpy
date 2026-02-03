@@ -733,7 +733,7 @@ If validation becomes a bottleneck for very large projects, consider:
 - [x] Automated test: type rename in dependency triggers recompilation and correct error
 - [x] Automated test: signature change in dependency triggers recompilation and correct error
 - [ ] Code review completed
-- [ ] Documentation updated (CLAUDE.md incremental compilation section)
+- [x] Documentation updated (CLAUDE.md incremental compilation section)
 
 **Note (2026-02-03):** Tasks 1.1 and 1.2 are fully implemented. Task 1.3 infrastructure is in place
 but validation is disabled (`#if false`) because the existing dependency graph already handles
