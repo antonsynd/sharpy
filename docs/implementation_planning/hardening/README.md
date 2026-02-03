@@ -15,13 +15,13 @@ This directory contains implementation plans for hardening the Sharpy compiler. 
 | Phase | Name | Priority | Effort | Concerns |
 |-------|------|----------|--------|----------|
 | [1](phase-1-incremental-build-correctness.md) | Incremental Build Correctness | P0 | 11-15h | #1, #2, #3 |
-| [2](phase-2-path-and-name-consistency.md) | Path and Name Consistency | P1 | 3-5h | #4, #5, #12 |
+| [2](phase-2-path-and-name-consistency.md) | Path and Name Consistency | P1 | 4-6h | #4, #5, #12 |
 | [3](phase-3-robustness-and-phase-integrity.md) | Robustness and Phase Integrity | P2 | 3-4h | #6, #7 |
-| [4](phase-4-test-coverage-expansion.md) | Test Coverage Expansion | P1 | 3-6h | #9 |
+| [4](phase-4-test-coverage-expansion.md) | Test Coverage Expansion | P1 | 2-4h | #9 |
 | [5](phase-5-lsp-readiness-foundation.md) | LSP Readiness Foundation | P2 | 9-12h | #11, #14 |
 | [6](phase-6-advanced-type-safety-and-quality.md) | Advanced Type Safety & Quality | P3 | 14-22h | #8, #13, #15 |
 
-**Total effort:** 43-64 hours (~5-8 weeks at 50% allocation)
+**Total effort:** 43-63 hours (~5-8 weeks at 50% allocation)
 
 ---
 
@@ -68,16 +68,16 @@ Phase 5 ──→ Phase 6 (P3: Advanced) [optional, can run independently]
 - **#3:** Restored symbols lack validation → stale type references
 
 ### Phase 2: Path and Name Consistency
-- **#4:** Path normalization inconsistent → cache key mismatches
+- **#4:** Path normalization inconsistent (6 implementations) → cache key mismatches
 - **#5:** Variable name collision → cryptic C# errors
-- **#12:** Diagnostic deduplication uses strings → duplicate errors
+- **#12:** DiagnosticBag lacks deduplication → duplicate errors shown to user
 
 ### Phase 3: Robustness and Phase Integrity
 - **#6:** `null!` usage in ProjectCompiler → unhelpful NREs
 - **#7:** Dual-write assertions DEBUG-only → silent release bugs
 
 ### Phase 4: Test Coverage Expansion
-- **#9:** Missing multi-file integration tests → import bugs invisible
+- **#9:** Missing incremental compilation tests and advanced import scenarios → cache bugs invisible
 
 ### Phase 5: LSP Readiness Foundation
 - **#11:** No CancellationToken in semantic analysis → can't cancel
@@ -162,17 +162,17 @@ Use this section to track implementation progress:
 - [ ] Task 1.3: Restored symbol validation
 
 ### Phase 2: Path and Name Consistency
-- [ ] Task 2.1: PathNormalizer utility
+- [ ] Task 2.1: PathNormalizer utility (consolidate 6 implementations)
 - [ ] Task 2.2: Variable name collision fix
-- [ ] Task 2.3: Diagnostic deduplication
+- [ ] Task 2.3: Add diagnostic deduplication
 
 ### Phase 3: Robustness and Phase Integrity
 - [ ] Task 3.1: Replace `null!` pattern
 - [ ] Task 3.2: Always-active assertions
 
 ### Phase 4: Test Coverage Expansion
-- [ ] Task 4.1: File-based multi-file fixtures
-- [ ] Task 4.2: Programmatic incremental tests
+- [ ] Task 4.1: Additional file-based multi-file fixtures (5 scenarios)
+- [ ] Task 4.2: Programmatic incremental compilation tests (8 tests)
 
 ### Phase 5: LSP Readiness Foundation
 - [ ] Task 5.1: CancellationToken support

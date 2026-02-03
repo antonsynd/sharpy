@@ -34,10 +34,9 @@ This phase addresses internal code quality issues that don't directly cause user
 `ProjectCompiler` uses `null!` (null-forgiving operator) for fields initialized in `Compile()` rather than the constructor:
 
 ```csharp
+// Lines 31-45 of ProjectCompiler.cs (5 fields)
 private SymbolTable _symbolTable = null!;
 private SemanticInfo _semanticInfo = null!;
-private SemanticBinding _semanticBinding = null!;
-private ProjectModel _projectModel = null!;
 private ImportResolver _importResolver = null!;
 private ProjectCompilationMetrics _projectMetrics = null!;
 private DependencyGraphBuilder _graphBuilder = null!;

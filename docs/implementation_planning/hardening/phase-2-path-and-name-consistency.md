@@ -34,18 +34,24 @@ This phase addresses consistency issues that cause subtle bugs and user confusio
 - Update: `src/Sharpy.Compiler/Project/IncrementalCompilationCache.cs`
 - Update: `src/Sharpy.Compiler/Project/ProjectCompiler.cs`
 - Update: `src/Sharpy.Compiler/Project/SymbolSerializer.cs`
+- Update: `src/Sharpy.Compiler/Project/DependencyGraph.cs`
+- Update: `src/Sharpy.Compiler/Project/DependencyGraphBuilder.cs`
+- Update: `src/Sharpy.Compiler/Model/ProjectModel.cs`
 
 ### Background
 
-Three different `NormalizePath()` implementations exist with subtle differences:
+Six different `NormalizePath()` implementations exist across the codebase with subtle differences:
 
 | Location | Uses GetFullPath? | Issue |
 |----------|------------------|-------|
-| IncrementalCompilationCache.cs | Yes | Correct |
-| ProjectCompiler.cs | **No** | Bug: relative paths not normalized |
-| SymbolSerializer.cs | Yes | Correct |
+| IncrementalCompilationCache.cs:435 | Yes | Correct |
+| ProjectCompiler.cs:1175 | **No** | Bug: relative paths not normalized |
+| SymbolSerializer.cs:627 | Yes | Correct |
+| DependencyGraph.cs:450 | Yes | Correct but duplicated |
+| DependencyGraphBuilder.cs:217 | Yes | Correct but duplicated |
+| ProjectModel.cs:327 | Yes | Correct but duplicated |
 
-When `ProjectCompiler` uses a relative path but `IncrementalCompilationCache` uses an absolute path, the same file gets different cache keys.
+When `ProjectCompiler` uses a relative path but other components use absolute paths, the same file gets different cache keys. Additionally, having 6 implementations creates maintenance burden and risk of inconsistency.
 
 ### Implementation Checklist
 
@@ -187,10 +193,25 @@ When `ProjectCompiler` uses a relative path but `IncrementalCompilationCache` us
   // Same pattern - replace local method with PathNormalizer.Normalize
   ```
 
-- [ ] **2.1.6** Search for any other NormalizePath usages
+- [ ] **2.1.6** Update `DependencyGraph.cs`
+  ```csharp
+  // Replace local NormalizePath at line 450 with PathNormalizer.Normalize
+  ```
+
+- [ ] **2.1.7** Update `DependencyGraphBuilder.cs`
+  ```csharp
+  // Replace local NormalizePath at line 217 with PathNormalizer.Normalize
+  ```
+
+- [ ] **2.1.8** Update `ProjectModel.cs`
+  ```csharp
+  // Replace local NormalizePath at line 327 with PathNormalizer.Normalize
+  ```
+
+- [ ] **2.1.9** Verify no other NormalizePath usages remain
   ```bash
-  grep -rn "NormalizePath" src/Sharpy.Compiler/
-  # Update any found instances
+  grep -rn "private static string NormalizePath" src/Sharpy.Compiler/
+  # Should output nothing after all updates
   ```
 
 ### Verification
@@ -459,66 +480,78 @@ Some options:
 
 ---
 
-## Task 2.3: Fix Diagnostic Deduplication
+## Task 2.3: Add Diagnostic Deduplication
 
 **File:** `src/Sharpy.Compiler/Diagnostics/DiagnosticBag.cs`
 
 ### Background
 
-Duplicate diagnostic prevention uses `(Line, Column, Message)` tuple:
+`DiagnosticBag` currently has **no deduplication logic**. The `Add()`, `AddRange()`, and `Merge()` methods simply add all diagnostics without checking for duplicates:
 
 ```csharp
-var existingExact = new HashSet<(int?, int?, string)>(
-    _diagnostics.GetAll().Select(e => (e.Line, e.Column, e.Message)));
+// Current implementation - no deduplication
+public void Merge(DiagnosticBag other)
+{
+    AddRange(other.GetAll());  // Simply adds all, no duplicate check
+}
 ```
 
 **Problems:**
-1. Same error with slightly different wording appears twice
-2. Whitespace differences prevent deduplication
-3. Two validators reporting same conceptual error both appear
+1. Same error reported multiple times when multiple validators catch it
+2. Noisy output confuses users
+3. Hard to tell if there's one problem or many
 
-**Better:** Deduplicate by `(Code, Line, Column)` — semantic identity, not string comparison.
+**Solution:** Add deduplication by `(Code, Line, Column)` — semantic identity, not string comparison.
 
 ### Implementation Checklist
 
-- [ ] **2.3.1** Find the deduplication code
-  ```bash
-  grep -n "existingExact" src/Sharpy.Compiler/Diagnostics/DiagnosticBag.cs
+- [ ] **2.3.1** Add a deduplication set to DiagnosticBag
+  ```csharp
+  // Add field to DiagnosticBag class
+  private readonly HashSet<(string?, int?, int?)> _seenDiagnostics = new();
   ```
 
-- [ ] **2.3.2** Change deduplication key to use diagnostic code
+- [ ] **2.3.2** Update the Add method to check for duplicates
   ```csharp
-  // Change from:
-  var existingExact = new HashSet<(int?, int?, string)>(
-      _diagnostics.GetAll().Select(e => (e.Line, e.Column, e.Message)));
-
-  // To:
-  var existingByCodeAndLocation = new HashSet<(string?, int?, int?)>(
-      _diagnostics.GetAll().Select(e => (e.Code, e.Line, e.Column)));
-  ```
-
-- [ ] **2.3.3** Update the check when adding diagnostics
-  ```csharp
-  // When adding a diagnostic:
-  if (existingByCodeAndLocation.Contains((diagnostic.Code, diagnostic.Line, diagnostic.Column)))
+  public void Add(CompilerDiagnostic diagnostic)
   {
-      // Skip duplicate - same error code at same location
-      return;
+      // ... existing suppression and promotion logic ...
+
+      // Deduplicate by code and location
+      var key = (diagnostic.Code, diagnostic.Line, diagnostic.Column);
+      lock (_lock)
+      {
+          if (!_seenDiagnostics.Add(key))
+              return;  // Skip duplicate
+
+          _diagnostics.Add(diagnostic);
+      }
   }
   ```
 
-- [ ] **2.3.4** Handle edge case: diagnostics without codes
+- [ ] **2.3.3** Handle edge case: diagnostics without codes
   ```csharp
-  // Some diagnostics might have null codes (legacy or dynamic)
-  // For those, fall back to message comparison
-  private (string?, int?, int?, string?) GetDeduplicationKey(Diagnostic d)
+  // For diagnostics with null codes, include message in key to distinguish
+  private (string?, int?, int?, string?) GetDeduplicationKey(CompilerDiagnostic d)
   {
       if (string.IsNullOrEmpty(d.Code))
       {
-          // No code - use message as fallback
+          // No code - use message as fallback for uniqueness
           return (null, d.Line, d.Column, d.Message);
       }
       return (d.Code, d.Line, d.Column, null);
+  }
+  ```
+
+- [ ] **2.3.4** Update Clear method to reset deduplication set
+  ```csharp
+  public void Clear()
+  {
+      lock (_lock)
+      {
+          _diagnostics.Clear();
+          _seenDiagnostics.Clear();
+      }
   }
   ```
 

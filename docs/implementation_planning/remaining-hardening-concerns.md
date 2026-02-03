@@ -32,10 +32,10 @@ The codebase demonstrates strong design decisions: SemanticBinding pattern, immu
 | 6 | `null!` usage in ProjectCompiler | Robustness | Medium | Low |
 | 7 | Dual-write assertions DEBUG-only | Robustness | Medium | Low |
 | 8 | No grammar-aware fuzzing/property tests | Robustness | Low | Medium |
-| 9 | Missing multi-file integration tests | Coverage | Medium | Medium |
+| 9 | Missing incremental compilation tests | Coverage | Medium | Medium |
 | 10 | TypeChecker size (~4,600 lines) | Maintainability | Low | High |
 | 11 | No CancellationToken in semantic analysis | LSP-readiness | Medium | Low |
-| 12 | DiagnosticBag deduplication uses strings | UX | Low | Low |
+| 12 | DiagnosticBag lacks deduplication | UX | Low | Low |
 | 13 | Type narrowing not persisted | LSP-readiness | Low | Medium |
 | 14 | No Roslyn error mapping to Sharpy source | UX | Medium | Medium |
 | 15 | Missing match exhaustiveness warnings | Type Safety | Low | Medium |
@@ -425,7 +425,13 @@ private static string NormalizePath(string path)
 
 **Files to modify:**
 - Create `src/Sharpy.Compiler/Utilities/PathNormalizer.cs`
-- Update `IncrementalCompilationCache.cs`, `ProjectCompiler.cs`, `SymbolSerializer.cs`
+- Update 6 files with local `NormalizePath()` implementations:
+  - `src/Sharpy.Compiler/Project/IncrementalCompilationCache.cs`
+  - `src/Sharpy.Compiler/Project/ProjectCompiler.cs` (missing `GetFullPath` — BUG)
+  - `src/Sharpy.Compiler/Project/SymbolSerializer.cs`
+  - `src/Sharpy.Compiler/Project/DependencyGraph.cs`
+  - `src/Sharpy.Compiler/Project/DependencyGraphBuilder.cs`
+  - `src/Sharpy.Compiler/Model/ProjectModel.cs`
 
 **Implementation:**
 
@@ -454,7 +460,7 @@ public static class PathNormalizer
 }
 ```
 
-**Estimated effort:** 1-2 hours
+**Estimated effort:** 2-3 hours (6 files to update)
 
 ---
 
@@ -742,68 +748,50 @@ private static FreezeViolationBehavior s_freezeViolationBehavior =
 
 ---
 
-## Concern 9: Missing Multi-File Integration Tests
+## Concern 9: Missing Incremental Compilation Tests
 
 > **Priority:** P1
 
 ### Analysis
 
-**What:** The test suite has extensive single-file coverage but sparse multi-file project tests.
+**What:** The test suite has 14+ multi-file test directories covering imports, inheritance, and basic scenarios. However, there are no **programmatic tests** for incremental compilation behavior (cache invalidation, dependency tracking, file changes between builds).
 
-**Current multi-file tests:**
-- `simple_import_test/` (2-3 files)
-- `import_with_classes/` (2-3 files)
-- `module_import_access/` (2-3 files)
+**Current multi-file coverage (already exists):**
+- `imports/` — 3 basic import scenarios
+- `module_imports/` — 3 complex import chains, including transitive imports
+- `cross_module_inheritance/` — 4 inheritance scenarios
+- `errors/circular_import/` — Circular import detection
+- `warnings/` — 3 import-related warning tests
 
 **Missing scenarios:**
-- Circular import detection and error messages
-- Transitive import resolution (A imports B imports C imports D)
-- Deep import chains with type references
+- **Programmatic incremental tests** — Testing cache invalidation when files change
 - Diamond dependency patterns
+- Package (`__init__.spy`) import scenarios
 - Cross-file type reference after rename (incremental build)
 - File deletion affecting importers (incremental build)
-- Package (`__init__.spy`) import scenarios
+- Transitive dependency change propagation
 
 ### Impact
 
-- **Import bugs invisible** — No tests for complex import graphs
-- **Incremental build bugs** — No tests for cache invalidation scenarios
-- **Cross-file type errors** — Regressions in type reference resolution
+- **Incremental build bugs invisible** — No programmatic tests for cache invalidation
+- **Dependency graph bugs** — File change propagation not tested
+- **CI/CD reliability** — Cache behavior across builds untested
 
 ### Plan
 
-**Approach:** Add comprehensive multi-file test fixtures.
+**Approach:** Focus on programmatic incremental compilation tests and add a few missing file-based scenarios.
 
-**Test fixtures to add:**
+**Additional file-based fixtures to add:**
 
 ```
 TestFixtures/
   multi_file/
-    circular_import_error/
-      a.spy           # from b import foo
-      b.spy           # from a import bar
-      main.spy        # from a import foo
-      main.error      # "Circular import detected"
-
-    transitive_imports/
-      a.spy           # def a_func(): return 1
-      b.spy           # from a import a_func; def b_func(): return a_func()
-      c.spy           # from b import b_func; def c_func(): return b_func()
-      main.spy        # from c import c_func; print(c_func())
-      main.expected   # "1\n"
-
     diamond_dependency/
       base.spy        # class Base: pass
       left.spy        # from base import Base; class Left(Base): pass
       right.spy       # from base import Base; class Right(Base): pass
       main.spy        # from left import Left; from right import Right
       main.expected   # (no output, just verify compilation)
-
-    cross_file_type_reference/
-      types.spy       # class MyType: pass
-      user.spy        # from types import MyType; x: MyType = MyType()
-      main.spy        # from user import x; print(type(x).__name__)
-      main.expected   # "MyType\n"
 
     package_import/
       mypackage/
@@ -813,7 +801,7 @@ TestFixtures/
       main.expected   # "42\n"
 ```
 
-**Incremental build tests (programmatic):**
+**Programmatic incremental build tests (primary focus):**
 
 ```csharp
 [Fact]
@@ -837,7 +825,7 @@ public void RecompilesWhenImportedTypeChanges()
 }
 ```
 
-**Estimated effort:** 3-6 hours
+**Estimated effort:** 2-4 hours (reduced since many multi-file tests already exist)
 
 ---
 
@@ -957,31 +945,34 @@ public void Check(Module module, CancellationToken cancellationToken = default)
 
 ---
 
-## Concern 12: DiagnosticBag Deduplication Uses String Comparison
+## Concern 12: DiagnosticBag Lacks Deduplication
 
 > **Priority:** P1
 > **Type:** UX
 
 ### Analysis
 
-**What:** Duplicate prevention during merge uses `(Line, Column, Message)` tuple:
+**What:** `DiagnosticBag` has **no deduplication logic**. The `Add()`, `AddRange()`, and `Merge()` methods add all diagnostics without checking for duplicates:
 
 ```csharp
-var existingExact = new HashSet<(int?, int?, string)>(
-    _diagnostics.GetAll().Select(e => (e.Line, e.Column, e.Message)));
+// Current implementation - no deduplication
+public void Merge(DiagnosticBag other)
+{
+    AddRange(other.GetAll());  // Simply adds all, no duplicate check
+}
 ```
 
-**Problem:** If two validators report the same conceptual error with slightly different wording, both appear. If the same validator emits the same error with a whitespace difference, it's not deduplicated.
+**Problem:** When multiple validators or analysis passes report the same error, users see duplicate diagnostics. This is especially noticeable when the same type error is caught by both TypeChecker and a validator.
 
 ### Impact
 
-- **Duplicate errors** — Same problem reported multiple times with variant messages
-- **Fragile deduplication** — Whitespace changes break deduplication
+- **Duplicate errors** — Same problem reported multiple times
 - **Noisy output** — Users see redundant diagnostics
+- **Confusing UX** — Unclear if there's one problem or many
 
 ### Plan
 
-**Approach:** Deduplicate by `(DiagnosticCode, Line, Column)`, not message text.
+**Approach:** Add deduplication by `(DiagnosticCode, Line, Column)` when adding diagnostics.
 
 **Files to modify:**
 - `src/Sharpy.Compiler/Diagnostics/DiagnosticBag.cs`
@@ -989,12 +980,23 @@ var existingExact = new HashSet<(int?, int?, string)>(
 **Implementation:**
 
 ```csharp
-var existingByCodeAndLocation = new HashSet<(string?, int?, int?)>(
-    _diagnostics.GetAll().Select(e => (e.Code, e.Line, e.Column)));
+// Add a deduplication set
+private readonly HashSet<(string?, int?, int?)> _seenDiagnostics = new();
 
-// When adding:
-if (existingByCodeAndLocation.Contains((diagnostic.Code, diagnostic.Line, diagnostic.Column)))
-    return;  // Skip duplicate
+public void Add(CompilerDiagnostic diagnostic)
+{
+    // ... existing suppression and promotion logic ...
+
+    // Deduplicate by code and location
+    var key = (diagnostic.Code, diagnostic.Line, diagnostic.Column);
+    lock (_lock)
+    {
+        if (!_seenDiagnostics.Add(key))
+            return;  // Skip duplicate
+
+        _diagnostics.Add(diagnostic);
+    }
+}
 ```
 
 **Estimated effort:** 1 hour
@@ -1163,9 +1165,9 @@ public class ExhaustivenessValidator : ISemanticValidator
 | **P0** | Cache compiler version (#1) | 2-3h | Silent correctness bugs in incremental builds |
 | **P0** | SymbolSerializer versioning (#2) | 3-4h | Schema evolution safety |
 | **P0** | Restored symbol validation (#3) | 6-8h | Incremental build correctness |
-| **P1** | Path normalization utility (#4) | 1-2h | Subtle cache key bugs |
+| **P1** | Path normalization utility (#4) | 2-3h | Subtle cache key bugs (6 files to update) |
 | **P1** | Name collision fix (#5) | 1-2h | User-facing C# errors |
-| **P1** | Multi-file integration tests (#9) | 3-6h | Import graph coverage |
+| **P1** | Incremental compilation tests (#9) | 2-4h | Cache invalidation coverage |
 | **P1** | Diagnostic deduplication (#12) | 1h | Cleaner error output |
 | **P2** | Replace `null!` (#6) | 2-3h | Better error messages |
 | **P2** | Dual-write assertions (#7) | 1h | Phase violation detection |
@@ -1178,11 +1180,11 @@ public class ExhaustivenessValidator : ISemanticValidator
 
 **Total estimated effort:**
 - **P0 (Critical):** 11-15 hours
-- **P1 (Important):** 6-11 hours
+- **P1 (Important):** 6-10 hours
 - **P2 (Recommended):** 12-16 hours
 - **P3 (Nice-to-have):** 14-22 hours
-- **Total P0+P1:** 17-26 hours (~2 weeks)
-- **Total P0+P1+P2:** 29-42 hours (~3-4 weeks)
+- **Total P0+P1:** 17-25 hours (~2 weeks)
+- **Total P0+P1+P2:** 29-41 hours (~3-4 weeks)
 
 ---
 

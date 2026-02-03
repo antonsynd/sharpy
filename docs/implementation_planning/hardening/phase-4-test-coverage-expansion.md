@@ -9,26 +9,35 @@
 
 ## Overview
 
-This phase addresses the gap in multi-file integration test coverage. The existing test suite has 332+ single-file tests but only ~3 multi-file test fixtures. Many import-related bugs and incremental compilation issues can only be caught with multi-file tests.
+This phase addresses gaps in multi-file integration test coverage. The existing test suite has 332+ single-file tests and ~14 multi-file test directories covering basic imports, module imports, and cross-module inheritance. However, several important scenarios lack coverage, particularly programmatic incremental compilation tests and advanced import patterns.
 
-### Why Multi-File Tests Matter
+### Existing Multi-File Coverage
 
-1. **Import resolution** — Single-file tests can't test cross-module imports
-2. **Dependency graph** — Transitive imports, diamond dependencies need multiple files
-3. **Incremental compilation** — Cache invalidation bugs only manifest with multiple files
-4. **Real-world coverage** — Actual projects always have multiple files
+The following multi-file tests already exist:
+- `imports/` — 3 basic import scenarios
+- `module_imports/` — 3 complex import chains
+- `cross_module_inheritance/` — 4 inheritance scenarios
+- `errors/circular_import/` — Circular import detection
+- `warnings/` — 3 import-related warning tests
+
+### Why Additional Tests Matter
+
+1. **Incremental compilation** — No programmatic tests for cache invalidation scenarios
+2. **Package imports** — No `__init__.spy` package import tests
+3. **Diamond dependencies** — Pattern not explicitly tested
+4. **Dependency graph changes** — No tests for file addition/removal between builds
 
 ### Concerns in This Phase
 
 | # | Concern | Effort | Impact |
 |---|---------|--------|--------|
-| 9 | Missing multi-file integration tests | 3-6h | Medium |
+| 9 | Missing incremental compilation and advanced import tests | 2-4h | Medium |
 
 ---
 
 ## Task 4.1: Add File-Based Multi-File Test Fixtures
 
-**Location:** `src/Sharpy.Compiler.Tests/Integration/TestFixtures/multi_file/`
+**Location:** `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
 
 ### Background
 
@@ -42,81 +51,19 @@ test_name/
 
 The test runner compiles all `.spy` files in the directory and runs `main.spy`.
 
+### Existing Coverage (Already Implemented)
+
+These scenarios already have test coverage:
+- ✅ **Circular import detection** — `errors/circular_import/`
+- ✅ **Transitive imports** — `module_imports/multifile_import_chain/`
+- ✅ **Cross-file inheritance** — `cross_module_inheritance/` (4 scenarios)
+- ✅ **Basic imports** — `imports/` (3 scenarios)
+
 ### Test Fixtures to Create
 
-#### 4.1.1 Circular Import Detection
+Focus on scenarios **not yet covered**:
 
-- [ ] **Create directory:** `circular_import_error/`
-
-```python
-# a.spy
-from b import bar
-
-def foo() -> int:
-    return bar() + 1
-```
-
-```python
-# b.spy
-from a import foo
-
-def bar() -> int:
-    return foo() + 1
-```
-
-```python
-# main.spy
-from a import foo
-
-def main():
-    print(foo())
-```
-
-```
-# main.error
-circular import
-```
-
-#### 4.1.2 Transitive Imports
-
-- [ ] **Create directory:** `transitive_imports/`
-
-```python
-# level3.spy
-def deep_value() -> int:
-    return 42
-```
-
-```python
-# level2.spy
-from level3 import deep_value
-
-def mid_value() -> int:
-    return deep_value() * 2
-```
-
-```python
-# level1.spy
-from level2 import mid_value
-
-def top_value() -> int:
-    return mid_value() + 1
-```
-
-```python
-# main.spy
-from level1 import top_value
-
-def main():
-    print(top_value())
-```
-
-```
-# main.expected
-85
-```
-
-#### 4.1.3 Diamond Dependency
+#### 4.1.1 Diamond Dependency
 
 - [ ] **Create directory:** `diamond_dependency/`
 
@@ -162,9 +109,9 @@ def main():
 102
 ```
 
-#### 4.1.4 Cross-File Type References
+#### 4.1.2 Cross-File Type References (if not covered by existing tests)
 
-- [ ] **Create directory:** `cross_file_types/`
+- [ ] **Create directory:** `multi_file/cross_file_types/`
 
 ```python
 # types.spy
@@ -204,9 +151,9 @@ def main():
 6
 ```
 
-#### 4.1.5 Package Import with `__init__.spy`
+#### 4.1.3 Package Import with `__init__.spy`
 
-- [ ] **Create directory:** `package_import/`
+- [ ] **Create directory:** `multi_file/package_import/`
 
 ```python
 # mypackage/__init__.spy
@@ -241,69 +188,7 @@ Hello, World!
 42
 ```
 
-#### 4.1.6 Inheritance Across Files
-
-- [ ] **Create directory:** `cross_file_inheritance/`
-
-```python
-# animal.spy
-@abstract
-class Animal:
-    name: str
-
-    def __init__(self, name: str):
-        self.name = name
-
-    @abstract
-    def speak(self) -> str:
-        ...
-```
-
-```python
-# dog.spy
-from animal import Animal
-
-class Dog(Animal):
-    def __init__(self, name: str):
-        super().__init__(name)
-
-    @override
-    def speak(self) -> str:
-        return f"{self.name} says woof!"
-```
-
-```python
-# cat.spy
-from animal import Animal
-
-class Cat(Animal):
-    def __init__(self, name: str):
-        super().__init__(name)
-
-    @override
-    def speak(self) -> str:
-        return f"{self.name} says meow!"
-```
-
-```python
-# main.spy
-from dog import Dog
-from cat import Cat
-
-def main():
-    d = Dog("Rex")
-    c = Cat("Whiskers")
-    print(d.speak())
-    print(c.speak())
-```
-
-```
-# main.expected
-Rex says woof!
-Whiskers says meow!
-```
-
-#### 4.1.7 Import Alias
+#### 4.1.4 Import Alias (if not covered)
 
 - [ ] **Create directory:** `import_alias/`
 
@@ -333,9 +218,9 @@ utility
 VeryLongClassName
 ```
 
-#### 4.1.8 Selective Import Error
+#### 4.1.5 Selective Import Error
 
-- [ ] **Create directory:** `selective_import_error/`
+- [ ] **Create directory:** `multi_file/selective_import_error/`
 
 ```python
 # lib.spy
@@ -361,23 +246,27 @@ nonexistent_func
 
 ### Implementation Checklist
 
-- [ ] **4.1.1** Create `circular_import_error/` test fixture
-- [ ] **4.1.2** Create `transitive_imports/` test fixture
-- [ ] **4.1.3** Create `diamond_dependency/` test fixture
-- [ ] **4.1.4** Create `cross_file_types/` test fixture
-- [ ] **4.1.5** Create `package_import/` test fixture
-- [ ] **4.1.6** Create `cross_file_inheritance/` test fixture
-- [ ] **4.1.7** Create `import_alias/` test fixture
-- [ ] **4.1.8** Create `selective_import_error/` test fixture
+**Note:** Some scenarios below may already have partial coverage. Check existing tests before creating duplicates.
+
+- [ ] **4.1.1** Create `multi_file/diamond_dependency/` test fixture
+- [ ] **4.1.2** Create `multi_file/cross_file_types/` test fixture (if not covered)
+- [ ] **4.1.3** Create `multi_file/package_import/` test fixture (with `__init__.spy`)
+- [ ] **4.1.4** Create `multi_file/import_alias/` test fixture (if not covered)
+- [ ] **4.1.5** Create `multi_file/selective_import_error/` test fixture
 
 ### Verification
 
 ```bash
+# List existing multi-file test directories
+ls -la src/Sharpy.Compiler.Tests/Integration/TestFixtures/imports/
+ls -la src/Sharpy.Compiler.Tests/Integration/TestFixtures/module_imports/
+ls -la src/Sharpy.Compiler.Tests/Integration/TestFixtures/cross_module_inheritance/
+
 # Run all multi-file tests
-dotnet test --filter "DisplayName~multi_file"
+dotnet test --filter "DisplayName~import or DisplayName~module_import or DisplayName~cross_module"
 
 # Run specific test
-dotnet test --filter "DisplayName~transitive_imports"
+dotnet test --filter "DisplayName~diamond_dependency"
 ```
 
 ---
@@ -677,7 +566,7 @@ dotnet test --filter "FullyQualifiedName~IncrementalCompilation"
 
 ## Phase Completion Criteria
 
-- [ ] All 8 file-based multi-file test fixtures created and passing
+- [ ] New file-based multi-file test fixtures created (5 scenarios: diamond dependency, cross-file types, package import, import alias, selective import error)
 - [ ] All 8 programmatic incremental compilation tests passing
 - [ ] `ProjectCompilationHelper` has necessary methods for test scenarios
 - [ ] Tests run in both Debug and Release configurations
