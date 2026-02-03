@@ -38,7 +38,7 @@ public class CompilerServices
     public SemanticInfo SemanticInfo { get; }
 
     // Configuration
-    public CompilerServicesConfiguration Configuration => _config;
+    internal CompilerServicesConfiguration Configuration => _config;
 
     /// <summary>
     /// Optional SemanticBinding for reading inheritance data.

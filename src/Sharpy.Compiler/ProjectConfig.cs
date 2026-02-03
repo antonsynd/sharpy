@@ -115,7 +115,7 @@ public class ProjectConfig
 /// <summary>
 /// Parser for .spyproj project files
 /// </summary>
-public class ProjectFileParser
+internal class ProjectFileParser
 {
     /// <summary>
     /// Load and parse a .spyproj file

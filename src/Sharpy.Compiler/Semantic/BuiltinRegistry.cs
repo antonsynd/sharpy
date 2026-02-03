@@ -8,7 +8,7 @@ namespace Sharpy.Compiler.Semantic;
 /// Registry of builtin types and functions from Sharpy.Core
 /// Now uses cached reflection-based discovery for functions.
 /// </summary>
-public class BuiltinRegistry
+internal class BuiltinRegistry
 {
     private readonly Dictionary<string, TypeSymbol> _types = new();
     private readonly Dictionary<string, List<FunctionSymbol>> _functions = new();
