@@ -161,7 +161,7 @@ internal class ProjectCompiler
             // - Base class removed or changed incompatibly
             //
             // To re-enable: Remove the #if false and fix the validation edge cases
-            #if false
+#if false
             if (_incremental && ValidateRestoredSymbols())
             {
                 _logger.LogInfo("Parsing invalidated files after symbol validation");
@@ -171,7 +171,7 @@ internal class ProjectCompiler
                 }
                 CollectTypeDeclarations(config);
             }
-            #endif
+#endif
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 4: Resolve imports and build dependency information
@@ -891,8 +891,10 @@ internal class ProjectCompiler
     /// </summary>
     private static bool TypesEqual(SemanticType? a, SemanticType? b)
     {
-        if (a == null && b == null) return true;
-        if (a == null || b == null) return false;
+        if (a == null && b == null)
+            return true;
+        if (a == null || b == null)
+            return false;
 
         // SemanticType records use structural equality
         return a.Equals(b);
