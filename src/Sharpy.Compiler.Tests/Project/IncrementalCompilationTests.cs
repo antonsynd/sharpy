@@ -1309,4 +1309,226 @@ def main():
     }
 
     #endregion
+
+    #region Error Detection Tests (verifies dependency graph handles semantic changes)
+
+    [Fact]
+    public void IncrementalMode_TypeRenamedInDependency_RecompilesAndReportsError()
+    {
+        // Test that when a type is renamed in a dependency, files that use the old name
+        // correctly fail with an error (verifies dependency graph triggers recompilation)
+
+        var typesFile = CreateTempFile("types.spy", @"
+class MyClass:
+    x: int = 1
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from types import MyClass
+
+def main():
+    obj: MyClass = MyClass()
+    print(obj.x)
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, typesFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build - both files compile successfully
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Rename the class in types.spy
+        File.WriteAllText(typesFile, @"
+class RenamedClass:
+    x: int = 99
+");
+
+        // Second build - main.spy should fail because MyClass no longer exists
+        var result2 = compiler.CompileProject(config);
+        Assert.False(result2.Success, "Expected compilation to fail because MyClass was renamed");
+
+        // Should mention the missing type
+        var errorMessages = string.Join(" ", result2.Diagnostics.GetErrors().Select(e => e.Message));
+        Assert.True(
+            errorMessages.Contains("MyClass") || errorMessages.Contains("not found") || errorMessages.Contains("undefined"),
+            $"Expected error about MyClass not found, got: {errorMessages}");
+    }
+
+    [Fact]
+    public void IncrementalMode_FunctionSignatureChanged_RecompilesAndReportsError()
+    {
+        // Test that when a function's return type changes, callers correctly fail
+        // with a type mismatch error
+
+        var libFile = CreateTempFile("lib.spy", @"
+def get_value() -> int:
+    return 42
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from lib import get_value
+
+def main():
+    x: int = get_value()
+    print(x)
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, libFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build succeeds
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Change return type from int to str
+        File.WriteAllText(libFile, @"
+def get_value() -> str:
+    return 'hello'
+");
+
+        // Second build - main.spy should fail with type mismatch
+        var result2 = compiler.CompileProject(config);
+        Assert.False(result2.Success, "Expected compilation to fail due to type mismatch");
+
+        // Should mention type mismatch
+        var errorMessages = string.Join(" ", result2.Diagnostics.GetErrors().Select(e => e.Message.ToLower()));
+        Assert.True(
+            errorMessages.Contains("type") || errorMessages.Contains("cannot") || errorMessages.Contains("str"),
+            $"Expected type-related error, got: {errorMessages}");
+    }
+
+    [Fact]
+    public void IncrementalMode_BaseClassMethodSignatureChanged_RecompilesAndReportsError()
+    {
+        // Test that when a base class method signature changes, derived classes
+        // correctly fail with an override mismatch error
+
+        var baseFile = CreateTempFile("base.spy", @"
+class Animal:
+    @virtual
+    def speak(self) -> str:
+        return '...'
+");
+        var derivedFile = CreateTempFile("derived.spy", @"
+from base import Animal
+
+class Dog(Animal):
+    @override
+    def speak(self) -> str:
+        return 'woof'
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from derived import Dog
+
+def main():
+    d: Dog = Dog()
+    print(d.speak())
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, derivedFile, baseFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build succeeds
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Change base class method signature (return type changed to int)
+        File.WriteAllText(baseFile, @"
+class Animal:
+    @virtual
+    def speak(self) -> int:
+        return 0
+");
+
+        // Second build - derived.spy should fail with override signature mismatch
+        var result2 = compiler.CompileProject(config);
+        Assert.False(result2.Success, "Expected compilation to fail due to override signature mismatch");
+
+        // Should mention override or signature issue
+        var errorMessages = string.Join(" ", result2.Diagnostics.GetErrors().Select(e => e.Message.ToLower()));
+        Assert.True(
+            errorMessages.Contains("override") || errorMessages.Contains("signature") ||
+            errorMessages.Contains("return type") || errorMessages.Contains("str") || errorMessages.Contains("int"),
+            $"Expected override/signature error, got: {errorMessages}");
+    }
+
+    [Fact]
+    public void IncrementalMode_TypeDeleted_RecompilesAndReportsError()
+    {
+        // Test that when a type is completely removed, importers fail correctly
+
+        var typesFile = CreateTempFile("types.spy", @"
+class Helper:
+    def do_work(self) -> int:
+        return 42
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from types import Helper
+
+def main():
+    h: Helper = Helper()
+    print(h.do_work())
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, typesFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build succeeds
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Delete the Helper class entirely (replace with empty file or different content)
+        File.WriteAllText(typesFile, @"
+# Helper class has been removed
+def some_function() -> int:
+    return 0
+");
+
+        // Second build - main.spy should fail because Helper no longer exists
+        var result2 = compiler.CompileProject(config);
+        Assert.False(result2.Success, "Expected compilation to fail because Helper was deleted");
+
+        var errorMessages = string.Join(" ", result2.Diagnostics.GetErrors().Select(e => e.Message));
+        Assert.True(
+            errorMessages.Contains("Helper") || errorMessages.Contains("not found") ||
+            errorMessages.Contains("undefined") || errorMessages.Contains("cannot import"),
+            $"Expected error about Helper not found, got: {errorMessages}");
+    }
+
+    #endregion
 }

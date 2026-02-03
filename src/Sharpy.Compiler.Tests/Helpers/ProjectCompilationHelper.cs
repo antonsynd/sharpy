@@ -46,6 +46,11 @@ public class ProjectCompilationHelper : IDisposable
     /// </summary>
     public ProjectOptions Options { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether to use incremental compilation mode.
+    /// </summary>
+    public bool Incremental { get; set; }
+
     public ProjectCompilationHelper(ITestOutputHelper? output = null)
     {
         _tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
@@ -168,6 +173,53 @@ public class ProjectCompilationHelper : IDisposable
     }
 
     /// <summary>
+    /// Updates an existing source file's content.
+    /// Useful for testing incremental compilation scenarios.
+    /// </summary>
+    /// <param name="relativePath">Relative path from source directory (e.g., "main.spy" or "utils/helpers.spy")</param>
+    /// <param name="content">New source code content</param>
+    public ProjectCompilationHelper UpdateSourceFile(string relativePath, string content)
+    {
+        var fullPath = Path.Combine(SourceDirectory, relativePath);
+
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException($"Source file not found: {fullPath}");
+        }
+
+        File.WriteAllText(fullPath, content);
+        return this;
+    }
+
+    /// <summary>
+    /// Enables incremental compilation mode.
+    /// </summary>
+    public ProjectCompilationHelper WithIncremental(bool enabled = true)
+    {
+        Incremental = enabled;
+        return this;
+    }
+
+    /// <summary>
+    /// Clears the incremental compilation cache.
+    /// </summary>
+    public ProjectCompilationHelper ClearCache()
+    {
+        var objDir = Path.Combine(ProjectDirectory, "obj", "Debug");
+        if (Directory.Exists(objDir))
+        {
+            var cacheFile = Path.Combine(objDir, ".sharpy-cache");
+            var symbolCacheFile = Path.Combine(objDir, ".sharpy-symbols");
+
+            if (File.Exists(cacheFile))
+                File.Delete(cacheFile);
+            if (File.Exists(symbolCacheFile))
+                File.Delete(symbolCacheFile);
+        }
+        return this;
+    }
+
+    /// <summary>
     /// Creates a .spyproj project file with the configured options.
     /// </summary>
     public ProjectCompilationHelper CreateProjectFile()
@@ -216,9 +268,10 @@ public class ProjectCompilationHelper : IDisposable
         }
 
         var config = ProjectFileParser.Load(_projectFilePath!);
-        var compiler = new Compiler(_logger);
+        var compilerOptions = new CompilerOptions { Incremental = Incremental };
+        var compiler = new Compiler(compilerOptions, _logger);
 
-        _output?.WriteLine($"Compiling project: {config.RootNamespace}");
+        _output?.WriteLine($"Compiling project: {config.RootNamespace} (incremental={Incremental})");
         _output?.WriteLine($"Source files: {string.Join(", ", config.SourceFiles.Select(Path.GetFileName))}");
 
         var result = compiler.CompileProject(config);
@@ -234,6 +287,10 @@ public class ProjectCompilationHelper : IDisposable
         else
         {
             _output?.WriteLine($"Compilation succeeded: {result.OutputAssemblyPath}");
+            if (result.Metrics != null)
+            {
+                _output?.WriteLine($"  Skipped files: {result.Metrics.SkippedFileCount}");
+            }
         }
 
         return result;
