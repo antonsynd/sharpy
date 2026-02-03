@@ -9,8 +9,6 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal class CodeGenContext
 {
-    private int _indentLevel = 0;
-    private const int IndentSize = 4;
     private readonly DiagnosticBag _diagnostics = new();
 
     public SymbolTable SymbolTable { get; }
@@ -87,11 +85,6 @@ internal class CodeGenContext
         SymbolTable = symbolTable;
         Builtins = builtins;
     }
-
-    public void Indent() => _indentLevel++;
-    public void Dedent() => _indentLevel = System.Math.Max(0, _indentLevel - 1);
-
-    public string GetIndent() => new string(' ', _indentLevel * IndentSize);
 
     public Symbol? LookupSymbol(string name)
     {

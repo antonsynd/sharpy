@@ -6,6 +6,11 @@ namespace Sharpy.Compiler.Parser.Ast;
 // FUTURE STATEMENT NODES (v0.2.x+)
 // These are placeholder definitions that follow the immutable pattern.
 // Implementation will be completed when these features are developed.
+//
+// WARNING: These types are defined for forward compatibility but have NO parser,
+// semantic analysis, or code generation support. Do not reference them in
+// production code paths. Unrecognized AST nodes will trigger diagnostics
+// in TypeChecker and RoslynEmitter (see items 1.1 and 1.2).
 // =============================================================================
 
 #region Pattern Matching (v0.2.x)
