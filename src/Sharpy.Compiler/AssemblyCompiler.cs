@@ -130,9 +130,16 @@ internal class AssemblyCompiler
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Assembly compilation failed: {ex.Message}", 0, 0);
+            // Log full exception including stack trace for debugging
+            _logger.LogError($"Assembly compilation failed with {ex.GetType().Name}: {ex}", 0, 0);
+
+            // Create a user-facing error message that includes exception type for identification
+            var errorMessage = ex is InternalCompilerErrorException ice
+                ? $"Internal compiler error in {ice.Component} ({ex.GetType().Name}): {ex.Message}"
+                : $"Assembly compilation failed ({ex.GetType().Name}): {ex.Message}";
+
             var errorDiagnostics = new DiagnosticBag();
-            errorDiagnostics.AddError($"Assembly compilation failed: {ex.Message}",
+            errorDiagnostics.AddError(errorMessage,
                 code: DiagnosticCodes.Infrastructure.AssemblyCompilationFailed,
                 phase: CompilerPhase.Assembly);
             return new AssemblyCompilationResult

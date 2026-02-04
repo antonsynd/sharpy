@@ -254,8 +254,15 @@ internal class ProjectCompiler
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Project compilation failed: {ex.Message}", 0, 0);
-            _diagnostics.AddError($"Project compilation failed: {ex.Message}", code: DiagnosticCodes.Infrastructure.CompilationFailed);
+            // Log full exception including stack trace for debugging
+            _logger.LogError($"Project compilation failed with {ex.GetType().Name}: {ex}", 0, 0);
+
+            // Create a user-facing error message that includes exception type for identification
+            var errorMessage = ex is InternalCompilerErrorException ice
+                ? $"Internal compiler error in {ice.Component} ({ex.GetType().Name}): {ex.Message}"
+                : $"Project compilation failed ({ex.GetType().Name}): {ex.Message}";
+
+            _diagnostics.AddError(errorMessage, code: DiagnosticCodes.Infrastructure.CompilationFailed);
             return new ProjectCompilationResult
             {
                 Success = false,
@@ -384,15 +391,21 @@ internal class ProjectCompiler
             }
             catch (Exception ex)
             {
+                // Log full exception for debugging
+                _logger.LogError($"Failed to parse {sourceFile} ({ex.GetType().Name}): {ex}", 0, 0);
+
+                // Create error message with exception type for identification
+                var errorMessage = $"Failed to parse file ({ex.GetType().Name}): {ex.Message}";
+
                 // Add to CompilationUnit diagnostics if available
                 var unit = _projectModel!.GetUnit(sourceFile);
                 if (unit != null)
                 {
-                    unit.Diagnostics.AddError(ex.Message, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
+                    unit.Diagnostics.AddError(errorMessage, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
                     unit.Phase = CompilationPhase.Failed;
                 }
 
-                _diagnostics.AddError(ex.Message, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
+                _diagnostics.AddError(errorMessage, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
                 ProjectMetrics.AddFileMetrics(fileMetrics);
             }
         }
@@ -492,9 +505,15 @@ internal class ProjectCompiler
                 }
                 catch (Exception ex)
                 {
-                    unit.Diagnostics.AddError(ex.Message, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
+                    // Log full exception for debugging
+                    _logger.LogError($"Failed to re-parse {sourceFile} ({ex.GetType().Name}): {ex}", 0, 0);
+
+                    // Create error message with exception type for identification
+                    var errorMessage = $"Failed to re-parse file ({ex.GetType().Name}): {ex.Message}";
+
+                    unit.Diagnostics.AddError(errorMessage, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
                     unit.Phase = CompilationPhase.Failed;
-                    _diagnostics.AddError(ex.Message, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
+                    _diagnostics.AddError(errorMessage, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
                     ProjectMetrics.AddFileMetrics(fileMetrics);
                 }
             }
