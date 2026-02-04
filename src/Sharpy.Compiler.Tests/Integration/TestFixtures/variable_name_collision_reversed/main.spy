@@ -1,0 +1,12 @@
+# Test: Reversed declaration order
+# User declares x_1 AFTER x is redeclared, verifying that pre-scanning
+# correctly handles all variable names regardless of declaration order.
+# Note: Sharpy's name mangling converts x_1 to x1, avoiding collision
+# with the generated versioned name x_1.
+
+def main():
+    x: int = 1          # First declaration: x
+    x: int = 2          # Redeclaration: generates x_1
+    x_1: str = "user"   # User's x_1 becomes x1 (mangled)
+    print(x)            # Should print 2 (current version of x)
+    print(x_1)          # Should print "user"
