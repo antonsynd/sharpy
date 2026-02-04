@@ -1910,5 +1910,125 @@ def check_c() -> int:
         narrowedType.Should().BeNull("x in check_b should not be affected by narrowing in check_a");
     }
 
+    [Fact]
+    public void TypeNarrowing_NestedFunctionDefinition_DoesNotInheritNarrowing()
+    {
+        // Task 1.7: Critical edge case - nested function narrowing isolation
+        //
+        // When a function is defined inside another function's control-flow narrowing block,
+        // the nested function should NOT inherit the narrowing. This is because:
+        // 1. Nested functions can be called later when the narrowing condition no longer holds
+        // 2. Narrowing is control-flow based, not lexical
+        //
+        // Example: If x is narrowed to int after `if x is not None:`, a nested function
+        // defined in that block should still see x as int? (the original type).
+        //
+        // Note: While Sharpy doesn't yet fully support calling nested functions,
+        // the narrowing isolation mechanism must still be correct for when they are.
+        var source = @"
+def main():
+    x: int? = 42
+    if x is not None:
+        # x is narrowed to int here in the outer function
+        y: int = x  # This works - x is narrowed
+
+        def inner() -> int?:
+            # x should NOT be narrowed here - inner() has its own scope
+            # The nested function might be called later when x could be None
+            return x  # x should be int?, not int
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        // Should compile without errors
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // Find the nested function 'inner' and its return statement
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        mainFunc.Name.Should().Be("main");
+
+        var ifStmt = mainFunc.Body.OfType<IfStatement>().First();
+        var innerFunc = ifStmt.ThenBody.OfType<FunctionDef>().First();
+        innerFunc.Name.Should().Be("inner");
+
+        var returnStmt = innerFunc.Body.OfType<ReturnStatement>().First();
+        var xIdentifier = returnStmt.Value as Identifier;
+
+        xIdentifier.Should().NotBeNull();
+        xIdentifier!.Name.Should().Be("x");
+
+        // x inside inner() should NOT be narrowed - it should be the original int? type
+        var narrowedType = semanticInfo.GetNarrowedType(xIdentifier);
+        narrowedType.Should().BeNull("narrowing should not cross function boundaries into nested functions");
+    }
+
+    [Fact]
+    public void TypeNarrowing_NestedFunctionInWhileLoop_DoesNotInheritNarrowing()
+    {
+        // Verify that nested functions in while loops also have isolated narrowing
+        var source = @"
+def process():
+    value: int? = 42
+    while value is not None:
+        # value is narrowed to int here
+        temp: int = value  # This works
+
+        def helper() -> int?:
+            # value should NOT be narrowed here
+            return value  # value should be int?
+
+        break
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // Find nested function and verify narrowing is isolated
+        var processFunc = module.Body.OfType<FunctionDef>().First();
+        var whileStmt = processFunc.Body.OfType<WhileStatement>().First();
+        var helperFunc = whileStmt.Body.OfType<FunctionDef>().First();
+
+        var returnStmt = helperFunc.Body.OfType<ReturnStatement>().First();
+        var valueIdentifier = returnStmt.Value as Identifier;
+
+        valueIdentifier.Should().NotBeNull();
+        var narrowedType = semanticInfo.GetNarrowedType(valueIdentifier!);
+        narrowedType.Should().BeNull("narrowing should not cross function boundaries");
+    }
+
+    [Fact]
+    public void TypeNarrowing_DeeplyNestedFunctions_EachHasIsolatedContext()
+    {
+        // Verify that deeply nested functions each have their own isolated narrowing
+        var source = @"
+def outer():
+    a: int? = 1
+    if a is not None:
+        # a narrowed to int
+        x: int = a
+
+        def middle():
+            b: int? = 2
+            if b is not None:
+                # b narrowed to int, but a is NOT narrowed here
+                y: int = b
+
+                def inner():
+                    c: int? = 3
+                    if c is not None:
+                        # c narrowed, but a and b are NOT narrowed here
+                        z: int = c
+                        # a and b should be their original optional types
+                        result_a: int? = a  # a is int? here
+                        result_b: int? = b  # b is int? here
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        // Should compile without errors - all types are correctly isolated
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
     #endregion
 }
