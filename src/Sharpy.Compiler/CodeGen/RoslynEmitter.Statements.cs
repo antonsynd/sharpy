@@ -427,6 +427,27 @@ internal partial class RoslynEmitter
             _constVariables.Add(varDecl.Name);
         }
 
+        // IMPORTANT: Generate the initializer expression FIRST, before updating version tracking.
+        // This ensures that references to the same variable in the initializer (e.g., x: int = x + 1)
+        // use the PREVIOUS version of the variable, not the new one being declared.
+        ExpressionSyntax? initialValue = null;
+        if (varDecl.InitialValue != null)
+        {
+            // Set target type context for collection literal type inference
+            // This allows list/dict/set literals to use the declared type
+            var previousTargetType = _targetTypeContext;
+            _targetTypeContext = varDecl.Type;
+            try
+            {
+                initialValue = GenerateExpression(varDecl.InitialValue);
+            }
+            finally
+            {
+                _targetTypeContext = previousTargetType;
+            }
+        }
+
+        // NOW get the mangled variable name (which may update version tracking for redeclarations)
         var varName = varDecl.IsConst
             ? NameMangler.ToConstantCase(varDecl.Name)
             : GetMangledVariableName(varDecl.Name, isNewDeclaration: true);
@@ -451,28 +472,9 @@ internal partial class RoslynEmitter
         // Track this variable as declared
         _declaredVariables.Add(varName);
 
-        VariableDeclaratorSyntax declarator;
-        if (varDecl.InitialValue != null)
-        {
-            // Set target type context for collection literal type inference
-            // This allows list/dict/set literals to use the declared type
-            var previousTargetType = _targetTypeContext;
-            _targetTypeContext = varDecl.Type;
-            try
-            {
-                var value = GenerateExpression(varDecl.InitialValue);
-                declarator = VariableDeclarator(Identifier(varName))
-                    .WithInitializer(EqualsValueClause(value));
-            }
-            finally
-            {
-                _targetTypeContext = previousTargetType;
-            }
-        }
-        else
-        {
-            declarator = VariableDeclarator(Identifier(varName));
-        }
+        VariableDeclaratorSyntax declarator = initialValue != null
+            ? VariableDeclarator(Identifier(varName)).WithInitializer(EqualsValueClause(initialValue))
+            : VariableDeclarator(Identifier(varName));
 
         var declaration = VariableDeclaration(typeSyntax)
             .WithVariables(SingletonSeparatedList(declarator));
