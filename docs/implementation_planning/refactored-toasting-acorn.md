@@ -2,12 +2,13 @@
 
 ## Overview
 
-This plan outlines 11 improvements to increase the Sharpy compiler's robustness, debuggability, and maintainability while preparing for future LSP integration. Each section is self-contained and can be implemented independently.
+This plan outlines 15 improvements to increase the Sharpy compiler's robustness, debuggability, and maintainability while preparing for future LSP integration. Each section is self-contained and can be implemented independently.
 
 **Target Audience**: Junior engineers or AI assistants (Claude Sonnet)
-**Estimated Total Effort**: 12-18 days
+**Estimated Total Effort**: 15-22 days
 **Sections 1-8**: Original plan (validated February 2026)
 **Sections 9-11**: Additional high-impact recommendations
+**Sections 12-15**: Expert review additions (February 2026)
 **Priority Order**: See Implementation Order table at end
 
 ---
@@ -112,6 +113,22 @@ Bugs in scope cleanup are silent and can cause incorrect type inference downstre
   - Replace `_narrowedTypes.TryGetValue()` with `_narrowingContext.GetNarrowedType()`
 
 - [ ] **1.6** Run full test suite and fix any regressions
+
+- [ ] **1.7** Add test for nested function narrowing isolation (**critical edge case**):
+  ```csharp
+  // Test that narrowing does NOT leak into nested function definitions
+  var source = @"
+def main():
+    x: int? = 42
+    if x is not None:
+        def inner() -> int:
+            # x should NOT be narrowed here - inner() has its own scope
+            return x + 1  # This should error or x should be int?, not int
+        print(inner())
+";
+  // Verify behavior matches Python semantics (narrowing is control-flow, not lexical)
+  ```
+  This is a known edge case where the current implementation may incorrectly allow narrowed types to leak into nested function scopes.
 
 ### Verification
 
@@ -468,6 +485,8 @@ Without these tests, error recovery bugs go undetected.
 ### Tasks
 
 - [ ] **6.1** Create `src/Sharpy.Compiler.Tests/Integration/TestFixtures/errors/error_recovery/` directory
+
+  > **Note**: The test framework recursively discovers subdirectories via `GetTestFixtures()`, so placing tests in a subdirectory will work automatically.
 
 - [ ] **6.2** Create `import_error_then_type_error/` test:
   ```
@@ -990,23 +1009,407 @@ dotnet test  # Full suite
 
 ---
 
+## 12. Structured Logging for Debugging
+
+### Context & Rationale
+
+Currently `ICompilerLogger` logs unstructured strings. For debuggability, performance profiling, and future telemetry:
+- Trace replay requires structured events
+- Performance analysis needs phase timing data
+- Bug reproduction benefits from deterministic event sequences
+
+### Key Files
+
+- `src/Sharpy.Compiler/Logging/ICompilerLogger.cs` — Logger interface
+- `src/Sharpy.Compiler/Logging/ConsoleLogger.cs` — Console implementation
+- `src/Sharpy.Compiler/Compiler.cs` — Main logging call sites
+
+### Guiding Principles
+
+- Backward compatible — existing string-based methods continue to work
+- Structured events are optional, used when available
+- Events should be serializable (for log aggregation)
+- Don't add logging overhead to hot paths
+
+### Tasks
+
+- [ ] **12.1** Create `src/Sharpy.Compiler/Logging/CompilerEvent.cs`:
+  ```csharp
+  public abstract record CompilerEvent
+  {
+      public DateTime Timestamp { get; init; } = DateTime.UtcNow;
+      public string? FilePath { get; init; }
+  }
+
+  public sealed record PhaseStartEvent(string Phase, int NodeCount) : CompilerEvent;
+  public sealed record PhaseEndEvent(string Phase, TimeSpan Duration, int ErrorCount) : CompilerEvent;
+  public sealed record DiagnosticEvent(string Code, string Message, int Line, int Column) : CompilerEvent;
+  public sealed record SymbolResolvedEvent(string Name, string Kind, string? Type) : CompilerEvent;
+  ```
+
+- [ ] **12.2** Extend `ICompilerLogger` with optional structured logging:
+  ```csharp
+  public interface ICompilerLogger
+  {
+      // Existing methods...
+
+      /// <summary>
+      /// Log a structured compiler event. Default implementation does nothing.
+      /// </summary>
+      void LogEvent(CompilerEvent evt) { }  // Default interface method
+  }
+  ```
+
+- [ ] **12.3** Create `StructuredLogger` implementation that captures events:
+  ```csharp
+  public sealed class StructuredLogger : ICompilerLogger
+  {
+      private readonly List<CompilerEvent> _events = new();
+      public IReadOnlyList<CompilerEvent> Events => _events;
+
+      public void LogEvent(CompilerEvent evt) => _events.Add(evt);
+      // ... implement other methods
+  }
+  ```
+
+- [ ] **12.4** Add phase start/end logging to `Compiler.cs`:
+  - Log `PhaseStartEvent` before each phase
+  - Log `PhaseEndEvent` after each phase with timing
+
+- [ ] **12.5** Add tests for structured logging:
+  - Verify events are captured in correct order
+  - Verify timing data is reasonable
+  - Test that default logger ignores events (no crash)
+
+### Verification
+
+```bash
+dotnet test --filter "FullyQualifiedName~StructuredLogger"
+dotnet test
+```
+
+---
+
+## 13. AST Node Invariant Validation
+
+### Context & Rationale
+
+AST nodes lack validation. A malformed AST (e.g., `FunctionDefinition` with null `Name`) causes cryptic failures deep in semantic analysis or codegen. Early validation catches issues at their source.
+
+### Key Files
+
+- `src/Sharpy.Compiler/Parser/Ast/Node.cs` — Base AST node
+- `src/Sharpy.Compiler/Parser/Ast/*.cs` — All AST node types
+- `src/Sharpy.Compiler/Compiler.cs` — Validation call site
+
+### Guiding Principles
+
+- Validation is opt-in (controlled by compiler flag or DEBUG)
+- Each node type validates its own invariants
+- Validation errors are clear about which node and which property failed
+- Don't duplicate parser validation — focus on structural invariants
+
+### Tasks
+
+- [ ] **13.1** Add `ValidateInvariants()` to `Node` base class:
+  ```csharp
+  public abstract partial record Node
+  {
+      /// <summary>
+      /// Validates structural invariants of this node.
+      /// Override in derived types to add specific checks.
+      /// </summary>
+      [Conditional("DEBUG")]
+      public virtual void ValidateInvariants()
+      {
+          // Base validation: span should be set after parsing
+      }
+  }
+  ```
+
+- [ ] **13.2** Add invariant checks to critical node types:
+  ```csharp
+  // FunctionDefinition
+  public override void ValidateInvariants()
+  {
+      base.ValidateInvariants();
+      Debug.Assert(Name != null, "FunctionDefinition.Name cannot be null");
+      Debug.Assert(Parameters != null, "FunctionDefinition.Parameters cannot be null");
+      foreach (var param in Parameters)
+          param.ValidateInvariants();
+  }
+
+  // ClassDefinition, VariableDeclaration, etc.
+  ```
+
+- [ ] **13.3** Add recursive validation helper:
+  ```csharp
+  public static class AstValidator
+  {
+      public static void ValidateTree(Node root)
+      {
+          root.ValidateInvariants();
+          foreach (var child in root.Children)  // Requires IEnumerable<Node> Children property
+              ValidateTree(child);
+      }
+  }
+  ```
+
+- [ ] **13.4** Call validation after parsing in `Compiler.cs` (DEBUG only):
+  ```csharp
+  #if DEBUG
+  AstValidator.ValidateTree(module);
+  #endif
+  ```
+
+- [ ] **13.5** Add tests that intentionally create malformed AST and verify validation catches it
+
+### Verification
+
+```bash
+dotnet build --configuration Debug  # Validation enabled
+dotnet test
+```
+
+---
+
+## 14. Diagnostic Cascade Suppression
+
+### Context & Rationale
+
+When a root cause error occurs (import failure, undefined type), downstream errors flood the output:
+```
+Error: Cannot find module 'math'
+Error: Undefined function 'sqrt'      <- Noise
+Error: Undefined function 'floor'     <- Noise
+Error: Cannot call undefined 'sqrt'   <- Noise
+```
+
+This is related to §10 (Import Error Recovery) but is a smaller, independent change that works with any error type.
+
+### Key Files
+
+- `src/Sharpy.Compiler/Diagnostics/DiagnosticBag.cs` — Diagnostic collection
+- `src/Sharpy.Compiler/Semantic/TypeChecker.cs` — Error reporting call sites
+
+### Guiding Principles
+
+- Track "root cause" diagnostics separately
+- Suppress or annotate diagnostics that are consequences of root causes
+- Don't hide errors — mark them as "possibly caused by X"
+- User can opt-in to see all errors if needed
+
+### Tasks
+
+- [ ] **14.1** Add root cause tracking to `DiagnosticBag`:
+  ```csharp
+  public sealed class DiagnosticBag
+  {
+      private readonly HashSet<string> _rootCauseIdentifiers = new();
+
+      public void AddRootCauseError(string identifier, string message, ...)
+      {
+          _rootCauseIdentifiers.Add(identifier);
+          AddError(message, ...);
+      }
+
+      public bool IsRootCause(string identifier) => _rootCauseIdentifiers.Contains(identifier);
+  }
+  ```
+
+- [ ] **14.2** Update error reporting to check root causes:
+  ```csharp
+  // In TypeChecker, when reporting "undefined identifier":
+  if (_diagnostics.IsRootCause(identifier.Name))
+  {
+      // Skip or annotate: "This may be caused by earlier import failure"
+      return;
+  }
+  ```
+
+- [ ] **14.3** Mark import failures as root causes:
+  ```csharp
+  // In ImportResolver
+  _diagnostics.AddRootCauseError(
+      moduleName,
+      $"Cannot find module '{moduleName}'",
+      ...);
+  ```
+
+- [ ] **14.4** Add tests:
+  - Import failure + usage → only 1 error reported
+  - Multiple independent errors → all reported
+  - Root cause tracking doesn't affect unrelated errors
+
+### Verification
+
+```bash
+dotnet test --filter "FullyQualifiedName~DiagnosticBag"
+dotnet test --filter "FullyQualifiedName~FileBasedIntegration"
+```
+
+---
+
+## 15. Invariant Assertions Consolidation
+
+### Context & Rationale
+
+`Compiler.cs` has 10+ scattered `Assert*` methods (lines 485-650):
+- `AssertStatementsHaveSpans`
+- `AssertAllSymbolsHaveNames`
+- `AssertNoDuplicateTypeNames`
+- etc.
+
+These are called individually throughout compilation. Consolidating them improves maintainability and ensures all invariants are checked consistently.
+
+### Key Files
+
+- `src/Sharpy.Compiler/Compiler.cs` — Contains assertion methods
+- `src/Sharpy.Compiler/Diagnostics/CompilerInvariants.cs` — New consolidated class
+
+### Guiding Principles
+
+- Move assertions to a dedicated class
+- Provide a single entry point that runs all invariants
+- Allow selective invariant checking (for performance)
+- Keep assertions always-on (not DEBUG-only) for production safety
+
+### Tasks
+
+- [ ] **15.1** Create `src/Sharpy.Compiler/Diagnostics/CompilerInvariants.cs`:
+  ```csharp
+  public static class CompilerInvariants
+  {
+      [Flags]
+      public enum InvariantSet
+      {
+          None = 0,
+          Spans = 1,
+          SymbolNames = 2,
+          TypeUniqueness = 4,
+          SemanticInfo = 8,
+          All = Spans | SymbolNames | TypeUniqueness | SemanticInfo
+      }
+
+      public static void Assert(
+          CompilationResult result,
+          DiagnosticBag diagnostics,
+          InvariantSet invariants = InvariantSet.All)
+      {
+          if (invariants.HasFlag(InvariantSet.Spans))
+              AssertStatementsHaveSpans(result.Module, diagnostics);
+          // ... etc
+      }
+  }
+  ```
+
+- [ ] **15.2** Move assertion methods from `Compiler.cs` to `CompilerInvariants`:
+  - Keep internal visibility
+  - Update signatures to be static
+  - Add XML documentation
+
+- [ ] **15.3** Update `Compiler.cs` to use consolidated assertions:
+  ```csharp
+  // Before:
+  AssertStatementsHaveSpans(module, diagnostics);
+  AssertAllSymbolsHaveNames(symbolTable, diagnostics);
+
+  // After:
+  CompilerInvariants.Assert(result, diagnostics);
+  ```
+
+- [ ] **15.4** Add tests for `CompilerInvariants`:
+  - Test each invariant check individually
+  - Test selective checking via flags
+  - Test that violations emit correct diagnostic codes
+
+### Verification
+
+```bash
+dotnet test --filter "FullyQualifiedName~CompilerInvariants"
+dotnet test
+```
+
+---
+
+## Test Coverage Gaps
+
+Beyond the sections above, these test scenarios should be added to catch regressions:
+
+| Gap | Risk | Recommended Test |
+|-----|------|------------------|
+| Nested function + type narrowing | Medium | `if x is not None: def inner(): return x + 1` — verify x is NOT narrowed in inner |
+| Exception handler + narrowing | Medium | `try: ... except: if x is not None: use(x)` — verify narrowing works in except |
+| Multi-file error recovery | High | Import fails in file A, type errors in file B still reported |
+| Partial compilation artifacts | Medium | Error mid-compile returns partial AST/symbols for IDE |
+| Validator exception handling | Low | Validator throws; verify compilation continues with diagnostic |
+| Circular import + type narrowing | Medium | Circular modules where narrowing crosses file boundaries |
+
+Add these as file-based integration tests in `TestFixtures/errors/edge_cases/`.
+
+---
+
+## LSP/Tooling Future-Proofing
+
+The following considerations ensure the robustness work enables future tooling:
+
+### Incremental Re-parsing
+The lexer/parser are single-pass. For LSP, track dirty ranges:
+- Add `ChangeTracker` to `SourceText` that records edit ranges
+- Parser should accept "reparse from line X" hint
+- Consider tree-sitter-style incremental parsing long-term
+
+### Cancellation Token Propagation
+Already present in `TypeChecker` and `ValidationPipeline`. Audit all loops:
+```bash
+grep -r "foreach\|while\|for " src/Sharpy.Compiler/ | grep -v "cancellationToken"
+```
+Add `cancellationToken.ThrowIfCancellationRequested()` to long-running loops.
+
+### Symbol Snapshots for IDE
+`Symbol` properties are mutable. For LSP concurrent access:
+```csharp
+public sealed record FrozenSymbol(
+    string Name,
+    SemanticType? Type,
+    SemanticType? BaseType,
+    // ... snapshot of all properties
+);
+
+public FrozenSymbol Freeze() => new FrozenSymbol(Name, Type, BaseType, ...);
+```
+
+### Position Service Extensions (§3)
+Beyond basic position lookup, LSP needs:
+- `FindReferences(Symbol)` — all usages of a symbol
+- `GetCompletionContext(position)` — what completions are valid here
+- `GetSignatureHelp(position)` — function signature at call site
+
+Consider these as follow-up tasks after §3 is complete.
+
+---
+
 ## Implementation Order
 
 Complete sections in this order for maximum impact:
 
 | Priority | Section | Rationale |
 |----------|---------|-----------|
-| 1 | **§1 Type Narrowing Context** | Highest bug risk in current code |
-| 2 | **§9 Exception Context Preservation** | Immediate debugging benefit |
-| 3 | **§2 Symbol Reference Equality Wrappers** | Eliminates silent failures |
-| 4 | **§10 Import Error Recovery** | Reduces cascading error noise |
-| 5 | **§5 Phase Violation Exceptions** | Improves phase debugging |
-| 6 | **§3 Position-to-AST Node Service** | LSP prerequisite |
+| 1 | **§9 Exception Context Preservation** | Immediate debugging benefit, minimal risk |
+| 2 | **§1 Type Narrowing Context** | Highest bug risk in current code |
+| 3 | **§10 Import Error Recovery** | Significant UX improvement |
+| 4 | **§14 Diagnostic Cascade Suppression** | Complements §10, smaller scope |
+| 5 | **§5 Phase Violation Exceptions** | Improves internal debugging |
+| 6 | **§2 Symbol Reference Equality Wrappers** | Safety net for new code |
 | 7 | **§6 Error Recovery Test Fixtures** | Catches regressions |
-| 8 | **§4 Consolidated Name Resolution** | Reduces codegen debugging |
-| 9 | **§11 Comprehension Consolidation** | Reduces maintenance burden |
-| 10 | **§7 Sealed SemanticType Hierarchy** | Compile-time safety |
-| 11 | **§8 Granular Compilation Metrics** | Performance visibility |
+| 8 | **§3 Position-to-AST Node Service** | LSP prerequisite |
+| 9 | **§15 Invariant Assertions Consolidation** | Maintainability |
+| 10 | **§4 Consolidated Name Resolution** | Codegen clarity |
+| 11 | **§13 AST Node Invariant Validation** | Early error detection |
+| 12 | **§7 Sealed SemanticType Hierarchy** | Compile-time safety |
+| 13 | **§11 Comprehension Consolidation** | DRY improvement |
+| 14 | **§12 Structured Logging** | Debugging/telemetry |
+| 15 | **§8 Granular Compilation Metrics** | Performance visibility |
 
 ---
 
