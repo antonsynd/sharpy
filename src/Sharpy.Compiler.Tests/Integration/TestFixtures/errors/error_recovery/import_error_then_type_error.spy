@@ -1,0 +1,7 @@
+# Error recovery: import error followed by type error
+# Both errors should be reported - the type error is independent of the import
+from nonexistent import foo
+
+def main():
+    x: int = "not an int"  # Type error, should still be reported
+    print(x)

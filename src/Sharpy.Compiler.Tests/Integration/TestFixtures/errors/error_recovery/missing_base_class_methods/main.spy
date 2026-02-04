@@ -1,0 +1,11 @@
+# Error recovery: import nonexistent base class and try to use its methods
+# Should report the import error but not cascade with "unknown method" errors
+from nonexistent import BaseClass
+
+class Derived(BaseClass):
+    def method(self) -> int:
+        return self.base_method()  # Method from missing base
+
+def main():
+    d = Derived()
+    print(d.method())

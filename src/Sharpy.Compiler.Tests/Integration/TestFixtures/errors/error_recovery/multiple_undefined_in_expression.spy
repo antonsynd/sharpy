@@ -1,0 +1,5 @@
+# Error recovery: multiple undefined identifiers in single expression
+# All undefined identifiers should be reported
+def main():
+    result = undefined1 + undefined2 * undefined3
+    print(result)

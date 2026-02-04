@@ -1,0 +1,12 @@
+# Error recovery: type error in function body
+# The type error should be reported but the function's return type is still inferred
+def broken() -> int:
+    x: int = "string"  # Type error
+    return x
+
+def caller() -> None:
+    y = broken()  # Should still work - broken's return type is known
+    print(y)
+
+def main():
+    caller()
