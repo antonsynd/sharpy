@@ -1,0 +1,2 @@
+def original_name() -> str:
+    return "called original"

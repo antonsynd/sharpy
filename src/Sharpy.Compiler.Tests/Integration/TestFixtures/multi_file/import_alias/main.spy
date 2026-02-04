@@ -1,0 +1,10 @@
+# Test module alias import
+import utils as u
+
+def main():
+    # Using module alias to access functions
+    value: int = u.compute_value()
+    print(value)
+
+    formatted: str = u.format_name("test")
+    print(formatted)

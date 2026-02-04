@@ -1,0 +1,6 @@
+# Test symbol alias (from x import y as z)
+from utils import original_name as aliased
+
+def main():
+    result: str = aliased()
+    print(result)
