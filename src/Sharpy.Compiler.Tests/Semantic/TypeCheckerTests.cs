@@ -1497,4 +1497,151 @@ def main() -> None:
     }
 
     #endregion
+
+    #region Type Narrowing Persistence (Phase 6.2)
+
+    [Fact]
+    public void GetEffectiveType_ReturnsNarrowedType_WhenNarrowed()
+    {
+        var source = @"
+def main():
+    value: str? = None()
+    if value is not None:
+        x: str = value
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // Find the identifier 'value' in the if block assignment
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        var ifStmt = mainFunc.Body.OfType<IfStatement>().First();
+        var assignment = ifStmt.ThenBody.OfType<VariableDeclaration>().First();
+        var valueIdentifier = assignment.InitialValue as Identifier;
+
+        valueIdentifier.Should().NotBeNull();
+
+        // GetEffectiveType should return the narrowed type (str), not the original (str?)
+        var effectiveType = semanticInfo.GetEffectiveType(valueIdentifier!);
+        effectiveType.Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void GetEffectiveType_ReturnsExpressionType_WhenNotNarrowed()
+    {
+        var source = @"
+def main():
+    value: str = ""hello""
+    x: str = value
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // Find the identifier 'value' in the assignment (x: str = value)
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        var assignment = mainFunc.Body.OfType<VariableDeclaration>().Last();
+        var valueIdentifier = assignment.InitialValue as Identifier;
+
+        valueIdentifier.Should().NotBeNull();
+
+        // GetEffectiveType should return expression type since there's no narrowing
+        var effectiveType = semanticInfo.GetEffectiveType(valueIdentifier!);
+        effectiveType.Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void TypeNarrowing_InWhileLoop_PersistsCorrectly()
+    {
+        var source = @"
+def main():
+    value: int? = None()
+    while value is not None:
+        x: int = value
+        break
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // Find the identifier 'value' in the while body
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        var whileStmt = mainFunc.Body.OfType<WhileStatement>().First();
+        var assignment = whileStmt.Body.OfType<VariableDeclaration>().First();
+        var valueIdentifier = assignment.InitialValue as Identifier;
+
+        valueIdentifier.Should().NotBeNull();
+
+        // Narrowed type should be persisted
+        var narrowedType = semanticInfo.GetNarrowedType(valueIdentifier!);
+        narrowedType.Should().NotBeNull();
+        narrowedType.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void TypeNarrowing_NestedIfStatements_NarrowsCorrectly()
+    {
+        var source = @"
+def main():
+    a: int? = None()
+    b: str? = None()
+    if a is not None:
+        if b is not None:
+            x: int = a
+            y: str = b
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // Both variables should be narrowed within the nested if
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        var outerIf = mainFunc.Body.OfType<IfStatement>().First();
+        var innerIf = outerIf.ThenBody.OfType<IfStatement>().First();
+
+        var xAssignment = innerIf.ThenBody.OfType<VariableDeclaration>().First();
+        var aIdentifier = xAssignment.InitialValue as Identifier;
+        aIdentifier.Should().NotBeNull();
+
+        var yAssignment = innerIf.ThenBody.OfType<VariableDeclaration>().Last();
+        var bIdentifier = yAssignment.InitialValue as Identifier;
+        bIdentifier.Should().NotBeNull();
+
+        semanticInfo.GetEffectiveType(aIdentifier!).Should().Be(SemanticType.Int);
+        semanticInfo.GetEffectiveType(bIdentifier!).Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void TypeNarrowing_DoesNotPersist_OutsideScope()
+    {
+        // After the if block, the variable should have its original type, not narrowed
+        var source = @"
+def main():
+    value: str? = None()
+    if value is not None:
+        x: str = value  # narrowed here
+    y: str? = value  # not narrowed here - should be str?
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // Find the last assignment (y: str? = value)
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        var yAssignment = mainFunc.Body.OfType<VariableDeclaration>().Last();
+        var valueIdentifier = yAssignment.InitialValue as Identifier;
+
+        valueIdentifier.Should().NotBeNull();
+
+        // Outside the if block, there should be no narrowing
+        var narrowedType = semanticInfo.GetNarrowedType(valueIdentifier!);
+        narrowedType.Should().BeNull("narrowing should not persist outside the if block");
+    }
+
+    #endregion
 }

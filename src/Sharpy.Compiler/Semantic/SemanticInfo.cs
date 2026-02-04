@@ -111,6 +111,18 @@ public class SemanticInfo
     }
 
     /// <summary>
+    /// Gets the effective type of an expression, considering type narrowing.
+    /// Returns the narrowed type if one was recorded, otherwise returns the expression type.
+    /// This is the primary method for LSP hover and other tooling that needs the "best known" type.
+    /// </summary>
+    /// <param name="expr">The expression to get the type for.</param>
+    /// <returns>The narrowed type if available, otherwise the expression type, or null if unknown.</returns>
+    public SemanticType? GetEffectiveType(Expression expr)
+    {
+        return GetNarrowedType(expr) ?? GetExpressionType(expr);
+    }
+
+    /// <summary>
     /// Sets the inferred type arguments for a generic function call.
     /// Used when calling a generic function without explicit type arguments (e.g., identity(42) -> T=int).
     /// </summary>
