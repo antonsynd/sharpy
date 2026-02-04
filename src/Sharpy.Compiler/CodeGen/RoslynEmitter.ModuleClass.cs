@@ -207,6 +207,12 @@ internal partial class RoslynEmitter
             _declaredVariables.Clear();
             _variableVersions.Clear();
             _constVariables.Clear();
+            _sourceVariableNames.Clear();
+
+            // Pre-scan the executable statements to collect all variable names that will be declared.
+            // This enables us to avoid generating versioned names (x_1, x_2) that collide
+            // with user-declared variables.
+            CollectSourceVariableNames(executableStatements);
 
             var mainBody = executableStatements.Count > 0
                 ? Block(executableStatements

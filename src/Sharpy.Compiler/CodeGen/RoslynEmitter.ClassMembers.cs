@@ -148,6 +148,12 @@ internal partial class RoslynEmitter
         _declaredVariables.Clear();
         _variableVersions.Clear();
         _constVariables.Clear();
+        _sourceVariableNames.Clear();
+
+        // Pre-scan the constructor body to collect all variable names that will be declared.
+        // This enables us to avoid generating versioned names (x_1, x_2) that collide
+        // with user-declared variables.
+        CollectSourceVariableNames(func.Body);
 
         // Process decorators to determine modifiers
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
@@ -313,6 +319,12 @@ internal partial class RoslynEmitter
         _declaredVariables.Clear();
         _variableVersions.Clear();
         _constVariables.Clear();
+        _sourceVariableNames.Clear();
+
+        // Pre-scan the method body to collect all variable names that will be declared.
+        // This enables us to avoid generating versioned names (x_1, x_2) that collide
+        // with user-declared variables.
+        CollectSourceVariableNames(func.Body);
 
         // For class methods, use the same logic as module functions but handle special cases
         // Transform name using NameMangler (handles dunder methods automatically)

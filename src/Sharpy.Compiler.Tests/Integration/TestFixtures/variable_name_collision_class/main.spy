@@ -1,0 +1,21 @@
+# Test: Variable name collision in class methods
+# Verifies that the fix works for class methods, not just module functions
+
+class Counter:
+    value: int
+
+    def __init__(self, start: int):
+        self.value = start
+
+    def increment(self) -> str:
+        x = self.value
+        x_1 = "marker"      # User's x_1
+        x = x + 1           # Redeclaration: should generate x_2
+        self.value = x
+        return x_1          # Return marker to verify it's unchanged
+
+def main():
+    c: Counter = Counter(10)
+    result = c.increment()
+    print(c.value)
+    print(result)

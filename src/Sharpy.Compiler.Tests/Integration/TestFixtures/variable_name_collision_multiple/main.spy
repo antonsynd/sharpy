@@ -1,0 +1,12 @@
+# Test: Multiple colliding version numbers
+# Verifies that the emitter skips all user-declared versioned names
+
+def main():
+    x = 1
+    x_1 = 10        # User's x_1
+    x_2 = 20        # User's x_2
+    x = 2           # Should generate x_3, skipping x_1 and x_2
+    x = 3           # Should generate x_4
+    print(x)        # Latest x (x_4) = 3
+    print(x_1)      # User's x_1 = 10
+    print(x_2)      # User's x_2 = 20
