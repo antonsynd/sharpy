@@ -29,21 +29,39 @@ internal class ProjectCompiler
     // SemanticInfo is shared (not per-file) because files are processed sequentially
     // in dependency order. For parallel per-file analysis (e.g., LSP), SemanticInfo
     // should be created per-file while SymbolTable and SemanticBinding remain shared.
-    private SymbolTable _symbolTable = null!;
-    private SemanticInfo _semanticInfo = null!;
-    private ImportResolver _importResolver = null!;
+    //
+    // These fields are initialized during Compile() and accessed via guarded properties
+    // to provide helpful error messages if accessed before initialization.
+    private SymbolTable? _symbolTableBacking;
+    private SemanticInfo? _semanticInfoBacking;
+    private ImportResolver? _importResolverBacking;
+    private ProjectCompilationMetrics? _projectMetricsBacking;
+    private DependencyGraphBuilder? _graphBuilderBacking;
+
+    // Guarded property accessors for fields initialized during Compile()
+    private SymbolTable SymbolTable => _symbolTableBacking
+        ?? throw CompilationNotStarted(nameof(SymbolTable));
+    private SemanticInfo SemanticInfo => _semanticInfoBacking
+        ?? throw CompilationNotStarted(nameof(SemanticInfo));
+    private ImportResolver ImportResolver => _importResolverBacking
+        ?? throw CompilationNotStarted(nameof(ImportResolver));
+    private ProjectCompilationMetrics ProjectMetrics => _projectMetricsBacking
+        ?? throw CompilationNotStarted(nameof(ProjectMetrics));
+    private DependencyGraphBuilder GraphBuilder => _graphBuilderBacking
+        ?? throw CompilationNotStarted(nameof(GraphBuilder));
+
+    private static InvalidOperationException CompilationNotStarted(string fieldName)
+    {
+        return new InvalidOperationException(
+            $"Cannot access {fieldName}: Compile() has not been called yet. " +
+            "This is a compiler bug - please report it.");
+    }
 
     // Store NameResolver for deferred inheritance resolution
     private NameResolver? _sharedNameResolver;
 
     // Track errors and warnings using structured diagnostics
     private DiagnosticBag _diagnostics = new();
-
-    // Metrics tracking
-    private ProjectCompilationMetrics _projectMetrics = null!;
-
-    // Dependency graph for build ordering and incremental compilation
-    private DependencyGraphBuilder _graphBuilder = null!;
     private DependencyGraph? _dependencyGraph;
 
     // Unified project model containing all CompilationUnits
@@ -84,7 +102,7 @@ internal class ProjectCompiler
         _logger.LogInfo($"Starting project compilation: {config.RootNamespace}");
 
         _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings);
-        _projectMetrics = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
+        _projectMetricsBacking = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
         _projectModel = new ProjectModel(config);
 
         // Initialize incremental compilation cache if enabled
@@ -194,10 +212,10 @@ internal class ProjectCompiler
             // then resolve inheritance for imported types.
             // ResolveInheritanceRelationships() handles types declared within the project,
             // but imported types from external modules still have unresolved base names.
-            var inheritanceResolver = new InheritanceResolver(_symbolTable, _logger, _projectModel.SemanticBinding);
-            inheritanceResolver.ResolveAll(_importResolver);
+            var inheritanceResolver = new InheritanceResolver(SymbolTable, _logger, _projectModel.SemanticBinding);
+            inheritanceResolver.ResolveAll(ImportResolver);
             _projectModel.SemanticBinding.MaterializeInheritance();
-            DualWriteAssertions.AssertInheritanceConsistency(_symbolTable, _projectModel.SemanticBinding);
+            DualWriteAssertions.AssertInheritanceConsistency(SymbolTable, _projectModel.SemanticBinding);
             _projectModel.SemanticBinding.FreezeInheritance();
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -208,8 +226,8 @@ internal class ProjectCompiler
             }
             _projectModel.SemanticBinding.MaterializeCodeGenInfo();
             _projectModel.SemanticBinding.MaterializeVariableTypes();
-            DualWriteAssertions.AssertCodeGenInfoConsistency(_symbolTable, _projectModel.SemanticBinding);
-            DualWriteAssertions.AssertVariableTypeConsistency(_symbolTable, _projectModel.SemanticBinding);
+            DualWriteAssertions.AssertCodeGenInfoConsistency(SymbolTable, _projectModel.SemanticBinding);
+            DualWriteAssertions.AssertVariableTypeConsistency(SymbolTable, _projectModel.SemanticBinding);
             _projectModel.SemanticBinding.FreezeVariableTypes();
             _projectModel.SemanticBinding.FreezeCodeGenInfo();
             cancellationToken.ThrowIfCancellationRequested();
@@ -229,7 +247,7 @@ internal class ProjectCompiler
             {
                 Success = false,
                 Diagnostics = _diagnostics,
-                Metrics = _projectMetrics,
+                Metrics = _projectMetricsBacking,
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel
             };
@@ -242,7 +260,7 @@ internal class ProjectCompiler
             {
                 Success = false,
                 Diagnostics = _diagnostics,
-                Metrics = _projectMetrics,
+                Metrics = _projectMetricsBacking,
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel
             };
@@ -281,7 +299,7 @@ internal class ProjectCompiler
                     }
 
                     unit.Phase = CompilationPhase.Skipped;
-                    _projectMetrics.AddSkippedFile(sourceFile);
+                    ProjectMetrics.AddSkippedFile(sourceFile);
 
                     if (_logger.IsEnabled(CompilerLogLevel.Debug))
                     {
@@ -312,7 +330,7 @@ internal class ProjectCompiler
                     compilationUnit.Diagnostics.Merge(lexer.Diagnostics);
                     compilationUnit.Phase = CompilationPhase.Failed;
                     _diagnostics.Merge(lexer.Diagnostics);
-                    _projectMetrics.AddFileMetrics(fileMetrics);
+                    ProjectMetrics.AddFileMetrics(fileMetrics);
                     continue;
                 }
 
@@ -332,7 +350,7 @@ internal class ProjectCompiler
                     compilationUnit.Diagnostics.Merge(parser.Diagnostics);
                     compilationUnit.Phase = CompilationPhase.Failed;
                     _diagnostics.Merge(parser.Diagnostics);
-                    _projectMetrics.AddFileMetrics(fileMetrics);
+                    ProjectMetrics.AddFileMetrics(fileMetrics);
                     continue;
                 }
 
@@ -362,7 +380,7 @@ internal class ProjectCompiler
                     _logger.LogDebug($"Parsed {Path.GetFileName(sourceFile)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
                 }
 
-                _projectMetrics.AddFileMetrics(fileMetrics);
+                ProjectMetrics.AddFileMetrics(fileMetrics);
             }
             catch (Exception ex)
             {
@@ -375,7 +393,7 @@ internal class ProjectCompiler
                 }
 
                 _diagnostics.AddError(ex.Message, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
-                _projectMetrics.AddFileMetrics(fileMetrics);
+                ProjectMetrics.AddFileMetrics(fileMetrics);
             }
         }
 
@@ -426,7 +444,7 @@ internal class ProjectCompiler
                         unit.Diagnostics.Merge(lexer.Diagnostics);
                         unit.Phase = CompilationPhase.Failed;
                         _diagnostics.Merge(lexer.Diagnostics);
-                        _projectMetrics.AddFileMetrics(fileMetrics);
+                        ProjectMetrics.AddFileMetrics(fileMetrics);
                         continue;
                     }
 
@@ -444,7 +462,7 @@ internal class ProjectCompiler
                         unit.Diagnostics.Merge(parser.Diagnostics);
                         unit.Phase = CompilationPhase.Failed;
                         _diagnostics.Merge(parser.Diagnostics);
-                        _projectMetrics.AddFileMetrics(fileMetrics);
+                        ProjectMetrics.AddFileMetrics(fileMetrics);
                         continue;
                     }
 
@@ -470,14 +488,14 @@ internal class ProjectCompiler
                         _logger.LogDebug($"Re-parsed {Path.GetFileName(sourceFile)} (invalidated): {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
                     }
 
-                    _projectMetrics.AddFileMetrics(fileMetrics);
+                    ProjectMetrics.AddFileMetrics(fileMetrics);
                 }
                 catch (Exception ex)
                 {
                     unit.Diagnostics.AddError(ex.Message, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
                     unit.Phase = CompilationPhase.Failed;
                     _diagnostics.AddError(ex.Message, filePath: sourceFile, code: DiagnosticCodes.Infrastructure.FileReadError);
-                    _projectMetrics.AddFileMetrics(fileMetrics);
+                    ProjectMetrics.AddFileMetrics(fileMetrics);
                 }
             }
         }
@@ -491,29 +509,29 @@ internal class ProjectCompiler
     private void InitializeSharedState()
     {
         var builtinRegistry = new BuiltinRegistry(_logger);
-        _symbolTable = new SymbolTable(builtinRegistry);
-        _semanticInfo = new SemanticInfo();
-        _importResolver = new ImportResolver(_logger, _moduleRegistry);
+        _symbolTableBacking = new SymbolTable(builtinRegistry);
+        _semanticInfoBacking = new SemanticInfo();
+        _importResolverBacking = new ImportResolver(_logger, _moduleRegistry);
 
         // Create SemanticBinding for storing semantic data separate from AST
         var semanticBinding = new SemanticBinding();
 
         // Store in ProjectModel
-        _projectModel!.GlobalSymbols = _symbolTable;
-        _projectModel.SemanticInfo = _semanticInfo;
+        _projectModel!.GlobalSymbols = SymbolTable;
+        _projectModel.SemanticInfo = SemanticInfo;
         _projectModel.SemanticBinding = semanticBinding;
 
         // Initialize dependency graph builder and connect to import resolver
-        _graphBuilder = new DependencyGraphBuilder();
-        _importResolver.SetDependencyGraphBuilder(_graphBuilder);
+        _graphBuilderBacking = new DependencyGraphBuilder();
+        ImportResolver.SetDependencyGraphBuilder(GraphBuilder);
 
         // Connect SemanticBinding to import resolver for storing import data
-        _importResolver.SetSemanticBinding(semanticBinding);
+        ImportResolver.SetSemanticBinding(semanticBinding);
 
         // Register all parsed files in the dependency graph
         foreach (var sourceFile in _projectModel!.Units.Keys)
         {
-            _graphBuilder.AddFile(sourceFile);
+            GraphBuilder.AddFile(sourceFile);
         }
 
         // Restore cached symbols for skipped files (incremental compilation)
@@ -545,7 +563,7 @@ internal class ProjectCompiler
                     // Skip parameters and other nested symbols
                     if (symbol is TypeSymbol typeSymbol)
                     {
-                        _symbolTable.TryDefine(symbol);
+                        SymbolTable.TryDefine(symbol);
 
                         // Register CodeGenInfo to maintain dual-write consistency
                         if (typeSymbol.CodeGenInfo != null)
@@ -587,7 +605,7 @@ internal class ProjectCompiler
                     }
                     else if (symbol is FunctionSymbol fs)
                     {
-                        _symbolTable.TryDefine(symbol);
+                        SymbolTable.TryDefine(symbol);
 
                         // Register CodeGenInfo for functions
                         if (fs.CodeGenInfo != null)
@@ -597,7 +615,7 @@ internal class ProjectCompiler
                     }
                     else if (symbol is VariableSymbol vs && !vs.IsParameter)
                     {
-                        _symbolTable.TryDefine(symbol);
+                        SymbolTable.TryDefine(symbol);
 
                         // Register variable type and CodeGenInfo in SemanticBinding
                         if (vs.Type != SemanticType.Unknown)
@@ -681,7 +699,7 @@ internal class ProjectCompiler
             foreach (var key in symbolsToRemove)
             {
                 var symbolToRemove = _restoredSymbols[key];
-                _symbolTable.Remove(symbolToRemove.Name);
+                SymbolTable.Remove(symbolToRemove.Name);
                 _restoredSymbols.Remove(key);
 
                 // Also remove from semantic binding
@@ -743,7 +761,7 @@ internal class ProjectCompiler
 
         return type switch
         {
-            UserDefinedType udt => _symbolTable.Lookup(udt.Name) is TypeSymbol,
+            UserDefinedType udt => SymbolTable.Lookup(udt.Name) is TypeSymbol,
             GenericType gt => ValidateGenericType(gt),
             NullableType nt => ValidateType(nt.UnderlyingType),
             OptionalType ot => ValidateType(ot.UnderlyingType),
@@ -794,7 +812,7 @@ internal class ProjectCompiler
         // If this function references an imported function, verify the current version has matching signature
         // Look up by the function's fully qualified name or just name
         var lookupName = cached.Name;
-        var current = _symbolTable.Lookup(lookupName);
+        var current = SymbolTable.Lookup(lookupName);
 
         // If the same function exists in a dependency that was recompiled, check signatures match
         if (current is FunctionSymbol currentFunc && !ReferenceEquals(cached, currentFunc))
@@ -817,7 +835,7 @@ internal class ProjectCompiler
         // Validate base type still exists
         if (cached.BaseType != null)
         {
-            var currentBase = _symbolTable.Lookup(cached.BaseType.Name);
+            var currentBase = SymbolTable.Lookup(cached.BaseType.Name);
             if (currentBase == null)
             {
                 _logger.LogDebug($"Type '{cached.Name}' has invalid base type '{cached.BaseType.Name}'");
@@ -835,7 +853,7 @@ internal class ProjectCompiler
         // Validate interface implementations still exist
         foreach (var iface in cached.Interfaces)
         {
-            if (_symbolTable.Lookup(iface.Name) == null)
+            if (SymbolTable.Lookup(iface.Name) == null)
             {
                 _logger.LogDebug($"Type '{cached.Name}' implements non-existent interface '{iface.Name}'");
                 return false;
@@ -958,7 +976,7 @@ internal class ProjectCompiler
         var symbols = new List<Symbol>();
 
         // Get all symbols from the global scope that were declared in this file
-        foreach (var symbol in _symbolTable.GlobalScope.GetAllSymbols())
+        foreach (var symbol in SymbolTable.GlobalScope.GetAllSymbols())
         {
             // Check if the symbol was declared in this file
             var symbolFilePath = GetSymbolFilePath(symbol);
@@ -1004,7 +1022,7 @@ internal class ProjectCompiler
 
         // Create a SINGLE NameResolver for ALL files to preserve type definition lists
         // across files for correct inheritance resolution
-        _sharedNameResolver = new NameResolver(_symbolTable, _logger, _projectModel!.SemanticBinding);
+        _sharedNameResolver = new NameResolver(SymbolTable, _logger, _projectModel!.SemanticBinding);
 
         // Collect all type declarations (shells only)
         foreach (var (_, unit) in _projectModel!.Units)
@@ -1080,13 +1098,13 @@ internal class ProjectCompiler
                 continue;
 
             // Use unit.FilePath for original path (Units dictionary keys are normalized)
-            _importResolver.SetCurrentModule(unit.FilePath);
+            ImportResolver.SetCurrentModule(unit.FilePath);
 
             foreach (var statement in unit.Ast.Body)
             {
                 if (statement is ImportStatement import)
                 {
-                    var modules = _importResolver.ResolveImport(import, config.ProjectDirectory);
+                    var modules = ImportResolver.ResolveImport(import, config.ProjectDirectory);
 
                     // Match each resolved module with its import alias to get the correct name/alias
                     for (int i = 0; i < import.Names.Length && i < modules.Count; i++)
@@ -1109,7 +1127,7 @@ internal class ProjectCompiler
                                 FilePath = moduleInfo.Path,
                                 Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
                             };
-                            _symbolTable.TryDefine(aliasedModule);
+                            SymbolTable.TryDefine(aliasedModule);
                             continue;
                         }
 
@@ -1142,7 +1160,7 @@ internal class ProjectCompiler
 
                         // Register the root module (or merge with existing if it exists)
                         var rootName = parts[0];
-                        var existingSymbol = _symbolTable.Lookup(rootName, searchParents: false);
+                        var existingSymbol = SymbolTable.Lookup(rootName, searchParents: false);
                         if (existingSymbol is ModuleSymbol existingModule)
                         {
                             // Merge: add the new nested exports to the existing module
@@ -1150,13 +1168,13 @@ internal class ProjectCompiler
                         }
                         else
                         {
-                            _symbolTable.TryDefine(currentModule);
+                            SymbolTable.TryDefine(currentModule);
                         }
                     }
                 }
                 else if (statement is FromImportStatement fromImport)
                 {
-                    var moduleInfo = _importResolver.ResolveFromImport(fromImport, config.ProjectDirectory);
+                    var moduleInfo = ImportResolver.ResolveFromImport(fromImport, config.ProjectDirectory);
                     if (moduleInfo != null)
                     {
                         // Use ReExportedSymbols which have DefiningModule set for cross-module type references
@@ -1171,7 +1189,7 @@ internal class ProjectCompiler
                         {
                             foreach (var (name, symbol) in symbolsToImport)
                             {
-                                _symbolTable.TryDefine(symbol);
+                                SymbolTable.TryDefine(symbol);
                             }
                         }
                         else
@@ -1181,7 +1199,7 @@ internal class ProjectCompiler
                                 var symbolName = importAlias.AsName ?? importAlias.Name;
                                 if (symbolsToImport.TryGetValue(symbolName, out var symbol))
                                 {
-                                    _symbolTable.TryDefine(symbol);
+                                    SymbolTable.TryDefine(symbol);
                                 }
                             }
                         }
@@ -1191,7 +1209,7 @@ internal class ProjectCompiler
         }
 
         // Build the dependency graph after all imports are resolved
-        _dependencyGraph = _graphBuilder.Build();
+        _dependencyGraph = GraphBuilder.Build();
 
         // Store in ProjectModel
         _projectModel!.DependencyGraph = _dependencyGraph;
@@ -1218,7 +1236,7 @@ internal class ProjectCompiler
         // final result. Continue to type checking even if imports failed, so users
         // see the full picture (import errors + type errors) — matching the
         // single-file Compiler.Compile() behavior.
-        foreach (var diag in _importResolver.Diagnostics.GetAll())
+        foreach (var diag in ImportResolver.Diagnostics.GetAll())
         {
             if (diag.IsError)
             {
@@ -1282,14 +1300,14 @@ internal class ProjectCompiler
 
             // Type resolution
             fileMetrics.StartPhase("Type Resolution");
-            var typeResolver = new TypeResolver(_symbolTable, _semanticInfo, _logger);
+            var typeResolver = new TypeResolver(SymbolTable, SemanticInfo, _logger);
             fileMetrics.EndPhase();
 
             // Type checking
             fileMetrics.StartPhase("Type Checking");
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
             var semanticMaxErrors = _maxErrors > 0 ? _maxErrors : 100;
-            var typeChecker = new TypeChecker(_symbolTable, _semanticInfo, typeResolver, _logger, pipeline)
+            var typeChecker = new TypeChecker(SymbolTable, SemanticInfo, typeResolver, _logger, pipeline)
             {
                 CurrentFilePath = unit.FilePath,
                 SemanticBinding = _projectModel.SemanticBinding,
@@ -1378,7 +1396,7 @@ internal class ProjectCompiler
 
             var isPackageInit = Path.GetFileNameWithoutExtension(sourceFile) == DunderNames.Init;
 
-            var codeGenContext = new CodeGenContext(_symbolTable, builtinRegistry)
+            var codeGenContext = new CodeGenContext(SymbolTable, builtinRegistry)
             {
                 SourceFilePath = sourceFile,
                 ProjectNamespace = config.RootNamespace,
@@ -1387,7 +1405,7 @@ internal class ProjectCompiler
                 IsPackageInit = isPackageInit,
                 Logger = _logger,
                 SemanticBinding = _projectModel.SemanticBinding,
-                SemanticInfo = _semanticInfo
+                SemanticInfo = SemanticInfo
             };
 
             var emitter = new RoslynEmitter(codeGenContext);
@@ -1433,7 +1451,7 @@ internal class ProjectCompiler
         // Add assembly metrics to project metrics
         if (assemblyResult.Metrics != null)
         {
-            _projectMetrics.SetAssemblyMetrics(assemblyResult.Metrics);
+            ProjectMetrics.SetAssemblyMetrics(assemblyResult.Metrics);
         }
 
         // Merge assembly diagnostics into project diagnostics
@@ -1453,7 +1471,7 @@ internal class ProjectCompiler
                 Diagnostics = _diagnostics,
                 // Include generated C# for debugging even on failure
                 GeneratedCSharpFiles = generatedCSharp,
-                Metrics = _projectMetrics,
+                Metrics = ProjectMetrics,
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel
             };
@@ -1471,7 +1489,7 @@ internal class ProjectCompiler
             Diagnostics = _diagnostics,
             OutputAssemblyPath = assemblyResult.OutputAssemblyPath,
             GeneratedCSharpFiles = generatedCSharp,
-            Metrics = _projectMetrics,
+            Metrics = ProjectMetrics,
             DependencyGraph = _dependencyGraph,
             ProjectModel = _projectModel
         };
@@ -1506,7 +1524,7 @@ internal class ProjectCompiler
         {
             Success = false,
             Diagnostics = _diagnostics,
-            Metrics = _projectMetrics,
+            Metrics = ProjectMetrics,
             DependencyGraph = _dependencyGraph,
             ProjectModel = _projectModel
         };
