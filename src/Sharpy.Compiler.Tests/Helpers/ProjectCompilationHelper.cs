@@ -192,6 +192,24 @@ public class ProjectCompilationHelper : IDisposable
     }
 
     /// <summary>
+    /// Removes a source file from the project.
+    /// Useful for testing incremental compilation scenarios where a file is deleted.
+    /// </summary>
+    /// <param name="relativePath">Relative path from source directory (e.g., "lib.spy")</param>
+    public ProjectCompilationHelper RemoveSourceFile(string relativePath)
+    {
+        var fullPath = Path.Combine(SourceDirectory, relativePath);
+
+        if (File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+            _sourceFiles.Remove(fullPath);
+        }
+
+        return this;
+    }
+
+    /// <summary>
     /// Enables incremental compilation mode.
     /// </summary>
     public ProjectCompilationHelper WithIncremental(bool enabled = true)

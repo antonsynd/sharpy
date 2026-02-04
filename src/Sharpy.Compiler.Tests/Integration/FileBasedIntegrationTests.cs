@@ -68,14 +68,16 @@ public class FileBasedIntegrationTests : IntegrationTestBase
 
     /// <summary>
     /// Discovers all test fixtures by scanning the TestFixtures directory.
-    /// Supports both single-file tests and multi-file tests.
+    /// Supports both single-file tests and multi-file tests (including packages with subdirectories).
     ///
     /// Multi-file test detection:
-    /// A directory is considered a multi-file test if it contains multiple .spy files
+    /// A directory is considered a multi-file test if it contains .spy files (directly or in subdirs)
     /// AND at least one of these is true:
     /// 1. There's a main.spy file (indicates entry point)
     /// 2. There's a main.expected or main.error file
-    /// 3. The directory contains only .spy, .expected, and .error files (no nested dirs of tests)
+    ///
+    /// Files inside subdirectories of a multi-file test (e.g., package submodules) are NOT
+    /// treated as separate tests.
     ///
     /// This prevents directories like "errors/" with multiple single-file error tests
     /// from being mistakenly treated as multi-file projects.
@@ -87,7 +89,26 @@ public class FileBasedIntegrationTests : IntegrationTestBase
             yield break;
         }
 
-        // Track directories we've already processed as multi-file tests
+        // First pass: identify all multi-file test root directories
+        var multiFileTestRoots = new HashSet<string>();
+        foreach (var dir in Directory.EnumerateDirectories(FixturesPath, "*", SearchOption.AllDirectories))
+        {
+            var hasMainSpy = File.Exists(Path.Combine(dir, "main.spy"));
+            var hasMainExpected = File.Exists(Path.Combine(dir, "main.expected"));
+            var hasMainError = File.Exists(Path.Combine(dir, "main.error"));
+
+            if (hasMainSpy || hasMainExpected || hasMainError)
+            {
+                // Check if this directory has .spy files (directly or in subdirs)
+                var spyFilesCount = Directory.GetFiles(dir, "*.spy", SearchOption.AllDirectories).Length;
+                if (spyFilesCount > 1)
+                {
+                    multiFileTestRoots.Add(dir);
+                }
+            }
+        }
+
+        // Track directories we've already processed
         var processedDirectories = new HashSet<string>();
 
         // Find all .spy files recursively
@@ -95,38 +116,30 @@ public class FileBasedIntegrationTests : IntegrationTestBase
         {
             var spyDir = Path.GetDirectoryName(spyFile)!;
 
-            // Check if this directory contains multiple .spy files
-            var spyFilesInDir = Directory.GetFiles(spyDir, "*.spy");
+            // Check if this file is inside a multi-file test root (or one of its subdirs)
+            var multiFileRoot = FindMultiFileTestRoot(spyDir, multiFileTestRoots);
 
-            // A directory is a multi-file test if:
-            // - It has multiple .spy files AND
-            // - It has main.spy or main.expected/main.error (explicit entry point marker)
-            var hasMainSpy = File.Exists(Path.Combine(spyDir, "main.spy"));
-            var hasMainExpected = File.Exists(Path.Combine(spyDir, "main.expected"));
-            var hasMainError = File.Exists(Path.Combine(spyDir, "main.error"));
-            var isMultiFileTest = spyFilesInDir.Length > 1 && (hasMainSpy || hasMainExpected || hasMainError);
-
-            if (isMultiFileTest)
+            if (multiFileRoot != null)
             {
-                // Multi-file test - only process once per directory
-                if (processedDirectories.Contains(spyDir))
+                // This file belongs to a multi-file test - process the root only once
+                if (processedDirectories.Contains(multiFileRoot))
                 {
                     continue;
                 }
-                processedDirectories.Add(spyDir);
+                processedDirectories.Add(multiFileRoot);
 
                 // Skip tests with .skip files (tests pending fixes)
-                if (File.Exists(Path.Combine(spyDir, "main.skip")))
+                if (File.Exists(Path.Combine(multiFileRoot, "main.skip")))
                 {
                     continue;
                 }
 
                 // Use the directory path as the test identifier
-                var relativePath = Path.GetRelativePath(FixturesPath, spyDir);
+                var relativePath = Path.GetRelativePath(FixturesPath, multiFileRoot);
                 var testName = relativePath.Replace(Path.DirectorySeparatorChar, '/');
 
                 // Return the directory path with a marker
-                yield return new object[] { testName, spyDir, true /* isMultiFile */ };
+                yield return new object[] { testName, multiFileRoot, true /* isMultiFile */ };
             }
             else
             {
@@ -142,6 +155,30 @@ public class FileBasedIntegrationTests : IntegrationTestBase
                 yield return new object[] { testName, spyFile, false /* isMultiFile */ };
             }
         }
+    }
+
+    /// <summary>
+    /// Find the multi-file test root directory that contains the given path.
+    /// Returns null if the path is not inside any multi-file test root.
+    /// </summary>
+    private static string? FindMultiFileTestRoot(string path, HashSet<string> multiFileTestRoots)
+    {
+        // Check if this exact path is a multi-file root
+        if (multiFileTestRoots.Contains(path))
+        {
+            return path;
+        }
+
+        // Check if any parent directory is a multi-file root
+        foreach (var root in multiFileTestRoots)
+        {
+            if (path.StartsWith(root + Path.DirectorySeparatorChar))
+            {
+                return root;
+            }
+        }
+
+        return null;
     }
 
     [Theory]
@@ -165,12 +202,13 @@ public class FileBasedIntegrationTests : IntegrationTestBase
             var entryPointFile = FindEntryPoint(projectDir);
             Output.WriteLine($"Entry point: {entryPointFile}");
 
-            // List all source files
-            var sourceFiles = Directory.GetFiles(projectDir, "*.spy");
+            // List all source files (including subdirectories for packages)
+            var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories);
             Output.WriteLine("=== Source Files ===");
             foreach (var sourceFile in sourceFiles)
             {
-                Output.WriteLine($"--- {Path.GetFileName(sourceFile)} ---");
+                var relativePath = Path.GetRelativePath(projectDir, sourceFile);
+                Output.WriteLine($"--- {relativePath} ---");
                 Output.WriteLine(File.ReadAllText(sourceFile));
             }
             Output.WriteLine("====================");

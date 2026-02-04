@@ -488,8 +488,8 @@ public abstract class IntegrationTestBase
         {
             var logger = new OutputTestLogger(Output);
 
-            // Discover all .spy files in the directory
-            var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.TopDirectoryOnly)
+            // Discover all .spy files in the directory (including subdirectories for packages)
+            var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
                 .ToList();
 
             if (sourceFiles.Count == 0)
@@ -504,7 +504,8 @@ public abstract class IntegrationTestBase
             Output.WriteLine($"Found {sourceFiles.Count} source files:");
             foreach (var file in sourceFiles)
             {
-                Output.WriteLine($"  - {Path.GetFileName(file)}");
+                var relativePath = Path.GetRelativePath(projectDir, file);
+                Output.WriteLine($"  - {relativePath}");
             }
 
             // Create a project config for the test
