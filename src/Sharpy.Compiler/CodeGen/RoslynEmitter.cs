@@ -24,6 +24,7 @@ internal partial class RoslynEmitter
 {
     private readonly CodeGenContext _context;
     private readonly TypeMapper _typeMapper;
+    private readonly NameResolutionService _nameResolutionService;
     private readonly HashSet<string> _declaredVariables = new();
 
     // ============================================================
@@ -101,12 +102,20 @@ internal partial class RoslynEmitter
     {
         _context = context;
         _typeMapper = new TypeMapper(context);
+        _nameResolutionService = new NameResolutionService(context.Logger);
     }
 
     /// <summary>
     /// Resolve the C# name for a variable using CodeGenInfo.
     /// Returns null if CodeGenInfo is not available or if this is a local redeclaration.
     /// </summary>
+    /// <remarks>
+    /// This method delegates to NameResolutionService for the core resolution logic.
+    /// The service handles CodeGenInfo-based resolution, including:
+    /// - Module-level vs local variable detection
+    /// - Force module-level fields override
+    /// - C# keyword escaping for module symbols
+    /// </remarks>
     private string? TryGetCSharpNameFromCodeGenInfo(string sharpyName, bool isNewDeclaration)
     {
         var symbol = _context.LookupSymbol(sharpyName);
@@ -117,34 +126,13 @@ internal partial class RoslynEmitter
         if (info == null)
             return null;
 
-        // For new declarations, check if this is a local redeclaration
-        // Local variable redeclarations still need runtime tracking via _variableVersions
-        // because they happen during emission, not semantic analysis
-        // Exception: when _forceModuleLevelFields is true, variables with execution order issues
-        // are still generated as static fields
-        if (isNewDeclaration && !info.IsModuleLevel && !_forceModuleLevelFields)
-        {
-            return null; // Let GetMangledVariableName handle local redeclarations
-        }
-
-        // When _forceModuleLevelFields is true and this symbol has execution order issues,
-        // the CodeGenInfo name was computed as camelCase (for a local) but we need PascalCase
-        // (for a static field). Override the name in this case.
-        if (_forceModuleLevelFields && info.HasExecutionOrderIssues && symbol is VariableSymbol)
-        {
-            // Use PascalCase for module-level fields
-            return NameMangler.ToPascalCase(sharpyName);
-        }
-
-        var csharpName = info.GetVersionedCSharpName();
-
-        // Module imports need C# keyword escaping (e.g., "base" -> "@base")
-        if (symbol is ModuleSymbol)
-        {
-            return EscapeCSharpKeyword(csharpName);
-        }
-
-        return csharpName;
+        // Delegate to NameResolutionService for CodeGenInfo-based resolution
+        // The service returns null if this should fall through to local variable handling
+        return _nameResolutionService.TryResolveFromCodeGenInfo(
+            symbol,
+            info,
+            isNewDeclaration,
+            _forceModuleLevelFields);
     }
 
     /// <summary>
@@ -153,39 +141,46 @@ internal partial class RoslynEmitter
     /// <param name="name">The original Sharpy variable name</param>
     /// <param name="isNewDeclaration">True if this is a new declaration/redefinition, false if this is a reference</param>
     /// <returns>The C# variable name with version suffix (e.g., "x", "x_1", "x_2")</returns>
+    /// <remarks>
+    /// This method delegates to NameResolutionService for name computation while
+    /// maintaining local state (_variableVersions, _sourceVariableNames, _constVariables)
+    /// in the emitter.
+    ///
+    /// Resolution order:
+    /// 1. Local variables (tracked in _variableVersions) - highest precedence
+    /// 2. Local const variables (tracked in _constVariables)
+    /// 3. Type/module symbols (via SymbolTable lookup and NameResolutionService)
+    /// 4. CodeGenInfo-based resolution (module-level symbols, imports)
+    /// 5. New local variable registration
+    /// </remarks>
     private string GetMangledVariableName(string name, bool isNewDeclaration)
     {
-        var baseName = NameMangler.ToCamelCase(name);
+        var baseName = _nameResolutionService.GetBaseName(name);
 
         // FIRST: Check if this is a local variable (including parameters)
         // Local variables take precedence over module-level variables and CodeGenInfo
         // This handles parameter shadowing correctly (parameter x shadows global x)
         if (_variableVersions.ContainsKey(baseName))
         {
-            // There's a local variable with this name - use local resolution
-            if (isNewDeclaration)
-            {
-                // This is a redefinition of an existing local variable
-                // Find the next available version that doesn't collide with user-declared names
-                var currentVersion = _variableVersions[baseName];
-                var newVersion = currentVersion + 1;
-                var candidateName = $"{baseName}_{newVersion}";
+            // There's a local variable with this name - use local resolution via service
+            var resolvedName = _nameResolutionService.ResolveLocalName(
+                name,
+                isNewDeclaration,
+                _variableVersions,
+                _sourceVariableNames);
 
-                // Skip versions that collide with user-declared variable names
-                while (_sourceVariableNames.Contains(candidateName))
+            if (resolvedName != null)
+            {
+                // For redeclarations, update state after service computes the new version
+                if (isNewDeclaration)
                 {
-                    newVersion++;
-                    candidateName = $"{baseName}_{newVersion}";
+                    var newVersion = _nameResolutionService.ComputeNextVersion(
+                        name,
+                        _variableVersions[baseName],
+                        _sourceVariableNames);
+                    _variableVersions[baseName] = newVersion;
                 }
-
-                _variableVersions[baseName] = newVersion;
-                return candidateName;
-            }
-            else
-            {
-                // This is a reference to the local variable
-                var currentVersion = _variableVersions[baseName];
-                return currentVersion == 0 ? baseName : $"{baseName}_{currentVersion}";
+                return resolvedName;
             }
         }
 
@@ -208,13 +203,10 @@ internal partial class RoslynEmitter
             return NameMangler.ToPascalCase(name);
         }
 
-        // Check if this is a module symbol - preserve the exact name (with sanitization)
-        // This ensures imported module names match their using alias (e.g., math_ops stays math_ops)
+        // Check if this is a module symbol - use service for name resolution
         if (symbol is ModuleSymbol)
         {
-            // Use the same sanitization as in GenerateImportUsings
-            // Also escape C# keywords like "base" -> "@base"
-            return EscapeCSharpKeyword(name.Replace(".", "_"));
+            return NameResolutionService.EscapeCSharpKeyword(name.Replace(".", "_"));
         }
 
         // Try CodeGenInfo-based resolution for module-level symbols and from-imports
@@ -421,6 +413,11 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Get the C# name for a symbol using CodeGenInfo.
     /// </summary>
+    /// <remarks>
+    /// This method first tries CodeGenInfo resolution. If that fails,
+    /// it delegates to NameResolutionService for fallback logic,
+    /// except for Variables which need stateful local variable tracking.
+    /// </remarks>
     private string GetCSharpNameForSymbol(Symbol symbol, bool isNewDeclaration = false)
     {
         var info = GetCodeGenInfo(symbol);
@@ -429,18 +426,15 @@ internal partial class RoslynEmitter
             return info.GetVersionedCSharpName();
         }
 
-        // CodeGenInfo not available - use fallback logic for symbol kind
-        // This should only happen for symbols not processed by CodeGenInfoComputer
-        // (e.g., local variables during emission)
-        return symbol.Kind switch
+        // CodeGenInfo not available - use fallback logic
+        // Variables need special handling due to local state tracking
+        if (symbol.Kind == Semantic.SymbolKind.Variable)
         {
-            Semantic.SymbolKind.Variable => GetMangledVariableName(symbol.Name, isNewDeclaration),
-            Semantic.SymbolKind.Function => NameMangler.ToPascalCase(symbol.Name),
-            Semantic.SymbolKind.Type => NameMangler.ToPascalCase(symbol.Name),
-            Semantic.SymbolKind.Module => EscapeCSharpKeyword(symbol.Name.Replace(".", "_")),
-            Semantic.SymbolKind.Parameter => NameMangler.ToCamelCase(symbol.Name),
-            _ => symbol.Name
-        };
+            return GetMangledVariableName(symbol.Name, isNewDeclaration);
+        }
+
+        // For non-variable symbols, delegate to NameResolutionService
+        return _nameResolutionService.ResolveName(symbol, codeGenInfo: null);
     }
 
     /// <summary>

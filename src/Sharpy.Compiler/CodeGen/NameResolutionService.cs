@@ -71,7 +71,7 @@ internal sealed class NameResolutionService
         LogTrace($"ResolveName: symbol='{symbol.Name}', kind={symbol.Kind}, isNewDeclaration={isNewDeclaration}");
 
         // Step 1: Try CodeGenInfo-based resolution
-        var codeGenResult = TryResolveFromCodeGenInfo(
+        var codeGenResult = TryResolveFromCodeGenInfoInternal(
             symbol,
             codeGenInfo,
             isNewDeclaration,
@@ -200,9 +200,32 @@ internal sealed class NameResolutionService
     }
 
     /// <summary>
-    /// Tries to resolve a name from CodeGenInfo.
+    /// Tries to resolve a name using only CodeGenInfo, without falling back to NameMangler.
+    /// Returns null if:
+    /// - CodeGenInfo is not available
+    /// - This is a local redeclaration that should use local variable versioning
+    ///
+    /// Use this method when you need to know if CodeGenInfo-based resolution succeeded
+    /// before falling back to other resolution strategies.
     /// </summary>
-    private string? TryResolveFromCodeGenInfo(
+    /// <param name="symbol">The symbol to resolve.</param>
+    /// <param name="codeGenInfo">The CodeGenInfo for the symbol.</param>
+    /// <param name="isNewDeclaration">True if this is a new declaration/redefinition.</param>
+    /// <param name="forceModuleLevelFields">When true, force module-level treatment.</param>
+    /// <returns>The resolved name, or null if resolution should fall through.</returns>
+    public string? TryResolveFromCodeGenInfo(
+        Symbol symbol,
+        CodeGenInfo? codeGenInfo,
+        bool isNewDeclaration,
+        bool forceModuleLevelFields = false)
+    {
+        return TryResolveFromCodeGenInfoInternal(symbol, codeGenInfo, isNewDeclaration, forceModuleLevelFields);
+    }
+
+    /// <summary>
+    /// Internal implementation of CodeGenInfo resolution.
+    /// </summary>
+    private string? TryResolveFromCodeGenInfoInternal(
         Symbol symbol,
         CodeGenInfo? info,
         bool isNewDeclaration,
