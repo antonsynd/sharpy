@@ -537,7 +537,7 @@ Each file should set `_currentSourceFile` when emission starts. The `#line` dire
 - [x] Generated C# includes `#line` directives
 - [x] Roslyn errors show Sharpy file:line:column (via GetMappedLineSpan in AssemblyCompiler)
 - [x] Tests pass for both cancellation and source mapping
-- [ ] Code review completed
+- [x] Code review completed (2026-02-04)
 
 ---
 

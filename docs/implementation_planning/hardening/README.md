@@ -178,6 +178,7 @@ Use this section to track implementation progress:
 ### Phase 5: LSP Readiness Foundation ✅
 - [x] Task 5.1: CancellationToken support (NameResolver, TypeChecker, ProjectCompiler; Parser already had it)
 - [x] Task 5.2: Source mapping for Roslyn errors (#line directives in RoslynEmitter, GetMappedLineSpan in AssemblyCompiler, --show-line-directives CLI flag)
+- [x] Code review completed (2026-02-04; fixed orphaned CheckCancellation() method)
 
 ### Phase 6: Advanced Type Safety & Quality
 - [ ] Task 6.1: Grammar-aware fuzzing
