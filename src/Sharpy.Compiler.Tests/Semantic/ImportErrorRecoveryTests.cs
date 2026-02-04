@@ -184,4 +184,110 @@ def greet():
         Assert.True(symbol.IsErrorRecovery);
         Assert.Equal("nonexistent", symbol.OriginalModule);
     }
+
+    [Fact]
+    public void RegularImport_ModuleNotFound_NoUndefinedIdentifierError()
+    {
+        // Regular 'import' statement should also use error recovery
+        var source = @"
+import nonexistent
+
+def main():
+    x = nonexistent.foo(42)
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have exactly one error: the import error
+        Assert.False(result.Success);
+        Assert.Single(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("Undefined"));
+    }
+
+    [Fact]
+    public void RegularImport_ModuleNotFound_MemberAccess_NoUndefinedError()
+    {
+        // Member access on error recovery modules should not produce cascading errors
+        var source = @"
+import nonexistent
+
+def main():
+    a = nonexistent.foo
+    b = nonexistent.bar.baz
+    c = nonexistent.helper(1, 2, 3)
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have exactly one error: the import error
+        Assert.False(result.Success);
+        Assert.Single(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("Undefined"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("has no member"));
+    }
+
+    [Fact]
+    public void RegularImport_ModuleNotFound_AliasedImport_NoUndefinedError()
+    {
+        // Aliased regular imports should also use error recovery
+        var source = @"
+import nonexistent as ne
+
+def main():
+    x = ne.foo(42)
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have exactly one error: the import error
+        Assert.False(result.Success);
+        Assert.Single(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("Undefined"));
+    }
+
+    [Fact]
+    public void RegularImport_ModuleNotFound_WithValidTypeError_BothReported()
+    {
+        // Type errors unrelated to the import should still be reported
+        var source = @"
+import nonexistent
+
+def main():
+    x: int = ""not an int""
+    y = nonexistent.foo
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have two errors: import error and type mismatch
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.Contains(result.CompilationErrors, e => e.Contains("Cannot assign"));
+    }
+
+    [Fact]
+    public void RegularImport_ErrorRecoveryModule_HasCorrectProperties()
+    {
+        // Verify error recovery modules from regular imports have the correct properties
+        var logger = NullLogger.Instance;
+        var builtinRegistry = new BuiltinRegistry();
+        var resolver = new ImportResolver(logger);
+        var symbolTable = new SymbolTable(builtinRegistry);
+
+        // Parse a module with a failed regular import
+        var source = "import nonexistent";
+        var lexer = new Sharpy.Compiler.Lexer.Lexer(source, logger);
+        var tokens = lexer.TokenizeAll();
+        var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
+        var module = parser.ParseModule();
+
+        // Resolve imports - this should create error recovery module
+        resolver.ResolveAllImports(module, symbolTable, null);
+
+        // The module symbol should exist and be marked as error recovery
+        var symbol = symbolTable.Lookup("nonexistent");
+        Assert.NotNull(symbol);
+        Assert.IsType<ModuleSymbol>(symbol);
+        Assert.True(symbol.IsErrorRecovery);
+    }
 }

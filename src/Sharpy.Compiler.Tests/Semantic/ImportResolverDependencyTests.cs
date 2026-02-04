@@ -173,8 +173,10 @@ import utils
 
         // Result should maintain positional alignment with Names
         Assert.Equal(2, result.Count);
-        Assert.Null(result[0]);     // "nonexistent" failed
+        Assert.NotNull(result[0]);  // "nonexistent" returns error recovery module (not null)
+        Assert.True(result[0]!.IsErrorRecovery);  // Should be marked as error recovery
         Assert.NotNull(result[1]);  // "models" succeeded
+        Assert.False(result[1]!.IsErrorRecovery);
 
         // Verify the resolved module path is for models, not misaligned
         Assert.Contains("models", result[1]!.Path);

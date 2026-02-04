@@ -101,7 +101,8 @@ public class ImportResolverNetModuleTests
         var result = resolver.ResolveImport(importStmt);
 
         Assert.Single(result);
-        Assert.Null(result[0]);
+        Assert.NotNull(result[0]);  // Returns error recovery module, not null
+        Assert.True(result[0]!.IsErrorRecovery);  // Should be marked as error recovery
         Assert.True(resolver.Diagnostics.HasErrors);
         Assert.Contains(resolver.Diagnostics.GetErrors(), e => e.Message.Contains("nonexistent"));
     }
@@ -240,8 +241,10 @@ public class ImportResolverNetModuleTests
         var result = resolver.ResolveImport(importStmt);
 
         // Without ModuleRegistry, it should try .spy files and fail
+        // Returns error recovery module instead of null for better error recovery
         Assert.Single(result);
-        Assert.Null(result[0]);
+        Assert.NotNull(result[0]);
+        Assert.True(result[0]!.IsErrorRecovery);
         Assert.True(resolver.Diagnostics.HasErrors);
     }
 }

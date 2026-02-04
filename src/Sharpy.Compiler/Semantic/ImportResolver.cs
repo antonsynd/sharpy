@@ -90,7 +90,7 @@ internal class ImportResolver
                     var importAlias = import.Names[i];
                     var moduleInfo = modules[i];
 
-                    // Skip failed imports (null entries maintain positional alignment)
+                    // Skip null entries (should not happen anymore, but defensive check)
                     if (moduleInfo == null)
                         continue;
 
@@ -102,7 +102,8 @@ internal class ImportResolver
                             Name = importAlias.AsName,
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
-                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
+                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
+                            IsErrorRecovery = moduleInfo.IsErrorRecovery
                         };
                         symbolTable.TryDefine(aliasedModule);
                     }
@@ -116,7 +117,8 @@ internal class ImportResolver
                             Name = parts[^1],
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
-                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
+                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
+                            IsErrorRecovery = moduleInfo.IsErrorRecovery
                         };
 
                         ModuleSymbol currentModule = leafModule;
@@ -127,7 +129,8 @@ internal class ImportResolver
                                 Name = parts[j],
                                 Kind = SymbolKind.Module,
                                 FilePath = "",
-                                Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } }
+                                Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } },
+                                IsErrorRecovery = moduleInfo.IsErrorRecovery
                             };
                             currentModule = parentModule;
                         }
@@ -202,7 +205,18 @@ internal class ImportResolver
                 {
                     AddError($"Cannot find module '{importAlias.Name}'",
                         importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.ModuleNotFound);
-                    result.Add(null);
+
+                    // Create error recovery module to prevent cascading "undefined identifier" errors
+                    // The module symbol will be registered in ResolveAllImports to suppress downstream errors
+                    var errorRecoveryModule = CreateErrorRecoveryModule(
+                        importAlias.Name, importAlias.LineStart, importAlias.ColumnStart);
+                    result.Add(new ModuleInfo
+                    {
+                        Path = $"<error-recovery:{importAlias.Name}>",
+                        Module = null!,
+                        ExportedSymbols = errorRecoveryModule.Exports,
+                        IsErrorRecovery = true
+                    });
                     continue;
                 }
 
@@ -258,13 +272,12 @@ internal class ImportResolver
                     foreach (var importAlias in fromImport.Names)
                     {
                         // The symbol name is the target (alias if present, otherwise original)
+                        // Store by TARGET name (alias if present) since that's how ResolveAllImports looks up symbols
                         var targetName = importAlias.AsName ?? importAlias.Name;
                         var errorSymbol = CreateErrorRecoverySymbol(
                             targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart);
-                        // Store by ORIGINAL name since lookup happens by original name
-                        // (the IntegrationTestBase.ResolveImports looks up by importAlias.Name)
-                        errorRecoveryModule.Exports[importAlias.Name] = errorSymbol;
-                        _logger.LogDebug($"[ImportResolver]   Created error recovery symbol: {targetName} (stored as {importAlias.Name})");
+                        errorRecoveryModule.Exports[targetName] = errorSymbol;
+                        _logger.LogDebug($"[ImportResolver]   Created error recovery symbol: {targetName}");
                     }
 
                     // Return the error recovery module so symbols get registered
