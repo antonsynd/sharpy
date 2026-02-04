@@ -332,5 +332,223 @@ public class AstPositionServiceTests
         Assert.Equal("Foo", classDef.Name);
     }
 
+    [Fact]
+    public void FindInnermostNode_LambdaBody_ReturnsBodyExpression()
+    {
+        var source = "f = lambda x: x + 1\n";
+        var module = ParseModule(source);
+
+        // Position at 'x + 1' body expression, specifically at 'x'
+        var node = _service.FindInnermostNode(module, line: 1, column: 15);
+
+        Assert.NotNull(node);
+        Assert.IsType<Identifier>(node);
+        Assert.Equal("x", ((Identifier)node).Name);
+    }
+
+    [Fact]
+    public void FindNodeOfType_LambdaExpression_ReturnsLambda()
+    {
+        var source = "f = lambda x: x + 1\n";
+        var module = ParseModule(source);
+
+        // Position inside lambda body
+        var lambda = _service.FindNodeOfType<LambdaExpression>(module, line: 1, column: 17);
+
+        Assert.NotNull(lambda);
+    }
+
+    [Fact]
+    public void FindInnermostNode_ListComprehensionElement_ReturnsElement()
+    {
+        var source = "y = [x * 2 for x in items]\n";
+        var module = ParseModule(source);
+
+        // Position at 'x * 2' element, specifically at '2'
+        var node = _service.FindInnermostNode(module, line: 1, column: 10);
+
+        Assert.NotNull(node);
+        Assert.IsType<IntegerLiteral>(node);
+        Assert.Equal("2", ((IntegerLiteral)node).Value);
+    }
+
+    [Fact]
+    public void FindNodeOfType_ListComprehension_ReturnsComprehension()
+    {
+        var source = "y = [x for x in items]\n";
+        var module = ParseModule(source);
+
+        // Position inside comprehension
+        var comp = _service.FindNodeOfType<ListComprehension>(module, line: 1, column: 6);
+
+        Assert.NotNull(comp);
+    }
+
+    [Fact]
+    public void FindInnermostNode_DictLiteralKey_ReturnsKey()
+    {
+        var source = "d = {\"key\": 42}\n";
+        var module = ParseModule(source);
+
+        // Position at '"key"'
+        var node = _service.FindInnermostNode(module, line: 1, column: 6);
+
+        Assert.NotNull(node);
+        Assert.IsType<StringLiteral>(node);
+        Assert.Equal("key", ((StringLiteral)node).Value);
+    }
+
+    [Fact]
+    public void FindInnermostNode_DictLiteralValue_ReturnsValue()
+    {
+        var source = "d = {\"key\": 42}\n";
+        var module = ParseModule(source);
+
+        // Position at '42'
+        var node = _service.FindInnermostNode(module, line: 1, column: 13);
+
+        Assert.NotNull(node);
+        Assert.IsType<IntegerLiteral>(node);
+        Assert.Equal("42", ((IntegerLiteral)node).Value);
+    }
+
+    [Fact]
+    public void FindInnermostNode_ConditionalExpression_ReturnsThenValue()
+    {
+        var source = "x = 1 if cond else 2\n";
+        var module = ParseModule(source);
+
+        // Position at '1' (then value)
+        var node = _service.FindInnermostNode(module, line: 1, column: 5);
+
+        Assert.NotNull(node);
+        Assert.IsType<IntegerLiteral>(node);
+        Assert.Equal("1", ((IntegerLiteral)node).Value);
+    }
+
+    [Fact]
+    public void FindInnermostNode_TryExpressionOperand_ReturnsOperand()
+    {
+        var source = "x = try some_func()\n";
+        var module = ParseModule(source);
+
+        // Position at 'some_func'
+        var node = _service.FindInnermostNode(module, line: 1, column: 9);
+
+        Assert.NotNull(node);
+        Assert.IsType<Identifier>(node);
+        Assert.Equal("some_func", ((Identifier)node).Name);
+    }
+
+    [Fact]
+    public void FindInnermostNode_WhileCondition_ReturnsCondition()
+    {
+        var source = "while x > 0:\n    pass\n";
+        var module = ParseModule(source);
+
+        // Position at 'x'
+        var node = _service.FindInnermostNode(module, line: 1, column: 7);
+
+        Assert.NotNull(node);
+        Assert.IsType<Identifier>(node);
+        Assert.Equal("x", ((Identifier)node).Name);
+    }
+
+    [Fact]
+    public void FindInnermostNode_ForTarget_ReturnsTarget()
+    {
+        var source = "for item in items:\n    pass\n";
+        var module = ParseModule(source);
+
+        // Position at 'item'
+        var node = _service.FindInnermostNode(module, line: 1, column: 5);
+
+        Assert.NotNull(node);
+        Assert.IsType<Identifier>(node);
+        Assert.Equal("item", ((Identifier)node).Name);
+    }
+
+    [Fact]
+    public void FindInnermostNode_ForIterator_ReturnsIterator()
+    {
+        var source = "for item in items:\n    pass\n";
+        var module = ParseModule(source);
+
+        // Position at 'items'
+        var node = _service.FindInnermostNode(module, line: 1, column: 13);
+
+        Assert.NotNull(node);
+        Assert.IsType<Identifier>(node);
+        Assert.Equal("items", ((Identifier)node).Name);
+    }
+
+    [Fact]
+    public void FindInnermostNode_ElifClause_ReturnsCondition()
+    {
+        var source = "if a:\n    pass\nelif b:\n    pass\n";
+        var module = ParseModule(source);
+
+        // Position at 'b' in elif
+        var node = _service.FindInnermostNode(module, line: 3, column: 6);
+
+        Assert.NotNull(node);
+        Assert.IsType<Identifier>(node);
+        Assert.Equal("b", ((Identifier)node).Name);
+    }
+
+    [Fact]
+    public void FindNodeOfType_IfStatement_IncludesElifBody()
+    {
+        var source = "if a:\n    pass\nelif b:\n    x = 1\n";
+        var module = ParseModule(source);
+
+        // Position at 'x' in elif body
+        var ifStmt = _service.FindNodeOfType<IfStatement>(module, line: 4, column: 5);
+
+        Assert.NotNull(ifStmt);
+    }
+
+    [Fact]
+    public void FindInnermostNode_FStringExpression_ReturnsExpression()
+    {
+        var source = "x = f\"value is {val}\"\n";
+        var module = ParseModule(source);
+
+        // Position at 'val' inside the f-string expression
+        var node = _service.FindInnermostNode(module, line: 1, column: 17);
+
+        Assert.NotNull(node);
+        Assert.IsType<Identifier>(node);
+        Assert.Equal("val", ((Identifier)node).Name);
+    }
+
+    [Fact]
+    public void FindInnermostNode_DefaultParameterValue_ReturnsDefaultValue()
+    {
+        var source = "def foo(x: int = 42):\n    pass\n";
+        var module = ParseModule(source);
+
+        // Position at '42' default value
+        var node = _service.FindInnermostNode(module, line: 1, column: 18);
+
+        Assert.NotNull(node);
+        Assert.IsType<IntegerLiteral>(node);
+        Assert.Equal("42", ((IntegerLiteral)node).Value);
+    }
+
+    [Fact]
+    public void FindInnermostNode_EnumMemberValue_ReturnsValue()
+    {
+        var source = "enum Color:\n    RED = 1\n";
+        var module = ParseModule(source);
+
+        // Position at '1' value
+        var node = _service.FindInnermostNode(module, line: 2, column: 11);
+
+        Assert.NotNull(node);
+        Assert.IsType<IntegerLiteral>(node);
+        Assert.Equal("1", ((IntegerLiteral)node).Value);
+    }
+
     #endregion
 }
