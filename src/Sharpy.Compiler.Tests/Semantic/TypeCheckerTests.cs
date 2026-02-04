@@ -1643,5 +1643,60 @@ def main():
         narrowedType.Should().BeNull("narrowing should not persist outside the if block");
     }
 
+    [Fact]
+    public void TypeNarrowing_IsInstance_PersistedToSemanticInfo()
+    {
+        // Verify isinstance narrowing is persisted via GetEffectiveType
+        var source = @"
+class Animal:
+    ...
+
+class Dog(Animal):
+    ...
+
+def main():
+    animal: Animal = Dog()
+    if isinstance(animal, Dog):
+        x: Dog = animal
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // Find the identifier 'animal' in the if block assignment (x: Dog = animal)
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        var ifStmt = mainFunc.Body.OfType<IfStatement>().First();
+        var assignment = ifStmt.ThenBody.OfType<VariableDeclaration>().First();
+        var animalIdentifier = assignment.InitialValue as Identifier;
+
+        animalIdentifier.Should().NotBeNull();
+        animalIdentifier!.Name.Should().Be("animal");
+
+        // The narrowed type should be persisted in SemanticInfo
+        var narrowedType = semanticInfo.GetNarrowedType(animalIdentifier);
+        narrowedType.Should().NotBeNull("isinstance narrowing should be persisted");
+        narrowedType.Should().BeOfType<UserDefinedType>();
+        (narrowedType as UserDefinedType)!.Name.Should().Be("Dog");
+
+        // GetEffectiveType should also return the narrowed type
+        var effectiveType = semanticInfo.GetEffectiveType(animalIdentifier);
+        effectiveType.Should().NotBeNull();
+        effectiveType.Should().BeOfType<UserDefinedType>();
+        (effectiveType as UserDefinedType)!.Name.Should().Be("Dog");
+    }
+
+    [Fact]
+    public void GetEffectiveType_ReturnsNull_WhenNoTypeRecorded()
+    {
+        // Create a fresh SemanticInfo and check GetEffectiveType behavior
+        var semanticInfo = new SemanticInfo();
+        var dummyExpr = new Identifier { Name = "x" };
+
+        // When no type is recorded, GetEffectiveType should return null
+        var effectiveType = semanticInfo.GetEffectiveType(dummyExpr);
+        effectiveType.Should().BeNull();
+    }
+
     #endregion
 }
