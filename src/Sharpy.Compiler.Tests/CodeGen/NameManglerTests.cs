@@ -267,6 +267,57 @@ public class NameManglerTests
 
     #endregion
 
+    #region Trailing Underscore Tests
+
+    [Theory]
+    [InlineData("x_", "x_")]
+    [InlineData("my_var_", "myVar_")]
+    [InlineData("some_name_", "someName_")]
+    public void ToCamelCase_TrailingUnderscore_PreservesIt(string input, string expected)
+    {
+        // Python allows x_ and x as different variables
+        var result = NameMangler.ToCamelCase(input);
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("x__", "x__")]
+    [InlineData("my_var__", "myVar__")]
+    public void ToCamelCase_DoubleTrailingUnderscore_PreservesBoth(string input, string expected)
+    {
+        var result = NameMangler.ToCamelCase(input);
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("my_func_", "MyFunc_")]
+    [InlineData("get_value_", "GetValue_")]
+    public void ToPascalCase_TrailingUnderscore_PreservesIt(string input, string expected)
+    {
+        var result = NameMangler.ToPascalCase(input);
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("my_func__", "MyFunc__")]
+    [InlineData("get_value__", "GetValue__")]
+    public void ToPascalCase_DoubleTrailingUnderscore_PreservesBoth(string input, string expected)
+    {
+        var result = NameMangler.ToPascalCase(input);
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("_private_", "_private_")]
+    [InlineData("_private_var_", "_privateVar_")]
+    public void ToCamelCase_PrivatePrefixAndTrailingUnderscore_PreservesBoth(string input, string expected)
+    {
+        var result = NameMangler.ToCamelCase(input);
+        result.Should().Be(expected);
+    }
+
+    #endregion
+
     #region Edge Cases
 
     [Fact]

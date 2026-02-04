@@ -120,18 +120,33 @@ internal static class NameMangler
         var hasPrivatePrefix = name.StartsWith("_") && !name.StartsWith("__");
         var cleanName = hasPrivatePrefix ? name[1..] : name;
 
+        // Count and preserve trailing underscores (Python allows x_, x__, etc. as different variables)
+        var trailingUnderscoreCount = 0;
+        for (int i = cleanName.Length - 1; i >= 0 && cleanName[i] == '_'; i--)
+            trailingUnderscoreCount++;
+        // Remove trailing underscores for processing (but preserve if they're the entire name)
+        if (trailingUnderscoreCount > 0 && trailingUnderscoreCount < cleanName.Length)
+            cleanName = cleanName[..^trailingUnderscoreCount];
+
         // If the name doesn't contain underscores and starts with an uppercase letter,
         // it's already in PascalCase - preserve it as-is
         if (!cleanName.Contains('_') && cleanName.Length > 0 && char.IsUpper(cleanName[0]))
         {
+            var pascalResult = cleanName;
+            if (trailingUnderscoreCount > 0)
+                pascalResult += new string('_', trailingUnderscoreCount);
             // Restore private prefix if needed
             if (hasPrivatePrefix)
-                return EscapeKeywordIfNeeded("_" + cleanName);
-            return EscapeKeywordIfNeeded(cleanName);
+                return EscapeKeywordIfNeeded("_" + pascalResult);
+            return EscapeKeywordIfNeeded(pascalResult);
         }
 
         var parts = cleanName.Split('_');
         var result = string.Join("", parts.Select(Capitalize));
+
+        // Restore trailing underscores
+        if (trailingUnderscoreCount > 0)
+            result += new string('_', trailingUnderscoreCount);
 
         // Restore private prefix
         if (hasPrivatePrefix)
@@ -160,6 +175,14 @@ internal static class NameMangler
         var hasPrivatePrefix = name.StartsWith("_") && !name.StartsWith("__");
         var cleanName = hasPrivatePrefix ? name[1..] : name;
 
+        // Count and preserve trailing underscores (Python allows x_, x__, etc. as different variables)
+        var trailingUnderscoreCount = 0;
+        for (int i = cleanName.Length - 1; i >= 0 && cleanName[i] == '_'; i--)
+            trailingUnderscoreCount++;
+        // Remove trailing underscores for processing (but preserve if they're the entire name)
+        if (trailingUnderscoreCount > 0 && trailingUnderscoreCount < cleanName.Length)
+            cleanName = cleanName[..^trailingUnderscoreCount];
+
         var parts = cleanName.Split('_');
         if (parts.Length == 0)
             return EscapeKeywordIfNeeded(name);
@@ -169,6 +192,10 @@ internal static class NameMangler
         {
             result += string.Join("", parts.Skip(1).Select(Capitalize));
         }
+
+        // Restore trailing underscores
+        if (trailingUnderscoreCount > 0)
+            result += new string('_', trailingUnderscoreCount);
 
         // Restore private prefix
         if (hasPrivatePrefix)

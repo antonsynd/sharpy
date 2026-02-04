@@ -1,0 +1,18 @@
+# Test: Trailing underscore variable names
+# Python allows x_ and x as different variables. The trailing underscore
+# should be preserved in the generated C# name to avoid collisions.
+
+def main():
+    x: int = 1           # x
+    x_: str = "suffix"   # x_ (trailing underscore preserved)
+    x: int = 2           # x_1 (redeclaration, doesn't collide with x_)
+    print(x)             # Should print 2
+    print(x_)            # Should print "suffix"
+
+    # Multiple trailing underscores in same scope
+    y_: int = 10
+    y__: int = 20        # Double trailing underscore
+    y: int = 30
+    print(y)
+    print(y_)
+    print(y__)
