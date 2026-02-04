@@ -1,12 +1,13 @@
 # Test: Multiple colliding version numbers
-# Verifies that the emitter skips all user-declared versioned names
+# Verifies that user-declared x_1 and x_2 (mangled to x1 and x2) do not
+# conflict with the generated versioned names x_1, x_2, etc.
 
 def main():
-    x = 1
-    x_1 = 10        # User's x_1
-    x_2 = 20        # User's x_2
-    x = 2           # Should generate x_3, skipping x_1 and x_2
-    x = 3           # Should generate x_4
-    print(x)        # Latest x (x_4) = 3
-    print(x_1)      # User's x_1 = 10
-    print(x_2)      # User's x_2 = 20
+    x: int = 1
+    x_1: int = 10        # User's x_1 (mangled to x1)
+    x_2: int = 20        # User's x_2 (mangled to x2)
+    x: int = 2           # Redeclaration: generates x_1
+    x: int = 3           # Redeclaration: generates x_2
+    print(x)             # Latest x (x_2) = 3
+    print(x_1)           # User's x_1 (x1) = 10
+    print(x_2)           # User's x_2 (x2) = 20

@@ -1,5 +1,6 @@
 # Test: Variable name collision in class methods
-# Verifies that the fix works for class methods, not just module functions
+# Verifies that user-declared x_1 (mangled to x1) does not conflict with
+# generated versioned names in class methods.
 
 class Counter:
     value: int
@@ -8,11 +9,11 @@ class Counter:
         self.value = start
 
     def increment(self) -> str:
-        x = self.value
-        x_1 = "marker"      # User's x_1
-        x = x + 1           # Redeclaration: should generate x_2
+        x: int = self.value
+        x_1: str = "marker"      # User's x_1 (mangled to x1)
+        x: int = x + 1           # Redeclaration: generates x_1
         self.value = x
-        return x_1          # Return marker to verify it's unchanged
+        return x_1               # Returns user's marker (x1)
 
 def main():
     c: Counter = Counter(10)

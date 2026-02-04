@@ -1,11 +1,11 @@
 # Test: Variable name collision between user-declared and generated names
-# When a variable is redeclared, the emitter generates versioned names (x_1, x_2).
-# This test ensures that if the user has already declared x_1, the emitter
-# skips to x_2 or higher to avoid collision.
+# When a variable is redeclared with a type annotation, the emitter generates
+# versioned names (x_1, x_2). This test ensures that user-declared x_1 (mangled
+# to x1) does not conflict with the generated versioned name x_1.
 
 def main():
-    x = 1           # First declaration: x
-    x_1 = "user"    # User declares x_1
-    x = 2           # Redeclaration: should generate x_2 (not x_1!)
-    print(x)        # Should print 2
-    print(x_1)      # Should print "user"
+    x: int = 1           # First declaration: x
+    x_1: str = "user"    # User declares x_1 (mangled to x1)
+    x: int = 2           # Redeclaration: generates x_1 (no collision with x1)
+    print(x)             # Should print 2 (current version of x)
+    print(x_1)           # Should print "user"
