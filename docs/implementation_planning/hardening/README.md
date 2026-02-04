@@ -180,10 +180,10 @@ Use this section to track implementation progress:
 - [x] Task 5.2: Source mapping for Roslyn errors (#line directives in RoslynEmitter, GetMappedLineSpan in AssemblyCompiler, --show-line-directives CLI flag)
 - [x] Code review completed (2026-02-04; fixed orphaned CheckCancellation() method)
 
-### Phase 6: Advanced Type Safety & Quality
-- [ ] Task 6.1: Grammar-aware fuzzing
-- [ ] Task 6.2: Type narrowing persistence
-- [ ] Task 6.3: Match exhaustiveness warnings
+### Phase 6: Advanced Type Safety & Quality ✅ (partial)
+- [x] Task 6.1: Grammar-aware fuzzing (existing FuzzTests.cs; added LargeFileTests.cs with 13 stress tests)
+- [x] Task 6.2: Type narrowing persistence (added GetEffectiveType() method; 8 new tests)
+- [ ] Task 6.3: Match exhaustiveness warnings - **DEFERRED** (match statements not yet implemented, v0.2.x feature)
 
 ---
 

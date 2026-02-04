@@ -581,11 +581,13 @@ dotnet test --filter "FullyQualifiedName~Narrowing"
 
 ## Task 6.3: Add Match Exhaustiveness Warnings
 
+> **STATUS: DEFERRED** - Match statements are not yet implemented in Sharpy. They exist as AST placeholders only (see `Parser/Ast/Statement.Future.cs`). This task should be implemented when match statements are added as part of v0.2.x features.
+
 **File:** Create `src/Sharpy.Compiler/Semantic/Validation/ExhaustivenessValidator.cs`
 
 ### Background
 
-Sharpy supports pattern matching but doesn't warn about non-exhaustive matches:
+Sharpy will support pattern matching but doesn't yet warn about non-exhaustive matches:
 ```python
 match x:
     case 1: print("one")
@@ -819,12 +821,12 @@ dotnet test --filter "DisplayName~match_exhaustiveness"
 
 ## Phase Completion Criteria
 
-- [ ] Fuzz tests run without crashes (1000+ iterations)
-- [ ] Stress tests pass for large inputs
-- [ ] Type narrowing persisted and queryable by position
-- [ ] Match exhaustiveness warnings for non-exhaustive matches
-- [ ] Enum exhaustiveness correctly detects missing cases
-- [ ] All tests pass
+- [x] Fuzz tests run without crashes (1000+ iterations) - Existing FuzzTests.cs
+- [x] Stress tests pass for large inputs - LargeFileTests.cs (13 tests)
+- [x] Type narrowing persisted and queryable - GetEffectiveType() added
+- [ ] ~~Match exhaustiveness warnings~~ - **DEFERRED** (match statements not implemented)
+- [ ] ~~Enum exhaustiveness~~ - **DEFERRED** (depends on match statements)
+- [x] All implemented tests pass
 - [ ] Code review completed
 
 ---
@@ -833,10 +835,10 @@ dotnet test --filter "DisplayName~match_exhaustiveness"
 
 ### Task Priority Within Phase
 
-If time is limited:
-1. **Task 6.3 (Exhaustiveness)** — Most visible user benefit
-2. **Task 6.1 (Fuzzing)** — Good for long-term quality
-3. **Task 6.2 (Narrowing)** — LSP prerequisite, less immediate impact
+**Current status (2026-02-04):**
+- **Task 6.1 (Fuzzing)**: Complete - Existing fuzz tests + new stress tests
+- **Task 6.2 (Narrowing)**: Complete - GetEffectiveType() method added, tests added
+- **Task 6.3 (Exhaustiveness)**: Deferred - Requires match statement implementation (v0.2.x)
 
 ### Property-Based Testing Tips
 
