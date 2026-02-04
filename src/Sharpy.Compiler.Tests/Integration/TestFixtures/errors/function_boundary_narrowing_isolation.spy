@@ -1,0 +1,16 @@
+# Test: Nested function does NOT inherit type narrowing from enclosing scope
+# This is a critical edge case (task 1.7): narrowing is control-flow based, not lexical.
+# When a nested function is defined inside a narrowing block, it should NOT see
+# the narrowed type because the nested function could be called later when the
+# narrowing condition no longer holds.
+
+def main():
+    x: int? = 42
+    if x is not None:
+        # x is narrowed to int here in the outer function
+        y: int = x  # This works - x is narrowed to int
+
+        def inner() -> int:
+            # x should NOT be narrowed here - inner() has its own isolated scope
+            # The nested function might be called later when x could be None
+            return x + 1  # This should error: int? doesn't support +

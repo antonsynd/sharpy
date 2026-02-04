@@ -1,0 +1,14 @@
+# Test: Nested function in while loop does NOT inherit type narrowing
+# Similar to if-statement case, narrowing should not cross function boundaries
+
+def process():
+    value: int? = 42
+    while value is not None:
+        # value is narrowed to int here
+        temp: int = value  # This works
+
+        def helper() -> int:
+            # value should NOT be narrowed here
+            return value + 1  # This should error: int? doesn't support +
+
+        break
