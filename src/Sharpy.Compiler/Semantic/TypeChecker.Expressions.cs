@@ -11,6 +11,9 @@ internal partial class TypeChecker
 {
     public SemanticType CheckExpression(Expression expr)
     {
+        // Periodic cancellation check (every N expressions)
+        CheckCancellation();
+
         // Check cache
         var cached = _semanticInfo.GetExpressionType(expr);
         if (cached != null)
