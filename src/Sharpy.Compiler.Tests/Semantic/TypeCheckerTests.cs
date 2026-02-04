@@ -2030,5 +2030,61 @@ def outer():
         typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
+    [Fact]
+    public void TypeNarrowing_LambdaDoesNotInheritNarrowing()
+    {
+        // Test that lambdas have isolated narrowing scopes, similar to nested functions.
+        // A lambda defined inside a narrowing block could be called later when the
+        // narrowing condition no longer holds.
+        //
+        // This test verifies that using an optional variable inside a lambda (which is
+        // narrowed in the enclosing scope) produces an error because the lambda doesn't
+        // inherit the narrowing.
+        var source = @"
+def process() -> int:
+    value: int? = 42
+    if value is not None:
+        # value is narrowed to int here in the outer scope
+        y: int = value  # This works - value is narrowed
+
+        # Lambda should see value as int? (not narrowed)
+        # Arithmetic on int? should produce an error
+        f = lambda: value + 1
+    return 0
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        // Should have an error because int? doesn't support +
+        var errors = typeChecker.Diagnostics.GetErrors().ToList();
+        errors.Should().HaveCount(1);
+        errors[0].Message.Should().Contain("does not support operator '+'");
+    }
+
+    [Fact]
+    public void TypeNarrowing_LambdaInWhileLoop_DoesNotInheritNarrowing()
+    {
+        // Verify that lambdas in while loops also have isolated narrowing scopes
+        var source = @"
+def process() -> int:
+    value: int? = 42
+    while value is not None:
+        # value is narrowed to int here
+        temp: int = value  # This works in outer scope
+
+        # Lambda should NOT inherit narrowing
+        f = lambda: value + 1  # Error: int? doesn't support +
+        break
+    return 0
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        // Should have an error because int? doesn't support +
+        var errors = typeChecker.Diagnostics.GetErrors().ToList();
+        errors.Should().HaveCount(1);
+        errors[0].Message.Should().Contain("does not support operator '+'");
+    }
+
     #endregion
 }

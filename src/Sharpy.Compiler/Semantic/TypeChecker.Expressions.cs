@@ -1720,6 +1720,12 @@ internal partial class TypeChecker
         // Enter lambda scope
         _symbolTable.EnterScope("lambda");
 
+        // Enter an isolated narrowing scope for this lambda.
+        // Type narrowings from the enclosing scope should NOT be visible inside the lambda,
+        // because lambdas can be stored and called later when the narrowing condition no longer holds.
+        // This is the same logic as for nested function definitions (task 1.7).
+        using var _ = _narrowingContext.EnterIsolatedScope();
+
         for (int i = 0; i < lambda.Parameters.Length; i++)
         {
             var paramSymbol = new VariableSymbol

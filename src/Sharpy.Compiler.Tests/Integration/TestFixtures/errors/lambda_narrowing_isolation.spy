@@ -1,0 +1,14 @@
+# Test: Lambda does NOT inherit type narrowing from enclosing scope
+# Like nested functions (task 1.7), lambdas should have isolated narrowing scopes.
+# A lambda defined inside a narrowing block could be called later when the
+# narrowing condition no longer holds.
+
+def main():
+    x: int? = 42
+    if x is not None:
+        # x is narrowed to int here in the outer scope
+        y: int = x  # This works - x is narrowed to int
+
+        # Lambda should NOT see x as narrowed
+        # The lambda might be called later when x could be None
+        f = lambda: x + 1  # This should error: int? doesn't support +
