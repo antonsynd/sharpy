@@ -630,9 +630,17 @@ internal class NameResolver
 
         foreach (var baseAnnot in classDef.BaseClasses)
         {
-            var baseSymbol = _symbolTable.Lookup(baseAnnot.Name) as TypeSymbol;
+            var rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
+            var baseSymbol = rawSymbol as TypeSymbol;
             if (baseSymbol == null)
             {
+                // Check if this is an error recovery symbol (from a failed import).
+                // If so, suppress this error - the import error was already reported.
+                if (rawSymbol?.IsErrorRecovery == true)
+                {
+                    continue;
+                }
+
                 AddError($"Base type '{baseAnnot.Name}' not found",
                     classDef.LineStart, classDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType, span: classDef.Span);
                 continue;
@@ -676,9 +684,17 @@ internal class NameResolver
         // Structs can only implement interfaces
         foreach (var baseAnnot in structDef.BaseClasses)
         {
-            var interfaceSymbol = _symbolTable.Lookup(baseAnnot.Name) as TypeSymbol;
+            var rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
+            var interfaceSymbol = rawSymbol as TypeSymbol;
             if (interfaceSymbol == null)
             {
+                // Check if this is an error recovery symbol (from a failed import).
+                // If so, suppress this error - the import error was already reported.
+                if (rawSymbol?.IsErrorRecovery == true)
+                {
+                    continue;
+                }
+
                 AddError($"Interface '{baseAnnot.Name}' not found",
                     structDef.LineStart, structDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType, span: structDef.Span);
                 continue;
@@ -707,9 +723,17 @@ internal class NameResolver
         // Interfaces can extend other interfaces
         foreach (var baseAnnot in interfaceDef.BaseInterfaces)
         {
-            var baseInterfaceSymbol = _symbolTable.Lookup(baseAnnot.Name) as TypeSymbol;
+            var rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
+            var baseInterfaceSymbol = rawSymbol as TypeSymbol;
             if (baseInterfaceSymbol == null)
             {
+                // Check if this is an error recovery symbol (from a failed import).
+                // If so, suppress this error - the import error was already reported.
+                if (rawSymbol?.IsErrorRecovery == true)
+                {
+                    continue;
+                }
+
                 AddError($"Interface '{baseAnnot.Name}' not found",
                     interfaceDef.LineStart, interfaceDef.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedType, span: interfaceDef.Span);
                 continue;
