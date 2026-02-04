@@ -374,4 +374,132 @@ public class NameResolutionServiceTests
     }
 
     #endregion
+
+    #region Integration Tests (Full Resolution Flow)
+
+    [Fact]
+    public void ResolveName_FullFlow_CodeGenInfoTakesPriority()
+    {
+        // Arrange - symbol with CodeGenInfo AND in variableVersions
+        var symbol = new VariableSymbol { Name = "x", Kind = SymbolKind.Variable };
+        var codeGenInfo = new CodeGenInfo
+        {
+            CSharpName = "moduleX",
+            OriginalName = "x",
+            IsModuleLevel = true
+        };
+        var variableVersions = new Dictionary<string, int> { { "x", 3 } };
+        var sourceNames = new HashSet<string>();
+
+        // Act
+        var result = _service.ResolveName(
+            symbol,
+            codeGenInfo,
+            isNewDeclaration: false,
+            variableVersions,
+            sourceNames);
+
+        // Assert - CodeGenInfo takes priority over local versioning
+        result.Should().Be("moduleX");
+    }
+
+    [Fact]
+    public void ResolveName_LocalDeclarationWithVersioning_WorksCorrectly()
+    {
+        // Arrange - local variable with existing version
+        var symbol = new VariableSymbol { Name = "counter", Kind = SymbolKind.Variable };
+        var variableVersions = new Dictionary<string, int> { { "counter", 1 } };
+        var sourceNames = new HashSet<string>();
+
+        // Act - redeclare the variable
+        var result = _service.ResolveName(
+            symbol,
+            codeGenInfo: null,
+            isNewDeclaration: true,
+            variableVersions,
+            sourceNames);
+
+        // Assert - should get next version
+        result.Should().Be("counter_2");
+    }
+
+    [Fact]
+    public void ResolveName_ParameterKindSymbol_ReturnsCamelCase()
+    {
+        // Arrange - VariableSymbol with Parameter kind (parameters are tracked as variables)
+        var symbol = new VariableSymbol { Name = "my_param", Kind = SymbolKind.Parameter };
+
+        // Act
+        var result = _service.ResolveName(symbol, codeGenInfo: null);
+
+        // Assert
+        result.Should().Be("myParam");
+    }
+
+    [Fact]
+    public void ResolveName_ModuleWithDots_ReplacesDotsAndEscapes()
+    {
+        // Arrange - module name with dots that's also a keyword component
+        var symbol = new ModuleSymbol { Name = "my.module.base", Kind = SymbolKind.Module, FilePath = "/path/to/module.spy" };
+
+        // Act
+        var result = _service.ResolveName(symbol, codeGenInfo: null);
+
+        // Assert
+        result.Should().Be("my_module_base");
+    }
+
+    [Fact]
+    public void TryResolveFromCodeGenInfo_NullCodeGenInfo_ReturnsNull()
+    {
+        // Arrange
+        var symbol = new VariableSymbol { Name = "x", Kind = SymbolKind.Variable };
+
+        // Act
+        var result = _service.TryResolveFromCodeGenInfo(symbol, null, false);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void TryResolveFromCodeGenInfo_LocalRedeclaration_ReturnsNull()
+    {
+        // Arrange - local variable being redeclared should return null to let local versioning handle it
+        var symbol = new VariableSymbol { Name = "x", Kind = SymbolKind.Variable };
+        var codeGenInfo = new CodeGenInfo
+        {
+            CSharpName = "x",
+            OriginalName = "x",
+            IsModuleLevel = false
+        };
+
+        // Act
+        var result = _service.TryResolveFromCodeGenInfo(symbol, codeGenInfo, isNewDeclaration: true);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void TryResolveFromCodeGenInfo_ModuleLevelRedeclaration_ReturnsName()
+    {
+        // Arrange - module level variable redeclaration should use CodeGenInfo
+        var symbol = new VariableSymbol { Name = "x", Kind = SymbolKind.Variable };
+        var codeGenInfo = new CodeGenInfo
+        {
+            CSharpName = "X",
+            OriginalName = "x",
+            IsModuleLevel = true,
+            Version = 1
+        };
+
+        // Act
+        var result = _service.TryResolveFromCodeGenInfo(symbol, codeGenInfo, isNewDeclaration: true);
+
+        // Assert - module level uses CodeGenInfo even for redeclarations
+        result.Should().Be("X_1");
+    }
+
+    #endregion
 }
