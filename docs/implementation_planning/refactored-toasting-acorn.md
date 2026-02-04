@@ -2,11 +2,37 @@
 
 ## Overview
 
-This plan outlines 8 improvements to increase the Sharpy compiler's robustness, debuggability, and maintainability while preparing for future LSP integration. Each section is self-contained and can be implemented independently.
+This plan outlines 11 improvements to increase the Sharpy compiler's robustness, debuggability, and maintainability while preparing for future LSP integration. Each section is self-contained and can be implemented independently.
 
 **Target Audience**: Junior engineers or AI assistants (Claude Sonnet)
-**Estimated Total Effort**: 10-15 days
-**Priority Order**: Implement sections 1-8 in order (highest impact first)
+**Estimated Total Effort**: 12-18 days
+**Sections 1-8**: Original plan (validated February 2026)
+**Sections 9-11**: Additional high-impact recommendations
+**Priority Order**: See Implementation Order table at end
+
+---
+
+## Assessment Summary (February 2026)
+
+**Overall Health Score: 7.5-8/10**
+
+The Sharpy compiler is architecturally excellent with mature error handling infrastructure, clear phase boundaries, and good separation of concerns. The original 8 sections below are **validated as correct and high-value**. Additional high-impact recommendations have been added as sections 9-11.
+
+### Architectural Strengths (No Changes Needed)
+
+1. **Diagnostic Infrastructure** — `DiagnosticBag` with deduplication, `DiagnosticExplanations` with fix guidance, comprehensive `DiagnosticCodes` (SHP0001-SHP0999)
+2. **Phase Boundary Assertions** — `DualWriteAssertions.cs` runs production assertions (not DEBUG-only) to catch materialization inconsistencies
+3. **Generated C# Validation** — `AssertGeneratedCSharpParses()` always verifies codegen produces valid C#
+4. **Incremental Compilation** — `DependencyGraph`, `IncrementalCompilationCache`, `SymbolCacheEnvelope` are production-ready
+5. **Services Architecture** — Clean adapter pattern (`CompilerServices`, `CompilerServicesBuilder`) for gradual migration
+6. **Validation Pipeline** — Pluggable `ISemanticValidator` with ordering makes adding validators easy
+
+### Known Tech Debt (Tracked Separately)
+
+- `NameMangler.cs:51` — `#99` unconditional method mapping should use type info
+- `TypeChecker.Expressions.cs:1516` — `#104` tuple unpacking in comprehensions
+- `TypeChecker.Expressions.cs:1085` — duplicate member access evaluation (needs symbol caching in SemanticInfo)
+- `SemanticBinding.cs:44-47` — dead `_logger` field with pragma suppression
 
 ---
 
@@ -722,18 +748,265 @@ dotnet test  # Full suite
 
 ---
 
+## 9. Exception Context Preservation
+
+### Context & Rationale
+
+Two locations in the compiler catch exceptions and lose debugging context:
+
+1. **`Compiler.cs:467`** — Catch-all handler loses stack trace:
+   ```csharp
+   catch (Exception ex)
+   {
+       _logger.LogError($"Compilation failed with exception: {ex.Message}", 0, 0);
+       diagnostics.AddError($"Compilation failed: {ex.Message}", ...);
+   }
+   ```
+
+2. **`ValidationPipeline.cs:94-101`** — Validator exceptions swallowed:
+   ```csharp
+   catch (Exception ex)
+   {
+       _logger.LogError($"Validator {validator.Name} threw an exception: {ex.Message}");
+       context.Diagnostics.AddError($"Internal compiler error in {validator.Name}: {ex.Message}", ...);
+   }
+   ```
+
+When unexpected bugs occur, developers lose the exception type, stack trace, and inner exception chain—making debugging significantly harder.
+
+### Key Files
+
+- `src/Sharpy.Compiler/Compiler.cs` — Main compilation driver (~line 467)
+- `src/Sharpy.Compiler/Semantic/Validation/ValidationPipeline.cs` — Validator execution (~line 94)
+- `src/Sharpy.Compiler/Diagnostics/` — Exception types
+
+### Guiding Principles
+
+- Log full `ex.ToString()` including stack trace, not just `ex.Message`
+- Include `ex.GetType().Name` in diagnostic messages for identification
+- Consider creating `InternalCompilerErrorException` for typed catch blocks
+- Don't change exception behavior for user-facing errors—only internal compiler bugs
+
+### Tasks
+
+- [ ] **9.1** Create `src/Sharpy.Compiler/Diagnostics/InternalCompilerErrorException.cs`:
+  ```csharp
+  public sealed class InternalCompilerErrorException : Exception
+  {
+      public string Component { get; }
+
+      public InternalCompilerErrorException(string component, string message, Exception innerException)
+          : base($"Internal compiler error in {component}: {message}", innerException)
+      {
+          Component = component;
+      }
+  }
+  ```
+
+- [ ] **9.2** Update `Compiler.cs` catch block (~line 467):
+  - Log `ex.ToString()` (full stack trace) instead of just `ex.Message`
+  - Include `ex.GetType().Name` in the diagnostic message
+  - If `ex` is `InternalCompilerErrorException`, extract component info
+
+- [ ] **9.3** Update `ValidationPipeline.cs` catch block (~line 94):
+  - Log full exception with `_logger.LogError($"...: {ex}")`
+  - Include exception type in diagnostic: `$"Internal error ({ex.GetType().Name}) in {validator.Name}"`
+  - Consider wrapping in `InternalCompilerErrorException` for consistent handling
+
+- [ ] **9.4** Add test in `src/Sharpy.Compiler.Tests/Semantic/Validation/ValidationPipelineTests.cs`:
+  - Create a mock validator that throws `NullReferenceException`
+  - Verify diagnostic message includes exception type name
+  - Verify compilation continues (doesn't crash)
+
+### Verification
+
+```bash
+dotnet test --filter "FullyQualifiedName~ValidationPipeline"  # New tests pass
+dotnet test  # Full suite
+```
+
+---
+
+## 10. Import Error Recovery
+
+### Context & Rationale
+
+When imports fail, the compiler continues type checking (`Compiler.cs:273-279`), which produces cascading errors that mask the root cause:
+
+```
+# User sees:
+Error: Cannot find module 'math'
+Error: Undefined function 'sqrt'      <- Noise, caused by import failure
+Error: Undefined function 'floor'     <- Noise
+Error: Cannot call undefined 'sqrt'   <- Noise
+```
+
+The user gets 4 errors when there's really only 1 problem. This makes error output harder to parse.
+
+### Key Files
+
+- `src/Sharpy.Compiler/Compiler.cs` — Import/type checking orchestration
+- `src/Sharpy.Compiler/Semantic/ImportResolver.cs` — Import resolution
+- `src/Sharpy.Compiler/Semantic/SymbolTable.cs` — Symbol storage
+
+### Guiding Principles
+
+- When imports fail, inject "error recovery" placeholder symbols
+- Mark placeholders distinctly (e.g., `IsErrorRecovery` property on Symbol)
+- Filter or annotate downstream errors caused by error recovery symbols
+- Don't change successful compilation behavior at all
+
+### Tasks
+
+- [ ] **10.1** Add `IsErrorRecovery` property to `Symbol.cs`:
+  ```csharp
+  public abstract record Symbol
+  {
+      // ... existing properties
+      public bool IsErrorRecovery { get; init; } = false;
+  }
+  ```
+
+- [ ] **10.2** Create error recovery symbol factory in `ImportResolver.cs`:
+  ```csharp
+  private ModuleSymbol CreateErrorRecoveryModule(string moduleName)
+  {
+      return new ModuleSymbol(moduleName, "<error-recovery>")
+      {
+          IsErrorRecovery = true
+      };
+  }
+  ```
+
+- [ ] **10.3** Update `ImportResolver.Resolve()` to inject placeholders:
+  - When `from X import Y` fails to find module X
+  - Register an error recovery `ModuleSymbol` for X
+  - This prevents "undefined identifier" cascading errors
+
+- [ ] **10.4** Update `TypeChecker` to detect error recovery symbols:
+  - When resolving a symbol, check `IsErrorRecovery`
+  - If true, skip adding new errors (the import error was already reported)
+  - Optionally add note: "This error may be caused by failed import of 'X'"
+
+- [ ] **10.5** Add tests in `src/Sharpy.Compiler.Tests/Semantic/ImportErrorRecoveryTests.cs`:
+  - Test: import error + usage → only 1 error (import), not cascading
+  - Test: successful import → no behavior change
+  - Test: error recovery symbols don't leak into codegen
+
+### Verification
+
+```bash
+dotnet test --filter "FullyQualifiedName~ImportErrorRecovery"  # New tests pass
+dotnet test --filter "FullyQualifiedName~FileBasedIntegration"  # Error fixtures still work
+dotnet test  # Full suite
+```
+
+---
+
+## 11. Comprehension Code Consolidation
+
+### Context & Rationale
+
+List, set, and dict comprehension handling has near-identical code in 6 locations:
+
+**Type Checking** (`TypeChecker.Expressions.cs`):
+- `CheckListComprehension()` (~line 1480)
+- `CheckSetComprehension()` (~line 1547)
+- `CheckDictComprehension()` (~line 1620)
+
+**Code Generation** (`RoslynEmitter.Expressions.cs`):
+- `GenerateListComprehension()` (~line 620)
+- `GenerateSetComprehension()` (~line 690)
+- `GenerateDictComprehension()` (~line 748)
+
+The logic for iterating clauses, checking `ForClause`/`IfClause`, validating types, and handling loop variables is ~95% identical. Bug fixes must be replicated 3+ times.
+
+### Key Files
+
+- `src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs`
+- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs`
+
+### Guiding Principles
+
+- Extract common traversal logic into shared helpers
+- Use generic type parameters or delegates for element-type-specific behavior
+- Preserve exact existing behavior—this is pure refactoring
+- Keep the public method signatures unchanged
+
+### Tasks
+
+- [ ] **11.1** Create `CheckComprehensionCore()` helper in `TypeChecker.Expressions.cs`:
+  ```csharp
+  private SemanticType CheckComprehensionCore(
+      IReadOnlyList<ComprehensionClause> clauses,
+      Func<SemanticType> checkElement,
+      Func<SemanticType, SemanticType> wrapResult)
+  {
+      // Common clause iteration, scope management, type checking
+      // Call checkElement() for the element expression
+      // Call wrapResult() to wrap in list/set/dict generic type
+  }
+  ```
+
+- [ ] **11.2** Refactor `CheckListComprehension` to use helper:
+  ```csharp
+  private SemanticType CheckListComprehension(ListComprehension comp)
+  {
+      return CheckComprehensionCore(
+          comp.Clauses,
+          () => CheckExpression(comp.Element),
+          elementType => new GenericType("list", elementType));
+  }
+  ```
+
+- [ ] **11.3** Refactor `CheckSetComprehension` and `CheckDictComprehension` similarly
+
+- [ ] **11.4** Create `GenerateComprehensionCore()` helper in `RoslynEmitter.Expressions.cs`:
+  ```csharp
+  private ExpressionSyntax GenerateComprehensionCore(
+      IReadOnlyList<ComprehensionClause> clauses,
+      Func<ExpressionSyntax> generateElement,
+      string collectionType,
+      string addMethod)
+  {
+      // Common LINQ generation, clause handling
+  }
+  ```
+
+- [ ] **11.5** Refactor `GenerateListComprehension`, `GenerateSetComprehension`, `GenerateDictComprehension`
+
+- [ ] **11.6** Run existing comprehension tests to verify no behavioral changes:
+  ```bash
+  dotnet test --filter "DisplayName~comprehension"
+  dotnet test --filter "FullyQualifiedName~FileBasedIntegration"
+  ```
+
+### Verification
+
+```bash
+dotnet test --filter "DisplayName~comprehension"  # Existing tests pass
+dotnet test  # Full suite
+```
+
+---
+
 ## Implementation Order
 
 Complete sections in this order for maximum impact:
 
-1. **Type Narrowing Context** — Highest bug risk in current code
-2. **Symbol Reference Equality Wrappers** — Eliminates a class of silent failures
-3. **Position-to-AST Node Service** — Unblocks LSP work
-4. **Consolidated Name Resolution** — Reduces codegen debugging time
-5. **Phase Violation Exceptions** — Improves debuggability
-6. **Error Recovery Test Fixtures** — Catches regressions
-7. **Sealed SemanticType Hierarchy** — Compile-time safety
-8. **Granular Compilation Metrics** — Performance optimization
+| Priority | Section | Rationale |
+|----------|---------|-----------|
+| 1 | **§1 Type Narrowing Context** | Highest bug risk in current code |
+| 2 | **§9 Exception Context Preservation** | Immediate debugging benefit |
+| 3 | **§2 Symbol Reference Equality Wrappers** | Eliminates silent failures |
+| 4 | **§10 Import Error Recovery** | Reduces cascading error noise |
+| 5 | **§5 Phase Violation Exceptions** | Improves phase debugging |
+| 6 | **§3 Position-to-AST Node Service** | LSP prerequisite |
+| 7 | **§6 Error Recovery Test Fixtures** | Catches regressions |
+| 8 | **§4 Consolidated Name Resolution** | Reduces codegen debugging |
+| 9 | **§11 Comprehension Consolidation** | Reduces maintenance burden |
+| 10 | **§7 Sealed SemanticType Hierarchy** | Compile-time safety |
+| 11 | **§8 Granular Compilation Metrics** | Performance visibility |
 
 ---
 
