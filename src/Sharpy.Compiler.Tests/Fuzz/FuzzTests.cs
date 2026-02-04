@@ -9,7 +9,7 @@ using LexerNs = Sharpy.Compiler.Lexer;
 namespace Sharpy.Compiler.Tests.Fuzz;
 
 /// <summary>
-/// Fuzz testing harness for the Sharpy compiler (Phase 6.3).
+/// Fuzz testing harness for the Sharpy compiler (Phase 6.1).
 /// Runs the compiler on randomly generated inputs and asserts that no
 /// unhandled exceptions escape. The compiler should always return a
 /// CompilationResult with appropriate diagnostics, never crash.
