@@ -1,0 +1,8 @@
+from left import LeftHandler
+from right import RightHandler
+
+def main():
+    l = LeftHandler()
+    r = RightHandler()
+    print(l.get_value())
+    print(r.get_value())

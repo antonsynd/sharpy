@@ -1,0 +1,5 @@
+from base import BASE_VALUE
+
+class RightHandler:
+    def get_value(self) -> int:
+        return BASE_VALUE + 2

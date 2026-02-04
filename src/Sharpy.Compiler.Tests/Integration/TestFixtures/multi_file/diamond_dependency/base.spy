@@ -1,0 +1,2 @@
+# Shared constant used by both left and right modules
+BASE_VALUE: int = 100
