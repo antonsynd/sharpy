@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Collections;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -766,9 +767,9 @@ internal partial class TypeChecker
     /// - Base interfaces (interface inheritance)
     /// - Interfaces implemented by base classes
     /// </summary>
-    private HashSet<TypeSymbol> CollectAllInterfaces(TypeSymbol type)
+    private TypeSymbolSet CollectAllInterfaces(TypeSymbol type)
     {
-        var result = new HashSet<TypeSymbol>();
+        var result = new TypeSymbolSet();
         var visited = new HashSet<string>();
         var visitedBaseClasses = new HashSet<string>();
         var queue = new Queue<TypeSymbol>();
