@@ -162,10 +162,10 @@ Use this section to track implementation progress:
 - [x] Task 1.3: Restored symbol validation (infrastructure only; dependency graph handles scenarios; error detection tests added)
 - [x] Code review completed (2026-02-03)
 
-### Phase 2: Path and Name Consistency
-- [ ] Task 2.1: PathNormalizer utility (consolidate 6 implementations)
-- [ ] Task 2.2: Variable name collision fix
-- [ ] Task 2.3: Add diagnostic deduplication
+### Phase 2: Path and Name Consistency ✅
+- [x] Task 2.1: PathNormalizer utility (consolidate 6 implementations)
+- [x] Task 2.2: Variable name collision fix (added scope handling to ClassMembers.cs and ModuleClass.cs)
+- [x] Task 2.3: Add diagnostic deduplication (code-based comparison with message fallback)
 
 ### Phase 3: Robustness and Phase Integrity
 - [ ] Task 3.1: Replace `null!` pattern
