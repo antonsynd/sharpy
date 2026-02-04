@@ -95,9 +95,19 @@ internal class TypeResolver
                 }
                 else
                 {
-                    AddError($"Type '{annotation.Name}' not found", annotation.LineStart, annotation.ColumnStart,
-                        code: DiagnosticCodes.Semantic.UndefinedType, span: annotation.Span);
-                    result = SemanticType.Unknown;
+                    // Check if this is an error recovery symbol (from a failed import).
+                    // If so, suppress the "type not found" error - the import error was already reported.
+                    var symbol = _symbolTable.Lookup(annotation.Name);
+                    if (symbol?.IsErrorRecovery == true)
+                    {
+                        result = SemanticType.Unknown;
+                    }
+                    else
+                    {
+                        AddError($"Type '{annotation.Name}' not found", annotation.LineStart, annotation.ColumnStart,
+                            code: DiagnosticCodes.Semantic.UndefinedType, span: annotation.Span);
+                        result = SemanticType.Unknown;
+                    }
                 }
             }
         }

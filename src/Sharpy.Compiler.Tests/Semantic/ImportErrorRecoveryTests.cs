@@ -290,4 +290,48 @@ def main():
         Assert.IsType<ModuleSymbol>(symbol);
         Assert.True(symbol.IsErrorRecovery);
     }
+
+    [Fact]
+    public void FromImport_ModuleNotFound_UsedAsTypeAnnotation_NoTypeNotFoundError()
+    {
+        // Error recovery symbols should suppress "type not found" errors when used in type annotations
+        var source = @"
+from nonexistent_module import SomeType
+
+def main():
+    x: SomeType = None
+    print(x)
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have exactly one error: the import error
+        Assert.False(result.Success);
+        Assert.Single(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("Type") && e.Contains("not found"));
+    }
+
+    [Fact]
+    public void FromImport_ModuleNotFound_UsedAsMultipleTypeAnnotations_NoTypeNotFoundErrors()
+    {
+        // Multiple uses of error recovery symbol as type annotation should all be suppressed
+        var source = @"
+from nonexistent_module import SomeType
+
+def process(item: SomeType) -> SomeType:
+    return item
+
+def main():
+    x: SomeType = None
+    y: list[SomeType] = []
+    print(x)
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have exactly one error: the import error
+        Assert.False(result.Success);
+        Assert.Single(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("Type") && e.Contains("not found"));
+    }
 }
