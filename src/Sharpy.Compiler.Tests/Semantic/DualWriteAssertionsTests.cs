@@ -6,10 +6,11 @@ using Xunit;
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// Tests for DualWriteAssertions: the DEBUG-only assertions that verify
-/// materialization consistency between SemanticBinding stores and Symbol properties.
-/// These tests validate that the assertion logic correctly passes for consistent state
-/// and correctly skips CLR types and re-exported symbols.
+/// Tests for DualWriteAssertions: assertions that verify materialization consistency
+/// between SemanticBinding stores and Symbol properties.
+/// These assertions are always active (not DEBUG-only) to catch issues in production.
+/// Tests validate that assertions pass for consistent state, skip CLR/re-exported symbols,
+/// and throw InvalidOperationException for inconsistent state.
 /// </summary>
 public class DualWriteAssertionsTests
 {
@@ -449,6 +450,119 @@ public class DualWriteAssertionsTests
         field.Type.Should().Be(SemanticType.Str);
         globalVar.Type.Should().Be(SemanticType.Int);
         child.CodeGenInfo.Should().NotBeNull();
+    }
+
+    #endregion
+
+    #region Inconsistency Detection (Throws)
+
+    [Fact]
+    public void AssertInheritanceConsistency_ThrowsForMissingMaterialization_BaseType()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var parent = new TypeSymbol { Name = "Parent", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        var child = new TypeSymbol { Name = "Child", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+
+        symbolTable.Define(parent);
+        symbolTable.Define(child);
+
+        binding.SetBaseType(child, parent);
+        // Intentionally skip MaterializeInheritance()
+
+        // SemanticBinding has BaseType but Symbol doesn't - should throw
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            DualWriteAssertions.AssertInheritanceConsistency(symbolTable, binding));
+        ex.Message.Should().Contain("materialization missed");
+        ex.Message.Should().Contain("Child");
+    }
+
+    [Fact]
+    public void AssertInheritanceConsistency_ThrowsForMissingMaterialization_Interfaces()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var iface = new TypeSymbol { Name = "IFoo", Kind = SymbolKind.Type, TypeKind = TypeKind.Interface };
+        var impl = new TypeSymbol { Name = "Impl", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+
+        symbolTable.Define(iface);
+        symbolTable.Define(impl);
+
+        binding.AddInterface(impl, iface);
+        // Intentionally skip MaterializeInheritance()
+
+        // SemanticBinding has Interface but Symbol doesn't - should throw
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            DualWriteAssertions.AssertInheritanceConsistency(symbolTable, binding));
+        ex.Message.Should().Contain("materialization missed");
+        ex.Message.Should().Contain("Impl");
+    }
+
+    [Fact]
+    public void AssertCodeGenInfoConsistency_ThrowsForMissingMaterialization()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var symbol = new TypeSymbol { Name = "MyClass", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        var info = new CodeGenInfo { CSharpName = "MyClass", OriginalName = "my_class" };
+
+        symbolTable.Define(symbol);
+        binding.SetCodeGenInfo(symbol, info);
+        // Intentionally skip MaterializeCodeGenInfo()
+
+        // SemanticBinding has CodeGenInfo but Symbol doesn't - should throw
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, binding));
+        ex.Message.Should().Contain("materialization missed");
+        ex.Message.Should().Contain("MyClass");
+    }
+
+    [Fact]
+    public void AssertVariableTypeConsistency_ThrowsForMissingMaterialization()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var varSymbol = new VariableSymbol { Name = "counter", Kind = SymbolKind.Variable };
+        symbolTable.Define(varSymbol);
+        binding.SetVariableType(varSymbol, SemanticType.Int);
+        // Intentionally skip MaterializeVariableTypes()
+
+        // SemanticBinding has Type but Symbol doesn't - should throw
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            DualWriteAssertions.AssertVariableTypeConsistency(symbolTable, binding));
+        ex.Message.Should().Contain("materialization missed");
+        ex.Message.Should().Contain("counter");
+    }
+
+    [Fact]
+    public void AssertVariableTypeConsistency_ThrowsForMissingFieldMaterialization()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var field = new VariableSymbol { Name = "data", Kind = SymbolKind.Variable };
+        var typeSymbol = new TypeSymbol
+        {
+            Name = "Container",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            Fields = new List<VariableSymbol> { field }
+        };
+
+        symbolTable.Define(typeSymbol);
+        binding.SetVariableType(field, SemanticType.Str);
+        // Intentionally skip MaterializeVariableTypes()
+
+        // SemanticBinding has field Type but Symbol field doesn't - should throw
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            DualWriteAssertions.AssertVariableTypeConsistency(symbolTable, binding));
+        ex.Message.Should().Contain("materialization missed");
+        ex.Message.Should().Contain("Container");
+        ex.Message.Should().Contain("data");
     }
 
     #endregion
