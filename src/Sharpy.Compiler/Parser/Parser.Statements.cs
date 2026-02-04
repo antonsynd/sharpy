@@ -221,8 +221,14 @@ public partial class Parser
     {
         var clauses = new List<ComprehensionClause>();
 
+        var savedLoopPosition = _lastLoopPosition;
+        _lastLoopPosition = -1;
+        try
+        {
         while (true)
         {
+            if (!CheckLoopProgress()) break;
+
             if (Current.Type == TokenType.For)
             {
                 var startLine = Current.Line;
@@ -270,6 +276,11 @@ public partial class Parser
             {
                 break;
             }
+        }
+        }
+        finally
+        {
+            _lastLoopPosition = savedLoopPosition;
         }
 
         return clauses;
@@ -540,8 +551,11 @@ public partial class Parser
 
         var names = new List<ImportAlias>();
 
+        _lastLoopPosition = -1;
         do
         {
+            if (!CheckLoopProgress()) break;
+
             var aliasStartLine = Current.Line;
             var aliasStartColumn = Current.Column;
             var aliasStartToken = Current;
@@ -608,8 +622,11 @@ public partial class Parser
         }
         else
         {
+            _lastLoopPosition = -1;
             do
             {
+                if (!CheckLoopProgress()) break;
+
                 var aliasStartLine = Current.Line;
                 var aliasStartColumn = Current.Column;
                 var aliasStartToken = Current;
@@ -705,8 +722,11 @@ public partial class Parser
     {
         var statements = new List<Statement>();
 
+        _lastLoopPosition = -1;
         while (Current.Type != TokenType.Dedent && !IsAtEnd)
         {
+            if (!CheckLoopProgress()) break;
+
             SkipNewlines();
             if (Current.Type == TokenType.Dedent || IsAtEnd)
                 break;
@@ -740,8 +760,11 @@ public partial class Parser
         if (Current.Type == TokenType.RightParen)
             return parameters;
 
+        _lastLoopPosition = -1;
         do
         {
+            if (!CheckLoopProgress()) break;
+
             var startLine = Current.Line;
             var startColumn = Current.Column;
             var startToken = Current;

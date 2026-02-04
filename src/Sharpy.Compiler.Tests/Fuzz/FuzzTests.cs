@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Sharpy.Compiler.Logging;
 using Xunit;
 using Xunit.Abstractions;
@@ -16,6 +17,14 @@ namespace Sharpy.Compiler.Tests.Fuzz;
 public class FuzzTests
 {
     private readonly ITestOutputHelper _output;
+
+    /// <summary>
+    /// Timeout per fuzz iteration (2 seconds). If the compiler takes longer
+    /// than this, it's likely stuck in an infinite loop. Most compilations
+    /// complete in under 100ms, so 2 seconds is generous while keeping the
+    /// total suite runtime reasonable.
+    /// </summary>
+    private const int FuzzIterationTimeoutMs = 2000;
 
     public FuzzTests(ITestOutputHelper output)
     {
@@ -115,20 +124,33 @@ public class FuzzTests
         var fuzzer = new SharplyFuzzer(seed);
         var compiler = new Compiler();
         var failures = new List<string>();
+        var timeouts = new List<string>();
 
         for (int i = 0; i < 50; i++)
         {
             var input = fuzzer.GenerateValidLooking();
             try
             {
-                var result = compiler.Compile(input, "fuzz_test.spy");
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
+                var result = compiler.Compile(input, "fuzz_test.spy", cts.Token);
                 // Success or failure with diagnostics are both fine.
                 // We only care that it doesn't throw.
+            }
+            catch (OperationCanceledException)
+            {
+                timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
             }
             catch (Exception ex)
             {
                 failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
             }
+        }
+
+        if (timeouts.Count > 0)
+        {
+            _output.WriteLine($"Timeouts ({timeouts.Count}/50):");
+            foreach (var t in timeouts)
+                _output.WriteLine(t);
         }
 
         if (failures.Count > 0)
@@ -138,6 +160,7 @@ public class FuzzTests
                 _output.WriteLine(f);
         }
 
+        Assert.Empty(timeouts);
         Assert.Empty(failures);
     }
 
@@ -156,19 +179,32 @@ public class FuzzTests
         var fuzzer = new SharplyFuzzer(seed);
         var compiler = new Compiler();
         var failures = new List<string>();
+        var timeouts = new List<string>();
 
         for (int i = 0; i < 50; i++)
         {
             var input = fuzzer.GenerateWithSyntaxErrors();
             try
             {
-                var result = compiler.Compile(input, "fuzz_error.spy");
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
+                var result = compiler.Compile(input, "fuzz_error.spy", cts.Token);
                 // Most of these should fail - that's expected
+            }
+            catch (OperationCanceledException)
+            {
+                timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
             }
             catch (Exception ex)
             {
                 failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
             }
+        }
+
+        if (timeouts.Count > 0)
+        {
+            _output.WriteLine($"Timeouts ({timeouts.Count}/50):");
+            foreach (var t in timeouts)
+                _output.WriteLine(t);
         }
 
         if (failures.Count > 0)
@@ -178,6 +214,7 @@ public class FuzzTests
                 _output.WriteLine(f);
         }
 
+        Assert.Empty(timeouts);
         Assert.Empty(failures);
     }
 
@@ -197,18 +234,31 @@ public class FuzzTests
         var fuzzer = new SharplyFuzzer(seed);
         var compiler = new Compiler();
         var failures = new List<string>();
+        var timeouts = new List<string>();
 
         for (int i = 0; i < 50; i++)
         {
             var input = fuzzer.GenerateRandomTokens();
             try
             {
-                var result = compiler.Compile(input, "fuzz_random.spy");
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
+                var result = compiler.Compile(input, "fuzz_random.spy", cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                timeouts.Add($"Seed {seed}, iteration {i}: TIMEOUT after {FuzzIterationTimeoutMs}ms\nInput: {Truncate(input)}");
             }
             catch (Exception ex)
             {
                 failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
             }
+        }
+
+        if (timeouts.Count > 0)
+        {
+            _output.WriteLine($"Timeouts ({timeouts.Count}/50):");
+            foreach (var t in timeouts)
+                _output.WriteLine(t);
         }
 
         if (failures.Count > 0)
@@ -218,6 +268,7 @@ public class FuzzTests
                 _output.WriteLine(f);
         }
 
+        Assert.Empty(timeouts);
         Assert.Empty(failures);
     }
 

@@ -621,9 +621,15 @@ public partial class Parser
     {
         var expr = ParsePrimary();
 
-        while (true)
+        var savedLoopPosition = _lastLoopPosition;
+        _lastLoopPosition = -1;
+        try
         {
-            if (Current.Type == TokenType.Dot || Current.Type == TokenType.NullConditional)
+            while (true)
+            {
+                if (!CheckLoopProgress()) break;
+
+                if (Current.Type == TokenType.Dot || Current.Type == TokenType.NullConditional)
             {
                 var isNullConditional = Current.Type == TokenType.NullConditional;
                 Advance();
@@ -681,8 +687,11 @@ public partial class Parser
 
                 if (Current.Type != TokenType.RightParen)
                 {
+                    _lastLoopPosition = -1;
                     do
                     {
+                        if (!CheckLoopProgress()) break;
+
                         // Check for keyword argument
                         if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
                         {
@@ -783,6 +792,11 @@ public partial class Parser
             {
                 break;
             }
+        }
+        }
+        finally
+        {
+            _lastLoopPosition = savedLoopPosition;
         }
 
         return expr;

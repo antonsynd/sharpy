@@ -330,8 +330,11 @@ public partial class Parser
             Advance();
             if (Current.Type != TokenType.RightParen)
             {
+                _lastLoopPosition = -1;
                 do
                 {
+                    if (!CheckLoopProgress()) break;
+
                     baseClasses.Add(ParseTypeAnnotation());
                     if (Current.Type == TokenType.Comma)
                         Advance();
@@ -399,8 +402,11 @@ public partial class Parser
             Advance();
             if (Current.Type != TokenType.RightParen)
             {
+                _lastLoopPosition = -1;
                 do
                 {
+                    if (!CheckLoopProgress()) break;
+
                     baseInterfaces.Add(ParseTypeAnnotation());
                     if (Current.Type == TokenType.Comma)
                         Advance();
@@ -468,8 +474,11 @@ public partial class Parser
             Advance();
             if (Current.Type != TokenType.RightParen)
             {
+                _lastLoopPosition = -1;
                 do
                 {
+                    if (!CheckLoopProgress()) break;
+
                     baseInterfaces.Add(ParseTypeAnnotation());
                     if (Current.Type == TokenType.Comma)
                         Advance();
@@ -529,8 +538,11 @@ public partial class Parser
 
         Expect(TokenType.LeftBracket);
 
+        _lastLoopPosition = -1;
         do
         {
+            if (!CheckLoopProgress()) break;
+
             var paramStartLine = Current.Line;
             var paramStartColumn = Current.Column;
             var paramStartToken = Current;
@@ -573,8 +585,11 @@ public partial class Parser
     {
         var constraints = new List<ConstraintClause>();
 
+        _lastLoopPosition = -1;
         do
         {
+            if (!CheckLoopProgress()) break;
+
             constraints.Add(ParseSingleConstraint());
 
             if (Current.Type == TokenType.Ampersand)
@@ -740,8 +755,11 @@ public partial class Parser
             // Parse parameter types
             if (Current.Type != TokenType.RightParen)
             {
+                _lastLoopPosition = -1;
                 do
                 {
+                    if (!CheckLoopProgress()) break;
+
                     paramTypes.Add(ParseTypeAnnotation());
 
                     if (Current.Type == TokenType.Comma)

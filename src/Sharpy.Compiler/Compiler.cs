@@ -157,7 +157,7 @@ public class Compiler
             _logger.LogInfo("Phase 2: Syntax Analysis");
             metrics.StartPhase("Syntax Analysis");
             var parserMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 25;
-            var parser = new Parser.Parser(tokens, _logger, parserMaxErrors);
+            var parser = new Parser.Parser(tokens, _logger, parserMaxErrors, cancellationToken);
             module = parser.ParseModule();
             metrics.EndPhase();
 

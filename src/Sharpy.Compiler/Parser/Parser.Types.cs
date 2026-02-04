@@ -185,8 +185,11 @@ public partial class Parser
         if (Current.Type == TokenType.LeftBracket && Peek().Type != TokenType.RightBracket)
         {
             Advance();
+            _lastLoopPosition = -1;
             do
             {
+                if (!CheckLoopProgress()) break;
+
                 typeArgs.Add(ParseTypeAnnotation());
 
                 if (Current.Type == TokenType.Comma)
@@ -321,8 +324,11 @@ public partial class Parser
         // Parse type list
         if (Current.Type != TokenType.RightParen)
         {
+            _lastLoopPosition = -1;
             do
             {
+                if (!CheckLoopProgress()) break;
+
                 types.Add(ParseTypeAnnotation());
 
                 if (Current.Type == TokenType.Comma)

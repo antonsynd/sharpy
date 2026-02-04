@@ -479,8 +479,11 @@ public partial class Parser
                     // Parse lambda parameters
                     if (Current.Type != TokenType.Colon)
                     {
+                        _lastLoopPosition = -1;
                         do
                         {
+                            if (!CheckLoopProgress()) break;
+
                             var paramToken = Current;
                             var name = ExpectIdentifier();
                             parameters.Add(new Parameter

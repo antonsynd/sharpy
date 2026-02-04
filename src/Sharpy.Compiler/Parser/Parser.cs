@@ -33,6 +33,20 @@ public partial class Parser
     private int _position;
     private readonly ICompilerLogger _logger;
     private readonly DiagnosticBag _diagnostics = new();
+    private readonly CancellationToken _cancellationToken;
+
+    /// <summary>
+    /// Counter for periodic cancellation checks in loops.
+    /// Checking every iteration would be expensive, so we check every N iterations.
+    /// </summary>
+    private int _cancellationCheckCounter;
+    private const int CancellationCheckInterval = 1000;
+
+    /// <summary>
+    /// Tracks parser position for loop progress detection.
+    /// Used by CheckLoopProgress() to detect and break infinite loops.
+    /// </summary>
+    private int _lastLoopPosition = -1;
 
     /// <summary>
     /// Diagnostics collected during parsing.
@@ -45,12 +59,13 @@ public partial class Parser
     /// </summary>
     private bool _parsingInterface;
 
-    public Parser(List<Token> tokens, ICompilerLogger? logger = null, int maxErrors = 25)
+    public Parser(List<Token> tokens, ICompilerLogger? logger = null, int maxErrors = 25, CancellationToken cancellationToken = default)
     {
         _tokens = tokens;
         _position = 0;
         _logger = logger ?? NullLogger.Instance;
         _maxErrors = maxErrors > 0 ? maxErrors : 25;
+        _cancellationToken = cancellationToken;
         _logger.LogInfo($"Parser initialized, token count: {tokens.Count}");
     }
 
@@ -88,8 +103,11 @@ public partial class Parser
             SkipNewlines();
         }
 
+        _lastLoopPosition = -1;
         while (!IsAtEnd)
         {
+            if (!CheckLoopProgress()) break;
+
             SkipNewlines();
             if (IsAtEnd)
                 break;
@@ -135,6 +153,48 @@ public partial class Parser
     }
 
     /// <summary>
+    /// Checks if parser position advanced since last call within a loop.
+    /// If no progress was made, forces an advance and returns false to signal
+    /// the loop should break. This prevents infinite loops on malformed input.
+    /// Also periodically checks for cancellation to support timeout-based interruption.
+    ///
+    /// Usage pattern:
+    /// <code>
+    /// _lastLoopPosition = -1;
+    /// do {
+    ///     if (!CheckLoopProgress()) break;
+    ///     // ... parsing logic ...
+    /// } while (condition);
+    /// </code>
+    /// </summary>
+    private bool CheckLoopProgress()
+    {
+        // Periodically check for cancellation (every N iterations to minimize overhead)
+        if (++_cancellationCheckCounter >= CancellationCheckInterval)
+        {
+            _cancellationCheckCounter = 0;
+            _cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        if (_position == _lastLoopPosition)
+        {
+            // No progress - force advance to break potential infinite loop
+            _diagnostics.AddWarning(
+                $"Parser detected no progress in loop at position {_position} (token: {Current.Type}), forcing advance",
+                Current.Line, Current.Column,
+                code: DiagnosticCodes.Infrastructure.InvariantViolation,
+                phase: CompilerPhase.Parser);
+
+            if (!IsAtEnd)
+                Advance();
+
+            return false;
+        }
+        _lastLoopPosition = _position;
+        return true;
+    }
+
+    /// <summary>
     /// Panic-mode recovery: skip tokens until a statement boundary is reached.
     /// Also handles skipping over indented blocks that belong to broken definitions
     /// (e.g., a malformed function header followed by its indented body).
@@ -148,6 +208,14 @@ public partial class Parser
         if ((Previous.Type == TokenType.Newline || Previous.Type == TokenType.Dedent)
             && IsSyncToken(Current.Type))
         {
+            return;
+        }
+
+        // Special case: if we're at an unexpected INDENT at module level (e.g., "    x = 1"),
+        // skip the entire indented block to avoid infinite loops.
+        if (Current.Type == TokenType.Indent)
+        {
+            SkipIndentedBlock();
             return;
         }
 
