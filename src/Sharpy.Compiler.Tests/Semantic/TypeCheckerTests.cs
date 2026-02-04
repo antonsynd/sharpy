@@ -1801,5 +1801,114 @@ def another_check() -> int:
         typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
+    [Fact]
+    public void TypeNarrowing_SiblingFunctions_HaveIndependentNarrowingContexts()
+    {
+        // Test that each top-level function has its own isolated narrowing context.
+        // This verifies that EnterIsolatedScope() is called correctly for each function.
+        //
+        // This is the key behavior from task 1.7: functions should not inherit narrowing
+        // from other scopes. While nested functions (local functions) aren't fully supported
+        // in Sharpy yet, the same isolation mechanism applies to sibling functions.
+        var source = @"
+def func_with_narrowing() -> int:
+    x: int? = 42
+    if x is not None:
+        return x  # x is narrowed to int here
+    return 0
+
+def func_without_narrowing() -> int?:
+    # This function should have its own isolated narrowing context
+    # Narrowing from func_with_narrowing should NOT leak here
+    y: int? = None()
+    return y  # y should be int?, not narrowed
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        // Both functions should type-check successfully with independent narrowing contexts
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // Find return statement in func_without_narrowing and verify y is not narrowed
+        var secondFunc = module.Body.OfType<FunctionDef>().Skip(1).First();
+        var returnStmt = secondFunc.Body.OfType<ReturnStatement>().First();
+        var yIdentifier = returnStmt.Value as Identifier;
+
+        yIdentifier.Should().NotBeNull();
+        yIdentifier!.Name.Should().Be("y");
+
+        // y should NOT be narrowed - each function has isolated narrowing context
+        var narrowedType = semanticInfo.GetNarrowedType(yIdentifier);
+        narrowedType.Should().BeNull("narrowing should not leak between functions");
+    }
+
+    [Fact]
+    public void TypeNarrowing_FunctionAfterNarrowedBlock_HasFreshContext()
+    {
+        // Verify that a function defined after code with narrowing has a fresh context.
+        // Note: This tests the isolation mechanism at the function boundary level.
+        var source = @"
+def first() -> int:
+    value: int? = 42
+    if value is not None:
+        return value  # value is narrowed to int
+    return 0
+
+def second() -> int:
+    # Even if first() was just processed, second() has its own isolated context
+    data: int? = 42
+    if data is not None:
+        return data  # data narrowed independently
+    return -1
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        // Both functions should compile without errors
+        // This verifies that EnterIsolatedScope() creates a clean narrowing state
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TypeNarrowing_MultipleFunctionsWithSameVariableName_IndependentNarrowing()
+    {
+        // Test that multiple functions using the same variable name have independent
+        // narrowing contexts. This is critical for the isolation mechanism.
+        var source = @"
+def check_a() -> int:
+    x: int? = 42
+    if x is not None:
+        return x  # x is narrowed to int
+
+    return 0
+
+def check_b() -> int?:
+    x: int? = None()
+    # x should be int? here, NOT narrowed from check_a()
+    return x
+
+def check_c() -> int:
+    x: int? = 100
+    if x is not None:
+        # x narrowed independently in check_c()
+        return x
+    return 0
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // Find x in check_b's return statement - should NOT be narrowed
+        var checkB = module.Body.OfType<FunctionDef>().Skip(1).First();
+        checkB.Name.Should().Be("check_b");
+        var returnStmt = checkB.Body.OfType<ReturnStatement>().First();
+        var xIdentifier = returnStmt.Value as Identifier;
+
+        xIdentifier.Should().NotBeNull();
+        var narrowedType = semanticInfo.GetNarrowedType(xIdentifier!);
+        narrowedType.Should().BeNull("x in check_b should not be affected by narrowing in check_a");
+    }
+
     #endregion
 }
