@@ -407,22 +407,20 @@ internal partial class TypeChecker
         var narrowedTypesInThen = ExtractNarrowedTypes(ifStmt.Test, true);
         var narrowedTypesInElse = ExtractNarrowedTypes(ifStmt.Test, false);
 
-        // Apply narrowed types in then branch
-        var savedNarrowedTypes = new Dictionary<string, SemanticType>(_narrowedTypes);
-        foreach (var kvp in narrowedTypesInThen)
+        // Check then branch with its own narrowing scope
+        using (_narrowingContext.EnterScope())
         {
-            _narrowedTypes[kvp.Key] = kvp.Value;
+            _narrowingContext.ApplyNarrowings(narrowedTypesInThen);
+
+            _symbolTable.EnterScope("if-then");
+            _controlFlowDepth++;
+            foreach (var stmt in ifStmt.ThenBody)
+                CheckStatement(stmt);
+            _controlFlowDepth--;
+            _symbolTable.ExitScope();
         }
 
-        // Enter scope for if-then block
-        _symbolTable.EnterScope("if-then");
-        _controlFlowDepth++;
-        foreach (var stmt in ifStmt.ThenBody)
-            CheckStatement(stmt);
-        _controlFlowDepth--;
-        _symbolTable.ExitScope();
-
-        // Check elif clauses
+        // Check elif clauses, each with its own narrowing scope
         foreach (var elif in ifStmt.ElifClauses)
         {
             var elifCondType = CheckExpression(elif.Test);
@@ -433,41 +431,36 @@ internal partial class TypeChecker
                     span: elif.Test.Span);
             }
 
-            _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
             var narrowedTypesInElif = ExtractNarrowedTypes(elif.Test, true);
-            foreach (var kvp in narrowedTypesInElif)
+
+            using (_narrowingContext.EnterScope())
             {
-                _narrowedTypes[kvp.Key] = kvp.Value;
+                _narrowingContext.ApplyNarrowings(narrowedTypesInElif);
+
+                _symbolTable.EnterScope("elif");
+                _controlFlowDepth++;
+                foreach (var stmt in elif.Body)
+                    CheckStatement(stmt);
+                _controlFlowDepth--;
+                _symbolTable.ExitScope();
             }
-
-            _symbolTable.EnterScope("elif");
-            _controlFlowDepth++;
-            foreach (var stmt in elif.Body)
-                CheckStatement(stmt);
-            _controlFlowDepth--;
-            _symbolTable.ExitScope();
         }
 
-        // Apply narrowed types in else branch
-        _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
-        foreach (var kvp in narrowedTypesInElse)
-        {
-            _narrowedTypes[kvp.Key] = kvp.Value;
-        }
-
-        // Enter scope for if-else block only if there are statements
+        // Check else branch with its own narrowing scope (only if there are statements)
         if (ifStmt.ElseBody.Length > 0)
         {
-            _symbolTable.EnterScope("if-else");
-            _controlFlowDepth++;
-            foreach (var stmt in ifStmt.ElseBody)
-                CheckStatement(stmt);
-            _controlFlowDepth--;
-            _symbolTable.ExitScope();
-        }
+            using (_narrowingContext.EnterScope())
+            {
+                _narrowingContext.ApplyNarrowings(narrowedTypesInElse);
 
-        // Restore original narrowed types
-        _narrowedTypes = savedNarrowedTypes;
+                _symbolTable.EnterScope("if-else");
+                _controlFlowDepth++;
+                foreach (var stmt in ifStmt.ElseBody)
+                    CheckStatement(stmt);
+                _controlFlowDepth--;
+                _symbolTable.ExitScope();
+            }
+        }
     }
 
     private void CheckWhile(WhileStatement whileStmt)
@@ -483,23 +476,18 @@ internal partial class TypeChecker
         // Check for type narrowing patterns (similar to if statement)
         var narrowedTypesInBody = ExtractNarrowedTypes(whileStmt.Test, true);
 
-        // Apply narrowed types in the loop body
-        var savedNarrowedTypes = new Dictionary<string, SemanticType>(_narrowedTypes);
-        foreach (var kvp in narrowedTypesInBody)
+        // Enter narrowing scope for while body
+        using (_narrowingContext.EnterScope())
         {
-            _narrowedTypes[kvp.Key] = kvp.Value;
+            _narrowingContext.ApplyNarrowings(narrowedTypesInBody);
+
+            _symbolTable.EnterScope("while-body");
+            _controlFlowDepth++;
+            foreach (var stmt in whileStmt.Body)
+                CheckStatement(stmt);
+            _controlFlowDepth--;
+            _symbolTable.ExitScope();
         }
-
-        // Enter scope for while-body block
-        _symbolTable.EnterScope("while-body");
-        _controlFlowDepth++;
-        foreach (var stmt in whileStmt.Body)
-            CheckStatement(stmt);
-        _controlFlowDepth--;
-        _symbolTable.ExitScope();
-
-        // Restore original narrowed types
-        _narrowedTypes = savedNarrowedTypes;
     }
 
     private void CheckFor(ForStatement forStmt)

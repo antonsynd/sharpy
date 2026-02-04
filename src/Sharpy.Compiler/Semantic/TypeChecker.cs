@@ -37,8 +37,8 @@ internal partial class TypeChecker
     // Track current class being checked (for self parameter typing)
     private TypeSymbol? _currentClass = null;
 
-    // Track type narrowing in conditional contexts
-    private Dictionary<string, SemanticType> _narrowedTypes = new();
+    // Track type narrowing in conditional contexts with proper scope isolation
+    private readonly TypeNarrowingContext _narrowingContext = new();
 
     // Track whether we're inside an except block (for bare raise validation)
     private bool _inExceptBlock = false;

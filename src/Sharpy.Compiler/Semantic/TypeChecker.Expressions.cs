@@ -118,7 +118,8 @@ internal partial class TypeChecker
         _semanticInfo.SetIdentifierSymbol(id, symbol);
 
         // Check if this identifier has a narrowed type in the current context
-        if (_narrowedTypes.TryGetValue(id.Name, out var narrowedType))
+        var narrowedType = _narrowingContext.GetNarrowedType(id.Name);
+        if (narrowedType != null)
         {
             // Persist the narrowed type for code generation
             // This allows RoslynEmitter to use the narrowed type when generating code
@@ -699,9 +700,13 @@ internal partial class TypeChecker
     {
         // Check if this subscript expression has a narrowed type
         var narrowingKey = ExtractNarrowingKey(indexAccess);
-        if (narrowingKey != null && _narrowedTypes.TryGetValue(narrowingKey, out var narrowedType))
+        if (narrowingKey != null)
         {
-            return narrowedType;
+            var narrowedType = _narrowingContext.GetNarrowedType(narrowingKey);
+            if (narrowedType != null)
+            {
+                return narrowedType;
+            }
         }
 
         // Special handling for generic type reference: Box[int] or Pair[int, str]
