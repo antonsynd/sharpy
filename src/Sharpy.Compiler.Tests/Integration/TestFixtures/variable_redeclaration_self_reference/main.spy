@@ -1,0 +1,14 @@
+# Test: Variable redeclaration with self-referencing initializer
+# When redeclaring a variable with an initializer that references itself
+# (e.g., x: int = x + 1), the initializer must use the PREVIOUS version
+# of the variable, not the new one being declared.
+
+def main():
+    x: int = 10
+    x: int = x + 5      # Redeclaration: x_1 = x + 5 (uses previous x = 10)
+    print(x)            # Should print 15
+
+    y: int = 1
+    y: int = y * 2      # y_1 = y * 2 (uses previous y = 1)
+    y: int = y * 2      # y_2 = y_1 * 2 (uses previous y_1 = 2)
+    print(y)            # Should print 4
