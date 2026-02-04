@@ -1,0 +1,5 @@
+from mypackage import greet, double
+
+def main():
+    print(greet("World"))
+    print(double(21))

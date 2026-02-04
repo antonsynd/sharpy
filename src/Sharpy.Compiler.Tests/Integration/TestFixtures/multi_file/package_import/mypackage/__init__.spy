@@ -1,0 +1,3 @@
+# Package initialization file - re-exports symbols from submodules
+from mypackage.helpers import greet
+from mypackage.math import double

@@ -1,0 +1,11 @@
+Bug: Package re-export from __init__.spy works for 'greet' but not 'double'.
+The 'double' function returns its input unchanged (21 instead of 42).
+This appears to be a bug in the PackageResolver's re-export mechanism
+where the second re-exported function from the same __init__.spy file
+is not being correctly resolved.
+
+Reproduction:
+- greet("World") -> "Hello, World!" (correct)
+- double(21) -> 21 (should be 42)
+
+TODO: Investigate PackageResolver.ProcessFromImport for multi-symbol re-exports.
