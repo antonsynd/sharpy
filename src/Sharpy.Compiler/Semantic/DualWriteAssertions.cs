@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
@@ -7,7 +5,7 @@ namespace Sharpy.Compiler.Semantic;
 /// These verify that after MaterializeXxx() calls, SemanticBinding entries are consistent
 /// with the corresponding Symbol properties. This catches bugs where materialization
 /// failed to copy data from SemanticBinding stores onto Symbol properties.
-/// All methods are compiled out in Release builds.
+/// All methods are always active (not DEBUG-only) to catch issues in production.
 /// </summary>
 internal static class DualWriteAssertions
 {
@@ -16,7 +14,6 @@ internal static class DualWriteAssertions
     /// are consistent with SemanticBinding stores.
     /// Only checks types resolved by NameResolver and InheritanceResolver (not CLR types from ModuleRegistry).
     /// </summary>
-    [Conditional("DEBUG")]
     internal static void AssertInheritanceConsistency(SymbolTable symbolTable, SemanticBinding semanticBinding)
     {
         foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
@@ -29,30 +26,46 @@ internal static class DualWriteAssertions
             if (symbol.BaseType != null)
             {
                 var bindingBaseType = semanticBinding.GetBaseType(symbol);
-                Debug.Assert(bindingBaseType != null,
-                    $"TypeSymbol '{symbol.Name}' has BaseType '{symbol.BaseType.Name}' but SemanticBinding.GetBaseType() returned null (materialization inconsistency)");
+                if (bindingBaseType == null)
+                {
+                    throw new InvalidOperationException(
+                        $"TypeSymbol '{symbol.Name}' has BaseType '{symbol.BaseType.Name}' but SemanticBinding.GetBaseType() returned null (materialization inconsistency). " +
+                        "This is a compiler bug - please report it.");
+                }
             }
 
             if (symbol.Interfaces.Count > 0)
             {
                 var bindingInterfaces = semanticBinding.GetInterfaces(symbol);
-                Debug.Assert(bindingInterfaces != null && bindingInterfaces.Count == symbol.Interfaces.Count,
-                    $"TypeSymbol '{symbol.Name}' has {symbol.Interfaces.Count} interface(s) but SemanticBinding.GetInterfaces() returned {bindingInterfaces?.Count ?? 0} (materialization inconsistency)");
+                if (bindingInterfaces == null || bindingInterfaces.Count != symbol.Interfaces.Count)
+                {
+                    throw new InvalidOperationException(
+                        $"TypeSymbol '{symbol.Name}' has {symbol.Interfaces.Count} interface(s) but SemanticBinding.GetInterfaces() returned {bindingInterfaces?.Count ?? 0} (materialization inconsistency). " +
+                        "This is a compiler bug - please report it.");
+                }
             }
 
             // Reverse: SemanticBinding → Symbol (catches materialization failures)
             var sbBaseType = semanticBinding.GetBaseType(symbol);
             if (sbBaseType != null)
             {
-                Debug.Assert(symbol.BaseType != null,
-                    $"SemanticBinding has BaseType '{sbBaseType.Name}' for '{symbol.Name}' but Symbol.BaseType is null (materialization missed)");
+                if (symbol.BaseType == null)
+                {
+                    throw new InvalidOperationException(
+                        $"SemanticBinding has BaseType '{sbBaseType.Name}' for '{symbol.Name}' but Symbol.BaseType is null (materialization missed). " +
+                        "This is a compiler bug - please report it.");
+                }
             }
 
             var sbInterfaces = semanticBinding.GetInterfaces(symbol);
             if (sbInterfaces != null && sbInterfaces.Count > 0)
             {
-                Debug.Assert(symbol.Interfaces.Count >= sbInterfaces.Count,
-                    $"SemanticBinding has {sbInterfaces.Count} interface(s) for '{symbol.Name}' but Symbol.Interfaces has {symbol.Interfaces.Count} (materialization missed)");
+                if (symbol.Interfaces.Count < sbInterfaces.Count)
+                {
+                    throw new InvalidOperationException(
+                        $"SemanticBinding has {sbInterfaces.Count} interface(s) for '{symbol.Name}' but Symbol.Interfaces has {symbol.Interfaces.Count} (materialization missed). " +
+                        "This is a compiler bug - please report it.");
+                }
             }
         }
     }
@@ -61,7 +74,6 @@ internal static class DualWriteAssertions
     /// Verify that after MaterializeCodeGenInfo(), Symbol.CodeGenInfo properties are
     /// consistent with SemanticBinding stores.
     /// </summary>
-    [Conditional("DEBUG")]
     internal static void AssertCodeGenInfoConsistency(SymbolTable symbolTable, SemanticBinding semanticBinding)
     {
         foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols())
@@ -75,16 +87,24 @@ internal static class DualWriteAssertions
             if (symbol.CodeGenInfo != null)
             {
                 var bindingCodeGenInfo = semanticBinding.GetCodeGenInfo(symbol);
-                Debug.Assert(bindingCodeGenInfo != null,
-                    $"Symbol '{symbol.Name}' has CodeGenInfo but SemanticBinding.GetCodeGenInfo() returned null (materialization inconsistency)");
+                if (bindingCodeGenInfo == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Symbol '{symbol.Name}' has CodeGenInfo but SemanticBinding.GetCodeGenInfo() returned null (materialization inconsistency). " +
+                        "This is a compiler bug - please report it.");
+                }
             }
 
             // Reverse: SemanticBinding → Symbol (catches materialization failures)
             var sbCodeGenInfo = semanticBinding.GetCodeGenInfo(symbol);
             if (sbCodeGenInfo != null)
             {
-                Debug.Assert(symbol.CodeGenInfo != null,
-                    $"SemanticBinding has CodeGenInfo for '{symbol.Name}' but Symbol.CodeGenInfo is null (materialization missed)");
+                if (symbol.CodeGenInfo == null)
+                {
+                    throw new InvalidOperationException(
+                        $"SemanticBinding has CodeGenInfo for '{symbol.Name}' but Symbol.CodeGenInfo is null (materialization missed). " +
+                        "This is a compiler bug - please report it.");
+                }
             }
         }
     }
@@ -95,7 +115,6 @@ internal static class DualWriteAssertions
     /// Only checks global-scope variables (fields, module-level vars/consts). Local variables
     /// and parameters are scoped and not accessible from the global scope.
     /// </summary>
-    [Conditional("DEBUG")]
     internal static void AssertVariableTypeConsistency(SymbolTable symbolTable, SemanticBinding semanticBinding)
     {
         foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<VariableSymbol>())
@@ -109,16 +128,24 @@ internal static class DualWriteAssertions
             if (symbol.Type != SemanticType.Unknown)
             {
                 var bindingType = semanticBinding.GetVariableType(symbol);
-                Debug.Assert(bindingType != SemanticType.Unknown,
-                    $"VariableSymbol '{symbol.Name}' has Type '{symbol.Type.GetDisplayName()}' but SemanticBinding.GetVariableType() returned Unknown (materialization inconsistency)");
+                if (bindingType == SemanticType.Unknown)
+                {
+                    throw new InvalidOperationException(
+                        $"VariableSymbol '{symbol.Name}' has Type '{symbol.Type.GetDisplayName()}' but SemanticBinding.GetVariableType() returned Unknown (materialization inconsistency). " +
+                        "This is a compiler bug - please report it.");
+                }
             }
 
             // Reverse: SemanticBinding → Symbol (catches materialization failures)
             var sbType = semanticBinding.GetVariableType(symbol);
             if (sbType != SemanticType.Unknown)
             {
-                Debug.Assert(symbol.Type != SemanticType.Unknown,
-                    $"SemanticBinding has Type '{sbType.GetDisplayName()}' for '{symbol.Name}' but Symbol.Type is Unknown (materialization missed)");
+                if (symbol.Type == SemanticType.Unknown)
+                {
+                    throw new InvalidOperationException(
+                        $"SemanticBinding has Type '{sbType.GetDisplayName()}' for '{symbol.Name}' but Symbol.Type is Unknown (materialization missed). " +
+                        "This is a compiler bug - please report it.");
+                }
             }
         }
 
@@ -136,16 +163,24 @@ internal static class DualWriteAssertions
                 if (field.Type != SemanticType.Unknown)
                 {
                     var bindingType = semanticBinding.GetVariableType(field);
-                    Debug.Assert(bindingType != SemanticType.Unknown,
-                        $"Field '{typeSymbol.Name}.{field.Name}' has Type '{field.Type.GetDisplayName()}' but SemanticBinding.GetVariableType() returned Unknown (materialization inconsistency)");
+                    if (bindingType == SemanticType.Unknown)
+                    {
+                        throw new InvalidOperationException(
+                            $"Field '{typeSymbol.Name}.{field.Name}' has Type '{field.Type.GetDisplayName()}' but SemanticBinding.GetVariableType() returned Unknown (materialization inconsistency). " +
+                            "This is a compiler bug - please report it.");
+                    }
                 }
 
                 // Reverse: SemanticBinding → Symbol (catches materialization failures)
                 var sbFieldType = semanticBinding.GetVariableType(field);
                 if (sbFieldType != SemanticType.Unknown)
                 {
-                    Debug.Assert(field.Type != SemanticType.Unknown,
-                        $"SemanticBinding has Type '{sbFieldType.GetDisplayName()}' for field '{typeSymbol.Name}.{field.Name}' but Symbol.Type is Unknown (materialization missed)");
+                    if (field.Type == SemanticType.Unknown)
+                    {
+                        throw new InvalidOperationException(
+                            $"SemanticBinding has Type '{sbFieldType.GetDisplayName()}' for field '{typeSymbol.Name}.{field.Name}' but Symbol.Type is Unknown (materialization missed). " +
+                            "This is a compiler bug - please report it.");
+                    }
                 }
             }
         }

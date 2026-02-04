@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 
@@ -42,7 +41,10 @@ namespace Sharpy.Compiler.Semantic;
 /// </remarks>
 public class SemanticBinding
 {
+    // Logger kept for backwards compatibility but no longer used after freeze violations became exceptions
+#pragma warning disable IDE0052 // Remove unread private member
     private readonly ICompilerLogger _logger;
+#pragma warning restore IDE0052
 
     public SemanticBinding() : this(NullLogger.Instance) { }
 
@@ -85,15 +87,15 @@ public class SemanticBinding
     private bool _codeGenInfoFrozen;
 
     /// <summary>
-    /// In DEBUG builds, fires Debug.Fail when a frozen store is written to.
-    /// This makes freeze violations immediately visible during development
-    /// rather than hiding behind NullLogger.
+    /// Throws when a frozen store is written to after the corresponding phase has completed.
+    /// This is always active (not DEBUG-only) to catch phase violations in production.
     /// </summary>
-    [Conditional("DEBUG")]
     private static void AssertNotFrozen(string storeName, string symbolName)
     {
-        Debug.Fail($"SemanticBinding freeze violation: {storeName} written after freeze for symbol '{symbolName}'. " +
-                   "This indicates a phase ordering bug — data was written after the phase boundary that froze this store.");
+        throw new InvalidOperationException(
+            $"SemanticBinding freeze violation: attempted to write {storeName} for symbol '{symbolName}' after freeze. " +
+            "This is a compiler bug — data was written after the phase boundary that froze this store. " +
+            "Please report this issue.");
     }
 
     /// <summary>
@@ -124,8 +126,6 @@ public class SemanticBinding
         if (_codeGenInfoFrozen)
         {
             AssertNotFrozen("CodeGenInfo", symbol.Name);
-            _logger.LogWarning($"SetCodeGenInfo called after freeze for symbol '{symbol.Name}'", 0, 0);
-            return;
         }
         _codeGenInfo[symbol] = info;
     }
@@ -161,8 +161,6 @@ public class SemanticBinding
         if (_variableTypesFrozen)
         {
             AssertNotFrozen("VariableTypes", symbol.Name);
-            _logger.LogWarning($"SetVariableType called after freeze for symbol '{symbol.Name}'", 0, 0);
-            return;
         }
         _variableTypes[symbol] = type;
     }
@@ -193,8 +191,6 @@ public class SemanticBinding
         if (_inheritanceFrozen)
         {
             AssertNotFrozen("Inheritance", symbol.Name);
-            _logger.LogWarning($"SetBaseType called after freeze for symbol '{symbol.Name}'", 0, 0);
-            return;
         }
         _baseTypes[symbol] = baseType;
     }
@@ -217,8 +213,6 @@ public class SemanticBinding
         if (_inheritanceFrozen)
         {
             AssertNotFrozen("Inheritance", symbol.Name);
-            _logger.LogWarning($"AddInterface called after freeze for symbol '{symbol.Name}'", 0, 0);
-            return;
         }
         var queue = _interfaces.GetOrAdd(symbol, _ => new ConcurrentQueue<TypeSymbol>());
         queue.Enqueue(iface);

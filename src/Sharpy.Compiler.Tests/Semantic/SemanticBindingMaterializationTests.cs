@@ -451,58 +451,45 @@ public class SemanticBindingMaterializationTests
     #region Freeze Violation Detection
 
     [Fact]
-    public void SetCodeGenInfo_AfterFreeze_FiresDebugAssert()
+    public void SetCodeGenInfo_AfterFreeze_Throws()
     {
-        var logger = new TestLogger();
-        var binding = new SemanticBinding(logger);
+        var binding = new SemanticBinding();
         var symbol = new FunctionSymbol { Name = "test_fn", Kind = SymbolKind.Function };
 
         binding.SetCodeGenInfo(symbol, new CodeGenInfo { CSharpName = "TestFn", OriginalName = "test_fn" });
         binding.MaterializeCodeGenInfo();
         binding.FreezeCodeGenInfo();
 
-#if DEBUG
-        // In DEBUG builds, Debug.Fail fires as an exception before the logger is reached
-        var ex = Assert.ThrowsAny<Exception>(() =>
+        // Freeze violations now always throw (in both Debug and Release builds)
+        var ex = Assert.Throws<InvalidOperationException>(() =>
             binding.SetCodeGenInfo(symbol, new CodeGenInfo { CSharpName = "TestFn2", OriginalName = "test_fn" }));
         ex.Message.Should().Contain("freeze violation");
-#else
-        // In Release builds, Debug.Fail is compiled out; the logger warning fires instead
-        binding.SetCodeGenInfo(symbol, new CodeGenInfo { CSharpName = "TestFn2", OriginalName = "test_fn" });
-        logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("test_fn"));
-        // Write must be prevented — value should remain "TestFn"
-        binding.GetCodeGenInfo(symbol)!.CSharpName.Should().Be("TestFn");
-#endif
+        ex.Message.Should().Contain("CodeGenInfo");
+        ex.Message.Should().Contain("test_fn");
     }
 
     [Fact]
-    public void SetVariableType_AfterFreeze_FiresDebugAssert()
+    public void SetVariableType_AfterFreeze_Throws()
     {
-        var logger = new TestLogger();
-        var binding = new SemanticBinding(logger);
+        var binding = new SemanticBinding();
         var symbol = new VariableSymbol { Name = "x", Kind = SymbolKind.Variable };
 
         binding.SetVariableType(symbol, SemanticType.Int);
         binding.MaterializeVariableTypes();
         binding.FreezeVariableTypes();
 
-#if DEBUG
-        var ex = Assert.ThrowsAny<Exception>(() =>
+        // Freeze violations now always throw (in both Debug and Release builds)
+        var ex = Assert.Throws<InvalidOperationException>(() =>
             binding.SetVariableType(symbol, SemanticType.Str));
         ex.Message.Should().Contain("freeze violation");
-#else
-        binding.SetVariableType(symbol, SemanticType.Str);
-        logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("x"));
-        // Write must be prevented — type should remain Int
-        binding.GetVariableType(symbol).Should().Be(SemanticType.Int);
-#endif
+        ex.Message.Should().Contain("VariableTypes");
+        ex.Message.Should().Contain("x");
     }
 
     [Fact]
-    public void SetBaseType_AfterFreeze_FiresDebugAssert()
+    public void SetBaseType_AfterFreeze_Throws()
     {
-        var logger = new TestLogger();
-        var binding = new SemanticBinding(logger);
+        var binding = new SemanticBinding();
         var child = new TypeSymbol { Name = "Child", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
         var parent = new TypeSymbol { Name = "Parent", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
         var otherParent = new TypeSymbol { Name = "OtherParent", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
@@ -511,55 +498,30 @@ public class SemanticBindingMaterializationTests
         binding.MaterializeInheritance();
         binding.FreezeInheritance();
 
-#if DEBUG
-        var ex = Assert.ThrowsAny<Exception>(() =>
+        // Freeze violations now always throw (in both Debug and Release builds)
+        var ex = Assert.Throws<InvalidOperationException>(() =>
             binding.SetBaseType(child, otherParent));
         ex.Message.Should().Contain("freeze violation");
-#else
-        binding.SetBaseType(child, otherParent);
-        logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("Child"));
-        // Write must be prevented — base type should remain Parent
-        binding.GetBaseType(child).Should().BeSameAs(parent);
-#endif
+        ex.Message.Should().Contain("Inheritance");
+        ex.Message.Should().Contain("Child");
     }
 
     [Fact]
-    public void AddInterface_AfterFreeze_FiresDebugAssert()
+    public void AddInterface_AfterFreeze_Throws()
     {
-        var logger = new TestLogger();
-        var binding = new SemanticBinding(logger);
+        var binding = new SemanticBinding();
         var classSymbol = new TypeSymbol { Name = "MyClass", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
         var iface = new TypeSymbol { Name = "IFoo", Kind = SymbolKind.Type, TypeKind = TypeKind.Interface };
 
         binding.MaterializeInheritance();
         binding.FreezeInheritance();
 
-#if DEBUG
-        var ex = Assert.ThrowsAny<Exception>(() =>
+        // Freeze violations now always throw (in both Debug and Release builds)
+        var ex = Assert.Throws<InvalidOperationException>(() =>
             binding.AddInterface(classSymbol, iface));
         ex.Message.Should().Contain("freeze violation");
-#else
-        binding.AddInterface(classSymbol, iface);
-        logger.Warnings.Should().Contain(w => w.Contains("freeze") && w.Contains("MyClass"));
-        // Write must be prevented — no interfaces should be added
-        binding.GetInterfaces(classSymbol).Should().BeNull();
-#endif
-    }
-
-    private class TestLogger : Logging.ICompilerLogger
-    {
-        public List<string> Warnings { get; } = new();
-        public void LogTokenRead(string tokenType, int line, int column, string value) { }
-        public void LogIndentChange(int oldLevel, int newLevel) { }
-        public void LogParseEnter(string rule, int tokenPosition) { }
-        public void LogParseExit(string rule, bool success) { }
-        public void LogError(string message, int line, int column) { }
-        public void LogWarning(string message, int line, int column) => Warnings.Add(message);
-        public void LogInfo(string message) { }
-        public void LogDebug(string message) { }
-        public void LogTrace(string message) { }
-        public void LogMetrics(string metricsOutput) { }
-        public bool IsEnabled(Logging.CompilerLogLevel level) => true;
+        ex.Message.Should().Contain("Inheritance");
+        ex.Message.Should().Contain("MyClass");
     }
 
     #endregion
