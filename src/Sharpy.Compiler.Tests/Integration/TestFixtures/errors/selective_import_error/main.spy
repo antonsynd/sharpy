@@ -1,0 +1,5 @@
+# Try to import a symbol that doesn't exist in the module
+from lib import public_func, nonexistent_func
+
+def main():
+    print(public_func())

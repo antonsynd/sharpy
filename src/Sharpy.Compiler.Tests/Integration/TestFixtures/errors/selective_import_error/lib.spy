@@ -1,0 +1,5 @@
+def public_func() -> int:
+    return 1
+
+def _private_func() -> int:
+    return 2
