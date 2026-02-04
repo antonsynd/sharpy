@@ -33,6 +33,14 @@ public abstract record Symbol
     public string? OriginalModule { get; init; }
 
     /// <summary>
+    /// Indicates if this is an error recovery symbol created when imports fail.
+    /// Error recovery symbols suppress cascading errors - when TypeChecker encounters
+    /// an error recovery symbol, it skips reporting "undefined identifier" errors
+    /// since the root cause (failed import) was already reported.
+    /// </summary>
+    public bool IsErrorRecovery { get; init; }
+
+    /// <summary>
     /// Code generation information computed during semantic analysis.
     /// Null until CodeGenInfo computation pass runs.
     /// </summary>

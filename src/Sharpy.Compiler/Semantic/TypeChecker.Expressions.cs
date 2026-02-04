@@ -115,6 +115,14 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // Check if this is an error recovery symbol (from a failed import).
+        // If so, suppress cascading errors - the import error was already reported.
+        if (symbol.IsErrorRecovery)
+        {
+            _semanticInfo.SetIdentifierSymbol(id, symbol);
+            return SemanticType.Unknown;
+        }
+
         _semanticInfo.SetIdentifierSymbol(id, symbol);
 
         // Check if this identifier has a narrowed type in the current context
@@ -964,6 +972,12 @@ internal partial class TypeChecker
             // UNLESS it's a variable with a FunctionType (e.g., a parameter with type (T) -> U)
             if (symbol != null && funcSymbol == null && symbol is not TypeSymbol)
             {
+                // Check if it's an error recovery symbol - suppress cascading errors
+                if (symbol.IsErrorRecovery)
+                {
+                    return SemanticType.Unknown;
+                }
+
                 // Check if it's a variable with a FunctionType - those are callable
                 if (symbol is VariableSymbol varSym && GetVariableType(varSym) is FunctionType)
                 {

@@ -32,4 +32,10 @@ internal class ModuleInfo
     /// Used for DefiningModule tracking in re-exported symbols.
     /// </summary>
     public string? CanonicalModuleName { get; init; }
+
+    /// <summary>
+    /// Indicates if this is an error recovery module created when the actual module couldn't be found.
+    /// Error recovery modules contain placeholder symbols that suppress cascading errors in TypeChecker.
+    /// </summary>
+    public bool IsErrorRecovery { get; init; } = false;
 }

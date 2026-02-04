@@ -1,4 +1,2 @@
-# Import resolution error
+# Import resolution error - with error recovery, the cascading "undefined" error is suppressed
 Cannot find module
-# Type checking error - imported symbol is undefined since import failed
-Undefined

@@ -247,6 +247,36 @@ internal class ImportResolver
                 _logger.LogDebug($"[ImportResolver]   Module '{fromImport.Module}' not found");
                 AddError($"Cannot find module '{fromImport.Module}'",
                     fromImport.LineStart, fromImport.ColumnStart, code: DiagnosticCodes.Semantic.ModuleNotFound);
+
+                // Create error recovery module with placeholder symbols for each imported name
+                // This prevents cascading "undefined identifier" errors in TypeChecker
+                if (!fromImport.ImportAll && fromImport.Names.Length > 0)
+                {
+                    var errorRecoveryModule = CreateErrorRecoveryModule(
+                        fromImport.Module, fromImport.LineStart, fromImport.ColumnStart);
+
+                    foreach (var importAlias in fromImport.Names)
+                    {
+                        // The symbol name is the target (alias if present, otherwise original)
+                        var targetName = importAlias.AsName ?? importAlias.Name;
+                        var errorSymbol = CreateErrorRecoverySymbol(
+                            targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart);
+                        // Store by ORIGINAL name since lookup happens by original name
+                        // (the IntegrationTestBase.ResolveImports looks up by importAlias.Name)
+                        errorRecoveryModule.Exports[importAlias.Name] = errorSymbol;
+                        _logger.LogDebug($"[ImportResolver]   Created error recovery symbol: {targetName} (stored as {importAlias.Name})");
+                    }
+
+                    // Return the error recovery module so symbols get registered
+                    return new ModuleInfo
+                    {
+                        Path = $"<error-recovery:{fromImport.Module}>",
+                        Module = null!,
+                        ExportedSymbols = errorRecoveryModule.Exports,
+                        IsErrorRecovery = true
+                    };
+                }
+
                 return null;
             }
 
@@ -738,5 +768,53 @@ internal class ImportResolver
             ? $"{message} (in {Path.GetFileName(_currentModulePath)})"
             : message;
         _diagnostics.AddError(errorMessage, line, column, _currentModulePath, code, CompilerPhase.ImportResolution);
+    }
+
+    /// <summary>
+    /// Creates an error recovery symbol for a failed import.
+    /// Error recovery symbols are placeholders that prevent cascading "undefined identifier"
+    /// errors in the TypeChecker when the root cause (import failure) has already been reported.
+    /// </summary>
+    /// <param name="name">The name of the imported symbol that couldn't be resolved</param>
+    /// <param name="moduleName">The module name that failed to resolve</param>
+    /// <param name="line">Declaration line for diagnostics</param>
+    /// <param name="column">Declaration column for diagnostics</param>
+    /// <returns>A VariableSymbol marked as error recovery with UnknownType</returns>
+    private static Symbol CreateErrorRecoverySymbol(string name, string moduleName, int? line, int? column)
+    {
+        // Use VariableSymbol with UnknownType as a safe placeholder
+        // This allows the symbol to be found in the symbol table without crashing
+        // the TypeChecker, while IsErrorRecovery suppresses cascading error messages
+        return new VariableSymbol
+        {
+            Name = name,
+            Kind = SymbolKind.Variable,
+            Type = SemanticType.Unknown,
+            IsErrorRecovery = true,
+            OriginalModule = moduleName,
+            DeclarationLine = line,
+            DeclarationColumn = column
+        };
+    }
+
+    /// <summary>
+    /// Creates an error recovery ModuleSymbol for a module that couldn't be loaded.
+    /// </summary>
+    /// <param name="moduleName">The module name that failed to resolve</param>
+    /// <param name="line">Declaration line for diagnostics</param>
+    /// <param name="column">Declaration column for diagnostics</param>
+    /// <returns>A ModuleSymbol marked as error recovery</returns>
+    private static ModuleSymbol CreateErrorRecoveryModule(string moduleName, int? line, int? column)
+    {
+        return new ModuleSymbol
+        {
+            Name = moduleName,
+            Kind = SymbolKind.Module,
+            FilePath = "<error-recovery>",
+            Exports = new Dictionary<string, Symbol>(),
+            IsErrorRecovery = true,
+            DeclarationLine = line,
+            DeclarationColumn = column
+        };
     }
 }

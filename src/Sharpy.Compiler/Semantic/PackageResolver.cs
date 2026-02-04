@@ -124,6 +124,11 @@ internal class PackageResolver
         if (importedModule == null)
             return;
 
+        // Don't re-export error recovery symbols - they're placeholders for failed imports
+        // and should only be used for suppressing cascading errors, not for actual exports
+        if (importedModule.IsErrorRecovery)
+            return;
+
         if (fromImport.ImportAll)
         {
             // from X import * - re-export all public symbols
