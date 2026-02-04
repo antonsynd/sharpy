@@ -235,6 +235,67 @@ public class ValidationPipelineTests
         Assert.Single(executionOrder);
     }
 
+    [Fact]
+    public void Validate_ExceptionThrown_IncludesExceptionTypeInDiagnostic()
+    {
+        var pipeline = new ValidationPipeline();
+        var exception = new NullReferenceException("Test null reference");
+        pipeline.AddValidator(new ExceptionThrowingValidator("BrokenValidator", 100, exception));
+
+        var context = CreateTestContext();
+        context.ContinueAfterErrors = true;
+        context.MaxErrors = 100;
+
+        // Should not throw - exception should be caught and reported as diagnostic
+        var result = pipeline.Validate(CreateEmptyModule(), context);
+
+        // Verify diagnostic was added
+        Assert.True(result.HasErrors);
+        Assert.Equal(1, result.ErrorCount);
+
+        // Verify the diagnostic message includes the exception type name
+        var errors = result.GetErrors().ToList();
+        Assert.Single(errors);
+        Assert.Contains("NullReferenceException", errors[0].Message);
+        Assert.Contains("BrokenValidator", errors[0].Message);
+    }
+
+    [Fact]
+    public void Validate_ExceptionThrown_ContinuesToNextValidator()
+    {
+        var executionOrder = new List<string>();
+        var pipeline = new ValidationPipeline();
+
+        pipeline.AddValidator(new ExceptionThrowingValidator("BrokenValidator", 100, new InvalidOperationException("Test")));
+        pipeline.AddValidator(new OrderTrackingValidator("SecondValidator", 200, executionOrder));
+
+        var context = CreateTestContext();
+        context.ContinueAfterErrors = true;
+        context.MaxErrors = 100;
+
+        pipeline.Validate(CreateEmptyModule(), context);
+
+        // Second validator should still run after exception in first
+        Assert.Single(executionOrder);
+        Assert.Equal("SecondValidator", executionOrder[0]);
+    }
+
+    [Fact]
+    public void Validate_ExceptionThrown_UsesCorrectDiagnosticCode()
+    {
+        var pipeline = new ValidationPipeline();
+        pipeline.AddValidator(new ExceptionThrowingValidator("Validator", 100, new ArgumentException("Test")));
+
+        var context = CreateTestContext();
+        context.ContinueAfterErrors = true;
+
+        var result = pipeline.Validate(CreateEmptyModule(), context);
+
+        var errors = result.GetErrors().ToList();
+        Assert.Single(errors);
+        Assert.Equal(DiagnosticCodes.Infrastructure.CompilationFailed, errors[0].Code);
+    }
+
     // Test helper classes
     private class TestValidator : ISemanticValidator
     {
@@ -293,6 +354,26 @@ public class ValidationPipelineTests
             {
                 context.Diagnostics.AddError($"Error {i}");
             }
+        }
+    }
+
+    private class ExceptionThrowingValidator : ISemanticValidator
+    {
+        private readonly Exception _exceptionToThrow;
+
+        public string Name { get; }
+        public int Order { get; }
+
+        public ExceptionThrowingValidator(string name, int order, Exception exceptionToThrow)
+        {
+            Name = name;
+            Order = order;
+            _exceptionToThrow = exceptionToThrow;
+        }
+
+        public void Validate(Module module, SemanticContext context)
+        {
+            throw _exceptionToThrow;
         }
     }
 }

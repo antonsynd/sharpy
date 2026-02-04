@@ -93,9 +93,12 @@ internal class ValidationPipeline
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Validator {validator.Name} threw an exception: {ex.Message}", 0, 0);
+                // Log full exception including stack trace for debugging
+                _logger.LogError($"Validator {validator.Name} threw {ex.GetType().Name}: {ex}", 0, 0);
+
+                // Include exception type in diagnostic for identification
                 context.Diagnostics.AddError(
-                    $"Internal compiler error in {validator.Name}: {ex.Message}",
+                    $"Internal compiler error ({ex.GetType().Name}) in {validator.Name}: {ex.Message}",
                     code: DiagnosticCodes.Infrastructure.CompilationFailed,
                     phase: CompilerPhase.Validation);
             }

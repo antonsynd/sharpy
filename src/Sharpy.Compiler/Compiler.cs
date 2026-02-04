@@ -466,8 +466,15 @@ public class Compiler
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Compilation failed with exception: {ex.Message}", 0, 0);
-            diagnostics.AddError($"Compilation failed: {ex.Message}", filePath: filePath, code: DiagnosticCodes.Infrastructure.CompilationFailed);
+            // Log full exception including stack trace for debugging
+            _logger.LogError($"Compilation failed with {ex.GetType().Name}: {ex}", 0, 0);
+
+            // Create a user-facing error message that includes exception type for identification
+            var errorMessage = ex is InternalCompilerErrorException ice
+                ? $"Internal compiler error in {ice.Component} ({ex.GetType().Name}): {ex.Message}"
+                : $"Compilation failed ({ex.GetType().Name}): {ex.Message}";
+
+            diagnostics.AddError(errorMessage, filePath: filePath, code: DiagnosticCodes.Infrastructure.CompilationFailed);
             return new CompilationResult
             {
                 Success = false,
