@@ -1052,6 +1052,118 @@ def main():
         Assert.True(result3.Success, string.Join("; ", result3.Diagnostics.GetErrors().Select(e => e.Message)));
     }
 
+    [Fact]
+    public void IncrementalMode_NewFileAddition_BuildsSuccessfully()
+    {
+        // Test that adding a new file between builds works correctly
+
+        var mainFile = CreateTempFile("main.spy", @"
+def main():
+    print('hello')
+");
+
+        var config1 = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build with just main.spy
+        var result1 = compiler.CompileProject(config1);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Add a new file
+        var utilsFile = CreateTempFile("utils.spy", @"
+def greet() -> str:
+    return 'world'
+");
+
+        // Update main.spy to use the new file
+        File.WriteAllText(mainFile, @"
+from utils import greet
+
+def main():
+    print(greet())
+");
+
+        // Create new config with updated source files
+        var config2 = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, utilsFile },
+            Configuration = "Debug"
+        };
+
+        // Second build - should compile both files
+        var result2 = compiler.CompileProject(config2);
+        Assert.True(result2.Success, string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
+    }
+
+    [Fact]
+    public void IncrementalMode_FileRemoval_ErrorsCorrectly()
+    {
+        // Test that removing an imported module between builds errors correctly
+
+        var libFile = CreateTempFile("lib.spy", @"
+def helper() -> int:
+    return 42
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from lib import helper
+
+def main():
+    print(helper())
+");
+
+        var config1 = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, libFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build succeeds
+        var result1 = compiler.CompileProject(config1);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Remove lib.spy
+        File.Delete(libFile);
+
+        // Create new config without lib.spy
+        var config2 = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile },
+            Configuration = "Debug"
+        };
+
+        // Second build should fail because lib module no longer exists
+        var result2 = compiler.CompileProject(config2);
+        Assert.False(result2.Success, "Expected compilation to fail when imported module is removed");
+
+        // Should mention the missing module
+        var errorMessages = string.Join(" ", result2.Diagnostics.GetErrors().Select(e => e.Message.ToLower()));
+        Assert.True(
+            errorMessages.Contains("lib") || errorMessages.Contains("not found") ||
+            errorMessages.Contains("cannot find") || errorMessages.Contains("module"),
+            $"Expected error about missing lib module, got: {errorMessages}");
+    }
+
     #endregion
 
     #region Compiler Version Cache Invalidation Tests
