@@ -188,7 +188,8 @@ public partial class Parser
             _lastLoopPosition = -1;
             do
             {
-                if (!CheckLoopProgress()) break;
+                if (!CheckLoopProgress())
+                    break;
 
                 typeArgs.Add(ParseTypeAnnotation());
 
@@ -327,7 +328,8 @@ public partial class Parser
             _lastLoopPosition = -1;
             do
             {
-                if (!CheckLoopProgress()) break;
+                if (!CheckLoopProgress())
+                    break;
 
                 types.Add(ParseTypeAnnotation());
 
@@ -545,39 +547,51 @@ public partial class Parser
         // Consume FStringStart
         Expect(TokenType.FStringStart);
 
-        while (Current.Type != TokenType.FStringEnd && Current.Type != TokenType.Eof)
+        var savedLoopPosition = _lastLoopPosition;
+        _lastLoopPosition = -1;
+        try
         {
-            if (Current.Type == TokenType.FStringText)
+            while (Current.Type != TokenType.FStringEnd && Current.Type != TokenType.Eof)
             {
-                // Text segment
-                parts.Add(new FStringPart { Text = Current.Value, Expression = null });
-                Advance();
-            }
-            else if (Current.Type == TokenType.FStringExprStart)
-            {
-                // Expression segment
-                Advance(); // Skip FStringExprStart
+                if (!CheckLoopProgress())
+                    break;
 
-                // Parse the expression (tokens are already emitted by lexer)
-                var expr = ParseExpression();
-
-                // Check for optional format spec token
-                string? formatSpec = null;
-                if (Current.Type == TokenType.FStringFormatSpec)
+                if (Current.Type == TokenType.FStringText)
                 {
-                    formatSpec = Current.Value;
+                    // Text segment
+                    parts.Add(new FStringPart { Text = Current.Value, Expression = null });
                     Advance();
                 }
+                else if (Current.Type == TokenType.FStringExprStart)
+                {
+                    // Expression segment
+                    Advance(); // Skip FStringExprStart
 
-                parts.Add(new FStringPart { Text = null, Expression = expr, FormatSpec = formatSpec });
+                    // Parse the expression (tokens are already emitted by lexer)
+                    var expr = ParseExpression();
 
-                // Expect FStringExprEnd
-                Expect(TokenType.FStringExprEnd);
+                    // Check for optional format spec token
+                    string? formatSpec = null;
+                    if (Current.Type == TokenType.FStringFormatSpec)
+                    {
+                        formatSpec = Current.Value;
+                        Advance();
+                    }
+
+                    parts.Add(new FStringPart { Text = null, Expression = expr, FormatSpec = formatSpec });
+
+                    // Expect FStringExprEnd
+                    Expect(TokenType.FStringExprEnd);
+                }
+                else
+                {
+                    throw ReportError($"Unexpected token in f-string: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken);
+                }
             }
-            else
-            {
-                throw ReportError($"Unexpected token in f-string: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken);
-            }
+        }
+        finally
+        {
+            _lastLoopPosition = savedLoopPosition;
         }
 
         var endLine = Current.Line;

@@ -211,5 +211,6 @@ public static class DiagnosticCodes
         public const string FileReadError = "SHP0903";
         public const string InvariantViolation = "SHP0904";
         public const string TooManyErrors = "SHP0905";
+        public const string ParserLoopStall = "SHP0906";
     }
 }

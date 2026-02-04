@@ -225,58 +225,59 @@ public partial class Parser
         _lastLoopPosition = -1;
         try
         {
-        while (true)
-        {
-            if (!CheckLoopProgress()) break;
-
-            if (Current.Type == TokenType.For)
+            while (true)
             {
-                var startLine = Current.Line;
-                var startColumn = Current.Column;
-                var startToken = Current;
-                Advance();
+                if (!CheckLoopProgress())
+                    break;
 
-                // Parse target (single identifier for now)
-                var target = ParseForTarget();
-
-                Expect(TokenType.In);
-                var iterator = ParseLogicalOr(); // Use lower precedence to avoid consuming too much
-
-                clauses.Add(new ForClause
+                if (Current.Type == TokenType.For)
                 {
-                    Target = target,
-                    Iterator = iterator,
-                    LineStart = startLine,
-                    ColumnStart = startColumn,
-                    LineEnd = Current.Line,
-                    ColumnEnd = Current.Column,
-                    Span = CombineSpans(GetSpanFromToken(startToken), iterator.Span)
-                });
-            }
-            else if (Current.Type == TokenType.If)
-            {
-                var startLine = Current.Line;
-                var startColumn = Current.Column;
-                var startToken = Current;
-                Advance();
+                    var startLine = Current.Line;
+                    var startColumn = Current.Column;
+                    var startToken = Current;
+                    Advance();
 
-                var condition = ParseLogicalOr(); // Use lower precedence to avoid consuming too much
+                    // Parse target (single identifier for now)
+                    var target = ParseForTarget();
 
-                clauses.Add(new IfClause
+                    Expect(TokenType.In);
+                    var iterator = ParseLogicalOr(); // Use lower precedence to avoid consuming too much
+
+                    clauses.Add(new ForClause
+                    {
+                        Target = target,
+                        Iterator = iterator,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Current.Line,
+                        ColumnEnd = Current.Column,
+                        Span = CombineSpans(GetSpanFromToken(startToken), iterator.Span)
+                    });
+                }
+                else if (Current.Type == TokenType.If)
                 {
-                    Condition = condition,
-                    LineStart = startLine,
-                    ColumnStart = startColumn,
-                    LineEnd = Current.Line,
-                    ColumnEnd = Current.Column,
-                    Span = CombineSpans(GetSpanFromToken(startToken), condition.Span)
-                });
+                    var startLine = Current.Line;
+                    var startColumn = Current.Column;
+                    var startToken = Current;
+                    Advance();
+
+                    var condition = ParseLogicalOr(); // Use lower precedence to avoid consuming too much
+
+                    clauses.Add(new IfClause
+                    {
+                        Condition = condition,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Current.Line,
+                        ColumnEnd = Current.Column,
+                        Span = CombineSpans(GetSpanFromToken(startToken), condition.Span)
+                    });
+                }
+                else
+                {
+                    break;
+                }
             }
-            else
-            {
-                break;
-            }
-        }
         }
         finally
         {
@@ -554,7 +555,8 @@ public partial class Parser
         _lastLoopPosition = -1;
         do
         {
-            if (!CheckLoopProgress()) break;
+            if (!CheckLoopProgress())
+                break;
 
             var aliasStartLine = Current.Line;
             var aliasStartColumn = Current.Column;
@@ -625,7 +627,8 @@ public partial class Parser
             _lastLoopPosition = -1;
             do
             {
-                if (!CheckLoopProgress()) break;
+                if (!CheckLoopProgress())
+                    break;
 
                 var aliasStartLine = Current.Line;
                 var aliasStartColumn = Current.Column;
@@ -725,7 +728,8 @@ public partial class Parser
         _lastLoopPosition = -1;
         while (Current.Type != TokenType.Dedent && !IsAtEnd)
         {
-            if (!CheckLoopProgress()) break;
+            if (!CheckLoopProgress())
+                break;
 
             SkipNewlines();
             if (Current.Type == TokenType.Dedent || IsAtEnd)
@@ -763,7 +767,8 @@ public partial class Parser
         _lastLoopPosition = -1;
         do
         {
-            if (!CheckLoopProgress()) break;
+            if (!CheckLoopProgress())
+                break;
 
             var startLine = Current.Line;
             var startColumn = Current.Column;

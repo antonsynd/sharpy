@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
@@ -106,7 +107,8 @@ public partial class Parser
         _lastLoopPosition = -1;
         while (!IsAtEnd)
         {
-            if (!CheckLoopProgress()) break;
+            if (!CheckLoopProgress())
+                break;
 
             SkipNewlines();
             if (IsAtEnd)
@@ -167,7 +169,7 @@ public partial class Parser
     /// } while (condition);
     /// </code>
     /// </summary>
-    private bool CheckLoopProgress()
+    private bool CheckLoopProgress([CallerMemberName] string? callerName = null)
     {
         // Periodically check for cancellation (every N iterations to minimize overhead)
         if (++_cancellationCheckCounter >= CancellationCheckInterval)
@@ -180,9 +182,11 @@ public partial class Parser
         {
             // No progress - force advance to break potential infinite loop
             _diagnostics.AddWarning(
-                $"Parser detected no progress in loop at position {_position} (token: {Current.Type}), forcing advance",
+                $"Parser loop stall in {callerName} at position {_position} " +
+                $"(token: {Current.Type} '{TruncateValue(Current.Value, 20)}' " +
+                $"at line {Current.Line}:{Current.Column})",
                 Current.Line, Current.Column,
-                code: DiagnosticCodes.Infrastructure.InvariantViolation,
+                code: DiagnosticCodes.Infrastructure.ParserLoopStall,
                 phase: CompilerPhase.Parser);
 
             if (!IsAtEnd)
@@ -192,6 +196,18 @@ public partial class Parser
         }
         _lastLoopPosition = _position;
         return true;
+    }
+
+    /// <summary>
+    /// Truncates a string value for diagnostic display.
+    /// </summary>
+    private static string TruncateValue(string value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+        if (value.Length <= maxLength)
+            return value;
+        return value.Substring(0, maxLength - 3) + "...";
     }
 
     /// <summary>

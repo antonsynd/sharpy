@@ -627,172 +627,174 @@ public partial class Parser
         {
             while (true)
             {
-                if (!CheckLoopProgress()) break;
+                if (!CheckLoopProgress())
+                    break;
 
                 if (Current.Type == TokenType.Dot || Current.Type == TokenType.NullConditional)
-            {
-                var isNullConditional = Current.Type == TokenType.NullConditional;
-                Advance();
-
-                var memberToken = Current;
-                var member = ExpectIdentifierOrKeyword();
-
-                expr = new MemberAccess
                 {
-                    Object = expr,
-                    Member = member,
-                    IsNullConditional = isNullConditional,
-                    LineStart = expr.LineStart,
-                    ColumnStart = expr.ColumnStart,
-                    LineEnd = Previous.Line,
-                    ColumnEnd = Previous.Column + Previous.Value.Length,
-                    Span = CombineSpans(expr.Span, GetSpanFromToken(Previous))
-                };
-            }
-            else if (Current.Type == TokenType.LeftBracket)
-            {
-                var bracketToken = Current;
-                Advance();
-                var index = ParseSliceOrIndex();
-                Expect(TokenType.RightBracket);
-                var closeBracket = Previous;
+                    var isNullConditional = Current.Type == TokenType.NullConditional;
+                    Advance();
 
-                if (index is IndexAccess ia)
-                    expr = ia with
+                    var memberToken = Current;
+                    var member = ExpectIdentifierOrKeyword();
+
+                    expr = new MemberAccess
                     {
                         Object = expr,
+                        Member = member,
+                        IsNullConditional = isNullConditional,
                         LineStart = expr.LineStart,
                         ColumnStart = expr.ColumnStart,
                         LineEnd = Previous.Line,
                         ColumnEnd = Previous.Column + Previous.Value.Length,
-                        Span = CombineSpans(expr.Span, GetSpanFromToken(closeBracket))
+                        Span = CombineSpans(expr.Span, GetSpanFromToken(Previous))
                     };
-                else if (index is SliceAccess sa)
-                    expr = sa with
-                    {
-                        Object = expr,
-                        LineStart = expr.LineStart,
-                        ColumnStart = expr.ColumnStart,
-                        LineEnd = Previous.Line,
-                        ColumnEnd = Previous.Column + Previous.Value.Length,
-                        Span = CombineSpans(expr.Span, GetSpanFromToken(closeBracket))
-                    };
-            }
-            else if (Current.Type == TokenType.LeftParen)
-            {
-                Advance();
-                var args = new List<Expression>();
-                var kwargs = new List<KeywordArgument>();
-                var seenKeywordArg = false;
-
-                if (Current.Type != TokenType.RightParen)
-                {
-                    _lastLoopPosition = -1;
-                    do
-                    {
-                        if (!CheckLoopProgress()) break;
-
-                        // Check for keyword argument
-                        if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
-                        {
-                            seenKeywordArg = true;
-                            var kwargStartLine = Current.Line;
-                            var kwargStartColumn = Current.Column;
-                            var name = Current.Value;
-                            Advance();  // Skip name
-                            Advance();  // Skip =
-                            var value = ParseExpression();
-                            var kwargEndLine = Peek(-1).Line;
-                            var kwargEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
-
-                            kwargs.Add(new KeywordArgument
-                            {
-                                Name = name,
-                                Value = value,
-                                LineStart = kwargStartLine,
-                                ColumnStart = kwargStartColumn,
-                                LineEnd = kwargEndLine,
-                                ColumnEnd = kwargEndColumn
-                            });
-                        }
-                        else
-                        {
-                            if (seenKeywordArg)
-                            {
-                                throw ReportError("Positional argument cannot follow keyword argument", Current.Line, Current.Column, DiagnosticCodes.Parser.PositionalAfterKeyword);
-                            }
-                            args.Add(ParseExpression());
-                        }
-
-                        if (Current.Type == TokenType.Comma)
-                        {
-                            Advance();
-                            // Allow trailing comma: foo(1, 2, 3,)
-                            if (Current.Type == TokenType.RightParen)
-                                break;
-                        }
-                        else
-                            break;
-                    } while (true);
                 }
-
-                Expect(TokenType.RightParen);
-                var closeParen = Previous;
-
-                expr = new FunctionCall
+                else if (Current.Type == TokenType.LeftBracket)
                 {
-                    Function = expr,
-                    Arguments = args.ToImmutableArray(),
-                    KeywordArguments = kwargs.ToImmutableArray(),
-                    LineStart = expr.LineStart,
-                    ColumnStart = expr.ColumnStart,
-                    LineEnd = Previous.Line,
-                    ColumnEnd = Previous.Column + Previous.Value.Length,
-                    Span = CombineSpans(expr.Span, GetSpanFromToken(closeParen))
-                };
-            }
-            else if (Current.Type == TokenType.As)
-            {
-                // Type cast
-                Advance();
-                var targetType = ParseTypeAnnotation();
+                    var bracketToken = Current;
+                    Advance();
+                    var index = ParseSliceOrIndex();
+                    Expect(TokenType.RightBracket);
+                    var closeBracket = Previous;
 
-                expr = new TypeCast
+                    if (index is IndexAccess ia)
+                        expr = ia with
+                        {
+                            Object = expr,
+                            LineStart = expr.LineStart,
+                            ColumnStart = expr.ColumnStart,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = CombineSpans(expr.Span, GetSpanFromToken(closeBracket))
+                        };
+                    else if (index is SliceAccess sa)
+                        expr = sa with
+                        {
+                            Object = expr,
+                            LineStart = expr.LineStart,
+                            ColumnStart = expr.ColumnStart,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = CombineSpans(expr.Span, GetSpanFromToken(closeBracket))
+                        };
+                }
+                else if (Current.Type == TokenType.LeftParen)
                 {
-                    Value = expr,
-                    TargetType = targetType,
-                    LineStart = expr.LineStart,
-                    ColumnStart = expr.ColumnStart,
-                    LineEnd = Previous.Line,
-                    ColumnEnd = Previous.Column + Previous.Value.Length,
-                    // TypeAnnotation doesn't have Span yet (A.12), use expr's span for now
-                    Span = expr.Span
-                };
-            }
-            else if (Current.Type == TokenType.To)
-            {
-                // Type coercion (value to T or value to T?)
-                // Throws InvalidCastException on failure for T, returns None for T?
-                Advance();
-                var targetType = ParseTypeAnnotation();
+                    Advance();
+                    var args = new List<Expression>();
+                    var kwargs = new List<KeywordArgument>();
+                    var seenKeywordArg = false;
 
-                expr = new TypeCoercion
+                    if (Current.Type != TokenType.RightParen)
+                    {
+                        _lastLoopPosition = -1;
+                        do
+                        {
+                            if (!CheckLoopProgress())
+                                break;
+
+                            // Check for keyword argument
+                            if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
+                            {
+                                seenKeywordArg = true;
+                                var kwargStartLine = Current.Line;
+                                var kwargStartColumn = Current.Column;
+                                var name = Current.Value;
+                                Advance();  // Skip name
+                                Advance();  // Skip =
+                                var value = ParseExpression();
+                                var kwargEndLine = Peek(-1).Line;
+                                var kwargEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+                                kwargs.Add(new KeywordArgument
+                                {
+                                    Name = name,
+                                    Value = value,
+                                    LineStart = kwargStartLine,
+                                    ColumnStart = kwargStartColumn,
+                                    LineEnd = kwargEndLine,
+                                    ColumnEnd = kwargEndColumn
+                                });
+                            }
+                            else
+                            {
+                                if (seenKeywordArg)
+                                {
+                                    throw ReportError("Positional argument cannot follow keyword argument", Current.Line, Current.Column, DiagnosticCodes.Parser.PositionalAfterKeyword);
+                                }
+                                args.Add(ParseExpression());
+                            }
+
+                            if (Current.Type == TokenType.Comma)
+                            {
+                                Advance();
+                                // Allow trailing comma: foo(1, 2, 3,)
+                                if (Current.Type == TokenType.RightParen)
+                                    break;
+                            }
+                            else
+                                break;
+                        } while (true);
+                    }
+
+                    Expect(TokenType.RightParen);
+                    var closeParen = Previous;
+
+                    expr = new FunctionCall
+                    {
+                        Function = expr,
+                        Arguments = args.ToImmutableArray(),
+                        KeywordArguments = kwargs.ToImmutableArray(),
+                        LineStart = expr.LineStart,
+                        ColumnStart = expr.ColumnStart,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = CombineSpans(expr.Span, GetSpanFromToken(closeParen))
+                    };
+                }
+                else if (Current.Type == TokenType.As)
                 {
-                    Value = expr,
-                    TargetType = targetType,
-                    LineStart = expr.LineStart,
-                    ColumnStart = expr.ColumnStart,
-                    LineEnd = Previous.Line,
-                    ColumnEnd = Previous.Column + Previous.Value.Length,
-                    // TypeAnnotation doesn't have Span yet (A.12), use expr's span for now
-                    Span = expr.Span
-                };
+                    // Type cast
+                    Advance();
+                    var targetType = ParseTypeAnnotation();
+
+                    expr = new TypeCast
+                    {
+                        Value = expr,
+                        TargetType = targetType,
+                        LineStart = expr.LineStart,
+                        ColumnStart = expr.ColumnStart,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        // TypeAnnotation doesn't have Span yet (A.12), use expr's span for now
+                        Span = expr.Span
+                    };
+                }
+                else if (Current.Type == TokenType.To)
+                {
+                    // Type coercion (value to T or value to T?)
+                    // Throws InvalidCastException on failure for T, returns None for T?
+                    Advance();
+                    var targetType = ParseTypeAnnotation();
+
+                    expr = new TypeCoercion
+                    {
+                        Value = expr,
+                        TargetType = targetType,
+                        LineStart = expr.LineStart,
+                        ColumnStart = expr.ColumnStart,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        // TypeAnnotation doesn't have Span yet (A.12), use expr's span for now
+                        Span = expr.Span
+                    };
+                }
+                else
+                {
+                    break;
+                }
             }
-            else
-            {
-                break;
-            }
-        }
         }
         finally
         {

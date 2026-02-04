@@ -333,7 +333,8 @@ public partial class Parser
                 _lastLoopPosition = -1;
                 do
                 {
-                    if (!CheckLoopProgress()) break;
+                    if (!CheckLoopProgress())
+                        break;
 
                     baseClasses.Add(ParseTypeAnnotation());
                     if (Current.Type == TokenType.Comma)
@@ -405,7 +406,8 @@ public partial class Parser
                 _lastLoopPosition = -1;
                 do
                 {
-                    if (!CheckLoopProgress()) break;
+                    if (!CheckLoopProgress())
+                        break;
 
                     baseInterfaces.Add(ParseTypeAnnotation());
                     if (Current.Type == TokenType.Comma)
@@ -477,7 +479,8 @@ public partial class Parser
                 _lastLoopPosition = -1;
                 do
                 {
-                    if (!CheckLoopProgress()) break;
+                    if (!CheckLoopProgress())
+                        break;
 
                     baseInterfaces.Add(ParseTypeAnnotation());
                     if (Current.Type == TokenType.Comma)
@@ -541,7 +544,8 @@ public partial class Parser
         _lastLoopPosition = -1;
         do
         {
-            if (!CheckLoopProgress()) break;
+            if (!CheckLoopProgress())
+                break;
 
             var paramStartLine = Current.Line;
             var paramStartColumn = Current.Column;
@@ -588,7 +592,8 @@ public partial class Parser
         _lastLoopPosition = -1;
         do
         {
-            if (!CheckLoopProgress()) break;
+            if (!CheckLoopProgress())
+                break;
 
             constraints.Add(ParseSingleConstraint());
 
@@ -655,8 +660,12 @@ public partial class Parser
 
         var members = new List<EnumMember>();
 
+        _lastLoopPosition = -1;
         while (Current.Type != TokenType.Dedent && !IsAtEnd)
         {
+            if (!CheckLoopProgress())
+                break;
+
             SkipNewlines();
             if (Current.Type == TokenType.Dedent || IsAtEnd)
                 break;
@@ -758,7 +767,8 @@ public partial class Parser
                 _lastLoopPosition = -1;
                 do
                 {
-                    if (!CheckLoopProgress()) break;
+                    if (!CheckLoopProgress())
+                        break;
 
                     paramTypes.Add(ParseTypeAnnotation());
 

@@ -802,6 +802,15 @@ public static class DiagnosticExplanations
             null,
             "Fix the reported errors and re-compile. Use '--max-errors N' to increase the limit if needed.");
 
+        Add(dict, DiagnosticCodes.Infrastructure.ParserLoopStall, "Parser loop stall detected", "Infrastructure",
+            "The parser detected that it made no progress in a parsing loop. This is a safety mechanism " +
+            "that prevents the parser from hanging on malformed input. The parser forcibly advanced past " +
+            "the problematic token to continue parsing. This warning indicates the input may be malformed " +
+            "or there is an edge case in the parser that should be reported.",
+            null,
+            "Check the source code at the indicated location for syntax errors. If the input looks correct, " +
+            "report this at https://github.com/antonsynd/sharpy/issues with the source file.");
+
         return dict;
     }
 

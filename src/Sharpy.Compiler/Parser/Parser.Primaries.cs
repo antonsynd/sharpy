@@ -482,7 +482,8 @@ public partial class Parser
                         _lastLoopPosition = -1;
                         do
                         {
-                            if (!CheckLoopProgress()) break;
+                            if (!CheckLoopProgress())
+                                break;
 
                             var paramToken = Current;
                             var name = ExpectIdentifier();

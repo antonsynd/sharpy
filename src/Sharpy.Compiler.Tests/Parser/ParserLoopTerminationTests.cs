@@ -145,6 +145,32 @@ public class ParserLoopTerminationTests
         AssertParserTerminatesWithTimeout(input);
     }
 
+    [Theory]
+    [InlineData("f\"{")]                          // Incomplete f-string expression
+    [InlineData("f\"{x")]                         // Missing closing brace
+    [InlineData("f\"{x:")]                        // Incomplete format spec
+    [InlineData("f\"{x:d")]                       // Format spec without closing brace
+    [InlineData("f\"{{")]                         // Escaped brace incomplete
+    [InlineData("f\"{x}{")]                       // Second expression incomplete
+    [InlineData("f\"hello {")]                    // Text then incomplete expression
+    public void Parser_MalformedFString_DoesNotHang(string input)
+    {
+        AssertParserTerminatesWithTimeout(input);
+    }
+
+    [Theory]
+    [InlineData("enum E:\n    ")]                 // Empty body after indent (whitespace only)
+    [InlineData("enum E:\n    @")]                // Invalid token in enum body
+    [InlineData("enum E:\n    123")]              // Number instead of identifier
+    [InlineData("enum E:\n    +")]                // Operator instead of identifier
+    [InlineData("enum E:\n    A\n    ")]          // Valid member then whitespace
+    [InlineData("enum E:\n    A =")]              // Incomplete value assignment
+    [InlineData("enum E:\n    A = +")]            // Invalid value expression
+    public void Parser_MalformedEnum_DoesNotHang(string input)
+    {
+        AssertParserTerminatesWithTimeout(input);
+    }
+
     private static void AssertParserTerminatesWithTimeout(string input)
     {
         var compiler = new Compiler();
