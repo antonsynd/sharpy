@@ -334,4 +334,68 @@ def main():
         Assert.Single(result.CompilationErrors, e => e.Contains("Cannot find module"));
         Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("Type") && e.Contains("not found"));
     }
+
+    [Fact]
+    public void MultiFile_ImportErrorInOneFile_TypeErrorInOtherFile_BothReported()
+    {
+        // Multi-file scenario: import fails in lib.spy, type error in main.spy
+        // Both errors should be reported - the import error doesn't mask the type error
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Test")
+            .AddSourceFile("main.spy", @"
+from lib import helper
+
+def main():
+    # Type error unrelated to import
+    x: int = ""not an int""
+    print(x)
+")
+            .AddSourceFile("lib.spy", @"
+# This file has a bad import
+from nonexistent import foo
+
+def helper() -> int:
+    return 42
+")
+            .CreateProjectFile();
+
+        var result = helper.Compile();
+
+        // Should fail with both errors: import error and type error
+        Assert.False(result.Success, "Compilation should fail");
+        var errors = result.Diagnostics.GetErrors().Select(d => d.Message).ToList();
+        Assert.Contains(errors, e => e.Contains("Cannot find module 'nonexistent'"));
+        Assert.Contains(errors, e => e.Contains("Cannot assign"));
+    }
+
+    [Fact]
+    public void MultiFile_TransitiveImportError_NoCascadingErrors()
+    {
+        // Multi-file scenario: main imports lib which imports nonexistent
+        // Only the import error should be reported, not cascading "undefined" errors
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("Test")
+            .AddSourceFile("main.spy", @"
+from lib import process
+
+def main():
+    result = process(42)
+    print(result)
+")
+            .AddSourceFile("lib.spy", @"
+from nonexistent import helper
+
+def process(x: int) -> int:
+    return helper(x)
+")
+            .CreateProjectFile();
+
+        var result = helper.Compile();
+
+        // Should fail with import error but no cascading "undefined" errors
+        Assert.False(result.Success, "Compilation should fail");
+        var errors = result.Diagnostics.GetErrors().Select(d => d.Message).ToList();
+        Assert.Contains(errors, e => e.Contains("Cannot find module 'nonexistent'"));
+        Assert.DoesNotContain(errors, e => e.Contains("Undefined identifier 'helper'"));
+    }
 }
