@@ -41,12 +41,13 @@ internal class NameResolver
     /// <summary>
     /// Resolve names in a module (first pass: declarations only)
     /// </summary>
-    public void ResolveDeclarations(Module module)
+    public void ResolveDeclarations(Module module, CancellationToken cancellationToken = default)
     {
         _logger.LogInfo("Name resolution pass 1: Declarations in module");
 
         foreach (var statement in module.Body)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ResolveDeclaration(statement);
         }
     }
@@ -54,22 +55,25 @@ internal class NameResolver
     /// <summary>
     /// Resolve inheritance relationships (second pass: after all types are declared)
     /// </summary>
-    public void ResolveInheritance()
+    public void ResolveInheritance(CancellationToken cancellationToken = default)
     {
         _logger.LogInfo("Name resolution pass 2: Inheritance relationships");
 
         foreach (var classDef in _classDefs)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ResolveClassInheritance(classDef);
         }
 
         foreach (var structDef in _structDefs)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ResolveStructInheritance(structDef);
         }
 
         foreach (var interfaceDef in _interfaceDefs)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ResolveInterfaceInheritance(interfaceDef);
         }
     }

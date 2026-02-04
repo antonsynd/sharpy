@@ -160,7 +160,7 @@ internal class ProjectCompiler
             InitializeSharedState();
 
             // Phase 3: Collect type declarations from all files (first pass - type shells only)
-            CollectTypeDeclarations(config);
+            CollectTypeDeclarations(config, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 3b: Validate restored symbols against current symbol table (DISABLED)
@@ -188,7 +188,7 @@ internal class ProjectCompiler
                 {
                     return CreateFailureResult();
                 }
-                CollectTypeDeclarations(config);
+                CollectTypeDeclarations(config, cancellationToken);
             }
 #endif
             cancellationToken.ThrowIfCancellationRequested();
@@ -206,7 +206,7 @@ internal class ProjectCompiler
             // Phase 4b: Resolve inheritance (now that imports are resolved)
             // This must happen AFTER imports are resolved so that imported base types
             // are available in the symbol table for cross-module inheritance
-            ResolveInheritanceRelationships();
+            ResolveInheritanceRelationships(cancellationToken);
 
             // Phase 4c: Auto-import transitive base types from external modules,
             // then resolve inheritance for imported types.
@@ -220,7 +220,7 @@ internal class ProjectCompiler
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 5: Perform semantic analysis on all files
-            if (!PerformSemanticAnalysis(config))
+            if (!PerformSemanticAnalysis(config, cancellationToken))
             {
                 return CreateFailureResult();
             }
@@ -1016,7 +1016,7 @@ internal class ProjectCompiler
     /// NOTE: Inheritance resolution is deferred to Phase 4b (after imports are resolved)
     /// so that imported base types are available in the symbol table.
     /// </summary>
-    private void CollectTypeDeclarations(ProjectConfig config)
+    private void CollectTypeDeclarations(ProjectConfig config, CancellationToken cancellationToken = default)
     {
         _logger.LogInfo("Phase 3: Collecting type declarations across all files");
 
@@ -1027,6 +1027,8 @@ internal class ProjectCompiler
         // Collect all type declarations (shells only)
         foreach (var (_, unit) in _projectModel!.Units)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (unit.Phase == CompilationPhase.Failed || unit.Ast == null)
                 continue;
 
@@ -1037,7 +1039,7 @@ internal class ProjectCompiler
             // Only collect declarations - don't resolve inheritance yet
             // The NameResolver.ResolveDeclarations() method registers type names
             // and stores ClassDef/StructDef/InterfaceDef in internal lists
-            _sharedNameResolver.ResolveDeclarations(unit.Ast);
+            _sharedNameResolver.ResolveDeclarations(unit.Ast, cancellationToken);
 
             // Update phase
             unit.Phase = CompilationPhase.NamesResolved;
@@ -1062,7 +1064,7 @@ internal class ProjectCompiler
     /// This is called AFTER imports are resolved so that imported base types
     /// are available in the symbol table for cross-module inheritance.
     /// </summary>
-    private void ResolveInheritanceRelationships()
+    private void ResolveInheritanceRelationships(CancellationToken cancellationToken = default)
     {
         if (_sharedNameResolver == null)
             return;
@@ -1073,7 +1075,7 @@ internal class ProjectCompiler
         // (declaration errors were already collected in Phase 3)
         var previousErrorCount = _sharedNameResolver.Diagnostics.ErrorCount;
 
-        _sharedNameResolver.ResolveInheritance();
+        _sharedNameResolver.ResolveInheritance(cancellationToken);
 
         // Collect only new inheritance errors (skip already collected declaration errors)
         var newErrors = _sharedNameResolver.Diagnostics.GetErrors().Skip(previousErrorCount);
@@ -1259,7 +1261,7 @@ internal class ProjectCompiler
     /// <summary>
     /// Phase 5: Perform semantic analysis (type checking) on all modules
     /// </summary>
-    private bool PerformSemanticAnalysis(ProjectConfig config)
+    private bool PerformSemanticAnalysis(ProjectConfig config, CancellationToken cancellationToken = default)
     {
         _logger.LogInfo("Phase 4: Semantic Analysis");
 
@@ -1289,6 +1291,8 @@ internal class ProjectCompiler
 
         foreach (var sourceFile in modulesToProcess)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var unit = _projectModel!.GetUnit(sourceFile);
             if (unit == null || unit.Phase == CompilationPhase.Failed || unit.Ast == null)
                 continue;
@@ -1318,7 +1322,7 @@ internal class ProjectCompiler
             var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
             try
             {
-                typeChecker.CheckModule(unit.Ast, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo, isEntryPoint: isEntryPoint);
+                typeChecker.CheckModule(unit.Ast, computeCodeGenInfo: config.UsePrecomputedCodeGenInfo, isEntryPoint: isEntryPoint, cancellationToken);
             }
             catch (SemanticAnalysisException)
             {

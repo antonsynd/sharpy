@@ -212,8 +212,8 @@ public class Compiler
             // Pass 1: Name resolution (declarations)
             metrics.StartPhase("Name Resolution");
             var nameResolver = new NameResolver(symbolTable, _logger, semanticBinding);
-            nameResolver.ResolveDeclarations(module);
-            nameResolver.ResolveInheritance(); // Second pass: resolve inheritance after all types are declared
+            nameResolver.ResolveDeclarations(module, cancellationToken);
+            nameResolver.ResolveInheritance(cancellationToken); // Second pass: resolve inheritance after all types are declared
             metrics.EndPhase();
 
             // Assertions: After name resolution, verify symbol table integrity
@@ -297,7 +297,7 @@ public class Compiler
             try
             {
                 // Single-file compilation is always an entry point
-                typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
+                typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true, cancellationToken);
             }
             catch (SemanticAnalysisException)
             {

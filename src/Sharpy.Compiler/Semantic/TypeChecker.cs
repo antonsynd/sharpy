@@ -50,6 +50,13 @@ internal partial class TypeChecker
     private int _controlFlowDepth = 0;
     private bool _superInitCalled = false;  // Track if super().__init__() was called
 
+    // Cancellation token for long-running analysis
+    private CancellationToken _cancellationToken = default;
+
+    // Counter for periodic cancellation checks in loops
+    private int _cancellationCheckCounter;
+    private const int CancellationCheckInterval = 100;
+
     // Configuration
     public bool ContinueAfterError { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
@@ -174,6 +181,19 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Check for cancellation periodically in tight loops.
+    /// Checking every iteration would be expensive, so we check every N iterations.
+    /// </summary>
+    private void CheckCancellation()
+    {
+        if (++_cancellationCheckCounter >= CancellationCheckInterval)
+        {
+            _cancellationCheckCounter = 0;
+            _cancellationToken.ThrowIfCancellationRequested();
+        }
+    }
+
+    /// <summary>
     /// Type check all statements in a module
     /// </summary>
     /// <param name="module">The module to check</param>
@@ -185,16 +205,21 @@ internal partial class TypeChecker
     /// If true, this module is the entry point (main executable file).
     /// Entry point files require a main() function.
     /// </param>
-    public void CheckModule(Module module, bool computeCodeGenInfo = false, bool isEntryPoint = false)
+    /// <param name="cancellationToken">Optional cancellation token for LSP/IDE scenarios</param>
+    public void CheckModule(Module module, bool computeCodeGenInfo = false, bool isEntryPoint = false,
+        CancellationToken cancellationToken = default)
     {
         _logger.LogInfo("Type checking module");
         _isEntryPoint = isEntryPoint;
+        _cancellationToken = cancellationToken;
+        _cancellationCheckCounter = 0;
 
         // Propagate SemanticBinding to sub-services
         _genericInference.SemanticBinding = SemanticBinding;
 
         foreach (var statement in module.Body)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
             CheckStatement(statement);
         }
 
