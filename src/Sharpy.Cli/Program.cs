@@ -193,23 +193,26 @@ class Program
         emitCsharpRefOpt.Aliases.Add("-r");
         var emitCsharpModPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
         emitCsharpModPathOpt.Aliases.Add("-m");
+        var emitCsharpLineDirectivesOpt = new Option<bool>("--show-line-directives") { Description = "Include #line directives for source mapping (default: stripped for clean output)" };
         emitCsharpCommand.Arguments.Add(emitCsharpInputArg);
         emitCsharpCommand.Options.Add(emitCsharpOutputOpt);
         emitCsharpCommand.Options.Add(emitCsharpRefOpt);
         emitCsharpCommand.Options.Add(emitCsharpModPathOpt);
+        emitCsharpCommand.Options.Add(emitCsharpLineDirectivesOpt);
         emitCsharpCommand.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(emitCsharpInputArg)!;
             var output = parseResult.GetValue(emitCsharpOutputOpt);
             var reference = parseResult.GetValue(emitCsharpRefOpt) ?? Array.Empty<string>();
             var modulePath = parseResult.GetValue(emitCsharpModPathOpt) ?? Array.Empty<string>();
+            var showLineDirectives = parseResult.GetValue(emitCsharpLineDirectivesOpt);
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
             var warnAsError = parseResult.GetValue(warnAsErrorOption);
             var nowarn = parseResult.GetValue(nowarnOption);
             var maxErrors = parseResult.GetValue(maxErrorsOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors);
+            EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors, showLineDirectives);
         });
 
         var emitParseCommand = new Command("parse", "Validate lexing and parsing only");
@@ -675,7 +678,8 @@ class Program
     }
 
     static void EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths,
-        ICompilerLogger logger, bool warnAsError = false, string? nowarn = null, int? maxErrors = null)
+        ICompilerLogger logger, bool warnAsError = false, string? nowarn = null, int? maxErrors = null,
+        bool showLineDirectives = false)
     {
         try
         {
@@ -709,10 +713,13 @@ class Program
                 RenderDiagnostics(warnings, sourceText, Console.Out);
             }
 
-            // The generated C# includes #line directives by default.
-            // For emit csharp, strip them so users see clean generated C#.
+            // The generated C# includes #line directives by default for source mapping.
+            // For emit csharp, strip them for clean output unless --show-line-directives is specified.
             var csharpCode = result.GeneratedCSharpCode ?? "";
-            csharpCode = StripLineDirectives(csharpCode);
+            if (!showLineDirectives)
+            {
+                csharpCode = StripLineDirectives(csharpCode);
+            }
 
             // Determine output file
             FileInfo outputFile;
@@ -742,8 +749,8 @@ class Program
 
                 var moduleFileName = Path.GetFileNameWithoutExtension(modulePath) + ".cs";
                 var moduleOutputPath = Path.Combine(outputDir, moduleFileName);
-                var cleanModuleCode = StripLineDirectives(moduleCode);
-                File.WriteAllText(moduleOutputPath, cleanModuleCode);
+                var processedModuleCode = showLineDirectives ? moduleCode : StripLineDirectives(moduleCode);
+                File.WriteAllText(moduleOutputPath, processedModuleCode);
                 Console.WriteLine($"Generated C# code written to: {moduleOutputPath}");
             }
         }

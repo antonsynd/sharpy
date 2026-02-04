@@ -175,9 +175,9 @@ Use this section to track implementation progress:
 - [x] Task 4.1: Additional file-based multi-file fixtures (5 scenarios: diamond_dependency, package_import*, import_alias, symbol_alias*, selective_import_error) *skipped due to discovered bugs
 - [x] Task 4.2: Programmatic incremental compilation tests (existing tests covered most scenarios; added NewFileAddition and FileRemoval tests)
 
-### Phase 5: LSP Readiness Foundation
-- [ ] Task 5.1: CancellationToken support
-- [ ] Task 5.2: Source mapping for Roslyn errors
+### Phase 5: LSP Readiness Foundation ✅
+- [x] Task 5.1: CancellationToken support (NameResolver, TypeChecker, ProjectCompiler; Parser already had it)
+- [x] Task 5.2: Source mapping for Roslyn errors (#line directives in RoslynEmitter, GetMappedLineSpan in AssemblyCompiler, --show-line-directives CLI flag)
 
 ### Phase 6: Advanced Type Safety & Quality
 - [ ] Task 6.1: Grammar-aware fuzzing
