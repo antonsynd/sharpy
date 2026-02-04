@@ -424,4 +424,111 @@ public class DiagnosticBagTests
         public TestLocatable(TextSpan? span) => Span = span;
         public TextSpan? Span { get; }
     }
+
+    // --- Deduplication Tests ---
+
+    [Fact]
+    public void Deduplication_SameCodeAndLocation_OnlyAddsOnce()
+    {
+        var bag = new DiagnosticBag();
+
+        // Add same error twice with slightly different messages but same code and location
+        bag.AddError("Cannot assign int to str", 10, 5, code: "SHP0001");
+        bag.AddError("Cannot assign 'int' to 'str'", 10, 5, code: "SHP0001");  // Variant message
+
+        var errors = bag.GetAll().ToList();
+        Assert.Single(errors);  // Should deduplicate
+        Assert.Equal("Cannot assign int to str", errors[0].Message);  // First one wins
+    }
+
+    [Fact]
+    public void Deduplication_SameCodeDifferentLocations_AddsAll()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddError("Type mismatch", 10, 5, code: "SHP0001");
+        bag.AddError("Type mismatch", 15, 5, code: "SHP0001");  // Same code, different line
+
+        var errors = bag.GetAll().ToList();
+        Assert.Equal(2, errors.Count);  // Should NOT deduplicate
+    }
+
+    [Fact]
+    public void Deduplication_DifferentCodesSameLocation_AddsAll()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddError("Type mismatch", 10, 5, code: "SHP0001");
+        bag.AddError("Missing return", 10, 5, code: "SHP0002");  // Different code, same location
+
+        var errors = bag.GetAll().ToList();
+        Assert.Equal(2, errors.Count);  // Should NOT deduplicate
+    }
+
+    [Fact]
+    public void Deduplication_NoCode_UsesMessageForUniqueness()
+    {
+        var bag = new DiagnosticBag();
+
+        // Diagnostics without codes should use message for uniqueness
+        bag.AddError("Error message 1", 10, 5);
+        bag.AddError("Error message 1", 10, 5);  // Exact duplicate
+        bag.AddError("Error message 2", 10, 5);  // Same location, different message
+
+        var errors = bag.GetAll().ToList();
+        Assert.Equal(2, errors.Count);  // One duplicate removed
+    }
+
+    [Fact]
+    public void Deduplication_MergedBags_DuplicatesRemoved()
+    {
+        var bag1 = new DiagnosticBag();
+        bag1.AddError("Type mismatch", 10, 5, code: "SHP0001");
+
+        var bag2 = new DiagnosticBag();
+        bag2.AddError("Type mismatch", 10, 5, code: "SHP0001");  // Same diagnostic
+
+        bag1.Merge(bag2);
+
+        var errors = bag1.GetAll().ToList();
+        Assert.Single(errors);  // Duplicate removed during merge
+    }
+
+    [Fact]
+    public void Deduplication_ClearResetsDuplicateTracking()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddError("Type mismatch", 10, 5, code: "SHP0001");
+        bag.Clear();
+        bag.AddError("Type mismatch", 10, 5, code: "SHP0001");  // Same as before clear
+
+        var errors = bag.GetAll().ToList();
+        Assert.Single(errors);  // Should be added after clear
+    }
+
+    [Fact]
+    public void Deduplication_WarningsAlsoDeduped()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddWarning("Unused variable", 10, 5, code: "SHP0451");
+        bag.AddWarning("Unused variable", 10, 5, code: "SHP0451");
+
+        var warnings = bag.GetWarnings().ToList();
+        Assert.Single(warnings);
+    }
+
+    [Fact]
+    public void Deduplication_MixedSeverities_StillDeduplicatesWhenPromoted()
+    {
+        // When warnings-as-errors is enabled, the duplicate check happens after promotion
+        var bag = new DiagnosticBag(warningsAsErrors: true);
+
+        bag.AddWarning("Unused variable", 10, 5, code: "SHP0451");
+        bag.AddWarning("Unused variable", 10, 5, code: "SHP0451");
+
+        var errors = bag.GetErrors().ToList();
+        Assert.Single(errors);  // Deduplicated after promotion
+    }
 }

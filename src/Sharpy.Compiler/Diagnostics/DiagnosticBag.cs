@@ -84,6 +84,13 @@ public class DiagnosticBag
     private readonly HashSet<string> _suppressedWarnings;
     private readonly bool _warningsAsErrors;
 
+    /// <summary>
+    /// Tracks diagnostics that have already been added, using (Code, Line, Column, Message?) as the key.
+    /// This prevents duplicate diagnostics from being shown to the user when multiple validators
+    /// catch the same issue.
+    /// </summary>
+    private readonly HashSet<(string?, int?, int?, string?)> _seenDiagnostics = new();
+
     public DiagnosticBag() : this(warningsAsErrors: false, suppressedWarnings: null) { }
 
     public DiagnosticBag(bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null)
@@ -108,10 +115,33 @@ public class DiagnosticBag
             diagnostic = diagnostic with { Severity = CompilerDiagnosticSeverity.Error };
         }
 
+        // Deduplicate by code and location.
+        // For diagnostics with codes, we use (Code, Line, Column) as the key.
+        // For diagnostics without codes, we include the message to distinguish them.
+        var key = GetDeduplicationKey(diagnostic);
+
         lock (_lock)
         {
+            if (!_seenDiagnostics.Add(key))
+                return; // Skip duplicate
+
             _diagnostics.Add(diagnostic);
         }
+    }
+
+    /// <summary>
+    /// Gets a unique key for deduplication purposes.
+    /// Diagnostics with codes are deduplicated by (Code, Line, Column).
+    /// Diagnostics without codes use the message as part of the key.
+    /// </summary>
+    private static (string?, int?, int?, string?) GetDeduplicationKey(CompilerDiagnostic diagnostic)
+    {
+        if (string.IsNullOrEmpty(diagnostic.Code))
+        {
+            // No code - use message as fallback for uniqueness
+            return (null, diagnostic.Line, diagnostic.Column, diagnostic.Message);
+        }
+        return (diagnostic.Code, diagnostic.Line, diagnostic.Column, null);
     }
 
     public void AddError(string message, int? line = null, int? column = null, string? filePath = null,
@@ -212,6 +242,7 @@ public class DiagnosticBag
         lock (_lock)
         {
             _diagnostics.Clear();
+            _seenDiagnostics.Clear();
         }
     }
 
