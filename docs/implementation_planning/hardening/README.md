@@ -167,9 +167,9 @@ Use this section to track implementation progress:
 - [x] Task 2.2: Variable name collision fix (added scope handling to ClassMembers.cs and ModuleClass.cs)
 - [x] Task 2.3: Add diagnostic deduplication (code-based comparison with message fallback)
 
-### Phase 3: Robustness and Phase Integrity
-- [ ] Task 3.1: Replace `null!` pattern
-- [ ] Task 3.2: Always-active assertions
+### Phase 3: Robustness and Phase Integrity ✅
+- [x] Task 3.1: Replace `null!` pattern (guarded property accessors in ProjectCompiler)
+- [x] Task 3.2: Always-active assertions (SemanticBinding and DualWriteAssertions throw in Release)
 
 ### Phase 4: Test Coverage Expansion
 - [ ] Task 4.1: Additional file-based multi-file fixtures (5 scenarios)

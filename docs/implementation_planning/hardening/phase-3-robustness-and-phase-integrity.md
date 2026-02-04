@@ -407,11 +407,11 @@ The second is strictly better.
 
 ## Phase Completion Criteria
 
-- [ ] No `null!` fields in ProjectCompiler
-- [ ] No `[Conditional("DEBUG")]` on phase-critical assertions
-- [ ] All tests pass in both Debug and Release configurations
-- [ ] Code review completed
-- [ ] Accessing ProjectCompiler state before Compile() throws clear error
+- [x] No `null!` fields in ProjectCompiler
+- [x] No `[Conditional("DEBUG")]` on phase-critical assertions
+- [x] All tests pass in both Debug and Release configurations
+- [x] Code review completed (2026-02-04)
+- [x] Accessing ProjectCompiler state before Compile() throws clear error
 
 ---
 
