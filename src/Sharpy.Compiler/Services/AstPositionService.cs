@@ -223,6 +223,22 @@ public sealed class AstPositionService
             TryExpression te => SingleNode(te.Operand),
             MaybeExpression me => SingleNode(me.Operand),
 
+            // Future node types (v0.2.x) - included for forward compatibility
+            MatchStatement ms => GetMatchStatementChildren(ms),
+            UnionDef _ => Enumerable.Empty<Node>(), // UnionCaseDef is not a Node
+
+            // Pattern nodes (v0.2.x) - included for forward compatibility
+            WildcardPattern _ => Enumerable.Empty<Node>(),
+            BindingPattern _ => Enumerable.Empty<Node>(),
+            LiteralPattern lp => SingleNode(lp.Literal),
+            TypePattern _ => Enumerable.Empty<Node>(),
+            UnionCasePattern ucp => ucp.FieldPatterns.Cast<Node>(),
+            TuplePattern tp => tp.Elements.Cast<Node>(),
+            ListPattern lp => GetListPatternChildren(lp),
+            OrPattern op => op.Alternatives.Cast<Node>(),
+            AndPattern ap => TwoNodes(ap.Left, ap.Right),
+            GuardPattern gp => Combine(SingleNode(gp.Inner), SingleNode(gp.Guard)),
+
             // Note: TypeAnnotation, FunctionType, TupleType are NOT Node subclasses,
             // so we cannot traverse them as AST nodes. They have their own position
             // properties but are separate from the Node hierarchy.
@@ -360,6 +376,29 @@ public sealed class AstPositionService
         // Note: KeywordArgument is not a Node, so we extract Value
         foreach (var kwarg in fc.KeywordArguments)
             yield return kwarg.Value;
+    }
+
+    // Future node type helpers (v0.2.x)
+    private static IEnumerable<Node> GetMatchStatementChildren(MatchStatement ms)
+    {
+        yield return ms.Scrutinee;
+        // Note: MatchCase is not a Node, so we extract Pattern, Guard, and Body
+        foreach (var matchCase in ms.Cases)
+        {
+            yield return matchCase.Pattern;
+            if (matchCase.Guard is not null)
+                yield return matchCase.Guard;
+            foreach (var stmt in matchCase.Body)
+                yield return stmt;
+        }
+    }
+
+    private static IEnumerable<Node> GetListPatternChildren(ListPattern lp)
+    {
+        foreach (var element in lp.Elements)
+            yield return element;
+        if (lp.RestPattern is not null)
+            yield return lp.RestPattern;
     }
 
     #endregion

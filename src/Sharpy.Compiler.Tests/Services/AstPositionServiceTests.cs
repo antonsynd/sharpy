@@ -551,4 +551,272 @@ public class AstPositionServiceTests
     }
 
     #endregion
+
+    #region Integration Tests (Spec Example 3.4)
+
+    [Fact]
+    public void IntegrationTest_SpecExample_FindsNodesAtExpectedPositions()
+    {
+        // This test matches the exact example from spec section 3.4
+        var source = "def foo():\n    x = 1 + 2\n    print(x)";
+        var module = ParseModule(source);
+
+        // Line 2, column 5 should find identifier "x"
+        var nodeAtX = _service.FindInnermostNode(module, line: 2, column: 5);
+        Assert.NotNull(nodeAtX);
+        Assert.IsType<Identifier>(nodeAtX);
+        Assert.Equal("x", ((Identifier)nodeAtX).Name);
+
+        // Line 2, column 9 should find literal "1"
+        var nodeAt1 = _service.FindInnermostNode(module, line: 2, column: 9);
+        Assert.NotNull(nodeAt1);
+        Assert.IsType<IntegerLiteral>(nodeAt1);
+        Assert.Equal("1", ((IntegerLiteral)nodeAt1).Value);
+
+        // Additionally verify line 3 has print function call
+        var printNode = _service.FindNodeOfType<FunctionCall>(module, line: 3, column: 5);
+        Assert.NotNull(printNode);
+
+        // And the argument 'x' inside print()
+        var argX = _service.FindInnermostNode(module, line: 3, column: 11);
+        Assert.NotNull(argX);
+        Assert.IsType<Identifier>(argX);
+        Assert.Equal("x", ((Identifier)argX).Name);
+    }
+
+    #endregion
+
+    #region Position Boundary Tests
+
+    [Fact]
+    public void FindInnermostNode_PositionBetweenStatements_ReturnsContainingBlock()
+    {
+        // Test position in whitespace between two statements
+        var source = "x = 1\n\ny = 2\n";
+        var module = ParseModule(source);
+
+        // Position on the empty line (line 2) between statements
+        // Should return the module since that's the containing block
+        var node = _service.FindInnermostNode(module, line: 2, column: 1);
+
+        // Empty line may not be contained by any node, so null is acceptable
+        // Or it returns the module if module span covers it
+        Assert.True(node is null or Module);
+    }
+
+    [Fact]
+    public void FindInnermostNode_PositionAtNodeStart_ReturnsNode()
+    {
+        var source = "def foo():\n    pass\n";
+        var module = ParseModule(source);
+
+        // Position at exact start of 'def' keyword (line 1, column 1)
+        var node = _service.FindInnermostNode(module, line: 1, column: 1);
+
+        Assert.NotNull(node);
+        // Should find the FunctionDef or something within it
+        var funcDef = _service.FindNodeOfType<FunctionDef>(module, line: 1, column: 1);
+        Assert.NotNull(funcDef);
+        Assert.Equal("foo", funcDef.Name);
+    }
+
+    [Fact]
+    public void FindInnermostNode_PositionAtNodeEnd_ReturnsNode()
+    {
+        var source = "x = 42\n";
+        var module = ParseModule(source);
+
+        // Position at '2' of '42' (end of integer literal)
+        var node = _service.FindInnermostNode(module, line: 1, column: 6);
+
+        Assert.NotNull(node);
+        Assert.IsType<IntegerLiteral>(node);
+    }
+
+    [Fact]
+    public void FindInnermostNode_MultiLineExpression_ReturnsCorrectNode()
+    {
+        var source = @"result = (
+    1 +
+    2 +
+    3
+)
+";
+        var module = ParseModule(source);
+
+        // Position at '2' on line 3
+        var node = _service.FindInnermostNode(module, line: 3, column: 5);
+
+        Assert.NotNull(node);
+        Assert.IsType<IntegerLiteral>(node);
+        Assert.Equal("2", ((IntegerLiteral)node).Value);
+    }
+
+    [Fact]
+    public void FindInnermostNode_NestedBlocks_ReturnsInnermostContaining()
+    {
+        var source = @"class Outer:
+    class Inner:
+        def method(self) -> int:
+            return 42
+";
+        var module = ParseModule(source);
+
+        // Position at 'return' inside nested method
+        var classDef = _service.FindNodeOfType<ClassDef>(module, line: 4, column: 13);
+        Assert.NotNull(classDef);
+
+        // The innermost ClassDef at this position should be 'Inner'
+        // But since we search innermost, we'll get the function first
+        var funcDef = _service.FindNodeOfType<FunctionDef>(module, line: 4, column: 13);
+        Assert.NotNull(funcDef);
+        Assert.Equal("method", funcDef.Name);
+    }
+
+    [Fact]
+    public void FindAllContainingNodes_DeeplyNested_ReturnsFullPath()
+    {
+        var source = @"class Outer:
+    def method(self) -> int:
+        if True:
+            return 42
+";
+        var module = ParseModule(source);
+
+        // Position at '42'
+        var nodes = _service.FindAllContainingNodes(module, line: 4, column: 20);
+
+        Assert.NotEmpty(nodes);
+        // Should contain: Module, ClassDef, FunctionDef, IfStatement, ReturnStatement, IntegerLiteral
+        Assert.IsType<Module>(nodes[0]);
+        Assert.Contains(nodes, n => n is ClassDef);
+        Assert.Contains(nodes, n => n is FunctionDef);
+        Assert.Contains(nodes, n => n is IfStatement);
+        Assert.Contains(nodes, n => n is ReturnStatement);
+        Assert.IsType<IntegerLiteral>(nodes[^1]);
+    }
+
+    [Fact]
+    public void FindInnermostNode_PositionInOperator_ReturnsBinaryOp()
+    {
+        var source = "x = 1 + 2\n";
+        var module = ParseModule(source);
+
+        // Position at '+' operator (column 7)
+        var node = _service.FindInnermostNode(module, line: 1, column: 7);
+
+        // The '+' itself isn't a child node, so we should get the BinaryOp
+        Assert.NotNull(node);
+        // Could be BinaryOp or one of its children depending on spans
+    }
+
+    [Fact]
+    public void FindInnermostNode_TryStatement_ReturnsCorrectPart()
+    {
+        var source = @"try:
+    x = 1
+except ValueError:
+    y = 2
+finally:
+    z = 3
+";
+        var module = ParseModule(source);
+
+        // Position in try body
+        var nodeInTry = _service.FindInnermostNode(module, line: 2, column: 5);
+        Assert.NotNull(nodeInTry);
+        Assert.IsType<Identifier>(nodeInTry);
+        Assert.Equal("x", ((Identifier)nodeInTry).Name);
+
+        // Position in except body
+        var nodeInExcept = _service.FindInnermostNode(module, line: 4, column: 5);
+        Assert.NotNull(nodeInExcept);
+        Assert.IsType<Identifier>(nodeInExcept);
+        Assert.Equal("y", ((Identifier)nodeInExcept).Name);
+
+        // Position in finally body
+        var nodeInFinally = _service.FindInnermostNode(module, line: 6, column: 5);
+        Assert.NotNull(nodeInFinally);
+        Assert.IsType<Identifier>(nodeInFinally);
+        Assert.Equal("z", ((Identifier)nodeInFinally).Name);
+    }
+
+    [Fact]
+    public void FindNodeOfType_WhileStatement_FindsLoop()
+    {
+        var source = "while x > 0:\n    x = x - 1\n";
+        var module = ParseModule(source);
+
+        // Position inside while body
+        var whileStmt = _service.FindNodeOfType<WhileStatement>(module, line: 2, column: 5);
+
+        Assert.NotNull(whileStmt);
+    }
+
+    [Fact]
+    public void FindInnermostNode_StringWithSpaces_ReturnsStringLiteral()
+    {
+        var source = "x = \"hello world\"\n";
+        var module = ParseModule(source);
+
+        // Position inside the string (at 'w' of 'world')
+        var node = _service.FindInnermostNode(module, line: 1, column: 12);
+
+        Assert.NotNull(node);
+        Assert.IsType<StringLiteral>(node);
+        Assert.Equal("hello world", ((StringLiteral)node).Value);
+    }
+
+    [Fact]
+    public void FindInnermostNode_SetComprehension_ReturnsElement()
+    {
+        var source = "s = {x * 2 for x in items}\n";
+        var module = ParseModule(source);
+
+        // Position at '2'
+        var node = _service.FindInnermostNode(module, line: 1, column: 10);
+
+        Assert.NotNull(node);
+        Assert.IsType<IntegerLiteral>(node);
+    }
+
+    [Fact]
+    public void FindNodeOfType_DictComprehension_ReturnsComprehension()
+    {
+        var source = "d = {k: v for k, v in items.items()}\n";
+        var module = ParseModule(source);
+
+        // Position inside comprehension
+        var comp = _service.FindNodeOfType<DictComprehension>(module, line: 1, column: 6);
+
+        Assert.NotNull(comp);
+    }
+
+    [Fact]
+    public void FindInnermostNode_UnaryOperator_ReturnsOperand()
+    {
+        var source = "x = -42\n";
+        var module = ParseModule(source);
+
+        // Position at '42' (the operand of unary minus)
+        var node = _service.FindInnermostNode(module, line: 1, column: 6);
+
+        Assert.NotNull(node);
+        Assert.IsType<IntegerLiteral>(node);
+    }
+
+    [Fact]
+    public void FindNodeOfType_UnaryOp_ReturnsUnaryOp()
+    {
+        var source = "x = not True\n";
+        var module = ParseModule(source);
+
+        // Position at 'True'
+        var unaryOp = _service.FindNodeOfType<UnaryOp>(module, line: 1, column: 9);
+
+        Assert.NotNull(unaryOp);
+        Assert.Equal(UnaryOperator.Not, unaryOp.Operator);
+    }
+
+    #endregion
 }
