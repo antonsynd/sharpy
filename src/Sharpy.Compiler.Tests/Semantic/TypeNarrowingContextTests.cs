@@ -250,6 +250,90 @@ public class TypeNarrowingContextTests
 
     #endregion
 
+    #region Isolated Scopes (for function boundaries)
+
+    [Fact]
+    public void EnterIsolatedScope_DoesNotInheritParentNarrowings()
+    {
+        var context = new TypeNarrowingContext();
+        context.Narrow("x", SemanticType.Int);
+        context.Narrow("y", SemanticType.Str);
+
+        using (context.EnterIsolatedScope())
+        {
+            // Inside isolated scope, parent narrowings should NOT be visible
+            context.GetNarrowedType("x").Should().BeNull();
+            context.GetNarrowedType("y").Should().BeNull();
+
+            // But we can add new narrowings in this scope
+            context.Narrow("z", SemanticType.Bool);
+            context.GetNarrowedType("z").Should().Be(SemanticType.Bool);
+        }
+
+        // After exiting, original narrowings should be restored
+        context.GetNarrowedType("x").Should().Be(SemanticType.Int);
+        context.GetNarrowedType("y").Should().Be(SemanticType.Str);
+        context.GetNarrowedType("z").Should().BeNull();
+    }
+
+    [Fact]
+    public void EnterIsolatedScope_RestoresNestedScopes()
+    {
+        var context = new TypeNarrowingContext();
+        context.Narrow("level0", SemanticType.Int);
+
+        using (context.EnterScope())
+        {
+            context.Narrow("level1", SemanticType.Str);
+
+            using (context.EnterIsolatedScope())
+            {
+                // Nothing visible in isolated scope
+                context.GetNarrowedType("level0").Should().BeNull();
+                context.GetNarrowedType("level1").Should().BeNull();
+            }
+
+            // Both narrowings restored
+            context.GetNarrowedType("level0").Should().Be(SemanticType.Int);
+            context.GetNarrowedType("level1").Should().Be(SemanticType.Str);
+        }
+
+        context.GetNarrowedType("level0").Should().Be(SemanticType.Int);
+        context.GetNarrowedType("level1").Should().BeNull();
+    }
+
+    [Fact]
+    public void EnterIsolatedScope_CanNestNormalScopes()
+    {
+        var context = new TypeNarrowingContext();
+        context.Narrow("outer", SemanticType.Int);
+
+        using (context.EnterIsolatedScope())
+        {
+            context.Narrow("isolated", SemanticType.Str);
+
+            using (context.EnterScope())
+            {
+                // Can see isolated scope narrowing
+                context.GetNarrowedType("isolated").Should().Be(SemanticType.Str);
+                // But not outer scope
+                context.GetNarrowedType("outer").Should().BeNull();
+
+                context.Narrow("nested", SemanticType.Bool);
+            }
+
+            // nested is gone
+            context.GetNarrowedType("nested").Should().BeNull();
+            // isolated still there
+            context.GetNarrowedType("isolated").Should().Be(SemanticType.Str);
+        }
+
+        // Original outer narrowing restored
+        context.GetNarrowedType("outer").Should().Be(SemanticType.Int);
+    }
+
+    #endregion
+
     #region Edge Cases
 
     [Fact]

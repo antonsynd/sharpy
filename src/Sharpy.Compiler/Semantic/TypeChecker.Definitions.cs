@@ -42,6 +42,12 @@ internal partial class TypeChecker
         // Enter function scope FIRST so we can register type parameters before resolving types
         _symbolTable.EnterScope($"function:{functionDef.Name}");
 
+        // Enter an isolated narrowing scope for this function.
+        // Type narrowings from the enclosing scope should NOT be visible inside this function,
+        // because nested functions can be called later when the narrowing condition no longer holds.
+        // This is control-flow narrowing isolation, not lexical scoping.
+        using var _ = _narrowingContext.EnterIsolatedScope();
+
         // Register type parameters for generic functions so they can be resolved in parameter/return types
         foreach (var typeParam in functionDef.TypeParameters)
         {

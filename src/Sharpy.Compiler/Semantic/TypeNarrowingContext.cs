@@ -58,6 +58,37 @@ public sealed class TypeNarrowingContext
     }
 
     /// <summary>
+    /// Enters a completely isolated narrowing scope that does NOT inherit narrowings
+    /// from parent scopes. Use this when entering a function definition, as control-flow
+    /// narrowings should not cross function boundaries (nested functions can be called
+    /// later when the narrowing condition no longer holds).
+    /// </summary>
+    /// <returns>An IDisposable that restores the previous scope stack when disposed.</returns>
+    /// <example>
+    /// <code>
+    /// // In outer function with narrowing active
+    /// narrowingContext.Narrow("x", SemanticType.Str);
+    ///
+    /// using (narrowingContext.EnterIsolatedScope())
+    /// {
+    ///     // x is NOT narrowed here - isolated scope
+    ///     narrowingContext.GetNarrowedType("x"); // returns null
+    /// }
+    ///
+    /// // x is narrowed again after isolated scope exits
+    /// narrowingContext.GetNarrowedType("x"); // returns Str
+    /// </code>
+    /// </example>
+    public IDisposable EnterIsolatedScope()
+    {
+        // Save the current stack and create a fresh isolated context
+        var savedStack = _scopeStack.ToArray();
+        _scopeStack.Clear();
+        _scopeStack.Push(new Dictionary<string, SemanticType>());
+        return new IsolatedScopeDisposer(this, savedStack);
+    }
+
+    /// <summary>
     /// Records a type narrowing for the given variable name in the current scope.
     /// If a narrowing for this name already exists in the current scope, it is overwritten.
     /// </summary>
@@ -161,6 +192,38 @@ public sealed class TypeNarrowingContext
             if (!_disposed)
             {
                 _context.ExitScope();
+                _disposed = true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// IDisposable implementation that restores a saved scope stack when disposed.
+    /// Used by EnterIsolatedScope for function boundaries.
+    /// </summary>
+    private sealed class IsolatedScopeDisposer : IDisposable
+    {
+        private readonly TypeNarrowingContext _context;
+        private readonly Dictionary<string, SemanticType>[]? _savedStack;
+        private bool _disposed;
+
+        public IsolatedScopeDisposer(TypeNarrowingContext context, Dictionary<string, SemanticType>[] savedStack)
+        {
+            _context = context;
+            _savedStack = savedStack;
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed && _savedStack != null)
+            {
+                // Restore the saved stack
+                _context._scopeStack.Clear();
+                // Push in reverse order since ToArray() returns top-first
+                for (int i = _savedStack.Length - 1; i >= 0; i--)
+                {
+                    _context._scopeStack.Push(_savedStack[i]);
+                }
                 _disposed = true;
             }
         }

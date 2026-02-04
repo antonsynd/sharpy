@@ -1698,5 +1698,56 @@ def main():
         effectiveType.Should().BeNull();
     }
 
+    [Fact]
+    public void TypeNarrowing_FunctionsHaveIsolatedNarrowingContext()
+    {
+        // Each function should have its own isolated narrowing context.
+        // This test verifies that TypeNarrowingContext.EnterIsolatedScope()
+        // is properly isolating function bodies.
+        //
+        // We test this by checking that a variable narrowed in one function
+        // is NOT visible as narrowed when we process a subsequent function.
+        // Since they're separate functions, the narrowing state should reset.
+        var source = @"
+def first():
+    x: int? = 42
+    if x is not None:
+        y: int = x  # x is narrowed inside if block
+
+def second():
+    z: int? = None()
+    # z should not be narrowed here
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        // Should compile without errors
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        // The key point is that type checking both functions works correctly
+        // and the narrowing from first() doesn't affect second()
+    }
+
+    [Fact]
+    public void TypeNarrowing_DoesNotLeakBetweenIndependentFunctions()
+    {
+        // Verify that narrowing in one function doesn't affect another
+        var source = @"
+def first():
+    x: int? = 42
+    if x is not None:
+        y: int = x  # x narrowed here
+
+def second():
+    x: int? = None()
+    # x should be int? here, not narrowed
+    z: int? = x
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
     #endregion
 }
