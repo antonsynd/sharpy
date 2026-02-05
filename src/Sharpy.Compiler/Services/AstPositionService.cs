@@ -225,6 +225,8 @@ public sealed class AstPositionService
 
             // Future node types (v0.2.x) - included for forward compatibility
             MatchStatement ms => GetMatchStatementChildren(ms),
+            MatchExpression me => GetMatchExpressionChildren(me),
+            AwaitExpression ae => SingleNode(ae.Operand),
             UnionDef _ => Enumerable.Empty<Node>(), // UnionCaseDef is not a Node
 
             // Pattern nodes (v0.2.x) - included for forward compatibility
@@ -390,6 +392,19 @@ public sealed class AstPositionService
                 yield return matchCase.Guard;
             foreach (var stmt in matchCase.Body)
                 yield return stmt;
+        }
+    }
+
+    private static IEnumerable<Node> GetMatchExpressionChildren(MatchExpression me)
+    {
+        yield return me.Scrutinee;
+        // Note: MatchArm is not a Node, so we extract Pattern, Guard, and Result
+        foreach (var arm in me.Arms)
+        {
+            yield return arm.Pattern;
+            if (arm.Guard is not null)
+                yield return arm.Guard;
+            yield return arm.Result;
         }
     }
 
