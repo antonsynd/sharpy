@@ -25,7 +25,7 @@ screenlog.*
 *.runtimeconfig.json
 
 # Local VSCode configs
-.vscode/launch.json
+.vscode/
 
 # DocFX files
 _site/
