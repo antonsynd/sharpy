@@ -554,6 +554,13 @@ internal partial class TypeChecker
 
         var objectType = CheckExpression(memberAccess.Object);
 
+        // If object type is Unknown (e.g., from error recovery symbols), return Unknown
+        // to prevent cascading errors. The original error (e.g., import failure) was already reported.
+        if (objectType is UnknownType)
+        {
+            return SemanticType.Unknown;
+        }
+
         // Handle null conditional access (?.)
         SemanticType memberLookupType = objectType;
         if (memberAccess.IsNullConditional)
