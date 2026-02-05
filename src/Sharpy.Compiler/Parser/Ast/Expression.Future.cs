@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace Sharpy.Compiler.Parser.Ast;
 
@@ -29,6 +30,19 @@ public record AwaitExpression : Expression
     /// The expression being awaited (must return a Task or ValueTask).
     /// </summary>
     public Expression Operand { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Operand != null, "AwaitExpression.Operand cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Operand;
+    }
 }
 
 #endregion
@@ -54,6 +68,28 @@ public record MatchExpression : Expression
     /// The match arms (pattern => result pairs).
     /// </summary>
     public ImmutableArray<MatchArm> Arms { get; init; } = ImmutableArray<MatchArm>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Scrutinee != null, "MatchExpression.Scrutinee cannot be null");
+        Debug.Assert(Arms != null, "MatchExpression.Arms cannot be null");
+        Debug.Assert(Arms.Length > 0, "MatchExpression.Arms must have at least one arm");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Scrutinee;
+        foreach (var arm in Arms)
+        {
+            yield return arm.Pattern;
+            if (arm.Guard != null)
+                yield return arm.Guard;
+            yield return arm.Result;
+        }
+    }
 }
 
 /// <summary>

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace Sharpy.Compiler.Parser.Ast;
 
@@ -34,6 +35,29 @@ public record MatchStatement : Statement
     /// The match cases (pattern: body pairs).
     /// </summary>
     public ImmutableArray<MatchCase> Cases { get; init; } = ImmutableArray<MatchCase>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Scrutinee != null, "MatchStatement.Scrutinee cannot be null");
+        Debug.Assert(Cases != null, "MatchStatement.Cases cannot be null");
+        Debug.Assert(Cases.Length > 0, "MatchStatement.Cases must have at least one case");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Scrutinee;
+        foreach (var matchCase in Cases)
+        {
+            yield return matchCase.Pattern;
+            if (matchCase.Guard != null)
+                yield return matchCase.Guard;
+            foreach (var stmt in matchCase.Body)
+                yield return stmt;
+        }
+    }
 }
 
 /// <summary>
@@ -106,6 +130,24 @@ public record UnionDef : Statement
     /// Documentation string.
     /// </summary>
     public string? DocString { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "UnionDef.Name cannot be null or empty");
+        Debug.Assert(TypeParameters != null, "UnionDef.TypeParameters cannot be null");
+        Debug.Assert(Cases != null, "UnionDef.Cases cannot be null");
+        Debug.Assert(Decorators != null, "UnionDef.Decorators cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // TypeParameters, Cases, and Decorators don't contain Node-derived children
+        // that we need to traverse (TypeAnnotation doesn't inherit from Node)
+        yield break;
+    }
 }
 
 /// <summary>

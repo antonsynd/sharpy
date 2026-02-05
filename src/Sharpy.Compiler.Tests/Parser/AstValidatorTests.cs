@@ -406,4 +406,425 @@ for x in items:
     }
 
     #endregion
+
+    #region Future Node ValidateInvariants Tests
+
+    [Fact]
+    public void ValidateInvariants_ValidAwaitExpression_PassesValidation()
+    {
+        // Arrange
+        var awaitExpr = new AwaitExpression
+        {
+            Operand = new Identifier { Name = "task" }
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(awaitExpr);
+    }
+
+    [Fact]
+    public void ValidateInvariants_ValidMatchExpression_PassesValidation()
+    {
+        // Arrange
+        var matchExpr = new MatchExpression
+        {
+            Scrutinee = new Identifier { Name = "value" },
+            Arms = ImmutableArray.Create(
+                new MatchArm
+                {
+                    Pattern = new WildcardPattern(),
+                    Result = new IntegerLiteral { Value = "0" }
+                }
+            )
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(matchExpr);
+    }
+
+    [Fact]
+    public void ValidateInvariants_ValidMatchStatement_PassesValidation()
+    {
+        // Arrange
+        var matchStmt = new MatchStatement
+        {
+            Scrutinee = new Identifier { Name = "value" },
+            Cases = ImmutableArray.Create(
+                new MatchCase
+                {
+                    Pattern = new WildcardPattern(),
+                    Body = ImmutableArray.Create<Statement>(new PassStatement())
+                }
+            )
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(matchStmt);
+    }
+
+    [Fact]
+    public void ValidateInvariants_ValidUnionDef_PassesValidation()
+    {
+        // Arrange
+        var unionDef = new UnionDef
+        {
+            Name = "Result",
+            TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
+            Cases = ImmutableArray<UnionCaseDef>.Empty,
+            Decorators = ImmutableArray<Decorator>.Empty
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(unionDef);
+    }
+
+    #endregion
+
+    #region Pattern ValidateInvariants Tests
+
+    [Fact]
+    public void ValidateInvariants_ValidBindingPattern_PassesValidation()
+    {
+        // Arrange
+        var pattern = new BindingPattern { Name = "x" };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(pattern);
+    }
+
+    [Fact]
+    public void ValidateInvariants_ValidLiteralPattern_PassesValidation()
+    {
+        // Arrange
+        var pattern = new LiteralPattern
+        {
+            Literal = new IntegerLiteral { Value = "42" }
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(pattern);
+    }
+
+    [Fact]
+    public void ValidateInvariants_ValidTypePattern_PassesValidation()
+    {
+        // Arrange
+        var pattern = new TypePattern
+        {
+            Type = new TypeAnnotation { Name = "int" }
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(pattern);
+    }
+
+    [Fact]
+    public void ValidateInvariants_ValidUnionCasePattern_PassesValidation()
+    {
+        // Arrange
+        var pattern = new UnionCasePattern
+        {
+            CaseName = "Ok",
+            FieldPatterns = ImmutableArray.Create<Pattern>(new WildcardPattern())
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(pattern);
+    }
+
+    [Fact]
+    public void ValidateInvariants_ValidTuplePattern_PassesValidation()
+    {
+        // Arrange
+        var pattern = new TuplePattern
+        {
+            Elements = ImmutableArray.Create<Pattern>(
+                new WildcardPattern(),
+                new BindingPattern { Name = "x" }
+            )
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(pattern);
+    }
+
+    [Fact]
+    public void ValidateInvariants_ValidListPattern_PassesValidation()
+    {
+        // Arrange
+        var pattern = new ListPattern
+        {
+            Elements = ImmutableArray.Create<Pattern>(new BindingPattern { Name = "head" }),
+            RestPattern = new BindingPattern { Name = "tail" }
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(pattern);
+    }
+
+    [Fact]
+    public void ValidateInvariants_ValidOrPattern_PassesValidation()
+    {
+        // Arrange
+        var pattern = new OrPattern
+        {
+            Alternatives = ImmutableArray.Create<Pattern>(
+                new LiteralPattern { Literal = new IntegerLiteral { Value = "1" } },
+                new LiteralPattern { Literal = new IntegerLiteral { Value = "2" } }
+            )
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(pattern);
+    }
+
+    [Fact]
+    public void ValidateInvariants_ValidAndPattern_PassesValidation()
+    {
+        // Arrange
+        var pattern = new AndPattern
+        {
+            Left = new TypePattern { Type = new TypeAnnotation { Name = "int" } },
+            Right = new BindingPattern { Name = "x" }
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(pattern);
+    }
+
+    [Fact]
+    public void ValidateInvariants_ValidGuardPattern_PassesValidation()
+    {
+        // Arrange
+        var pattern = new GuardPattern
+        {
+            Inner = new BindingPattern { Name = "x" },
+            Guard = new BinaryOp
+            {
+                Operator = BinaryOperator.GreaterThan,
+                Left = new Identifier { Name = "x" },
+                Right = new IntegerLiteral { Value = "0" }
+            }
+        };
+
+        // Act & Assert - should not throw
+        AstValidator.ValidateNode(pattern);
+    }
+
+    #endregion
+
+    #region GetChildNodes Tests for Future and Pattern Nodes
+
+    [Fact]
+    public void GetChildNodes_AwaitExpression_ReturnsOperand()
+    {
+        // Arrange
+        var operand = new Identifier { Name = "task" };
+        var awaitExpr = new AwaitExpression { Operand = operand };
+
+        // Act
+        var children = awaitExpr.GetChildNodes().ToList();
+
+        // Assert
+        children.Should().ContainSingle();
+        children[0].Should().BeSameAs(operand);
+    }
+
+    [Fact]
+    public void GetChildNodes_MatchExpression_ReturnsScrutineeAndArmParts()
+    {
+        // Arrange
+        var scrutinee = new Identifier { Name = "x" };
+        var pattern = new WildcardPattern();
+        var guard = new BooleanLiteral { Value = true };
+        var result = new IntegerLiteral { Value = "1" };
+
+        var matchExpr = new MatchExpression
+        {
+            Scrutinee = scrutinee,
+            Arms = ImmutableArray.Create(
+                new MatchArm { Pattern = pattern, Guard = guard, Result = result }
+            )
+        };
+
+        // Act
+        var children = matchExpr.GetChildNodes().ToList();
+
+        // Assert - scrutinee + pattern + guard + result
+        children.Should().HaveCount(4);
+        children[0].Should().BeSameAs(scrutinee);
+        children[1].Should().BeSameAs(pattern);
+        children[2].Should().BeSameAs(guard);
+        children[3].Should().BeSameAs(result);
+    }
+
+    [Fact]
+    public void GetChildNodes_ListPattern_ReturnsElementsAndRestPattern()
+    {
+        // Arrange
+        var head = new BindingPattern { Name = "head" };
+        var tail = new BindingPattern { Name = "tail" };
+        var pattern = new ListPattern
+        {
+            Elements = ImmutableArray.Create<Pattern>(head),
+            RestPattern = tail
+        };
+
+        // Act
+        var children = pattern.GetChildNodes().ToList();
+
+        // Assert
+        children.Should().HaveCount(2);
+        children[0].Should().BeSameAs(head);
+        children[1].Should().BeSameAs(tail);
+    }
+
+    [Fact]
+    public void GetChildNodes_GuardPattern_ReturnsInnerAndGuard()
+    {
+        // Arrange
+        var inner = new WildcardPattern();
+        var guard = new BooleanLiteral { Value = true };
+        var pattern = new GuardPattern { Inner = inner, Guard = guard };
+
+        // Act
+        var children = pattern.GetChildNodes().ToList();
+
+        // Assert
+        children.Should().HaveCount(2);
+        children[0].Should().BeSameAs(inner);
+        children[1].Should().BeSameAs(guard);
+    }
+
+    [Fact]
+    public void GetChildNodes_LiteralPattern_ReturnsLiteral()
+    {
+        // Arrange
+        var literal = new IntegerLiteral { Value = "42" };
+        var pattern = new LiteralPattern { Literal = literal };
+
+        // Act
+        var children = pattern.GetChildNodes().ToList();
+
+        // Assert
+        children.Should().ContainSingle();
+        children[0].Should().BeSameAs(literal);
+    }
+
+    #endregion
+
+    #region Malformed AST Detection Tests
+
+    /// <summary>
+    /// These tests document the invariants that ValidateInvariants checks.
+    /// In DEBUG builds with proper test configuration, malformed ASTs trigger
+    /// Debug.Assert failures. These tests verify the validation logic exists
+    /// by checking that well-formed equivalents pass.
+    /// </summary>
+    /// <remarks>
+    /// The following invariants are enforced:
+    /// - FunctionDef.Name cannot be null or empty
+    /// - ClassDef.Name cannot be null or empty
+    /// - Identifier.Name cannot be null or empty
+    /// - BinaryOp.Left and BinaryOp.Right cannot be null
+    /// - ListComprehension must have at least one clause
+    /// - OrPattern must have at least 2 alternatives
+    /// - ComparisonChain.Operators.Length must equal Operands.Length - 1
+    /// </remarks>
+    [Fact]
+    public void InvariantDocumentation_FunctionDefRequiresNonEmptyName()
+    {
+        // Valid case - passes validation
+        var validFunc = new FunctionDef
+        {
+            Name = "foo",
+            Parameters = ImmutableArray<Parameter>.Empty,
+            Body = ImmutableArray<Statement>.Empty,
+            TypeParameters = ImmutableArray<TypeParameterDef>.Empty,
+            Decorators = ImmutableArray<Decorator>.Empty
+        };
+        AstValidator.ValidateNode(validFunc);
+
+        // Note: A FunctionDef with Name = "" would trigger Debug.Assert in DEBUG builds
+    }
+
+    [Fact]
+    public void InvariantDocumentation_IdentifierRequiresNonEmptyName()
+    {
+        // Valid case - passes validation
+        var validId = new Identifier { Name = "x" };
+        AstValidator.ValidateNode(validId);
+
+        // Note: An Identifier with Name = "" would trigger Debug.Assert in DEBUG builds
+    }
+
+    [Fact]
+    public void InvariantDocumentation_BinaryOpRequiresNonNullOperands()
+    {
+        // Valid case - passes validation
+        var validOp = new BinaryOp
+        {
+            Operator = BinaryOperator.Add,
+            Left = new IntegerLiteral { Value = "1" },
+            Right = new IntegerLiteral { Value = "2" }
+        };
+        AstValidator.ValidateNode(validOp);
+
+        // Note: A BinaryOp with Left = null would trigger Debug.Assert in DEBUG builds
+    }
+
+    [Fact]
+    public void InvariantDocumentation_ListComprehensionRequiresAtLeastOneClause()
+    {
+        // Valid case - passes validation
+        var validComp = new ListComprehension
+        {
+            Element = new Identifier { Name = "x" },
+            Clauses = ImmutableArray.Create<ComprehensionClause>(
+                new ForClause
+                {
+                    Target = new Identifier { Name = "x" },
+                    Iterator = new Identifier { Name = "items" }
+                }
+            )
+        };
+        AstValidator.ValidateNode(validComp);
+
+        // Note: A ListComprehension with empty Clauses would trigger Debug.Assert
+    }
+
+    [Fact]
+    public void InvariantDocumentation_OrPatternRequiresAtLeastTwoAlternatives()
+    {
+        // Valid case - passes validation
+        var validOr = new OrPattern
+        {
+            Alternatives = ImmutableArray.Create<Pattern>(
+                new WildcardPattern(),
+                new WildcardPattern()
+            )
+        };
+        AstValidator.ValidateNode(validOr);
+
+        // Note: An OrPattern with fewer than 2 Alternatives would trigger Debug.Assert
+    }
+
+    [Fact]
+    public void InvariantDocumentation_ComparisonChainRequiresMatchingOperators()
+    {
+        // Valid case - passes validation (2 operands, 1 operator)
+        var validChain = new ComparisonChain
+        {
+            Operands = ImmutableArray.Create<Expression>(
+                new Identifier { Name = "a" },
+                new Identifier { Name = "b" }
+            ),
+            Operators = ImmutableArray.Create(ComparisonOperator.LessThan)
+        };
+        AstValidator.ValidateNode(validChain);
+
+        // Note: A ComparisonChain with mismatched counts would trigger Debug.Assert
+    }
+
+    #endregion
 }

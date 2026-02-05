@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace Sharpy.Compiler.Parser.Ast;
 
@@ -42,6 +43,13 @@ public record BindingPattern : Pattern
     /// Optional type constraint for the binding.
     /// </summary>
     public TypeAnnotation? Type { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "BindingPattern.Name cannot be null or empty");
+    }
 }
 
 /// <summary>
@@ -53,6 +61,19 @@ public record LiteralPattern : Pattern
     /// The literal value to match (IntegerLiteral, StringLiteral, etc.).
     /// </summary>
     public Expression Literal { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Literal != null, "LiteralPattern.Literal cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Literal;
+    }
 }
 
 /// <summary>
@@ -69,6 +90,13 @@ public record TypePattern : Pattern
     /// Optional variable to bind the casted value to.
     /// </summary>
     public string? BindingName { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Type != null, "TypePattern.Type cannot be null");
+    }
 }
 
 #endregion
@@ -98,6 +126,17 @@ public record UnionCasePattern : Pattern
     /// Patterns to match against the case fields.
     /// </summary>
     public ImmutableArray<Pattern> FieldPatterns { get; init; } = ImmutableArray<Pattern>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(CaseName), "UnionCasePattern.CaseName cannot be null or empty");
+        Debug.Assert(FieldPatterns != null, "UnionCasePattern.FieldPatterns cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes() => FieldPatterns;
 }
 
 /// <summary>
@@ -113,6 +152,16 @@ public record TuplePattern : Pattern
     /// Patterns for each element.
     /// </summary>
     public ImmutableArray<Pattern> Elements { get; init; } = ImmutableArray<Pattern>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Elements != null, "TuplePattern.Elements cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes() => Elements;
 }
 
 /// <summary>
@@ -135,6 +184,22 @@ public record ListPattern : Pattern
     /// Optional rest pattern (the "...tail" part).
     /// </summary>
     public Pattern? RestPattern { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Elements != null, "ListPattern.Elements cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        foreach (var element in Elements)
+            yield return element;
+        if (RestPattern != null)
+            yield return RestPattern;
+    }
 }
 
 /// <summary>
@@ -146,6 +211,17 @@ public record OrPattern : Pattern
     /// The alternative patterns (at least 2).
     /// </summary>
     public ImmutableArray<Pattern> Alternatives { get; init; } = ImmutableArray<Pattern>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Alternatives != null, "OrPattern.Alternatives cannot be null");
+        Debug.Assert(Alternatives.Length >= 2, "OrPattern.Alternatives must have at least 2 elements");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes() => Alternatives;
 }
 
 /// <summary>
@@ -163,6 +239,21 @@ public record AndPattern : Pattern
     /// The right pattern.
     /// </summary>
     public Pattern Right { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Left != null, "AndPattern.Left cannot be null");
+        Debug.Assert(Right != null, "AndPattern.Right cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Left;
+        yield return Right;
+    }
 }
 
 /// <summary>
@@ -179,6 +270,21 @@ public record GuardPattern : Pattern
     /// The guard condition.
     /// </summary>
     public Expression Guard { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Inner != null, "GuardPattern.Inner cannot be null");
+        Debug.Assert(Guard != null, "GuardPattern.Guard cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Inner;
+        yield return Guard;
+    }
 }
 
 #endregion
