@@ -40,6 +40,10 @@ public class Compiler
     private readonly ModuleRegistry? _moduleRegistry;
     private readonly CompilerOptions _options;
 
+    // Phase timing for structured logging
+    private readonly Stopwatch _phaseStopwatch = new();
+    private string? _currentPhaseName;
+
     public Compiler(ICompilerLogger? logger = null)
     {
         _logger = logger ?? NullLogger.Instance;
@@ -125,6 +129,7 @@ public class Compiler
             // Phase 1: Lexical Analysis
             _logger.LogInfo("Phase 1: Lexical Analysis");
             metrics.StartPhase("Lexical Analysis");
+            LogPhaseStart("Lexical Analysis", filePath);
             sourceText = new SourceText(sourceCode, filePath);
             var lexer = new Lexer.Lexer(sourceText, _logger);
             if (_options.MaxErrors > 0)
@@ -132,6 +137,7 @@ public class Compiler
                 lexer.MaxErrors = _options.MaxErrors;
             }
             tokens = lexer.TokenizeAll();
+            LogPhaseEnd(filePath, lexer.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
             // Assertion: Lexer must produce at least an EOF token
@@ -156,9 +162,11 @@ public class Compiler
             // Phase 2: Syntax Analysis
             _logger.LogInfo("Phase 2: Syntax Analysis");
             metrics.StartPhase("Syntax Analysis");
+            LogPhaseStart("Syntax Analysis", filePath, tokens.Count);
             var parserMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 25;
             var parser = new Parser.Parser(tokens, _logger, parserMaxErrors, cancellationToken);
             module = parser.ParseModule();
+            LogPhaseEnd(filePath, parser.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
             // Check if parser collected any errors into DiagnosticBag
@@ -214,9 +222,11 @@ public class Compiler
 
             // Pass 1: Name resolution (declarations)
             metrics.StartPhase("Name Resolution");
+            LogPhaseStart("Name Resolution", filePath, module.Body.Length);
             var nameResolver = new NameResolver(symbolTable, _logger, semanticBinding);
             nameResolver.ResolveDeclarations(module, cancellationToken);
             nameResolver.ResolveInheritance(cancellationToken); // Second pass: resolve inheritance after all types are declared
+            LogPhaseEnd(filePath, nameResolver.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
             // Assertions: After name resolution, verify symbol table integrity
@@ -244,6 +254,7 @@ public class Compiler
 
             // Pass 1.5: Import resolution (resolves imports and registers symbols)
             metrics.StartPhase("Import Resolution");
+            LogPhaseStart("Import Resolution", filePath);
             var moduleSearchPaths = _moduleRegistry?.GetModulePaths()?.ToArray() ?? Array.Empty<string>();
             _logger.LogDebug($"Module search paths: [{string.Join(", ", moduleSearchPaths)}]");
             var moduleResolver = new ModuleResolver(_logger, moduleSearchPaths);
@@ -270,6 +281,7 @@ public class Compiler
             _logger.LogDebug($"Post-inheritance assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
             semanticBinding.FreezeInheritance();
 
+            LogPhaseEnd(filePath, importResolver.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
             // Always merge import diagnostics (errors + warnings) so they appear
@@ -284,10 +296,13 @@ public class Compiler
 
             // Pass 2: Type resolution and type checking
             metrics.StartPhase("Type Resolution");
+            LogPhaseStart("Type Resolution", filePath);
             var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger);
+            LogPhaseEnd(filePath);
             metrics.EndPhase();
 
             metrics.StartPhase("Type Checking");
+            LogPhaseStart("Type Checking", filePath);
             var pipeline = ValidationPipelineFactory.CreateDefault(_logger);
             var semanticMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 100;
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger, pipeline)
@@ -308,6 +323,7 @@ public class Compiler
             catch (SemanticAnalysisException)
             {
                 // Preserve all accumulated diagnostics from the type checker
+                LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
                 diagnostics.Merge(typeChecker.Diagnostics);
                 return new CompilationResult
                 {
@@ -321,6 +337,7 @@ public class Compiler
                     ImportResolver = importResolver
                 };
             }
+            LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
             // Assertion: After successful type checking, warn if unknown types remain
@@ -366,6 +383,7 @@ public class Compiler
             // Phase 4: Code Generation - Generate C# code from AST using RoslynEmitter
             _logger.LogInfo("Phase 4: Code Generation");
             metrics.StartPhase("Code Generation");
+            LogPhaseStart("Code Generation", filePath);
 
             // For single-file compilation, derive a namespace from the file name
             var defaultNamespace = !string.IsNullOrEmpty(filePath)
@@ -435,6 +453,14 @@ public class Compiler
                 }
             }
 
+            // Emit CodeGenEvent with the size of generated code
+            if (_logger.SupportsStructuredLogging)
+            {
+                var totalBytes = allGeneratedFiles.Values.Sum(cs => System.Text.Encoding.UTF8.GetByteCount(cs));
+                _logger.LogEvent(new CodeGenEvent("CSharp", totalBytes) { FilePath = filePath });
+            }
+
+            LogPhaseEnd(filePath, codeGenContext.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
             return new CompilationResult
@@ -567,6 +593,39 @@ public class Compiler
             .WithTypeResolver(typeResolver)
             .WithClrCache(clrCache ?? new ClrMemberCache())
             .Build();
+    }
+
+    // ----- Structured Logging Helpers -----
+
+    /// <summary>
+    /// Starts tracking a compilation phase for structured logging.
+    /// Emits a PhaseStartEvent if the logger supports structured logging.
+    /// </summary>
+    private void LogPhaseStart(string phaseName, string? filePath = null, int nodeCount = 0)
+    {
+        _currentPhaseName = phaseName;
+        _phaseStopwatch.Restart();
+
+        if (_logger.SupportsStructuredLogging)
+        {
+            _logger.LogEvent(new PhaseStartEvent(phaseName, nodeCount) { FilePath = filePath });
+        }
+    }
+
+    /// <summary>
+    /// Ends tracking the current compilation phase for structured logging.
+    /// Emits a PhaseEndEvent if the logger supports structured logging.
+    /// </summary>
+    private void LogPhaseEnd(string? filePath = null, int errorCount = 0)
+    {
+        _phaseStopwatch.Stop();
+
+        if (_logger.SupportsStructuredLogging && _currentPhaseName != null)
+        {
+            _logger.LogEvent(new PhaseEndEvent(_currentPhaseName, _phaseStopwatch.Elapsed, errorCount) { FilePath = filePath });
+        }
+
+        _currentPhaseName = null;
     }
 
     /// <summary>

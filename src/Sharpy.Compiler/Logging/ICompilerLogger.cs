@@ -59,6 +59,27 @@ public interface ICompilerLogger
     /// Check if logging is enabled at a specific level
     /// </summary>
     bool IsEnabled(CompilerLogLevel level);
+
+    /// <summary>
+    /// Log a structured compiler event.
+    /// </summary>
+    /// <remarks>
+    /// This is an optional method for structured logging support.
+    /// The default implementation does nothing, making it backward compatible
+    /// with existing logger implementations.
+    /// Structured events enable trace replay, performance profiling, and telemetry.
+    /// </remarks>
+    /// <param name="evt">The compiler event to log</param>
+    void LogEvent(CompilerEvent evt) { }
+
+    /// <summary>
+    /// Check if structured event logging is supported by this logger.
+    /// </summary>
+    /// <remarks>
+    /// Returns false by default. Loggers that capture events should override
+    /// this to return true so callers can avoid constructing events unnecessarily.
+    /// </remarks>
+    bool SupportsStructuredLogging => false;
 }
 
 /// <summary>
