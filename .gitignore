@@ -1,3 +1,6 @@
+# Swap files
+*.swp
+
 # Claude settings
 .claude/settings.local.json
 
