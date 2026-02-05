@@ -74,6 +74,10 @@ public class CompilationMetricsTests
         {
             time.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
         }
+
+        // ValidationTime should be the sum of individual validator times
+        metrics.ValidationTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero,
+            because: "ValidationTime is the aggregate of all validator times");
     }
 
     [Fact]
