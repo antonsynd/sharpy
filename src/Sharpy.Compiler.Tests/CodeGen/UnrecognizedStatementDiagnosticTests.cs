@@ -9,7 +9,7 @@ using Xunit;
 namespace Sharpy.Compiler.Tests.CodeGen;
 
 /// <summary>
-/// Tests that unrecognized AST statement types in code generation emit SHP0510 diagnostics
+/// Tests that unrecognized AST statement types in code generation emit SPY0510 diagnostics
 /// instead of being silently dropped.
 /// </summary>
 [Collection("Sequential")]
@@ -22,7 +22,7 @@ public class UnrecognizedStatementDiagnosticTests
     private record FakeStatement : Statement;
 
     [Fact]
-    public void GenerateBodyStatement_UnrecognizedStatement_EmitsSHP0510()
+    public void GenerateBodyStatement_UnrecognizedStatement_EmitsSPY0510()
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
@@ -45,7 +45,7 @@ public class UnrecognizedStatementDiagnosticTests
     }
 
     [Fact]
-    public void GenerateClassMembers_UnrecognizedStatement_EmitsSHP0510()
+    public void GenerateClassMembers_UnrecognizedStatement_EmitsSPY0510()
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);

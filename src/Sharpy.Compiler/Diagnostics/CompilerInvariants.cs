@@ -17,7 +17,7 @@ namespace Sharpy.Compiler.Diagnostics;
 /// <para>
 /// All assertions are always-on (not DEBUG-only) for production safety. When an
 /// invariant is violated, it emits a <see cref="DiagnosticCodes.Infrastructure.InvariantViolation"/>
-/// warning (SHP0904), not an exception. This allows compilation to continue with
+/// warning (SPY0904), not an exception. This allows compilation to continue with
 /// diagnostic visibility rather than crashing.
 /// </para>
 /// <para>
@@ -188,7 +188,7 @@ public static class CompilerInvariants
 
     /// <summary>
     /// Verify top-level statements have TextSpan populated.
-    /// Emits SHP0904 if any statement is missing its span.
+    /// Emits SPY0904 if any statement is missing its span.
     /// </summary>
     /// <remarks>
     /// Import statements are exempt because they're processed before codegen
@@ -214,7 +214,7 @@ public static class CompilerInvariants
 
     /// <summary>
     /// Verify all symbols in the global scope have non-empty names.
-    /// Emits SHP0904 for any symbol with a null/empty name.
+    /// Emits SPY0904 for any symbol with a null/empty name.
     /// </summary>
     internal static void AssertAllSymbolsHaveNames(SymbolTable symbolTable, DiagnosticBag diagnostics)
     {

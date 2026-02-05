@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Tests.Parser;
 
 /// <summary>
 /// Tests for parser handling of syntax error cases from the fuzz test suite.
-/// These are the 10 cases from SharplyFuzzer.GenerateWithSyntaxErrors.
+/// These are the 10 cases from SharpyFuzzer.GenerateWithSyntaxErrors.
 /// </summary>
 public class SyntaxErrorEdgeCaseTests
 {

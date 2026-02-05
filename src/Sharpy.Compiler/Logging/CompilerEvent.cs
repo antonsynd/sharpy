@@ -40,7 +40,7 @@ public sealed record PhaseEndEvent(string Phase, TimeSpan Duration, int ErrorCou
 /// <summary>
 /// Emitted when a diagnostic (error, warning, or info) is recorded.
 /// </summary>
-/// <param name="Code">Diagnostic code (e.g., "SHP0201")</param>
+/// <param name="Code">Diagnostic code (e.g., "SPY0201")</param>
 /// <param name="Message">Human-readable diagnostic message</param>
 /// <param name="Severity">Diagnostic severity level</param>
 /// <param name="Line">1-based line number where the diagnostic occurred</param>

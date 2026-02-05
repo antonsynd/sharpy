@@ -1358,7 +1358,7 @@ def main():
     <PropertyGroup>
         <RootNamespace>TestApp</RootNamespace>
         <OutputType>exe</OutputType>
-        <NoWarn>SHP0451,SHP0452;SHP0453</NoWarn>
+        <NoWarn>SPY0451,SPY0452;SPY0453</NoWarn>
     </PropertyGroup>
     <ItemGroup>
         <SourceFile Include=""*.spy"" />
@@ -1374,9 +1374,9 @@ def main():
 
             var config = ProjectFileParser.Load(Path.Combine(tempDir, "test.spyproj"));
 
-            Assert.Contains("SHP0451", config.SuppressedWarnings);
-            Assert.Contains("SHP0452", config.SuppressedWarnings);
-            Assert.Contains("SHP0453", config.SuppressedWarnings);
+            Assert.Contains("SPY0451", config.SuppressedWarnings);
+            Assert.Contains("SPY0452", config.SuppressedWarnings);
+            Assert.Contains("SPY0453", config.SuppressedWarnings);
             Assert.Equal(3, config.SuppressedWarnings.Count);
         }
         finally

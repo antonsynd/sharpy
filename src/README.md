@@ -21,7 +21,7 @@ Sharpy.Compiler/
 │   └── Parser.cs       # Recursive descent parser
 ├── Diagnostics/        # Unified error handling
 │   ├── DiagnosticBag.cs # Structured diagnostic collection
-│   └── DiagnosticCodes.cs # SHP error code catalog
+│   └── DiagnosticCodes.cs # SPY error code catalog
 ├── Semantic/           # Semantic analysis
 │   ├── Symbol.cs       # Symbol definitions
 │   ├── Scope.cs        # Scope management

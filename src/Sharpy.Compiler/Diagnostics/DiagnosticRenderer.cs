@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Diagnostics;
 ///
 /// Output format (with span):
 /// <code>
-/// error[SHP0201]: Type 'str' is not assignable to 'int'
+/// error[SPY0201]: Type 'str' is not assignable to 'int'
 ///   --> file.spy:3:5
 ///    |
 ///  3 |     x: int = "hello"
@@ -17,7 +17,7 @@ namespace Sharpy.Compiler.Diagnostics;
 ///
 /// Output format (with line/column only):
 /// <code>
-/// error[SHP0201]: Type 'str' is not assignable to 'int'
+/// error[SPY0201]: Type 'str' is not assignable to 'int'
 ///   --> file.spy:3:5
 ///    |
 ///  3 |     x: int = "hello"
@@ -27,7 +27,7 @@ namespace Sharpy.Compiler.Diagnostics;
 ///
 /// Output format (no location):
 /// <code>
-/// error[SHP0201]: Type 'str' is not assignable to 'int'
+/// error[SPY0201]: Type 'str' is not assignable to 'int'
 /// </code>
 /// </summary>
 internal class DiagnosticRenderer

@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Tests.Fuzz;
 /// Generates random Sharpy-like source code for fuzz testing the lexer and parser.
 /// Produces both valid-looking and intentionally malformed programs.
 /// </summary>
-public class SharplyFuzzer
+public class SharpyFuzzer
 {
     private readonly System.Random _random;
 
@@ -45,7 +45,7 @@ public class SharplyFuzzer
         "\"escape\\n\\t\\r\"", "\"unicode\\u0041\"", "\"\""
     };
 
-    public SharplyFuzzer(int seed)
+    public SharpyFuzzer(int seed)
     {
         _random = new System.Random(seed);
     }

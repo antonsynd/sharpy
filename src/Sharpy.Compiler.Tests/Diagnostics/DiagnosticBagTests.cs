@@ -204,7 +204,7 @@ public class DiagnosticBagTests
         var bag = new DiagnosticBag();
         var span = new TextSpan(20, 10);
 
-        bag.AddError("Test error", span, 5, 3, "test.spy", "SHP0001");
+        bag.AddError("Test error", span, 5, 3, "test.spy", "SPY0001");
 
         var errors = bag.GetErrors();
         Assert.Single(errors);
@@ -219,7 +219,7 @@ public class DiagnosticBagTests
         var bag = new DiagnosticBag();
         var span = new TextSpan(30, 15);
 
-        bag.AddWarning("Test warning", span, 8, 2, "test.spy", "SHP0451");
+        bag.AddWarning("Test warning", span, 8, 2, "test.spy", "SPY0451");
 
         var warnings = bag.GetWarnings();
         Assert.Single(warnings);
@@ -244,7 +244,7 @@ public class DiagnosticBagTests
         var bag = new DiagnosticBag();
         var locatable = new TestLocatable(new TextSpan(42, 7));
 
-        bag.AddError("Locatable error", locatable, "test.spy", "SHP0001");
+        bag.AddError("Locatable error", locatable, "test.spy", "SPY0001");
 
         var errors = bag.GetErrors();
         Assert.Single(errors);
@@ -259,7 +259,7 @@ public class DiagnosticBagTests
         var bag = new DiagnosticBag();
         var locatable = new TestLocatable(new TextSpan(100, 12));
 
-        bag.AddWarning("Locatable warning", locatable, "test.spy", "SHP0451");
+        bag.AddWarning("Locatable warning", locatable, "test.spy", "SPY0451");
 
         var warnings = bag.GetWarnings();
         Assert.Single(warnings);
@@ -286,9 +286,9 @@ public class DiagnosticBagTests
     [Fact]
     public void SuppressedWarning_IsNotAdded()
     {
-        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SPY0451" });
 
-        bag.AddWarning("Unused variable", code: "SHP0451");
+        bag.AddWarning("Unused variable", code: "SPY0451");
 
         Assert.Equal(0, bag.WarningCount);
         Assert.Empty(bag.GetAll());
@@ -297,21 +297,21 @@ public class DiagnosticBagTests
     [Fact]
     public void SuppressedWarning_OtherWarningsStillAdded()
     {
-        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SPY0451" });
 
-        bag.AddWarning("Unused variable", code: "SHP0451");
-        bag.AddWarning("Unused import", code: "SHP0452");
+        bag.AddWarning("Unused variable", code: "SPY0451");
+        bag.AddWarning("Unused import", code: "SPY0452");
 
         Assert.Equal(1, bag.WarningCount);
-        Assert.Equal("SHP0452", bag.GetWarnings()[0].Code);
+        Assert.Equal("SPY0452", bag.GetWarnings()[0].Code);
     }
 
     [Fact]
     public void SuppressedWarning_WithSpan_IsNotAdded()
     {
-        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SPY0451" });
 
-        bag.AddWarning("Unused variable", new TextSpan(10, 5), code: "SHP0451");
+        bag.AddWarning("Unused variable", new TextSpan(10, 5), code: "SPY0451");
 
         Assert.Equal(0, bag.WarningCount);
     }
@@ -319,9 +319,9 @@ public class DiagnosticBagTests
     [Fact]
     public void SuppressedWarning_WithLocatable_IsNotAdded()
     {
-        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SPY0451" });
 
-        bag.AddWarning("Unused variable", new TestLocatable(new TextSpan(10, 5)), code: "SHP0451");
+        bag.AddWarning("Unused variable", new TestLocatable(new TextSpan(10, 5)), code: "SPY0451");
 
         Assert.Equal(0, bag.WarningCount);
     }
@@ -329,9 +329,9 @@ public class DiagnosticBagTests
     [Fact]
     public void SuppressedWarning_ErrorsNotAffected()
     {
-        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SPY0451" });
 
-        bag.AddError("Some error", code: "SHP0200");
+        bag.AddError("Some error", code: "SPY0200");
 
         Assert.Equal(1, bag.ErrorCount);
     }
@@ -343,7 +343,7 @@ public class DiagnosticBagTests
     {
         var bag = new DiagnosticBag(warningsAsErrors: true);
 
-        bag.AddWarning("Unused variable", code: "SHP0451");
+        bag.AddWarning("Unused variable", code: "SPY0451");
 
         Assert.True(bag.HasErrors);
         Assert.Equal(1, bag.ErrorCount);
@@ -355,7 +355,7 @@ public class DiagnosticBagTests
     {
         var bag = new DiagnosticBag(warningsAsErrors: true);
 
-        bag.AddWarning("Unused variable", new TextSpan(10, 5), code: "SHP0451");
+        bag.AddWarning("Unused variable", new TextSpan(10, 5), code: "SPY0451");
 
         Assert.True(bag.HasErrors);
         Assert.Equal(1, bag.ErrorCount);
@@ -366,7 +366,7 @@ public class DiagnosticBagTests
     {
         var bag = new DiagnosticBag(warningsAsErrors: true);
 
-        bag.AddWarning("Unused variable", new TestLocatable(new TextSpan(10, 5)), code: "SHP0451");
+        bag.AddWarning("Unused variable", new TestLocatable(new TextSpan(10, 5)), code: "SPY0451");
 
         Assert.True(bag.HasErrors);
         Assert.Equal(1, bag.ErrorCount);
@@ -377,7 +377,7 @@ public class DiagnosticBagTests
     {
         var bag = new DiagnosticBag(warningsAsErrors: true);
 
-        bag.AddError("Some error", code: "SHP0200");
+        bag.AddError("Some error", code: "SPY0200");
 
         Assert.Equal(1, bag.ErrorCount);
     }
@@ -385,21 +385,21 @@ public class DiagnosticBagTests
     [Fact]
     public void WarningsAsErrors_CombinedWithSuppression()
     {
-        var bag = new DiagnosticBag(warningsAsErrors: true, suppressedWarnings: new HashSet<string> { "SHP0451" });
+        var bag = new DiagnosticBag(warningsAsErrors: true, suppressedWarnings: new HashSet<string> { "SPY0451" });
 
-        bag.AddWarning("Unused variable", code: "SHP0451");
-        bag.AddWarning("Unused import", code: "SHP0452");
+        bag.AddWarning("Unused variable", code: "SPY0451");
+        bag.AddWarning("Unused import", code: "SPY0452");
 
-        // SHP0451 suppressed, SHP0452 promoted to error
+        // SPY0451 suppressed, SPY0452 promoted to error
         Assert.Equal(1, bag.ErrorCount);
         Assert.Equal(0, bag.WarningCount);
-        Assert.Equal("SHP0452", bag.GetErrors()[0].Code);
+        Assert.Equal("SPY0452", bag.GetErrors()[0].Code);
     }
 
     [Fact]
     public void WarningWithNoCode_NotSuppressed()
     {
-        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SHP0451" });
+        var bag = new DiagnosticBag(suppressedWarnings: new HashSet<string> { "SPY0451" });
 
         bag.AddWarning("Some warning without code");
 
@@ -410,10 +410,10 @@ public class DiagnosticBagTests
     public void SuppressedWarning_CaseInsensitive()
     {
         // When suppressed codes are in a case-insensitive set, lowercase codes should match
-        var suppressed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "shp0451" };
+        var suppressed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "spy0451" };
         var bag = new DiagnosticBag(suppressedWarnings: suppressed);
 
-        bag.AddWarning("Unused variable", code: "SHP0451");
+        bag.AddWarning("Unused variable", code: "SPY0451");
 
         Assert.Equal(0, bag.WarningCount);
         Assert.Empty(bag.GetAll());
@@ -432,7 +432,7 @@ public class DiagnosticBagTests
     {
         var bag = new DiagnosticBag();
 
-        bag.AddRootCauseError("foo", "Cannot find module 'foo'", 1, 1, code: "SHP0301");
+        bag.AddRootCauseError("foo", "Cannot find module 'foo'", 1, 1, code: "SPY0301");
 
         Assert.True(bag.IsRootCause("foo"));
         Assert.Equal(1, bag.ErrorCount);
@@ -464,7 +464,7 @@ public class DiagnosticBagTests
         var bag = new DiagnosticBag();
         var span = new TextSpan(10, 5);
 
-        bag.AddRootCauseError("bar", "Cannot find module 'bar'", span, 1, 1, code: "SHP0301");
+        bag.AddRootCauseError("bar", "Cannot find module 'bar'", span, 1, 1, code: "SPY0301");
 
         Assert.True(bag.IsRootCause("bar"));
         Assert.Equal(1, bag.ErrorCount);
@@ -603,8 +603,8 @@ public class DiagnosticBagTests
         var bag = new DiagnosticBag();
 
         // Add same error twice with slightly different messages but same code and location
-        bag.AddError("Cannot assign int to str", 10, 5, code: "SHP0001");
-        bag.AddError("Cannot assign 'int' to 'str'", 10, 5, code: "SHP0001");  // Variant message
+        bag.AddError("Cannot assign int to str", 10, 5, code: "SPY0001");
+        bag.AddError("Cannot assign 'int' to 'str'", 10, 5, code: "SPY0001");  // Variant message
 
         var errors = bag.GetAll().ToList();
         Assert.Single(errors);  // Should deduplicate
@@ -616,8 +616,8 @@ public class DiagnosticBagTests
     {
         var bag = new DiagnosticBag();
 
-        bag.AddError("Type mismatch", 10, 5, code: "SHP0001");
-        bag.AddError("Type mismatch", 15, 5, code: "SHP0001");  // Same code, different line
+        bag.AddError("Type mismatch", 10, 5, code: "SPY0001");
+        bag.AddError("Type mismatch", 15, 5, code: "SPY0001");  // Same code, different line
 
         var errors = bag.GetAll().ToList();
         Assert.Equal(2, errors.Count);  // Should NOT deduplicate
@@ -628,8 +628,8 @@ public class DiagnosticBagTests
     {
         var bag = new DiagnosticBag();
 
-        bag.AddError("Type mismatch", 10, 5, code: "SHP0001");
-        bag.AddError("Missing return", 10, 5, code: "SHP0002");  // Different code, same location
+        bag.AddError("Type mismatch", 10, 5, code: "SPY0001");
+        bag.AddError("Missing return", 10, 5, code: "SPY0002");  // Different code, same location
 
         var errors = bag.GetAll().ToList();
         Assert.Equal(2, errors.Count);  // Should NOT deduplicate
@@ -653,10 +653,10 @@ public class DiagnosticBagTests
     public void Deduplication_MergedBags_DuplicatesRemoved()
     {
         var bag1 = new DiagnosticBag();
-        bag1.AddError("Type mismatch", 10, 5, code: "SHP0001");
+        bag1.AddError("Type mismatch", 10, 5, code: "SPY0001");
 
         var bag2 = new DiagnosticBag();
-        bag2.AddError("Type mismatch", 10, 5, code: "SHP0001");  // Same diagnostic
+        bag2.AddError("Type mismatch", 10, 5, code: "SPY0001");  // Same diagnostic
 
         bag1.Merge(bag2);
 
@@ -669,9 +669,9 @@ public class DiagnosticBagTests
     {
         var bag = new DiagnosticBag();
 
-        bag.AddError("Type mismatch", 10, 5, code: "SHP0001");
+        bag.AddError("Type mismatch", 10, 5, code: "SPY0001");
         bag.Clear();
-        bag.AddError("Type mismatch", 10, 5, code: "SHP0001");  // Same as before clear
+        bag.AddError("Type mismatch", 10, 5, code: "SPY0001");  // Same as before clear
 
         var errors = bag.GetAll().ToList();
         Assert.Single(errors);  // Should be added after clear
@@ -682,8 +682,8 @@ public class DiagnosticBagTests
     {
         var bag = new DiagnosticBag();
 
-        bag.AddWarning("Unused variable", 10, 5, code: "SHP0451");
-        bag.AddWarning("Unused variable", 10, 5, code: "SHP0451");
+        bag.AddWarning("Unused variable", 10, 5, code: "SPY0451");
+        bag.AddWarning("Unused variable", 10, 5, code: "SPY0451");
 
         var warnings = bag.GetWarnings().ToList();
         Assert.Single(warnings);
@@ -695,8 +695,8 @@ public class DiagnosticBagTests
         // When warnings-as-errors is enabled, the duplicate check happens after promotion
         var bag = new DiagnosticBag(warningsAsErrors: true);
 
-        bag.AddWarning("Unused variable", 10, 5, code: "SHP0451");
-        bag.AddWarning("Unused variable", 10, 5, code: "SHP0451");
+        bag.AddWarning("Unused variable", 10, 5, code: "SPY0451");
+        bag.AddWarning("Unused variable", 10, 5, code: "SPY0451");
 
         var errors = bag.GetErrors().ToList();
         Assert.Single(errors);  // Deduplicated after promotion

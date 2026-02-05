@@ -379,7 +379,7 @@ long x = 1; // @source:main.spy:42:5
               // Successfully mapped to Sharpy source
               return new CompilerDiagnostic(
                   Severity: DiagnosticSeverity.Error,
-                  Code: $"SHP{roslynDiagnostic.Id.Substring(2)}", // CS0103 -> SHP0103
+                  Code: $"SHP{roslynDiagnostic.Id.Substring(2)}", // CS0103 -> SPY0103
                   Message: SimplifyMessage(roslynDiagnostic),
                   FilePath: lineSpan.Path,
                   Line: lineSpan.StartLinePosition.Line + 1,
@@ -390,7 +390,7 @@ long x = 1; // @source:main.spy:42:5
           // Could not map - emit Internal Compiler Error
           return new CompilerDiagnostic(
               Severity: DiagnosticSeverity.Error,
-              Code: "SHP9999",
+              Code: "SPY9999",
               Message: $"Internal compiler error during code generation: {roslynDiagnostic.GetMessage()}",
               FilePath: null,
               Line: null,

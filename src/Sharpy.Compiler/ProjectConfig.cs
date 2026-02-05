@@ -72,8 +72,8 @@ public class ProjectConfig
     public bool WarningsAsErrors { get; init; }
 
     /// <summary>
-    /// Warning codes to suppress (e.g., "SHP0451", "SHP0452").
-    /// Set via &lt;NoWarn&gt;SHP0451,SHP0452&lt;/NoWarn&gt; in .spyproj.
+    /// Warning codes to suppress (e.g., "SPY0451", "SPY0452").
+    /// Set via &lt;NoWarn&gt;SPY0451,SPY0452&lt;/NoWarn&gt; in .spyproj.
     /// </summary>
     public HashSet<string> SuppressedWarnings { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 

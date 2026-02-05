@@ -263,7 +263,7 @@ public class CompilerInvariantsTests
     #region Diagnostic Code Tests
 
     [Fact]
-    public void AssertStatementsHaveSpans_EmitsSHP0904()
+    public void AssertStatementsHaveSpans_EmitsSPY0904()
     {
         var diagnostics = CreateDiagnostics();
         var module = CreateModuleWithMissingSpan();
@@ -276,7 +276,7 @@ public class CompilerInvariantsTests
     }
 
     [Fact]
-    public void AssertAllSymbolsHaveNames_EmitsSHP0904()
+    public void AssertAllSymbolsHaveNames_EmitsSPY0904()
     {
         var diagnostics = CreateDiagnostics();
         var symbolTable = CreateSymbolTableWithEmptyName();
@@ -289,7 +289,7 @@ public class CompilerInvariantsTests
     }
 
     [Fact]
-    public void AssertNoDuplicateTypeNames_EmitsSHP0904()
+    public void AssertNoDuplicateTypeNames_EmitsSPY0904()
     {
         // Note: SymbolTable's Scope uses Dictionary which prevents true duplicates by name.
         // This assertion is defense-in-depth. We test by manipulating the underlying data
@@ -305,7 +305,7 @@ public class CompilerInvariantsTests
     }
 
     [Fact]
-    public void AssertNoUnresolvedInheritance_EmitsSHP0904()
+    public void AssertNoUnresolvedInheritance_EmitsSPY0904()
     {
         var diagnostics = CreateDiagnostics();
         var symbolTable = CreateSymbolTableWithUnresolvedBase();
@@ -318,7 +318,7 @@ public class CompilerInvariantsTests
     }
 
     [Fact]
-    public void WarnIfUnknownTypes_EmitsSHP0904()
+    public void WarnIfUnknownTypes_EmitsSPY0904()
     {
         var diagnostics = CreateDiagnostics();
         var semanticInfo = CreateSemanticInfoWithUnknownType();
@@ -423,7 +423,7 @@ public class CompilerInvariantsTests
         var semanticInfo = CreateSemanticInfoWithUnknownType();
 
         // Add an error to the diagnostic bag
-        diagnostics.AddError("Some type error", code: "SHP0220");
+        diagnostics.AddError("Some type error", code: "SPY0220");
 
         CompilerInvariants.WarnIfUnknownTypes(semanticInfo, diagnostics);
 

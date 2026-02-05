@@ -618,9 +618,9 @@ public class LexerNegativeTests
         lexer.MaxErrors = 3;
         lexer.TokenizeAll();
 
-        // Should emit exactly one SHP0905 truncation warning
+        // Should emit exactly one SPY0905 truncation warning
         var warnings = lexer.Diagnostics.GetWarnings().ToList();
-        warnings.Where(w => w.Code == "SHP0905").Should().HaveCount(1,
+        warnings.Where(w => w.Code == "SPY0905").Should().HaveCount(1,
             "a single truncation warning should be emitted when MaxErrors is reached");
     }
 

@@ -9,7 +9,7 @@ using Xunit;
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// Tests that unrecognized AST types in the TypeChecker emit proper diagnostics (SHP0255, SHP0256)
+/// Tests that unrecognized AST types in the TypeChecker emit proper diagnostics (SPY0255, SPY0256)
 /// instead of being silently ignored or returning Unknown without reporting.
 /// </summary>
 public class UnrecognizedTypeDiagnosticTests
@@ -41,7 +41,7 @@ public class UnrecognizedTypeDiagnosticTests
     }
 
     [Fact]
-    public void CheckModule_UnrecognizedStatement_EmitsSHP0255()
+    public void CheckModule_UnrecognizedStatement_EmitsSPY0255()
     {
         var typeChecker = CreateTypeChecker();
 
@@ -62,7 +62,7 @@ public class UnrecognizedTypeDiagnosticTests
     }
 
     [Fact]
-    public void CheckExpression_UnrecognizedExpression_EmitsSHP0256()
+    public void CheckExpression_UnrecognizedExpression_EmitsSPY0256()
     {
         var typeChecker = CreateTypeChecker();
 

@@ -1476,7 +1476,7 @@ def main() -> None:
         var warnings = typeChecker.Diagnostics.GetWarnings().ToList();
 
         errors.Should().HaveCount(3, "only MaxErrors errors should be recorded");
-        warnings.Where(w => w.Code == "SHP0905").Should().HaveCount(1,
+        warnings.Where(w => w.Code == "SPY0905").Should().HaveCount(1,
             "exactly one truncation warning should be emitted when MaxErrors is reached");
     }
 
@@ -1492,7 +1492,7 @@ def main() -> None:
         typeChecker.CheckModule(module, isEntryPoint: true);
 
         var warnings = typeChecker.Diagnostics.GetWarnings().ToList();
-        warnings.Should().NotContain(w => w.Code == "SHP0905",
+        warnings.Should().NotContain(w => w.Code == "SPY0905",
             "no truncation warning should appear when under the limit");
     }
 

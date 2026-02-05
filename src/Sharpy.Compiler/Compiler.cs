@@ -567,7 +567,7 @@ public class Compiler
 
     /// <summary>
     /// Verify top-level statements have TextSpan populated.
-    /// Emits SHP0904 if any statement is missing its span.
+    /// Emits SPY0904 if any statement is missing its span.
     /// </summary>
     /// <remarks>
     /// This method delegates to <see cref="CompilerInvariants.AssertStatementsHaveSpans"/>.
@@ -578,7 +578,7 @@ public class Compiler
 
     /// <summary>
     /// Verify all symbols in the global scope have non-empty names.
-    /// Emits SHP0904 for any symbol with a null/empty name.
+    /// Emits SPY0904 for any symbol with a null/empty name.
     /// </summary>
     /// <remarks>
     /// This method delegates to <see cref="CompilerInvariants.AssertAllSymbolsHaveNames"/>.
@@ -881,7 +881,7 @@ public class CompilerOptions
     public bool WarningsAsErrors { get; set; }
 
     /// <summary>
-    /// Warning codes to suppress (e.g., "SHP0451", "SHP0452").
+    /// Warning codes to suppress (e.g., "SPY0451", "SPY0452").
     /// Suppressed warnings are silently discarded and do not appear in diagnostics.
     /// </summary>
     public HashSet<string> SuppressedWarnings { get; set; } = new(StringComparer.OrdinalIgnoreCase);

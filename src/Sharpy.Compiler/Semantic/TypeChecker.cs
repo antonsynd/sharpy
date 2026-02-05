@@ -258,7 +258,7 @@ internal partial class TypeChecker
         // Merge pipeline-added diagnostics. Validators are responsible for checking
         // whether an error already exists at a given position before adding new ones
         // (see OperatorValidator.HasErrorAtPosition). This prevents duplicate reporting
-        // where TypeChecker (SHP0222) and OperatorValidator (SHP0402) both flag the
+        // where TypeChecker (SPY0222) and OperatorValidator (SPY0402) both flag the
         // same operator issue.
         var diagnosticCountBeforeMerge = _diagnostics.GetAll().Count;
         var existingExact = new HashSet<(int?, int?, string)>(

@@ -40,7 +40,7 @@ public static class DiagnosticExplanations
     {
         var dict = new Dictionary<string, DiagnosticExplanation>(StringComparer.OrdinalIgnoreCase);
 
-        // ── Lexer errors (SHP0001-SHP0099) ──────────────────────────────
+        // ── Lexer errors (SPY0001-SPY0099) ──────────────────────────────
 
         Add(dict, DiagnosticCodes.Lexer.UnterminatedString, "Unterminated string literal", "Lexer",
             "A string literal was opened with a quote character but never closed. The lexer reached the end of the line or file without finding a matching closing quote.",
@@ -162,7 +162,7 @@ public static class DiagnosticExplanations
             "s: str = \"\\400\"",
             "Use a value within the valid range (\\000 to \\377):\n  s: str = \"\\377\"");
 
-        // ── Parser errors (SHP0100-SHP0199) ─────────────────────────────
+        // ── Parser errors (SPY0100-SPY0199) ─────────────────────────────
 
         Add(dict, DiagnosticCodes.Parser.UnexpectedToken, "Unexpected token", "Parser",
             "The parser encountered a token that does not fit the expected grammar at this position. This usually indicates a syntax error such as a missing operator, misplaced keyword, or malformed expression.",
@@ -254,7 +254,7 @@ public static class DiagnosticExplanations
             "@\ndef foo():\n    pass",
             "Add a valid decorator name:\n@staticmethod\ndef foo():\n    pass");
 
-        // ── Semantic errors: Name resolution (SHP0200-SHP0219) ──────────
+        // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",
             "A variable was referenced that has not been declared in the current scope or any enclosing scope. Variables must be declared with a type annotation before use.",
@@ -306,7 +306,7 @@ public static class DiagnosticExplanations
             "type Bad = 42",
             "Use a valid type expression:\n  type IntList = list[int]\n  type Callback = Callable[[int], str]");
 
-        // ── Semantic errors: Type checking (SHP0220-SHP0259) ────────────
+        // ── Semantic errors: Type checking (SPY0220-SPY0259) ────────────
 
         Add(dict, DiagnosticCodes.Semantic.TypeMismatch, "Type mismatch", "Semantic",
             "The actual type of an expression does not match the expected type. This can occur in assignments, function arguments, return statements, and other contexts where a specific type is required.",
@@ -497,7 +497,7 @@ public static class DiagnosticExplanations
             null,
             "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
 
-        // ── Semantic errors: Return and control flow (SHP0260-SHP0279) ──
+        // ── Semantic errors: Return and control flow (SPY0260-SPY0279) ──
 
         Add(dict, DiagnosticCodes.Semantic.MissingReturnValue, "Missing return value", "Semantic",
             "A return statement in a function with a non-void return type is missing the return value. Functions that declare a return type must return a value of that type.",
@@ -529,7 +529,7 @@ public static class DiagnosticExplanations
             "def abs_val(x: int) -> int:\n    if x >= 0:\n        return x\n    # missing return for x < 0",
             "Ensure all paths return a value:\ndef abs_val(x: int) -> int:\n    if x >= 0:\n        return x\n    return -x");
 
-        // ── Semantic errors: Class and inheritance (SHP0280-SHP0299) ────
+        // ── Semantic errors: Class and inheritance (SPY0280-SPY0299) ────
 
         Add(dict, DiagnosticCodes.Semantic.AbstractInstantiation, "Cannot instantiate abstract class", "Semantic",
             "An attempt was made to create an instance of an abstract class. Abstract classes can only be subclassed, not instantiated directly.",
@@ -571,7 +571,7 @@ public static class DiagnosticExplanations
             "class Sub(Base):\n    def foo(self):\n        x = super  # not called as a function",
             "Call super() as a function:\nclass Sub(Base):\n    def foo(self):\n        super().foo()");
 
-        // ── Semantic errors: Import (SHP0300-SHP0319) ───────────────────
+        // ── Semantic errors: Import (SPY0300-SPY0319) ───────────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleNotFound, "Module not found", "Semantic",
             "An import statement references a module that could not be found. The compiler searches the current directory, configured module paths, and standard library paths.",
@@ -608,7 +608,7 @@ public static class DiagnosticExplanations
             null,
             "Check the assembly's target framework compatibility and ensure all dependencies are available.");
 
-        // ── Semantic errors: Protocol and operator (SHP0320-SHP0339) ────
+        // ── Semantic errors: Protocol and operator (SPY0320-SPY0339) ────
 
         Add(dict, DiagnosticCodes.Semantic.ProtocolMissingMethod, "Protocol method not implemented", "Semantic",
             "A class claims to implement an interface (protocol) but is missing one or more required methods. All interface methods must be implemented.",
@@ -625,7 +625,7 @@ public static class DiagnosticExplanations
             "@override\ndef top_level_func():  # @override only valid on class methods\n    pass",
             "Use the decorator on an appropriate target, or remove it.");
 
-        // ── Semantic errors: Module level (SHP0340-SHP0349) ─────────────
+        // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",
             "An executable statement (like a function call or expression) was found at module level. Only declarations (functions, classes, variables, imports) are allowed at module level. Executable code must be inside the main() function.",
@@ -637,7 +637,7 @@ public static class DiagnosticExplanations
             "x = 42  # missing type annotation at module level",
             "Add a type annotation:\n  x: int = 42");
 
-        // ── Validation errors (SHP0400-SHP0499) ────────────────────────
+        // ── Validation errors (SPY0400-SPY0499) ────────────────────────
 
         Add(dict, DiagnosticCodes.Validation.MutableDefault, "Mutable default parameter", "Validation",
             "A function parameter has a mutable default value (list, dict, or set literal). In Python, mutable defaults are shared across calls, leading to subtle bugs. Sharpy prevents this pattern.",
@@ -664,7 +664,7 @@ public static class DiagnosticExplanations
             "x: int = 42\ny: int = x ?? 0  # x is never null",
             "Only use ?? with Optional types:\n  x: Optional[int] = get_value()\n  y: int = x ?? 0");
 
-        // ── Validation warnings (SHP0450-SHP0499) ──────────────────────
+        // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
         Add(dict, DiagnosticCodes.Validation.UnreachableCodeWarning, "Unreachable code detected", "Validation",
             "Code after a return, raise, break, or continue statement can never be executed. This usually indicates dead code that should be removed.",
@@ -681,7 +681,7 @@ public static class DiagnosticExplanations
             "from math import sqrt, pi  # pi is never used\ndef main():\n    print(sqrt(4))",
             "Remove the unused import:\nfrom math import sqrt\ndef main():\n    print(sqrt(4))");
 
-        // ── Code generation errors (SHP0500-SHP0599) ───────────────────
+        // ── Code generation errors (SPY0500-SPY0599) ───────────────────
 
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",
             "An error occurred during C# code generation. This is typically an internal compiler error that should be reported as a bug.",
@@ -766,7 +766,7 @@ public static class DiagnosticExplanations
             null,
             "This is an internal compiler error. Please report it at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
 
-        // ── Infrastructure errors (SHP0900-SHP0999) ────────────────────
+        // ── Infrastructure errors (SPY0900-SPY0999) ────────────────────
 
         Add(dict, DiagnosticCodes.Infrastructure.CompilationFailed, "Compilation failed", "Infrastructure",
             "The overall compilation process failed. This is a summary error that accompanies more specific errors from earlier phases.",

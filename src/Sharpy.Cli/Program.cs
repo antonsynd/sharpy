@@ -25,7 +25,7 @@ class Program
         var metricsFormatOption = new Option<string?>("--metrics-format") { Description = "Output compilation metrics (text or json)" };
         var metricsOutputOption = new Option<FileInfo?>("--metrics-output") { Description = "Write metrics to the specified file" };
         var warnAsErrorOption = new Option<bool>("--warn-as-error") { Description = "Treat all warnings as errors" };
-        var nowarnOption = new Option<string?>("--nowarn") { Description = "Suppress warnings by code (comma-separated, e.g., SHP0451,SHP0452)" };
+        var nowarnOption = new Option<string?>("--nowarn") { Description = "Suppress warnings by code (comma-separated, e.g., SPY0451,SPY0452)" };
         var maxErrorsOption = new Option<int?>("--max-errors") { Description = "Maximum number of errors before stopping (default: 25 for parser, 100 for semantic)" };
 
         rootCommand.Options.Add(logLevelOption);
@@ -260,7 +260,7 @@ class Program
         // === Explain Command ===
         var explainCommand = new Command("explain", "Show detailed explanation for a diagnostic code");
 
-        var explainCodeArg = new Argument<string?>("code") { Description = "Diagnostic code to explain (e.g. SHP0200)", Arity = ArgumentArity.ZeroOrOne };
+        var explainCodeArg = new Argument<string?>("code") { Description = "Diagnostic code to explain (e.g. SPY0200)", Arity = ArgumentArity.ZeroOrOne };
         var explainListOpt = new Option<bool>("--list") { Description = "List all documented diagnostic codes" };
 
         explainCommand.Arguments.Add(explainCodeArg);
@@ -941,7 +941,7 @@ class Program
             Console.Error.WriteLine("Usage: sharpyc explain <code>");
             Console.Error.WriteLine("       sharpyc explain --list");
             Console.Error.WriteLine();
-            Console.Error.WriteLine("Example: sharpyc explain SHP0200");
+            Console.Error.WriteLine("Example: sharpyc explain SPY0200");
             Environment.Exit(1);
             return;
         }

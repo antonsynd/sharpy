@@ -75,7 +75,7 @@ public class StructuredLoggerTests
         var logger = new StructuredLogger();
 
         logger.LogEvent(new DiagnosticEvent(
-            Code: "SHP0201",
+            Code: "SPY0201",
             Message: "Type mismatch",
             Severity: DiagnosticEventSeverity.Error,
             Line: 10,
@@ -85,7 +85,7 @@ public class StructuredLoggerTests
         });
 
         var evt = logger.Events[0].Should().BeOfType<DiagnosticEvent>().Subject;
-        evt.Code.Should().Be("SHP0201");
+        evt.Code.Should().Be("SPY0201");
         evt.Message.Should().Be("Type mismatch");
         evt.Severity.Should().Be(DiagnosticEventSeverity.Error);
         evt.Line.Should().Be(10);
@@ -144,7 +144,7 @@ public class StructuredLoggerTests
 
         logger.LogEvent(new PhaseStartEvent("Phase1"));
         logger.LogEvent(new PhaseEndEvent("Phase1", TimeSpan.Zero));
-        logger.LogEvent(new DiagnosticEvent("SHP0001", "Error", DiagnosticEventSeverity.Error, 1, 1));
+        logger.LogEvent(new DiagnosticEvent("SPY0001", "Error", DiagnosticEventSeverity.Error, 1, 1));
         logger.LogEvent(new PhaseStartEvent("Phase2"));
 
         var startEvents = logger.GetEvents<PhaseStartEvent>().ToList();
@@ -279,7 +279,7 @@ public class StructuredLoggerTests
 
         // Should not throw
         logger.LogEvent(new PhaseStartEvent("Test"));
-        logger.LogEvent(new DiagnosticEvent("SHP0001", "msg", DiagnosticEventSeverity.Error, 1, 1));
+        logger.LogEvent(new DiagnosticEvent("SPY0001", "msg", DiagnosticEventSeverity.Error, 1, 1));
 
         // Default implementation returns false
         logger.SupportsStructuredLogging.Should().BeFalse();

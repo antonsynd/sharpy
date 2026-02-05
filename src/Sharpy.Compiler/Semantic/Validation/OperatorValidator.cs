@@ -232,8 +232,8 @@ internal class OperatorValidator : SemanticValidatorBase
     /// <summary>
     /// Checks whether an error has already been reported at the given position.
     /// Used to avoid duplicate diagnostics when the TypeChecker has already reported
-    /// an operator error (SHP0222) during type inference — this validator should not
-    /// re-report it as SHP0402.
+    /// an operator error (SPY0222) during type inference — this validator should not
+    /// re-report it as SPY0402.
     /// </summary>
     private bool HasErrorAtPosition(int? line, int? column)
     {
@@ -251,8 +251,8 @@ internal class OperatorValidator : SemanticValidatorBase
     private void ValidateNullCoalesce(BinaryOp binOp, SemanticType leftType, SemanticType rightType)
     {
         // No HasErrorAtPosition guard here: this validator provides a more specific
-        // diagnostic (SHP0403: "must be nullable") than the TypeChecker's generic
-        // SHP0222 ("does not support operator ??"). Both may fire but the specific
+        // diagnostic (SPY0403: "must be nullable") than the TypeChecker's generic
+        // SPY0222 ("does not support operator ??"). Both may fire but the specific
         // one is more actionable for the user.
         if (leftType is not NullableType and not OptionalType)
         {

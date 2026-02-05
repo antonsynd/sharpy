@@ -565,8 +565,8 @@ public void Merge(DiagnosticBag other)
       var bag = new DiagnosticBag();
 
       // Add same error twice with slightly different messages
-      bag.AddError(10, 5, "SHP0001", "Cannot assign int to str");
-      bag.AddError(10, 5, "SHP0001", "Cannot assign 'int' to 'str'");  // Variant message
+      bag.AddError(10, 5, "SPY0001", "Cannot assign int to str");
+      bag.AddError(10, 5, "SPY0001", "Cannot assign 'int' to 'str'");  // Variant message
 
       var errors = bag.GetAll().ToList();
       Assert.Single(errors);  // Should deduplicate
@@ -577,8 +577,8 @@ public void Merge(DiagnosticBag other)
   {
       var bag = new DiagnosticBag();
 
-      bag.AddError(10, 5, "SHP0001", "Type mismatch");
-      bag.AddError(15, 5, "SHP0001", "Type mismatch");  // Same code, different line
+      bag.AddError(10, 5, "SPY0001", "Type mismatch");
+      bag.AddError(15, 5, "SPY0001", "Type mismatch");  // Same code, different line
 
       var errors = bag.GetAll().ToList();
       Assert.Equal(2, errors.Count);  // Should NOT deduplicate
@@ -589,8 +589,8 @@ public void Merge(DiagnosticBag other)
   {
       var bag = new DiagnosticBag();
 
-      bag.AddError(10, 5, "SHP0001", "Type mismatch");
-      bag.AddError(10, 5, "SHP0002", "Missing return");  // Different code, same location
+      bag.AddError(10, 5, "SPY0001", "Type mismatch");
+      bag.AddError(10, 5, "SPY0002", "Missing return");  // Different code, same location
 
       var errors = bag.GetAll().ToList();
       Assert.Equal(2, errors.Count);  // Should NOT deduplicate

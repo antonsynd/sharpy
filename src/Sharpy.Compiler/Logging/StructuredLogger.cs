@@ -108,7 +108,7 @@ public sealed class StructuredLogger : ICompilerLogger
 
         // Also capture as a diagnostic event
         LogEvent(new DiagnosticEvent(
-            Code: "SHP0000", // Generic code for unstructured errors
+            Code: "SPY0000", // Generic code for unstructured errors
             Message: message,
             Severity: DiagnosticEventSeverity.Error,
             Line: line,
@@ -122,7 +122,7 @@ public sealed class StructuredLogger : ICompilerLogger
 
         // Also capture as a diagnostic event
         LogEvent(new DiagnosticEvent(
-            Code: "SHP0000", // Generic code for unstructured warnings
+            Code: "SPY0000", // Generic code for unstructured warnings
             Message: message,
             Severity: DiagnosticEventSeverity.Warning,
             Line: line,

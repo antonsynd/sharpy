@@ -346,8 +346,8 @@ def foo() -> bool:
     [Fact]
     public void UnsupportedOperator_ReportedExactlyOnce()
     {
-        // This test verifies the deduplication between TypeChecker (SHP0222)
-        // and OperatorValidator (SHP0402). When a custom class doesn't support
+        // This test verifies the deduplication between TypeChecker (SPY0222)
+        // and OperatorValidator (SPY0402). When a custom class doesn't support
         // an operator, both phases detect it. The HasErrorAtPosition check in
         // OperatorValidator should prevent duplicate reporting.
         var code = @"

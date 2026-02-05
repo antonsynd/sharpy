@@ -34,7 +34,7 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy   # Lexer tokens
 dotnet run --project src/Sharpy.Cli -- emit ast file.spy      # Parsed AST
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy   # Generated C#
 dotnet run --project src/Sharpy.Cli -- emit parse file.spy    # Validate parse only
-dotnet run --project src/Sharpy.Cli -- explain SHP0200        # Explain an error code
+dotnet run --project src/Sharpy.Cli -- explain SPY0200        # Explain an error code
 ```
 
 ## Project Structure
@@ -162,7 +162,7 @@ The `emit` subcommands are your primary debugging tools:
 ### Explain error codes
 
 ```bash
-dotnet run --project src/Sharpy.Cli -- explain SHP0265    # Detailed error explanation
+dotnet run --project src/Sharpy.Cli -- explain SPY0265    # Detailed error explanation
 dotnet run --project src/Sharpy.Cli -- explain --list      # All documented codes
 ```
 

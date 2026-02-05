@@ -21,12 +21,12 @@ public class DiagnosticRendererTests
             CompilerDiagnosticSeverity.Error,
             Line: 1, Column: 10,
             FilePath: "file.spy",
-            Code: "SHP0201",
+            Code: "SPY0201",
             Span: span);
 
         var result = _renderer.Render(diagnostic, sourceText);
 
-        result.Should().Contain("error[SHP0201]: Type 'str' is not assignable to 'int'");
+        result.Should().Contain("error[SPY0201]: Type 'str' is not assignable to 'int'");
         result.Should().Contain("--> file.spy:1:10");
         result.Should().Contain("x: int = \"hello\"");
         result.Should().Contain("^^^^^^^");
@@ -43,11 +43,11 @@ public class DiagnosticRendererTests
             CompilerDiagnosticSeverity.Error,
             Line: 1, Column: 1,
             FilePath: "file.spy",
-            Code: "SHP0200");
+            Code: "SPY0200");
 
         var result = _renderer.Render(diagnostic, sourceText);
 
-        result.Should().Contain("error[SHP0200]: Undefined variable 'x'");
+        result.Should().Contain("error[SPY0200]: Undefined variable 'x'");
         result.Should().Contain("--> file.spy:1:1");
         result.Should().Contain("x: int = \"hello\"");
         result.Should().Contain("^");
@@ -68,12 +68,12 @@ public class DiagnosticRendererTests
             CompilerDiagnosticSeverity.Warning,
             Line: 4, Column: 1,
             FilePath: "test.spy",
-            Code: "SHP0450",
+            Code: "SPY0450",
             Span: span);
 
         var result = _renderer.Render(diagnostic, sourceText);
 
-        result.Should().Contain("warning[SHP0450]: Unreachable code detected");
+        result.Should().Contain("warning[SPY0450]: Unreachable code detected");
         result.Should().Contain("--> test.spy:4:1");
         result.Should().Contain("z = 99");
     }
@@ -84,11 +84,11 @@ public class DiagnosticRendererTests
         var diagnostic = new CompilerDiagnostic(
             "Internal compiler error",
             CompilerDiagnosticSeverity.Error,
-            Code: "SHP0599");
+            Code: "SPY0599");
 
         var result = _renderer.Render(diagnostic);
 
-        result.Should().Contain("error[SHP0599]: Internal compiler error");
+        result.Should().Contain("error[SPY0599]: Internal compiler error");
         // Should not have location arrow or source context
         result.Should().NotContain("-->");
         result.Should().NotContain("|");
@@ -120,7 +120,7 @@ public class DiagnosticRendererTests
             "Type 'str' is not assignable to 'int'",
             CompilerDiagnosticSeverity.Error,
             FilePath: "example.spy",
-            Code: "SHP0201",
+            Code: "SPY0201",
             Span: span);
 
         var result = _renderer.Render(diagnostic, sourceText);
@@ -140,7 +140,7 @@ public class DiagnosticRendererTests
         var diagnostic = new CompilerDiagnostic(
             "Type mismatch",
             CompilerDiagnosticSeverity.Error,
-            Code: "SHP0201",
+            Code: "SPY0201",
             Span: span);
 
         var result = _renderer.Render(diagnostic, sourceText);
@@ -195,7 +195,7 @@ public class DiagnosticRendererTests
             CompilerDiagnosticSeverity.Error,
             Line: 12, Column: 1,
             FilePath: "test.spy",
-            Code: "SHP0200");
+            Code: "SPY0200");
 
         var result = _renderer.Render(diagnostic, sourceText);
 
@@ -211,7 +211,7 @@ public class DiagnosticRendererTests
         var diagnostic = new CompilerDiagnostic(
             "Test error",
             CompilerDiagnosticSeverity.Error,
-            Code: "SHP0001");
+            Code: "SPY0001");
 
         var result = colorRenderer.Render(diagnostic);
 
@@ -225,11 +225,11 @@ public class DiagnosticRendererTests
         var diagnostic = new CompilerDiagnostic(
             "Informational message",
             CompilerDiagnosticSeverity.Info,
-            Code: "SHP0001");
+            Code: "SPY0001");
 
         var result = _renderer.Render(diagnostic);
 
-        result.Should().Contain("info[SHP0001]: Informational message");
+        result.Should().Contain("info[SPY0001]: Informational message");
     }
 
     [Fact]
@@ -238,11 +238,11 @@ public class DiagnosticRendererTests
         var diagnostic = new CompilerDiagnostic(
             "Consider using...",
             CompilerDiagnosticSeverity.Hint,
-            Code: "SHP0001");
+            Code: "SPY0001");
 
         var result = _renderer.Render(diagnostic);
 
-        result.Should().Contain("hint[SHP0001]: Consider using...");
+        result.Should().Contain("hint[SPY0001]: Consider using...");
     }
 
     [Fact]
@@ -290,11 +290,11 @@ public class DiagnosticRendererTests
             CompilerDiagnosticSeverity.Error,
             Line: 5, Column: 3,
             FilePath: "unknown.spy",
-            Code: "SHP0200");
+            Code: "SPY0200");
 
         var result = _renderer.Render(diagnostic, sourceText: null);
 
-        result.Should().Contain("error[SHP0200]: No source available");
+        result.Should().Contain("error[SPY0200]: No source available");
         result.Should().Contain("--> unknown.spy:5:3");
         // No source context since no source text
         result.Should().NotContain("|");
@@ -312,7 +312,7 @@ public class DiagnosticRendererTests
         var diagnostic = new CompilerDiagnostic(
             "Multi-line expression",
             CompilerDiagnosticSeverity.Error,
-            Code: "SHP0100",
+            Code: "SPY0100",
             Span: span);
 
         var result = _renderer.Render(diagnostic, sourceText);
@@ -337,7 +337,7 @@ public class DiagnosticRendererTests
             CompilerDiagnosticSeverity.Error,
             Line: 1, Column: 2,
             FilePath: "test.spy",
-            Code: "SHP0100");
+            Code: "SPY0100");
 
         var result = _renderer.Render(diagnostic, sourceText);
 
@@ -359,7 +359,7 @@ public class DiagnosticRendererTests
         var diagnostic = new CompilerDiagnostic(
             "Span after tab",
             CompilerDiagnosticSeverity.Error,
-            Code: "SHP0100",
+            Code: "SPY0100",
             Span: span);
 
         var result = _renderer.Render(diagnostic, sourceText);
@@ -381,14 +381,14 @@ public class DiagnosticRendererTests
             CompilerDiagnosticSeverity.Error,
             Line: 1, Column: 1,
             FilePath: "test.spy",
-            Code: "SHP0001");
+            Code: "SPY0001");
 
         var diag2 = new CompilerDiagnostic(
             "Second error",
             CompilerDiagnosticSeverity.Error,
             Line: 2, Column: 5,
             FilePath: "test.spy",
-            Code: "SHP0002");
+            Code: "SPY0002");
 
         var result1 = _renderer.Render(diag1, sourceText);
         var result2 = _renderer.Render(diag2, sourceText);

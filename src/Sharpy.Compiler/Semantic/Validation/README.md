@@ -56,13 +56,13 @@ operate as a self-contained AST analysis.
 These validations live in `TypeChecker` because they are tightly coupled to the
 type inference walk and depend on in-progress type resolution state:
 
-- **Type mismatches** — assignment/return type compatibility (SHP0220, SHP0221)
-- **Callable validation** — argument count/type checking (SHP0224, SHP0225)
+- **Type mismatches** — assignment/return type compatibility (SPY0220, SPY0221)
+- **Callable validation** — argument count/type checking (SPY0224, SPY0225)
 - **`super()` calls** — inheritance chain validation
 - **Enum/struct rules** — member access, construction patterns
 - **Return type checking** — function return type consistency
 - **Override validation** — method signature compatibility with base class
-- **Operator type checking** — binary/unary operator applicability (SHP0222, SHP0223)
+- **Operator type checking** — binary/unary operator applicability (SPY0222, SPY0223)
 
 ### ValidationPipeline (self-contained AST analyses)
 
@@ -76,13 +76,13 @@ They do not require in-progress type inference state:
 - **Control flow** — unreachable code, missing returns, break/continue outside loops (ControlFlowValidator)
 - **Member access** — private member access from outside class (AccessValidator)
 - **Protocol methods** — __len__/__iter__/etc. signature validation (ProtocolValidator)
-- **Operator validation** — unsupported operators for known types (OperatorValidator, SHP0402)
+- **Operator validation** — unsupported operators for known types (OperatorValidator, SPY0402)
 
 ### Deduplication
 
 Some validations overlap between TypeChecker and the ValidationPipeline—notably
-operator errors where TypeChecker reports SHP0222 (InvalidBinaryOperation) and
-OperatorValidator reports SHP0402 (UnsupportedOperator) for the same expression.
+operator errors where TypeChecker reports SPY0222 (InvalidBinaryOperation) and
+OperatorValidator reports SPY0402 (UnsupportedOperator) for the same expression.
 
 Deduplication is handled in `TypeChecker.CheckModule()` when merging pipeline
 diagnostics. The merge logic:

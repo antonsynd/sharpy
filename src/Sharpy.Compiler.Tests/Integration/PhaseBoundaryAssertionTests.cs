@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Tests that verify internal consistency assertions at phase boundaries
 /// do not fire for valid compilations. These tests exercise the code paths
 /// in AssertNoDuplicateTypeNames, AssertNoUnresolvedInheritance, and
-/// WarnIfUnknownTypes (always-on, emit SHP0904 diagnostics).
+/// WarnIfUnknownTypes (always-on, emit SPY0904 diagnostics).
 /// </summary>
 public class PhaseBoundaryAssertionTests
 {
@@ -21,7 +21,7 @@ public class PhaseBoundaryAssertionTests
     }
 
     /// <summary>
-    /// Compile and assert that no SHP0904 invariant violation warnings are emitted.
+    /// Compile and assert that no SPY0904 invariant violation warnings are emitted.
     /// Only use for programs that do not involve class member access patterns
     /// (which can produce aspirational UnknownType gaps tracked by WarnIfUnknownTypes).
     /// </summary>
@@ -30,7 +30,7 @@ public class PhaseBoundaryAssertionTests
         var result = CompileSuccessfully(source);
 
         var invariantViolations = result.Diagnostics.GetWarnings()
-            .Where(w => w.Code == "SHP0904")
+            .Where(w => w.Code == "SPY0904")
             .ToList();
         Assert.Empty(invariantViolations);
 
@@ -139,7 +139,7 @@ def main():
     [Fact]
     public void NoUnknownTypes_SimpleExpressions_NoAssertionFires()
     {
-        // Single-file, no imports, no class member access — verifies no SHP0904 warnings
+        // Single-file, no imports, no class member access — verifies no SPY0904 warnings
         var source = @"
 def compute(x: int, y: int) -> int:
     z: int = x + y
@@ -241,7 +241,7 @@ def main():
     public void ErrorCompilation_NoInvariantViolationWarnings()
     {
         // When compilation has semantic errors, unknown types from error recovery
-        // should NOT trigger SHP0904 invariant violation warnings
+        // should NOT trigger SPY0904 invariant violation warnings
         var source = @"
 def main():
     x: int = ""not_an_int""
@@ -253,9 +253,9 @@ def main():
         // Compilation should fail (semantic errors expected)
         Assert.False(result.Success);
 
-        // But no SHP0904 invariant violation warnings should appear
+        // But no SPY0904 invariant violation warnings should appear
         var invariantViolations = result.Diagnostics.GetWarnings()
-            .Where(w => w.Code == "SHP0904")
+            .Where(w => w.Code == "SPY0904")
             .ToList();
         Assert.Empty(invariantViolations);
     }

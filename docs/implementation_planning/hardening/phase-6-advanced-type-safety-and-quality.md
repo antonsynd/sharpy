@@ -647,7 +647,7 @@ A statically-typed language should warn about this (Axiom 3: Type Safety).
           // For other types (int, str, etc.), require wildcard
           context.Diagnostics.AddWarning(
               match.Location,
-              "SHP0280",
+              "SPY0280",
               $"Match expression may not be exhaustive. Consider adding a " +
               $"'case _:' default branch.");
       }
@@ -679,7 +679,7 @@ A statically-typed language should warn about this (Axiom 3: Type Safety).
               var missing = string.Join(", ", missingCases.Select(c => $"'{c}'"));
               context.Diagnostics.AddWarning(
                   match.Location,
-                  "SHP0281",
+                  "SPY0281",
                   $"Match expression is not exhaustive. Missing cases: {missing}");
           }
       }
@@ -713,8 +713,8 @@ A statically-typed language should warn about this (Axiom 3: Type Safety).
 - [ ] **6.3.3** Add warning code to DiagnosticCodes
   ```csharp
   // DiagnosticCodes.cs
-  public const string NonExhaustiveMatch = "SHP0280";
-  public const string MissingEnumCases = "SHP0281";
+  public const string NonExhaustiveMatch = "SPY0280";
+  public const string MissingEnumCases = "SPY0281";
   ```
 
 - [ ] **6.3.4** Add tests
@@ -732,7 +732,7 @@ A statically-typed language should warn about this (Axiom 3: Type Safety).
 
       var result = Compile(source);
       Assert.True(result.Success);  // Compiles, but with warning
-      Assert.Contains(result.Warnings, w => w.Code == "SHP0280");
+      Assert.Contains(result.Warnings, w => w.Code == "SPY0280");
   }
 
   [Fact]
@@ -748,7 +748,7 @@ A statically-typed language should warn about this (Axiom 3: Type Safety).
 
       var result = Compile(source);
       Assert.True(result.Success);
-      Assert.DoesNotContain(result.Warnings, w => w.Code == "SHP0280");
+      Assert.DoesNotContain(result.Warnings, w => w.Code == "SPY0280");
   }
 
   [Fact]
@@ -771,7 +771,7 @@ A statically-typed language should warn about this (Axiom 3: Type Safety).
       var result = Compile(source);
       Assert.True(result.Success);
       Assert.Contains(result.Warnings, w =>
-          w.Code == "SHP0281" && w.Message.Contains("BLUE"));
+          w.Code == "SPY0281" && w.Message.Contains("BLUE"));
   }
 
   [Fact]

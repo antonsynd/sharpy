@@ -6,16 +6,16 @@ namespace Sharpy.Compiler.Tests.Diagnostics;
 public class DiagnosticExplanationsTests
 {
     [Theory]
-    [InlineData("SHP0200")]
-    [InlineData("SHP0302")]
-    [InlineData("SHP0001")]
-    [InlineData("SHP0100")]
-    [InlineData("SHP0002")]
-    [InlineData("SHP0222")]
-    [InlineData("SHP0340")]
-    [InlineData("SHP0403")]
-    [InlineData("SHP0507")]
-    [InlineData("SHP0450")]
+    [InlineData("SPY0200")]
+    [InlineData("SPY0302")]
+    [InlineData("SPY0001")]
+    [InlineData("SPY0100")]
+    [InlineData("SPY0002")]
+    [InlineData("SPY0222")]
+    [InlineData("SPY0340")]
+    [InlineData("SPY0403")]
+    [InlineData("SPY0507")]
+    [InlineData("SPY0450")]
     public void Get_KnownCode_ReturnsExplanation(string code)
     {
         var explanation = DiagnosticExplanations.Get(code);
@@ -27,21 +27,21 @@ public class DiagnosticExplanationsTests
     [Fact]
     public void Get_UnknownCode_ReturnsNull()
     {
-        var explanation = DiagnosticExplanations.Get("SHP9999");
+        var explanation = DiagnosticExplanations.Get("SPY9999");
 
         Assert.Null(explanation);
     }
 
     [Theory]
-    [InlineData("shp0200")]
-    [InlineData("Shp0200")]
-    [InlineData("SHP0200")]
+    [InlineData("spy0200")]
+    [InlineData("Spy0200")]
+    [InlineData("SPY0200")]
     public void Get_CaseInsensitive(string code)
     {
         var explanation = DiagnosticExplanations.Get(code);
 
         Assert.NotNull(explanation);
-        Assert.Equal("SHP0200", explanation!.Code);
+        Assert.Equal("SPY0200", explanation!.Code);
     }
 
     [Fact]
@@ -61,14 +61,14 @@ public class DiagnosticExplanationsTests
     }
 
     [Theory]
-    [InlineData("SHP0200")]
-    [InlineData("SHP0220")]
-    [InlineData("SHP0001")]
-    [InlineData("SHP0100")]
-    [InlineData("SHP0302")]
-    [InlineData("SHP0263")]
-    [InlineData("SHP0281")]
-    [InlineData("SHP0403")]
+    [InlineData("SPY0200")]
+    [InlineData("SPY0220")]
+    [InlineData("SPY0001")]
+    [InlineData("SPY0100")]
+    [InlineData("SPY0302")]
+    [InlineData("SPY0263")]
+    [InlineData("SPY0281")]
+    [InlineData("SPY0403")]
     public void CommonCodes_HaveExamplesAndFixes(string code)
     {
         var explanation = DiagnosticExplanations.Get(code);
@@ -108,7 +108,7 @@ public class DiagnosticExplanationsTests
 
         foreach (var (code, _) in all)
         {
-            Assert.Matches(@"^SHP\d{4}$", code);
+            Assert.Matches(@"^SPY\d{4}$", code);
         }
     }
 
@@ -143,7 +143,7 @@ public class DiagnosticExplanationsTests
         var explanation = DiagnosticExplanations.Get(DiagnosticCodes.Semantic.UndefinedVariable);
 
         Assert.NotNull(explanation);
-        Assert.Equal("SHP0200", explanation!.Code);
+        Assert.Equal("SPY0200", explanation!.Code);
         Assert.Equal("Undefined variable", explanation.Title);
         Assert.Equal("Semantic", explanation.Category);
         Assert.Contains("not been declared", explanation.Description);

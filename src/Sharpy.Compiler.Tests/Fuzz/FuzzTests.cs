@@ -43,7 +43,7 @@ public class FuzzTests
     [InlineData(9999)]
     public void Lexer_RandomTokens_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharplyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(seed);
         var failures = new List<string>();
 
         for (int i = 0; i < 100; i++)
@@ -82,7 +82,7 @@ public class FuzzTests
     [InlineData(512)]
     public void Lexer_StressInputs_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharplyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(seed);
         var failures = new List<string>();
 
         for (int i = 0; i < 50; i++)
@@ -121,7 +121,7 @@ public class FuzzTests
     [InlineData(9999)]
     public void Compiler_ValidLookingPrograms_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharplyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(seed);
         var compiler = new Compiler();
         var failures = new List<string>();
         var timeouts = new List<string>();
@@ -176,7 +176,7 @@ public class FuzzTests
     [InlineData(9999)]
     public void Compiler_SyntaxErrors_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharplyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(seed);
         var compiler = new Compiler();
         var failures = new List<string>();
         var timeouts = new List<string>();
@@ -231,7 +231,7 @@ public class FuzzTests
     [InlineData(9999)]
     public void Compiler_RandomTokens_NeverThrowsUnhandledException(int seed)
     {
-        var fuzzer = new SharplyFuzzer(seed);
+        var fuzzer = new SharpyFuzzer(seed);
         var compiler = new Compiler();
         var failures = new List<string>();
         var timeouts = new List<string>();

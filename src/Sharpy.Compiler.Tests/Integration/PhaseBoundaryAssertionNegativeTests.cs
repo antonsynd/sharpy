@@ -11,7 +11,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 
 /// <summary>
 /// Negative tests for phase boundary assertions.
-/// These verify that each assertion method DOES emit SHP0904
+/// These verify that each assertion method DOES emit SPY0904
 /// when the corresponding invariant is violated.
 /// </summary>
 public class PhaseBoundaryAssertionNegativeTests
@@ -266,7 +266,7 @@ public class PhaseBoundaryAssertionNegativeTests
         // Register an expression with UnknownType AND an error in the diagnostic bag
         var expr = new IntegerLiteral { Value = "42", LineStart = 1, ColumnStart = 1 };
         semanticInfo.SetExpressionType(expr, SemanticType.Unknown);
-        diagnostics.AddError("Some type error", code: "SHP0220");
+        diagnostics.AddError("Some type error", code: "SPY0220");
 
         Compiler.WarnIfUnknownTypes(semanticInfo, diagnostics);
 

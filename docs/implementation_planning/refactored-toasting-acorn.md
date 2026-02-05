@@ -21,7 +21,7 @@ The Sharpy compiler is architecturally excellent with mature error handling infr
 
 ### Architectural Strengths (No Changes Needed)
 
-1. **Diagnostic Infrastructure** — `DiagnosticBag` with deduplication, `DiagnosticExplanations` with fix guidance, comprehensive `DiagnosticCodes` (SHP0001-SHP0999)
+1. **Diagnostic Infrastructure** — `DiagnosticBag` with deduplication, `DiagnosticExplanations` with fix guidance, comprehensive `DiagnosticCodes` (SPY0001-SPY0999)
 2. **Phase Boundary Assertions** — `DualWriteAssertions.cs` runs production assertions (not DEBUG-only) to catch materialization inconsistencies
 3. **Generated C# Validation** — `AssertGeneratedCSharpParses()` always verifies codegen produces valid C#
 4. **Incremental Compilation** — `DependencyGraph`, `IncrementalCompilationCache`, `SymbolCacheEnvelope` are production-ready
