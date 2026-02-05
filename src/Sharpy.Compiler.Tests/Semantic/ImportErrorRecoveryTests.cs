@@ -398,4 +398,131 @@ def process(x: int) -> int:
         Assert.Contains(errors, e => e.Contains("Cannot find module 'nonexistent'"));
         Assert.DoesNotContain(errors, e => e.Contains("Undefined identifier 'helper'"));
     }
+
+    [Fact]
+    public void FromImport_ModuleNotFound_BinaryOperations_NoOperatorError()
+    {
+        // Error recovery symbols used in binary operations should not cause operator errors
+        var source = @"
+from nonexistent_module import value
+
+def main():
+    x = value + 10
+    y = value * 2
+    z = value - 5
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have exactly one error: the import error
+        Assert.False(result.Success);
+        Assert.Single(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("does not support operator"));
+    }
+
+    [Fact]
+    public void FromImport_ModuleNotFound_ChainedMemberAccess_NoCascadingErrors()
+    {
+        // Chained member access on error recovery symbol should not cascade
+        var source = @"
+from nonexistent_module import helper
+
+def main():
+    result = helper.first.second.third
+    print(result)
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have exactly one error: the import error
+        Assert.False(result.Success);
+        Assert.Single(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("has no member"));
+    }
+
+    [Fact]
+    public void FromImport_ModuleNotFound_InListComprehension_NoCascadingErrors()
+    {
+        // Error recovery symbol used in list comprehension should not cause cascading errors
+        var source = @"
+from nonexistent_module import process
+
+def main():
+    items = [1, 2, 3]
+    results = [process(x) for x in items]
+    print(results)
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have exactly one error: the import error
+        Assert.False(result.Success);
+        Assert.Single(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("Undefined"));
+    }
+
+    [Fact]
+    public void FromImport_ModuleNotFound_InConditionalExpression_NoCascadingErrors()
+    {
+        // Error recovery symbol used in conditional expression should not cascade
+        var source = @"
+from nonexistent_module import check
+
+def main():
+    value = 42 if check(True) else 0
+    print(value)
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have exactly one error: the import error
+        Assert.False(result.Success);
+        Assert.Single(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("Undefined"));
+    }
+
+    [Fact]
+    public void FromImport_ModuleNotFound_InMethodCall_NoCascadingErrors()
+    {
+        // Error recovery symbol used as method call receiver should not cascade
+        var source = @"
+from nonexistent_module import obj
+
+def main():
+    result = obj.method(1, 2, 3)
+    print(result)
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have exactly one error: the import error
+        Assert.False(result.Success);
+        Assert.Single(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("has no member"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("is not callable"));
+    }
+
+    [Fact]
+    public void FromImport_ModuleNotFound_AsParameter_NoCascadingErrors()
+    {
+        // Error recovery symbol passed as function parameter should not cascade
+        var source = @"
+from nonexistent_module import helper
+
+def process(x: int) -> int:
+    return x * 2
+
+def main():
+    result = process(helper)
+    print(result)
+";
+
+        var result = CompileAndExecute(source);
+
+        // Should have the import error (type mismatch might also be reported since
+        // we pass unknown type where int is expected, but no "undefined" error)
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors, e => e.Contains("Cannot find module"));
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("Undefined"));
+    }
 }
