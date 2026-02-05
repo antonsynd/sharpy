@@ -184,6 +184,9 @@ public class Compiler
             assertionTimer.Stop();
             _logger.LogDebug($"Post-parse assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
 
+            // Validate AST structural invariants (DEBUG-only, elided in Release)
+            AstValidator.ValidateTree(module);
+
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 3: Semantic Analysis

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace Sharpy.Compiler.Parser.Ast;
 
@@ -15,6 +16,19 @@ public abstract record Statement : Node;
 public record ExpressionStatement : Statement
 {
     public Expression Expression { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Expression != null, "ExpressionStatement.Expression cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Expression;
+    }
 }
 
 /// <summary>
@@ -25,6 +39,21 @@ public record Assignment : Statement
     public Expression Target { get; init; } = null!;
     public Expression Value { get; init; } = null!;
     public AssignmentOperator Operator { get; init; } = AssignmentOperator.Assign;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Target != null, "Assignment.Target cannot be null");
+        Debug.Assert(Value != null, "Assignment.Value cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Target;
+        yield return Value;
+    }
 }
 
 public enum AssignmentOperator
@@ -54,6 +83,21 @@ public record VariableDeclaration : Statement
     public TypeAnnotation? Type { get; init; }
     public Expression? InitialValue { get; init; }
     public bool IsConst { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "VariableDeclaration.Name cannot be null or empty");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // Note: Type is a TypeAnnotation which doesn't inherit from Node
+        if (InitialValue != null)
+            yield return InitialValue;
+    }
 }
 
 /// <summary>
@@ -63,6 +107,21 @@ public record AssertStatement : Statement
 {
     public Expression Test { get; init; } = null!;
     public Expression? Message { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Test != null, "AssertStatement.Test cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Test;
+        if (Message != null)
+            yield return Message;
+    }
 }
 
 /// <summary>
@@ -95,6 +154,13 @@ public record ContinueStatement : Statement;
 public record ReturnStatement : Statement
 {
     public Expression? Value { get; init; }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        if (Value != null)
+            yield return Value;
+    }
 }
 
 /// <summary>
@@ -104,6 +170,15 @@ public record RaiseStatement : Statement
 {
     public Expression? Exception { get; init; }
     public Expression? Cause { get; init; }  // raise ... from cause
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        if (Exception != null)
+            yield return Exception;
+        if (Cause != null)
+            yield return Cause;
+    }
 }
 
 #endregion
@@ -119,6 +194,32 @@ public record IfStatement : Statement
     public ImmutableArray<Statement> ThenBody { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<ElifClause> ElifClauses { get; init; } = ImmutableArray<ElifClause>.Empty;
     public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Test != null, "IfStatement.Test cannot be null");
+        Debug.Assert(ThenBody != null, "IfStatement.ThenBody cannot be null");
+        Debug.Assert(ElifClauses != null, "IfStatement.ElifClauses cannot be null");
+        Debug.Assert(ElseBody != null, "IfStatement.ElseBody cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Test;
+        foreach (var stmt in ThenBody)
+            yield return stmt;
+        foreach (var elif in ElifClauses)
+        {
+            yield return elif.Test;
+            foreach (var stmt in elif.Body)
+                yield return stmt;
+        }
+        foreach (var stmt in ElseBody)
+            yield return stmt;
+    }
 }
 
 public record ElifClause
@@ -146,6 +247,25 @@ public record WhileStatement : Statement
     public Expression Test { get; init; } = null!;
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Test != null, "WhileStatement.Test cannot be null");
+        Debug.Assert(Body != null, "WhileStatement.Body cannot be null");
+        Debug.Assert(ElseBody != null, "WhileStatement.ElseBody cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Test;
+        foreach (var stmt in Body)
+            yield return stmt;
+        foreach (var stmt in ElseBody)
+            yield return stmt;
+    }
 }
 
 /// <summary>
@@ -157,6 +277,27 @@ public record ForStatement : Statement
     public Expression Iterator { get; init; } = null!;
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Target != null, "ForStatement.Target cannot be null");
+        Debug.Assert(Iterator != null, "ForStatement.Iterator cannot be null");
+        Debug.Assert(Body != null, "ForStatement.Body cannot be null");
+        Debug.Assert(ElseBody != null, "ForStatement.ElseBody cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Target;
+        yield return Iterator;
+        foreach (var stmt in Body)
+            yield return stmt;
+        foreach (var stmt in ElseBody)
+            yield return stmt;
+    }
 }
 
 /// <summary>
@@ -168,6 +309,33 @@ public record TryStatement : Statement
     public ImmutableArray<ExceptHandler> Handlers { get; init; } = ImmutableArray<ExceptHandler>.Empty;
     public ImmutableArray<Statement> ElseBody { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<Statement> FinallyBody { get; init; } = ImmutableArray<Statement>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Body != null, "TryStatement.Body cannot be null");
+        Debug.Assert(Handlers != null, "TryStatement.Handlers cannot be null");
+        Debug.Assert(ElseBody != null, "TryStatement.ElseBody cannot be null");
+        Debug.Assert(FinallyBody != null, "TryStatement.FinallyBody cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        foreach (var stmt in Body)
+            yield return stmt;
+        // Note: handler.ExceptionType is a TypeAnnotation which doesn't inherit from Node
+        foreach (var handler in Handlers)
+        {
+            foreach (var stmt in handler.Body)
+                yield return stmt;
+        }
+        foreach (var stmt in ElseBody)
+            yield return stmt;
+        foreach (var stmt in FinallyBody)
+            yield return stmt;
+    }
 }
 
 public record ExceptHandler
@@ -204,6 +372,30 @@ public record FunctionDef : Statement
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
     public string? DocString { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "FunctionDef.Name cannot be null or empty");
+        Debug.Assert(TypeParameters != null, "FunctionDef.TypeParameters cannot be null");
+        Debug.Assert(Parameters != null, "FunctionDef.Parameters cannot be null");
+        Debug.Assert(Body != null, "FunctionDef.Body cannot be null");
+        Debug.Assert(Decorators != null, "FunctionDef.Decorators cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // Note: ReturnType and param.Type are TypeAnnotations which don't inherit from Node
+        foreach (var param in Parameters)
+        {
+            if (param.DefaultValue != null)
+                yield return param.DefaultValue;
+        }
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
 }
 
 /// <summary>
@@ -217,6 +409,25 @@ public record ClassDef : Statement
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
     public string? DocString { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "ClassDef.Name cannot be null or empty");
+        Debug.Assert(TypeParameters != null, "ClassDef.TypeParameters cannot be null");
+        Debug.Assert(BaseClasses != null, "ClassDef.BaseClasses cannot be null");
+        Debug.Assert(Body != null, "ClassDef.Body cannot be null");
+        Debug.Assert(Decorators != null, "ClassDef.Decorators cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // Note: BaseClasses are TypeAnnotations which don't inherit from Node
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
 }
 
 /// <summary>
@@ -230,6 +441,25 @@ public record StructDef : Statement
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
     public string? DocString { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "StructDef.Name cannot be null or empty");
+        Debug.Assert(TypeParameters != null, "StructDef.TypeParameters cannot be null");
+        Debug.Assert(BaseClasses != null, "StructDef.BaseClasses cannot be null");
+        Debug.Assert(Body != null, "StructDef.Body cannot be null");
+        Debug.Assert(Decorators != null, "StructDef.Decorators cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // Note: BaseClasses are TypeAnnotations which don't inherit from Node
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
 }
 
 /// <summary>
@@ -242,6 +472,24 @@ public record InterfaceDef : Statement
     public ImmutableArray<TypeAnnotation> BaseInterfaces { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public string? DocString { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "InterfaceDef.Name cannot be null or empty");
+        Debug.Assert(TypeParameters != null, "InterfaceDef.TypeParameters cannot be null");
+        Debug.Assert(BaseInterfaces != null, "InterfaceDef.BaseInterfaces cannot be null");
+        Debug.Assert(Body != null, "InterfaceDef.Body cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // Note: BaseInterfaces are TypeAnnotations which don't inherit from Node
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
 }
 
 /// <summary>
@@ -252,6 +500,24 @@ public record EnumDef : Statement
     public string Name { get; init; } = "";
     public ImmutableArray<EnumMember> Members { get; init; } = ImmutableArray<EnumMember>.Empty;
     public string? DocString { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "EnumDef.Name cannot be null or empty");
+        Debug.Assert(Members != null, "EnumDef.Members cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        foreach (var member in Members)
+        {
+            if (member.Value != null)
+                yield return member.Value;
+        }
+    }
 }
 
 public record EnumMember
@@ -280,6 +546,23 @@ public record TypeAlias : Statement
     public string Name { get; init; } = "";
     public TypeAnnotation? Type { get; init; }
     public FunctionType? FunctionType { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "TypeAlias.Name cannot be null or empty");
+        // Exactly one of Type or FunctionType should be set
+        Debug.Assert(Type != null || FunctionType != null,
+            "TypeAlias must have either Type or FunctionType set");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // Type and FunctionType don't inherit from Node
+        yield break;
+    }
 }
 
 /// <summary>
@@ -386,6 +669,13 @@ public record Parameter
 public record ImportStatement : Statement
 {
     public ImmutableArray<ImportAlias> Names { get; init; } = ImmutableArray<ImportAlias>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Names != null, "ImportStatement.Names cannot be null");
+    }
 }
 
 public record ImportAlias
@@ -427,6 +717,14 @@ public record FromImportStatement : Statement
     /// This is used during code generation to generate delegating members in the Exports class.
     /// </summary>
     public Dictionary<string, Semantic.Symbol>? ReExportedSymbols { get; set; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Module), "FromImportStatement.Module cannot be null or empty");
+        Debug.Assert(Names != null, "FromImportStatement.Names cannot be null");
+    }
 }
 
 #endregion

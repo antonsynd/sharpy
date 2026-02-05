@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace Sharpy.Compiler.Parser.Ast;
 
@@ -42,6 +43,23 @@ public record StringLiteral : Expression
 public record FStringLiteral : Expression
 {
     public ImmutableArray<FStringPart> Parts { get; init; } = ImmutableArray<FStringPart>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Parts != null, "FStringLiteral.Parts cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        foreach (var part in Parts)
+        {
+            if (part.Expression != null)
+                yield return part.Expression;
+        }
+    }
 }
 
 public record FStringPart
@@ -79,6 +97,16 @@ public record EllipsisLiteral : Expression;
 public record ListLiteral : Expression
 {
     public ImmutableArray<Expression> Elements { get; init; } = ImmutableArray<Expression>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Elements != null, "ListLiteral.Elements cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes() => Elements;
 }
 
 /// <summary>
@@ -87,6 +115,23 @@ public record ListLiteral : Expression
 public record DictLiteral : Expression
 {
     public ImmutableArray<DictEntry> Entries { get; init; } = ImmutableArray<DictEntry>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Entries != null, "DictLiteral.Entries cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        foreach (var entry in Entries)
+        {
+            yield return entry.Key;
+            yield return entry.Value;
+        }
+    }
 }
 
 public record DictEntry
@@ -101,6 +146,16 @@ public record DictEntry
 public record SetLiteral : Expression
 {
     public ImmutableArray<Expression> Elements { get; init; } = ImmutableArray<Expression>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Elements != null, "SetLiteral.Elements cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes() => Elements;
 }
 
 /// <summary>
@@ -109,6 +164,16 @@ public record SetLiteral : Expression
 public record TupleLiteral : Expression
 {
     public ImmutableArray<Expression> Elements { get; init; } = ImmutableArray<Expression>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Elements != null, "TupleLiteral.Elements cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes() => Elements;
 }
 
 #endregion
@@ -122,6 +187,23 @@ public record ListComprehension : Expression
 {
     public Expression Element { get; init; } = null!;
     public ImmutableArray<ComprehensionClause> Clauses { get; init; } = ImmutableArray<ComprehensionClause>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Element != null, "ListComprehension.Element cannot be null");
+        Debug.Assert(Clauses != null, "ListComprehension.Clauses cannot be null");
+        Debug.Assert(Clauses.Length > 0, "ListComprehension.Clauses must have at least one clause");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Element;
+        foreach (var clause in Clauses)
+            yield return clause;
+    }
 }
 
 /// <summary>
@@ -131,6 +213,23 @@ public record SetComprehension : Expression
 {
     public Expression Element { get; init; } = null!;
     public ImmutableArray<ComprehensionClause> Clauses { get; init; } = ImmutableArray<ComprehensionClause>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Element != null, "SetComprehension.Element cannot be null");
+        Debug.Assert(Clauses != null, "SetComprehension.Clauses cannot be null");
+        Debug.Assert(Clauses.Length > 0, "SetComprehension.Clauses must have at least one clause");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Element;
+        foreach (var clause in Clauses)
+            yield return clause;
+    }
 }
 
 /// <summary>
@@ -141,6 +240,25 @@ public record DictComprehension : Expression
     public Expression Key { get; init; } = null!;
     public Expression Value { get; init; } = null!;
     public ImmutableArray<ComprehensionClause> Clauses { get; init; } = ImmutableArray<ComprehensionClause>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Key != null, "DictComprehension.Key cannot be null");
+        Debug.Assert(Value != null, "DictComprehension.Value cannot be null");
+        Debug.Assert(Clauses != null, "DictComprehension.Clauses cannot be null");
+        Debug.Assert(Clauses.Length > 0, "DictComprehension.Clauses must have at least one clause");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Key;
+        yield return Value;
+        foreach (var clause in Clauses)
+            yield return clause;
+    }
 }
 
 /// <summary>
@@ -155,6 +273,21 @@ public record ForClause : ComprehensionClause
 {
     public Expression Target { get; init; } = null!;  // Loop variable (single identifier only for now)
     public Expression Iterator { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Target != null, "ForClause.Target cannot be null");
+        Debug.Assert(Iterator != null, "ForClause.Iterator cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Target;
+        yield return Iterator;
+    }
 }
 
 /// <summary>
@@ -163,6 +296,19 @@ public record ForClause : ComprehensionClause
 public record IfClause : ComprehensionClause
 {
     public Expression Condition { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Condition != null, "IfClause.Condition cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Condition;
+    }
 }
 
 #endregion
@@ -175,6 +321,13 @@ public record IfClause : ComprehensionClause
 public record Identifier : Expression
 {
     public string Name { get; init; } = "";
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "Identifier.Name cannot be null or empty");
+    }
 }
 
 /// <summary>
@@ -185,6 +338,20 @@ public record MemberAccess : Expression
     public Expression Object { get; init; } = null!;
     public string Member { get; init; } = "";
     public bool IsNullConditional { get; init; }  // obj?.member
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Object != null, "MemberAccess.Object cannot be null");
+        Debug.Assert(!string.IsNullOrEmpty(Member), "MemberAccess.Member cannot be null or empty");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Object;
+    }
 }
 
 /// <summary>
@@ -194,6 +361,21 @@ public record IndexAccess : Expression
 {
     public Expression Object { get; init; } = null!;
     public Expression Index { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Object != null, "IndexAccess.Object cannot be null");
+        Debug.Assert(Index != null, "IndexAccess.Index cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Object;
+        yield return Index;
+    }
 }
 
 /// <summary>
@@ -205,6 +387,25 @@ public record SliceAccess : Expression
     public Expression? Start { get; init; }
     public Expression? Stop { get; init; }
     public Expression? Step { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Object != null, "SliceAccess.Object cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Object;
+        if (Start != null)
+            yield return Start;
+        if (Stop != null)
+            yield return Stop;
+        if (Step != null)
+            yield return Step;
+    }
 }
 
 /// <summary>
@@ -215,6 +416,25 @@ public record FunctionCall : Expression
     public Expression Function { get; init; } = null!;
     public ImmutableArray<Expression> Arguments { get; init; } = ImmutableArray<Expression>.Empty;
     public ImmutableArray<KeywordArgument> KeywordArguments { get; init; } = ImmutableArray<KeywordArgument>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Function != null, "FunctionCall.Function cannot be null");
+        Debug.Assert(Arguments != null, "FunctionCall.Arguments cannot be null");
+        Debug.Assert(KeywordArguments != null, "FunctionCall.KeywordArguments cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Function;
+        foreach (var arg in Arguments)
+            yield return arg;
+        foreach (var kwArg in KeywordArguments)
+            yield return kwArg.Value;
+    }
 }
 
 public record KeywordArgument
@@ -240,6 +460,19 @@ public record UnaryOp : Expression
 {
     public UnaryOperator Operator { get; init; }
     public Expression Operand { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Operand != null, "UnaryOp.Operand cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Operand;
+    }
 }
 
 public enum UnaryOperator
@@ -258,6 +491,21 @@ public record BinaryOp : Expression
     public BinaryOperator Operator { get; init; }
     public Expression Left { get; init; } = null!;
     public Expression Right { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Left != null, "BinaryOp.Left cannot be null");
+        Debug.Assert(Right != null, "BinaryOp.Right cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Left;
+        yield return Right;
+    }
 }
 
 public enum BinaryOperator
@@ -310,6 +558,20 @@ public record ComparisonChain : Expression
 {
     public ImmutableArray<Expression> Operands { get; init; } = ImmutableArray<Expression>.Empty;
     public ImmutableArray<ComparisonOperator> Operators { get; init; } = ImmutableArray<ComparisonOperator>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Operands != null, "ComparisonChain.Operands cannot be null");
+        Debug.Assert(Operators != null, "ComparisonChain.Operators cannot be null");
+        Debug.Assert(Operands.Length >= 2, "ComparisonChain.Operands must have at least 2 elements");
+        Debug.Assert(Operators.Length == Operands.Length - 1,
+            "ComparisonChain.Operators.Length must equal Operands.Length - 1");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes() => Operands;
 }
 
 public enum ComparisonOperator
@@ -338,6 +600,23 @@ public record ConditionalExpression : Expression
     public Expression Test { get; init; } = null!;
     public Expression ThenValue { get; init; } = null!;
     public Expression ElseValue { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Test != null, "ConditionalExpression.Test cannot be null");
+        Debug.Assert(ThenValue != null, "ConditionalExpression.ThenValue cannot be null");
+        Debug.Assert(ElseValue != null, "ConditionalExpression.ElseValue cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Test;
+        yield return ThenValue;
+        yield return ElseValue;
+    }
 }
 
 /// <summary>
@@ -347,6 +626,26 @@ public record LambdaExpression : Expression
 {
     public ImmutableArray<Parameter> Parameters { get; init; } = ImmutableArray<Parameter>.Empty;
     public Expression Body { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Parameters != null, "LambdaExpression.Parameters cannot be null");
+        Debug.Assert(Body != null, "LambdaExpression.Body cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // Note: param.Type is TypeAnnotation which doesn't inherit from Node
+        foreach (var param in Parameters)
+        {
+            if (param.DefaultValue != null)
+                yield return param.DefaultValue;
+        }
+        yield return Body;
+    }
 }
 
 /// <summary>
@@ -356,6 +655,21 @@ public record TypeCast : Expression
 {
     public Expression Value { get; init; } = null!;
     public TypeAnnotation TargetType { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Value != null, "TypeCast.Value cannot be null");
+        Debug.Assert(TargetType != null, "TypeCast.TargetType cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // Note: TargetType is TypeAnnotation which doesn't inherit from Node
+        yield return Value;
+    }
 }
 
 /// <summary>
@@ -367,6 +681,21 @@ public record TypeCoercion : Expression
 {
     public Expression Value { get; init; } = null!;
     public TypeAnnotation TargetType { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Value != null, "TypeCoercion.Value cannot be null");
+        Debug.Assert(TargetType != null, "TypeCoercion.TargetType cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // Note: TargetType is TypeAnnotation which doesn't inherit from Node
+        yield return Value;
+    }
 }
 
 /// <summary>
@@ -376,6 +705,21 @@ public record TypeCheck : Expression
 {
     public Expression Value { get; init; } = null!;
     public TypeAnnotation CheckType { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Value != null, "TypeCheck.Value cannot be null");
+        Debug.Assert(CheckType != null, "TypeCheck.CheckType cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // Note: CheckType is TypeAnnotation which doesn't inherit from Node
+        yield return Value;
+    }
 }
 
 /// <summary>
@@ -384,6 +728,19 @@ public record TypeCheck : Expression
 public record Parenthesized : Expression
 {
     public Expression Expression { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Expression != null, "Parenthesized.Expression cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Expression;
+    }
 }
 
 /// <summary>
@@ -403,6 +760,20 @@ public record WalrusExpression : Expression
 {
     public string Target { get; init; } = "";
     public Expression Value { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Target), "WalrusExpression.Target cannot be null or empty");
+        Debug.Assert(Value != null, "WalrusExpression.Value cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Value;
+    }
 }
 
 /// <summary>
@@ -414,6 +785,20 @@ public record TryExpression : Expression
 {
     public Expression Operand { get; init; } = null!;
     public TypeAnnotation? ExceptionType { get; init; }  // Optional: try[ValueError] expr
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Operand != null, "TryExpression.Operand cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        // Note: ExceptionType is TypeAnnotation which doesn't inherit from Node
+        yield return Operand;
+    }
 }
 
 /// <summary>
@@ -424,6 +809,19 @@ public record TryExpression : Expression
 public record MaybeExpression : Expression
 {
     public Expression Operand { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Operand != null, "MaybeExpression.Operand cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Operand;
+    }
 }
 
 #endregion
