@@ -507,4 +507,79 @@ public class CompilationMetricsTests
         json.Should().Contain("\"configuration\": \"Debug\"");
         json.Should().Contain("\"total_files\": 1");
     }
+
+    // ===== Error Path Tests =====
+    // These tests verify that metrics are populated even when compilation fails.
+
+    [Fact]
+    public void Compilation_PopulatesMetrics_EvenOnSemanticError()
+    {
+        // Source with a type error
+        var source = """
+            def main():
+                x: int = "not an int"
+                print(x)
+            """;
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "test.spy");
+
+        // Compilation should fail
+        result.Success.Should().BeFalse();
+
+        // But metrics should still be populated
+        var metrics = result.Metrics;
+        metrics.Should().NotBeNull();
+
+        // Phase timings up to the failure point should be recorded
+        metrics!.LexerTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.ParserTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.NameResolutionTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+
+        // Token count should still be populated (lexer succeeded)
+        metrics.TokenCount.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void Compilation_PopulatesPartialMetrics_OnLexerError()
+    {
+        // Source with an invalid token
+        var source = """
+            def main():
+                x = @invalid_token
+            """;
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "test.spy");
+
+        // Compilation should fail
+        result.Success.Should().BeFalse();
+
+        // But metrics should still be populated
+        var metrics = result.Metrics;
+        metrics.Should().NotBeNull();
+
+        // Lexer time should be recorded
+        metrics!.LexerTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+
+        // Phases after lexer failure may not have run
+        // But the total duration should still be non-negative
+        metrics.TotalDuration.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void ValidationTime_EqualsExactSumOfValidatorTimes()
+    {
+        // Create metrics with specific validator times
+        var metrics = new CompilationMetrics();
+        var validatorTimes = new Dictionary<string, TimeSpan>
+        {
+            ["Validator1"] = TimeSpan.FromTicks(1000),
+            ["Validator2"] = TimeSpan.FromTicks(2000),
+            ["Validator3"] = TimeSpan.FromTicks(500)
+        };
+        metrics.SetValidatorTimes(validatorTimes);
+
+        // ValidationTime should be exactly 3500 ticks
+        var expectedSum = TimeSpan.FromTicks(3500);
+        metrics.ValidationTime.Should().Be(expectedSum);
+    }
 }

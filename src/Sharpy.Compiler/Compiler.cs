@@ -140,6 +140,9 @@ public class Compiler
             LogPhaseEnd(filePath, lexer.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
+            // Capture token count immediately after lexing (available even if later phases fail)
+            metrics.TokenCount = tokens.Count;
+
             // Assertion: Lexer must produce at least an EOF token
             Debug.Assert(tokens.Count > 0, "Lexer should produce at least one token (EOF)");
 
@@ -194,6 +197,9 @@ public class Compiler
 
             // Validate AST structural invariants (DEBUG-only, elided in Release)
             AstValidator.ValidateTree(module);
+
+            // Capture AST node count immediately after parsing (available even if later phases fail)
+            metrics.AstNodeCount = CountAstNodes(module);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -359,6 +365,14 @@ public class Compiler
             semanticBinding.FreezeVariableTypes();
             semanticBinding.FreezeCodeGenInfo();
 
+            // Capture symbol count and validator times after type checking
+            // (available even if code generation fails)
+            metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
+            if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> validatorDict)
+            {
+                metrics.SetValidatorTimes(validatorDict);
+            }
+
             // Always merge type checking/validation diagnostics so warnings are
             // available in CompilationResult even when compilation succeeds.
             diagnostics.Merge(typeChecker.Diagnostics);
@@ -463,15 +477,9 @@ public class Compiler
             LogPhaseEnd(filePath, codeGenContext.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
-            // Populate granular metrics
-            metrics.TokenCount = tokens.Count;
-            metrics.AstNodeCount = CountAstNodes(module);
-            metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
+            // Update diagnostic count with final value
+            // (TokenCount, AstNodeCount, SymbolCount, ValidatorTimes were set incrementally above)
             metrics.DiagnosticCount = diagnostics.GetAll().Count;
-            if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> validatorDict)
-            {
-                metrics.SetValidatorTimes(validatorDict);
-            }
 
             return new CompilationResult
             {
