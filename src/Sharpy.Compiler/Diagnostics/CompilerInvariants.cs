@@ -108,6 +108,8 @@ public static class CompilerInvariants
         SemanticInfo? semanticInfo = null,
         string? generatedCSharp = null)
     {
+        ArgumentNullException.ThrowIfNull(diagnostics);
+
         if (invariants == InvariantSet.None)
             return;
 

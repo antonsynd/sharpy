@@ -386,10 +386,13 @@ public class ProjectCompilationMetrics
     }
 
     /// <summary>
-    /// Add metrics for a compiled file
+    /// Add metrics for a compiled file.
     /// </summary>
+    /// <param name="metrics">The metrics to add. Must not be null.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="metrics"/> is null.</exception>
     public void AddFileMetrics(CompilationMetrics metrics)
     {
+        ArgumentNullException.ThrowIfNull(metrics);
         _fileMetrics.Add(metrics);
     }
 
