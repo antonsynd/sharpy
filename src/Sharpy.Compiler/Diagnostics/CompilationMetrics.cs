@@ -86,6 +86,21 @@ public class CompilationMetrics
     public TimeSpan CodeGenTime => GetPhaseDuration("Code Generation");
 
     /// <summary>
+    /// Gets the aggregate duration of all validation during the type checking phase.
+    /// This is the sum of all individual validator times in <see cref="ValidatorTimes"/>.
+    /// Returns <see cref="TimeSpan.Zero"/> if no validators were recorded.
+    /// </summary>
+    /// <remarks>
+    /// Validation runs within the type checking phase, so this time is a subset of
+    /// <see cref="TypeCheckingTime"/>. Use this property to understand how much of
+    /// type checking was spent on validation vs. type inference.
+    /// </remarks>
+    public TimeSpan ValidationTime =>
+        _validatorTimes != null
+            ? TimeSpan.FromTicks(_validatorTimes.Values.Sum(ts => ts.Ticks))
+            : TimeSpan.Zero;
+
+    /// <summary>
     /// Gets the duration of a specific phase by name.
     /// </summary>
     /// <param name="phaseName">The name of the phase to look up.</param>
@@ -284,6 +299,7 @@ public class CompilationMetrics
             import_resolution_time_ms = ImportResolutionTime.TotalMilliseconds,
             type_resolution_time_ms = TypeResolutionTime.TotalMilliseconds,
             type_checking_time_ms = TypeCheckingTime.TotalMilliseconds,
+            validation_time_ms = ValidationTime.TotalMilliseconds,
             codegen_time_ms = CodeGenTime.TotalMilliseconds,
 
             // Artifact counts

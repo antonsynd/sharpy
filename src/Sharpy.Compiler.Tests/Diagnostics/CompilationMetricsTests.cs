@@ -184,6 +184,30 @@ public class CompilationMetricsTests
         metrics.ValidatorTimes["AccessValidator"].Should().Be(TimeSpan.FromMilliseconds(3));
     }
 
+    [Fact]
+    public void ValidationTime_ReturnsZero_WhenNoValidatorTimes()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.ValidationTime.Should().Be(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void ValidationTime_ReturnsSumOfValidatorTimes()
+    {
+        var metrics = new CompilationMetrics();
+        var validatorTimes = new Dictionary<string, TimeSpan>
+        {
+            ["ControlFlowValidator"] = TimeSpan.FromMilliseconds(15),
+            ["UnusedVariableValidator"] = TimeSpan.FromMilliseconds(8),
+            ["AccessValidator"] = TimeSpan.FromMilliseconds(3)
+        };
+        metrics.SetValidatorTimes(validatorTimes);
+
+        // ValidationTime should be sum of all validator times: 15 + 8 + 3 = 26ms
+        metrics.ValidationTime.Should().Be(TimeSpan.FromMilliseconds(26));
+    }
+
     // ===== Artifact Counts =====
 
     [Fact]
@@ -289,6 +313,7 @@ public class CompilationMetricsTests
 
         json.Should().Contain("lexer_time_ms");
         json.Should().Contain("parser_time_ms");
+        json.Should().Contain("validation_time_ms");
         json.Should().Contain("codegen_time_ms");
     }
 
