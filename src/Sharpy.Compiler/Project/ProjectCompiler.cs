@@ -365,6 +365,10 @@ internal class ProjectCompiler
                 compilationUnit.Ast = module;
                 compilationUnit.Phase = CompilationPhase.Parsed;
 
+                // Capture artifact counts for this file
+                fileMetrics.TokenCount = tokens.Count;
+                fileMetrics.AstNodeCount = CountAstNodes(module);
+
                 // Extract imports from AST
                 var imports = new List<ImportStatement>();
                 var fromImports = new List<FromImportStatement>();
@@ -1367,9 +1371,18 @@ internal class ProjectCompiler
             }
             fileMetrics.EndPhase();
 
+            // Capture per-validator timing for performance analysis
+            if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> validatorDict)
+            {
+                fileMetrics.SetValidatorTimes(validatorDict);
+            }
+
             // Merge all type checking diagnostics to both unit and project level
             unit.Diagnostics.Merge(typeChecker.Diagnostics);
             _diagnostics.Merge(typeChecker.Diagnostics);
+
+            // Capture per-file diagnostic count
+            fileMetrics.DiagnosticCount = unit.Diagnostics.GetAll().Count;
 
             if (typeChecker.Diagnostics.HasErrors)
             {
@@ -1661,5 +1674,37 @@ internal class ProjectCompiler
                 target.Exports[name] = symbol;
             }
         }
+    }
+
+    /// <summary>
+    /// Counts the total number of AST nodes in a module for metrics.
+    /// This provides a rough measure of program complexity.
+    /// Uses the AST nodes' GetChildNodes() method for recursive traversal.
+    /// </summary>
+    private static int CountAstNodes(Parser.Ast.Module module)
+    {
+        var count = 1; // Count the module itself
+        var stack = new Stack<Parser.Ast.Node>();
+
+        // Initialize stack with module body
+        foreach (var statement in module.Body)
+        {
+            stack.Push(statement);
+        }
+
+        // Iterative depth-first traversal (more efficient than recursion for large ASTs)
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            count++;
+
+            // Push all children onto the stack
+            foreach (var child in node.GetChildNodes())
+            {
+                stack.Push(child);
+            }
+        }
+
+        return count;
     }
 }
