@@ -1,0 +1,10 @@
+# Multi-file error recovery test:
+# - module_with_import_error has a failed import
+# - module_with_type_error has a type error
+# Both errors should be reported independently
+from module_with_import_error import get_value
+from module_with_type_error import calculate
+
+def main():
+    print(get_value())
+    print(calculate())

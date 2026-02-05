@@ -1,0 +1,4 @@
+# This module has a type error (independent of the import error in the other module)
+def calculate() -> int:
+    x: int = "not an int"  # Type error
+    return x

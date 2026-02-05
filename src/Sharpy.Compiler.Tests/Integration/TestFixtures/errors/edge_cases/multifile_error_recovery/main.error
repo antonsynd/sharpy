@@ -1,0 +1,4 @@
+# Both the import error from module_with_import_error and
+# the type error from module_with_type_error should be reported
+Cannot find module 'nonexistent'
+Cannot assign

@@ -1,0 +1,11 @@
+# Edge case: Type narrowing inside exception handler
+# Verify that type narrowing works correctly in except blocks
+def main():
+    x: int? = 42
+    try:
+        print("try block")
+    except:
+        if x is not None:
+            # x should be narrowed to int here
+            result: int = x
+            print(result)
