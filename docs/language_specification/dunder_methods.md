@@ -97,21 +97,7 @@ struct NonZeroInt {
 }
 ```
 
-Reflected operators (e.g. `__radd__`) cause `self` to become the right-hand side
-operand:
-
-```python
-   def __radd__(self, other: int) -> NonZeroInt:
-      return NonZeroInt(other) + self
-```
-
-Generates C#:
-
-```csharp
-  public static NonZeroInt operator+(int lhs, NonZeroInt rhs) {
-    return new NonZeroInt(lhs) + rhs;
-  }
-```
+Reverse operators (e.g. `__radd__`) do not exist in Sharpy.
 
 In-place operators (e.g. `__iadd__`) do not exist in Sharpy yet as C# 9 does
 not support defining them. When Sharpy is updated to support C# 14, then
@@ -128,18 +114,8 @@ overridable operators in C#, and as a result, `__truediv__` is renamed to
 | `__add__(self, other: U) -> V` | `public static V operator +(T lhs, U rhs)` |
 | `__div__(self, other: U) -> V` | `public static V operator /(T lhs, U rhs)` |
 | `__mod__(self, other: U) -> V` | `public static V operator %(T lhs, U rhs)` |
-| `__mul__(self, other: U) -> V` | `public static V operator -(T lhs, U rhs)` |
+| `__mul__(self, other: U) -> V` | `public static V operator *(T lhs, U rhs)` |
 | `__sub__(self, other: U) -> V` | `public static V operator -(T lhs, U rhs)` |
-
-**Reflected binary arithmetic operators**
-
-| Dunder | C# Output |
-|--------|-----------|
-| `__radd__(self, other: U) -> V` | `public static V operator +(U lhs, T rhs)` |
-| `__rdiv__(self, other: U) -> V` | `public static V operator /(U lhs, T rhs)` |
-| `__rmod__(self, other: U) -> V` | `public static V operator %(U lhs, T rhs)` |
-| `__rmul__(self, other: U) -> V` | `public static V operator *(U lhs, T rhs)` |
-| `__rsub__(self, other: U) -> V` | `public static V operator -(U lhs, T rhs)` |
 
 **Unary sign operators**
 
@@ -151,7 +127,7 @@ overridable operators in C#, and as a result, `__truediv__` is renamed to
 ## Bitwise Operators
 
 Bitwise dunder methods translate directly to C# static operators. They do
-not exist as callable methods outside of cross-operator synthesis, similarly
+not exist as callable methods outside of cross-operator synthesis, similar
 to the arithmetic ones.
 
 **Binary bitwise operators**
@@ -164,16 +140,6 @@ to the arithmetic ones.
 | `__rshift__(self, other: U) -> V` | `public static V operator >>(T lhs, U rhs)` |
 | `__xor__(self, other: U) -> V` | `public static V operator ^(T lhs, U rhs)` |
 
-**Reflected binary bitwise operators**
-
-| Dunder | C# Output |
-|--------|-----------|
-| `__rand__(self, other: U) -> V` | `public static V operator &(U lhs, T rhs)` |
-| `__rlshift__(self, other: U) -> V` | `public static V operator <<(U lhs, T rhs)` |
-| `__ror__(self, other: U) -> V` | `public static V operator \|(U lhs, T rhs)` |
-| `__rrshift__(self, other: U) -> V` | `public static V operator >>(U lhs, T rhs)` |
-| `__rxor__(self, other: U) -> V` | `public static V operator ^(U lhs, T rhs)` |
-
 **Unary bitwise operators**
 
 | Dunder | C# Output |
@@ -185,11 +151,20 @@ to the arithmetic ones.
 | Dunder | C# Output | Notes |
 |--------|-----------|-------|
 | `__eq__(self, other: U) -> bool` | `public static bool operator ==(T lhs, U rhs)` and `public override bool Equals(U rhs)` | The former invokes the latter |
-| `__ne__(self, other: U) -> bool` | `public static bool operator !=(T lhs, U rhs)` | |
+| `__ne__(self, other: U) -> bool` | `public static bool operator !=(T lhs, U rhs)` | If not defined, is synthesized by the compiler as `!(lhs == rhs)` |
 | `__lt__(self, other: U) -> bool` | `public static bool operator <(T lhs, U rhs)` | |
 | `__le__(self, other: U) -> bool` | `public static bool operator <=(T lhs, U rhs)` | |
 | `__gt__(self, other: U) -> bool` | `public static bool operator >(T lhs, U rhs)` | |
 | `__ge__(self, other: U) -> bool` | `public static bool operator >=(T lhs, U rhs)` | |
+
+Note that if a Sharpy user type has no `__eq__(self, other: object)` user override,
+the one inherited from its base type is used. Additionally, defining an override of
+`__eq__(self, other: object)` (specifically that override of that overload) without
+an override `__hash__(self)` is a compile-time error. C# warns when types override
+`Equals()` but not `GetHashCode()` and vice versa, but Sharpy treats this as an error.
+
+Similarly, the opposite case of overriding `__hash__(self)` without an override
+of `__eq__(self, other: object)` is also a compile-time error.
 
 ## Conversion Methods
 
@@ -197,9 +172,8 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 
 | Dunder | C# Output | Notes |
 |--------|-----------|-------|
-| `__bool__(self) -> bool` | `public static bool operator true(T self)` and `public static bool operator false(T self)` | The latter invokes the former and returns the negated value |
-| `__str__(self) -> str` | `public static explicit operator Str(T self)` | |
-| `__string__(self) -> string` | `public override string ToString()` and `public static explicit operator string(T self)` | The latter invokes the former |
+| `__bool__(self) -> bool` | `public static bool operator true(T self)`, and `public static bool operator false(T self)` | The latter invokes the former and returns the negated value |
+| `__str__(self) -> str` | `public static explicit operator string(T self)` and `public override string ToString()` | The former invokes the latter |
 
 ## Special Methods
 
@@ -244,7 +218,7 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | `__round__(self, ndigits: int?) -> T` | Not supported | `Math.Round()` doesn't dispatch to this |
 | `__trunc__(self) -> T` | Not supported | `Math.Truncate()` doesn't dispatch to this |
 | `__pow__(self, exponent: int) -> float` | Not supported | `Math.Pow()` doesn't dispatch to this |
-| `__repr__(self) -> str` | Not supported | No direct C# equivalent; use `__str__` and `__string__` for string representation |
+| `__repr__(self) -> str` | Not supported | No direct C# equivalent; use `__str__` for string representation |
 
 ## Dunder Method Invocation Rules
 
