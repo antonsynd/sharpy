@@ -1364,6 +1364,17 @@ internal class ProjectCompiler
             }
             catch (SemanticAnalysisException)
             {
+                // End the Type Checking phase even on error for consistent metrics
+                fileMetrics.EndPhase();
+
+                // Capture artifact counts even on error paths for better observability
+                fileMetrics.SymbolCount = SymbolTable.GlobalScope.GetAllSymbols().Count();
+                if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> errorValidatorDict)
+                {
+                    fileMetrics.SetValidatorTimes(errorValidatorDict);
+                }
+                fileMetrics.DiagnosticCount = unit.Diagnostics.GetAll().Count + typeChecker.Diagnostics.GetAll().Count;
+
                 // Preserve all accumulated diagnostics from the type checker
                 _diagnostics.Merge(typeChecker.Diagnostics);
                 unit.Phase = CompilationPhase.Failed;

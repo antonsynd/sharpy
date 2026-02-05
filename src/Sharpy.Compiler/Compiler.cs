@@ -330,6 +330,16 @@ public class Compiler
             {
                 // Preserve all accumulated diagnostics from the type checker
                 LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
+                metrics.EndPhase();
+
+                // Capture artifact counts even on error paths for better observability
+                metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
+                if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> errorValidatorDict)
+                {
+                    metrics.SetValidatorTimes(errorValidatorDict);
+                }
+                metrics.DiagnosticCount = diagnostics.GetAll().Count + typeChecker.Diagnostics.GetAll().Count;
+
                 diagnostics.Merge(typeChecker.Diagnostics);
                 return new CompilationResult
                 {
