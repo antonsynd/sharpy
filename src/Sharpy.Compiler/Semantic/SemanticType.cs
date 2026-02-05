@@ -6,6 +6,13 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// Represents a resolved type during semantic analysis.
 ///
+/// <para><b>Closed Hierarchy:</b></para>
+/// <para>
+/// This type hierarchy is CLOSED — all leaf types are sealed to enable exhaustive
+/// pattern matching. When switching on SemanticType, ensure all concrete types are
+/// handled to avoid silent fallthrough bugs when new types are added.
+/// </para>
+///
 /// <para><b>Design Invariants:</b></para>
 /// <list type="bullet">
 /// <item><description>
@@ -132,7 +139,7 @@ public abstract record SemanticType : ITypeInfo
 /// <summary>
 /// Unknown type (used for error recovery)
 /// </summary>
-public record UnknownType : SemanticType
+public sealed record UnknownType : SemanticType
 {
     public override string GetDisplayName() => "<?>";
 
@@ -142,7 +149,7 @@ public record UnknownType : SemanticType
 /// <summary>
 /// Void type (for functions that don't return a value)
 /// </summary>
-public record VoidType : SemanticType
+public sealed record VoidType : SemanticType
 {
     public override string GetDisplayName() => "None";
 
@@ -160,7 +167,7 @@ public record VoidType : SemanticType
 /// <summary>
 /// Built-in primitive type
 /// </summary>
-public record BuiltinType : SemanticType
+public sealed record BuiltinType : SemanticType
 {
     public string Name { get; init; } = string.Empty;
     public new Type? ClrType { get; init; }
@@ -190,7 +197,7 @@ public record BuiltinType : SemanticType
 /// <summary>
 /// Generic type with type arguments (e.g., list[int])
 /// </summary>
-public record GenericType : SemanticType
+public sealed record GenericType : SemanticType
 {
     public string Name { get; init; } = string.Empty;
     public List<SemanticType> TypeArguments { get; init; } = new();
@@ -223,7 +230,7 @@ public record GenericType : SemanticType
 
     // Override Equals and GetHashCode to compare TypeArguments by content
     // This improves cache effectiveness in operator validation
-    public virtual bool Equals(GenericType? other)
+    public bool Equals(GenericType? other)
     {
         if (other is null)
             return false;
@@ -261,7 +268,7 @@ public record GenericType : SemanticType
 /// <summary>
 /// User-defined type (class, struct, interface)
 /// </summary>
-public record UserDefinedType : SemanticType
+public sealed record UserDefinedType : SemanticType
 {
     public string Name { get; init; } = string.Empty;
     public TypeSymbol? Symbol { get; init; }
@@ -374,7 +381,7 @@ public record UserDefinedType : SemanticType
 /// <item><description>Uses Some(value) / None() cases</description></item>
 /// </list>
 /// </summary>
-public record OptionalType : SemanticType
+public sealed record OptionalType : SemanticType
 {
     /// <summary>
     /// The underlying type T in Optional[T].
@@ -427,7 +434,7 @@ public record OptionalType : SemanticType
 /// <item><description>Uses Ok(value) / Err(error) cases</description></item>
 /// </list>
 /// </summary>
-public record ResultType : SemanticType
+public sealed record ResultType : SemanticType
 {
     /// <summary>
     /// The success type T in Result[T, E].
@@ -477,7 +484,7 @@ public record ResultType : SemanticType
 /// <item><description>OptionalType: Safe tagged union, for Sharpy-native code</description></item>
 /// </list>
 /// </summary>
-public record NullableType : SemanticType
+public sealed record NullableType : SemanticType
 {
     public SemanticType UnderlyingType { get; init; } = SemanticType.Unknown;
 
@@ -504,7 +511,7 @@ public record NullableType : SemanticType
 /// <summary>
 /// Function type (for lambdas and delegates)
 /// </summary>
-public record FunctionType : SemanticType
+public sealed record FunctionType : SemanticType
 {
     public List<SemanticType> ParameterTypes { get; init; } = new();
     public SemanticType ReturnType { get; init; } = SemanticType.Void;
@@ -543,7 +550,7 @@ public record FunctionType : SemanticType
     }
 
     // Override Equals and GetHashCode to compare ParameterTypes by content
-    public virtual bool Equals(FunctionType? other)
+    public bool Equals(FunctionType? other)
     {
         if (other is null)
             return false;
@@ -579,7 +586,7 @@ public record FunctionType : SemanticType
 /// <summary>
 /// Tuple type
 /// </summary>
-public record TupleType : SemanticType
+public sealed record TupleType : SemanticType
 {
     public List<SemanticType> ElementTypes { get; init; } = new();
 
@@ -604,7 +611,7 @@ public record TupleType : SemanticType
     }
 
     // Override Equals and GetHashCode to compare ElementTypes by content
-    public virtual bool Equals(TupleType? other)
+    public bool Equals(TupleType? other)
     {
         if (other is null)
             return false;
@@ -637,7 +644,7 @@ public record TupleType : SemanticType
 /// <summary>
 /// Module type (for imported modules used as namespaces)
 /// </summary>
-public record ModuleType : SemanticType
+public sealed record ModuleType : SemanticType
 {
     public ModuleSymbol Symbol { get; init; } = null!;
 
@@ -648,7 +655,7 @@ public record ModuleType : SemanticType
 /// Type parameter type (e.g., T in class Box[T])
 /// Used during type checking within generic classes/structs
 /// </summary>
-public record TypeParameterType : SemanticType
+public sealed record TypeParameterType : SemanticType
 {
     public string Name { get; init; } = string.Empty;
     public TypeSymbol? DeclaringType { get; init; }
@@ -677,7 +684,7 @@ public record TypeParameterType : SemanticType
 /// (e.g., identity[int] from def identity[T](value: T) -> T)
 /// This is an internal type used to pass type arguments from IndexAccess to FunctionCall
 /// </summary>
-public record GenericFunctionType : SemanticType
+public sealed record GenericFunctionType : SemanticType
 {
     public FunctionSymbol FunctionSymbol { get; init; } = null!;
     public List<SemanticType> TypeArguments { get; init; } = new();
@@ -708,7 +715,7 @@ public record GenericFunctionType : SemanticType
 ///     return Ok(a / b)
 /// </code>
 /// </summary>
-public record UnionType : SemanticType
+public sealed record UnionType : SemanticType
 {
     public string Name { get; init; } = string.Empty;
     public TypeSymbol? Symbol { get; init; }
@@ -743,7 +750,7 @@ public record UnionType : SemanticType
 ///     return response.body
 /// </code>
 /// </summary>
-public record TaskType : SemanticType
+public sealed record TaskType : SemanticType
 {
     /// <summary>
     /// The result type (T in Task&lt;T&gt;). Null for Task (void return).
