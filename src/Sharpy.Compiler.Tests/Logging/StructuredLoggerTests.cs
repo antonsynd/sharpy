@@ -237,4 +237,66 @@ public class StructuredLoggerTests
         outer.Events.Should().HaveCount(1);
         inner.Events.Should().HaveCount(1);
     }
+
+    [Fact]
+    public async Task LogEvent_IsThreadSafe()
+    {
+        var logger = new StructuredLogger();
+        const int eventCount = 1000;
+        const int threadCount = 10;
+
+        var tasks = Enumerable.Range(0, threadCount)
+            .Select(threadId => Task.Run(() =>
+            {
+                for (int i = 0; i < eventCount; i++)
+                {
+                    logger.LogEvent(new PhaseStartEvent($"Thread{threadId}_Phase{i}"));
+                }
+            }))
+            .ToArray();
+
+        await Task.WhenAll(tasks);
+
+        // All events should be captured
+        logger.EventCount.Should().Be(threadCount * eventCount);
+
+        // All events should be accessible
+        var events = logger.Events;
+        events.Should().HaveCount(threadCount * eventCount);
+
+        // All events should be PhaseStartEvents with valid data
+        events.Should().AllBeOfType<PhaseStartEvent>();
+        events.Cast<PhaseStartEvent>().Should().OnlyContain(e => e.Phase.StartsWith("Thread"));
+    }
+
+    [Fact]
+    public void DefaultInterfaceMethod_LogEvent_DoesNothing()
+    {
+        // Create a minimal logger that only implements required methods
+        // to verify the default LogEvent doesn't crash
+        var minimalLogger = new MinimalTestLogger();
+        ICompilerLogger logger = minimalLogger;
+
+        // Should not throw
+        logger.LogEvent(new PhaseStartEvent("Test"));
+        logger.LogEvent(new DiagnosticEvent("SHP0001", "msg", DiagnosticEventSeverity.Error, 1, 1));
+
+        // Default implementation returns false
+        logger.SupportsStructuredLogging.Should().BeFalse();
+    }
+
+    private sealed class MinimalTestLogger : ICompilerLogger
+    {
+        public void LogTokenRead(string tokenType, int line, int column, string value) { }
+        public void LogIndentChange(int oldLevel, int newLevel) { }
+        public void LogParseEnter(string rule, int tokenPosition) { }
+        public void LogParseExit(string rule, bool success) { }
+        public void LogError(string message, int line, int column) { }
+        public void LogWarning(string message, int line, int column) { }
+        public void LogInfo(string message) { }
+        public void LogDebug(string message) { }
+        public void LogTrace(string message) { }
+        public void LogMetrics(string metricsOutput) { }
+        public bool IsEnabled(CompilerLogLevel level) => false;
+    }
 }
