@@ -105,6 +105,31 @@ public class CompilationMetricsTests
     }
 
 
+    // ===== Phase Tracking Edge Cases =====
+
+    [Fact]
+    public void StartPhase_ThrowsInvalidOperationException_WhenPhaseAlreadyRunning()
+    {
+        var metrics = new CompilationMetrics();
+        metrics.StartPhase("Phase 1");
+
+        var action = () => metrics.StartPhase("Phase 2");
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Cannot start phase*Phase 2*while phase*Phase 1*");
+    }
+
+    [Fact]
+    public void EndPhase_ThrowsInvalidOperationException_WhenNoPhaseRunning()
+    {
+        var metrics = new CompilationMetrics();
+
+        var action = () => metrics.EndPhase();
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("*No phase is currently running*");
+    }
+
     // ===== Per-Phase Timing Properties =====
 
     [Fact]
