@@ -1,4 +1,3 @@
-using System.Reflection;
 using Xunit;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
@@ -9,6 +8,10 @@ namespace Sharpy.Compiler.Tests.Diagnostics;
 /// Tests for Phase 1.2: Verifying that critical assertions are promoted
 /// to release builds and emit proper diagnostics.
 /// </summary>
+/// <remarks>
+/// These tests verify that <see cref="CompilerInvariants.AssertGeneratedCSharpParses"/>
+/// is always-on (not DEBUG-only) and emits proper diagnostic codes.
+/// </remarks>
 public class AssertionPromotionTests
 {
     [Fact]
@@ -24,8 +27,8 @@ namespace Test
         public static void Main() { Console.WriteLine(""hello""); }
     }
 }";
-        // Use reflection to invoke the private static method
-        InvokeAssertGeneratedCSharpParses(validCSharp, diagnostics);
+        // Call the consolidated CompilerInvariants method directly
+        CompilerInvariants.AssertGeneratedCSharpParses(validCSharp, diagnostics);
 
         diagnostics.HasErrors.Should().BeFalse();
     }
@@ -43,7 +46,7 @@ namespace Test
         public static void Main() { Console.WriteLine(""hello"" // missing closing paren and semicolon
     }
 }";
-        InvokeAssertGeneratedCSharpParses(invalidCSharp, diagnostics);
+        CompilerInvariants.AssertGeneratedCSharpParses(invalidCSharp, diagnostics);
 
         diagnostics.HasErrors.Should().BeTrue();
         var errors = diagnostics.GetErrors();
@@ -63,19 +66,10 @@ class {  // missing class name
     void foo( {  // malformed method
     }
 ";
-        InvokeAssertGeneratedCSharpParses(badCSharp, diagnostics);
+        CompilerInvariants.AssertGeneratedCSharpParses(badCSharp, diagnostics);
 
         diagnostics.HasErrors.Should().BeTrue();
         var error = diagnostics.GetErrors().First();
         error.Message.Should().Contain("syntax error");
-    }
-
-    private static void InvokeAssertGeneratedCSharpParses(string csharpCode, DiagnosticBag diagnostics)
-    {
-        var method = typeof(Compiler).GetMethod(
-            "AssertGeneratedCSharpParses",
-            BindingFlags.NonPublic | BindingFlags.Static);
-        method.Should().NotBeNull("AssertGeneratedCSharpParses should exist as a private static method");
-        method!.Invoke(null, new object[] { csharpCode, diagnostics });
     }
 }

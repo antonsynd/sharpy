@@ -180,7 +180,7 @@ public class Compiler
             Debug.Assert(module != null, "Parser should produce a non-null Module");
             Debug.Assert(module.Body != null, "Module.Body should not be null");
             var assertionTimer = Stopwatch.StartNew();
-            AssertStatementsHaveSpans(module, diagnostics);
+            CompilerInvariants.AssertPostParse(module, diagnostics);
             assertionTimer.Stop();
             _logger.LogDebug($"Post-parse assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
 
@@ -218,8 +218,7 @@ public class Compiler
 
             // Assertions: After name resolution, verify symbol table integrity
             assertionTimer.Restart();
-            AssertAllSymbolsHaveNames(symbolTable, diagnostics);
-            AssertNoDuplicateTypeNames(symbolTable, diagnostics);
+            CompilerInvariants.AssertPostNameResolution(symbolTable, diagnostics);
             assertionTimer.Stop();
             _logger.LogDebug($"Post-name-resolution assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
 
@@ -263,7 +262,7 @@ public class Compiler
             semanticBinding.MaterializeInheritance();
             DualWriteAssertions.AssertInheritanceConsistency(symbolTable, semanticBinding);
             assertionTimer.Restart();
-            AssertNoUnresolvedInheritance(symbolTable, diagnostics);
+            CompilerInvariants.AssertPostInheritance(symbolTable, diagnostics);
             assertionTimer.Stop();
             _logger.LogDebug($"Post-inheritance assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
             semanticBinding.FreezeInheritance();
@@ -323,7 +322,7 @@ public class Compiler
 
             // Assertion: After successful type checking, warn if unknown types remain
             assertionTimer.Restart();
-            WarnIfUnknownTypes(semanticInfo, typeChecker.Diagnostics);
+            CompilerInvariants.AssertPostTypeChecking(semanticInfo, typeChecker.Diagnostics);
             assertionTimer.Stop();
             _logger.LogDebug($"Post-type-checking assertions completed in {assertionTimer.ElapsedMilliseconds}ms");
             // Assertion: Type checking should have processed at least some expressions
@@ -389,7 +388,7 @@ public class Compiler
             var csharpCode = compilationUnit.ToFullString();
 
             // Verify generated C# parses without syntax errors (always-on, not DEBUG-only)
-            AssertGeneratedCSharpParses(csharpCode, diagnostics);
+            CompilerInvariants.AssertPostCodeGen(csharpCode, diagnostics);
 
             // Check for code generation errors
             if (codeGenContext.HasErrors)
@@ -493,149 +492,61 @@ public class Compiler
         }
     }
 
-    // ----- Phase Boundary Assertions (always-on, emit diagnostics) -----
+    // ----- Phase Boundary Assertions (backward-compatible wrappers) -----
+    // These methods delegate to CompilerInvariants for backward compatibility
+    // with tests that directly call Compiler.AssertXxx() methods.
 
     /// <summary>
     /// Verify top-level statements have TextSpan populated.
     /// Emits SHP0904 if any statement is missing its span.
     /// </summary>
+    /// <remarks>
+    /// This method delegates to <see cref="CompilerInvariants.AssertStatementsHaveSpans"/>.
+    /// Kept for backward compatibility with existing tests.
+    /// </remarks>
     internal static void AssertStatementsHaveSpans(Module module, DiagnosticBag diagnostics)
-    {
-        foreach (var stmt in module.Body)
-        {
-            // Import statements may not have spans (they're processed before codegen)
-            if (stmt is ImportStatement or FromImportStatement)
-                continue;
-
-            if (!stmt.Span.HasValue)
-            {
-                diagnostics.AddWarning(
-                    $"Internal invariant violation: statement {stmt.GetType().Name} at line {stmt.LineStart} is missing TextSpan. This is a compiler bug — please report it.",
-                    stmt.LineStart, stmt.ColumnStart, code: DiagnosticCodes.Infrastructure.InvariantViolation,
-                    phase: CompilerPhase.Unknown);
-            }
-        }
-    }
+        => CompilerInvariants.AssertStatementsHaveSpans(module, diagnostics);
 
     /// <summary>
     /// Verify all symbols in the global scope have non-empty names.
     /// Emits SHP0904 for any symbol with a null/empty name.
     /// </summary>
+    /// <remarks>
+    /// This method delegates to <see cref="CompilerInvariants.AssertAllSymbolsHaveNames"/>.
+    /// Kept for backward compatibility with existing tests.
+    /// </remarks>
     internal static void AssertAllSymbolsHaveNames(SymbolTable symbolTable, DiagnosticBag diagnostics)
-    {
-        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols())
-        {
-            if (string.IsNullOrEmpty(symbol.Name))
-            {
-                diagnostics.AddWarning(
-                    $"Internal invariant violation: symbol with kind {symbol.Kind} has null/empty name. This is a compiler bug — please report it.",
-                    code: DiagnosticCodes.Infrastructure.InvariantViolation,
-                    phase: CompilerPhase.NameResolution);
-            }
-        }
-    }
+        => CompilerInvariants.AssertAllSymbolsHaveNames(symbolTable, diagnostics);
 
     /// <summary>
     /// Verify no duplicate type definitions exist in the symbol table.
-    /// NameResolver should have emitted errors for duplicates, but this checks
-    /// the resulting symbol table is clean.
     /// </summary>
+    /// <remarks>
+    /// This method delegates to <see cref="CompilerInvariants.AssertNoDuplicateTypeNames"/>.
+    /// Kept for backward compatibility with existing tests.
+    /// </remarks>
     internal static void AssertNoDuplicateTypeNames(SymbolTable symbolTable, DiagnosticBag diagnostics)
-    {
-        var typeNames = new HashSet<string>();
-        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
-        {
-            // Skip CLR types - multiple modules can legitimately re-export the same CLR type
-            if (symbol.ClrType != null)
-                continue;
-
-            if (!typeNames.Add(symbol.Name))
-            {
-                diagnostics.AddWarning(
-                    $"Internal invariant violation: duplicate type definition '{symbol.Name}' in symbol table after name resolution. This is a compiler bug — please report it.",
-                    code: DiagnosticCodes.Infrastructure.InvariantViolation,
-                    phase: CompilerPhase.NameResolution);
-            }
-        }
-    }
+        => CompilerInvariants.AssertNoDuplicateTypeNames(symbolTable, diagnostics);
 
     /// <summary>
-    /// Verify all UnresolvedBaseName/UnresolvedInterfaceNames have been resolved
-    /// after inheritance resolution. A dangling unresolved name means the inheritance
-    /// resolver failed to find or match a type.
+    /// Verify all UnresolvedBaseName/UnresolvedInterfaceNames have been resolved.
     /// </summary>
+    /// <remarks>
+    /// This method delegates to <see cref="CompilerInvariants.AssertNoUnresolvedInheritance"/>.
+    /// Kept for backward compatibility with existing tests.
+    /// </remarks>
     internal static void AssertNoUnresolvedInheritance(SymbolTable symbolTable, DiagnosticBag diagnostics)
-    {
-        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
-        {
-            // Skip CLR types - they don't go through our resolution pipeline
-            if (symbol.ClrType != null)
-                continue;
-
-            // If UnresolvedBaseName is set but BaseType is still null, resolution failed
-            if (symbol.UnresolvedBaseName != null && symbol.BaseType == null)
-            {
-                diagnostics.AddWarning(
-                    $"Internal invariant violation: type '{symbol.Name}' has UnresolvedBaseName '{symbol.UnresolvedBaseName}' but BaseType is null after inheritance resolution. This is a compiler bug — please report it.",
-                    code: DiagnosticCodes.Infrastructure.InvariantViolation,
-                    phase: CompilerPhase.NameResolution);
-            }
-
-            // If UnresolvedInterfaceNames has entries but Interfaces count doesn't match
-            if (symbol.UnresolvedInterfaceNames.Count > 0 && symbol.Interfaces.Count < symbol.UnresolvedInterfaceNames.Count)
-            {
-                diagnostics.AddWarning(
-                    $"Internal invariant violation: type '{symbol.Name}' has {symbol.UnresolvedInterfaceNames.Count} unresolved interface names but only {symbol.Interfaces.Count} resolved interfaces after inheritance resolution. This is a compiler bug — please report it.",
-                    code: DiagnosticCodes.Infrastructure.InvariantViolation,
-                    phase: CompilerPhase.NameResolution);
-            }
-        }
-    }
+        => CompilerInvariants.AssertNoUnresolvedInheritance(symbolTable, diagnostics);
 
     /// <summary>
     /// Warn if unknown expression types remain after successful type checking.
-    /// Unknown types are acceptable when there are semantic errors (error recovery),
-    /// in cross-module scenarios where imported types may not be fully resolved,
-    /// and in some class member access patterns where the type checker doesn't
-    /// record types for all intermediate expressions.
     /// </summary>
+    /// <remarks>
+    /// This method delegates to <see cref="CompilerInvariants.WarnIfUnknownTypes"/>.
+    /// Kept for backward compatibility with existing tests.
+    /// </remarks>
     internal static void WarnIfUnknownTypes(SemanticInfo semanticInfo, DiagnosticBag diagnostics)
-    {
-        if (!diagnostics.HasErrors && semanticInfo.HasUnknownExpressionTypes())
-        {
-            // Invariant (aspirational): if SemanticInfo contains UnknownType entries,
-            // DiagnosticBag should contain at least one error from the source of that Unknown.
-            // Currently, some intermediate expressions (member access chains, CLR interop)
-            // may produce Unknown without errors. This warning tracks those gaps.
-            diagnostics.AddWarning(
-                "Internal invariant violation: unknown expression types remain after type checking with no errors (possible resolution gap). This is a compiler bug — please report it.",
-                code: DiagnosticCodes.Infrastructure.InvariantViolation,
-                phase: CompilerPhase.TypeChecking);
-        }
-    }
-
-    /// <summary>
-    /// Verify generated C# code parses without syntax errors.
-    /// This catches codegen bugs that produce malformed C#.
-    /// Always-on (not DEBUG-only) because invalid generated C# in Release builds
-    /// would produce cryptic Roslyn compilation errors instead of a clear
-    /// "internal compiler error" diagnostic.
-    /// </summary>
-    private static void AssertGeneratedCSharpParses(string csharpCode, DiagnosticBag diagnostics)
-    {
-        var tree = CSharpSyntaxTree.ParseText(csharpCode);
-        var parseDiagnostics = tree.GetDiagnostics()
-            .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
-            .ToList();
-        if (parseDiagnostics.Count > 0)
-        {
-            var details = string.Join("; ", parseDiagnostics.Take(3).Select(d => d.GetMessage()));
-            diagnostics.AddError(
-                $"Internal error: generated C# contains {parseDiagnostics.Count} syntax error(s): {details}. This is a compiler bug -- please report it.",
-                code: DiagnosticCodes.CodeGen.InternalGeneratedCSharpParseError,
-                phase: CompilerPhase.CodeGeneration);
-        }
-    }
+        => CompilerInvariants.WarnIfUnknownTypes(semanticInfo, diagnostics);
 
     /// <summary>
     /// Create CompilerServices from compilation state.
