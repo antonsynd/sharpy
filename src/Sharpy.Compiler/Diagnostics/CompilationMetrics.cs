@@ -192,11 +192,16 @@ public class CompilationMetrics
     public IReadOnlyList<PhaseMetric> Phases => _phases.AsReadOnly();
 
     /// <summary>
-    /// Get total duration across all phases
+    /// Get total duration across all phases.
     /// </summary>
-    public TimeSpan TotalDuration => _phases.Sum(p => p.Duration.TotalMilliseconds) > 0
-        ? TimeSpan.FromMilliseconds(_phases.Sum(p => p.Duration.TotalMilliseconds))
-        : TimeSpan.Zero;
+    public TimeSpan TotalDuration
+    {
+        get
+        {
+            var totalMs = _phases.Sum(p => p.Duration.TotalMilliseconds);
+            return totalMs > 0 ? TimeSpan.FromMilliseconds(totalMs) : TimeSpan.Zero;
+        }
+    }
 
     /// <summary>
     /// Get total memory delta across all phases
