@@ -787,13 +787,18 @@ internal class ProjectCompiler
             Semantic.FunctionType ft => ValidateType(ft.ReturnType) && ft.ParameterTypes.All(ValidateType),
             Semantic.TupleType tt => tt.ElementTypes.All(ValidateType),
             ResultType rt => ValidateType(rt.OkType) && ValidateType(rt.ErrorType),
-            // Builtin types are always valid
+            UnionType ut => ut.CaseTypes.All(ValidateType),
+            TaskType tt => ValidateType(tt.ResultType),
+            // The following types are always valid (no nested types to validate)
             BuiltinType => true,
             VoidType => true,
             UnknownType => true,
             ModuleType => true,
             TypeParameterType => true,
-            _ => true
+            GenericFunctionType => true,
+            // SemanticType hierarchy is sealed - this should never be reached.
+            // If a new type is added, this will fail at runtime reminding the developer to update this switch.
+            _ => throw new InvalidOperationException($"Unhandled SemanticType in ValidateType: {type.GetType().Name}")
         };
     }
 
