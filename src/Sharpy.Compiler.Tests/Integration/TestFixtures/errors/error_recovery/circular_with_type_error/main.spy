@@ -1,0 +1,8 @@
+# Main entry point that uses module A
+# This should trigger detection of circular import between A and B
+# AND the type error in A should still be reported
+from a import A
+
+def main():
+    a = A()
+    print(a)

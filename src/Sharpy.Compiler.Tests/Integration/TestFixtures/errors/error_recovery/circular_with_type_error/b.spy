@@ -1,0 +1,6 @@
+# Module B that imports A (completing the circular dependency)
+from a import A
+
+class B:
+    def get_a(self) -> A:
+        return A()

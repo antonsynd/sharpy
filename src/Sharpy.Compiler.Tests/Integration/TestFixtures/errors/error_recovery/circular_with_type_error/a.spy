@@ -1,0 +1,9 @@
+# Module A that imports B (creating circular dependency)
+# Also contains a type error to verify error recovery
+from b import B
+
+class A:
+    def get_b(self) -> B:
+        return B()
+
+x: str = 123  # Type error: int cannot be assigned to str

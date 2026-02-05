@@ -1,0 +1,4 @@
+# Current behavior: Circular dependency is detected but the type error in 'a.spy'
+# is not reported because circular dependency short-circuits further analysis.
+# Ideally, the type error should also be reported (see section 10/14 for improvements)
+Circular dependency detected
