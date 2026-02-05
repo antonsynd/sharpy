@@ -150,6 +150,7 @@ public class Compiler
             if (lexer.Diagnostics.HasErrors)
             {
                 diagnostics.Merge(lexer.Diagnostics);
+                metrics.DiagnosticCount = diagnostics.GetAll().Count;
                 return new CompilationResult
                 {
                     Success = false,
@@ -172,10 +173,18 @@ public class Compiler
             LogPhaseEnd(filePath, parser.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
+            // Capture AST node count immediately after parsing (available even if later phases fail)
+            // This must be done before the error check so partial ASTs are counted
+            if (module != null)
+            {
+                metrics.AstNodeCount = CountAstNodes(module);
+            }
+
             // Check if parser collected any errors into DiagnosticBag
             if (parser.Diagnostics.HasErrors)
             {
                 diagnostics.Merge(parser.Diagnostics);
+                metrics.DiagnosticCount = diagnostics.GetAll().Count;
                 return new CompilationResult
                 {
                     Success = false,
@@ -198,9 +207,6 @@ public class Compiler
             // Validate AST structural invariants (DEBUG-only, elided in Release)
             AstValidator.ValidateTree(module);
 
-            // Capture AST node count immediately after parsing (available even if later phases fail)
-            metrics.AstNodeCount = CountAstNodes(module);
-
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 3: Semantic Analysis
@@ -214,6 +220,7 @@ public class Compiler
             if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
             {
                 diagnostics.Merge(_moduleRegistry.Diagnostics);
+                metrics.DiagnosticCount = diagnostics.GetAll().Count;
                 return new CompilationResult
                 {
                     Success = false,
@@ -244,6 +251,9 @@ public class Compiler
             if (nameResolver.Diagnostics.HasErrors)
             {
                 diagnostics.Merge(nameResolver.Diagnostics);
+                // Capture artifact counts even on error paths for better observability
+                metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
+                metrics.DiagnosticCount = diagnostics.GetAll().Count;
                 return new CompilationResult
                 {
                     Success = false,
@@ -389,6 +399,7 @@ public class Compiler
 
             if (diagnostics.HasErrors)
             {
+                metrics.DiagnosticCount = diagnostics.GetAll().Count;
                 return new CompilationResult
                 {
                     Success = false,
@@ -439,6 +450,7 @@ public class Compiler
             if (codeGenContext.HasErrors)
             {
                 diagnostics.Merge(codeGenContext.Diagnostics);
+                metrics.DiagnosticCount = diagnostics.GetAll().Count;
                 return new CompilationResult
                 {
                     Success = false,

@@ -331,11 +331,15 @@ internal class ProjectCompiler
                 var tokens = lexer.TokenizeAll();
                 fileMetrics.EndPhase();
 
+                // Capture token count immediately (available even if later phases fail)
+                fileMetrics.TokenCount = tokens.Count;
+
                 // Check if lexer collected any errors
                 if (lexer.Diagnostics.HasErrors)
                 {
                     compilationUnit.Diagnostics.Merge(lexer.Diagnostics);
                     compilationUnit.Phase = CompilationPhase.Failed;
+                    fileMetrics.DiagnosticCount = lexer.Diagnostics.GetAll().Count;
                     _diagnostics.Merge(lexer.Diagnostics);
                     ProjectMetrics.AddFileMetrics(fileMetrics);
                     continue;
@@ -351,28 +355,31 @@ internal class ProjectCompiler
                 var module = parser.ParseModule();
                 fileMetrics.EndPhase();
 
+                // Capture AST node count immediately (available even if later phases fail)
+                if (module != null)
+                {
+                    fileMetrics.AstNodeCount = CountAstNodes(module);
+                }
+
                 // Check if parser collected any errors
                 if (parser.Diagnostics.HasErrors)
                 {
                     compilationUnit.Diagnostics.Merge(parser.Diagnostics);
                     compilationUnit.Phase = CompilationPhase.Failed;
+                    fileMetrics.DiagnosticCount = parser.Diagnostics.GetAll().Count;
                     _diagnostics.Merge(parser.Diagnostics);
                     ProjectMetrics.AddFileMetrics(fileMetrics);
                     continue;
                 }
 
-                // Store AST in CompilationUnit
-                compilationUnit.Ast = module;
+                // Store AST in CompilationUnit (module is non-null at this point - parser always returns a Module)
+                compilationUnit.Ast = module!;
                 compilationUnit.Phase = CompilationPhase.Parsed;
-
-                // Capture artifact counts for this file
-                fileMetrics.TokenCount = tokens.Count;
-                fileMetrics.AstNodeCount = CountAstNodes(module);
 
                 // Extract imports from AST
                 var imports = new List<ImportStatement>();
                 var fromImports = new List<FromImportStatement>();
-                foreach (var stmt in module.Body)
+                foreach (var stmt in module!.Body)
                 {
                     if (stmt is ImportStatement import)
                         imports.Add(import);
@@ -456,10 +463,14 @@ internal class ProjectCompiler
                     var tokens = lexer.TokenizeAll();
                     fileMetrics.EndPhase();
 
+                    // Capture token count immediately (available even if later phases fail)
+                    fileMetrics.TokenCount = tokens.Count;
+
                     if (lexer.Diagnostics.HasErrors)
                     {
                         unit.Diagnostics.Merge(lexer.Diagnostics);
                         unit.Phase = CompilationPhase.Failed;
+                        fileMetrics.DiagnosticCount = lexer.Diagnostics.GetAll().Count;
                         _diagnostics.Merge(lexer.Diagnostics);
                         ProjectMetrics.AddFileMetrics(fileMetrics);
                         continue;
@@ -474,22 +485,30 @@ internal class ProjectCompiler
                     var module = parser.ParseModule();
                     fileMetrics.EndPhase();
 
+                    // Capture AST node count immediately (available even if later phases fail)
+                    if (module != null)
+                    {
+                        fileMetrics.AstNodeCount = CountAstNodes(module);
+                    }
+
                     if (parser.Diagnostics.HasErrors)
                     {
                         unit.Diagnostics.Merge(parser.Diagnostics);
                         unit.Phase = CompilationPhase.Failed;
+                        fileMetrics.DiagnosticCount = parser.Diagnostics.GetAll().Count;
                         _diagnostics.Merge(parser.Diagnostics);
                         ProjectMetrics.AddFileMetrics(fileMetrics);
                         continue;
                     }
 
-                    unit.Ast = module;
+                    // Store AST (module is non-null at this point - parser always returns a Module)
+                    unit.Ast = module!;
                     unit.Phase = CompilationPhase.Parsed;
 
                     // Extract imports from AST
                     var imports = new List<ImportStatement>();
                     var fromImports = new List<FromImportStatement>();
-                    foreach (var stmt in module.Body)
+                    foreach (var stmt in module!.Body)
                     {
                         if (stmt is ImportStatement import)
                             imports.Add(import);

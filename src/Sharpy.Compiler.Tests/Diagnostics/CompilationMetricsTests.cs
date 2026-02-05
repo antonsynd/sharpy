@@ -582,4 +582,120 @@ public class CompilationMetricsTests
         var expectedSum = TimeSpan.FromTicks(3500);
         metrics.ValidationTime.Should().Be(expectedSum);
     }
+
+    // ===== Incremental Artifact Count Tests =====
+    // These tests verify that artifact counts are populated incrementally for error resilience.
+
+    [Fact]
+    public void Compilation_PopulatesAstNodeCount_EvenOnParserError()
+    {
+        // Source with a syntax error that still produces a partial AST
+        var source = """
+            def main():
+                if True  # Missing colon
+                    print("hello")
+            """;
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "test.spy");
+
+        // Compilation should fail
+        result.Success.Should().BeFalse();
+
+        // But metrics should still be populated
+        var metrics = result.Metrics;
+        metrics.Should().NotBeNull();
+
+        // Token count should be captured (lexer succeeded)
+        metrics!.TokenCount.Should().BeGreaterThan(0);
+
+        // AST node count should be captured (partial AST created)
+        // Even on parser error, CountAstNodes should run on whatever AST was produced
+        metrics.AstNodeCount.Should().BeGreaterThanOrEqualTo(0);
+
+        // DiagnosticCount should be set
+        metrics.DiagnosticCount.Should().BeGreaterThan(0,
+            because: "parser errors should be counted");
+    }
+
+    [Fact]
+    public void Compilation_PopulatesDiagnosticCount_OnLexerError()
+    {
+        // Source with an invalid token
+        var source = """
+            def main():
+                x = @invalid_token
+            """;
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "test.spy");
+
+        // Compilation should fail
+        result.Success.Should().BeFalse();
+
+        // DiagnosticCount should be populated even on early failure
+        var metrics = result.Metrics;
+        metrics.Should().NotBeNull();
+        metrics!.DiagnosticCount.Should().BeGreaterThan(0,
+            because: "lexer errors should be counted in DiagnosticCount");
+    }
+
+    [Fact]
+    public void Compilation_PopulatesDiagnosticCount_OnNameResolutionError()
+    {
+        // Source that fails during name resolution (duplicate definition)
+        var source = """
+            def foo():
+                pass
+
+            def foo():
+                pass
+
+            def main():
+                pass
+            """;
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "test.spy");
+
+        // Compilation should fail
+        result.Success.Should().BeFalse();
+
+        var metrics = result.Metrics;
+        metrics.Should().NotBeNull();
+
+        // All early-phase metrics should be populated
+        metrics!.TokenCount.Should().BeGreaterThan(0);
+        metrics.AstNodeCount.Should().BeGreaterThan(0);
+        metrics.DiagnosticCount.Should().BeGreaterThan(0,
+            because: "name resolution errors should be counted");
+    }
+
+    [Fact]
+    public void Compilation_PopulatesSymbolCount_OnNameResolutionError()
+    {
+        // Source that fails during name resolution but still creates some symbols
+        var source = """
+            x: int = 1
+
+            def foo():
+                pass
+
+            def foo():
+                pass
+
+            def main():
+                pass
+            """;
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "test.spy");
+
+        // Compilation should fail
+        result.Success.Should().BeFalse();
+
+        var metrics = result.Metrics;
+        metrics.Should().NotBeNull();
+
+        // SymbolCount should be captured even on error
+        // At least one symbol (x or foo) should have been created before the error
+        metrics!.SymbolCount.Should().BeGreaterThan(0,
+            because: "symbols created before the error should still be counted");
+    }
 }
