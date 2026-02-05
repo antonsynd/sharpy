@@ -1,5 +1,5 @@
 # Error recovery: import nonexistent base class and try to use its methods
-# Should report the import error but not cascade with "unknown method" errors
+# Both errors should be reported: import failure AND member access on error-recovery type
 from nonexistent import BaseClass
 
 class Derived(BaseClass):

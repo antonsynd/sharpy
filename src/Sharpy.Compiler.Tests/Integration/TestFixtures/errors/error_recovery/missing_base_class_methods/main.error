@@ -1,1 +1,4 @@
+# Both errors should be reported - import error is root cause but member
+# access error on error-recovery type is still valuable for diagnostics
 Cannot find module 'nonexistent'
+no member 'base_method'
