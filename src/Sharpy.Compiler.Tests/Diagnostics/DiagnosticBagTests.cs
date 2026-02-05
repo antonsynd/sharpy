@@ -425,6 +425,176 @@ public class DiagnosticBagTests
         public TextSpan? Span { get; }
     }
 
+    // --- Root Cause Tracking Tests ---
+
+    [Fact]
+    public void AddRootCauseError_MarksIdentifierAsRootCause()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddRootCauseError("foo", "Cannot find module 'foo'", 1, 1, code: "SHP0301");
+
+        Assert.True(bag.IsRootCause("foo"));
+        Assert.Equal(1, bag.ErrorCount);
+    }
+
+    [Fact]
+    public void IsRootCause_ReturnsFalseForUnknownIdentifier()
+    {
+        var bag = new DiagnosticBag();
+
+        Assert.False(bag.IsRootCause("unknown"));
+    }
+
+    [Fact]
+    public void IsRootCause_IsCaseInsensitive()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddRootCauseError("Foo", "Module not found", 1, 1);
+
+        Assert.True(bag.IsRootCause("foo"));
+        Assert.True(bag.IsRootCause("FOO"));
+        Assert.True(bag.IsRootCause("Foo"));
+    }
+
+    [Fact]
+    public void AddRootCauseError_WithTextSpan_MarksIdentifierAsRootCause()
+    {
+        var bag = new DiagnosticBag();
+        var span = new TextSpan(10, 5);
+
+        bag.AddRootCauseError("bar", "Cannot find module 'bar'", span, 1, 1, code: "SHP0301");
+
+        Assert.True(bag.IsRootCause("bar"));
+        Assert.Equal(1, bag.ErrorCount);
+        Assert.NotNull(bag.GetErrors()[0].Span);
+    }
+
+    [Fact]
+    public void MarkAsRootCause_DoesNotAddError()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.MarkAsRootCause("foo");
+
+        Assert.True(bag.IsRootCause("foo"));
+        Assert.Equal(0, bag.ErrorCount);
+    }
+
+    [Fact]
+    public void MarkAsRootCauses_MarksMultipleIdentifiers()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.MarkAsRootCauses(new[] { "foo", "bar", "baz" });
+
+        Assert.True(bag.IsRootCause("foo"));
+        Assert.True(bag.IsRootCause("bar"));
+        Assert.True(bag.IsRootCause("baz"));
+        Assert.False(bag.IsRootCause("qux"));
+    }
+
+    [Fact]
+    public void Clear_ClearsRootCauses()
+    {
+        var bag = new DiagnosticBag();
+        bag.AddRootCauseError("foo", "Module not found", 1, 1);
+
+        Assert.True(bag.IsRootCause("foo"));
+
+        bag.Clear();
+
+        Assert.False(bag.IsRootCause("foo"));
+    }
+
+    [Fact]
+    public void RootCauseTracking_WorksWithMultipleRootCauses()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddRootCauseError("math", "Cannot find module 'math'", 1, 1);
+        bag.AddRootCauseError("os", "Cannot find module 'os'", 2, 1);
+
+        Assert.True(bag.IsRootCause("math"));
+        Assert.True(bag.IsRootCause("os"));
+        Assert.False(bag.IsRootCause("sys"));
+        Assert.Equal(2, bag.ErrorCount);
+    }
+
+    [Fact]
+    public void RootCauseTracking_IndependentOfRegularErrors()
+    {
+        var bag = new DiagnosticBag();
+
+        bag.AddError("Some other error", 1, 1);
+        bag.AddRootCauseError("foo", "Module not found", 2, 1);
+        bag.AddError("Yet another error", 3, 1);
+
+        Assert.True(bag.IsRootCause("foo"));
+        Assert.False(bag.IsRootCause("other"));
+        Assert.Equal(3, bag.ErrorCount);
+    }
+
+    [Fact]
+    public void Merge_TransfersRootCauses()
+    {
+        var bag1 = new DiagnosticBag();
+        bag1.AddRootCauseError("moduleA", "Cannot find module 'moduleA'", 1, 1);
+
+        var bag2 = new DiagnosticBag();
+        bag2.Merge(bag1);
+
+        Assert.True(bag2.IsRootCause("moduleA"));
+        Assert.Equal(1, bag2.ErrorCount);
+    }
+
+    [Fact]
+    public void Merge_TransfersMultipleRootCauses()
+    {
+        var bag1 = new DiagnosticBag();
+        bag1.MarkAsRootCauses(new[] { "foo", "bar", "baz" });
+
+        var bag2 = new DiagnosticBag();
+        bag2.Merge(bag1);
+
+        Assert.True(bag2.IsRootCause("foo"));
+        Assert.True(bag2.IsRootCause("bar"));
+        Assert.True(bag2.IsRootCause("baz"));
+    }
+
+    [Fact]
+    public void Merge_CombinesRootCausesFromBothBags()
+    {
+        var bag1 = new DiagnosticBag();
+        bag1.MarkAsRootCause("a");
+
+        var bag2 = new DiagnosticBag();
+        bag2.MarkAsRootCause("b");
+
+        bag1.Merge(bag2);
+
+        Assert.True(bag1.IsRootCause("a"));
+        Assert.True(bag1.IsRootCause("b"));
+    }
+
+    [Fact]
+    public void GetRootCauses_ReturnsAllRootCauses()
+    {
+        var bag = new DiagnosticBag();
+        bag.AddRootCauseError("alpha", "Error for alpha", 1, 1);
+        bag.MarkAsRootCause("beta");
+        bag.MarkAsRootCauses(new[] { "gamma", "delta" });
+
+        var rootCauses = bag.GetRootCauses().ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.Equal(4, rootCauses.Count);
+        Assert.Contains("alpha", rootCauses);
+        Assert.Contains("beta", rootCauses);
+        Assert.Contains("gamma", rootCauses);
+        Assert.Contains("delta", rootCauses);
+    }
+
     // --- Deduplication Tests ---
 
     [Fact]

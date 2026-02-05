@@ -1,0 +1,11 @@
+# Test: Import error followed by usage of imported symbol
+# The "undefined identifier 'foo'" error should be suppressed because
+# the root cause (failed import) was already reported.
+# Only the import error should be shown, not cascading errors.
+from nonexistent import foo
+
+def main():
+    # Using foo should NOT produce an "undefined identifier 'foo'" error
+    # because we already know the import failed
+    result = foo(42)
+    print(result)

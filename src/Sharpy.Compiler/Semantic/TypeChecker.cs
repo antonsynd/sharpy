@@ -172,6 +172,20 @@ internal partial class TypeChecker
     public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
+    /// Imports root cause identifiers from another diagnostic bag.
+    /// This allows TypeChecker to suppress cascading errors for identifiers
+    /// that were already reported as root causes (e.g., from failed imports).
+    /// </summary>
+    /// <param name="sourceBag">The diagnostic bag containing root causes to import</param>
+    public void ImportRootCauses(DiagnosticBag sourceBag)
+    {
+        foreach (var identifier in sourceBag.GetRootCauses())
+        {
+            _diagnostics.MarkAsRootCause(identifier);
+        }
+    }
+
+    /// <summary>
     /// Current file path for diagnostic location. Set by the compiler before calling CheckModule.
     /// </summary>
     public string? CurrentFilePath

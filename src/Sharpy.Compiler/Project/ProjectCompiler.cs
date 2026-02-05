@@ -1271,6 +1271,13 @@ internal class ProjectCompiler
             }
         }
 
+        // Transfer root cause identifiers from import resolution to project diagnostics
+        // so TypeChecker can suppress cascading errors for failed imports
+        foreach (var rootCause in ImportResolver.Diagnostics.GetRootCauses())
+        {
+            _diagnostics.MarkAsRootCause(rootCause);
+        }
+
         // Continue to type checking even with non-circular import errors.
         // Missing imports produce Unknown types, which prevents cascading errors
         // in the type checker (UnknownType.IsAssignableTo returns true).
@@ -1336,6 +1343,9 @@ internal class ProjectCompiler
                 SemanticBinding = _projectModel.SemanticBinding,
                 MaxErrors = semanticMaxErrors
             };
+
+            // Import root causes from import resolution so TypeChecker can suppress cascading errors
+            typeChecker.ImportRootCauses(_diagnostics);
 
             // Determine if this file is the entry point for module-level validation
             var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);

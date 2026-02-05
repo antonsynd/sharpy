@@ -294,6 +294,10 @@ public class Compiler
                 SemanticBinding = semanticBinding,
                 MaxErrors = semanticMaxErrors
             };
+
+            // Import root causes from import resolution so TypeChecker can suppress cascading errors
+            typeChecker.ImportRootCauses(diagnostics);
+
             try
             {
                 // Single-file compilation is always an entry point

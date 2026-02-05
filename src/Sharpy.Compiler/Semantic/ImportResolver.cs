@@ -203,8 +203,12 @@ internal class ImportResolver
                 var modulePath = ResolveModulePath(importAlias.Name, searchPath);
                 if (modulePath == null)
                 {
-                    AddError($"Cannot find module '{importAlias.Name}'",
-                        importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.ModuleNotFound);
+                    // Mark the module name as a root cause to suppress cascading errors
+                    // at the diagnostic level (complements symbol-level IsErrorRecovery)
+                    _diagnostics.AddRootCauseError(importAlias.Name,
+                        $"Cannot find module '{importAlias.Name}'" + (_currentModulePath != null ? $" (in {Path.GetFileName(_currentModulePath)})" : ""),
+                        importAlias.LineStart, importAlias.ColumnStart, _currentModulePath,
+                        DiagnosticCodes.Semantic.ModuleNotFound, CompilerPhase.ImportResolution);
 
                     // Create error recovery module to prevent cascading "undefined identifier" errors
                     // The module symbol will be registered in ResolveAllImports to suppress downstream errors
@@ -259,8 +263,12 @@ internal class ImportResolver
             if (resolution == null)
             {
                 _logger.LogDebug($"[ImportResolver]   Module '{fromImport.Module}' not found");
-                AddError($"Cannot find module '{fromImport.Module}'",
-                    fromImport.LineStart, fromImport.ColumnStart, code: DiagnosticCodes.Semantic.ModuleNotFound);
+
+                // Mark the module name as a root cause to suppress cascading errors
+                _diagnostics.AddRootCauseError(fromImport.Module,
+                    $"Cannot find module '{fromImport.Module}'" + (_currentModulePath != null ? $" (in {Path.GetFileName(_currentModulePath)})" : ""),
+                    fromImport.LineStart, fromImport.ColumnStart, _currentModulePath,
+                    DiagnosticCodes.Semantic.ModuleNotFound, CompilerPhase.ImportResolution);
 
                 // Create error recovery module with placeholder symbols for each imported name
                 // This prevents cascading "undefined identifier" errors in TypeChecker
@@ -278,6 +286,11 @@ internal class ImportResolver
                             targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart);
                         errorRecoveryModule.Exports[targetName] = errorSymbol;
                         _logger.LogDebug($"[ImportResolver]   Created error recovery symbol: {targetName}");
+
+                        // Also mark each imported symbol name as a root cause
+                        // This allows suppression of "undefined identifier" errors even if
+                        // symbol-level error recovery doesn't catch them
+                        _diagnostics.MarkAsRootCause(targetName);
                     }
 
                     // Return the error recovery module so symbols get registered

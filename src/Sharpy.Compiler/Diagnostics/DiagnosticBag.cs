@@ -91,6 +91,15 @@ public class DiagnosticBag
     /// </summary>
     private readonly HashSet<(string?, int?, int?, string?)> _seenDiagnostics = new();
 
+    /// <summary>
+    /// Tracks identifiers that are root causes of errors.
+    /// When an identifier is marked as a root cause (e.g., from a failed import),
+    /// subsequent errors about that identifier can be suppressed to avoid cascading noise.
+    /// For example, if "from nonexistent import foo" fails, we mark "foo" as a root cause
+    /// so that "undefined identifier 'foo'" errors are suppressed.
+    /// </summary>
+    private readonly HashSet<string> _rootCauseIdentifiers = new(StringComparer.OrdinalIgnoreCase);
+
     public DiagnosticBag() : this(warningsAsErrors: false, suppressedWarnings: null) { }
 
     public DiagnosticBag(bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null)
@@ -201,10 +210,16 @@ public class DiagnosticBag
 
     /// <summary>
     /// Merge diagnostics from another bag (useful for aggregating from sub-validators).
+    /// Also transfers root cause identifiers from the other bag.
     /// </summary>
     public void Merge(DiagnosticBag other)
     {
         AddRange(other.GetAll());
+        // Transfer root cause identifiers
+        foreach (var identifier in other.GetRootCauses())
+        {
+            MarkAsRootCause(identifier);
+        }
     }
 
     public bool HasErrors => _diagnostics.Any(d => d.IsError);
@@ -243,6 +258,97 @@ public class DiagnosticBag
         {
             _diagnostics.Clear();
             _seenDiagnostics.Clear();
+            _rootCauseIdentifiers.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Adds an error and marks the given identifier as a root cause.
+    /// Subsequent errors related to this identifier can be suppressed using <see cref="IsRootCause"/>.
+    /// Use this for errors like "module not found" where downstream "undefined identifier" errors
+    /// are just noise caused by the original error.
+    /// </summary>
+    /// <param name="identifier">The identifier that failed to resolve (e.g., module name, imported symbol name)</param>
+    /// <param name="message">The error message</param>
+    /// <param name="line">Line number of the error</param>
+    /// <param name="column">Column number of the error</param>
+    /// <param name="filePath">File path where error occurred</param>
+    /// <param name="code">Diagnostic code</param>
+    /// <param name="phase">Compiler phase where error occurred</param>
+    public void AddRootCauseError(string identifier, string message, int? line = null, int? column = null,
+        string? filePath = null, string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+    {
+        lock (_lock)
+        {
+            _rootCauseIdentifiers.Add(identifier);
+        }
+        AddError(message, line, column, filePath, code, phase);
+    }
+
+    /// <summary>
+    /// Adds an error with text span and marks the given identifier as a root cause.
+    /// </summary>
+    public void AddRootCauseError(string identifier, string message, TextSpan? span, int? line = null,
+        int? column = null, string? filePath = null, string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+    {
+        lock (_lock)
+        {
+            _rootCauseIdentifiers.Add(identifier);
+        }
+        AddError(message, span, line, column, filePath, code, phase);
+    }
+
+    /// <summary>
+    /// Checks whether the given identifier is a known root cause of errors.
+    /// When true, callers may choose to suppress downstream errors about this identifier
+    /// since the user has already been informed of the root cause.
+    /// </summary>
+    /// <param name="identifier">The identifier to check</param>
+    /// <returns>True if this identifier was marked as a root cause via <see cref="AddRootCauseError"/></returns>
+    public bool IsRootCause(string identifier)
+    {
+        lock (_lock)
+        {
+            return _rootCauseIdentifiers.Contains(identifier);
+        }
+    }
+
+    /// <summary>
+    /// Marks an identifier as a root cause without adding an error.
+    /// Use this when the error has already been reported but you want to suppress cascading errors.
+    /// </summary>
+    /// <param name="identifier">The identifier to mark as a root cause</param>
+    public void MarkAsRootCause(string identifier)
+    {
+        lock (_lock)
+        {
+            _rootCauseIdentifiers.Add(identifier);
+        }
+    }
+
+    /// <summary>
+    /// Marks multiple identifiers as root causes.
+    /// </summary>
+    /// <param name="identifiers">The identifiers to mark as root causes</param>
+    public void MarkAsRootCauses(IEnumerable<string> identifiers)
+    {
+        lock (_lock)
+        {
+            foreach (var id in identifiers)
+            {
+                _rootCauseIdentifiers.Add(id);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets all root cause identifiers. Used when merging diagnostic bags.
+    /// </summary>
+    internal IReadOnlyCollection<string> GetRootCauses()
+    {
+        lock (_lock)
+        {
+            return _rootCauseIdentifiers.ToList();
         }
     }
 

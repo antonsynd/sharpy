@@ -109,6 +109,14 @@ internal partial class TypeChecker
                     span: id.Span);
                 return SemanticType.Unknown;
             }
+
+            // Check if this identifier is a root cause (e.g., from a failed import).
+            // If so, suppress the error - the root cause was already reported.
+            if (_diagnostics.IsRootCause(id.Name))
+            {
+                return SemanticType.Unknown;
+            }
+
             AddError($"Undefined identifier '{id.Name}'",
                 id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedVariable,
                 span: id.Span);
