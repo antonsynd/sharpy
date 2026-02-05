@@ -266,7 +266,21 @@ internal static class SymbolSerializer
             ModuleType mt => $"module:{mt.Symbol.Name}",
             TypeParameterType tpt => $"typeparam:{tpt.Name}",
             ResultType rt => $"result:{SerializeType(rt.OkType)}!{SerializeType(rt.ErrorType)}",
-            _ => $"other:{type.GetType().Name}"
+
+            // GenericFunctionType: serialize as the underlying function with type args marker
+            GenericFunctionType gft => $"gfunc:{gft.FunctionSymbol.Name}[{string.Join(",", gft.TypeArguments.Select(SerializeType))}]",
+
+            // UnionType: placeholder for v0.2.x tagged unions
+            UnionType ut => $"union:{ut.Name}[{string.Join(",", ut.CaseTypes.Select(SerializeType))}]",
+
+            // TaskType: async task wrapper
+            TaskType tt => tt.ResultType == null
+                ? "task:"
+                : $"task:{SerializeType(tt.ResultType)}",
+
+            // Exhaustive check - if a new SemanticType is added, this will fail at runtime
+            _ => throw new NotSupportedException(
+                $"Unhandled SemanticType in SerializeType: {type.GetType().Name}")
         };
     }
 
@@ -502,6 +516,10 @@ internal static class SymbolSerializer
             "tuple" => ResolveTupleType(value),
             "func" => ResolveFunctionType(value),
             "result" => ResolveResultType(value),
+            "gfunc" => ResolveGenericFunctionType(value),
+            "union" => ResolveUnionType(value),
+            "task" => ResolveTaskType(value),
+            // Unknown prefix - return Unknown for graceful degradation with older cache formats
             _ => SemanticType.Unknown
         };
     }
@@ -579,6 +597,50 @@ internal static class SymbolSerializer
         var okType = ResolveTypeFromId(value[..bangIndex]);
         var errorType = ResolveTypeFromId(value[(bangIndex + 1)..]);
         return new ResultType { OkType = okType, ErrorType = errorType };
+    }
+
+    private static SemanticType ResolveGenericFunctionType(string value)
+    {
+        // Format: FunctionName[Type1,Type2,...]
+        // Note: We can't fully restore GenericFunctionType without the FunctionSymbol,
+        // which requires the full symbol table. Return a placeholder that stores the name.
+        var bracketIndex = value.IndexOf('[');
+        if (bracketIndex < 0)
+        {
+            // No type arguments, just the function name - return Unknown
+            return SemanticType.Unknown;
+        }
+
+        var argsStr = value[(bracketIndex + 1)..^1]; // Remove [ and ]
+        var typeArgs = ParseTypeArguments(argsStr);
+
+        // Return as a generic type for now - full GenericFunctionType restoration
+        // requires the FunctionSymbol which isn't available during deserialization
+        return new GenericType { Name = value[..bracketIndex], TypeArguments = typeArgs };
+    }
+
+    private static SemanticType ResolveUnionType(string value)
+    {
+        // Format: UnionName[CaseType1,CaseType2,...]
+        var bracketIndex = value.IndexOf('[');
+        if (bracketIndex < 0)
+            return new UnionType { Name = value, CaseTypes = new List<SemanticType>() };
+
+        var name = value[..bracketIndex];
+        var argsStr = value[(bracketIndex + 1)..^1]; // Remove [ and ]
+        var caseTypes = ParseTypeArguments(argsStr);
+
+        return new UnionType { Name = name, CaseTypes = caseTypes };
+    }
+
+    private static SemanticType ResolveTaskType(string value)
+    {
+        // Format: (empty for Task, or ResultType for Task<T>)
+        if (string.IsNullOrEmpty(value))
+            return new TaskType { ResultType = null };
+
+        var resultType = ResolveTypeFromId(value);
+        return new TaskType { ResultType = resultType };
     }
 
     /// <summary>

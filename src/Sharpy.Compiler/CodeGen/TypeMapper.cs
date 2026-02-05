@@ -93,8 +93,31 @@ internal class TypeMapper
             // Handle tuple types
             Semantic.TupleType tupleType => MapSemanticTupleType(tupleType),
 
-            // Fallback
-            _ => PredefinedType(Token(SyntaxKind.ObjectKeyword))
+            // Handle module types (error case - modules can't be used as types directly)
+            ModuleType mt => throw new InvalidOperationException(
+                $"Cannot use module '{mt.Symbol.Name}' as a type. Did you mean to access a type from the module?"),
+
+            // Handle generic function types (instantiated generic functions)
+            GenericFunctionType gft => MapSemanticFunctionType(new Semantic.FunctionType
+            {
+                ParameterTypes = gft.FunctionSymbol.Parameters.Select(p => p.Type).ToList(),
+                ReturnType = gft.FunctionSymbol.ReturnType
+            }),
+
+            // Handle union types (v0.2.x placeholder)
+            UnionType ut => throw new NotSupportedException(
+                $"Union types are not yet supported in code generation. Type: {ut.Name}"),
+
+            // Handle task types (v0.2.x placeholder)
+            TaskType tt => tt.ResultType == null
+                ? ParseTypeName("System.Threading.Tasks.Task")
+                : GenericName(Identifier("System.Threading.Tasks.Task"))
+                    .WithTypeArgumentList(
+                        TypeArgumentList(SingletonSeparatedList(MapSemanticType(tt.ResultType)))),
+
+            // Exhaustive check - if a new SemanticType is added, this will fail at runtime
+            _ => throw new InvalidOperationException(
+                $"Unhandled SemanticType in MapSemanticType: {type.GetType().Name}")
         };
     }
 
