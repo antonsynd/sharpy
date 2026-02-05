@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 
@@ -92,10 +93,23 @@ public class SemanticBinding
     /// </summary>
     private static void AssertNotFrozen(string storeName, string symbolName)
     {
-        throw new InvalidOperationException(
-            $"SemanticBinding freeze violation: attempted to write {storeName} for symbol '{symbolName}' after freeze. " +
-            "This is a compiler bug — data was written after the phase boundary that froze this store. " +
-            "Please report this issue.");
+        var operation = storeName switch
+        {
+            "CodeGenInfo" => "set CodeGenInfo",
+            "VariableTypes" => "set variable type",
+            "Inheritance" => "set inheritance data",
+            _ => $"write {storeName}"
+        };
+
+        var phase = storeName switch
+        {
+            "CodeGenInfo" => "code generation info",
+            "VariableTypes" => "type checking",
+            "Inheritance" => "inheritance resolution",
+            _ => storeName
+        };
+
+        throw new PhaseViolationException(operation, phase, symbolName);
     }
 
     /// <summary>

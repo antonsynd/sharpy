@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using FluentAssertions;
@@ -460,12 +461,13 @@ public class SemanticBindingMaterializationTests
         binding.MaterializeCodeGenInfo();
         binding.FreezeCodeGenInfo();
 
-        // Freeze violations now always throw (in both Debug and Release builds)
-        var ex = Assert.Throws<InvalidOperationException>(() =>
+        // Freeze violations now always throw PhaseViolationException (in both Debug and Release builds)
+        var ex = Assert.Throws<PhaseViolationException>(() =>
             binding.SetCodeGenInfo(symbol, new CodeGenInfo { CSharpName = "TestFn2", OriginalName = "test_fn" }));
-        ex.Message.Should().Contain("freeze violation");
-        ex.Message.Should().Contain("CodeGenInfo");
-        ex.Message.Should().Contain("test_fn");
+        ex.Message.Should().Contain("Phase violation");
+        ex.Operation.Should().Contain("CodeGenInfo");
+        ex.SymbolName.Should().Be("test_fn");
+        ex.ExpectedPhase.Should().Contain("code generation");
     }
 
     [Fact]
@@ -478,12 +480,13 @@ public class SemanticBindingMaterializationTests
         binding.MaterializeVariableTypes();
         binding.FreezeVariableTypes();
 
-        // Freeze violations now always throw (in both Debug and Release builds)
-        var ex = Assert.Throws<InvalidOperationException>(() =>
+        // Freeze violations now always throw PhaseViolationException (in both Debug and Release builds)
+        var ex = Assert.Throws<PhaseViolationException>(() =>
             binding.SetVariableType(symbol, SemanticType.Str));
-        ex.Message.Should().Contain("freeze violation");
-        ex.Message.Should().Contain("VariableTypes");
-        ex.Message.Should().Contain("x");
+        ex.Message.Should().Contain("Phase violation");
+        ex.Operation.Should().Contain("variable type");
+        ex.SymbolName.Should().Be("x");
+        ex.ExpectedPhase.Should().Contain("type checking");
     }
 
     [Fact]
@@ -498,12 +501,13 @@ public class SemanticBindingMaterializationTests
         binding.MaterializeInheritance();
         binding.FreezeInheritance();
 
-        // Freeze violations now always throw (in both Debug and Release builds)
-        var ex = Assert.Throws<InvalidOperationException>(() =>
+        // Freeze violations now always throw PhaseViolationException (in both Debug and Release builds)
+        var ex = Assert.Throws<PhaseViolationException>(() =>
             binding.SetBaseType(child, otherParent));
-        ex.Message.Should().Contain("freeze violation");
-        ex.Message.Should().Contain("Inheritance");
-        ex.Message.Should().Contain("Child");
+        ex.Message.Should().Contain("Phase violation");
+        ex.Operation.Should().Contain("inheritance");
+        ex.SymbolName.Should().Be("Child");
+        ex.ExpectedPhase.Should().Contain("inheritance resolution");
     }
 
     [Fact]
@@ -516,12 +520,13 @@ public class SemanticBindingMaterializationTests
         binding.MaterializeInheritance();
         binding.FreezeInheritance();
 
-        // Freeze violations now always throw (in both Debug and Release builds)
-        var ex = Assert.Throws<InvalidOperationException>(() =>
+        // Freeze violations now always throw PhaseViolationException (in both Debug and Release builds)
+        var ex = Assert.Throws<PhaseViolationException>(() =>
             binding.AddInterface(classSymbol, iface));
-        ex.Message.Should().Contain("freeze violation");
-        ex.Message.Should().Contain("Inheritance");
-        ex.Message.Should().Contain("MyClass");
+        ex.Message.Should().Contain("Phase violation");
+        ex.Operation.Should().Contain("inheritance");
+        ex.SymbolName.Should().Be("MyClass");
+        ex.ExpectedPhase.Should().Contain("inheritance resolution");
     }
 
     #endregion
