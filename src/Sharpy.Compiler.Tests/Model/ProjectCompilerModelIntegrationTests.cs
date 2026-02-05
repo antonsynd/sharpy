@@ -186,6 +186,50 @@ x = helper()");
         Assert.NotNull(result.ProjectModel.GlobalSymbols);
         Assert.NotNull(result.ProjectModel.SemanticInfo);
     }
+
+    [Fact]
+    public void Compile_PopulatesGranularMetrics()
+    {
+        using var tempDir = new TempDirectory();
+        var mainSpy = tempDir.CreateFile("main.spy", @"
+def add(x: int, y: int) -> int:
+    return x + y
+
+x: int = add(1, 2)
+");
+
+        var config = new ProjectConfig
+        {
+            RootNamespace = "TestProject",
+            ProjectDirectory = tempDir.Path,
+            SourceFiles = new List<string> { mainSpy }
+        };
+
+        var compiler = new ProjectCompiler();
+        var result = compiler.Compile(config);
+
+        // Verify project metrics are populated
+        Assert.NotNull(result.Metrics);
+        Assert.Equal(1, result.Metrics.TotalFiles);
+
+        // Verify file metrics
+        var fileMetrics = result.Metrics.FileMetrics;
+        Assert.NotEmpty(fileMetrics);
+
+        var metrics = fileMetrics[0];
+        Assert.True(metrics.TokenCount > 0, "TokenCount should be populated");
+        Assert.True(metrics.AstNodeCount > 0, "AstNodeCount should be populated");
+        Assert.True(metrics.SymbolCount > 0, "SymbolCount should be populated");
+
+        // Verify phase timings are recorded
+        Assert.True(metrics.LexerTime >= TimeSpan.Zero);
+        Assert.True(metrics.ParserTime >= TimeSpan.Zero);
+        Assert.True(metrics.TypeCheckingTime >= TimeSpan.Zero);
+
+        // Verify aggregate phase metrics
+        var aggregates = result.Metrics.AggregatePhaseMetrics;
+        Assert.NotEmpty(aggregates);
+    }
 }
 
 /// <summary>

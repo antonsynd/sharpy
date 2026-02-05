@@ -409,4 +409,102 @@ public class CompilationMetricsTests
         metrics.TypeCheckingTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
         metrics.CodeGenTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
     }
+
+    // ===== ProjectCompilationMetrics Tests =====
+
+    [Fact]
+    public void ProjectCompilationMetrics_AggregatesFileMetrics()
+    {
+        var projectMetrics = new ProjectCompilationMetrics("TestProject", "Debug");
+
+        // Add multiple file metrics
+        var file1 = new CompilationMetrics(fileName: "file1.spy");
+        file1.StartPhase("Lexical Analysis");
+        Thread.Sleep(5);
+        file1.EndPhase();
+        file1.TokenCount = 100;
+        file1.AstNodeCount = 50;
+
+        var file2 = new CompilationMetrics(fileName: "file2.spy");
+        file2.StartPhase("Lexical Analysis");
+        Thread.Sleep(5);
+        file2.EndPhase();
+        file2.TokenCount = 150;
+        file2.AstNodeCount = 75;
+
+        projectMetrics.AddFileMetrics(file1);
+        projectMetrics.AddFileMetrics(file2);
+
+        projectMetrics.TotalFiles.Should().Be(2);
+        projectMetrics.FileMetrics.Should().HaveCount(2);
+        projectMetrics.TotalDuration.Should().BeGreaterThan(TimeSpan.Zero);
+
+        var aggregates = projectMetrics.AggregatePhaseMetrics;
+        aggregates.Should().ContainKey("Lexical Analysis");
+        aggregates["Lexical Analysis"].Duration.Should().BeGreaterThan(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void ProjectCompilationMetrics_TracksSkippedFiles()
+    {
+        var projectMetrics = new ProjectCompilationMetrics("TestProject", "Debug");
+
+        projectMetrics.AddSkippedFile("cached1.spy");
+        projectMetrics.AddSkippedFile("cached2.spy");
+        projectMetrics.AddSkippedFile("cached3.spy");
+
+        projectMetrics.SkippedFileCount.Should().Be(3);
+        projectMetrics.SkippedFiles.Should().Contain("cached2.spy");
+    }
+
+    [Fact]
+    public void ProjectCompilationMetrics_IncludesAssemblyMetrics()
+    {
+        var projectMetrics = new ProjectCompilationMetrics("TestProject", "Debug");
+
+        var assemblyMetrics = new CompilationMetrics(projectName: "TestProject");
+        assemblyMetrics.StartPhase("Assembly Generation");
+        Thread.Sleep(5);
+        assemblyMetrics.EndPhase();
+
+        projectMetrics.SetAssemblyMetrics(assemblyMetrics);
+
+        projectMetrics.AssemblyMetrics.Should().NotBeNull();
+        projectMetrics.TotalDuration.Should().BeGreaterThan(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void ProjectCompilationMetrics_FormatAsText_IncludesProjectInfo()
+    {
+        var projectMetrics = new ProjectCompilationMetrics("MyProject", "Release");
+
+        var fileMetrics = new CompilationMetrics(fileName: "main.spy");
+        fileMetrics.StartPhase("Lexical Analysis");
+        fileMetrics.EndPhase();
+        projectMetrics.AddFileMetrics(fileMetrics);
+
+        var text = projectMetrics.FormatAsText();
+
+        text.Should().Contain("MyProject");
+        text.Should().Contain("Release");
+        text.Should().Contain("Files Compiled: 1");
+    }
+
+    [Fact]
+    public void ProjectCompilationMetrics_FormatAsJson_IncludesAllData()
+    {
+        var projectMetrics = new ProjectCompilationMetrics("JsonProject", "Debug");
+
+        var fileMetrics = new CompilationMetrics(fileName: "test.spy");
+        fileMetrics.StartPhase("Syntax Analysis");
+        fileMetrics.EndPhase();
+        fileMetrics.TokenCount = 42;
+        projectMetrics.AddFileMetrics(fileMetrics);
+
+        var json = projectMetrics.FormatAsJson();
+
+        json.Should().Contain("\"project_name\": \"JsonProject\"");
+        json.Should().Contain("\"configuration\": \"Debug\"");
+        json.Should().Contain("\"total_files\": 1");
+    }
 }
