@@ -1381,8 +1381,9 @@ internal class ProjectCompiler
             unit.Diagnostics.Merge(typeChecker.Diagnostics);
             _diagnostics.Merge(typeChecker.Diagnostics);
 
-            // Capture per-file diagnostic count
+            // Capture per-file artifact counts
             fileMetrics.DiagnosticCount = unit.Diagnostics.GetAll().Count;
+            fileMetrics.SymbolCount = SymbolTable.GlobalScope.GetAllSymbols().Count();
 
             if (typeChecker.Diagnostics.HasErrors)
             {
