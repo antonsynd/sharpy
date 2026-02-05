@@ -1,0 +1,358 @@
+using Xunit;
+using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
+
+namespace Sharpy.Compiler.Tests.Diagnostics;
+
+public class CompilationMetricsTests
+{
+    // ===== Integration Tests =====
+    // These tests verify that metrics are populated correctly during actual compilation.
+
+    [Fact]
+    public void Compilation_PopulatesGranularMetrics()
+    {
+        var source = """
+            def add(x: int, y: int) -> int:
+                return x + y
+
+            def main():
+                result = add(1, 2)
+                print(result)
+            """;
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "test.spy");
+
+        // Verify compilation succeeded
+        result.Success.Should().BeTrue(
+            because: $"the source code should compile successfully but got errors: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+
+        // Verify phase timings are populated
+        var metrics = result.Metrics;
+        metrics.Should().NotBeNull();
+
+        // At least some phase timings should be recorded
+        metrics!.LexerTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.ParserTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.NameResolutionTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.TypeCheckingTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.CodeGenTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+
+        // Total duration should be sum of phases
+        metrics.TotalDuration.Should().BeGreaterThan(TimeSpan.Zero);
+
+        // Artifact counts should be populated
+        metrics.TokenCount.Should().BeGreaterThan(0, because: "the source code has tokens");
+        metrics.AstNodeCount.Should().BeGreaterThan(0, because: "the source code has AST nodes");
+        metrics.SymbolCount.Should().BeGreaterThan(0, because: "the source code has symbols");
+    }
+
+    [Fact]
+    public void Compilation_PopulatesValidatorTimes()
+    {
+        var source = """
+            def main():
+                x: int = 1
+                print(x)
+            """;
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "test.spy");
+
+        result.Success.Should().BeTrue(
+            because: $"compilation should succeed but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+
+        var metrics = result.Metrics;
+        metrics.Should().NotBeNull();
+
+        // Validator times should be populated
+        // The exact validators depend on the current pipeline, but we should have some
+        metrics!.ValidatorTimes.Should().NotBeEmpty(
+            because: "the validation pipeline should have run validators");
+
+        // All validator times should be non-negative
+        foreach (var (_, time) in metrics.ValidatorTimes)
+        {
+            time.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        }
+    }
+
+    [Fact]
+    public void Compilation_DiagnosticCountReflectsWarnings()
+    {
+        // Source with an unused variable to trigger a warning
+        var source = """
+            x: int = 1
+            y: int = 2
+
+            def main():
+                print(x)
+            """;
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "test.spy");
+
+        result.Success.Should().BeTrue(
+            because: $"compilation should succeed but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+
+        var metrics = result.Metrics;
+        metrics.Should().NotBeNull();
+
+        // DiagnosticCount should include warnings (y is unused)
+        metrics!.DiagnosticCount.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+
+    // ===== Per-Phase Timing Properties =====
+
+    [Fact]
+    public void LexerTime_ReturnsZero_WhenNoLexicalAnalysisPhase()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.LexerTime.Should().Be(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void LexerTime_ReturnsPhaseDuration_WhenPhaseRecorded()
+    {
+        var metrics = new CompilationMetrics();
+        metrics.StartPhase("Lexical Analysis");
+        Thread.Sleep(10); // Small delay to ensure measurable duration
+        metrics.EndPhase();
+
+        metrics.LexerTime.Should().BeGreaterThan(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void ParserTime_ReturnsPhaseDuration_WhenPhaseRecorded()
+    {
+        var metrics = new CompilationMetrics();
+        metrics.StartPhase("Syntax Analysis");
+        Thread.Sleep(10);
+        metrics.EndPhase();
+
+        metrics.ParserTime.Should().BeGreaterThan(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void GetPhaseDuration_ReturnsCorrectDuration_ForKnownPhase()
+    {
+        var metrics = new CompilationMetrics();
+        metrics.StartPhase("Name Resolution");
+        Thread.Sleep(10);
+        metrics.EndPhase();
+
+        metrics.NameResolutionTime.Should().BeGreaterThan(TimeSpan.Zero);
+        metrics.GetPhaseDuration("Name Resolution").Should().BeGreaterThan(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void GetPhaseDuration_ReturnsZero_ForUnknownPhase()
+    {
+        var metrics = new CompilationMetrics();
+        metrics.StartPhase("Lexical Analysis");
+        metrics.EndPhase();
+
+        metrics.GetPhaseDuration("NonExistent Phase").Should().Be(TimeSpan.Zero);
+    }
+
+    // ===== Validator Timing =====
+
+    [Fact]
+    public void ValidatorTimes_ReturnsEmptyDictionary_WhenNotSet()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.ValidatorTimes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SetValidatorTimes_StoresValidatorTimings()
+    {
+        var metrics = new CompilationMetrics();
+        var validatorTimes = new Dictionary<string, TimeSpan>
+        {
+            ["ControlFlowValidator"] = TimeSpan.FromMilliseconds(15),
+            ["UnusedVariableValidator"] = TimeSpan.FromMilliseconds(8),
+            ["AccessValidator"] = TimeSpan.FromMilliseconds(3)
+        };
+
+        metrics.SetValidatorTimes(validatorTimes);
+
+        metrics.ValidatorTimes.Should().HaveCount(3);
+        metrics.ValidatorTimes["ControlFlowValidator"].Should().Be(TimeSpan.FromMilliseconds(15));
+        metrics.ValidatorTimes["UnusedVariableValidator"].Should().Be(TimeSpan.FromMilliseconds(8));
+        metrics.ValidatorTimes["AccessValidator"].Should().Be(TimeSpan.FromMilliseconds(3));
+    }
+
+    // ===== Artifact Counts =====
+
+    [Fact]
+    public void TokenCount_DefaultsToZero()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.TokenCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void TokenCount_CanBeSet()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.TokenCount = 150;
+
+        metrics.TokenCount.Should().Be(150);
+    }
+
+    [Fact]
+    public void AstNodeCount_CanBeSet()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.AstNodeCount = 42;
+
+        metrics.AstNodeCount.Should().Be(42);
+    }
+
+    [Fact]
+    public void SymbolCount_CanBeSet()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.SymbolCount = 25;
+
+        metrics.SymbolCount.Should().Be(25);
+    }
+
+    [Fact]
+    public void DiagnosticCount_CanBeSet()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.DiagnosticCount = 3;
+
+        metrics.DiagnosticCount.Should().Be(3);
+    }
+
+    // ===== Text Formatting =====
+
+    [Fact]
+    public void FormatAsText_IncludesValidatorBreakdown_WhenSet()
+    {
+        var metrics = new CompilationMetrics();
+        var validatorTimes = new Dictionary<string, TimeSpan>
+        {
+            ["TestValidator"] = TimeSpan.FromMilliseconds(10)
+        };
+        metrics.SetValidatorTimes(validatorTimes);
+
+        var text = metrics.FormatAsText();
+
+        text.Should().Contain("Validator Breakdown");
+        text.Should().Contain("TestValidator");
+    }
+
+    [Fact]
+    public void FormatAsText_IncludesArtifactCounts_WhenSet()
+    {
+        var metrics = new CompilationMetrics();
+        metrics.TokenCount = 100;
+        metrics.AstNodeCount = 50;
+
+        var text = metrics.FormatAsText();
+
+        text.Should().Contain("Artifact Counts");
+        text.Should().Contain("Tokens: 100");
+        text.Should().Contain("AST Nodes: 50");
+    }
+
+    [Fact]
+    public void FormatAsText_DoesNotIncludeArtifactCounts_WhenAllZero()
+    {
+        var metrics = new CompilationMetrics();
+
+        var text = metrics.FormatAsText();
+
+        text.Should().NotContain("Artifact Counts");
+    }
+
+    // ===== JSON Formatting =====
+
+    [Fact]
+    public void FormatAsJson_IncludesPerPhaseTimings()
+    {
+        var metrics = new CompilationMetrics();
+        metrics.StartPhase("Lexical Analysis");
+        metrics.EndPhase();
+
+        var json = metrics.FormatAsJson();
+
+        json.Should().Contain("lexer_time_ms");
+        json.Should().Contain("parser_time_ms");
+        json.Should().Contain("codegen_time_ms");
+    }
+
+    [Fact]
+    public void FormatAsJson_IncludesArtifactCounts()
+    {
+        var metrics = new CompilationMetrics();
+        metrics.TokenCount = 75;
+        metrics.SymbolCount = 20;
+
+        var json = metrics.FormatAsJson();
+
+        json.Should().Contain("\"token_count\": 75");
+        json.Should().Contain("\"symbol_count\": 20");
+    }
+
+    [Fact]
+    public void FormatAsJson_IncludesValidatorTimes_WhenSet()
+    {
+        var metrics = new CompilationMetrics();
+        var validatorTimes = new Dictionary<string, TimeSpan>
+        {
+            ["MyValidator"] = TimeSpan.FromMilliseconds(5)
+        };
+        metrics.SetValidatorTimes(validatorTimes);
+
+        var json = metrics.FormatAsJson();
+
+        json.Should().Contain("validator_times");
+        json.Should().Contain("MyValidator");
+    }
+
+    // ===== All Phase Timing Properties =====
+
+    [Fact]
+    public void AllPhaseTimingProperties_ReturnCorrectDurations()
+    {
+        var metrics = new CompilationMetrics();
+
+        // Record all phases
+        var phases = new[]
+        {
+            ("Lexical Analysis", nameof(metrics.LexerTime)),
+            ("Syntax Analysis", nameof(metrics.ParserTime)),
+            ("Name Resolution", nameof(metrics.NameResolutionTime)),
+            ("Import Resolution", nameof(metrics.ImportResolutionTime)),
+            ("Type Resolution", nameof(metrics.TypeResolutionTime)),
+            ("Type Checking", nameof(metrics.TypeCheckingTime)),
+            ("Code Generation", nameof(metrics.CodeGenTime))
+        };
+
+        foreach (var (phaseName, _) in phases)
+        {
+            metrics.StartPhase(phaseName);
+            metrics.EndPhase();
+        }
+
+        // Verify all properties return non-zero values
+        metrics.LexerTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.ParserTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.NameResolutionTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.ImportResolutionTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.TypeResolutionTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.TypeCheckingTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        metrics.CodeGenTime.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+    }
+}

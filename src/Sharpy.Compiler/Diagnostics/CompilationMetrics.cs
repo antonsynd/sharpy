@@ -5,8 +5,23 @@ using System.Text.Json;
 namespace Sharpy.Compiler.Diagnostics;
 
 /// <summary>
-/// Tracks compilation phase metrics including timing and memory usage
+/// Tracks compilation phase metrics including timing and memory usage.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This class provides granular timing data for each compilation phase,
+/// per-validator timing during semantic analysis, and artifact counts.
+/// Use the per-phase timing properties (e.g., <see cref="LexerTime"/>,
+/// <see cref="ParserTime"/>) for quick access to specific phase durations.
+/// </para>
+/// <para>
+/// For performance analysis, the <see cref="ValidatorTimes"/> dictionary
+/// provides per-validator timing during the validation phase, and the
+/// count properties (<see cref="TokenCount"/>, <see cref="AstNodeCount"/>,
+/// <see cref="SymbolCount"/>, <see cref="DiagnosticCount"/>) provide
+/// context for interpreting the timing data.
+/// </para>
+/// </remarks>
 public class CompilationMetrics
 {
     private readonly List<PhaseMetric> _phases = new();
@@ -15,6 +30,7 @@ public class CompilationMetrics
     private readonly string? _projectName;
     private readonly string? _configuration;
     private readonly DateTime _startTime;
+    private Dictionary<string, TimeSpan>? _validatorTimes;
 
     public CompilationMetrics(string? fileName = null, string? projectName = null, string? configuration = null)
     {
@@ -23,6 +39,103 @@ public class CompilationMetrics
         _configuration = configuration;
         _startTime = DateTime.UtcNow;
     }
+
+    // ===== Per-Phase Timing Properties =====
+    // These provide direct access to specific compilation phase durations.
+
+    /// <summary>
+    /// Gets the duration of the lexical analysis phase (tokenization).
+    /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
+    /// </summary>
+    public TimeSpan LexerTime => GetPhaseDuration("Lexical Analysis");
+
+    /// <summary>
+    /// Gets the duration of the syntax analysis phase (parsing).
+    /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
+    /// </summary>
+    public TimeSpan ParserTime => GetPhaseDuration("Syntax Analysis");
+
+    /// <summary>
+    /// Gets the duration of the name resolution phase.
+    /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
+    /// </summary>
+    public TimeSpan NameResolutionTime => GetPhaseDuration("Name Resolution");
+
+    /// <summary>
+    /// Gets the duration of the import resolution phase.
+    /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
+    /// </summary>
+    public TimeSpan ImportResolutionTime => GetPhaseDuration("Import Resolution");
+
+    /// <summary>
+    /// Gets the duration of the type resolution phase.
+    /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
+    /// </summary>
+    public TimeSpan TypeResolutionTime => GetPhaseDuration("Type Resolution");
+
+    /// <summary>
+    /// Gets the duration of the type checking phase (includes validation).
+    /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
+    /// </summary>
+    public TimeSpan TypeCheckingTime => GetPhaseDuration("Type Checking");
+
+    /// <summary>
+    /// Gets the duration of the code generation phase.
+    /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
+    /// </summary>
+    public TimeSpan CodeGenTime => GetPhaseDuration("Code Generation");
+
+    /// <summary>
+    /// Gets the duration of a specific phase by name.
+    /// </summary>
+    /// <param name="phaseName">The name of the phase to look up.</param>
+    /// <returns>The duration of the phase, or <see cref="TimeSpan.Zero"/> if not found.</returns>
+    public TimeSpan GetPhaseDuration(string phaseName)
+    {
+        var phase = _phases.FirstOrDefault(p => p.Name == phaseName);
+        return phase?.Duration ?? TimeSpan.Zero;
+    }
+
+    // ===== Validator Timing =====
+
+    /// <summary>
+    /// Gets per-validator timing data from the validation phase.
+    /// Each key is a validator name (e.g., "ControlFlowValidator"),
+    /// and each value is the time spent in that validator.
+    /// </summary>
+    public IReadOnlyDictionary<string, TimeSpan> ValidatorTimes =>
+        _validatorTimes ?? (IReadOnlyDictionary<string, TimeSpan>)new Dictionary<string, TimeSpan>();
+
+    /// <summary>
+    /// Sets the per-validator timing data.
+    /// </summary>
+    /// <param name="validatorTimes">Dictionary of validator names to durations.</param>
+    public void SetValidatorTimes(Dictionary<string, TimeSpan> validatorTimes)
+    {
+        _validatorTimes = validatorTimes;
+    }
+
+    // ===== Artifact Counts =====
+
+    /// <summary>
+    /// Gets or sets the number of tokens produced by the lexer.
+    /// </summary>
+    public int TokenCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of AST nodes produced by the parser.
+    /// </summary>
+    public int AstNodeCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of symbols in the symbol table after semantic analysis.
+    /// </summary>
+    public int SymbolCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the total number of diagnostics (errors + warnings) produced.
+    /// </summary>
+    public int DiagnosticCount { get; set; }
 
     /// <summary>
     /// Start tracking a compilation phase
@@ -116,6 +229,36 @@ public class CompilationMetrics
         sb.AppendLine(new string('-', 65));
         sb.AppendLine($"{"TOTAL",-30} {TotalDuration.TotalMilliseconds:F2} ms{"",-4} {FormatMemoryDelta(TotalMemoryDelta),-20}");
 
+        // Validator timing breakdown (if available)
+        if (_validatorTimes != null && _validatorTimes.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Validator Breakdown:");
+            sb.AppendLine($"{"Validator",-40} {"Duration",-15}");
+            sb.AppendLine(new string('-', 55));
+
+            foreach (var (validator, duration) in _validatorTimes.OrderByDescending(kvp => kvp.Value))
+            {
+                var durationStr = $"{duration.TotalMilliseconds:F2} ms";
+                sb.AppendLine($"{validator,-40} {durationStr,-15}");
+            }
+        }
+
+        // Artifact counts (if any are set)
+        if (TokenCount > 0 || AstNodeCount > 0 || SymbolCount > 0 || DiagnosticCount > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Artifact Counts:");
+            if (TokenCount > 0)
+                sb.AppendLine($"  Tokens: {TokenCount:N0}");
+            if (AstNodeCount > 0)
+                sb.AppendLine($"  AST Nodes: {AstNodeCount:N0}");
+            if (SymbolCount > 0)
+                sb.AppendLine($"  Symbols: {SymbolCount:N0}");
+            if (DiagnosticCount > 0)
+                sb.AppendLine($"  Diagnostics: {DiagnosticCount:N0}");
+        }
+
         return sb.ToString();
     }
 
@@ -133,6 +276,30 @@ public class CompilationMetrics
             configuration = _configuration,
             total_duration_ms = TotalDuration.TotalMilliseconds,
             total_memory_delta_bytes = TotalMemoryDelta,
+
+            // Per-phase timing shortcuts
+            lexer_time_ms = LexerTime.TotalMilliseconds,
+            parser_time_ms = ParserTime.TotalMilliseconds,
+            name_resolution_time_ms = NameResolutionTime.TotalMilliseconds,
+            import_resolution_time_ms = ImportResolutionTime.TotalMilliseconds,
+            type_resolution_time_ms = TypeResolutionTime.TotalMilliseconds,
+            type_checking_time_ms = TypeCheckingTime.TotalMilliseconds,
+            codegen_time_ms = CodeGenTime.TotalMilliseconds,
+
+            // Artifact counts
+            token_count = TokenCount,
+            ast_node_count = AstNodeCount,
+            symbol_count = SymbolCount,
+            diagnostic_count = DiagnosticCount,
+
+            // Validator times (if available)
+            validator_times = _validatorTimes?.Select(kvp => new
+            {
+                validator = kvp.Key,
+                duration_ms = kvp.Value.TotalMilliseconds
+            }).ToList(),
+
+            // Detailed phase breakdown
             phases = _phases.Select(p => new
             {
                 phase = p.Name,

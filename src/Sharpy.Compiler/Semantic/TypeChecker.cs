@@ -77,6 +77,13 @@ internal partial class TypeChecker
     /// </summary>
     public SemanticBinding SemanticBinding { get; set; } = new();
 
+    /// <summary>
+    /// Per-validator timing data from the last validation pipeline run.
+    /// Each key is a validator name, and each value is the time spent in that validator.
+    /// This is populated after <see cref="CheckModule"/> completes.
+    /// </summary>
+    public IReadOnlyDictionary<string, TimeSpan>? ValidatorTimes { get; private set; }
+
     public TypeChecker(
         SymbolTable symbolTable,
         SemanticInfo semanticInfo,
@@ -242,7 +249,8 @@ internal partial class TypeChecker
         context.Diagnostics.Merge(_diagnostics);
         context.Diagnostics.Merge(_typeResolver.Diagnostics);
 
-        _validationPipeline.Validate(module, context);
+        _validationPipeline.Validate(module, context, out var validatorTimes);
+        ValidatorTimes = validatorTimes;
 
         // Merge TypeResolver diagnostics
         _diagnostics.Merge(_typeResolver.Diagnostics);

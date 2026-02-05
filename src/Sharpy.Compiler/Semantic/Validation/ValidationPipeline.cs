@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
@@ -68,6 +69,26 @@ internal class ValidationPipeline
     /// <returns>The diagnostics collected during validation</returns>
     public DiagnosticBag Validate(Module module, SemanticContext context, CancellationToken cancellationToken = default)
     {
+        return Validate(module, context, out _, cancellationToken);
+    }
+
+    /// <summary>
+    /// Run all validators on the module with per-validator timing.
+    /// </summary>
+    /// <param name="module">The AST module to validate</param>
+    /// <param name="context">The semantic context</param>
+    /// <param name="validatorTimes">Output dictionary of validator names to their execution times</param>
+    /// <param name="cancellationToken">Optional cancellation token for LSP/IDE scenarios</param>
+    /// <returns>The diagnostics collected during validation</returns>
+    public DiagnosticBag Validate(
+        Module module,
+        SemanticContext context,
+        out Dictionary<string, TimeSpan> validatorTimes,
+        CancellationToken cancellationToken = default)
+    {
+        validatorTimes = new Dictionary<string, TimeSpan>();
+        var stopwatch = new Stopwatch();
+
         _logger.LogInfo($"Starting validation pipeline with {_validators.Count} validators");
 
         foreach (var validator in _validators)
@@ -83,6 +104,7 @@ internal class ValidationPipeline
             _logger.LogDebug($"Running validator: {validator.Name} (order: {validator.Order})");
 
             var errorsBefore = context.Diagnostics.ErrorCount;
+            stopwatch.Restart();
             try
             {
                 validator.Validate(module, context);
@@ -102,12 +124,17 @@ internal class ValidationPipeline
                     code: DiagnosticCodes.Infrastructure.CompilationFailed,
                     phase: CompilerPhase.Validation);
             }
+            stopwatch.Stop();
+            validatorTimes[validator.Name] = stopwatch.Elapsed;
+
             var errorsAfter = context.Diagnostics.ErrorCount;
 
             if (errorsAfter > errorsBefore)
             {
                 _logger.LogDebug($"Validator {validator.Name} reported {errorsAfter - errorsBefore} error(s)");
             }
+
+            _logger.LogDebug($"Validator {validator.Name} completed in {stopwatch.ElapsedMilliseconds}ms");
         }
 
         _logger.LogInfo($"Validation pipeline completed. Total errors: {context.Diagnostics.ErrorCount}");
