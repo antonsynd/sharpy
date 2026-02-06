@@ -1160,4 +1160,514 @@ public class RoslynEmitterModuleTests
     }
 
     #endregion
+
+    #region [SharpyModule] Attribute Tests
+
+    [Fact]
+    public void GenerateCompilationUnit_NonProgramModule_GeneratesSharpyModuleAttribute()
+    {
+        // Arrange - A library module (not entry point)
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/utils.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "helper",
+                    Parameters = ImmutableArray<Parameter>.Empty,
+                    Body = ImmutableArray<Statement>.Empty
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Non-Program module should have [SharpyModule] attribute
+        Assert.Contains("[global::Sharpy.SharpyModule(\"utils\")]", code);
+        Assert.Contains("class Utils", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_ProgramModule_NoSharpyModuleAttribute()
+    {
+        // Arrange - An entry point module with main()
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/main.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src",
+            IsEntryPoint = true
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "main",
+                    Parameters = ImmutableArray<Parameter>.Empty,
+                    Body = ImmutableArray<Statement>.Empty
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Program class should NOT have [SharpyModule] attribute
+        Assert.DoesNotContain("SharpyModule", code);
+        Assert.Contains("class Program", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_NestedModule_AttributeHasCorrectDottedPath()
+    {
+        // Arrange - A module in a subdirectory
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/mypackage/helpers.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "utility",
+                    Parameters = ImmutableArray<Parameter>.Empty,
+                    Body = ImmutableArray<Statement>.Empty
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Attribute should have Python-style dotted module path
+        Assert.Contains("[global::Sharpy.SharpyModule(\"mypackage.helpers\")]", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_InitFile_AttributeHasDirectoryPath()
+    {
+        // Arrange - A __init__.spy file
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/mypackage/__init__.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src",
+            IsPackageInit = true
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "init_func",
+                    Parameters = ImmutableArray<Parameter>.Empty,
+                    Body = ImmutableArray<Statement>.Empty
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - __init__.spy attribute should use directory name, not "__init__"
+        Assert.Contains("[global::Sharpy.SharpyModule(\"mypackage\")]", code);
+        Assert.DoesNotContain("__init__", code);
+    }
+
+    #endregion
+
+    #region Name Collision Detection Tests
+
+    [Fact]
+    public void GenerateCompilationUnit_ClassNameMatchesModule_ClassAbsorbsMembers()
+    {
+        // Arrange - animal.spy with class Animal (class name matches module name)
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/animal.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new ClassDef
+                {
+                    Name = "Animal",
+                    Body = new List<Statement>
+                    {
+                        new FunctionDef
+                        {
+                            Name = "speak",
+                            Parameters = ImmutableArray<Parameter>.Empty,
+                            Body = ImmutableArray<Statement>.Empty
+                        }
+                    }.ToImmutableArray()
+                },
+                new FunctionDef
+                {
+                    Name = "create_animal",
+                    Parameters = ImmutableArray<Parameter>.Empty,
+                    Body = ImmutableArray<Statement>.Empty
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - No error; class Animal absorbs module-level function
+        Assert.False(context.HasErrors);
+        Assert.Contains("class Animal", code);
+        // Module-level function should be inside the Animal class as static
+        Assert.Contains("CreateAnimal", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_StructNameMatchesModule_EmitsError()
+    {
+        // Arrange - point.spy with struct Point (struct can't absorb, should error)
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/point.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new StructDef
+                {
+                    Name = "Point",
+                    Body = ImmutableArray<Statement>.Empty
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        emitter.GenerateCompilationUnit(module);
+
+        // Assert - Should emit name collision error
+        Assert.True(context.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == "SPY0520");
+        Assert.Contains(errors, e => e.Message.Contains("conflicts with module class name"));
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_InterfaceNameMatchesModule_EmitsError()
+    {
+        // Arrange - drawable.spy with interface Drawable
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/drawable.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef
+                {
+                    Name = "Drawable",
+                    Body = ImmutableArray<Statement>.Empty
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        emitter.GenerateCompilationUnit(module);
+
+        // Assert - Should emit name collision error
+        Assert.True(context.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == "SPY0520");
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_EnumNameMatchesModule_EmitsError()
+    {
+        // Arrange - color.spy with enum Color
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/color.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new EnumDef
+                {
+                    Name = "Color",
+                    Members = new List<EnumMember>
+                    {
+                        new EnumMember { Name = "RED" }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        emitter.GenerateCompilationUnit(module);
+
+        // Assert - Should emit name collision error
+        Assert.True(context.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == "SPY0520");
+    }
+
+    #endregion
+
+    #region Re-export Delegation Tests
+
+    [Fact]
+    public void GenerateCompilationUnit_ReExportFunction_GeneratesDelegatingMethod()
+    {
+        // Arrange - __init__.spy that re-exports a function from a submodule
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/mypackage/__init__.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src",
+            IsPackageInit = true
+        };
+        var emitter = new RoslynEmitter(context);
+
+        var fromImport = new FromImportStatement
+        {
+            Module = ".helpers",
+            Names = new List<ImportAlias>
+            {
+                new ImportAlias { Name = "utility_func" }
+            }.ToImmutableArray(),
+            ResolvedModulePath = "mypackage.helpers",
+            ReExportedSymbols = new Dictionary<string, Sharpy.Compiler.Semantic.Symbol>
+            {
+                ["utility_func"] = new FunctionSymbol
+                {
+                    Name = "utility_func",
+                    Parameters = new List<ParameterSymbol>
+                    {
+                        new ParameterSymbol { Name = "x", Type = SemanticType.Int }
+                    },
+                    ReturnType = SemanticType.Int,
+                    IsStatic = true
+                }
+            }
+        };
+
+        var module = new Module
+        {
+            Body = new List<Statement> { fromImport }.ToImmutableArray()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Should generate delegating method
+        Assert.Contains("UtilityFunc", code);
+        Assert.Contains("Mypackage.Helpers", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_ReExportVariable_GeneratesDelegatingProperty()
+    {
+        // Arrange - __init__.spy that re-exports a constant
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/mypackage/__init__.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src",
+            IsPackageInit = true
+        };
+        var emitter = new RoslynEmitter(context);
+
+        var fromImport = new FromImportStatement
+        {
+            Module = ".config",
+            Names = new List<ImportAlias>
+            {
+                new ImportAlias { Name = "MAX_SIZE" }
+            }.ToImmutableArray(),
+            ResolvedModulePath = "mypackage.config",
+            ReExportedSymbols = new Dictionary<string, Sharpy.Compiler.Semantic.Symbol>
+            {
+                ["MAX_SIZE"] = new VariableSymbol
+                {
+                    Name = "MAX_SIZE",
+                    Type = SemanticType.Int,
+                    IsConstant = true
+                }
+            }
+        };
+
+        var module = new Module
+        {
+            Body = new List<Statement> { fromImport }.ToImmutableArray()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Should generate delegating property
+        Assert.Contains("MAX_SIZE", code);
+        Assert.Contains("Mypackage.Config", code);
+        // Should use expression body (=>)
+        Assert.Contains("=>", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_ReExportType_SkippedSilently()
+    {
+        // Arrange - __init__.spy that tries to re-export a type
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/mypackage/__init__.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src",
+            IsPackageInit = true
+        };
+        var emitter = new RoslynEmitter(context);
+
+        var fromImport = new FromImportStatement
+        {
+            Module = ".models",
+            Names = new List<ImportAlias>
+            {
+                new ImportAlias { Name = "User" }
+            }.ToImmutableArray(),
+            ResolvedModulePath = "mypackage.models",
+            ReExportedSymbols = new Dictionary<string, Sharpy.Compiler.Semantic.Symbol>
+            {
+                ["User"] = new TypeSymbol
+                {
+                    Name = "User",
+                    TypeKind = Sharpy.Compiler.Semantic.TypeKind.Class
+                }
+            }
+        };
+
+        var module = new Module
+        {
+            Body = new List<Statement> { fromImport }.ToImmutableArray()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Type re-export should be skipped, no error
+        Assert.False(context.HasErrors);
+        // Should NOT generate a delegating member for the type
+        Assert.DoesNotContain("class User", code);
+        // Module class should still exist (just without the type re-export)
+        Assert.Contains("class Mypackage", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_ReExportOnlyFromPackageInit_NotFromRegularModule()
+    {
+        // Arrange - Regular module (NOT __init__.spy) with re-export data
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/mymodule.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src",
+            IsPackageInit = false
+        };
+        var emitter = new RoslynEmitter(context);
+
+        var fromImport = new FromImportStatement
+        {
+            Module = "helpers",
+            Names = new List<ImportAlias>
+            {
+                new ImportAlias { Name = "utility_func" }
+            }.ToImmutableArray(),
+            ResolvedModulePath = "helpers",
+            ReExportedSymbols = new Dictionary<string, Sharpy.Compiler.Semantic.Symbol>
+            {
+                ["utility_func"] = new FunctionSymbol
+                {
+                    Name = "utility_func",
+                    Parameters = new List<ParameterSymbol>(),
+                    ReturnType = SemanticType.Void,
+                    IsStatic = true
+                }
+            }
+        };
+
+        var module = new Module
+        {
+            Body = new List<Statement> { fromImport }.ToImmutableArray()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Regular modules should NOT generate delegating members
+        // (only __init__.spy package files do)
+        Assert.DoesNotContain("UtilityFunc", code);
+    }
+
+    #endregion
 }
