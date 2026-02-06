@@ -7,7 +7,7 @@ using global::Sharpy;
 
 namespace Sharpy
 {
-    public static class Program
+    public static partial class Program
     {
         public static int CalculatePrice(int @base, double taxRate = 0.1, int discount = 0)
         {

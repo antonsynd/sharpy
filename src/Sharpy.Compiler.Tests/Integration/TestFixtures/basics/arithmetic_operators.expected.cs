@@ -7,7 +7,7 @@ using global::Sharpy;
 
 namespace Sharpy
 {
-    public static class Program
+    public static partial class Program
     {
         public static int A = 15;
         public static int B = 4;
