@@ -67,7 +67,7 @@ def main() -> None:
 
         // Check generated C# for main.spy
         Assert.NotNull(result.GeneratedCSharpFiles);
-        var mainCs = result.GeneratedCSharpFiles!.Values.FirstOrDefault(c => c.Contains("class Exports"));
+        var mainCs = result.GeneratedCSharpFiles!.Values.FirstOrDefault(c => c.Contains("class Program"));
 
         _output.WriteLine("Generated C# for main.spy:");
         foreach (var (key, value) in result.GeneratedCSharpFiles!)
@@ -138,7 +138,7 @@ def main() -> None:
 
         // Check generated C# for main.spy
         Assert.NotNull(result.GeneratedCSharpFiles);
-        var mainCs = result.GeneratedCSharpFiles!.Values.FirstOrDefault(c => c.Contains("namespace TestProject.Main"));
+        var mainCs = result.GeneratedCSharpFiles!.Values.FirstOrDefault(c => c.Contains("class Program"));
 
         // Verify: should have using TestProject.Lib.Math;
         Assert.NotNull(mainCs);
@@ -203,7 +203,7 @@ def main() -> None:
 
         // Check generated C# for main.spy
         Assert.NotNull(result.GeneratedCSharpFiles);
-        var mainCs = result.GeneratedCSharpFiles!.Values.FirstOrDefault(c => c.Contains("namespace TestProject.Main"));
+        var mainCs = result.GeneratedCSharpFiles!.Values.FirstOrDefault(c => c.Contains("class Program"));
 
         // Verify: should have using TestProject.Mypackage.Impl; (where SomeClass is actually defined)
         Assert.NotNull(mainCs);

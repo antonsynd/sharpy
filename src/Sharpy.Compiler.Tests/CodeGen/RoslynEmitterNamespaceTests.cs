@@ -1,14 +1,15 @@
-using Microsoft.CodeAnalysis.CSharp;
+using System.Collections.Immutable;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
-using System.Reflection;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
 /// <summary>
-/// Tests for namespace generation in RoslynEmitter
+/// Tests for namespace and wrapper class generation in RoslynEmitter.
+/// Verifies that the project-level namespace is emitted correctly and that
+/// directory hierarchy is expressed as nested static partial wrapper classes.
 /// </summary>
 public class RoslynEmitterNamespaceTests
 {
@@ -28,13 +29,11 @@ public class RoslynEmitterNamespaceTests
         return new RoslynEmitter(context);
     }
 
-    private string GetGeneratedNamespace(RoslynEmitter emitter)
+    private string GenerateCode(RoslynEmitter emitter)
     {
-        // Use reflection to call the private GenerateProjectNamespace method
-        var method = typeof(RoslynEmitter).GetMethod("GenerateProjectNamespace",
-            BindingFlags.NonPublic | BindingFlags.Instance);
-        var result = method?.Invoke(emitter, null);
-        return result?.ToString() ?? "";
+        var module = new Module { Body = ImmutableArray<Statement>.Empty };
+        var result = emitter.GenerateCompilationUnit(module);
+        return result.ToFullString();
     }
 
     [Fact]
@@ -48,10 +47,12 @@ public class RoslynEmitterNamespaceTests
         );
 
         // Act
-        var namespaceName = GetGeneratedNamespace(emitter);
+        var code = GenerateCode(emitter);
 
         // Assert
-        Assert.Equal("TestProject", namespaceName);
+        Assert.Contains("namespace TestProject", code);
+        // Root __init__.spy: module class derives from project root dir name "Src"
+        // No wrapper classes needed since the file is at the root
     }
 
     [Fact]
@@ -65,10 +66,11 @@ public class RoslynEmitterNamespaceTests
         );
 
         // Act
-        var namespaceName = GetGeneratedNamespace(emitter);
+        var code = GenerateCode(emitter);
 
         // Assert
-        Assert.Equal("TestProject.Level1", namespaceName);
+        Assert.Contains("namespace TestProject", code);
+        Assert.Contains("class Level1", code);
     }
 
     [Fact]
@@ -82,16 +84,18 @@ public class RoslynEmitterNamespaceTests
         );
 
         // Act
-        var namespaceName = GetGeneratedNamespace(emitter);
+        var code = GenerateCode(emitter);
 
         // Assert
-        Assert.Equal("TestProject.Level1.Level2", namespaceName);
+        Assert.Contains("namespace TestProject", code);
+        Assert.Contains("class Level1", code);
+        Assert.Contains("class Level2", code);
     }
 
     [Fact]
     public void GenerateProjectNamespace_ThreeLevelInit_NoDuplication()
     {
-        // Arrange - This is the test case from the task description
+        // Arrange
         var emitter = CreateEmitterWithProjectContext(
             projectNamespace: "TestProject",
             projectRootPath: "/project/src",
@@ -99,12 +103,14 @@ public class RoslynEmitterNamespaceTests
         );
 
         // Act
-        var namespaceName = GetGeneratedNamespace(emitter);
+        var code = GenerateCode(emitter);
 
         // Assert
-        // Expected: TestProject.Level1.Level2.Level3
-        // NOT:      TestProject.Level1.Level2.Level3.Level3 (with duplication)
-        Assert.Equal("TestProject.Level1.Level2.Level3", namespaceName);
+        Assert.Contains("namespace TestProject", code);
+        Assert.Contains("class Level1", code);
+        Assert.Contains("class Level2", code);
+        Assert.Contains("class Level3", code);
+        Assert.DoesNotContain("Level3.Level3", code);
     }
 
     [Fact]
@@ -118,10 +124,13 @@ public class RoslynEmitterNamespaceTests
         );
 
         // Act
-        var namespaceName = GetGeneratedNamespace(emitter);
+        var code = GenerateCode(emitter);
 
         // Assert
-        Assert.Equal("TestProject.Level1.Level2.Module", namespaceName);
+        Assert.Contains("namespace TestProject", code);
+        Assert.Contains("class Level1", code);
+        Assert.Contains("class Level2", code);
+        Assert.Contains("class Module", code);
     }
 
     [Fact]
@@ -135,10 +144,10 @@ public class RoslynEmitterNamespaceTests
         );
 
         // Act
-        var namespaceName = GetGeneratedNamespace(emitter);
+        var code = GenerateCode(emitter);
 
         // Assert
-        Assert.Equal("TestProject.Mymodule", namespaceName);
+        Assert.Contains("namespace TestProject", code);
+        Assert.Contains("class Mymodule", code);
     }
-
 }

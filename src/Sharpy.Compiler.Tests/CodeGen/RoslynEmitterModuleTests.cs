@@ -39,7 +39,7 @@ public class RoslynEmitterModuleTests
 
         // Assert
         Assert.Contains("namespace SharpyGenerated", code);
-        Assert.Contains("public static class Exports", code);
+        Assert.Contains("public static partial class Module", code);
     }
 
     [Fact]
@@ -56,8 +56,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file uses simpler file-name-based namespace
-        Assert.Contains("namespace Sharpy.Utils", code);
+        // Assert - Single-file uses simpler namespace (just "Sharpy")
+        Assert.Contains("namespace Sharpy", code);
     }
 
     [Fact]
@@ -246,8 +246,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - should generate alias pointing to Exports class
-        Assert.Contains("using utils_helpers = Utils.Helpers.Exports;", code);
+        // Assert - should generate alias pointing to module class (no .Exports suffix)
+        Assert.Contains("using utils_helpers = Utils.Helpers;", code);
     }
 
     [Fact]
@@ -273,8 +273,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert
-        Assert.Contains("using h = Utils.Helpers.Exports;", code);
+        // Assert - no .Exports suffix
+        Assert.Contains("using h = Utils.Helpers;", code);
     }
 
     [Fact]
@@ -312,7 +312,7 @@ public class RoslynEmitterModuleTests
         // Function should be in module class
         Assert.Contains("MyFunction", code);
         // Import statement should not appear as a member
-        var moduleClassStart = code.IndexOf("class Exports");
+        var moduleClassStart = code.IndexOf("class Module");
         var importsInClass = code.Substring(moduleClassStart).Contains("ImportStatement");
         Assert.False(importsInClass);
     }
@@ -340,8 +340,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Sharpy modules (non-.NET) should generate alias to Exports
-        Assert.Contains("using my_custom_module_sub_module = MyCustomModule.SubModule.Exports;", code);
+        // Assert - Sharpy modules (non-.NET) should generate alias (no .Exports suffix)
+        Assert.Contains("using my_custom_module_sub_module = MyCustomModule.SubModule;", code);
     }
 
     [Fact]
@@ -366,8 +366,13 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - project-based namespace generation
-        Assert.Contains("namespace MyProject.Myapp.Services.Auth", code);
+        // Assert - project-level namespace only; directory parts become wrapper classes
+        Assert.Contains("namespace MyProject", code);
+        Assert.DoesNotContain("namespace MyProject.", code);
+        // Directory parts should appear as class names
+        Assert.Contains("class Myapp", code);
+        Assert.Contains("class Services", code);
+        Assert.Contains("class Auth", code);
     }
 
     [Fact]
@@ -384,8 +389,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file uses simpler file-name-based namespace
-        Assert.Contains("namespace Sharpy.Auth", code);
+        // Assert - Single-file uses simpler namespace (just "Sharpy")
+        Assert.Contains("namespace Sharpy", code);
+        Assert.DoesNotContain("namespace Sharpy.", code);
     }
 
     [Fact]
@@ -410,8 +416,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Project-based namespace includes relative path from root
-        Assert.Contains("namespace MyApp.Lib.Mymodule", code);
+        // Assert - Project-level namespace only
+        Assert.Contains("namespace MyApp", code);
+        Assert.DoesNotContain("namespace MyApp.", code);
     }
 
     [Fact]
@@ -428,8 +435,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file uses simpler file-name-based namespace
-        Assert.Contains("namespace Sharpy.Mymodule", code);
+        // Assert - Single-file uses simpler namespace (just "Sharpy")
+        Assert.Contains("namespace Sharpy", code);
+        Assert.DoesNotContain("namespace Sharpy.", code);
     }
 
     [Fact]
@@ -504,8 +512,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - numeric directory should be prefixed with underscore
-        Assert.Contains("namespace TestApp._20260113Test.Module", code);
+        // Assert - project-level namespace only
+        Assert.Contains("namespace TestApp", code);
+        Assert.DoesNotContain("namespace TestApp.", code);
     }
 
     [Fact]
@@ -519,9 +528,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - numeric-starting filename should be prefixed with underscore
-        // Note: The SimpleToPascalCase doesn't capitalize after numbers, so it stays lowercase
-        Assert.Contains("namespace Sharpy._123test", code);
+        // Assert - Single-file uses simpler namespace (just "Sharpy")
+        Assert.Contains("namespace Sharpy", code);
+        Assert.DoesNotContain("namespace Sharpy.", code);
     }
 
     [Fact]
@@ -543,8 +552,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - special chars should be converted to valid C# identifiers
-        Assert.Contains("namespace TestApp.MyAppTest.Module", code);
+        // Assert - project-level namespace only
+        Assert.Contains("namespace TestApp", code);
+        Assert.DoesNotContain("namespace TestApp.", code);
     }
 
     [Fact]
@@ -566,8 +576,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - numeric directory should be valid C# namespace
-        Assert.Contains("namespace Dogfood._20260113Failed0001.Source", code);
+        // Assert - project-level namespace only
+        Assert.Contains("namespace Dogfood", code);
+        Assert.DoesNotContain("namespace Dogfood.", code);
     }
 
     [Fact]
@@ -582,9 +593,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file should use simple file-name-based namespace
-        // avoiding the problematic path entirely
-        Assert.Contains("namespace Sharpy.Source", code);
+        // Assert - Single-file uses simpler namespace (just "Sharpy")
+        Assert.Contains("namespace Sharpy", code);
+        Assert.DoesNotContain("namespace Sharpy.", code);
     }
 
     [Fact]
@@ -606,8 +617,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Should use ProjectNamespace with file name
-        Assert.Contains("namespace MyApp.Mymodule", code);
+        // Assert - Should use ProjectNamespace only
+        Assert.Contains("namespace MyApp", code);
+        Assert.DoesNotContain("namespace MyApp.", code);
     }
 
     [Fact]
@@ -849,9 +861,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Sharpy modules should generate using static with Exports class
-        // (Sharpy modules expose their members via a class named "Exports")
-        Assert.Contains("using static Config.Exports;", code);
+        // Assert - Sharpy modules should generate using static (no .Exports suffix)
+        Assert.Contains("using static Config;", code);
     }
 
     [Fact]
@@ -879,9 +890,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Should generate using static for the module (not individual symbols)
-        // Module class is always "Exports"
-        Assert.Contains("using static Utils.Helpers.Exports;", code);
+        // Assert - Should generate using static for the module (no .Exports suffix)
+        Assert.Contains("using static Utils.Helpers;", code);
     }
 
     [Fact]
@@ -908,9 +918,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Nested module path should be converted to PascalCase
-        // Module class is always "Exports"
-        Assert.Contains("using static Lib.Math.Operations.Exports;", code);
+        // Assert - Nested module path should be converted to PascalCase (no .Exports suffix)
+        Assert.Contains("using static Lib.Math.Operations;", code);
     }
 
     [Fact]
@@ -934,9 +943,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - from module import * should generate using static
-        // Module class is always "Exports"
-        Assert.Contains("using static Utils.Exports;", code);
+        // Assert - from module import * should generate using static (no .Exports suffix)
+        Assert.Contains("using static Utils;", code);
     }
 
     [Fact]
@@ -963,9 +971,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Snake_case module names should be converted to PascalCase
-        // Module class is always "Exports"
-        Assert.Contains("using static DatabaseUtils.ConnectionPool.Exports;", code);
+        // Assert - Snake_case module names should be converted to PascalCase (no .Exports suffix)
+        Assert.Contains("using static DatabaseUtils.ConnectionPool;", code);
     }
 
     [Fact]
@@ -995,8 +1002,7 @@ public class RoslynEmitterModuleTests
         // Assert - Should still generate using static (alias handled at usage site)
         // Note: C# using static doesn't support aliasing individual members
         // The semantic analyzer should handle the symbol aliasing
-        // Module class is always "Exports"
-        Assert.Contains("using static Config.Exports;", code);
+        Assert.Contains("using static Config;", code);
     }
 
     [Fact]
@@ -1031,15 +1037,14 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Should only have one using static directive
-        // Module class is always "Exports"
-        var firstIndex = code.IndexOf("using static Config.Exports;");
-        var lastIndex = code.LastIndexOf("using static Config.Exports;");
+        // Assert - Should only have one using static directive (no .Exports suffix)
+        var firstIndex = code.IndexOf("using static Config;");
+        var lastIndex = code.LastIndexOf("using static Config;");
 
         // If they're the same index, there's only one occurrence
         // If different, count how many there are (could be deduplicated or not)
         // The important thing is that it compiles correctly
-        Assert.Contains("using static Config.Exports;", code);
+        Assert.Contains("using static Config;", code);
     }
 
     #endregion
@@ -1076,11 +1081,13 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - __init__.spy files should generate "Exports" class, not "Init"
-        // This ensures imports like "using mypackage = TestProject.Mypackage.Exports;" work correctly
-        Assert.Contains("namespace TestProject.Mypackage", code);
-        Assert.Contains("public static class Exports", code);
-        Assert.DoesNotContain("public static class Init", code);
+        // Assert - __init__.spy uses parent directory name as module class
+        Assert.Contains("namespace TestProject", code);
+        Assert.DoesNotContain("namespace TestProject.", code);
+        // Module class is named after parent directory (Mypackage), not "Exports" or "Init"
+        Assert.Contains("class Mypackage", code);
+        Assert.DoesNotContain("class Exports", code);
+        Assert.DoesNotContain("class Init", code);
         Assert.Contains("PackageFunc", code); // Verify function is in the class
     }
 
@@ -1115,11 +1122,14 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Verify correct namespace and Exports class for nested __init__.spy
-        Assert.Contains("namespace TestProject.Level1.Level2", code);
-        Assert.Contains("public static class Exports", code);
-        Assert.DoesNotContain("Level2.Level2", code); // No duplicate segment
-        Assert.DoesNotContain("public static class Init", code);
+        // Assert - Verify correct namespace and module class for nested __init__.spy
+        Assert.Contains("namespace TestProject", code);
+        Assert.DoesNotContain("namespace TestProject.", code);
+        // Directory parts become wrapper classes; __init__.spy uses parent dir name
+        Assert.Contains("class Level1", code);
+        Assert.Contains("class Level2", code);
+        Assert.DoesNotContain("class Exports", code);
+        Assert.DoesNotContain("class Init", code);
     }
 
     [Fact]
@@ -1145,8 +1155,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Import should create alias to Exports class (from __init__.spy)
-        Assert.Contains("using mypackage = Mypackage.Exports;", code);
+        // Assert - Import should create alias to module class (no .Exports suffix)
+        Assert.Contains("using mypackage = Mypackage;", code);
     }
 
     #endregion
