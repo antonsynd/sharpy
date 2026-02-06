@@ -760,6 +760,19 @@ public static class DiagnosticExplanations
             null,
             "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
 
+        Add(dict, DiagnosticCodes.CodeGen.NameCollision, "Module class name collision", "CodeGen",
+            "A type name in the source file matches the module class name derived from the file name. " +
+            "For class types, the class absorbs module-level members and becomes the module representative. " +
+            "For struct, interface, or enum types, this is an error because they cannot serve as module classes.",
+            "# File: animal.spy\n# Module class name would be 'Animal', but 'struct Animal' collides\nstruct Animal:\n    name: str",
+            "Rename the type or the source file so that the type name does not match the file name in PascalCase.");
+
+        Add(dict, DiagnosticCodes.CodeGen.TypeReExportNotSupported, "Type re-export not supported", "CodeGen",
+            "A type cannot be re-exported from an __init__.spy package file. Types should be imported directly " +
+            "from their defining module rather than re-exported through package init files.",
+            "# __init__.spy\nfrom .helpers import MyClass  # MyClass is a type — cannot re-export",
+            "Import the type directly from its defining module instead of through the package init file.");
+
         Add(dict, DiagnosticCodes.CodeGen.InternalGeneratedCSharpParseError, "Internal error: generated C# contains syntax errors", "CodeGen",
             "The compiler generated C# code that fails to parse. This indicates a bug in the Sharpy compiler's code generation phase. " +
             "The generated C# has syntax errors that would prevent compilation.",
