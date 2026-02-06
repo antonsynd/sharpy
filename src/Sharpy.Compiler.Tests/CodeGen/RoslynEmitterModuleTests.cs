@@ -224,7 +224,7 @@ public class RoslynEmitterModuleTests
     }
 
     [Fact]
-    public void GenerateCompilationUnit_WithImportModule_GeneratesAliasToExports()
+    public void GenerateCompilationUnit_WithImportModule_GeneratesAliasToModuleClass()
     {
         // Arrange
         var emitter = CreateEmitter();
@@ -1052,7 +1052,7 @@ public class RoslynEmitterModuleTests
     #region Package __init__ Tests
 
     [Fact]
-    public void GenerateCompilationUnit_InitFile_GeneratesExportsClass()
+    public void GenerateCompilationUnit_InitFile_GeneratesDirectoryNamedClass()
     {
         // Arrange - Package __init__.spy file
         var builtins = new BuiltinRegistry();
@@ -1092,7 +1092,7 @@ public class RoslynEmitterModuleTests
     }
 
     [Fact]
-    public void GenerateCompilationUnit_NestedInitFile_GeneratesCorrectNamespaceAndExportsClass()
+    public void GenerateCompilationUnit_NestedInitFile_GeneratesCorrectNamespaceAndDirectoryNamedClass()
     {
         // Arrange - Nested package __init__.spy file
         var builtins = new BuiltinRegistry();
