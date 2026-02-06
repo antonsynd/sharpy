@@ -231,21 +231,15 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 - **Builtins**: `partial class Exports` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
 - **Python semantics**: Negative indexing, slicing, Python-matching exceptions
 
-## Custom Slash Commands
+## Skills
 
-Available in `.claude/commands/`:
+Available in `.claude/skills/`:
 
 | Command | Purpose |
 |---------|---------|
-| `/project:implement <task>` | Implement a feature end-to-end |
-| `/project:review <target>` | Code review (read-only analysis) |
-| `/project:plan <feature>` | Decompose complex task into subtasks |
-| `/project:test <component>` | Run tests for a component |
-| `/project:emit <file.spy>` | Inspect generated C# code |
-| `/project:verify-python <expr>` | Verify Python behavior |
-| `/project:fix-issue <issue>` | Diagnose and fix a GitHub issue |
-| `/project:add-test-fixture <desc>` | Create file-based test |
-| `/project:check-axioms <decision>` | Verify axiom compliance |
+| `/project:emit <file.spy>` | Inspect generated C#, AST, tokens, and parse output |
+| `/project:verify-python <expr>` | Run Python 3 to verify behavior before implementing |
+| `/project:add-test-fixture <desc>` | Create a file-based integration test |
 
 ## Testing
 
