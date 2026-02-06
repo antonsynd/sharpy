@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
 namespace Sharpy.ArithmeticOperators
 {
@@ -19,15 +19,15 @@ namespace Sharpy.ArithmeticOperators
         public static void Main()
         {
 #line 13 "arithmetic_operators.spy"
-            global::Sharpy.Core.Exports.Print(SumResult);
+            global::Sharpy.Builtins.Print(SumResult);
 #line 14 "arithmetic_operators.spy"
-            global::Sharpy.Core.Exports.Print(DiffResult);
+            global::Sharpy.Builtins.Print(DiffResult);
 #line 15 "arithmetic_operators.spy"
-            global::Sharpy.Core.Exports.Print(ProdResult);
+            global::Sharpy.Builtins.Print(ProdResult);
 #line 16 "arithmetic_operators.spy"
-            global::Sharpy.Core.Exports.Print(DivResult);
+            global::Sharpy.Builtins.Print(DivResult);
 #line 17 "arithmetic_operators.spy"
-            global::Sharpy.Core.Exports.Print(ModResult);
+            global::Sharpy.Builtins.Print(ModResult);
         }
     }
 }

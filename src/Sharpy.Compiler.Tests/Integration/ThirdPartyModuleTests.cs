@@ -112,7 +112,7 @@ public class ThirdPartyModuleTests : IDisposable
     public void ModuleRegistry_LoadsMultipleModules()
     {
         var registry = new ModuleRegistry(cache: _cache);
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
 
         registry.LoadReference(sharpyCoreAssembly);
 

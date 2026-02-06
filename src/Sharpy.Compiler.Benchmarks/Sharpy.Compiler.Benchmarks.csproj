@@ -14,6 +14,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sharpy.Compiler\Sharpy.Compiler.csproj" />
+    <ProjectReference Include="..\Sharpy.Core\Sharpy.Core.csproj">
+      <Aliases>SharpyRT</Aliases>
+    </ProjectReference>
   </ItemGroup>
 
   <!-- Include corpus files as content -->

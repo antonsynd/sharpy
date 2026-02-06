@@ -45,7 +45,7 @@ public class ModuleRegistryTests : IDisposable
     public void LoadReference_WithSharpyCore_LoadsSuccessfully()
     {
         var registry = new ModuleRegistry(cache: _cache);
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
 
         var result = registry.LoadReference(sharpyCoreAssembly);
 
@@ -69,7 +69,7 @@ public class ModuleRegistryTests : IDisposable
     public void LoadReference_SameAssemblyTwice_DoesNotDuplicate()
     {
         var registry = new ModuleRegistry(cache: _cache);
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
 
         var result1 = registry.LoadReference(sharpyCoreAssembly);
         var result2 = registry.LoadReference(sharpyCoreAssembly);
@@ -83,7 +83,7 @@ public class ModuleRegistryTests : IDisposable
     public void GetModuleFunctions_WithBuiltins_ReturnsFunctions()
     {
         var registry = new ModuleRegistry(cache: _cache);
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
         var functions = registry.GetModuleFunctions("builtins");
@@ -108,7 +108,7 @@ public class ModuleRegistryTests : IDisposable
     public void IsModuleLoaded_WithLoadedModule_ReturnsTrue()
     {
         var registry = new ModuleRegistry(cache: _cache);
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
         var result = registry.IsModuleLoaded("builtins");

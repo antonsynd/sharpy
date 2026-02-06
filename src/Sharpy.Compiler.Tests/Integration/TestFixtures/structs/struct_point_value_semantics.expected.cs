@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
 namespace Sharpy.StructPointValueSemantics
 {
@@ -18,13 +18,13 @@ namespace Sharpy.StructPointValueSemantics
 #line 18 "struct_point_value_semantics.spy"
             p2.Move(5, 5);
 #line 20 "struct_point_value_semantics.spy"
-            global::Sharpy.Core.Exports.Print(p1.X);
+            global::Sharpy.Builtins.Print(p1.X);
 #line 21 "struct_point_value_semantics.spy"
-            global::Sharpy.Core.Exports.Print(p1.Y);
+            global::Sharpy.Builtins.Print(p1.Y);
 #line 22 "struct_point_value_semantics.spy"
-            global::Sharpy.Core.Exports.Print(p2.X);
+            global::Sharpy.Builtins.Print(p2.X);
 #line 23 "struct_point_value_semantics.spy"
-            global::Sharpy.Core.Exports.Print(p2.Y);
+            global::Sharpy.Builtins.Print(p2.Y);
         }
     }
 

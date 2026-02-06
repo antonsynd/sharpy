@@ -157,7 +157,7 @@ internal partial class RoslynEmitter
         usings.Add(UsingDirective(ParseName("System.Linq")));
 
         // Add Sharpy runtime usings (use global:: to avoid conflicts when output namespace contains "Sharpy")
-        usings.Add(UsingDirective(ParseName("global::Sharpy.Core")));
+        usings.Add(UsingDirective(ParseName("global::Sharpy")));
 
         // Process import statements
         foreach (var stmt in module.Body)

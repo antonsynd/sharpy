@@ -367,7 +367,7 @@ internal class ProtocolValidator : SemanticValidatorBase
             while (currentType != null)
             {
                 if (currentType.IsGenericType &&
-                    currentType.GetGenericTypeDefinition().FullName == "Sharpy.Core.Iterator`1")
+                    currentType.GetGenericTypeDefinition().FullName == "Sharpy.Iterator`1")
                 {
                     return true;
                 }
@@ -377,7 +377,7 @@ internal class ProtocolValidator : SemanticValidatorBase
             // Check for IIterable<T> from Sharpy.Core
             var interfaces = clrType.GetInterfaces();
             if (interfaces.Any(i =>
-                i.IsGenericType && i.GetGenericTypeDefinition().FullName == "Sharpy.Core.Collections.Interfaces.IIterable`1"))
+                i.IsGenericType && i.GetGenericTypeDefinition().FullName == "Sharpy.IIterable`1"))
             {
                 return true;
             }

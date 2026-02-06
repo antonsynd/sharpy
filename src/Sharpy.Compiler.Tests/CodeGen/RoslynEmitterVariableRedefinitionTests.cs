@@ -416,17 +416,17 @@ public class RoslynEmitterVariableRedefinitionTests
 
         // Should generate:
         // var x = 1;
-        // Sharpy.Core.Exports.Print(x);       // Uses x
+        // Sharpy.Builtins.Print(x);       // Uses x
         // var x_1 = 2;
-        // Sharpy.Core.Exports.Print(x_1);     // Uses x_1
+        // Sharpy.Builtins.Print(x_1);     // Uses x_1
         // var x_2 = "hello";
-        // Sharpy.Core.Exports.Print(x_2);     // Uses x_2
+        // Sharpy.Builtins.Print(x_2);     // Uses x_2
         Assert.Contains("var x = 1;", result);
-        Assert.Contains("Sharpy.Core.Exports.Print(x);", result);
+        Assert.Contains("Sharpy.Builtins.Print(x);", result);
         Assert.Contains("var x_1 = 2;", result);
-        Assert.Contains("Sharpy.Core.Exports.Print(x_1);", result);
+        Assert.Contains("Sharpy.Builtins.Print(x_1);", result);
         Assert.Contains("var x_2 = \"hello\";", result);
-        Assert.Contains("Sharpy.Core.Exports.Print(x_2);", result);
+        Assert.Contains("Sharpy.Builtins.Print(x_2);", result);
     }
 
     [Fact]
@@ -562,8 +562,8 @@ public class RoslynEmitterVariableRedefinitionTests
         Assert.Contains("var x = 1;", result);
         Assert.Contains("var x1 = \"user\";", result);  // x_1 mangled to x1
         Assert.Contains("var x_1 = 2;", result);        // Generated version name
-        Assert.Contains("Sharpy.Core.Exports.Print(x_1);", result);
-        Assert.Contains("Sharpy.Core.Exports.Print(x1);", result);
+        Assert.Contains("Sharpy.Builtins.Print(x_1);", result);
+        Assert.Contains("Sharpy.Builtins.Print(x1);", result);
     }
 
     [Fact]

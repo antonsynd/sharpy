@@ -37,7 +37,7 @@ def main():
 ";
         var options = new CompilerOptions
         {
-            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+            References = new[] { SharpyCoreReference.Location }
         };
 
         var compiler = new Compiler(options);
@@ -136,7 +136,7 @@ def main():
 def main():
     x = 5
 ";
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
         var sampleModulePath = "../../../../build/modules/SampleModule.dll";
 
         // Only include SampleModule if it exists
@@ -175,7 +175,7 @@ def main():
 
         var options = new CompilerOptions
         {
-            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+            References = new[] { SharpyCoreReference.Location }
         };
 
         var compiler = new Compiler(options, logger);
@@ -398,7 +398,7 @@ def main():
 ";
         var options = new CompilerOptions
         {
-            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+            References = new[] { SharpyCoreReference.Location }
         };
         var compiler = new Compiler(options);
         var result = compiler.Compile(code, "test.spy");
@@ -424,7 +424,7 @@ def main():
 ";
         var options = new CompilerOptions
         {
-            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+            References = new[] { SharpyCoreReference.Location }
         };
         var compiler = new Compiler(options);
         var result = compiler.Compile(code, "test.spy");
@@ -453,7 +453,7 @@ def main():
 ";
         var options = new CompilerOptions
         {
-            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+            References = new[] { SharpyCoreReference.Location },
             WarningsAsErrors = true
         };
         var compiler = new Compiler(options);
@@ -478,7 +478,7 @@ def main():
 ";
         var options = new CompilerOptions
         {
-            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+            References = new[] { SharpyCoreReference.Location },
             SuppressedWarnings = new HashSet<string> { DiagnosticCodes.Validation.UnusedVariable }
         };
         var compiler = new Compiler(options);
@@ -503,7 +503,7 @@ def main():
 ";
         var options = new CompilerOptions
         {
-            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+            References = new[] { SharpyCoreReference.Location },
             MaxErrors = 2
         };
         var compiler = new Compiler(options);
@@ -552,7 +552,7 @@ def main():
 
             var options = new CompilerOptions
             {
-                References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+                References = new[] { SharpyCoreReference.Location },
                 MaxErrors = 2
             };
             var compiler = new Compiler(options);
@@ -592,7 +592,7 @@ def main():
 ";
         var options = new CompilerOptions
         {
-            References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+            References = new[] { SharpyCoreReference.Location }
         };
         var compiler = new Compiler(options);
         var result = compiler.Compile(code, "test.spy");
@@ -663,7 +663,7 @@ def main():
 
             var options = new CompilerOptions
             {
-                References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location }
+                References = new[] { SharpyCoreReference.Location }
             };
             var compiler = new Compiler(options);
             var result = compiler.CompileProject(config);
@@ -719,7 +719,7 @@ def main():
 
             var options = new CompilerOptions
             {
-                References = new[] { typeof(Sharpy.Core.Exports).Assembly.Location },
+                References = new[] { SharpyCoreReference.Location },
                 ModulePaths = new[] { tempDir }
             };
             var compiler = new Compiler(options);

@@ -114,8 +114,8 @@ Local variables still require tracking during emission for redeclaration handlin
 
 `TypeMapper` handles the translation from Sharpy types to C# types:
 
-- `list[T]` → `global::Sharpy.Core.List<T>`
-- `dict[K, V]` → `global::Sharpy.Core.Dict<K, V>`
+- `list[T]` → `global::Sharpy.List<T>`
+- `dict[K, V]` → `global::Sharpy.Dict<K, V>`
 - `str` → `string`
 - `int` → `int`
 - `long` → `long`

@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
 namespace Sharpy.ClassStaticMethods
 {
@@ -14,15 +14,15 @@ namespace Sharpy.ClassStaticMethods
 #line 10 "class_static_methods.spy"
             var result1 = MathHelper.Add(3, 7);
 #line 11 "class_static_methods.spy"
-            global::Sharpy.Core.Exports.Print(result1);
+            global::Sharpy.Builtins.Print(result1);
 #line 13 "class_static_methods.spy"
             var result2 = MathHelper.Square(5);
 #line 14 "class_static_methods.spy"
-            global::Sharpy.Core.Exports.Print(result2);
+            global::Sharpy.Builtins.Print(result2);
 #line 16 "class_static_methods.spy"
             var result3 = MathHelper.Add(result2, 10);
 #line 17 "class_static_methods.spy"
-            global::Sharpy.Core.Exports.Print(result3);
+            global::Sharpy.Builtins.Print(result3);
         }
     }
 

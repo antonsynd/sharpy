@@ -12,7 +12,7 @@ public class OverloadIndexBuilderTests
     public void BuildFromAssembly_DiscoversSharpyCoreExports()
     {
         // Arrange
-        var assembly = typeof(Sharpy.Core.Exports).Assembly;
+        var assembly = SharpyCoreReference.Assembly;
 
         // Act
         var index = _builder.BuildFromAssembly(assembly);
@@ -29,7 +29,7 @@ public class OverloadIndexBuilderTests
     public void BuildFromAssembly_DiscoversRangeOverloads()
     {
         // Arrange
-        var assembly = typeof(Sharpy.Core.Exports).Assembly;
+        var assembly = SharpyCoreReference.Assembly;
 
         // Act
         var index = _builder.BuildFromAssembly(assembly);
@@ -51,7 +51,7 @@ public class OverloadIndexBuilderTests
     public void BuildFromAssembly_DiscoversPrintFunction()
     {
         // Arrange
-        var assembly = typeof(Sharpy.Core.Exports).Assembly;
+        var assembly = SharpyCoreReference.Assembly;
 
         // Act
         var index = _builder.BuildFromAssembly(assembly);
@@ -71,7 +71,7 @@ public class OverloadIndexBuilderTests
     public void BuildFromAssembly_DiscoversLenFunction()
     {
         // Arrange
-        var assembly = typeof(Sharpy.Core.Exports).Assembly;
+        var assembly = SharpyCoreReference.Assembly;
 
         // Act
         var index = _builder.BuildFromAssembly(assembly);
@@ -90,7 +90,7 @@ public class OverloadIndexBuilderTests
     public void BuildFromAssembly_CreatesValidMethodTokens()
     {
         // Arrange
-        var assembly = typeof(Sharpy.Core.Exports).Assembly;
+        var assembly = SharpyCoreReference.Assembly;
 
         // Act
         var index = _builder.BuildFromAssembly(assembly);

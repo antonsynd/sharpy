@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
 namespace Sharpy.FibonacciRecursive
 {
@@ -26,7 +26,7 @@ namespace Sharpy.FibonacciRecursive
         public static void Main()
         {
 #line 9 "fibonacci_recursive.spy"
-            global::Sharpy.Core.Exports.Print(Result);
+            global::Sharpy.Builtins.Print(Result);
         }
     }
 }

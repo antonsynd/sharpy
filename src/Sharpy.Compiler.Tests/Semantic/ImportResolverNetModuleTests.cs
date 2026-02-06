@@ -18,7 +18,7 @@ public class ImportResolverNetModuleTests
         var registry = new ModuleRegistry(logger);
 
         // Load Sharpy.Core
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
         var resolver = new ImportResolver(logger, registry);
@@ -113,7 +113,7 @@ public class ImportResolverNetModuleTests
         var logger = NullLogger.Instance;
         var registry = new ModuleRegistry(logger);
 
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
         var resolver = new ImportResolver(logger, registry);
@@ -144,7 +144,7 @@ public class ImportResolverNetModuleTests
         var logger = NullLogger.Instance;
         var registry = new ModuleRegistry(logger);
 
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
         var resolver = new ImportResolver(logger, registry);
@@ -172,7 +172,7 @@ public class ImportResolverNetModuleTests
         var logger = NullLogger.Instance;
         var registry = new ModuleRegistry(logger);
 
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
         var resolver = new ImportResolver(logger, registry);
@@ -199,7 +199,7 @@ public class ImportResolverNetModuleTests
         var logger = NullLogger.Instance;
         var registry = new ModuleRegistry(logger);
 
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
         var resolver = new ImportResolver(logger, registry);

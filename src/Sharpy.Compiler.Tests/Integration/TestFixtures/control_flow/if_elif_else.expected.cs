@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
 namespace Sharpy.IfElifElse
 {
@@ -15,17 +15,17 @@ namespace Sharpy.IfElifElse
             if (x > 0)
             {
 #line 3 "if_elif_else.spy"
-                global::Sharpy.Core.Exports.Print("positive");
+                global::Sharpy.Builtins.Print("positive");
             }
             else if (x < 0)
             {
 #line 5 "if_elif_else.spy"
-                global::Sharpy.Core.Exports.Print("negative");
+                global::Sharpy.Builtins.Print("negative");
             }
             else
             {
 #line 7 "if_elif_else.spy"
-                global::Sharpy.Core.Exports.Print("zero");
+                global::Sharpy.Builtins.Print("zero");
             }
         }
 

@@ -46,7 +46,7 @@ public class ModuleDiscoveryWorkflowTests : IDisposable
     {
         // Arrange
         var registry = new ModuleRegistry(cache: _cache);
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
 
         // Act - Load builtins
         var builtinsLoaded = registry.LoadReference(sharpyCoreAssembly);
@@ -117,7 +117,7 @@ public class ModuleDiscoveryWorkflowTests : IDisposable
     {
         // Arrange
         var registry = new ModuleRegistry(cache: _cache);
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
 
         // Act
         registry.LoadReference(sharpyCoreAssembly);
@@ -178,7 +178,7 @@ public class ModuleDiscoveryWorkflowTests : IDisposable
 
         // Arrange
         var registry = new ModuleRegistry(cache: _cache);
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
 
         // Act - Load both modules
         registry.LoadReference(sharpyCoreAssembly);
@@ -205,7 +205,7 @@ public class ModuleDiscoveryWorkflowTests : IDisposable
     public void Workflow_CachingWorks_FasterOnSecondLoad()
     {
         // Arrange
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
 
         // Warmup to ensure JIT compilation is complete
         var warmup = new ModuleRegistry(cache: _cache);

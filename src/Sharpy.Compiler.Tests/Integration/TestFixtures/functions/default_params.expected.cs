@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
 namespace Sharpy.DefaultParams
 {
@@ -14,7 +14,7 @@ namespace Sharpy.DefaultParams
 #line 6 "default_params.spy"
             int baseCents = @base * 100;
 #line 7 "default_params.spy"
-            int taxCents = (int)System.Math.Floor((double)((double)((baseCents * global::Sharpy.Core.Exports.@Int(taxRate * 100))) / 100));
+            int taxCents = (int)System.Math.Floor((double)((double)((baseCents * global::Sharpy.Builtins.@Int(taxRate * 100))) / 100));
 #line 8 "default_params.spy"
             int totalCents = baseCents + taxCents;
 #line 9 "default_params.spy"
@@ -60,19 +60,19 @@ namespace Sharpy.DefaultParams
         public static void Main()
         {
 #line 35 "default_params.spy"
-            global::Sharpy.Core.Exports.Print(Price1);
+            global::Sharpy.Builtins.Print(Price1);
 #line 38 "default_params.spy"
-            global::Sharpy.Core.Exports.Print(Price2);
+            global::Sharpy.Builtins.Print(Price2);
 #line 41 "default_params.spy"
-            global::Sharpy.Core.Exports.Print(Price3);
+            global::Sharpy.Builtins.Print(Price3);
 #line 44 "default_params.spy"
-            global::Sharpy.Core.Exports.Print(Squared);
+            global::Sharpy.Builtins.Print(Squared);
 #line 47 "default_params.spy"
-            global::Sharpy.Core.Exports.Print(Cubed);
+            global::Sharpy.Builtins.Print(Cubed);
 #line 50 "default_params.spy"
-            global::Sharpy.Core.Exports.Print(Price4);
+            global::Sharpy.Builtins.Print(Price4);
 #line 53 "default_params.spy"
-            global::Sharpy.Core.Exports.Print(Price5);
+            global::Sharpy.Builtins.Print(Price5);
         }
     }
 }

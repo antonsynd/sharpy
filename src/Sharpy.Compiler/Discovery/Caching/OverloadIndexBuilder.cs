@@ -32,9 +32,10 @@ internal class OverloadIndexBuilder
             CacheFormatVersion = 2
         };
 
-        // Find all classes named "Exports"
+        // Find all module classes decorated with [SharpyModule]
         var exportTypes = assembly.GetTypes()
-            .Where(t => t.Name == "Exports" && t.IsClass && t.IsPublic && t.IsAbstract && t.IsSealed)
+            .Where(t => t.IsClass && t.CustomAttributes.Any(
+                a => a.AttributeType.FullName == "Sharpy.SharpyModuleAttribute"))
             .ToList();
 
         foreach (var exportType in exportTypes)
@@ -59,7 +60,8 @@ internal class OverloadIndexBuilder
         var allTypes = assembly.GetTypes()
             .Where(t => t.IsPublic)
             .Where(t => !t.Name.StartsWith("<"))  // Exclude compiler-generated types
-            .Where(t => t.Name != "Exports")       // Exclude Exports classes
+            .Where(t => !t.CustomAttributes.Any(
+                a => a.AttributeType.FullName == "Sharpy.SharpyModuleAttribute"))  // Exclude module classes
             .Where(t => t.Name != "Str")            // Already mapped to str primitive
             .ToList();
 
@@ -81,8 +83,9 @@ internal class OverloadIndexBuilder
             else if (type.IsInterface)
                 typeKind = "Interface";
 
-            // Skip static classes (they are Exports-style containers, not constructible types)
-            if (type.IsAbstract && type.IsSealed && !type.IsInterface)
+            // Skip static classes and [SharpyModule]-decorated classes (they are module containers, not constructible types)
+            if ((type.IsAbstract && type.IsSealed && !type.IsInterface) ||
+                type.CustomAttributes.Any(a => a.AttributeType.FullName == "Sharpy.SharpyModuleAttribute"))
                 continue;
 
             var isException = typeof(Exception).IsAssignableFrom(type);
@@ -103,20 +106,21 @@ internal class OverloadIndexBuilder
     {
         if (ns == null)
             return "builtins";
-        if (ns == "Sharpy.Core" || ns.StartsWith("Sharpy.Core."))
+        if (ns == "Sharpy" || ns.StartsWith("Sharpy."))
             return "builtins";
         return ns.ToLowerInvariant().Replace(".", "_");
     }
 
     private string DeriveModuleName(Type exportType)
     {
-        // For Sharpy.Core.Exports, use "builtins"
-        if (exportType.FullName == "Sharpy.Core.Exports")
-            return "builtins";
+        // Read module name from [SharpyModule("name")] attribute
+        var attr = exportType.CustomAttributes
+            .FirstOrDefault(a => a.AttributeType.FullName == "Sharpy.SharpyModuleAttribute");
+        if (attr != null && attr.ConstructorArguments.Count > 0)
+            return (string)attr.ConstructorArguments[0].Value!;
 
-        // Otherwise derive from namespace
-        var ns = exportType.Namespace ?? "unknown";
-        return ns.ToLowerInvariant().Replace(".", "_");
+        // Fallback to namespace-based derivation
+        return DeriveModuleNameFromNamespace(exportType.Namespace);
     }
 
     private ModuleOverloads DiscoverModuleFunctions(Type exportType)

@@ -1,3 +1,4 @@
+extern alias SharpyRT;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
@@ -92,7 +93,7 @@ internal class BuiltinRegistry
     private void LoadBuiltinFunctions()
     {
         // Load Sharpy.Core assembly and discover all builtin functions automatically
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
+        var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
         _discovery.LoadAssembly(sharpyCoreAssembly);
 
         // Get all functions from the "builtins" module
@@ -191,7 +192,7 @@ internal class BuiltinRegistry
         // Search well-known namespaces (ordered by likelihood of use in Sharpy)
         string[] namespaces =
         {
-            "Sharpy.Core",
+            "Sharpy",
             "System",
             "System.Collections.Generic",
             "System.IO",

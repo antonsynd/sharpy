@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
 namespace Sharpy.FStringExpressions0003
 {
@@ -16,21 +16,21 @@ namespace Sharpy.FStringExpressions0003
 #line 61 "f_string_expressions_0003.spy"
             var casual = new CasualPlayer("Bob", 75, 8);
 #line 63 "f_string_expressions_0003.spy"
-            global::Sharpy.Core.Exports.Print(FormattableString.Invariant($"Player: {competitive.Name}, Level: {competitive.Level}"));
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"Player: {competitive.Name}, Level: {competitive.Level}"));
 #line 64 "f_string_expressions_0003.spy"
-            global::Sharpy.Core.Exports.Print(FormattableString.Invariant($"Base: {competitive.BaseScore}, Bonus: {competitive.BonusPoints}"));
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"Base: {competitive.BaseScore}, Bonus: {competitive.BonusPoints}"));
 #line 65 "f_string_expressions_0003.spy"
-            global::Sharpy.Core.Exports.Print(FormattableString.Invariant($"Score: {competitive.GetFinalScore()} ({competitive.Multiplier}x multiplier)"));
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"Score: {competitive.GetFinalScore()} ({competitive.Multiplier}x multiplier)"));
 #line 66 "f_string_expressions_0003.spy"
-            global::Sharpy.Core.Exports.Print(FormattableString.Invariant($"Rank: {competitive.GetRank()}, Status: {competitive.GetFinalScore() > 100}"));
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"Rank: {competitive.GetRank()}, Status: {competitive.GetFinalScore() > 100}"));
 #line 68 "f_string_expressions_0003.spy"
-            global::Sharpy.Core.Exports.Print(FormattableString.Invariant($"Player: {casual.Name}, Games: {casual.GamesPlayed}"));
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"Player: {casual.Name}, Games: {casual.GamesPlayed}"));
 #line 69 "f_string_expressions_0003.spy"
-            global::Sharpy.Core.Exports.Print(FormattableString.Invariant($"Average: {(int)System.Math.Floor((double)((double)(casual.BaseScore) / casual.GamesPlayed))} per game"));
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"Average: {(int)System.Math.Floor((double)((double)(casual.BaseScore) / casual.GamesPlayed))} per game"));
 #line 70 "f_string_expressions_0003.spy"
-            global::Sharpy.Core.Exports.Print(FormattableString.Invariant($"Total Score: {casual.GetFinalScore()}"));
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"Total Score: {casual.GetFinalScore()}"));
 #line 71 "f_string_expressions_0003.spy"
-            global::Sharpy.Core.Exports.Print(FormattableString.Invariant($"Rank: {casual.GetRank()}, Next level at: {11 - casual.GamesPlayed} games"));
+            global::Sharpy.Builtins.Print(FormattableString.Invariant($"Rank: {casual.GetRank()}, Next level at: {11 - casual.GamesPlayed} games"));
         }
     }
 
@@ -42,7 +42,7 @@ namespace Sharpy.FStringExpressions0003
         public virtual int GetFinalScore()
         {
 #line 17 "f_string_expressions_0003.spy"
-            return global::Sharpy.Core.Exports.@Int(this.BaseScore * this.Multiplier);
+            return global::Sharpy.Builtins.@Int(this.BaseScore * this.Multiplier);
         }
 
         public abstract string GetRank();
@@ -64,7 +64,7 @@ namespace Sharpy.FStringExpressions0003
         public override int GetFinalScore()
         {
 #line 35 "f_string_expressions_0003.spy"
-            return global::Sharpy.Core.Exports.@Int((this.BaseScore + this.BonusPoints) * this.Multiplier);
+            return global::Sharpy.Builtins.@Int((this.BaseScore + this.BonusPoints) * this.Multiplier);
         }
 
         public override string GetRank()

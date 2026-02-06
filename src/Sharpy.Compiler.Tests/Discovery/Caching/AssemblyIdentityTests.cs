@@ -9,7 +9,7 @@ public class AssemblyIdentityTests
     public void FromAssembly_CreatesValidIdentity()
     {
         // Arrange
-        var assembly = typeof(Sharpy.Core.Exports).Assembly;
+        var assembly = SharpyCoreReference.Assembly;
 
         // Act
         var identity = AssemblyIdentity.FromAssembly(assembly);

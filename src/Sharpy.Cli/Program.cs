@@ -1,3 +1,4 @@
+extern alias SharpyRT;
 using System.CommandLine;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Lexer;
@@ -423,7 +424,7 @@ class Program
             CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
 
             // Copy Sharpy.Core.dll to the output directory so the executable can find it
-            var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
+            var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
             var sharpyCorePath = sharpyCoreAssembly.Location;
             var outputDir = Path.GetDirectoryName(outputPath)!;
             var sharpyCoreDestPath = Path.Combine(outputDir, "Sharpy.Core.dll");

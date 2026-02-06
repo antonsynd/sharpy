@@ -162,7 +162,7 @@ internal partial class RoslynEmitter
             string name;
             if (isBuiltinFunc)
             {
-                name = $"global::Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}";
+                name = $"global::Sharpy.Builtins.{NameMangler.ToPascalCase(funcName.Name)}";
             }
             else if (isTypeInstantiation && symbol is TypeSymbol typeSymbolForName)
             {
@@ -451,7 +451,7 @@ internal partial class RoslynEmitter
         {
             // Use the same name mangling logic as GenerateCall
             var name = _context.IsBuiltinFunction(funcName.Name)
-                ? $"global::Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
+                ? $"global::Sharpy.Builtins.{NameMangler.ToPascalCase(funcName.Name)}"
                 : NameMangler.ToPascalCase(funcName.Name);
             return ParseName(name);
         }
@@ -1037,7 +1037,7 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)
     {
         // arr[start:stop:step]
-        // Translates to: Sharpy.Core.Slice(arr, start, stop, step)
+        // Translates to: global::Sharpy.Slice(arr, start, stop, step)
         var obj = GenerateExpression(sliceAccess.Object);
         var start = sliceAccess.Start != null
             ? GenerateExpression(sliceAccess.Start)
@@ -1051,9 +1051,7 @@ internal partial class RoslynEmitter
 
         return InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName("Sharpy"),
-                    IdentifierName("Core")),
+                ParseName("global::Sharpy"),
                 IdentifierName("Slice")))
             .AddArgumentListArguments(
                 Argument(obj),

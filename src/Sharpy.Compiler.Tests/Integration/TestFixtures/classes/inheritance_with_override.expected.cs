@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
 namespace Sharpy.InheritanceWithOverride
 {
@@ -24,9 +24,9 @@ namespace Sharpy.InheritanceWithOverride
 #line 50 "inheritance_with_override.spy"
             cat.Speak();
 #line 51 "inheritance_with_override.spy"
-            global::Sharpy.Core.Exports.Print(dog.GetLegs());
+            global::Sharpy.Builtins.Print(dog.GetLegs());
 #line 52 "inheritance_with_override.spy"
-            global::Sharpy.Core.Exports.Print(cat.GetLegs());
+            global::Sharpy.Builtins.Print(cat.GetLegs());
         }
     }
 
@@ -36,7 +36,7 @@ namespace Sharpy.InheritanceWithOverride
         public virtual int Speak()
         {
 #line 11 "inheritance_with_override.spy"
-            global::Sharpy.Core.Exports.Print(0);
+            global::Sharpy.Builtins.Print(0);
 #line 12 "inheritance_with_override.spy"
             return 0;
         }
@@ -60,7 +60,7 @@ namespace Sharpy.InheritanceWithOverride
         public override int Speak()
         {
 #line 26 "inheritance_with_override.spy"
-            global::Sharpy.Core.Exports.Print(1);
+            global::Sharpy.Builtins.Print(1);
 #line 27 "inheritance_with_override.spy"
             return 1;
         }
@@ -78,7 +78,7 @@ namespace Sharpy.InheritanceWithOverride
         public override int Speak()
         {
 #line 38 "inheritance_with_override.spy"
-            global::Sharpy.Core.Exports.Print(2);
+            global::Sharpy.Builtins.Print(2);
 #line 39 "inheritance_with_override.spy"
             return 2;
         }

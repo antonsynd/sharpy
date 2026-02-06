@@ -24,7 +24,9 @@
 
   <ItemGroup>
     <ProjectReference Include="../Sharpy.Compiler/Sharpy.Compiler.csproj" />
-    <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj" />
+    <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj">
+      <Aliases>SharpyRT</Aliases>
+    </ProjectReference>
   </ItemGroup>
 
   <!-- Exclude .expected.cs snapshot files from compilation (they are test data, not source) -->

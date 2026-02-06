@@ -312,7 +312,7 @@ internal class TypeMapper
                 {
                     return builtinTypeSymbol.ClrType.Name;
                 }
-                // Sharpy.Core types need global:: qualification
+                // Sharpy types need global:: qualification
                 return $"global::{builtinTypeSymbol.ClrType.FullName}";
             }
             return sharpyTypeName;

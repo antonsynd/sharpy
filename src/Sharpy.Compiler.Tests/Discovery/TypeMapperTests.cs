@@ -1,3 +1,4 @@
+extern alias SharpyRT;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Semantic;
 using Xunit;
@@ -145,12 +146,12 @@ public class TypeMapperTests
     public void MapRangeIterator_ToBuiltinType()
     {
         // Arrange & Act
-        var result = _mapper.MapClrTypeToSemanticType(typeof(Sharpy.Core.RangeIterator));
+        var result = _mapper.MapClrTypeToSemanticType(typeof(SharpyRT::Sharpy.RangeIterator));
 
         // Assert
         Assert.IsType<BuiltinType>(result);
         var builtinType = (BuiltinType)result;
         Assert.Equal("RangeIterator", builtinType.Name);
-        Assert.Equal(typeof(Sharpy.Core.RangeIterator), builtinType.ClrType);
+        Assert.Equal(typeof(SharpyRT::Sharpy.RangeIterator), builtinType.ClrType);
     }
 }

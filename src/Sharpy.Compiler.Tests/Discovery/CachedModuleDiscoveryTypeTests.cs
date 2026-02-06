@@ -15,7 +15,7 @@ public class CachedModuleDiscoveryTypeTests : IDisposable
         _testCacheDir = Path.Combine(Path.GetTempPath(), "sharpy-test-cache", Guid.NewGuid().ToString());
         var cache = new OverloadIndexCache(_testCacheDir);
         _discovery = new CachedModuleDiscovery(cache);
-        _discovery.LoadAssembly(typeof(Sharpy.Core.Exports).Assembly);
+        _discovery.LoadAssembly(SharpyCoreReference.Assembly);
     }
 
     public void Dispose()

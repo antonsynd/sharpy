@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
 namespace Sharpy.GenericFunction
 {
@@ -30,7 +30,7 @@ namespace Sharpy.GenericFunction
 #line 12 "generic_function.spy"
             int resultInt = Identity<int>(42);
 #line 13 "generic_function.spy"
-            global::Sharpy.Core.Exports.Print(resultInt);
+            global::Sharpy.Builtins.Print(resultInt);
 #line 16 "generic_function.spy"
             int x = 42;
 #line 17 "generic_function.spy"
@@ -38,7 +38,7 @@ namespace Sharpy.GenericFunction
 #line 18 "generic_function.spy"
             int result = Swap<int>(x, y);
 #line 19 "generic_function.spy"
-            global::Sharpy.Core.Exports.Print(result);
+            global::Sharpy.Builtins.Print(result);
 #line 22 "generic_function.spy"
             double a = 3.14;
 #line 23 "generic_function.spy"
@@ -46,7 +46,7 @@ namespace Sharpy.GenericFunction
 #line 24 "generic_function.spy"
             double resultF = Swap<double>(a, b);
 #line 25 "generic_function.spy"
-            global::Sharpy.Core.Exports.Print(resultF);
+            global::Sharpy.Builtins.Print(resultF);
         }
     }
 }

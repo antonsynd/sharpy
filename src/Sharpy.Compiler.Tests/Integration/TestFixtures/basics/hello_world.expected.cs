@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
 namespace Sharpy.HelloWorld
 {
@@ -12,7 +12,7 @@ namespace Sharpy.HelloWorld
         public static void Main()
         {
 #line 2 "hello_world.spy"
-            global::Sharpy.Core.Exports.Print("Hello, World!");
+            global::Sharpy.Builtins.Print("Hello, World!");
         }
     }
 }

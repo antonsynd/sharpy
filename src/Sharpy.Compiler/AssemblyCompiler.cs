@@ -1,3 +1,4 @@
+extern alias SharpyRT;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
@@ -172,7 +173,7 @@ internal class AssemblyCompiler
         }
 
         // Add Sharpy.Core reference
-        references.Add(MetadataReference.CreateFromFile(typeof(Sharpy.Core.Exports).Assembly.Location));
+        references.Add(MetadataReference.CreateFromFile(typeof(SharpyRT::Sharpy.Builtins).Assembly.Location));
 
         // Add netstandard reference (required because Sharpy.Core targets netstandard2.1/2.0)
         try
@@ -296,7 +297,7 @@ internal class AssemblyCompiler
             var assemblyName = projectConfig.AssemblyName ?? projectConfig.RootNamespace;
 
             // Get Sharpy.Core assembly info
-            var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
+            var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
             var sharpyCoreLocation = sharpyCoreAssembly.Location;
             var sharpyCoreName = sharpyCoreAssembly.GetName();
             var sharpyCoreVersion = sharpyCoreName.Version?.ToString() ?? "1.0.0";

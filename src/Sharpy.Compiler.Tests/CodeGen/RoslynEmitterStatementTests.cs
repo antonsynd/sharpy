@@ -588,7 +588,7 @@ public class RoslynEmitterStatementTests
         Assert.Contains("foreach", result);
         Assert.Contains("var", result);
         Assert.Contains("in items", result);
-        Assert.Contains("Sharpy.Core.Exports.Print", result);
+        Assert.Contains("Sharpy.Builtins.Print", result);
     }
 
     [Fact]
@@ -695,7 +695,7 @@ public class RoslynEmitterStatementTests
 
         Assert.Contains("try", result);
         Assert.Contains("catch (Exception", result);
-        Assert.Contains("Sharpy.Core.Exports.Print", result);
+        Assert.Contains("Sharpy.Builtins.Print", result);
     }
 
     [Fact]

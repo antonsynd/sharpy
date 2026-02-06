@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
 namespace Sharpy.TypeInference
 {
@@ -20,13 +20,13 @@ namespace Sharpy.TypeInference
 #line 5 "type_inference.spy"
             var flag = true;
 #line 7 "type_inference.spy"
-            global::Sharpy.Core.Exports.Print(x);
+            global::Sharpy.Builtins.Print(x);
 #line 8 "type_inference.spy"
-            global::Sharpy.Core.Exports.Print(y);
+            global::Sharpy.Builtins.Print(y);
 #line 9 "type_inference.spy"
-            global::Sharpy.Core.Exports.Print(z);
+            global::Sharpy.Builtins.Print(z);
 #line 10 "type_inference.spy"
-            global::Sharpy.Core.Exports.Print(flag);
+            global::Sharpy.Builtins.Print(flag);
         }
     }
 }

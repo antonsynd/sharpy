@@ -54,7 +54,7 @@ public class CachedDiscoveryPerformanceTests : IDisposable
         cache.ClearAll();
 
         var discovery = new CachedModuleDiscovery(cache);
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
+        var sharpyCoreAssembly = SharpyCoreReference.Assembly;
         var stopwatch = Stopwatch.StartNew();
 
         discovery.LoadAssembly(sharpyCoreAssembly);
@@ -71,7 +71,7 @@ public class CachedDiscoveryPerformanceTests : IDisposable
     [Fact]
     public void CachedDiscovery_SecondLoad_UsesCacheFasterThanFirstLoad()
     {
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
+        var sharpyCoreAssembly = SharpyCoreReference.Assembly;
 
         // Use test-specific cache directory
         var cache = new OverloadIndexCache(_testCacheDir);
@@ -126,7 +126,7 @@ public class CachedDiscoveryPerformanceTests : IDisposable
     [Fact]
     public void CachedDiscovery_CachedLoad_CompletesWithinTime()
     {
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
+        var sharpyCoreAssembly = SharpyCoreReference.Assembly;
 
         // Use test-specific cache directory
         var cache = new OverloadIndexCache(_testCacheDir);
@@ -151,7 +151,7 @@ public class CachedDiscoveryPerformanceTests : IDisposable
     [Fact]
     public void ModuleRegistry_LoadMultipleReferences_CompletesWithinTime()
     {
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
         var sampleModulePath = "../../../../build/modules/SampleModule.dll";
 
         var references = File.Exists(sampleModulePath)
@@ -183,7 +183,7 @@ x = 5
 y = 10
 z = x + y
 ";
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
 
         // Without modules
         var compilerNoModules = new Sharpy.Compiler.Compiler();
@@ -215,7 +215,7 @@ z = x + y
     public void GetModuleFunctions_Cached_FastRetrieval()
     {
         var registry = new ModuleRegistry(NullLogger.Instance);
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
+        var sharpyCoreAssembly = SharpyCoreReference.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
         // First call
@@ -246,7 +246,7 @@ z = x + y
     {
         // Use test-specific cache directory
         var cache = new OverloadIndexCache(_testCacheDir);
-        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
+        var sharpyCoreAssembly = SharpyCoreReference.Assembly;
 
         // Ensure cache exists
         var discovery = new CachedModuleDiscovery(cache);

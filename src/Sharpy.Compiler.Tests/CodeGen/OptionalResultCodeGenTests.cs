@@ -223,7 +223,7 @@ def foo(x: int? = None()) -> None:
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Sharpy.Core.Exports).Assembly.Location),
+            MetadataReference.CreateFromFile(SharpyCoreReference.Location),
             MetadataReference.CreateFromFile(systemRuntimePath),
         };
 
