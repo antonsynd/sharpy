@@ -153,7 +153,10 @@ internal partial class RoslynEmitter
         // Add project namespace using to make all project-level types accessible.
         // This is needed when types live directly at namespace level (e.g., when file name
         // matches type name: animal.spy → class Animal at namespace level without module wrapper).
-        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+        // Skip if the project namespace is "Sharpy" since global::Sharpy already covers it
+        // (adding both causes CS0105 duplicate using warning).
+        if (!string.IsNullOrEmpty(_context.ProjectNamespace) &&
+            _context.ProjectNamespace != "Sharpy")
         {
             usings.Add(UsingDirective(ParseName(_context.ProjectNamespace)));
         }
