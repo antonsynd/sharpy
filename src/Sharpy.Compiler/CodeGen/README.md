@@ -10,7 +10,7 @@ This directory contains the Roslyn-based C# code generator.
   - `.Statements.cs` - Statement generation
   - `.TypeDeclarations.cs` - Class/struct/interface/enum generation
   - `.ClassMembers.cs` - Methods, properties, constructors
-  - `.ModuleClass.cs` - Module-level class (Exports)
+  - `.ModuleClass.cs` - Module class generation (named after source file)
   - `.CompilationUnit.cs` - Top-level compilation unit
   - `.Operators.cs` - Binary/unary operators
 - `CodeGenContext.cs` - Shared context for emission
@@ -20,19 +20,19 @@ This directory contains the Roslyn-based C# code generator.
 
 ## Generated Code Structure
 
-A Sharpy module generates a C# namespace containing:
+A Sharpy module generates a C# namespace containing a static module class.
+The module class is named after the source file (PascalCase), or `Program` for
+entry point files. Types (classes, structs, interfaces, enums) are nested inside
+the module class. Directory hierarchy is expressed via nested `partial static class`
+wrappers, not additional namespaces.
 
-1. **Module Class** (`Exports` or `Program`)
+1. **Module Class** (named after source file, or `Program` for entry points)
    - Static fields (module-level variables)
    - Static constants
    - Static methods (module-level functions)
+   - Nested type declarations (classes, structs, interfaces, enums)
    - `Main()` method (entry point files only)
-
-2. **Type Declarations** (at namespace level, NOT nested)
-   - Classes
-   - Structs
-   - Interfaces
-   - Enums
+   - `[SharpyModule("name")]` attribute (non-Program classes)
 
 Example:
 
@@ -54,19 +54,40 @@ def main():
 Generates:
 
 ```csharp
-namespace MyProject.Geometry
+namespace MyProject
 {
-    public static class Program
+    public static partial class Program
     {
         public static int Counter = 0;
+
+        public class Point  // Nested inside module class
+        {
+            public int X;
+            public int Y;
+        }
+
         public static int Helper() => 42;
         public static void Main() { ... }
     }
+}
+```
 
-    public class Point  // Namespace level, not nested
+For subdirectory files, wrapper classes are generated:
+
+```csharp
+// lib/math/ops.spy → wrappers [Lib, Math], module Ops
+namespace MyProject
+{
+    public static partial class Lib
     {
-        public int X;
-        public int Y;
+        public static partial class Math
+        {
+            [SharpyModule("lib.math.ops")]
+            public static partial class Ops
+            {
+                // module members here
+            }
+        }
     }
 }
 ```
@@ -76,9 +97,10 @@ namespace MyProject.Geometry
 The emitter uses Roslyn's `SyntaxFactory` exclusively (no string templating):
 
 1. **Module → CompilationUnit**
-   - Creates namespace and using directives
-   - Creates module class (Exports/Program)
-   - Places type declarations at namespace level
+   - Creates project-level namespace and using directives
+   - Creates module class (named after file, or Program for entry points)
+   - Wraps module class in directory-based `partial static class` wrappers
+   - Nests all type declarations inside the module class
 
 2. **Module-Level Declarations**
    - Entry point files require `main()` function
@@ -86,7 +108,7 @@ The emitter uses Roslyn's `SyntaxFactory` exclusively (no string templating):
    - Top-level declarations become static fields/methods
 
 3. **Type definitions → C# classes/structs/interfaces/enums**
-   - Placed at namespace level (not nested in module class)
+   - Nested inside the module class
    - Preserves inheritance hierarchies
    - Handles abstract/virtual/override modifiers
 

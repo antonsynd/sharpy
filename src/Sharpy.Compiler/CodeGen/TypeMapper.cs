@@ -324,8 +324,8 @@ internal class TypeMapper
 
     /// <summary>
     /// Gets the fully qualified C# type name for a type from another file/module.
-    /// Types are placed at namespace level (siblings to the module class), so
-    /// we use Namespace.TypeName, not Namespace.Exports.TypeName.
+    /// Types are nested inside the module class, so cross-file references use
+    /// Namespace.ModuleClass.TypeName.
     /// </summary>
     private string GetFullyQualifiedTypeName(TypeSymbol typeSymbol, string sharpyTypeName)
     {

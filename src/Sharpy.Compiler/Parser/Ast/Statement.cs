@@ -714,7 +714,7 @@ public record FromImportStatement : Statement
     /// <summary>
     /// Symbols that are re-exported from this from-import statement, set during semantic analysis.
     /// Maps the local name (possibly aliased) to the symbol information.
-    /// This is used during code generation to generate delegating members in the Exports class.
+    /// This is used during code generation to generate delegating members in the module class.
     /// </summary>
     public Dictionary<string, Semantic.Symbol>? ReExportedSymbols { get; set; }
 

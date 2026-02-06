@@ -660,7 +660,7 @@ internal class ImportResolver
             return ResolveNetNamespaceModule(moduleName, cacheKey);
         }
 
-        // Check if this module is loaded in the registry (for Exports classes)
+        // Check if this module is loaded in the registry (for module classes)
         if (!_moduleRegistry.IsModuleLoaded(moduleName))
             return null;
 

@@ -205,7 +205,6 @@ internal partial class RoslynEmitter
                 else
                 {
                     // import module as alias -> using alias = ProjectNamespace.Module;
-                    // Module IS the class now (no more .Exports suffix)
                     string fullModuleClass;
                     if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                     {
@@ -233,7 +232,6 @@ internal partial class RoslynEmitter
                     // import module -> using module_alias = ProjectNamespace.Module;
                     var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_"));
 
-                    // Module IS the class now (no more .Exports suffix)
                     // e.g., "config" → "TestProject.Config"
                     // e.g., "lib.math.operations" → "TestProject.Lib.Math.Operations"
                     string fullModuleClass;
@@ -285,14 +283,13 @@ internal partial class RoslynEmitter
         else
         {
             // Generate using static for the module class
-            // Module IS the class now — no separate .Exports suffix
             // e.g., "from config import MAX_SIZE" → "using static TestProject.Config;"
             // e.g., "from lib.math.operations import add" → "using static TestProject.Lib.Math.Operations;"
 
             var moduleName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
             var moduleNamespacePath = ConvertModuleNameToNamespace(moduleName);
 
-            // Module class path = ProjectNamespace.ModulePath (no .Exports)
+            // Module class path = ProjectNamespace.ModulePath
             string fullModuleClass;
             if (!string.IsNullOrEmpty(_context.ProjectNamespace))
             {
@@ -339,7 +336,7 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Determines if a module name refers to a .NET framework namespace.
-    /// .NET framework namespaces don't have an Exports class, so they need different import handling.
+    /// .NET framework namespaces use different import handling (no module class wrapper).
     /// </summary>
     private static bool IsNetFrameworkNamespace(string moduleName)
     {

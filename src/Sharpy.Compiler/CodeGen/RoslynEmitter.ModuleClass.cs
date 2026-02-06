@@ -258,7 +258,7 @@ internal partial class RoslynEmitter
 
         // Generate re-export delegating members for from-import statements
         // This enables patterns like: from .helpers import utility_func
-        // which makes utility_func accessible from this module's Exports class
+        // which makes utility_func accessible from this module's class
         if (reExportImports != null)
         {
             foreach (var fromImport in reExportImports)
@@ -496,7 +496,7 @@ internal partial class RoslynEmitter
         // Map return type
         var returnType = _typeMapper.MapSemanticType(funcSymbol.ReturnType);
 
-        // Build the delegate call: SourceModule.Exports.Method(args)
+        // Build the delegate call: SourceClass.Method(args)
         var delegateCall = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
@@ -540,7 +540,7 @@ internal partial class RoslynEmitter
         // Map the type
         var propertyType = _typeMapper.MapSemanticType(GetVariableType(varSymbol));
 
-        // Build the delegate access: SourceModule.Exports.Property
+        // Build the delegate access: SourceClass.Property
         var delegateAccess = MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,
             ParseExpression(sourceClassName),
