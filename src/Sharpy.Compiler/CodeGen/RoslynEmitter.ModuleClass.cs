@@ -462,10 +462,9 @@ internal partial class RoslynEmitter
                     break;
 
                 case TypeSymbol:
-                    _context.AddError(
-                        $"Cannot re-export type '{localName}' from __init__.spy. " +
-                        $"Import the type from its defining module instead.",
-                        code: DiagnosticCodes.CodeGen.TypeReExportNotSupported);
+                    // Type re-exports cannot be delegated (no wrapper possible).
+                    // The consumer's import will resolve the type via its defining module's
+                    // using static directive. Skip silently.
                     break;
             }
         }

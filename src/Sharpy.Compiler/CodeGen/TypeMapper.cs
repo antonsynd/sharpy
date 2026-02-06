@@ -349,8 +349,24 @@ internal class TypeMapper
 
         var typeName = NameMangler.ToPascalCase(sharpyTypeName);
 
-        // Types are at namespace level (not nested in Exports), so we use:
-        // ProjectNamespace.ModuleNamespace.TypeName
+        // Check for collision: when the file/directory name (PascalCase) matches the type name,
+        // the type IS the module class (collision merge), not nested inside it.
+        // e.g., animal.spy with class Animal → type is Sharpy.Test.Animal, not Sharpy.Test.Animal.Animal
+        var lastSegment = moduleNamespace.Contains('.')
+            ? moduleNamespace.Split('.').Last()
+            : moduleNamespace;
+
+        if (string.Equals(lastSegment, typeName, StringComparison.Ordinal))
+        {
+            // Type IS the module class — module path is the type path
+            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+            {
+                return $"{_context.ProjectNamespace}.{moduleNamespace}";
+            }
+            return moduleNamespace;
+        }
+
+        // Type is nested inside the module class
         if (!string.IsNullOrEmpty(_context.ProjectNamespace))
         {
             return $"{_context.ProjectNamespace}.{moduleNamespace}.{typeName}";

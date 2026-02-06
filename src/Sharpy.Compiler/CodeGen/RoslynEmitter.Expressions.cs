@@ -1472,15 +1472,10 @@ internal partial class RoslynEmitter
             !string.IsNullOrEmpty(_context.SourceFilePath) &&
             !string.Equals(typeSymbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
         {
-            // Type from another file - use fully qualified name (at namespace level)
             var moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath);
             var typeName = NameMangler.ToPascalCase(sharpyTypeName);
 
-            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-            {
-                return $"{_context.ProjectNamespace}.{moduleNamespace}.{typeName}";
-            }
-            return $"{moduleNamespace}.{typeName}";
+            return BuildQualifiedTypeName(moduleNamespace, typeName);
         }
 
         // Check if type is from an external module (imported via DefiningModule)
@@ -1489,15 +1484,41 @@ internal partial class RoslynEmitter
             var moduleNamespace = ConvertModuleToNamespace(typeSymbol.DefiningModule);
             var typeName = NameMangler.ToPascalCase(sharpyTypeName);
 
-            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-            {
-                return $"{_context.ProjectNamespace}.{moduleNamespace}.{typeName}";
-            }
-            return $"{moduleNamespace}.{typeName}";
+            return BuildQualifiedTypeName(moduleNamespace, typeName);
         }
 
         // Type is in current file - use simple name
         return NameMangler.ToPascalCase(sharpyTypeName);
+    }
+
+    /// <summary>
+    /// Builds a fully qualified type name, handling collision cases where the type IS
+    /// the module class (e.g., animal.spy defining class Animal).
+    /// </summary>
+    private string BuildQualifiedTypeName(string moduleNamespace, string typeName)
+    {
+        // Check for collision: when the module name matches the type name,
+        // the type IS the module class, not nested inside it.
+        var lastSegment = moduleNamespace.Contains('.')
+            ? moduleNamespace.Split('.').Last()
+            : moduleNamespace;
+
+        if (string.Equals(lastSegment, typeName, StringComparison.Ordinal))
+        {
+            // Type IS the module class — module path is the type path
+            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+            {
+                return $"{_context.ProjectNamespace}.{moduleNamespace}";
+            }
+            return moduleNamespace;
+        }
+
+        // Type is nested inside the module class
+        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+        {
+            return $"{_context.ProjectNamespace}.{moduleNamespace}.{typeName}";
+        }
+        return $"{moduleNamespace}.{typeName}";
     }
 
     /// <summary>

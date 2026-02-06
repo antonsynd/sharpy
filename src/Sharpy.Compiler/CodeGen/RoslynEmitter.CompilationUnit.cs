@@ -306,8 +306,34 @@ internal partial class RoslynEmitter
             yield return UsingDirective(ParseName(fullModuleClass))
                 .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
 
-            // No non-static using needed — types are nested inside the module class
-            // and are exposed by 'using static' (per C# spec, nested types are accessible)
+            // For imported types that are re-exported from a different module,
+            // generate additional using static directives for their defining modules.
+            // This handles the pattern: from mypackage import SomeClass
+            // where SomeClass is defined in mypackage.submodule but re-exported via __init__.spy.
+            if (!fromImport.ImportAll && fromImport.Names.Length > 0)
+            {
+                foreach (var importedName in fromImport.Names)
+                {
+                    var symbol = _context.LookupSymbol(importedName.Name);
+                    if (symbol is TypeSymbol typeSymbol &&
+                        !string.IsNullOrEmpty(typeSymbol.DefiningModule) &&
+                        typeSymbol.DefiningModule != moduleName)
+                    {
+                        var definingModulePath = ConvertModuleNameToNamespace(typeSymbol.DefiningModule);
+                        string fullDefiningModuleClass;
+                        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                        {
+                            fullDefiningModuleClass = $"{_context.ProjectNamespace}.{definingModulePath}";
+                        }
+                        else
+                        {
+                            fullDefiningModuleClass = definingModulePath;
+                        }
+                        yield return UsingDirective(ParseName(fullDefiningModuleClass))
+                            .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
+                    }
+                }
+            }
         }
     }
 
