@@ -2,7 +2,7 @@ using System.Linq;
 using System;
 namespace Sharpy.Core
 {
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Return True if class is a subclass of classinfo. A class is considered

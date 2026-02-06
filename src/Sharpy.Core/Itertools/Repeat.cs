@@ -2,7 +2,7 @@ using Sharpy.Core;
 
 namespace Sharpy.Itertools
 {
-    internal static partial class Exports
+    internal static partial class Itertools
     {
         public static Iterator<T> Repeat<T>(T elem)
         {

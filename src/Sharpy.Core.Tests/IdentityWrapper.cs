@@ -1,6 +1,6 @@
 namespace Sharpy.Core.Tests;
 
-using static Sharpy.Core.Exports;
+using static Sharpy.Core.Builtins;
 
 public sealed class IdentityWrapper<T> : Wrapper<T>
 {

@@ -8,7 +8,7 @@ public class ListConversionTests
     [Fact]
     public void List_FromEmpty_ReturnsEmptyList()
     {
-        var result = Exports.List<int>();
+        var result = Builtins.List<int>();
         Assert.NotNull(result);
         Assert.Equal(0, result.__Len__());
     }
@@ -17,7 +17,7 @@ public class ListConversionTests
     public void List_FromIEnumerable_ReturnsList()
     {
         var source = new System.Collections.Generic.List<int> { 1, 2, 3 };
-        var result = Exports.List<int>(source);
+        var result = Builtins.List<int>(source);
 
         Assert.Equal(3, result.__Len__());
         Assert.Equal(1, result[0]);
@@ -33,7 +33,7 @@ public class ListConversionTests
         original.Add(2);
         original.Add(3);
 
-        var copy = Exports.List(original);
+        var copy = Builtins.List(original);
 
         Assert.Equal(3, copy.__Len__());
         Assert.Equal(1, copy[0]);
@@ -49,8 +49,8 @@ public class ListConversionTests
     [Fact]
     public void List_FromIterable_ReturnsList()
     {
-        var range = Exports.Range(1, 4); // 1, 2, 3
-        var result = Exports.List(range);
+        var range = Builtins.Range(1, 4); // 1, 2, 3
+        var result = Builtins.List(range);
 
         Assert.Equal(3, result.__Len__());
         Assert.Equal(1, result[0]);

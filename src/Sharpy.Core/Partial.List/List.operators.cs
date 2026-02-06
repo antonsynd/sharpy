@@ -106,9 +106,9 @@ namespace Sharpy.Core
                 var leftElem = _list[i];
                 var rightElem = other._list[i];
 
-                if (!Operator.Exports.Eq(leftElem, rightElem))
+                if (!Operator.Operator.Eq(leftElem, rightElem))
                 {
-                    return Operator.Exports.Lt(leftElem, rightElem);
+                    return Operator.Operator.Lt(leftElem, rightElem);
                 }
             }
 
@@ -132,9 +132,9 @@ namespace Sharpy.Core
                 var leftElem = _list[i];
                 var rightElem = other._list[i];
 
-                if (!Operator.Exports.Eq(leftElem, rightElem))
+                if (!Operator.Operator.Eq(leftElem, rightElem))
                 {
-                    return Operator.Exports.Lt(leftElem, rightElem);
+                    return Operator.Operator.Lt(leftElem, rightElem);
                 }
             }
 
@@ -158,9 +158,9 @@ namespace Sharpy.Core
                 var leftElem = _list[i];
                 var rightElem = other._list[i];
 
-                if (!Operator.Exports.Eq(leftElem, rightElem))
+                if (!Operator.Operator.Eq(leftElem, rightElem))
                 {
-                    return Operator.Exports.Gt(leftElem, rightElem);
+                    return Operator.Operator.Gt(leftElem, rightElem);
                 }
             }
 
@@ -184,9 +184,9 @@ namespace Sharpy.Core
                 var leftElem = _list[i];
                 var rightElem = other._list[i];
 
-                if (!Operator.Exports.Eq(leftElem, rightElem))
+                if (!Operator.Operator.Eq(leftElem, rightElem))
                 {
-                    return Operator.Exports.Gt(leftElem, rightElem);
+                    return Operator.Operator.Gt(leftElem, rightElem);
                 }
             }
 

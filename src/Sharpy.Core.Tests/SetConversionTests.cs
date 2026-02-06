@@ -8,7 +8,7 @@ public class SetConversionTests
     [Fact]
     public void Set_FromEmpty_ReturnsEmptySet()
     {
-        var result = Exports.Set<int>();
+        var result = Builtins.Set<int>();
         Assert.NotNull(result);
         Assert.Equal(0, result.__Len__());
     }
@@ -17,7 +17,7 @@ public class SetConversionTests
     public void Set_FromIEnumerable_ReturnsSet()
     {
         var source = new System.Collections.Generic.List<int> { 1, 2, 3, 2, 1 };
-        var result = Exports.Set<int>(source);
+        var result = Builtins.Set<int>(source);
 
         Assert.Equal(3, result.__Len__());
         Assert.Contains(1, result);
@@ -33,7 +33,7 @@ public class SetConversionTests
         original.Add(2);
         original.Add(3);
 
-        var copy = Exports.Set(original);
+        var copy = Builtins.Set(original);
 
         Assert.Equal(3, copy.__Len__());
         Assert.Contains(1, copy);
@@ -49,8 +49,8 @@ public class SetConversionTests
     [Fact]
     public void Set_FromIterable_ReturnsSet()
     {
-        var range = Exports.Range(1, 4); // 1, 2, 3
-        var result = Exports.Set(range);
+        var range = Builtins.Range(1, 4); // 1, 2, 3
+        var result = Builtins.Set(range);
 
         Assert.Equal(3, result.__Len__());
         Assert.Contains(1, result);
@@ -62,7 +62,7 @@ public class SetConversionTests
     public void Set_FromIEnumerableWithDuplicates_RemovesDuplicates()
     {
         var source = new System.Collections.Generic.List<string> { "a", "b", "a", "c", "b" };
-        var result = Exports.Set<string>(source);
+        var result = Builtins.Set<string>(source);
 
         Assert.Equal(3, result.__Len__());
         Assert.Contains("a", result);

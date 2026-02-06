@@ -29,7 +29,7 @@ namespace Sharpy.Core
             }
 
             _predicate = predicate;
-            _iterator = Exports.Iter(iterable);
+            _iterator = Builtins.Iter(iterable);
         }
 
         /// <inheritdoc/>
@@ -46,7 +46,7 @@ namespace Sharpy.Core
         }
     }
 
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Construct an iterator from those elements of iterable for which predicate is true.

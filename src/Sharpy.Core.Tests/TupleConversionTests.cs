@@ -9,7 +9,7 @@ public class TupleConversionTests
     public void Tuple_FromIEnumerable_TwoElements_ReturnsTuple()
     {
         var source = new System.Collections.Generic.List<object> { 1, "hello" };
-        var result = Exports.Tuple<int, string>(source);
+        var result = Builtins.Tuple<int, string>(source);
 
         Assert.Equal(1, result.Item1);
         Assert.Equal("hello", result.Item2);
@@ -19,7 +19,7 @@ public class TupleConversionTests
     public void Tuple_FromIEnumerable_ThreeElements_ReturnsTuple()
     {
         var source = new System.Collections.Generic.List<object> { 1, "hello", 3.14 };
-        var result = Exports.Tuple<int, string, double>(source);
+        var result = Builtins.Tuple<int, string, double>(source);
 
         Assert.Equal(1, result.Item1);
         Assert.Equal("hello", result.Item2);
@@ -31,7 +31,7 @@ public class TupleConversionTests
     {
         var source = new System.Collections.Generic.List<object> { 1, 2, 3 };
 
-        var ex = Assert.Throws<ValueError>(() => Exports.Tuple<int, int>(source));
+        var ex = Assert.Throws<ValueError>(() => Builtins.Tuple<int, int>(source));
         Assert.Contains("Expected 2 items", ex.Message);
         Assert.Contains("got 3", ex.Message);
     }
@@ -41,7 +41,7 @@ public class TupleConversionTests
     {
         var source = new System.Collections.Generic.List<object> { 1, 2 };
 
-        var ex = Assert.Throws<ValueError>(() => Exports.Tuple<int, int, int>(source));
+        var ex = Assert.Throws<ValueError>(() => Builtins.Tuple<int, int, int>(source));
         Assert.Contains("Expected 3 items", ex.Message);
         Assert.Contains("got 2", ex.Message);
     }
@@ -53,7 +53,7 @@ public class TupleConversionTests
         list.Add(42);
         list.Add("world");
 
-        var result = Exports.Tuple<int, string>(list);
+        var result = Builtins.Tuple<int, string>(list);
 
         Assert.Equal(42, result.Item1);
         Assert.Equal("world", result.Item2);
@@ -67,7 +67,7 @@ public class TupleConversionTests
         list.Add("test");
         list.Add(true);
 
-        var result = Exports.Tuple<int, string, bool>(list);
+        var result = Builtins.Tuple<int, string, bool>(list);
 
         Assert.Equal(100, result.Item1);
         Assert.Equal("test", result.Item2);
@@ -80,7 +80,7 @@ public class TupleConversionTests
         var list = new List<object>();
         list.Add(1);
 
-        var ex = Assert.Throws<ValueError>(() => Exports.Tuple<int, int>(list));
+        var ex = Assert.Throws<ValueError>(() => Builtins.Tuple<int, int>(list));
         Assert.Contains("Expected 2 items", ex.Message);
         Assert.Contains("got 1", ex.Message);
     }
@@ -94,7 +94,7 @@ public class TupleConversionTests
         list.Add(3);
         list.Add(4);
 
-        var ex = Assert.Throws<ValueError>(() => Exports.Tuple<int, int, int>(list));
+        var ex = Assert.Throws<ValueError>(() => Builtins.Tuple<int, int, int>(list));
         Assert.Contains("Expected 3 items", ex.Message);
         Assert.Contains("got 4", ex.Message);
     }
@@ -106,7 +106,7 @@ public class TupleConversionTests
         list.Add(10);
         list.Add(11);
 
-        var result = Exports.Tuple<int, int>(list);
+        var result = Builtins.Tuple<int, int>(list);
 
         Assert.Equal(10, result.Item1);
         Assert.Equal(11, result.Item2);
@@ -120,7 +120,7 @@ public class TupleConversionTests
         list.Add(6);
         list.Add(7);
 
-        var result = Exports.Tuple<int, int, int>(list);
+        var result = Builtins.Tuple<int, int, int>(list);
 
         Assert.Equal(5, result.Item1);
         Assert.Equal(6, result.Item2);
@@ -131,7 +131,7 @@ public class TupleConversionTests
     public void Tuple_MixedTypes_ReturnsTuple()
     {
         var source = new System.Collections.Generic.List<object> { 42, "hello" };
-        var result = Exports.Tuple<int, string>(source);
+        var result = Builtins.Tuple<int, string>(source);
 
         Assert.Equal(42, result.Item1);
         Assert.Equal("hello", result.Item2);
@@ -141,7 +141,7 @@ public class TupleConversionTests
     public void Tuple_ThreeElementsMixedTypes_ReturnsTuple()
     {
         var source = new System.Collections.Generic.List<object> { true, 3.14, "test" };
-        var result = Exports.Tuple<bool, double, string>(source);
+        var result = Builtins.Tuple<bool, double, string>(source);
 
         Assert.True(result.Item1);
         Assert.Equal(3.14, result.Item2);

@@ -3,7 +3,7 @@ namespace Sharpy.Core
 {
     using System.Linq;
 
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Return True if the object argument is an instance of the classinfo argument.

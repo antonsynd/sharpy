@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 namespace Sharpy.Core
 {
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Sums a sequence of integers.

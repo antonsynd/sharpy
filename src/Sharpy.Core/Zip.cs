@@ -28,8 +28,8 @@ namespace Sharpy.Core
                 throw TypeError.ArgNone("zip", "iterable2");
             }
 
-            _iterator1 = Exports.Iter(iterable1);
-            _iterator2 = Exports.Iter(iterable2);
+            _iterator1 = Builtins.Iter(iterable1);
+            _iterator2 = Builtins.Iter(iterable2);
         }
 
         /// <inheritdoc/>
@@ -76,9 +76,9 @@ namespace Sharpy.Core
                 throw TypeError.ArgNone("zip", "iterable3");
             }
 
-            _iterator1 = Exports.Iter(iterable1);
-            _iterator2 = Exports.Iter(iterable2);
-            _iterator3 = Exports.Iter(iterable3);
+            _iterator1 = Builtins.Iter(iterable1);
+            _iterator2 = Builtins.Iter(iterable2);
+            _iterator3 = Builtins.Iter(iterable3);
         }
 
         /// <inheritdoc/>
@@ -91,7 +91,7 @@ namespace Sharpy.Core
         }
     }
 
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Make an iterator that aggregates elements from two iterables.

@@ -3,7 +3,7 @@ using Sharpy.Core;
 
 namespace Sharpy.Operator
 {
-    public static partial class Exports
+    public static partial class Operator
     {
         public static decimal Abs(decimal x)
         {

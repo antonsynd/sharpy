@@ -5,7 +5,7 @@ namespace Sharpy.Core
     /// Python's float() maps to .NET double. These overloads ensure
     /// that the builtin discovery finds "float" as a valid builtin name.
     /// </summary>
-    public static partial class Exports
+    public static partial class Builtins
     {
         public static double Float(bool b)
         {

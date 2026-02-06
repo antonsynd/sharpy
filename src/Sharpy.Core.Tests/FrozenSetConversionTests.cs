@@ -8,7 +8,7 @@ public class FrozenSetConversionTests
     [Fact]
     public void FrozenSet_FromEmpty_ReturnsEmptyFrozenSet()
     {
-        var result = Exports.FrozenSet<int>();
+        var result = Builtins.FrozenSet<int>();
         Assert.NotNull(result);
         Assert.Empty(result);
     }
@@ -17,7 +17,7 @@ public class FrozenSetConversionTests
     public void FrozenSet_FromIEnumerable_ReturnsFrozenSet()
     {
         var source = new System.Collections.Generic.List<int> { 1, 2, 3, 2, 1 };
-        var result = Exports.FrozenSet<int>(source);
+        var result = Builtins.FrozenSet<int>(source);
 
         Assert.Equal(3, result.Count);
         Assert.Contains(1, result);
@@ -28,8 +28,8 @@ public class FrozenSetConversionTests
     [Fact]
     public void FrozenSet_FromIterable_ReturnsFrozenSet()
     {
-        var range = Exports.Range(1, 4); // 1, 2, 3
-        var result = Exports.FrozenSet(range);
+        var range = Builtins.Range(1, 4); // 1, 2, 3
+        var result = Builtins.FrozenSet(range);
 
         Assert.Equal(3, result.Count);
         Assert.Contains(1, result);
@@ -41,7 +41,7 @@ public class FrozenSetConversionTests
     public void FrozenSet_FromIEnumerableWithDuplicates_RemovesDuplicates()
     {
         var source = new System.Collections.Generic.List<string> { "a", "b", "a", "c", "b" };
-        var result = Exports.FrozenSet<string>(source);
+        var result = Builtins.FrozenSet<string>(source);
 
         Assert.Equal(3, result.Count);
         Assert.Contains("a", result);
@@ -52,8 +52,8 @@ public class FrozenSetConversionTests
     [Fact]
     public void FrozenSet_FromExistingFrozenSet_CreatesSameFrozenSet()
     {
-        var original = Exports.FrozenSet(new[] { 1, 2, 3 });
-        var result = Exports.FrozenSet<int>(original);
+        var original = Builtins.FrozenSet(new[] { 1, 2, 3 });
+        var result = Builtins.FrozenSet<int>(original);
 
         Assert.Equal(3, result.Count);
         Assert.Contains(1, result);

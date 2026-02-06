@@ -1,6 +1,8 @@
 using System;
 namespace Sharpy.Datetime
 {
+    using Sharpy.Core;
+
     /// <summary>
     /// Represents a date (year, month, day).
     /// </summary>
@@ -173,7 +175,8 @@ namespace Sharpy.Datetime
     /// <summary>
     /// Module exports for datetime functionality.
     /// </summary>
-    public static class Exports
+    [SharpyModule("datetime")]
+    public static class Datetime
     {
         // Re-export the classes for convenience
         public static Type DateType => typeof(Date);

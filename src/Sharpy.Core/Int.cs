@@ -4,7 +4,7 @@ namespace Sharpy.Core
     /// <summary>
     /// Type conversion functions for int
     /// </summary>
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Convert bool to int

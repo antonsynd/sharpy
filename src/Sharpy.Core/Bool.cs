@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Collections;
 namespace Sharpy.Core
 {
-    public static partial class Exports
+    public static partial class Builtins
     {
         public static bool Bool(bool b)
         {

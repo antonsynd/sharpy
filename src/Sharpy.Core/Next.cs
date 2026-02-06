@@ -1,6 +1,6 @@
 namespace Sharpy.Core
 {
-    public static partial class Exports
+    public static partial class Builtins
     {
         public static T Next<T>(Iterator<T> iterator)
         {

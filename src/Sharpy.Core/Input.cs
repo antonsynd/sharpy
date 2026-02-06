@@ -1,7 +1,7 @@
 using System;
 namespace Sharpy.Core
 {
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Read a line from standard input.

@@ -22,7 +22,7 @@ namespace Sharpy.Core
                 throw TypeError.ArgNone("enumerate", "iterable");
             }
 
-            _iterator = Exports.Iter(iterable);
+            _iterator = Builtins.Iter(iterable);
             _index = start;
         }
 
@@ -36,7 +36,7 @@ namespace Sharpy.Core
         }
     }
 
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Return an enumerate object. The iterable must be a sequence, an iterator,

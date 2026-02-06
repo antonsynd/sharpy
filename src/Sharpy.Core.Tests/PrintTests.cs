@@ -14,7 +14,7 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.Print("test");
+        Builtins.Print("test");
 
         // Assert
         var output = writer.ToString();
@@ -29,8 +29,8 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.PrintWithOptions(["Hello"], end: "");
-        Exports.PrintWithOptions(["World"], end: "");
+        Builtins.PrintWithOptions(["Hello"], end: "");
+        Builtins.PrintWithOptions(["World"], end: "");
 
         // Assert
         var output = writer.ToString();
@@ -45,7 +45,7 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.PrintWithOptions(["a", "b", "c"], sep: "|");
+        Builtins.PrintWithOptions(["a", "b", "c"], sep: "|");
 
         // Assert
         var output = writer.ToString();
@@ -60,7 +60,7 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.Print("Hello", "World");
+        Builtins.Print("Hello", "World");
 
         // Assert
         var output = writer.ToString();
@@ -75,7 +75,7 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.Print((object?)null);
+        Builtins.Print((object?)null);
 
         // Assert
         var output = writer.ToString();
@@ -90,7 +90,7 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.PrintWithOptions(["test"], end: "");
+        Builtins.PrintWithOptions(["test"], end: "");
 
         // Assert
         var output = writer.ToString();
@@ -106,7 +106,7 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.PrintWithOptions(["a", "b", "c"], sep: "-", end: "!\n");
+        Builtins.PrintWithOptions(["a", "b", "c"], sep: "-", end: "!\n");
 
         // Assert
         var output = writer.ToString();

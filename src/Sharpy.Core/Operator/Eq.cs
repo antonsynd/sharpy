@@ -1,7 +1,7 @@
 using System;
 namespace Sharpy.Operator
 {
-    public static partial class Exports
+    public static partial class Operator
     {
         public static bool Eq<T>(IComparable<T> left, T right)
         {

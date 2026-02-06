@@ -1,6 +1,6 @@
 namespace Sharpy.Core
 {
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Return x raised to the power y.

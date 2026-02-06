@@ -6,7 +6,7 @@ namespace Sharpy.Core
     /// <summary>
     /// Type conversion functions for frozenset
     /// </summary>
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Return a new frozenset object, optionally with elements taken from iterable.

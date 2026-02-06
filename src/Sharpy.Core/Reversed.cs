@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Sharpy.Core
 {
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Return a reverse iterator over the values of the given sequence.

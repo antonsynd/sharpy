@@ -261,7 +261,8 @@ namespace Sharpy.Collections
     /// <summary>
     /// Module exports for collections.
     /// </summary>
-    public static class Exports
+    [SharpyModule("collections")]
+    public static class Collections
     {
         // Re-export the classes for convenience
         public static Type DequeType => typeof(Deque<>);

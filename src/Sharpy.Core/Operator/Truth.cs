@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Collections;
 namespace Sharpy.Operator
 {
-    public static partial class Exports
+    public static partial class Operator
     {
         public static bool Truth(bool value)
         {

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 namespace Sharpy.Core
 {
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Return an iterator object from any C# enumerable.

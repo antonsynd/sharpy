@@ -32,7 +32,7 @@ namespace Sharpy.Core
             if (_dict.TryGetValue(item.Item1, out V? value))
             {
                 // Use Operator.Eq for proper equality comparison
-                return Operator.Exports.Eq(value, item.Item2);
+                return Operator.Operator.Eq(value, item.Item2);
             }
             return false;
         }

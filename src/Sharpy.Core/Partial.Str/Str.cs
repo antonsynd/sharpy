@@ -6,7 +6,7 @@ namespace Sharpy.Core
 {
     using System.Text;
 
-    public static partial class Exports
+    public static partial class Builtins
     {
         public static Str Str(object x)
         {

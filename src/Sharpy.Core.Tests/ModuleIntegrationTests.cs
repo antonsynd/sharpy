@@ -12,69 +12,69 @@ public class ModuleIntegrationTests
     public void SysModule_HasExpectedMembers()
     {
         // Verify sys.argv exists
-        Sharpy.Sys.Exports.Argv.Should().NotBeNull();
+        Sharpy.Sys.Sys.Argv.Should().NotBeNull();
 
         // Verify sys.version exists
-        Sharpy.Sys.Exports.Version.Should().NotBeNullOrEmpty();
+        Sharpy.Sys.Sys.Version.Should().NotBeNullOrEmpty();
 
         // Verify sys.platform exists
-        Sharpy.Sys.Exports.Platform.Should().NotBeNullOrEmpty();
+        Sharpy.Sys.Sys.Platform.Should().NotBeNullOrEmpty();
 
         // Verify sys.executable exists
-        Sharpy.Sys.Exports.Executable.Should().NotBeNull();
+        Sharpy.Sys.Sys.Executable.Should().NotBeNull();
 
         // Verify sys.path exists
-        Sharpy.Sys.Exports.Path.Should().NotBeNull();
+        Sharpy.Sys.Sys.Path.Should().NotBeNull();
 
         // Verify sys.stdin exists
-        Sharpy.Sys.Exports.Stdin.Should().NotBeNull();
+        Sharpy.Sys.Sys.Stdin.Should().NotBeNull();
     }
 
     [Fact]
     public void MathModule_BasicFunctions_WorkCorrectly()
     {
         // Test sqrt
-        Sharpy.Math.Exports.Sqrt(16.0).Should().Be(4.0);
+        Sharpy.Math.Math.Sqrt(16.0).Should().Be(4.0);
 
         // Test pow
-        Sharpy.Math.Exports.Pow(2.0, 3.0).Should().Be(8.0);
+        Sharpy.Math.Math.Pow(2.0, 3.0).Should().Be(8.0);
 
         // Test floor and ceil
-        Sharpy.Math.Exports.Floor(3.7).Should().Be(3.0);
-        Sharpy.Math.Exports.Ceil(3.2).Should().Be(4.0);
+        Sharpy.Math.Math.Floor(3.7).Should().Be(3.0);
+        Sharpy.Math.Math.Ceil(3.2).Should().Be(4.0);
 
         // Test trigonometric
-        System.Math.Round(Sharpy.Math.Exports.Sin(Sharpy.Math.Exports.Pi / 2), 10).Should().Be(1.0);
+        System.Math.Round(Sharpy.Math.Math.Sin(Sharpy.Math.Math.Pi / 2), 10).Should().Be(1.0);
 
         // Test constants
-        Sharpy.Math.Exports.Pi.Should().BeApproximately(3.14159, 0.00001);
-        Sharpy.Math.Exports.E.Should().BeApproximately(2.71828, 0.00001);
+        Sharpy.Math.Math.Pi.Should().BeApproximately(3.14159, 0.00001);
+        Sharpy.Math.Math.E.Should().BeApproximately(2.71828, 0.00001);
 
         // Test factorial
-        Sharpy.Math.Exports.Factorial(5).Should().Be(120);
+        Sharpy.Math.Math.Factorial(5).Should().Be(120);
 
         // Test gcd
-        Sharpy.Math.Exports.Gcd(48, 18).Should().Be(6);
+        Sharpy.Math.Math.Gcd(48, 18).Should().Be(6);
     }
 
     [Fact]
     public void RandomModule_BasicFunctions_WorkCorrectly()
     {
         // Test random
-        var rand1 = Sharpy.Random.Exports.Random();
+        var rand1 = Sharpy.Random.Random.NextDouble();
         rand1.Should().BeInRange(0.0, 1.0);
 
         // Test randint
-        var randInt = Sharpy.Random.Exports.Randint(1, 10);
+        var randInt = Sharpy.Random.Random.Randint(1, 10);
         randInt.Should().BeInRange(1, 10);
 
         // Test choice
         var arr = new[] { 1, 2, 3, 4, 5 };
-        var choice = Sharpy.Random.Exports.Choice(arr);
+        var choice = Sharpy.Random.Random.Choice(arr);
         arr.Should().Contain(choice);
 
         // Test uniform
-        var uniform = Sharpy.Random.Exports.Uniform(1.0, 5.0);
+        var uniform = Sharpy.Random.Random.Uniform(1.0, 5.0);
         uniform.Should().BeInRange(1.0, 5.0);
     }
 

@@ -58,7 +58,7 @@ namespace Sharpy.Core
 
         public override string ToString() => Count == 0
             ? "frozenset()"
-            : $"frozenset({{{string.Join(", ", _set.Select(x => Exports.Repr(x)))}}})";
+            : $"frozenset({{{string.Join(", ", _set.Select(x => Builtins.Repr(x)))}}})";
 
         // Truthiness operators
         public static bool operator true(FrozenSet<T>? s) => s is not null && s.Count > 0;

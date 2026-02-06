@@ -2,9 +2,8 @@ using System.Collections.Generic;
 using System;
 namespace Sharpy.Core
 {
-    using Operator;
 
-    public static partial class Exports
+    public static partial class Builtins
     {
         public static T Min<T>(IEnumerable<T> iterable)
         {
@@ -41,7 +40,7 @@ namespace Sharpy.Core
                     continue;
                 }
 
-                if (Operator.Exports.Lt(key(elem), key(smallest)))
+                if (Operator.Operator.Lt(key(elem), key(smallest)))
                 {
                     smallest = elem;
                 }

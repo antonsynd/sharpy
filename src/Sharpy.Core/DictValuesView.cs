@@ -34,7 +34,7 @@ namespace Sharpy.Core
         {
             foreach (var value in _values)
             {
-                if (Operator.Exports.Eq(value, item))
+                if (Operator.Operator.Eq(value, item))
                 {
                     return true;
                 }

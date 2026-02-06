@@ -7,7 +7,8 @@ namespace Sharpy.Random
     /// <summary>
     /// Pseudo-random number generators for various distributions, similar to Python's random module.
     /// </summary>
-    public static class Exports
+    [SharpyModule("random")]
+    public static class Random
     {
         private static System.Random _random = new System.Random();
         private static readonly object _lock = new object();
@@ -26,8 +27,10 @@ namespace Sharpy.Random
 
         /// <summary>
         /// Return a random floating point number in the range [0.0, 1.0).
+        /// Renamed from Random() to NextDouble() to avoid CS0542 (member name
+        /// matching enclosing type). Matches System.Random.NextDouble() convention.
         /// </summary>
-        public static double Random()
+        public static double NextDouble()
         {
             lock (_lock)
             {

@@ -7,7 +7,7 @@ namespace Sharpy.Core
     /// <summary>
     /// Type conversion functions for tuple
     /// </summary>
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Convert IEnumerable to tuple (ValueTuple)

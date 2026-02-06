@@ -53,7 +53,7 @@ namespace Sharpy.Core
         }
     }
 
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Return an iterator that produces integers from 0 up to (but not including) stop.

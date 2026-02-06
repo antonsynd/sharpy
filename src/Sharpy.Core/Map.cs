@@ -30,7 +30,7 @@ namespace Sharpy.Core
             }
 
             _function = function;
-            _iterator = Exports.Iter(iterable);
+            _iterator = Builtins.Iter(iterable);
         }
 
         /// <inheritdoc/>
@@ -41,7 +41,7 @@ namespace Sharpy.Core
         }
     }
 
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Return an iterator that applies function to every item of iterable, yielding the results.

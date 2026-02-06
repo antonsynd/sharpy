@@ -3,7 +3,7 @@ namespace Sharpy.Core
 {
     using System.Linq;
 
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Return True if any element of the iterable is true. If the iterable is empty, return False.

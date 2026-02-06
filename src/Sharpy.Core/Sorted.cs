@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System;
 namespace Sharpy.Core
 {
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Return a new sorted list from the items in iterable.

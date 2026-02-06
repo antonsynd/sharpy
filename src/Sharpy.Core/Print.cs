@@ -1,9 +1,9 @@
 using System;
 namespace Sharpy.Core
 {
-    using static Sharpy.Sys.Exports;
+    using static Sharpy.Sys.Sys;
 
-    public static partial class Exports
+    public static partial class Builtins
     {
         // Note: The primary Print(params object?[] values) is defined in Builtins/Exports.cs
         // PrintWithOptions provides full control over sep, end, file, and flush parameters.

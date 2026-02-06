@@ -6,7 +6,7 @@ namespace Sharpy.Core
     /// <summary>
     /// Type conversion functions for list
     /// </summary>
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Convert IEnumerable to list

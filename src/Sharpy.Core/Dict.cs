@@ -6,8 +6,7 @@ namespace Sharpy.Core
     using System.Collections;
     using System.Text;
 
-    using Operator;
-    using static Sharpy.Core.Exports;
+    using static Sharpy.Core.Builtins;
 
     public sealed partial class Dict<K, V>
         : IDictionary<K, V>,
@@ -262,7 +261,7 @@ namespace Sharpy.Core
                     return false;
                 }
 
-                if (!Operator.Exports.Eq(kv.Value, value))
+                if (!Operator.Operator.Eq(kv.Value, value))
                 {
                     return false;
                 }

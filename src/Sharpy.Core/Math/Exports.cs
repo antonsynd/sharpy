@@ -7,7 +7,8 @@ namespace Sharpy.Math
     /// Mathematical functions, similar to Python's math module.
     /// This module provides access to mathematical functions defined by the C standard.
     /// </summary>
-    public static class Exports
+    [SharpyModule("math")]
+    public static class Math
     {
         /// <summary>
         /// The mathematical constant π = 3.141592..., to available precision.

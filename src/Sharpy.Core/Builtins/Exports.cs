@@ -4,12 +4,13 @@ using System.Collections;
 using System.Linq;
 namespace Sharpy.Core
 {
-    using static Sharpy.Sys.Exports;
+    using static Sharpy.Sys.Sys;
 
     /// <summary>
     /// Global builtin functions available in all Sharpy programs
     /// </summary>
-    public static partial class Exports
+    [SharpyModule("builtins")]
+    public static partial class Builtins
     {
         /// <summary>
         /// Print values to standard output, matching Python's print() behavior.

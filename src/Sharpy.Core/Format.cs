@@ -2,7 +2,7 @@ using System.Globalization;
 using System;
 namespace Sharpy.Core
 {
-    public static partial class Exports
+    public static partial class Builtins
     {
         /// <summary>
         /// Convert a value to a "formatted" representation, as controlled by format_spec.

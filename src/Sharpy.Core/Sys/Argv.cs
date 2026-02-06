@@ -4,7 +4,9 @@ using System.Runtime.InteropServices;
 
 namespace Sharpy.Sys
 {
-    public sealed partial class Exports
+    using Sharpy.Core;
+    [SharpyModule("sys")]
+    public sealed partial class Sys
     {
         private static readonly string[] _argv = Environment.GetCommandLineArgs();
         private static readonly string _platform = GetPlatform();

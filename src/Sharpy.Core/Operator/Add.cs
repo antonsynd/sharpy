@@ -1,6 +1,9 @@
+using Sharpy.Core;
+
 namespace Sharpy.Operator
 {
-    public static partial class Exports
+    [SharpyModule("operator")]
+    public static partial class Operator
     {
         public static int Add(int left, int right) => left + right;
         public static long Add(long left, long right) => left + right;

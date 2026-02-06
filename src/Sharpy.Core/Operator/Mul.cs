@@ -1,6 +1,6 @@
 namespace Sharpy.Operator
 {
-    public static partial class Exports
+    public static partial class Operator
     {
         public static int Mul(int left, int right) => left * right;
         public static long Mul(long left, long right) => left * right;
