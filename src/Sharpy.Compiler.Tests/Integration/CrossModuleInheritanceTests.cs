@@ -63,7 +63,7 @@ def main() -> None:
 
         Assert.False(result.Diagnostics.HasErrors, $"Expected no errors but got: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(d => d.Message))}");
-        // Dog should inherit from Animal (may use fully qualified name like Sharpy.Test.Base.Exports.Animal)
+        // Dog should inherit from Animal (may use fully qualified name like Sharpy.Test.Base.Animal)
         var derivedCode = result.GeneratedCSharp["derived.cs"];
         Assert.Contains("class Dog :", derivedCode);
         Assert.Contains("Animal", derivedCode);

@@ -36,7 +36,7 @@ internal class IncrementalCompilationCache
     /// Current schema version for the symbol cache.
     /// Increment this when making breaking changes to FileCacheEntry or CachedSymbol structures.
     /// </summary>
-    internal const int CurrentSchemaVersion = 1;
+    internal const int CurrentSchemaVersion = 2;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
