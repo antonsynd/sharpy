@@ -15,7 +15,7 @@ namespace Sharpy.Compiler.Semantic;
 /// </list>
 ///
 /// <para>
-/// This logic was previously embedded in RoslynEmitter.GenerateModuleClass().
+/// This logic was previously embedded in RoslynEmitter.GenerateModuleMembers().
 /// Moving it here allows CodeGenInfoComputer to use it during semantic analysis,
 /// enabling removal of legacy tracking fields from RoslynEmitter.
 /// </para>

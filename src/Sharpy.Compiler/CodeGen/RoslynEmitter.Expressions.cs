@@ -781,11 +781,10 @@ internal partial class RoslynEmitter
             if (symbol is TypeSymbol enumSymbol && enumSymbol.TypeKind == Semantic.TypeKind.Enum)
             {
                 // Enum member access: Color.RED -> Color.Red
-                // Types are at namespace level (siblings to module class), so we use unqualified names
-                // The C# using static directive for the module class doesn't affect type access
+                // Types are nested in the module class, accessible via unqualified names
                 var enumTypeName = NameMangler.ToPascalCase(enumTypeIdentifier.Name);
 
-                // Use the enum type directly (it's at namespace level, not nested in module class)
+                // Use the enum type directly (nested types are accessible within the module class)
                 var enumType = IdentifierName(enumTypeName);
 
                 // Check if this is a string enum (string enums are generated as classes, not C# enums)
