@@ -84,13 +84,8 @@ internal partial class RoslynEmitter
     /// Types (classes, structs, interfaces, enums) are nested inside the module class,
     /// enabling single 'using static' imports for C# consumers.
     /// </summary>
-    /// <returns>
-    /// A tuple containing:
-    /// - The module class (static class with fields, functions, types, Main)
-    /// - Empty list (kept for API compatibility during transition)
-    /// </returns>
-    private (ClassDeclarationSyntax moduleClass, List<MemberDeclarationSyntax> namespaceTypes)
-        GenerateModuleMembers(List<Statement> statements, List<FromImportStatement>? reExportImports = null)
+    private ClassDeclarationSyntax GenerateModuleMembers(
+        List<Statement> statements, List<FromImportStatement>? reExportImports = null)
     {
         // Clear tracking field for module field names (still needed to prevent duplicate field declarations)
         _moduleFieldNames.Clear();
@@ -132,7 +127,6 @@ internal partial class RoslynEmitter
 
         // All declarations go into the module class (types are nested, not namespace siblings)
         var moduleDeclarations = new List<MemberDeclarationSyntax>();
-        var namespaceTypes = new List<MemberDeclarationSyntax>(); // Kept empty for API compat
         var executableStatements = new List<Statement>();
 
         // First pass: check if there's a user-defined main function
@@ -323,7 +317,7 @@ internal partial class RoslynEmitter
             var augmentedType = collidingTypeDecl.WithMembers(
                 collidingTypeDecl.Members.AddRange(otherDeclarations));
 
-            return (augmentedType, namespaceTypes);
+            return augmentedType;
         }
 
         // Normal case: build a static module class containing all declarations
@@ -352,16 +346,6 @@ internal partial class RoslynEmitter
                 Token(SyntaxKind.PartialKeyword)))
             .WithMembers(List(moduleDeclarations));
 
-        return (moduleClass, namespaceTypes);
-    }
-
-    /// <summary>
-    /// Generates only the module class (legacy method for backward compatibility).
-    /// For new code, prefer GenerateModuleMembers which also returns namespace-level types.
-    /// </summary>
-    private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements, List<FromImportStatement>? reExportImports = null)
-    {
-        var (moduleClass, _) = GenerateModuleMembers(statements, reExportImports);
         return moduleClass;
     }
 

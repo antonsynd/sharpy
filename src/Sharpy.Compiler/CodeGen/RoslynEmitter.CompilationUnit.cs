@@ -41,7 +41,7 @@ internal partial class RoslynEmitter
         }
 
         // Generate module class with all members nested inside
-        var (moduleClass, _) = GenerateModuleMembers(nonImportStatements, fromImports);
+        var moduleClass = GenerateModuleMembers(nonImportStatements, fromImports);
 
         // Compute directory wrapper classes and wrap the module class
         var wrapperNames = ComputeWrapperClasses();
@@ -150,9 +150,8 @@ internal partial class RoslynEmitter
         // Add Sharpy runtime usings (use global:: to avoid conflicts when output namespace contains "Sharpy")
         usings.Add(UsingDirective(ParseName("global::Sharpy")));
 
-        // Add project namespace using to make all project-level types accessible.
-        // This is needed when types live directly at namespace level (e.g., when file name
-        // matches type name: animal.spy → class Animal at namespace level without module wrapper).
+        // Add project namespace using to make nested module classes accessible without
+        // full qualification (e.g., 'using TestProject;' lets code reference 'Utils.Helper()').
         // Skip if the project namespace is "Sharpy" since global::Sharpy already covers it
         // (adding both causes CS0105 duplicate using warning).
         if (!string.IsNullOrEmpty(_context.ProjectNamespace) &&
