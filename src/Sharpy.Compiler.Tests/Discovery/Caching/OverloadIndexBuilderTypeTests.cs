@@ -55,8 +55,8 @@ public class OverloadIndexBuilderTypeTests
         // Act
         var index = _builder.BuildFromAssembly(assembly);
 
-        // Assert - Exports is static, so it should be excluded from types
-        // (it's still discovered as a function source via the separate export discovery path)
+        // Assert - module classes are static, so they should be excluded from types
+        // (they're still discovered as function sources via [SharpyModule] attribute)
         var allTypes = index.Modules.Values.SelectMany(m => m.Types).ToList();
         foreach (var typeInfo in allTypes)
         {

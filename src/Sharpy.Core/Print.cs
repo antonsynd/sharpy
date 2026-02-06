@@ -5,7 +5,7 @@ namespace Sharpy
 
     public static partial class Builtins
     {
-        // Note: The primary Print(params object?[] values) is defined in Builtins/Exports.cs
+        // Note: The primary Print(params object?[] values) is defined in Builtins/Builtins.cs
         // PrintWithOptions provides full control over sep, end, file, and flush parameters.
         // The PrintArguments<T> overloads are kept for backwards compatibility with code that
         // explicitly uses PrintArguments.
