@@ -432,7 +432,7 @@ case TypeSymbol typeSymbol:
 
 ### Phase 5: Update all tests — DONE ✓
 
-> Completed alongside Phase 4. All unit tests updated, `.expected.cs` snapshots regenerated, `NamespaceLevelTypesTests.cs` inverted to verify types are nested (file kept under original name with updated doc comments). 6,197 tests pass (0 failures, 13 skipped).
+> Completed alongside Phase 4. All unit tests updated, `.expected.cs` snapshots regenerated, `NamespaceLevelTypesTests.cs` inverted to verify types are nested (file kept under original name with updated doc comments). 6,209 tests pass (0 failures, 13 skipped). Post-verification cleanup removed stale `namespaceTypes` tuple return, unused `GenerateModuleClass` wrapper, and fixed stale comments referencing old namespace-level type routing.
 
 #### Sharpy.Core tests — DONE ✓
 > Completed in Phases 2 and 2b. All Sharpy.Core.Tests updated across both commits.
