@@ -123,26 +123,31 @@ No change. `GetModuleClassName()` still returns `"Program"` when `willGenerateMa
 - File defines type whose PascalCase name matches module class name → compiler error
 - `utils.spy` alongside `utils/` directory → compiler error (detected by `ProjectCompiler`)
 
-### D8. Sharpy.Core alignment: rename `Exports`, keep namespaces
-Sharpy.Core is hand-written C#. Full restructuring to nested classes is high-risk for minimal gain. Instead:
-- Rename `Exports` to the module name (e.g., `Sharpy.Core.Builtins`, `Sharpy.Math.Math`)
-- Keep existing namespaces unchanged
-- Add `[SharpyModule]` attribute for discovery
+### D8. Sharpy.Core alignment: flat `namespace Sharpy`, module-named classes
 
-| Current | New |
-|---------|-----|
-| `Sharpy.Core.Exports` | `Sharpy.Core.Builtins` |
-| `Sharpy.Math.Exports` | `Sharpy.Math.Math` |
-| `Sharpy.Datetime.Exports` | `Sharpy.Datetime.Datetime` |
-| `Sharpy.Collections.Exports` | `Sharpy.Collections.Collections` |
-| `Sharpy.Random.Exports` | `Sharpy.Random.Random` |
-| `Sharpy.Sys.Exports` | `Sharpy.Sys.Sys` |
-| `Sharpy.Operator.Exports` | `Sharpy.Operator.Operator` |
-| `Sharpy.Itertools.Exports` | `Sharpy.Itertools.Itertools` |
+> **Updated** — original plan kept per-module sub-namespaces (`Sharpy.Core`, `Sharpy.Math`, etc.). Actual implementation flattened all sub-namespaces into a single `namespace Sharpy` to eliminate redundancy like `Sharpy.Math.Math` and `Sharpy.Operator.Operator`.
 
-> **Notes**: `Sharpy.Sys.Exports` is `public sealed partial class` (not `static`) — it is NOT discovered by the current `OverloadIndexBuilder` filter. `Sharpy.Itertools.Exports` is `internal static` — also not discovered currently. Both will be handled by the `[SharpyModule]` attribute in Phase 3.
+All Sharpy.Core types and module classes now live in `namespace Sharpy`:
 
-The redundant naming (`Sharpy.Math.Math`) is harmless — C# consumers never see it directly; the compiler generates the qualified references.
+| Before (original) | After Phase 2 | After Phase 2b (actual) |
+|---------|------|------|
+| `Sharpy.Core.Exports` | `Sharpy.Core.Builtins` | `Sharpy.Builtins` |
+| `Sharpy.Math.Exports` | `Sharpy.Math.Math` | `Sharpy.Math` |
+| `Sharpy.Datetime.Exports` | `Sharpy.Datetime.Datetime` | `Sharpy.Datetime` |
+| `Sharpy.Collections.Exports` | `Sharpy.Collections.Collections` | `Sharpy.Collections` |
+| `Sharpy.Random.Exports` | `Sharpy.Random.Random` | `Sharpy.Random` |
+| `Sharpy.Sys.Exports` | `Sharpy.Sys.Sys` | `Sharpy.Sys` |
+| `Sharpy.Operator.Exports` | `Sharpy.Operator.Operator` | `Sharpy.Operator` |
+| `Sharpy.Itertools.Exports` | `Sharpy.Itertools.Itertools` | `Sharpy.Itertools` |
+| `Sharpy.Core.List<T>` | `Sharpy.Core.List<T>` | `Sharpy.List<T>` |
+| `Sharpy.Core.Dict<K,V>` | `Sharpy.Core.Dict<K,V>` | `Sharpy.Dict<K,V>` |
+| `Sharpy.Core.Set<T>` | `Sharpy.Core.Set<T>` | `Sharpy.Set<T>` |
+| `Sharpy.Datetime.Date` | `Sharpy.Datetime.Date` | `Sharpy.Date` |
+| `Sharpy.Collections.Deque<T>` | `Sharpy.Collections.Deque<T>` | `Sharpy.Deque<T>` |
+
+> **Notes**: `Sharpy.Sys` is `public sealed partial class` (not `static`). `Sharpy.Itertools` is `internal static`. `Sharpy.Random.Random()` method was renamed to `Sharpy.Random.NextDouble()` to avoid CS0542 (member name matching enclosing type).
+
+> **Critical issue from Phase 2b**: The flat `namespace Sharpy` causes `Sharpy.List<T>` to shadow `System.Collections.Generic.List<T>` in the compiler (`Sharpy.Compiler` references the `Sharpy.Core` assembly). This produces **246+ build errors** in `Sharpy.Compiler`. Phase 3 must resolve this before any further work. See Risks section.
 
 ### D9. Module discovery via `[SharpyModule]` attribute
 Replace `t.Name == "Exports"` convention in `OverloadIndexBuilder` with `[SharpyModule("name")]` attribute. Decouples discovery from naming. Generated code also gets the attribute for external library discoverability.
@@ -151,11 +156,13 @@ Replace `t.Name == "Exports"` convention in `OverloadIndexBuilder` with `[Sharpy
 
 ## Implementation Plan
 
-### Phase 1: Add `[SharpyModule]` attribute
+### Phase 1: Add `[SharpyModule]` attribute — DONE ✓
+
+> Completed in `3725db52` (2026-02-05).
 
 **New file**: `src/Sharpy.Core/SharpyModuleAttribute.cs`
 ```csharp
-namespace Sharpy.Core
+namespace Sharpy
 {
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     public sealed class SharpyModuleAttribute : Attribute
@@ -166,47 +173,113 @@ namespace Sharpy.Core
 }
 ```
 
-C# 9.0 compatible (targets `netstandard2.0/2.1`).
+C# 9.0 compatible (targets `netstandard2.0/2.1`). Originally in `namespace Sharpy.Core`, moved to `namespace Sharpy` in Phase 2b.
 
-### Phase 2: Rename Sharpy.Core `Exports` classes
+### Phase 2: Rename Sharpy.Core `Exports` classes — DONE ✓
 
-Rename `class Exports` to the module name in all Sharpy.Core modules. Add `[SharpyModule("name")]`.
+> Completed in `3725db52` (2026-02-05). 79 files changed.
 
-**Files — class rename + attribute** (rename `class Exports` → new name):
+All `class Exports` renamed to module-named classes with `[SharpyModule]` attributes:
+
+**Files — class rename + attribute** (all completed as planned):
 - `src/Sharpy.Core/Builtins/Exports.cs` → `Builtins`, `[SharpyModule("builtins")]`
 - All `partial class Exports` files at `src/Sharpy.Core/` root (33 files: Print.cs, Len.cs, Range.cs, Int.cs, Bool.cs, etc.) → `partial class Builtins`
-- `src/Sharpy.Core/Partial.Str/Str.cs` → `partial class Builtins` (also `Sharpy.Core` namespace, not at root)
+- `src/Sharpy.Core/Partial.Str/Str.cs` → `partial class Builtins`
 - `src/Sharpy.Core/Math/Exports.cs` → `Math`, `[SharpyModule("math")]`
 - `src/Sharpy.Core/Datetime/Exports.cs` → `Datetime`, `[SharpyModule("datetime")]`
 - `src/Sharpy.Core/Collections/Exports.cs` → `Collections`, `[SharpyModule("collections")]`
 - `src/Sharpy.Core/Random/Exports.cs` → `Random`, `[SharpyModule("random")]`
-- `src/Sharpy.Core/Sys/Argv.cs` + `Sys/Stdout.cs` → `Sys`, `[SharpyModule("sys")]` (currently `public sealed`, not `public static`)
-- `src/Sharpy.Core/Operator/` (15 files: Add.cs, Abs.cs, Eq.cs, Ge.cs, Gt.cs, IAdd.cs, IMul.cs, Is.cs, IsNot.cs, Le.cs, Lt.cs, Mul.cs, Ne.cs, Not.cs, Truth.cs) → `Operator`, `[SharpyModule("operator")]`
-- `src/Sharpy.Core/Itertools/` (3 files: Additional.cs, Cycle.cs, Repeat.cs) → `Itertools`, `[SharpyModule("itertools")]` (currently `internal static`, not `public static`)
+- `src/Sharpy.Core/Sys/Argv.cs` + `Sys/Stdout.cs` → `Sys`, `[SharpyModule("sys")]`
+- `src/Sharpy.Core/Operator/` (15 files) → `Operator`, `[SharpyModule("operator")]`
+- `src/Sharpy.Core/Itertools/` (3 files) → `Itertools`, `[SharpyModule("itertools")]`
 
-**Internal using updates**:
+**Deviation — `Random.Random()` → `Random.NextDouble()`**: Renaming `class Exports` to `class Random` caused CS0542 (member name matching enclosing type) on the `Random()` method. Resolved by renaming the method to `NextDouble()`, matching `System.Random.NextDouble()` convention.
+
+**Internal using updates** (completed):
 - `Builtins/Exports.cs`: `using static Sharpy.Sys.Exports;` → `using static Sharpy.Sys.Sys;`
 - `Print.cs`: `using static Sharpy.Sys.Exports;` → `using static Sharpy.Sys.Sys;`
 - `Dict.cs`: `using static Sharpy.Core.Exports;` → `using static Sharpy.Core.Builtins;`
 
-**Sharpy.Core.Tests**: Update all `Sharpy.Core.Exports` → `Sharpy.Core.Builtins` (GlobalUsings.cs, IdentityWrapper.cs, Wrapper.cs, etc.)
+**Sharpy.Core.Tests** (completed — 11 files):
+- `Sharpy.Core.Exports` → `Sharpy.Core.Builtins` in GlobalUsings.cs, IdentityWrapper.cs, Wrapper.cs, etc.
+- `ModuleIntegrationTests.cs`: `Sharpy.Sys.Exports` → `Sharpy.Sys.Sys`, `Sharpy.Math.Exports` → `Sharpy.Math.Math`, `Sharpy.Random.Exports` → `Sharpy.Random.Random`, `Sharpy.Random.Exports.Random()` → `Sharpy.Random.Random.NextDouble()`
 
-### Phase 3: Update compiler assembly references and discovery
+### Phase 2b: Flatten all sub-namespaces into `namespace Sharpy` — DONE ✓
 
-**`src/Sharpy.Compiler/Discovery/Caching/OverloadIndexBuilder.cs`**:
-- Line 37: Replace entire filter `t.Name == "Exports" && t.IsClass && t.IsPublic && t.IsAbstract && t.IsSealed` → `t.IsClass && t.GetCustomAttribute<SharpyModuleAttribute>() != null`. Drop `IsAbstract && IsSealed` (only matches `static` classes, but `Sharpy.Sys` is `sealed`). Drop `IsPublic` if Itertools discovery is desired (currently `internal`).
-- Line 62: `t.Name != "Exports"` → `t.GetCustomAttribute<SharpyModuleAttribute>() == null` (exclude module containers from public type discovery)
-- Lines 111-120 (`DeriveModuleName`): Read from `SharpyModuleAttribute.ModuleName`
-- Also discover **nested types** inside module classes (types are now nested, not namespace siblings)
+> Completed in `47a98a45` (2026-02-05). 121 files changed. This phase was NOT in the original plan — it was added to eliminate the redundant naming pattern (`Sharpy.Math.Math`, `Sharpy.Operator.Operator`, etc.).
+
+**All 108 Sharpy.Core source files**: `namespace Sharpy.{X}` → `namespace Sharpy`
+- `Sharpy.Core` → `Sharpy` (root files, Builtins/, Partial.* directories)
+- `Sharpy.Math` → `Sharpy`
+- `Sharpy.Operator` → `Sharpy`
+- `Sharpy.Random` → `Sharpy`
+- `Sharpy.Datetime` → `Sharpy`
+- `Sharpy.Collections` → `Sharpy`
+- `Sharpy.Sys` → `Sharpy`
+- `Sharpy.Itertools` → `Sharpy`
+
+**Cross-reference simplifications**:
+- `Operator.Operator.Eq()` → `Operator.Eq()` (no longer double-nested)
+- `Sharpy.Core.List<T>` → `Sharpy.List<T>` (in Random module)
+- `using static Sharpy.Sys.Sys;` → `using static Sharpy.Sys;` (in Builtins, Print)
+- `using static Sharpy.Core.Builtins;` → `using static Builtins;` (in Dict — same namespace)
+- `using Sharpy.Core;` → removed (no longer needed, same namespace)
+- `GlobalSuppressions.cs` targets updated for new fully-qualified names
+
+**Sharpy.Core.Tests** (13 files updated):
+- `GlobalUsings.cs`: `using static Sharpy.Core.Builtins;` → `using static Sharpy.Builtins;`, `using static Sharpy.Sys.Sys;` → `using static Sharpy.Sys;`
+- `ModuleIntegrationTests.cs`: All qualified references simplified (e.g., `Sharpy.Math.Math.Sqrt()` → `Sharpy.Math.Sqrt()`, `Sharpy.Datetime.Date` → `Sharpy.Date`, `Sharpy.Collections.Deque<T>` → `Sharpy.Deque<T>`)
+- Additional test files: `FrozenSetTests.cs`, `OptionalTests.cs`, `ResultTests.cs` — namespace updates
+
+**⚠️ Build breakage introduced**: The compiler (`Sharpy.Compiler`) references the `Sharpy.Core` assembly. With all types now in `namespace Sharpy`, the type `Sharpy.List<T>` shadows `System.Collections.Generic.List<T>` throughout the compiler code. This produces **246+ CS0019/CS0029/CS1061 errors** across `TypeChecker.*.cs`, `RoslynEmitter.*.cs`, and other compiler files. The `Sharpy.Core` project itself builds cleanly; only the compiler is affected. Phase 3 must resolve this.
+
+### Phase 3: Fix compiler build + update assembly references and discovery
+
+> **Status**: Not started. This is the immediate next step. The compiler does not build.
+
+#### 3a. Fix namespace collision in compiler — CRITICAL
+
+The flat `namespace Sharpy` causes `Sharpy.List<T>`, `Sharpy.Dict<K,V>`, `Sharpy.Set<T>`, etc. to shadow their `System.Collections.Generic` counterparts wherever the compiler uses unqualified `List<T>`. Error breakdown:
+
+| Error code | Count | Cause |
+|---|---|---|
+| CS0019 | 246 | `.Count` resolves to `Sharpy.List<T>.Count` (method) instead of `List<T>.Count` (property) |
+| CS0029 | 104 | `List<T>` resolves to `Sharpy.List<T>`, implicit conversion fails |
+| CS1061 | 38 | Members not found on wrong `List<T>` type |
+| CS1503 | 32 | Argument type mismatch (BCL `List` vs `Sharpy.List`) |
+| Other | ~72 | Cascading errors (CS8602, CS0117, CS0428, CS0165, etc.) |
+
+**Options** (choose one):
+
+1. **Add `global using` alias in compiler**: Add `global using List = System.Collections.Generic.List;` (or equivalent) to a `GlobalUsings.cs` in `Sharpy.Compiler` to force the compiler's `List<T>` to resolve to BCL. Similarly for `Dict`, `Set`, `Str`, etc. Simplest fix but fragile if new Sharpy types are added.
+
+2. **Extern alias**: Reference `Sharpy.Core` with an extern alias in the compiler `.csproj` so that `Sharpy.*` types don't pollute the compiler's default namespace. Cleaner isolation but adds build complexity.
+
+3. **Restore a wrapper namespace**: Keep Sharpy.Core types in a sub-namespace (e.g., `namespace Sharpy.Core` or `namespace Sharpy.Runtime`) that doesn't collide with BCL. The module classes stay flat (`namespace Sharpy`) but collection types etc. retain their qualified names. This is a partial rollback of Phase 2b.
+
+> **Recommendation**: Option 1 (global using aliases) is the least disruptive and lets the flat namespace goal stand. Option 3 is the safest if Option 1 proves insufficient.
+
+#### 3b. Update compiler `typeof()` references
+
+After fixing the build, update all stale `typeof(Sharpy.Core.Exports)` references:
 
 **`src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`** (line 95):
-- `typeof(Sharpy.Core.Exports).Assembly` → `typeof(Sharpy.Core.Builtins).Assembly`
+- `typeof(Sharpy.Core.Exports).Assembly` → `typeof(Sharpy.Builtins).Assembly`
 
 **`src/Sharpy.Compiler/AssemblyCompiler.cs`** (lines 175, 299):
-- `typeof(Sharpy.Core.Exports)` → `typeof(Sharpy.Core.Builtins)`
+- `typeof(Sharpy.Core.Exports)` → `typeof(Sharpy.Builtins)`
 
 **`src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs`** (lines 165, 454):
-- `global::Sharpy.Core.Exports.{name}` → `global::Sharpy.Core.Builtins.{name}`
+- `global::Sharpy.Core.Exports.{name}` → `global::Sharpy.Builtins.{name}`
+
+#### 3c. Update `OverloadIndexBuilder` discovery
+
+**`src/Sharpy.Compiler/Discovery/Caching/OverloadIndexBuilder.cs`**:
+- Line 37: Replace filter `t.Name == "Exports" && t.IsClass && t.IsPublic && t.IsAbstract && t.IsSealed` → `t.IsClass && t.GetCustomAttribute<SharpyModuleAttribute>() != null`. Drop `IsAbstract && IsSealed` (only matches `static` classes, but `Sharpy.Sys` is `sealed`). Drop `IsPublic` if Itertools discovery is desired (currently `internal`).
+- Line 62: `t.Name != "Exports"` → `t.GetCustomAttribute<SharpyModuleAttribute>() == null` (exclude module containers from public type discovery)
+- Lines 111-120 (`DeriveModuleName`): Read from `SharpyModuleAttribute.ModuleName` instead of hardcoded `Sharpy.Core.Exports` check
+- Lines 102-109 (`DeriveModuleNameFromNamespace`): Update — all types are now in `namespace Sharpy` (not `Sharpy.Core`, `Sharpy.Math`, etc.), so the old namespace-based module derivation needs rethinking. May need to use the containing class's `[SharpyModule]` attribute or the type's nesting to determine module membership.
+- Also discover **nested types** inside module classes (types are now nested, not namespace siblings)
 
 ### Phase 4: Code generation — the core change
 
@@ -388,14 +461,13 @@ UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrat
 | `RoslynEmitterModuleTests.cs` (~36 refs) | Class name `Exports` → module name, remove `.Exports` from import paths, update namespace assertions to show wrapper classes |
 | `NamespaceLevelTypesTests.cs` (~5 assertions) | **Invert**: types must be INSIDE module class. Rename to `NestedTypeTests.cs` |
 | `CrossModuleNamespaceTests.cs` | Update `class Exports` lookups, namespace → wrapper class assertions |
-| `CompilerIntegrationTests.cs` (~12 refs) | `Sharpy.Core.Exports` → `Sharpy.Core.Builtins` |
+| `CompilerIntegrationTests.cs` (~12 refs) | `Sharpy.Core.Exports` → `Sharpy.Builtins` |
 | `PackageResolverTests.cs` (~10 refs) | Update import path assertions |
 | `OverloadIndexBuilder*Tests.cs` | Update discovery assertions for `[SharpyModule]` |
-| All files with `Sharpy.Core.Exports` | Search-replace to `Sharpy.Core.Builtins` |
+| All files with `Sharpy.Core.Exports` | Search-replace to `Sharpy.Builtins` |
 
-#### Sharpy.Core tests (11 files):
-- Search-replace `Sharpy.Core.Exports` → `Sharpy.Core.Builtins` (GlobalUsings.cs, IdentityWrapper.cs, Wrapper.cs, PrintTests.cs, IntConversionTests.cs, DoubleConversionTests.cs, ListConversionTests.cs, SetConversionTests.cs, FrozenSetConversionTests.cs, TupleConversionTests.cs, ModuleIntegrationTests.cs)
-- `ModuleIntegrationTests.cs` additionally: `Sharpy.Sys.Exports` → `Sharpy.Sys.Sys`, `Sharpy.Math.Exports` → `Sharpy.Math.Math`, `Sharpy.Random.Exports` → `Sharpy.Random.Random` (17+ references)
+#### Sharpy.Core tests — DONE ✓
+> Completed in Phases 2 and 2b. All Sharpy.Core.Tests updated across both commits.
 
 ### Phase 6: Cache invalidation and documentation
 
@@ -409,13 +481,14 @@ UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrat
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
+| **`Sharpy.List<T>` shadows `System.Collections.Generic.List<T>` in compiler** | **Critical — MATERIALIZED** | Phase 2b flattened all types to `namespace Sharpy`. The compiler references `Sharpy.Core` and now resolves `List<T>` to `Sharpy.List<T>` instead of `System.Collections.Generic.List<T>`. **246+ build errors.** Must be fixed in Phase 3a before any further work. |
 | Cross-module type resolution with nested types | High | `using static Ns.Module;` exposes nested types (C# spec). Verify with multi-file fixtures. |
 | Partial class merging for directory wrappers | High | Each file in a directory generates `partial static class Wrapper`. Roslyn handles merging. Test with multi-file projects. |
 | `using static` on nested class (`Ns.Outer.Inner`) | Medium | Valid C# — `using static` works with any accessible static class, including nested ones. |
 | Incremental cache stale after structural change | Medium | Bump cache schema version to force rebuild. |
-| `Sharpy.Math.Math` redundancy in Sharpy.Core | Low | Cosmetic — consumers don't see it. Can flatten later. |
-| `System.Math` vs `Sharpy.Math.Math` ambiguity | Low | Generated code uses `global::` prefix for Sharpy.Core refs. |
-| Non-static module classes (`Sharpy.Sys`) | Medium | `Sharpy.Sys.Exports` is `sealed` not `static`. Phase 3's `[SharpyModule]` filter must not require `IsAbstract && IsSealed`. |
+| `System.Math` vs `Sharpy.Math` ambiguity in generated code | Low | Generated code uses `global::` prefix for Sharpy.Core refs. |
+| `System.Random` vs `Sharpy.Random` ambiguity | Low | Generated code uses `global::` prefix. Module class is in `namespace Sharpy` so `global::Sharpy.Random` is unambiguous. |
+| Non-static module classes (`Sharpy.Sys`) | Medium | `Sharpy.Sys` is `sealed` not `static`. Phase 3c's `[SharpyModule]` filter must not require `IsAbstract && IsSealed`. |
 
 ---
 
@@ -442,14 +515,16 @@ UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrat
 
 ## Critical files
 
-| File | Role |
-|------|------|
-| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs` | Namespace + compilation unit generation. Core restructuring (nested wrappers). |
-| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.ModuleClass.cs` | Module class naming, member separation, re-exports. |
-| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs` | Builtin function call paths (`Sharpy.Core.Exports` → `Builtins`). |
-| `src/Sharpy.Compiler/Discovery/Caching/OverloadIndexBuilder.cs` | Module discovery (`"Exports"` → `[SharpyModule]`). |
-| `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs` | Assembly anchor (`typeof(Exports)` → `typeof(Builtins)`). |
-| `src/Sharpy.Compiler/AssemblyCompiler.cs` | Assembly reference paths. |
-| `src/Sharpy.Core/Builtins/Exports.cs` | Primary Exports class — rename to Builtins. |
-| `src/Sharpy.Compiler.Tests/CodeGen/NamespaceLevelTypesTests.cs` | Must invert — types now nested, not at namespace level. |
-| `src/Sharpy.Core/Operator/` (15 files) | Operator module `Exports` classes — must be renamed and attributed. |
+| File | Role | Status |
+|------|------|--------|
+| `src/Sharpy.Core/SharpyModuleAttribute.cs` | `[SharpyModule]` attribute for discovery. | ✅ Done (Phase 1) |
+| `src/Sharpy.Core/Builtins/Exports.cs` | Primary module class — renamed to `Builtins`. | ✅ Done (Phase 2) |
+| `src/Sharpy.Core/Operator/` (15 files) | Operator module — renamed to `Operator`. | ✅ Done (Phase 2) |
+| All 108 Sharpy.Core source files | Namespace flattened to `Sharpy`. | ✅ Done (Phase 2b) |
+| `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs` | Assembly anchor (`typeof(Exports)` → `typeof(Builtins)`). | ❌ Phase 3b |
+| `src/Sharpy.Compiler/AssemblyCompiler.cs` | Assembly reference paths. | ❌ Phase 3b |
+| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs` | Builtin function call paths (`global::Sharpy.Core.Exports` → `global::Sharpy.Builtins`). | ❌ Phase 3b |
+| `src/Sharpy.Compiler/Discovery/Caching/OverloadIndexBuilder.cs` | Module discovery (`"Exports"` → `[SharpyModule]`). | ❌ Phase 3c |
+| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs` | Namespace + compilation unit generation. Core restructuring (nested wrappers). | ❌ Phase 4 |
+| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.ModuleClass.cs` | Module class naming, member separation, re-exports. | ❌ Phase 4 |
+| `src/Sharpy.Compiler.Tests/CodeGen/NamespaceLevelTypesTests.cs` | Must invert — types now nested, not at namespace level. | ❌ Phase 5 |
