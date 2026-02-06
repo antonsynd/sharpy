@@ -1,6 +1,6 @@
 ---
 name: parser-expert
-description: Implements and maintains the Sharpy parser - AST construction, grammar, Pratt precedence climbing. Owns src/Sharpy.Compiler/Parser/.
+description: Implements and maintains the Sharpy parser - AST construction, grammar, recursive descent with precedence levels. Owns src/Sharpy.Compiler/Parser/.
 tools: Read, Edit, Glob, Grep, Bash
 ---
 
@@ -29,7 +29,7 @@ Always check specs before implementing:
 | File | Purpose |
 |------|---------|
 | `Parser.cs` | Main parser, statement dispatch |
-| `Parser.Expressions.cs` | Expression parsing, Pratt precedence |
+| `Parser.Expressions.cs` | Expression parsing, recursive descent with precedence levels |
 | `Parser.Statements.cs` | Statement parsing |
 | `Parser.Definitions.cs` | Function/class definitions |
 | `Parser.Types.cs` | Type annotation parsing |
@@ -42,52 +42,82 @@ Always check specs before implementing:
 
 ```csharp
 // All nodes are immutable records with source locations
-public abstract record Node
+public abstract record Node : ILocatable
 {
     public int LineStart { get; init; }
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+    public TextSpan? Span { get; init; }
 }
 public abstract record Expression : Node;
 public abstract record Statement : Node;
 
 // Example: FunctionDef
 public record FunctionDef : Statement {
-    public string Name { get; init; }
-    public List<Parameter> Parameters { get; init; }
+    public string Name { get; init; } = "";
+    public ImmutableArray<TypeParameterDef> TypeParameters { get; init; }
+    public ImmutableArray<Parameter> Parameters { get; init; }
     public TypeAnnotation? ReturnType { get; init; }
-    public Block Body { get; init; }
+    public ImmutableArray<Statement> Body { get; init; }
+    public ImmutableArray<Decorator> Decorators { get; init; }
+    public string? DocString { get; init; }
 }
 ```
 
-## Recursive Descent Pattern
+## Statement Dispatch Pattern
 
 ```csharp
 private Statement ParseStatement()
 {
-    if (Match(TokenType.If)) return ParseIfStatement();
-    if (Match(TokenType.While)) return ParseWhileStatement();
-    if (Match(TokenType.Def)) return ParseFunctionDefinition();
-    if (Match(TokenType.Class)) return ParseClassDefinition();
-    return ParseExpressionStatement();
+    if (Current.Type == TokenType.At)
+        return ParseDecoratedStatement();
+
+    return Current.Type switch
+    {
+        TokenType.Def => ParseFunctionDef(),
+        TokenType.Class => ParseClassDef(),
+        TokenType.Struct => ParseStructDef(),
+        TokenType.Interface => ParseInterfaceDef(),
+        TokenType.Enum => ParseEnumDef(),
+        TokenType.If => ParseIfStatement(),
+        TokenType.While => ParseWhileStatement(),
+        TokenType.For => ParseForStatement(),
+        TokenType.Return => ParseReturnStatement(),
+        TokenType.Import => ParseImportStatement(),
+        TokenType.From => ParseFromImportStatement(),
+        TokenType.Const => ParseConstDeclaration(),
+        // ... and more
+        _ => ParseSimpleStatement()
+    };
 }
 ```
 
-## Pratt Parsing for Expressions
+## Recursive Descent Expression Parsing
+
+The parser uses **recursive descent with explicit precedence levels** (not Pratt parsing). Each precedence level is a separate method that calls the next level:
 
 ```csharp
-private Expression ParseExpression(int minPrecedence = 0)
+// Entry point delegates to precedence chain
+private Expression ParseExpression() => ParseWalrusExpression();
+
+// Each level calls the next higher-precedence level
+private Expression ParseNullCoalesce()
 {
-    var left = ParseUnaryExpression();
-    while (GetPrecedence(CurrentOperator()) >= minPrecedence)
+    var left = ParseLogicalOr();
+    while (Current.Type == TokenType.NullCoalesce)
     {
-        var op = Advance();
-        var right = ParseExpression(GetPrecedence(op) + 1);
-        left = new BinaryOp { Left = left, Operator = op, Right = right };
+        Advance();
+        var right = ParseLogicalOr();
+        left = new BinaryOp { Operator = BinaryOperator.NullCoalesce, Left = left, Right = right };
     }
     return left;
 }
+
+// Precedence chain (low to high):
+// Walrus -> TryMaybe -> Conditional -> NullCoalesce -> LogicalOr -> LogicalAnd
+// -> LogicalNot -> Comparison -> Pipe -> BitwiseOr -> BitwiseXor -> BitwiseAnd
+// -> Shift -> Additive -> Multiplicative -> Unary -> Power -> Primary
 ```
 
 ## Commands
@@ -102,12 +132,12 @@ dotnet run --project src/Sharpy.Cli -- emit ast file.spy  # Inspect AST
 AST nodes are **immutable records**. Never store semantic information on AST nodes - that goes in `SemanticInfo`:
 
 ```csharp
-// CORRECT - AST captures syntax only
+// CORRECT - AST captures syntax only, uses ImmutableArray
 public record FunctionDef : Statement {
-    public string Name { get; init; }
-    public List<Parameter> Parameters { get; init; }
+    public string Name { get; init; } = "";
+    public ImmutableArray<Parameter> Parameters { get; init; }
     public TypeAnnotation? ReturnType { get; init; }
-    public Block Body { get; init; }
+    public ImmutableArray<Statement> Body { get; init; }
 }
 
 // WRONG - don't add computed/semantic info to AST

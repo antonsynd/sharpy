@@ -21,10 +21,13 @@ Invoke this agent when claims are made that could lead to bugs if incorrect:
 ## Verification Categories
 
 ### 1. .NET API
-Create test program or use `csharp` REPL to verify behavior:
+Create a minimal test program to verify behavior:
 ```bash
-dotnet script -e "Console.WriteLine(string.IsNullOrEmpty(null))"
+# Write a quick C# program and run it
+echo 'Console.WriteLine(string.IsNullOrEmpty(null));' > /tmp/Test.cs
+dotnet run --project /tmp/Test.cs
 ```
+Or search the codebase for existing usage patterns.
 
 ### 2. Roslyn API
 Check SyntaxFactory method exists:

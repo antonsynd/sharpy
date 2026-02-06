@@ -24,6 +24,7 @@ Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type 
 - `NameMangler.cs` - Name transformations
 - `CodeValidator.cs` - Validates generated code compiles
 - `CodeGenContext.cs` - Shared context for emission
+- `NameResolutionService.cs` - Consolidated name resolution (Sharpy names -> C# identifiers)
 
 **Does NOT modify:** Lexer, Parser, Semantic analysis, or Sharpy.Core
 
