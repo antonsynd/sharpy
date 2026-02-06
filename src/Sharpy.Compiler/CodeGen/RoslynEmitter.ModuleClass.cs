@@ -80,14 +80,14 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates the module class and namespace-level type declarations.
-    /// Types (classes, structs, interfaces, enums) are placed at namespace level as siblings to the module class,
-    /// matching C# conventions for top-level type declarations.
+    /// Generates the module class with all members nested inside it.
+    /// Types (classes, structs, interfaces, enums) are nested inside the module class,
+    /// enabling single 'using static' imports for C# consumers.
     /// </summary>
     /// <returns>
     /// A tuple containing:
-    /// - The module class (static class with fields, functions, Main)
-    /// - List of type declarations to place at namespace level
+    /// - The module class (static class with fields, functions, types, Main)
+    /// - Empty list (kept for API compatibility during transition)
     /// </returns>
     private (ClassDeclarationSyntax moduleClass, List<MemberDeclarationSyntax> namespaceTypes)
         GenerateModuleMembers(List<Statement> statements, List<FromImportStatement>? reExportImports = null)
@@ -130,12 +130,9 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Separate declarations into:
-        // - moduleDeclarations: fields, methods, constants (go in module class)
-        // - namespaceTypes: classes, structs, interfaces, enums (go at namespace level)
-        // - executableStatements: bare statements (wrapped in Main)
+        // All declarations go into the module class (types are nested, not namespace siblings)
         var moduleDeclarations = new List<MemberDeclarationSyntax>();
-        var namespaceTypes = new List<MemberDeclarationSyntax>();
+        var namespaceTypes = new List<MemberDeclarationSyntax>(); // Kept empty for API compat
         var executableStatements = new List<Statement>();
 
         // First pass: check if there's a user-defined main function
@@ -161,16 +158,8 @@ internal partial class RoslynEmitter
 
             if (member is MemberDeclarationSyntax memberDecl)
             {
-                // Route type declarations to namespace level
-                if (stmt is ClassDef or StructDef or InterfaceDef or EnumDef)
-                {
-                    namespaceTypes.Add(memberDecl);
-                }
-                else
-                {
-                    // Functions, fields, constants stay in module class
-                    moduleDeclarations.Add(memberDecl);
-                }
+                // Everything goes into the module class (types are nested)
+                moduleDeclarations.Add(memberDecl);
             }
             else if (member == null && stmt is VariableDeclaration varRedefinition)
             {
@@ -282,10 +271,85 @@ internal partial class RoslynEmitter
         // Generate module class name from source file name
         var moduleClassName = GetModuleClassName(willHaveMainMethod, functionNames);
 
-        var moduleClass = ClassDeclaration(moduleClassName)
+        // Name collision detection: check if any user-defined type's PascalCase name
+        // matches the module class name (e.g., animal.spy defining class Animal)
+        ClassDeclarationSyntax? collidingTypeDecl = null;
+        if (moduleClassName != "Program")
+        {
+            // Find colliding type declarations and their generated syntax
+            foreach (var stmt in statements)
+            {
+                string? typeName = stmt switch
+                {
+                    ClassDef cd => SimpleToPascalCase(cd.Name),
+                    StructDef sd => SimpleToPascalCase(sd.Name),
+                    InterfaceDef id => SimpleToPascalCase(id.Name),
+                    EnumDef ed => SimpleToPascalCase(ed.Name),
+                    _ => null
+                };
+
+                if (typeName != null && typeName == moduleClassName && stmt is ClassDef)
+                {
+                    // Find the generated ClassDeclarationSyntax for this type
+                    collidingTypeDecl = moduleDeclarations
+                        .OfType<ClassDeclarationSyntax>()
+                        .FirstOrDefault(c => c.Identifier.Text == moduleClassName);
+                    break;
+                }
+                else if (typeName != null && typeName == moduleClassName)
+                {
+                    // Collision with struct/interface/enum — error (can't merge)
+                    var srcName = stmt switch { StructDef sd => sd.Name, InterfaceDef id => id.Name, EnumDef ed => ed.Name, _ => "?" };
+                    _context.AddError(
+                        $"Type '{srcName}' conflicts with module class name '{moduleClassName}'. " +
+                        $"Rename the type or the source file to avoid this collision.",
+                        code: DiagnosticCodes.CodeGen.NameCollision);
+                }
+            }
+        }
+
+        // Handle collision: when a class name matches the module name, the class
+        // absorbs module-level static members (functions, constants) and becomes
+        // the module representative. This enables the common Python pattern of
+        // animal.spy containing class Animal.
+        if (collidingTypeDecl != null)
+        {
+            // Separate the colliding type from other declarations
+            var otherDeclarations = moduleDeclarations
+                .Where(m => m != collidingTypeDecl)
+                .ToList();
+
+            // Inject non-type module declarations as static members into the colliding type
+            var augmentedType = collidingTypeDecl.WithMembers(
+                collidingTypeDecl.Members.AddRange(otherDeclarations));
+
+            return (augmentedType, namespaceTypes);
+        }
+
+        // Normal case: build a static module class containing all declarations
+        var moduleClassDecl = ClassDeclaration(moduleClassName);
+
+        // Add [SharpyModule] attribute to non-Program module classes
+        if (moduleClassName != "Program")
+        {
+            var sharpyModuleName = GetSharpyModuleName();
+            moduleClassDecl = moduleClassDecl
+                .WithAttributeLists(SingletonList(
+                    AttributeList(SingletonSeparatedList(
+                        Attribute(ParseName("global::Sharpy.SharpyModule"),
+                            AttributeArgumentList(SingletonSeparatedList(
+                                AttributeArgument(LiteralExpression(
+                                    SyntaxKind.StringLiteralExpression,
+                                    Literal(sharpyModuleName))))))))));
+        }
+
+        // Module class is always partial (allows merging with wrapper declarations
+        // from other files in the same package directory)
+        var moduleClass = moduleClassDecl
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
-                Token(SyntaxKind.StaticKeyword)))
+                Token(SyntaxKind.StaticKeyword),
+                Token(SyntaxKind.PartialKeyword)))
             .WithMembers(List(moduleDeclarations));
 
         return (moduleClass, namespaceTypes);
@@ -303,21 +367,72 @@ internal partial class RoslynEmitter
 
     private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)
     {
-        // All modules use "Exports" as the class name
-        // This matches the spec and import system expectation:
-        // "using config = ProjectNamespace.Config.Exports;"
-        // Exception: entry point modules that generate a Main method use "Program"
+        // Entry point modules that generate a Main method use "Program"
         if (willGenerateMainMethod)
         {
             return "Program";
         }
 
-        return "Exports";
+        // Module class name is derived from the source file name
+        if (!string.IsNullOrEmpty(_context.SourceFilePath))
+        {
+            var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
+            if (fileName == DunderNames.Init)
+            {
+                // __init__.spy → use directory name as class name
+                var dirName = Path.GetFileName(Path.GetDirectoryName(_context.SourceFilePath));
+                return SimpleToPascalCase(dirName ?? "Module");
+            }
+            return SimpleToPascalCase(fileName);
+        }
+
+        return "Module"; // Fallback
+    }
+
+    /// <summary>
+    /// Computes the Sharpy module name for the [SharpyModule] attribute.
+    /// Returns the Python-style dotted module path (e.g., "mypackage.helpers").
+    /// </summary>
+    private string GetSharpyModuleName()
+    {
+        if (string.IsNullOrEmpty(_context.SourceFilePath))
+            return "module";
+
+        var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
+
+        if (!string.IsNullOrEmpty(_context.ProjectRootPath))
+        {
+            var relativePath = Path.GetRelativePath(_context.ProjectRootPath, _context.SourceFilePath);
+            var relativeDir = Path.GetDirectoryName(relativePath) ?? "";
+
+            var parts = new List<string>();
+
+            if (!string.IsNullOrEmpty(relativeDir) && relativeDir != ".")
+            {
+                parts.AddRange(relativeDir.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries));
+            }
+
+            // For __init__.spy, the module name is the directory path (without __init__)
+            // For regular files, append the file name
+            if (fileName != DunderNames.Init)
+            {
+                parts.Add(fileName);
+            }
+
+            if (parts.Count > 0)
+                return string.Join(".", parts);
+        }
+
+        // Single-file: just use the file name
+        if (fileName == DunderNames.Init)
+            return "module";
+
+        return fileName;
     }
 
     /// <summary>
     /// Generate delegating members for re-exported symbols from a from-import statement.
-    /// For example: "from .helpers import utility_func" generates a method that delegates to helpers.Exports.UtilityFunc()
+    /// For example: "from .helpers import utility_func" generates a method that delegates to helpers.UtilityFunc()
     /// </summary>
     private IEnumerable<MemberDeclarationSyntax> GenerateReExportMembers(FromImportStatement fromImport)
     {
@@ -327,10 +442,12 @@ internal partial class RoslynEmitter
         if (reExportedSymbols == null || resolvedModulePath == null)
             yield break;
 
-        // Convert the resolved module path to a namespace path
-        // e.g., "mypackage.helpers" -> "Mypackage.Helpers.Exports"
+        // Convert the resolved module path to a nested class path
+        // e.g., "mypackage.helpers" -> "ProjectNamespace.Mypackage.Helpers"
         var sourceModuleNamespace = ConvertModuleNameToNamespace(resolvedModulePath);
-        var sourceClassName = $"{sourceModuleNamespace}.Exports";
+        var sourceClassName = !string.IsNullOrEmpty(_context.ProjectNamespace)
+            ? $"{_context.ProjectNamespace}.{sourceModuleNamespace}"
+            : sourceModuleNamespace;
 
         foreach (var (localName, symbol) in reExportedSymbols)
         {
@@ -344,8 +461,12 @@ internal partial class RoslynEmitter
                     yield return GenerateReExportProperty(localName, varSymbol, sourceClassName);
                     break;
 
-                    // TypeSymbol (classes, structs, enums) are handled differently - they use type aliases
-                    // which are already supported via the import system, so we don't need to re-export them here
+                case TypeSymbol:
+                    _context.AddError(
+                        $"Cannot re-export type '{localName}' from __init__.spy. " +
+                        $"Import the type from its defining module instead.",
+                        code: DiagnosticCodes.CodeGen.TypeReExportNotSupported);
+                    break;
             }
         }
     }

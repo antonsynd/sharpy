@@ -420,19 +420,12 @@ public class Compiler
             metrics.StartPhase("Code Generation");
             LogPhaseStart("Code Generation", filePath);
 
-            // For single-file compilation, derive a namespace from the file name
-            var defaultNamespace = !string.IsNullOrEmpty(filePath)
-                ? Path.GetFileNameWithoutExtension(filePath)
-                : null;
-
             var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
             {
                 SourceFilePath = filePath,
-                // For single-file, we only set ProjectNamespace (not ProjectRootPath)
-                // This tells the emitter to use a simple file-based namespace
-                ProjectNamespace = !string.IsNullOrEmpty(defaultNamespace)
-                    ? $"Sharpy.{ToPascalCase(defaultNamespace)}"
-                    : null,
+                // For single-file compilation, use "Sharpy" as the project namespace.
+                // The file name becomes the module class name (or "Program" for entry points).
+                ProjectNamespace = "Sharpy",
                 // Single-file compilation is always an entry point - generate Main method
                 IsEntryPoint = true,
                 Logger = _logger,

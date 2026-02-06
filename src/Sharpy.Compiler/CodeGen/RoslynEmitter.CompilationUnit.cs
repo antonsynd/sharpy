@@ -40,24 +40,30 @@ internal partial class RoslynEmitter
                 .ToList();
         }
 
-        // Generate module members: module class (with fields, methods) + namespace-level types
-        // Types (classes, structs, interfaces, enums) are placed at namespace level as siblings,
-        // matching C# conventions. This gives cleaner qualified names like MyProject.Geometry.Point
-        // instead of MyProject.Geometry.Exports.Point.
-        var (moduleClass, namespaceTypes) = GenerateModuleMembers(nonImportStatements, fromImports);
+        // Generate module class with all members nested inside
+        var (moduleClass, _) = GenerateModuleMembers(nonImportStatements, fromImports);
 
-        // Combine module class with namespace-level types
-        // Module class comes first, followed by type declarations
-        var namespaceMembers = new List<MemberDeclarationSyntax> { moduleClass };
-        namespaceMembers.AddRange(namespaceTypes);
+        // Compute directory wrapper classes and wrap the module class
+        var wrapperNames = ComputeWrapperClasses();
+        MemberDeclarationSyntax current = moduleClass;
 
-        // Generate namespace from source file path (if available)
-        // Use block-scoped namespace for C# 9.0 compatibility (Unity)
+        // Build wrapper classes from inside out
+        for (int i = wrapperNames.Count - 1; i >= 0; i--)
+        {
+            current = ClassDeclaration(wrapperNames[i])
+                .WithModifiers(TokenList(
+                    Token(SyntaxKind.PublicKeyword),
+                    Token(SyntaxKind.StaticKeyword),
+                    Token(SyntaxKind.PartialKeyword)))
+                .WithMembers(SingletonList(current));
+        }
+
+        // Generate project-level namespace only
         var namespaceName = GenerateNamespaceName();
         var namespaceDecl = NamespaceDeclaration(namespaceName)
-            .WithMembers(List(namespaceMembers));
+            .WithMembers(SingletonList(current));
 
-        // Build compilation unit first
+        // Build compilation unit
         var compilationUnit = CompilationUnit()
             .WithUsings(List(usingDirectives))
             .WithMembers(SingletonList<MemberDeclarationSyntax>(namespaceDecl))
@@ -71,80 +77,65 @@ internal partial class RoslynEmitter
         return compilationUnit.WithLeadingTrivia(nullablePragma);
     }
 
+    /// <summary>
+    /// Returns only the project-level namespace. Directory and file hierarchy
+    /// is expressed via nested static classes, not namespace components.
+    /// </summary>
     private NameSyntax GenerateNamespaceName()
     {
-        // If project namespace is specified, use project-based namespace generation
-        if (!string.IsNullOrEmpty(_context.ProjectNamespace) &&
-            !string.IsNullOrEmpty(_context.ProjectRootPath) &&
-            !string.IsNullOrEmpty(_context.SourceFilePath))
-        {
-            return GenerateProjectNamespace();
-        }
-
-        // If only project namespace is specified (single-file with explicit namespace),
-        // use it directly with the file name
+        // With project namespace, use it directly
         if (!string.IsNullOrEmpty(_context.ProjectNamespace))
         {
-            var fileName = !string.IsNullOrEmpty(_context.SourceFilePath)
-                ? Path.GetFileNameWithoutExtension(_context.SourceFilePath)
-                : null;
-
-            if (!string.IsNullOrEmpty(fileName))
-            {
-                return ParseName($"{_context.ProjectNamespace}.{SimpleToPascalCase(fileName)}");
-            }
             return ParseName(_context.ProjectNamespace);
         }
 
-        // Fallback to file-based namespace generation for single-file compilation
-        // For single-file compilation without a project, use a simple namespace based
-        // on just the file name to avoid problematic paths (numeric directories, etc.)
-        if (string.IsNullOrEmpty(_context.SourceFilePath))
+        // Single-file standalone compilation: use "Sharpy" as the namespace
+        if (!string.IsNullOrEmpty(_context.SourceFilePath))
         {
-            return ParseName("SharpyGenerated");
-        }
-
-        var fileNameOnly = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
-
-        // Use simple file-name-based namespace for single-file compilation
-        // This avoids issues with paths containing numeric directories, special chars, etc.
-        if (!string.IsNullOrEmpty(fileNameOnly))
-        {
-            var sanitizedName = SimpleToPascalCase(fileNameOnly);
-            return ParseName($"Sharpy.{sanitizedName}");
+            return ParseName("Sharpy");
         }
 
         return ParseName("SharpyGenerated");
     }
 
-    private NameSyntax GenerateProjectNamespace()
+    /// <summary>
+    /// Computes the list of wrapper class names from the directory path.
+    /// For regular files: all directory parts are wrappers.
+    /// For __init__.spy: all directory parts EXCEPT the last are wrappers
+    /// (the last directory is the module class itself).
+    /// </summary>
+    private List<string> ComputeWrapperClasses()
     {
-        // Start with project root namespace
-        var namespaceParts = new List<string> { _context.ProjectNamespace! };
+        if (string.IsNullOrEmpty(_context.ProjectRootPath) ||
+            string.IsNullOrEmpty(_context.SourceFilePath))
+        {
+            return new List<string>();
+        }
 
-        // Get relative path from project src directory to source file
-        var relativePath = Path.GetRelativePath(_context.ProjectRootPath!, _context.SourceFilePath!);
-
-        // Extract directory path (without filename)
+        var relativePath = Path.GetRelativePath(_context.ProjectRootPath, _context.SourceFilePath);
         var relativeDir = Path.GetDirectoryName(relativePath) ?? "";
         var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
 
-        // Add directory parts to namespace (if not at root)
-        if (!string.IsNullOrEmpty(relativeDir) && relativeDir != ".")
+        if (string.IsNullOrEmpty(relativeDir) || relativeDir == ".")
         {
-            var dirParts = relativeDir.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => SimpleToPascalCase(p));
-            namespaceParts.AddRange(dirParts);
+            // Root-level file: no wrappers needed
+            return new List<string>();
         }
 
-        // Add file name as final namespace component
-        // EXCEPT for __init__.spy files, which represent the package itself
-        if (!string.IsNullOrEmpty(fileName) && fileName != DunderNames.Init)
+        var dirParts = relativeDir
+            .Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(p => SimpleToPascalCase(p))
+            .ToList();
+
+        if (fileName == DunderNames.Init)
         {
-            namespaceParts.Add(SimpleToPascalCase(fileName));
+            // __init__.spy: last directory is the module class, not a wrapper
+            // e.g., pkg/sub/__init__.spy → wrappers = [Pkg], module = Sub
+            if (dirParts.Count > 0)
+                dirParts.RemoveAt(dirParts.Count - 1);
         }
 
-        return ParseName(string.Join(".", namespaceParts));
+        return dirParts;
     }
 
     private List<UsingDirectiveSyntax> GenerateUsingDirectives(Module module)
@@ -158,6 +149,14 @@ internal partial class RoslynEmitter
 
         // Add Sharpy runtime usings (use global:: to avoid conflicts when output namespace contains "Sharpy")
         usings.Add(UsingDirective(ParseName("global::Sharpy")));
+
+        // Add project namespace using to make all project-level types accessible.
+        // This is needed when types live directly at namespace level (e.g., when file name
+        // matches type name: animal.spy → class Animal at namespace level without module wrapper).
+        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+        {
+            usings.Add(UsingDirective(ParseName(_context.ProjectNamespace)));
+        }
 
         // Process import statements
         foreach (var stmt in module.Body)
@@ -190,37 +189,31 @@ internal partial class RoslynEmitter
     {
         foreach (var alias in import.Names)
         {
-            // Convert Python module name to C# namespace
-            // e.g., "system.io" -> "System.IO"
+            // Convert Python module name to C# namespace/class path
             var namespaceName = ConvertModuleNameToNamespace(alias.Name);
             var isNetFramework = IsNetFrameworkNamespace(alias.Name);
 
             if (alias.AsName != null)
             {
-                // import module as alias
                 if (isNetFramework)
                 {
-                    // import system.io as io -> using io = System.IO; (for .NET framework)
+                    // import system.io as io -> using io = System.IO;
                     yield return UsingDirective(
                         NameEquals(alias.AsName),
                         ParseName(namespaceName));
                 }
                 else
                 {
-                    // import module as alias -> using alias = ProjectNamespace.Module.Exports; (for Sharpy modules)
-                    // Sharpy modules expose their members via a class named "Exports"
-                    const string exportsClassName = "Exports";
-
-                    // Build full path: <ProjectNamespace>.<ModuleNamespace>.Exports
+                    // import module as alias -> using alias = ProjectNamespace.Module;
+                    // Module IS the class now (no more .Exports suffix)
                     string fullModuleClass;
                     if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                     {
-                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}.{exportsClassName}";
+                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}";
                     }
                     else
                     {
-                        // Fallback for single-file compilation without project namespace
-                        fullModuleClass = $"{namespaceName}.{exportsClassName}";
+                        fullModuleClass = namespaceName;
                     }
 
                     yield return UsingDirective(
@@ -232,32 +225,25 @@ internal partial class RoslynEmitter
             {
                 if (isNetFramework)
                 {
-                    // import system.io -> using System.IO; (standard .NET import)
+                    // import system.io -> using System.IO;
                     yield return UsingDirective(ParseName(namespaceName));
                 }
                 else
                 {
-                    // import module -> using module_alias = ProjectNamespace.Module.Exports; (Sharpy module)
-                    // Convert "utils.helpers" to "utils_helpers" for valid C# identifier
-                    // Also escape C# reserved keywords like "base" -> "@base"
+                    // import module -> using module_alias = ProjectNamespace.Module;
                     var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_"));
 
-                    // Sharpy modules expose their members via a class named "Exports"
-                    const string exportsClassName = "Exports";
-
-                    // Build full path: <ProjectNamespace>.<ModuleNamespace>.Exports
-                    // For example:
-                    //   - "config" → "TestProject.Config.Exports"
-                    //   - "lib.math.operations" → "TestProject.Lib.Math.Operations.Exports"
+                    // Module IS the class now (no more .Exports suffix)
+                    // e.g., "config" → "TestProject.Config"
+                    // e.g., "lib.math.operations" → "TestProject.Lib.Math.Operations"
                     string fullModuleClass;
                     if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                     {
-                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}.{exportsClassName}";
+                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}";
                     }
                     else
                     {
-                        // Fallback for single-file compilation without project namespace
-                        fullModuleClass = $"{namespaceName}.{exportsClassName}";
+                        fullModuleClass = namespaceName;
                     }
 
                     yield return UsingDirective(
@@ -299,115 +285,29 @@ internal partial class RoslynEmitter
         else
         {
             // Generate using static for the module class
-            // This enables direct access to module-level functions and variables
-            // e.g., "from config import MAX_SIZE" → "using static TestProject.Config.Exports;"
-            //
-            // The module class is always named "Exports" (see GetModuleClassName),
-            // not the module name duplicated. For nested modules like "lib.math.operations":
-            // - Namespace: TestProject.Lib.Math.Operations
-            // - Class: Exports
-            // - Full path: TestProject.Lib.Math.Operations.Exports
+            // Module IS the class now — no separate .Exports suffix
+            // e.g., "from config import MAX_SIZE" → "using static TestProject.Config;"
+            // e.g., "from lib.math.operations import add" → "using static TestProject.Lib.Math.Operations;"
 
-            // Use ResolvedModulePath for relative imports (e.g., ".helpers" → "mypackage.helpers")
-            // Fall back to Module for non-relative imports or when resolution hasn't been performed
             var moduleName = GetResolvedModulePath(fromImport) ?? fromImport.Module;
             var moduleNamespacePath = ConvertModuleNameToNamespace(moduleName);
 
-            // The module class is always named "Exports" (not the module name)
-            const string moduleClassName = "Exports";
-
-            // Build full path: <ProjectNamespace>.<ModuleNamespace>.Exports
-            // For example:
-            //   - "config" → "TestProject.Config.Exports"
-            //   - "lib.math.operations" → "TestProject.Lib.Math.Operations.Exports"
+            // Module class path = ProjectNamespace.ModulePath (no .Exports)
             string fullModuleClass;
             if (!string.IsNullOrEmpty(_context.ProjectNamespace))
             {
-                fullModuleClass = $"{_context.ProjectNamespace}.{moduleNamespacePath}.{moduleClassName}";
+                fullModuleClass = $"{_context.ProjectNamespace}.{moduleNamespacePath}";
             }
             else
             {
-                // Fallback for single-file compilation without project namespace
-                fullModuleClass = $"{moduleNamespacePath}.{moduleClassName}";
+                fullModuleClass = moduleNamespacePath;
             }
 
             yield return UsingDirective(ParseName(fullModuleClass))
                 .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
 
-            // Also emit a non-static using for the module namespace itself.
-            // Types (classes, structs, interfaces, enums) are placed at namespace level as siblings
-            // to the Exports class, so they need a plain using to be visible.
-            // e.g., "from math_utils import MathConstants" also needs "using TestProject.MathUtils;"
-            string moduleNamespace;
-            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-            {
-                moduleNamespace = $"{_context.ProjectNamespace}.{moduleNamespacePath}";
-            }
-            else
-            {
-                moduleNamespace = moduleNamespacePath;
-            }
-            yield return UsingDirective(ParseName(moduleNamespace));
-
-            // Also generate using statements for namespaces where re-exported types are actually defined.
-            // This handles the case where a package __init__.spy re-exports types from submodules.
-            // For example:
-            //   - mypackage/__init__.spy re-exports SomeClass from mypackage.submodule
-            //   - When we "from mypackage import SomeClass", we need:
-            //     - using static TestProject.Mypackage.Exports; (for the import)
-            //     - using TestProject.Mypackage.Submodule; (for the actual type namespace)
-            foreach (var usingDirective in GenerateReExportedTypeNamespaceUsings(fromImport, moduleName))
-            {
-                yield return usingDirective;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Generates using statements for namespaces where re-exported types are actually defined.
-    /// When importing from a package that re-exports types from submodules, we need using
-    /// statements for those submodule namespaces to resolve the type references.
-    /// </summary>
-    private IEnumerable<UsingDirectiveSyntax> GenerateReExportedTypeNamespaceUsings(
-        FromImportStatement fromImport,
-        string importModuleName)
-    {
-        var reExportedSymbols = GetReExportedSymbols(fromImport);
-        if (reExportedSymbols == null || reExportedSymbols.Count == 0)
-        {
-            yield break;
-        }
-
-        var addedNamespaces = new HashSet<string>();
-
-        foreach (var (_, symbol) in reExportedSymbols)
-        {
-            if (symbol is TypeSymbol typeSymbol && !string.IsNullOrEmpty(typeSymbol.DefiningModule))
-            {
-                // If the type's DefiningModule differs from the import module, we need a using statement
-                // for the namespace where the type is actually defined.
-                if (!string.Equals(typeSymbol.DefiningModule, importModuleName, StringComparison.OrdinalIgnoreCase))
-                {
-                    var definingNamespace = ConvertModuleNameToNamespace(typeSymbol.DefiningModule);
-
-                    // Build full namespace path
-                    string fullNamespace;
-                    if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-                    {
-                        fullNamespace = $"{_context.ProjectNamespace}.{definingNamespace}";
-                    }
-                    else
-                    {
-                        fullNamespace = definingNamespace;
-                    }
-
-                    // Only add each namespace once
-                    if (addedNamespaces.Add(fullNamespace))
-                    {
-                        yield return UsingDirective(ParseName(fullNamespace));
-                    }
-                }
-            }
+            // No non-static using needed — types are nested inside the module class
+            // and are exposed by 'using static' (per C# spec, nested types are accessible)
         }
     }
 
