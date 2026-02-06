@@ -5,10 +5,31 @@ using System.Collections.Generic;
 using System.Linq;
 using global::Sharpy;
 
-namespace Sharpy.StructPointValueSemantics
+namespace Sharpy
 {
     public static class Program
     {
+        public struct Point
+        {
+            public int X;
+            public int Y;
+            public void Move(int dx, int dy)
+            {
+#line 12 "struct_point_value_semantics.spy"
+                this.X = this.X + dx;
+#line 13 "struct_point_value_semantics.spy"
+                this.Y = this.Y + dy;
+            }
+
+            public Point(int x, int y)
+            {
+#line 8 "struct_point_value_semantics.spy"
+                this.X = x;
+#line 9 "struct_point_value_semantics.spy"
+                this.Y = y;
+            }
+        }
+
         public static void Main()
         {
 #line 16 "struct_point_value_semantics.spy"
@@ -25,27 +46,6 @@ namespace Sharpy.StructPointValueSemantics
             global::Sharpy.Builtins.Print(p2.X);
 #line 23 "struct_point_value_semantics.spy"
             global::Sharpy.Builtins.Print(p2.Y);
-        }
-    }
-
-    public struct Point
-    {
-        public int X;
-        public int Y;
-        public void Move(int dx, int dy)
-        {
-#line 12 "struct_point_value_semantics.spy"
-            this.X = this.X + dx;
-#line 13 "struct_point_value_semantics.spy"
-            this.Y = this.Y + dy;
-        }
-
-        public Point(int x, int y)
-        {
-#line 8 "struct_point_value_semantics.spy"
-            this.X = x;
-#line 9 "struct_point_value_semantics.spy"
-            this.Y = y;
         }
     }
 }

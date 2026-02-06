@@ -5,10 +5,25 @@ using System.Collections.Generic;
 using System.Linq;
 using global::Sharpy;
 
-namespace Sharpy.ClassStaticMethods
+namespace Sharpy
 {
     public static class Program
     {
+        public class MathHelper
+        {
+            public static int Add(int a, int b)
+            {
+#line 4 "class_static_methods.spy"
+                return a + b;
+            }
+
+            public static int Square(int x)
+            {
+#line 7 "class_static_methods.spy"
+                return x * x;
+            }
+        }
+
         public static void Main()
         {
 #line 10 "class_static_methods.spy"
@@ -23,21 +38,6 @@ namespace Sharpy.ClassStaticMethods
             var result3 = MathHelper.Add(result2, 10);
 #line 17 "class_static_methods.spy"
             global::Sharpy.Builtins.Print(result3);
-        }
-    }
-
-    public class MathHelper
-    {
-        public static int Add(int a, int b)
-        {
-#line 4 "class_static_methods.spy"
-            return a + b;
-        }
-
-        public static int Square(int x)
-        {
-#line 7 "class_static_methods.spy"
-            return x * x;
         }
     }
 }

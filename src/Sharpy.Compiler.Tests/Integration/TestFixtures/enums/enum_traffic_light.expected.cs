@@ -5,10 +5,17 @@ using System.Collections.Generic;
 using System.Linq;
 using global::Sharpy;
 
-namespace Sharpy.EnumTrafficLight
+namespace Sharpy
 {
     public static class Program
     {
+        public enum TrafficLight
+        {
+            Red = 0,
+            Yellow = 1,
+            Green = 2
+        }
+
         public static TrafficLight Current = TrafficLight.Red;
         public static void Main()
         {
@@ -21,12 +28,5 @@ namespace Sharpy.EnumTrafficLight
 #line 16 "enum_traffic_light.spy"
             global::Sharpy.Builtins.Print(Current == TrafficLight.Yellow);
         }
-    }
-
-    public enum TrafficLight
-    {
-        Red = 0,
-        Yellow = 1,
-        Green = 2
     }
 }

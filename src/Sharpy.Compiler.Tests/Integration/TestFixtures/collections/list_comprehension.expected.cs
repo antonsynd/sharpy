@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using global::Sharpy;
 
-namespace Sharpy.ListComprehension
+namespace Sharpy
 {
     public static class Program
     {

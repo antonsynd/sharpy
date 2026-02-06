@@ -5,10 +5,99 @@ using System.Collections.Generic;
 using System.Linq;
 using global::Sharpy;
 
-namespace Sharpy.FStringExpressions0003
+namespace Sharpy
 {
     public static class Program
     {
+        public abstract class Player
+        {
+            public string Name;
+            public int BaseScore;
+            public double Multiplier;
+            public virtual int GetFinalScore()
+            {
+#line 17 "f_string_expressions_0003.spy"
+                return global::Sharpy.Builtins.@Int(this.BaseScore * this.Multiplier);
+            }
+
+            public abstract string GetRank();
+            public Player(string name, int score)
+            {
+#line 11 "f_string_expressions_0003.spy"
+                this.Name = name;
+#line 12 "f_string_expressions_0003.spy"
+                this.BaseScore = score;
+#line 13 "f_string_expressions_0003.spy"
+                this.Multiplier = 1;
+            }
+        }
+
+        public class CompetitivePlayer : Player
+        {
+            public int BonusPoints;
+            public int Level;
+            public override int GetFinalScore()
+            {
+#line 35 "f_string_expressions_0003.spy"
+                return global::Sharpy.Builtins.@Int((this.BaseScore + this.BonusPoints) * this.Multiplier);
+            }
+
+            public override string GetRank()
+            {
+#line 39 "f_string_expressions_0003.spy"
+                if (this.GetFinalScore() >= 150)
+                {
+#line 40 "f_string_expressions_0003.spy"
+                    return "Master";
+                }
+
+#line 41 "f_string_expressions_0003.spy"
+                if (this.GetFinalScore() >= 100)
+                {
+#line 42 "f_string_expressions_0003.spy"
+                    return "Expert";
+                }
+
+#line 43 "f_string_expressions_0003.spy"
+                return "Novice";
+            }
+
+            public CompetitivePlayer(string name, int score, int bonus, int level) : base(name, score)
+            {
+#line 29 "f_string_expressions_0003.spy"
+                this.BonusPoints = bonus;
+#line 30 "f_string_expressions_0003.spy"
+                this.Level = level;
+#line 31 "f_string_expressions_0003.spy"
+                this.Multiplier = 1.5;
+            }
+        }
+
+        public class CasualPlayer : Player
+        {
+            public int GamesPlayed;
+            public override string GetRank()
+            {
+#line 55 "f_string_expressions_0003.spy"
+                if (this.GamesPlayed > 10)
+                {
+#line 56 "f_string_expressions_0003.spy"
+                    return "Veteran";
+                }
+
+#line 57 "f_string_expressions_0003.spy"
+                return "Beginner";
+            }
+
+            public CasualPlayer(string name, int score, int games) : base(name, score)
+            {
+#line 50 "f_string_expressions_0003.spy"
+                this.GamesPlayed = games;
+#line 51 "f_string_expressions_0003.spy"
+                this.Multiplier = 1.2;
+            }
+        }
+
         public static void Main()
         {
 #line 60 "f_string_expressions_0003.spy"
@@ -31,95 +120,6 @@ namespace Sharpy.FStringExpressions0003
             global::Sharpy.Builtins.Print(FormattableString.Invariant($"Total Score: {casual.GetFinalScore()}"));
 #line 71 "f_string_expressions_0003.spy"
             global::Sharpy.Builtins.Print(FormattableString.Invariant($"Rank: {casual.GetRank()}, Next level at: {11 - casual.GamesPlayed} games"));
-        }
-    }
-
-    public abstract class Player
-    {
-        public string Name;
-        public int BaseScore;
-        public double Multiplier;
-        public virtual int GetFinalScore()
-        {
-#line 17 "f_string_expressions_0003.spy"
-            return global::Sharpy.Builtins.@Int(this.BaseScore * this.Multiplier);
-        }
-
-        public abstract string GetRank();
-        public Player(string name, int score)
-        {
-#line 11 "f_string_expressions_0003.spy"
-            this.Name = name;
-#line 12 "f_string_expressions_0003.spy"
-            this.BaseScore = score;
-#line 13 "f_string_expressions_0003.spy"
-            this.Multiplier = 1;
-        }
-    }
-
-    public class CompetitivePlayer : Player
-    {
-        public int BonusPoints;
-        public int Level;
-        public override int GetFinalScore()
-        {
-#line 35 "f_string_expressions_0003.spy"
-            return global::Sharpy.Builtins.@Int((this.BaseScore + this.BonusPoints) * this.Multiplier);
-        }
-
-        public override string GetRank()
-        {
-#line 39 "f_string_expressions_0003.spy"
-            if (this.GetFinalScore() >= 150)
-            {
-#line 40 "f_string_expressions_0003.spy"
-                return "Master";
-            }
-
-#line 41 "f_string_expressions_0003.spy"
-            if (this.GetFinalScore() >= 100)
-            {
-#line 42 "f_string_expressions_0003.spy"
-                return "Expert";
-            }
-
-#line 43 "f_string_expressions_0003.spy"
-            return "Novice";
-        }
-
-        public CompetitivePlayer(string name, int score, int bonus, int level) : base(name, score)
-        {
-#line 29 "f_string_expressions_0003.spy"
-            this.BonusPoints = bonus;
-#line 30 "f_string_expressions_0003.spy"
-            this.Level = level;
-#line 31 "f_string_expressions_0003.spy"
-            this.Multiplier = 1.5;
-        }
-    }
-
-    public class CasualPlayer : Player
-    {
-        public int GamesPlayed;
-        public override string GetRank()
-        {
-#line 55 "f_string_expressions_0003.spy"
-            if (this.GamesPlayed > 10)
-            {
-#line 56 "f_string_expressions_0003.spy"
-                return "Veteran";
-            }
-
-#line 57 "f_string_expressions_0003.spy"
-            return "Beginner";
-        }
-
-        public CasualPlayer(string name, int score, int games) : base(name, score)
-        {
-#line 50 "f_string_expressions_0003.spy"
-            this.GamesPlayed = games;
-#line 51 "f_string_expressions_0003.spy"
-            this.Multiplier = 1.2;
         }
     }
 }
