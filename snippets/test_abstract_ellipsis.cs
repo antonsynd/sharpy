@@ -3,11 +3,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
-namespace Sharpy.TestAbstractEllipsis
+namespace Sharpy
 {
-    public static class Program
+    public static partial class Program
     {
         /// <summary>
         /// Base shape class with abstract methods
@@ -48,7 +48,7 @@ namespace Sharpy.TestAbstractEllipsis
         {
             public int NotDoneYet()
             {
-                _ = throw new System.NotImplementedException();
+                throw new System.NotImplementedException();
             }
 
             public void EmptyMethod()
@@ -65,6 +65,10 @@ namespace Sharpy.TestAbstractEllipsis
 
         public static void Main()
         {
+            var c = new Circle(5);
+            global::Sharpy.Builtins.Print(c.Area());
+            global::Sharpy.Builtins.Print(c.Perimeter());
+            global::Sharpy.Builtins.Print(c.Describe());
         }
     }
 }

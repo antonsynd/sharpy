@@ -3,11 +3,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
-namespace Sharpy.TestNullConditionalError
+namespace Sharpy
 {
-    public static class Exports
+    public static partial class Program
     {
         public class Person
         {
@@ -24,7 +24,7 @@ namespace Sharpy.TestNullConditionalError
         {
             Person p = new Person("Alice", 30);
             var age = p?.Age;
-            global::Sharpy.Core.Exports.Print(age);
+            global::Sharpy.Builtins.Print(age);
         }
 
         public static void Main()

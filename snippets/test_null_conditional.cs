@@ -3,11 +3,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using global::Sharpy.Core;
+using global::Sharpy;
 
-namespace Sharpy.TestNullConditional
+namespace Sharpy
 {
-    public static class Exports
+    public static partial class Program
     {
         public class Person
         {
@@ -15,7 +15,7 @@ namespace Sharpy.TestNullConditional
             public int Age;
             public string Greet()
             {
-                return $"Hello, I'm {this.Name}";
+                return FormattableString.Invariant($"Hello, I'm {this.Name}");
             }
 
             public Person(string name, int age)
@@ -29,14 +29,14 @@ namespace Sharpy.TestNullConditional
         {
             Person? p = new Person("Alice", 30);
             var ageNullable = p?.Age;
-            global::Sharpy.Core.Exports.Print(ageNullable);
+            global::Sharpy.Builtins.Print(ageNullable);
         }
 
         public static void TestMethodCall()
         {
             Person? p = null;
             var greeting = p?.Greet();
-            global::Sharpy.Core.Exports.Print(greeting);
+            global::Sharpy.Builtins.Print(greeting);
         }
 
         public class Address
@@ -63,14 +63,14 @@ namespace Sharpy.TestNullConditional
         {
             PersonWithAddress? p = new PersonWithAddress("Bob", null);
             var city = p?.Address?.City;
-            global::Sharpy.Core.Exports.Print(city);
+            global::Sharpy.Builtins.Print(city);
         }
 
         public static void TestWithCoalesce()
         {
             Person? p = null;
             int age = p?.Age ?? 0;
-            global::Sharpy.Core.Exports.Print(age);
+            global::Sharpy.Builtins.Print(age);
         }
 
         public static void TestErrorNonNullable()
