@@ -17,7 +17,7 @@ Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type 
   - `.Statements.cs` — Statement generation
   - `.TypeDeclarations.cs` — Class/struct/interface/enum
   - `.ClassMembers.cs` — Methods, properties, constructors
-  - `.ModuleClass.cs` — Module-level Exports class
+  - `.ModuleClass.cs` — Module class generation (file-named static class)
   - `.CompilationUnit.cs` — Top-level compilation unit
   - `.Operators.cs` — Binary/unary operators
 - `TypeMapper.cs` — Sharpy types → C# types
@@ -95,13 +95,14 @@ $"public {returnType} MyMethod() {{ {body} }}"
 
 A Sharpy module generates a C# namespace containing:
 
-1. **Module Class** (`Exports` or `Program`)
+1. **Module Class** (file-named static class, or `Program` for entry points)
    - Static fields (module-level variables)
    - Static constants
    - Static methods (module-level functions)
    - `Main()` method (entry point files only)
+   - `[SharpyModule("name")]` attribute (non-Program classes)
 
-2. **Type Declarations** (at namespace level, NOT nested)
+2. **Type Declarations** (nested inside the module class)
    - Classes, structs, interfaces, enums
    - Preserves inheritance hierarchies
 

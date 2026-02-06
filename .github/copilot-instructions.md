@@ -85,7 +85,7 @@ Assert.Equal("3\n", result.StandardOutput);
 ## Sharpy.Core Patterns
 
 - **Partial class pattern**: `Partial.List/List.Methods.cs`, `List.Slicing.cs`
-- **Builtins**: `partial class Exports` in `Print.cs`, `Len.cs`, `Range.cs`
+- **Builtins**: `partial class Builtins` in `Print.cs`, `Len.cs`, `Range.cs`
 - **Python semantics**: negative indexing, slicing, Python-matching exceptions
 
 ## Feature Implementation Order

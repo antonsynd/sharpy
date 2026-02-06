@@ -138,7 +138,7 @@ The `RoslynEmitter` is split into 8 partial classes (~6,225 lines total): `Rosly
 - Local variables → runtime tracking via `_variableVersions` (handles redeclarations: x, x_1, x_2)
 - Types → SymbolTable lookup
 
-**Type mappings** (`CodeGen/TypeMapper.cs`): `int` → `int`, `long` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `global::Sharpy.Core.List<T>`, `dict[K,V]` → `global::Sharpy.Core.Dict<K,V>`. Note: a separate `Discovery/TypeMapper.cs` maps CLR types back to Sharpy `SemanticType` instances.
+**Type mappings** (`CodeGen/TypeMapper.cs`): `int` → `int`, `long` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `System.Collections.Generic.List<T>`, `dict[K,V]` → `System.Collections.Generic.Dictionary<K,V>` (v0.1.x uses .NET types directly; Sharpy.Core wrappers planned for v0.2.x+). Note: a separate `Discovery/TypeMapper.cs` maps CLR types back to Sharpy `SemanticType` instances.
 
 **Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__init__` → constructor, `__add__` → `operator+`, `__str__` → `ToString()`
 
@@ -228,7 +228,7 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 
 - **Wrap .NET internally, expose Python API** — `list.append()` not `Add()`
 - **Partial class pattern**: Types split across `Partial.{Type}/` directories (e.g., `Partial.List/List.Methods.cs`, `List.Slicing.cs`, `List.Interfaces.cs`)
-- **Builtins**: `partial class Exports` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
+- **Builtins**: `partial class Builtins` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
 - **Python semantics**: Negative indexing, slicing, Python-matching exceptions
 
 ## Skills

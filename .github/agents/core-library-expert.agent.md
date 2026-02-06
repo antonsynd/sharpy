@@ -43,17 +43,17 @@ Sharpy.Core/
 ├── Range.cs            # range()
 ├── Enumerate.cs        # enumerate()
 ├── Operator/           # Operator protocols (IAdd, IMul, etc.)
-└── *.cs                # Builtins via partial class Exports
+└── *.cs                # Builtins via partial class Builtins
 ```
 
 ## Builtins Pattern
 
-Add to `partial class Exports` (split across files):
+Add to `partial class Builtins` (split across files):
 ```csharp
 // Print.cs
-namespace Sharpy.Core;
+namespace Sharpy;
 
-public static partial class Exports
+public static partial class Builtins
 {
     public static void Print(object? value) => Console.WriteLine(value);
 }

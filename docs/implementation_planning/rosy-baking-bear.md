@@ -259,7 +259,9 @@ All stale `typeof(Sharpy.Core.Exports)` references updated:
 - `DeriveModuleNameFromNamespace()`: Updated to handle flat `namespace Sharpy` — maps `"Sharpy"` and `"Sharpy.*"` to `"builtins"`
 - Dropped `IsAbstract && IsSealed` requirement (supports non-static module classes like `Sharpy.Sys`)
 
-### Phase 4: Code generation — the core change
+### Phase 4: Code generation — the core change — DONE ✓
+
+> Completed across commits `a71fe020`, `10e28314`, `739b96e0`, `e28c43b3`, `deb55758` (2026-02-05/06). All sub-items implemented. One deviation: 4g (type re-export validation) silently skips instead of emitting a compiler error, because `GenerateFromImportUsings` already handles re-exported types by adding `using static` for their defining modules — an error would be incorrect.
 
 This is the primary deliverable. Changes are in `src/Sharpy.Compiler/CodeGen/RoslynEmitter.*.cs`.
 
@@ -428,41 +430,16 @@ case TypeSymbol typeSymbol:
     break;
 ```
 
-### Phase 5: Update all tests
+### Phase 5: Update all tests — DONE ✓
 
-#### Auto-regenerable (15 `.expected.cs` snapshots):
-```bash
-UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"
-```
-
-#### Manual updates — compiler tests:
-
-**Total scope**: 122 occurrences of `Sharpy.Core.Exports` across 29 files (16 source test files + 13 `.expected.cs` snapshots).
-
-| File | Refs | Changes |
-|------|------|---------|
-| `RoslynEmitterModuleTests.cs` | 36 | Class name `Exports` → module name, remove `.Exports` from import paths, update namespace assertions to show wrapper classes |
-| `NamespaceLevelTypesTests.cs` | ~5 | **Invert**: types must be INSIDE module class. Rename to `NestedTypeTests.cs` |
-| `CrossModuleNamespaceTests.cs` | — | Update `class Exports` lookups, namespace → wrapper class assertions |
-| `CompilerIntegrationTests.cs` | 12 | `Sharpy.Core.Exports` → `Sharpy.Builtins` |
-| `RoslynEmitterVariableRedefinitionTests.cs` | 8 | `Sharpy.Core.Exports` → `Sharpy.Builtins` |
-| `OverloadIndexBuilderTypeTests.cs` | 7 | Update discovery assertions for `[SharpyModule]`, `Sharpy.Core.Exports` → `Sharpy.Builtins` |
-| `CachedDiscoveryPerformanceTests.cs` | 7 | `Sharpy.Core.Exports` → `Sharpy.Builtins` |
-| `OverloadIndexBuilderTests.cs` | 5 | Update discovery assertions for `[SharpyModule]` |
-| `ImportResolverNetModuleTests.cs` | 5 | `Sharpy.Core.Exports` → `Sharpy.Builtins` |
-| `ModuleRegistryTests.cs` | 4 | Update module discovery references |
-| `ModuleDiscoveryWorkflowTests.cs` | 4 | `Sharpy.Core.Exports` → `Sharpy.Builtins` |
-| Other test files (5 files) | 1-2 each | `Sharpy.Core.Exports` → `Sharpy.Builtins` |
-| `.expected.cs` snapshots (13 files) | ~60 total | Auto-regenerated via `UPDATE_SNAPSHOTS=true` |
+> Completed alongside Phase 4. All unit tests updated, `.expected.cs` snapshots regenerated, `NamespaceLevelTypesTests.cs` inverted to verify types are nested (file kept under original name with updated doc comments). 6,197 tests pass (0 failures, 13 skipped).
 
 #### Sharpy.Core tests — DONE ✓
 > Completed in Phases 2 and 2b. All Sharpy.Core.Tests updated across both commits.
 
-### Phase 6: Cache invalidation and documentation
+### Phase 6: Cache invalidation and documentation — DONE ✓
 
-**Incremental compilation cache**: Bump `CurrentSchemaVersion` in `IncrementalCompilationCache` (`src/Sharpy.Compiler/Project/IncrementalCompilationCache.cs:39`, currently version 1) to force full rebuild.
-
-**Documentation**: Update `CLAUDE.md` code examples, `.github/copilot-instructions.md`, `.github/agents/` references to `Exports`.
+> `CurrentSchemaVersion` bumped from 1 to 2 (2026-02-06). Documentation updates completed.
 
 ---
 
@@ -515,6 +492,7 @@ UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrat
 | `src/Sharpy.Compiler/AssemblyCompiler.cs` | Assembly reference paths. | ✅ Done (Phase 3b) |
 | `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs` | Builtin function call paths (`global::Sharpy.Builtins`). | ✅ Done (Phase 3b) |
 | `src/Sharpy.Compiler/Discovery/Caching/OverloadIndexBuilder.cs` | Module discovery (`[SharpyModule]`-based). | ✅ Done (Phase 3c) |
-| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs` | Namespace + compilation unit generation. Core restructuring (nested wrappers). | ❌ Phase 4 |
-| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.ModuleClass.cs` | Module class naming, member separation, re-exports. | ❌ Phase 4 |
-| `src/Sharpy.Compiler.Tests/CodeGen/NamespaceLevelTypesTests.cs` | Must invert — types now nested, not at namespace level. | ❌ Phase 5 |
+| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs` | Namespace + compilation unit generation. Core restructuring (nested wrappers). | ✅ Done (Phase 4) |
+| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.ModuleClass.cs` | Module class naming, member separation, re-exports. | ✅ Done (Phase 4) |
+| `src/Sharpy.Compiler.Tests/CodeGen/NamespaceLevelTypesTests.cs` | Inverted — types now verified as nested in module class. | ✅ Done (Phase 5) |
+| `src/Sharpy.Compiler/Project/IncrementalCompilationCache.cs` | Schema version bumped to 2 to force rebuild. | ✅ Done (Phase 6) |

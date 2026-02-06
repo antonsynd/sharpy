@@ -8,7 +8,7 @@ Standard library with Pythonic APIs for .NET. Location: `src/Sharpy.Core/`
 
 ```
 Sharpy.Core/
-├── Builtins/           # Builtin exports (Exports.cs, Exceptions.cs)
+├── Builtins/           # Builtin functions (Builtins.cs, Exceptions.cs)
 ├── Collections/        # Collection utilities
 ├── Datetime/           # datetime module
 ├── Itertools/          # itertools module
@@ -55,12 +55,12 @@ Partial.List/
 
 ## Adding a Builtin Function
 
-Add to `partial class Exports` (split across files):
+Add to `partial class Builtins` (split across files):
 ```csharp
 // NewFunction.cs
-namespace Sharpy.Core;
+namespace Sharpy;
 
-public static partial class Exports
+public static partial class Builtins
 {
     public static TResult NewFunction<T, TResult>(T input) => ...;
 }
