@@ -52,7 +52,7 @@ internal class ModuleRegistry
 
     /// <summary>
     /// Load a .NET assembly as a module reference.
-    /// Discovers all public static methods in classes named "Exports".
+    /// Discovers all public static methods in [SharpyModule]-decorated classes.
     /// </summary>
     public bool LoadReference(string assemblyPath)
     {

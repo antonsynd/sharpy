@@ -20,7 +20,7 @@ internal class OverloadIndexBuilder
 
     /// <summary>
     /// Build an index from an assembly by discovering all public static methods
-    /// in classes named "Exports".
+    /// in [SharpyModule]-decorated classes.
     /// </summary>
     public OverloadIndex BuildFromAssembly(Assembly assembly)
     {

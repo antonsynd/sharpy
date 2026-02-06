@@ -362,7 +362,7 @@ internal class ProtocolValidator : SemanticValidatorBase
             if (typeof(System.Collections.IEnumerable).IsAssignableFrom(clrType))
                 return true;
 
-            // Check for Sharpy.Core.Iterator<T> base class
+            // Check for Sharpy.Iterator<T> base class
             var currentType = clrType;
             while (currentType != null)
             {

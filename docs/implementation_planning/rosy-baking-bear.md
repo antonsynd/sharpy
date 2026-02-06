@@ -233,54 +233,31 @@ All `class Exports` renamed to module-named classes with `[SharpyModule]` attrib
 
 **⚠️ Build breakage introduced**: The compiler (`Sharpy.Compiler`) references the `Sharpy.Core` assembly. With all types now in `namespace Sharpy`, and the compiler living in `namespace Sharpy.Compiler` (a child of `Sharpy`), C# namespace resolution finds `Sharpy.List<T>` before `System.Collections.Generic.List<T>`, and `Sharpy.DateTime` before `System.DateTime`. This produces **246 build errors** (MSBuild count; 245 unique error locations) across `TypeChecker.*.cs`, `RoslynEmitter.*.cs`, `CompilationMetrics.cs`, and other compiler files. The `Sharpy.Core` project itself builds cleanly; only the compiler is affected. Phase 3 must resolve this.
 
-### Phase 3: Fix compiler build + update assembly references and discovery
+### Phase 3: Fix compiler build + update assembly references and discovery — DONE ✓
 
-> **Status**: Not started. This is the immediate next step. The compiler does not build.
+> Completed in `0e62b7c8` (2026-02-05). 50 files changed. Comments cleaned up in follow-up.
 
-#### 3a. Fix namespace collision in compiler — CRITICAL
+#### 3a. Fix namespace collision in compiler — DONE ✓
 
-The flat `namespace Sharpy` causes `Sharpy.List<T>` to shadow `System.Collections.Generic.List<T>` and `Sharpy.DateTime` to shadow `System.DateTime` wherever the compiler uses unqualified names. The root cause is that `Sharpy.Compiler` lives in `namespace Sharpy.Compiler` — a child of `Sharpy` — so C# namespace resolution checks the parent `Sharpy` namespace first. Error breakdown (246 total per MSBuild, 245 unique locations):
+Used **Option 2 (extern alias)**: Added `<Aliases>SharpyRT</Aliases>` to the `Sharpy.Core` ProjectReference in `Sharpy.Compiler.csproj`. All compiler-side references to Sharpy.Core types now use the `SharpyRT::` prefix (e.g., `typeof(SharpyRT::Sharpy.Builtins).Assembly`). This cleanly isolates the compiler from Sharpy.Core's flat `namespace Sharpy` without affecting generated code paths.
 
-| Error code | Count | Cause |
-|---|---|---|
-| CS0019 | 123 | `.Count` resolves to `Sharpy.List<T>.Count` (method group) instead of `List<T>.Count` (property); also `-` on `Sharpy.DateTime` |
-| CS0029 | 52 | `List<T>` resolves to `Sharpy.List<T>`, implicit conversion from `System.Collections.Generic.List<T>` fails |
-| CS1061 | 19 | Members not found on wrong `List<T>` type (e.g., `AddRange`, `RemoveAll`, `RemoveAt`) |
-| CS1503 | 16 | Argument type mismatch (BCL `List` expected, `Sharpy.List` provided) |
-| CS0117 | 8 | `DateTime.UtcNow` not found on `Sharpy.DateTime` |
-| Other | 28 | Cascading errors: CS8602 (7), CS0428 (5), CS0165 (4), CS0234 (3), CS8618 (2), CS1501 (2), CS0173 (2), CS1929 (1), CS1660 (1) |
+Also applied extern alias to `Sharpy.Cli.csproj`, `Sharpy.Compiler.Benchmarks.csproj`, and `Sharpy.Compiler.Tests.csproj`. Created `SharpyCoreReference` helper class in tests to centralize the extern alias access pattern.
 
-**Options** (choose one):
+#### 3b. Update compiler `typeof()` references — DONE ✓
 
-1. **~~Add `global using` alias in compiler~~** (**not viable**): C# does not support `global using` aliases for open generic types. `global using List = System.Collections.Generic.List;` is invalid syntax. Could work for non-generic types (`DateTime`, `Math`, `Random`) but not for `List<T>`, `Dict<K,V>`, `Set<T>` — which account for the vast majority of errors.
+All stale `typeof(Sharpy.Core.Exports)` references updated:
 
-2. **Extern alias** (Recommended): Reference `Sharpy.Core` with an extern alias in `Sharpy.Compiler.csproj` so that `Sharpy.*` types don't pollute the compiler's default namespace resolution. Add `<Aliases>SharpyRT</Aliases>` to the ProjectReference. Access Sharpy.Core types via `SharpyRT::Sharpy.Builtins` in the few places needed (`AssemblyCompiler`, `BuiltinRegistry`, `RoslynEmitter.Expressions`). Cleanly isolates the compiler from Sharpy.Core's flat namespace.
+- `BuiltinRegistry.cs`: `typeof(SharpyRT::Sharpy.Builtins).Assembly`
+- `AssemblyCompiler.cs` (2 locations): `typeof(SharpyRT::Sharpy.Builtins).Assembly.Location`
+- `RoslynEmitter.Expressions.cs` (2 locations): String literals updated to `global::Sharpy.Builtins.{name}` (extern alias not applicable to generated code strings)
 
-3. **Restore a wrapper namespace**: Keep Sharpy.Core types in a sub-namespace (e.g., `namespace Sharpy.Core` or `namespace Sharpy.Runtime`) that doesn't collide with BCL. The module classes stay flat (`namespace Sharpy`) but collection types etc. retain their qualified names. This is a partial rollback of Phase 2b.
+#### 3c. Update `OverloadIndexBuilder` discovery — DONE ✓
 
-> **Recommendation**: Option 2 (extern alias) is the cleanest fix — it preserves the flat `namespace Sharpy` goal while isolating the compiler. Option 1 is not viable for generic types. Option 3 is the safest fallback if extern alias proves too cumbersome.
-
-#### 3b. Update compiler `typeof()` references
-
-After fixing the build, update all stale `typeof(Sharpy.Core.Exports)` references. If extern alias (Option 2) is used, these become `typeof(SharpyRT::Sharpy.Builtins)` instead:
-
-**`src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`** (line 95):
-- `typeof(Sharpy.Core.Exports).Assembly` → `typeof(Sharpy.Builtins).Assembly` (or `SharpyRT::Sharpy.Builtins` with extern alias)
-
-**`src/Sharpy.Compiler/AssemblyCompiler.cs`** (lines 175, 299):
-- `typeof(Sharpy.Core.Exports)` → `typeof(Sharpy.Builtins)` (or `SharpyRT::Sharpy.Builtins` with extern alias)
-
-**`src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs`** (lines 165, 454):
-- `global::Sharpy.Core.Exports.{name}` → `global::Sharpy.Builtins.{name}` (these are string literals in generated code, not compiler type references — extern alias does NOT apply here)
-
-#### 3c. Update `OverloadIndexBuilder` discovery
-
-**`src/Sharpy.Compiler/Discovery/Caching/OverloadIndexBuilder.cs`**:
-- Line 37: Replace filter `t.Name == "Exports" && t.IsClass && t.IsPublic && t.IsAbstract && t.IsSealed` → `t.IsClass && t.GetCustomAttribute<SharpyModuleAttribute>() != null`. Drop `IsAbstract && IsSealed` (only matches `static` classes, but `Sharpy.Sys` is `sealed`). Drop `IsPublic` if Itertools discovery is desired (currently `internal`).
-- Line 62: `t.Name != "Exports"` → `t.GetCustomAttribute<SharpyModuleAttribute>() == null` (exclude module containers from public type discovery)
-- Lines 111-120 (`DeriveModuleName`): Read from `SharpyModuleAttribute.ModuleName` instead of hardcoded `Sharpy.Core.Exports` check
-- Lines 102-109 (`DeriveModuleNameFromNamespace`): **Broken by Phase 2b** — all types are now in `namespace Sharpy`, so the check `ns == "Sharpy.Core"` → `"builtins"` fails (namespace is now `"Sharpy"`), and the fallback `ns.ToLowerInvariant()` returns `"sharpy"` for ALL types regardless of module. Must be rewritten to use `[SharpyModule]` attribute on the containing class, or determine module membership by type nesting (after Phase 4, types will be nested inside module classes).
-- Also discover **nested types** inside module classes (types are now nested, not namespace siblings after Phase 4)
+- Module class filter: Uses `[SharpyModule]` attribute detection via `t.CustomAttributes.Any(a => a.AttributeType.FullName == "Sharpy.SharpyModuleAttribute")` instead of `t.Name == "Exports"`
+- Public type exclusion: Filters out `[SharpyModule]`-decorated classes from type discovery
+- `DeriveModuleName()`: Reads from `SharpyModuleAttribute.ModuleName` constructor argument
+- `DeriveModuleNameFromNamespace()`: Updated to handle flat `namespace Sharpy` — maps `"Sharpy"` and `"Sharpy.*"` to `"builtins"`
+- Dropped `IsAbstract && IsSealed` requirement (supports non-static module classes like `Sharpy.Sys`)
 
 ### Phase 4: Code generation — the core change
 
@@ -493,14 +470,14 @@ UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrat
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| **`Sharpy.*` types shadow BCL types in compiler** | **Critical — MATERIALIZED** | Phase 2b flattened all types to `namespace Sharpy`. Since `Sharpy.Compiler` is a child of the `Sharpy` namespace, C# resolution finds `Sharpy.List<T>` before `System.Collections.Generic.List<T>` and `Sharpy.DateTime` before `System.DateTime`. **246 build errors** (123 CS0019, 52 CS0029, 19 CS1061, 16 CS1503, 8 CS0117, 28 others). Must be fixed in Phase 3a before any further work. Extern alias recommended. |
+| **`Sharpy.*` types shadow BCL types in compiler** | **Critical — RESOLVED** | Fixed in Phase 3a via extern alias (`<Aliases>SharpyRT</Aliases>` on Sharpy.Core ProjectReference). Compiler uses `SharpyRT::Sharpy.Builtins` for the few places that need Sharpy.Core types. All 246 build errors resolved. |
 | Cross-module type resolution with nested types | High | `using static Ns.Module;` exposes nested types (C# spec). Verify with multi-file fixtures. |
 | Partial class merging for directory wrappers | High | Each file in a directory generates `partial static class Wrapper`. Roslyn handles merging. Test with multi-file projects. |
 | `using static` on nested class (`Ns.Outer.Inner`) | Medium | Valid C# — `using static` works with any accessible static class, including nested ones. |
 | Incremental cache stale after structural change | Medium | Bump cache schema version to force rebuild. |
 | `System.Math` vs `Sharpy.Math` ambiguity in generated code | Low | Generated code uses `global::` prefix for Sharpy.Core refs. |
 | `System.Random` vs `Sharpy.Random` ambiguity | Low | Generated code uses `global::` prefix. Module class is in `namespace Sharpy` so `global::Sharpy.Random` is unambiguous. |
-| Non-static module classes (`Sharpy.Sys`) | Medium | `Sharpy.Sys` is `sealed` not `static`. Phase 3c's `[SharpyModule]` filter must not require `IsAbstract && IsSealed`. |
+| Non-static module classes (`Sharpy.Sys`) | Medium — RESOLVED | `Sharpy.Sys` is `sealed` not `static`. Phase 3c's `[SharpyModule]` filter correctly dropped `IsAbstract && IsSealed` requirement. |
 
 ---
 
@@ -533,11 +510,11 @@ UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrat
 | `src/Sharpy.Core/Builtins/Exports.cs` | Primary module class — renamed to `Builtins`. | ✅ Done (Phase 2) |
 | `src/Sharpy.Core/Operator/` (15 files) | Operator module — renamed to `Operator`. | ✅ Done (Phase 2) |
 | All 108 Sharpy.Core source files | Namespace flattened to `Sharpy`. | ✅ Done (Phase 2b) |
-| `src/Sharpy.Compiler/Sharpy.Compiler.csproj` | Extern alias for Sharpy.Core reference (fixes 246 build errors). | ❌ Phase 3a |
-| `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs` | Assembly anchor (`typeof(Exports)` → `typeof(Builtins)`). | ❌ Phase 3b |
-| `src/Sharpy.Compiler/AssemblyCompiler.cs` | Assembly reference paths. | ❌ Phase 3b |
-| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs` | Builtin function call paths (`global::Sharpy.Core.Exports` → `global::Sharpy.Builtins`). | ❌ Phase 3b |
-| `src/Sharpy.Compiler/Discovery/Caching/OverloadIndexBuilder.cs` | Module discovery (`"Exports"` → `[SharpyModule]`). | ❌ Phase 3c |
+| `src/Sharpy.Compiler/Sharpy.Compiler.csproj` | Extern alias for Sharpy.Core reference (fixes 246 build errors). | ✅ Done (Phase 3a) |
+| `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs` | Assembly anchor (`typeof(SharpyRT::Sharpy.Builtins)`). | ✅ Done (Phase 3b) |
+| `src/Sharpy.Compiler/AssemblyCompiler.cs` | Assembly reference paths. | ✅ Done (Phase 3b) |
+| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs` | Builtin function call paths (`global::Sharpy.Builtins`). | ✅ Done (Phase 3b) |
+| `src/Sharpy.Compiler/Discovery/Caching/OverloadIndexBuilder.cs` | Module discovery (`[SharpyModule]`-based). | ✅ Done (Phase 3c) |
 | `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs` | Namespace + compilation unit generation. Core restructuring (nested wrappers). | ❌ Phase 4 |
 | `src/Sharpy.Compiler/CodeGen/RoslynEmitter.ModuleClass.cs` | Module class naming, member separation, re-exports. | ❌ Phase 4 |
 | `src/Sharpy.Compiler.Tests/CodeGen/NamespaceLevelTypesTests.cs` | Must invert — types now nested, not at namespace level. | ❌ Phase 5 |

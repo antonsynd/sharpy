@@ -188,7 +188,7 @@ public static class ProtocolRegistry
 
         // Note: __eq__ and __ne__ are handled by OperatorRegistry as they
         // are comparison operators that map to .NET operator overloads.
-        // However, they also integrate with Sharpy.Core.Object for equality semantics.
+        // However, they also integrate with Sharpy.Object for equality semantics.
     }
 
     // ==================== 2.3 Query Methods ====================
