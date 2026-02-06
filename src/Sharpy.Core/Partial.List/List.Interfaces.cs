@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// .NET interface implementations for List&lt;T&gt;.

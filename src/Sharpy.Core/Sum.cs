@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
-namespace Sharpy.Core
+namespace Sharpy
 {
     public static partial class Builtins
     {

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Type conversion functions for list

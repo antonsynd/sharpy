@@ -1,5 +1,5 @@
 using Xunit;
-using Sharpy.Core;
+using Sharpy;
 
 namespace Sharpy.Core.Tests;
 

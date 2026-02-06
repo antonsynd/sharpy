@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     using static Builtins;
 

@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-namespace Sharpy.Random
+namespace Sharpy
 {
-    using Sharpy.Core;
-
     /// <summary>
     /// Pseudo-random number generators for various distributions, similar to Python's random module.
     /// </summary>
@@ -98,7 +96,7 @@ namespace Sharpy.Random
         /// <summary>
         /// Return a randomly selected element from a Sharpy list.
         /// </summary>
-        public static T Choice<T>(Sharpy.Core.List<T> seq)
+        public static T Choice<T>(Sharpy.List<T> seq)
         {
             if (seq == null || seq.__Len__() == 0)
             {
@@ -138,7 +136,7 @@ namespace Sharpy.Random
         /// <summary>
         /// Shuffle a Sharpy list in place.
         /// </summary>
-        public static void Shuffle<T>(Sharpy.Core.List<T> x)
+        public static void Shuffle<T>(Sharpy.List<T> x)
         {
             if (x == null)
             {
@@ -161,7 +159,7 @@ namespace Sharpy.Random
         /// <summary>
         /// Return a k length list of unique elements chosen from the population sequence.
         /// </summary>
-        public static Sharpy.Core.List<T> Sample<T>(IList<T> population, int k)
+        public static Sharpy.List<T> Sample<T>(IList<T> population, int k)
         {
             if (population == null)
             {
@@ -194,7 +192,7 @@ namespace Sharpy.Random
                         copy[i] = copy[j];
                         copy[j] = temp;
                     }
-                    return new Sharpy.Core.List<T>(copy.GetRange(0, k));
+                    return new Sharpy.List<T>(copy.GetRange(0, k));
                 }
                 else
                 {
@@ -210,7 +208,7 @@ namespace Sharpy.Random
                         }
                     }
 
-                    return new Sharpy.Core.List<T>(result);
+                    return new Sharpy.List<T>(result);
                 }
             }
         }

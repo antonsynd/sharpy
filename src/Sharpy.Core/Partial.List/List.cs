@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// A list of elements.

@@ -1,5 +1,5 @@
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Represents an immutable sequence of bytes (similar to Python's bytes type).

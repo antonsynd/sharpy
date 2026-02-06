@@ -1,4 +1,4 @@
-namespace Sharpy.Core
+namespace Sharpy
 {
     using System.Globalization;
 

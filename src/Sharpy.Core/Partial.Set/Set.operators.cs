@@ -1,4 +1,4 @@
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Operator overloads for Set&lt;T&gt;.

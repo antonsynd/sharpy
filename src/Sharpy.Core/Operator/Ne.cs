@@ -1,5 +1,5 @@
 using System;
-namespace Sharpy.Operator
+namespace Sharpy
 {
     public static partial class Operator
     {

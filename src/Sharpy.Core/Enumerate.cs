@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Iterator that yields (index, value) tuples from an iterable.

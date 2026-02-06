@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Delegator to statically chosen comparer.

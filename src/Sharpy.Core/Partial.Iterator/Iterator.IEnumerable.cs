@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     public abstract partial class Iterator<T>
     {

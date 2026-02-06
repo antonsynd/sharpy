@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Extension methods to bridge C# IEnumerable with Sharpy's iterator protocol.

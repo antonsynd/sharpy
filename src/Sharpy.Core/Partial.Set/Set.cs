@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-namespace Sharpy.Core
+namespace Sharpy
 {
     public sealed partial class Set<T>
         : System.Collections.Generic.ISet<T>,

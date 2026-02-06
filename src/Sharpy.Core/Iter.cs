@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-namespace Sharpy.Core
+namespace Sharpy
 {
     public static partial class Builtins
     {

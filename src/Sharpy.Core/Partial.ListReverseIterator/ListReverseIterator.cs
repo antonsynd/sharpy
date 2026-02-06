@@ -1,4 +1,4 @@
-namespace Sharpy.Core
+namespace Sharpy
 {
     public sealed partial class ListReverseIterator<T> : Iterator<T>
     {

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     using static Builtins;
 
@@ -45,7 +45,7 @@ namespace Sharpy.Core
         /// </summary>
         public void Insert(int i, T x)
         {
-            _list.Insert(Sharpy.Core.Index.Normalize(i, _list.Count, false, true), x);
+            _list.Insert(Sharpy.Index.Normalize(i, _list.Count, false, true), x);
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace Sharpy.Core
 
             try
             {
-                i = Sharpy.Core.Index.Normalize(i, _list.Count, false, false);
+                i = Sharpy.Index.Normalize(i, _list.Count, false, false);
             }
             catch (IndexError)
             {
@@ -124,8 +124,8 @@ namespace Sharpy.Core
 
             try
             {
-                start = Sharpy.Core.Index.Normalize(start, _list.Count, false, false);
-                count = Sharpy.Core.Index.Normalize(end, _list.Count, false, false) - start;
+                start = Sharpy.Index.Normalize(start, _list.Count, false, false);
+                count = Sharpy.Index.Normalize(end, _list.Count, false, false) - start;
             }
             catch (IndexError)
             {

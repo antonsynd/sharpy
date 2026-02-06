@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// A safe tagged union for error handling. T !E desugars to Result[T, E].

@@ -1,6 +1,6 @@
 namespace Sharpy.Core.Tests;
 
-using static Sharpy.Core.Builtins;
+using static Sharpy.Builtins;
 
 /// <summary>
 /// Test helper wrapper class that provides Python-style dunder methods.

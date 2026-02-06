@@ -2,9 +2,8 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace Sharpy.Sys
+namespace Sharpy
 {
-    using Sharpy.Core;
     [SharpyModule("sys")]
     public sealed partial class Sys
     {

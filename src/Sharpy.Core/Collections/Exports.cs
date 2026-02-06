@@ -1,9 +1,8 @@
-using Sharpy.Core;
 using System.Linq;
 using System.Collections.Generic;
 using System;
 
-namespace Sharpy.Collections
+namespace Sharpy
 {
     /// <summary>
     /// A deque (double-ended queue) is a generalization of stacks and queues

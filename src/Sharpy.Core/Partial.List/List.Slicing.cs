@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Indexing and slicing operations for List&lt;T&gt;.
@@ -20,12 +20,12 @@ namespace Sharpy.Core
         {
             get
             {
-                index = Sharpy.Core.Index.Normalize(index, _list.Count, false, false);
+                index = Sharpy.Index.Normalize(index, _list.Count, false, false);
                 return _list[index];
             }
             set
             {
-                index = Sharpy.Core.Index.Normalize(index, _list.Count, false, false);
+                index = Sharpy.Index.Normalize(index, _list.Count, false, false);
                 _list[index] = value;
             }
         }
@@ -227,7 +227,7 @@ namespace Sharpy.Core
         /// </remarks>
         public void __DelItem__(int index)
         {
-            _list.RemoveAt(Sharpy.Core.Index.Normalize(index, _list.Count, false, false));
+            _list.RemoveAt(Sharpy.Index.Normalize(index, _list.Count, false, false));
         }
 
         /// <summary>

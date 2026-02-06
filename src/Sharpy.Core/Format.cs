@@ -1,6 +1,6 @@
 using System.Globalization;
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
     public static partial class Builtins
     {

@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-namespace Sharpy.Itertools
+namespace Sharpy
 {
-    using Sharpy.Core;
 
     /// <summary>
     /// Make an iterator that returns elements from the first iterable until it is exhausted,

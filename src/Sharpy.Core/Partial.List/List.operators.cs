@@ -1,4 +1,4 @@
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Operator overloads for List&lt;T&gt;.
@@ -106,9 +106,9 @@ namespace Sharpy.Core
                 var leftElem = _list[i];
                 var rightElem = other._list[i];
 
-                if (!Operator.Operator.Eq(leftElem, rightElem))
+                if (!Operator.Eq(leftElem, rightElem))
                 {
-                    return Operator.Operator.Lt(leftElem, rightElem);
+                    return Operator.Lt(leftElem, rightElem);
                 }
             }
 
@@ -132,9 +132,9 @@ namespace Sharpy.Core
                 var leftElem = _list[i];
                 var rightElem = other._list[i];
 
-                if (!Operator.Operator.Eq(leftElem, rightElem))
+                if (!Operator.Eq(leftElem, rightElem))
                 {
-                    return Operator.Operator.Lt(leftElem, rightElem);
+                    return Operator.Lt(leftElem, rightElem);
                 }
             }
 
@@ -158,9 +158,9 @@ namespace Sharpy.Core
                 var leftElem = _list[i];
                 var rightElem = other._list[i];
 
-                if (!Operator.Operator.Eq(leftElem, rightElem))
+                if (!Operator.Eq(leftElem, rightElem))
                 {
-                    return Operator.Operator.Gt(leftElem, rightElem);
+                    return Operator.Gt(leftElem, rightElem);
                 }
             }
 
@@ -184,9 +184,9 @@ namespace Sharpy.Core
                 var leftElem = _list[i];
                 var rightElem = other._list[i];
 
-                if (!Operator.Operator.Eq(leftElem, rightElem))
+                if (!Operator.Eq(leftElem, rightElem))
                 {
-                    return Operator.Operator.Gt(leftElem, rightElem);
+                    return Operator.Gt(leftElem, rightElem);
                 }
             }
 

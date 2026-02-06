@@ -1,5 +1,5 @@
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
     using System.Text;
 

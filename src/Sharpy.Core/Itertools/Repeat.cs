@@ -1,6 +1,5 @@
-using Sharpy.Core;
 
-namespace Sharpy.Itertools
+namespace Sharpy
 {
     internal static partial class Itertools
     {

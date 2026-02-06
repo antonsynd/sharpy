@@ -1,5 +1,5 @@
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Type conversion functions for double

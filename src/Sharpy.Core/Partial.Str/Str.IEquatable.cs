@@ -1,5 +1,5 @@
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
     public readonly partial struct Str : IEquatable<Str>
     {

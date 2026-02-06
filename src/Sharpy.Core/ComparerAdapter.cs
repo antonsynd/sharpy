@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
     internal static class ComparerAdapter<T>
     {

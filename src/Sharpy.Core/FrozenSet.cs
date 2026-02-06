@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// An immutable, hashable set. Since frozenset is immutable, it can be used

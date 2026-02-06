@@ -1,8 +1,6 @@
 using System;
-namespace Sharpy.Math
+namespace Sharpy
 {
-    using Sharpy.Core;
-
     /// <summary>
     /// Mathematical functions, similar to Python's math module.
     /// This module provides access to mathematical functions defined by the C standard.

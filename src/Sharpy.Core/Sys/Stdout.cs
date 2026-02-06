@@ -1,4 +1,4 @@
-namespace Sharpy.Sys
+namespace Sharpy
 {
     public sealed partial class Sys
     {

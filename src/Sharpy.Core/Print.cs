@@ -1,7 +1,7 @@
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
-    using static Sharpy.Sys.Sys;
+    using static Sharpy.Sys;
 
     public static partial class Builtins
     {

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Iterator that yields elements from an iterable for which a predicate is true.

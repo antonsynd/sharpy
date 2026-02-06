@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     using System.Collections;
 

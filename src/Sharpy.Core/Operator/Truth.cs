@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Collections;
-namespace Sharpy.Operator
+namespace Sharpy
 {
     public static partial class Operator
     {

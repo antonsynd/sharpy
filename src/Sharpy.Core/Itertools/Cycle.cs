@@ -1,7 +1,6 @@
 using System.Collections.Generic;
-using Sharpy.Core;
 
-namespace Sharpy.Itertools
+namespace Sharpy
 {
     internal static partial class Itertools
     {
@@ -13,7 +12,7 @@ namespace Sharpy.Itertools
 
     internal class CycleIterator<T> : Iterator<T>
     {
-        private Sharpy.Core.List<T> _saved;
+        private Sharpy.List<T> _saved;
         private uint _currentIndex;
 
         private readonly IEnumerator<T> _enumerator;
@@ -21,7 +20,7 @@ namespace Sharpy.Itertools
 
         internal CycleIterator(IEnumerable<T> iterable)
         {
-            _saved = new Sharpy.Core.List<T>();
+            _saved = new Sharpy.List<T>();
             _currentIndex = 0;
 
             _enumerator = iterable.GetEnumerator();

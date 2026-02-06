@@ -1,6 +1,6 @@
 using System;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Marks a class as a Sharpy module container for discovery by the compiler.

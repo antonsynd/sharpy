@@ -1,6 +1,4 @@
-using Sharpy.Core;
-
-namespace Sharpy.Operator
+namespace Sharpy
 {
     [SharpyModule("operator")]
     public static partial class Operator

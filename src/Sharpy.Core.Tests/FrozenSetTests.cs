@@ -1,6 +1,6 @@
 using Xunit;
 using FluentAssertions;
-using Sharpy.Core;
+using Sharpy;
 
 namespace Sharpy.Core.Tests;
 

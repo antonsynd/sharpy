@@ -1,6 +1,6 @@
 using System;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Raised when a Unicode-related encoding error occurs.

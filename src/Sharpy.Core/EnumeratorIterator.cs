@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
     using System.Collections;
 

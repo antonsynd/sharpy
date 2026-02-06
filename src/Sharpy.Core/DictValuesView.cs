@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-namespace Sharpy.Core
+namespace Sharpy
 {
     using System.Collections;
 
@@ -34,7 +34,7 @@ namespace Sharpy.Core
         {
             foreach (var value in _values)
             {
-                if (Operator.Operator.Eq(value, item))
+                if (Operator.Eq(value, item))
                 {
                     return true;
                 }

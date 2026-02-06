@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Iterator that yields the result of applying a function to elements from an iterable.

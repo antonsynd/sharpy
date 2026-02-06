@@ -1,11 +1,11 @@
 using System.Text;
-namespace Sharpy.Core
+namespace Sharpy
 {
     public readonly partial struct Str
     {
         public Str __GetItem__(int index)
         {
-            index = Sharpy.Core.Index.Normalize(index, _s.Length, false, false);
+            index = Sharpy.Index.Normalize(index, _s.Length, false, false);
             return new Str(_s[index]);
         }
 
@@ -63,8 +63,8 @@ namespace Sharpy.Core
 
             try
             {
-                start = Sharpy.Core.Index.Normalize(start, _s.Length, false, false);
-                count = Sharpy.Core.Index.Normalize(end, _s.Length, false, false) - start;
+                start = Sharpy.Index.Normalize(start, _s.Length, false, false);
+                count = Sharpy.Index.Normalize(end, _s.Length, false, false) - start;
             }
             catch (IndexError)
             {

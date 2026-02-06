@@ -1,6 +1,6 @@
 using System;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Raised when a sequence subscript is out of range. (Slice indices are

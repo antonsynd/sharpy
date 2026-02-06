@@ -1,6 +1,6 @@
 using System;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     public class KeyError : Exception
     {

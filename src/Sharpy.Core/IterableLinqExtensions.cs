@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// LINQ-style extension methods for Sharpy collections to enable natural C# integration.

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
 
     public static partial class Builtins
@@ -40,7 +40,7 @@ namespace Sharpy.Core
                     continue;
                 }
 
-                if (Operator.Operator.Lt(key(biggest), key(elem)))
+                if (Operator.Lt(key(biggest), key(elem)))
                 {
                     biggest = elem;
                 }

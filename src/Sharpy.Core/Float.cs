@@ -1,4 +1,4 @@
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Type conversion functions for float (delegates to Double).

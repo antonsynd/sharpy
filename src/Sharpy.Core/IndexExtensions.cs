@@ -1,4 +1,4 @@
-namespace Sharpy.Core
+namespace Sharpy
 {
     public static class IndexExtensions
     {
@@ -6,10 +6,10 @@ namespace Sharpy.Core
         {
             if (index.IsFromEnd)
             {
-                return Sharpy.Core.Index.Normalize(-index.Value, max, forSlice, forInsertion);
+                return Index.Normalize(-index.Value, max, forSlice, forInsertion);
             }
 
-            return Sharpy.Core.Index.Normalize(index.Value, max, forSlice, forInsertion);
+            return Index.Normalize(index.Value, max, forSlice, forInsertion);
         }
     }
 }

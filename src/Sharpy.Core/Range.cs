@@ -1,4 +1,4 @@
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// Iterator that yields integers in a range.

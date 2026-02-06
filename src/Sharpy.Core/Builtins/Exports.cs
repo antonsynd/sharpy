@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections;
 using System.Linq;
-namespace Sharpy.Core
+namespace Sharpy
 {
-    using static Sharpy.Sys.Sys;
+    using static Sharpy.Sys;
 
     /// <summary>
     /// Global builtin functions available in all Sharpy programs

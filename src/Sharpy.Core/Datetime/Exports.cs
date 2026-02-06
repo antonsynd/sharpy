@@ -1,8 +1,6 @@
 using System;
-namespace Sharpy.Datetime
+namespace Sharpy
 {
-    using Sharpy.Core;
-
     /// <summary>
     /// Represents a date (year, month, day).
     /// </summary>

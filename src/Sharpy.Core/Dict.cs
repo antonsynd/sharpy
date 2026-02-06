@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System;
-namespace Sharpy.Core
+namespace Sharpy
 {
     using System.Collections;
     using System.Text;
 
-    using static Sharpy.Core.Builtins;
+    using static Builtins;
 
     public sealed partial class Dict<K, V>
         : IDictionary<K, V>,
@@ -261,7 +261,7 @@ namespace Sharpy.Core
                     return false;
                 }
 
-                if (!Operator.Operator.Eq(kv.Value, value))
+                if (!Operator.Eq(kv.Value, value))
                 {
                     return false;
                 }

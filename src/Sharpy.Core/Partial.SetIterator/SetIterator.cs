@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-namespace Sharpy.Core
+namespace Sharpy
 {
     public sealed partial class SetIterator<T> : Iterator<T>
     {

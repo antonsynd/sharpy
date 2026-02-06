@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-namespace Sharpy.Core
+namespace Sharpy
 {
     /// <summary>
     /// An object representing a stream of data. Repeated calls to the

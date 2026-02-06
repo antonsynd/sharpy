@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Sharpy.Core
+namespace Sharpy
 {
     public readonly partial struct Str
     {
