@@ -8,17 +8,30 @@ Standard library with Pythonic APIs for .NET. Location: `src/Sharpy.Core/`
 
 ```
 Sharpy.Core/
+├── Builtins/           # Builtin exports (Exports.cs, Exceptions.cs)
+├── Collections/        # Collection utilities
+├── Datetime/           # datetime module
+├── Itertools/          # itertools module
+├── Math/               # math module
+├── Operator/           # Operator protocols (IAdd, IMul, etc.)
+├── Random/             # random module
+├── Sys/                # sys module
+├── Partial.ByteArray/  # bytearray type
+├── Partial.Complex/    # complex type
+├── Partial.Iterator/   # Iterator base
 ├── Partial.List/       # list[T] wrapping List<T> with Python methods
+├── Partial.ListIterator/       # List iterator
+├── Partial.ListReverseIterator/ # List reverse iterator
 ├── Partial.Set/        # set[T] wrapping HashSet<T>
+├── Partial.SetIterator/ # Set iterator
 ├── Partial.Str/        # String methods (lower(), split(), etc.)
 ├── Dict.cs             # dict[K,V] wrapping Dictionary<K,V>
 ├── Range.cs            # range() builtin
 ├── Enumerate.cs        # enumerate() builtin
 ├── Filter.cs, Map.cs   # Collection operations
-├── Operator/           # Operator protocols (IAdd, IMul, etc.)
 ├── IndexError.cs       # Python-style exceptions
 ├── KeyError.cs
-└── *.cs (root)         # Builtins via partial class Exports
+└── *.cs (root)         # Builtins and utilities
 ```
 
 ## Design Principles
@@ -101,10 +114,8 @@ Use Python naming, not .NET:
 
 ## Operator Protocols
 
-Interfaces in `I*.cs` define operator support:
-- `IAddable<T>` — `+` operator
-- `ISubtractable<T>` — `-` operator
-- `IMultiplicable<T>` — `*` operator
-- `IEquatable<T>` — `==` operator
+Interfaces in `Operator/` define operator support:
+- `IAdd` — `+` operator
+- `IMul` — `*` operator
 
 Implement on types that should support the operator.

@@ -8,6 +8,7 @@ Compiler test suite. Location: `src/Sharpy.Compiler.Tests/`
 Sharpy.Compiler.Tests/
 ├── Lexer/           # Tokenization tests
 ├── Parser/          # AST generation tests
+├── Ast/             # AST node tests
 ├── Semantic/        # Type checking, name resolution
 ├── CodeGen/         # C# generation tests
 ├── Integration/     # End-to-end: Sharpy → C# → execute
@@ -15,7 +16,17 @@ Sharpy.Compiler.Tests/
 │   └── IntegrationTestBase.cs
 ├── Discovery/       # Module import tests
 ├── Analysis/        # Control flow analysis tests
-└── Helpers/         # ProjectCompilationHelper for multi-file tests
+├── Diagnostics/     # Diagnostic tests
+├── Fuzz/            # Fuzzing tests
+├── Helpers/         # ProjectCompilationHelper for multi-file tests
+├── Logging/         # Logging tests
+├── Model/           # Model tests
+├── Performance/     # Performance tests
+├── Project/         # Project compilation tests
+├── Services/        # Compiler services tests
+├── Stress/          # Stress tests
+├── Text/            # Text/source tests
+└── Utilities/       # Utility tests
 ```
 
 ## Running Tests
@@ -85,7 +96,7 @@ TestFixtures/
 
 **Multi-file tests:** A subdirectory with multiple `.spy` files and a `main.spy` entry point, plus `main.expected` or `main.error`.
 
-**Test categories:** `basics/`, `functions/`, `classes/`, `control_flow/`, `errors/`, `imports/`, `generic_function/`, `structs/`, `enums/`, `interfaces/`, `warnings/`, `collections/`, `fstrings/`, `inheritance/`, `strings/`, `type_system/`
+**Test categories:** `access_modifiers/`, `basics/`, `class_with_init/`, `classes/`, `collections/`, `control_flow/`, `cross_module_inheritance/`, `enums/`, `errors/`, `fstrings/`, `functions/`, `generic_function/`, `imports/`, `inheritance/`, `interface_definition/`, `interfaces/`, `module_imports/`, `multi_file/`, `strings/`, `structs/`, `structs_enums/`, `type_shorthand/`, `type_system/`, `warnings/`
 
 ## Critical Rules
 

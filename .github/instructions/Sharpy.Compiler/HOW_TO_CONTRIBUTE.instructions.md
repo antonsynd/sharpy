@@ -18,6 +18,8 @@ Sharpy.Compiler/
 ├── Project/         # ProjectCompiler, SpyProject, DependencyGraph
 ├── Services/        # CompilerServices, CompilerServicesBuilder
 ├── Text/            # SourceText, TextSpan, ILocatable
+├── Logging/         # Compiler logging infrastructure
+├── Utilities/       # Shared utility classes
 ├── Compiler.cs      # Single-file compilation
 └── AssemblyCompiler.cs  # Multi-file projects
 ```
@@ -87,8 +89,7 @@ After `TypeChecker`, pluggable validators run via `ValidationPipeline`. Validato
 |-------|-----------|---------|
 | 50 | `ModuleLevelValidator` | Entry point validation |
 | 60 | `DecoratorValidator` | Decorator validation |
-| 150 | `SignatureValidator` | Dunder method signatures |
-| 400 | `ControlFlowValidator` | CFG-based unreachable code, missing returns |
+| 150 | `SignatureValidator` | Dunder method signatures || 250 | `DefaultParameterValidator` | Default parameter validation || 400 | `ControlFlowValidator` | CFG-based unreachable code, missing returns |
 | 420 | `UnusedVariableValidator` | Unused variable warnings |
 | 430 | `UnusedImportValidator` | Unused import warnings |
 | 450 | `AccessValidator` | Private/protected member access |

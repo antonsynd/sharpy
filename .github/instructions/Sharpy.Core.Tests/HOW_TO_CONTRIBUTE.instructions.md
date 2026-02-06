@@ -7,15 +7,32 @@ Standard library tests. Location: `src/Sharpy.Core.Tests/`
 Tests mirror `Sharpy.Core` layout:
 ```
 Sharpy.Core.Tests/
-├── Partial.ListTests/  # List tests split by facet
-├── Partial.SetTests/   # Set tests
-├── StrTests.cs         # String type tests
-├── StrMethodsTests.cs  # String method tests
-├── DictTests.cs        # Dictionary tests
-├── RangeTests.cs       # Range tests
-├── EnumerateTests.cs   # Enumerate tests
-├── PrintTests.cs       # print() builtin tests
-└── *Tests.cs           # Other builtin/type tests
+├── Partial.ListTests/     # List tests split by facet
+├── Partial.SetTests/      # Set tests
+├── AllTests.cs            # all() builtin tests
+├── AnyTests.cs            # any() builtin tests
+├── DictTests.cs           # Dictionary tests
+├── DictViewsTests.cs      # Dict views tests
+├── EnumerateTests.cs      # Enumerate tests
+├── FilterTests.cs         # filter() tests
+├── FormatTests.cs         # format() tests
+├── FrozenSetTests.cs      # frozenset tests
+├── IsinstanceTests.cs     # isinstance() tests
+├── IssubclassTests.cs     # issubclass() tests
+├── MapTests.cs            # map() tests
+├── MaxTests.cs            # max() tests
+├── MinTests.cs            # min() tests
+├── OptionalTests.cs       # Optional type tests
+├── PowTests.cs            # pow() tests
+├── PrintTests.cs          # print() builtin tests
+├── RangeTests.cs          # Range tests
+├── RoundTests.cs          # round() tests
+├── SortedTests.cs         # sorted() tests
+├── StrTests.cs            # String type tests
+├── StrMethodsTests.cs     # String method tests
+├── TypeTests.cs           # type() tests
+├── ZipTests.cs            # zip() tests
+└── *Tests.cs              # Other builtin/type tests
 ```
 
 ## Running Tests

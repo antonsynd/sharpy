@@ -13,18 +13,16 @@ Component-specific guides for the Sharpy codebase. Each guide covers patterns, w
 | Compiler tests | [Sharpy.Compiler.Tests](./Sharpy.Compiler.Tests/HOW_TO_CONTRIBUTE.instructions.md) | File-based tests, `IntegrationTestBase` |
 | Library tests | [Sharpy.Core.Tests](./Sharpy.Core.Tests/HOW_TO_CONTRIBUTE.instructions.md) | Python verification workflow |
 | CLI options | [Sharpy.Cli](./Sharpy.Cli/HOW_TO_CONTRIBUTE.instructions.md) | `System.CommandLine` patterns |
-| Example programs | [samples](./samples/HOW_TO_CONTRIBUTE.instructions.md) | `.spyproj` format |
-| VS Code extension | [lsp](./lsp/HOW_TO_CONTRIBUTE.instructions.md) | LSP architecture (planned) |
 
 ## The Three Axioms (Priority Order)
 
 | Priority | Axiom | Principle |
 |----------|-------|-----------|
 | 1 (Highest) | .NET Runtime | Compiles to valid C# 9.0 for .NET CLR |
-| 2 | Python Syntax | Python 3 syntax and idioms |
-| 3 (Yields) | Static Typing | Non-nullable by default, explicit types |
+| 2 | Static Typing | Non-nullable by default, explicit types |
+| 3 (Yields) | Python Syntax | Python 3 syntax and idioms |
 
-When axioms conflict: **.NET > Python > Type Safety**
+When axioms conflict: **.NET > Type Safety > Python Syntax**
 
 ## Core Rules
 

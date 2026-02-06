@@ -117,7 +117,8 @@ Local variables still require tracking during emission for redeclaration handlin
 - `list[T]` → `global::Sharpy.Core.List<T>`
 - `dict[K, V]` → `global::Sharpy.Core.Dict<K, V>`
 - `str` → `string`
-- `int` → `long`
+- `int` → `int`
+- `long` → `long`
 - `float` → `double`
 - `bool` → `bool`
 - `None` → `void`

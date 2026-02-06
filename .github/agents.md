@@ -21,7 +21,6 @@ All agents follow this priority order when axioms conflict:
 | Agent | Domain | Edits |
 |-------|--------|-------|
 | `implementer` | Full implementation + PRs | All |
-| `task-planner` | Task decomposition into phases | Read-only |
 | `code-reviewer` | PR review (security, performance, SOLID) | Read-only |
 | `test-expert` | Tests: unit, integration, file-based | `*Tests/` |
 
@@ -29,32 +28,24 @@ All agents follow this priority order when axioms conflict:
 
 | Agent | Component | Key Files |
 |-------|-----------|-----------|
-| `lexer-expert` | Tokenization | `Compiler/Lexer/`, `Token.cs` |
 | `parser-expert` | AST construction | `Compiler/Parser/`, `Ast/*.cs` |
 | `semantic-expert` | Type checking, name resolution, symbols | `Compiler/Semantic/`, `TypeChecker*.cs` |
 | `codegen-expert` | C# emission via Roslyn | `Compiler/CodeGen/`, `RoslynEmitter*.cs` |
 | `core-library-expert` | Standard library | `Sharpy.Core/`, `Partial.*/` |
-| `cli-expert` | CLI commands | `Sharpy.Cli/`, `Program.cs` |
 
 ### Axiom Guardians (Advisory, Read-Only)
 
 | Agent | Guards | Catches |
 |-------|--------|---------|
 | `net-axiom-guardian` | Axiom 1: .NET compatibility | C# 10+ features, invalid interop |
-| `python-axiom-guardian` | Axiom 2: Python syntax | Unnecessary C#-isms, non-Pythonic API |
-| `type-safety-guardian` | Axiom 3: Static typing | Dynamic typing, null safety violations |
-| `axiom-arbiter` | Conflict resolution | Applies precedence rules |
-| `unity-compatibility-guardian` | Unity/IL2CPP | AOT-unfriendly patterns, C# 10+ |
-| `design-philosophy-guardian` | Developer happiness | Complexity creep, unnecessary features |
+
 
 ### Verification Agents (Read-Only)
 
 | Agent | Purpose | Output |
 |-------|---------|--------|
 | `verification-expert` | Runs tests, reports results | Test reports |
-| `spec-adherence` | Verifies impl matches spec | Compliance reports with citations |
 | `hallucination-defense` | Fact-checks .NET/Python/Roslyn claims | Verification results |
-| `documentation-sync` | Keeps docs synchronized with code | Doc update PRs |
 
 ## Key Rules for All Agents
 
@@ -82,7 +73,7 @@ python3 -c "..."                                     # Verify Python behavior
 For language features, component experts work in this order:
 
 ```
-lexer-expert → parser-expert → semantic-expert → codegen-expert → test-expert
+parser-expert → semantic-expert → codegen-expert → test-expert
 ```
 
 1. **Lexer** — Add tokens if needed (`Token.cs`, `Lexer.cs`)
@@ -93,14 +84,15 @@ lexer-expert → parser-expert → semantic-expert → codegen-expert → test-e
 
 ## Semantic Analysis Pipeline (Critical Knowledge)
 
-The semantic phase runs **five ordered passes**. Understanding this is critical:
+The semantic phase runs **six ordered passes**. Understanding this is critical:
 
 ```
 NameResolver.ResolveDeclarations()  → Pass 1: build symbol table
-NameResolver.ResolveInheritance()   → Pass 2: resolve base classes
-TypeResolver.ResolveTypes()         → Pass 3: resolve type annotations
-TypeChecker.CheckModule()           → Pass 4: type checking + inference
-ValidationPipeline.Validate()       → Pass 5: operators/protocols/access
+NameResolver.ResolveInheritance()   → Pass 1b: resolve base classes
+ImportResolver                      → Pass 1.5: module imports
+TypeResolver.ResolveTypes()         → Pass 2: resolve type annotations
+TypeChecker.CheckModule()           → Pass 3: type checking + inference
+ValidationPipeline.Validate()       → Pass 4: operators/protocols/access
 ```
 
 **Key registries**: `OperatorRegistry`, `ProtocolRegistry`, `BuiltinRegistry`, `PrimitiveCatalog`
