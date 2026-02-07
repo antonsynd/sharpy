@@ -51,9 +51,9 @@ internal enum NameForm
 
 **Checklist**:
 
-- [ ] Create enum `NameForm` with all 9 variants listed above
-- [ ] Create `internal static class NameFormDetector`
-- [ ] Implement `public static NameForm Detect(string nameBody)`:
+- [x] Create enum `NameForm` with all 9 variants listed above
+- [x] Create `internal static class NameFormDetector`
+- [x] Implement `public static NameForm Detect(string nameBody)`:
   - **Important**: This receives the *body* only — callers strip `_`/`__` prefixes and trailing underscores before calling. The one exception is dunders and literals, which should be detectable from the full name.
   - Return `Dunder` if starts with `__` AND ends with `__` AND length > 4
   - Return `Literal` if starts with `` ` `` AND ends with `` ` ``
@@ -67,10 +67,10 @@ internal enum NameForm
     - All lowercase segments (+ digits) → `SnakeCase`
     - All uppercase segments (+ digits) → `ScreamingSnakeCase`
     - Otherwise → `Unrecognized` (mixed case like `Foo_bar`)
-- [ ] Implement `public static bool HasConsecutiveUnderscores(string nameBody)`:
+- [x] Implement `public static bool HasConsecutiveUnderscores(string nameBody)`:
   - Simple: `nameBody.Contains("__")`
   - **Gotcha**: Must NOT flag dunder bookends. Callers should strip dunder bookends before calling, OR this method should only check the *inner* body. Document which convention you pick and be consistent.
-- [ ] Implement `public static bool IsConstantCaseName(string name)`:
+- [x] Implement `public static bool IsConstantCaseName(string name)`:
   - Port the logic from `CodeGenInfoComputer.cs:189` — `name.All(c => char.IsUpper(c) || c == '_' || char.IsDigit(c)) && name.Any(char.IsUpper)`
   - Add a null/empty guard (return `false`) — the `RoslynEmitter.CompilationUnit.cs:372` version already has this
   - This consolidates the 3 private copies: `RoslynEmitter.CompilationUnit.cs:372` (for-loop version with null check), `CodeGenInfoComputer.cs:189` (LINQ), `ExecutionOrderAnalyzer.cs:333` (LINQ)
@@ -88,8 +88,8 @@ Copy the 11-entry `_dunderMethodMap` from NameMangler here (actual deletion from
 
 **Checklist**:
 
-- [ ] Create `internal static class DunderMapping`
-- [ ] Copy the `_dunderMethodMap` dictionary from `NameMangler.cs:30-46`:
+- [x] Create `internal static class DunderMapping`
+- [x] Copy the `_dunderMethodMap` dictionary from `NameMangler.cs:30-46`:
   ```
   __init__     → Constructor
   __str__      → ToString
@@ -103,16 +103,16 @@ Copy the 11-entry `_dunderMethodMap` from NameMangler here (actual deletion from
   __iter__     → GetEnumerator
   __bool__     → ToBoolean
   ```
-- [ ] Implement `public static string? GetCSharpName(string dunderName)` — dictionary lookup, returns null if not found
-- [ ] Implement `public static bool HasMapping(string dunderName)` — `_map.ContainsKey(dunderName)`
-- [ ] Implement `public static bool IsDunderMethod(string name)` — same logic as current `NameMangler.IsDunderMethod`: `name.StartsWith("__") && name.EndsWith("__") && name.Length > 5`
+- [x] Implement `public static string? GetCSharpName(string dunderName)` — dictionary lookup, returns null if not found
+- [x] Implement `public static bool HasMapping(string dunderName)` — `_map.ContainsKey(dunderName)`
+- [x] Implement `public static bool IsDunderMethod(string name)` — same logic as current `NameMangler.IsDunderMethod`: `name.StartsWith("__") && name.EndsWith("__") && name.Length > 5`
   - **Note**: Current NameMangler uses `name.Length > 5` (line 263). `__x__` (length 5) is excluded. Python considers `__a__` a valid dunder, but the existing test `IsDunderMethod_InvalidDunder_ReturnsFalse` expects `"__x__"` → `false`. Keep `> 5` for backward compat; revisit in Phase 5 if needed.
   - **Note**: `NameFormDetector.Detect()` uses `> 4` for its `Dunder` form classification (purely syntactic — `__a__` *looks* like a dunder). This difference is harmless: if `Detect()` classifies something as `Dunder` that `IsDunderMethod` rejects, the `ToPascalCase` algorithm handles it via the `__` prefix path (step 3) or passthrough, not the dunder map.
-- [ ] Implement `public static string TransformUnknownDunder(string name)` — for operator dunders not in the map:
+- [x] Implement `public static string TransformUnknownDunder(string name)` — for operator dunders not in the map:
   - Strip leading/trailing `__`, split middle on `_`, capitalize each segment, rejoin with `__` bookends
   - Example: `__add__` → `__Add__`, `__custom_method__` → `__CustomMethod__`
   - Port this logic from `NameMangler.ToPascalCase` lines 114-116
-- [ ] Add `#if DEBUG` static constructor that verifies consistency with `ProtocolRegistry`, mirroring the one in `NameMangler.cs:62-76`
+- [x] Add `#if DEBUG` static constructor that verifies consistency with `ProtocolRegistry`, mirroring the one in `NameMangler.cs:62-76`
 
 > **Rationale**: Dunder→C# mapping is a *codegen* concern (it decides what C# method names to emit), not a *naming convention* concern. `NameMangler` should be about `snake_case` → `PascalCase`; what `__str__` means in C# is codegen policy.
 
@@ -120,11 +120,11 @@ Copy the 11-entry `_dunderMethodMap` from NameMangler here (actual deletion from
 
 **Checklist**:
 
-- [ ] **File**: `src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs` (line 177, after `UnusedImport`)
+- [x] **File**: `src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs` (line 177, after `UnusedImport`)
   - Add: `public const string NamingConventionWarning = "SPY0453";`
   - This goes in the `Validation` class, in the `// Warnings (SPY0450-SPY0499)` section
   - SPY0453 is the next available warning number after SPY0452 (UnusedImport)
-- [ ] **File**: `src/Sharpy.Compiler/Diagnostics/DiagnosticExplanations.cs`
+- [x] **File**: `src/Sharpy.Compiler/Diagnostics/DiagnosticExplanations.cs`
   - Add an explanation entry in the `// Validation warnings (SPY0450-SPY0499)` section (~line 667)
   - Follow the existing pattern using the `Add()` helper:
     ```csharp
@@ -135,15 +135,15 @@ Copy the 11-entry `_dunderMethodMap` from NameMangler here (actual deletion from
         "x: int = 1\nfoo__bar: int = 2  # warning: consecutive underscores",
         "Rename the identifier or use backtick escaping: `foo__bar`");
     ```
-- [ ] **Note**: `SPY0453` already appears in `ProjectCompilationTests.cs:1361` as a test value for `<NoWarn>` parsing. That test is just validating the NoWarn mechanism with arbitrary codes — it will still pass and will now coincidentally suppress a real warning. No conflict.
+- [x] **Note**: `SPY0453` already appears in `ProjectCompilationTests.cs:1361` as a test value for `<NoWarn>` parsing. That test is just validating the NoWarn mechanism with arbitrary codes — it will still pass and will now coincidentally suppress a real warning. No conflict.
 
 ### 1d. Add `ToEnumMemberName` stub to NameMangler
 
 **Checklist**:
 
-- [ ] **File**: `src/Sharpy.Compiler/CodeGen/NameMangler.cs`
+- [x] **File**: `src/Sharpy.Compiler/CodeGen/NameMangler.cs`
   - Add `EnumMember` to the `NameContext` enum (after `Constant`, before the closing brace)
-- [ ] Add `public static string ToEnumMemberName(string name)` method:
+- [x] Add `public static string ToEnumMemberName(string name)` method:
   - Port the logic from `RoslynEmitter.TypeDeclarations.cs:715-731`:
     ```csharp
     public static string ToEnumMemberName(string name)
@@ -160,73 +160,73 @@ Copy the 11-entry `_dunderMethodMap` from NameMangler here (actual deletion from
     }
     ```
   - **Note**: This uses `StringSplitOptions.RemoveEmptyEntries` (unlike `ToPascalCase` which does not), which means consecutive underscores are silently consumed. This is existing behavior — preserve it for now.
-- [ ] Wire `EnumMember` in the `Transform` method switch: `NameContext.EnumMember => ToEnumMemberName(name),`
-- [ ] **Do NOT** change any call sites yet — that's Phase 4. This phase is additive only.
+- [x] Wire `EnumMember` in the `Transform` method switch: `NameContext.EnumMember => ToEnumMemberName(name),`
+- [x] **Do NOT** change any call sites yet — that's Phase 4. This phase is additive only.
 
 ### 1e. Tests for new infrastructure
 
 **Checklist**:
 
-- [ ] **New file**: `src/Sharpy.Compiler.Tests/CodeGen/NameFormDetectorTests.cs`
+- [x] **New file**: `src/Sharpy.Compiler.Tests/CodeGen/NameFormDetectorTests.cs`
   - Add `[Collection("Sequential")]` attribute (match existing test conventions)
   - Test `Detect()` for each `NameForm`:
-    - [ ] `"get_user_name"` → `SnakeCase`
-    - [ ] `"a_b_c"` → `SnakeCase`
-    - [ ] `"item1_count"` → `SnakeCase` (digits allowed)
-    - [ ] `"HttpClient"` → `PascalCase`
-    - [ ] `"XMLParser"` → `PascalCase` (starts uppercase, no underscores)
-    - [ ] `"httpClient"` → `CamelCase`
-    - [ ] `"iPhone"` → `CamelCase`
-    - [ ] `"MAX_SIZE"` → `ScreamingSnakeCase`
-    - [ ] `"HTTP_STATUS_2XX"` → `ScreamingSnakeCase` (digits allowed)
-    - [ ] `"hello"` → `SingleWordLower`
-    - [ ] `"HTTP"` → `SingleWordUpper`
-    - [ ] `"__init__"` → `Dunder`
-    - [ ] `` "`some_name`" `` → `Literal`
-    - [ ] `"foo__bar"` → `Unrecognized` (consecutive underscores)
-    - [ ] `"Foo_bar"` → `Unrecognized` (mixed case with underscores)
-    - [ ] `""` → `Unrecognized`
+    - [x] `"get_user_name"` → `SnakeCase`
+    - [x] `"a_b_c"` → `SnakeCase`
+    - [x] `"item1_count"` → `SnakeCase` (digits allowed)
+    - [x] `"HttpClient"` → `PascalCase`
+    - [x] `"XMLParser"` → `PascalCase` (starts uppercase, no underscores)
+    - [x] `"httpClient"` → `CamelCase`
+    - [x] `"iPhone"` → `CamelCase`
+    - [x] `"MAX_SIZE"` → `ScreamingSnakeCase`
+    - [x] `"HTTP_STATUS_2XX"` → `ScreamingSnakeCase` (digits allowed)
+    - [x] `"hello"` → `SingleWordLower`
+    - [x] `"HTTP"` → `SingleWordUpper`
+    - [x] `"__init__"` → `Dunder`
+    - [x] `` "`some_name`" `` → `Literal`
+    - [x] `"foo__bar"` → `Unrecognized` (consecutive underscores)
+    - [x] `"Foo_bar"` → `Unrecognized` (mixed case with underscores)
+    - [x] `""` → `Unrecognized`
   - Test `HasConsecutiveUnderscores()`:
-    - [ ] `"foo__bar"` → `true`
-    - [ ] `"foo_bar"` → `false`
-    - [ ] `"___"` → `true`
+    - [x] `"foo__bar"` → `true`
+    - [x] `"foo_bar"` → `false`
+    - [x] `"___"` → `true`
   - Test `IsConstantCaseName()`:
-    - [ ] `"MAX_SIZE"` → `true`
-    - [ ] `"HTTP"` → `true`
-    - [ ] `"MAX_2"` → `true`
-    - [ ] `"hello"` → `false`
-    - [ ] `"HttpClient"` → `false`
-    - [ ] `"_"` → `false` (no uppercase chars)
+    - [x] `"MAX_SIZE"` → `true`
+    - [x] `"HTTP"` → `true`
+    - [x] `"MAX_2"` → `true`
+    - [x] `"hello"` → `false`
+    - [x] `"HttpClient"` → `false`
+    - [x] `"_"` → `false` (no uppercase chars)
 
-- [ ] **New file**: `src/Sharpy.Compiler.Tests/CodeGen/DunderMappingTests.cs`
+- [x] **New file**: `src/Sharpy.Compiler.Tests/CodeGen/DunderMappingTests.cs`
   - Add `[Collection("Sequential")]` attribute
   - Test `GetCSharpName()`:
-    - [ ] `"__init__"` → `"Constructor"`
-    - [ ] `"__str__"` → `"ToString"`
-    - [ ] `"__eq__"` → `"Equals"`
-    - [ ] `"__hash__"` → `"GetHashCode"`
-    - [ ] `"__getitem__"` → `"GetItem"`
-    - [ ] `"__setitem__"` → `"SetItem"`
-    - [ ] `"__len__"` → `"Length"`
-    - [ ] `"__contains__"` → `"Contains"`
-    - [ ] `"__iter__"` → `"GetEnumerator"`
-    - [ ] `"__bool__"` → `"ToBoolean"`
-    - [ ] `"__repr__"` → `"ToString"`
-    - [ ] `"__unknown__"` → `null`
+    - [x] `"__init__"` → `"Constructor"`
+    - [x] `"__str__"` → `"ToString"`
+    - [x] `"__eq__"` → `"Equals"`
+    - [x] `"__hash__"` → `"GetHashCode"`
+    - [x] `"__getitem__"` → `"GetItem"`
+    - [x] `"__setitem__"` → `"SetItem"`
+    - [x] `"__len__"` → `"Length"`
+    - [x] `"__contains__"` → `"Contains"`
+    - [x] `"__iter__"` → `"GetEnumerator"`
+    - [x] `"__bool__"` → `"ToBoolean"`
+    - [x] `"__repr__"` → `"ToString"`
+    - [x] `"__unknown__"` → `null`
   - Test `TransformUnknownDunder()`:
-    - [ ] `"__add__"` → `"__Add__"`
-    - [ ] `"__sub__"` → `"__Sub__"`
-    - [ ] `"__custom_method__"` → `"__CustomMethod__"`
+    - [x] `"__add__"` → `"__Add__"`
+    - [x] `"__sub__"` → `"__Sub__"`
+    - [x] `"__custom_method__"` → `"__CustomMethod__"`
   - Test `IsDunderMethod()`:
-    - [ ] `"__init__"` → `true`
-    - [ ] `"init"` → `false`
-    - [ ] `"_private"` → `false`
+    - [x] `"__init__"` → `true`
+    - [x] `"init"` → `false`
+    - [x] `"_private"` → `false`
 
 ### Phase 1 verification
 
-- [ ] `dotnet build sharpy.sln` — must compile
-- [ ] `dotnet test` — ALL existing tests must still pass (no behavior changes)
-- [ ] New test files pass
+- [x] `dotnet build sharpy.sln` — must compile
+- [x] `dotnet test` — ALL existing tests must still pass (no behavior changes)
+- [x] New test files pass
 
 ---
 
