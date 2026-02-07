@@ -512,7 +512,7 @@ internal partial class RoslynEmitter
         //   This supports Python-style convention where MAX_SIZE implies a constant
         // - Other names use PascalCase
         string varName;
-        if (varDecl.IsConst || IsConstantCaseName(varDecl.Name))
+        if (varDecl.IsConst || NameFormDetector.IsConstantCaseName(varDecl.Name))
         {
             varName = NameMangler.ToConstantCase(varDecl.Name);
         }

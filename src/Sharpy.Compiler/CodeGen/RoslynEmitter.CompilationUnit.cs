@@ -365,33 +365,6 @@ internal partial class RoslynEmitter
         return netPrefixes.Contains(firstPart);
     }
 
-    /// <summary>
-    /// Checks if a name appears to be in CONSTANT_CASE (ALL_CAPS with optional underscores).
-    /// Used to determine proper casing for symbols imported via "from X import Y".
-    /// </summary>
-    private static bool IsConstantCaseName(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return false;
-
-        // A constant name should contain at least one letter and be all uppercase
-        // Allowed characters: uppercase letters, digits, underscores
-        bool hasLetter = false;
-        foreach (char c in name)
-        {
-            if (char.IsLetter(c))
-            {
-                if (!char.IsUpper(c))
-                    return false;
-                hasLetter = true;
-            }
-            else if (!char.IsDigit(c) && c != '_')
-            {
-                return false;
-            }
-        }
-        return hasLetter;
-    }
 
     /// <summary>
     /// C# keywords that need @ prefix when used as identifiers.

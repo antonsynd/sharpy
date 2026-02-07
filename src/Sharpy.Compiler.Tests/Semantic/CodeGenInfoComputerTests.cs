@@ -97,7 +97,7 @@ const MY_CONST: int = 100
         var symbol = symbolTable.Lookup("MY_CONST") as VariableSymbol;
         symbol.Should().NotBeNull();
         symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MY_CONST");
+        symbol.CodeGenInfo!.CSharpName.Should().Be("MyConst");
         symbol.CodeGenInfo.IsModuleLevel.Should().BeTrue();
         symbol.CodeGenInfo.IsConstant.Should().BeTrue();
     }

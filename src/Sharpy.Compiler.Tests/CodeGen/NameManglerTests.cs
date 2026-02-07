@@ -83,15 +83,23 @@ public class NameManglerTests
     #region Constant Case Tests
 
     [Theory]
-    [InlineData("MAX_SIZE", "MAX_SIZE")]
-    [InlineData("PI", "PI")]
-    [InlineData("DEFAULT_TIMEOUT", "DEFAULT_TIMEOUT")]
-    public void ToConstantCase_CapsSnakeCase_RemainsUnchanged(string input, string expected)
+    [InlineData("MAX_SIZE", "MaxSize")]
+    [InlineData("PI", "Pi")]
+    [InlineData("DEFAULT_TIMEOUT", "DefaultTimeout")]
+    public void ToConstantCase_CapsSnakeCase_ConvertsToPascalCase(string input, string expected)
     {
         // Act
         var result = NameMangler.ToConstantCase(input);
 
         // Assert
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("HTTP", "Http")]
+    public void ToConstantCase_SingleWordUpper_Normalized(string input, string expected)
+    {
+        var result = NameMangler.ToConstantCase(input);
         result.Should().Be(expected);
     }
 
@@ -244,11 +252,9 @@ public class NameManglerTests
     [Fact]
     public void ToPascalCase_NotKeyword_NoEscaping()
     {
-        // Act
+        // camelCase is passed through as-is (no mangling)
         var result = NameMangler.ToPascalCase("myClass");
-
-        // Assert
-        result.Should().Be("Myclass");
+        result.Should().Be("myClass");
         result.Should().NotStartWith("@");
     }
 
@@ -268,7 +274,7 @@ public class NameManglerTests
     [InlineData(NameContext.Variable, "user_name", "userName")]
     [InlineData(NameContext.Parameter, "item_count", "itemCount")]
     [InlineData(NameContext.Field, "private_data", "privateData")]
-    [InlineData(NameContext.Constant, "MAX_SIZE", "MAX_SIZE")]
+    [InlineData(NameContext.Constant, "MAX_SIZE", "MaxSize")]
     public void Transform_WithContext_TransformsCorrectly(NameContext context, string input, string expected)
     {
         // Act
@@ -326,6 +332,41 @@ public class NameManglerTests
     public void ToCamelCase_PrivatePrefixAndTrailingUnderscore_PreservesBoth(string input, string expected)
     {
         var result = NameMangler.ToCamelCase(input);
+        result.Should().Be(expected);
+    }
+
+    #endregion
+
+    #region New Form Detection Tests
+
+    [Theory]
+    [InlineData("httpClient", "httpClient")]    // CamelCase passthrough
+    [InlineData("foo__bar", "foo__bar")]         // Unrecognized passthrough
+    [InlineData("__private_field", "__PrivateField")]  // Double-underscore prefix preserved
+    [InlineData("__private", "__Private")]       // Double-underscore prefix preserved
+    [InlineData("HTTP", "HTTP")]                 // SingleWordUpper preserved in PascalCase context
+    public void ToPascalCase_FormDetection_HandlesCorrectly(string input, string expected)
+    {
+        var result = NameMangler.ToPascalCase(input);
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("HttpClient", "httpClient")]     // PascalCase → camelCase
+    [InlineData("HTTP", "http")]                 // SingleWordUpper → all lower
+    [InlineData("MAX_SIZE", "maxSize")]           // SCREAMING → camelCase
+    public void ToCamelCase_FormDetection_HandlesCorrectly(string input, string expected)
+    {
+        var result = NameMangler.ToCamelCase(input);
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("RED", "Red")]
+    [InlineData("DARK_BLUE", "DarkBlue")]
+    public void ToEnumMemberName_ConvertsCorrectly(string input, string expected)
+    {
+        var result = NameMangler.ToEnumMemberName(input);
         result.Should().Be(expected);
     }
 

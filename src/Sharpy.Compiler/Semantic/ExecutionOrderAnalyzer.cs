@@ -1,3 +1,4 @@
+using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -87,7 +88,7 @@ internal class ExecutionOrderAnalyzer
                 case InterfaceDef interfaceDef:
                     _typeAndFunctionNames.Add(interfaceDef.Name);
                     break;
-                case VariableDeclaration varDecl when varDecl.IsConst || IsConstantCaseName(varDecl.Name):
+                case VariableDeclaration varDecl when varDecl.IsConst || NameFormDetector.IsConstantCaseName(varDecl.Name):
                     _constVariables.Add(varDecl.Name);
                     break;
             }
@@ -330,9 +331,4 @@ internal class ExecutionOrderAnalyzer
         }
     }
 
-    private static bool IsConstantCaseName(string name)
-    {
-        return name.All(c => char.IsUpper(c) || c == '_' || char.IsDigit(c))
-               && name.Any(char.IsUpper);
-    }
 }

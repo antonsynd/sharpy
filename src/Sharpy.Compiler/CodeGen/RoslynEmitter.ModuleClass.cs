@@ -161,7 +161,7 @@ internal partial class RoslynEmitter
                 // This is a variable redefinition (GenerateModuleLevelField returned null)
                 // For const variables, we skip the duplicate entirely (consts can't be redeclared at runtime)
                 // For regular variables, add to executable statements so it becomes a local in Main
-                if (!varRedefinition.IsConst && !IsConstantCaseName(varRedefinition.Name))
+                if (!varRedefinition.IsConst && !NameFormDetector.IsConstantCaseName(varRedefinition.Name))
                 {
                     executableStatements.Add(stmt);
                 }
@@ -481,11 +481,11 @@ internal partial class RoslynEmitter
     private MemberDeclarationSyntax GenerateReExportProperty(string localName, VariableSymbol varSymbol, string sourceClassName)
     {
         // For constants/variables with ALL_CAPS names, preserve the case
-        var propertyName = IsConstantCaseName(localName)
+        var propertyName = NameFormDetector.IsConstantCaseName(localName)
             ? NameMangler.ToConstantCase(localName)
             : NameMangler.ToPascalCase(localName);
 
-        var sourcePropertyName = IsConstantCaseName(varSymbol.Name)
+        var sourcePropertyName = NameFormDetector.IsConstantCaseName(varSymbol.Name)
             ? NameMangler.ToConstantCase(varSymbol.Name)
             : NameMangler.ToPascalCase(varSymbol.Name);
 

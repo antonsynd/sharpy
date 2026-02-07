@@ -163,7 +163,7 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Contains("const int MAX_VALUE", result);
+        Assert.Contains("const int MaxValue", result);
         Assert.Contains("= 100;", result);
     }
 

@@ -99,10 +99,15 @@ internal class CodeGenInfoComputer
             var hasIssues = _variablesWithExecutionOrderIssues.Contains(varDecl.Name);
 
             // Variables with execution order issues become locals in Main() and use camelCase
-            // Module-level fields use PascalCase
-            var csharpName = hasIssues
-                ? NameMangler.ToCamelCase(varDecl.Name)
-                : NameMangler.ToPascalCase(varDecl.Name);
+            // ALL_CAPS names (Python-style constants) use ToConstantCase (→ PascalCase)
+            // Other module-level fields use ToPascalCase
+            string csharpName;
+            if (hasIssues)
+                csharpName = NameMangler.ToCamelCase(varDecl.Name);
+            else if (NameFormDetector.IsConstantCaseName(varDecl.Name))
+                csharpName = NameMangler.ToConstantCase(varDecl.Name);
+            else
+                csharpName = NameMangler.ToPascalCase(varDecl.Name);
 
             SetCodeGenInfo(varSymbol, new CodeGenInfo
             {
@@ -177,20 +182,13 @@ internal class CodeGenInfoComputer
     private string DetermineCSharpNameForFromImport(string name, Symbol symbol)
     {
         // Use the same logic as RoslynEmitter for from-imports:
-        // - ALL_CAPS names (constants) stay as CONSTANT_CASE
+        // - ALL_CAPS names (constants) use ToConstantCase (→ PascalCase)
         // - Other names become PascalCase
-        if (IsConstantCaseName(name))
+        if (NameFormDetector.IsConstantCaseName(name))
         {
             return NameMangler.ToConstantCase(name);
         }
         return NameMangler.ToPascalCase(name);
-    }
-
-    private static bool IsConstantCaseName(string name)
-    {
-        // A name is considered CONSTANT_CASE if it's all uppercase with underscores
-        return name.All(c => char.IsUpper(c) || c == '_' || char.IsDigit(c))
-               && name.Any(char.IsUpper);
     }
 
     private void ProcessClassDef(ClassDef classDef)

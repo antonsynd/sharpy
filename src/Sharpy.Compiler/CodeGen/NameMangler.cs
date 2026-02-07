@@ -92,7 +92,13 @@ internal static class NameMangler
     }
 
     /// <summary>
-    /// Convert snake_case to PascalCase for methods and functions
+    /// Convert snake_case to PascalCase for methods and functions.
+    /// Uses form detection to handle different naming conventions:
+    /// - SnakeCase/SingleWordLower: split on _, capitalize each segment (preserving rest)
+    /// - ScreamingSnakeCase: split on _, title-case each segment (normalizing rest)
+    /// - PascalCase/SingleWordUpper: pass through as-is
+    /// - CamelCase: pass through as-is
+    /// - Unrecognized: pass through as-is
     /// </summary>
     public static string ToPascalCase(string name)
     {
@@ -103,22 +109,28 @@ internal static class NameMangler
         if (name.StartsWith("`") && name.EndsWith("`"))
             return name[1..^1];
 
-        // Handle dunder methods
-        if (name.StartsWith("__") && name.EndsWith("__"))
+        // Handle dunder methods — bridge to DunderMapping (Phase 5 removes this)
+        if (name.StartsWith("__") && name.EndsWith("__") && name.Length > 4)
         {
             if (_dunderMethodMap.TryGetValue(name, out var mapped))
                 return mapped;
 
             // Unknown dunder method - preserve dunder but capitalize the middle part
-            // e.g., __add__ -> __Add__, __custom_method__ -> __CustomMethod__
-            var middle = name[2..^2]; // Remove leading and trailing __
-            var capitalizedMiddle = string.Join("", middle.Split('_').Select(Capitalize));
-            return $"__{capitalizedMiddle}__";
+            return DunderMapping.TransformUnknownDunder(name);
         }
 
-        // Handle private names (single underscore prefix)
-        var hasPrivatePrefix = name.StartsWith("_") && !name.StartsWith("__");
-        var cleanName = hasPrivatePrefix ? name[1..] : name;
+        // Handle double-private prefix (__foo but NOT __foo__)
+        var hasDoublePrivatePrefix = name.StartsWith("__") && !name.EndsWith("__");
+        // Handle single-private prefix (_foo but NOT __foo)
+        var hasPrivatePrefix = !hasDoublePrivatePrefix && name.StartsWith("_") && !name.StartsWith("__");
+
+        string cleanName;
+        if (hasDoublePrivatePrefix)
+            cleanName = name[2..];
+        else if (hasPrivatePrefix)
+            cleanName = name[1..];
+        else
+            cleanName = name;
 
         // Count and preserve trailing underscores (Python allows x_, x__, etc. as different variables)
         var trailingUnderscoreCount = 0;
@@ -128,35 +140,41 @@ internal static class NameMangler
         if (trailingUnderscoreCount > 0 && trailingUnderscoreCount < cleanName.Length)
             cleanName = cleanName[..^trailingUnderscoreCount];
 
-        // If the name doesn't contain underscores and starts with an uppercase letter,
-        // it's already in PascalCase - preserve it as-is
-        if (!cleanName.Contains('_') && cleanName.Length > 0 && char.IsUpper(cleanName[0]))
+        // Detect name form and transform accordingly
+        var form = NameFormDetector.Detect(cleanName);
+        var result = form switch
         {
-            var pascalResult = cleanName;
-            if (trailingUnderscoreCount > 0)
-                pascalResult += new string('_', trailingUnderscoreCount);
-            // Restore private prefix if needed
-            if (hasPrivatePrefix)
-                return EscapeKeywordIfNeeded("_" + pascalResult);
-            return EscapeKeywordIfNeeded(pascalResult);
-        }
-
-        var parts = cleanName.Split('_');
-        var result = string.Join("", parts.Select(Capitalize));
+            NameForm.SnakeCase or NameForm.SingleWordLower =>
+                string.Join("", cleanName.Split('_').Select(CapitalizePreserving)),
+            NameForm.ScreamingSnakeCase =>
+                string.Join("", cleanName.Split('_').Select(CapitalizeNormalizing)),
+            NameForm.PascalCase or NameForm.SingleWordUpper => cleanName,
+            NameForm.CamelCase => cleanName,
+            _ => cleanName, // Unrecognized, Dunder (already handled above), Literal
+        };
 
         // Restore trailing underscores
         if (trailingUnderscoreCount > 0)
             result += new string('_', trailingUnderscoreCount);
 
-        // Restore private prefix
-        if (hasPrivatePrefix)
+        // Restore prefix
+        if (hasDoublePrivatePrefix)
+            result = "__" + result;
+        else if (hasPrivatePrefix)
             result = "_" + result;
 
         return EscapeKeywordIfNeeded(result);
     }
 
     /// <summary>
-    /// Convert snake_case to camelCase for variables and parameters
+    /// Convert snake_case to camelCase for variables and parameters.
+    /// Uses form detection to handle different naming conventions:
+    /// - SnakeCase/SingleWordLower: first segment lowercase, rest capitalized (preserving)
+    /// - ScreamingSnakeCase: first segment fully lowered, rest title-cased (normalizing)
+    /// - PascalCase: first char to lower, rest preserved
+    /// - CamelCase: pass through as-is
+    /// - SingleWordUpper: fully lowercase
+    /// - Unrecognized: pass through as-is
     /// </summary>
     public static string ToCamelCase(string name)
     {
@@ -168,12 +186,21 @@ internal static class NameMangler
             return name[1..^1];
 
         // Handle dunder methods - shouldn't be used for variables, but just in case
-        if (name.StartsWith("__") && name.EndsWith("__"))
+        if (name.StartsWith("__") && name.EndsWith("__") && name.Length > 4)
             return name;
 
-        // Handle private names
-        var hasPrivatePrefix = name.StartsWith("_") && !name.StartsWith("__");
-        var cleanName = hasPrivatePrefix ? name[1..] : name;
+        // Handle double-private prefix (__foo but NOT __foo__)
+        var hasDoublePrivatePrefix = name.StartsWith("__") && !name.EndsWith("__");
+        // Handle single-private prefix (_foo but NOT __foo)
+        var hasPrivatePrefix = !hasDoublePrivatePrefix && name.StartsWith("_") && !name.StartsWith("__");
+
+        string cleanName;
+        if (hasDoublePrivatePrefix)
+            cleanName = name[2..];
+        else if (hasPrivatePrefix)
+            cleanName = name[1..];
+        else
+            cleanName = name;
 
         // Count and preserve trailing underscores (Python allows x_, x__, etc. as different variables)
         var trailingUnderscoreCount = 0;
@@ -183,29 +210,62 @@ internal static class NameMangler
         if (trailingUnderscoreCount > 0 && trailingUnderscoreCount < cleanName.Length)
             cleanName = cleanName[..^trailingUnderscoreCount];
 
-        var parts = cleanName.Split('_');
-        if (parts.Length == 0)
-            return EscapeKeywordIfNeeded(name);
-
-        var result = parts[0].ToLowerInvariant();
-        if (parts.Length > 1)
+        // Detect name form and transform accordingly
+        var form = NameFormDetector.Detect(cleanName);
+        string result;
+        switch (form)
         {
-            result += string.Join("", parts.Skip(1).Select(Capitalize));
+            case NameForm.SnakeCase or NameForm.SingleWordLower:
+                {
+                    var parts = cleanName.Split('_');
+                    result = parts[0].ToLowerInvariant();
+                    if (parts.Length > 1)
+                        result += string.Join("", parts.Skip(1).Select(CapitalizePreserving));
+                    break;
+                }
+            case NameForm.ScreamingSnakeCase:
+                {
+                    var parts = cleanName.Split('_');
+                    result = parts[0].ToLowerInvariant();
+                    if (parts.Length > 1)
+                        result += string.Join("", parts.Skip(1).Select(CapitalizeNormalizing));
+                    break;
+                }
+            case NameForm.PascalCase:
+                result = char.ToLowerInvariant(cleanName[0]) + cleanName[1..];
+                break;
+            case NameForm.SingleWordUpper:
+                result = cleanName.ToLowerInvariant();
+                break;
+            case NameForm.CamelCase:
+                result = cleanName;
+                break;
+            default:
+                result = cleanName; // Unrecognized, Dunder (already handled), Literal
+                break;
         }
 
         // Restore trailing underscores
         if (trailingUnderscoreCount > 0)
             result += new string('_', trailingUnderscoreCount);
 
-        // Restore private prefix
-        if (hasPrivatePrefix)
+        // Restore prefix
+        if (hasDoublePrivatePrefix)
+            result = "__" + result;
+        else if (hasPrivatePrefix)
             result = "_" + result;
 
         return EscapeKeywordIfNeeded(result);
     }
 
     /// <summary>
-    /// Keep CAPS_SNAKE_CASE for constants
+    /// Convert constant names to PascalCase (matching spec: CAPS_SNAKE_CASE → PascalCase).
+    /// Uses form detection:
+    /// - ScreamingSnakeCase: PascalCase via normalizing capitalize. MAX_SIZE → MaxSize
+    /// - SingleWordUpper: title-case. HTTP → Http
+    /// - SnakeCase: PascalCase (same as ToPascalCase for snake_case)
+    /// - PascalCase/CamelCase: pass through
+    /// - Unrecognized: pass through
     /// </summary>
     public static string ToConstantCase(string name)
     {
@@ -216,8 +276,18 @@ internal static class NameMangler
         if (name.StartsWith("`") && name.EndsWith("`"))
             return name[1..^1];
 
-        // Constants stay in CAPS_SNAKE_CASE
-        return EscapeKeywordIfNeeded(name);
+        var form = NameFormDetector.Detect(name);
+        var result = form switch
+        {
+            NameForm.ScreamingSnakeCase =>
+                string.Join("", name.Split('_').Select(CapitalizeNormalizing)),
+            NameForm.SingleWordUpper => CapitalizeNormalizing(name),
+            NameForm.SnakeCase or NameForm.SingleWordLower =>
+                string.Join("", name.Split('_').Select(CapitalizePreserving)),
+            _ => name, // PascalCase, CamelCase, Unrecognized — pass through
+        };
+
+        return EscapeKeywordIfNeeded(result);
     }
 
     /// <summary>
@@ -301,11 +371,23 @@ internal static class NameMangler
         return _listMethodMap.TryGetValue(methodName, out var mapped) ? mapped : null;
     }
 
-    private static string Capitalize(string word)
+    /// <summary>
+    /// For snake_case: capitalize first char, preserve rest as-is.
+    /// </summary>
+    private static string CapitalizePreserving(string word)
     {
         if (string.IsNullOrEmpty(word))
             return word;
+        return char.ToUpperInvariant(word[0]) + word[1..];
+    }
 
+    /// <summary>
+    /// For SCREAMING_SNAKE_CASE: capitalize first char, normalize rest to lowercase.
+    /// </summary>
+    private static string CapitalizeNormalizing(string word)
+    {
+        if (string.IsNullOrEmpty(word))
+            return word;
         return char.ToUpperInvariant(word[0]) + word[1..].ToLowerInvariant();
     }
 

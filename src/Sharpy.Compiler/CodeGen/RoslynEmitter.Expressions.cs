@@ -832,7 +832,7 @@ internal partial class RoslynEmitter
         // Apply name mangling to member names:
         // - ALL_CAPS names (Python-style constants) use CONSTANT_CASE
         // - Other names use PascalCase
-        var mangledMemberName = IsConstantCaseName(memberAccess.Member)
+        var mangledMemberName = NameFormDetector.IsConstantCaseName(memberAccess.Member)
             ? NameMangler.ToConstantCase(memberAccess.Member)
             : NameMangler.ToPascalCase(memberAccess.Member);
         var member = IdentifierName(mangledMemberName);
@@ -991,7 +991,7 @@ internal partial class RoslynEmitter
             {
                 // Use CONSTANT_CASE for ALL_CAPS names (Python-style constants)
                 var memberPart = modulePath[i];
-                var mangledMemberName = IsConstantCaseName(memberPart)
+                var mangledMemberName = NameFormDetector.IsConstantCaseName(memberPart)
                     ? NameMangler.ToConstantCase(memberPart)
                     : NameMangler.ToPascalCase(memberPart);
                 expr = MemberAccessExpression(
@@ -1012,7 +1012,7 @@ internal partial class RoslynEmitter
         {
             // Use CONSTANT_CASE for ALL_CAPS names (Python-style constants)
             var memberPart = modulePath[i];
-            var memberName = IsConstantCaseName(memberPart)
+            var memberName = NameFormDetector.IsConstantCaseName(memberPart)
                 ? NameMangler.ToConstantCase(memberPart)
                 : NameMangler.ToPascalCase(memberPart);
             current = MemberAccessExpression(
