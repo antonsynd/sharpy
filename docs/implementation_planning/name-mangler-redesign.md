@@ -524,15 +524,15 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
 
 **Checklist**:
 
-- [ ] Remove the dunder bridge block added in Phase 3 (the `DunderMapping.GetCSharpName() ?? DunderMapping.TransformUnknownDunder()` call inside `ToPascalCase`)
+- [x] Remove the dunder bridge block added in Phase 3 (the `DunderMapping.GetCSharpName() ?? DunderMapping.TransformUnknownDunder()` call inside `ToPascalCase`)
   - After removal, a dunder name hitting `ToPascalCase` will be classified by `NameFormDetector.Detect()` as... what? The dunder will have been caught by the `__` prefix check (step 3 of the algorithm). Wait — `__str__` starts with `__` but also ends with `__`. The prefix check should NOT catch dunders (step 3 says "starts `__`, does NOT end `__`"). So `__str__` falls through to form detection → `NameFormDetector.Detect("__str__")` → `Dunder` → but there's no handler in step 6 for `Dunder` anymore. **Solution**: Add a `Dunder` case to step 6 that returns the name as-is (passthrough).
-- [ ] Remove the `_dunderMethodMap` dictionary (lines 30-46)
-- [ ] Remove the `#if DEBUG` static constructor (lines 61-76)
-- [ ] Remove the `GetDunderMethodMapping` method (lines 269-272)
-- [ ] For `IsDunderMethod` (line 261): Either delegate to `DunderMapping.IsDunderMethod` or remove entirely
+- [x] Remove the `_dunderMethodMap` dictionary (lines 30-46)
+- [x] Remove the `#if DEBUG` static constructor (lines 61-76)
+- [x] Remove the `GetDunderMethodMapping` method (lines 269-272)
+- [x] For `IsDunderMethod` (line 261): Either delegate to `DunderMapping.IsDunderMethod` or remove entirely
   - **Decision guideline**: If there are callers outside `CodeGen/` that shouldn't depend on `DunderMapping`, keep `IsDunderMethod` as a thin wrapper. If all callers are in `CodeGen/`, remove and update callers. Check with grep: `grep -rn "NameMangler.IsDunderMethod" src/`
   - Current callers: `RoslynEmitter.ClassMembers.cs:60,78` — both in CodeGen. **Remove from NameMangler; update callers to use `DunderMapping.IsDunderMethod`.**
-- [ ] Keep `_listMethodMap` and `GetListMethodMapping` — these are unrelated to this refactor
+- [x] Keep `_listMethodMap` and `GetListMethodMapping` — these are unrelated to this refactor
 
 ### 5b. Wire `DunderMapping` into `CodeGenInfoComputer`
 
@@ -540,22 +540,20 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
 
 **Checklist**:
 
-- [ ] **File**: `src/Sharpy.Compiler/Semantic/CodeGenInfoComputer.cs`
+- [x] **File**: `src/Sharpy.Compiler/Semantic/CodeGenInfoComputer.cs`
   - Add `using Sharpy.Compiler.CodeGen;` at the top (for `DunderMapping`)
   - **Line 301** (`ProcessMethodDef`): Replace:
     ```csharp
     // Before:
     CSharpName = NameMangler.ToPascalCase(funcDef.Name),
     // After:
-    CSharpName = DunderMapping.IsDunderMethod(funcDef.Name)
-        ? (DunderMapping.GetCSharpName(funcDef.Name) ?? DunderMapping.TransformUnknownDunder(funcDef.Name))
-        : NameMangler.ToPascalCase(funcDef.Name),
+    CSharpName = DunderMapping.ResolveCSharpName(funcDef.Name)
+        ?? NameMangler.ToPascalCase(funcDef.Name),
     ```
   - **Line 315** (`ProcessFunctionDef`): Same pattern — top-level functions shouldn't be dunders, but be defensive:
     ```csharp
-    CSharpName = DunderMapping.IsDunderMethod(funcDef.Name)
-        ? (DunderMapping.GetCSharpName(funcDef.Name) ?? DunderMapping.TransformUnknownDunder(funcDef.Name))
-        : NameMangler.ToPascalCase(funcDef.Name),
+    CSharpName = DunderMapping.ResolveCSharpName(funcDef.Name)
+        ?? NameMangler.ToPascalCase(funcDef.Name),
     ```
 
 > **Fork-in-the-road**: Should we extract a helper like `DunderMapping.ResolveName(string name)` that encapsulates the `IsDunder ? (GetCSharpName ?? TransformUnknown) : null` pattern? **Yes** — this pattern appears 5+ times. Add a convenience method:
@@ -572,7 +570,7 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
 
 **Checklist**:
 
-- [ ] **File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.ClassMembers.cs`
+- [x] **File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.ClassMembers.cs`
   - Line 60: `NameMangler.IsDunderMethod(fd.Name)` → `DunderMapping.IsDunderMethod(fd.Name)`
   - Line 78: `NameMangler.IsDunderMethod(funcDef.Name)` → `DunderMapping.IsDunderMethod(funcDef.Name)`
   - Line 331 (`GenerateClassMethod`): The call `NameMangler.Transform(func.Name, NameContext.Method)` now returns `__str__` for dunders (passthrough). Fix:
@@ -583,7 +581,7 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
     **Important**: Most class methods will already have a `CSharpName` set via `CodeGenInfo` (from CodeGenInfoComputer). The `NameMangler.Transform` fallback here is for cases where CodeGenInfo is missing. But to be safe, handle dunders correctly in the fallback path too.
   - Line 604 (`GenerateInterfaceMethod`): Same pattern as line 331
 
-- [ ] **File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Operators.cs`
+- [x] **File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Operators.cs`
   - Lines 109, 155, 188: These generate operator overloads that delegate to the instance method. The instance method name for `__add__` should be `__Add__` (the unknown dunder transform). Update:
     ```csharp
     var methodName = DunderMapping.ResolveCSharpName(funcDef.Name)
@@ -600,11 +598,11 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
 
 **Checklist**:
 
-- [ ] **File**: `src/Sharpy.Compiler.Tests/CodeGen/RegistryConsistencyTests.cs`
+- [x] **File**: `src/Sharpy.Compiler.Tests/CodeGen/RegistryConsistencyTests.cs`
   - Rewrite to test `DunderMapping` instead of `NameMangler.Transform` for dunder→C# mappings
   - Test that `DunderMapping.GetCSharpName` returns the expected value for each dunder in `ProtocolRegistry`
   - Test that `DunderMapping.IsDunderMethod` recognizes all protocol dunders
-- [ ] **File**: `src/Sharpy.Compiler.Tests/CodeGen/NameManglerTests.cs`
+- [x] **File**: `src/Sharpy.Compiler.Tests/CodeGen/NameManglerTests.cs`
   - Remove or update dunder mapping tests in `#region Dunder Method Tests`:
     - `ToPascalCase("__init__")` → now returns `"__init__"` (passthrough), not `"Constructor"`
     - `ToPascalCase("__str__")` → now returns `"__str__"`, not `"ToString"`
@@ -612,16 +610,16 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
     - Move these tests to `DunderMappingTests.cs` to test the correct API
   - Remove `GetDunderMethodMapping` tests (method no longer exists on NameMangler)
   - Keep `IsDunderMethod` tests but update to test `DunderMapping.IsDunderMethod` instead
-- [ ] Run full test suite
+- [x] Run full test suite
   - The dunder method C# names should still flow correctly through `CodeGenInfo.CSharpName`
   - Any integration test that compiles a class with `__str__`, `__eq__`, etc. should still produce the correct C# output because CodeGenInfoComputer now uses DunderMapping directly
 
 ### Phase 5 verification
 
-- [ ] `dotnet build sharpy.sln`
-- [ ] `dotnet test` — all pass
-- [ ] `dotnet run --project src/Sharpy.Cli -- emit csharp` on a snippet with a class using `__str__`, `__eq__`, `__add__` — verify the emitted C# has `ToString()`, `Equals()`, `__Add__()`
-- [ ] Grep for any remaining `NameMangler.*dunder` or `NameMangler.*Dunder` references (should be zero except comments)
+- [x] `dotnet build sharpy.sln`
+- [x] `dotnet test` — all pass
+- [x] `dotnet run --project src/Sharpy.Cli -- emit csharp` on a snippet with a class using `__str__`, `__eq__`, `__add__` — verify the emitted C# has `ToString()`, `Equals()`, `__Add__()`
+- [x] Grep for any remaining `NameMangler.*dunder` or `NameMangler.*Dunder` references (should be zero except comments)
 
 ---
 
