@@ -71,8 +71,9 @@ internal enum NameForm
   - Simple: `nameBody.Contains("__")`
   - **Gotcha**: Must NOT flag dunder bookends. Callers should strip dunder bookends before calling, OR this method should only check the *inner* body. Document which convention you pick and be consistent.
 - [ ] Implement `public static bool IsConstantCaseName(string name)`:
-  - Port the logic from `RoslynEmitter.CompilationUnit.cs:372` — `name.All(c => char.IsUpper(c) || c == '_' || char.IsDigit(c)) && name.Any(char.IsUpper)`
-  - This consolidates the 3 private copies: `RoslynEmitter.CompilationUnit.cs:372`, `CodeGenInfoComputer.cs:189`, `ExecutionOrderAnalyzer.cs:333`
+  - Port the logic from `CodeGenInfoComputer.cs:189` — `name.All(c => char.IsUpper(c) || c == '_' || char.IsDigit(c)) && name.Any(char.IsUpper)`
+  - Add a null/empty guard (return `false`) — the `RoslynEmitter.CompilationUnit.cs:372` version already has this
+  - This consolidates the 3 private copies: `RoslynEmitter.CompilationUnit.cs:372` (for-loop version with null check), `CodeGenInfoComputer.cs:189` (LINQ), `ExecutionOrderAnalyzer.cs:333` (LINQ)
   - **Decision**: This is kept as a separate convenience method (not just `Detect() == ScreamingSnakeCase || Detect() == SingleWordUpper`) because existing call sites use it as a boolean check and it matches both `ScreamingSnakeCase` and `SingleWordUpper`
 
 > **Fork-in-the-road**: Should `Detect()` handle empty strings or null? **Decision**: Return `Unrecognized` for null/empty. Callers already guard against null before reaching here. Defensive but not overcomplicated.
@@ -244,8 +245,12 @@ Move the 11-entry `_dunderMethodMap` from NameMangler here.
 - [ ] **File**: `src/Sharpy.Compiler/CodeGen/NameResolutionService.cs` (line 197)
   - Change: `CSharpKeywords.Contains(name.ToLowerInvariant())` → `CSharpKeywords.Contains(name)`
   - Same fix, same rationale. The `CSharpKeywords` set is also all-lowercase
+- [ ] **File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs` (line 399)
+  - Change: `new(StringComparer.OrdinalIgnoreCase)` → `new()` (remove the case-insensitive comparer)
+  - This is a **third copy** of the same bug, using a different mechanism: `OrdinalIgnoreCase` makes the HashSet match case-insensitively, so `CSharpKeywords.Contains("Class")` returns `true`. Removing the comparer makes it use default ordinal comparison (case-sensitive), which is correct since the set contains only lowercase keywords.
+  - The `EscapeCSharpKeyword` method at line 418 needs no change — it already does a plain `CSharpKeywords.Contains(name)` without lowercasing.
 
-> **Why both files?** `NameMangler.EscapeKeywordIfNeeded` is used during name mangling. `NameResolutionService.EscapeCSharpKeyword` is used during name resolution for module symbols. Both have the same bug.
+> **Why all three files?** `NameMangler.EscapeKeywordIfNeeded` is used during name mangling. `NameResolutionService.EscapeCSharpKeyword` is used during name resolution for module symbols. `RoslynEmitter.CompilationUnit.EscapeCSharpKeyword` is used for module path escaping during code generation. All three have the same over-eager case-insensitive escaping bug, achieved via different mechanisms (`.ToLowerInvariant()` in the first two, `StringComparer.OrdinalIgnoreCase` in the third).
 
 ### 2b. Update tests
 
@@ -653,8 +658,8 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
     ```csharp
     AddWarning(context,
         $"Identifier '{name}' contains consecutive underscores, which may cause name mangling collisions. Use backtick escaping or rename.",
-        line: node.Line,
-        column: node.Column,
+        line: node.LineStart,
+        column: node.ColumnStart,
         code: DiagnosticCodes.Validation.NamingConventionWarning,
         span: node.Span);
     ```
@@ -755,7 +760,7 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
 | Phase | Modified | Created |
 |-------|----------|---------|
 | 1 | NameMangler.cs, DiagnosticCodes.cs, DiagnosticExplanations.cs | NameFormDetector.cs, DunderMapping.cs, NameFormDetectorTests.cs, DunderMappingTests.cs |
-| 2 | NameMangler.cs, NameResolutionService.cs, NameManglerTests.cs | — |
+| 2 | NameMangler.cs, NameResolutionService.cs, RoslynEmitter.CompilationUnit.cs, NameManglerTests.cs | — |
 | 3 | NameMangler.cs, CodeGenInfoComputer.cs, RoslynEmitter.{Expressions,Statements,ModuleClass,CompilationUnit}.cs, ExecutionOrderAnalyzer.cs, NameManglerTests.cs, ~N snapshots | — |
 | 4 | RoslynEmitter.TypeDeclarations.cs, RoslynEmitter.Expressions.cs, NameManglerTests.cs | — |
 | 5 | NameMangler.cs, CodeGenInfoComputer.cs, RoslynEmitter.{ClassMembers,Operators}.cs, RegistryConsistencyTests.cs, NameManglerTests.cs | — |
