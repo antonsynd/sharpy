@@ -134,73 +134,23 @@ public class NameManglerTests
 
     #endregion
 
-    #region Dunder Method Tests
+    #region Dunder Method Passthrough Tests
 
     [Theory]
-    [InlineData("__init__", "Constructor")]
-    [InlineData("__str__", "ToString")]
-    [InlineData("__repr__", "ToString")]
-    [InlineData("__eq__", "Equals")]
-    [InlineData("__add__", "__Add__")]  // Operators preserve dunder to avoid user method conflicts
-    [InlineData("__sub__", "__Sub__")]
-    [InlineData("__mul__", "__Mul__")]
-    [InlineData("__div__", "__Div__")]
-    [InlineData("__getitem__", "GetItem")]  // Special methods for indexers
-    [InlineData("__setitem__", "SetItem")]
-    public void ToPascalCase_DunderMethod_MapsToCorrectName(string dunderName, string expected)
+    [InlineData("__init__", "__init__")]
+    [InlineData("__str__", "__str__")]
+    [InlineData("__repr__", "__repr__")]
+    [InlineData("__eq__", "__eq__")]
+    [InlineData("__add__", "__add__")]
+    [InlineData("__sub__", "__sub__")]
+    [InlineData("__getitem__", "__getitem__")]
+    [InlineData("__setitem__", "__setitem__")]
+    public void ToPascalCase_DunderMethod_PassesThrough(string dunderName, string expected)
     {
-        // Act
+        // After Phase 5, dunders pass through ToPascalCase unchanged.
+        // Callers use DunderMapping directly for dunder→C# name resolution.
         var result = NameMangler.ToPascalCase(dunderName);
-
-        // Assert
         result.Should().Be(expected);
-    }
-
-    [Fact]
-    public void IsDunderMethod_ValidDunder_ReturnsTrue()
-    {
-        // Arrange
-        var name = "__init__";
-
-        // Act
-        var result = NameMangler.IsDunderMethod(name);
-
-        // Assert
-        result.Should().BeTrue();
-    }
-
-    [Theory]
-    [InlineData("__x__")]
-    [InlineData("init")]
-    [InlineData("_private")]
-    [InlineData("__too_short_")]
-    public void IsDunderMethod_InvalidDunder_ReturnsFalse(string name)
-    {
-        // Act
-        var result = NameMangler.IsDunderMethod(name);
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public void GetDunderMethodMapping_KnownDunder_ReturnsMapping()
-    {
-        // Act
-        var result = NameMangler.GetDunderMethodMapping("__init__");
-
-        // Assert
-        result.Should().Be("Constructor");
-    }
-
-    [Fact]
-    public void GetDunderMethodMapping_UnknownDunder_ReturnsNull()
-    {
-        // Act
-        var result = NameMangler.GetDunderMethodMapping("__unknown__");
-
-        // Assert
-        result.Should().BeNull();
     }
 
     #endregion

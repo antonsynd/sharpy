@@ -203,8 +203,9 @@ internal partial class RoslynEmitter
             var obj = GenerateExpression(memberAccess.Object);
 
             // Apply name mangling to method name
-            // First check for Python list method mappings (append -> Add, etc.)
-            var methodName = NameMangler.GetListMethodMapping(memberAccess.Member)
+            // First check for dunder methods, then Python list method mappings (append -> Add, etc.)
+            var methodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
+                ?? NameMangler.GetListMethodMapping(memberAccess.Member)
                 ?? NameMangler.ToPascalCase(memberAccess.Member);
 
             // Generate positional arguments
@@ -830,11 +831,13 @@ internal partial class RoslynEmitter
         }
 
         // Apply name mangling to member names:
+        // - Dunder methods use DunderMapping
         // - ALL_CAPS names (Python-style constants) use CONSTANT_CASE
         // - Other names use PascalCase
-        var mangledMemberName = NameFormDetector.IsConstantCaseName(memberAccess.Member)
-            ? NameMangler.ToConstantCase(memberAccess.Member)
-            : NameMangler.ToPascalCase(memberAccess.Member);
+        var mangledMemberName = DunderMapping.ResolveCSharpName(memberAccess.Member)
+            ?? (NameFormDetector.IsConstantCaseName(memberAccess.Member)
+                ? NameMangler.ToConstantCase(memberAccess.Member)
+                : NameMangler.ToPascalCase(memberAccess.Member));
         var member = IdentifierName(mangledMemberName);
 
         if (memberAccess.IsNullConditional)

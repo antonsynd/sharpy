@@ -392,7 +392,8 @@ internal partial class RoslynEmitter
     /// </summary>
     private MethodDeclarationSyntax GenerateAbstractMethodStub(FunctionDef interfaceMethod)
     {
-        var mangledName = NameMangler.Transform(interfaceMethod.Name, NameContext.Method);
+        var mangledName = DunderMapping.ResolveCSharpName(interfaceMethod.Name)
+            ?? NameMangler.Transform(interfaceMethod.Name, NameContext.Method);
 
         // Determine return type from annotation or infer void
         TypeSyntax returnType = interfaceMethod.ReturnType != null

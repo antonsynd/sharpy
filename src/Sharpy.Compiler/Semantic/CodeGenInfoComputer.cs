@@ -296,7 +296,8 @@ internal class CodeGenInfoComputer
         {
             SetCodeGenInfo(methodSymbol, new CodeGenInfo
             {
-                CSharpName = NameMangler.ToPascalCase(funcDef.Name),
+                CSharpName = DunderMapping.ResolveCSharpName(funcDef.Name)
+                    ?? NameMangler.ToPascalCase(funcDef.Name),
                 OriginalName = funcDef.Name,
                 IsModuleLevel = false
             });
@@ -310,7 +311,8 @@ internal class CodeGenInfoComputer
         {
             SetCodeGenInfo(funcSymbol, new CodeGenInfo
             {
-                CSharpName = NameMangler.ToPascalCase(funcDef.Name),
+                CSharpName = DunderMapping.ResolveCSharpName(funcDef.Name)
+                    ?? NameMangler.ToPascalCase(funcDef.Name),
                 OriginalName = funcDef.Name,
                 IsModuleLevel = isModuleLevel
             });

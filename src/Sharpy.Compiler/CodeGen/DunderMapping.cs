@@ -73,6 +73,18 @@ internal static class DunderMapping
     }
 
     /// <summary>
+    /// Resolve the C# name for a dunder method. Returns null if the name is not a dunder.
+    /// For known dunders, returns the mapped name (e.g., __str__ → ToString).
+    /// For unknown dunders, returns the transformed name (e.g., __add__ → __Add__).
+    /// </summary>
+    public static string? ResolveCSharpName(string name)
+    {
+        if (!IsDunderMethod(name))
+            return null;
+        return GetCSharpName(name) ?? TransformUnknownDunder(name);
+    }
+
+    /// <summary>
     /// Transform an unknown dunder method (not in the map) by capitalizing inner segments.
     /// Strips leading/trailing <c>__</c>, splits on <c>_</c>, capitalizes each segment, rejoins with <c>__</c> bookends.
     /// </summary>

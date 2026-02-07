@@ -13,31 +13,41 @@ public class RegistryConsistencyTests
     [InlineData("__iter__", "GetEnumerator")]
     [InlineData("__contains__", "Contains")]
     [InlineData("__bool__", "ToBoolean")]
-    public void NameMangler_TransformsProtocolDunderToExpectedName(string dunder, string expectedName)
+    public void DunderMapping_TransformsProtocolDunderToExpectedName(string dunder, string expectedName)
     {
-        var mangled = NameMangler.Transform(dunder, NameContext.Method);
-        mangled.Should().Be(expectedName,
-            $"Protocol dunder '{dunder}' should transform to '{expectedName}'");
+        var resolved = DunderMapping.GetCSharpName(dunder);
+        resolved.Should().Be(expectedName,
+            $"Protocol dunder '{dunder}' should map to '{expectedName}'");
     }
 
     [Fact]
-    public void NameMangler_AllProtocolDundersWithClrMappingHaveTransformations()
+    public void DunderMapping_AllProtocolDundersWithClrMappingHaveMappings()
     {
         foreach (var protocol in ProtocolRegistry.GetAllProtocols()
             .Where(protocol => protocol.ClrMethodName != null && protocol.DunderName != "__init__"))
         {
-            // NameMangler should recognize this dunder
-            var mangled = NameMangler.Transform(protocol.DunderName, NameContext.Method);
+            // DunderMapping should recognize this dunder
+            var resolved = DunderMapping.ResolveCSharpName(protocol.DunderName);
 
             // Should not just preserve the dunder name unchanged (except operators)
             if (!OperatorRegistry.IsOperatorDunder(protocol.DunderName))
             {
-                // Verify it's actually transformed (not just returned as-is with capitalization)
-                mangled.Should().NotBeNull(
-                    $"Protocol '{protocol.DunderName}' should be handled by NameMangler");
-                mangled.Should().NotStartWith("__",
+                resolved.Should().NotBeNull(
+                    $"Protocol '{protocol.DunderName}' should be handled by DunderMapping");
+                resolved.Should().NotStartWith("__",
                     $"Protocol '{protocol.DunderName}' should be transformed to a C# name, not preserved as dunder");
             }
+        }
+    }
+
+    [Fact]
+    public void DunderMapping_RecognizesAllProtocolDunders()
+    {
+        foreach (var protocol in ProtocolRegistry.GetAllProtocols()
+            .Where(p => p.ClrMethodName != null))
+        {
+            DunderMapping.IsDunderMethod(protocol.DunderName).Should().BeTrue(
+                $"DunderMapping should recognize protocol dunder '{protocol.DunderName}'");
         }
     }
 

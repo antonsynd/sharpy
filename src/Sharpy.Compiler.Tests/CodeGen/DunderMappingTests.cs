@@ -63,6 +63,32 @@ public class DunderMappingTests
 
     #endregion
 
+    #region ResolveCSharpName Tests
+
+    [Theory]
+    [InlineData("__init__", "Constructor")]
+    [InlineData("__str__", "ToString")]
+    [InlineData("__eq__", "Equals")]
+    [InlineData("__add__", "__Add__")]       // Unknown dunder: transforms via TransformUnknownDunder
+    [InlineData("__sub__", "__Sub__")]
+    [InlineData("__custom_method__", "__CustomMethod__")]
+    public void ResolveCSharpName_DunderMethod_ReturnsCorrectName(string name, string expected)
+    {
+        DunderMapping.ResolveCSharpName(name).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("hello")]
+    [InlineData("get_value")]
+    [InlineData("_private")]
+    [InlineData("__x__")]   // Too short (length 5, needs > 5)
+    public void ResolveCSharpName_NonDunder_ReturnsNull(string name)
+    {
+        DunderMapping.ResolveCSharpName(name).Should().BeNull();
+    }
+
+    #endregion
+
     #region HasMapping Tests
 
     [Fact]

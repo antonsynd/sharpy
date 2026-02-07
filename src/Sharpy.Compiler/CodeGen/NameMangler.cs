@@ -1,5 +1,3 @@
-using Sharpy.Compiler.Semantic;
-
 namespace Sharpy.Compiler.CodeGen;
 
 /// <summary>
@@ -24,27 +22,6 @@ internal static class NameMangler
         "volatile", "while"
     };
 
-    // Dunder method name mappings to C# equivalents
-    // Only map dunder methods that have C# override equivalents or special constructs
-    // Operator-related dunder methods should preserve their dunder name
-    private static readonly Dictionary<string, string> _dunderMethodMap = new()
-    {
-        { DunderNames.Init, "Constructor" },  // Special handling needed
-        { DunderNames.Str, "ToString" },
-        { DunderNames.Repr, "ToString" },
-        { DunderNames.Eq, "Equals" },
-        { DunderNames.Hash, "GetHashCode" },
-        { DunderNames.GetItem, "GetItem" },  // For indexer properties
-        { DunderNames.SetItem, "SetItem" },  // For indexer properties
-        { DunderNames.Len, "Length" },  // For Length property
-        { DunderNames.Contains, "Contains" },  // For Contains method
-        { DunderNames.Iter, "GetEnumerator" },  // For IEnumerable
-        { DunderNames.Bool, "ToBoolean" },  // For explicit boolean conversion
-        // Operator dunder methods are NOT in this map - they preserve their dunder name
-        // e.g., __add__ becomes __Add__, __sub__ becomes __Sub__, etc.
-        // This avoids conflicts with user-defined Add(), Sub(), etc. methods
-    };
-
     // Python list method mappings to C# equivalents
     // These are needed because Python and C# have different names for the same operations
     //
@@ -57,23 +34,6 @@ internal static class NameMangler
         { "remove", "Remove" },   // Python list.remove() -> C# List.Remove()
         { "clear", "Clear" },     // Same name, but included for completeness
     };
-
-#if DEBUG
-    static NameMangler()
-    {
-        // Verify all protocol dunders with CLR mappings are in _dunderMethodMap
-        foreach (var protocol in ProtocolRegistry.GetAllProtocols())
-        {
-            if (protocol.ClrMethodName != null && !_dunderMethodMap.ContainsKey(protocol.DunderName))
-            {
-                // Fail fast during development - RegistryConsistencyTests also covers this
-                System.Diagnostics.Debug.Assert(false,
-                    $"Protocol '{protocol.DunderName}' with CLR mapping '{protocol.ClrMethodName}' " +
-                    $"is missing from _dunderMethodMap. Add: {{ \"{protocol.DunderName}\", \"...\" }}");
-            }
-        }
-    }
-#endif
 
     /// <summary>
     /// Preserve type names as-is. Only handles keyword escaping and special prefixes.
@@ -109,16 +69,6 @@ internal static class NameMangler
         if (name.StartsWith("`") && name.EndsWith("`"))
             return name[1..^1];
 
-        // Handle dunder methods — bridge to DunderMapping (Phase 5 removes this)
-        if (name.StartsWith("__") && name.EndsWith("__") && name.Length > 4)
-        {
-            if (_dunderMethodMap.TryGetValue(name, out var mapped))
-                return mapped;
-
-            // Unknown dunder method - preserve dunder but capitalize the middle part
-            return DunderMapping.TransformUnknownDunder(name);
-        }
-
         // Handle double-private prefix (__foo but NOT __foo__)
         var hasDoublePrivatePrefix = name.StartsWith("__") && !name.EndsWith("__");
         // Handle single-private prefix (_foo but NOT __foo)
@@ -150,7 +100,8 @@ internal static class NameMangler
                 string.Join("", cleanName.Split('_').Select(CapitalizeNormalizing)),
             NameForm.PascalCase or NameForm.SingleWordUpper => cleanName,
             NameForm.CamelCase => cleanName,
-            _ => cleanName, // Unrecognized, Dunder (already handled above), Literal
+            NameForm.Dunder => cleanName, // Dunders pass through — callers use DunderMapping directly
+            _ => cleanName, // Unrecognized, Literal
         };
 
         // Restore trailing underscores
@@ -241,7 +192,7 @@ internal static class NameMangler
                 result = cleanName;
                 break;
             default:
-                result = cleanName; // Unrecognized, Dunder (already handled), Literal
+                result = cleanName; // Unrecognized, Dunder, Literal — pass through
                 break;
         }
 
@@ -345,22 +296,6 @@ internal static class NameMangler
 
         // Interfaces preserve user's exact casing
         return EscapeKeywordIfNeeded(name);
-    }
-
-    /// <summary>
-    /// Check if a name is a dunder method
-    /// </summary>
-    public static bool IsDunderMethod(string name)
-    {
-        return name.StartsWith("__") && name.EndsWith("__") && name.Length > 5;
-    }
-
-    /// <summary>
-    /// Get the C# equivalent name for a dunder method, if it exists
-    /// </summary>
-    public static string? GetDunderMethodMapping(string dunderName)
-    {
-        return _dunderMethodMap.TryGetValue(dunderName, out var mapped) ? mapped : null;
     }
 
     /// <summary>

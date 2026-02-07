@@ -105,8 +105,9 @@ internal partial class RoslynEmitter
             .WithType(param2Type);
 
         // Generate body - call the actual dunder method on left operand
-        // Use the transformed dunder name (e.g., __add__ -> Add)
-        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
+        // Use DunderMapping for dunder names (e.g., __add__ -> __Add__)
+        var methodName = DunderMapping.ResolveCSharpName(funcDef.Name)
+            ?? NameMangler.Transform(funcDef.Name, NameContext.Method);
         var invocation = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
@@ -152,7 +153,8 @@ internal partial class RoslynEmitter
             .WithType(param2Type);
 
         // Generate body - call the actual dunder method on left operand
-        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
+        var methodName = DunderMapping.ResolveCSharpName(funcDef.Name)
+            ?? NameMangler.Transform(funcDef.Name, NameContext.Method);
         var invocation = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
@@ -185,7 +187,8 @@ internal partial class RoslynEmitter
             .WithType(IdentifierName(className));
 
         // Generate body - call the actual dunder method on the operand
-        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
+        var methodName = DunderMapping.ResolveCSharpName(funcDef.Name)
+            ?? NameMangler.Transform(funcDef.Name, NameContext.Method);
         var invocation = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,

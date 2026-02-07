@@ -57,7 +57,7 @@ internal partial class RoslynEmitter
         var dunders = new HashSet<string>();
         foreach (var stmt in body)
         {
-            if (stmt is FunctionDef fd && NameMangler.IsDunderMethod(fd.Name))
+            if (stmt is FunctionDef fd && DunderMapping.IsDunderMethod(fd.Name))
             {
                 dunders.Add(fd.Name);
             }
@@ -75,7 +75,7 @@ internal partial class RoslynEmitter
                         initMethods.Add(funcDef);
                     }
                     // Check if this is a dunder method that needs operator synthesis
-                    else if (NameMangler.IsDunderMethod(funcDef.Name))
+                    else if (DunderMapping.IsDunderMethod(funcDef.Name))
                     {
                         // Dunder methods that map to C# overrides should use the override name
                         // Other dunder methods should preserve their dunder name (e.g., __add__ -> __Add__)
@@ -326,9 +326,9 @@ internal partial class RoslynEmitter
         // with user-declared variables.
         CollectSourceVariableNames(func.Body);
 
-        // For class methods, use the same logic as module functions but handle special cases
-        // Transform name using NameMangler (handles dunder methods automatically)
-        var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
+        // For class methods, use DunderMapping for dunders, NameMangler for regular names
+        var mangledName = DunderMapping.ResolveCSharpName(func.Name)
+            ?? NameMangler.Transform(func.Name, NameContext.Method);
 
         // Determine return type from annotation or infer void
         // Default to void if no return type specified
@@ -601,7 +601,8 @@ internal partial class RoslynEmitter
 
     private MethodDeclarationSyntax GenerateInterfaceMethod(FunctionDef func)
     {
-        var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
+        var mangledName = DunderMapping.ResolveCSharpName(func.Name)
+            ?? NameMangler.Transform(func.Name, NameContext.Method);
 
         // Determine return type from annotation or infer void
         TypeSyntax returnType = func.ReturnType != null
