@@ -17,6 +17,7 @@ internal static class ValidationPipelineFactory
         return new ValidationPipeline(logger)
             // Order values determine execution sequence
             .AddValidator(new ModuleLevelValidator())       // Order: 50 (earliest, validates module structure)
+            .AddValidator(new NamingConventionValidator())  // Order: 55 (naming convention warnings)
             .AddValidator(new DecoratorValidator())         // Order: 60 (validates decorator usage)
             .AddValidator(new SignatureValidator())         // Order: 150 (early, validates dunder signatures)
             .AddValidator(new DefaultParameterValidator())  // Order: 250

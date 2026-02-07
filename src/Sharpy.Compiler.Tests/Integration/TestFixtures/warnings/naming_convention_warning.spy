@@ -1,0 +1,4 @@
+foo__bar: int = 1
+
+def main():
+    print(foo__bar)
