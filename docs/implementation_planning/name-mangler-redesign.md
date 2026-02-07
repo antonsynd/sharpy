@@ -312,7 +312,7 @@ Copy the 11-entry `_dunderMethodMap` from NameMangler here (actual deletion from
 
 **Checklist**:
 
-- [ ] Add two private helper methods to replace the single `Capitalize`:
+- [x] Add two private helper methods to replace the single `Capitalize`:
   ```csharp
   // For snake_case: rest is already lowercase, just capitalize first char
   private static string CapitalizePreserving(string word)
@@ -329,8 +329,8 @@ Copy the 11-entry `_dunderMethodMap` from NameMangler here (actual deletion from
   }
   ```
   - **Note**: For snake_case inputs, `CapitalizePreserving` and `CapitalizeNormalizing` produce the same result (rest is already lowercase). The distinction matters for SCREAMING_SNAKE_CASE where `CapitalizeNormalizing("HTTP")` → `"Http"` but `CapitalizePreserving("HTTP")` → `"HTTP"`.
-- [ ] Rewrite `ToPascalCase` following the algorithm above
-- [ ] **Critical behavioral changes to verify**:
+- [x] Rewrite `ToPascalCase` following the algorithm above
+- [x] **Critical behavioral changes to verify**:
   - `ToPascalCase("httpClient")` → `"httpClient"` (camelCase passthrough; was `"Httpclient"`)
   - `ToPascalCase("foo__bar")` → `"foo__bar"` (Unrecognized passthrough; was `"FooBar"`)
   - `ToPascalCase("__private_field")` → `"__PrivateField"` (preserves `__` prefix; was `"PrivateField"`)
@@ -351,7 +351,7 @@ Same form detection approach. Replace lines 161-205.
 
 **Checklist**:
 
-- [ ] Rewrite `ToCamelCase` using `NameFormDetector.Detect()`:
+- [x] Rewrite `ToCamelCase` using `NameFormDetector.Detect()`:
   - `SnakeCase` / `SingleWordLower` → first segment lowercase, rest capitalized (preserving). `"get_user_name"` → `"getUserName"` (unchanged)
   - `ScreamingSnakeCase` → first segment fully lowered, rest title-cased (normalizing). `"MAX_SIZE"` → `"maxSize"`
   - `PascalCase` → first char to lower, rest preserved. `"HttpClient"` → `"httpClient"`
@@ -359,11 +359,11 @@ Same form detection approach. Replace lines 161-205.
   - `SingleWordUpper` → fully lowercase. `"HTTP"` → `"http"`
   - `SingleWordLower` → pass through. `"hello"` → `"hello"`
   - `Unrecognized` → pass through. `"foo__bar"` → `"foo__bar"`
-- [ ] Extend prefix handling to include `__` (double-private prefix), matching Phase 3a step 3:
+- [x] Extend prefix handling to include `__` (double-private prefix), matching Phase 3a step 3:
   - `__` prefix: Recognize `__foo` (starts `__`, does NOT end `__`). Strip `__`, mangle body as camelCase, re-attach `__`. Example: `__private_count` → `__privateCount`
   - `_` prefix: Unchanged behavior. Example: `_private_var` → `_privateVar`
-- [ ] Keep trailing underscore handling (unchanged)
-- [ ] **Critical behavioral change**: `ToCamelCase("HttpClient")` → `"httpClient"` (was `"httpclient"` — all lowercase). Now properly lowercases just the first char.
+- [x] Keep trailing underscore handling (unchanged)
+- [x] **Critical behavioral change**: `ToCamelCase("HttpClient")` → `"httpClient"` (was `"httpclient"` — all lowercase). Now properly lowercases just the first char.
 
 > **Fork-in-the-road**: What about `ToCamelCase("ALREADY_UPPER")`? Currently → `"alreadyUpper"` (first part lowered, rest capitalized). With detection: `ScreamingSnakeCase` → first segment `"already"` (fully lowered), rest `"Upper"` (title-cased) → `"alreadyUpper"`. **Same result.**
 
@@ -375,13 +375,13 @@ Now converts SCREAMING_SNAKE_CASE to PascalCase (matching the spec at `docs/lang
 
 **Checklist**:
 
-- [ ] Rewrite `ToConstantCase` (lines 210-221):
+- [x] Rewrite `ToConstantCase` (lines 210-221):
   - `ScreamingSnakeCase` → PascalCase via normalizing capitalize. `MAX_SIZE` → `MaxSize`
   - `SingleWordUpper` → title-case. `HTTP` → `Http`
   - `SnakeCase` → PascalCase (same as `ToPascalCase` for snake_case)
   - `PascalCase` / `CamelCase` → pass through
   - `Unrecognized` → pass through
-- [ ] **Key difference from `ToPascalCase`**: `SingleWordUpper` becomes `Http` here (constants normalize) vs staying `HTTP` in `ToPascalCase` (types preserve). This distinction matters because:
+- [x] **Key difference from `ToPascalCase`**: `SingleWordUpper` becomes `Http` here (constants normalize) vs staying `HTTP` in `ToPascalCase` (types preserve). This distinction matters because:
   - A type named `HTTP` should stay `HTTP` (it's the user's chosen casing)
   - A constant named `HTTP` should become `Http` (C# convention for constants is PascalCase, and single all-caps words normalize)
 
@@ -402,25 +402,25 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
 
 **Checklist for each call site**:
 
-- [ ] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs:835` — `IsConstantCaseName(memberAccess.Member)` ternary
+- [x] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs:835` — `IsConstantCaseName(memberAccess.Member)` ternary
   - **Context**: Member access on module-level symbols. Constants should use `ToConstantCase`, non-constants use `ToPascalCase`.
   - Replace: `var mangledMemberName = NameFormDetector.IsConstantCaseName(memberAccess.Member) ? NameMangler.ToConstantCase(memberAccess.Member) : NameMangler.ToPascalCase(memberAccess.Member);`
   - Or if the member's symbol is available, check `symbol.IsConstant` instead of guessing from naming convention
-- [ ] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs:994` — same pattern
-- [ ] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs:1015` — same pattern
-- [ ] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Statements.cs:515` — `varDecl.IsConst || IsConstantCaseName(varDecl.Name)`
+- [x] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs:994` — same pattern
+- [x] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs:1015` — same pattern
+- [x] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Statements.cs:515` — `varDecl.IsConst || IsConstantCaseName(varDecl.Name)`
   - Replace: `varDecl.IsConst || NameFormDetector.IsConstantCaseName(varDecl.Name)`
-- [ ] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.ModuleClass.cs:164` — `!varRedefinition.IsConst && !IsConstantCaseName(varRedefinition.Name)`
+- [x] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.ModuleClass.cs:164` — `!varRedefinition.IsConst && !IsConstantCaseName(varRedefinition.Name)`
   - Replace: Use `NameFormDetector.IsConstantCaseName()`
-- [ ] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.ModuleClass.cs:484,488` — property name mangling
+- [x] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.ModuleClass.cs:484,488` — property name mangling
   - Replace: Use `NameFormDetector.IsConstantCaseName()`
-- [ ] `src/Sharpy.Compiler/Semantic/CodeGenInfoComputer.cs:182` — `DetermineCSharpNameForFromImport`
+- [x] `src/Sharpy.Compiler/Semantic/CodeGenInfoComputer.cs:182` — `DetermineCSharpNameForFromImport`
   - Replace: Use `NameFormDetector.IsConstantCaseName()`
   - Delete the private `IsConstantCaseName` method at lines 189-194
-- [ ] `src/Sharpy.Compiler/Semantic/ExecutionOrderAnalyzer.cs:90` — constant detection in execution order analysis
+- [x] `src/Sharpy.Compiler/Semantic/ExecutionOrderAnalyzer.cs:90` — constant detection in execution order analysis
   - Replace: Use `NameFormDetector.IsConstantCaseName()`
   - Delete the private `IsConstantCaseName` method at lines 333-337
-- [ ] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs:372` — delete the private method definition (lines 372-394)
+- [x] `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs:372` — delete the private method definition (lines 372-394)
 
 > **Decision guideline**: At each call site, ask: "Is this site distinguishing constants from non-constants for *mangling* purposes, or for *codegen* purposes?" If for mangling (choosing `ToConstantCase` vs `ToPascalCase`), use `NameFormDetector.IsConstantCaseName`. If for codegen (deciding `static readonly` vs `var`), the existing semantic info (`varDecl.IsConst`, etc.) is better.
 
@@ -428,46 +428,46 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
 
 **Checklist**:
 
-- [ ] **File**: `src/Sharpy.Compiler.Tests/CodeGen/NameManglerTests.cs` — Major updates:
-  - [ ] Update `ToPascalCase_NonSnakeCase_PreservesOrConverts` (line 345):
+- [x] **File**: `src/Sharpy.Compiler.Tests/CodeGen/NameManglerTests.cs` — Major updates:
+  - [x] Update `ToPascalCase_NonSnakeCase_PreservesOrConverts` (line 345):
     - `"ALREADY_UPPER"` → `"AlreadyUpper"` (unchanged)
     - `"MixedCase"` → `"MixedCase"` (unchanged — PascalCase passthrough)
     - `"PascalCase"` → `"PascalCase"` (unchanged)
-  - [ ] Update `ToPascalCase_NotKeyword_NoEscaping` (line 232):
+  - [x] Update `ToPascalCase_NotKeyword_NoEscaping` (line 232):
     - `"myClass"` now produces `"myClass"` (camelCase passthrough), NOT `"Myclass"`
     - Update the assertion accordingly
-  - [ ] Update `ToConstantCase_CapsSnakeCase_RemainsUnchanged` (line 86):
+  - [x] Update `ToConstantCase_CapsSnakeCase_RemainsUnchanged` (line 86):
     - `"MAX_SIZE"` → `"MaxSize"` (was `"MAX_SIZE"`)
     - `"PI"` → `"Pi"` (was `"PI"` — SingleWordUpper normalizes in constant context)
     - `"DEFAULT_TIMEOUT"` → `"DefaultTimeout"` (was `"DEFAULT_TIMEOUT"`)
     - Rename this test to `ToConstantCase_CapsSnakeCase_ConvertsToPascalCase`
-  - [ ] Update `Transform_WithContext_TransformsCorrectly` (line 259):
+  - [x] Update `Transform_WithContext_TransformsCorrectly` (line 259):
     - `NameContext.Constant, "MAX_SIZE"` → `"MaxSize"` (was `"MAX_SIZE"`)
-  - [ ] Add new test cases:
-    - [ ] `ToPascalCase("httpClient")` → `"httpClient"` (camelCase passthrough)
-    - [ ] `ToPascalCase("foo__bar")` → `"foo__bar"` (Unrecognized passthrough)
-    - [ ] `ToPascalCase("__private_field")` → `"__PrivateField"` (double-underscore prefix preserved)
-    - [ ] `ToPascalCase("__private")` → `"__Private"` (double-underscore prefix preserved)
-    - [ ] `ToPascalCase("HTTP")` → `"HTTP"` (SingleWordUpper preserved in PascalCase context)
-    - [ ] `ToCamelCase("HttpClient")` → `"httpClient"` (PascalCase → camelCase)
-    - [ ] `ToCamelCase("HTTP")` → `"http"` (SingleWordUpper → all lower)
-    - [ ] `ToCamelCase("MAX_SIZE")` → `"maxSize"` (SCREAMING → camelCase)
-    - [ ] `ToConstantCase("HTTP")` → `"Http"` (SingleWordUpper normalized)
-    - [ ] `ToEnumMemberName("RED")` → `"Red"`
-    - [ ] `ToEnumMemberName("DARK_BLUE")` → `"DarkBlue"`
-- [ ] Run full test suite: `dotnet test`
-- [ ] Fix broken integration tests — the main impact will be:
+  - [x] Add new test cases:
+    - [x] `ToPascalCase("httpClient")` → `"httpClient"` (camelCase passthrough)
+    - [x] `ToPascalCase("foo__bar")` → `"foo__bar"` (Unrecognized passthrough)
+    - [x] `ToPascalCase("__private_field")` → `"__PrivateField"` (double-underscore prefix preserved)
+    - [x] `ToPascalCase("__private")` → `"__Private"` (double-underscore prefix preserved)
+    - [x] `ToPascalCase("HTTP")` → `"HTTP"` (SingleWordUpper preserved in PascalCase context)
+    - [x] `ToCamelCase("HttpClient")` → `"httpClient"` (PascalCase → camelCase)
+    - [x] `ToCamelCase("HTTP")` → `"http"` (SingleWordUpper → all lower)
+    - [x] `ToCamelCase("MAX_SIZE")` → `"maxSize"` (SCREAMING → camelCase)
+    - [x] `ToConstantCase("HTTP")` → `"Http"` (SingleWordUpper normalized)
+    - [x] `ToEnumMemberName("RED")` → `"Red"`
+    - [x] `ToEnumMemberName("DARK_BLUE")` → `"DarkBlue"`
+- [x] Run full test suite: `dotnet test`
+- [x] Fix broken integration tests — the main impact will be:
   - `.expected` files where constant names change from `MAX_SIZE` → `MaxSize`
   - `.expected.cs` snapshot files with SCREAMING_SNAKE_CASE output
   - Use: `grep -r "MAX_SIZE\|DEFAULT_\|SCREAMING" src/Sharpy.Compiler.Tests/Integration/TestFixtures/ --include="*.expected*"` to find candidates
-- [ ] Regenerate C# snapshots: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`
+- [x] Regenerate C# snapshots: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`
 
 ### Phase 3 verification
 
-- [ ] `dotnet build sharpy.sln`
-- [ ] `dotnet test` — all pass after updates
-- [ ] `dotnet run --project src/Sharpy.Cli -- emit csharp snippets/hello.spy` — sanity check
-- [ ] Manually test a file with constants: `dotnet run --project src/Sharpy.Cli -- emit csharp` on a snippet with `MAX_SIZE = 100` and verify it emits `MaxSize`
+- [x] `dotnet build sharpy.sln`
+- [x] `dotnet test` — all pass after updates
+- [x] `dotnet run --project src/Sharpy.Cli -- emit csharp snippets/hello.spy` — sanity check
+- [x] Manually test a file with constants: `dotnet run --project src/Sharpy.Cli -- emit csharp` on a snippet with `MAX_SIZE = 100` and verify it emits `MaxSize`
 
 ---
 
