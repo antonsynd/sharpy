@@ -275,6 +275,7 @@ public class NameManglerTests
     [InlineData(NameContext.Parameter, "item_count", "itemCount")]
     [InlineData(NameContext.Field, "private_data", "privateData")]
     [InlineData(NameContext.Constant, "MAX_SIZE", "MaxSize")]
+    [InlineData(NameContext.EnumMember, "RED", "Red")]
     public void Transform_WithContext_TransformsCorrectly(NameContext context, string input, string expected)
     {
         // Act
@@ -364,6 +365,10 @@ public class NameManglerTests
     [Theory]
     [InlineData("RED", "Red")]
     [InlineData("DARK_BLUE", "DarkBlue")]
+    [InlineData("MAX_RETRY_COUNT", "MaxRetryCount")]
+    [InlineData("already_lower", "AlreadyLower")]
+    [InlineData("`ExactName`", "ExactName")]
+    [InlineData("", "")]
     public void ToEnumMemberName_ConvertsCorrectly(string input, string expected)
     {
         var result = NameMangler.ToEnumMemberName(input);

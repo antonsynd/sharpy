@@ -698,7 +698,7 @@ internal partial class RoslynEmitter
     {
         // Enum members use PascalCase in C# (RED -> Red, DARK_BLUE -> DarkBlue)
         // Need custom logic because NameMangler.ToPascalCase preserves all-caps words
-        var memberName = TransformEnumMemberName(member.Name);
+        var memberName = NameMangler.ToEnumMemberName(member.Name);
 
         var enumMember = EnumMemberDeclaration(Identifier(memberName));
 
@@ -710,24 +710,6 @@ internal partial class RoslynEmitter
         }
 
         return enumMember;
-    }
-
-    private static string TransformEnumMemberName(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-
-        // Handle literal names (backtick-escaped)
-        if (name.StartsWith("`") && name.EndsWith("`"))
-            return name[1..^1];
-
-        // Split by underscores and capitalize each part
-        var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
-        var capitalizedParts = parts.Select(part =>
-            string.IsNullOrEmpty(part) ? part :
-            char.ToUpperInvariant(part[0]) + part.Substring(1).ToLowerInvariant());
-
-        return string.Join("", capitalizedParts);
     }
 
     private SyntaxTokenList GenerateTypeModifiersFromDecorators(IReadOnlyList<Decorator> decorators)

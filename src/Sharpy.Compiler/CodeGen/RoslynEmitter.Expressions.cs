@@ -802,7 +802,7 @@ internal partial class RoslynEmitter
                 else
                 {
                     // Integer enums use PascalCase member names
-                    var enumMemberName = TransformEnumMemberName(memberAccess.Member);
+                    var enumMemberName = NameMangler.ToEnumMemberName(memberAccess.Member);
                     var enumMemberAccess = MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         enumType,

@@ -479,10 +479,10 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
 
 **Checklist**:
 
-- [ ] **File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.TypeDeclarations.cs`
+- [x] **File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.TypeDeclarations.cs`
   - Line 701: Change `TransformEnumMemberName(member.Name)` → `NameMangler.ToEnumMemberName(member.Name)`
   - Lines 715-731: Delete the private `TransformEnumMemberName` method entirely
-- [ ] **File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs`
+- [x] **File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs`
   - Line 805: Change `TransformEnumMemberName(memberAccess.Member)` → `NameMangler.ToEnumMemberName(memberAccess.Member)`
   - **Note**: The local method reference `TransformEnumMemberName` is defined in the `TypeDeclarations` partial class. After deleting it there, this call in `Expressions` will fail to compile — that's the signal to update it.
 
@@ -490,21 +490,21 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
 
 **Checklist**:
 
-- [ ] **File**: `src/Sharpy.Compiler.Tests/CodeGen/NameManglerTests.cs`
+- [x] **File**: `src/Sharpy.Compiler.Tests/CodeGen/NameManglerTests.cs`
   - Add a new `#region Enum Member Name Tests` section:
-    - [ ] `ToEnumMemberName("RED")` → `"Red"`
-    - [ ] `ToEnumMemberName("DARK_BLUE")` → `"DarkBlue"`
-    - [ ] `ToEnumMemberName("MAX_RETRY_COUNT")` → `"MaxRetryCount"`
-    - [ ] `ToEnumMemberName("already_lower")` → `"AlreadyLower"` (enum members are typically SCREAMING but should handle lowercase)
-    - [ ] `ToEnumMemberName("`ExactName`")` → `"ExactName"` (backtick passthrough)
-    - [ ] `ToEnumMemberName("")` → `""` (edge case)
+    - [x] `ToEnumMemberName("RED")` → `"Red"`
+    - [x] `ToEnumMemberName("DARK_BLUE")` → `"DarkBlue"`
+    - [x] `ToEnumMemberName("MAX_RETRY_COUNT")` → `"MaxRetryCount"`
+    - [x] `ToEnumMemberName("already_lower")` → `"AlreadyLower"` (enum members are typically SCREAMING but should handle lowercase)
+    - [x] `ToEnumMemberName("`ExactName`")` → `"ExactName"` (backtick passthrough)
+    - [x] `ToEnumMemberName("")` → `""` (edge case)
   - Add a `Transform` test: `Transform("RED", NameContext.EnumMember)` → `"Red"`
 
 ### Phase 4 verification
 
-- [ ] `dotnet build sharpy.sln` — verify no compile errors (the deleted method must not be referenced elsewhere)
-- [ ] `dotnet test`
-- [ ] Grep for any remaining `TransformEnumMemberName` references: should find zero outside tests/docs
+- [x] `dotnet build sharpy.sln` — verify no compile errors (the deleted method must not be referenced elsewhere)
+- [x] `dotnet test`
+- [x] Grep for any remaining `TransformEnumMemberName` references: should find zero outside tests/docs
 
 ---
 
