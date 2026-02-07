@@ -58,16 +58,29 @@ internal partial class RoslynEmitter
                 .WithMembers(SingletonList(current));
         }
 
-        // Generate project-level namespace only
-        var namespaceName = GenerateNamespaceName();
-        var namespaceDecl = NamespaceDeclaration(namespaceName)
-            .WithMembers(SingletonList(current));
+        // Build compilation unit: use namespace wrapper for multi-file projects,
+        // global namespace (no wrapper) for single-file compilation
+        CompilationUnitSyntax compilationUnit;
+        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+        {
+            // Multi-file project: wrap in namespace
+            var namespaceName = GenerateNamespaceName();
+            var namespaceDecl = NamespaceDeclaration(namespaceName)
+                .WithMembers(SingletonList(current));
 
-        // Build compilation unit
-        var compilationUnit = CompilationUnit()
-            .WithUsings(List(usingDirectives))
-            .WithMembers(SingletonList<MemberDeclarationSyntax>(namespaceDecl))
-            .NormalizeWhitespace();
+            compilationUnit = CompilationUnit()
+                .WithUsings(List(usingDirectives))
+                .WithMembers(SingletonList<MemberDeclarationSyntax>(namespaceDecl))
+                .NormalizeWhitespace();
+        }
+        else
+        {
+            // Single-file: emit class directly (global namespace)
+            compilationUnit = CompilationUnit()
+                .WithUsings(List(usingDirectives))
+                .WithMembers(SingletonList(current))
+                .NormalizeWhitespace();
+        }
 
         // Add #nullable enable directive to enable C# nullable reference types
         // This aligns with Sharpy's "null-safe by default" principle (Axiom 3)
@@ -80,6 +93,7 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Returns only the project-level namespace. Directory and file hierarchy
     /// is expressed via nested static classes, not namespace components.
+    /// Only called for multi-file projects (single-file uses global namespace).
     /// </summary>
     private NameSyntax GenerateNamespaceName()
     {
@@ -87,12 +101,6 @@ internal partial class RoslynEmitter
         if (!string.IsNullOrEmpty(_context.ProjectNamespace))
         {
             return ParseName(_context.ProjectNamespace);
-        }
-
-        // Single-file standalone compilation: use "Sharpy" as the namespace
-        if (!string.IsNullOrEmpty(_context.SourceFilePath))
-        {
-            return ParseName("Sharpy");
         }
 
         return ParseName("SharpyGenerated");

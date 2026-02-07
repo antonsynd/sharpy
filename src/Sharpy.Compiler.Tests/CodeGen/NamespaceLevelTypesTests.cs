@@ -64,17 +64,17 @@ def main():
         // Class should exist
         Assert.Contains("public class Point", csharp);
 
-        // Class should be INSIDE the Program class
-        // Check structure: namespace { Program { Point { ... } ... } }
-        var programIndex = csharp.IndexOf("public static partial class Program");
+        // Class should be INSIDE the module class (no SourceFilePath → fallback name "Module")
+        // No namespace wrapper in single-file mode (global namespace)
+        var moduleIndex = csharp.IndexOf("public static partial class Module");
         var pointIndex = csharp.IndexOf("public class Point");
 
-        Assert.True(programIndex >= 0, "Program class should exist");
+        Assert.True(moduleIndex >= 0, "Module class should exist");
         Assert.True(pointIndex >= 0, "Point class should exist");
 
-        // Find closing brace of Program class (counting braces)
-        var programEnd = FindClosingBrace(csharp, programIndex);
-        Assert.True(pointIndex < programEnd, "Point should appear inside Program class");
+        // Find closing brace of Module class (counting braces)
+        var moduleEnd = FindClosingBrace(csharp, moduleIndex);
+        Assert.True(pointIndex < moduleEnd, "Point should appear inside Module class");
     }
 
     [Fact]
@@ -93,11 +93,11 @@ def main():
         // Struct should exist
         Assert.Contains("public struct Vector", csharp);
 
-        // Verify it's nested in Program
-        var programIndex = csharp.IndexOf("public static partial class Program");
+        // Verify it's nested in Module class (no SourceFilePath → fallback name "Module")
+        var moduleIndex = csharp.IndexOf("public static partial class Module");
         var vectorIndex = csharp.IndexOf("public struct Vector");
-        var programEnd = FindClosingBrace(csharp, programIndex);
-        Assert.True(vectorIndex < programEnd, "Vector should appear inside Program class");
+        var moduleEnd = FindClosingBrace(csharp, moduleIndex);
+        Assert.True(vectorIndex < moduleEnd, "Vector should appear inside Module class");
     }
 
     [Fact]
@@ -116,11 +116,11 @@ def main():
         // Interface should exist
         Assert.Contains("public interface IDrawable", csharp);
 
-        // Verify it's nested in Program
-        var programIndex = csharp.IndexOf("public static partial class Program");
+        // Verify it's nested in Module class (no SourceFilePath → fallback name "Module")
+        var moduleIndex = csharp.IndexOf("public static partial class Module");
         var interfaceIndex = csharp.IndexOf("public interface IDrawable");
-        var programEnd = FindClosingBrace(csharp, programIndex);
-        Assert.True(interfaceIndex < programEnd, "IDrawable should appear inside Program class");
+        var moduleEnd = FindClosingBrace(csharp, moduleIndex);
+        Assert.True(interfaceIndex < moduleEnd, "IDrawable should appear inside Module class");
     }
 
     [Fact]
@@ -140,11 +140,11 @@ def main():
         // Enum should exist
         Assert.Contains("public enum Color", csharp);
 
-        // Verify it's nested in Program
-        var programIndex = csharp.IndexOf("public static partial class Program");
+        // Verify it's nested in Module class (no SourceFilePath → fallback name "Module")
+        var moduleIndex = csharp.IndexOf("public static partial class Module");
         var enumIndex = csharp.IndexOf("public enum Color");
-        var programEnd = FindClosingBrace(csharp, programIndex);
-        Assert.True(enumIndex < programEnd, "Color should appear inside Program class");
+        var moduleEnd = FindClosingBrace(csharp, moduleIndex);
+        Assert.True(enumIndex < moduleEnd, "Color should appear inside Module class");
     }
 
     [Fact]
@@ -179,14 +179,14 @@ def main():
         Assert.Contains("public class Point", csharp);
         Assert.Contains("public struct Vector", csharp);
 
-        // Verify types are nested inside Program
-        var programIndex = csharp.IndexOf("public static partial class Program");
-        var programEnd = FindClosingBrace(csharp, programIndex);
+        // Verify types are nested inside Module class (no SourceFilePath → fallback name "Module")
+        var moduleIndex = csharp.IndexOf("public static partial class Module");
+        var moduleEnd = FindClosingBrace(csharp, moduleIndex);
         var pointIndex = csharp.IndexOf("public class Point");
         var vectorIndex = csharp.IndexOf("public struct Vector");
 
-        Assert.True(pointIndex < programEnd, "Point should be inside Program class");
-        Assert.True(vectorIndex < programEnd, "Vector should be inside Program class");
+        Assert.True(pointIndex < moduleEnd, "Point should be inside Module class");
+        Assert.True(vectorIndex < moduleEnd, "Vector should be inside Module class");
     }
 
     [Fact]
@@ -214,9 +214,9 @@ def main():
 ";
         var csharp = CompileToCSharp(source);
 
-        // All types should be nested inside Program
-        var programIndex = csharp.IndexOf("public static partial class Program");
-        var programEnd = FindClosingBrace(csharp, programIndex);
+        // All types should be nested inside Module class (no SourceFilePath → fallback name "Module")
+        var moduleIndex = csharp.IndexOf("public static partial class Module");
+        var moduleEnd = FindClosingBrace(csharp, moduleIndex);
 
         var typePositions = new[]
         {
@@ -229,7 +229,7 @@ def main():
         foreach (var (name, position) in typePositions)
         {
             Assert.True(position > 0, $"{name} should exist in output");
-            Assert.True(position < programEnd, $"{name} should be inside Program class");
+            Assert.True(position < moduleEnd, $"{name} should be inside Module class");
         }
     }
 
@@ -302,14 +302,14 @@ def main():
 ";
         var csharp = CompileToCSharp(source);
 
-        // Should have Program with Empty nested inside it
-        Assert.Contains("public static partial class Program", csharp);
+        // Should have Module class with Empty nested inside it (no SourceFilePath → fallback name "Module")
+        Assert.Contains("public static partial class Module", csharp);
         Assert.Contains("public class Empty", csharp);
 
-        // Verify Empty is nested inside Program
-        var programEnd = FindClosingBrace(csharp, csharp.IndexOf("public static partial class Program"));
+        // Verify Empty is nested inside Module class
+        var moduleEnd = FindClosingBrace(csharp, csharp.IndexOf("public static partial class Module"));
         var emptyIndex = csharp.IndexOf("public class Empty");
-        Assert.True(emptyIndex < programEnd, "Empty should be inside Program class");
+        Assert.True(emptyIndex < moduleEnd, "Empty should be inside Module class");
     }
 
     /// <summary>

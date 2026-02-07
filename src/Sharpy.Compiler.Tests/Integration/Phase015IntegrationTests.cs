@@ -536,7 +536,7 @@ def main():
     print(x)
 ";
 
-        var result = CompileAndExecute(source);
+        var result = CompileAndExecute(source, fileName: "main.spy");
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
         Assert.Equal("20\n10\n", result.StandardOutput);

@@ -81,7 +81,7 @@ def main():
     test(5)
 ";
 
-        var result = CompileAndExecute(source);
+        var result = CompileAndExecute(source, fileName: "main.spy");
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
         Assert.Equal("6\nchanged\n", result.StandardOutput);
@@ -167,7 +167,7 @@ def main():
     print(x)  # Should still be 1
 ";
 
-        var result = CompileAndExecute(source);
+        var result = CompileAndExecute(source, fileName: "main.spy");
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
         Assert.Equal("1\n2\n3\n1\n", result.StandardOutput);

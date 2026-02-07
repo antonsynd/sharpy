@@ -424,9 +424,9 @@ public class Compiler
             var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
             {
                 SourceFilePath = filePath,
-                // For single-file compilation, use "Sharpy" as the project namespace.
-                // The file name becomes the module class name (or "Program" for entry points).
-                ProjectNamespace = "Sharpy",
+                // For single-file compilation, use global namespace (no namespace wrapper).
+                // The file name becomes the module class name.
+                ProjectNamespace = "",
                 IsEntryPoint = isEntryPoint,
                 Logger = _logger,
                 SemanticInfo = semanticInfo,

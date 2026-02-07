@@ -133,9 +133,10 @@ internal partial class RoslynEmitter
         // This affects how we handle module-level variable declarations with execution order issues
         bool hasMainFunction = statements.Any(s => s is FunctionDef f && f.Name == "main");
 
-        // When there's a user-defined main(), module-level variables with execution order issues
-        // should still be generated as static fields (the user is responsible for execution order)
-        _forceModuleLevelFields = hasMainFunction;
+        // Module-level variables with execution order issues should be generated as static fields when:
+        // - There's a user-defined main() (entry points always have one now)
+        // - The module is not an entry point (non-entry-point modules always use static fields)
+        _forceModuleLevelFields = hasMainFunction || !_context.IsEntryPoint;
 
         foreach (var stmt in statements)
         {
@@ -178,42 +179,9 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Generate a Main method if:
-        // 1. There's no user-defined main function, AND
-        // 2. This is the entry point file
-        // Note: We generate Main even if there are no executable statements, to support
-        // entry points that only contain imports or declarations
-        if (!hasMainFunction && _context.IsEntryPoint)
-        {
-            // Create a Main method for executable statements (or empty if none)
-            // Clear declared variables and version tracking for Main method scope
-            _declaredVariables.Clear();
-            _variableVersions.Clear();
-            _constVariables.Clear();
-            _sourceVariableNames.Clear();
-
-            // Pre-scan the executable statements to collect all variable names that will be declared.
-            // This enables us to avoid generating versioned names (x_1, x_2) that collide
-            // with user-declared variables.
-            CollectSourceVariableNames(executableStatements);
-
-            var mainBody = executableStatements.Count > 0
-                ? Block(executableStatements
-                    .Select(GenerateBodyStatement)
-                    .OfType<StatementSyntax>())
-                : Block(); // Empty block for entry points with no executable code
-
-            var mainMethod = MethodDeclaration(
-                    PredefinedType(Token(SyntaxKind.VoidKeyword)),
-                    "Main")
-                .WithModifiers(TokenList(
-                    Token(SyntaxKind.PublicKeyword),
-                    Token(SyntaxKind.StaticKeyword)))
-                .WithBody(mainBody);
-
-            moduleDeclarations.Add(mainMethod);
-        }
-        else if (hasMainFunction && executableStatements.Count > 0)
+        // main() is required for entry points — no synthesized Main() needed.
+        // If there's a main function with bare executable statements, report an error.
+        if (hasMainFunction && executableStatements.Count > 0)
         {
             // There's a main function and also module-level statements
             // Filter to only truly executable statements (not variable declarations with type annotations)
@@ -239,10 +207,9 @@ internal partial class RoslynEmitter
             _context.Logger.LogWarning($"{executableStatements.Count} module-level executable statement(s) in non-entry-point file ignored", 0, 0);
         }
 
-        // Check if we're generating a Main method OR if there's a user-defined main function
-        // (both will result in a method named "Main" in the class)
-        // Note: Main is generated for ALL entry point files (even empty ones), per line 557
-        bool willHaveMainMethod = hasMainFunction || (!hasMainFunction && _context.IsEntryPoint);
+        // Entry points must have a user-defined main() function (enforced by ModuleLevelValidator).
+        // The user's main() → Main() (via NameMangler) is the C# entry point.
+        bool willHaveMainMethod = hasMainFunction;
 
         // Collect all function names to check for class name collisions
         var functionNames = statements
@@ -268,7 +235,6 @@ internal partial class RoslynEmitter
         // Name collision detection: check if any user-defined type's PascalCase name
         // matches the module class name (e.g., animal.spy defining class Animal)
         ClassDeclarationSyntax? collidingTypeDecl = null;
-        if (moduleClassName != "Program")
         {
             // Find colliding type declarations and their generated syntax
             foreach (var stmt in statements)
@@ -323,8 +289,8 @@ internal partial class RoslynEmitter
         // Normal case: build a static module class containing all declarations
         var moduleClassDecl = ClassDeclaration(moduleClassName);
 
-        // Add [SharpyModule] attribute to non-Program module classes
-        if (moduleClassName != "Program")
+        // Add [SharpyModule] attribute to non-entry-point module classes
+        if (!_context.IsEntryPoint)
         {
             var sharpyModuleName = GetSharpyModuleName();
             moduleClassDecl = moduleClassDecl
@@ -351,12 +317,6 @@ internal partial class RoslynEmitter
 
     private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)
     {
-        // Entry point modules that generate a Main method use "Program"
-        if (willGenerateMainMethod)
-        {
-            return "Program";
-        }
-
         // Module class name is derived from the source file name
         if (!string.IsNullOrEmpty(_context.SourceFilePath))
         {
@@ -367,6 +327,14 @@ internal partial class RoslynEmitter
                 var dirName = Path.GetFileName(Path.GetDirectoryName(_context.SourceFilePath));
                 return SimpleToPascalCase(dirName ?? "Module");
             }
+
+            // Entry point: main.spy → "Program" (avoids CS0542: Main.Main() conflict),
+            // other files → PascalCase of filename
+            if (willGenerateMainMethod && fileName.Equals("main", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Program";
+            }
+
             return SimpleToPascalCase(fileName);
         }
 

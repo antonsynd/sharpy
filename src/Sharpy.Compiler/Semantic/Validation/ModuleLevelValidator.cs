@@ -92,15 +92,9 @@ internal class ModuleLevelValidator : SemanticValidatorBase
                 span: varDecl.Span);
         }
 
-        // Report errors for executable statements at module level when:
-        // 1. There's a main() function - bare statements should be inside main()
-        // 2. This is a non-entry-point (library) module - bare statements would be ignored anyway
-        //
-        // For entry-point modules WITHOUT main(), we allow bare statements for backward compatibility
-        // (the code generator will synthesize a Main() and wrap them).
-        bool shouldRejectExecutableStatements = hasMainFunction || !_context.IsEntryPoint;
-
-        if (shouldRejectExecutableStatements && executableStatements.Count > 0)
+        // Executable statements are never allowed at module level.
+        // Entry points must use main(), library modules cannot have bare statements.
+        if (executableStatements.Count > 0)
         {
             foreach (var stmt in executableStatements)
             {

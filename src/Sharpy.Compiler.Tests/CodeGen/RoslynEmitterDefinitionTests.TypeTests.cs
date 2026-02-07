@@ -530,7 +530,6 @@ public partial class RoslynEmitterDefinitionTests
     public void GenerateEnumMemberAccess_TransformsToPascalCase()
     {
         // Arrange: Color.RED -> Color.Red
-        // Set IsEntryPoint to generate Main method for module-level statements
         _context.IsEntryPoint = true;
         var enumDef = new EnumDef
         {
@@ -564,8 +563,16 @@ public partial class RoslynEmitterDefinitionTests
             Operator = AssignmentOperator.Assign
         };
 
+        // Wrap assignments in a main() function (entry points require main())
+        var mainFunc = new FunctionDef
+        {
+            Name = "main",
+            Parameters = ImmutableArray<Parameter>.Empty,
+            Body = new List<Statement> { assignment, assignment2 }.ToImmutableArray()
+        };
+
         // Act
-        var module = new Module { Body = new List<Statement> { enumDef, assignment, assignment2 }.ToImmutableArray() };
+        var module = new Module { Body = new List<Statement> { enumDef, mainFunc }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
@@ -583,7 +590,7 @@ public partial class RoslynEmitterDefinitionTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
-            IsEntryPoint = true  // Generate Main method for module-level statements
+            IsEntryPoint = true
         };
         var emitter = new RoslynEmitter(context);
 
@@ -636,8 +643,16 @@ public partial class RoslynEmitterDefinitionTests
             Operator = AssignmentOperator.Assign
         };
 
+        // Wrap assignments in main() (entry points require main())
+        var mainFunc = new FunctionDef
+        {
+            Name = "main",
+            Parameters = ImmutableArray<Parameter>.Empty,
+            Body = new List<Statement> { assignment1, assignment2 }.ToImmutableArray()
+        };
+
         // Act
-        var module = new Module { Body = new List<Statement> { enumDef, assignment1, assignment2 }.ToImmutableArray() };
+        var module = new Module { Body = new List<Statement> { enumDef, mainFunc }.ToImmutableArray() };
         var compilationUnit = emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 

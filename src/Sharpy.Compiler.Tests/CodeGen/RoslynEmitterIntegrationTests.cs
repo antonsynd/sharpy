@@ -452,12 +452,11 @@ public class RoslynEmitterIntegrationTests
     }
 
     [Fact]
-    public void GeneratedCode_ModuleLevelVariableRedefinition_BecomesLocalVariables()
+    public void GeneratedCode_ModuleLevelVariableRedefinition_FirstDeclarationWins()
     {
         // Arrange - Module-level variable redefined with different type
         // Sharpy allows: x: int = 1; x: auto = "hello"
-        // When there are multiple declarations for the same variable,
-        // they become local variables in Main() to preserve execution order
+        // First declaration becomes a static field, second is skipped as duplicate
         var module = new Module
         {
             Body = new List<Statement>
@@ -479,8 +478,8 @@ public class RoslynEmitterIntegrationTests
             }.ToImmutableArray()
         };
 
-        // Create emitter with semantic analysis (required for CodeGenInfo and execution order detection)
-        var emitter = CreateEmitterWithSemanticAnalysis(module);
+        // Create emitter with semantic analysis (non-entry-point module)
+        var emitter = CreateEmitterWithSemanticAnalysis(module, isEntryPoint: false);
 
         // Act
         var result = emitter.GenerateCompilationUnit(module);
@@ -490,16 +489,12 @@ public class RoslynEmitterIntegrationTests
         // Assert
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}\n\nGenerated code:\n{code}");
 
-        // With execution order issues (multiple declarations), variables become locals in Main
-        // Verify first declaration appears as local variable (uses explicit type since it's specified as int)
-        Assert.True(code.Contains("int x = 1"), $"Expected 'int x = 1' in generated code but got:\n{code}");
+        // First declaration should appear as a static field
+        Assert.Contains("X", code);
 
-        // Verify second declaration appears as versioned local (var x_1 since type is auto)
-        Assert.Contains("var x_1 = ", code);
-
-        // Verify no static fields for x
-        var xFieldCount = System.Text.RegularExpressions.Regex.Matches(code, @"public static \w+ X").Count;
-        Assert.Equal(0, xFieldCount);
+        // There should be exactly one X field (first declaration wins, second is skipped)
+        var xFieldCount = System.Text.RegularExpressions.Regex.Matches(code, @"\bX\b").Count;
+        Assert.Equal(1, xFieldCount);
     }
 
     [Fact]

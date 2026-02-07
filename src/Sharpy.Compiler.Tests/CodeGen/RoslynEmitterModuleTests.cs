@@ -37,8 +37,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert
-        Assert.Contains("namespace SharpyGenerated", code);
+        // Assert - Single-file (no ProjectNamespace) emits into global namespace
+        Assert.DoesNotContain("namespace ", code);
         Assert.Contains("public static partial class Module", code);
     }
 
@@ -56,8 +56,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file uses simpler namespace (just "Sharpy")
-        Assert.Contains("namespace Sharpy", code);
+        // Assert - Single-file (no ProjectNamespace) emits into global namespace
+        Assert.DoesNotContain("namespace ", code);
+        Assert.Contains("class Utils", code);
     }
 
     [Fact]
@@ -389,9 +390,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file uses simpler namespace (just "Sharpy")
-        Assert.Contains("namespace Sharpy", code);
-        Assert.DoesNotContain("namespace Sharpy.", code);
+        // Assert - Single-file (no ProjectNamespace) emits into global namespace
+        Assert.DoesNotContain("namespace ", code);
+        Assert.Contains("class Auth", code);
     }
 
     [Fact]
@@ -435,9 +436,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file uses simpler namespace (just "Sharpy")
-        Assert.Contains("namespace Sharpy", code);
-        Assert.DoesNotContain("namespace Sharpy.", code);
+        // Assert - Single-file (no ProjectNamespace) emits into global namespace
+        Assert.DoesNotContain("namespace ", code);
+        Assert.Contains("class Mymodule", code);
     }
 
     [Fact]
@@ -487,8 +488,12 @@ public class RoslynEmitterModuleTests
         Assert.NotNull(code1);
         Assert.NotNull(code2);
         // Both should still compile to valid C# even with edge case inputs
-        Assert.Contains("namespace", code1);
-        Assert.Contains("namespace", code2);
+        // Single-file (no ProjectNamespace) emits into global namespace
+        Assert.DoesNotContain("namespace ", code1);
+        Assert.DoesNotContain("namespace ", code2);
+        // Module class should still be present
+        Assert.Contains("class Module", code1);
+        Assert.Contains("class Module", code2);
     }
 
     #region Namespace Edge Cases
@@ -528,9 +533,10 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file uses simpler namespace (just "Sharpy")
-        Assert.Contains("namespace Sharpy", code);
-        Assert.DoesNotContain("namespace Sharpy.", code);
+        // Assert - Single-file (no ProjectNamespace) emits into global namespace
+        Assert.DoesNotContain("namespace ", code);
+        // File name starts with number, should have valid class name
+        Assert.Contains("class", code);
     }
 
     [Fact]
@@ -593,9 +599,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Single-file uses simpler namespace (just "Sharpy")
-        Assert.Contains("namespace Sharpy", code);
-        Assert.DoesNotContain("namespace Sharpy.", code);
+        // Assert - Single-file (no ProjectNamespace) emits into global namespace
+        Assert.DoesNotContain("namespace ", code);
+        Assert.Contains("class Source", code);
     }
 
     [Fact]
@@ -633,8 +639,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Should use default namespace
-        Assert.Contains("namespace SharpyGenerated", code);
+        // Assert - Single-file (no ProjectNamespace) emits into global namespace
+        Assert.DoesNotContain("namespace ", code);
+        Assert.Contains("class Module", code);
     }
 
     #endregion

@@ -5,14 +5,11 @@ using System.Collections.Generic;
 using System.Linq;
 using global::Sharpy;
 
-namespace Sharpy
+public static partial class HelloWorld
 {
-    public static partial class Program
+    public static void Main()
     {
-        public static void Main()
-        {
 #line 2 "hello_world.spy"
-            global::Sharpy.Builtins.Print("Hello, World!");
-        }
+        global::Sharpy.Builtins.Print("Hello, World!");
     }
 }
