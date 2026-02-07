@@ -240,13 +240,13 @@ Copy the 11-entry `_dunderMethodMap` from NameMangler here (actual deletion from
 
 **Checklist**:
 
-- [ ] **File**: `src/Sharpy.Compiler/CodeGen/NameMangler.cs` (line 293)
+- [x] **File**: `src/Sharpy.Compiler/CodeGen/NameMangler.cs` (line 293)
   - Change: `_csharpKeywords.Contains(name.ToLowerInvariant())` → `_csharpKeywords.Contains(name)`
   - The `_csharpKeywords` set already contains only lowercase strings, so this is correct
-- [ ] **File**: `src/Sharpy.Compiler/CodeGen/NameResolutionService.cs` (line 197)
+- [x] **File**: `src/Sharpy.Compiler/CodeGen/NameResolutionService.cs` (line 197)
   - Change: `CSharpKeywords.Contains(name.ToLowerInvariant())` → `CSharpKeywords.Contains(name)`
   - Same fix, same rationale. The `CSharpKeywords` set is also all-lowercase
-- [ ] **File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs` (line 399)
+- [x] **File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.CompilationUnit.cs` (line 399)
   - Change: `new(StringComparer.OrdinalIgnoreCase)` → `new()` (remove the case-insensitive comparer)
   - This is a **third copy** of the same bug, using a different mechanism: `OrdinalIgnoreCase` makes the HashSet match case-insensitively, so `CSharpKeywords.Contains("Class")` returns `true`. Removing the comparer makes it use default ordinal comparison (case-sensitive), which is correct since the set contains only lowercase keywords.
   - The `EscapeCSharpKeyword` method at line 418 needs no change — it already does a plain `CSharpKeywords.Contains(name)` without lowercasing.
@@ -257,7 +257,7 @@ Copy the 11-entry `_dunderMethodMap` from NameMangler here (actual deletion from
 
 **Checklist**:
 
-- [ ] **File**: `src/Sharpy.Compiler.Tests/CodeGen/NameManglerTests.cs`
+- [x] **File**: `src/Sharpy.Compiler.Tests/CodeGen/NameManglerTests.cs`
   - Update the `ToPascalCase_CSharpKeyword_EscapesWithAt` test (line 203):
     - `"class"` → `"Class"` (was `"@Class"`)
     - `"if"` → `"If"` (was `"@If"`)
@@ -270,16 +270,16 @@ Copy the 11-entry `_dunderMethodMap` from NameMangler here (actual deletion from
   - The `ToCamelCase_CSharpKeyword_EscapesWithAt` tests (line 219) should remain UNCHANGED:
     - `"class"` → `"@class"` — still correct, because `ToCamelCase("class")` produces `"class"` (lowercase single word), which IS a keyword
   - Update `ToPascalCase_NotKeyword_NoEscaping` (line 232): `"myClass"` currently produces `"Myclass"` — this test will be updated in Phase 3 when camelCase passthrough is added. Leave it for now.
-- [ ] Run full test suite: `dotnet test`
-- [ ] Search for `@String`, `@Class`, `@Int`, `@Object`, `@Void` in `.expected` and `.expected.cs` snapshot files — these may need updating if any test fixtures use keywords as identifiers that get PascalCased
+- [x] Run full test suite: `dotnet test`
+- [x] Search for `@String`, `@Class`, `@Int`, `@Object`, `@Void` in `.expected` and `.expected.cs` snapshot files — these may need updating if any test fixtures use keywords as identifiers that get PascalCased
   - Command: `grep -r "@String\|@Class\|@Int\b\|@Object\|@Void" src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
   - If matches found, update the `.expected` / `.expected.cs` files, or regenerate snapshots with `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`
 
 ### Phase 2 verification
 
-- [ ] `dotnet build sharpy.sln`
-- [ ] `dotnet test` — all pass
-- [ ] `dotnet run --project src/Sharpy.Cli -- emit csharp snippets/hello.spy` — sanity check
+- [x] `dotnet build sharpy.sln`
+- [x] `dotnet test` — all pass
+- [x] `dotnet run --project src/Sharpy.Cli -- emit csharp snippets/hello.spy` — sanity check
 
 ---
 
