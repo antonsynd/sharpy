@@ -331,10 +331,11 @@ public class Compiler
             // Import root causes from import resolution so TypeChecker can suppress cascading errors
             typeChecker.ImportRootCauses(diagnostics);
 
+            var isEntryPoint = _options.OutputType.Equals("exe", StringComparison.OrdinalIgnoreCase);
+
             try
             {
-                // Single-file compilation is always an entry point
-                typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true, cancellationToken);
+                typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: isEntryPoint, cancellationToken);
             }
             catch (SemanticAnalysisException)
             {
@@ -426,8 +427,7 @@ public class Compiler
                 // For single-file compilation, use "Sharpy" as the project namespace.
                 // The file name becomes the module class name (or "Program" for entry points).
                 ProjectNamespace = "Sharpy",
-                // Single-file compilation is always an entry point - generate Main method
-                IsEntryPoint = true,
+                IsEntryPoint = isEntryPoint,
                 Logger = _logger,
                 SemanticInfo = semanticInfo,
                 SemanticBinding = semanticBinding
@@ -892,4 +892,11 @@ public class CompilerOptions
     /// are cached in the project's obj/ directory.
     /// </summary>
     public bool Incremental { get; set; }
+
+    /// <summary>
+    /// Output type: "exe" or "library". Controls whether the compiler requires
+    /// a main() entry point and generates a Main method.
+    /// Default: "exe" (entry point required).
+    /// </summary>
+    public string OutputType { get; set; } = "exe";
 }

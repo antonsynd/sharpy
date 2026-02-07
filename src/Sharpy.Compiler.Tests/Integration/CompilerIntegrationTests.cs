@@ -753,4 +753,92 @@ def main():
     }
 
     #endregion
+
+    #region OutputType (Library vs Exe)
+
+    [Fact]
+    public void Compiler_WithLibraryOutputType_SucceedsWithoutMain()
+    {
+        var code = @"
+def add(a: int, b: int) -> int:
+    return a + b
+
+class Point:
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+";
+        var options = new CompilerOptions { OutputType = "library" };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "mylib.spy");
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+    }
+
+    [Fact]
+    public void Compiler_WithExeOutputType_FailsWithoutMain()
+    {
+        var code = @"
+def add(a: int, b: int) -> int:
+    return a + b
+";
+        var options = new CompilerOptions { OutputType = "exe" };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+        Assert.True(result.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void Compiler_WithDefaultOutputType_RequiresMain()
+    {
+        // Default OutputType is "exe", so main() is required
+        var code = @"
+def helper() -> int:
+    return 42
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.False(result.Success);
+        Assert.True(result.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void Compiler_WithLibraryOutputType_DoesNotGenerateMainMethod()
+    {
+        var code = @"
+def greet(name: str) -> str:
+    return ""Hello, "" + name
+";
+        var options = new CompilerOptions { OutputType = "library" };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "mylib.spy");
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+        Assert.NotNull(result.GeneratedCSharpCode);
+        Assert.DoesNotContain("static void Main(", result.GeneratedCSharpCode);
+    }
+
+    [Fact]
+    public void Compiler_WithExeOutputType_GeneratesMainMethod()
+    {
+        var code = @"
+def main():
+    x = 42
+";
+        var options = new CompilerOptions { OutputType = "exe" };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile(code, "test.spy");
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+        Assert.NotNull(result.GeneratedCSharpCode);
+        Assert.Contains("static void Main(", result.GeneratedCSharpCode);
+    }
+
+    #endregion
 }

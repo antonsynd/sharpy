@@ -1583,6 +1583,10 @@ internal class ProjectCompiler
     /// </summary>
     private static bool IsEntryPointFileForTypeCheck(string file, ProjectConfig config)
     {
+        // Library projects never have an entry point file
+        if (config.OutputType.Equals("library", StringComparison.OrdinalIgnoreCase))
+            return false;
+
         var fileName = Path.GetFileName(file);
 
         // If EntryPoint is specified in config, check against it

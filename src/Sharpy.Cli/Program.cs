@@ -41,7 +41,7 @@ class Program
         var buildCommand = new Command("build", "Compile a Sharpy source file to a binary or library");
 
         var buildInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file to compile" };
-        var buildTypeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library' (default: library)" };
+        var buildTypeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library' (default: exe)" };
         buildTypeOpt.Aliases.Add("-t");
         var buildOutputOpt = new Option<FileInfo?>("--output") { Description = "Output file path" };
         buildOutputOpt.Aliases.Add("-o");
@@ -62,7 +62,7 @@ class Program
         buildCommand.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(buildInputArg)!;
-            var type = parseResult.GetValue(buildTypeOpt) ?? "library";
+            var type = parseResult.GetValue(buildTypeOpt) ?? "exe";
             var output = parseResult.GetValue(buildOutputOpt);
             var reference = parseResult.GetValue(buildRefOpt) ?? Array.Empty<string>();
             var projectReference = parseResult.GetValue(buildProjRefOpt) ?? Array.Empty<string>();
@@ -195,11 +195,14 @@ class Program
         var emitCsharpModPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
         emitCsharpModPathOpt.Aliases.Add("-m");
         var emitCsharpLineDirectivesOpt = new Option<bool>("--show-line-directives") { Description = "Include #line directives for source mapping (default: stripped for clean output)" };
+        var emitCsharpTypeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library' (default: exe)" };
+        emitCsharpTypeOpt.Aliases.Add("-t");
         emitCsharpCommand.Arguments.Add(emitCsharpInputArg);
         emitCsharpCommand.Options.Add(emitCsharpOutputOpt);
         emitCsharpCommand.Options.Add(emitCsharpRefOpt);
         emitCsharpCommand.Options.Add(emitCsharpModPathOpt);
         emitCsharpCommand.Options.Add(emitCsharpLineDirectivesOpt);
+        emitCsharpCommand.Options.Add(emitCsharpTypeOpt);
         emitCsharpCommand.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(emitCsharpInputArg)!;
@@ -207,13 +210,14 @@ class Program
             var reference = parseResult.GetValue(emitCsharpRefOpt) ?? Array.Empty<string>();
             var modulePath = parseResult.GetValue(emitCsharpModPathOpt) ?? Array.Empty<string>();
             var showLineDirectives = parseResult.GetValue(emitCsharpLineDirectivesOpt);
+            var emitType = parseResult.GetValue(emitCsharpTypeOpt) ?? "exe";
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
             var warnAsError = parseResult.GetValue(warnAsErrorOption);
             var nowarn = parseResult.GetValue(nowarnOption);
             var maxErrors = parseResult.GetValue(maxErrorsOption);
             var logger = CreateLogger(logLevel, logFile);
-            EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors, showLineDirectives);
+            EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors, showLineDirectives, emitType);
         });
 
         var emitParseCommand = new Command("parse", "Validate lexing and parsing only");
@@ -680,7 +684,7 @@ class Program
 
     static void EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths,
         ICompilerLogger logger, bool warnAsError = false, string? nowarn = null, int? maxErrors = null,
-        bool showLineDirectives = false)
+        bool showLineDirectives = false, string outputType = "exe")
     {
         try
         {
@@ -690,6 +694,7 @@ class Program
             // Use the full compilation pipeline (including import resolution)
             var compilerOptions = new CompilerOptions
             {
+                OutputType = outputType,
                 References = references,
                 ModulePaths = modulePaths,
                 WarningsAsErrors = warnAsError,
@@ -1254,6 +1259,7 @@ class Program
             // Create compiler with options
             var compilerOptions = new CompilerOptions
             {
+                OutputType = outputType,
                 References = references,
                 ModulePaths = modulePaths,
                 WarningsAsErrors = warnAsError,

@@ -1,3 +1,0 @@
-See: #116 (enforce main() entry point requirement for module execution)
-The main() requirement is documented in the spec but not currently enforced to allow legacy code patterns.
-Re-enable this test when strict main() enforcement is activated.
