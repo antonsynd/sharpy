@@ -15,7 +15,7 @@ public static partial class FStringExpressions0003
         public virtual int GetFinalScore()
         {
 #line 17 "f_string_expressions_0003.spy"
-            return global::Sharpy.Builtins.@Int(this.BaseScore * this.Multiplier);
+            return global::Sharpy.Builtins.Int(this.BaseScore * this.Multiplier);
         }
 
         public abstract string GetRank();
@@ -37,7 +37,7 @@ public static partial class FStringExpressions0003
         public override int GetFinalScore()
         {
 #line 35 "f_string_expressions_0003.spy"
-            return global::Sharpy.Builtins.@Int((this.BaseScore + this.BonusPoints) * this.Multiplier);
+            return global::Sharpy.Builtins.Int((this.BaseScore + this.BonusPoints) * this.Multiplier);
         }
 
         public override string GetRank()

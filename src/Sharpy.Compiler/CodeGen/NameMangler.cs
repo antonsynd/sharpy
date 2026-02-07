@@ -312,7 +312,7 @@ internal static class NameMangler
     private static string EscapeKeywordIfNeeded(string name)
     {
         // If the name is a C# keyword, prefix with @
-        return _csharpKeywords.Contains(name.ToLowerInvariant())
+        return _csharpKeywords.Contains(name)
             ? "@" + name
             : name;
     }

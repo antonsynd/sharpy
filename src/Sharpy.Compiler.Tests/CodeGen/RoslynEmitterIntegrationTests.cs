@@ -392,9 +392,10 @@ public class RoslynEmitterIntegrationTests
 
         // Assert
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}\n\nGenerated code:\n{code}");
-        // Verify both declaration and reference use the same name (BASE with @ escape)
-        Assert.Contains("const int @BASE = 10", code);
-        Assert.Contains("@BASE * 2", code);
+        // Verify both declaration and reference use the same name (BASE without @ escape,
+        // since BASE is not a C# keyword — only lowercase "base" is)
+        Assert.Contains("const int BASE = 10", code);
+        Assert.Contains("BASE * 2", code);
     }
 
     [Fact]
@@ -445,10 +446,10 @@ public class RoslynEmitterIntegrationTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - verify naming is consistent (both use @BASE)
-        // Note: The code won't compile yet because const is local to Main, but naming is correct
-        Assert.Contains("const int @BASE = 10", code);
-        Assert.Contains("@BASE * 2", code);
+        // Assert - verify naming is consistent (both use BASE without @ escape,
+        // since BASE is not a C# keyword — only lowercase "base" is)
+        Assert.Contains("const int BASE = 10", code);
+        Assert.Contains("BASE * 2", code);
     }
 
     [Fact]

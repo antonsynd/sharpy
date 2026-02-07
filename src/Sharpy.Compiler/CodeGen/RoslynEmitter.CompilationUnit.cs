@@ -396,7 +396,7 @@ internal partial class RoslynEmitter
     /// <summary>
     /// C# keywords that need @ prefix when used as identifiers.
     /// </summary>
-    private static readonly HashSet<string> CSharpKeywords = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> CSharpKeywords = new()
     {
         "abstract", "as", "base", "bool", "break", "byte", "case", "catch",
         "char", "checked", "class", "const", "continue", "decimal", "default",

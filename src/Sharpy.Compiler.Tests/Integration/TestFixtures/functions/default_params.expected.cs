@@ -12,7 +12,7 @@ public static partial class DefaultParams
 #line 6 "default_params.spy"
         int baseCents = @base * 100;
 #line 7 "default_params.spy"
-        int taxCents = (int)System.Math.Floor((double)((double)((baseCents * global::Sharpy.Builtins.@Int(taxRate * 100))) / 100));
+        int taxCents = (int)System.Math.Floor((double)((double)((baseCents * global::Sharpy.Builtins.Int(taxRate * 100))) / 100));
 #line 8 "default_params.spy"
         int totalCents = baseCents + taxCents;
 #line 9 "default_params.spy"

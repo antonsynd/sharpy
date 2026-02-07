@@ -194,7 +194,7 @@ internal sealed class NameResolutionService
     /// </summary>
     public static string EscapeCSharpKeyword(string name)
     {
-        return CSharpKeywords.Contains(name.ToLowerInvariant())
+        return CSharpKeywords.Contains(name)
             ? "@" + name
             : name;
     }

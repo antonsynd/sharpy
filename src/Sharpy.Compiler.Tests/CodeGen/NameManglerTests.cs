@@ -200,19 +200,32 @@ public class NameManglerTests
     #region C# Keyword Escaping Tests
 
     [Theory]
-    [InlineData("class", "@Class")]
-    [InlineData("if", "@If")]
-    [InlineData("while", "@While")]
-    [InlineData("return", "@Return")]
-    [InlineData("namespace", "@Namespace")]
-    [InlineData("static", "@Static")]
-    public void ToPascalCase_CSharpKeyword_EscapesWithAt(string keyword, string expected)
+    [InlineData("class", "Class")]
+    [InlineData("if", "If")]
+    [InlineData("while", "While")]
+    [InlineData("return", "Return")]
+    [InlineData("namespace", "Namespace")]
+    [InlineData("static", "Static")]
+    public void ToPascalCase_CSharpKeyword_CapitalizesWithoutEscaping(string keyword, string expected)
     {
         // Act
         var result = NameMangler.ToPascalCase(keyword);
 
         // Assert
         result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("for_each", "ForEach")]
+    [InlineData("is_valid", "IsValid")]
+    public void ToPascalCase_CSharpKeyword_AsSnakeCase_NoEscape(string name, string expected)
+    {
+        // Act
+        var result = NameMangler.ToPascalCase(name);
+
+        // Assert
+        result.Should().Be(expected);
+        result.Should().NotStartWith("@");
     }
 
     [Theory]
