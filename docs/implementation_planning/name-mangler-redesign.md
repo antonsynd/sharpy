@@ -84,7 +84,7 @@ internal enum NameForm
 
 **New file**: `src/Sharpy.Compiler/CodeGen/DunderMapping.cs`
 
-Move the 11-entry `_dunderMethodMap` from NameMangler here.
+Copy the 11-entry `_dunderMethodMap` from NameMangler here (actual deletion from NameMangler happens in Phase 5).
 
 **Checklist**:
 
@@ -105,8 +105,9 @@ Move the 11-entry `_dunderMethodMap` from NameMangler here.
   ```
 - [ ] Implement `public static string? GetCSharpName(string dunderName)` — dictionary lookup, returns null if not found
 - [ ] Implement `public static bool HasMapping(string dunderName)` — `_map.ContainsKey(dunderName)`
-- [ ] Implement `public static bool IsDunderMethod(string name)` — same logic as current `NameMangler.IsDunderMethod`: `name.StartsWith("__") && name.EndsWith("__") && name.Length > 4`
-  - **Note**: Current NameMangler uses `name.Length > 5` (line 263), but `__x__` (length 5) should probably not be a valid dunder. Check that the length threshold is consistent. `__a__` has length 5 — Python considers this a dunder. Use `> 4` to match Python behavior, or keep `> 5` if that's what the existing tests rely on. **Decision**: Check what the existing test `IsDunderMethod_InvalidDunder_ReturnsFalse` expects for `"__x__"` — it expects `false` (length 5 is excluded). Keep `> 5` for backward compat in Phase 1; revisit in Phase 5 if needed.
+- [ ] Implement `public static bool IsDunderMethod(string name)` — same logic as current `NameMangler.IsDunderMethod`: `name.StartsWith("__") && name.EndsWith("__") && name.Length > 5`
+  - **Note**: Current NameMangler uses `name.Length > 5` (line 263). `__x__` (length 5) is excluded. Python considers `__a__` a valid dunder, but the existing test `IsDunderMethod_InvalidDunder_ReturnsFalse` expects `"__x__"` → `false`. Keep `> 5` for backward compat; revisit in Phase 5 if needed.
+  - **Note**: `NameFormDetector.Detect()` uses `> 4` for its `Dunder` form classification (purely syntactic — `__a__` *looks* like a dunder). This difference is harmless: if `Detect()` classifies something as `Dunder` that `IsDunderMethod` rejects, the `ToPascalCase` algorithm handles it via the `__` prefix path (step 3) or passthrough, not the dunder map.
 - [ ] Implement `public static string TransformUnknownDunder(string name)` — for operator dunders not in the map:
   - Strip leading/trailing `__`, split middle on `_`, capitalize each segment, rejoin with `__` bookends
   - Example: `__add__` → `__Add__`, `__custom_method__` → `__CustomMethod__`
@@ -358,7 +359,10 @@ Same form detection approach. Replace lines 161-205.
   - `SingleWordUpper` → fully lowercase. `"HTTP"` → `"http"`
   - `SingleWordLower` → pass through. `"hello"` → `"hello"`
   - `Unrecognized` → pass through. `"foo__bar"` → `"foo__bar"`
-- [ ] Keep prefix (`_`) and trailing underscore handling (unchanged)
+- [ ] Extend prefix handling to include `__` (double-private prefix), matching Phase 3a step 3:
+  - `__` prefix: Recognize `__foo` (starts `__`, does NOT end `__`). Strip `__`, mangle body as camelCase, re-attach `__`. Example: `__private_count` → `__privateCount`
+  - `_` prefix: Unchanged behavior. Example: `_private_var` → `_privateVar`
+- [ ] Keep trailing underscore handling (unchanged)
 - [ ] **Critical behavioral change**: `ToCamelCase("HttpClient")` → `"httpClient"` (was `"httpclient"` — all lowercase). Now properly lowercases just the first char.
 
 > **Fork-in-the-road**: What about `ToCamelCase("ALREADY_UPPER")`? Currently → `"alreadyUpper"` (first part lowered, rest capitalized). With detection: `ScreamingSnakeCase` → first segment `"already"` (fully lowered), rest `"Upper"` (title-cased) → `"alreadyUpper"`. **Same result.**
