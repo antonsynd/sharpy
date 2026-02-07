@@ -175,6 +175,7 @@ public static class DiagnosticCodes
         public const string UnreachableCodeWarning = "SPY0450";
         public const string UnusedVariable = "SPY0451";
         public const string UnusedImport = "SPY0452";
+        public const string NamingConventionWarning = "SPY0453";
     }
 
     /// <summary>

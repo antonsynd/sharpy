@@ -681,6 +681,14 @@ public static class DiagnosticExplanations
             "from math import sqrt, pi  # pi is never used\ndef main():\n    print(sqrt(4))",
             "Remove the unused import:\nfrom math import sqrt\ndef main():\n    print(sqrt(4))");
 
+        Add(dict, DiagnosticCodes.Validation.NamingConventionWarning,
+            "Naming Convention Warning",
+            "Naming",
+            "Identifier contains consecutive underscores which may cause name collision after name mangling. " +
+            "For example, 'foo__bar' and 'foo_bar' would both mangle to the same C# name.",
+            "x: int = 1\nfoo__bar: int = 2  # warning: consecutive underscores",
+            "Rename the identifier or use backtick escaping: `foo__bar`");
+
         // ── Code generation errors (SPY0500-SPY0599) ───────────────────
 
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",

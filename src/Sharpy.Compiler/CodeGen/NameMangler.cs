@@ -221,6 +221,27 @@ internal static class NameMangler
     }
 
     /// <summary>
+    /// Convert enum member names (typically SCREAMING_SNAKE_CASE) to PascalCase.
+    /// </summary>
+    public static string ToEnumMemberName(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return name;
+
+        // Handle literal names (backtick-escaped) - strip backticks and return as-is
+        if (name.StartsWith("`") && name.EndsWith("`"))
+            return name[1..^1];
+
+        // Split by underscores (RemoveEmptyEntries handles consecutive underscores)
+        var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        var capitalizedParts = parts.Select(part =>
+            string.IsNullOrEmpty(part) ? part :
+            char.ToUpperInvariant(part[0]) + part.Substring(1).ToLowerInvariant());
+
+        return string.Join("", capitalizedParts);
+    }
+
+    /// <summary>
     /// Transform identifier based on context
     /// </summary>
     public static string Transform(string name, NameContext context)
@@ -235,6 +256,7 @@ internal static class NameMangler
             NameContext.Parameter => ToCamelCase(name),
             NameContext.Constant => ToConstantCase(name),
             NameContext.Field => ToCamelCase(name),
+            NameContext.EnumMember => ToEnumMemberName(name),
             _ => name
         };
     }
@@ -308,5 +330,6 @@ public enum NameContext
     Variable,   // Local variables
     Parameter,  // Function/method parameters
     Field,      // Class/struct fields
-    Constant    // Constants (CAPS_SNAKE_CASE)
+    Constant,   // Constants (CAPS_SNAKE_CASE)
+    EnumMember  // Enum members (CAPS_SNAKE_CASE → PascalCase)
 }
