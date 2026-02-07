@@ -723,32 +723,32 @@ All 3 can be deleted and replaced with `NameFormDetector.IsConstantCaseName()` w
 
 **Checklist**:
 
-- [ ] Update the overview table (line 7-14):
+- [x] Update the overview table (line 7-14):
   - Constants row already says `PascalCase` — verify it matches. Currently says `CAPS_SNAKE_CASE constants | PascalCase | MAX_SIZE → MaxSize`. **This is already correct in the spec!** The implementation was deviating.
-- [ ] Add a row for `camelCase` passthrough:
+- [x] Add a row for `camelCase` passthrough:
   - `camelCase identifiers | Preserved | httpClient → httpClient`
-- [ ] Add a row for `__` private prefix:
+- [x] Add a row for `__` private prefix:
   - `__name fields | __PascalCase | __private_field → __PrivateField`
-- [ ] Update Step 1 table (line 23-27): Verify `__name` row says "Keep double `__`" and preservation is documented
-- [ ] Add a section about `Unrecognized` forms:
+- [x] Update Step 1 table (line 23-27): Verify `__name` row says "Keep double `__`" and preservation is documented
+- [x] Add a section about `Unrecognized` forms:
   - Document that names with consecutive underscores (`foo__bar`) are passed through as-is with a compiler warning (SPY0453)
   - Document that mixed-case names with underscores (`Foo_bar`) are passed through as-is
-- [ ] Add section documenting `camelCase` passthrough:
+- [x] Add section documenting `camelCase` passthrough:
   - `httpClient` → `httpClient` (preserved in both PascalCase and camelCase contexts)
   - Rationale: camelCase names are already valid C# — mangling them destroys the author's intent
-- [ ] Update Complete Examples table (line 77-91):
+- [x] Update Complete Examples table (line 77-91):
   - Add: `httpClient | Variable | httpClient (preserved)`
   - Add: `__private_count | Private field | __privateCount`
   - Verify all existing examples still match the new behavior
-- [ ] Add note about SPY0453 warning:
+- [x] Add note about SPY0453 warning:
   - Identifiers with consecutive underscores trigger a compiler warning
   - Use backtick escaping to suppress: `` `foo__bar` ``
-- [ ] Update Implementation note at bottom (line 198-201): Remove or update implementation status markers
+- [x] Update Implementation note at bottom (line 198-201): Remove or update implementation status markers
 
 ### Phase 7 verification
 
-- [ ] Review the spec for consistency — all examples should match what `NameMangler` actually produces
-- [ ] Optionally: run a few examples through the CLI to verify spec claims
+- [x] Review the spec for consistency — all examples should match what `NameMangler` actually produces
+- [x] Optionally: run a few examples through the CLI to verify spec claims
 
 ---
 

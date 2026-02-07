@@ -8,7 +8,10 @@ Sharpy uses Pythonic `snake_case` naming conventions in source code, but generat
 |-------------------|-----------|---------|
 | `snake_case` functions | `PascalCase` | `get_user_name()` → `GetUserName()` |
 | `snake_case` parameters | `camelCase` | `user_name: str` → `string userName` |
+| `camelCase` identifiers | Preserved | `httpClient` → `httpClient` |
+| `PascalCase` identifiers | Preserved | `XMLParser` → `XMLParser` |
 | `_private` fields | `_camelCase` | `_user_count` → `_userCount` |
+| `__name` fields | `__PascalCase` | `__private_field` → `__PrivateField` |
 | `__dunder__` methods | Special mapping | `__init__` → constructor |
 | `CAPS_SNAKE_CASE` constants | `PascalCase` | `MAX_SIZE` → `MaxSize` |
 
@@ -26,50 +29,62 @@ Leading underscores are preserved for access modifier semantics:
 | `__name` | Keep double `__` | Private (name-mangled in Python style if needed) |
 | `__name__` | Special handling | Dunder method |
 
-### Step 2: Split into Segments
+### Step 2: Detect Name Form
 
-Split the identifier on underscores (excluding leading/trailing underscores):
+After stripping leading underscores and trailing underscores, the remaining body is classified into one of these forms:
 
-```
-get_user_name → ["get", "user", "name"]
-_private_field → ["private", "field"] (leading _ preserved separately)
-HTTP_STATUS → ["HTTP", "STATUS"]
-get_html_parser → ["get", "html", "parser"]
-```
+| Form | Pattern | Example |
+|------|---------|---------|
+| `SnakeCase` | All lowercase + digits + single underscores | `get_user_name` |
+| `ScreamingSnakeCase` | All uppercase + digits + single underscores | `MAX_SIZE` |
+| `PascalCase` | Starts uppercase, no underscores | `HttpClient`, `XMLParser` |
+| `CamelCase` | Starts lowercase, has uppercase, no underscores | `httpClient`, `iPhone` |
+| `SingleWordLower` | All lowercase, no underscores | `hello` |
+| `SingleWordUpper` | All uppercase, no underscores | `HTTP` |
+| `Dunder` | `__name__` bookends (length > 4) | `__init__`, `__str__` |
+| `Unrecognized` | Anything else (consecutive underscores, mixed case with underscores) | `foo__bar`, `Foo_bar` |
 
-### Step 3: Normalize Segments
+### Step 3: Transform Based on Form
 
-Each segment is normalized:
+The transformation depends on the detected form and the target convention:
 
-1. **All-caps segments**: Convert to lowercase, then capitalize first letter
-   - `HTTP` → `Http`
-   - `STATUS` → `Status`
-   - `XML` → `Xml`
+**For PascalCase target** (functions, methods, types, constants):
 
-2. **Mixed-case segments**: Capitalize first letter, preserve rest
-   - `user` → `User`
-   - `html` → `Html`
+| Form | Transformation | Example |
+|------|----------------|---------|
+| `SnakeCase` | Split on `_`, capitalize each segment | `get_user_name` → `GetUserName` |
+| `ScreamingSnakeCase` | Split on `_`, title-case each segment | `MAX_SIZE` → `MaxSize` |
+| `PascalCase` | Pass through | `HttpClient` → `HttpClient` |
+| `CamelCase` | Pass through | `httpClient` → `httpClient` |
+| `SingleWordLower` | Capitalize | `hello` → `Hello` |
+| `SingleWordUpper` | Pass through | `HTTP` → `HTTP` |
+| `Unrecognized` | Pass through (with SPY0453 warning) | `foo__bar` → `foo__bar` |
 
-3. **Single-character segments**: Capitalize
-   - `x` → `X`
-   - `i` → `I`
+**For camelCase target** (parameters, local variables, fields):
 
-### Step 4: Join and Apply Target Convention
+| Form | Transformation | Example |
+|------|----------------|---------|
+| `SnakeCase` | Split on `_`, lowercase first, capitalize rest | `user_name` → `userName` |
+| `ScreamingSnakeCase` | Split on `_`, fully lower first, title-case rest | `MAX_SIZE` → `maxSize` |
+| `PascalCase` | Lowercase first char | `HttpClient` → `httpClient` |
+| `CamelCase` | Pass through | `httpClient` → `httpClient` |
+| `SingleWordLower` | Pass through | `hello` → `hello` |
+| `SingleWordUpper` | Fully lowercase | `HTTP` → `http` |
+| `Unrecognized` | Pass through (with SPY0453 warning) | `foo__bar` → `foo__bar` |
 
-Join segments according to target convention:
+**For constant context** (module-level constants):
 
-| Target | Join Method | Example |
-|--------|-------------|---------|
-| PascalCase | Capitalize each segment | `GetUserName` |
-| camelCase | Lowercase first, capitalize rest | `getUserName` |
+Constants use the same rules as PascalCase target, except `SingleWordUpper` is normalized: `HTTP` → `Http`.
 
-### Step 5: Reattach Leading Underscores
+### Step 4: Reattach Leading Underscores
 
-Reattach any leading underscores that were preserved:
+Reattach any leading underscores that were preserved in Step 1:
 
 ```
 _private_field → _PrivateField (for methods)
 _private_field → _privateField (for fields)
+__private_field → __PrivateField (for methods)
+__private_count → __privateCount (for fields)
 ```
 
 ## Complete Examples
@@ -78,39 +93,69 @@ _private_field → _privateField (for fields)
 |--------|---------|-----------|
 | `get_user_name` | Function/Method | `GetUserName` |
 | `user_name` | Parameter | `userName` |
+| `httpClient` | Variable | `httpClient` (preserved) |
 | `_user_count` | Private field | `_userCount` |
+| `__private_count` | Private field | `__privateCount` |
 | `MAX_RETRY_COUNT` | Constant | `MaxRetryCount` |
 | `HTTP_STATUS_CODE` | Constant | `HttpStatusCode` |
 | `get_html_parser` | Function | `GetHtmlParser` |
-| `XMLParser` | Class (already PascalCase) | `XMLParser` (unchanged) |
+| `XMLParser` | Class (already PascalCase) | `XMLParser` (preserved) |
 | `parse_xml` | Function | `ParseXml` |
 | `io_error` | Parameter | `ioError` |
 | `__init__` | Constructor | Constructor (special) |
 | `__str__` | Dunder | `ToString()` override |
 | `_internal_helper` | Private method | `_InternalHelper` |
+| `__private_field` | Private method | `__PrivateField` |
 
 ## Collision Handling
 
-Name collisions can occur when different Sharpy names produce the same C# name:
+Name collisions can occur when different Sharpy names produce the same C# name. Note that `camelCase` identifiers are preserved as-is, so `fooBar` stays as `fooBar` and does not collide with `foo_bar` → `FooBar`.
+
+Collisions are more likely with names that differ only in underscore placement:
 
 ```python
-# ❌ Collision: both become FooBar
-foo_bar = 1
-fooBar = 2    # ERROR: conflicts with foo_bar after mangling
+# ❌ Both single-word lowercase → same PascalCase
+# (hypothetical — in practice, snake_case names with different segments are unlikely to collide)
 ```
 
-**Resolution:** The compiler detects collisions and reports an error:
-
-```
-error: Name collision: 'fooBar' and 'foo_bar' both mangle to 'FooBar'.
-       Use backtick escaping to preserve exact names: `foo_bar` or `fooBar`
-```
-
-**Backtick escaping** preserves the exact identifier:
+**Resolution:** The compiler detects collisions and reports an error. Use **backtick escaping** to preserve the exact identifier:
 
 ```python
 `fooBar` = 1      # Stays as 'fooBar' in C#
 `foo_bar` = 2     # Stays as 'foo_bar' in C# (unusual but valid)
+```
+
+## CamelCase Passthrough
+
+Identifiers already in `camelCase` form (start lowercase, contain uppercase letters, no underscores) are preserved as-is in both PascalCase and camelCase contexts:
+
+```python
+httpClient = create_client()   # httpClient stays as httpClient in C#
+iPhone = get_device()          # iPhone stays as iPhone in C#
+```
+
+**Rationale:** `camelCase` names are already valid C# identifiers — mangling them would destroy the author's intended casing (e.g., `httpClient` would incorrectly become `Httpclient`). This preserves interop-friendly names and avoids surprising transformations.
+
+Similarly, `PascalCase` identifiers (start uppercase, no underscores) are preserved as-is:
+
+```python
+XMLParser = create_parser()    # XMLParser stays as XMLParser in C#
+HttpClient = get_client()      # HttpClient stays as HttpClient in C#
+```
+
+## Unrecognized Name Forms
+
+Names that don't match any well-formed convention are passed through as-is:
+
+- **Consecutive underscores**: `foo__bar` → `foo__bar` (with warning SPY0453)
+- **Mixed case with underscores**: `Foo_bar` → `Foo_bar`
+
+These names produce a compiler warning (SPY0453) because consecutive underscores can cause name mangling collisions — for example, `foo__bar` and `foo_bar` would both mangle to `FooBar` under a naive algorithm. The compiler avoids this by passing through unrecognized forms unchanged.
+
+To suppress the warning, rename the identifier or use backtick escaping:
+
+```python
+`foo__bar`: int = 1    # Backtick escaping: no warning, name preserved exactly
 ```
 
 ## Dunder Method Mapping
@@ -168,10 +213,11 @@ Different identifier types use different target conventions:
 | Function/Method | PascalCase | `get_user()` → `GetUser()` |
 | Parameter | camelCase | `user_id: int` → `int userId` |
 | Local variable | camelCase | `result_count` → `resultCount` |
-| Private field | _camelCase | `_data_store` → `_dataStore` |
+| Private field (`_`) | _camelCase | `_data_store` → `_dataStore` |
+| Private field (`__`) | __PascalCase | `__private_field` → `__PrivateField` |
 | Public property | PascalCase | `property user_name` → `UserName` |
 | Constant | PascalCase | `MAX_SIZE` → `MaxSize` |
-| Class/Struct/Interface | Unchanged | `UserService` → `UserService` |
+| Class/Struct/Interface | Preserved | `UserService` → `UserService` |
 | Enum value | PascalCase | `RED_COLOR` → `RedColor` |
 
 ## Interop with .NET Libraries
@@ -196,6 +242,7 @@ var result = sharpyModule.GetUserName();  // Not get_user_name
 ```
 
 *Implementation*
-- *🔄 Lowered - Name mangling is performed during code generation by `NameMangler` utility*
-- *Collisions are detected during semantic analysis*
-- *Backtick-escaped identifiers bypass mangling*
+- Name mangling is performed during code generation by `NameMangler` (form detection via `NameFormDetector`)
+- Dunder method mapping is handled by `DunderMapping` (codegen-owned, separate from `NameMangler`)
+- Naming convention warnings (SPY0453) are emitted by `NamingConventionValidator` during semantic validation
+- Backtick-escaped identifiers bypass mangling
