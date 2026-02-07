@@ -151,18 +151,43 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
                     break;
                 case WhileStatement whileStmt:
                     ValidateBody(whileStmt.Body);
+                    if (whileStmt.ElseBody.Length > 0)
+                        ValidateBody(whileStmt.ElseBody);
                     break;
                 case ForStatement forStmt:
+                    CheckForTarget(forStmt.Target);
                     ValidateBody(forStmt.Body);
+                    if (forStmt.ElseBody.Length > 0)
+                        ValidateBody(forStmt.ElseBody);
                     break;
                 case TryStatement tryStmt:
                     ValidateBody(tryStmt.Body);
                     foreach (var handler in tryStmt.Handlers)
+                    {
+                        if (handler.Name != null)
+                            CheckName(handler.Name, handler.LineStart, handler.ColumnStart, handler.Span);
                         ValidateBody(handler.Body);
+                    }
+                    if (tryStmt.ElseBody.Length > 0)
+                        ValidateBody(tryStmt.ElseBody);
                     if (tryStmt.FinallyBody.Length > 0)
                         ValidateBody(tryStmt.FinallyBody);
                     break;
             }
+        }
+    }
+
+    private void CheckForTarget(Expression target)
+    {
+        switch (target)
+        {
+            case Identifier id:
+                CheckName(id.Name, id.LineStart, id.ColumnStart, id.Span);
+                break;
+            case TupleLiteral tuple:
+                foreach (var element in tuple.Elements)
+                    CheckForTarget(element);
+                break;
         }
     }
 

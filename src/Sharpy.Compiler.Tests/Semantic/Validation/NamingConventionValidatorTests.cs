@@ -331,6 +331,119 @@ class Foo:
 
     #endregion
 
+    #region For Loop Target Tests
+
+    [Fact]
+    public void ForLoopTarget_ConsecutiveUnderscores_Warns()
+    {
+        var code = @"
+def foo():
+    for loop__var in range(10):
+        pass
+";
+        ValidateCode(code, out var warnings);
+        Assert.Single(warnings);
+        Assert.Contains("loop__var", warnings[0].Message);
+    }
+
+    [Fact]
+    public void ForLoopTarget_Normal_NoWarning()
+    {
+        var code = @"
+def foo():
+    for loop_var in range(10):
+        pass
+";
+        ValidateCode(code, out var warnings);
+        Assert.Empty(warnings);
+    }
+
+    #endregion
+
+    #region Except Handler Variable Tests
+
+    [Fact]
+    public void ExceptHandler_ConsecutiveUnderscores_Warns()
+    {
+        var code = @"
+def foo():
+    try:
+        pass
+    except Exception as err__var:
+        pass
+";
+        ValidateCode(code, out var warnings);
+        Assert.Single(warnings);
+        Assert.Contains("err__var", warnings[0].Message);
+    }
+
+    [Fact]
+    public void ExceptHandler_Normal_NoWarning()
+    {
+        var code = @"
+def foo():
+    try:
+        pass
+    except Exception as err:
+        pass
+";
+        ValidateCode(code, out var warnings);
+        Assert.Empty(warnings);
+    }
+
+    #endregion
+
+    #region ElseBody Tests
+
+    [Fact]
+    public void ForElseBody_ConsecutiveUnderscores_Warns()
+    {
+        var code = @"
+def foo():
+    for i in range(10):
+        pass
+    else:
+        else__var: int = 1
+";
+        ValidateCode(code, out var warnings);
+        Assert.Single(warnings);
+        Assert.Contains("else__var", warnings[0].Message);
+    }
+
+    [Fact]
+    public void WhileElseBody_ConsecutiveUnderscores_Warns()
+    {
+        var code = @"
+def foo():
+    while True:
+        pass
+    else:
+        else__var: int = 1
+";
+        ValidateCode(code, out var warnings);
+        Assert.Single(warnings);
+        Assert.Contains("else__var", warnings[0].Message);
+    }
+
+    [Fact]
+    public void TryElseBody_ConsecutiveUnderscores_Warns()
+    {
+        var code = @"
+def foo():
+    try:
+        pass
+    except Exception as e:
+        pass
+    else:
+        else__var: int = 1
+";
+        ValidateCode(code, out var warnings);
+        Assert.Single(warnings);
+        Assert.Contains("else__var", warnings[0].Message);
+    }
+
+    #endregion
+
     #region Multiple Warnings Tests
 
     [Fact]
