@@ -43,7 +43,7 @@ private string GetFunctionName(MethodInfo method)
 
 There are **zero** existing tests for the reverse mangling algorithm itself. Add a dedicated test class or `[Theory]` with `[InlineData]` covering the comprehensive results table from the design doc. The method is `private`, so test it indirectly by creating a simple test assembly with methods of known names, or extract the algorithm into a static helper and test it directly.
 
-**Recommended approach:** Extract the regex logic into an `internal static` method (e.g., `ReverseNameMangler.ToSnakeCase(string name)`) in a new file `src/Sharpy.Compiler/Discovery/ReverseNameMangler.cs`, and call it from `GetFunctionName()`. This makes it directly testable and prepares for Phase 2 (symbol-aware mangling). Add `[InternalsVisibleTo]` if not already present.
+**Recommended approach:** Extract the regex logic into an `internal static` method (e.g., `ReverseNameMangler.ToSnakeCase(string name)`) in a new file `src/Sharpy.Compiler/Discovery/ReverseNameMangler.cs`, and call it from `GetFunctionName()`. This makes it directly testable and prepares for Phase 2 (symbol-aware mangling). `[InternalsVisibleTo("Sharpy.Compiler.Tests")]` is already configured in the `.csproj`.
 
 - [ ] Extract reverse mangling logic into `ReverseNameMangler.ToSnakeCase(string name)`
 - [ ] Create `src/Sharpy.Compiler/Discovery/ReverseNameMangler.cs`
@@ -176,11 +176,38 @@ produce snake_case.
 
 ## Phase 3: Forward collision detection in `CodeGenInfoComputer`
 
-> **Goal:** Detect when two Sharpy symbols in the same scope mangle to the same C# name and emit `SPY0520`.
+> **Goal:** Detect when two Sharpy symbols in the same scope mangle to the same C# name and emit `SPY0522`.
 >
-> **Files touched:** ~4 (1 production `CodeGenInfoComputer`, 1 `DiagnosticBag` threading, 1–2 test files)
+> **Files touched:** ~5 (1 new diagnostic code, 1 production `CodeGenInfoComputer`, 1 `DiagnosticBag` threading, 1–2 test files)
+>
+> **Note:** `SPY0520` (`DiagnosticCodes.CodeGen.NameCollision`) is already used for module-class name collisions (when a type name matches the module class name derived from the file name, e.g. `struct Animal` in `animal.spy`). The new member collision detection uses a separate code `SPY0522` (`MemberNameCollision`).
 
-### 3a. Thread `DiagnosticBag` into `CodeGenInfoComputer`
+### 3a. Register the new diagnostic code `SPY0522`
+
+**File:** `src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs`
+
+Add a new constant for member name collisions (distinct from the existing `SPY0520` which covers module-class name collisions):
+
+```csharp
+public const string MemberNameCollision = "SPY0522";
+```
+
+**File:** `src/Sharpy.Compiler/Diagnostics/DiagnosticExplanations.cs`
+
+Add an explanation entry for the new code:
+
+```csharp
+Add(dict, DiagnosticCodes.CodeGen.MemberNameCollision, "Member name collision after mangling", "CodeGen",
+    "Two symbols in the same scope produce the same C# name after name mangling. " +
+    "For example, 'foo_bar' and 'FooBar' both compile to 'FooBar'.",
+    "class Foo:\n    def foo_bar(self): ...\n    def FooBar(self): ...",
+    "Rename one of the conflicting symbols or use backtick escaping.");
+```
+
+- [ ] Add `MemberNameCollision = "SPY0522"` to `DiagnosticCodes.CodeGen`
+- [ ] Add explanation entry to `DiagnosticExplanations.cs`
+
+### 3b. Thread `DiagnosticBag` into `CodeGenInfoComputer`
 
 **File:** `src/Sharpy.Compiler/Semantic/CodeGenInfoComputer.cs`
 
@@ -189,13 +216,13 @@ The class currently has no way to emit diagnostics. Add a `DiagnosticBag` parame
 - [ ] Add `private readonly DiagnosticBag _diagnostics;` field
 - [ ] Add `DiagnosticBag diagnostics` parameter to the constructor
 - [ ] Update all call sites that construct `CodeGenInfoComputer` to pass a `DiagnosticBag`
-  - Locate callers with `Grep` for `new CodeGenInfoComputer`
+  - There is one call site: `TypeChecker.cs:278` — pass the TypeChecker's `_diagnostics` field
 
-### 3b. Add collision detection after type member processing
+### 3c. Add collision detection after type member processing
 
 **File:** `src/Sharpy.Compiler/Semantic/CodeGenInfoComputer.cs`
 
-After `ProcessTypeMembers(typeSymbol, body)` returns, collect all `CSharpName` values from the members just processed. If duplicates are found, emit `SPY0520` on the second declaration.
+After `ProcessTypeMembers(typeSymbol, body)` returns, collect all `CSharpName` values from the members just processed. If duplicates are found, emit `SPY0522` on the second declaration.
 
 ```csharp
 private void DetectCollisions(TypeSymbol typeSymbol, IEnumerable<Statement> body)
@@ -212,7 +239,7 @@ private void DetectCollisions(TypeSymbol typeSymbol, IEnumerable<Statement> body
             _diagnostics.AddError(
                 $"Name collision: '{info.OriginalName}' and '{existingOriginal}' both compile to '{info.CSharpName}'. Rename one or use backtick escaping.",
                 span, // TextSpan from the AST node for the second declaration
-                code: DiagnosticCodes.CodeGen.NameCollision
+                code: DiagnosticCodes.CodeGen.MemberNameCollision
             );
         }
         else
@@ -225,26 +252,27 @@ private void DetectCollisions(TypeSymbol typeSymbol, IEnumerable<Statement> body
 
 Implementation notes:
 - To get `TextSpan`, correlate the symbol back to its AST node. The body `IEnumerable<Statement>` is available — match by name.
-- Symbols that resolve to different C# kinds and can coexist (method vs nested type) should be excluded. Group by kind category: {methods + fields} and {types} are separate collision domains.
+- In C#, ALL members of a class share the same declaration space — methods, fields, and nested types cannot have the same name. There are no separate collision domains within a single type.
 - Dunder methods that map to special C# names (`__init__` → constructor, `__str__` → `ToString`) should be included — if a user also defines a method `to_string` (→ `ToString`), that's a real collision.
+- Note: `ProcessTypeMembers` currently only handles `VariableDeclaration` (fields) and `FunctionDef` (methods) — Sharpy does not support nested type definitions inside a class body, so checking fields + methods is sufficient for type-level collision detection.
 
 - [ ] Add `DetectCollisions(TypeSymbol, IEnumerable<Statement>)` method
 - [ ] Call it from `ProcessClassDef`, `ProcessStructDef`, `ProcessInterfaceDef` after `ProcessTypeMembers`
-- [ ] Group collision domains: methods+fields separate from nested types
 
-### 3c. Add collision detection for module-level symbols
+### 3d. Add collision detection for module-level symbols
 
 **File:** `src/Sharpy.Compiler/Semantic/CodeGenInfoComputer.cs`
 
-At the end of `ComputeForModule()`, check for collisions among module-level functions + variables.
+At the end of `ComputeForModule()`, check for collisions among ALL module-level symbols: functions, variables, AND types (classes, structs, interfaces, enums). All of these become members of the same module class in the generated C# — types are nested inside the module class (see `GenerateModuleMembers` docstring: "Types are nested inside the module class, enabling single 'using static' imports").
 
-- [ ] Add `DetectModuleLevelCollisions()` method
+- [ ] Add `DetectModuleLevelCollisions(Module module)` method
 - [ ] Call it at the end of `ComputeForModule()`
-- [ ] Scope: functions + module-level variables (not types, which live in separate C# declarations)
+- [ ] Scope: functions + module-level variables + types (all share the same C# module class declaration space)
+- [ ] Exclude symbols that already trigger `SPY0520` (module-class name collision) to avoid duplicate errors
 
-### 3d. Add integration tests for collision detection
+### 3e. Add integration tests for collision detection
 
-**File:** `src/Sharpy.Compiler.Tests/Integration/TestFixtures/` — new `.spy` + `.error` pairs
+**File:** `src/Sharpy.Compiler.Tests/Integration/TestFixtures/` — new `.spy` + `.error`/`.expected` pairs
 
 **Test 1: method collision in class**
 ```python
@@ -257,7 +285,7 @@ class Foo:
 ```
 ```
 # collision_method.error
-SPY0520
+SPY0522
 ```
 
 **Test 2: field collision in class**
@@ -269,7 +297,7 @@ class Foo:
 ```
 ```
 # collision_field.error
-SPY0520
+SPY0522
 ```
 
 **Test 3: module-level function collision**
@@ -283,13 +311,30 @@ def FooBar():
 ```
 ```
 # collision_module_func.error
-SPY0520
+SPY0522
 ```
 
-**Test 4: no collision between method and type (different C# domains)**
+**Test 4: module-level function + type collision**
+
+In Sharpy's generated C#, types are nested inside the module class. A nested type and a method with the same name violate C#'s single declaration space rule (CS0102). The collision detection must catch this.
+
 ```python
-# no_collision_method_type.spy
+# collision_func_type.spy
 class FooBar:
+    pass
+
+def foo_bar():
+    pass
+```
+```
+# collision_func_type.error
+SPY0522
+```
+
+**Test 5: no collision — function and type with different mangled names**
+```python
+# no_collision_func_type.spy
+class Bar:
     pass
 
 def foo_bar():
@@ -298,11 +343,13 @@ def foo_bar():
 foo_bar()
 ```
 ```
-# no_collision_method_type.expected
+# no_collision_func_type.expected
 ok
 ```
 
-**Test 5: no collision between camelCase and snake_case (they produce different results)**
+Here `Bar` → `Bar` and `foo_bar` → `FooBar` — different C# names, no collision.
+
+**Test 6: no collision between camelCase and snake_case (they produce different results)**
 ```python
 # no_collision_camel_snake.spy
 class Foo:
@@ -324,31 +371,34 @@ camel
 - [ ] Create `collision_method.spy` + `collision_method.error`
 - [ ] Create `collision_field.spy` + `collision_field.error`
 - [ ] Create `collision_module_func.spy` + `collision_module_func.error`
-- [ ] Create `no_collision_method_type.spy` + `no_collision_method_type.expected`
+- [ ] Create `collision_func_type.spy` + `collision_func_type.error`
+- [ ] Create `no_collision_func_type.spy` + `no_collision_func_type.expected`
 - [ ] Create `no_collision_camel_snake.spy` + `no_collision_camel_snake.expected`
 - [ ] Decide on subdirectory name (e.g., `TestFixtures/name_collision/`) or place in an existing relevant directory
 - [ ] Run `dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"` — all pass
 
-### 3e. Add unit tests for `CodeGenInfoComputer` collision detection
+### 3f. Add unit tests for `CodeGenInfoComputer` collision detection
 
 **File:** `src/Sharpy.Compiler.Tests/Semantic/CodeGenInfoComputerTests.cs` (create if it doesn't exist)
 
 Use `IntegrationTestBase.CompileAndExecute()` or build the AST manually to test:
 
-- [ ] Test: two methods with same mangled name → `SPY0520` error
-- [ ] Test: method + field with same mangled name → `SPY0520` error
-- [ ] Test: method + nested type with same mangled name → no error (different domains)
+- [ ] Test: two methods with same mangled name → `SPY0522` error
+- [ ] Test: method + field with same mangled name → `SPY0522` error
+- [ ] Test: module-level function + type with same mangled name → `SPY0522` error (both are members of the module class)
 - [ ] Test: no collision when names are different → no error
 - [ ] Run `dotnet test --filter "FullyQualifiedName~CodeGenInfoComputer"` — all pass
 
-### 3f. Commit
+### 3g. Commit
 
 ```
-feat: Add forward name collision detection (SPY0520)
+feat: Add forward name collision detection (SPY0522)
 
 CodeGenInfoComputer now detects when two symbols in the same scope
-produce the same C# name after mangling. Emits SPY0520 with both
-original names and the colliding C# name.
+produce the same C# name after mangling. Emits SPY0522 with both
+original names and the colliding C# name. Covers class members and
+module-level symbols (functions, variables, and nested types all
+share the same module class declaration space).
 ```
 
 ---
@@ -429,7 +479,8 @@ After all phases are complete:
 | `src/Sharpy.Compiler/Discovery/ReverseNameMangler.cs` | 1, 2 | **Create** |
 | `src/Sharpy.Compiler/Discovery/Caching/OverloadIndexBuilder.cs` | 1, 2 | Edit |
 | `src/Sharpy.Compiler/Semantic/CodeGenInfoComputer.cs` | 3 | Edit |
-| `src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs` | 3 | Verify `SPY0520` exists (it does) |
+| `src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs` | 3 | Edit — add `MemberNameCollision = "SPY0522"` |
+| `src/Sharpy.Compiler/Diagnostics/DiagnosticExplanations.cs` | 3 | Edit — add explanation for `SPY0522` |
 | `src/Sharpy.Compiler.Tests/Discovery/ReverseNameManglerTests.cs` | 1, 2, 4 | **Create** |
 | `src/Sharpy.Compiler.Tests/Semantic/CodeGenInfoComputerTests.cs` | 3 | **Create** (if needed) |
 | `src/Sharpy.Compiler.Tests/Integration/TestFixtures/name_collision/*.spy` | 3 | **Create** |
