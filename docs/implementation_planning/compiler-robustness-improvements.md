@@ -554,26 +554,26 @@ The `.expected.cs` snapshots detect codegen regressions that don't affect runtim
 
 **Checklist**:
 
-- [ ] Search for all uses of `ICompilerLogger` across `src/Sharpy.Compiler/`
-- [ ] For each pipeline stage (Lexer, Parser, NameResolver, ImportResolver, TypeResolver, TypeChecker, ValidationPipeline, RoslynEmitter), document:
+- [x] Search for all uses of `ICompilerLogger` across `src/Sharpy.Compiler/`
+- [x] For each pipeline stage (Lexer, Parser, NameResolver, ImportResolver, TypeResolver, TypeChecker, ValidationPipeline, RoslynEmitter), document:
   - Does it log entry/exit?
   - Does it log per-item progress (e.g., "checking function foo")?
   - Does it use `CompilationMetrics` for timing?
-- [ ] Create a checklist of gaps (stages that don't log consistently)
+- [x] Create a checklist of gaps (stages that don't log consistently)
 
 ### 8b. Add consistent entry/exit logging
 
 **Checklist**:
 
-- [ ] For each pipeline stage that lacks entry/exit logging, add:
+- [x] For each pipeline stage that lacks entry/exit logging, add:
   ```csharp
   _logger.LogDebug($"Starting {phaseName}...");
   // ... phase work ...
   _logger.LogDebug($"Completed {phaseName} ({count} items processed)");
   ```
-- [ ] The codebase uses the **Null Object pattern** (`NullLogger.Instance`), not nullable loggers — `_logger` is never null, so do NOT use `_logger?.`. All constructors default to `logger ?? NullLogger.Instance`. Follow this existing convention.
-- [ ] Verify that `CompilationMetrics` is used for timing in all stages (it should already be — just verify)
-- [ ] Run: `dotnet test`
+- [x] The codebase uses the **Null Object pattern** (`NullLogger.Instance`), not nullable loggers — `_logger` is never null, so do NOT use `_logger?.`. All constructors default to `logger ?? NullLogger.Instance`. Follow this existing convention.
+- [x] Verify that `CompilationMetrics` is used for timing in all stages (it should already be — just verify)
+- [x] Run: `dotnet test`
 
 ### 8c. Enhance verbose mode in CLI
 
@@ -581,11 +581,11 @@ The `.expected.cs` snapshots detect codegen regressions that don't affect runtim
 
 **Checklist**:
 
-- [ ] The CLI already has a `--log-level` option (accepts `CompilerLogLevel` enum: None, Error, Warning, Info, Debug, Trace). This should be the basis for verbose output — do NOT add a separate `--verbose` flag.
-- [ ] When `--log-level` is set to `Info` or higher, write a `CompilationMetrics` summary and per-phase timing to stderr after compilation completes
-- [ ] When `--log-level` is set to `Debug` or higher, include per-validator timing from `ValidatorTimes`
-- [ ] Ensure verbose output goes to stderr (not stdout) so it doesn't interfere with program output
-- [ ] Test: `dotnet run --project src/Sharpy.Cli -- run --log-level Info snippets/hello.spy`
+- [x] The CLI already has a `--log-level` option (accepts `CompilerLogLevel` enum: None, Error, Warning, Info, Debug, Trace). This should be the basis for verbose output — do NOT add a separate `--verbose` flag.
+- [x] When `--log-level` is set to `Info` or higher, write a `CompilationMetrics` summary and per-phase timing to stderr after compilation completes
+- [x] When `--log-level` is set to `Debug` or higher, include per-validator timing from `ValidatorTimes`
+- [x] Ensure verbose output goes to stderr (not stdout) so it doesn't interfere with program output
+- [x] Test: `dotnet run --project src/Sharpy.Cli -- run --log-level Info snippets/hello.spy`
 
 ---
 
