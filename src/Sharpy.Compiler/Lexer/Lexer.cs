@@ -23,7 +23,22 @@ public class Lexer
     /// </summary>
     private LexerAbortException ReportError(string message, int line, int column, string code)
     {
-        _diagnostics.AddError(message, line, column, code: code, phase: CompilerPhase.Lexer);
+        // Compute a TextSpan from line/column using SourceText if available,
+        // otherwise fall back to the current _position with a length of 1.
+        TextSpan? span = null;
+        if (_sourceText != null)
+        {
+            var start = _sourceText.GetPosition(line, column);
+            span = new TextSpan(start, System.Math.Max(1, _position - start));
+        }
+        else if (_position >= 0 && _position <= _source.Length)
+        {
+            // Best-effort: use _position as span start with length 1
+            var start = System.Math.Max(0, _position > 0 ? _position - 1 : 0);
+            span = new TextSpan(start, 1);
+        }
+
+        _diagnostics.AddError(message, span, line, column, code: code, phase: CompilerPhase.Lexer);
         return new LexerAbortException();
     }
 
