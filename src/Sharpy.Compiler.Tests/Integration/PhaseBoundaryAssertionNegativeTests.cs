@@ -245,16 +245,17 @@ public class PhaseBoundaryAssertionNegativeTests
         var diagnostics = new DiagnosticBag();
 
         // Register an expression with UnknownType but no errors in the diagnostic bag
+        // and NOT marked as error recovery — this simulates a type inference bug
         var expr = new IntegerLiteral { Value = "42", LineStart = 1, ColumnStart = 1 };
         semanticInfo.SetExpressionType(expr, SemanticType.Unknown);
 
         Compiler.WarnIfUnknownTypes(semanticInfo, diagnostics);
 
         var violations = diagnostics.GetWarnings()
-            .Where(w => w.Code == DiagnosticCodes.Infrastructure.InvariantViolation)
+            .Where(w => w.Code == DiagnosticCodes.Infrastructure.UnexpectedUnknownType)
             .ToList();
         Assert.Single(violations);
-        Assert.Contains("unknown expression types remain", violations[0].Message);
+        Assert.Contains("type inference produced UnknownType", violations[0].Message);
     }
 
     [Fact]

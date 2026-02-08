@@ -19,6 +19,10 @@ internal partial class TypeChecker
         if (cached != null)
             return cached;
 
+        // Track error count before checking — if errors are emitted during this
+        // expression's check and the result is UnknownType, it's error recovery
+        int errorsBefore = _diagnostics.ErrorCount;
+
         SemanticType type = expr switch
         {
             IntegerLiteral => SemanticType.Int,
@@ -55,6 +59,13 @@ internal partial class TypeChecker
             WalrusExpression walrus => CheckWalrusExpression(walrus),
             _ => HandleUnrecognizedExpression(expr)
         };
+
+        // Track error recovery: if the result is UnknownType and errors were emitted
+        // during this expression's check, mark it as error recovery (expected Unknown).
+        if (type is UnknownType && _diagnostics.ErrorCount > errorsBefore)
+        {
+            _semanticInfo.MarkErrorRecovery(expr);
+        }
 
         // Cache the result
         _semanticInfo.SetExpressionType(expr, type);
@@ -128,6 +139,8 @@ internal partial class TypeChecker
         if (symbol.IsErrorRecovery)
         {
             _semanticInfo.SetIdentifierSymbol(id, symbol);
+            // Mark as error recovery — the import error was already reported upstream
+            _semanticInfo.MarkErrorRecovery(id);
             return SemanticType.Unknown;
         }
 
@@ -143,7 +156,7 @@ internal partial class TypeChecker
             return narrowedType;
         }
 
-        return symbol switch
+        var identifierType = symbol switch
         {
             VariableSymbol varSymbol => GetVariableType(varSymbol),
             FunctionSymbol funcSymbol => new FunctionType
@@ -152,9 +165,20 @@ internal partial class TypeChecker
                 ReturnType = funcSymbol.ReturnType
             },
             ModuleSymbol moduleSymbol => new ModuleType { Symbol = moduleSymbol },
-            TypeSymbol => SemanticType.Unknown, // Type names used as values need special handling
+            // Type names used as values (constructors) are resolved at the FunctionCall level,
+            // not at the identifier level. Mark as error recovery since this is an expected gap.
+            TypeSymbol => SemanticType.Unknown,
             _ => SemanticType.Unknown
         };
+
+        // Mark intentional Unknown types: TypeSymbol references and unhandled symbol kinds
+        // are not errors — they're expected gaps handled at higher levels (e.g., FunctionCall).
+        if (identifierType is UnknownType && symbol is not null)
+        {
+            _semanticInfo.MarkErrorRecovery(id);
+        }
+
+        return identifierType;
     }
 
     private SemanticType CheckBinaryOp(BinaryOp binOp)
@@ -1623,6 +1647,8 @@ internal partial class TypeChecker
             _symbolTable.Define(loopVarSymbol);
             _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
             _semanticInfo.SetExpressionType(forClause.Target, elemType);
+            if (elemType is UnknownType)
+                _semanticInfo.MarkErrorRecovery(forClause.Target);
         }
         else
         {

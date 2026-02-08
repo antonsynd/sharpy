@@ -89,6 +89,8 @@ internal partial class TypeChecker
                     SemanticBinding.SetVariableType(newSymbol, valueElemType);
                     _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
                     _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
+                    if (valueElemType is UnknownType)
+                        _semanticInfo.MarkErrorRecovery(tupleTargetId);
                 }
                 else
                 {
@@ -165,6 +167,8 @@ internal partial class TypeChecker
 
             // Cache the expression type for the identifier
             _semanticInfo.SetExpressionType(targetId, inferredType);
+            if (inferredType is UnknownType)
+                _semanticInfo.MarkErrorRecovery(targetId);
             return;
         }
 
@@ -549,6 +553,8 @@ internal partial class TypeChecker
                             }
 
                             _semanticInfo.SetExpressionType(targetElem, elemType);
+                            if (elemType is UnknownType)
+                                _semanticInfo.MarkErrorRecovery(targetElem);
                         }
                         else
                         {
@@ -560,6 +566,8 @@ internal partial class TypeChecker
             }
 
             _semanticInfo.SetExpressionType(forStmt.Target, elementType);
+            if (elementType is UnknownType)
+                _semanticInfo.MarkErrorRecovery(forStmt.Target);
         }
         // Add loop variable to scope
         // The target is typically an Identifier or TupleExpression
@@ -585,6 +593,8 @@ internal partial class TypeChecker
             }
 
             _semanticInfo.SetExpressionType(forStmt.Target, elementType);
+            if (elementType is UnknownType)
+                _semanticInfo.MarkErrorRecovery(forStmt.Target);
         }
 
         // Check loop body statements

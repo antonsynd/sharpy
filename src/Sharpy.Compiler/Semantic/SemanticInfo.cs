@@ -52,6 +52,12 @@ public class SemanticInfo
     private readonly Dictionary<FunctionCall, List<SemanticType>> _inferredTypeArguments =
         new(ReferenceEqualityComparer.Instance);
 
+    // Track expressions whose type was set to UnknownType due to a user error
+    // (i.e., a diagnostic was already emitted for the node). This distinguishes
+    // expected error-recovery Unknown types from unexpected ones (compiler bugs).
+    private readonly HashSet<Expression> _errorRecoveryNodes =
+        new(ReferenceEqualityComparer.Instance);
+
     public void SetExpressionType(Expression expr, SemanticType type)
     {
         _expressionTypes[expr] = type;
@@ -141,12 +147,44 @@ public class SemanticInfo
     }
 
     /// <summary>
+    /// Marks an expression as having UnknownType due to error recovery.
+    /// Call this when the type is set to UnknownType because a user-facing diagnostic
+    /// was already emitted. This allows the invariant checker to distinguish expected
+    /// Unknown types (error recovery) from unexpected ones (compiler bugs).
+    /// </summary>
+    public void MarkErrorRecovery(Expression expr)
+    {
+        _errorRecoveryNodes.Add(expr);
+    }
+
+    /// <summary>
+    /// Returns true if the given expression was marked as error recovery,
+    /// meaning its UnknownType is expected (a diagnostic was emitted).
+    /// </summary>
+    public bool IsErrorRecoveryType(Expression expr)
+    {
+        return _errorRecoveryNodes.Contains(expr);
+    }
+
+    /// <summary>
     /// Returns true if any expression type in the semantic info is UnknownType.
     /// Used by tests to verify the invariant: if no semantic errors, no types should be unknown.
     /// </summary>
     public bool HasUnknownExpressionTypes()
     {
         return _expressionTypes.Values.Any(t => t is UnknownType);
+    }
+
+    /// <summary>
+    /// Returns expressions that have UnknownType but are NOT in the error recovery set.
+    /// These represent potential compiler bugs where type inference failed silently.
+    /// </summary>
+    public IReadOnlyList<Expression> GetUnexpectedUnknownExpressions()
+    {
+        return _expressionTypes
+            .Where(kvp => kvp.Value is UnknownType && !_errorRecoveryNodes.Contains(kvp.Key))
+            .Select(kvp => kvp.Key)
+            .ToList();
     }
 
     /// <summary>

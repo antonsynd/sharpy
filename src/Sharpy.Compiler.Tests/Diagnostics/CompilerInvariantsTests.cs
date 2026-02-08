@@ -155,7 +155,7 @@ public class CompilerInvariantsTests
 
         var warnings = diagnostics.GetWarnings().ToList();
         Assert.Single(warnings);
-        Assert.Contains("unknown expression types remain", warnings[0].Message);
+        Assert.Contains("type inference produced UnknownType", warnings[0].Message);
     }
 
     [Fact]
@@ -230,7 +230,7 @@ public class CompilerInvariantsTests
 
         var warnings = diagnostics.GetWarnings().ToList();
         Assert.Single(warnings);
-        Assert.Contains("unknown expression types remain", warnings[0].Message);
+        Assert.Contains("type inference produced UnknownType", warnings[0].Message);
     }
 
     [Fact]
@@ -318,7 +318,7 @@ public class CompilerInvariantsTests
     }
 
     [Fact]
-    public void WarnIfUnknownTypes_EmitsSPY0904()
+    public void WarnIfUnknownTypes_EmitsSPY0907()
     {
         var diagnostics = CreateDiagnostics();
         var semanticInfo = CreateSemanticInfoWithUnknownType();
@@ -327,7 +327,7 @@ public class CompilerInvariantsTests
 
         var warnings = diagnostics.GetWarnings().ToList();
         Assert.Single(warnings);
-        Assert.Equal(DiagnosticCodes.Infrastructure.InvariantViolation, warnings[0].Code);
+        Assert.Equal(DiagnosticCodes.Infrastructure.UnexpectedUnknownType, warnings[0].Code);
     }
 
     [Fact]

@@ -929,6 +929,18 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Sets an expression's type to UnknownType and marks it as error recovery in SemanticInfo.
+    /// Use this when the Unknown type is expected because a user-facing diagnostic was emitted.
+    /// This allows the invariant checker to distinguish intentional error recovery from
+    /// silent type inference failures (compiler bugs).
+    /// </summary>
+    private void SetErrorRecoveryType(Expression expr)
+    {
+        _semanticInfo.SetExpressionType(expr, SemanticType.Unknown);
+        _semanticInfo.MarkErrorRecovery(expr);
+    }
+
+    /// <summary>
     /// Records a type-checking error. When the error relates to a relationship between
     /// two nodes (e.g., "type X is not assignable to type Y"), use the *target* node's
     /// span — that's where the user needs to fix the code.

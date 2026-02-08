@@ -216,5 +216,6 @@ public static class DiagnosticCodes
         public const string InvariantViolation = "SPY0904";
         public const string TooManyErrors = "SPY0905";
         public const string ParserLoopStall = "SPY0906";
+        public const string UnexpectedUnknownType = "SPY0907";
     }
 }

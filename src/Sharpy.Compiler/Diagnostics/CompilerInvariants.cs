@@ -296,29 +296,48 @@ public static class CompilerInvariants
     }
 
     /// <summary>
-    /// Warn if unknown expression types remain after successful type checking.
-    /// Unknown types are acceptable when there are semantic errors (error recovery),
-    /// in cross-module scenarios where imported types may not be fully resolved,
-    /// and in some class member access patterns where the type checker doesn't
-    /// record types for all intermediate expressions.
+    /// Check for unexpected unknown expression types after type checking.
+    /// Unknown types from error recovery (user errors with diagnostics already emitted) are expected.
+    /// Unknown types that appear without a corresponding diagnostic indicate a compiler bug.
     /// </summary>
     /// <remarks>
-    /// This is an aspirational invariant — it warns but doesn't indicate a hard failure.
-    /// Some intermediate expressions (member access chains, CLR interop) may legitimately
-    /// produce Unknown without errors. This warning tracks those gaps.
+    /// <para>
+    /// When <see cref="DiagnosticBag.HasErrors"/> is true, all Unknown types are considered
+    /// acceptable because error recovery naturally produces them.
+    /// </para>
+    /// <para>
+    /// When there are no errors, <see cref="SemanticInfo.GetUnexpectedUnknownExpressions"/>
+    /// is used to find Unknown types that were NOT marked as error recovery. These are
+    /// reported as errors (SPY0907) because they indicate type inference gaps.
+    /// </para>
     /// </remarks>
     internal static void WarnIfUnknownTypes(SemanticInfo semanticInfo, DiagnosticBag diagnostics)
     {
-        if (!diagnostics.HasErrors && semanticInfo.HasUnknownExpressionTypes())
+        // When there are user errors, Unknown types are expected from error recovery — skip the check
+        if (diagnostics.HasErrors)
+            return;
+
+        var unexpectedUnknowns = semanticInfo.GetUnexpectedUnknownExpressions();
+        if (unexpectedUnknowns.Count > 0)
         {
-            // Invariant (aspirational): if SemanticInfo contains UnknownType entries,
-            // DiagnosticBag should contain at least one error from the source of that Unknown.
-            // Currently, some intermediate expressions (member access chains, CLR interop)
-            // may produce Unknown without errors. This warning tracks those gaps.
-            diagnostics.AddWarning(
-                "Internal invariant violation: unknown expression types remain after type checking with no errors (possible resolution gap). This is a compiler bug — please report it.",
-                code: DiagnosticCodes.Infrastructure.InvariantViolation,
-                phase: CompilerPhase.TypeChecking);
+            foreach (var expr in unexpectedUnknowns)
+            {
+                var nodeName = expr switch
+                {
+                    Parser.Ast.Identifier id => id.Name,
+                    Parser.Ast.MemberAccess ma => $"{ma.Member}",
+                    Parser.Ast.FunctionCall fc when fc.Function is Parser.Ast.Identifier fid => $"{fid.Name}()",
+                    _ => expr.GetType().Name
+                };
+
+                diagnostics.AddWarning(
+                    $"Internal: type inference produced UnknownType for '{nodeName}' without a corresponding error diagnostic. This is a compiler bug.",
+                    expr.Span,
+                    expr.LineStart,
+                    expr.ColumnStart,
+                    code: DiagnosticCodes.Infrastructure.UnexpectedUnknownType,
+                    phase: CompilerPhase.TypeChecking);
+            }
         }
     }
 

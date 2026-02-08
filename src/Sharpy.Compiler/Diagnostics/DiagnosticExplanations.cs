@@ -838,6 +838,14 @@ public static class DiagnosticExplanations
             "Check the source code at the indicated location for syntax errors. If the input looks correct, " +
             "report this at https://github.com/antonsynd/sharpy/issues with the source file.");
 
+        Add(dict, DiagnosticCodes.Infrastructure.UnexpectedUnknownType, "Unexpected unknown type", "Infrastructure",
+            "Type inference produced an UnknownType for an expression without a corresponding error diagnostic. " +
+            "This indicates a gap in the type checker where a type could not be resolved but no user-facing error " +
+            "was emitted. This is distinct from error-recovery Unknown types, which are expected when the user " +
+            "writes invalid code.",
+            null,
+            "Report this at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
+
         return dict;
     }
 
