@@ -296,6 +296,45 @@ internal partial class TypeChecker
             var updatedSymbol = functionSymbol with { ReturnType = returnType };
             // Update the symbol in the symbol table
             _symbolTable.UpdateSymbol(updatedSymbol);
+
+            // Also update the reference in the owning TypeSymbol's lists.
+            // The symbol table and TypeSymbol.Methods/Constructors are separate storage;
+            // without this sync, FindMethodInHierarchy reads stale Unknown return types.
+            if (_currentClass != null)
+            {
+                if (functionDef.Name == DunderNames.Init)
+                {
+                    var idx = _currentClass.Constructors.IndexOf(functionSymbol);
+                    if (idx >= 0)
+                        _currentClass.Constructors[idx] = updatedSymbol;
+
+                    // __init__ is stored in both Constructors and Methods (NameResolver adds to both).
+                    // FindMethodInHierarchy searches Methods, so we must sync here too.
+                    var methodIdx = _currentClass.Methods.IndexOf(functionSymbol);
+                    if (methodIdx >= 0)
+                        _currentClass.Methods[methodIdx] = updatedSymbol;
+                }
+                else
+                {
+                    var idx = _currentClass.Methods.IndexOf(functionSymbol);
+                    if (idx >= 0)
+                        _currentClass.Methods[idx] = updatedSymbol;
+
+                    // Also update OperatorMethods/ProtocolMethods if the method appears there
+                    foreach (var kvp in _currentClass.OperatorMethods)
+                    {
+                        var opIdx = kvp.Value.IndexOf(functionSymbol);
+                        if (opIdx >= 0)
+                            kvp.Value[opIdx] = updatedSymbol;
+                    }
+                    foreach (var kvp in _currentClass.ProtocolMethods)
+                    {
+                        var protoIdx = kvp.Value.IndexOf(functionSymbol);
+                        if (protoIdx >= 0)
+                            kvp.Value[protoIdx] = updatedSymbol;
+                    }
+                }
+            }
         }
 
         // Check function body

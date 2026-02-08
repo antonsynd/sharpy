@@ -602,7 +602,8 @@ public class Compiler
         => CompilerInvariants.AssertNoUnresolvedInheritance(symbolTable, diagnostics);
 
     /// <summary>
-    /// Warn if unknown expression types remain after successful type checking.
+    /// Error if unexpected unknown expression types remain after successful type checking.
+    /// Unknown types from error recovery are expected; others indicate compiler bugs (SPY0907).
     /// </summary>
     /// <remarks>
     /// This method delegates to <see cref="CompilerInvariants.WarnIfUnknownTypes"/>.

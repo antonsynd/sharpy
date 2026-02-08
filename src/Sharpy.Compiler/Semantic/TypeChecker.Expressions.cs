@@ -1262,7 +1262,9 @@ internal partial class TypeChecker
         }
 
         // Fallback to FunctionType validation (no default parameter support)
-        var funcType = CheckExpression(call.Function);
+        // Use the already-computed calleeType to avoid re-evaluating call.Function
+        // (which causes double validation, e.g., super().__init__() being flagged as duplicate)
+        var funcType = calleeType;
 
         if (funcType is FunctionType ft)
         {

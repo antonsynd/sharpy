@@ -448,6 +448,23 @@ public class CompilerInvariantsTests
         Assert.Empty(diagnostics.GetWarnings());
     }
 
+    [Fact]
+    public void WarnIfUnknownTypes_ErrorRecoveryMarkedUnknown_NoViolation()
+    {
+        var diagnostics = CreateDiagnostics();
+        var semanticInfo = CreateSemanticInfo();
+
+        // Create an expression with UnknownType but marked as error recovery
+        var expr = new IntegerLiteral { Value = "42", LineStart = 1, ColumnStart = 1 };
+        semanticInfo.SetExpressionType(expr, SemanticType.Unknown);
+        semanticInfo.MarkErrorRecovery(expr);
+
+        CompilerInvariants.WarnIfUnknownTypes(semanticInfo, diagnostics);
+
+        // Error-recovery-marked Unknown types should not be flagged
+        Assert.Empty(diagnostics.GetWarnings());
+    }
+
     #endregion
 
     #region Helper Methods
