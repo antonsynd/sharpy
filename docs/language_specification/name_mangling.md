@@ -107,7 +107,7 @@ __private_count → __privateCount (camelCase target: parameters, locals)
 | `__init__` | Constructor | Constructor (special) |
 | `__str__` | Dunder | `ToString()` override |
 | `_internal_helper` | Private method | `_InternalHelper` |
-| `__private_field` | Private method | `__PrivateField` |
+| `__private_field` | Private field | `__PrivateField` |
 
 ## Collision Handling
 
