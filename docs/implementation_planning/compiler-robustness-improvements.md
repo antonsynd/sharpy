@@ -507,9 +507,9 @@ The `.expected.cs` snapshots detect codegen regressions that don't affect runtim
 
 **Checklist**:
 
-- [ ] List all existing `.expected.cs` files: `find src/Sharpy.Compiler.Tests/Integration/TestFixtures -name "*.expected.cs"` (or use Glob)
-- [ ] Categorize them by language feature (classes, functions, control flow, etc.)
-- [ ] Identify the 25 most important uncovered categories. Priority areas:
+- [x] List all existing `.expected.cs` files: `find src/Sharpy.Compiler.Tests/Integration/TestFixtures -name "*.expected.cs"` (or use Glob)
+- [x] Categorize them by language feature (classes, functions, control flow, etc.)
+- [x] Identify the 25 most important uncovered categories. Priority areas:
   - Generic types and functions
   - Inheritance and interface implementation
   - Operator overloading (dunder methods)
@@ -527,18 +527,18 @@ The `.expected.cs` snapshots detect codegen regressions that don't affect runtim
 
 **Checklist**:
 
-- [ ] For each identified gap, pick an existing `.spy` fixture that exercises that feature (or create a minimal new one if none exists)
-- [ ] Generate the `.expected.cs` snapshot: `UPDATE_SNAPSHOTS=true dotnet test --filter "DisplayName~<test_name>"`
-- [ ] Review each generated snapshot to verify the C# output looks correct
-- [ ] Target ~25 new snapshots (bringing total to ~40)
-- [ ] Run the full snapshot test suite to verify: `dotnet test --filter "FullyQualifiedName~FileBasedIntegration"`
+- [x] For each identified gap, pick an existing `.spy` fixture that exercises that feature (or create a minimal new one if none exists)
+- [x] Generate the `.expected.cs` snapshot: `UPDATE_SNAPSHOTS=true dotnet test --filter "DisplayName~<test_name>"`
+- [x] Review each generated snapshot to verify the C# output looks correct
+- [x] Target ~25 new snapshots (bringing total to ~40)
+- [x] Run the full snapshot test suite to verify: `dotnet test --filter "FullyQualifiedName~FileBasedIntegration"`
 
 ### 7c. Add snapshot documentation
 
 **Checklist**:
 
-- [ ] Add a brief comment at the top of each new `.expected.cs` file explaining what language feature it covers (follow the pattern of existing snapshots if they have this)
-- [ ] If existing snapshots don't have header comments, add them to the existing ones too for consistency
+- [x] Add a brief comment at the top of each new `.expected.cs` file explaining what language feature it covers (follow the pattern of existing snapshots if they have this)
+- [x] If existing snapshots don't have header comments, add them to the existing ones too for consistency
 
 ---
 
