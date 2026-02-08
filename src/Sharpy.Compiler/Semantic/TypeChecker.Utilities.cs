@@ -305,7 +305,7 @@ internal partial class TypeChecker
     /// Unlike Python (which only allows one __init__), Sharpy supports constructor overloading
     /// by mapping multiple __init__ methods to C# constructor overloads.
     /// </summary>
-    private void ValidateConstructorOverloads(TypeSymbol type)
+    private void ValidateConstructorOverloads(TypeSymbol type, IReadOnlyList<Statement>? classBody = null)
     {
         var constructors = type.Constructors;
         if (constructors.Count <= 1)
@@ -325,11 +325,16 @@ internal partial class TypeChecker
 
             if (!signatures.Add(signature))
             {
+                // Try to find the matching FunctionDef AST node for span information
+                var ctorDef = classBody?.OfType<FunctionDef>()
+                    .FirstOrDefault(f => f.Name == DunderNames.Init && f.LineStart == ctor.DeclarationLine);
+
                 AddError(
                     $"Duplicate constructor signature in '{type.Name}': __init__({signature})",
                     ctor.DeclarationLine,
                     ctor.DeclarationColumn,
-                    code: DiagnosticCodes.Semantic.DuplicateDefinition);
+                    code: DiagnosticCodes.Semantic.DuplicateDefinition,
+                    span: ctorDef?.Span);
             }
         }
     }
@@ -923,6 +928,11 @@ internal partial class TypeChecker
         return chain;
     }
 
+    /// <summary>
+    /// Records a type-checking error. When the error relates to a relationship between
+    /// two nodes (e.g., "type X is not assignable to type Y"), use the *target* node's
+    /// span — that's where the user needs to fix the code.
+    /// </summary>
     private void AddError(string message, int? line = null, int? column = null, string? code = null,
         Text.TextSpan? span = null)
     {

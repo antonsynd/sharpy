@@ -70,12 +70,12 @@ The TypeChecker has the most diagnostics (~119 AddError calls across 5 partial f
 
 **Checklist**:
 
-- [ ] Read the private `AddError()` helper in `TypeChecker.Utilities.cs` to understand how spans flow to `DiagnosticBag`
-- [ ] Search for the ~5% of `AddError(` calls across the 5 TypeChecker partial files that do NOT pass a `span:` argument
-- [ ] For each call, determine if the surrounding code has access to an AST node with span information (most do — they have the `Node` being type-checked)
-- [ ] Add `span: node.Span` (or equivalent) to each call where a node is available
-- [ ] Verify that `Node.Span` returns a valid `TextSpan` (check the `ILocatable` interface on `Node`)
-- [ ] Run the existing test suite to confirm no regressions: `dotnet test --filter "FullyQualifiedName~Semantic"`
+- [x] Read the private `AddError()` helper in `TypeChecker.Utilities.cs` to understand how spans flow to `DiagnosticBag`
+- [x] Search for the ~5% of `AddError(` calls across the 5 TypeChecker partial files that do NOT pass a `span:` argument
+- [x] For each call, determine if the surrounding code has access to an AST node with span information (most do — they have the `Node` being type-checked)
+- [x] Add `span: node.Span` (or equivalent) to each call where a node is available
+- [x] Verify that `Node.Span` returns a valid `TextSpan` (check the `ILocatable` interface on `Node`)
+- [x] Run the existing test suite to confirm no regressions: `dotnet test --filter "FullyQualifiedName~Semantic"`
 
 > **Fork-in-the-road**: Some AddError calls report errors about *relationships* between two nodes (e.g., "type X is not assignable to type Y"). Which node's span should be used? **Decision**: Use the *target* node's span (the node receiving the assignment), since that's where the user needs to fix the code. Document this convention in a code comment near the AddError helper.
 
@@ -87,10 +87,10 @@ The validation pipeline (~37 AddError/AddWarning calls across ~13 validator file
 
 **Checklist**:
 
-- [ ] Search for all `AddError(` and `AddWarning(` calls in `src/Sharpy.Compiler/Semantic/Validation/` that do NOT pass a `span:` argument
-- [ ] For each call, add `span: node.Span` using the AST node available in context
-- [ ] Pay special attention to `ControlFlowValidator` — it works with `BasicBlock` which may not directly expose spans; you may need to use the block's first statement's span
-- [ ] Run validator tests: `dotnet test --filter "FullyQualifiedName~Validation"`
+- [x] Search for all `AddError(` and `AddWarning(` calls in `src/Sharpy.Compiler/Semantic/Validation/` that do NOT pass a `span:` argument
+- [x] For each call, add `span: node.Span` using the AST node available in context
+- [x] Pay special attention to `ControlFlowValidator` — it works with `BasicBlock` which may not directly expose spans; you may need to use the block's first statement's span
+- [x] Run validator tests: `dotnet test --filter "FullyQualifiedName~Validation"`
 
 ### 1c. Add TextSpan to Parser diagnostics
 
