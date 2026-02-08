@@ -20,14 +20,14 @@ class Program
     {
         var rootCommand = new RootCommand("sharpyc - Sharpy Compiler");
 
-        // === Global Options ===
-        var logLevelOption = new Option<CompilerLogLevel?>("--log-level") { Description = "Set compiler log level (None, Error, Warning, Info, Debug)" };
-        var logFileOption = new Option<FileInfo?>("--log-file") { Description = "Write compiler logs to the specified file" };
-        var metricsFormatOption = new Option<string?>("--metrics-format") { Description = "Output compilation metrics (text or json)" };
-        var metricsOutputOption = new Option<FileInfo?>("--metrics-output") { Description = "Write metrics to the specified file" };
-        var warnAsErrorOption = new Option<bool>("--warn-as-error") { Description = "Treat all warnings as errors" };
-        var nowarnOption = new Option<string?>("--nowarn") { Description = "Suppress warnings by code (comma-separated, e.g., SPY0451,SPY0452)" };
-        var maxErrorsOption = new Option<int?>("--max-errors") { Description = "Maximum number of errors before stopping (default: 25 for parser, 100 for semantic)" };
+        // === Global Options (Recursive = true so they propagate to all subcommands) ===
+        var logLevelOption = new Option<CompilerLogLevel?>("--log-level") { Description = "Set compiler log level (None, Error, Warning, Info, Debug)", Recursive = true };
+        var logFileOption = new Option<FileInfo?>("--log-file") { Description = "Write compiler logs to the specified file", Recursive = true };
+        var metricsFormatOption = new Option<string?>("--metrics-format") { Description = "Output compilation metrics (text or json)", Recursive = true };
+        var metricsOutputOption = new Option<FileInfo?>("--metrics-output") { Description = "Write metrics to the specified file", Recursive = true };
+        var warnAsErrorOption = new Option<bool>("--warn-as-error") { Description = "Treat all warnings as errors", Recursive = true };
+        var nowarnOption = new Option<string?>("--nowarn") { Description = "Suppress warnings by code (comma-separated, e.g., SPY0451,SPY0452)", Recursive = true };
+        var maxErrorsOption = new Option<int?>("--max-errors") { Description = "Maximum number of errors before stopping (default: 25 for parser, 100 for semantic)", Recursive = true };
 
         rootCommand.Options.Add(logLevelOption);
         rootCommand.Options.Add(logFileOption);
@@ -304,6 +304,107 @@ class Program
         {
             return new ConsoleCompilerLogger(logLevel);
         }
+    }
+
+    /// <summary>
+    /// Writes a compilation timing summary to stderr when the logger is at Info level or higher.
+    /// At Debug level, also includes per-validator timing breakdown.
+    /// This is separate from --metrics-format, which writes to stdout or a file.
+    /// </summary>
+    static void OutputVerboseTimingSummary(CompilationMetrics? metrics, ICompilerLogger logger)
+    {
+        if (metrics == null || !logger.IsEnabled(CompilerLogLevel.Info))
+            return;
+
+        Console.Error.WriteLine();
+        Console.Error.WriteLine("--- Compilation Timing ---");
+
+        foreach (var phase in metrics.Phases)
+        {
+            Console.Error.WriteLine($"  {phase.Name,-30} {phase.Duration.TotalMilliseconds,8:F2} ms");
+        }
+
+        Console.Error.WriteLine($"  {"TOTAL",-30} {metrics.TotalDuration.TotalMilliseconds,8:F2} ms");
+
+        // Artifact counts
+        if (metrics.TokenCount > 0 || metrics.AstNodeCount > 0 || metrics.SymbolCount > 0)
+        {
+            Console.Error.WriteLine();
+            if (metrics.TokenCount > 0)
+                Console.Error.WriteLine($"  Tokens: {metrics.TokenCount:N0}");
+            if (metrics.AstNodeCount > 0)
+                Console.Error.WriteLine($"  AST Nodes: {metrics.AstNodeCount:N0}");
+            if (metrics.SymbolCount > 0)
+                Console.Error.WriteLine($"  Symbols: {metrics.SymbolCount:N0}");
+        }
+
+        // Per-validator timing at Debug level
+        if (logger.IsEnabled(CompilerLogLevel.Debug) && metrics.ValidatorTimes.Count > 0)
+        {
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("  Validator Breakdown:");
+
+            foreach (var (validator, duration) in metrics.ValidatorTimes.OrderByDescending(kvp => kvp.Value))
+            {
+                Console.Error.WriteLine($"    {validator,-38} {duration.TotalMilliseconds,8:F2} ms");
+            }
+        }
+
+        Console.Error.WriteLine();
+    }
+
+    /// <summary>
+    /// Writes a project compilation timing summary to stderr when the logger is at Info level or higher.
+    /// </summary>
+    static void OutputVerboseTimingSummary(ProjectCompilationMetrics? metrics, ICompilerLogger logger)
+    {
+        if (metrics == null || !logger.IsEnabled(CompilerLogLevel.Info))
+            return;
+
+        Console.Error.WriteLine();
+        Console.Error.WriteLine("--- Project Compilation Timing ---");
+        Console.Error.WriteLine($"  Files compiled: {metrics.TotalFiles}");
+
+        if (metrics.SkippedFileCount > 0)
+        {
+            Console.Error.WriteLine($"  Files skipped (incremental): {metrics.SkippedFileCount}");
+        }
+
+        var aggregates = metrics.AggregatePhaseMetrics;
+        foreach (var (phase, data) in aggregates.OrderBy(kvp => kvp.Key))
+        {
+            Console.Error.WriteLine($"  {phase,-30} {data.Duration.TotalMilliseconds,8:F2} ms");
+        }
+
+        Console.Error.WriteLine($"  {"TOTAL",-30} {metrics.TotalDuration.TotalMilliseconds,8:F2} ms");
+
+        // Per-validator timing at Debug level (aggregate across all files)
+        if (logger.IsEnabled(CompilerLogLevel.Debug) && metrics.FileMetrics.Count > 0)
+        {
+            var aggregatedValidatorTimes = new Dictionary<string, TimeSpan>();
+            foreach (var fileMetric in metrics.FileMetrics)
+            {
+                foreach (var (validator, duration) in fileMetric.ValidatorTimes)
+                {
+                    if (!aggregatedValidatorTimes.ContainsKey(validator))
+                        aggregatedValidatorTimes[validator] = TimeSpan.Zero;
+                    aggregatedValidatorTimes[validator] += duration;
+                }
+            }
+
+            if (aggregatedValidatorTimes.Count > 0)
+            {
+                Console.Error.WriteLine();
+                Console.Error.WriteLine("  Validator Breakdown (aggregate):");
+
+                foreach (var (validator, duration) in aggregatedValidatorTimes.OrderByDescending(kvp => kvp.Value))
+                {
+                    Console.Error.WriteLine($"    {validator,-38} {duration.TotalMilliseconds,8:F2} ms");
+                }
+            }
+        }
+
+        Console.Error.WriteLine();
     }
 
     static void OutputMetrics(CompilationMetrics? metrics, string? metricsFormat, FileInfo? metricsOutput)
@@ -740,6 +841,9 @@ class Program
                 outputFile = new FileInfo(outputPath);
             }
 
+            // Output verbose timing summary to stderr when --log-level is Info or higher
+            OutputVerboseTimingSummary(result.Metrics, logger);
+
             // Write C# code to output file
             File.WriteAllText(outputFile.FullName, csharpCode);
             Console.WriteLine($"Generated C# code written to: {outputFile.FullName}");
@@ -863,6 +967,9 @@ class Program
             // Success
             Console.WriteLine("Build succeeded.");
             Console.WriteLine($"Output: {result.OutputAssemblyPath}");
+
+            // Output verbose timing summary to stderr when --log-level is Info or higher
+            OutputVerboseTimingSummary(result.Metrics, logger);
 
             // Output metrics if requested
             OutputProjectMetrics(result.Metrics, metricsFormat, metricsOutput);
@@ -1357,6 +1464,9 @@ class Program
 
             // Success
             Console.WriteLine($"Successfully compiled to: {assemblyResult.OutputAssemblyPath}");
+
+            // Output verbose timing summary to stderr when --log-level is Info or higher
+            OutputVerboseTimingSummary(result.Metrics, logger);
 
             // Output metrics if requested (showing assembly compilation metrics)
             OutputMetrics(assemblyResult.Metrics, metricsFormat, metricsOutput);
