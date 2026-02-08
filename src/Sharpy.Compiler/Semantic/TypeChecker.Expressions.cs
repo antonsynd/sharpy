@@ -129,8 +129,10 @@ internal partial class TypeChecker
 
             // Check if this identifier is a root cause (e.g., from a failed import).
             // If so, suppress the error - the root cause was already reported.
+            // Mark as error recovery so the Unknown type doesn't trigger SPY0907.
             if (_diagnostics.IsRootCause(id.Name))
             {
+                MarkExpressionAsErrorRecovery(id);
                 return SemanticType.Unknown;
             }
 
