@@ -14,12 +14,15 @@ internal class TypeResolver
     private readonly SemanticInfo _semanticInfo;
     private readonly ICompilerLogger _logger;
     private readonly DiagnosticBag _diagnostics = new();
+    private readonly CancellationToken _cancellationToken;
 
-    public TypeResolver(SymbolTable symbolTable, SemanticInfo semanticInfo, ICompilerLogger? logger = null)
+    public TypeResolver(SymbolTable symbolTable, SemanticInfo semanticInfo, ICompilerLogger? logger = null,
+        CancellationToken cancellationToken = default)
     {
         _symbolTable = symbolTable;
         _semanticInfo = semanticInfo;
         _logger = logger ?? NullLogger.Instance;
+        _cancellationToken = cancellationToken;
     }
 
     public DiagnosticBag Diagnostics => _diagnostics;
@@ -33,6 +36,8 @@ internal class TypeResolver
         var cached = _semanticInfo.GetTypeAnnotation(annotation);
         if (cached != null)
             return cached;
+
+        _cancellationToken.ThrowIfCancellationRequested();
 
         SemanticType result;
 

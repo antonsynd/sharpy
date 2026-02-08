@@ -150,7 +150,7 @@ internal class ProjectCompiler
         try
         {
             // Phase 1: Parse all source files
-            if (!ParseAllFiles(config))
+            if (!ParseAllFiles(config, cancellationToken))
             {
                 return CreateFailureResult();
             }
@@ -197,7 +197,7 @@ internal class ProjectCompiler
             // Returns false only for circular imports (which break the dependency graph).
             // Non-circular import errors are merged into diagnostics but compilation
             // continues to type checking so users see the full picture.
-            if (!ResolveImports(config))
+            if (!ResolveImports(config, cancellationToken))
             {
                 return CreateFailureResult();
             }
@@ -277,7 +277,7 @@ internal class ProjectCompiler
     /// <summary>
     /// Phase 1: Parse all source files into AST modules
     /// </summary>
-    private bool ParseAllFiles(ProjectConfig config)
+    private bool ParseAllFiles(ProjectConfig config, CancellationToken cancellationToken = default)
     {
         var filesToParse = config.SourceFiles.Count - _filesToSkip.Count;
         _logger.LogInfo($"Phase 1: Parsing {filesToParse} source files ({_filesToSkip.Count} skipped)");
@@ -321,9 +321,11 @@ internal class ProjectCompiler
                 var modulePath = CompilationUnitFactory.ComputeModulePath(sourceFile, config.ProjectDirectory);
                 var compilationUnit = _projectModel!.CreateUnit(sourceFile, modulePath, source);
 
+                cancellationToken.ThrowIfCancellationRequested();
+
                 fileMetrics.StartPhase("Lexical Analysis");
                 var sourceText = new Text.SourceText(source, sourceFile);
-                var lexer = new Lexer.Lexer(sourceText, _logger);
+                var lexer = new Lexer.Lexer(sourceText, _logger, cancellationToken: cancellationToken);
                 if (_maxErrors > 0)
                 {
                     lexer.MaxErrors = _maxErrors;
@@ -351,7 +353,7 @@ internal class ProjectCompiler
 
                 fileMetrics.StartPhase("Syntax Analysis");
                 var parserMaxErrors = _maxErrors > 0 ? _maxErrors : 25;
-                var parser = new Parser.Parser(tokens, _logger, parserMaxErrors);
+                var parser = new Parser.Parser(tokens, _logger, parserMaxErrors, cancellationToken);
                 var module = parser.ParseModule();
                 fileMetrics.EndPhase();
 
@@ -1136,13 +1138,17 @@ internal class ProjectCompiler
     /// <summary>
     /// Phase 4: Resolve imports and build symbol table with imported symbols
     /// </summary>
-    private bool ResolveImports(ProjectConfig config)
+    private bool ResolveImports(ProjectConfig config, CancellationToken cancellationToken = default)
     {
         _logger.LogInfo("Phase 3: Resolving imports and building symbol table");
+
+        ImportResolver.SetCancellationToken(cancellationToken);
 
         // Resolve imports for each module
         foreach (var (_, unit) in _projectModel!.Units)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (unit.Phase == CompilationPhase.Failed || unit.Ast == null)
                 continue;
 
@@ -1358,7 +1364,7 @@ internal class ProjectCompiler
 
             // Type resolution
             fileMetrics.StartPhase("Type Resolution");
-            var typeResolver = new TypeResolver(SymbolTable, SemanticInfo, _logger);
+            var typeResolver = new TypeResolver(SymbolTable, SemanticInfo, _logger, cancellationToken);
             fileMetrics.EndPhase();
 
             // Type checking

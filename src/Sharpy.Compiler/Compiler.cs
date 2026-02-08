@@ -131,7 +131,7 @@ public class Compiler
             metrics.StartPhase("Lexical Analysis");
             LogPhaseStart("Lexical Analysis", filePath);
             sourceText = new SourceText(sourceCode, filePath);
-            var lexer = new Lexer.Lexer(sourceText, _logger);
+            var lexer = new Lexer.Lexer(sourceText, _logger, cancellationToken: cancellationToken);
             if (_options.MaxErrors > 0)
             {
                 lexer.MaxErrors = _options.MaxErrors;
@@ -282,7 +282,7 @@ public class Compiler
             var currentDir = Path.GetDirectoryName(Path.GetFullPath(filePath));
             _logger.LogDebug($"Current directory for import resolution: {currentDir}");
 
-            importResolver.ResolveAllImports(module, symbolTable, currentDir);
+            importResolver.ResolveAllImports(module, symbolTable, currentDir, cancellationToken);
 
             // Resolve inheritance for imported types (transitive base types + imported type inheritance)
             var inheritanceResolver = new InheritanceResolver(symbolTable, _logger, semanticBinding);
@@ -313,7 +313,7 @@ public class Compiler
             // Pass 2: Type resolution and type checking
             metrics.StartPhase("Type Resolution");
             LogPhaseStart("Type Resolution", filePath);
-            var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger);
+            var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger, cancellationToken);
             LogPhaseEnd(filePath);
             metrics.EndPhase();
 

@@ -38,6 +38,7 @@ public class Lexer
     private int _bracketDepth = 0;  // Track if we're inside (), [], or {}
     private readonly ICompilerLogger _logger;
     private readonly DiagnosticBag _diagnostics = new();
+    private readonly CancellationToken _cancellationToken;
 
     /// <summary>
     /// Diagnostics collected during lexing. Check HasErrors after TokenizeAll().
@@ -131,7 +132,8 @@ public class Lexer
         { "is", TokenType.Is },
     };
 
-    public Lexer(string source, ICompilerLogger? logger = null, int startLine = 1, int startColumn = 1)
+    public Lexer(string source, ICompilerLogger? logger = null, int startLine = 1, int startColumn = 1,
+        CancellationToken cancellationToken = default)
     {
         _source = source;
         _sourceText = null;
@@ -139,6 +141,7 @@ public class Lexer
         _column = startColumn;
         _indentStack.Push(0);  // Base indentation level
         _logger = logger ?? NullLogger.Instance;
+        _cancellationToken = cancellationToken;
         _logger.LogInfo($"Lexer initialized, source length: {source.Length}");
 
         // If we're starting at a non-default position, we're lexing a fragment (like an f-string expression)
@@ -155,12 +158,14 @@ public class Lexer
     /// </summary>
     /// <param name="sourceText">The source text to lex.</param>
     /// <param name="logger">Optional compiler logger.</param>
-    public Lexer(SourceText sourceText, ICompilerLogger? logger = null)
+    public Lexer(SourceText sourceText, ICompilerLogger? logger = null,
+        CancellationToken cancellationToken = default)
     {
         _source = sourceText.ToString();
         _sourceText = sourceText;
         _indentStack.Push(0);
         _logger = logger ?? NullLogger.Instance;
+        _cancellationToken = cancellationToken;
         _logger.LogInfo($"Lexer initialized from SourceText, source length: {_source.Length}");
     }
 
@@ -182,6 +187,8 @@ public class Lexer
 
         while (true)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
+
             Token token;
             try
             {

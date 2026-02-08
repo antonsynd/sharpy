@@ -72,14 +72,30 @@ internal class ImportResolver
         _moduleResolver.SetCurrentModulePath(modulePath);
     }
 
+    private CancellationToken _cancellationToken;
+
+    /// <summary>
+    /// Sets the cancellation token for import resolution.
+    /// Used by ProjectCompiler which calls ResolveImport/ResolveFromImport directly.
+    /// </summary>
+    public void SetCancellationToken(CancellationToken cancellationToken)
+    {
+        _cancellationToken = cancellationToken;
+    }
+
     /// <summary>
     /// Resolve all imports in a module and register the imported symbols in the symbol table.
     /// This is the main entry point for import resolution during compilation.
     /// </summary>
-    public void ResolveAllImports(Module module, SymbolTable symbolTable, string? currentDir)
+    public void ResolveAllImports(Module module, SymbolTable symbolTable, string? currentDir,
+        CancellationToken cancellationToken = default)
     {
+        _cancellationToken = cancellationToken;
+
         foreach (var statement in module.Body)
         {
+            _cancellationToken.ThrowIfCancellationRequested();
+
             if (statement is ImportStatement import)
             {
                 var modules = ResolveImport(import, currentDir);
@@ -422,7 +438,7 @@ internal class ImportResolver
         try
         {
             var moduleInfo = _moduleLoader.LoadModule(modulePath, lineStart, columnStart,
-                (module, loadedModuleInfo, searchPath) =>
+                resolveModuleImports: (module, loadedModuleInfo, searchPath) =>
                 {
                     // Extract re-exported symbols from from-imports BEFORE resolving imports.
                     // This ensures ExportedSymbols is populated for transitive resolution.
@@ -436,7 +452,8 @@ internal class ImportResolver
 
                     // Resolve imports to detect transitive circular dependencies
                     ResolveModuleImports(module, searchPath);
-                });
+                },
+                cancellationToken: _cancellationToken);
 
             // Merge any diagnostics from the module loader
             _diagnostics.Merge(_moduleLoader.Diagnostics);

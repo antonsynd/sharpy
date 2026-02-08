@@ -15,6 +15,7 @@ internal class ModuleLoader
     private readonly HashSet<string> _loadedModules = new();
     private readonly Stack<ImportChainEntry> _importChain = new();
     private readonly Dictionary<string, ModuleInfo> _moduleCache = new();
+    private CancellationToken _cancellationToken;
 
     /// <summary>
     /// All loaded .spy modules (excludes .NET modules).
@@ -47,8 +48,10 @@ internal class ModuleLoader
     /// Parameters: (Module, ModuleInfo, searchPath). The ModuleInfo is provided so callers
     /// can add re-exported symbols before the module is cached.</param>
     public ModuleInfo? LoadModule(string modulePath, int? lineStart, int? columnStart,
-        Action<Module, ModuleInfo, string?>? resolveModuleImports = null)
+        Action<Module, ModuleInfo, string?>? resolveModuleImports = null,
+        CancellationToken cancellationToken = default)
     {
+        _cancellationToken = cancellationToken;
         // Check cache first
         if (_moduleCache.TryGetValue(modulePath, out var cached))
         {
@@ -98,11 +101,13 @@ internal class ModuleLoader
 
             var source = File.ReadAllText(modulePath);
 
+            _cancellationToken.ThrowIfCancellationRequested();
+
             // Parse the module
             var sourceText = new Text.SourceText(source, modulePath);
-            var lexer = new Lexer.Lexer(sourceText, _logger);
+            var lexer = new Lexer.Lexer(sourceText, _logger, cancellationToken: _cancellationToken);
             var tokens = lexer.TokenizeAll();
-            var parser = new Parser.Parser(tokens, _logger);
+            var parser = new Parser.Parser(tokens, _logger, cancellationToken: _cancellationToken);
             var module = parser.ParseModule();
 
             // Create module info
