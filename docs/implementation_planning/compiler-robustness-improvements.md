@@ -16,7 +16,7 @@ An architectural assessment of the Sharpy compiler identified 8 areas where targ
 | Area | Status |
 |------|--------|
 | DiagnosticRenderer | Fully implemented (ANSI colors, source context, span underlines) |
-| TextSpan on diagnostics | Only ~37% of AddError calls provide spans; parser uses none |
+| TextSpan on diagnostics | ~78% of AddError calls provide spans; parser and ImportResolver use none |
 | CancellationToken | 6 files have it; Lexer, TypeResolver, ImportResolver, ModuleLoader, RoslynEmitter do not |
 | Fuzz testing | Custom fuzzer (~1,500 iterations), no property-based framework |
 | CompilerInvariants | Phase boundary checks exist (always-on, emit SPY0904 warnings) |
@@ -55,11 +55,11 @@ error[SPY0201]: Type 'str' is not assignable to 'int'
    |
 ```
 
-But this only works when diagnostics carry `TextSpan` data. Currently, only ~37% of `AddError` calls provide spans. The remaining ~63% fall back to a single caret (`^`) at a line/column position, which is less helpful. The infrastructure is ready — we just need to populate the spans.
+But this only works when diagnostics carry `TextSpan` data. Currently, ~78% of `AddError` calls provide spans — the TypeChecker, NameResolver, and validators have high span coverage. The remaining ~22% that lack spans are concentrated in the **Parser** (which uses `ReportError()` without spans) and **ImportResolver** (whose `AddError` helper doesn't accept a span parameter). Filling these gaps would make rich error rendering universal.
 
 ### 1a. Audit all AddError/AddWarning call sites in TypeChecker
 
-The TypeChecker has the most diagnostics (~150 AddError calls across 5 partial files). Most use a private `AddError()` helper that accepts `TextSpan? span = null` but callers typically omit it.
+The TypeChecker has the most diagnostics (~119 AddError calls across 5 partial files). Most use a private `AddError()` helper that accepts `TextSpan? span = null`, and callers overwhelmingly provide spans already (~95% of calls pass `span:`). The remaining few calls that omit spans should be audited and fixed.
 
 **Files to modify**:
 - `src/Sharpy.Compiler/Semantic/TypeChecker.cs`
@@ -71,7 +71,7 @@ The TypeChecker has the most diagnostics (~150 AddError calls across 5 partial f
 **Checklist**:
 
 - [ ] Read the private `AddError()` helper in `TypeChecker.Utilities.cs` to understand how spans flow to `DiagnosticBag`
-- [ ] Search for all `AddError(` calls across the 5 TypeChecker partial files that do NOT pass a `span:` argument
+- [ ] Search for the ~5% of `AddError(` calls across the 5 TypeChecker partial files that do NOT pass a `span:` argument
 - [ ] For each call, determine if the surrounding code has access to an AST node with span information (most do — they have the `Node` being type-checked)
 - [ ] Add `span: node.Span` (or equivalent) to each call where a node is available
 - [ ] Verify that `Node.Span` returns a valid `TextSpan` (check the `ILocatable` interface on `Node`)
@@ -81,7 +81,7 @@ The TypeChecker has the most diagnostics (~150 AddError calls across 5 partial f
 
 ### 1b. Audit all AddError/AddWarning call sites in Validators
 
-The validation pipeline (~31 AddError calls across ~10 validators) also mostly omits spans.
+The validation pipeline (~37 AddError/AddWarning calls across ~13 validator files) has good span coverage already, but should be audited to ensure all calls provide spans.
 
 **Files to modify**: All files in `src/Sharpy.Compiler/Semantic/Validation/`
 
@@ -94,14 +94,21 @@ The validation pipeline (~31 AddError calls across ~10 validators) also mostly o
 
 ### 1c. Add TextSpan to Parser diagnostics
 
-The Parser currently uses only line/column for all its diagnostic calls. Since AST nodes have span information set during parsing, the Parser should use it.
+The Parser currently uses only line/column for all its diagnostic calls. It reports errors through a `ReportError(message, line, column, code)` method that calls `_diagnostics.AddError()` without a span, plus ~24 direct `Error()` calls across the 5 partial files. Since tokens have position information during parsing, the Parser should propagate spans.
 
-**File to modify**: `src/Sharpy.Compiler/Parser/Parser.cs` (and partial files)
+**Files to modify**:
+- `src/Sharpy.Compiler/Parser/Parser.cs` (main file — contains `ReportError()` helper)
+- `src/Sharpy.Compiler/Parser/Parser.Definitions.cs`
+- `src/Sharpy.Compiler/Parser/Parser.Expressions.cs`
+- `src/Sharpy.Compiler/Parser/Parser.Primaries.cs`
+- `src/Sharpy.Compiler/Parser/Parser.Statements.cs`
+- `src/Sharpy.Compiler/Parser/Parser.Types.cs`
 
 **Checklist**:
 
-- [ ] Search for all `AddError(` and `AddWarning(` calls in `src/Sharpy.Compiler/Parser/`
-- [ ] Determine if the parser has access to token positions that can form a `TextSpan` at each call site
+- [ ] Modify `ReportError()` in `Parser.cs` to accept an optional `TextSpan?` parameter and pass it through to `_diagnostics.AddError()`
+- [ ] Search for all `ReportError(` and `Error(` calls across all 6 Parser partial files
+- [ ] Determine if the parser has access to token positions that can form a `TextSpan` at each call site (tokens have line/column but may need conversion to spans)
 - [ ] For error recovery sites where a span is naturally available (e.g., unexpected token), use the token's span
 - [ ] For sites where only line/column are available, leave as-is (this is acceptable for parser errors where the exact span is ambiguous)
 - [ ] Run parser tests: `dotnet test --filter "FullyQualifiedName~Parser"`
@@ -114,9 +121,10 @@ The Parser currently uses only line/column for all its diagnostic calls. Since A
 
 **Checklist**:
 
-- [ ] Search for all `AddError(` calls in NameResolver that do NOT pass spans
+- [ ] Search for all `AddError(` calls in NameResolver that do NOT pass spans (~2 of 20 calls lack spans; the helper already accepts `TextSpan? span = null`)
 - [ ] Add spans using the AST nodes being resolved (declarations, identifiers)
-- [ ] Search for all `AddError(` calls in ImportResolver that do NOT pass spans
+- [ ] **ImportResolver prerequisite**: The ImportResolver's private `AddError` helper has signature `AddError(string message, int? line, int? column, string? code = null)` — it does **not** accept a `TextSpan` parameter. First modify this helper to accept `Text.TextSpan? span = null` and pass it through to `_diagnostics.AddError()`
+- [ ] Search for all `AddError(` calls in ImportResolver (4 total) and add spans
 - [ ] For import errors, use the ImportStatement/FromImportStatement node's span
 - [ ] Run tests: `dotnet test --filter "FullyQualifiedName~NameResol" && dotnet test --filter "FullyQualifiedName~Import"`
 
@@ -146,15 +154,13 @@ The existing fuzzer (`FuzzTests.cs`, `SharpyFuzzer.cs`) is well-built but focuse
 **Checklist**:
 
 - [ ] Create a new test class `LexerPropertyTests`
-- [ ] **Property: Tokenize-then-concatenate preserves source length** — For any valid source string, the sum of all token lengths (including whitespace tokens) should equal the source length. This catches off-by-one bugs in the lexer.
+- [ ] **Property: Token positions are monotonically increasing and non-overlapping** — This catches off-by-one bugs in the lexer.
   - Generate random valid-looking source strings using `SharpyFuzzer`
   - Tokenize with the Lexer
-  - Sum all token text lengths
-  - Assert sum equals original source length
-- [ ] **Property: No token overlaps** — Token positions should be monotonically increasing and non-overlapping
-  - Tokenize any source string
   - Verify each token's start position >= previous token's end position
-- [ ] **Property: Every character is covered** — The union of all token spans should cover the entire source (no gaps)
+  - Note: The Lexer uses `SkipWhitespace()` and synthetic tokens (Indent/Dedent with empty text, EOF), so tokens do NOT cover the entire source — gaps between tokens represent consumed whitespace and synthetic boundaries. Do not assert total token length equals source length.
+- [ ] **Property: Non-synthetic token text matches source** — For tokens that have non-empty text (excluding Indent, Dedent, EOF, Newline), the token's text should appear at the corresponding source position
+- [ ] **Property: No token text extends beyond source bounds** — Every token's reported position + length should be within the source string boundaries
 - [ ] Use at least 5 seeds with 100 iterations each
 - [ ] Run: `dotnet test --filter "FullyQualifiedName~LexerProperty"`
 
@@ -211,7 +217,7 @@ The existing fuzzer (`FuzzTests.cs`, `SharpyFuzzer.cs`) is well-built but focuse
 
 ### Rationale
 
-Currently, CancellationToken is accepted by `Compiler.cs`, `Parser`, `NameResolver`, `TypeChecker`, and `ValidationPipeline` — but is missing from the Lexer, TypeResolver, ImportResolver, ModuleLoader, and all 8 RoslynEmitter partial files. An LSP server needs to cancel compilations when the user types (every keystroke can trigger a new compilation). Without cancellation, stale compilations waste CPU and delay results.
+Currently, CancellationToken is accepted by 6 files: `Compiler.cs`, `ProjectCompiler.cs`, `Parser`, `NameResolver`, `TypeChecker`, and `ValidationPipeline` — but is missing from the Lexer, TypeResolver, ImportResolver, ModuleLoader, and all 8 RoslynEmitter partial files. An LSP server needs to cancel compilations when the user types (every keystroke can trigger a new compilation). Without cancellation, stale compilations waste CPU and delay results.
 
 The pattern is mechanical: accept `CancellationToken` as a parameter, call `cancellationToken.ThrowIfCancellationRequested()` at loop boundaries (not inside tight inner loops — just at statement/declaration granularity).
 
@@ -309,7 +315,7 @@ The building blocks already exist: `Compiler.cs` handles compilation, `CompilerS
 **Checklist**:
 
 - [ ] Create `public sealed class CompilerApi`
-- [ ] Add a `CompileResult Compile(string source, CompilerOptions? options = null, CancellationToken cancellationToken = default)` method that:
+- [ ] Add a `CompileResult Compile(string source, CompilerOptions? options = null, string? filePath = null, CancellationToken cancellationToken = default)` method that:
   - Creates a `SourceText` from the source string
   - Runs the full pipeline (Lexer → Parser → Semantic → CodeGen)
   - Returns a `CompileResult` (see below)
@@ -324,11 +330,7 @@ The building blocks already exist: `Compiler.cs` handles compilation, `CompilerS
 
 **Checklist**:
 
-- [ ] Create `public record CompilerOptions`:
-  - `bool WarningsAsErrors` (default: false)
-  - `HashSet<string>? SuppressedWarnings` (default: null)
-  - `string? RootNamespace` (default: null)
-  - `string? FilePath` (default: null, used for diagnostic locations)
+- [ ] Reuse the existing `CompilerOptions` class (defined in `Compiler.cs`, includes `WarningsAsErrors`, `SuppressedWarnings`, `MaxErrors`, `ModulePaths`, `References`, `Incremental`, `OutputType`). Do **not** create a new options record — `CompilerOptions` already exists and is the canonical configuration type. If additional API-specific options are needed (e.g., `RootNamespace`, `FilePath`), either extend the existing class or accept them as method parameters.
 - [ ] Create `public record CompileResult`:
   - `bool Success` (no errors)
   - `IReadOnlyList<CompilerDiagnostic> Diagnostics`
@@ -421,7 +423,7 @@ The building blocks already exist: `Compiler.cs` handles compilation, `CompilerS
 
 - [ ] Read the existing `UnknownTypes` invariant check in `CompilerInvariants`
 - [ ] Modify it to only flag `UnknownType` occurrences that are NOT in the error recovery set
-- [ ] When a non-error-recovery Unknown is found, emit a diagnostic with severity Error (not Warning) and code SPY0905 (or next available):
+- [ ] When a non-error-recovery Unknown is found, emit a diagnostic with severity Error (not Warning) and the next available code (SPY0905 is already `TooManyErrors`, SPY0906 is `ParserLoopStall`, so use **SPY0907** or add a new named constant like `UnexpectedUnknownType`):
   - Message: `"Internal: type inference produced UnknownType for '{nodeName}' without a corresponding error diagnostic. This is a compiler bug."`
   - Include the node's span for source context
 - [ ] Enable the `UnknownTypes` flag by default (currently disabled because it was too noisy)
@@ -565,24 +567,25 @@ The `.expected.cs` snapshots detect codegen regressions that don't affect runtim
 
 - [ ] For each pipeline stage that lacks entry/exit logging, add:
   ```csharp
-  _logger?.LogDebug("Starting {phase}...", phaseName);
+  _logger.LogDebug($"Starting {phaseName}...");
   // ... phase work ...
-  _logger?.LogDebug("Completed {phase} ({count} items processed)", phaseName, count);
+  _logger.LogDebug($"Completed {phaseName} ({count} items processed)");
   ```
-- [ ] Use the null-conditional pattern (`_logger?.`) consistently — logging should never throw if no logger is configured
+- [ ] The codebase uses the **Null Object pattern** (`NullLogger.Instance`), not nullable loggers — `_logger` is never null, so do NOT use `_logger?.`. All constructors default to `logger ?? NullLogger.Instance`. Follow this existing convention.
 - [ ] Verify that `CompilationMetrics` is used for timing in all stages (it should already be — just verify)
 - [ ] Run: `dotnet test`
 
-### 8c. Add verbose mode to CLI
+### 8c. Enhance verbose mode in CLI
 
 **File to modify**: `src/Sharpy.Cli/Program.cs`
 
 **Checklist**:
 
-- [ ] Check if a `--verbose` or `-v` flag already exists in the CLI
-- [ ] If not, add one that enables detailed logging output (writes `CompilationMetrics` summary and per-phase timing to stderr)
+- [ ] The CLI already has a `--log-level` option (accepts `CompilerLogLevel` enum: None, Error, Warning, Info, Debug, Trace). This should be the basis for verbose output — do NOT add a separate `--verbose` flag.
+- [ ] When `--log-level` is set to `Info` or higher, write a `CompilationMetrics` summary and per-phase timing to stderr after compilation completes
+- [ ] When `--log-level` is set to `Debug` or higher, include per-validator timing from `ValidatorTimes`
 - [ ] Ensure verbose output goes to stderr (not stdout) so it doesn't interfere with program output
-- [ ] Test: `dotnet run --project src/Sharpy.Cli -- run --verbose snippets/hello.spy`
+- [ ] Test: `dotnet run --project src/Sharpy.Cli -- run --log-level Info snippets/hello.spy`
 
 ---
 
@@ -592,7 +595,7 @@ Phases are listed in priority order. Each phase is independent — they can be i
 
 | Priority | Phase | Impact | Effort | LSP Prep |
 |----------|-------|--------|--------|----------|
-| 1 | Phase 1: TextSpan Coverage | High | Medium | Yes |
+| 1 | Phase 1: TextSpan Coverage | High | Low-Med | Yes |
 | 2 | Phase 2: Fuzz Testing | High | Medium | No |
 | 3 | Phase 3: CancellationToken | High | Low | Yes |
 | 4 | Phase 4: Compiler API | Med-High | Medium | Yes |
