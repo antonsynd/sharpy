@@ -509,6 +509,8 @@ internal partial class RoslynEmitter
 
     private SyntaxNode? GenerateStatement(Statement stmt)
     {
+        _cancellationToken.ThrowIfCancellationRequested();
+
         return stmt switch
         {
             FunctionDef funcDef => GenerateFunctionDeclaration(funcDef),

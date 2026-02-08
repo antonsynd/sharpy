@@ -24,6 +24,7 @@ internal class ProjectCompiler
     private readonly HashSet<string> _suppressedWarnings;
     private readonly int _maxErrors;
     private readonly bool _incremental;
+    private CancellationToken _cancellationToken;
 
     // Shared symbol table and semantic info across all files.
     // SemanticInfo is shared (not per-file) because files are processed sequentially
@@ -100,6 +101,7 @@ internal class ProjectCompiler
     public ProjectCompilationResult Compile(ProjectConfig config, CancellationToken cancellationToken)
     {
         _logger.LogInfo($"Starting project compilation: {config.RootNamespace}");
+        _cancellationToken = cancellationToken;
 
         _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings);
         _projectMetricsBacking = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
@@ -1496,7 +1498,7 @@ internal class ProjectCompiler
                 SemanticInfo = SemanticInfo
             };
 
-            var emitter = new RoslynEmitter(codeGenContext);
+            var emitter = new RoslynEmitter(codeGenContext, _cancellationToken);
             var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
             var csharpCode = roslynCompilationUnit.ToFullString();
 

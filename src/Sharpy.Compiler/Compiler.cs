@@ -432,7 +432,7 @@ public class Compiler
                 SemanticInfo = semanticInfo,
                 SemanticBinding = semanticBinding
             };
-            var emitter = new RoslynEmitter(codeGenContext);
+            var emitter = new RoslynEmitter(codeGenContext, cancellationToken);
             var compilationUnit = emitter.GenerateCompilationUnit(module);
             var csharpCode = compilationUnit.ToFullString();
 
@@ -473,7 +473,8 @@ public class Compiler
 
                 var moduleCs = GenerateCSharpForModule(
                     moduleInfo, symbolTable, builtinRegistry,
-                    codeGenContext.ProjectNamespace, diagnostics, semanticInfo, semanticBinding);
+                    codeGenContext.ProjectNamespace, diagnostics, semanticInfo, semanticBinding,
+                    cancellationToken);
 
                 if (moduleCs != null)
                 {
@@ -741,7 +742,8 @@ public class Compiler
         string? projectNamespace,
         DiagnosticBag diagnostics,
         SemanticInfo? semanticInfo = null,
-        SemanticBinding? semanticBinding = null)
+        SemanticBinding? semanticBinding = null,
+        CancellationToken cancellationToken = default)
     {
         if (moduleInfo.Module == null || moduleInfo.IsNetModule)
             return null;
@@ -757,7 +759,7 @@ public class Compiler
             SemanticBinding = semanticBinding ?? new SemanticBinding()
         };
 
-        var emitter = new RoslynEmitter(codeGenContext);
+        var emitter = new RoslynEmitter(codeGenContext, cancellationToken);
         var compilationUnit = emitter.GenerateCompilationUnit(moduleInfo.Module);
 
         if (codeGenContext.HasErrors)

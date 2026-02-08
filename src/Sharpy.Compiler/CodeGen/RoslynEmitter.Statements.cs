@@ -17,6 +17,8 @@ internal partial class RoslynEmitter
 {
     private StatementSyntax? GenerateBodyStatement(Statement stmt)
     {
+        _cancellationToken.ThrowIfCancellationRequested();
+
         var result = stmt switch
         {
             ReturnStatement ret => GenerateReturn(ret),

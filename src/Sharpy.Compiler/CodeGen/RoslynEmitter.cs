@@ -25,6 +25,7 @@ internal partial class RoslynEmitter
     private readonly CodeGenContext _context;
     private readonly TypeMapper _typeMapper;
     private readonly NameResolutionService _nameResolutionService;
+    private readonly CancellationToken _cancellationToken;
     private readonly HashSet<string> _declaredVariables = new();
 
     // ============================================================
@@ -98,11 +99,12 @@ internal partial class RoslynEmitter
         "smtp", "tcp", "udp", "ip", "uri", "url", "json", "csv", "guid"
     };
 
-    public RoslynEmitter(CodeGenContext context)
+    public RoslynEmitter(CodeGenContext context, CancellationToken cancellationToken = default)
     {
         _context = context;
         _typeMapper = new TypeMapper(context);
         _nameResolutionService = new NameResolutionService(context.Logger);
+        _cancellationToken = cancellationToken;
     }
 
     /// <summary>

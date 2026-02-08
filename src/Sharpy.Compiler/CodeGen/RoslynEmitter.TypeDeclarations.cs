@@ -16,6 +16,8 @@ internal partial class RoslynEmitter
 {
     private MethodDeclarationSyntax GenerateFunctionDeclaration(FunctionDef func)
     {
+        _cancellationToken.ThrowIfCancellationRequested();
+
         // Clear declared variables and version tracking for new function scope
         _declaredVariables.Clear();
         _variableVersions.Clear();
@@ -228,6 +230,7 @@ internal partial class RoslynEmitter
 
     private ClassDeclarationSyntax GenerateClassDeclaration(ClassDef classDef)
     {
+        _cancellationToken.ThrowIfCancellationRequested();
         // Note: Class type detection is now done via SymbolTable lookup during expression generation.
         // The _classNames tracking set was used for instantiation detection but is no longer needed
         // since the symbol table is populated during semantic analysis.
