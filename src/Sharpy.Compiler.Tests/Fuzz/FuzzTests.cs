@@ -347,6 +347,138 @@ public class FuzzTests
         }
     }
 
+    /// <summary>
+    /// Fuzz the full compiler with generated class hierarchies.
+    /// Exercises inheritance resolution, type checking, and codegen.
+    /// </summary>
+    [Theory]
+    [InlineData(42)]
+    [InlineData(123)]
+    [InlineData(7777)]
+    [InlineData(2025)]
+    [InlineData(9999)]
+    public void Compiler_ClassHierarchies_NeverThrowsUnhandledException(int seed)
+    {
+        var fuzzer = new SharpyFuzzer(seed);
+        var compiler = new Compiler();
+        var failures = new List<string>();
+
+        for (int i = 0; i < 30; i++)
+        {
+            var input = fuzzer.GenerateClassHierarchy();
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
+                var result = compiler.Compile(input, "fuzz_hierarchy.spy", cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Timeouts acceptable
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
+            }
+        }
+
+        if (failures.Count > 0)
+        {
+            _output.WriteLine($"Failures ({failures.Count}/30):");
+            foreach (var f in failures)
+                _output.WriteLine(f);
+        }
+
+        Assert.Empty(failures);
+    }
+
+    /// <summary>
+    /// Fuzz the full compiler with generic type usage.
+    /// Exercises GenericTypeInferenceService and type resolution.
+    /// </summary>
+    [Theory]
+    [InlineData(42)]
+    [InlineData(123)]
+    [InlineData(7777)]
+    [InlineData(2025)]
+    [InlineData(9999)]
+    public void Compiler_GenericUsage_NeverThrowsUnhandledException(int seed)
+    {
+        var fuzzer = new SharpyFuzzer(seed);
+        var compiler = new Compiler();
+        var failures = new List<string>();
+
+        for (int i = 0; i < 30; i++)
+        {
+            var input = fuzzer.GenerateGenericUsage();
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
+                var result = compiler.Compile(input, "fuzz_generics.spy", cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Timeouts acceptable
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
+            }
+        }
+
+        if (failures.Count > 0)
+        {
+            _output.WriteLine($"Failures ({failures.Count}/30):");
+            foreach (var f in failures)
+                _output.WriteLine(f);
+        }
+
+        Assert.Empty(failures);
+    }
+
+    /// <summary>
+    /// Fuzz the full compiler with programs that have type annotations.
+    /// Exercises TypeResolver with optional, tuple, and collection types.
+    /// </summary>
+    [Theory]
+    [InlineData(42)]
+    [InlineData(123)]
+    [InlineData(7777)]
+    [InlineData(2025)]
+    [InlineData(9999)]
+    public void Compiler_TypeAnnotations_NeverThrowsUnhandledException(int seed)
+    {
+        var fuzzer = new SharpyFuzzer(seed);
+        var compiler = new Compiler();
+        var failures = new List<string>();
+
+        for (int i = 0; i < 30; i++)
+        {
+            var input = fuzzer.GenerateTypeAnnotations();
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
+                var result = compiler.Compile(input, "fuzz_types.spy", cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Timeouts acceptable
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(input)}");
+            }
+        }
+
+        if (failures.Count > 0)
+        {
+            _output.WriteLine($"Failures ({failures.Count}/30):");
+            foreach (var f in failures)
+                _output.WriteLine(f);
+        }
+
+        Assert.Empty(failures);
+    }
+
     private static string Truncate(string s, int maxLen = 200)
     {
         if (s.Length <= maxLen)

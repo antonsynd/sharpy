@@ -386,4 +386,264 @@ public class SharpyFuzzer
             sb.AppendLine($"from {Identifiers[_random.Next(Identifiers.Length)]} import {Identifiers[_random.Next(Identifiers.Length)]}");
         }
     }
+
+    // --- New generators for Phase 2c ---
+
+    /// <summary>
+    /// Generates classes with inheritance, interfaces, and method overrides.
+    /// Exercises inheritance resolution and type checking paths.
+    /// </summary>
+    public string GenerateClassHierarchy()
+    {
+        var sb = new StringBuilder();
+        var classNames = new List<string>();
+
+        // Generate a base class
+        var baseName = "Base" + _random.Next(100);
+        classNames.Add(baseName);
+        sb.AppendLine($"class {baseName}:");
+
+        // Add __init__ and some methods
+        sb.AppendLine($"    def __init__(self):");
+        sb.AppendLine($"        self.value: int = 0");
+        sb.AppendLine();
+
+        var numMethods = _random.Next(1, 3);
+        for (int m = 0; m < numMethods; m++)
+        {
+            var methodName = $"method_{m}";
+            sb.AppendLine($"    def {methodName}(self) -> int:");
+            sb.AppendLine($"        return {_random.Next(100)}");
+            sb.AppendLine();
+        }
+
+        // Generate 1-3 derived classes
+        var numDerived = _random.Next(1, 4);
+        for (int d = 0; d < numDerived; d++)
+        {
+            var derivedName = $"Derived{d}_{_random.Next(100)}";
+            var parentIdx = _random.Next(classNames.Count);
+            var parentName = classNames[parentIdx];
+            classNames.Add(derivedName);
+
+            sb.AppendLine($"class {derivedName}({parentName}):");
+
+            // Override __init__
+            sb.AppendLine($"    def __init__(self):");
+            sb.AppendLine($"        super().__init__()");
+            sb.AppendLine($"        self.extra: int = {_random.Next(100)}");
+            sb.AppendLine();
+
+            // Optionally override a method
+            if (_random.Next(2) == 0 && numMethods > 0)
+            {
+                var overrideIdx = _random.Next(numMethods);
+                sb.AppendLine($"    def method_{overrideIdx}(self) -> int:");
+                sb.AppendLine($"        return {_random.Next(100)}");
+                sb.AppendLine();
+            }
+
+            // Add a unique method
+            sb.AppendLine($"    def unique_{d}(self) -> str:");
+            sb.AppendLine($"        return \"{derivedName}\"");
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Generates programs with generic type usage (list[int], dict[str, int],
+    /// custom generic classes). Exercises GenericTypeInferenceService.
+    /// </summary>
+    public string GenerateGenericUsage()
+    {
+        var sb = new StringBuilder();
+
+        // Generic container usage
+        var containerTypes = new[]
+        {
+            ("list", "int"), ("list", "str"), ("list", "float"), ("list", "bool"),
+            ("dict", "str, int"), ("dict", "str, str"), ("dict", "int, str"),
+            ("set", "int"), ("set", "str"),
+            ("tuple", "int, str"), ("tuple", "int, int, int")
+        };
+
+        var numDecls = _random.Next(2, 6);
+        for (int i = 0; i < numDecls; i++)
+        {
+            var (container, typeArgs) = containerTypes[_random.Next(containerTypes.Length)];
+            var varName = $"var_{i}";
+
+            switch (container)
+            {
+                case "list":
+                    sb.AppendLine($"{varName}: {container}[{typeArgs}] = [{GenerateTypedLiteral(typeArgs)}]");
+                    break;
+                case "dict":
+                    {
+                        var parts = typeArgs.Split(", ");
+                        sb.AppendLine($"{varName}: {container}[{typeArgs}] = {{{GenerateTypedLiteral(parts[0])}: {GenerateTypedLiteral(parts[1])}}}");
+                        break;
+                    }
+                case "set":
+                    sb.AppendLine($"{varName}: {container}[{typeArgs}] = {{{GenerateTypedLiteral(typeArgs)}}}");
+                    break;
+                case "tuple":
+                    {
+                        var parts = typeArgs.Split(", ");
+                        var elements = string.Join(", ", parts.Select(GenerateTypedLiteral));
+                        sb.AppendLine($"{varName}: {container}[{typeArgs}] = ({elements},)");
+                        break;
+                    }
+            }
+        }
+
+        // Function using generics
+        sb.AppendLine();
+        sb.AppendLine("def process_list(items: list[int]) -> int:");
+        sb.AppendLine("    result: int = 0");
+        sb.AppendLine("    for item in items:");
+        sb.AppendLine("        result = result + item");
+        sb.AppendLine("    return result");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Generates multi-file import scenarios.
+    /// Returns a dictionary of filename -> source content for multi-file tests.
+    /// Exercises ImportResolver and ModuleLoader.
+    /// </summary>
+    public Dictionary<string, string> GenerateImportGraph()
+    {
+        var files = new Dictionary<string, string>();
+        var moduleNames = new List<string>();
+
+        // Generate 2-4 library modules
+        var numModules = _random.Next(2, 5);
+        for (int m = 0; m < numModules; m++)
+        {
+            var moduleName = $"lib_{m}";
+            moduleNames.Add(moduleName);
+            var moduleSb = new StringBuilder();
+
+            // Each module exports a class and/or function
+            if (_random.Next(2) == 0)
+            {
+                var className = $"Lib{m}Class";
+                moduleSb.AppendLine($"class {className}:");
+                moduleSb.AppendLine($"    def __init__(self):");
+                moduleSb.AppendLine($"        self.value: int = {_random.Next(100)}");
+                moduleSb.AppendLine();
+            }
+
+            var funcName = $"lib_{m}_func";
+            moduleSb.AppendLine($"def {funcName}(x: int) -> int:");
+            moduleSb.AppendLine($"    return x + {_random.Next(100)}");
+
+            files[$"{moduleName}.spy"] = moduleSb.ToString();
+        }
+
+        // Generate a main module that imports from the libraries
+        var mainSb = new StringBuilder();
+        foreach (var modName in moduleNames)
+        {
+            if (_random.Next(2) == 0)
+            {
+                mainSb.AppendLine($"import {modName}");
+            }
+            else
+            {
+                mainSb.AppendLine($"from {modName} import {modName}_func");
+            }
+        }
+        mainSb.AppendLine();
+        mainSb.AppendLine("def main():");
+        mainSb.AppendLine($"    result: int = {_random.Next(100)}");
+        mainSb.AppendLine("    print(result)");
+
+        files["main.spy"] = mainSb.ToString();
+
+        return files;
+    }
+
+    /// <summary>
+    /// Generates functions and variables with type annotations including
+    /// optional types T?, tuple types, and function types.
+    /// Exercises TypeResolver.
+    /// </summary>
+    public string GenerateTypeAnnotations()
+    {
+        var sb = new StringBuilder();
+
+        var simpleTypes = new[] { "int", "str", "float", "bool" };
+        var collectionTypes = new[] { "list[int]", "list[str]", "dict[str, int]", "set[int]", "tuple[int, str]" };
+        var allTypes = simpleTypes.Concat(collectionTypes).ToArray();
+
+        // Variables with various type annotations
+        var numVars = _random.Next(2, 6);
+        for (int i = 0; i < numVars; i++)
+        {
+            var varType = allTypes[_random.Next(allTypes.Length)];
+            var varName = $"var_{i}";
+
+            // Sometimes make it optional with ?
+            var isOptional = _random.Next(4) == 0;
+            var annotation = isOptional ? $"{varType}?" : varType;
+
+            sb.Append($"{varName}: {annotation} = ");
+
+            if (isOptional && _random.Next(2) == 0)
+            {
+                sb.AppendLine("None");
+            }
+            else
+            {
+                sb.AppendLine(GenerateTypedLiteral(varType.Split('[')[0]));
+            }
+        }
+
+        sb.AppendLine();
+
+        // Functions with typed parameters and return types
+        var numFuncs = _random.Next(1, 4);
+        for (int f = 0; f < numFuncs; f++)
+        {
+            var returnType = simpleTypes[_random.Next(simpleTypes.Length)];
+            sb.Append($"def func_{f}(");
+
+            var numParams = _random.Next(1, 4);
+            for (int p = 0; p < numParams; p++)
+            {
+                if (p > 0) sb.Append(", ");
+                var paramType = simpleTypes[_random.Next(simpleTypes.Length)];
+                sb.Append($"p{p}: {paramType}");
+
+                // Sometimes add a default value
+                if (_random.Next(3) == 0)
+                {
+                    sb.Append($" = {GenerateTypedLiteral(paramType)}");
+                }
+            }
+
+            sb.AppendLine($") -> {returnType}:");
+            sb.AppendLine($"    return {GenerateTypedLiteral(returnType)}");
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
+    }
+
+    private string GenerateTypedLiteral(string typeName)
+    {
+        return typeName switch
+        {
+            "int" => _random.Next(-100, 1000).ToString(),
+            "str" => $"\"{Identifiers[_random.Next(Identifiers.Length)]}\"",
+            "float" => $"{_random.NextDouble():F2}",
+            "bool" => _random.Next(2) == 0 ? "True" : "False",
+            _ => _random.Next(100).ToString()
+        };
+    }
 }
