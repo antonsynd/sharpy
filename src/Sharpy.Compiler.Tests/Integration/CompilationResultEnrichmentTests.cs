@@ -181,10 +181,12 @@ def main():
     }
 
     [Fact]
-    public void CancelledCompilation_StillPopulatesSourceTextAndTokens()
+    public void CancelledCompilation_StillPopulatesSourceText()
     {
-        // A pre-cancelled token causes OperationCanceledException after lexing
-        // (first ThrowIfCancellationRequested is after lexer phase)
+        // A pre-cancelled token causes OperationCanceledException inside the Lexer's
+        // tokenization loop (cancellation is now checked at the top of each token iteration).
+        // SourceText is created before the Lexer runs, so it's still available.
+        // Tokens are NOT available since the Lexer throws before producing any.
         var code = @"
 def main():
     x: int = 42
@@ -196,12 +198,11 @@ def main():
         var result = compiler.Compile(code, "test.spy", cts.Token);
 
         Assert.False(result.Success);
-        // SourceText and Tokens should still be available since they're created before
-        // the first cancellation check point
+        // SourceText is available since it's created before the Lexer starts
         Assert.NotNull(result.SourceText);
         Assert.Equal(code, result.SourceText!.ToString());
-        Assert.NotNull(result.Tokens);
-        Assert.True(result.Tokens!.Count > 0);
+        // Tokens are null since cancellation fires inside the Lexer before any tokens are produced
+        Assert.Null(result.Tokens);
     }
 
     [Fact]

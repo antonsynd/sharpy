@@ -404,6 +404,11 @@ internal class ProjectCompiler
 
                 ProjectMetrics.AddFileMetrics(fileMetrics);
             }
+            catch (OperationCanceledException)
+            {
+                // Re-throw so the Compile() method's handler records CompilationCancelled
+                throw;
+            }
             catch (Exception ex)
             {
                 // Log full exception for debugging
