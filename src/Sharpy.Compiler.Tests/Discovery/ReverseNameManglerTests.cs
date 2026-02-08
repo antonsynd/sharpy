@@ -1,3 +1,4 @@
+using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Discovery;
 using Xunit;
 
@@ -74,5 +75,40 @@ public class ReverseNameManglerTests
     public void ToSharpyName_Interface_PreservesName()
     {
         Assert.Equal("IComparable", ReverseNameMangler.ToSharpyName("IComparable", ReverseNameContext.Interface));
+    }
+
+    [Theory]
+    [InlineData("get_user_name")]
+    [InlineData("max_size")]
+    [InlineData("xml_parser")]
+    [InlineData("read_all_text")]
+    [InlineData("sha256_managed")]
+    [InlineData("base64_encoder")]
+    [InlineData("simple")]
+    [InlineData("a")]
+    [InlineData("is_valid")]
+    public void RoundTrip_SnakeCase_IsIdentity(string input)
+    {
+        var forward = NameMangler.ToPascalCase(input);
+        var reverse = ReverseNameMangler.ToSnakeCase(forward);
+        Assert.Equal(input, reverse);
+    }
+
+    /// <summary>
+    /// Documents known cases where the round-trip is NOT identity.
+    /// These inputs are not snake_case, so ToPascalCase passes them through
+    /// (or transforms differently), and the reverse mangling produces a
+    /// different result than the original input.
+    /// </summary>
+    [Theory]
+    [InlineData("httpClient", "http_client")]   // camelCase passes through ToPascalCase, then splits
+    [InlineData("HTTP", "http")]                // all-caps passes through, lowercased without splits
+    [InlineData("XMLParser", "xml_parser")]     // PascalCase with acronym passes through, acronym gets split
+    [InlineData("x_y_z", "xyz")]                // single-letter segments fuse into acronym XYZ, can't be re-split
+    public void RoundTrip_NonSnakeCase_MayNotBeIdentity(string input, string expectedOutput)
+    {
+        var forward = NameMangler.ToPascalCase(input);
+        var reverse = ReverseNameMangler.ToSnakeCase(forward);
+        Assert.Equal(expectedOutput, reverse);
     }
 }

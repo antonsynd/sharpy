@@ -436,9 +436,9 @@ public void RoundTrip_SnakeCase_IsIdentity(string input)
 }
 ```
 
-- [ ] Add `RoundTrip_SnakeCase_IsIdentity` theory with ≥9 representative snake_case inputs
-- [ ] Add `RoundTrip_NonSnakeCase_MayNotBeIdentity` tests documenting known non-round-trip cases (`httpClient`, `HTTP`, `XMLParser`) — these assert the actual output, not identity, to document the behavior
-- [ ] Run `dotnet test --filter "FullyQualifiedName~ReverseNameMangler"` — all pass
+- [x] Add `RoundTrip_SnakeCase_IsIdentity` theory with ≥9 representative snake_case inputs
+- [x] Add `RoundTrip_NonSnakeCase_MayNotBeIdentity` tests documenting known non-round-trip cases (`httpClient`, `HTTP`, `XMLParser`) — these assert the actual output, not identity, to document the behavior
+- [x] Run `dotnet test --filter "FullyQualifiedName~ReverseNameMangler"` — all pass
 
 ### 4b. Commit
 
