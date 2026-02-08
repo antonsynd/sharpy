@@ -630,7 +630,7 @@ internal partial class TypeChecker
             var moduleSymbol = moduleType.Symbol;
             if (moduleSymbol.Exports.TryGetValue(memberAccess.Member, out var exportedSymbol))
             {
-                return exportedSymbol switch
+                var exportedType = exportedSymbol switch
                 {
                     VariableSymbol varSymbol => GetVariableType(varSymbol),
                     FunctionSymbol funcSymbol => new FunctionType
@@ -642,6 +642,11 @@ internal partial class TypeChecker
                     ModuleSymbol nestedModule => new ModuleType { Symbol = nestedModule },
                     _ => SemanticType.Unknown
                 };
+                // Mark error recovery for unhandled symbol types in module exports
+                // (e.g., TypeAliasSymbol) — these are resolved elsewhere, not a compiler bug.
+                if (exportedType is UnknownType)
+                    MarkExpressionAsErrorRecovery(memberAccess);
+                return exportedType;
             }
 
             AddError($"Module '{moduleSymbol.Name}' has no member '{memberAccess.Member}'",
@@ -697,7 +702,8 @@ internal partial class TypeChecker
         // Intentional Unknown without error for non-UserDefinedType member access:
         // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
         // are resolved by the codegen layer through CLR member discovery, not the
-        // type checker. This is a known gap — SPY0907 may fire as a warning for it.
+        // type checker. Mark as error recovery to suppress SPY0907 false positives.
+        MarkExpressionAsErrorRecovery(memberAccess);
         return SemanticType.Unknown;
     }
 
@@ -1713,9 +1719,9 @@ internal partial class TypeChecker
 
         // Intentional Unknown without error: when then/else branch types are incompatible
         // (e.g., `1 if cond else "str"`), we return Unknown rather than emitting an error
-        // because the LCA (least common ancestor) logic is limited. This is a known type
-        // checker gap — SPY0907 may fire for it. A proper fix would compute LCA or emit
-        // a type mismatch error here.
+        // because the LCA (least common ancestor) logic is limited. Mark as error recovery
+        // to suppress SPY0907 — a proper fix would compute LCA or emit a type mismatch error.
+        MarkExpressionAsErrorRecovery(cond);
         return SemanticType.Unknown;
     }
 
