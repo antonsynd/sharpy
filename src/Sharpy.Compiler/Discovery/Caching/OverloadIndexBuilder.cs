@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text.RegularExpressions;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
 
@@ -187,13 +186,7 @@ internal class OverloadIndexBuilder
 
     private string GetFunctionName(MethodInfo method)
     {
-        // Convert PascalCase to snake_case, handling acronyms
-        var name = method.Name;
-        // Handle sequences of capitals followed by lowercase (acronyms like "XMLParser" -> "xml_parser")
-        name = Regex.Replace(name, "([A-Z]+)([A-Z][a-z])", "$1_$2");
-        // Handle lowercase followed by uppercase
-        name = Regex.Replace(name, "([a-z])([A-Z])", "$1_$2");
-        return name.ToLowerInvariant();
+        return ReverseNameMangler.ToSnakeCase(method.Name);
     }
 
     private FunctionSignature CreateFunctionSignature(MethodInfo method)
