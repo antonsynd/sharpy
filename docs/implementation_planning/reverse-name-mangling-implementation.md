@@ -112,7 +112,7 @@ internal enum ReverseNameContext
 }
 ```
 
-- [ ] Add `ReverseNameContext` enum to `ReverseNameMangler.cs`
+- [x] Add `ReverseNameContext` enum to `ReverseNameMangler.cs`
 
 ### 2b. Add context-aware overload
 
@@ -134,23 +134,23 @@ internal static string ToSharpyName(string name, ReverseNameContext context)
 
 Where `ToScreamingSnakeCase` uses the same 3-pass word splitting but joins with `_` and calls `.ToUpperInvariant()`.
 
-- [ ] Add `ToScreamingSnakeCase(string name)` — same word splitting, `.ToUpperInvariant()`
-- [ ] Add `ToSharpyName(string name, ReverseNameContext context)` dispatcher
-- [ ] Keep `ToSnakeCase` as the default (existing callers unchanged)
+- [x] Add `ToScreamingSnakeCase(string name)` — same word splitting, `.ToUpperInvariant()`
+- [x] Add `ToSharpyName(string name, ReverseNameContext context)` dispatcher
+- [x] Keep `ToSnakeCase` as the default (existing callers unchanged)
 
 ### 2c. Add tests for context-aware mangling
 
 **File:** `src/Sharpy.Compiler.Tests/Discovery/ReverseNameManglerTests.cs`
 
-- [ ] Test `ToSharpyName("DarkBlue", EnumMember)` → `"DARK_BLUE"`
-- [ ] Test `ToSharpyName("MaxRetryCount", Constant)` → `"MAX_RETRY_COUNT"`
-- [ ] Test `ToSharpyName("GetUserName", Method)` → `"get_user_name"`
-- [ ] Test `ToSharpyName("StringBuilder", Type)` → `"StringBuilder"` (preserved)
-- [ ] Test `ToSharpyName("IComparable", Interface)` → `"IComparable"` (preserved)
-- [ ] Test `ToScreamingSnakeCase("Base64Encoder")` → `"BASE64_ENCODER"`
-- [ ] Test `ToScreamingSnakeCase("XMLParser")` → `"XML_PARSER"`
-- [ ] Test `ToScreamingSnakeCase("SHA256Managed")` → `"SHA256_MANAGED"`
-- [ ] Run `dotnet test --filter "FullyQualifiedName~ReverseNameMangler"` — all pass
+- [x] Test `ToSharpyName("DarkBlue", EnumMember)` → `"DARK_BLUE"`
+- [x] Test `ToSharpyName("MaxRetryCount", Constant)` → `"MAX_RETRY_COUNT"`
+- [x] Test `ToSharpyName("GetUserName", Method)` → `"get_user_name"`
+- [x] Test `ToSharpyName("StringBuilder", Type)` → `"StringBuilder"` (preserved)
+- [x] Test `ToSharpyName("IComparable", Interface)` → `"IComparable"` (preserved)
+- [x] Test `ToScreamingSnakeCase("Base64Encoder")` → `"BASE64_ENCODER"`
+- [x] Test `ToScreamingSnakeCase("XMLParser")` → `"XML_PARSER"`
+- [x] Test `ToScreamingSnakeCase("SHA256Managed")` → `"SHA256_MANAGED"`
+- [x] Run `dotnet test --filter "FullyQualifiedName~ReverseNameMangler"` — all pass
 
 ### 2d. Wire into `OverloadIndexBuilder`
 
@@ -158,8 +158,8 @@ Where `ToScreamingSnakeCase` uses the same 3-pass word splitting but joins with 
 
 Update `GetFunctionName()` to call `ReverseNameMangler.ToSharpyName(method.Name, ReverseNameContext.Method)`. This is a refactor with identical behavior for functions — the context-aware path only matters for future discovery of enum members and properties.
 
-- [ ] Update `GetFunctionName()` to use `ReverseNameMangler.ToSharpyName(..., Method)`
-- [ ] Run `dotnet test --filter "FullyQualifiedName~OverloadIndexBuilder"` — all pass (no behavior change)
+- [x] Update `GetFunctionName()` to use `ReverseNameMangler.ToSharpyName(..., Method)`
+- [x] Run `dotnet test --filter "FullyQualifiedName~OverloadIndexBuilder"` — all pass (no behavior change)
 
 ### 2e. Commit
 
