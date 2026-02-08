@@ -408,10 +408,10 @@ The building blocks already exist: `Compiler.cs` handles compilation, `CompilerS
 
 **Checklist**:
 
-- [ ] Read `SemanticInfo` to understand how types are recorded for AST nodes
-- [ ] Add a `HashSet<Node>` (or equivalent) called `_errorRecoveryNodes` that tracks which nodes had their type set to `UnknownType` due to a user error (i.e., when `DiagnosticBag` already has an error for that node)
-- [ ] When a type is set to `UnknownType`, check if a diagnostic was also emitted for the same location — if yes, add the node to `_errorRecoveryNodes`
-- [ ] Add a public method `IsErrorRecoveryType(Node node)` that checks membership
+- [x] Read `SemanticInfo` to understand how types are recorded for AST nodes
+- [x] Add a `HashSet<Node>` (or equivalent) called `_errorRecoveryNodes` that tracks which nodes had their type set to `UnknownType` due to a user error (i.e., when `DiagnosticBag` already has an error for that node)
+- [x] When a type is set to `UnknownType`, check if a diagnostic was also emitted for the same location — if yes, add the node to `_errorRecoveryNodes`
+- [x] Add a public method `IsErrorRecoveryType(Node node)` that checks membership
 
 > **Fork-in-the-road**: Should this tracking live in `SemanticInfo` or in a separate `ErrorRecoveryTracker`? **Decision**: Put it in `SemanticInfo` since that's where type information lives. Adding a separate class creates unnecessary indirection.
 
@@ -421,13 +421,13 @@ The building blocks already exist: `Compiler.cs` handles compilation, `CompilerS
 
 **Checklist**:
 
-- [ ] Read the existing `UnknownTypes` invariant check in `CompilerInvariants`
-- [ ] Modify it to only flag `UnknownType` occurrences that are NOT in the error recovery set
-- [ ] When a non-error-recovery Unknown is found, emit a diagnostic with severity Error (not Warning) and the next available code (SPY0905 is already `TooManyErrors`, SPY0906 is `ParserLoopStall`, so use **SPY0907** or add a new named constant like `UnexpectedUnknownType`):
+- [x] Read the existing `UnknownTypes` invariant check in `CompilerInvariants`
+- [x] Modify it to only flag `UnknownType` occurrences that are NOT in the error recovery set
+- [x] When a non-error-recovery Unknown is found, emit a diagnostic with severity Error (not Warning) and the next available code (SPY0905 is already `TooManyErrors`, SPY0906 is `ParserLoopStall`, so use **SPY0907** or add a new named constant like `UnexpectedUnknownType`):
   - Message: `"Internal: type inference produced UnknownType for '{nodeName}' without a corresponding error diagnostic. This is a compiler bug."`
   - Include the node's span for source context
-- [ ] Enable the `UnknownTypes` flag by default (currently disabled because it was too noisy)
-- [ ] Run the full test suite to verify no false positives: `dotnet test`
+- [x] Enable the `UnknownTypes` flag by default (currently disabled because it was too noisy)
+- [x] Run the full test suite to verify no false positives: `dotnet test`
 
 ### 5c. Add assertions in TypeChecker for Unknown type propagation
 
@@ -435,11 +435,11 @@ The building blocks already exist: `Compiler.cs` handles compilation, `CompilerS
 
 **Checklist**:
 
-- [ ] Find the helper method(s) that set a node's type to `UnknownType` in the TypeChecker
-- [ ] For each, verify that a diagnostic is always emitted before or alongside setting the type to Unknown
-- [ ] If any path sets Unknown without a diagnostic, either add the missing diagnostic or mark it as intentional error recovery with a comment explaining why
-- [ ] Add a helper method `SetErrorRecoveryType(Node node)` that sets the type to `UnknownType` AND records it in the error recovery set — use this consistently instead of raw Unknown assignment
-- [ ] Run: `dotnet test --filter "FullyQualifiedName~TypeChecker"`
+- [x] Find the helper method(s) that set a node's type to `UnknownType` in the TypeChecker
+- [x] For each, verify that a diagnostic is always emitted before or alongside setting the type to Unknown
+- [x] If any path sets Unknown without a diagnostic, either add the missing diagnostic or mark it as intentional error recovery with a comment explaining why
+- [x] Add a helper method `SetErrorRecoveryType(Node node)` that sets the type to `UnknownType` AND records it in the error recovery set — use this consistently instead of raw Unknown assignment
+- [x] Run: `dotnet test --filter "FullyQualifiedName~TypeChecker"`
 
 ---
 
