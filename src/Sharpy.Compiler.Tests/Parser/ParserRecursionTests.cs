@@ -64,9 +64,11 @@ public class ParserRecursionTests
         // is added, remove the Skip annotation.
         var sb = new StringBuilder();
         const int depth = 500;
-        for (int i = 0; i < depth; i++) sb.Append('(');
+        for (int i = 0; i < depth; i++)
+            sb.Append('(');
         sb.Append('1');
-        for (int i = 0; i < depth; i++) sb.Append(')');
+        for (int i = 0; i < depth; i++)
+            sb.Append(')');
         sb.AppendLine();
 
         var source = "x = " + sb.ToString();
@@ -95,9 +97,11 @@ public class ParserRecursionTests
         // A moderate depth of 100 should definitely parse successfully
         var sb = new StringBuilder();
         const int depth = 100;
-        for (int i = 0; i < depth; i++) sb.Append('(');
+        for (int i = 0; i < depth; i++)
+            sb.Append('(');
         sb.Append("42");
-        for (int i = 0; i < depth; i++) sb.Append(')');
+        for (int i = 0; i < depth; i++)
+            sb.Append(')');
         sb.AppendLine();
 
         var source = "x = " + sb.ToString();
@@ -257,9 +261,11 @@ public class ParserRecursionTests
         // Generate: x = f(f(f(...f(1)...)))  with 200 levels
         var sb = new StringBuilder("x = ");
         const int depth = 200;
-        for (int i = 0; i < depth; i++) sb.Append("f(");
+        for (int i = 0; i < depth; i++)
+            sb.Append("f(");
         sb.Append('1');
-        for (int i = 0; i < depth; i++) sb.Append(')');
+        for (int i = 0; i < depth; i++)
+            sb.Append(')');
         sb.AppendLine();
 
         var source = sb.ToString();
@@ -290,9 +296,11 @@ public class ParserRecursionTests
         // has no recursion depth guard for collection literal parsing.
         var sb = new StringBuilder("x = ");
         const int depth = 200;
-        for (int i = 0; i < depth; i++) sb.Append('[');
+        for (int i = 0; i < depth; i++)
+            sb.Append('[');
         sb.Append('1');
-        for (int i = 0; i < depth; i++) sb.Append(']');
+        for (int i = 0; i < depth; i++)
+            sb.Append(']');
         sb.AppendLine();
 
         var source = sb.ToString();
@@ -317,9 +325,11 @@ public class ParserRecursionTests
         // A moderate depth of 50 should parse successfully
         var sb = new StringBuilder("x = ");
         const int depth = 50;
-        for (int i = 0; i < depth; i++) sb.Append('[');
+        for (int i = 0; i < depth; i++)
+            sb.Append('[');
         sb.Append('1');
-        for (int i = 0; i < depth; i++) sb.Append(']');
+        for (int i = 0; i < depth; i++)
+            sb.Append(']');
         sb.AppendLine();
 
         var source = sb.ToString();

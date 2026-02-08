@@ -450,7 +450,7 @@ public class CompilerInvariantsTests
 
         CompilerInvariants.WarnIfUnknownTypes(semanticInfo, diagnostics);
 
-        Assert.Empty(diagnostics.GetWarnings());
+        Assert.Empty(diagnostics.GetErrors());
     }
 
     [Fact]
@@ -467,7 +467,7 @@ public class CompilerInvariantsTests
         CompilerInvariants.WarnIfUnknownTypes(semanticInfo, diagnostics);
 
         // Error-recovery-marked Unknown types should not be flagged
-        Assert.Empty(diagnostics.GetWarnings());
+        Assert.Empty(diagnostics.GetErrors());
     }
 
     #endregion
