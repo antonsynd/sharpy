@@ -571,6 +571,12 @@ public static class DiagnosticExplanations
             "class Sub(Base):\n    def foo(self):\n        x = super  # not called as a function",
             "Call super() as a function:\nclass Sub(Base):\n    def foo(self):\n        super().foo()");
 
+        Add(dict, DiagnosticCodes.Semantic.CircularInheritance, "Circular inheritance detected", "Semantic",
+            "A class or interface inherits from itself through its inheritance chain, creating a cycle. " +
+            "For example, class A extends B and class B extends A, or interface IA extends IB and IB extends IA.",
+            "class A(B):\n    pass\n\nclass B(A):\n    pass",
+            "Break the cycle by removing one of the inheritance relationships or restructuring the type hierarchy.");
+
         // ── Semantic errors: Import (SPY0300-SPY0319) ───────────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleNotFound, "Module not found", "Semantic",

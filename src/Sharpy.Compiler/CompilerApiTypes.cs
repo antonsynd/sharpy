@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Services;
 
 namespace Sharpy.Compiler;
 
@@ -31,6 +32,9 @@ public sealed record CompileResult
 
     /// <summary>Type information from semantic analysis, or null if semantic analysis failed.</summary>
     public SemanticInfo? SemanticInfo { get; init; }
+
+    /// <summary>Read-only query interface for semantic information, for LSP/tooling consumers.</summary>
+    public ISemanticQuery? SemanticQuery => SemanticInfo;
 
     /// <summary>Optional timing and artifact count data.</summary>
     public CompilationMetrics? Metrics { get; init; }
@@ -67,6 +71,9 @@ public sealed record SemanticResult
 
     /// <summary>Type information from semantic analysis, or null if semantic analysis failed.</summary>
     public SemanticInfo? SemanticInfo { get; init; }
+
+    /// <summary>Read-only query interface for semantic information, for LSP/tooling consumers.</summary>
+    public ISemanticQuery? SemanticQuery => SemanticInfo;
 
     /// <summary>The symbol table from name resolution, or null if name resolution failed.</summary>
     public SymbolTable? SymbolTable { get; init; }

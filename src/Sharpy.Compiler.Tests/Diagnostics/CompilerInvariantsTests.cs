@@ -84,14 +84,19 @@ public class CompilerInvariantsTests
             semanticInfo: semanticInfo);
 
         // All applicable invariants should be checked
-        var warnings = diagnostics.GetWarnings().ToList();
-        Assert.True(warnings.Count >= 2, $"Expected at least 2 warnings, got {warnings.Count}");
+        var allDiagnostics = diagnostics.GetAll().ToList();
+        Assert.True(allDiagnostics.Count >= 3, $"Expected at least 3 diagnostics, got {allDiagnostics.Count}");
 
-        // Verify span invariant was checked
+        // Verify span invariant was checked (warning)
+        var warnings = diagnostics.GetWarnings().ToList();
         Assert.Contains(warnings, w => w.Message.Contains("missing TextSpan"));
 
-        // Verify symbol name invariant was checked
+        // Verify symbol name invariant was checked (warning)
         Assert.Contains(warnings, w => w.Message.Contains("null/empty name"));
+
+        // Verify unknown type invariant was checked (error)
+        var errors = diagnostics.GetErrors().ToList();
+        Assert.Contains(errors, e => e.Message.Contains("type inference produced UnknownType"));
     }
 
     [Fact]
@@ -153,9 +158,9 @@ public class CompilerInvariantsTests
             CompilerInvariants.InvariantSet.PostTypeChecking,
             semanticInfo: semanticInfo);
 
-        var warnings = diagnostics.GetWarnings().ToList();
-        Assert.Single(warnings);
-        Assert.Contains("type inference produced UnknownType", warnings[0].Message);
+        var errors = diagnostics.GetErrors().ToList();
+        Assert.Single(errors);
+        Assert.Contains("type inference produced UnknownType", errors[0].Message);
     }
 
     [Fact]
@@ -228,9 +233,9 @@ public class CompilerInvariantsTests
 
         CompilerInvariants.AssertPostTypeChecking(semanticInfo, diagnostics);
 
-        var warnings = diagnostics.GetWarnings().ToList();
-        Assert.Single(warnings);
-        Assert.Contains("type inference produced UnknownType", warnings[0].Message);
+        var errors = diagnostics.GetErrors().ToList();
+        Assert.Single(errors);
+        Assert.Contains("type inference produced UnknownType", errors[0].Message);
     }
 
     [Fact]
@@ -325,9 +330,9 @@ public class CompilerInvariantsTests
 
         CompilerInvariants.WarnIfUnknownTypes(semanticInfo, diagnostics);
 
-        var warnings = diagnostics.GetWarnings().ToList();
-        Assert.Single(warnings);
-        Assert.Equal(DiagnosticCodes.Infrastructure.UnexpectedUnknownType, warnings[0].Code);
+        var errors = diagnostics.GetErrors().ToList();
+        Assert.Single(errors);
+        Assert.Equal(DiagnosticCodes.Infrastructure.UnexpectedUnknownType, errors[0].Code);
     }
 
     [Fact]

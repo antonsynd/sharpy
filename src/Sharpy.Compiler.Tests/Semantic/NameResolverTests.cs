@@ -4,6 +4,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Parser.Ast;
 using LexerNs = Sharpy.Compiler.Lexer;
 using ParserNs = Sharpy.Compiler.Parser;
+using DiagCodes = Sharpy.Compiler.Diagnostics.DiagnosticCodes;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -1161,6 +1162,108 @@ class MyClass:
         Assert.False(method.IsAbstract);
         Assert.False(method.IsVirtual);
         Assert.False(method.IsOverride);
+    }
+
+    #endregion
+
+    #region Circular Inheritance Detection
+
+    private (NameResolver resolver, Module module, SymbolTable symbolTable, SemanticBinding binding) CreateResolverWithBinding(string source)
+    {
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = lexer.TokenizeAll();
+        var parser = new ParserNs.Parser(tokens);
+        var module = parser.ParseModule();
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+        var binding = new SemanticBinding();
+        var resolver = new NameResolver(symbolTable, semanticBinding: binding);
+
+        return (resolver, module, symbolTable, binding);
+    }
+
+    [Fact]
+    public void CircularInheritance_DirectCycle_EmitsError()
+    {
+        var source = @"
+class A(B):
+    pass
+
+class B(A):
+    pass
+";
+        var (resolver, module, symbolTable, binding) = CreateResolverWithBinding(source);
+        resolver.ResolveDeclarations(module);
+        resolver.ResolveInheritance();
+
+        resolver.Diagnostics.HasErrors.Should().BeTrue();
+        var errors = resolver.Diagnostics.GetErrors();
+        errors.Should().Contain(e => e.Message.Contains("Circular inheritance detected"));
+        errors.Should().Contain(e => e.Code == DiagCodes.Semantic.CircularInheritance);
+    }
+
+    [Fact]
+    public void CircularInheritance_TransitiveCycle_EmitsError()
+    {
+        var source = @"
+class A(B):
+    pass
+
+class B(C):
+    pass
+
+class C(A):
+    pass
+";
+        var (resolver, module, symbolTable, binding) = CreateResolverWithBinding(source);
+        resolver.ResolveDeclarations(module);
+        resolver.ResolveInheritance();
+
+        resolver.Diagnostics.HasErrors.Should().BeTrue();
+        var errors = resolver.Diagnostics.GetErrors();
+        errors.Should().Contain(e => e.Message.Contains("Circular inheritance detected"));
+        errors.Should().Contain(e => e.Code == DiagCodes.Semantic.CircularInheritance);
+    }
+
+    [Fact]
+    public void CircularInheritance_InterfaceCycle_EmitsError()
+    {
+        var source = @"
+interface IA(IB):
+    pass
+
+interface IB(IA):
+    pass
+";
+        var (resolver, module, symbolTable, binding) = CreateResolverWithBinding(source);
+        resolver.ResolveDeclarations(module);
+        resolver.ResolveInheritance();
+
+        resolver.Diagnostics.HasErrors.Should().BeTrue();
+        var errors = resolver.Diagnostics.GetErrors();
+        errors.Should().Contain(e => e.Message.Contains("Circular inheritance detected"));
+        errors.Should().Contain(e => e.Code == DiagCodes.Semantic.CircularInheritance);
+    }
+
+    [Fact]
+    public void CircularInheritance_Diamond_NoFalsePositive()
+    {
+        var source = @"
+interface IC:
+    pass
+
+class A(IC):
+    pass
+
+class B(IC):
+    pass
+";
+        var (resolver, module, symbolTable, binding) = CreateResolverWithBinding(source);
+        resolver.ResolveDeclarations(module);
+        resolver.ResolveInheritance();
+
+        resolver.Diagnostics.HasErrors.Should().BeFalse();
     }
 
     #endregion

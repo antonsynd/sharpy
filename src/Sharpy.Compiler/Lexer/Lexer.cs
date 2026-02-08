@@ -54,6 +54,8 @@ public class Lexer
     private readonly ICompilerLogger _logger;
     private readonly DiagnosticBag _diagnostics = new();
     private readonly CancellationToken _cancellationToken;
+    private readonly bool _preserveTrivia;
+    private List<Trivia>? _pendingTrivia;
 
     /// <summary>
     /// Diagnostics collected during lexing. Check HasErrors after TokenizeAll().
@@ -148,7 +150,7 @@ public class Lexer
     };
 
     public Lexer(string source, ICompilerLogger? logger = null, int startLine = 1, int startColumn = 1,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, bool preserveTrivia = false)
     {
         _source = source;
         _sourceText = null;
@@ -157,6 +159,9 @@ public class Lexer
         _indentStack.Push(0);  // Base indentation level
         _logger = logger ?? NullLogger.Instance;
         _cancellationToken = cancellationToken;
+        _preserveTrivia = preserveTrivia;
+        if (preserveTrivia)
+            _pendingTrivia = new List<Trivia>();
         _logger.LogInfo($"Lexer initialized, source length: {source.Length}");
 
         // If we're starting at a non-default position, we're lexing a fragment (like an f-string expression)
@@ -174,13 +179,16 @@ public class Lexer
     /// <param name="sourceText">The source text to lex.</param>
     /// <param name="logger">Optional compiler logger.</param>
     public Lexer(SourceText sourceText, ICompilerLogger? logger = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, bool preserveTrivia = false)
     {
         _source = sourceText.ToString();
         _sourceText = sourceText;
         _indentStack.Push(0);
         _logger = logger ?? NullLogger.Instance;
         _cancellationToken = cancellationToken;
+        _preserveTrivia = preserveTrivia;
+        if (preserveTrivia)
+            _pendingTrivia = new List<Trivia>();
         _logger.LogInfo($"Lexer initialized from SourceText, source length: {_source.Length}");
     }
 
@@ -332,11 +340,38 @@ public class Lexer
                 // This is a blank or comment line - skip it entirely
                 if (_position < _source.Length && _source[_position] == '#')
                 {
-                    // Skip the comment
-                    while (_position < _source.Length && _source[_position] != '\n' && _source[_position] != '\r')
+                    if (_preserveTrivia)
                     {
+                        var commentStartLine = _line;
+                        var commentStartCol = _column;
+                        var commentStartPos = _position;
+                        var csb = new StringBuilder();
+                        csb.Append('#');
                         _position++;
                         _column++;
+                        while (_position < _source.Length && _source[_position] != '\n' && _source[_position] != '\r')
+                        {
+                            csb.Append(_source[_position]);
+                            _position++;
+                            _column++;
+                        }
+                        _pendingTrivia!.Add(new Trivia
+                        {
+                            Kind = TriviaKind.Comment,
+                            Text = csb.ToString(),
+                            Line = commentStartLine,
+                            Column = commentStartCol,
+                            Position = commentStartPos
+                        });
+                    }
+                    else
+                    {
+                        // Skip the comment
+                        while (_position < _source.Length && _source[_position] != '\n' && _source[_position] != '\r')
+                        {
+                            _position++;
+                            _column++;
+                        }
                     }
                 }
 
@@ -557,10 +592,19 @@ public class Lexer
 
     /// <summary>
     /// Creates a token with position tracking.
+    /// When trivia preservation is enabled, attaches any pending trivia as leading trivia.
     /// </summary>
-    private static Token CreateToken(TokenType type, string value, int startLine, int startColumn, int startPosition)
+    private Token CreateToken(TokenType type, string value, int startLine, int startColumn, int startPosition)
     {
-        return new Token(type, value, startLine, startColumn, startPosition);
+        var token = new Token(type, value, startLine, startColumn, startPosition);
+
+        if (_preserveTrivia && _pendingTrivia!.Count > 0)
+        {
+            token = token with { LeadingTrivia = _pendingTrivia.ToList() };
+            _pendingTrivia.Clear();
+        }
+
+        return token;
     }
 
     private int MeasureIndentation()
@@ -652,7 +696,9 @@ public class Lexer
 
     private Token ReadComment()
     {
+        var startLine = _line;
         var startColumn = _column;
+        var startPosition = _position;
         var sb = new StringBuilder();
 
         // Skip the '#'
@@ -666,8 +712,19 @@ public class Lexer
             _column++;
         }
 
-        // Comments are typically skipped, but we can return them for doc tools
-        // For now, skip and get next token
+        if (_preserveTrivia)
+        {
+            _pendingTrivia!.Add(new Trivia
+            {
+                Kind = TriviaKind.Comment,
+                Text = "#" + sb.ToString(),
+                Line = startLine,
+                Column = startColumn,
+                Position = startPosition
+            });
+        }
+
+        // Comments are skipped in the token stream; get next token
         return NextToken();
     }
 

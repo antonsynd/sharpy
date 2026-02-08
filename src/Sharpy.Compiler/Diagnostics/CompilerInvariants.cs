@@ -63,7 +63,7 @@ public static class CompilerInvariants
         /// <summary>
         /// Check for unknown expression types remaining after type checking.
         /// Run after type checking. Skips when user errors exist (error recovery
-        /// naturally produces Unknown types). Emits SPY0907 warnings for Unknown
+        /// naturally produces Unknown types). Emits SPY0907 errors for Unknown
         /// types not marked as error recovery.
         /// </summary>
         UnknownTypes = 16,
@@ -332,12 +332,9 @@ public static class CompilerInvariants
                     _ => expr.GetType().Name
                 };
 
-                // Note: This is emitted as a Warning rather than Error (as the spec suggests)
-                // because there are known false positives from GenericType member access
-                // (e.g., list[T].append, Box[T].get) where the type checker returns Unknown
-                // without an error — the codegen resolves these through CLR member discovery.
-                // When those type checker gaps are fixed, upgrade this to AddError.
-                diagnostics.AddWarning(
+                // Unexpected Unknown types indicate a compiler bug where type inference
+                // silently failed without emitting a user-facing diagnostic.
+                diagnostics.AddError(
                     $"Internal: type inference produced UnknownType for '{nodeName}' without a corresponding error diagnostic. This is a compiler bug.",
                     expr.Span,
                     expr.LineStart,

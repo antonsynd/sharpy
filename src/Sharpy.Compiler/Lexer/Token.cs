@@ -165,6 +165,26 @@ public enum TokenType
 }
 
 /// <summary>
+/// Kinds of trivia that can be attached to tokens.
+/// </summary>
+public enum TriviaKind
+{
+    Comment
+}
+
+/// <summary>
+/// Represents trivia (non-significant syntax) attached to a token.
+/// </summary>
+public record Trivia
+{
+    public TriviaKind Kind { get; init; }
+    public string Text { get; init; } = "";
+    public int Line { get; init; }
+    public int Column { get; init; }
+    public int Position { get; init; }
+}
+
+/// <summary>
 /// Represents a token in the Sharpy source code
 /// </summary>
 public record Token : ILocatable
@@ -179,6 +199,18 @@ public record Token : ILocatable
     /// This is -1 if position tracking was not enabled during lexing.
     /// </summary>
     public int Position { get; init; } = -1;
+
+    /// <summary>
+    /// Trivia (comments) appearing before this token.
+    /// Null when trivia preservation is not enabled.
+    /// </summary>
+    public IReadOnlyList<Trivia>? LeadingTrivia { get; init; }
+
+    /// <summary>
+    /// Trivia (end-of-line comments) appearing after this token on the same line.
+    /// Null when trivia preservation is not enabled.
+    /// </summary>
+    public IReadOnlyList<Trivia>? TrailingTrivia { get; init; }
 
     /// <summary>
     /// The length of this token in characters.

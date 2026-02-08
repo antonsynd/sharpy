@@ -251,8 +251,8 @@ public class PhaseBoundaryAssertionNegativeTests
 
         Compiler.WarnIfUnknownTypes(semanticInfo, diagnostics);
 
-        var violations = diagnostics.GetWarnings()
-            .Where(w => w.Code == DiagnosticCodes.Infrastructure.UnexpectedUnknownType)
+        var violations = diagnostics.GetErrors()
+            .Where(e => e.Code == DiagnosticCodes.Infrastructure.UnexpectedUnknownType)
             .ToList();
         Assert.Single(violations);
         Assert.Contains("type inference produced UnknownType", violations[0].Message);

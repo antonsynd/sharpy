@@ -79,8 +79,113 @@ internal class NameResolver
             ResolveInterfaceInheritance(interfaceDef);
         }
 
+        DetectCircularInheritance();
+
         var totalTypes = _classDefs.Count + _structDefs.Count + _interfaceDefs.Count;
         _logger.LogInfo($"Completed name resolution pass 2 ({totalTypes} types processed)");
+    }
+
+    private void DetectCircularInheritance()
+    {
+        // Check class base-type chains for cycles
+        foreach (var classDef in _classDefs)
+        {
+            var typeSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
+            if (typeSymbol == null)
+                continue;
+
+            var visited = new HashSet<string>();
+            var current = typeSymbol;
+            while (current != null)
+            {
+                if (!visited.Add(current.Name))
+                {
+                    // Found a cycle - build the chain for the error message
+                    var chain = string.Join(" -> ", visited) + " -> " + current.Name;
+                    AddError($"Circular inheritance detected: {chain}",
+                        classDef.LineStart, classDef.ColumnStart,
+                        code: DiagnosticCodes.Semantic.CircularInheritance, span: classDef.Span);
+                    break;
+                }
+                current = _semanticBinding.GetBaseType(current);
+            }
+        }
+
+        // Check struct base-type chains for cycles (structs only implement interfaces)
+        foreach (var structDef in _structDefs)
+        {
+            var typeSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
+            if (typeSymbol == null)
+                continue;
+
+            DetectInterfaceCycleForType(typeSymbol, structDef.LineStart, structDef.ColumnStart, structDef.Span);
+        }
+
+        // Check interface chains for cycles
+        foreach (var interfaceDef in _interfaceDefs)
+        {
+            var typeSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;
+            if (typeSymbol == null)
+                continue;
+
+            DetectInterfaceCycle(typeSymbol, interfaceDef);
+        }
+    }
+
+    private void DetectInterfaceCycle(TypeSymbol startSymbol, InterfaceDef interfaceDef)
+    {
+        var visited = new HashSet<string>();
+        var queue = new Queue<TypeSymbol>();
+        queue.Enqueue(startSymbol);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (!visited.Add(current.Name))
+            {
+                if (current.Name == startSymbol.Name)
+                {
+                    AddError($"Circular inheritance detected: interface '{startSymbol.Name}' inherits from itself through its base interfaces",
+                        interfaceDef.LineStart, interfaceDef.ColumnStart,
+                        code: DiagnosticCodes.Semantic.CircularInheritance, span: interfaceDef.Span);
+                }
+                continue;
+            }
+
+            var interfaces = _semanticBinding.GetInterfaces(current) ?? (IReadOnlyList<TypeSymbol>)current.Interfaces;
+            foreach (var iface in interfaces)
+            {
+                queue.Enqueue(iface);
+            }
+        }
+    }
+
+    private void DetectInterfaceCycleForType(TypeSymbol startSymbol, int? line, int? column, Text.TextSpan? span)
+    {
+        var visited = new HashSet<string>();
+        var queue = new Queue<TypeSymbol>();
+        queue.Enqueue(startSymbol);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (!visited.Add(current.Name))
+            {
+                if (current.Name == startSymbol.Name)
+                {
+                    AddError($"Circular inheritance detected: type '{startSymbol.Name}' has a circular interface chain",
+                        line, column,
+                        code: DiagnosticCodes.Semantic.CircularInheritance, span: span);
+                }
+                continue;
+            }
+
+            var interfaces = _semanticBinding.GetInterfaces(current) ?? (IReadOnlyList<TypeSymbol>)current.Interfaces;
+            foreach (var iface in interfaces)
+            {
+                queue.Enqueue(iface);
+            }
+        }
     }
 
     private void ResolveDeclaration(Statement statement)

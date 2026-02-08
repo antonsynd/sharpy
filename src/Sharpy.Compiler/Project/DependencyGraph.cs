@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Project;
@@ -37,7 +38,7 @@ namespace Sharpy.Compiler.Project;
 /// var groups = graph.GetParallelizableGroups(); // [{utils.spy}, {models.spy}, {main.spy}]
 /// </code>
 /// </example>
-internal class DependencyGraph
+internal class DependencyGraph : IDependencyQuery
 {
     private static readonly ImmutableHashSet<string> EmptySet = ImmutableHashSet<string>.Empty;
 

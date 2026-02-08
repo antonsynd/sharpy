@@ -140,6 +140,7 @@ public static class DiagnosticCodes
         public const string SuperNoParent = "SPY0285";
         public const string DuplicateClass = "SPY0286";
         public const string InvalidSuperUsage = "SPY0287";
+        public const string CircularInheritance = "SPY0288";
 
         // Import errors (SPY0300-SPY0319)
         public const string ModuleNotFound = "SPY0300";

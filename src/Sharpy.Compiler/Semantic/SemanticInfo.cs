@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Services;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -20,7 +21,7 @@ namespace Sharpy.Compiler.Semantic;
 /// thread-safe and can be accessed concurrently.
 /// </para>
 /// </remarks>
-public class SemanticInfo
+public class SemanticInfo : ISemanticQuery
 {
     // Use ReferenceEqualityComparer because AST nodes are records with value-based equality,
     // but we need to distinguish between different instances (e.g., two super().__init__() calls

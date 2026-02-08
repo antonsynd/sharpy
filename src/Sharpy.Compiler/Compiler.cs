@@ -789,6 +789,7 @@ public class CompilationResult
     public Module? Module { get; init; }
     public SymbolTable? SymbolTable { get; init; }
     public SemanticInfo? SemanticInfo { get; init; }
+    public ISemanticQuery? SemanticQuery => SemanticInfo;
     internal ModuleRegistry? ModuleRegistry { get; init; }
     public string? GeneratedCSharpCode { get; init; }
 
@@ -823,6 +824,11 @@ public class CompilationResult
     /// Available for tooling that needs resolved module info (e.g., LSP go-to-definition across modules).
     /// </summary>
     internal ImportResolver? ImportResolver { get; init; }
+
+    /// <summary>
+    /// Read-only query interface for import resolution information.
+    /// </summary>
+    public IImportQuery? Imports => ImportResolver != null ? new ImportQueryAdapter(ImportResolver) : null;
 }
 
 /// <summary>
@@ -847,6 +853,11 @@ public class ProjectCompilationResult
     /// Available for tooling/analysis (e.g., incremental compilation, build order visualization).
     /// </summary>
     internal Project.DependencyGraph? DependencyGraph { get; init; }
+
+    /// <summary>
+    /// Read-only query interface for file dependency information.
+    /// </summary>
+    public IDependencyQuery? Dependencies => DependencyGraph;
 
     /// <summary>
     /// The ProjectModel containing all CompilationUnits.
