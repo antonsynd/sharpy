@@ -267,7 +267,7 @@ internal partial class RoslynEmitter
         }
 
         // Generate class members from body
-        var members = GenerateClassMembers(classDef.Body, className);
+        var members = GenerateClassMembers(classDef.Body, className, classDef.Name);
 
         // For abstract classes implementing interfaces, generate abstract stubs for missing methods
         if (_isInAbstractClass && classDef.BaseClasses.Length > 0)
@@ -452,7 +452,7 @@ internal partial class RoslynEmitter
         }
 
         // Generate struct members from body
-        var members = GenerateClassMembers(structDef.Body, structName);
+        var members = GenerateClassMembers(structDef.Body, structName, structDef.Name);
         structDecl = structDecl.WithMembers(List(members));
 
         // Add XML documentation from docstring if present

@@ -219,7 +219,7 @@ enum color:
     }
 
     [Fact]
-    public void ComputeForModule_ClassField_SetsCamelCaseName()
+    public void ComputeForModule_ClassField_SetsPascalCaseName()
     {
         var source = @"
 class MyClass:
@@ -237,7 +237,7 @@ class MyClass:
         var fieldSymbol = typeSymbol!.Fields.FirstOrDefault(f => f.Name == "my_field");
         fieldSymbol.Should().NotBeNull();
         fieldSymbol!.CodeGenInfo.Should().NotBeNull();
-        fieldSymbol.CodeGenInfo!.CSharpName.Should().Be("myField");
+        fieldSymbol.CodeGenInfo!.CSharpName.Should().Be("MyField");
     }
 
     [Fact]

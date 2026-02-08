@@ -223,7 +223,7 @@ public class NameManglerTests
     [InlineData(NameContext.Function, "calculate", "Calculate")]
     [InlineData(NameContext.Variable, "user_name", "userName")]
     [InlineData(NameContext.Parameter, "item_count", "itemCount")]
-    [InlineData(NameContext.Field, "private_data", "privateData")]
+    [InlineData(NameContext.Field, "private_data", "PrivateData")]
     [InlineData(NameContext.Constant, "MAX_SIZE", "MaxSize")]
     [InlineData(NameContext.EnumMember, "RED", "Red")]
     public void Transform_WithContext_TransformsCorrectly(NameContext context, string input, string expected)

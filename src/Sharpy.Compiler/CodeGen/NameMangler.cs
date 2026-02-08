@@ -276,7 +276,7 @@ internal static class NameMangler
             NameContext.Variable => ToCamelCase(name),
             NameContext.Parameter => ToCamelCase(name),
             NameContext.Constant => ToConstantCase(name),
-            NameContext.Field => ToCamelCase(name),
+            NameContext.Field => ToPascalCase(name),
             NameContext.EnumMember => ToEnumMemberName(name),
             _ => name
         };

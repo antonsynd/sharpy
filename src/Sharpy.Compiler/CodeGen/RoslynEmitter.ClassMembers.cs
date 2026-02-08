@@ -17,7 +17,8 @@ internal partial class RoslynEmitter
 {
     #region Class Member Generation
 
-    private List<MemberDeclarationSyntax> GenerateClassMembers(IReadOnlyList<Statement> body, string className)
+    private List<MemberDeclarationSyntax> GenerateClassMembers(
+        IReadOnlyList<Statement> body, string className, string originalTypeName)
     {
         var members = new List<MemberDeclarationSyntax>();
 
@@ -26,11 +27,15 @@ internal partial class RoslynEmitter
         var fieldTypeMapping = new Dictionary<string, TypeAnnotation>();
         var fieldMembers = new List<MemberDeclarationSyntax>();
 
+        var typeSymbol = _context.LookupSymbol(originalTypeName) as TypeSymbol;
+
         foreach (var stmt in body.Where(s => s is VariableDeclaration))
         {
             var varDecl = (VariableDeclaration)stmt;
             // Generate the field and capture the mangled name
-            var fieldDecl = GenerateField(varDecl);
+            var fieldSymbol = typeSymbol?.Fields.FirstOrDefault(f => f.Name == varDecl.Name);
+            var codeGenInfo = fieldSymbol != null ? GetCodeGenInfo(fieldSymbol) : null;
+            var fieldDecl = GenerateField(varDecl, codeGenInfo?.CSharpName);
             fieldMembers.Add(fieldDecl);
 
             // Extract the field name from the generated declaration
@@ -504,10 +509,10 @@ internal partial class RoslynEmitter
         return TokenList(tokens);
     }
 
-    private FieldDeclarationSyntax GenerateField(VariableDeclaration varDecl)
+    private FieldDeclarationSyntax GenerateField(VariableDeclaration varDecl, string? mangledName = null)
     {
         // Use PascalCase for public fields (C# property-like convention)
-        var fieldName = NameMangler.ToPascalCase(varDecl.Name);
+        var fieldName = mangledName ?? NameMangler.ToPascalCase(varDecl.Name);
 
         // Get field type from annotation, or infer from initializer for consts
         TypeSyntax fieldType;

@@ -281,7 +281,7 @@ internal class CodeGenInfoComputer
         {
             SetCodeGenInfo(fieldSymbol, new CodeGenInfo
             {
-                CSharpName = NameMangler.ToCamelCase(fieldDecl.Name),
+                CSharpName = NameMangler.ToPascalCase(fieldDecl.Name),
                 OriginalName = fieldDecl.Name,
                 IsModuleLevel = false,
                 IsConstant = fieldDecl.IsConst
