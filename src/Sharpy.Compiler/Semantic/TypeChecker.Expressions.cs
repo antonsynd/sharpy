@@ -694,6 +694,10 @@ internal partial class TypeChecker
                 span: memberAccess.Span);
         }
 
+        // Intentional Unknown without error for non-UserDefinedType member access:
+        // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
+        // are resolved by the codegen layer through CLR member discovery, not the
+        // type checker. This is a known gap — SPY0907 may fire as a warning for it.
         return SemanticType.Unknown;
     }
 
@@ -1698,6 +1702,11 @@ internal partial class TypeChecker
         if (elseType.IsAssignableTo(thenType))
             return thenType;
 
+        // Intentional Unknown without error: when then/else branch types are incompatible
+        // (e.g., `1 if cond else "str"`), we return Unknown rather than emitting an error
+        // because the LCA (least common ancestor) logic is limited. This is a known type
+        // checker gap — SPY0907 may fire for it. A proper fix would compute LCA or emit
+        // a type mismatch error here.
         return SemanticType.Unknown;
     }
 
