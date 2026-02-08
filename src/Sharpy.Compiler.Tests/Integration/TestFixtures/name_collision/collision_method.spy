@@ -1,0 +1,5 @@
+class Foo:
+    def foo_bar(self) -> None:
+        pass
+    def FooBar(self) -> None:
+        pass

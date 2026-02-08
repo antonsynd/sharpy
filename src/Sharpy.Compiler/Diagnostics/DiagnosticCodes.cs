@@ -199,6 +199,7 @@ public static class DiagnosticCodes
         public const string UnsupportedOperator = "SPY0519";
         public const string NameCollision = "SPY0520";
         public const string TypeReExportNotSupported = "SPY0521";
+        public const string MemberNameCollision = "SPY0522";
         public const string InternalGeneratedCSharpParseError = "SPY0599";
     }
 

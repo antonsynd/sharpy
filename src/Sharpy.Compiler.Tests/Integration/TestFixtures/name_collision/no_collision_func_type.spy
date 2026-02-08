@@ -1,0 +1,8 @@
+class Bar:
+    pass
+
+def foo_bar() -> None:
+    print("ok")
+
+def main() -> None:
+    foo_bar()

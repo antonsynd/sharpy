@@ -1,4 +1,5 @@
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -14,13 +15,16 @@ internal class CodeGenInfoComputer
 {
     private readonly SymbolTable _symbolTable;
     private readonly SemanticBinding _semanticBinding;
+    private readonly DiagnosticBag _diagnostics;
     private readonly HashSet<string> _processedModuleLevelVars = new();
     private HashSet<string> _variablesWithExecutionOrderIssues = new();
 
-    public CodeGenInfoComputer(SymbolTable symbolTable, SemanticBinding? semanticBinding = null)
+    public CodeGenInfoComputer(SymbolTable symbolTable, SemanticBinding? semanticBinding = null,
+        DiagnosticBag? diagnostics = null)
     {
         _symbolTable = symbolTable;
         _semanticBinding = semanticBinding ?? new SemanticBinding();
+        _diagnostics = diagnostics ?? new DiagnosticBag();
     }
 
     /// <summary>
@@ -66,6 +70,9 @@ internal class CodeGenInfoComputer
                     break;
             }
         }
+
+        // Third pass: Detect module-level name collisions
+        DetectModuleLevelCollisions(module);
     }
 
     private void ProcessModuleLevelDeclarations(Module module)
@@ -204,6 +211,7 @@ internal class CodeGenInfoComputer
 
             // Process class members
             ProcessTypeMembers(typeSymbol, classDef.Body);
+            DetectMemberCollisions(typeSymbol, classDef.Body);
         }
     }
 
@@ -219,6 +227,7 @@ internal class CodeGenInfoComputer
             });
 
             ProcessTypeMembers(typeSymbol, structDef.Body);
+            DetectMemberCollisions(typeSymbol, structDef.Body);
         }
     }
 
@@ -235,6 +244,7 @@ internal class CodeGenInfoComputer
             });
 
             ProcessTypeMembers(typeSymbol, interfaceDef.Body);
+            DetectMemberCollisions(typeSymbol, interfaceDef.Body);
         }
     }
 
@@ -317,6 +327,124 @@ internal class CodeGenInfoComputer
                 IsModuleLevel = isModuleLevel
             });
         }
+    }
+
+    /// <summary>
+    /// Detects name collisions among members of a type (fields + methods) after mangling.
+    /// </summary>
+    private void DetectMemberCollisions(TypeSymbol typeSymbol, IEnumerable<Statement> body)
+    {
+        var seen = new Dictionary<string, string>(); // CSharpName → originalName
+
+        foreach (var symbol in typeSymbol.Fields.Cast<Symbol>().Concat(typeSymbol.Methods))
+        {
+            var info = _semanticBinding.GetCodeGenInfo(symbol);
+            if (info == null)
+                continue;
+
+            if (seen.TryGetValue(info.CSharpName, out var existingOriginal))
+            {
+                // Find the AST node for the colliding symbol to get location info
+                var line = FindMemberLine(body, symbol.Name);
+
+                _diagnostics.AddError(
+                    $"Name collision: '{symbol.Name}' and '{existingOriginal}' both compile to " +
+                    $"'{info.CSharpName}'. Rename one of the conflicting symbols.",
+                    line: line,
+                    code: DiagnosticCodes.CodeGen.MemberNameCollision,
+                    phase: CompilerPhase.CodeGeneration);
+            }
+            else
+            {
+                seen[info.CSharpName] = symbol.Name;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Detects name collisions among module-level symbols (functions, variables, and types).
+    /// All of these become members of the same module class in generated C#.
+    /// </summary>
+    private void DetectModuleLevelCollisions(Module module)
+    {
+        var seen = new Dictionary<string, (string originalName, int? line)>(); // CSharpName → (originalName, line)
+
+        foreach (var stmt in module.Body)
+        {
+            string? symbolName = null;
+            int? stmtLine = null;
+
+            switch (stmt)
+            {
+                case FunctionDef funcDef:
+                    symbolName = funcDef.Name;
+                    stmtLine = funcDef.LineStart;
+                    break;
+                case VariableDeclaration varDecl:
+                    symbolName = varDecl.Name;
+                    stmtLine = varDecl.LineStart;
+                    break;
+                case ClassDef classDef:
+                    symbolName = classDef.Name;
+                    stmtLine = classDef.LineStart;
+                    break;
+                case StructDef structDef:
+                    symbolName = structDef.Name;
+                    stmtLine = structDef.LineStart;
+                    break;
+                case InterfaceDef interfaceDef:
+                    symbolName = interfaceDef.Name;
+                    stmtLine = interfaceDef.LineStart;
+                    break;
+                case EnumDef enumDef:
+                    symbolName = enumDef.Name;
+                    stmtLine = enumDef.LineStart;
+                    break;
+            }
+
+            if (symbolName == null)
+                continue;
+
+            var symbol = _symbolTable.Lookup(symbolName);
+            if (symbol == null)
+                continue;
+
+            var info = _semanticBinding.GetCodeGenInfo(symbol);
+            if (info == null)
+                continue;
+
+            if (seen.TryGetValue(info.CSharpName, out var existing))
+            {
+                _diagnostics.AddError(
+                    $"Name collision: '{symbolName}' and '{existing.originalName}' both compile to " +
+                    $"'{info.CSharpName}'. Rename one of the conflicting symbols.",
+                    line: stmtLine,
+                    code: DiagnosticCodes.CodeGen.MemberNameCollision,
+                    phase: CompilerPhase.CodeGeneration);
+            }
+            else
+            {
+                seen[info.CSharpName] = (symbolName, stmtLine);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Finds the line number for a member declaration in the type body.
+    /// </summary>
+    private static int? FindMemberLine(IEnumerable<Statement> body, string memberName)
+    {
+        foreach (var stmt in body)
+        {
+            switch (stmt)
+            {
+                case VariableDeclaration v when v.Name == memberName:
+                    return v.LineStart;
+                case FunctionDef f when f.Name == memberName:
+                    return f.LineStart;
+            }
+        }
+        return null;
     }
 
     // Note: HasExecutionOrderIssues and ContainsRuntimeExpression methods were removed.

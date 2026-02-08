@@ -775,6 +775,12 @@ public static class DiagnosticExplanations
             "# File: animal.spy\n# Module class name would be 'Animal', but 'struct Animal' collides\nstruct Animal:\n    name: str",
             "Rename the type or the source file so that the type name does not match the file name in PascalCase.");
 
+        Add(dict, DiagnosticCodes.CodeGen.MemberNameCollision, "Member name collision after mangling", "CodeGen",
+            "Two symbols in the same scope produce the same C# name after name mangling. " +
+            "For example, 'foo_bar' and 'FooBar' both compile to 'FooBar'.",
+            "class Foo:\n    def foo_bar(self): ...\n    def FooBar(self): ...",
+            "Rename one of the conflicting symbols or use backtick escaping.");
+
         Add(dict, DiagnosticCodes.CodeGen.TypeReExportNotSupported, "Type re-export not supported", "CodeGen",
             "A type cannot be re-exported from an __init__.spy package file. Types should be imported directly " +
             "from their defining module rather than re-exported through package init files.",

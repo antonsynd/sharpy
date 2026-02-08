@@ -1,0 +1,5 @@
+def foo_bar() -> None:
+    pass
+
+def FooBar() -> None:
+    pass

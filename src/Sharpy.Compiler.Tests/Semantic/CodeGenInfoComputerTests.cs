@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
@@ -364,5 +365,89 @@ const CONST_VALUE: int = 100
         symbol.Should().NotBeNull();
         symbol!.CodeGenInfo.Should().NotBeNull();
         symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ComputeForModule_TwoMethodsSameMangledName_EmitsSPY0522()
+    {
+        var source = @"
+class Foo:
+    def foo_bar(self) -> None:
+        pass
+    def FooBar(self) -> None:
+        pass
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module);
+
+        diagnostics.HasErrors.Should().BeTrue();
+        diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.CodeGen.MemberNameCollision &&
+            d.Message.Contains("Name collision"));
+    }
+
+    [Fact]
+    public void ComputeForModule_MethodAndFieldSameMangledName_EmitsSPY0522()
+    {
+        var source = @"
+class Foo:
+    foo_bar: int = 1
+    def FooBar(self) -> None:
+        pass
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module);
+
+        diagnostics.HasErrors.Should().BeTrue();
+        diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.CodeGen.MemberNameCollision &&
+            d.Message.Contains("Name collision"));
+    }
+
+    [Fact]
+    public void ComputeForModule_ModuleFunctionAndTypeSameMangledName_EmitsSPY0522()
+    {
+        var source = @"
+class FooBar:
+    pass
+
+def foo_bar() -> None:
+    pass
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module);
+
+        diagnostics.HasErrors.Should().BeTrue();
+        diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.CodeGen.MemberNameCollision &&
+            d.Message.Contains("Name collision"));
+    }
+
+    [Fact]
+    public void ComputeForModule_DifferentMangledNames_NoCollision()
+    {
+        var source = @"
+class Bar:
+    pass
+
+def foo_bar() -> None:
+    pass
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module);
+
+        diagnostics.HasErrors.Should().BeFalse();
     }
 }

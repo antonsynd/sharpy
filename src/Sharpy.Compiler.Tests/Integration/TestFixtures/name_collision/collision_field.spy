@@ -1,0 +1,3 @@
+class Foo:
+    foo_bar: int = 1
+    FooBar: int = 2

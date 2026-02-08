@@ -275,7 +275,7 @@ internal partial class TypeChecker
         // Compute CodeGenInfo for all symbols if enabled
         if (computeCodeGenInfo)
         {
-            var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable, SemanticBinding);
+            var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable, SemanticBinding, _diagnostics);
             codeGenInfoComputer.ComputeForModule(module);
         }
     }

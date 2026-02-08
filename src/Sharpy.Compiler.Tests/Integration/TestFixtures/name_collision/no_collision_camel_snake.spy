@@ -1,0 +1,10 @@
+class Foo:
+    def foo_bar(self) -> None:
+        print("snake")
+    def fooBar(self) -> None:
+        print("camel")
+
+def main() -> None:
+    f: Foo = Foo()
+    f.foo_bar()
+    f.fooBar()
