@@ -34,8 +34,8 @@ private string GetFunctionName(MethodInfo method)
 }
 ```
 
-- [ ] Add the `([0-9])([A-Z][a-z])` regex pass between existing passes 1 and 3
-- [ ] Update the comments to label the passes 1/2/3
+- [x] Add the `([0-9])([A-Z][a-z])` regex pass between existing passes 1 and 3
+- [x] Update the comments to label the passes 1/2/3
 
 ### 1b. Add unit tests for `GetFunctionName()`
 
@@ -45,11 +45,11 @@ There are **zero** existing tests for the reverse mangling algorithm itself. Add
 
 **Recommended approach:** Extract the regex logic into an `internal static` method (e.g., `ReverseNameMangler.ToSnakeCase(string name)`) in a new file `src/Sharpy.Compiler/Discovery/ReverseNameMangler.cs`, and call it from `GetFunctionName()`. This makes it directly testable and prepares for Phase 2 (symbol-aware mangling). `[InternalsVisibleTo("Sharpy.Compiler.Tests")]` is already configured in the `.csproj`.
 
-- [ ] Extract reverse mangling logic into `ReverseNameMangler.ToSnakeCase(string name)`
-- [ ] Create `src/Sharpy.Compiler/Discovery/ReverseNameMangler.cs`
-- [ ] Update `GetFunctionName()` to call `ReverseNameMangler.ToSnakeCase(method.Name)`
-- [ ] Create `src/Sharpy.Compiler.Tests/Discovery/ReverseNameManglerTests.cs`
-- [ ] Add `[Theory]`/`[InlineData]` tests for **all 22 rows** of the comprehensive results table in the design doc appendix:
+- [x] Extract reverse mangling logic into `ReverseNameMangler.ToSnakeCase(string name)`
+- [x] Create `src/Sharpy.Compiler/Discovery/ReverseNameMangler.cs`
+- [x] Update `GetFunctionName()` to call `ReverseNameMangler.ToSnakeCase(method.Name)`
+- [x] Create `src/Sharpy.Compiler.Tests/Discovery/ReverseNameManglerTests.cs`
+- [x] Add `[Theory]`/`[InlineData]` tests for **all 22 rows** of the comprehensive results table in the design doc appendix:
   - `GetUserName` → `get_user_name`
   - `XMLParser` → `xml_parser`
   - `HTTPSConnection` → `https_connection`
@@ -74,8 +74,8 @@ There are **zero** existing tests for the reverse mangling algorithm itself. Add
   - `SHA256` → `sha256`
   - `ToString` → `to_string`
   - `ReadAllText` → `read_all_text`
-- [ ] Run `dotnet test --filter "FullyQualifiedName~ReverseNameMangler"` — all pass
-- [ ] Run `dotnet test --filter "FullyQualifiedName~OverloadIndexBuilder"` — existing tests still pass
+- [x] Run `dotnet test --filter "FullyQualifiedName~ReverseNameMangler"` — all pass
+- [x] Run `dotnet test --filter "FullyQualifiedName~OverloadIndexBuilder"` — existing tests still pass
 
 ### 1c. Commit
 
