@@ -2,6 +2,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Text;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -110,7 +111,11 @@ internal class TypeResolver
                     }
                     else
                     {
-                        AddError($"Type '{annotation.Name}' not found", annotation.LineStart, annotation.ColumnStart,
+                        var typeMessage = $"Type '{annotation.Name}' not found";
+                        var typeSuggestion = FindTypeSuggestion(annotation.Name);
+                        if (typeSuggestion != null)
+                            typeMessage += $". Did you mean '{typeSuggestion}'?";
+                        AddError(typeMessage, annotation.LineStart, annotation.ColumnStart,
                             code: DiagnosticCodes.Semantic.UndefinedType, span: annotation.Span);
                         result = SemanticType.Unknown;
                     }
@@ -220,7 +225,11 @@ internal class TypeResolver
         var typeSymbol = _symbolTable.LookupType(annotation.Name);
         if (typeSymbol == null)
         {
-            AddError($"Generic type '{annotation.Name}' not found", annotation.LineStart, annotation.ColumnStart,
+            var genericMessage = $"Generic type '{annotation.Name}' not found";
+            var genericSuggestion = FindTypeSuggestion(annotation.Name);
+            if (genericSuggestion != null)
+                genericMessage += $". Did you mean '{genericSuggestion}'?";
+            AddError(genericMessage, annotation.LineStart, annotation.ColumnStart,
                 code: DiagnosticCodes.Semantic.UndefinedType, span: annotation.Span);
             return SemanticType.Unknown;
         }
@@ -290,6 +299,13 @@ internal class TypeResolver
             ParameterTypes = paramTypes,
             ReturnType = returnType
         };
+    }
+
+    private string? FindTypeSuggestion(string name)
+    {
+        var typeNames = _symbolTable.GetVisibleSymbolNames()
+            .Where(n => _symbolTable.LookupType(n) != null);
+        return EditDistance.FindClosestMatch(name, typeNames);
     }
 
     private void AddError(string message, int? line = null, int? column = null, string? code = null,
