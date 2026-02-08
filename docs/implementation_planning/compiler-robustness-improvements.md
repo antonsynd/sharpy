@@ -94,7 +94,7 @@ The validation pipeline (~37 AddError/AddWarning calls across ~13 validator file
 
 ### 1c. Add TextSpan to Parser diagnostics
 
-The Parser currently uses only line/column for all its diagnostic calls. It reports errors through a `ReportError(message, line, column, code)` method that calls `_diagnostics.AddError()` without a span, plus ~24 direct `Error()` calls across the 5 partial files. Since tokens have position information during parsing, the Parser should propagate spans.
+The Parser currently uses only line/column for all its diagnostic calls. It reports errors through a `ReportError(message, line, column, code)` method that calls `_diagnostics.AddError()` without a span. There are ~26 `ReportError()` call sites across the 6 partial files. Since tokens have position information during parsing, the Parser should propagate spans.
 
 **Files to modify**:
 - `src/Sharpy.Compiler/Parser/Parser.cs` (main file — contains `ReportError()` helper)
@@ -107,7 +107,7 @@ The Parser currently uses only line/column for all its diagnostic calls. It repo
 **Checklist**:
 
 - [ ] Modify `ReportError()` in `Parser.cs` to accept an optional `TextSpan?` parameter and pass it through to `_diagnostics.AddError()`
-- [ ] Search for all `ReportError(` and `Error(` calls across all 6 Parser partial files
+- [ ] Search for all `ReportError(` calls across all 6 Parser partial files
 - [ ] Determine if the parser has access to token positions that can form a `TextSpan` at each call site (tokens have line/column but may need conversion to spans)
 - [ ] For error recovery sites where a span is naturally available (e.g., unexpected token), use the token's span
 - [ ] For sites where only line/column are available, leave as-is (this is acceptable for parser errors where the exact span is ambiguous)
@@ -124,7 +124,7 @@ The Parser currently uses only line/column for all its diagnostic calls. It repo
 - [ ] Search for all `AddError(` calls in NameResolver that do NOT pass spans (~2 of 20 calls lack spans; the helper already accepts `TextSpan? span = null`)
 - [ ] Add spans using the AST nodes being resolved (declarations, identifiers)
 - [ ] **ImportResolver prerequisite**: The ImportResolver's private `AddError` helper has signature `AddError(string message, int? line, int? column, string? code = null)` — it does **not** accept a `TextSpan` parameter. First modify this helper to accept `Text.TextSpan? span = null` and pass it through to `_diagnostics.AddError()`
-- [ ] Search for all `AddError(` calls in ImportResolver (4 total) and add spans
+- [ ] Search for all `AddError(` calls in ImportResolver (2 call sites at lines 368 and 376) and add spans
 - [ ] For import errors, use the ImportStatement/FromImportStatement node's span
 - [ ] Run tests: `dotnet test --filter "FullyQualifiedName~NameResol" && dotnet test --filter "FullyQualifiedName~Import"`
 
@@ -254,7 +254,7 @@ The pattern is mechanical: accept `CancellationToken` as a parameter, call `canc
 
 **Checklist**:
 
-- [ ] Add `CancellationToken cancellationToken = default` parameter to `ImportResolver.ResolveImports()` (or equivalent entry point)
+- [ ] Add `CancellationToken cancellationToken = default` parameter to `ImportResolver.ResolveAllImports()` (the main entry point)
 - [ ] Add `cancellationToken.ThrowIfCancellationRequested()` before each module load (import resolution can trigger parsing of other files)
 - [ ] Add `CancellationToken cancellationToken = default` parameter to `ModuleLoader.LoadModule()` (or equivalent)
 - [ ] Pass the token through to the Parser when ModuleLoader parses imported files
