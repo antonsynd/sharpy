@@ -62,7 +62,9 @@ public static class CompilerInvariants
 
         /// <summary>
         /// Check for unknown expression types remaining after type checking.
-        /// Run after type checking (aspirational - warns but doesn't fail).
+        /// Run after type checking. Skips when user errors exist (error recovery
+        /// naturally produces Unknown types). Emits SPY0907 warnings for Unknown
+        /// types not marked as error recovery.
         /// </summary>
         UnknownTypes = 16,
 
