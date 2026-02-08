@@ -35,4 +35,44 @@ public class ReverseNameManglerTests
         var result = ReverseNameMangler.ToSnakeCase(input);
         Assert.Equal(expected, result);
     }
+
+    [Theory]
+    [InlineData("Base64Encoder", "BASE64_ENCODER")]
+    [InlineData("XMLParser", "XML_PARSER")]
+    [InlineData("SHA256Managed", "SHA256_MANAGED")]
+    public void ToScreamingSnakeCase_ConvertsCorrectly(string input, string expected)
+    {
+        var result = ReverseNameMangler.ToScreamingSnakeCase(input);
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void ToSharpyName_EnumMember_ReturnsScreamingSnakeCase()
+    {
+        Assert.Equal("DARK_BLUE", ReverseNameMangler.ToSharpyName("DarkBlue", ReverseNameContext.EnumMember));
+    }
+
+    [Fact]
+    public void ToSharpyName_Constant_ReturnsScreamingSnakeCase()
+    {
+        Assert.Equal("MAX_RETRY_COUNT", ReverseNameMangler.ToSharpyName("MaxRetryCount", ReverseNameContext.Constant));
+    }
+
+    [Fact]
+    public void ToSharpyName_Method_ReturnsSnakeCase()
+    {
+        Assert.Equal("get_user_name", ReverseNameMangler.ToSharpyName("GetUserName", ReverseNameContext.Method));
+    }
+
+    [Fact]
+    public void ToSharpyName_Type_PreservesName()
+    {
+        Assert.Equal("StringBuilder", ReverseNameMangler.ToSharpyName("StringBuilder", ReverseNameContext.Type));
+    }
+
+    [Fact]
+    public void ToSharpyName_Interface_PreservesName()
+    {
+        Assert.Equal("IComparable", ReverseNameMangler.ToSharpyName("IComparable", ReverseNameContext.Interface));
+    }
 }

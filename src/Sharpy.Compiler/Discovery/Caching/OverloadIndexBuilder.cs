@@ -186,7 +186,7 @@ internal class OverloadIndexBuilder
 
     private string GetFunctionName(MethodInfo method)
     {
-        return ReverseNameMangler.ToSnakeCase(method.Name);
+        return ReverseNameMangler.ToSharpyName(method.Name, ReverseNameContext.Method);
     }
 
     private FunctionSignature CreateFunctionSignature(MethodInfo method)
