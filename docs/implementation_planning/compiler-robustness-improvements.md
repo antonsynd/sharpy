@@ -314,15 +314,15 @@ The building blocks already exist: `Compiler.cs` handles compilation, `CompilerS
 
 **Checklist**:
 
-- [ ] Create `public sealed class CompilerApi`
-- [ ] Add a `CompileResult Compile(string source, CompilerOptions? options = null, string? filePath = null, CancellationToken cancellationToken = default)` method that:
+- [x] Create `public sealed class CompilerApi`
+- [x] Add a `CompileResult Compile(string source, CompilerOptions? options = null, string? filePath = null, CancellationToken cancellationToken = default)` method that:
   - Creates a `SourceText` from the source string
   - Runs the full pipeline (Lexer → Parser → Semantic → CodeGen)
   - Returns a `CompileResult` (see below)
-- [ ] Add a `CompileResult CompileFile(string filePath, CompilerOptions? options = null, CancellationToken cancellationToken = default)` method
-- [ ] Add a `ParseResult Parse(string source, CancellationToken cancellationToken = default)` method that runs only Lexer → Parser and returns the AST + diagnostics (useful for tooling that only needs syntax information)
-- [ ] Add a `SemanticResult Analyze(string source, CancellationToken cancellationToken = default)` method that runs Lexer → Parser → Semantic (no codegen) and returns the AST + SemanticInfo + diagnostics (useful for LSP hover/completion)
-- [ ] Ensure the class is easy to instantiate (no complex setup required; use sensible defaults)
+- [x] Add a `CompileResult CompileFile(string filePath, CompilerOptions? options = null, CancellationToken cancellationToken = default)` method
+- [x] Add a `ParseResult Parse(string source, CancellationToken cancellationToken = default)` method that runs only Lexer → Parser and returns the AST + diagnostics (useful for tooling that only needs syntax information)
+- [x] Add a `SemanticResult Analyze(string source, CancellationToken cancellationToken = default)` method that runs Lexer → Parser → Semantic (no codegen) and returns the AST + SemanticInfo + diagnostics (useful for LSP hover/completion)
+- [x] Ensure the class is easy to instantiate (no complex setup required; use sensible defaults)
 
 ### 4b. Create result types
 
@@ -330,25 +330,25 @@ The building blocks already exist: `Compiler.cs` handles compilation, `CompilerS
 
 **Checklist**:
 
-- [ ] Reuse the existing `CompilerOptions` class (defined in `Compiler.cs`, includes `WarningsAsErrors`, `SuppressedWarnings`, `MaxErrors`, `ModulePaths`, `References`, `Incremental`, `OutputType`). Do **not** create a new options record — `CompilerOptions` already exists and is the canonical configuration type. If additional API-specific options are needed (e.g., `RootNamespace`, `FilePath`), either extend the existing class or accept them as method parameters.
-- [ ] Create `public record CompileResult`:
+- [x] Reuse the existing `CompilerOptions` class (defined in `Compiler.cs`, includes `WarningsAsErrors`, `SuppressedWarnings`, `MaxErrors`, `ModulePaths`, `References`, `Incremental`, `OutputType`). Do **not** create a new options record — `CompilerOptions` already exists and is the canonical configuration type. If additional API-specific options are needed (e.g., `RootNamespace`, `FilePath`), either extend the existing class or accept them as method parameters.
+- [x] Create `public record CompileResult`:
   - `bool Success` (no errors)
   - `IReadOnlyList<CompilerDiagnostic> Diagnostics`
   - `string? GeneratedCSharp` (the emitted C# source, null if codegen failed)
   - `Module? Ast` (the parsed AST, null if parsing failed)
   - `SemanticInfo? SemanticInfo` (type information, null if semantic analysis failed)
   - `CompilationMetrics? Metrics` (optional timing data)
-- [ ] Create `public record ParseResult`:
+- [x] Create `public record ParseResult`:
   - `bool Success`
   - `IReadOnlyList<CompilerDiagnostic> Diagnostics`
   - `Module? Ast`
-- [ ] Create `public record SemanticResult`:
+- [x] Create `public record SemanticResult`:
   - `bool Success`
   - `IReadOnlyList<CompilerDiagnostic> Diagnostics`
   - `Module? Ast`
   - `SemanticInfo? SemanticInfo`
   - `SymbolTable? SymbolTable`
-- [ ] Ensure all result types are immutable (no mutable collections exposed)
+- [x] Ensure all result types are immutable (no mutable collections exposed)
 
 ### 4c. Wire existing AstPositionService into the API
 
@@ -356,10 +356,10 @@ The building blocks already exist: `Compiler.cs` handles compilation, `CompilerS
 
 **Checklist**:
 
-- [ ] Add a `Node? FindNodeAtPosition(Module module, int line, int column)` convenience method that delegates to `AstPositionService.FindInnermostNode()`
-- [ ] Add a `T? FindNodeOfType<T>(Module module, int line, int column) where T : Node` convenience method
-- [ ] Add a `string FormatDiagnostic(CompilerDiagnostic diagnostic, string? source = null)` method that delegates to `DiagnosticRenderer`
-- [ ] Document in XML comments that line/column are 1-based (matching LSP conventions)
+- [x] Add a `Node? FindNodeAtPosition(Module module, int line, int column)` convenience method that delegates to `AstPositionService.FindInnermostNode()`
+- [x] Add a `T? FindNodeOfType<T>(Module module, int line, int column) where T : Node` convenience method
+- [x] Add a `string FormatDiagnostic(CompilerDiagnostic diagnostic, string? source = null)` method that delegates to `DiagnosticRenderer`
+- [x] Document in XML comments that line/column are 1-based (matching LSP conventions)
 
 ### 4d. Add tests for CompilerApi
 
@@ -367,14 +367,14 @@ The building blocks already exist: `Compiler.cs` handles compilation, `CompilerS
 
 **Checklist**:
 
-- [ ] Test `Compile()` with a valid program — assert Success, non-null GeneratedCSharp, no error diagnostics
-- [ ] Test `Compile()` with a type error — assert !Success, at least one error diagnostic with SPY code and TextSpan
-- [ ] Test `Parse()` with a syntax error — assert !Success, error diagnostic with location
-- [ ] Test `Analyze()` with valid code — assert SemanticInfo is populated
-- [ ] Test `FindNodeAtPosition()` — parse a small program, find an identifier by position
-- [ ] Test `FormatDiagnostic()` — assert output contains `^^^` underlines when a span is present
-- [ ] Test cancellation — assert `OperationCanceledException` with a pre-cancelled token
-- [ ] Run: `dotnet test --filter "FullyQualifiedName~CompilerApi"`
+- [x] Test `Compile()` with a valid program — assert Success, non-null GeneratedCSharp, no error diagnostics
+- [x] Test `Compile()` with a type error — assert !Success, at least one error diagnostic with SPY code and TextSpan
+- [x] Test `Parse()` with a syntax error — assert !Success, error diagnostic with location
+- [x] Test `Analyze()` with valid code — assert SemanticInfo is populated
+- [x] Test `FindNodeAtPosition()` — parse a small program, find an identifier by position
+- [x] Test `FormatDiagnostic()` — assert output contains `^^^` underlines when a span is present
+- [x] Test cancellation — assert `OperationCanceledException` with a pre-cancelled token
+- [x] Run: `dotnet test --filter "FullyQualifiedName~CompilerApi"`
 
 ### 4e. Refactor CLI to use CompilerApi
 
@@ -382,11 +382,11 @@ The building blocks already exist: `Compiler.cs` handles compilation, `CompilerS
 
 **Checklist**:
 
-- [ ] Identify the core compilation logic in Program.cs that can be replaced with `CompilerApi.Compile()` calls
-- [ ] Refactor the `build` and `run` commands to use `CompilerApi`
-- [ ] Keep the CLI-specific concerns (console output, ANSI colors, exit codes) in Program.cs
-- [ ] Verify all CLI commands still work: `dotnet run --project src/Sharpy.Cli -- run snippets/hello.spy`
-- [ ] Run the full integration test suite: `dotnet test --filter "FullyQualifiedName~FileBasedIntegration"`
+- [x] Identify the core compilation logic in Program.cs that can be replaced with `CompilerApi.Compile()` calls
+- [x] Refactor the `build` and `run` commands to use `CompilerApi`
+- [x] Keep the CLI-specific concerns (console output, ANSI colors, exit codes) in Program.cs
+- [x] Verify all CLI commands still work: `dotnet run --project src/Sharpy.Cli -- run snippets/hello.spy`
+- [x] Run the full integration test suite: `dotnet test --filter "FullyQualifiedName~FileBasedIntegration"`
 
 > **Gotcha**: Don't try to refactor the `project` (multi-file) command in this phase. ProjectCompiler has its own orchestration that's more complex. Focus on single-file compilation first.
 
