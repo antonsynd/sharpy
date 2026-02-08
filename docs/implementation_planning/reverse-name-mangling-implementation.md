@@ -211,12 +211,14 @@ Add(dict, DiagnosticCodes.CodeGen.MemberNameCollision, "Member name collision af
 
 **File:** `src/Sharpy.Compiler/Semantic/CodeGenInfoComputer.cs`
 
-The class currently has no way to emit diagnostics. Add a `DiagnosticBag` parameter to the constructor.
+The class currently has no way to emit diagnostics. Add an **optional** `DiagnosticBag?` parameter to the constructor, mirroring the existing `SemanticBinding?` pattern. This avoids breaking existing test call sites (17+ in `CodeGenInfoComputerTests.cs`) that construct `CodeGenInfoComputer` without a `DiagnosticBag`.
 
 - [ ] Add `private readonly DiagnosticBag _diagnostics;` field
-- [ ] Add `DiagnosticBag diagnostics` parameter to the constructor
-- [ ] Update all call sites that construct `CodeGenInfoComputer` to pass a `DiagnosticBag`
-  - There is one call site: `TypeChecker.cs:278` — pass the TypeChecker's `_diagnostics` field
+- [ ] Add `DiagnosticBag? diagnostics = null` parameter to the constructor (after the existing `semanticBinding` parameter)
+- [ ] Initialize with `_diagnostics = diagnostics ?? new DiagnosticBag();`
+- [ ] Update the production call site at `TypeChecker.cs:278` to pass the TypeChecker's `_diagnostics` field
+  - Only one production call site: `new CodeGenInfoComputer(_symbolTable, SemanticBinding)` → `new CodeGenInfoComputer(_symbolTable, SemanticBinding, _diagnostics)`
+  - Test call sites (17+ in `CodeGenInfoComputerTests.cs`) remain unchanged — the default `null` creates a no-op bag
 
 ### 3c. Add collision detection after type member processing
 
@@ -379,7 +381,7 @@ camel
 
 ### 3f. Add unit tests for `CodeGenInfoComputer` collision detection
 
-**File:** `src/Sharpy.Compiler.Tests/Semantic/CodeGenInfoComputerTests.cs` (create if it doesn't exist)
+**File:** `src/Sharpy.Compiler.Tests/Semantic/CodeGenInfoComputerTests.cs` (append to existing — already has 17 tests)
 
 Use `IntegrationTestBase.CompileAndExecute()` or build the AST manually to test:
 
@@ -482,5 +484,5 @@ After all phases are complete:
 | `src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs` | 3 | Edit — add `MemberNameCollision = "SPY0522"` |
 | `src/Sharpy.Compiler/Diagnostics/DiagnosticExplanations.cs` | 3 | Edit — add explanation for `SPY0522` |
 | `src/Sharpy.Compiler.Tests/Discovery/ReverseNameManglerTests.cs` | 1, 2, 4 | **Create** |
-| `src/Sharpy.Compiler.Tests/Semantic/CodeGenInfoComputerTests.cs` | 3 | **Create** (if needed) |
+| `src/Sharpy.Compiler.Tests/Semantic/CodeGenInfoComputerTests.cs` | 3 | Edit (append — already exists with 17 tests) |
 | `src/Sharpy.Compiler.Tests/Integration/TestFixtures/name_collision/*.spy` | 3 | **Create** |
