@@ -1316,6 +1316,15 @@ internal partial class TypeChecker
             return returnType;
         }
 
+        // If callee type is Unknown, this is error recovery from a sub-expression
+        // (covered by transitive error recovery tracking in CheckExpression).
+        // Otherwise, the callee evaluated to a non-callable type — emit an error.
+        if (funcType is not UnknownType)
+        {
+            AddError($"Expression of type '{funcType.GetDisplayName()}' is not callable",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction,
+                span: call.Function.Span);
+        }
         return SemanticType.Unknown;
     }
 
