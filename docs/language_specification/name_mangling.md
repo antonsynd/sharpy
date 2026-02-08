@@ -48,7 +48,7 @@ After stripping leading underscores and trailing underscores, the remaining body
 
 The transformation depends on the detected form and the target convention:
 
-**For PascalCase target** (functions, methods, types, constants, class fields):
+**For PascalCase target** (functions, methods, class fields):
 
 | Form | Transformation | Example |
 |------|----------------|---------|
@@ -75,6 +75,8 @@ The transformation depends on the detected form and the target convention:
 **For constant context** (module-level constants):
 
 Constants use the same rules as PascalCase target, except `SingleWordUpper` is normalized: `HTTP` → `Http`.
+
+**Types** (classes, structs, interfaces, enums) preserve the author's exact casing and are not subject to PascalCase/camelCase transformation. `UserService` stays `UserService`, and even `my_class` would stay `my_class`.
 
 ### Step 4: Reattach Leading Underscores
 
