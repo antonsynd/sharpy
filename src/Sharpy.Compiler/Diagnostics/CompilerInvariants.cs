@@ -330,6 +330,11 @@ public static class CompilerInvariants
                     _ => expr.GetType().Name
                 };
 
+                // Note: This is emitted as a Warning rather than Error (as the spec suggests)
+                // because there are known false positives from GenericType member access
+                // (e.g., list[T].append, Box[T].get) where the type checker returns Unknown
+                // without an error — the codegen resolves these through CLR member discovery.
+                // When those type checker gaps are fixed, upgrade this to AddError.
                 diagnostics.AddWarning(
                     $"Internal: type inference produced UnknownType for '{nodeName}' without a corresponding error diagnostic. This is a compiler bug.",
                     expr.Span,

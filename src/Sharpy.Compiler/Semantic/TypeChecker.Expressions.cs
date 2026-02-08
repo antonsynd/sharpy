@@ -19,9 +19,11 @@ internal partial class TypeChecker
         if (cached != null)
             return cached;
 
-        // Track error count before checking — if errors are emitted during this
-        // expression's check and the result is UnknownType, it's error recovery
+        // Track error count and error recovery marks before checking — if errors are
+        // emitted or sub-expressions are marked as error recovery during this expression's
+        // check and the result is UnknownType, it's error recovery (expected Unknown).
         int errorsBefore = _diagnostics.ErrorCount;
+        int recoveryBefore = _errorRecoveryMarkCount;
 
         SemanticType type = expr switch
         {
@@ -60,11 +62,15 @@ internal partial class TypeChecker
             _ => HandleUnrecognizedExpression(expr)
         };
 
-        // Track error recovery: if the result is UnknownType and errors were emitted
-        // during this expression's check, mark it as error recovery (expected Unknown).
-        if (type is UnknownType && _diagnostics.ErrorCount > errorsBefore)
+        // Track error recovery: if the result is UnknownType and either new errors were
+        // emitted or sub-expressions were marked as error recovery, mark this expression
+        // as error recovery too. This enables transitive propagation — if MathUtil.square
+        // returns Unknown because MathUtil (a TypeSymbol ref) was Unknown, the MemberAccess
+        // also gets marked as error recovery.
+        if (type is UnknownType &&
+            (_diagnostics.ErrorCount > errorsBefore || _errorRecoveryMarkCount > recoveryBefore))
         {
-            _semanticInfo.MarkErrorRecovery(expr);
+            MarkExpressionAsErrorRecovery(expr);
         }
 
         // Cache the result
@@ -140,7 +146,7 @@ internal partial class TypeChecker
         {
             _semanticInfo.SetIdentifierSymbol(id, symbol);
             // Mark as error recovery — the import error was already reported upstream
-            _semanticInfo.MarkErrorRecovery(id);
+            MarkExpressionAsErrorRecovery(id);
             return SemanticType.Unknown;
         }
 
@@ -175,7 +181,7 @@ internal partial class TypeChecker
         // are not errors — they're expected gaps handled at higher levels (e.g., FunctionCall).
         if (identifierType is UnknownType && symbol is not null)
         {
-            _semanticInfo.MarkErrorRecovery(id);
+            MarkExpressionAsErrorRecovery(id);
         }
 
         return identifierType;
@@ -1650,7 +1656,7 @@ internal partial class TypeChecker
             _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
             _semanticInfo.SetExpressionType(forClause.Target, elemType);
             if (elemType is UnknownType)
-                _semanticInfo.MarkErrorRecovery(forClause.Target);
+                MarkExpressionAsErrorRecovery(forClause.Target);
         }
         else
         {

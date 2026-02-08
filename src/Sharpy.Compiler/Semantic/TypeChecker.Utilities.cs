@@ -929,6 +929,18 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Marks an expression as error recovery in SemanticInfo and increments the recovery counter.
+    /// The counter enables transitive propagation: when a sub-expression is marked as error
+    /// recovery, parent expressions that return Unknown can detect this and also mark themselves.
+    /// Use this instead of calling <c>_semanticInfo.MarkErrorRecovery()</c> directly.
+    /// </summary>
+    private void MarkExpressionAsErrorRecovery(Expression expr)
+    {
+        _semanticInfo.MarkErrorRecovery(expr);
+        _errorRecoveryMarkCount++;
+    }
+
+    /// <summary>
     /// Sets an expression's type to UnknownType and marks it as error recovery in SemanticInfo.
     /// Use this when the Unknown type is expected because a user-facing diagnostic was emitted.
     /// This allows the invariant checker to distinguish intentional error recovery from
@@ -937,7 +949,7 @@ internal partial class TypeChecker
     private void SetErrorRecoveryType(Expression expr)
     {
         _semanticInfo.SetExpressionType(expr, SemanticType.Unknown);
-        _semanticInfo.MarkErrorRecovery(expr);
+        MarkExpressionAsErrorRecovery(expr);
     }
 
     /// <summary>

@@ -57,6 +57,11 @@ internal partial class TypeChecker
     private int _cancellationCheckCounter;
     private const int CancellationCheckInterval = 100;
 
+    // Counter for error recovery marks — used by CheckExpression to detect when
+    // a sub-expression was marked as error recovery during the current evaluation,
+    // enabling transitive propagation of error recovery status to parent expressions.
+    private int _errorRecoveryMarkCount;
+
     // Configuration
     public bool ContinueAfterError { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
