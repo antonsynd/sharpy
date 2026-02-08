@@ -235,7 +235,7 @@ internal partial class TypeChecker
     public void CheckModule(Module module, bool computeCodeGenInfo = false, bool isEntryPoint = false,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInfo("Type checking module");
+        _logger.LogInfo("Starting type checking");
         _isEntryPoint = isEntryPoint;
         _cancellationToken = cancellationToken;
         _cancellationCheckCounter = 0;
@@ -283,6 +283,8 @@ internal partial class TypeChecker
             var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable, SemanticBinding, _diagnostics);
             codeGenInfoComputer.ComputeForModule(module);
         }
+
+        _logger.LogInfo($"Completed type checking ({module.Body.Length} statements, {_diagnostics.ErrorCount} errors)");
     }
 
     private void CheckStatement(Statement statement)

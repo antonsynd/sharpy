@@ -236,6 +236,7 @@ public class Lexer
                 break;
         }
 
+        _logger.LogInfo($"Lexing completed ({tokens.Count} tokens produced)");
         return tokens;
     }
 

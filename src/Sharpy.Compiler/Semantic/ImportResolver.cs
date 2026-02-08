@@ -91,6 +91,8 @@ internal class ImportResolver
         CancellationToken cancellationToken = default)
     {
         _cancellationToken = cancellationToken;
+        _logger.LogInfo("Starting import resolution");
+        var importCount = 0;
 
         foreach (var statement in module.Body)
         {
@@ -98,6 +100,7 @@ internal class ImportResolver
 
             if (statement is ImportStatement import)
             {
+                importCount++;
                 var modules = ResolveImport(import, currentDir);
 
                 // Register module symbols and their exports
@@ -157,6 +160,7 @@ internal class ImportResolver
             }
             else if (statement is FromImportStatement fromImport)
             {
+                importCount++;
                 _logger.LogDebug($"Processing from-import: from {fromImport.Module} import {string.Join(", ", fromImport.Names.Select(n => n.Name))}");
                 var moduleInfo = ResolveFromImport(fromImport, currentDir);
                 if (moduleInfo != null)
@@ -197,6 +201,8 @@ internal class ImportResolver
                 }
             }
         }
+
+        _logger.LogInfo($"Completed import resolution ({importCount} imports processed)");
     }
 
     /// <summary>

@@ -43,13 +43,15 @@ internal class NameResolver
     /// </summary>
     public void ResolveDeclarations(Module module, CancellationToken cancellationToken = default)
     {
-        _logger.LogInfo("Name resolution pass 1: Declarations in module");
+        _logger.LogInfo("Starting name resolution pass 1: Declarations");
 
         foreach (var statement in module.Body)
         {
             cancellationToken.ThrowIfCancellationRequested();
             ResolveDeclaration(statement);
         }
+
+        _logger.LogInfo($"Completed name resolution pass 1 ({module.Body.Length} statements processed)");
     }
 
     /// <summary>
@@ -57,7 +59,7 @@ internal class NameResolver
     /// </summary>
     public void ResolveInheritance(CancellationToken cancellationToken = default)
     {
-        _logger.LogInfo("Name resolution pass 2: Inheritance relationships");
+        _logger.LogInfo("Starting name resolution pass 2: Inheritance relationships");
 
         foreach (var classDef in _classDefs)
         {
@@ -76,6 +78,9 @@ internal class NameResolver
             cancellationToken.ThrowIfCancellationRequested();
             ResolveInterfaceInheritance(interfaceDef);
         }
+
+        var totalTypes = _classDefs.Count + _structDefs.Count + _interfaceDefs.Count;
+        _logger.LogInfo($"Completed name resolution pass 2 ({totalTypes} types processed)");
     }
 
     private void ResolveDeclaration(Statement statement)

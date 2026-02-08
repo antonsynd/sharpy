@@ -15,6 +15,8 @@ internal partial class RoslynEmitter
 {
     public CompilationUnitSyntax GenerateCompilationUnit(Module module)
     {
+        _context.Logger.LogInfo("Starting code generation");
+
         // Note: From-import symbol tracking is now handled by CodeGenInfo during semantic analysis.
         // The CodeGenInfoComputer.ProcessFromImport method sets CodeGenInfo.CSharpName and
         // CodeGenInfo.OriginalImportName for proper symbol name resolution.
@@ -87,6 +89,7 @@ internal partial class RoslynEmitter
         // Must be added AFTER NormalizeWhitespace to preserve leading position
         var nullablePragma = ParseLeadingTrivia("#nullable enable\n\n");
 
+        _context.Logger.LogInfo($"Completed code generation ({nonImportStatements.Count} statements emitted)");
         return compilationUnit.WithLeadingTrivia(nullablePragma);
     }
 

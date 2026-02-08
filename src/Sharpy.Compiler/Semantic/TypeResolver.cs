@@ -23,6 +23,7 @@ internal class TypeResolver
         _semanticInfo = semanticInfo;
         _logger = logger ?? NullLogger.Instance;
         _cancellationToken = cancellationToken;
+        _logger.LogInfo("Type resolver initialized");
     }
 
     public DiagnosticBag Diagnostics => _diagnostics;
