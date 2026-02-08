@@ -227,11 +227,11 @@ The pattern is mechanical: accept `CancellationToken` as a parameter, call `canc
 
 **Checklist**:
 
-- [ ] Add `CancellationToken cancellationToken = default` parameter to the Lexer constructor (or the main `Tokenize()` / `NextToken()` method)
-- [ ] Store it as a `private readonly CancellationToken _cancellationToken` field
-- [ ] Add `_cancellationToken.ThrowIfCancellationRequested()` at the top of the main token loop (the loop that produces each token) — NOT inside character-level scanning
-- [ ] Update `Compiler.cs` to pass its CancellationToken to the Lexer
-- [ ] Run: `dotnet test --filter "FullyQualifiedName~Lexer"`
+- [x] Add `CancellationToken cancellationToken = default` parameter to the Lexer constructor (or the main `Tokenize()` / `NextToken()` method)
+- [x] Store it as a `private readonly CancellationToken _cancellationToken` field
+- [x] Add `_cancellationToken.ThrowIfCancellationRequested()` at the top of the main token loop (the loop that produces each token) — NOT inside character-level scanning
+- [x] Update `Compiler.cs` to pass its CancellationToken to the Lexer
+- [x] Run: `dotnet test --filter "FullyQualifiedName~Lexer"`
 
 > **Gotcha**: The Lexer is typically fast enough that cancellation isn't critical for performance, but it's important for correctness — if the Lexer hangs on pathological input (deeply nested strings, huge files), cancellation provides an escape hatch.
 
@@ -241,10 +241,10 @@ The pattern is mechanical: accept `CancellationToken` as a parameter, call `canc
 
 **Checklist**:
 
-- [ ] Add `CancellationToken cancellationToken = default` parameter to `ResolveTypes()` (the main entry point)
-- [ ] Add `cancellationToken.ThrowIfCancellationRequested()` at the top of the loop that iterates over declarations
-- [ ] Update the caller in `Compiler.cs` to pass the token
-- [ ] Run: `dotnet test --filter "FullyQualifiedName~TypeResol"`
+- [x] Add `CancellationToken cancellationToken = default` parameter to `ResolveTypes()` (the main entry point)
+- [x] Add `cancellationToken.ThrowIfCancellationRequested()` at the top of the loop that iterates over declarations
+- [x] Update the caller in `Compiler.cs` to pass the token
+- [x] Run: `dotnet test --filter "FullyQualifiedName~TypeResol"`
 
 ### 3c. Add CancellationToken to ImportResolver and ModuleLoader
 
@@ -254,12 +254,12 @@ The pattern is mechanical: accept `CancellationToken` as a parameter, call `canc
 
 **Checklist**:
 
-- [ ] Add `CancellationToken cancellationToken = default` parameter to `ImportResolver.ResolveAllImports()` (the main entry point)
-- [ ] Add `cancellationToken.ThrowIfCancellationRequested()` before each module load (import resolution can trigger parsing of other files)
-- [ ] Add `CancellationToken cancellationToken = default` parameter to `ModuleLoader.LoadModule()` (or equivalent)
-- [ ] Pass the token through to the Parser when ModuleLoader parses imported files
-- [ ] Update callers in `Compiler.cs`
-- [ ] Run: `dotnet test --filter "FullyQualifiedName~Import"`
+- [x] Add `CancellationToken cancellationToken = default` parameter to `ImportResolver.ResolveAllImports()` (the main entry point)
+- [x] Add `cancellationToken.ThrowIfCancellationRequested()` before each module load (import resolution can trigger parsing of other files)
+- [x] Add `CancellationToken cancellationToken = default` parameter to `ModuleLoader.LoadModule()` (or equivalent)
+- [x] Pass the token through to the Parser when ModuleLoader parses imported files
+- [x] Update callers in `Compiler.cs`
+- [x] Run: `dotnet test --filter "FullyQualifiedName~Import"`
 
 ### 3d. Add CancellationToken to RoslynEmitter
 
@@ -275,14 +275,14 @@ The pattern is mechanical: accept `CancellationToken` as a parameter, call `canc
 
 **Checklist**:
 
-- [ ] Add `CancellationToken _cancellationToken` field to the main `RoslynEmitter.cs` partial class
-- [ ] Accept `CancellationToken cancellationToken = default` in the constructor or `Emit()` entry point
-- [ ] Add `_cancellationToken.ThrowIfCancellationRequested()` at statement-level granularity:
+- [x] Add `CancellationToken _cancellationToken` field to the main `RoslynEmitter.cs` partial class
+- [x] Accept `CancellationToken cancellationToken = default` in the constructor or `Emit()` entry point
+- [x] Add `_cancellationToken.ThrowIfCancellationRequested()` at statement-level granularity:
   - Top of `EmitStatement()` (or equivalent top-level statement dispatch)
   - Top of `EmitClassDeclaration()` / `EmitFunctionDeclaration()` (or equivalent declaration dispatch)
   - NOT inside expression emission (too fine-grained, would hurt performance)
-- [ ] Update `Compiler.cs` to pass the token to RoslynEmitter
-- [ ] Run: `dotnet test --filter "FullyQualifiedName~CodeGen" && dotnet test --filter "FullyQualifiedName~RoslynEmitter"`
+- [x] Update `Compiler.cs` to pass the token to RoslynEmitter
+- [x] Run: `dotnet test --filter "FullyQualifiedName~CodeGen" && dotnet test --filter "FullyQualifiedName~RoslynEmitter"`
 
 > **Gotcha**: RoslynEmitter is ~6,225 lines across 8 files. Don't try to add cancellation checks to every method — only add them at the top-level dispatch points where the emitter loops over statements or declarations. The goal is O(n) cancellation granularity where n is the number of top-level statements/declarations, not O(n) where n is the number of AST nodes.
 
@@ -292,9 +292,9 @@ The pattern is mechanical: accept `CancellationToken` as a parameter, call `canc
 
 **Checklist**:
 
-- [ ] Create a test that compiles a moderately large program with an already-cancelled `CancellationToken` and asserts that `OperationCanceledException` is thrown
-- [ ] Create a test that compiles with a `CancellationTokenSource` that cancels after a short delay and asserts the compilation terminates promptly (within 2x the delay)
-- [ ] Run: `dotnet test --filter "FullyQualifiedName~Cancellation"`
+- [x] Create a test that compiles a moderately large program with an already-cancelled `CancellationToken` and asserts that `OperationCanceledException` is thrown
+- [x] Create a test that compiles with a `CancellationTokenSource` that cancels after a short delay and asserts the compilation terminates promptly (within 2x the delay)
+- [x] Run: `dotnet test --filter "FullyQualifiedName~Cancellation"`
 
 ---
 

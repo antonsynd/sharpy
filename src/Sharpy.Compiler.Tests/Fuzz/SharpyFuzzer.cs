@@ -616,7 +616,8 @@ public class SharpyFuzzer
             var numParams = _random.Next(1, 4);
             for (int p = 0; p < numParams; p++)
             {
-                if (p > 0) sb.Append(", ");
+                if (p > 0)
+                    sb.Append(", ");
                 var paramType = simpleTypes[_random.Next(simpleTypes.Length)];
                 sb.Append($"p{p}: {paramType}");
 
