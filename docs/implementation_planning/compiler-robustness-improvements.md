@@ -121,12 +121,12 @@ The Parser currently uses only line/column for all its diagnostic calls. It repo
 
 **Checklist**:
 
-- [ ] Search for all `AddError(` calls in NameResolver that do NOT pass spans (~2 of 20 calls lack spans; the helper already accepts `TextSpan? span = null`)
-- [ ] Add spans using the AST nodes being resolved (declarations, identifiers)
-- [ ] **ImportResolver prerequisite**: The ImportResolver's private `AddError` helper has signature `AddError(string message, int? line, int? column, string? code = null)` — it does **not** accept a `TextSpan` parameter. First modify this helper to accept `Text.TextSpan? span = null` and pass it through to `_diagnostics.AddError()`
-- [ ] Search for all `AddError(` calls in ImportResolver (2 call sites at lines 368 and 376) and add spans
-- [ ] For import errors, use the ImportStatement/FromImportStatement node's span
-- [ ] Run tests: `dotnet test --filter "FullyQualifiedName~NameResol" && dotnet test --filter "FullyQualifiedName~Import"`
+- [x] Search for all `AddError(` calls in NameResolver that do NOT pass spans (~2 of 20 calls lack spans; the helper already accepts `TextSpan? span = null`)
+- [x] Add spans using the AST nodes being resolved (declarations, identifiers)
+- [x] **ImportResolver prerequisite**: The ImportResolver's private `AddError` helper has signature `AddError(string message, int? line, int? column, string? code = null)` — it does **not** accept a `TextSpan` parameter. First modify this helper to accept `Text.TextSpan? span = null` and pass it through to `_diagnostics.AddError()`
+- [x] Search for all `AddError(` calls in ImportResolver (2 call sites at lines 368 and 376) and add spans
+- [x] For import errors, use the ImportStatement/FromImportStatement node's span
+- [x] Run tests: `dotnet test --filter "FullyQualifiedName~NameResol" && dotnet test --filter "FullyQualifiedName~Import"`
 
 ### 1e. Verify end-to-end rendering
 

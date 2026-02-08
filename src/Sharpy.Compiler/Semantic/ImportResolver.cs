@@ -366,7 +366,8 @@ internal class ImportResolver
                     {
                         _logger.LogDebug($"[ImportResolver]     Symbol '{symbolName}' NOT FOUND in module exports");
                         AddError($"Module '{fromImport.Module}' has no exported symbol '{symbolName}'",
-                            importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.ImportError);
+                            importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.ImportError,
+                            span: importAlias.Span ?? fromImport.Span);
                         continue;
                     }
 
@@ -374,7 +375,8 @@ internal class ImportResolver
                     if (!IsDirectlyImportable(symbolName))
                     {
                         AddError($"Cannot import private symbol '{symbolName}' from module '{fromImport.Module}'",
-                            importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.AccessViolation);
+                            importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.AccessViolation,
+                            span: importAlias.Span ?? fromImport.Span);
                     }
 
                     // Populate re-export symbols for code generation
@@ -788,12 +790,13 @@ internal class ImportResolver
         return _moduleLoader.FindTypeInLoadedModules(typeName);
     }
 
-    private void AddError(string message, int? line, int? column, string? code = null)
+    private void AddError(string message, int? line, int? column, string? code = null,
+        Text.TextSpan? span = null)
     {
         var errorMessage = _currentModulePath != null
             ? $"{message} (in {Path.GetFileName(_currentModulePath)})"
             : message;
-        _diagnostics.AddError(errorMessage, line, column, _currentModulePath, code, CompilerPhase.ImportResolution);
+        _diagnostics.AddError(errorMessage, span, line, column, _currentModulePath, code, CompilerPhase.ImportResolution);
     }
 
     /// <summary>
