@@ -1,0 +1,13 @@
+class Animal:
+    name: str = "unknown"
+
+    def speak(self) -> str:
+        return self.name
+
+class Dog(Animal):
+    pass
+
+def main():
+    d: Dog = Dog()
+    print(d.nme)
+    d.spek()

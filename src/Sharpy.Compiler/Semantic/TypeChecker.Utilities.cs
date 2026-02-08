@@ -993,12 +993,31 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Finds a "did you mean?" suggestion for an undefined member from a type's fields and methods.
+    /// Finds a "did you mean?" suggestion for an undefined member from a type's fields and methods,
+    /// including inherited members from base classes and interfaces.
     /// </summary>
     private string? FindMemberSuggestion(string memberName, TypeSymbol typeSymbol)
     {
-        var memberNames = typeSymbol.Fields.Select(f => f.Name)
-            .Concat(typeSymbol.Methods.Select(m => m.Name));
+        var memberNames = new HashSet<string>();
+
+        // Collect from the type itself and its base class chain
+        var current = typeSymbol;
+        while (current != null)
+        {
+            foreach (var f in current.Fields)
+                memberNames.Add(f.Name);
+            foreach (var m in current.Methods)
+                memberNames.Add(m.Name);
+            current = GetBaseType(current);
+        }
+
+        // Collect from interfaces
+        foreach (var iface in GetInterfaces(typeSymbol))
+        {
+            foreach (var m in iface.Methods)
+                memberNames.Add(m.Name);
+        }
+
         return EditDistance.FindClosestMatch(memberName, memberNames);
     }
 
