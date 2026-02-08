@@ -8,6 +8,7 @@ public class Scope
     private readonly Dictionary<string, Symbol> _symbols = new();
     private readonly Scope? _parent;
     public string Name { get; }
+    public Scope? Parent => _parent;
 
     public Scope(string name, Scope? parent = null)
     {

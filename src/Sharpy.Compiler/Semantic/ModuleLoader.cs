@@ -147,6 +147,10 @@ internal class ModuleLoader
 
             return moduleInfo;
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             AddError($"Error loading module '{modulePath}': {ex.Message}", lineStart, columnStart, code: DiagnosticCodes.Semantic.ModuleLoadError);

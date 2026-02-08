@@ -67,6 +67,10 @@ internal class PackageResolver
                 ExtractSymbolFromStatement(statement, moduleInfo);
             }
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError($"Error parsing package {packageName}: {ex.Message}", 0, 0);

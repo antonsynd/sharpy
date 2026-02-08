@@ -479,6 +479,104 @@ public class FuzzTests
         Assert.Empty(failures);
     }
 
+    /// <summary>
+    /// Mutates known-valid programs and verifies the compiler never crashes.
+    /// This tests error recovery on near-valid input (the most common real-world case).
+    /// </summary>
+    [Theory]
+    [InlineData(42)]
+    [InlineData(123)]
+    [InlineData(7777)]
+    [InlineData(2025)]
+    [InlineData(9999)]
+    public void Compiler_MutatedPrograms_NeverThrowsUnhandledException(int seed)
+    {
+        var fuzzer = new SharpyFuzzer(seed);
+        var compiler = new Compiler();
+        var failures = new List<string>();
+        var validPrograms = new[]
+        {
+            "def main():\n    print(\"hello\")\n",
+            "def add(a: int, b: int) -> int:\n    return a + b\n\ndef main():\n    print(add(1, 2))\n",
+            "class Foo:\n    def __init__(self, x: int):\n        self.x = x\n\ndef main():\n    f = Foo(42)\n    print(f.x)\n",
+            "x: int = 10\ny: int = 20\n\ndef main():\n    if x > y:\n        print(x)\n    else:\n        print(y)\n",
+            "def fib(n: int) -> int:\n    if n <= 1:\n        return n\n    return fib(n - 1) + fib(n - 2)\n\ndef main():\n    print(fib(10))\n",
+        };
+
+        for (int i = 0; i < 100; i++)
+        {
+            var baseProgram = validPrograms[i % validPrograms.Length];
+            var mutated = fuzzer.MutateProgram(baseProgram);
+
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(FuzzIterationTimeoutMs));
+                compiler.Compile(mutated, "fuzz_mutated.spy", cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Timeout is fine
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}\nInput: {Truncate(mutated)}");
+            }
+        }
+
+        if (failures.Count > 0)
+        {
+            _output.WriteLine($"Failures ({failures.Count}/100):");
+            foreach (var f in failures)
+                _output.WriteLine(f);
+        }
+
+        Assert.Empty(failures);
+    }
+
+    /// <summary>
+    /// Verifies the lexer handles binary/random byte sequences without crashing.
+    /// </summary>
+    [Theory]
+    [InlineData(42)]
+    [InlineData(12345)]
+    [InlineData(99999)]
+    public void Lexer_RandomBytes_NeverThrowsUnhandledException(int seed)
+    {
+        var random = new System.Random(seed);
+        var failures = new List<string>();
+
+        for (int i = 0; i < 200; i++)
+        {
+            var length = random.Next(1, 500);
+            var bytes = new byte[length];
+            random.NextBytes(bytes);
+            var input = System.Text.Encoding.UTF8.GetString(bytes);
+
+            try
+            {
+                var lexer = new LexerNs.Lexer(input);
+                lexer.TokenizeAll();
+            }
+            catch (OperationCanceledException)
+            {
+                // Fine
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"Seed {seed}, iteration {i}: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        if (failures.Count > 0)
+        {
+            _output.WriteLine($"Failures ({failures.Count}/200):");
+            foreach (var f in failures)
+                _output.WriteLine(f);
+        }
+
+        Assert.Empty(failures);
+    }
+
     private static string Truncate(string s, int maxLen = 200)
     {
         if (s.Length <= maxLen)

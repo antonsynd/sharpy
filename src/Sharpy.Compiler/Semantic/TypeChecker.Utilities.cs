@@ -2,6 +2,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic.Collections;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -981,6 +982,32 @@ internal partial class TypeChecker
 
         _diagnostics.AddError(message, span, line, column, _currentFilePath, code: code, phase: CompilerPhase.TypeChecking);
         _logger.LogError(message, line ?? 0, column ?? 0);
+    }
+
+    /// <summary>
+    /// Finds a "did you mean?" suggestion for an undefined identifier from visible symbols.
+    /// </summary>
+    private string? FindSuggestion(string name)
+    {
+        return EditDistance.FindClosestMatch(name, _symbolTable.GetVisibleSymbolNames());
+    }
+
+    /// <summary>
+    /// Finds a "did you mean?" suggestion for an undefined member from a type's fields and methods.
+    /// </summary>
+    private string? FindMemberSuggestion(string memberName, TypeSymbol typeSymbol)
+    {
+        var memberNames = typeSymbol.Fields.Select(f => f.Name)
+            .Concat(typeSymbol.Methods.Select(m => m.Name));
+        return EditDistance.FindClosestMatch(memberName, memberNames);
+    }
+
+    /// <summary>
+    /// Finds a "did you mean?" suggestion for an undefined module member.
+    /// </summary>
+    private string? FindModuleMemberSuggestion(string memberName, ModuleSymbol moduleSymbol)
+    {
+        return EditDistance.FindClosestMatch(memberName, moduleSymbol.Exports.Keys);
     }
 }
 

@@ -1,0 +1,3 @@
+def main():
+    x_value = 42
+    print(x_valeu)

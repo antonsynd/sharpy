@@ -2,6 +2,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -387,7 +388,11 @@ internal class ImportResolver
                     if (!moduleInfo.ExportedSymbols.ContainsKey(symbolName))
                     {
                         _logger.LogDebug($"[ImportResolver]     Symbol '{symbolName}' NOT FOUND in module exports");
-                        AddError($"Module '{fromImport.Module}' has no exported symbol '{symbolName}'",
+                        var importMessage = $"Module '{fromImport.Module}' has no exported symbol '{symbolName}'";
+                        var importSuggestion = EditDistance.FindClosestMatch(symbolName, moduleInfo.ExportedSymbols.Keys);
+                        if (importSuggestion != null)
+                            importMessage += $". Did you mean '{importSuggestion}'?";
+                        AddError(importMessage,
                             importAlias.LineStart, importAlias.ColumnStart, code: DiagnosticCodes.Semantic.ImportError,
                             span: importAlias.Span ?? fromImport.Span);
                         continue;

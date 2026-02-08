@@ -117,6 +117,23 @@ public class SymbolTable
     internal BuiltinRegistry BuiltinRegistry => _builtins;
 
     /// <summary>
+    /// Collects all visible symbol names by walking the scope chain from the current scope
+    /// up through all parent scopes. Used for "did you mean?" suggestions.
+    /// </summary>
+    public IEnumerable<string> GetVisibleSymbolNames()
+    {
+        var names = new HashSet<string>();
+        var scope = CurrentScope;
+        while (scope != null)
+        {
+            foreach (var symbol in scope.GetAllSymbols())
+                names.Add(symbol.Name);
+            scope = scope.Parent;
+        }
+        return names;
+    }
+
+    /// <summary>
     /// Removes a symbol from the scope chain.
     /// Used during incremental compilation to invalidate stale cached symbols.
     /// </summary>

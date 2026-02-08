@@ -189,7 +189,11 @@ internal class IncrementalCompilationCache
 
             File.WriteAllText(_cacheFilePath, json);
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            _logger.LogWarning($"Failed to save incremental cache: {ex.Message}", 0, 0);
+        }
+        catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning($"Failed to save incremental cache: {ex.Message}", 0, 0);
         }
@@ -434,13 +438,22 @@ internal class IncrementalCompilationCache
                     return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 }
             }
-            catch
+            catch (JsonException)
             {
-                // Ignore nested exception
+                // Ignore nested deserialization exception
+            }
+            catch (IOException)
+            {
+                // Ignore nested I/O exception
             }
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            _logger.LogWarning($"Failed to load incremental cache, starting fresh: {ex.Message}", 0, 0);
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning($"Failed to load incremental cache, starting fresh: {ex.Message}", 0, 0);
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -492,13 +505,22 @@ internal class IncrementalCompilationCache
                     return new Dictionary<string, FileCacheEntry>(StringComparer.OrdinalIgnoreCase);
                 }
             }
-            catch
+            catch (JsonException)
             {
-                // Ignore nested exception
+                // Ignore nested deserialization exception
+            }
+            catch (IOException)
+            {
+                // Ignore nested I/O exception
             }
             return new Dictionary<string, FileCacheEntry>(StringComparer.OrdinalIgnoreCase);
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            _logger.LogWarning($"Failed to load symbol cache, starting fresh: {ex.Message}", 0, 0);
+            return new Dictionary<string, FileCacheEntry>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning($"Failed to load symbol cache, starting fresh: {ex.Message}", 0, 0);
             return new Dictionary<string, FileCacheEntry>(StringComparer.OrdinalIgnoreCase);
@@ -530,7 +552,11 @@ internal class IncrementalCompilationCache
                 _logger.LogDebug($"Saved symbol cache v{CurrentSchemaVersion} with {_fileCache.Count} entries");
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            _logger.LogWarning($"Failed to save symbol cache: {ex.Message}", 0, 0);
+        }
+        catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning($"Failed to save symbol cache: {ex.Message}", 0, 0);
         }

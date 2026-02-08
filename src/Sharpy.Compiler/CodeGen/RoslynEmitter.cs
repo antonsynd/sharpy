@@ -533,17 +533,13 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Emits a diagnostic for a not-yet-implemented feature in code generation and returns
-    /// a ThrowExpression that generates <c>throw new NotImplementedException("...")</c> in the
-    /// output C#. This way the generated code still compiles, and if the code path is reached
-    /// at runtime the user gets a clear exception.
+    /// a <c>default</c> literal as a safe placeholder expression. The diagnostic error ensures
+    /// compilation reports failure, so this code should never execute.
     /// </summary>
     private ExpressionSyntax EmitNotImplementedExpression(string message, string code, int? line = null, int? column = null)
     {
         _context.AddError(message, code, line, column);
-        return ThrowExpression(
-            ObjectCreationExpression(ParseTypeName("System.NotImplementedException"))
-                .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(message)))))));
+        return LiteralExpression(SyntaxKind.DefaultLiteralExpression);
     }
 
     /// <summary>

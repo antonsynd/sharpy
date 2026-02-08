@@ -136,7 +136,11 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
 
-            AddError($"Undefined identifier '{id.Name}'",
+            var message = $"Undefined identifier '{id.Name}'";
+            var suggestion = FindSuggestion(id.Name);
+            if (suggestion != null)
+                message += $". Did you mean '{suggestion}'?";
+            AddError(message,
                 id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedVariable,
                 span: id.Span);
             return SemanticType.Unknown;
@@ -649,7 +653,11 @@ internal partial class TypeChecker
                 return exportedType;
             }
 
-            AddError($"Module '{moduleSymbol.Name}' has no member '{memberAccess.Member}'",
+            var moduleMemberMessage = $"Module '{moduleSymbol.Name}' has no member '{memberAccess.Member}'";
+            var moduleMemberSuggestion = FindModuleMemberSuggestion(memberAccess.Member, moduleSymbol);
+            if (moduleMemberSuggestion != null)
+                moduleMemberMessage += $". Did you mean '{moduleMemberSuggestion}'?";
+            AddError(moduleMemberMessage,
                 memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedMember,
                 span: memberAccess.Span);
             return SemanticType.Unknown;
@@ -694,7 +702,14 @@ internal partial class TypeChecker
                 return methodFunctionType;
             }
 
-            AddError($"Type '{memberLookupType.GetDisplayName()}' has no member '{memberAccess.Member}'",
+            var typeMemberMessage = $"Type '{memberLookupType.GetDisplayName()}' has no member '{memberAccess.Member}'";
+            if (udt.Symbol != null)
+            {
+                var typeMemberSuggestion = FindMemberSuggestion(memberAccess.Member, udt.Symbol);
+                if (typeMemberSuggestion != null)
+                    typeMemberMessage += $". Did you mean '{typeMemberSuggestion}'?";
+            }
+            AddError(typeMemberMessage,
                 memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedMember,
                 span: memberAccess.Span);
         }

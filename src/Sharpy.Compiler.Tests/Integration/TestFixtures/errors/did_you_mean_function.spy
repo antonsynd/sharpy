@@ -1,0 +1,5 @@
+def my_function() -> int:
+    return 42
+
+def main():
+    my_functon()

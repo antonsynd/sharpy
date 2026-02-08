@@ -636,6 +636,55 @@ public class SharpyFuzzer
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Takes a valid Sharpy program and introduces random mutations.
+    /// This tests error recovery on near-valid programs (the most common real-world scenario).
+    /// </summary>
+    public string MutateProgram(string validProgram)
+    {
+        var sb = new StringBuilder(validProgram);
+        var numMutations = _random.Next(1, 4);
+
+        for (int i = 0; i < numMutations; i++)
+        {
+            if (sb.Length == 0)
+                break;
+            switch (_random.Next(5))
+            {
+                case 0: // Delete a random character
+                    sb.Remove(_random.Next(sb.Length), 1);
+                    break;
+                case 1: // Insert a random character
+                    sb.Insert(_random.Next(sb.Length), (char)_random.Next(32, 127));
+                    break;
+                case 2: // Replace a random character
+                    sb[_random.Next(sb.Length)] = (char)_random.Next(32, 127);
+                    break;
+                case 3: // Duplicate a random line
+                    var lines = sb.ToString().Split('\n');
+                    if (lines.Length > 0)
+                    {
+                        var idx = _random.Next(lines.Length);
+                        var lineList = lines.ToList();
+                        lineList.Insert(idx, lines[idx]);
+                        sb.Clear();
+                        sb.Append(string.Join('\n', lineList));
+                    }
+                    break;
+                case 4: // Delete a random line
+                    var lines2 = sb.ToString().Split('\n').ToList();
+                    if (lines2.Count > 1)
+                    {
+                        lines2.RemoveAt(_random.Next(lines2.Count));
+                        sb.Clear();
+                        sb.Append(string.Join('\n', lines2));
+                    }
+                    break;
+            }
+        }
+        return sb.ToString();
+    }
+
     private string GenerateTypedLiteral(string typeName)
     {
         return typeName switch
