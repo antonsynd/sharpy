@@ -455,29 +455,29 @@ A diagnostic with the right message but wrong location is nearly as bad as no di
 
 **Checklist**:
 
-- [ ] Read the existing test fixture runner in `src/Sharpy.Compiler.Tests/Integration/FileBasedIntegrationTests.cs` to understand how `.error` files are processed
-- [ ] Design an extension to the `.error` format that optionally includes location assertions. Proposed format:
+- [x] Read the existing test fixture runner in `src/Sharpy.Compiler.Tests/Integration/FileBasedIntegrationTests.cs` to understand how `.error` files are processed
+- [x] Design an extension to the `.error` format that optionally includes location assertions. Proposed format:
   ```
   Type 'str' is not assignable to 'int'
   @3:5
   ```
   Where `@3:5` on a line by itself means "the previous error should be on line 3, column 5". Lines without `@` continue to work as substring matches only.
-- [ ] Alternative format: `Type 'str' is not assignable to 'int' @3:5` (inline). Choose whichever is simpler to implement.
-- [ ] Implement the format extension in the test runner
-- [ ] Ensure existing `.error` files continue to pass unchanged (backward compatible)
+- [x] Alternative format: `Type 'str' is not assignable to 'int' @3:5` (inline). Choose whichever is simpler to implement.
+- [x] Implement the format extension in the test runner
+- [x] Ensure existing `.error` files continue to pass unchanged (backward compatible)
 
 ### 6b. Add location-aware error test fixtures
 
 **Checklist**:
 
-- [ ] Add 5-10 new `.error` test fixtures (or update existing ones) that include `@line:column` location assertions covering:
+- [x] Add 5-10 new `.error` test fixtures (or update existing ones) that include `@line:column` location assertions covering:
   - Type mismatch error (TypeChecker)
   - Undefined identifier error (NameResolver)
   - Access violation error (AccessValidator)
   - Missing return error (ControlFlowValidator)
   - Syntax error (Parser)
-- [ ] For each fixture, verify the location is correct by running the compiler and checking the rendered output
-- [ ] Run: `dotnet test --filter "FullyQualifiedName~FileBasedIntegration"`
+- [x] For each fixture, verify the location is correct by running the compiler and checking the rendered output
+- [x] Run: `dotnet test --filter "FullyQualifiedName~FileBasedIntegration"`
 
 ### 6c. Add span-coverage test
 
@@ -485,13 +485,13 @@ A diagnostic with the right message but wrong location is nearly as bad as no di
 
 **Checklist**:
 
-- [ ] Create a test class that compiles programs with known errors and asserts that the resulting `CompilerDiagnostic` objects have non-null `Span` values
-- [ ] Test at least one error from each compiler phase: Lexer, Parser, NameResolution, TypeChecking, Validation
-- [ ] For each, assert:
+- [x] Create a test class that compiles programs with known errors and asserts that the resulting `CompilerDiagnostic` objects have non-null `Span` values
+- [x] Test at least one error from each compiler phase: Lexer, Parser, NameResolution, TypeChecking, Validation
+- [x] For each, assert:
   - `diagnostic.Span.HasValue` is true
   - `diagnostic.Span.Value.Start >= 0`
   - `diagnostic.Span.Value.Length > 0`
-- [ ] Run: `dotnet test --filter "FullyQualifiedName~DiagnosticSpanCoverage"`
+- [x] Run: `dotnet test --filter "FullyQualifiedName~DiagnosticSpanCoverage"`
 
 ---
 
