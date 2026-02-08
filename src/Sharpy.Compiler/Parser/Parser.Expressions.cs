@@ -356,7 +356,7 @@ public partial class Parser
         TokenType.GreaterEqual => ComparisonOperator.GreaterThanOrEqual,
         TokenType.In => ComparisonOperator.In,
         TokenType.Is => ComparisonOperator.Is,
-        _ => throw ReportError($"Not a comparison operator: {type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken)
+        _ => throw ReportError($"Not a comparison operator: {type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
     };
 
     private BinaryOperator ComparisonOperatorToBinary(ComparisonOperator op) => op switch
@@ -371,7 +371,7 @@ public partial class Parser
         ComparisonOperator.NotIn => BinaryOperator.NotIn,
         ComparisonOperator.Is => BinaryOperator.Is,
         ComparisonOperator.IsNot => BinaryOperator.IsNot,
-        _ => throw ReportError($"Cannot convert comparison operator to binary: {op}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken)
+        _ => throw ReportError($"Cannot convert comparison operator to binary: {op}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
     };
 
     private Expression ParsePipe()
@@ -539,7 +539,7 @@ public partial class Parser
                 TokenType.Slash => BinaryOperator.Divide,
                 TokenType.DoubleSlash => BinaryOperator.FloorDivide,
                 TokenType.Percent => BinaryOperator.Modulo,
-                _ => throw ReportError("Unexpected token", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken)
+                _ => throw ReportError("Unexpected token", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
             };
             Advance();
             var right = ParseUnary();
@@ -572,7 +572,7 @@ public partial class Parser
                 TokenType.Plus => UnaryOperator.Plus,
                 TokenType.Minus => UnaryOperator.Minus,
                 TokenType.Tilde => UnaryOperator.BitwiseNot,
-                _ => throw ReportError("Unexpected token", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken)
+                _ => throw ReportError("Unexpected token", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
             };
             Advance();
             var operand = ParseUnary();
@@ -721,7 +721,7 @@ public partial class Parser
                             {
                                 if (seenKeywordArg)
                                 {
-                                    throw ReportError("Positional argument cannot follow keyword argument", Current.Line, Current.Column, DiagnosticCodes.Parser.PositionalAfterKeyword);
+                                    throw ReportError("Positional argument cannot follow keyword argument", Current.Line, Current.Column, DiagnosticCodes.Parser.PositionalAfterKeyword, span: CurrentSpan);
                                 }
                                 args.Add(ParseExpression());
                             }

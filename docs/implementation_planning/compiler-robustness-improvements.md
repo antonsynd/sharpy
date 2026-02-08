@@ -106,12 +106,12 @@ The Parser currently uses only line/column for all its diagnostic calls. It repo
 
 **Checklist**:
 
-- [ ] Modify `ReportError()` in `Parser.cs` to accept an optional `TextSpan?` parameter and pass it through to `_diagnostics.AddError()`
-- [ ] Search for all `ReportError(` calls across all 6 Parser partial files
-- [ ] Determine if the parser has access to token positions that can form a `TextSpan` at each call site (tokens have line/column but may need conversion to spans)
-- [ ] For error recovery sites where a span is naturally available (e.g., unexpected token), use the token's span
-- [ ] For sites where only line/column are available, leave as-is (this is acceptable for parser errors where the exact span is ambiguous)
-- [ ] Run parser tests: `dotnet test --filter "FullyQualifiedName~Parser"`
+- [x] Modify `ReportError()` in `Parser.cs` to accept an optional `TextSpan?` parameter and pass it through to `_diagnostics.AddError()`
+- [x] Search for all `ReportError(` calls across all 6 Parser partial files
+- [x] Determine if the parser has access to token positions that can form a `TextSpan` at each call site (tokens have line/column but may need conversion to spans)
+- [x] For error recovery sites where a span is naturally available (e.g., unexpected token), use the token's span
+- [x] For sites where only line/column are available, leave as-is (this is acceptable for parser errors where the exact span is ambiguous)
+- [x] Run parser tests: `dotnet test --filter "FullyQualifiedName~Parser"`
 
 ### 1d. Add TextSpan to NameResolver and ImportResolver diagnostics
 

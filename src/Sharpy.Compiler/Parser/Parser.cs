@@ -23,10 +23,12 @@ public partial class Parser
     /// <summary>
     /// Record a parser error into diagnostics and return an exception for stack unwinding.
     /// Usage: <c>throw ReportError("msg", line, col, code);</c>
+    /// When a token is available, pass its span for rich error rendering with underlines.
     /// </summary>
-    private ParserAbortException ReportError(string message, int line, int column, string code)
+    private ParserAbortException ReportError(string message, int line, int column, string code,
+        Text.TextSpan? span = null)
     {
-        _diagnostics.AddError(message, line, column, code: code, phase: CompilerPhase.Parser);
+        _diagnostics.AddError(message, span, line, column, code: code, phase: CompilerPhase.Parser);
         return new ParserAbortException();
     }
 
@@ -74,6 +76,12 @@ public partial class Parser
     private Token Previous => _position > 0 ? _tokens[_position - 1] : _tokens[0];
     private Token Peek(int offset = 1) => _position + offset < _tokens.Count ? _tokens[_position + offset] : _tokens[^1];
     private bool IsAtEnd => Current.Type == TokenType.Eof;
+
+    /// <summary>
+    /// Gets the TextSpan of the current token, or null if position tracking is unavailable.
+    /// Convenience accessor for use in ReportError calls.
+    /// </summary>
+    private Text.TextSpan? CurrentSpan => Current.GetSpan();
 
     /// <summary>
     /// Maximum number of parser errors before aborting.
@@ -377,7 +385,7 @@ public partial class Parser
             var decoratorStartToken = Current;
             Advance();  // Skip @
             if (Current.Type != TokenType.Identifier)
-                throw ReportError("Expected decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName);
+                throw ReportError("Expected decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
 
             var decoratorName = Current.Value;
             Advance();
@@ -403,7 +411,7 @@ public partial class Parser
             TokenType.Def => ParseFunctionDef(),
             TokenType.Class => ParseClassDef(),
             TokenType.Struct => ParseStructDef(),
-            _ => throw ReportError("Decorators can only be applied to functions, classes, or structs", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget)
+            _ => throw ReportError("Decorators can only be applied to functions, classes, or structs", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan)
         };
 
         // Attach decorators
@@ -412,7 +420,7 @@ public partial class Parser
             FunctionDef func => func with { Decorators = decorators.ToImmutableArray() },
             ClassDef cls => cls with { Decorators = decorators.ToImmutableArray() },
             StructDef str => str with { Decorators = decorators.ToImmutableArray() },
-            _ => throw ReportError("Unexpected decorated statement type", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken)
+            _ => throw ReportError("Unexpected decorated statement type", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
         };
     }
 
