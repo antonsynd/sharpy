@@ -210,10 +210,9 @@ private void DetectCollisions(TypeSymbol typeSymbol, IEnumerable<Statement> body
         if (seen.TryGetValue(info.CSharpName, out var existingOriginal))
         {
             _diagnostics.AddError(
-                DiagnosticCodes.CodeGen.NameCollision,
                 $"Name collision: '{info.OriginalName}' and '{existingOriginal}' both compile to '{info.CSharpName}'. Rename one or use backtick escaping.",
-                // Pass the TextSpan from the AST node for the second declaration
-                span
+                span, // TextSpan from the AST node for the second declaration
+                code: DiagnosticCodes.CodeGen.NameCollision
             );
         }
         else
