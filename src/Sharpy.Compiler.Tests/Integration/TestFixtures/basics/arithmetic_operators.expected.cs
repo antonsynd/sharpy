@@ -1,3 +1,4 @@
+// Snapshot: Arithmetic operators (+, -, *, /, //, %, **)
 #nullable enable
 
 using System;

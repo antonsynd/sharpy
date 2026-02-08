@@ -1,3 +1,4 @@
+// Snapshot: Variable type inference
 #nullable enable
 
 using System;

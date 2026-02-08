@@ -1,3 +1,4 @@
+// Snapshot: Enum definition and member access
 #nullable enable
 
 using System;

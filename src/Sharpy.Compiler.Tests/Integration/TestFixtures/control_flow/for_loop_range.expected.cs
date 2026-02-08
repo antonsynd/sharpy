@@ -1,3 +1,4 @@
+// Snapshot: For loop with range()
 #nullable enable
 
 using System;

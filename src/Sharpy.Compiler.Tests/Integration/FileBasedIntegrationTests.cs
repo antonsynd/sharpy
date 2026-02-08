@@ -365,12 +365,17 @@ public class FileBasedIntegrationTests : IntegrationTestBase
             {
                 // Regenerate existing snapshot (does not create new snapshot files)
                 var normalized = NormalizeCSharp(result.GeneratedCSharp);
-                File.WriteAllText(snapshotFilePath, normalized);
+                var existingContent = File.ReadAllText(snapshotFilePath);
+                var snapshotComment = ExtractSnapshotComment(existingContent);
+                var contentToWrite = snapshotComment != null
+                    ? snapshotComment + "\n" + normalized
+                    : normalized;
+                File.WriteAllText(snapshotFilePath, contentToWrite);
                 Output.WriteLine($"Updated snapshot: {snapshotFilePath}");
             }
             else if (File.Exists(snapshotFilePath))
             {
-                var expectedCSharp = File.ReadAllText(snapshotFilePath);
+                var expectedCSharp = StripSnapshotComment(File.ReadAllText(snapshotFilePath));
                 var actualNormalized = NormalizeCSharp(result.GeneratedCSharp);
                 var expectedNormalized = NormalizeCSharp(expectedCSharp);
 
@@ -450,13 +455,45 @@ public class FileBasedIntegrationTests : IntegrationTestBase
     /// </summary>
     private static string NormalizeCSharp(string csharpCode)
     {
-        var tree = CSharpSyntaxTree.ParseText(csharpCode);
+        // Normalize line endings to LF before parsing so Roslyn produces consistent output
+        var normalizedInput = csharpCode.Replace("\r\n", "\n");
+        var tree = CSharpSyntaxTree.ParseText(normalizedInput);
         var root = tree.GetRoot();
 
         // Use Roslyn's built-in formatter to normalize whitespace
         using var workspace = new AdhocWorkspace();
         var formatted = Formatter.Format(root, workspace);
-        return formatted.ToFullString().TrimEnd() + "\n";
+        return formatted.ToFullString().Replace("\r\n", "\n").TrimEnd() + "\n";
+    }
+
+    /// <summary>
+    /// Extracts the "// Snapshot: ..." comment line from the beginning of a snapshot file, if present.
+    /// Returns the comment line (without trailing newline) or null if not found.
+    /// </summary>
+    private static string? ExtractSnapshotComment(string content)
+    {
+        if (content.StartsWith("// Snapshot:", StringComparison.Ordinal))
+        {
+            var newlineIndex = content.IndexOf('\n');
+            return newlineIndex >= 0 ? content.Substring(0, newlineIndex).TrimEnd('\r') : content;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Strips the "// Snapshot: ..." comment line from the beginning of a snapshot file, if present.
+    /// Returns the content without the comment line.
+    /// </summary>
+    private static string StripSnapshotComment(string content)
+    {
+        if (content.StartsWith("// Snapshot:", StringComparison.Ordinal))
+        {
+            var newlineIndex = content.IndexOf('\n');
+            return newlineIndex >= 0 ? content.Substring(newlineIndex + 1) : string.Empty;
+        }
+
+        return content;
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+// Snapshot: Class with @static methods
 #nullable enable
 
 using System;

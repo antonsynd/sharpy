@@ -1,3 +1,4 @@
+// Snapshot: Basic print statement and program entry point
 #nullable enable
 
 using System;

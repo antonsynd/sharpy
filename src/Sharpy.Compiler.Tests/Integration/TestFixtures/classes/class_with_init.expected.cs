@@ -1,3 +1,4 @@
+// Snapshot: Class with __init__ constructor
 #nullable enable
 
 using System;

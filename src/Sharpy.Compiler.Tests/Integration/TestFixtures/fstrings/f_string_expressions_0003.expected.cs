@@ -1,3 +1,4 @@
+// Snapshot: F-string with embedded expressions
 #nullable enable
 
 using System;

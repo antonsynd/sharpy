@@ -1,3 +1,4 @@
+// Snapshot: Class inheritance with @override methods
 #nullable enable
 
 using System;

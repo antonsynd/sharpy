@@ -1,3 +1,4 @@
+// Snapshot: Generic function with type parameters
 #nullable enable
 
 using System;

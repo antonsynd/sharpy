@@ -1,3 +1,4 @@
+// Snapshot: Function with default parameter values
 #nullable enable
 
 using System;

@@ -1,3 +1,4 @@
+// Snapshot: Recursive function with return type annotation
 #nullable enable
 
 using System;

@@ -1,3 +1,4 @@
+// Snapshot: List comprehension
 #nullable enable
 
 using System;

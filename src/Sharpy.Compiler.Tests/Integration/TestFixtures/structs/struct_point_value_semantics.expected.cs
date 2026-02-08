@@ -1,3 +1,4 @@
+// Snapshot: Struct with value semantics
 #nullable enable
 
 using System;
