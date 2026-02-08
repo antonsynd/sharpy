@@ -1,2 +1,5 @@
-def foo(*a=1):
+def foo(*args: int = [1, 2]):
     pass
+
+def main():
+    foo()

@@ -132,10 +132,10 @@ The Parser currently uses only line/column for all its diagnostic calls. It repo
 
 **Checklist**:
 
-- [ ] Pick 5 existing `.error` test fixtures that test different error categories (type error, undefined name, syntax error, access violation, control flow)
-- [ ] For each, manually run `dotnet run --project src/Sharpy.Cli -- run <fixture.spy>` and verify the error output shows `^^^^^^^` underlines (not just `^`)
-- [ ] If any fixture shows only `^` (single caret) where a span should be shown, investigate which AddError call is missing the span
-- [ ] Add 2-3 new `.error` test fixtures specifically designed to verify rich error rendering covers multiple error categories
+- [x] Pick 5 existing `.error` test fixtures that test different error categories (type error, undefined name, syntax error, access violation, control flow)
+- [x] For each, manually run `dotnet run --project src/Sharpy.Cli -- run <fixture.spy>` and verify the error output shows `^^^^^^^` underlines (not just `^`)
+- [x] If any fixture shows only `^` (single caret) where a span should be shown, investigate which AddError call is missing the span
+- [x] Add 2-3 new `.error` test fixtures specifically designed to verify rich error rendering covers multiple error categories
 
 ---
 

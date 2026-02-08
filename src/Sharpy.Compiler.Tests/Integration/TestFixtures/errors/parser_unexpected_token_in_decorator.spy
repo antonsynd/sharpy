@@ -1,0 +1,6 @@
+@123
+def foo():
+    pass
+
+def main():
+    pass

@@ -1,1 +1,1 @@
-variadic
+Variadic parameter (*args) cannot have a default value
