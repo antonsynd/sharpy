@@ -15,8 +15,16 @@ public sealed record CompileResult
     /// <summary>All diagnostics (errors and warnings) from all compilation phases.</summary>
     public IReadOnlyList<CompilerDiagnostic> Diagnostics { get; init; } = Array.Empty<CompilerDiagnostic>();
 
-    /// <summary>The emitted C# source code, or null if codegen failed or was not reached.</summary>
+    /// <summary>The emitted C# source code for the entry file, or null if codegen failed or was not reached.</summary>
     public string? GeneratedCSharp { get; init; }
+
+    /// <summary>
+    /// All generated C# code files (entry point + all imported modules).
+    /// Key is the source file path, value is the generated C# code.
+    /// Empty if codegen was not reached or failed.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> GeneratedCSharpFiles { get; init; } =
+        new Dictionary<string, string>();
 
     /// <summary>The parsed AST, or null if parsing failed.</summary>
     public Module? Ast { get; init; }

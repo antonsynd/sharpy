@@ -691,7 +691,7 @@ class Program
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
 
-            // Use the full compilation pipeline (including import resolution)
+            // Compile via CompilerApi
             var compilerOptions = new CompilerOptions
             {
                 OutputType = outputType,
@@ -701,19 +701,19 @@ class Program
                 SuppressedWarnings = ParseNowarnCodes(nowarn),
                 MaxErrors = maxErrors ?? 0
             };
-            var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
-            var result = compiler.Compile(source, inputFile.FullName);
+            var api = new CompilerApi(logger);
+            var result = api.Compile(source, compilerOptions, inputFile.FullName);
 
             if (!result.Success)
             {
                 Console.Error.WriteLine("Compilation errors:");
                 Console.Error.WriteLine();
-                RenderDiagnostics(result.Diagnostics.GetErrors(), sourceText, Console.Error);
+                RenderDiagnostics(result.Diagnostics.Where(d => d.IsError), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
             // Display warnings
-            var warnings = result.Diagnostics.GetWarnings();
+            var warnings = result.Diagnostics.Where(d => d.IsWarning).ToList();
             if (warnings.Count > 0)
             {
                 RenderDiagnostics(warnings, sourceText, Console.Out);
@@ -721,7 +721,7 @@ class Program
 
             // The generated C# includes #line directives by default for source mapping.
             // For emit csharp, strip them for clean output unless --show-line-directives is specified.
-            var csharpCode = result.GeneratedCSharpCode ?? "";
+            var csharpCode = result.GeneratedCSharp ?? "";
             if (!showLineDirectives)
             {
                 csharpCode = StripLineDirectives(csharpCode);
@@ -1256,7 +1256,7 @@ class Program
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
 
-            // Create compiler with options
+            // Compile via CompilerApi
             var compilerOptions = new CompilerOptions
             {
                 OutputType = outputType,
@@ -1267,21 +1267,19 @@ class Program
                 MaxErrors = maxErrors ?? 0
             };
 
-            var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
-
-            // Compile to get C# code
-            var result = compiler.Compile(source, inputFile.FullName);
+            var api = new CompilerApi(logger);
+            var result = api.Compile(source, compilerOptions, inputFile.FullName);
 
             if (!result.Success)
             {
                 Console.Error.WriteLine("Compilation failed:");
                 Console.Error.WriteLine();
-                RenderDiagnostics(result.Diagnostics.GetErrors(), sourceText, Console.Error);
+                RenderDiagnostics(result.Diagnostics.Where(d => d.IsError), sourceText, Console.Error);
                 Environment.Exit(1);
             }
 
             // Display Sharpy compilation warnings
-            var compilationWarnings = result.Diagnostics.GetWarnings();
+            var compilationWarnings = result.Diagnostics.Where(d => d.IsWarning).ToList();
             if (compilationWarnings.Count > 0)
             {
                 RenderDiagnostics(compilationWarnings, sourceText, Console.Out);
@@ -1333,9 +1331,9 @@ class Program
             }
 
             // Fallback for backward compatibility if GeneratedCSharpFiles is empty
-            if (csharpSources.Count == 0 && result.GeneratedCSharpCode != null)
+            if (csharpSources.Count == 0 && result.GeneratedCSharp != null)
             {
-                csharpSources[Path.ChangeExtension(inputFile.FullName, ".cs")] = result.GeneratedCSharpCode;
+                csharpSources[Path.ChangeExtension(inputFile.FullName, ".cs")] = result.GeneratedCSharp;
             }
 
             // Compile to assembly

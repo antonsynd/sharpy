@@ -29,7 +29,22 @@ namespace Sharpy.Compiler;
 /// </remarks>
 public sealed class CompilerApi
 {
+    private readonly ICompilerLogger _logger;
     private readonly AstPositionService _positionService = new();
+
+    /// <summary>
+    /// Creates a new CompilerApi with default settings.
+    /// </summary>
+    public CompilerApi() : this(null) { }
+
+    /// <summary>
+    /// Creates a new CompilerApi with a custom logger.
+    /// </summary>
+    /// <param name="logger">Optional compiler logger. Uses NullLogger if null.</param>
+    public CompilerApi(ICompilerLogger? logger)
+    {
+        _logger = logger ?? NullLogger.Instance;
+    }
 
     /// <summary>
     /// Compiles Sharpy source code through the full pipeline (Lexer → Parser → Semantic → CodeGen).
@@ -47,7 +62,7 @@ public sealed class CompilerApi
     {
         var resolvedPath = filePath ?? "<source>";
         var opts = options ?? new CompilerOptions();
-        var compiler = new Compiler(opts);
+        var compiler = new Compiler(opts, _logger);
 
         var result = compiler.Compile(source, resolvedPath, cancellationToken);
 
@@ -56,6 +71,7 @@ public sealed class CompilerApi
             Success = result.Success,
             Diagnostics = result.Diagnostics.GetAll(),
             GeneratedCSharp = result.GeneratedCSharpCode,
+            GeneratedCSharpFiles = new Dictionary<string, string>(result.GeneratedCSharpFiles),
             Ast = result.Module,
             SemanticInfo = result.SemanticInfo,
             Metrics = result.Metrics
@@ -99,7 +115,7 @@ public sealed class CompilerApi
             var sourceText = new SourceText(source, "<source>");
 
             // Phase 1: Lexical Analysis
-            var lexer = new Lexer.Lexer(sourceText, NullLogger.Instance, cancellationToken: cancellationToken);
+            var lexer = new Lexer.Lexer(sourceText, _logger, cancellationToken: cancellationToken);
             var tokens = lexer.TokenizeAll();
 
             if (lexer.Diagnostics.HasErrors)
@@ -115,7 +131,7 @@ public sealed class CompilerApi
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 2: Syntax Analysis
-            var parser = new Parser.Parser(tokens, NullLogger.Instance, maxErrors: 25, cancellationToken);
+            var parser = new Parser.Parser(tokens, _logger, maxErrors: 25, cancellationToken);
             var module = parser.ParseModule();
 
             diagnostics.Merge(lexer.Diagnostics);
@@ -157,7 +173,7 @@ public sealed class CompilerApi
         // This is simpler and more correct than duplicating the semantic pipeline.
         // The codegen overhead is minimal compared to semantic analysis.
         var opts = new CompilerOptions { OutputType = "library" };
-        var compiler = new Compiler(opts);
+        var compiler = new Compiler(opts, _logger);
         var result = compiler.Compile(source, "<source>", cancellationToken);
 
         return new SemanticResult
