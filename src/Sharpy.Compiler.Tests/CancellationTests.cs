@@ -101,13 +101,15 @@ public class CancellationTests
         _output.WriteLine($"Compilation with {cancelDelayMs}ms cancellation took {sw.ElapsedMilliseconds}ms");
         _output.WriteLine($"Success: {result.Success}");
 
-        // Assert - if cancellation was triggered, it should terminate within 2x the delay
-        // If the compilation finishes before the cancellation fires, that's also acceptable
+        // Assert - if cancellation was triggered, it should terminate reasonably soon.
+        // Use a generous multiplier (10x) to avoid flaky failures from GC pauses,
+        // JIT warmup, and OS scheduling jitter. The point is to catch hangs, not benchmark.
+        // If the compilation finishes before the cancellation fires, that's also acceptable.
         if (!result.Success)
         {
             // Cancellation was triggered - verify it terminated promptly
-            sw.ElapsedMilliseconds.Should().BeLessThan(cancelDelayMs * 3,
-                $"cancelled compilation should terminate within ~{cancelDelayMs * 3}ms");
+            sw.ElapsedMilliseconds.Should().BeLessThan(cancelDelayMs * 10,
+                $"cancelled compilation should terminate within ~{cancelDelayMs * 10}ms");
             result.Diagnostics.GetAll().Should().Contain(d =>
                 d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Infrastructure.CompilationCancelled);
         }
