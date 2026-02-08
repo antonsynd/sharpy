@@ -204,8 +204,8 @@ Add(dict, DiagnosticCodes.CodeGen.MemberNameCollision, "Member name collision af
     "Rename one of the conflicting symbols or use backtick escaping.");
 ```
 
-- [ ] Add `MemberNameCollision = "SPY0522"` to `DiagnosticCodes.CodeGen`
-- [ ] Add explanation entry to `DiagnosticExplanations.cs`
+- [x] Add `MemberNameCollision = "SPY0522"` to `DiagnosticCodes.CodeGen`
+- [x] Add explanation entry to `DiagnosticExplanations.cs`
 
 ### 3b. Thread `DiagnosticBag` into `CodeGenInfoComputer`
 
@@ -213,10 +213,10 @@ Add(dict, DiagnosticCodes.CodeGen.MemberNameCollision, "Member name collision af
 
 The class currently has no way to emit diagnostics. Add an **optional** `DiagnosticBag?` parameter to the constructor, mirroring the existing `SemanticBinding?` pattern. This avoids breaking existing test call sites (17+ in `CodeGenInfoComputerTests.cs`) that construct `CodeGenInfoComputer` without a `DiagnosticBag`.
 
-- [ ] Add `private readonly DiagnosticBag _diagnostics;` field
-- [ ] Add `DiagnosticBag? diagnostics = null` parameter to the constructor (after the existing `semanticBinding` parameter)
-- [ ] Initialize with `_diagnostics = diagnostics ?? new DiagnosticBag();`
-- [ ] Update the production call site at `TypeChecker.cs:278` to pass the TypeChecker's `_diagnostics` field
+- [x] Add `private readonly DiagnosticBag _diagnostics;` field
+- [x] Add `DiagnosticBag? diagnostics = null` parameter to the constructor (after the existing `semanticBinding` parameter)
+- [x] Initialize with `_diagnostics = diagnostics ?? new DiagnosticBag();`
+- [x] Update the production call site at `TypeChecker.cs:278` to pass the TypeChecker's `_diagnostics` field
   - Only one production call site: `new CodeGenInfoComputer(_symbolTable, SemanticBinding)` → `new CodeGenInfoComputer(_symbolTable, SemanticBinding, _diagnostics)`
   - Test call sites (17+ in `CodeGenInfoComputerTests.cs`) remain unchanged — the default `null` creates a no-op bag
 
@@ -258,8 +258,8 @@ Implementation notes:
 - Dunder methods that map to special C# names (`__init__` → constructor, `__str__` → `ToString`) should be included — if a user also defines a method `to_string` (→ `ToString`), that's a real collision.
 - Note: `ProcessTypeMembers` currently only handles `VariableDeclaration` (fields) and `FunctionDef` (methods) — Sharpy does not support nested type definitions inside a class body, so checking fields + methods is sufficient for type-level collision detection.
 
-- [ ] Add `DetectCollisions(TypeSymbol, IEnumerable<Statement>)` method
-- [ ] Call it from `ProcessClassDef`, `ProcessStructDef`, `ProcessInterfaceDef` after `ProcessTypeMembers`
+- [x] Add `DetectCollisions(TypeSymbol, IEnumerable<Statement>)` method
+- [x] Call it from `ProcessClassDef`, `ProcessStructDef`, `ProcessInterfaceDef` after `ProcessTypeMembers`
 
 ### 3d. Add collision detection for module-level symbols
 
@@ -267,10 +267,10 @@ Implementation notes:
 
 At the end of `ComputeForModule()`, check for collisions among ALL module-level symbols: functions, variables, AND types (classes, structs, interfaces, enums). All of these become members of the same module class in the generated C# — types are nested inside the module class (see `GenerateModuleMembers` docstring: "Types are nested inside the module class, enabling single 'using static' imports").
 
-- [ ] Add `DetectModuleLevelCollisions(Module module)` method
-- [ ] Call it at the end of `ComputeForModule()`
-- [ ] Scope: functions + module-level variables + types (all share the same C# module class declaration space)
-- [ ] Exclude symbols that already trigger `SPY0520` (module-class name collision) to avoid duplicate errors
+- [x] Add `DetectModuleLevelCollisions(Module module)` method
+- [x] Call it at the end of `ComputeForModule()`
+- [x] Scope: functions + module-level variables + types (all share the same C# module class declaration space)
+- [x] Exclude symbols that already trigger `SPY0520` (module-class name collision) to avoid duplicate errors
 
 ### 3e. Add integration tests for collision detection
 
@@ -370,14 +370,14 @@ snake
 camel
 ```
 
-- [ ] Create `collision_method.spy` + `collision_method.error`
-- [ ] Create `collision_field.spy` + `collision_field.error`
-- [ ] Create `collision_module_func.spy` + `collision_module_func.error`
-- [ ] Create `collision_func_type.spy` + `collision_func_type.error`
-- [ ] Create `no_collision_func_type.spy` + `no_collision_func_type.expected`
-- [ ] Create `no_collision_camel_snake.spy` + `no_collision_camel_snake.expected`
-- [ ] Decide on subdirectory name (e.g., `TestFixtures/name_collision/`) or place in an existing relevant directory
-- [ ] Run `dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"` — all pass
+- [x] Create `collision_method.spy` + `collision_method.error`
+- [x] Create `collision_field.spy` + `collision_field.error`
+- [x] Create `collision_module_func.spy` + `collision_module_func.error`
+- [x] Create `collision_func_type.spy` + `collision_func_type.error`
+- [x] Create `no_collision_func_type.spy` + `no_collision_func_type.expected`
+- [x] Create `no_collision_camel_snake.spy` + `no_collision_camel_snake.expected`
+- [x] Decide on subdirectory name (e.g., `TestFixtures/name_collision/`) or place in an existing relevant directory
+- [x] Run `dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"` — all pass
 
 ### 3f. Add unit tests for `CodeGenInfoComputer` collision detection
 
@@ -385,11 +385,11 @@ camel
 
 Use `IntegrationTestBase.CompileAndExecute()` or build the AST manually to test:
 
-- [ ] Test: two methods with same mangled name → `SPY0522` error
-- [ ] Test: method + field with same mangled name → `SPY0522` error
-- [ ] Test: module-level function + type with same mangled name → `SPY0522` error (both are members of the module class)
-- [ ] Test: no collision when names are different → no error
-- [ ] Run `dotnet test --filter "FullyQualifiedName~CodeGenInfoComputer"` — all pass
+- [x] Test: two methods with same mangled name → `SPY0522` error
+- [x] Test: method + field with same mangled name → `SPY0522` error
+- [x] Test: module-level function + type with same mangled name → `SPY0522` error (both are members of the module class)
+- [x] Test: no collision when names are different → no error
+- [x] Run `dotnet test --filter "FullyQualifiedName~CodeGenInfoComputer"` — all pass
 
 ### 3g. Commit
 
