@@ -1,0 +1,7 @@
+class Animal:
+    name: str = "unknown"
+    age: int = 0
+
+def main():
+    a: Animal = Animal()
+    print(a.nme)
