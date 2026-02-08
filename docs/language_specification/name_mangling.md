@@ -10,7 +10,7 @@ Sharpy uses Pythonic `snake_case` naming conventions in source code, but generat
 | `snake_case` parameters | `camelCase` | `user_name: str` → `string userName` |
 | `camelCase` identifiers | Preserved | `httpClient` → `httpClient` |
 | `PascalCase` identifiers | Preserved | `XMLParser` → `XMLParser` |
-| `_private` fields | `_camelCase` | `_user_count` → `_userCount` |
+| `_private` fields | `_PascalCase` | `_user_count` → `_UserCount` |
 | `__name` fields | `__PascalCase` | `__private_field` → `__PrivateField` |
 | `__dunder__` methods | Special mapping | `__init__` → constructor |
 | `CAPS_SNAKE_CASE` constants | `PascalCase` | `MAX_SIZE` → `MaxSize` |
@@ -48,7 +48,7 @@ After stripping leading underscores and trailing underscores, the remaining body
 
 The transformation depends on the detected form and the target convention:
 
-**For PascalCase target** (functions, methods, types, constants):
+**For PascalCase target** (functions, methods, types, constants, class fields):
 
 | Form | Transformation | Example |
 |------|----------------|---------|
@@ -58,9 +58,9 @@ The transformation depends on the detected form and the target convention:
 | `CamelCase` | Pass through | `httpClient` → `httpClient` |
 | `SingleWordLower` | Capitalize | `hello` → `Hello` |
 | `SingleWordUpper` | Pass through | `HTTP` → `HTTP` |
-| `Unrecognized` | Pass through (with SPY0453 warning) | `foo__bar` → `foo__bar` |
+| `Unrecognized` | Pass through (SPY0453 if consecutive `__`) | `foo__bar` → `foo__bar` |
 
-**For camelCase target** (parameters, local variables, fields):
+**For camelCase target** (parameters, local variables):
 
 | Form | Transformation | Example |
 |------|----------------|---------|
@@ -70,7 +70,7 @@ The transformation depends on the detected form and the target convention:
 | `CamelCase` | Pass through | `httpClient` → `httpClient` |
 | `SingleWordLower` | Pass through | `hello` → `hello` |
 | `SingleWordUpper` | Fully lowercase | `HTTP` → `http` |
-| `Unrecognized` | Pass through (with SPY0453 warning) | `foo__bar` → `foo__bar` |
+| `Unrecognized` | Pass through (SPY0453 if consecutive `__`) | `foo__bar` → `foo__bar` |
 
 **For constant context** (module-level constants):
 
@@ -81,10 +81,10 @@ Constants use the same rules as PascalCase target, except `SingleWordUpper` is n
 Reattach any leading underscores that were preserved in Step 1:
 
 ```
-_private_field → _PrivateField (for methods)
-_private_field → _privateField (for fields)
-__private_field → __PrivateField (for methods)
-__private_count → __privateCount (for fields)
+_private_field → _PrivateField (PascalCase target: methods, class fields)
+_private_field → _privateField (camelCase target: parameters, locals)
+__private_field → __PrivateField (PascalCase target: methods, class fields)
+__private_count → __privateCount (camelCase target: parameters, locals)
 ```
 
 ## Complete Examples
@@ -94,8 +94,8 @@ __private_count → __privateCount (for fields)
 | `get_user_name` | Function/Method | `GetUserName` |
 | `user_name` | Parameter | `userName` |
 | `httpClient` | Variable | `httpClient` (preserved) |
-| `_user_count` | Private field | `_userCount` |
-| `__private_count` | Private field | `__privateCount` |
+| `_user_count` | Private field | `_UserCount` |
+| `__private_count` | Private field | `__PrivateCount` |
 | `MAX_RETRY_COUNT` | Constant | `MaxRetryCount` |
 | `HTTP_STATUS_CODE` | Constant | `HttpStatusCode` |
 | `get_html_parser` | Function | `GetHtmlParser` |
@@ -150,7 +150,7 @@ Names that don't match any well-formed convention are passed through as-is:
 - **Consecutive underscores**: `foo__bar` → `foo__bar` (with warning SPY0453)
 - **Mixed case with underscores**: `Foo_bar` → `Foo_bar`
 
-These names produce a compiler warning (SPY0453) because consecutive underscores can cause name mangling collisions — for example, `foo__bar` and `foo_bar` would both mangle to `FooBar` under a naive algorithm. The compiler avoids this by passing through unrecognized forms unchanged.
+Names with consecutive underscores produce a compiler warning (SPY0453) because they can cause name mangling collisions — for example, `foo__bar` and `foo_bar` would both mangle to `FooBar` under a naive algorithm. The compiler avoids this by passing through unrecognized forms unchanged. Mixed-case names with underscores (like `Foo_bar`) are also passed through but do not trigger the warning.
 
 To suppress the warning, rename the identifier or use backtick escaping:
 
@@ -213,7 +213,7 @@ Different identifier types use different target conventions:
 | Function/Method | PascalCase | `get_user()` → `GetUser()` |
 | Parameter | camelCase | `user_id: int` → `int userId` |
 | Local variable | camelCase | `result_count` → `resultCount` |
-| Private field (`_`) | _camelCase | `_data_store` → `_dataStore` |
+| Private field (`_`) | _PascalCase | `_data_store` → `_DataStore` |
 | Private field (`__`) | __PascalCase | `__private_field` → `__PrivateField` |
 | Public property | PascalCase | `property user_name` → `UserName` |
 | Constant | PascalCase | `MAX_SIZE` → `MaxSize` |
