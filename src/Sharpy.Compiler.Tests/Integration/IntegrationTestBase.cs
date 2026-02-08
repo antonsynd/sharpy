@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
@@ -40,6 +41,13 @@ public abstract class IntegrationTestBase
         public string? GeneratedCSharp { get; init; }
         public Exception? Exception { get; init; }
         public bool TimedOut { get; init; }
+
+        /// <summary>
+        /// Raw CompilerDiagnostic objects from Sharpy compilation phases.
+        /// Used for verifying diagnostic locations (line/column/span) in error tests.
+        /// May be empty for errors originating from the C# compilation or execution phases.
+        /// </summary>
+        public List<CompilerDiagnostic> RawDiagnostics { get; init; } = new();
     }
 
     /// <summary>
@@ -66,7 +74,8 @@ public abstract class IntegrationTestBase
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = lexer.Diagnostics.GetErrors().Select(d => d.Message).ToList()
+                    CompilationErrors = lexer.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
+                    RawDiagnostics = lexer.Diagnostics.GetAll().ToList()
                 };
             }
 
@@ -80,7 +89,8 @@ public abstract class IntegrationTestBase
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = parser.Diagnostics.GetErrors().Select(d => d.Message).ToList()
+                    CompilationErrors = parser.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
+                    RawDiagnostics = parser.Diagnostics.GetAll().ToList()
                 };
             }
 
@@ -110,7 +120,8 @@ public abstract class IntegrationTestBase
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = nameResolver.Diagnostics.GetErrors().Select(d => d.Message).ToList()
+                    CompilationErrors = nameResolver.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
+                    RawDiagnostics = nameResolver.Diagnostics.GetAll().ToList()
                 };
             }
 
@@ -152,11 +163,15 @@ public abstract class IntegrationTestBase
 
             if (allErrors.Count > 0)
             {
+                var rawDiags = new List<CompilerDiagnostic>();
+                rawDiags.AddRange(importResolver.Diagnostics.GetAll());
+                rawDiags.AddRange(typeChecker.Diagnostics.GetAll());
                 return new ExecutionResult
                 {
                     Success = false,
                     CompilationErrors = allErrors,
-                    CompilationWarnings = compilationWarnings
+                    CompilationWarnings = compilationWarnings,
+                    RawDiagnostics = rawDiags
                 };
             }
 
@@ -184,7 +199,8 @@ public abstract class IntegrationTestBase
                 {
                     Success = false,
                     CompilationErrors = codeGenContext.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
-                    GeneratedCSharp = generatedCSharp
+                    GeneratedCSharp = generatedCSharp,
+                    RawDiagnostics = codeGenContext.Diagnostics.GetAll().ToList()
                 };
             }
 
@@ -536,7 +552,8 @@ public abstract class IntegrationTestBase
                     Success = false,
                     CompilationErrors = result.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
                     CompilationWarnings = projectWarnings,
-                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
+                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                    RawDiagnostics = result.Diagnostics.GetAll().ToList()
                 };
             }
 

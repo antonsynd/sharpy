@@ -1,7 +1,9 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Formatting;
+using Sharpy.Compiler.Text;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -192,6 +194,7 @@ public class FileBasedIntegrationTests : IntegrationTestBase
         ExecutionResult result;
         string errorFilePath;
         string expectedFilePath;
+        string? sourceTextContent = null; // For location assertions in error tests
 
         if (isMultiFile)
         {
@@ -218,6 +221,9 @@ public class FileBasedIntegrationTests : IntegrationTestBase
             errorFilePath = Path.Combine(projectDir, $"{entryPointBaseName}.error");
             expectedFilePath = Path.Combine(projectDir, $"{entryPointBaseName}.expected");
 
+            // Read the entry point source for location assertions
+            sourceTextContent = File.ReadAllText(Path.Combine(projectDir, entryPointFile));
+
             // Execute the multi-file test
             result = CompileAndExecuteProject(projectDir, entryPointFile);
         }
@@ -234,6 +240,7 @@ public class FileBasedIntegrationTests : IntegrationTestBase
 
             errorFilePath = Path.ChangeExtension(spyFilePath, ".error");
             expectedFilePath = Path.ChangeExtension(spyFilePath, ".expected");
+            sourceTextContent = source;
 
             // Execute the test
             result = CompileAndExecute(source, Path.GetFileName(spyFilePath));
@@ -261,6 +268,13 @@ public class FileBasedIntegrationTests : IntegrationTestBase
             // Each non-empty, non-comment line in the .error file is checked
             // independently as a substring that must appear in the actual errors.
             // This allows verifying that error recovery produces multiple distinct errors.
+            //
+            // Location assertions: lines ending with @line:column verify that the
+            // matching diagnostic points to the correct source location. Format:
+            //   message substring @3:5
+            // The message part is still checked as a substring. The @line:column part
+            // asserts the diagnostic's line and column. Lines without @line:column
+            // continue to work as substring-only matches (backward compatible).
             var expectedLines = expectedErrorContent
                 .Split('\n')
                 .Select(line => line.Trim())
@@ -269,7 +283,54 @@ public class FileBasedIntegrationTests : IntegrationTestBase
 
             foreach (var expectedLine in expectedLines)
             {
-                Assert.Contains(expectedLine, actualErrors, StringComparison.OrdinalIgnoreCase);
+                var locationMatch = Regex.Match(expectedLine, @"^(.+?)\s+@(\d+):(\d+)$");
+                if (locationMatch.Success)
+                {
+                    // Location-aware assertion: check both message and location
+                    var messagePattern = locationMatch.Groups[1].Value.Trim();
+                    var expectedLineNum = int.Parse(locationMatch.Groups[2].Value);
+                    var expectedColumn = int.Parse(locationMatch.Groups[3].Value);
+
+                    // First verify the message substring exists in the errors
+                    Assert.Contains(messagePattern, actualErrors, StringComparison.OrdinalIgnoreCase);
+
+                    // Then verify a matching diagnostic has the correct location
+                    var matchingDiag = result.RawDiagnostics.FirstOrDefault(d =>
+                        d.Message.Contains(messagePattern, StringComparison.OrdinalIgnoreCase));
+
+                    Assert.True(matchingDiag != null,
+                        $"No raw diagnostic found matching '{messagePattern}'. " +
+                        $"RawDiagnostics count: {result.RawDiagnostics.Count}");
+
+                    // Check location: derive line/column from Span (via SourceText)
+                    // or fall back to the diagnostic's Line/Column fields
+                    int? actualLine = null;
+                    int? actualColumn = null;
+                    if (matchingDiag!.Span.HasValue && sourceTextContent != null)
+                    {
+                        var st = new SourceText(sourceTextContent);
+                        var pos = st.GetLineAndColumn(matchingDiag.Span.Value.Start);
+                        actualLine = pos.Line;
+                        actualColumn = pos.Column;
+                    }
+                    else if (matchingDiag.Line.HasValue)
+                    {
+                        actualLine = matchingDiag.Line;
+                        actualColumn = matchingDiag.Column;
+                    }
+
+                    Assert.True(actualLine.HasValue,
+                        $"Diagnostic '{messagePattern}' has no location information (no Span or Line). " +
+                        $"Diagnostic: {matchingDiag}");
+
+                    Assert.Equal(expectedLineNum, actualLine!.Value);
+                    Assert.Equal(expectedColumn, actualColumn ?? 0);
+                }
+                else
+                {
+                    // Plain substring match (backward compatible)
+                    Assert.Contains(expectedLine, actualErrors, StringComparison.OrdinalIgnoreCase);
+                }
             }
         }
         else
