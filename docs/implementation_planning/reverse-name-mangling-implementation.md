@@ -456,10 +456,10 @@ all-caps inputs.
 
 After all phases are complete:
 
-- [ ] `dotnet build sharpy.sln` — no warnings
-- [ ] `dotnet test` — all tests pass
-- [ ] `dotnet format whitespace` — no formatting issues
-- [ ] No changes to `.expected` files in existing test fixtures (these phases add new behavior and new tests, they don't change existing behavior)
+- [x] `dotnet build sharpy.sln` — no warnings
+- [x] `dotnet test` — all tests pass
+- [x] `dotnet format whitespace` — no formatting issues
+- [x] No changes to `.expected` files in existing test fixtures (these phases add new behavior and new tests, they don't change existing behavior)
 
 ---
 
