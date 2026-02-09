@@ -150,7 +150,7 @@ to the arithmetic ones.
 
 | Dunder | C# Output | Notes |
 |--------|-----------|-------|
-| `__eq__(self, other: U) -> bool` | `public static bool operator ==(T lhs, U rhs)` and `public override bool Equals(U rhs)` | The former invokes the latter |
+| `__eq__(self, other: U) -> bool` | `public static bool operator ==(T lhs, U rhs)` and `public override bool Equals(U rhs)` | The former invokes the latter. `@override` is optional (implicit override of `System.Object.Equals`). |
 | `__ne__(self, other: U) -> bool` | `public static bool operator !=(T lhs, U rhs)` | If not defined, is synthesized by the compiler as `!(lhs == rhs)` |
 | `__lt__(self, other: U) -> bool` | `public static bool operator <(T lhs, U rhs)` | |
 | `__le__(self, other: U) -> bool` | `public static bool operator <=(T lhs, U rhs)` | |
@@ -173,14 +173,14 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | Dunder | C# Output | Notes |
 |--------|-----------|-------|
 | `__bool__(self) -> bool` | `public static bool operator true(T self)`, and `public static bool operator false(T self)` | The latter invokes the former and returns the negated value |
-| `__str__(self) -> str` | `public static explicit operator string(T self)` and `public override string ToString()` | The former invokes the latter |
+| `__str__(self) -> str` | `public static explicit operator string(T self)` and `public override string ToString()` | The former invokes the latter. `@override` is optional (implicit override of `System.Object.ToString`). |
 
 ## Special Methods
 
 | Dunder | C# Output | Notes |
 |--------|------------|-------|
 | `__contains__(self, item: T) -> bool` | `bool Contains(T item)` method | Membership test (`in` operator) |
-| `__hash__(self) -> int` | `int GetHashCode()` override | Hash code |
+| `__hash__(self) -> int` | `int GetHashCode()` override | Hash code. `@override` is optional (implicit override of `System.Object.GetHashCode`). |
 | `__getitem__(self, key: K) -> V` | `this[K key] { get; }` indexer | Index access |
 | `__iter__(self) -> Iterator[T]` | `IEnumerator<T> IEnumerable<T>.GetEnumerator()` | Iteration. Note that `Iterator<T>` is an interface that inherits from `IEnumerable<T>` |
 | `__len__(self) -> int` | `int Count` property | Length/count |

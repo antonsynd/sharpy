@@ -503,7 +503,8 @@ internal class NameResolver
 
         bool isAbstract = hasAbstractDecorator || (owningType.IsAbstract && hasEllipsisBody);
         bool isVirtual = method.Decorators.Any(d => d.Name == "virtual");
-        bool isOverride = method.Decorators.Any(d => d.Name == "override");
+        bool isOverride = method.Decorators.Any(d => d.Name == "override")
+            || ProtocolRegistry.IsObjectOverrideDunder(method.Name);
 
         // Add parameters to the method symbol (types will be resolved later by TypeChecker)
         var parameters = method.Parameters.Select(p => new ParameterSymbol

@@ -506,14 +506,16 @@ class SharpyDerived(SealedToString):
 | Option | Description | Trade-off |
 |--------|-------------|-----------|
 | **A. Always require @override** | Explicit, matches C# | Un-Pythonic, confuses new users |
-| **B. Implicit @override for Object methods** | `__str__`, `__eq__`, `__hash__` auto-override | Magic behavior, inconsistent with other dunders |
+| **B. Implicit @override for Object methods** (**Chosen**) | `__str__`, `__eq__`, `__hash__` auto-override | Magic behavior, inconsistent with other dunders |
 | **C. @override only when base explicitly defines** | If parent has `__str__`, need `@override`; if inheriting raw from `object`, no decorator needed | Complex rule, but matches intuition |
 | **D. Warning, not error** | Warn if @override missing but compile anyway | Allows gradual adoption |
 
-**Recommended: Option B (Implicit @override)** for the specific dunders that map to `System.Object` methods:
+**Decision: Option B (Implicit @override)** for the specific dunders that map to `System.Object` methods:
 - `__str__` → `ToString()`
 - `__eq__` → `Equals(object)`
 - `__hash__` → `GetHashCode()`
+
+The `@override` decorator is accepted but never required for these three dunders, at any inheritance depth. The compiler implicitly treats them as overrides.
 
 **Rationale:** These three are special-cased in every language that targets .NET. Making them implicit acknowledges that "every class inherits from object" is an implementation detail that shouldn't leak into Pythonic syntax.
 
@@ -1484,6 +1486,7 @@ For each issue, track the decision:
 
 | Issue | Decision | Rationale | Spec Section to Update |
 |-------|----------|-----------|------------------------|
+| `@override` for Object methods | Option B: Implicit `@override` for `__str__`, `__eq__`, `__hash__` | These always override `System.Object`; requiring `@override` is un-Pythonic friction without safety benefit | `dunder_invocation_rules.md`, `dunder_methods.md` |
 | `__eq__` without `__hash__` | | | |
 | Equals dispatch order | | | |
 | Reflected operator semantics | | | |

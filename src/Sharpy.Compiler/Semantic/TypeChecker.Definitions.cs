@@ -88,26 +88,12 @@ internal partial class TypeChecker
         var previousSuperInitCalled = _superInitCalled;
 
         _currentMethodName = functionDef.Name;
-        _currentMethodIsOverride = functionDef.Decorators.Any(d => d.Name == "override");
+        _currentMethodIsOverride = functionDef.Decorators.Any(d => d.Name == "override")
+            || (_currentClass != null && IsDunderMethod(functionDef.Name)
+                && ProtocolRegistry.IsObjectOverrideDunder(functionDef.Name));
         _currentMethodIsDunder = IsDunderMethod(functionDef.Name);
         _controlFlowDepth = 0;
         _superInitCalled = false;
-
-        // Validate @override is required for dunders that override System.Object methods
-        if (_currentClass != null && _currentMethodIsDunder)
-        {
-            bool requiresOverride = ProtocolRegistry.IsObjectOverrideDunder(functionDef.Name);
-
-            if (requiresOverride && !_currentMethodIsOverride)
-            {
-                AddError(
-                    $"Dunder method '{functionDef.Name}' overrides a System.Object method and requires the @override decorator",
-                    functionDef.LineStart,
-                    functionDef.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidOverride,
-                    span: functionDef.Span);
-            }
-        }
 
         // Validate @override is required when a subclass method shadows a virtual base method
         var currentClassBaseType = _currentClass != null ? GetBaseType(_currentClass) : null;

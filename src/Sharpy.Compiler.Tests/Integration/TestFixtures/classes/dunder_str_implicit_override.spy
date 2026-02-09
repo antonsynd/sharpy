@@ -3,4 +3,5 @@ class Foo:
         return "Foo"
 
 def main():
-    f: Foo = Foo()
+    f = Foo()
+    print(str(f))

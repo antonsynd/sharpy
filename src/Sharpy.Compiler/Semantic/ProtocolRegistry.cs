@@ -278,7 +278,8 @@ public static class ProtocolRegistry
 
     /// <summary>
     /// Checks if a dunder method overrides a System.Object virtual method.
-    /// These dunders require the @override decorator in Sharpy source code:
+    /// These dunders are implicitly treated as overrides (the @override decorator
+    /// is accepted but not required):
     /// - __str__ → Object.ToString()
     /// - __eq__ → Object.Equals()
     /// - __hash__ → Object.GetHashCode()

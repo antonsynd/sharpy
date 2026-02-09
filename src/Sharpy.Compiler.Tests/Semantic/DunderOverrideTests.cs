@@ -32,7 +32,7 @@ public class DunderOverrideTests
     }
 
     [Fact]
-    public void DunderStr_WithoutOverrideDecorator_ReportsError()
+    public void DunderStr_WithoutOverrideDecorator_Succeeds()
     {
         var source = @"
 class Foo:
@@ -42,44 +42,41 @@ class Foo:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("__str__");
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("@override");
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("System.Object");
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
-    public void DunderEq_WithoutOverrideDecorator_ReportsError()
+    public void DunderEq_WithoutOverrideDecorator_Succeeds()
     {
         var source = @"
 class Bar:
     def __eq__(self, other: object) -> bool:
         return True
+
+    def __hash__(self) -> int:
+        return 0
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("__eq__");
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("@override");
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("System.Object");
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
-    public void DunderHash_WithoutOverrideDecorator_ReportsError()
+    public void DunderHash_WithoutOverrideDecorator_Succeeds()
     {
         var source = @"
 class Baz:
+    def __eq__(self, other: object) -> bool:
+        return True
+
     def __hash__(self) -> int:
         return 42
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().ContainSingle();
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("__hash__");
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("@override");
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("System.Object");
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -105,6 +102,10 @@ class BarGood:
     @override
     def __eq__(self, other: object) -> bool:
         return True
+
+    @override
+    def __hash__(self) -> int:
+        return 0
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -117,6 +118,10 @@ class BarGood:
     {
         var source = @"
 class BazGood:
+    @override
+    def __eq__(self, other: object) -> bool:
+        return True
+
     @override
     def __hash__(self) -> int:
         return 42
@@ -173,7 +178,7 @@ class MyNum:
     }
 
     [Fact]
-    public void MultipleDundersWithoutOverride_ReportsMultipleErrors()
+    public void MultipleDundersWithoutOverride_Succeeds()
     {
         var source = @"
 class MultiDunder:
@@ -189,10 +194,7 @@ class MultiDunder:
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().HaveCount(3);
-        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("__str__"));
-        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("__eq__"));
-        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("__hash__"));
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -202,6 +204,29 @@ class MultiDunder:
         var source = @"
 def __str__() -> str:
     return ""top level""
+";
+        var (module, _, _, typeChecker, _) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void DunderStr_InDerivedClass_WithoutOverrideDecorator_Succeeds()
+    {
+        // A derived class can define __str__ without @override even when base defines it
+        var source = @"
+class Base:
+    @virtual
+    def greet(self) -> str:
+        return ""hello""
+
+    def __str__(self) -> str:
+        return ""Base""
+
+class Derived(Base):
+    def __str__(self) -> str:
+        return ""Derived""
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);

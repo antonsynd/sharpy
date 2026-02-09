@@ -312,7 +312,7 @@ class Child(Parent):
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
-        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("must call a dunder method"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("must call super().__eq__"));
     }
 
     #endregion

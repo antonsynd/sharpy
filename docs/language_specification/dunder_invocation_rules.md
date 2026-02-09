@@ -104,6 +104,8 @@ print(str(dog))  # Output: Dog(Buddy)
 
 **Note:** The `@override` decorator is **required** when overriding inherited dunder methods, just like any other virtual method. All inheritable dunder methods from base classes are implicitly `@virtual`.
 
+**Exception:** `__str__`, `__eq__`, and `__hash__` are **implicitly treated as overrides** since they always override `System.Object` methods (`ToString()`, `Equals()`, `GetHashCode()`). The `@override` decorator is accepted but never required for these three dunders, at any inheritance depth.
+
 ```python
 class MyClass:
     value: int
@@ -111,24 +113,29 @@ class MyClass:
     def __init__(self, value: int):
         self.value = value
 
-    # Must use @override since __str__ is inherited from System.Object (`ToString()`)
-    @override
+    # @override is optional for __str__, __eq__, __hash__ — they implicitly override System.Object
     def __str__(self) -> str:
         return f"MyClass({self.value})"
 
-    # Same for __eq__, __hash__, etc.
-    @override
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, MyClass):
             return False
         return self.value == other.value
 
-    @override
     def __hash__(self) -> int:
         return hash(self.value)
 ```
 
-This matches C# where overriding `ToString()`, `Equals()`, and `GetHashCode()` from `System.Object` requires the `override` keyword.
+Using `@override` explicitly is also valid:
+
+```python
+class AnotherClass:
+    @override
+    def __str__(self) -> str:
+        return "AnotherClass"
+```
+
+For all other inherited dunders, `@override` remains required when the base class defines them.
 
 ### Base Class Dunder Calls
 
