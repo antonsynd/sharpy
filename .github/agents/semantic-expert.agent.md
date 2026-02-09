@@ -29,6 +29,7 @@ Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, 
 - **Static typing** — explicit nullability, non-nullable by default
 - **C# scoping rules** — no Python `global`/`nonlocal`
 - **.NET type system** — compatible with .NET generics and interfaces
+- **TODO/BUG/FIXME → create GitHub issues** — when leaving a `TODO`, `BUG`, or `FIXME` comment, first create a GitHub issue (`gh issue create`) and reference it (e.g., `// TODO(#123): ...`)
 
 ## Semantic Analysis Pipeline
 
@@ -88,7 +89,7 @@ SemanticType (abstract)
 
 ## Type Narrowing
 
-`TypeChecker._narrowedTypes` tracks flow-sensitive types:
+`TypeChecker._narrowingContext` (`TypeNarrowingContext`) tracks flow-sensitive types:
 - `if x is not None:` → narrows `T?` to `T` in branch
 - `isinstance(x, SomeClass)` → narrows to `SomeClass`
 
@@ -99,6 +100,7 @@ Pluggable validators run after `TypeChecker.CheckModule()` via `ValidationPipeli
 | Order | Validator | Purpose |
 |-------|-----------|---------|
 | 50 | `ModuleLevelValidator` | Entry point validation |
+| 55 | `NamingConventionValidator` | Naming convention checks |
 | 60 | `DecoratorValidator` | Decorator validation |
 | 150 | `SignatureValidator` | Dunder method signatures |
 | 250 | `DefaultParameterValidator` | Default parameter validation |

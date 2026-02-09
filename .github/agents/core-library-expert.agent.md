@@ -26,6 +26,7 @@ Specializes in the Sharpy standard library (`Sharpy.Core`). Implements Pythonic 
 2. **Match Python semantics** — Negative indices, slicing, same exceptions
 3. **Axiom 1 wins** — Prefer .NET when zero-cost abstraction impossible
 4. **Python exception names** — `IndexError`, `KeyError`, not `IndexOutOfRangeException`
+5. **TODO/BUG/FIXME → create GitHub issues** — when leaving a `TODO`, `BUG`, or `FIXME` comment, first create a GitHub issue (`gh issue create`) and reference it (e.g., `// TODO(#123): ...`)
 
 ## Directory Structure
 

@@ -25,6 +25,7 @@ Full-stack implementation agent for Sharpy compiler and standard library.
 - **SyntaxFactory only** — no string templating in CodeGen
 - **C# 9.0 for Sharpy.Core** — no file-scoped namespaces, global usings, record structs
 - **C# latest for Compiler/CLI** — `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0`
+- **TODO/BUG/FIXME → create GitHub issues** — when leaving a `TODO`, `BUG`, or `FIXME` comment, first create a GitHub issue (`gh issue create`) and reference it (e.g., `// TODO(#123): ...`)
 
 ## Feature Implementation Order
 

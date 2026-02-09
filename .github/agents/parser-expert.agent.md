@@ -14,6 +14,11 @@ Specializes in the Sharpy parser. Handles EBNF grammar translation, AST node con
 
 **Does NOT modify:** Lexer, Semantic, CodeGen, or Sharpy.Core
 
+## Critical Rules
+
+- **Immutable AST** — never store semantic info on AST nodes
+- **TODO/BUG/FIXME → create GitHub issues** — when leaving a `TODO`, `BUG`, or `FIXME` comment, first create a GitHub issue (`gh issue create`) and reference it (e.g., `// TODO(#123): ...`)
+
 ## Specs to Consult
 
 Always check specs before implementing:

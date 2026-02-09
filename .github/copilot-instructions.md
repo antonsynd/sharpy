@@ -53,6 +53,7 @@ python3 -c "..."                                     # Verify Python semantics F
 4. **C# targets**: `Sharpy.Core` → C# 9.0 (`netstandard2.0;2.1`); others → `net10.0`
 5. **Spec is authoritative**: check `docs/language_specification/` before implementing
 6. **Verify Python first**: `python3 -c "print([1,2,3][-1])"` before coding
+7. **TODO/BUG/FIXME → create GitHub issues**: create issue first (`gh issue create`), reference in comment (`// TODO(#123): ...`)
 
 ## Testing Patterns
 

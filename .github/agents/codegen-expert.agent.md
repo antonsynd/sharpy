@@ -27,6 +27,11 @@ Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type 
 
 **Does NOT modify:** Lexer, Parser, Semantic analysis, or Sharpy.Core
 
+## Critical Rules
+
+- **SyntaxFactory only** — no string templating
+- **TODO/BUG/FIXME → create GitHub issues** — when leaving a `TODO`, `BUG`, or `FIXME` comment, first create a GitHub issue (`gh issue create`) and reference it (e.g., `// TODO(#123): ...`)
+
 ## Debugging Commands
 
 ```bash

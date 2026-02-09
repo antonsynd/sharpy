@@ -56,6 +56,7 @@ All agents follow this priority order when axioms conflict:
 5. **Follow existing patterns** — search codebase for similar code
 6. Run tests before/after changes
 7. **C# targets**: `Sharpy.Core` uses C# 9.0 (`netstandard2.0;netstandard2.1`); other projects use `net10.0` with `LangVersion latest`
+8. **TODO/BUG/FIXME → create GitHub issues** — when leaving a `TODO`, `BUG`, or `FIXME` comment, first create a GitHub issue (`gh issue create`) and reference it (e.g., `// TODO(#123): ...`)
 
 ## Commands
 

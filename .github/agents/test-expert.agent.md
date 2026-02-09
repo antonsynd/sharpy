@@ -24,10 +24,12 @@ Assert.Equal(wrong_value, result);
 Assert.Equal(correct_value, result);
 ```
 
-If a test must be skipped temporarily:
+If a test must be skipped temporarily, create a GitHub issue first and reference it:
 ```csharp
-[Fact(Skip = "TODO: Implement feature. See issue #42")]
+[Fact(Skip = "TODO(#42): Implement feature")]
 ```
+
+**TODO/BUG/FIXME → create GitHub issues** — when leaving a `TODO`, `BUG`, or `FIXME` comment, first create a GitHub issue (`gh issue create`) and reference it (e.g., `// TODO(#123): ...`). This makes deferred work visible at the project level.
 
 ## Test Types
 
