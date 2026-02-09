@@ -291,7 +291,6 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 
 `.github/workflows/`:
 - `dotnet10.yml` — Active; tests on .NET 10
-- `dotnet9.yml` — Currently disabled (`if: false`)
 - `python-build-tools.yml` — Runs pytest for `build_tools/` on Python 3.11 and 3.12
 
 An `.editorconfig` at the repo root enforces C# formatting and naming conventions.
