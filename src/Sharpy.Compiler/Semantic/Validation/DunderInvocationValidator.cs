@@ -126,10 +126,14 @@ internal class DunderInvocationValidator : SemanticValidatorBase
                 ValidateExpression(whileStmt.Test);
                 foreach (var s in whileStmt.Body)
                     ValidateStatement(s);
+                foreach (var s in whileStmt.ElseBody)
+                    ValidateStatement(s);
                 break;
             case ForStatement forStmt:
                 ValidateExpression(forStmt.Iterator);
                 foreach (var s in forStmt.Body)
+                    ValidateStatement(s);
+                foreach (var s in forStmt.ElseBody)
                     ValidateStatement(s);
                 break;
             case TryStatement tryStmt:
@@ -140,6 +144,8 @@ internal class DunderInvocationValidator : SemanticValidatorBase
                     foreach (var s in handler.Body)
                         ValidateStatement(s);
                 }
+                foreach (var s in tryStmt.ElseBody)
+                    ValidateStatement(s);
                 foreach (var s in tryStmt.FinallyBody)
                     ValidateStatement(s);
                 break;
