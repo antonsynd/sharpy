@@ -716,7 +716,7 @@ class Point:
 
 def main():
     p = Point(3, 4)
-    print(p.__hash__())
+    print(hash(p))
 ";
 
         var result = CompileAndExecute(source);

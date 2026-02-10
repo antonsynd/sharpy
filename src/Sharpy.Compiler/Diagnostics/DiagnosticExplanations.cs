@@ -722,6 +722,36 @@ public static class DiagnosticExplanations
             "class Foo:\n    x: int\n    def __hash__(self) -> int:\n        return self.x",
             "Add an '__eq__(self, other: object) -> bool' method:\nclass Foo:\n    x: int\n    def __eq__(self, other: object) -> bool:\n        return False\n    def __hash__(self) -> int:\n        return self.x");
 
+        // ── Validation errors: Dunder invocation rules (SPY0460-SPY0469)
+
+        Add(dict, DiagnosticCodes.Validation.DunderDirectInvocation,
+            "Direct dunder method invocation",
+            "Validation",
+            "Dunder methods (double-underscore methods like __eq__, __str__, __len__) cannot be called directly from user code. " +
+            "They define how a type behaves with operators and built-in functions, but users should invoke that behavior " +
+            "through operators (==, +, <) or built-in functions (str(), len()), not by calling dunders directly. " +
+            "Dunder-to-dunder calls on self or super() are allowed only inside another dunder method body.",
+            "class Foo:\n    value: int\n    def compare(self, other: Foo) -> bool:\n        return self.__eq__(other)  # error: direct dunder call",
+            "Use the corresponding operator or built-in function:\nclass Foo:\n    value: int\n    def compare(self, other: Foo) -> bool:\n        return self == other  # use == operator");
+
+        Add(dict, DiagnosticCodes.Validation.DunderWrongReceiver,
+            "Dunder call on wrong receiver",
+            "Validation",
+            "Inside a dunder method, dunder calls are only allowed on 'self' (for cross-dunder synthesis) or 'super()' " +
+            "(for calling the base class implementation). Calling a dunder on any other object is not allowed — " +
+            "use the corresponding operator or built-in function instead.",
+            "class Foo:\n    def __eq__(self, other: object) -> bool:\n        return other.__eq__(self)  # error: receiver is not self or super()",
+            "Use the corresponding operator:\nclass Foo:\n    def __eq__(self, other: object) -> bool:\n        return other == self  # use == operator");
+
+        Add(dict, DiagnosticCodes.Validation.DunderCapture,
+            "Captured dunder method reference",
+            "Validation",
+            "Dunder method references cannot be captured (assigned to variables, passed as arguments, etc.). " +
+            "Dunder methods must be called immediately as part of a function call expression. " +
+            "This restriction ensures that dunder dispatch is always static and verifiable at compile time.",
+            "class Foo:\n    def __str__(self) -> str:\n        f = self.__eq__  # error: captured dunder reference\n        return \"Foo\"",
+            "Call the dunder method immediately instead of capturing it:\nclass Foo:\n    def __str__(self) -> str:\n        result: bool = self.__eq__(other)  # OK: immediate call\n        return \"Foo\"");
+
         // ── Code generation errors (SPY0500-SPY0599) ───────────────────
 
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",

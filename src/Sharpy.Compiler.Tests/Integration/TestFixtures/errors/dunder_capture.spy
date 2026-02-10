@@ -1,0 +1,21 @@
+class Foo:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Foo):
+            return False
+        return self.value == other.value
+
+    def __hash__(self) -> int:
+        return self.value
+
+    def __str__(self) -> str:
+        f = self.__eq__
+        return "Foo"
+
+def main():
+    f: Foo = Foo(1)
+    print(str(f))

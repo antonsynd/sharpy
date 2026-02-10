@@ -646,6 +646,15 @@ internal class TypeInferenceService
         return SemanticType.Int;
     }
 
+    /// <summary>
+    /// Infers the result type of hash() call.
+    /// Always returns Int — every object supports GetHashCode().
+    /// </summary>
+    public SemanticType? InferHashType(SemanticType target)
+    {
+        return SemanticType.Int;
+    }
+
     #endregion
 
     #region Helper Methods

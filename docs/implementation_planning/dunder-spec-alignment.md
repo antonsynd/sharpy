@@ -128,17 +128,17 @@ The current `EqualityContractValidator` only warns (SPY0454) when `__eq__` exist
 2. Add new error: if `__eq__(self, other: object)` exists but `__hash__` does not → error.
 3. Add new error: if `__hash__` exists but `__eq__(self, other: object)` does not → error.
 
-- [ ] Add two new diagnostic codes in `DiagnosticCodes.cs`:
+- [x] Add two new diagnostic codes in `DiagnosticCodes.cs`:
   - `SPY0455` (or next available): "Class '{0}' defines `__eq__(self, other: object)` but not `__hash__`. The .NET equality contract requires both."
   - `SPY0456` (or next available): "Class '{0}' defines `__hash__` but not `__eq__(self, other: object)`. The .NET equality contract requires both."
-- [ ] In `EqualityContractValidator.cs`, in `CheckEqOverloads`, after the existing SPY0454 check:
+- [x] In `EqualityContractValidator.cs`, in `CheckEqOverloads`, after the existing SPY0454 check:
   - Check if any `__eq__` overload has parameter type `object`. If yes, check if `__hash__` is also defined in the class body. If not → emit SPY0455 as error.
   - Also scan for `__hash__` methods. If `__hash__` exists but no `__eq__(self, other: object)` → emit SPY0456 as error.
-- [ ] Add test fixture: `errors/dunder_eq_object_without_hash.spy` + `.error` file.
-- [ ] Add test fixture: `errors/dunder_hash_without_eq_object.spy` + `.error` file.
-- [ ] Add test fixture: `classes/dunder_eq_hash_correct.spy` + `.expected` — a class with both, should compile and run cleanly.
-- [ ] Add unit tests in the EqualityContractValidator test file.
-- [ ] Run `dotnet test`.
+- [x] Add test fixture: `errors/dunder_eq_object_without_hash.spy` + `.error` file.
+- [x] Add test fixture: `errors/dunder_hash_without_eq_object.spy` + `.error` file.
+- [x] Add test fixture: `classes/dunder_eq_hash_correct.spy` + `.expected` — a class with both, should compile and run cleanly.
+- [x] Add unit tests in the EqualityContractValidator test file.
+- [x] Run `dotnet test`.
 
 **Edge case to consider:** A class that inherits `__hash__` from its base class but defines `__eq__(self, other: object)` locally. Per .NET semantics, the inherited `GetHashCode()` still satisfies the contract. The validator should only error if the *class itself* defines one without the other. Inherited dunders are fine. Document this in the test fixture with a comment.
 
@@ -151,15 +151,15 @@ Currently `__bool__` generates a `ToBoolean()` method via DunderMapping. This is
 
 **What needs to change:**
 
-- [ ] In `DunderMapping.cs`: remove `{ DunderNames.Bool, "ToBoolean" }` entry. `__bool__` is no longer a simple name-mapping case — it needs special codegen handling (like `__eq__` does).
-- [ ] In `RoslynEmitter.ClassMembers.cs` (or `.Operators.cs`): add special handling for `__bool__` similar to how `__eq__` gets special treatment. When a method named `__bool__` is encountered:
+- [x] In `DunderMapping.cs`: remove `{ DunderNames.Bool, "ToBoolean" }` entry. `__bool__` is no longer a simple name-mapping case — it needs special codegen handling (like `__eq__` does).
+- [x] In `RoslynEmitter.ClassMembers.cs` (or `.Operators.cs`): add special handling for `__bool__` similar to how `__eq__` gets special treatment. When a method named `__bool__` is encountered:
   - Generate `public static bool operator true(T self)` that contains the user's method body.
   - Generate `public static bool operator false(T self)` that calls `operator true` and negates it: `return !(self ? true : false)` or more simply invokes the body and negates.
-- [ ] Update `ProtocolRegistry.cs`: change `ClrMethodName: "op_Explicit"` → `ClrMethodName: "op_True"` for `__bool__` (or null, since it's two methods).
-- [ ] Add test fixture: `classes/dunder_bool.spy` + `.expected` — a class with `__bool__`, used in an `if` statement.
-- [ ] Add test fixture: `classes/dunder_bool.expected.cs` — C# snapshot showing `operator true` and `operator false`.
-- [ ] Add unit test in `RoslynEmitterOperatorTests.cs`.
-- [ ] Run `dotnet test`.
+- [x] Update `ProtocolRegistry.cs`: change `ClrMethodName: "op_Explicit"` → `ClrMethodName: null` for `__bool__` (two operators, not one method).
+- [x] Add test fixture: `classes/dunder_bool.spy` + `.expected` — a class with `__bool__`, used in an `if` statement.
+- [x] Add test fixture: `classes/dunder_bool.expected.cs` — C# snapshot showing `operator true` and `operator false`.
+- [x] Add unit test in `RoslynEmitterOperatorTests.cs`.
+- [x] Run `dotnet test`.
 
 **Generated C# example:**
 ```csharp
@@ -186,22 +186,22 @@ public static bool operator false(MyClass self)
 
 **Implementation approach:** Add a new validator `DunderInvocationValidator` (or add checks to an existing validator like `AccessValidator`). This runs after type checking so all member accesses are resolved.
 
-- [ ] Create `DunderInvocationValidator.cs` in `Semantic/Validation/`. Give it an order around 460 (after AccessValidator at 450, before ProtocolValidator at 500).
-- [ ] Add a diagnostic code: `SPY0460` (or next available): "Cannot invoke dunder method '{0}' directly. Use the corresponding operator or built-in function."
-- [ ] Add a diagnostic code: `SPY0461`: "Dunder method '{0}' can only be called on 'self' or 'super()' within another dunder method."
-- [ ] Add a diagnostic code: `SPY0462`: "Cannot capture dunder method reference. Dunder methods must be called immediately."
-- [ ] The validator should walk the AST and find `FunctionCall` nodes where the callee is a `MemberAccess` with a dunder name (`DunderMapping.IsDunderMethod(name)`). For each such call:
+- [x] Create `DunderInvocationValidator.cs` in `Semantic/Validation/`. Give it an order around 460 (after AccessValidator at 450, before ProtocolValidator at 500).
+- [x] Add a diagnostic code: `SPY0460` (or next available): "Cannot invoke dunder method '{0}' directly. Use the corresponding operator or built-in function."
+- [x] Add a diagnostic code: `SPY0461`: "Dunder method '{0}' can only be called on 'self' or 'super()' within another dunder method."
+- [x] Add a diagnostic code: `SPY0462`: "Cannot capture dunder method reference. Dunder methods must be called immediately."
+- [x] The validator should walk the AST and find `FunctionCall` nodes where the callee is a `MemberAccess` with a dunder name (`DunderMapping.IsDunderMethod(name)`). For each such call:
   1. **Check: is the call site inside a dunder method body?** Walk up the AST (or track context) to find the enclosing `FunctionDef`. If the enclosing function is not a dunder → emit SPY0460.
   2. **Check: is the receiver `self` or `super()`?** If the `MemberAccess.Object` is not a `SelfExpression` or `SuperExpression` → emit SPY0461.
   3. **Check: is it an immediate call?** The `MemberAccess` must be the direct callee of a `FunctionCall`. If the dunder member access appears in any other context (assigned to variable, passed as argument) → emit SPY0462.
-- [ ] **Exception:** `__init__` has special rules — `self.__init__(...)` is allowed for constructor dispatch, and `super().__init__(...)` is allowed for base constructor call. These are already handled by other code paths (constructor chaining). The validator should skip `__init__` or handle it specially.
-- [ ] Add test fixtures:
+- [x] **Exception:** `__init__` has special rules — `self.__init__(...)` is allowed for constructor dispatch, and `super().__init__(...)` is allowed for base constructor call. These are already handled by other code paths (constructor chaining). The validator should skip `__init__` or handle it specially.
+- [x] Add test fixtures:
   - `errors/dunder_direct_invocation.spy` + `.error`: `x.__eq__(y)` outside dunder.
   - `errors/dunder_invocation_wrong_receiver.spy` + `.error`: `other.__lt__(self)` inside a dunder.
   - `errors/dunder_capture.spy` + `.error`: `f = self.__eq__` inside a dunder.
   - `classes/dunder_cross_call.spy` + `.expected`: valid cross-dunder call (`self.__lt__(other)` inside `__le__`).
   - `classes/dunder_super_call.spy` + `.expected`: valid `super().__str__()` inside `__str__`.
-- [ ] Run `dotnet test`.
+- [x] Run `dotnet test`.
 
 **Complexity note:** The hardest part is tracking "are we inside a dunder method body?" during AST traversal. The cleanest approach is a stack-based context in the validator: push when entering a `FunctionDef`, pop when leaving. Check the top of the stack to see if the current function is a dunder.
 

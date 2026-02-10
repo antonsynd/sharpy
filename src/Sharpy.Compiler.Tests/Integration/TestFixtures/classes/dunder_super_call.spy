@@ -1,0 +1,20 @@
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __str__(self) -> str:
+        return self.name
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    @override
+    def __str__(self) -> str:
+        return super().__str__() + " (dog)"
+
+def main():
+    d: Dog = Dog("Buddy")
+    print(str(d))

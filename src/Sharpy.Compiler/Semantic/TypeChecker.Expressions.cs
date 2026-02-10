@@ -1008,6 +1008,13 @@ internal partial class TypeChecker
                 return lenType ?? SemanticType.Unknown;
             }
 
+            // Special handling for builtin hash() - every object supports GetHashCode()
+            if (id.Name == "hash" && argTypes.Count == 1)
+            {
+                var hashType = _typeInference.InferHashType(argTypes[0]);
+                return hashType ?? SemanticType.Unknown;
+            }
+
             var symbol = _symbolTable.Lookup(id.Name);
 
             // Special handling for constructor calls (calling a type)

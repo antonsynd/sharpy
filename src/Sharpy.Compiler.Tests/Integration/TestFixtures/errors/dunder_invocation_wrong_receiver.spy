@@ -1,0 +1,16 @@
+class Foo:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def __eq__(self, other: object) -> bool:
+        return other.__eq__(self)
+
+    def __hash__(self) -> int:
+        return self.value
+
+def main():
+    f: Foo = Foo(1)
+    g: Foo = Foo(2)
+    print(f == g)

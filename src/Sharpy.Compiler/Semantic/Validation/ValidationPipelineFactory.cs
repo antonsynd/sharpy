@@ -26,6 +26,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new UnusedVariableValidator())      // Order: 420 (unused variable warnings)
             .AddValidator(new UnusedImportValidator())       // Order: 430 (unused import warnings)
             .AddValidator(new AccessValidator())            // Order: 450
+            .AddValidator(new DunderInvocationValidator())  // Order: 460 (dunder call rules)
             .AddValidator(new ProtocolValidator())          // Order: 500
             .AddValidator(new OperatorValidator())          // Order: 500
             ;

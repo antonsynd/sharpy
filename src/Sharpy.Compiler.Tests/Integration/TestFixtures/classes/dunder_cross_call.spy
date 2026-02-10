@@ -1,0 +1,29 @@
+class Ordered:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __hash__(self) -> int:
+        return self.value
+
+    def __lt__(self, other: Ordered) -> bool:
+        return self.value < other.value
+
+    def __gt__(self, other: Ordered) -> bool:
+        return self.value > other.value
+
+    def __le__(self, other: Ordered) -> bool:
+        return self.__lt__(other) or self.__eq__(other)
+
+    def __ge__(self, other: Ordered) -> bool:
+        return self.__gt__(other) or self.__eq__(other)
+
+def main():
+    a: Ordered = Ordered(1)
+    b: Ordered = Ordered(2)
+    print(a <= b)
+    print(b <= a)
