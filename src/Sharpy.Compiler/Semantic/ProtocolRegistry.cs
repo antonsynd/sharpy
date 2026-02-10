@@ -69,9 +69,8 @@ public static class ProtocolRegistry
         ));
 
         // 2.2.2 Container protocols
-        // NOTE: ISized.__Len__() returns uint in Sharpy.Core, but we register "int" here
-        // because that's the common Sharpy/Python return type for len(). The code generator
-        // handles the uint-to-int conversion when emitting calls to __Len__().
+        // ISized is defined in Sharpy.Core (ISized.cs) with a single int Count { get; } property.
+        // __len__ codegen emits a Count property that satisfies this interface.
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.Len,
             Kind: ProtocolKind.Container,
