@@ -1,0 +1,1 @@
+would synthesize 'IEnumerator<int>' via '__next__', but ancestor 'StringIterator' already implements 'IEnumerator<str>'

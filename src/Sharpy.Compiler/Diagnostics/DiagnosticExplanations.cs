@@ -631,6 +631,18 @@ public static class DiagnosticExplanations
             "@override\ndef top_level_func():  # @override only valid on class methods\n    pass",
             "Use the decorator on an appropriate target, or remove it.");
 
+        Add(dict, DiagnosticCodes.Semantic.ConflictingSynthesizedInterface,
+            "Conflicting synthesized interface",
+            "Semantic",
+            "A class would synthesize a generic interface (e.g., IEquatable<T>, IEnumerator<T>) " +
+            "from a dunder method, but an ancestor class already implements the same generic interface " +
+            "with different type arguments. C# does not allow a type to implement the same generic interface " +
+            "with conflicting type arguments.",
+            "class Base:\n    def __eq__(self, other: str) -> bool:\n        return False\n\n" +
+            "class Derived(Base):\n    def __eq__(self, other: int) -> bool:  # conflicts with Base's IEquatable<str>\n        return False",
+            "Remove the conflicting dunder method from the derived class, or restructure the hierarchy " +
+            "so that both classes use the same type argument for the interface.");
+
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",

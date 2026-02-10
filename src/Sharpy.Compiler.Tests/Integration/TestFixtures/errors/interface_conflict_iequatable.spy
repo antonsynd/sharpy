@@ -1,0 +1,17 @@
+class Base:
+    def __init__(self):
+        pass
+
+    def __eq__(self, other: str) -> bool:
+        return False
+
+class Derived(Base):
+    def __init__(self):
+        super().__init__()
+
+    def __eq__(self, other: int) -> bool:
+        return False
+
+def main():
+    d = Derived()
+    print(d == 1)

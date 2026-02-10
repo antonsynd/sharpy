@@ -268,7 +268,7 @@ internal partial class RoslynEmitter
                 .ToList();
 
             // Synthesize protocol interfaces from dunder methods
-            var synthesizedInterfaces = CollectSynthesizedInterfaces(classDef.Body, classDef.BaseClasses, className);
+            var synthesizedInterfaces = CollectSynthesizedInterfaces(classDef.Body, classDef.BaseClasses, className, classDef.Name);
             baseTypes.AddRange(synthesizedInterfaces);
 
             if (baseTypes.Count > 0)
@@ -399,135 +399,92 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Set of Sharpy.Core interfaces that are ready for implicit synthesis.
-    /// When a dunder method triggers an interface listed here (via ProtocolRegistry),
-    /// the interface is automatically added to the class's base type list.
-    /// Extend this set as new interfaces are added to Sharpy.Core.
-    /// </summary>
-    private static readonly HashSet<string> SynthesizableSharpyCoreInterfaces = new()
-    {
-        "ISized",           // __len__ → int Count { get; }
-        "IBoolConvertible", // __bool__ → bool __Bool__()
-    };
-
-    /// <summary>
-    /// Scans class body for dunder methods that trigger implicit interface synthesis.
-    /// Uses ProtocolRegistry as the source of truth for which dunders map to which interfaces.
-    /// Returns base type entries to add to the class declaration.
+    /// Computes synthesized interfaces using SynthesisAnalyzer (the single source of truth)
+    /// and converts them to Roslyn BaseTypeSyntax entries for class/struct declarations.
     /// Avoids duplicates if the user already explicitly listed the interface.
     /// </summary>
     private List<BaseTypeSyntax> CollectSynthesizedInterfaces(
         IReadOnlyList<Statement> body,
         IReadOnlyList<TypeAnnotation> explicitBaseClasses,
-        string className)
+        string className,
+        string originalTypeName)
     {
         var result = new List<BaseTypeSyntax>();
         var explicitNames = new HashSet<string>(explicitBaseClasses.Select(bc => bc.Name));
-        var dunders = new HashSet<string>();
 
-        // Collect all dunder method names present in the class body
+        // Look up the TypeSymbol to use SynthesisAnalyzer
+        var typeSymbol = _context.LookupSymbol(originalTypeName) as TypeSymbol;
+        if (typeSymbol == null)
+            return result;
+
+        var synthesized = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
+
+        // Find AST nodes for diagnostic line/column reporting
+        var dunderFuncs = new Dictionary<string, FunctionDef>();
         foreach (var stmt in body)
         {
-            if (stmt is FunctionDef fd && DunderMapping.IsDunderMethod(fd.Name))
-                dunders.Add(fd.Name);
+            if (stmt is FunctionDef fd && DunderMapping.IsDunderMethod(fd.Name) && !dunderFuncs.ContainsKey(fd.Name))
+                dunderFuncs[fd.Name] = fd;
         }
 
-        // Phase 1: Synthesize non-generic Sharpy.Core interfaces from ProtocolRegistry
-        foreach (var stmt in body)
+        foreach (var info in synthesized)
         {
-            if (stmt is not FunctionDef funcDef || !DunderMapping.IsDunderMethod(funcDef.Name))
-                continue;
-
-            var protocol = ProtocolRegistry.GetProtocol(funcDef.Name);
-            if (protocol?.SharpyCoreInterface == null)
-                continue;
-
-            var interfaceName = protocol.SharpyCoreInterface;
-
             // Skip if user already explicitly listed this interface
-            if (explicitNames.Contains(interfaceName))
+            if (explicitNames.Contains(info.InterfaceName))
                 continue;
 
-            // Only synthesize interfaces that are ready in Sharpy.Core
-            if (SynthesizableSharpyCoreInterfaces.Contains(interfaceName))
-            {
-                result.Add(SimpleBaseType(
-                    QualifiedName(IdentifierName("Sharpy"), IdentifierName(interfaceName))));
-                explicitNames.Add(interfaceName);
+            var baseType = ConvertSynthesizedInterfaceToBaseType(info);
+            result.Add(baseType);
+            explicitNames.Add(info.InterfaceName);
 
-                _context.AddInfo(
-                    $"Type '{className}' implicitly implements 'Sharpy.{interfaceName}' via '{funcDef.Name}'.",
-                    DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
-                    funcDef.LineStart,
-                    funcDef.ColumnStart);
-            }
+            // Emit SPY1001 info diagnostic
+            var displayName = info.TypeArgs.Length > 0
+                ? $"{info.InterfaceName}<{string.Join(", ", info.TypeArgs.Select(t => t.GetDisplayName()))}>"
+                : info.InterfaceName;
+            var qualifiedName = info.Namespace.Length > 0
+                ? $"{info.Namespace}.{displayName}"
+                : displayName;
+
+            dunderFuncs.TryGetValue(info.TriggeringDunder, out var triggeringFunc);
+            _context.AddInfo(
+                $"Type '{className}' implicitly implements '{qualifiedName}' via '{info.TriggeringDunder}'.",
+                DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
+                triggeringFunc?.LineStart ?? 0,
+                triggeringFunc?.ColumnStart ?? 0);
         }
-
-        // Phase 2: Synthesize generic .NET interfaces from dunders
-        // IEnumerator<T> from __next__, IEnumerable<T> from __iter__+__next__
-        if (dunders.Contains(DunderNames.Next))
-        {
-            var nextFunc = body.OfType<FunctionDef>()
-                .FirstOrDefault(f => f.Name == DunderNames.Next);
-            if (nextFunc != null)
-            {
-                TypeSyntax elementType = nextFunc.ReturnType != null
-                    ? _typeMapper.MapType(nextFunc.ReturnType)
-                    : PredefinedType(Token(SyntaxKind.ObjectKeyword));
-
-                // Add IEnumerator<T>
-                if (!explicitNames.Contains("IEnumerator"))
-                {
-                    result.Add(SimpleBaseType(
-                        QualifiedName(
-                            QualifiedName(
-                                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
-                                IdentifierName("Generic")),
-                            GenericName("IEnumerator")
-                                .WithTypeArgumentList(TypeArgumentList(
-                                    SingletonSeparatedList(elementType))))));
-                    explicitNames.Add("IEnumerator");
-
-                    _context.AddInfo(
-                        $"Type '{className}' implicitly implements 'IEnumerator<T>' via '__next__'.",
-                        DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
-                        nextFunc.LineStart,
-                        nextFunc.ColumnStart);
-                }
-
-                // Also add IEnumerable<T> when __iter__ is present (self-iterating class)
-                if (dunders.Contains(DunderNames.Iter) && !explicitNames.Contains("IEnumerable"))
-                {
-                    var iterFunc = body.OfType<FunctionDef>()
-                        .FirstOrDefault(f => f.Name == DunderNames.Iter);
-
-                    result.Add(SimpleBaseType(
-                        QualifiedName(
-                            QualifiedName(
-                                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
-                                IdentifierName("Generic")),
-                            GenericName("IEnumerable")
-                                .WithTypeArgumentList(TypeArgumentList(
-                                    SingletonSeparatedList(elementType))))));
-                    explicitNames.Add("IEnumerable");
-
-                    if (iterFunc != null)
-                    {
-                        _context.AddInfo(
-                            $"Type '{className}' implicitly implements 'IEnumerable<T>' via '__iter__'.",
-                            DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
-                            iterFunc.LineStart,
-                            iterFunc.ColumnStart);
-                    }
-                }
-            }
-        }
-
-        // Future: Phase 3 — IEquatable<T> from __eq__(self, other: T)
-        // Requires extracting T from the 'other' parameter type of each __eq__ overload.
-        // __eq__ is in OperatorRegistry, not ProtocolRegistry, so needs special handling.
 
         return result;
+    }
+
+    /// <summary>
+    /// Converts a SynthesizedInterfaceInfo to a Roslyn BaseTypeSyntax.
+    /// </summary>
+    private BaseTypeSyntax ConvertSynthesizedInterfaceToBaseType(SynthesizedInterfaceInfo info)
+    {
+        // Build the namespace-qualified name
+        NameSyntax namespaceName = info.Namespace switch
+        {
+            "Sharpy" => IdentifierName("Sharpy"),
+            "System" => IdentifierName("System"),
+            "System.Collections.Generic" => QualifiedName(
+                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                IdentifierName("Generic")),
+            _ => ParseName(info.Namespace)
+        };
+
+        SimpleNameSyntax interfaceName;
+        if (info.TypeArgs.Length > 0)
+        {
+            var typeArgs = info.TypeArgs.Select(t => _typeMapper.MapSemanticType(t)).ToArray();
+            interfaceName = GenericName(info.InterfaceName)
+                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
+        }
+        else
+        {
+            interfaceName = IdentifierName(info.InterfaceName);
+        }
+
+        return SimpleBaseType(QualifiedName(namespaceName, interfaceName));
     }
 
     /// <summary>
@@ -586,12 +543,19 @@ internal partial class RoslynEmitter
         }
 
         // Add interfaces (structs can only implement interfaces, not inherit)
-        if (structDef.BaseClasses.Length > 0)
         {
             var baseTypes = structDef.BaseClasses
-                .Select(bc => SimpleBaseType(_typeMapper.MapType(bc)))
-                .ToArray();
-            structDecl = structDecl.WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(baseTypes)));
+                .Select(bc => (BaseTypeSyntax)SimpleBaseType(_typeMapper.MapType(bc)))
+                .ToList();
+
+            // Synthesize protocol interfaces from dunder methods
+            var synthesizedInterfaces = CollectSynthesizedInterfaces(structDef.Body, structDef.BaseClasses, structName, structDef.Name);
+            baseTypes.AddRange(synthesizedInterfaces);
+
+            if (baseTypes.Count > 0)
+            {
+                structDecl = structDecl.WithBaseList(BaseList(SeparatedList(baseTypes)));
+            }
         }
 
         // Generate struct members from body

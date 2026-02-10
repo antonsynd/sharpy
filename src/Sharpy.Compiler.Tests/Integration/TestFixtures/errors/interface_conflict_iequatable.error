@@ -1,0 +1,1 @@
+would synthesize 'IEquatable<int>' via '__eq__', but ancestor 'Base' already implements 'IEquatable<str>'

@@ -21,6 +21,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new DecoratorValidator())         // Order: 60 (validates decorator usage)
             .AddValidator(new SignatureValidator())         // Order: 150 (early, validates dunder signatures)
             .AddValidator(new EqualityContractValidator())  // Order: 160 (warns on __eq__ without object overload)
+            .AddValidator(new InterfaceConflictValidator()) // Order: 170 (detects conflicting synthesized interfaces)
             .AddValidator(new DefaultParameterValidator())  // Order: 250
             .AddValidator(new ControlFlowValidator())       // Order: 400 (CFG-based, handles unreachable code)
             .AddValidator(new UnusedVariableValidator())      // Order: 420 (unused variable warnings)

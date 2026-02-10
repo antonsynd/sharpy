@@ -92,6 +92,9 @@ internal partial class RoslynEmitter
     // Used for implicit abstract method detection (ellipsis body in abstract class = abstract method)
     private bool _isInAbstractClass;
 
+    // Track the current TypeSymbol being generated (for IEquatable virtual detection, etc.)
+    private TypeSymbol? _currentTypeSymbol;
+
     // Common .NET namespace acronyms that should be all uppercase
     private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
     {

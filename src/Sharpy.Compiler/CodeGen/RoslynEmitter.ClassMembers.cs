@@ -28,6 +28,8 @@ internal partial class RoslynEmitter
         var fieldMembers = new List<MemberDeclarationSyntax>();
 
         var typeSymbol = _context.LookupSymbol(originalTypeName) as TypeSymbol;
+        var previousTypeSymbol = _currentTypeSymbol;
+        _currentTypeSymbol = typeSymbol;
 
         foreach (var stmt in body.Where(s => s is VariableDeclaration))
         {
@@ -182,6 +184,7 @@ internal partial class RoslynEmitter
             members.Add(GenerateComplementaryEqualsOperator(className));
         }
 
+        _currentTypeSymbol = previousTypeSymbol;
         return members;
     }
 
@@ -409,6 +412,17 @@ internal partial class RoslynEmitter
         if (shouldAddOverride && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
         {
             modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
+        }
+
+        // Add virtual keyword for non-object __eq__ in class context (for IEquatable<T> dispatch)
+        // Structs can't have virtual methods, so skip for struct types
+        if (func.Name == DunderNames.Eq && !IsEqualsObjectOverload(func)
+            && _currentTypeSymbol?.TypeKind == Semantic.TypeKind.Class
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword))
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
+            && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
         }
 
         // Primary mechanism: Method is static if it doesn't have 'self' parameter (Pythonic)

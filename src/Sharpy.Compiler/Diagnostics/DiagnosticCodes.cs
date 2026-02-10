@@ -155,6 +155,7 @@ public static class DiagnosticCodes
         public const string ProtocolMissingMethod = "SPY0320";
         public const string InvalidOperatorSignature = "SPY0321";
         public const string InvalidDecoratorUsage = "SPY0322";
+        public const string ConflictingSynthesizedInterface = "SPY0323";
 
         // Module level (SPY0340-SPY0349)
         public const string ModuleLevelExecutableStatement = "SPY0340";

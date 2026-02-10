@@ -126,7 +126,10 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generate a comparison operator overload (==, !=, <, >, <=, >=)
+    /// Generate a comparison operator overload (==, !=, &lt;, &gt;, &lt;=, &gt;=).
+    /// For __eq__ on class types, routes through Equals(T) with null-safety:
+    ///   left?.Equals(right) ?? right is null
+    /// This enables proper polymorphic dispatch through IEquatable&lt;T&gt;.
     /// </summary>
     private OperatorDeclarationSyntax GenerateComparisonOperator(FunctionDef funcDef, string className, SyntaxKind operatorToken)
     {
@@ -154,22 +157,61 @@ internal partial class RoslynEmitter
         var param2 = Parameter(Identifier("right"))
             .WithType(param2Type);
 
-        // Generate body - call the actual dunder method on left operand
+        // Generate body - for __eq__ on class types, use null-safe dispatch through Equals(T)
+        ExpressionSyntax returnExpr;
         var methodName = DunderMapping.ResolveCSharpName(funcDef.Name)
             ?? NameMangler.Transform(funcDef.Name, NameContext.Method);
-        var invocation = InvocationExpression(
-            MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName("left"),
-                IdentifierName(methodName)))
-            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("right")))));
 
-        var body = Block(ReturnStatement(invocation));
+        if (funcDef.Name == DunderNames.Eq && !IsEqualsObjectOverload(funcDef)
+            && _currentTypeSymbol?.TypeKind == Semantic.TypeKind.Class)
+        {
+            // For classes: return left?.Equals(right) ?? right is null;
+            // This routes through virtual Equals(T), enables polymorphic dispatch,
+            // and handles null correctly (null == null is true, null == x is false)
+            returnExpr = GenerateNullSafeEqualsExpression();
+        }
+        else
+        {
+            // For all other comparison operators (and struct __eq__): call dunder directly
+            returnExpr = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("left"),
+                    IdentifierName(methodName)))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("right")))));
+        }
+
+        var body = Block(ReturnStatement(returnExpr));
 
         return OperatorDeclaration(returnType, Token(operatorToken))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
             .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generates: left?.Equals(right) ?? right is null
+    /// Used for null-safe equality dispatch through IEquatable&lt;T&gt;.
+    /// </summary>
+    private static ExpressionSyntax GenerateNullSafeEqualsExpression()
+    {
+        // left?.Equals(right)
+        var nullConditionalEquals = ConditionalAccessExpression(
+            IdentifierName("left"),
+            InvocationExpression(
+                MemberBindingExpression(IdentifierName("Equals")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("right"))))));
+
+        // right is null
+        var rightIsNull = IsPatternExpression(
+            IdentifierName("right"),
+            ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression)));
+
+        // left?.Equals(right) ?? right is null
+        return BinaryExpression(
+            SyntaxKind.CoalesceExpression,
+            nullConditionalEquals,
+            rightIsNull);
     }
 
     /// <summary>
@@ -293,6 +335,8 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generate complementary operator != when only __eq__ is defined.
     /// Matches the parameter types of the corresponding __eq__ overload.
+    /// For class types with non-object __eq__, routes through Equals(T) for consistency:
+    ///   !(left?.Equals(right) ?? right is null)
     /// </summary>
     private OperatorDeclarationSyntax GenerateComplementaryNotEqualsOperator(FunctionDef eqMethod, string className)
     {
@@ -310,15 +354,27 @@ internal partial class RoslynEmitter
         var param2 = Parameter(Identifier("right"))
             .WithType(param2Type);
 
-        // operator != returns !(left == right)
-        var body = Block(ReturnStatement(
-            PrefixUnaryExpression(
+        ExpressionSyntax returnExpr;
+        if (!IsEqualsObjectOverload(eqMethod) && _currentTypeSymbol?.TypeKind == Semantic.TypeKind.Class)
+        {
+            // For classes: return !(left?.Equals(right) ?? right is null);
+            returnExpr = PrefixUnaryExpression(
+                SyntaxKind.LogicalNotExpression,
+                ParenthesizedExpression(GenerateNullSafeEqualsExpression()));
+        }
+        else
+        {
+            // operator != returns !(left == right)
+            returnExpr = PrefixUnaryExpression(
                 SyntaxKind.LogicalNotExpression,
                 ParenthesizedExpression(
                     BinaryExpression(
                         SyntaxKind.EqualsExpression,
                         IdentifierName("left"),
-                        IdentifierName("right"))))));
+                        IdentifierName("right"))));
+        }
+
+        var body = Block(ReturnStatement(returnExpr));
 
         return OperatorDeclaration(returnType, Token(SyntaxKind.ExclamationEqualsToken))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
