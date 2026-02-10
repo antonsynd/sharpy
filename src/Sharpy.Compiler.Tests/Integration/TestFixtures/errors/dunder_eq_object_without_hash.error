@@ -1,0 +1,1 @@
+defines '__eq__(self, other: object)' but not '__hash__'

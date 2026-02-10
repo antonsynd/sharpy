@@ -41,23 +41,24 @@ internal class EqualityContractValidator : SemanticValidatorBase
     private void CheckEqOverloads(string typeName, IReadOnlyList<Statement> body, SemanticContext context)
     {
         var eqMethods = new List<FunctionDef>();
+        FunctionDef? hashMethod = null;
 
         foreach (var member in body)
         {
-            if (member is FunctionDef func && func.Name == DunderNames.Eq)
+            if (member is FunctionDef func)
             {
-                eqMethods.Add(func);
+                if (func.Name == DunderNames.Eq)
+                    eqMethods.Add(func);
+                else if (func.Name == DunderNames.Hash)
+                    hashMethod = func;
             }
         }
 
-        if (eqMethods.Count == 0)
-            return;
-
         var hasObjectOverload = eqMethods.Any(IsObjectOverload);
 
-        if (!hasObjectOverload)
+        // SPY0454: __eq__ exists but no object overload
+        if (eqMethods.Count > 0 && !hasObjectOverload)
         {
-            // Use location of the first __eq__ method for the warning
             var firstEq = eqMethods[0];
             AddWarning(context,
                 $"Class '{typeName}' defines '__eq__' but not '__eq__(self, other: object)'. " +
@@ -66,6 +67,29 @@ internal class EqualityContractValidator : SemanticValidatorBase
                 firstEq.LineStart, firstEq.ColumnStart,
                 code: DiagnosticCodes.Validation.EqWithoutObjectOverload,
                 span: firstEq.Span);
+        }
+
+        // SPY0455: __eq__(object) without __hash__
+        if (hasObjectOverload && hashMethod == null)
+        {
+            var eqObj = eqMethods.First(IsObjectOverload);
+            AddError(context,
+                $"Class '{typeName}' defines '__eq__(self, other: object)' but not '__hash__'. " +
+                "The .NET equality contract requires both. Define '__hash__(self) -> int'.",
+                eqObj.LineStart, eqObj.ColumnStart,
+                code: DiagnosticCodes.Validation.EqObjectWithoutHash,
+                span: eqObj.Span);
+        }
+
+        // SPY0456: __hash__ without __eq__(object)
+        if (hashMethod != null && !hasObjectOverload)
+        {
+            AddError(context,
+                $"Class '{typeName}' defines '__hash__' but not '__eq__(self, other: object)'. " +
+                "The .NET equality contract requires both. Define '__eq__(self, other: object) -> bool'.",
+                hashMethod.LineStart, hashMethod.ColumnStart,
+                code: DiagnosticCodes.Validation.HashWithoutEqObject,
+                span: hashMethod.Span);
         }
     }
 

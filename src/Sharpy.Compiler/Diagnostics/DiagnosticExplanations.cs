@@ -701,8 +701,26 @@ public static class DiagnosticExplanations
             "A class defines '__eq__' but none of its overloads has parameter type 'object'. " +
             "Without '__eq__(self, other: object)', collections like set and dict will use reference equality " +
             "instead of value equality for instances of this class.",
-            "class Point:\n    x: int\n    def __eq__(self, other: Point) -> bool:\n        return self.x == other.x\n    def __hash__(self) -> int:\n        return self.x",
+            "class Point:\n    x: int\n    def __eq__(self, other: Point) -> bool:\n        return self.x == other.x",
             "Add an '__eq__(self, other: object)' overload, or if reference equality for collections is intended, suppress the warning.");
+
+        Add(dict, DiagnosticCodes.Validation.EqObjectWithoutHash,
+            "__eq__(object) without __hash__",
+            "Validation",
+            "A class defines '__eq__(self, other: object)' but not '__hash__'. " +
+            "The .NET equality contract requires that if Equals is overridden, GetHashCode must also be overridden. " +
+            "Without both, the type will behave incorrectly in hash-based collections (set, dict).",
+            "class Foo:\n    x: int\n    def __eq__(self, other: object) -> bool:\n        return False",
+            "Add a '__hash__(self) -> int' method:\nclass Foo:\n    x: int\n    def __eq__(self, other: object) -> bool:\n        return False\n    def __hash__(self) -> int:\n        return self.x");
+
+        Add(dict, DiagnosticCodes.Validation.HashWithoutEqObject,
+            "__hash__ without __eq__(object)",
+            "Validation",
+            "A class defines '__hash__' but not '__eq__(self, other: object)'. " +
+            "The .NET equality contract requires that if GetHashCode is overridden, Equals must also be overridden. " +
+            "Without both, the type will behave incorrectly in hash-based collections (set, dict).",
+            "class Foo:\n    x: int\n    def __hash__(self) -> int:\n        return self.x",
+            "Add an '__eq__(self, other: object) -> bool' method:\nclass Foo:\n    x: int\n    def __eq__(self, other: object) -> bool:\n        return False\n    def __hash__(self) -> int:\n        return self.x");
 
         // ── Code generation errors (SPY0500-SPY0599) ───────────────────
 

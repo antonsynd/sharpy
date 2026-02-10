@@ -266,6 +266,9 @@ class Container:
     def __repr__(self) -> str:
         return """"
 
+    def __eq__(self, other: object) -> bool:
+        return False
+
     @override
     def __hash__(self) -> int:
         return 0
@@ -298,6 +301,10 @@ class Number:
     @override
     def __eq__(self, other: object) -> bool:
         return True
+
+    @override
+    def __hash__(self) -> int:
+        return 0
 
     def __lt__(self, other: Number) -> bool:
         return False

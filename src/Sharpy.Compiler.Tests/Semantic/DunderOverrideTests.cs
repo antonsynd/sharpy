@@ -219,9 +219,6 @@ def __str__() -> str:
 class Foo:
     def __eq__(self, other: Foo) -> bool:
         return True
-
-    def __hash__(self) -> int:
-        return 0
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);

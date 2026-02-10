@@ -697,7 +697,7 @@ def main():
     [Fact]
     public void DunderHash_Override_CompilesAndRuns()
     {
-        // @override def __hash__(self)
+        // @override def __hash__(self) with __eq__(object) to satisfy equality contract
         var source = @"
 class Point:
     x: int
@@ -706,6 +706,9 @@ class Point:
     def __init__(self, x: int, y: int):
         self.x = x
         self.y = y
+
+    def __eq__(self, other: object) -> bool:
+        return False
 
     @override
     def __hash__(self) -> int:

@@ -9,9 +9,6 @@ class Point:
     def __eq__(self, other: Point) -> bool:
         return self.x == other.x and self.y == other.y
 
-    def __hash__(self) -> int:
-        return self.x * 31 + self.y
-
 def main():
     a = Point(1, 2)
     b = Point(1, 2)

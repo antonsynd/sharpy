@@ -1,0 +1,13 @@
+# Class defines __eq__(self, other: object) but not __hash__ — should error (SPY0455)
+class Foo:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+    def __eq__(self, other: object) -> bool:
+        return False
+
+def main():
+    a = Foo(1)
+    print(a == a)

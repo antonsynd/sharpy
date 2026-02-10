@@ -88,10 +88,18 @@ class Parent:
     def __eq__(self, other: object) -> bool:
         return True
 
+    @override
+    def __hash__(self) -> int:
+        return 0
+
 class Child(Parent):
     @override
     def __eq__(self, other: object) -> bool:
         return super().__eq__(other)
+
+    @override
+    def __hash__(self) -> int:
+        return 1
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
