@@ -19,7 +19,7 @@ internal static class DunderMapping
         { DunderNames.Hash, "GetHashCode" },
         { DunderNames.GetItem, "GetItem" },       // For indexer properties
         { DunderNames.SetItem, "SetItem" },       // For indexer properties
-        { DunderNames.Len, "Length" },             // For Length property
+        { DunderNames.Len, "Count" },              // For Count property
         { DunderNames.Contains, "Contains" },     // For Contains method
         { DunderNames.Iter, "GetEnumerator" },    // For IEnumerable
         { DunderNames.Bool, "ToBoolean" },        // For explicit boolean conversion

@@ -16,7 +16,7 @@ public class DunderMappingTests
     [InlineData("__hash__", "GetHashCode")]
     [InlineData("__getitem__", "GetItem")]
     [InlineData("__setitem__", "SetItem")]
-    [InlineData("__len__", "Length")]
+    [InlineData("__len__", "Count")]
     [InlineData("__contains__", "Contains")]
     [InlineData("__iter__", "GetEnumerator")]
     [InlineData("__bool__", "ToBoolean")]
