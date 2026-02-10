@@ -63,6 +63,9 @@ internal partial class RoslynEmitter
             DunderNames.Pos => GenerateUnaryOperator(funcDef, className, SyntaxKind.PlusToken),
             DunderNames.Invert => GenerateUnaryOperator(funcDef, className, SyntaxKind.TildeToken),
 
+            // Boolean conversion: __bool__ → operator true (operator false generated separately)
+            DunderNames.Bool => GenerateBoolOperatorTrue(funcDef, className),
+
             // Not supported as operators (handled as methods)
             DunderNames.GetItem => null, // Requires indexer syntax, not operator
             DunderNames.SetItem => null, // Requires indexer syntax, not operator
@@ -166,6 +169,63 @@ internal partial class RoslynEmitter
         return OperatorDeclaration(returnType, Token(operatorToken))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate operator true for __bool__: public static bool operator true(T value) { return value.__Bool__(); }
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateBoolOperatorTrue(FunctionDef funcDef, string className)
+    {
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+
+        var param = Parameter(Identifier("value"))
+            .WithType(IdentifierName(className));
+
+        // Call the __Bool__() method on the operand
+        var methodName = DunderMapping.ResolveCSharpName(funcDef.Name)
+            ?? NameMangler.Transform(funcDef.Name, NameContext.Method);
+        var invocation = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("value"),
+                IdentifierName(methodName)))
+            .WithArgumentList(ArgumentList());
+
+        var body = Block(ReturnStatement(invocation));
+
+        return OperatorDeclaration(returnType, Token(SyntaxKind.TrueKeyword))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SingletonSeparatedList(param)))
+            .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate operator false for __bool__: public static bool operator false(T value) { return !value.__Bool__(); }
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateBoolOperatorFalse(string className)
+    {
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+
+        var param = Parameter(Identifier("value"))
+            .WithType(IdentifierName(className));
+
+        // Call the __Bool__() method on the operand and negate it
+        var methodName = DunderMapping.ResolveCSharpName(DunderNames.Bool)
+            ?? DunderMapping.TransformUnknownDunder(DunderNames.Bool);
+        var invocation = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("value"),
+                IdentifierName(methodName)))
+            .WithArgumentList(ArgumentList());
+
+        var negation = PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, invocation);
+        var body = Block(ReturnStatement(negation));
+
+        return OperatorDeclaration(returnType, Token(SyntaxKind.FalseKeyword))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SingletonSeparatedList(param)))
             .WithBody(body);
     }
 

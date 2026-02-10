@@ -156,12 +156,14 @@ public static class ProtocolRegistry
         ));
 
         // 2.2.6 Conversion protocols
+        // __bool__ maps to C# operator true / operator false (two methods, not one),
+        // so ClrMethodName is null — codegen handles it specially.
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.Bool,
             Kind: ProtocolKind.Conversion,
             SharpyCoreInterface: "IBoolConvertible",
             InterfaceMethodName: "__Bool__",
-            ClrMethodName: "op_Explicit",  // Explicit bool conversion operator
+            ClrMethodName: null,
             ExpectedParamCount: 1,  // Just self
             ExpectedReturnType: "bool"
         ));

@@ -1,0 +1,19 @@
+# Class with __bool__, used in if statement
+class Truthy:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+def main():
+    t = Truthy(1)
+    f = Truthy(0)
+    if t:
+        print("truthy")
+    if f:
+        print("should not print")
+    else:
+        print("falsy")

@@ -19,7 +19,7 @@ public class DunderMappingTests
     [InlineData("__len__", "Count")]
     [InlineData("__contains__", "Contains")]
     [InlineData("__iter__", "GetEnumerator")]
-    [InlineData("__bool__", "ToBoolean")]
+    // __bool__ is no longer mapped — it uses special codegen (operator true/false)
     public void GetCSharpName_KnownDunder_ReturnsMapping(string dunderName, string expected)
     {
         DunderMapping.GetCSharpName(dunderName).Should().Be(expected);

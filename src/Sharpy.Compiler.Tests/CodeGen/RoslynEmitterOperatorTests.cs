@@ -545,4 +545,47 @@ public class RoslynEmitterOperatorTests
         Assert.Contains("public static bool operator !=(Point left", code);
         Assert.Contains("public static bool operator ==(Point left", code);
     }
+
+    [Fact]
+    public void GenerateClass_WithBoolDunder_GeneratesOperatorTrueAndFalse()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Truthy",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "__bool__",
+                    Parameters = new List<Parameter>
+                    {
+                        new() { Name = "self", Type = null }
+                    }.ToImmutableArray(),
+                    ReturnType = new TypeAnnotation { Name = "bool" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement
+                        {
+                            Value = new BooleanLiteral { Value = true }
+                        }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert - should have both operator true and operator false
+        // Note: Roslyn normalization adds space before parens in operator declarations
+        Assert.Contains("operator true", code);
+        Assert.Contains("operator false", code);
+        // operator true calls __Bool__()
+        Assert.Contains("value.__Bool__()", code);
+        // operator false negates the result
+        Assert.Contains("!value.__Bool__()", code);
+    }
 }

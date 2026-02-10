@@ -129,6 +129,12 @@ internal partial class RoslynEmitter
         }
 
         // Generate complementary operators for C# requirements
+        // If __bool__ is defined, operator true was generated above — also generate operator false
+        if (dunders.Contains(DunderNames.Bool))
+        {
+            members.Add(GenerateBoolOperatorFalse(className));
+        }
+
         // If __eq__ is defined but not __ne__, generate operator != for each __eq__ overload
         if (dunders.Contains(DunderNames.Eq) && !dunders.Contains(DunderNames.Ne))
         {

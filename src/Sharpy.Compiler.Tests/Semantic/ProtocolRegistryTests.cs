@@ -84,7 +84,6 @@ public class ProtocolRegistryTests
     [InlineData("__iter__", "GetEnumerator")]
     [InlineData("__str__", "ToString")]
     [InlineData("__hash__", "GetHashCode")]
-    [InlineData("__bool__", "op_Explicit")]
     public void GetProtocol_ReturnsCorrectClrMethodName(string dunderName, string expectedClrMethod)
     {
         var protocol = ProtocolRegistry.GetProtocol(dunderName);
@@ -94,6 +93,7 @@ public class ProtocolRegistryTests
 
     [Theory]
     [InlineData("__next__")]    // Semantically different from MoveNext
+    [InlineData("__bool__")]    // Maps to operator true/false (two operators, not one method)
     public void GetProtocol_ReturnsNullClrMethodForNoMapping(string dunderName)
     {
         var protocol = ProtocolRegistry.GetProtocol(dunderName);

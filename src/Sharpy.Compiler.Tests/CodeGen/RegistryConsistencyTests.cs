@@ -12,7 +12,7 @@ public class RegistryConsistencyTests
     [InlineData("__hash__", "GetHashCode")]
     [InlineData("__iter__", "GetEnumerator")]
     [InlineData("__contains__", "Contains")]
-    [InlineData("__bool__", "ToBoolean")]
+    // __bool__ no longer has a DunderMapping entry — handled as special codegen (operator true/false)
     public void DunderMapping_TransformsProtocolDunderToExpectedName(string dunder, string expectedName)
     {
         var resolved = DunderMapping.GetCSharpName(dunder);

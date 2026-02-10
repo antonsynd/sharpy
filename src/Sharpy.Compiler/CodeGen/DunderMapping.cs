@@ -22,7 +22,7 @@ internal static class DunderMapping
         { DunderNames.Len, "Count" },              // For Count property
         { DunderNames.Contains, "Contains" },     // For Contains method
         { DunderNames.Iter, "GetEnumerator" },    // For IEnumerable
-        { DunderNames.Bool, "ToBoolean" },        // For explicit boolean conversion
+        // __bool__ is handled as special codegen (operator true/false), not a simple name mapping
     };
 
 #if DEBUG

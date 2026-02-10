@@ -11,6 +11,24 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 internal partial class TypeChecker
 {
+    /// <summary>
+    /// Returns true if the type can be used in a boolean context (if, while conditions).
+    /// A type is truth-testable if it is bool, UnknownType, or a user-defined type with __bool__.
+    /// </summary>
+    private bool IsTruthTestable(SemanticType type)
+    {
+        if (type == SemanticType.Bool || type is UnknownType)
+            return true;
+
+        // User-defined types with __bool__ can be used in boolean contexts
+        if (type is UserDefinedType udt && udt.Symbol != null)
+        {
+            return udt.Symbol.Methods.Any(m => m.Name == DunderNames.Bool);
+        }
+
+        return false;
+    }
+
     private Dictionary<string, SemanticType> ExtractNarrowedTypes(Expression condition, bool isPositiveBranch)
     {
         var narrowedTypes = new Dictionary<string, SemanticType>();

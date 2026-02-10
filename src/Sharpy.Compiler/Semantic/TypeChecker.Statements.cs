@@ -398,7 +398,7 @@ internal partial class TypeChecker
     private void CheckIf(IfStatement ifStmt)
     {
         var condType = CheckExpression(ifStmt.Test);
-        if (condType != SemanticType.Bool && !(condType is UnknownType))
+        if (!IsTruthTestable(condType))
         {
             AddError($"If condition must be boolean, got '{condType.GetDisplayName()}'",
                 ifStmt.LineStart, ifStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -426,7 +426,7 @@ internal partial class TypeChecker
         foreach (var elif in ifStmt.ElifClauses)
         {
             var elifCondType = CheckExpression(elif.Test);
-            if (elifCondType != SemanticType.Bool && !(elifCondType is UnknownType))
+            if (!IsTruthTestable(elifCondType))
             {
                 AddError($"Elif condition must be boolean, got '{elifCondType.GetDisplayName()}'",
                     elif.LineStart, elif.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -468,7 +468,7 @@ internal partial class TypeChecker
     private void CheckWhile(WhileStatement whileStmt)
     {
         var condType = CheckExpression(whileStmt.Test);
-        if (condType != SemanticType.Bool && !(condType is UnknownType))
+        if (!IsTruthTestable(condType))
         {
             AddError($"While condition must be boolean, got '{condType.GetDisplayName()}'",
                 whileStmt.LineStart, whileStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
