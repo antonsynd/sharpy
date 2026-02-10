@@ -215,7 +215,7 @@ public static bool operator false(MyClass self)
 
 **Rationale:** The spec maps `__len__` to `int Count` property. For `bool()` and `len()` built-in dispatch to work on arbitrary user types, we need a discoverable interface. The user has chosen `ISized` (following Python's `collections.abc.Sized` ABC).
 
-- [ ] Create `src/Sharpy.Core/ISized.cs`:
+- [x] Create `src/Sharpy.Core/ISized.cs`:
   ```csharp
   namespace Sharpy.Core
   {
@@ -230,29 +230,29 @@ public static bool operator false(MyClass self)
       }
   }
   ```
-- [ ] Verify it compiles with both `netstandard2.0` and `netstandard2.1` targets (C# 9.0 constraint).
-- [ ] Verify that existing Sharpy.Core types that have `Count` properties (e.g., `List`, `Set`, `Str`) already satisfy this interface or can be updated to implement it.
+- [x] Verify it compiles with both `netstandard2.0` and `netstandard2.1` targets (C# 9.0 constraint).
+- [x] Verify that existing Sharpy.Core types that have `Count` properties (e.g., `List`, `Set`, `Str`) already satisfy this interface or can be updated to implement it.
   - **Don't** add `ISized` to existing types in this commit — that's a separate task. Just create the interface.
-- [ ] Add a comment in `ProtocolRegistry.cs` noting that `ISized` now exists in Sharpy.Core (it was already referenced as `SharpyCoreInterface: "ISized"` — this commit makes it real).
-- [ ] Run `dotnet test`.
+- [x] Add a comment in `ProtocolRegistry.cs` noting that `ISized` now exists in Sharpy.Core (it was already referenced as `SharpyCoreInterface: "ISized"` — this commit makes it real).
+- [x] Run `dotnet test`.
 
 ### C2. Add `ISized` to Sharpy.Core collection types
 
 **Rationale:** Sharpy's `List`, `Set`, `Str`, `Dict` types already have `Count` properties. Making them implement `ISized` enables generic `len()` dispatch.
 
-- [ ] Add `: ISized` to the partial class declarations for types that have `Count`:
+- [x] Add `: ISized` to the partial class declarations for types that have `Count`:
   - `Partial.List/List.cs` (or whichever partial defines the class declaration)
   - `Partial.Set/Set.cs`
-  - `Partial.Str/Str.cs`
+  - ~~`Partial.Str/Str.cs`~~ (skipped: Str's `Count(sub, ...)` is a method, not a property; len works via implicit string conversion)
   - `Dict.cs` (if it exists)
-- [ ] Verify each type's `Count` property satisfies the interface (returns `int`, has getter).
-- [ ] Run `dotnet test`.
+- [x] Verify each type's `Count` property satisfies the interface (returns `int`, has getter).
+- [x] Run `dotnet test`.
 
 ### C3. Emit `Count` property + `ISized` for `__len__` codegen
 
 **Rationale:** Currently `__len__` generates a `Length()` method (or `Count()` method after A6). It should generate a read-only `Count` property and implement `ISized`.
 
-- [ ] In `RoslynEmitter.ClassMembers.cs`: add special handling for `__len__`. Instead of generating a method, generate:
+- [x] In `RoslynEmitter.ClassMembers.cs`: add special handling for `__len__`. Instead of generating a method, generate:
   ```csharp
   public int Count
   {
@@ -262,11 +262,11 @@ public static bool operator false(MyClass self)
       }
   }
   ```
-- [ ] Additionally, add `ISized` to the class's base type list in the emitter. This is the "implicit interface synthesis" — when the compiler sees `__len__`, it automatically adds `: ISized` to the generated C# class.
-- [ ] Emit a compiler info/note diagnostic (SPY1001 or similar, Info severity): "Type '{0}' implicitly implements 'ISized' via '__len__'." This is not a warning, just informational.
-- [ ] Add test fixture: `classes/dunder_len.spy` + `.expected` — class with `__len__`, used with `len()`.
-- [ ] Add test fixture: `classes/dunder_len.expected.cs` — C# snapshot showing `Count` property and `ISized` interface.
-- [ ] Run `dotnet test`.
+- [x] Additionally, add `ISized` to the class's base type list in the emitter. This is the "implicit interface synthesis" — when the compiler sees `__len__`, it automatically adds `: ISized` to the generated C# class.
+- [x] Emit a compiler info/note diagnostic (SPY1001 or similar, Info severity): "Type '{0}' implicitly implements 'ISized' via '__len__'." This is not a warning, just informational.
+- [x] Add test fixture: `classes/dunder_len.spy` + `.expected` — class with `__len__`, used with `len()`.
+- [x] Add test fixture: `classes/dunder_len.expected.cs` — C# snapshot showing `Count` property and `ISized` interface.
+- [x] Run `dotnet test`.
 
 **Code generation example:**
 ```python
@@ -303,29 +303,26 @@ public class MyList : ISized
 3. If `x` implements `ISized` → return `x.Count != 0`
 4. Default → return `true` (objects are truthy)
 
-- [ ] In `src/Sharpy.Core/Builtins/Bool.cs` (create if needed): implement the `@bool` built-in.
-  - **Challenge:** Detecting "has `operator true`" at runtime in C# 9 requires either:
-    - (a) A marker interface like `ITruthy` that types with `__bool__` implement.
-    - (b) Reflection to check for `op_True` method.
-    - (c) Making `bool()` a compiler intrinsic that emits different code per static type.
-  - **Recommendation:** Use option (a). Create `ITruthy` interface with `bool IsTrue { get; }`. The codegen for `__bool__` (B2) should also implement this interface. Then `bool()` checks `ITruthy` before `ISized`.
-  - **Alternative for simplicity:** Use option (c) — make `bool()` a compiler-recognized function that the emitter lowers differently based on static type. This avoids adding another interface but makes `bool()` less usable from C# interop.
-- [ ] If using option (a), create `src/Sharpy.Core/ITruthy.cs`:
+- [x] In `src/Sharpy.Core/Bool.cs`: updated `Builtins.Bool(object)` with the spec fallback chain:
+  1. `IBoolConvertible` (`__bool__`) → direct call
+  2. `ISized` (`__len__ != 0`) → count-based truthiness
+  3. `ICollection` → Count > 0
+  4. Default → true (non-null objects are truthy)
+  - **Decision:** Used option (a) with `IBoolConvertible` interface (matching ProtocolRegistry's existing `SharpyCoreInterface` name). The interface has `bool __Bool__()` which the existing `__bool__` codegen already generates.
+- [x] Created `src/Sharpy.Core/IBoolConvertible.cs`:
   ```csharp
-  namespace Sharpy.Core
+  namespace Sharpy
   {
-      public interface ITruthy
+      public interface IBoolConvertible
       {
-          bool IsTrue { get; }
+          bool __Bool__();
       }
   }
   ```
-- [ ] Update `__bool__` codegen (from B2) to also implement `ITruthy`.
-- [ ] Add test fixture: `classes/dunder_bool_truthiness.spy` + `.expected` — class with `__bool__`, used in `bool()` call and `if` statement.
-- [ ] Add test fixture: `classes/dunder_len_truthiness.spy` + `.expected` — class with `__len__` but no `__bool__`, used in `if` statement to show fallback to count-based truthiness.
-- [ ] Run `dotnet test`.
-
-**Decision for implementer:** Option (a) vs (c) is a design call. Option (a) is more .NET-idiomatic (interface-based dispatch) and works well from C# interop. Option (c) is simpler but less interop-friendly. **Recommend option (a) unless it causes significant codegen complexity.**
+- [x] Updated `__bool__` codegen to implicitly implement `IBoolConvertible` via `CollectSynthesizedInterfaces`.
+- [x] Add test fixture: `classes/dunder_bool_truthiness.spy` + `.expected` — class with `__bool__`, used in `bool()` call and `if` statement.
+- [x] Add test fixture: `classes/dunder_len_truthiness.spy` + `.expected` — class with `__len__` but no `__bool__`, used in `bool()` to show fallback to count-based truthiness.
+- [x] Run `dotnet test`.
 
 ### C5. Iterator protocol: `StopIteration` → `MoveNext()` bridging
 
@@ -412,7 +409,7 @@ This task creates the *framework* for implicit synthesis. C1/C3 already handle `
 | `__next__` | `IEnumerator<T>` (usually combined with `__iter__`) |
 | `__contains__` | nothing (just a method, no standard interface) |
 | `__eq__(self, other: T)` | `IEquatable<T>` (for each overload type `T`) |
-| `__bool__` | `ITruthy` (if using option (a) from C4) |
+| `__bool__` | `IBoolConvertible` (if using option (a) from C4) |
 
 - [ ] In `RoslynEmitter.TypeDeclarations.cs` (or wherever class declarations are built): before emitting the class, scan its methods for dunders that trigger interface synthesis. Build a list of additional base types to add.
 - [ ] Use `ProtocolRegistry.GetProtocol(name)?.SharpyCoreInterface` as the source of truth for which dunders trigger which interfaces.
@@ -447,7 +444,7 @@ This task creates the *framework* for implicit synthesis. C1/C3 already handle `
 | File | Phase | Purpose |
 |------|-------|---------|
 | `src/Sharpy.Core/ISized.cs` | C1 | Interface for types with `__len__` |
-| `src/Sharpy.Core/ITruthy.cs` | C4 | Interface for types with `__bool__` (if option a) |
+| `src/Sharpy.Core/IBoolConvertible.cs` | C4 | Interface for types with `__bool__` (option a) |
 | `src/Sharpy.Core/StopIteration.cs` | C5 | Exception for iterator protocol bridging |
 | `Semantic/Validation/DunderInvocationValidator.cs` | B3 | Enforces dunder call rules |
 | Multiple `.spy`/`.expected`/`.error` test fixtures | All | Test coverage |
