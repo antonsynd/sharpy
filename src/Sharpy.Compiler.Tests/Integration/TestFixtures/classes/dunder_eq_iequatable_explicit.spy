@@ -1,0 +1,16 @@
+from System import IEquatable
+
+class Foo(IEquatable[Foo]):
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def __eq__(self, other: Foo) -> bool:
+        return self.value == other.value
+
+def main():
+    a = Foo(1)
+    b = Foo(1)
+    # IEquatable<Foo> should NOT be synthesized twice (explicit + __eq__)
+    print(a == b)

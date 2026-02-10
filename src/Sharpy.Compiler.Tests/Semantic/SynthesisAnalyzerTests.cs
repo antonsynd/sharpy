@@ -481,4 +481,51 @@ public class SynthesisAnalyzerTests
         // Assert: Empty overload list produces nothing (FirstOrDefault returns null)
         result.Should().BeEmpty();
     }
+
+    [Fact]
+    public void ComputeSynthesizedInterfaces_MultipleEqOverloads_SynthesizesOnlyNonObjectOverloads()
+    {
+        // Arrange: a class with both __eq__(self, other: Point) and __eq__(self, other: object)
+        // This is the canonical pattern — typed overload for IEquatable<T>, object overload for Equals(object).
+        // Only the typed overload should produce IEquatable<Point>; the object overload is skipped.
+        var pointType = new UserDefinedType { Name = "Point" };
+        var objectType = new UserDefinedType { Name = "object" };
+
+        var eqPoint = CreateFunctionSymbol(
+            DunderNames.Eq,
+            parameters: new List<ParameterSymbol>
+            {
+                new() { Name = "self", Type = SemanticType.Unknown },
+                new() { Name = "other", Type = pointType },
+            },
+            returnType: SemanticType.Bool);
+
+        var eqObject = CreateFunctionSymbol(
+            DunderNames.Eq,
+            parameters: new List<ParameterSymbol>
+            {
+                new() { Name = "self", Type = SemanticType.Unknown },
+                new() { Name = "other", Type = objectType },
+            },
+            returnType: SemanticType.Bool);
+
+        var typeSymbol = CreateTypeSymbol(
+            operatorMethods: new()
+            {
+                [DunderNames.Eq] = new List<FunctionSymbol> { eqPoint, eqObject }
+            });
+
+        // Act
+        var result = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
+
+        // Assert: only IEquatable<Point>, not IEquatable<object>
+        result.Should().ContainSingle();
+        var info = result[0];
+        info.InterfaceName.Should().Be("IEquatable");
+        info.Namespace.Should().Be("System");
+        info.TypeArgs.Should().HaveCount(1);
+        info.TypeArgs[0].Should().BeOfType<UserDefinedType>();
+        ((UserDefinedType)info.TypeArgs[0]).Name.Should().Be("Point");
+        info.TriggeringDunder.Should().Be(DunderNames.Eq);
+    }
 }
