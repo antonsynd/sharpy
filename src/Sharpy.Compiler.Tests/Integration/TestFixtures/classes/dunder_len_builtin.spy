@@ -1,0 +1,15 @@
+# Custom class with __len__, verify len() dispatches via ISized
+class Bag:
+    size: int
+
+    def __init__(self, n: int):
+        self.size = n
+
+    def __len__(self) -> int:
+        return self.size
+
+def main():
+    b = Bag(7)
+    print(len(b))
+    empty = Bag(0)
+    print(len(empty))

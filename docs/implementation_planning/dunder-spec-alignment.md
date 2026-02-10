@@ -420,16 +420,17 @@ This task creates the *framework* for implicit synthesis. C1/C3 already handle `
 
 **Rationale:** The `len()` built-in currently dispatches to `.Count` on known collection types. With `ISized`, it can dispatch generically.
 
-- [ ] In `src/Sharpy.Core/Builtins/Len.cs` (or wherever `len()` is implemented): add an overload or generic path that accepts `ISized`:
+- [x] In `src/Sharpy.Core/Builtins/Len.cs` (or wherever `len()` is implemented): add an overload or generic path that accepts `ISized`:
   ```csharp
   public static int Len(ISized sized)
   {
       return sized.Count;
   }
   ```
-- [ ] Verify that `len(my_custom_type)` works when `my_custom_type` defines `__len__`.
-- [ ] Add test fixture: `classes/dunder_len_builtin.spy` + `.expected`: custom class with `__len__`, called with `len()`.
-- [ ] Run `dotnet test`.
+  *(Already existed in `src/Sharpy.Core/Len.cs` — verified correct)*
+- [x] Verify that `len(my_custom_type)` works when `my_custom_type` defines `__len__`.
+- [x] Add test fixture: `classes/dunder_len_builtin.spy` + `.expected`: custom class with `__len__`, called with `len()`.
+- [x] Run `dotnet test`.
 
 ---
 
