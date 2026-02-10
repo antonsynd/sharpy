@@ -1,0 +1,32 @@
+# Separate iterable and iterator classes
+class NumberIterator:
+    pos: int
+    max_val: int
+
+    def __init__(self, max_val: int):
+        self.pos = 0
+        self.max_val = max_val
+
+    def __iter__(self) -> NumberIterator:
+        return self
+
+    def __next__(self) -> int:
+        if self.pos >= self.max_val:
+            raise StopIteration()
+        result: int = self.pos
+        self.pos = self.pos + 1
+        return result
+
+class Numbers:
+    count: int
+
+    def __init__(self, count: int):
+        self.count = count
+
+    def __iter__(self) -> NumberIterator:
+        return NumberIterator(self.count)
+
+def main():
+    nums = Numbers(3)
+    for n in nums:
+        print(n)

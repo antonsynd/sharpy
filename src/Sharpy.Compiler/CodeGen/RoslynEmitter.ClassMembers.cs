@@ -84,6 +84,33 @@ internal partial class RoslynEmitter
                     {
                         members.Add(GenerateLenProperty(funcDef));
                     }
+                    // __next__ generates IEnumerator<T> protocol members (MoveNext, Current, etc.)
+                    else if (funcDef.Name == DunderNames.Next)
+                    {
+                        members.AddRange(GenerateIteratorProtocolMembers(funcDef));
+                    }
+                    // __iter__ generates IEnumerable<T> protocol members (GetEnumerator, etc.)
+                    else if (funcDef.Name == DunderNames.Iter)
+                    {
+                        if (dunders.Contains(DunderNames.Next))
+                        {
+                            // Self-iterating class: __iter__ returns self → GetEnumerator() => this
+                            // Get element type from __next__'s return type
+                            var nextFunc = body.OfType<FunctionDef>()
+                                .FirstOrDefault(f => f.Name == DunderNames.Next);
+                            TypeSyntax elemType = nextFunc?.ReturnType != null
+                                ? _typeMapper.MapType(nextFunc.ReturnType)
+                                : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+                            members.AddRange(GenerateEnumerableBridgeMembers(elemType));
+                        }
+                        else
+                        {
+                            // Iterable-only: just generate GetEnumerator() with user body
+                            // C# foreach uses duck-typing (GetEnumerator pattern), so no
+                            // IEnumerable<T> synthesis needed for this case
+                            members.Add(GenerateClassMethod(funcDef));
+                        }
+                    }
                     // Check if this is a dunder method that needs operator synthesis
                     else if (DunderMapping.IsDunderMethod(funcDef.Name))
                     {
@@ -490,6 +517,169 @@ internal partial class RoslynEmitter
         }
 
         return property;
+    }
+
+    /// <summary>
+    /// Generates iterator protocol members for a class defining __next__.
+    /// Produces: private _current field, private __NextImpl__() method,
+    /// public MoveNext(), Current property, Reset(), Dispose(),
+    /// and explicit IEnumerator.Current.
+    /// </summary>
+    private List<MemberDeclarationSyntax> GenerateIteratorProtocolMembers(FunctionDef funcDef)
+    {
+        var members = new List<MemberDeclarationSyntax>();
+
+        // Determine element type T from __next__ return type
+        TypeSyntax elementType = funcDef.ReturnType != null
+            ? _typeMapper.MapType(funcDef.ReturnType)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+        // 1. Private _current field of type T
+        members.Add(FieldDeclaration(
+            VariableDeclaration(elementType)
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier("_current")))))
+            .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
+
+        // 2. Private __NextImpl__() method containing the user's __next__ body
+        {
+            _declaredVariables.Clear();
+            _variableVersions.Clear();
+            _constVariables.Clear();
+            _sourceVariableNames.Clear();
+            CollectSourceVariableNames(funcDef.Body);
+
+            // Track parameters (skip self)
+            foreach (var param in funcDef.Parameters)
+            {
+                if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                _declaredVariables.Add(paramName);
+                var baseName = NameMangler.ToCamelCase(param.Name);
+                _variableVersions[baseName] = 0;
+            }
+
+            var body = Block(funcDef.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+            var nextImpl = MethodDeclaration(elementType, "__NextImpl__")
+                .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)))
+                .WithBody(body);
+
+            members.Add(nextImpl);
+        }
+
+        // 3. public bool MoveNext() — wraps __NextImpl__ in try/catch(StopIteration)
+        {
+            // try { _current = __NextImpl__(); return true; }
+            var tryStatements = new StatementSyntax[]
+            {
+                ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName("_current"),
+                        InvocationExpression(IdentifierName("__NextImpl__")))),
+                ReturnStatement(LiteralExpression(SyntaxKind.TrueLiteralExpression))
+            };
+
+            // catch (Sharpy.StopIteration) { return false; }
+            var catchClause = CatchClause()
+                .WithDeclaration(CatchDeclaration(
+                    QualifiedName(IdentifierName("Sharpy"), IdentifierName("StopIteration"))))
+                .WithBlock(Block(ReturnStatement(LiteralExpression(SyntaxKind.FalseLiteralExpression))));
+
+            var tryStatement = TryStatement()
+                .WithBlock(Block(tryStatements))
+                .WithCatches(SingletonList(catchClause));
+
+            var moveNext = MethodDeclaration(
+                    PredefinedType(Token(SyntaxKind.BoolKeyword)), "MoveNext")
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                .WithBody(Block(tryStatement));
+
+            members.Add(moveNext);
+        }
+
+        // 4. public T Current => _current; (needed for foreach duck-typing)
+        members.Add(PropertyDeclaration(elementType, Identifier("Current"))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithExpressionBody(ArrowExpressionClause(IdentifierName("_current")))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+
+        // 5. object System.Collections.IEnumerator.Current => _current;
+        members.Add(PropertyDeclaration(
+                PredefinedType(Token(SyntaxKind.ObjectKeyword)), "Current")
+            .WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(
+                QualifiedName(
+                    QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                    IdentifierName("IEnumerator"))))
+            .WithExpressionBody(ArrowExpressionClause(IdentifierName("_current")))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+
+        // 6. public void Reset() => throw new System.NotSupportedException();
+        members.Add(MethodDeclaration(
+                PredefinedType(Token(SyntaxKind.VoidKeyword)), "Reset")
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithExpressionBody(ArrowExpressionClause(
+                ThrowExpression(
+                    ObjectCreationExpression(ParseTypeName("System.NotSupportedException"))
+                        .WithArgumentList(ArgumentList()))))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+
+        // 7. public void Dispose() { }
+        members.Add(MethodDeclaration(
+                PredefinedType(Token(SyntaxKind.VoidKeyword)), "Dispose")
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithBody(Block()));
+
+        return members;
+    }
+
+    /// <summary>
+    /// Generates IEnumerable bridge members for a self-iterating class
+    /// (one that defines both __iter__ and __next__).
+    /// Produces: GetEnumerator() => this, IEnumerable.GetEnumerator() bridge.
+    /// </summary>
+    private List<MemberDeclarationSyntax> GenerateEnumerableBridgeMembers(TypeSyntax elementType)
+    {
+        var members = new List<MemberDeclarationSyntax>();
+
+        // public IEnumerator<T> GetEnumerator() => this;
+        var returnType = QualifiedName(
+            QualifiedName(
+                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                IdentifierName("Generic")),
+            GenericName("IEnumerator")
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(elementType))));
+
+        members.Add(MethodDeclaration(returnType, "GetEnumerator")
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithExpressionBody(ArrowExpressionClause(ThisExpression()))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+
+        // IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        members.Add(GenerateNonGenericGetEnumeratorBridge());
+
+        return members;
+    }
+
+    /// <summary>
+    /// Generates the non-generic IEnumerable.GetEnumerator() explicit interface bridge.
+    /// </summary>
+    private MethodDeclarationSyntax GenerateNonGenericGetEnumeratorBridge()
+    {
+        return MethodDeclaration(
+                QualifiedName(
+                    QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                    IdentifierName("IEnumerator")),
+                "GetEnumerator")
+            .WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(
+                QualifiedName(
+                    QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                    IdentifierName("IEnumerable"))))
+            .WithExpressionBody(ArrowExpressionClause(
+                InvocationExpression(IdentifierName("GetEnumerator"))))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
     }
 
     private SyntaxTokenList GenerateMethodModifiersFromDecorators(IReadOnlyList<Decorator> decorators)

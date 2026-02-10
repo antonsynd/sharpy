@@ -1,0 +1,23 @@
+# Self-iterating class with __iter__ returning self and __next__
+class Counter:
+    pos: int
+    max_val: int
+
+    def __init__(self, max_val: int):
+        self.pos = 0
+        self.max_val = max_val
+
+    def __iter__(self) -> Counter:
+        return self
+
+    def __next__(self) -> int:
+        if self.pos >= self.max_val:
+            raise StopIteration()
+        result: int = self.pos
+        self.pos = self.pos + 1
+        return result
+
+def main():
+    c = Counter(5)
+    for i in c:
+        print(i)

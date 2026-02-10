@@ -410,6 +410,14 @@ internal partial class RoslynEmitter
     {
         var result = new List<BaseTypeSyntax>();
         var explicitNames = new HashSet<string>(explicitBaseClasses.Select(bc => bc.Name));
+        var dunders = new HashSet<string>();
+
+        // Collect all dunder method names present in the class body
+        foreach (var stmt in body)
+        {
+            if (stmt is FunctionDef fd && DunderMapping.IsDunderMethod(fd.Name))
+                dunders.Add(fd.Name);
+        }
 
         foreach (var stmt in body)
         {
@@ -426,7 +434,7 @@ internal partial class RoslynEmitter
             if (explicitNames.Contains(interfaceName))
                 continue;
 
-            // Only synthesize interfaces we have concrete support for
+            // Sharpy.Core non-generic interfaces (ISized, IBoolConvertible)
             if (interfaceName is "ISized" or "IBoolConvertible")
             {
                 result.Add(SimpleBaseType(
@@ -438,6 +446,65 @@ internal partial class RoslynEmitter
                     DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
                     funcDef.LineStart,
                     funcDef.ColumnStart);
+            }
+        }
+
+        // Synthesize IEnumerator<T> when __next__ is present
+        if (dunders.Contains(DunderNames.Next))
+        {
+            var nextFunc = body.OfType<FunctionDef>()
+                .FirstOrDefault(f => f.Name == DunderNames.Next);
+            if (nextFunc != null)
+            {
+                TypeSyntax elementType = nextFunc.ReturnType != null
+                    ? _typeMapper.MapType(nextFunc.ReturnType)
+                    : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+                // Add IEnumerator<T>
+                if (!explicitNames.Contains("IEnumerator"))
+                {
+                    result.Add(SimpleBaseType(
+                        QualifiedName(
+                            QualifiedName(
+                                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                                IdentifierName("Generic")),
+                            GenericName("IEnumerator")
+                                .WithTypeArgumentList(TypeArgumentList(
+                                    SingletonSeparatedList(elementType))))));
+                    explicitNames.Add("IEnumerator");
+
+                    _context.AddInfo(
+                        $"Type '{className}' implicitly implements 'IEnumerator<T>' via '__next__'.",
+                        DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
+                        nextFunc.LineStart,
+                        nextFunc.ColumnStart);
+                }
+
+                // Also add IEnumerable<T> when __iter__ is present (self-iterating class)
+                if (dunders.Contains(DunderNames.Iter) && !explicitNames.Contains("IEnumerable"))
+                {
+                    var iterFunc = body.OfType<FunctionDef>()
+                        .FirstOrDefault(f => f.Name == DunderNames.Iter);
+
+                    result.Add(SimpleBaseType(
+                        QualifiedName(
+                            QualifiedName(
+                                QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
+                                IdentifierName("Generic")),
+                            GenericName("IEnumerable")
+                                .WithTypeArgumentList(TypeArgumentList(
+                                    SingletonSeparatedList(elementType))))));
+                    explicitNames.Add("IEnumerable");
+
+                    if (iterFunc != null)
+                    {
+                        _context.AddInfo(
+                            $"Type '{className}' implicitly implements 'IEnumerable<T>' via '__iter__'.",
+                            DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
+                            iterFunc.LineStart,
+                            iterFunc.ColumnStart);
+                    }
+                }
             }
         }
 
