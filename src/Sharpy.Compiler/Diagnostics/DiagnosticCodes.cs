@@ -213,6 +213,15 @@ public static class DiagnosticCodes
     }
 
     /// <summary>
+    /// Informational diagnostic codes (SPY1000-SPY1099).
+    /// Non-error, non-warning notes emitted during compilation.
+    /// </summary>
+    public static class Info
+    {
+        public const string ImplicitInterfaceSynthesis = "SPY1001";
+    }
+
+    /// <summary>
     /// Infrastructure diagnostic codes (SPY0900-SPY0999).
     /// These cover compiler-level errors not tied to a specific language phase.
     /// </summary>

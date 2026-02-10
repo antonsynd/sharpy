@@ -41,6 +41,14 @@ internal class CodeGenContext
     }
 
     /// <summary>
+    /// Add an informational diagnostic during code generation
+    /// </summary>
+    public void AddInfo(string message, string? code = null, int? line = null, int? column = null)
+    {
+        _diagnostics.AddInfo(message, line, column, SourceFilePath, code, CompilerPhase.CodeGeneration);
+    }
+
+    /// <summary>
     /// Project root namespace (for multi-file compilation)
     /// </summary>
     public string? ProjectNamespace { get; set; }

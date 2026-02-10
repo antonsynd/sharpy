@@ -1,0 +1,21 @@
+# Class with __len__, used with len()
+class MyList:
+    items: list[int]
+
+    def __init__(self):
+        self.items = []
+
+    def add(self, item: int):
+        self.items.append(item)
+
+    def __len__(self) -> int:
+        return len(self.items)
+
+def main():
+    ml = MyList()
+    ml.add(1)
+    ml.add(2)
+    ml.add(3)
+    print(len(ml))
+    empty = MyList()
+    print(len(empty))

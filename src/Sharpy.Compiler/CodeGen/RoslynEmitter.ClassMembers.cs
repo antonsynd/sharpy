@@ -79,6 +79,11 @@ internal partial class RoslynEmitter
                         // Collect for later generation (supports multiple overloads)
                         initMethods.Add(funcDef);
                     }
+                    // __len__ generates a Count property (not a method) to satisfy ISized
+                    else if (funcDef.Name == DunderNames.Len)
+                    {
+                        members.Add(GenerateLenProperty(funcDef));
+                    }
                     // Check if this is a dunder method that needs operator synthesis
                     else if (DunderMapping.IsDunderMethod(funcDef.Name))
                     {
@@ -449,6 +454,42 @@ internal partial class RoslynEmitter
         }
 
         return method;
+    }
+
+    /// <summary>
+    /// Generates a read-only Count property for __len__ to satisfy ISized.
+    /// The user's __len__ body becomes the getter body.
+    /// </summary>
+    private PropertyDeclarationSyntax GenerateLenProperty(FunctionDef func)
+    {
+        // Clear declared variables for new scope
+        _declaredVariables.Clear();
+        _variableVersions.Clear();
+        _constVariables.Clear();
+        _sourceVariableNames.Clear();
+
+        CollectSourceVariableNames(func.Body);
+
+        var returnType = PredefinedType(Token(SyntaxKind.IntKeyword));
+
+        // Generate getter body from __len__ body
+        var bodyStatements = func.Body
+            .Select(GenerateBodyStatement)
+            .OfType<StatementSyntax>();
+
+        var getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+            .WithBody(Block(bodyStatements));
+
+        var property = PropertyDeclaration(returnType, "Count")
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithAccessorList(AccessorList(SingletonList(getter)));
+
+        if (!string.IsNullOrEmpty(func.DocString))
+        {
+            property = property.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+        }
+
+        return property;
     }
 
     private SyntaxTokenList GenerateMethodModifiersFromDecorators(IReadOnlyList<Decorator> decorators)

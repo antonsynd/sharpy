@@ -200,6 +200,12 @@ public class DiagnosticBag
             FilePath: filePath, Code: code, Phase: phase));
     }
 
+    public void AddInfo(string message, int? line = null, int? column = null, string? filePath = null,
+        string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+    {
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Info, line, column, filePath, code, phase));
+    }
+
     public void AddRange(IEnumerable<CompilerDiagnostic> diagnostics)
     {
         foreach (var diagnostic in diagnostics)

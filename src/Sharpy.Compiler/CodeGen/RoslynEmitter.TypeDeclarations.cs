@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -260,13 +261,20 @@ internal partial class RoslynEmitter
                 .WithConstraintClauses(GenerateConstraintClauses(classDef.TypeParameters));
         }
 
-        // Add base class and interfaces
-        if (classDef.BaseClasses.Length > 0)
+        // Add base class and interfaces (including synthesized protocol interfaces)
         {
             var baseTypes = classDef.BaseClasses
-                .Select(bc => SimpleBaseType(_typeMapper.MapType(bc)))
-                .ToArray();
-            classDecl = classDecl.WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(baseTypes)));
+                .Select(bc => (BaseTypeSyntax)SimpleBaseType(_typeMapper.MapType(bc)))
+                .ToList();
+
+            // Synthesize protocol interfaces from dunder methods
+            var synthesizedInterfaces = CollectSynthesizedInterfaces(classDef.Body, classDef.BaseClasses, className);
+            baseTypes.AddRange(synthesizedInterfaces);
+
+            if (baseTypes.Count > 0)
+            {
+                classDecl = classDecl.WithBaseList(BaseList(SeparatedList(baseTypes)));
+            }
         }
 
         // Generate class members from body
@@ -388,6 +396,52 @@ internal partial class RoslynEmitter
         }
 
         return defined;
+    }
+
+    /// <summary>
+    /// Scans class body for dunder methods that trigger implicit interface synthesis
+    /// (e.g., __len__ → ISized). Returns base type entries to add to the class declaration.
+    /// Avoids duplicates if the user already explicitly listed the interface.
+    /// </summary>
+    private List<BaseTypeSyntax> CollectSynthesizedInterfaces(
+        IReadOnlyList<Statement> body,
+        IReadOnlyList<TypeAnnotation> explicitBaseClasses,
+        string className)
+    {
+        var result = new List<BaseTypeSyntax>();
+        var explicitNames = new HashSet<string>(explicitBaseClasses.Select(bc => bc.Name));
+
+        foreach (var stmt in body)
+        {
+            if (stmt is not FunctionDef funcDef || !DunderMapping.IsDunderMethod(funcDef.Name))
+                continue;
+
+            var protocol = ProtocolRegistry.GetProtocol(funcDef.Name);
+            if (protocol?.SharpyCoreInterface == null)
+                continue;
+
+            var interfaceName = protocol.SharpyCoreInterface;
+
+            // Skip if user already explicitly listed this interface
+            if (explicitNames.Contains(interfaceName))
+                continue;
+
+            // Only synthesize interfaces we have concrete support for
+            if (interfaceName == "ISized")
+            {
+                result.Add(SimpleBaseType(
+                    QualifiedName(IdentifierName("Sharpy"), IdentifierName("ISized"))));
+                explicitNames.Add(interfaceName);
+
+                _context.AddInfo(
+                    $"Type '{className}' implicitly implements 'Sharpy.ISized' via '__len__'.",
+                    DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
+                    funcDef.LineStart,
+                    funcDef.ColumnStart);
+            }
+        }
+
+        return result;
     }
 
     /// <summary>

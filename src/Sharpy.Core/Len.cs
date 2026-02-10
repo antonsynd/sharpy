@@ -24,6 +24,19 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return the length of an ISized type (user-defined types with __len__).
+        /// </summary>
+        public static int Len(ISized sized)
+        {
+            if (sized is null)
+            {
+                throw TypeError.ArgNone("len", "sized");
+            }
+
+            return sized.Count;
+        }
+
+        /// <summary>
         /// Return the length of a string.
         /// </summary>
         public static int Len(string s)

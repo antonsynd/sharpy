@@ -909,6 +909,16 @@ public static class DiagnosticExplanations
             null,
             "Report this at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
 
+        // ── Informational diagnostics (SPY1000-SPY1099) ────────────────────
+
+        Add(dict, DiagnosticCodes.Info.ImplicitInterfaceSynthesis, "Implicit interface synthesis", "CodeGen",
+            "The compiler automatically added a .NET interface to the generated class because the class defines " +
+            "a dunder method that maps to that interface. For example, defining __len__ causes the class to " +
+            "implement ISized, and defining __bool__ causes it to implement IBoolConvertible.",
+            null,
+            "This is informational only. No action is required. The synthesized interface enables interop with " +
+            ".NET code that expects the interface (e.g., len() dispatch via ISized).");
+
         return dict;
     }
 
