@@ -143,13 +143,10 @@ internal class InterfaceConflictValidator : SemanticValidatorBase
     private static List<(string Name, SemanticType[] TypeArgs)> CollectExplicitGenericInterfaces(TypeSymbol typeSymbol)
     {
         var result = new List<(string, SemanticType[])>();
-        foreach (var iface in typeSymbol.Interfaces)
-        {
-            // Explicit interfaces are TypeSymbol — check if they have generic info
-            // Currently, most explicit interfaces are stored as TypeSymbol references
-            // without type args readily available. This covers the common case.
-            // Full generic interface matching would require a richer type model.
-        }
+        // TODO(#122): TypeSymbol.Interfaces stores only the interface definition (TypeSymbol),
+        // not the instantiation (e.g., IEquatable<str>). Generic type arguments are discarded
+        // during name resolution. Until the data model preserves type args, explicit generic
+        // interface conflicts cannot be detected here.
         return result;
     }
 

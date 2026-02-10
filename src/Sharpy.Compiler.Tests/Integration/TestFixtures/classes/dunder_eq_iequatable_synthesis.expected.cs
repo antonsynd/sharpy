@@ -13,6 +13,8 @@ public static partial class DunderEqIequatableSynthesis
         public int Y;
         public virtual bool Equals(Point other)
         {
+            if (other is null)
+                return false;
 #line 10 "dunder_eq_iequatable_synthesis.spy"
             return this.X == other.X && this.Y == other.Y;
         }

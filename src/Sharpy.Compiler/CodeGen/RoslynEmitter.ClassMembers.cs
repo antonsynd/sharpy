@@ -484,8 +484,41 @@ internal partial class RoslynEmitter
         else
         {
             // Generate method body for concrete methods
-            var body = Block(func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
-            method = method.WithBody(body);
+            var userStatements = func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>();
+
+            // For __eq__ implementing IEquatable<T> on classes, prepend null guard:
+            //   if (other is null) return false;
+            // This satisfies the IEquatable<T> contract (Equals(null) must return false, not throw).
+            // Structs don't need this because value type parameters can't be null.
+            if (func.Name == DunderNames.Eq && !IsEqualsObjectOverload(func)
+                && _currentTypeSymbol?.TypeKind == Semantic.TypeKind.Class)
+            {
+                var otherParam = func.Parameters
+                    .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+
+                if (otherParam != null)
+                {
+                    var paramName = NameMangler.Transform(otherParam.Name, NameContext.Parameter);
+                    var nullGuard = IfStatement(
+                        IsPatternExpression(
+                            IdentifierName(paramName),
+                            ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression))),
+                        ReturnStatement(LiteralExpression(SyntaxKind.FalseLiteralExpression)));
+
+                    var body = Block(new StatementSyntax[] { nullGuard }.Concat(userStatements));
+                    method = method.WithBody(body);
+                }
+                else
+                {
+                    var body = Block(userStatements);
+                    method = method.WithBody(body);
+                }
+            }
+            else
+            {
+                var body = Block(userStatements);
+                method = method.WithBody(body);
+            }
         }
 
         // Add XML documentation from docstring if present

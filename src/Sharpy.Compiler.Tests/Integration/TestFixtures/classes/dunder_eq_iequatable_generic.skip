@@ -1,0 +1,3 @@
+Pre-existing limitation: type checker doesn't resolve __eq__ operators on concrete generic instantiations (Box[int] == Box[int]).
+The __eq__(self, other: Box[T]) method is registered on the generic type but operator validation fails for concrete instantiations.
+IEquatable<Box<T>> synthesis itself works (verified via SynthesisAnalyzerTests), but end-to-end test blocked by operator resolution.
