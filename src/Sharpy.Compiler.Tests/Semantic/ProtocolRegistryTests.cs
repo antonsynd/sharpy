@@ -207,9 +207,9 @@ public class ProtocolRegistryTests
     public void GetAllProtocols_ReturnsAllRegisteredProtocols()
     {
         var protocols = ProtocolRegistry.GetAllProtocols().ToList();
-        // Protocols (dunders) for operator overloading - v0.5
-        // __init__, __len__, __contains__, __getitem__, __setitem__, __delitem__,
-        // __iter__, __next__, __str__, __repr__, __hash__, __bool__
+        // Protocols (dunders) registered:
+        // __init__, __len__, __contains__, __getitem__, __setitem__,
+        // __iter__, __next__, __str__, __hash__, __bool__
         protocols.Should().HaveCount(10, "exactly 10 protocols are registered");
 
         // Verify we have at least one of each kind (except Comparison which is handled by operators)
@@ -253,7 +253,7 @@ public class ProtocolRegistryTests
     [Theory]
     [InlineData("__len__", "get_Count")]
     [InlineData("__str__", "ToString")]
-    [InlineData("__repr__", null)]  // No CLR method
+    [InlineData("__repr__", null)]  // Not registered (removed per spec)
     public void GetClrMethodName_ReturnsCorrectMethod(string dunderName, string? expectedMethod)
     {
         ProtocolRegistry.GetClrMethodName(dunderName).Should().Be(expectedMethod);
