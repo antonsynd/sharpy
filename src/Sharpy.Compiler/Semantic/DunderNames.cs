@@ -54,15 +54,4 @@ internal static class DunderNames
     public const string LShift = "__lshift__";
     public const string RShift = "__rshift__";
 
-    // ---- Reflected (right-hand) operators ----
-    public const string RAdd = "__radd__";
-    public const string RSub = "__rsub__";
-    public const string RMul = "__rmul__";
-    public const string RDiv = "__rdiv__";
-    public const string RMod = "__rmod__";
-    public const string RAnd = "__rand__";
-    public const string ROr = "__ror__";
-    public const string RXor = "__rxor__";
-    public const string RLShift = "__rlshift__";
-    public const string RRShift = "__rrshift__";
 }

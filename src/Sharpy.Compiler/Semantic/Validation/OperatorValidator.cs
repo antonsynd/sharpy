@@ -280,17 +280,12 @@ internal class OperatorValidator : SemanticValidatorBase
                 if (IsTypeParameterOperatorAllowed(binOp.Operator, leftType, rightType))
                     return;
 
-                // Check right-hand side for reflected operator
-                var reflectedDunder = GetReflectedDunder(dunderName);
-                if (reflectedDunder == null || !SupportsOperator(rightType, reflectedDunder))
+                if (!HasErrorAtPosition(binOp.LineStart, binOp.ColumnStart))
                 {
-                    if (!HasErrorAtPosition(binOp.LineStart, binOp.ColumnStart))
-                    {
-                        AddError(_context,
-                            $"Type '{leftType.GetDisplayName()}' does not support operator '{OperatorToString(binOp.Operator)}' with right operand of type '{rightType.GetDisplayName()}'",
-                            binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
-                            span: binOp.Span);
-                    }
+                    AddError(_context,
+                        $"Type '{leftType.GetDisplayName()}' does not support operator '{OperatorToString(binOp.Operator)}' with right operand of type '{rightType.GetDisplayName()}'",
+                        binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
+                        span: binOp.Span);
                 }
             }
         }
@@ -485,24 +480,6 @@ internal class OperatorValidator : SemanticValidatorBase
             BinaryOperator.LessThanOrEqual => DunderNames.Le,
             BinaryOperator.GreaterThan => DunderNames.Gt,
             BinaryOperator.GreaterThanOrEqual => DunderNames.Ge,
-            _ => null
-        };
-    }
-
-    private string? GetReflectedDunder(string dunderName)
-    {
-        return dunderName switch
-        {
-            DunderNames.Add => DunderNames.RAdd,
-            DunderNames.Sub => DunderNames.RSub,
-            DunderNames.Mul => DunderNames.RMul,
-            DunderNames.Div => DunderNames.RDiv,
-            DunderNames.Mod => DunderNames.RMod,
-            DunderNames.And => DunderNames.RAnd,
-            DunderNames.Or => DunderNames.ROr,
-            DunderNames.Xor => DunderNames.RXor,
-            DunderNames.LShift => DunderNames.RLShift,
-            DunderNames.RShift => DunderNames.RRShift,
             _ => null
         };
     }
