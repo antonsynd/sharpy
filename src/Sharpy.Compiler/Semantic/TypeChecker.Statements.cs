@@ -197,9 +197,7 @@ internal partial class TypeChecker
             }
 
             // For augmented assignments, use TypeInferenceService (errors reported by validator in pipeline)
-            // This handles:
-            // - Preferring in-place dunder methods (e.g., __iadd__) when available
-            // - Falling back to binary operators (e.g., __add__) otherwise
+            // Augmented assignment desugars to the regular binary operator (e.g., += uses __add__)
             var resultType = _typeInference.InferAugmentedAssignmentType(
                 assignment.Operator,
                 targetType,

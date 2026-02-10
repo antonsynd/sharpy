@@ -81,7 +81,7 @@ public static class OperatorRegistry
 
     /// <summary>
     /// Gets the expected parameter count for an operator dunder.
-    /// Returns 1 for unary operators, 2 for binary/comparison/in-place operators, or null if not an operator.
+    /// Returns 1 for unary operators, 2 for binary/comparison operators, or null if not an operator.
     /// </summary>
     public static int? GetExpectedParamCount(string methodName)
     {

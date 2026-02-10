@@ -8,9 +8,9 @@ namespace Sharpy.Compiler.Semantic;
 public enum ProtocolKind
 {
     Lifecycle,      // __init__, __del__, __new__
-    Container,      // __len__, __contains__, __getitem__, __setitem__, __delitem__
+    Container,      // __len__, __contains__, __getitem__, __setitem__
     Iterator,       // __iter__, __next__
-    Representation, // __str__, __repr__, __format__
+    Representation, // __str__, __format__
     Hashing,        // __hash__
     Conversion      // __bool__, __int__, __float__, __complex__
 }
@@ -227,9 +227,8 @@ public static class ProtocolRegistry
     /// Returns null if no protocol is associated with the interface.
     /// </summary>
     /// <remarks>
-    /// If multiple protocols map to the same interface (e.g., __setitem__ and __delitem__ 
-    /// both map to IMutableSequence), this returns the first match found. For exhaustive 
-    /// lookup, use <see cref="GetAllProtocols"/> and filter by interface.
+    /// If multiple protocols map to the same interface, this returns the first match
+    /// found. For exhaustive lookup, use <see cref="GetAllProtocols"/> and filter by interface.
     /// </remarks>
     public static string? GetDunderForInterface(string interfaceName)
         => _protocols.Values

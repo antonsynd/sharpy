@@ -501,8 +501,8 @@ internal class TypeInferenceService
     /// Returns null if the operation is not supported for the given types.
     /// </summary>
     /// <remarks>
-    /// This method prioritizes in-place operators (__iadd__, __isub__, etc.) over
-    /// binary operators (__add__, __sub__, etc.) per Python semantics.
+    /// Augmented assignment desugars to the regular binary operator (e.g., += uses __add__).
+    /// In-place operators do not exist in Sharpy.
     /// </remarks>
     public SemanticType? InferAugmentedAssignmentType(
         AssignmentOperator op,
