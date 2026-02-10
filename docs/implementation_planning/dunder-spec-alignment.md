@@ -32,17 +32,17 @@ When a task says "update tests," check for existing tests first — fix them to 
 
 **Rationale:** The spec dropped `__truediv__` because Sharpy has no `__floordiv__` to contrast with. Python has both; Sharpy only has `/`, so the dunder is simply `__div__`.
 
-- [ ] In `DunderNames.cs`: rename `TrueDiv = "__truediv__"` → `Div = "__div__"`. Update the field name and string value.
-- [ ] Find-and-replace all references to `DunderNames.TrueDiv` → `DunderNames.Div` across the codebase. Key files:
+- [x] In `DunderNames.cs`: rename `TrueDiv = "__truediv__"` → `Div = "__div__"`. Update the field name and string value.
+- [x] Find-and-replace all references to `DunderNames.TrueDiv` → `DunderNames.Div` across the codebase. Key files:
   - `OperatorRegistry.cs` (BinaryArithmeticOps set)
   - `TypeInferenceService.cs` (BinaryOperator.Divide mapping)
   - `SignatureValidator.cs` (if referenced)
   - `OperatorValidator.cs` (if referenced)
   - `RoslynEmitter.Operators.cs` (operator token mapping)
-- [ ] In `DunderNames.cs`: also rename `ITrueDiv = "__itruediv__"` → `IDiv = "__idiv__"` and `RTrueDiv = "__rtruediv__"` → `RDiv = "__rdiv__"` (these will be removed in A3/A4, but rename first for consistency within this commit).
-- [ ] Update any test files that reference `__truediv__` (search test projects).
-- [ ] If any `.spy` test fixtures use `__truediv__`, rename to `__div__`.
-- [ ] Run `dotnet test` — all tests must pass.
+- [x] In `DunderNames.cs`: also rename `ITrueDiv = "__itruediv__"` → `IDiv = "__idiv__"` and `RTrueDiv = "__rtruediv__"` → `RDiv = "__rdiv__"` (these will be removed in A3/A4, but rename first for consistency within this commit).
+- [x] Update any test files that reference `__truediv__` (search test projects).
+- [x] If any `.spy` test fixtures use `__truediv__`, rename to `__div__`.
+- [x] Run `dotnet test` — all tests must pass.
 
 **What NOT to do:** Don't add a "helpful error if user writes `__truediv__`" in this commit. That's a nice-to-have for later.
 
@@ -50,13 +50,13 @@ When a task says "update tests," check for existing tests first — fix them to 
 
 **Rationale:** C# has no `**` or `//` operators to overload. The spec explicitly lists these as unsupported. Keeping them in the registry is misleading — they suggest the compiler supports features it doesn't.
 
-- [ ] In `DunderNames.cs`: remove `FloorDiv`, `Pow`, `IFloorDiv`, `IPow`, `RFloorDiv`, `RPow` constants.
-- [ ] In `OperatorRegistry.cs`: remove `DunderNames.FloorDiv` and `DunderNames.Pow` from `BinaryArithmeticOps`.
-- [ ] In `TypeInferenceService.cs`: remove `BinaryOperator.FloorDivide → __floordiv__` and `BinaryOperator.Power → __pow__` mappings from user-defined operator inference. **Keep** the built-in numeric floor divide and power operations (`TryInferBuiltinBinaryOp`) since `//` and `**` still work on primitives — they just aren't overloadable via dunders.
-- [ ] In `TypeInferenceService.cs`: remove `AssignmentOperator → __ifloordiv__` and `AssignmentOperator → __ipow__` mappings.
-- [ ] Fix any compilation errors from removed constants.
-- [ ] Update/remove any test assertions that expect `__floordiv__` or `__pow__` to be recognized as operator dunders.
-- [ ] Run `dotnet test`.
+- [x] In `DunderNames.cs`: remove `FloorDiv`, `Pow`, `IFloorDiv`, `IPow`, `RFloorDiv`, `RPow` constants.
+- [x] In `OperatorRegistry.cs`: remove `DunderNames.FloorDiv` and `DunderNames.Pow` from `BinaryArithmeticOps`.
+- [x] In `TypeInferenceService.cs`: remove `BinaryOperator.FloorDivide → __floordiv__` and `BinaryOperator.Power → __pow__` mappings from user-defined operator inference. **Keep** the built-in numeric floor divide and power operations (`TryInferBuiltinBinaryOp`) since `//` and `**` still work on primitives — they just aren't overloadable via dunders.
+- [x] In `TypeInferenceService.cs`: remove `AssignmentOperator → __ifloordiv__` and `AssignmentOperator → __ipow__` mappings.
+- [x] Fix any compilation errors from removed constants.
+- [x] Update/remove any test assertions that expect `__floordiv__` or `__pow__` to be recognized as operator dunders.
+- [x] Run `dotnet test`.
 
 **Decision point for implementer:** If `RoslynEmitter.Operators.cs` has a mapping for `__pow__` → some method, remove it. `**` on primitives is handled as a built-in operation (likely `Math.Pow`), not via dunder dispatch.
 
@@ -64,12 +64,12 @@ When a task says "update tests," check for existing tests first — fix them to 
 
 **Rationale:** The spec says in-place operators don't exist in Sharpy (C# 9 has no way to define them). Augmented assignment `x += y` desugars to `x = x + y` using the regular binary operator. The current code already falls back to regular operators when in-place aren't found, so removing the in-place constants just removes dead paths.
 
-- [ ] In `DunderNames.cs`: remove all `I*` constants (`IAdd`, `ISub`, `IMul`, `IDiv` (renamed from ITrueDiv in A1), `IMod`, `IAnd`, `IOr`, `IXor`, `ILShift`, `IRShift`). Also remove `IFloorDiv` and `IPow` if not already removed in A2.
-- [ ] In `OperatorRegistry.cs`: remove the entire `InPlaceOps` FrozenSet and its registration in the constructor. Remove `OperatorKind.InPlace` from the enum.
-- [ ] In `OperatorRegistry.cs` `GetExpectedParamCount`: remove the `OperatorKind.InPlace` case.
-- [ ] In `TypeInferenceService.cs`: in `InferAugmentedAssignmentType`, remove the "try in-place operator first" path (`AssignmentOperatorToInPlaceDunder`). The method should now only try the regular binary operator. Remove `AssignmentOperatorToInPlaceDunder` entirely.
-- [ ] Fix compilation errors. Update tests.
-- [ ] Run `dotnet test`.
+- [x] In `DunderNames.cs`: remove all `I*` constants (`IAdd`, `ISub`, `IMul`, `IDiv` (renamed from ITrueDiv in A1), `IMod`, `IAnd`, `IOr`, `IXor`, `ILShift`, `IRShift`). Also remove `IFloorDiv` and `IPow` if not already removed in A2.
+- [x] In `OperatorRegistry.cs`: remove the entire `InPlaceOps` FrozenSet and its registration in the constructor. Remove `OperatorKind.InPlace` from the enum.
+- [x] In `OperatorRegistry.cs` `GetExpectedParamCount`: remove the `OperatorKind.InPlace` case.
+- [x] In `TypeInferenceService.cs`: in `InferAugmentedAssignmentType`, remove the "try in-place operator first" path (`AssignmentOperatorToInPlaceDunder`). The method should now only try the regular binary operator. Remove `AssignmentOperatorToInPlaceDunder` entirely.
+- [x] Fix compilation errors. Update tests.
+- [x] Run `dotnet test`.
 
 **Important:** Verify that augmented assignment (`+=`, `-=`, etc.) still works after this change. It should, because the fallback to regular binary operators was already the primary path for most types.
 
@@ -77,21 +77,21 @@ When a task says "update tests," check for existing tests first — fix them to 
 
 **Rationale:** The spec says "Reverse operators (e.g. `__radd__`) do not exist in Sharpy." The current code has 12 reflected operator constants in `DunderNames.cs` and a `GetReflectedDunder()` method in `OperatorValidator.cs`. These are only used for enhanced error messages ("operation may succeed via reflected call"), but since reflected operators don't exist, this messaging is incorrect.
 
-- [ ] In `DunderNames.cs`: remove all `R*` constants (`RAdd`, `RSub`, `RMul`, `RDiv`, `RMod`, `RAnd`, `ROr`, `RXor`, `RLShift`, `RRShift`). Also remove `RFloorDiv` and `RPow` if not already removed.
-- [ ] In `OperatorValidator.cs`: remove the `GetReflectedDunder()` method and the call site that checks for reflected operators on the right-hand side.
-- [ ] Fix compilation errors. Update tests that assert reflected operator behavior.
-- [ ] Run `dotnet test`.
+- [x] In `DunderNames.cs`: remove all `R*` constants (`RAdd`, `RSub`, `RMul`, `RDiv`, `RMod`, `RAnd`, `ROr`, `RXor`, `RLShift`, `RRShift`). Also remove `RFloorDiv` and `RPow` if not already removed.
+- [x] In `OperatorValidator.cs`: remove the `GetReflectedDunder()` method and the call site that checks for reflected operators on the right-hand side.
+- [x] Fix compilation errors. Update tests that assert reflected operator behavior.
+- [x] Run `dotnet test`.
 
 ### A5. Remove `__repr__` and `__delitem__` from registries
 
 **Rationale:** `__repr__` is listed as "Not supported" in the spec — there's no direct C# equivalent and `__str__` serves both purposes. `__delitem__` is "Not supported yet." Keeping unsupported dunders in the registry means the compiler accepts them silently and generates bad C# code (e.g., `__Repr__()` method nobody calls, `__DelItem__()` with no .NET equivalent).
 
-- [ ] In `DunderNames.cs`: remove `Repr` and `DelItem` constants.
-- [ ] In `ProtocolRegistry.cs`: remove the `__repr__` and `__delitem__` registrations. Remove `ProtocolKind.Representation` if `__str__` is the only remaining member (move `__str__` to a different kind, or keep Representation with just `__str__`). Actually — keep `ProtocolKind.Representation` with just `__str__`, that's fine.
-- [ ] In `DunderMapping.cs`: remove `{ DunderNames.Repr, "ToString" }` entry.
-- [ ] In `ProtocolRegistry.cs`: also clean up `__delitem__` from the `IMutableSequence` interface references.
-- [ ] Fix compilation errors. Update tests.
-- [ ] Run `dotnet test`.
+- [x] In `DunderNames.cs`: remove `Repr` and `DelItem` constants.
+- [x] In `ProtocolRegistry.cs`: remove the `__repr__` and `__delitem__` registrations. Remove `ProtocolKind.Representation` if `__str__` is the only remaining member (move `__str__` to a different kind, or keep Representation with just `__str__`). Actually — keep `ProtocolKind.Representation` with just `__str__`, that's fine.
+- [x] In `DunderMapping.cs`: remove `{ DunderNames.Repr, "ToString" }` entry.
+- [x] In `ProtocolRegistry.cs`: also clean up `__delitem__` from the `IMutableSequence` interface references.
+- [x] Fix compilation errors. Update tests.
+- [x] Run `dotnet test`.
 
 **Decision point:** When a user writes `def __repr__(self) -> str:`, should it be:
   - (a) A generic "unknown dunder" that gets mangled to `__Repr__()` — no error, just a regular method.
@@ -103,10 +103,10 @@ Option (b) is friendlier. If implementing (b), add a new diagnostic check in `Si
 
 **Rationale:** The spec says `__len__` maps to `int Count` property (line 193). The `ProtocolRegistry` correctly says `ClrMethodName: "get_Count"`, but `DunderMapping` says `"Length"`. The codegen uses DunderMapping to determine the C# method name, so it's currently generating a `Length()` method when it should generate a `Count` property.
 
-- [ ] In `DunderMapping.cs`: change `{ DunderNames.Len, "Length" }` → `{ DunderNames.Len, "Count" }`.
-- [ ] Verify that `RoslynEmitter.ClassMembers.cs` handles the `Count` name correctly. If it generates a method, it needs to generate a *property* instead. Check how `__len__` codegen works — it may need additional changes in the emitter to produce a property getter rather than a method.
-- [ ] Update any tests that assert `Length` in the generated C# output.
-- [ ] Run `dotnet test`.
+- [x] In `DunderMapping.cs`: change `{ DunderNames.Len, "Length" }` → `{ DunderNames.Len, "Count" }`.
+- [x] Verify that `RoslynEmitter.ClassMembers.cs` handles the `Count` name correctly. If it generates a method, it needs to generate a *property* instead. Check how `__len__` codegen works — it may need additional changes in the emitter to produce a property getter rather than a method.
+- [x] Update any tests that assert `Length` in the generated C# output.
+- [x] Run `dotnet test`.
 
 **Note:** The full property generation (with `ISized` interface) is Phase C work. This commit just fixes the naming inconsistency.
 
