@@ -45,9 +45,7 @@ internal static class DunderNames
     public const string Sub = "__sub__";
     public const string Mul = "__mul__";
     public const string Div = "__div__";
-    public const string FloorDiv = "__floordiv__";
     public const string Mod = "__mod__";
-    public const string Pow = "__pow__";
 
     // ---- Binary bitwise operators ----
     public const string And = "__and__";
@@ -61,9 +59,7 @@ internal static class DunderNames
     public const string ISub = "__isub__";
     public const string IMul = "__imul__";
     public const string IDiv = "__idiv__";
-    public const string IFloorDiv = "__ifloordiv__";
     public const string IMod = "__imod__";
-    public const string IPow = "__ipow__";
     public const string IAnd = "__iand__";
     public const string IOr = "__ior__";
     public const string IXor = "__ixor__";
@@ -75,9 +71,7 @@ internal static class DunderNames
     public const string RSub = "__rsub__";
     public const string RMul = "__rmul__";
     public const string RDiv = "__rdiv__";
-    public const string RFloorDiv = "__rfloordiv__";
     public const string RMod = "__rmod__";
-    public const string RPow = "__rpow__";
     public const string RAnd = "__rand__";
     public const string ROr = "__ror__";
     public const string RXor = "__rxor__";

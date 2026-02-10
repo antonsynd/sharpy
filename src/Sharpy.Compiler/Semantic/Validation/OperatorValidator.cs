@@ -391,7 +391,7 @@ internal class OperatorValidator : SemanticValidatorBase
             return dunderName switch
             {
                 // Arithmetic - supported by int, float, etc.
-                DunderNames.Add or DunderNames.Sub or DunderNames.Mul or DunderNames.Div or DunderNames.FloorDiv or DunderNames.Mod or DunderNames.Pow
+                DunderNames.Add or DunderNames.Sub or DunderNames.Mul or DunderNames.Div or DunderNames.Mod
                     => IsNumericType(type),
                 // Bitwise - supported by int
                 DunderNames.And or DunderNames.Or or DunderNames.Xor or DunderNames.LShift or DunderNames.RShift
@@ -472,9 +472,7 @@ internal class OperatorValidator : SemanticValidatorBase
             BinaryOperator.Subtract => DunderNames.Sub,
             BinaryOperator.Multiply => DunderNames.Mul,
             BinaryOperator.Divide => DunderNames.Div,
-            BinaryOperator.FloorDivide => DunderNames.FloorDiv,
             BinaryOperator.Modulo => DunderNames.Mod,
-            BinaryOperator.Power => DunderNames.Pow,
             BinaryOperator.BitwiseAnd => DunderNames.And,
             BinaryOperator.BitwiseOr => DunderNames.Or,
             BinaryOperator.BitwiseXor => DunderNames.Xor,
@@ -498,9 +496,7 @@ internal class OperatorValidator : SemanticValidatorBase
             DunderNames.Sub => DunderNames.RSub,
             DunderNames.Mul => DunderNames.RMul,
             DunderNames.Div => DunderNames.RDiv,
-            DunderNames.FloorDiv => DunderNames.RFloorDiv,
             DunderNames.Mod => DunderNames.RMod,
-            DunderNames.Pow => DunderNames.RPow,
             DunderNames.And => DunderNames.RAnd,
             DunderNames.Or => DunderNames.ROr,
             DunderNames.Xor => DunderNames.RXor,
@@ -529,9 +525,7 @@ internal class OperatorValidator : SemanticValidatorBase
             AssignmentOperator.MinusAssign => DunderNames.ISub,
             AssignmentOperator.StarAssign => DunderNames.IMul,
             AssignmentOperator.SlashAssign => DunderNames.IDiv,
-            AssignmentOperator.DoubleSlashAssign => DunderNames.IFloorDiv,
             AssignmentOperator.PercentAssign => DunderNames.IMod,
-            AssignmentOperator.PowerAssign => DunderNames.IPow,
             AssignmentOperator.AndAssign => DunderNames.IAnd,
             AssignmentOperator.OrAssign => DunderNames.IOr,
             AssignmentOperator.XorAssign => DunderNames.IXor,

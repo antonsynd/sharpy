@@ -144,46 +144,6 @@ class Counter:
     }
 
     [Fact]
-    public void RegistersPowerOperator()
-    {
-        var source = @"
-class Matrix:
-    def __pow__(self, exponent: int) -> Matrix:
-        pass
-";
-        var module = ParseSource(source);
-        var (symbolTable, resolver) = CreateNameResolver();
-
-        resolver.ResolveDeclarations(module);
-
-        resolver.Diagnostics.GetErrors().Should().BeEmpty();
-
-        var matrixType = symbolTable.Lookup("Matrix") as TypeSymbol;
-        matrixType.Should().NotBeNull();
-        matrixType!.OperatorMethods.Should().ContainKey("__pow__");
-    }
-
-    [Fact]
-    public void RegistersInPlacePowerOperator()
-    {
-        var source = @"
-class Accumulator:
-    def __ipow__(self, exponent: int) -> Accumulator:
-        pass
-";
-        var module = ParseSource(source);
-        var (symbolTable, resolver) = CreateNameResolver();
-
-        resolver.ResolveDeclarations(module);
-
-        resolver.Diagnostics.GetErrors().Should().BeEmpty();
-
-        var accType = symbolTable.Lookup("Accumulator") as TypeSymbol;
-        accType.Should().NotBeNull();
-        accType!.OperatorMethods.Should().ContainKey("__ipow__");
-    }
-
-    [Fact]
     public void DoesNotRegisterNonOperatorDunders()
     {
         var source = @"

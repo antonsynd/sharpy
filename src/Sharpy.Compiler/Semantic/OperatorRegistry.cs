@@ -22,7 +22,7 @@ public static class OperatorRegistry
 {
     private static readonly FrozenSet<string> BinaryArithmeticOps = new[]
     {
-        DunderNames.Add, DunderNames.Sub, DunderNames.Mul, DunderNames.Div, DunderNames.FloorDiv, DunderNames.Mod, DunderNames.Pow
+        DunderNames.Add, DunderNames.Sub, DunderNames.Mul, DunderNames.Div, DunderNames.Mod
     }.ToFrozenSet();
 
     private static readonly FrozenSet<string> BinaryBitwiseOps = new[]
@@ -32,7 +32,7 @@ public static class OperatorRegistry
 
     private static readonly FrozenSet<string> InPlaceOps = new[]
     {
-        DunderNames.IAdd, DunderNames.ISub, DunderNames.IMul, DunderNames.IDiv, DunderNames.IFloorDiv, DunderNames.IMod, DunderNames.IPow,
+        DunderNames.IAdd, DunderNames.ISub, DunderNames.IMul, DunderNames.IDiv, DunderNames.IMod,
         DunderNames.IAnd, DunderNames.IOr, DunderNames.IXor, DunderNames.ILShift, DunderNames.IRShift
     }.ToFrozenSet();
 

@@ -64,7 +64,6 @@ internal partial class RoslynEmitter
             DunderNames.Invert => GenerateUnaryOperator(funcDef, className, SyntaxKind.TildeToken),
 
             // Not supported as operators (handled as methods)
-            DunderNames.Pow => null,     // No ** operator in C#, use Math.Pow
             DunderNames.GetItem => null, // Requires indexer syntax, not operator
             DunderNames.SetItem => null, // Requires indexer syntax, not operator
 
