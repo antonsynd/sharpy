@@ -1,0 +1,36 @@
+# Inherited __hash__ from base class satisfies the contract.
+# A class that defines __eq__(self, other: object) locally
+# and inherits __hash__ from its base should NOT error.
+class Base:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def __eq__(self, other: object) -> bool:
+        if other is Base:
+            return self.value == (other as Base).value
+        return False
+
+    def __hash__(self) -> int:
+        return self.value
+
+class Derived(Base):
+    label: str
+
+    def __init__(self, value: int, label: str):
+        super().__init__(value)
+        self.label = label
+
+    # Overrides __eq__ locally — __hash__ is inherited from Base, so no error
+    def __eq__(self, other: object) -> bool:
+        if other is Derived:
+            return self.value == (other as Derived).value and self.label == (other as Derived).label
+        return False
+
+def main():
+    a = Derived(1, "a")
+    b = Derived(1, "a")
+    c = Derived(1, "b")
+    print(a == b)
+    print(a == c)

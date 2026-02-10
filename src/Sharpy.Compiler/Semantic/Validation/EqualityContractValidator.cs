@@ -70,7 +70,8 @@ internal class EqualityContractValidator : SemanticValidatorBase
         }
 
         // SPY0455: __eq__(object) without __hash__
-        if (hasObjectOverload && hashMethod == null)
+        // Inherited __hash__ from a base class satisfies the contract (per .NET semantics).
+        if (hasObjectOverload && hashMethod == null && !HasInheritedDunder(typeName, DunderNames.Hash, context))
         {
             var eqObj = eqMethods.First(IsObjectOverload);
             AddError(context,
@@ -82,7 +83,8 @@ internal class EqualityContractValidator : SemanticValidatorBase
         }
 
         // SPY0456: __hash__ without __eq__(object)
-        if (hashMethod != null && !hasObjectOverload)
+        // Inherited __eq__(object) from a base class satisfies the contract.
+        if (hashMethod != null && !hasObjectOverload && !HasInheritedEqObject(typeName, context))
         {
             AddError(context,
                 $"Class '{typeName}' defines '__hash__' but not '__eq__(self, other: object)'. " +
@@ -98,5 +100,52 @@ internal class EqualityContractValidator : SemanticValidatorBase
         var otherParam = func.Parameters
             .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
         return otherParam?.Type is TypeAnnotation { Name: "object" };
+    }
+
+    /// <summary>
+    /// Check if a dunder method (e.g., __hash__) is defined in any ancestor class.
+    /// </summary>
+    private static bool HasInheritedDunder(string typeName, string dunderName, SemanticContext context)
+    {
+        var typeSymbol = context.SymbolTable.Lookup(typeName) as TypeSymbol;
+        var baseType = typeSymbol?.BaseType;
+        var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
+        while (baseType != null && visited.Add(baseType))
+        {
+            if (baseType.ProtocolMethods.ContainsKey(dunderName)
+                || baseType.OperatorMethods.ContainsKey(dunderName)
+                || baseType.Methods.Any(m => m.Name == dunderName))
+            {
+                return true;
+            }
+            baseType = baseType.BaseType;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Check if __eq__(self, other: object) is defined in any ancestor class.
+    /// </summary>
+    private static bool HasInheritedEqObject(string typeName, SemanticContext context)
+    {
+        var typeSymbol = context.SymbolTable.Lookup(typeName) as TypeSymbol;
+        var baseType = typeSymbol?.BaseType;
+        var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
+        while (baseType != null && visited.Add(baseType))
+        {
+            if (baseType.OperatorMethods.TryGetValue(DunderNames.Eq, out var overloads))
+            {
+                if (overloads.Any(HasObjectParameter))
+                    return true;
+            }
+            baseType = baseType.BaseType;
+        }
+        return false;
+    }
+
+    private static bool HasObjectParameter(FunctionSymbol func)
+    {
+        return func.Parameters.Any(p =>
+            p.Name != "self" && p.Type is UserDefinedType { Name: "object" });
     }
 }
