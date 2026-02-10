@@ -474,6 +474,43 @@ public class RoslynEmitterOperatorTests
     }
 
     [Fact]
+    public void GenerateClass_WithTypedEqOverload_GeneratesEqualsWithoutOverride()
+    {
+        // __eq__(self, other: Point) should generate Equals(Point), NOT override Equals(object)
+        var classDef = new ClassDef
+        {
+            Name = "Point",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "__eq__",
+                    Parameters = new List<Parameter>
+                    {
+                        new() { Name = "self", Type = null },
+                        new() { Name = "other", Type = new TypeAnnotation { Name = "Point" } }
+                    }.ToImmutableArray(),
+                    ReturnType = new TypeAnnotation { Name = "bool" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement { Value = new BooleanLiteral { Value = true } }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert - should have Equals(Point) without override, and operator==
+        Assert.Contains("public bool Equals(Point", code);
+        Assert.DoesNotContain("override bool Equals", code);
+        Assert.Contains("public static bool operator ==(Point left, Point right)", code);
+    }
+
+    [Fact]
     public void GenerateClass_WithNeOnly_GeneratesComplementaryEquals()
     {
         // Arrange
