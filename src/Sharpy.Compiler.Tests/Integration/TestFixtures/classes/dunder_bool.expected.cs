@@ -7,7 +7,7 @@ using global::Sharpy;
 
 public static partial class DunderBool
 {
-    public class Truthy
+    public class Truthy : Sharpy.IBoolConvertible
     {
         public int Value;
         public bool __Bool__()

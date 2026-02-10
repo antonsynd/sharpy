@@ -427,14 +427,14 @@ internal partial class RoslynEmitter
                 continue;
 
             // Only synthesize interfaces we have concrete support for
-            if (interfaceName == "ISized")
+            if (interfaceName is "ISized" or "IBoolConvertible")
             {
                 result.Add(SimpleBaseType(
-                    QualifiedName(IdentifierName("Sharpy"), IdentifierName("ISized"))));
+                    QualifiedName(IdentifierName("Sharpy"), IdentifierName(interfaceName))));
                 explicitNames.Add(interfaceName);
 
                 _context.AddInfo(
-                    $"Type '{className}' implicitly implements 'Sharpy.ISized' via '__len__'.",
+                    $"Type '{className}' implicitly implements 'Sharpy.{interfaceName}' via '{funcDef.Name}'.",
                     DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
                     funcDef.LineStart,
                     funcDef.ColumnStart);

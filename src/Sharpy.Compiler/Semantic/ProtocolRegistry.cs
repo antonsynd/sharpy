@@ -155,8 +155,9 @@ public static class ProtocolRegistry
         ));
 
         // 2.2.6 Conversion protocols
-        // __bool__ maps to C# operator true / operator false (two methods, not one),
-        // so ClrMethodName is null — codegen handles it specially.
+        // IBoolConvertible is defined in Sharpy.Core (IBoolConvertible.cs) with bool __Bool__().
+        // __bool__ codegen emits a __Bool__() method (satisfying IBoolConvertible) plus
+        // operator true / operator false. ClrMethodName is null since there's no single CLR method.
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.Bool,
             Kind: ProtocolKind.Conversion,

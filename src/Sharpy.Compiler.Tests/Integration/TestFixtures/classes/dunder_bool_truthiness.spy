@@ -1,0 +1,21 @@
+# Class with __bool__, used in bool() call and if statement
+class Toggle:
+    on: bool
+
+    def __init__(self, on: bool):
+        self.on = on
+
+    def __bool__(self) -> bool:
+        return self.on
+
+def main():
+    t = Toggle(True)
+    f = Toggle(False)
+    print(bool(t))
+    print(bool(f))
+    if t:
+        print("toggle is on")
+    if f:
+        print("should not print")
+    else:
+        print("toggle is off")

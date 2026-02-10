@@ -146,6 +146,18 @@ namespace Sharpy
                 return Bool(@float);
             }
 
+            // __bool__ dispatch: types with IBoolConvertible (user-defined __bool__)
+            if (obj is IBoolConvertible boolConvertible)
+            {
+                return boolConvertible.__Bool__();
+            }
+
+            // __len__ fallback: types with ISized (__len__ != 0 is truthy)
+            if (obj is ISized sized)
+            {
+                return sized.Count != 0;
+            }
+
             // Collection types - check Count for emptiness
             // Note: ICollection (non-generic) is for arrays and old-style collections
             if (obj is System.Collections.ICollection collection)
