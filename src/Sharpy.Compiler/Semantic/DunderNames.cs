@@ -54,18 +54,6 @@ internal static class DunderNames
     public const string LShift = "__lshift__";
     public const string RShift = "__rshift__";
 
-    // ---- In-place (augmented assignment) operators ----
-    public const string IAdd = "__iadd__";
-    public const string ISub = "__isub__";
-    public const string IMul = "__imul__";
-    public const string IDiv = "__idiv__";
-    public const string IMod = "__imod__";
-    public const string IAnd = "__iand__";
-    public const string IOr = "__ior__";
-    public const string IXor = "__ixor__";
-    public const string ILShift = "__ilshift__";
-    public const string IRShift = "__irshift__";
-
     // ---- Reflected (right-hand) operators ----
     public const string RAdd = "__radd__";
     public const string RSub = "__rsub__";

@@ -29,18 +29,12 @@ public class OperatorRegistryTests
     }
 
     [Fact]
-    public void IsOperatorDunder_RecognizesInPlaceOperators()
+    public void IsOperatorDunder_RejectsInPlaceOperators()
     {
-        OperatorRegistry.IsOperatorDunder("__iadd__").Should().BeTrue();
-        OperatorRegistry.IsOperatorDunder("__isub__").Should().BeTrue();
-        OperatorRegistry.IsOperatorDunder("__imul__").Should().BeTrue();
-        OperatorRegistry.IsOperatorDunder("__idiv__").Should().BeTrue();
-        OperatorRegistry.IsOperatorDunder("__imod__").Should().BeTrue();
-        OperatorRegistry.IsOperatorDunder("__iand__").Should().BeTrue();
-        OperatorRegistry.IsOperatorDunder("__ior__").Should().BeTrue();
-        OperatorRegistry.IsOperatorDunder("__ixor__").Should().BeTrue();
-        OperatorRegistry.IsOperatorDunder("__ilshift__").Should().BeTrue();
-        OperatorRegistry.IsOperatorDunder("__irshift__").Should().BeTrue();
+        // In-place operators don't exist in Sharpy per spec
+        OperatorRegistry.IsOperatorDunder("__iadd__").Should().BeFalse();
+        OperatorRegistry.IsOperatorDunder("__isub__").Should().BeFalse();
+        OperatorRegistry.IsOperatorDunder("__imul__").Should().BeFalse();
     }
 
     [Fact]
@@ -89,8 +83,6 @@ public class OperatorRegistryTests
     [InlineData("__sub__", OperatorKind.BinaryArithmetic)]
     [InlineData("__and__", OperatorKind.BinaryBitwise)]
     [InlineData("__or__", OperatorKind.BinaryBitwise)]
-    [InlineData("__iadd__", OperatorKind.InPlace)]
-    [InlineData("__isub__", OperatorKind.InPlace)]
     [InlineData("__eq__", OperatorKind.Comparison)]
     [InlineData("__lt__", OperatorKind.Comparison)]
     [InlineData("__neg__", OperatorKind.Unary)]
@@ -117,7 +109,6 @@ public class OperatorRegistryTests
     [InlineData("__invert__", 1)]
     [InlineData("__add__", 2)]
     [InlineData("__eq__", 2)]
-    [InlineData("__iadd__", 2)]
     [InlineData("__and__", 2)]
     public void GetExpectedParamCount_ReturnsCorrectCount(string methodName, int expectedCount)
     {
@@ -176,8 +167,8 @@ public class OperatorRegistryTests
     [Fact]
     public void Count_ReturnsExpectedNumberOfOperators()
     {
-        // 5 arithmetic + 5 bitwise + 10 in-place + 6 comparison + 3 unary = 29
-        OperatorRegistry.Count.Should().Be(29);
+        // 5 arithmetic + 5 bitwise + 6 comparison + 3 unary = 19
+        OperatorRegistry.Count.Should().Be(19);
     }
 
     [Fact]
@@ -188,7 +179,7 @@ public class OperatorRegistryTests
         allOps.Should().Contain("__add__");
         allOps.Should().Contain("__neg__");
         allOps.Should().Contain("__eq__");
-        allOps.Should().Contain("__iadd__");
+        allOps.Should().Contain("__and__");
     }
 
     #endregion

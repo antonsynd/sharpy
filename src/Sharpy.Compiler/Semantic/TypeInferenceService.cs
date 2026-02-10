@@ -521,21 +521,8 @@ internal class TypeInferenceService
             return InferNullCoalesceType(targetType, valueType) != null ? targetType : null;
         }
 
-        // Try in-place operator first (e.g., __iadd__)
-        var inPlaceDunder = AssignmentOperatorToInPlaceDunder(op);
-        if (inPlaceDunder != null && targetType is UserDefinedType udt && udt.Symbol != null)
-        {
-            if (udt.Symbol.OperatorMethods.TryGetValue(inPlaceDunder, out var methods))
-            {
-                var bestOverload = FindBestOverload(methods, valueType);
-                if (bestOverload != null)
-                {
-                    return bestOverload.ReturnType;
-                }
-            }
-        }
-
-        // Fall back to binary operator (e.g., __add__ for +=)
+        // Use regular binary operator (e.g., __add__ for +=)
+        // In-place operators don't exist in Sharpy; augmented assignment desugars to x = x op y
         var binaryOp = AssignmentOperatorToBinaryOperator(op);
         if (binaryOp != null)
         {
@@ -543,24 +530,6 @@ internal class TypeInferenceService
         }
 
         return null;
-    }
-
-    private static string? AssignmentOperatorToInPlaceDunder(AssignmentOperator op)
-    {
-        return op switch
-        {
-            AssignmentOperator.PlusAssign => DunderNames.IAdd,
-            AssignmentOperator.MinusAssign => DunderNames.ISub,
-            AssignmentOperator.StarAssign => DunderNames.IMul,
-            AssignmentOperator.SlashAssign => DunderNames.IDiv,
-            AssignmentOperator.PercentAssign => DunderNames.IMod,
-            AssignmentOperator.AndAssign => DunderNames.IAnd,
-            AssignmentOperator.OrAssign => DunderNames.IOr,
-            AssignmentOperator.XorAssign => DunderNames.IXor,
-            AssignmentOperator.LeftShiftAssign => DunderNames.ILShift,
-            AssignmentOperator.RightShiftAssign => DunderNames.IRShift,
-            _ => null
-        };
     }
 
     private static BinaryOperator? AssignmentOperatorToBinaryOperator(AssignmentOperator op)

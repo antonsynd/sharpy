@@ -124,26 +124,6 @@ class SignedValue:
     }
 
     [Fact]
-    public void RegistersInPlaceOperator()
-    {
-        var source = @"
-class Counter:
-    def __iadd__(self, other: int) -> Counter:
-        pass
-";
-        var module = ParseSource(source);
-        var (symbolTable, resolver) = CreateNameResolver();
-
-        resolver.ResolveDeclarations(module);
-
-        resolver.Diagnostics.GetErrors().Should().BeEmpty();
-
-        var counterType = symbolTable.Lookup("Counter") as TypeSymbol;
-        counterType.Should().NotBeNull();
-        counterType!.OperatorMethods.Should().ContainKey("__iadd__");
-    }
-
-    [Fact]
     public void DoesNotRegisterNonOperatorDunders()
     {
         var source = @"

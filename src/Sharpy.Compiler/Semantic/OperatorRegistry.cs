@@ -9,7 +9,6 @@ public enum OperatorKind
 {
     BinaryArithmetic,  // __add__, __sub__, __mul__, etc.
     BinaryBitwise,     // __and__, __or__, __xor__, etc.
-    InPlace,           // __iadd__, __isub__, __imul__, etc.
     Comparison,        // __eq__, __ne__, __lt__, etc.
     Unary              // __pos__, __neg__, __invert__
 }
@@ -28,12 +27,6 @@ public static class OperatorRegistry
     private static readonly FrozenSet<string> BinaryBitwiseOps = new[]
     {
         DunderNames.And, DunderNames.Or, DunderNames.Xor, DunderNames.LShift, DunderNames.RShift
-    }.ToFrozenSet();
-
-    private static readonly FrozenSet<string> InPlaceOps = new[]
-    {
-        DunderNames.IAdd, DunderNames.ISub, DunderNames.IMul, DunderNames.IDiv, DunderNames.IMod,
-        DunderNames.IAnd, DunderNames.IOr, DunderNames.IXor, DunderNames.ILShift, DunderNames.IRShift
     }.ToFrozenSet();
 
     private static readonly FrozenSet<string> ComparisonOps = new[]
@@ -55,8 +48,6 @@ public static class OperatorRegistry
             dict[op] = OperatorKind.BinaryArithmetic;
         foreach (var op in BinaryBitwiseOps)
             dict[op] = OperatorKind.BinaryBitwise;
-        foreach (var op in InPlaceOps)
-            dict[op] = OperatorKind.InPlace;
         foreach (var op in ComparisonOps)
             dict[op] = OperatorKind.Comparison;
         foreach (var op in UnaryOps)
@@ -99,7 +90,7 @@ public static class OperatorRegistry
         {
             OperatorKind.Unary => 1,
             OperatorKind.BinaryArithmetic or OperatorKind.BinaryBitwise
-                or OperatorKind.InPlace or OperatorKind.Comparison => 2,
+                or OperatorKind.Comparison => 2,
             _ => null
         };
     }

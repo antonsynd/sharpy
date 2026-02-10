@@ -356,23 +356,24 @@ internal class OperatorValidator : SemanticValidatorBase
         if (targetType is UnknownType || valueType is UnknownType)
             return;
 
-        var dunderName = AugmentedOperatorToDunder(assignment.Operator);
+        // In-place operators don't exist in Sharpy; augmented assignment desugars
+        // to x = x op y, so validate via the regular binary operator.
+        var binaryOp = AugmentedOperatorToBinaryOperator(assignment.Operator);
+        if (binaryOp == null)
+            return;
+
+        var dunderName = BinaryOperatorToDunder(binaryOp.Value);
         if (dunderName == null)
             return;
 
-        // Check for in-place operator first, fall back to regular binary operator
         if (!SupportsOperator(targetType, dunderName))
         {
-            var regularDunder = dunderName.Replace("__i", "__");
-            if (!SupportsOperator(targetType, regularDunder))
+            if (!HasErrorAtPosition(assignment.LineStart, assignment.ColumnStart))
             {
-                if (!HasErrorAtPosition(assignment.LineStart, assignment.ColumnStart))
-                {
-                    AddError(_context,
-                        $"Unsupported operand types for {OperatorToString(assignment.Operator)}: '{targetType.GetDisplayName()}' and '{valueType.GetDisplayName()}'",
-                        assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
-                        span: assignment.Span);
-                }
+                AddError(_context,
+                    $"Unsupported operand types for {OperatorToString(assignment.Operator)}: '{targetType.GetDisplayName()}' and '{valueType.GetDisplayName()}'",
+                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
+                    span: assignment.Span);
             }
         }
     }
@@ -410,10 +411,10 @@ internal class OperatorValidator : SemanticValidatorBase
         {
             return generic.Name switch
             {
-                "list" => dunderName is DunderNames.Add or DunderNames.IAdd or DunderNames.Mul or DunderNames.IMul or DunderNames.Eq or DunderNames.Ne,
+                "list" => dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne,
                 "tuple" => dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne,
-                "set" => dunderName is DunderNames.Or or DunderNames.And or DunderNames.Sub or DunderNames.Xor or DunderNames.IOr or DunderNames.IAnd or DunderNames.ISub or DunderNames.IXor or DunderNames.Eq or DunderNames.Ne,
-                "dict" => dunderName is DunderNames.Or or DunderNames.IOr or DunderNames.Eq or DunderNames.Ne,
+                "set" => dunderName is DunderNames.Or or DunderNames.And or DunderNames.Sub or DunderNames.Xor or DunderNames.Eq or DunderNames.Ne,
+                "dict" => dunderName is DunderNames.Or or DunderNames.Eq or DunderNames.Ne,
                 _ => false
             };
         }
@@ -517,20 +518,22 @@ internal class OperatorValidator : SemanticValidatorBase
         };
     }
 
-    private string? AugmentedOperatorToDunder(AssignmentOperator op)
+    private static BinaryOperator? AugmentedOperatorToBinaryOperator(AssignmentOperator op)
     {
         return op switch
         {
-            AssignmentOperator.PlusAssign => DunderNames.IAdd,
-            AssignmentOperator.MinusAssign => DunderNames.ISub,
-            AssignmentOperator.StarAssign => DunderNames.IMul,
-            AssignmentOperator.SlashAssign => DunderNames.IDiv,
-            AssignmentOperator.PercentAssign => DunderNames.IMod,
-            AssignmentOperator.AndAssign => DunderNames.IAnd,
-            AssignmentOperator.OrAssign => DunderNames.IOr,
-            AssignmentOperator.XorAssign => DunderNames.IXor,
-            AssignmentOperator.LeftShiftAssign => DunderNames.ILShift,
-            AssignmentOperator.RightShiftAssign => DunderNames.IRShift,
+            AssignmentOperator.PlusAssign => BinaryOperator.Add,
+            AssignmentOperator.MinusAssign => BinaryOperator.Subtract,
+            AssignmentOperator.StarAssign => BinaryOperator.Multiply,
+            AssignmentOperator.SlashAssign => BinaryOperator.Divide,
+            AssignmentOperator.DoubleSlashAssign => BinaryOperator.FloorDivide,
+            AssignmentOperator.PercentAssign => BinaryOperator.Modulo,
+            AssignmentOperator.PowerAssign => BinaryOperator.Power,
+            AssignmentOperator.AndAssign => BinaryOperator.BitwiseAnd,
+            AssignmentOperator.OrAssign => BinaryOperator.BitwiseOr,
+            AssignmentOperator.XorAssign => BinaryOperator.BitwiseXor,
+            AssignmentOperator.LeftShiftAssign => BinaryOperator.LeftShift,
+            AssignmentOperator.RightShiftAssign => BinaryOperator.RightShift,
             _ => null
         };
     }
