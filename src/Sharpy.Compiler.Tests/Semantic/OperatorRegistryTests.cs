@@ -14,7 +14,7 @@ public class OperatorRegistryTests
         OperatorRegistry.IsOperatorDunder("__add__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__sub__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__mul__").Should().BeTrue();
-        OperatorRegistry.IsOperatorDunder("__truediv__").Should().BeTrue();
+        OperatorRegistry.IsOperatorDunder("__div__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__floordiv__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__mod__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__pow__").Should().BeTrue();
@@ -36,7 +36,7 @@ public class OperatorRegistryTests
         OperatorRegistry.IsOperatorDunder("__iadd__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__isub__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__imul__").Should().BeTrue();
-        OperatorRegistry.IsOperatorDunder("__itruediv__").Should().BeTrue();
+        OperatorRegistry.IsOperatorDunder("__idiv__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__ifloordiv__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__imod__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__ipow__").Should().BeTrue();

@@ -40,7 +40,7 @@ internal partial class RoslynEmitter
             DunderNames.Add => GenerateBinaryOperator(funcDef, className, SyntaxKind.PlusToken),
             DunderNames.Sub => GenerateBinaryOperator(funcDef, className, SyntaxKind.MinusToken),
             DunderNames.Mul => GenerateBinaryOperator(funcDef, className, SyntaxKind.AsteriskToken),
-            DunderNames.TrueDiv => GenerateBinaryOperator(funcDef, className, SyntaxKind.SlashToken),
+            DunderNames.Div => GenerateBinaryOperator(funcDef, className, SyntaxKind.SlashToken),
             DunderNames.Mod => GenerateBinaryOperator(funcDef, className, SyntaxKind.PercentToken),
 
             // Bitwise operators (binary)

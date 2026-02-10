@@ -292,7 +292,7 @@ class Number:
     def __mul__(self, other: Number) -> Number:
         return self
 
-    def __truediv__(self, other: Number) -> Number:
+    def __div__(self, other: Number) -> Number:
         return self
 
     @override

@@ -44,7 +44,7 @@ internal static class DunderNames
     public const string Add = "__add__";
     public const string Sub = "__sub__";
     public const string Mul = "__mul__";
-    public const string TrueDiv = "__truediv__";
+    public const string Div = "__div__";
     public const string FloorDiv = "__floordiv__";
     public const string Mod = "__mod__";
     public const string Pow = "__pow__";
@@ -60,7 +60,7 @@ internal static class DunderNames
     public const string IAdd = "__iadd__";
     public const string ISub = "__isub__";
     public const string IMul = "__imul__";
-    public const string ITrueDiv = "__itruediv__";
+    public const string IDiv = "__idiv__";
     public const string IFloorDiv = "__ifloordiv__";
     public const string IMod = "__imod__";
     public const string IPow = "__ipow__";
@@ -74,7 +74,7 @@ internal static class DunderNames
     public const string RAdd = "__radd__";
     public const string RSub = "__rsub__";
     public const string RMul = "__rmul__";
-    public const string RTrueDiv = "__rtruediv__";
+    public const string RDiv = "__rdiv__";
     public const string RFloorDiv = "__rfloordiv__";
     public const string RMod = "__rmod__";
     public const string RPow = "__rpow__";
