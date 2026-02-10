@@ -12,7 +12,6 @@ public class DunderMappingTests
     [Theory]
     [InlineData("__init__", "Constructor")]
     [InlineData("__str__", "ToString")]
-    [InlineData("__repr__", "ToString")]
     [InlineData("__eq__", "Equals")]
     [InlineData("__hash__", "GetHashCode")]
     [InlineData("__getitem__", "GetItem")]

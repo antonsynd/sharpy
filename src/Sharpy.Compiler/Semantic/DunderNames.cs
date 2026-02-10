@@ -14,7 +14,6 @@ internal static class DunderNames
     // ---- Special methods ----
     public const string Init = "__init__";
     public const string Str = "__str__";
-    public const string Repr = "__repr__";
     public const string Hash = "__hash__";
     public const string Bool = "__bool__";
     public const string Len = "__len__";
@@ -25,7 +24,6 @@ internal static class DunderNames
     public const string Contains = "__contains__";
     public const string GetItem = "__getitem__";
     public const string SetItem = "__setitem__";
-    public const string DelItem = "__delitem__";
 
     // ---- Comparison operators ----
     public const string Eq = "__eq__";

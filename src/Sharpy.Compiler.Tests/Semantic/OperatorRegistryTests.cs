@@ -61,7 +61,7 @@ public class OperatorRegistryTests
     {
         OperatorRegistry.IsOperatorDunder("__init__").Should().BeFalse();
         OperatorRegistry.IsOperatorDunder("__str__").Should().BeFalse();
-        OperatorRegistry.IsOperatorDunder("__repr__").Should().BeFalse();
+        OperatorRegistry.IsOperatorDunder("__iter__").Should().BeFalse();
         OperatorRegistry.IsOperatorDunder("__hash__").Should().BeFalse();
         OperatorRegistry.IsOperatorDunder("__len__").Should().BeFalse();
         OperatorRegistry.IsOperatorDunder("__getitem__").Should().BeFalse();

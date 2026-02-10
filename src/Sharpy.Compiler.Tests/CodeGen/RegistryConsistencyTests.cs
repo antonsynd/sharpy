@@ -57,8 +57,8 @@ public class RegistryConsistencyTests
         // List of all dunders that appear in codegen
         var codegenDunders = new[]
         {
-            "__init__", "__str__", "__repr__", "__hash__",
-            "__len__", "__contains__", "__getitem__", "__setitem__", "__delitem__",
+            "__init__", "__str__", "__hash__",
+            "__len__", "__contains__", "__getitem__", "__setitem__",
             "__iter__", "__bool__", "__eq__"
         };
 

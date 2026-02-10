@@ -18,11 +18,9 @@ public class ProtocolRegistryTests
     [InlineData("__contains__", ProtocolKind.Container)]
     [InlineData("__getitem__", ProtocolKind.Container)]
     [InlineData("__setitem__", ProtocolKind.Container)]
-    [InlineData("__delitem__", ProtocolKind.Container)]
     [InlineData("__iter__", ProtocolKind.Iterator)]
     [InlineData("__next__", ProtocolKind.Iterator)]
     [InlineData("__str__", ProtocolKind.Representation)]
-    [InlineData("__repr__", ProtocolKind.Representation)]
     [InlineData("__hash__", ProtocolKind.Hashing)]
     [InlineData("__bool__", ProtocolKind.Conversion)]
     public void GetProtocol_ReturnsCorrectKind(string dunderName, ProtocolKind expectedKind)
@@ -54,10 +52,8 @@ public class ProtocolRegistryTests
     [InlineData("__contains__", "IContainer")]
     [InlineData("__getitem__", "ISequence")]
     [InlineData("__setitem__", "IMutableSequence")]
-    [InlineData("__delitem__", "IMutableSequence")]
     [InlineData("__iter__", "IIterable")]
     [InlineData("__str__", "IStrConvertible")]
-    [InlineData("__repr__", "IRepresentable")]
     [InlineData("__hash__", "IHashable")]
     [InlineData("__bool__", "IBoolConvertible")]
     public void GetProtocol_ReturnsCorrectInterface(string dunderName, string expectedInterface)
@@ -97,8 +93,6 @@ public class ProtocolRegistryTests
     }
 
     [Theory]
-    [InlineData("__repr__")]   // No direct .NET equivalent
-    [InlineData("__delitem__")] // No direct .NET equivalent
     [InlineData("__next__")]    // Semantically different from MoveNext
     public void GetProtocol_ReturnsNullClrMethodForNoMapping(string dunderName)
     {
@@ -114,11 +108,9 @@ public class ProtocolRegistryTests
     [InlineData("__contains__", "__Contains__")]
     [InlineData("__getitem__", "__GetItem__")]
     [InlineData("__setitem__", "__SetItem__")]
-    [InlineData("__delitem__", "__DelItem__")]
     [InlineData("__iter__", "__Iter__")]
     [InlineData("__next__", "__Next__")]
     [InlineData("__str__", "__Str__")]
-    [InlineData("__repr__", "__Repr__")]
     [InlineData("__hash__", "__Hash__")]
     [InlineData("__bool__", "__Bool__")]
     public void GetProtocol_ReturnsCorrectInterfaceMethodName(string dunderName, string expectedMethodName)
@@ -135,9 +127,7 @@ public class ProtocolRegistryTests
     [InlineData("__len__", "int")]
     [InlineData("__contains__", "bool")]
     [InlineData("__setitem__", "None")]
-    [InlineData("__delitem__", "None")]
     [InlineData("__str__", "str")]
-    [InlineData("__repr__", "str")]
     [InlineData("__hash__", "int")]
     [InlineData("__bool__", "bool")]
     public void GetProtocol_ReturnsCorrectExpectedReturnType(string dunderName, string expectedReturnType)
@@ -165,11 +155,9 @@ public class ProtocolRegistryTests
     [InlineData("__contains__", 2)] // self, item
     [InlineData("__getitem__", 2)]  // self, key
     [InlineData("__setitem__", 3)]  // self, key, value
-    [InlineData("__delitem__", 2)]  // self, key
     [InlineData("__iter__", 1)]     // self
     [InlineData("__next__", 1)]     // self
     [InlineData("__str__", 1)]      // self
-    [InlineData("__repr__", 1)]     // self
     [InlineData("__hash__", 1)]     // self
     [InlineData("__bool__", 1)]     // self
     public void GetProtocol_ReturnsCorrectParameterCount(string dunderName, int expectedCount)
@@ -222,7 +210,7 @@ public class ProtocolRegistryTests
         // Protocols (dunders) for operator overloading - v0.5
         // __init__, __len__, __contains__, __getitem__, __setitem__, __delitem__,
         // __iter__, __next__, __str__, __repr__, __hash__, __bool__
-        protocols.Should().HaveCount(12, "exactly 12 protocols are registered for operator overloading");
+        protocols.Should().HaveCount(10, "exactly 10 protocols are registered");
 
         // Verify we have at least one of each kind (except Comparison which is handled by operators)
         protocols.Should().Contain(p => p.Kind == ProtocolKind.Lifecycle);
@@ -237,7 +225,7 @@ public class ProtocolRegistryTests
     public void GetProtocolsByKind_ReturnsCorrectProtocols()
     {
         var containerProtocols = ProtocolRegistry.GetProtocolsByKind(ProtocolKind.Container).ToList();
-        containerProtocols.Should().HaveCount(5);  // __len__, __contains__, __getitem__, __setitem__, __delitem__
+        containerProtocols.Should().HaveCount(4);  // __len__, __contains__, __getitem__, __setitem__
         containerProtocols.Should().OnlyContain(p => p.Kind == ProtocolKind.Container);
     }
 
@@ -295,7 +283,7 @@ public class ProtocolRegistryTests
     [Fact]
     public void Count_ReturnsNumberOfRegisteredProtocols()
     {
-        ProtocolRegistry.Count.Should().Be(12, "exactly 12 protocols are registered for operator overloading");
+        ProtocolRegistry.Count.Should().Be(10, "exactly 10 protocols are registered");
     }
 
     // ==================== Test Consistency with OperatorRegistry ====================
@@ -318,10 +306,9 @@ public class ProtocolRegistryTests
     [InlineData("ISized", "__len__")]
     [InlineData("IContainer", "__contains__")]
     [InlineData("ISequence", "__getitem__")]
-    [InlineData("IMutableSequence", "__setitem__")]  // Note: __delitem__ also maps here; returns first match
+    [InlineData("IMutableSequence", "__setitem__")]
     [InlineData("IIterable", "__iter__")]
     [InlineData("IStrConvertible", "__str__")]
-    [InlineData("IRepresentable", "__repr__")]
     [InlineData("IHashable", "__hash__")]
     [InlineData("IBoolConvertible", "__bool__")]
     public void GetDunderForInterface_ReturnsCorrectDunder(string interfaceName, string expectedDunder)

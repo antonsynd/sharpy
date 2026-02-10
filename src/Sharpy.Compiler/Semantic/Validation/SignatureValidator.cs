@@ -181,7 +181,7 @@ internal class SignatureValidator : SemanticValidatorBase
             {
                 (1, _) => "(self)",
                 (2, DunderNames.Contains) => "(self, item)",
-                (2, DunderNames.GetItem or DunderNames.DelItem) => "(self, index)",
+                (2, DunderNames.GetItem) => "(self, index)",
                 (2, _) => "(self, other)",
                 (3, DunderNames.SetItem) => "(self, index, value)",
                 (3, _) => "(self, key, value)",

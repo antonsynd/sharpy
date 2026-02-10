@@ -112,16 +112,6 @@ public static class ProtocolRegistry
             ExpectedReturnType: "None"
         ));
 
-        Register(protocols, new ProtocolInfo(
-            DunderName: DunderNames.DelItem,
-            Kind: ProtocolKind.Container,
-            SharpyCoreInterface: "IMutableSequence",
-            InterfaceMethodName: "__DelItem__",
-            ClrMethodName: null,  // No direct .NET equivalent
-            ExpectedParamCount: 2,  // self, key/index
-            ExpectedReturnType: "None"
-        ));
-
         // 2.2.3 Iterator protocols
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.Iter,
@@ -150,16 +140,6 @@ public static class ProtocolRegistry
             SharpyCoreInterface: "IStrConvertible",
             InterfaceMethodName: "__Str__",
             ClrMethodName: "ToString",
-            ExpectedParamCount: 1,  // Just self
-            ExpectedReturnType: "str"
-        ));
-
-        Register(protocols, new ProtocolInfo(
-            DunderName: DunderNames.Repr,
-            Kind: ProtocolKind.Representation,
-            SharpyCoreInterface: "IRepresentable",
-            InterfaceMethodName: "__Repr__",
-            ClrMethodName: null,  // No direct .NET equivalent; generates __Repr__() method
             ExpectedParamCount: 1,  // Just self
             ExpectedReturnType: "str"
         ));

@@ -667,34 +667,6 @@ def main():
     }
 
     [Fact]
-    public void DunderRepr_Override_CompilesAndRuns()
-    {
-        // @override def __repr__(self)
-        var source = @"
-class Point:
-    x: int
-    y: int
-
-    def __init__(self, x: int, y: int):
-        self.x = x
-        self.y = y
-
-    @override
-    def __repr__(self) -> str:
-        return f""Point({self.x}, {self.y})""
-
-def main():
-    p = Point(3, 4)
-    print(repr(p))
-";
-
-        var result = CompileAndExecute(source);
-
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Point(3, 4)\n", result.StandardOutput);
-    }
-
-    [Fact]
     public void DunderStr_Override_CompilesAndRuns_Simple()
     {
         // Simple test for __str__ override without complex type checking
@@ -748,34 +720,6 @@ def main():
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
         Assert.Equal("97\n", result.StandardOutput);
-    }
-
-    [Fact]
-    public void DunderRepr_Override_CompilesAndRuns_Simple()
-    {
-        // Simple test for __repr__ override
-        var source = @"
-class Point:
-    x: int
-    y: int
-
-    def __init__(self, x: int, y: int):
-        self.x = x
-        self.y = y
-
-    @override
-    def __repr__(self) -> str:
-        return f""Point({self.x}, {self.y})""
-
-def main():
-    p = Point(5, 6)
-    print(repr(p))
-";
-
-        var result = CompileAndExecute(source);
-
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Point(5, 6)\n", result.StandardOutput);
     }
 
     // NOTE: Complex dunder comparison operators (__eq__, __lt__, etc.) with isinstance type narrowing
