@@ -284,16 +284,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="Equals(Dict{K,V}?)"/> instead.
-        /// </summary>
-        public bool __Eq__(Dict<K, V> other) => Equals(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="Equals(object?)"/> instead.
-        /// </summary>
-        public bool __Eq__(object other) => Equals(other);
-
-        /// <summary>
         /// Deprecated: Use the indexer <c>dict[key] = value</c> instead.
         /// </summary>
         public void __SetItem__(K key, V value) => this[key] = value;

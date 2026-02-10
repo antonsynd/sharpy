@@ -695,6 +695,15 @@ public static class DiagnosticExplanations
             "x: int = 1\nfoo__bar: int = 2  # warning: consecutive underscores",
             "Rename the identifier or use backtick escaping: `foo__bar`");
 
+        Add(dict, DiagnosticCodes.Validation.EqWithoutObjectOverload,
+            "__eq__ without object overload",
+            "Validation",
+            "A class defines '__eq__' but none of its overloads has parameter type 'object'. " +
+            "Without '__eq__(self, other: object)', collections like set and dict will use reference equality " +
+            "instead of value equality for instances of this class.",
+            "class Point:\n    x: int\n    def __eq__(self, other: Point) -> bool:\n        return self.x == other.x\n    def __hash__(self) -> int:\n        return self.x",
+            "Add an '__eq__(self, other: object)' overload, or if reference equality for collections is intended, suppress the warning.");
+
         // ── Code generation errors (SPY0500-SPY0599) ───────────────────
 
         Add(dict, DiagnosticCodes.CodeGen.EmitError, "Code generation error", "CodeGen",

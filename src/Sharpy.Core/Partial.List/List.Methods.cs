@@ -222,16 +222,6 @@ namespace Sharpy
         public bool __Bool__() => _list.Count > 0;
 
         /// <summary>
-        /// Deprecated: Use <see cref="Equals(List{T}?)"/> instead.
-        /// </summary>
-        public bool __Eq__(List<T> other) => Equals(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="Equals(object?)"/> instead.
-        /// </summary>
-        public bool __Eq__(object other) => Equals(other);
-
-        /// <summary>
         /// Deprecated: Use <see cref="GetHashCode()"/> instead.
         /// </summary>
         public int __Hash__() => GetHashCode();

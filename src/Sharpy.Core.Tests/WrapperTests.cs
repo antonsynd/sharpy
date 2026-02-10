@@ -81,18 +81,18 @@ public class Wrapper_Tests
         wrapper1_0.__Hash__().Should().NotBe(wrapper1_1.__Hash__());
 
         // When/then
-        wrapper0.__Eq__(wrapper1_0).Should().BeFalse();
-        wrapper0.__Eq__(wrapper1_1).Should().BeFalse();
-        wrapper0.__Eq__((Wrapper<int>)null!).Should().BeFalse();
+        wrapper0.Equals(wrapper1_0).Should().BeFalse();
+        wrapper0.Equals(wrapper1_1).Should().BeFalse();
+        wrapper0.Equals((Wrapper<int>)null!).Should().BeFalse();
 
         // Identity
-        wrapper0.__Eq__(wrapper0).Should().BeTrue();
-        wrapper1_0.__Eq__(wrapper1_0).Should().BeTrue();
-        wrapper1_1.__Eq__(wrapper1_1).Should().BeTrue();
+        wrapper0.Equals(wrapper0).Should().BeTrue();
+        wrapper1_0.Equals(wrapper1_0).Should().BeTrue();
+        wrapper1_1.Equals(wrapper1_1).Should().BeTrue();
 
         // Symmetric
-        wrapper1_0.__Eq__(wrapper1_1).Should().BeTrue();
-        wrapper1_1.__Eq__(wrapper1_0).Should().BeTrue();
+        wrapper1_0.Equals(wrapper1_1).Should().BeTrue();
+        wrapper1_1.Equals(wrapper1_0).Should().BeTrue();
     }
 
     [Fact]

@@ -232,25 +232,34 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generate complementary operator != when only __eq__ is defined
+    /// Generate complementary operator != when only __eq__ is defined.
+    /// Matches the parameter types of the corresponding __eq__ overload.
     /// </summary>
-    private OperatorDeclarationSyntax GenerateComplementaryNotEqualsOperator(string className)
+    private OperatorDeclarationSyntax GenerateComplementaryNotEqualsOperator(FunctionDef eqMethod, string className)
     {
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+
+        var otherParam = eqMethod.Parameters
+            .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+
+        var param2Type = otherParam?.Type != null
+            ? _typeMapper.MapType(otherParam.Type)
+            : IdentifierName(className);
 
         var param1 = Parameter(Identifier("left"))
             .WithType(IdentifierName(className));
         var param2 = Parameter(Identifier("right"))
-            .WithType(IdentifierName(className));
+            .WithType(param2Type);
 
         // operator != returns !(left == right)
         var body = Block(ReturnStatement(
             PrefixUnaryExpression(
                 SyntaxKind.LogicalNotExpression,
-                BinaryExpression(
-                    SyntaxKind.EqualsExpression,
-                    IdentifierName("left"),
-                    IdentifierName("right")))));
+                ParenthesizedExpression(
+                    BinaryExpression(
+                        SyntaxKind.EqualsExpression,
+                        IdentifierName("left"),
+                        IdentifierName("right"))))));
 
         return OperatorDeclaration(returnType, Token(SyntaxKind.ExclamationEqualsToken))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))

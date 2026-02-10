@@ -177,6 +177,7 @@ public static class DiagnosticCodes
         public const string UnusedVariable = "SPY0451";
         public const string UnusedImport = "SPY0452";
         public const string NamingConventionWarning = "SPY0453";
+        public const string EqWithoutObjectOverload = "SPY0454";
     }
 
     /// <summary>

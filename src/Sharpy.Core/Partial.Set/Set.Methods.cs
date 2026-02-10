@@ -138,16 +138,6 @@ namespace Sharpy
         public bool __Bool__() => _set.Count > 0;
 
         /// <summary>
-        /// Deprecated: Use <see cref="Equals(Set{T}?)"/> instead.
-        /// </summary>
-        public bool __Eq__(Set<T> other) => Equals(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="Equals(object?)"/> instead.
-        /// </summary>
-        public bool __Eq__(object other) => Equals(other);
-
-        /// <summary>
         /// Deprecated: Use <c>!Equals(other)</c> instead.
         /// </summary>
         public bool __Ne__(Set<T> other) => !Equals(other);

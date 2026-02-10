@@ -129,10 +129,14 @@ internal partial class RoslynEmitter
         }
 
         // Generate complementary operators for C# requirements
-        // If __eq__ is defined but not __ne__, generate operator !=
+        // If __eq__ is defined but not __ne__, generate operator != for each __eq__ overload
         if (dunders.Contains(DunderNames.Eq) && !dunders.Contains(DunderNames.Ne))
         {
-            members.Add(GenerateComplementaryNotEqualsOperator(className));
+            var eqMethods = body.OfType<FunctionDef>().Where(f => f.Name == DunderNames.Eq);
+            foreach (var eqMethod in eqMethods)
+            {
+                members.Add(GenerateComplementaryNotEqualsOperator(eqMethod, className));
+            }
         }
         // If __ne__ is defined but not __eq__, generate operator ==
         if (dunders.Contains(DunderNames.Ne) && !dunders.Contains(DunderNames.Eq))
@@ -363,8 +367,8 @@ internal partial class RoslynEmitter
         var shouldAddOverride = protocol?.ClrMethodName is "ToString" or "GetHashCode"
             // __repr__ maps to ToString but has ClrMethodName: null, so check explicitly
             || func.Name == DunderNames.Repr
-            // __eq__ is an operator dunder (not in ProtocolRegistry) but maps to Equals() override
-            || func.Name == DunderNames.Eq;
+            // __eq__ only generates override when parameter type is object
+            || (func.Name == DunderNames.Eq && IsEqualsObjectOverload(func));
 
         if (shouldAddOverride && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
         {
@@ -388,14 +392,6 @@ internal partial class RoslynEmitter
                 !string.Equals(p.Name, "cls", StringComparison.OrdinalIgnoreCase))
             .Select(GenerateParameter)
             .ToArray();
-
-        // Special handling for Equals() - parameter should be object type
-        if (func.Name == DunderNames.Eq && parameters.Length > 0)
-        {
-            var objParam = Parameter(Identifier(parameters[0].Identifier.Text))
-                .WithType(PredefinedType(Token(SyntaxKind.ObjectKeyword)));
-            parameters = new[] { objParam };
-        }
 
         // Track parameters as declared variables
         foreach (var param in func.Parameters)
@@ -665,5 +661,15 @@ internal partial class RoslynEmitter
 
     #endregion
 
+    /// <summary>
+    /// Check if an __eq__ FunctionDef has parameter type 'object', meaning it
+    /// should generate 'override bool Equals(object)' instead of a new overload.
+    /// </summary>
+    private static bool IsEqualsObjectOverload(FunctionDef func)
+    {
+        var otherParam = func.Parameters
+            .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+        return otherParam?.Type is TypeAnnotation { Name: "object" };
+    }
 
 }

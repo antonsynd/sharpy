@@ -123,11 +123,6 @@ namespace Sharpy
         public bool __Contains__(K x) => Contains(x);
 
         /// <summary>
-        /// Deprecated: Use <see cref="Equals(Set{K}?)"/> instead.
-        /// </summary>
-        public bool __Eq__(Set<K>? other) => Equals(other);
-
-        /// <summary>
         /// Check if this is a superset or equal to other.
         /// </summary>
         public bool IsSuperset(Set<K> other)

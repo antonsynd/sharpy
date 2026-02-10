@@ -421,6 +421,16 @@ internal class OperatorValidator : SemanticValidatorBase
         // User-defined types
         if (type is UserDefinedType udt && udt.Symbol != null)
         {
+            // Check operator methods (e.g., __eq__, __ne__, __lt__, __add__, etc.)
+            if (udt.Symbol.OperatorMethods.ContainsKey(dunderName))
+                return true;
+
+            // __ne__ is auto-synthesized from __eq__ (and vice versa) in codegen
+            if (dunderName == DunderNames.Ne && udt.Symbol.OperatorMethods.ContainsKey(DunderNames.Eq))
+                return true;
+            if (dunderName == DunderNames.Eq && udt.Symbol.OperatorMethods.ContainsKey(DunderNames.Ne))
+                return true;
+
             // Check protocol methods
             if (udt.Symbol.ProtocolMethods.ContainsKey(dunderName))
                 return true;

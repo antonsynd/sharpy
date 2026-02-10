@@ -212,6 +212,42 @@ def __str__() -> str:
     }
 
     [Fact]
+    public void DunderEq_TypedOverload_WithoutOverrideDecorator_Succeeds()
+    {
+        // __eq__(self, other: Foo) is NOT an override of Object.Equals, so no @override needed
+        var source = @"
+class Foo:
+    def __eq__(self, other: Foo) -> bool:
+        return True
+
+    def __hash__(self) -> int:
+        return 0
+";
+        var (module, _, _, typeChecker, _) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void DunderEq_ObjectOverload_WithoutOverrideDecorator_Succeeds()
+    {
+        // __eq__(self, other: object) IS an override of Object.Equals, but @override is implicit
+        var source = @"
+class Bar:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+    def __hash__(self) -> int:
+        return 0
+";
+        var (module, _, _, typeChecker, _) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
     public void DunderStr_InDerivedClass_WithoutOverrideDecorator_Succeeds()
     {
         // A derived class can define __str__ without @override even when base defines it

@@ -150,12 +150,19 @@ to the arithmetic ones.
 
 | Dunder | C# Output | Notes |
 |--------|-----------|-------|
-| `__eq__(self, other: U) -> bool` | `public static bool operator ==(T lhs, U rhs)` and `public override bool Equals(U rhs)` | The former invokes the latter. `@override` is optional (implicit override of `System.Object.Equals`). |
+| `__eq__(self, other: U) -> bool` | `public static bool operator ==(T lhs, U rhs)` and `public bool Equals(U rhs)` | 1:1 mapping. `override` only when `U` is `object`. |
 | `__ne__(self, other: U) -> bool` | `public static bool operator !=(T lhs, U rhs)` | If not defined, is synthesized by the compiler as `!(lhs == rhs)` |
 | `__lt__(self, other: U) -> bool` | `public static bool operator <(T lhs, U rhs)` | |
 | `__le__(self, other: U) -> bool` | `public static bool operator <=(T lhs, U rhs)` | |
 | `__gt__(self, other: U) -> bool` | `public static bool operator >(T lhs, U rhs)` | |
 | `__ge__(self, other: U) -> bool` | `public static bool operator >=(T lhs, U rhs)` | |
+
+Each `__eq__` overload generates a corresponding `Equals` overload with matching parameter type.
+Only `__eq__(self, other: object)` generates `override bool Equals(object)` (overrides `System.Object`).
+`@override` is implicit for the `object` overload (per the implicit override rule for Object methods).
+
+**Warning SPY0454**: If any `__eq__` overload exists but none has parameter type `object`, the compiler
+warns that collections (`set`, `dict`) will use reference equality.
 
 Note that if a Sharpy user type has no `__eq__(self, other: object)` user override,
 the one inherited from its base type is used. Additionally, defining an override of

@@ -8,16 +8,6 @@ public sealed class IdentityWrapper<T> : Wrapper<T>
     {
     }
 
-    public bool __Eq__(IdentityWrapper<T>? other)
-    {
-        if (other is null)
-        {
-            return false;
-        }
-
-        return Id == other.Id;
-    }
-
     public static implicit operator IdentityWrapper<T>(T value)
     {
         return new IdentityWrapper<T>(value);

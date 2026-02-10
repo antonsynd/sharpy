@@ -124,78 +124,29 @@ public class CSharpDerived : SharpyBase
 
 ## 2. Equals Overload Dispatch Synthesis
 
-### Issue
+### Decision: No Automatic Synthesis
 
-When multiple `__eq__` overloads exist but no `__eq__(self, other: object)`, the compiler must synthesize a dispatcher for `System.Object.Equals(object)`.
+Each `__eq__` overload maps 1:1 to a corresponding `Equals` overload with matching parameter type.
+The compiler does **not** synthesize an `Equals(object)` dispatcher. Users who want `Equals(object)`
+define `__eq__(self, other: object)` explicitly.
 
-### Problematic Scenarios
+- `__eq__(self, other: Foo)` generates `public bool Equals(Foo rhs)` (new overload, not override)
+- `__eq__(self, other: object)` generates `public override bool Equals(object rhs)` (overrides `System.Object`)
+- `operator==` calls `left.Equals(right)` — C# overload resolution picks the right `Equals` at compile time
 
-```python
-# Scenario: Overlapping type hierarchy in overloads
-class Foo:
-    def __eq__(self, other: Foo) -> bool: ...      # Overload 1
-    def __eq__(self, other: Bar) -> bool: ...      # Overload 2 (Bar : Foo)
-    def __eq__(self, other: IComparable) -> bool: ... # Overload 3
-```
+**Warning SPY0454**: If any `__eq__` overload exists but none has parameter type `object`, the compiler
+warns that collections (`set`, `dict`) will use reference equality. This encourages users to define
+`__eq__(self, other: object)` when collection behavior matters.
 
-**Generated dispatcher (declaration order):**
-```csharp
-public override bool Equals(object other)
-{
-    if (other is Foo f) return Equals(f);           // Matches Bar too!
-    if (other is Bar b) return Equals(b);           // Never reached for Bar
-    if (other is IComparable c) return Equals(c);   // May overlap with above
-    return false;
-}
-```
+### Previous Design (Rejected)
 
-### Inheritance Edge Case
+The original design considered synthesizing an `Equals(object)` dispatcher with `is` checks.
+This was rejected because:
 
-```python
-# base.spy
-class Base:
-    def __eq__(self, other: Base) -> bool:
-        return True
-
-# derived.spy
-class Derived(Base):
-    def __eq__(self, other: Derived) -> bool:  # New overload, not override
-        return True
-
-    # What does Equals(object) do?
-    # - Call Base.Equals(Base) for Base instances?
-    # - Call Derived.Equals(Derived) for Derived instances?
-    # - Both are valid "Equals" overloads visible on Derived
-```
-
-### Recommendations
-
-1. **Dispatch order:** Most-derived type first, then declaration order within same derivation level
-
-   ```csharp
-   // Synthesized for Foo with Bar : Foo
-   public override bool Equals(object other)
-   {
-       if (other is Bar b) return Equals(b);      // Most derived first
-       if (other is Foo f) return Equals(f);      // Then base types
-       if (other is IComparable c) return Equals(c);
-       return false;
-   }
-   ```
-
-2. **Compiler warning** if overloads have overlapping types where a more-derived type appears after a less-derived type in declaration order:
-
-   ```
-   warning SPY0123: __eq__ overload for 'Bar' declared after overload for 'Foo',
-   but Bar derives from Foo. Consider reordering or the Bar overload may be unreachable
-   in synthesized Equals(object).
-   ```
-
-3. **Interface overloads** should come after concrete type overloads in dispatch order.
-
-4. **Cross-module visibility:** When synthesizing the dispatcher, only consider overloads visible at the point of synthesis (public/internal, not private from other modules).
-
-5. **Explicit opt-out:** If user defines `__eq__(self, other: object) -> bool`, no synthesis occurs.
+1. **Dispatch ordering is ambiguous** — overlapping type hierarchies create unreachable branches
+2. **Partial orderings are wrong** — synthesis assumes total ordering of types
+3. **Implicit behavior is surprising** — users should explicitly opt into `Equals(object)` semantics
+4. **1:1 mapping is simpler** — matches how all other dunder methods work (direct translation)
 
 ---
 
@@ -512,7 +463,7 @@ class SharpyDerived(SealedToString):
 
 **Decision: Option B (Implicit @override)** for the specific dunders that map to `System.Object` methods:
 - `__str__` → `ToString()`
-- `__eq__` → `Equals(object)`
+- `__eq__(self, other: object)` → `Equals(object)` (only when parameter type is `object`)
 - `__hash__` → `GetHashCode()`
 
 The `@override` decorator is accepted but never required for these three dunders, at any inheritance depth. The compiler implicitly treats them as overrides.
@@ -1488,6 +1439,6 @@ For each issue, track the decision:
 |-------|----------|-----------|------------------------|
 | `@override` for Object methods | Option B: Implicit `@override` for `__str__`, `__eq__`, `__hash__` | These always override `System.Object`; requiring `@override` is un-Pythonic friction without safety benefit | `dunder_invocation_rules.md`, `dunder_methods.md` |
 | `__eq__` without `__hash__` | | | |
-| Equals dispatch order | | | |
+| Equals dispatch order | No automatic synthesis. 1:1 mapping of `__eq__` to `Equals`. Only `__eq__(self, other: object)` generates `override`. Warning SPY0454 when no `object` overload. | Simpler, predictable, avoids ambiguous dispatch ordering | `dunder_methods.md` |
 | Reflected operator semantics | | | |
 | ... | | | |

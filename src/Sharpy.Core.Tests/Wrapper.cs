@@ -62,28 +62,7 @@ public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>
         return hashCode.ToHashCode();
     }
 
-    // Equatable
-    public bool __Eq__(object? other)
-    {
-        if (other is Wrapper<T> wrapper)
-        {
-            return __Eq__(wrapper);
-        }
-
-        return false;
-    }
-
     // Equatable<Wrapper<T>>
-    public bool __Eq__(Wrapper<T> other)
-    {
-        if (other is null)
-        {
-            return false;
-        }
-
-        return Value?.Equals(other.Value) ?? false;
-    }
-
     public bool Equals(Wrapper<T>? other)
     {
         if (other is null)
@@ -91,7 +70,7 @@ public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>
             return false;
         }
 
-        return __Eq__(other);
+        return Value?.Equals(other.Value) ?? false;
     }
 
     public static bool operator ==(Wrapper<T> left, Wrapper<T> right)
@@ -117,7 +96,7 @@ public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>
     // Inequatable<Wrapper<T>>
     public bool __Ne__(Wrapper<T> other)
     {
-        return !__Eq__(other);
+        return !Equals(other);
     }
 
     public override bool Equals(object? obj)
