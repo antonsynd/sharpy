@@ -3,7 +3,8 @@ namespace Sharpy
 {
     public sealed partial class Set<T>
         : System.Collections.Generic.ISet<T>,
-          System.IEquatable<Set<T>>
+          System.IEquatable<Set<T>>,
+          ISized
     {
         // Internal for SetIterator access to avoid infinite recursion when GetEnumerator delegates to __Iter__
         internal readonly HashSet<T> _set;

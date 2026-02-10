@@ -43,6 +43,15 @@ namespace Sharpy
 
         #endregion
 
+        #region ISized
+
+        /// <summary>
+        /// Gets the number of elements in the list for len() dispatch.
+        /// </summary>
+        int ISized.Count => _list.Count;
+
+        #endregion
+
         #region IList<T>
 
         /// <summary>

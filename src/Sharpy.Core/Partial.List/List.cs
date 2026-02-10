@@ -8,7 +8,8 @@ namespace Sharpy
     public sealed partial class List<T>
         : IList<T>,
           IReadOnlyList<T>,
-          System.IEquatable<List<T>>
+          System.IEquatable<List<T>>,
+          ISized
     {
         private System.Collections.Generic.List<T> _list;
 
