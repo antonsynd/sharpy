@@ -204,6 +204,12 @@ public abstract class IntegrationTestBase
                 };
             }
 
+            // Collect codegen warnings and info diagnostics (e.g., SPY1001 implicit interface synthesis)
+            compilationWarnings.AddRange(
+                codeGenContext.Diagnostics.GetAll()
+                    .Where(d => d.Severity == CompilerDiagnosticSeverity.Warning || d.Severity == CompilerDiagnosticSeverity.Info)
+                    .Select(d => d.Message));
+
             // Phase 5: Compile C# to assembly
             var syntaxTree = CSharpSyntaxTree.ParseText(generatedCSharp);
 

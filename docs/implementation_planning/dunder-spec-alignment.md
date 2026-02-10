@@ -335,7 +335,7 @@ This is the most complex task in the plan. It involves:
 
 **Prerequisite:** Decide on the interface synthesis approach first (C6).
 
-- [ ] Create `src/Sharpy.Core/StopIteration.cs`:
+- [x] Create `src/Sharpy.Core/StopIteration.cs`:
   ```csharp
   namespace Sharpy.Core
   {
@@ -346,7 +346,8 @@ This is the most complex task in the plan. It involves:
       }
   }
   ```
-- [ ] In `RoslynEmitter.ClassMembers.cs`: when a class defines `__next__`, generate the `IEnumerator<T>` implementation:
+  - **Note:** StopIteration already existed with parameterless constructor. Added message constructor.
+- [x] In `RoslynEmitter.ClassMembers.cs`: when a class defines `__next__`, generate the `IEnumerator<T>` implementation:
   ```csharp
   // Generated from __next__(self) -> T
   private T _current;
@@ -371,8 +372,8 @@ This is the most complex task in the plan. It involves:
   public void Dispose() { }
   object System.Collections.IEnumerator.Current => Current;
   ```
-- [ ] The user's `__next__` body goes into a private `__NextImpl()` method (or is inlined into the try block).
-- [ ] When a class defines `__iter__` returning `self` AND defines `__next__`, implement both `IEnumerable<T>` and `IEnumerator<T>`:
+- [x] The user's `__next__` body goes into a private `__NextImpl__()` method.
+- [x] When a class defines `__iter__` returning `self` AND defines `__next__`, implement both `IEnumerable<T>` and `IEnumerator<T>`:
   ```csharp
   public class Counter : IEnumerable<int>, IEnumerator<int>
   {
@@ -381,18 +382,11 @@ This is the most complex task in the plan. It involves:
       // ... MoveNext, Current, etc. from above
   }
   ```
-- [ ] When a class defines only `__iter__` (not `__next__`), implement `IEnumerable<T>`:
-  ```csharp
-  public IEnumerator<T> GetEnumerator()
-  {
-      // user's __iter__ body
-  }
-  IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-  ```
-- [ ] Add test fixtures:
+- [x] When a class defines only `__iter__` (not `__next__`), generate `GetEnumerator()` via DunderMapping. C# foreach uses duck-typing (GetEnumerator pattern), so no `IEnumerable<T>` synthesis needed for this case.
+- [x] Add test fixtures:
   - `classes/dunder_iter_next.spy` + `.expected`: self-iterating class (defines both `__iter__` returning self and `__next__`), used in `for` loop.
   - `classes/dunder_iter_separate.spy` + `.expected`: separate iterable + iterator classes.
-- [ ] Run `dotnet test`.
+- [x] Run `dotnet test`.
 
 **Complexity warning:** This task involves generating multiple members from a single dunder definition. The emitter needs to know the element type `T` from the `__next__` return type annotation to parameterize `IEnumerator<T>`. If the return type is missing, it should be a type error.
 
@@ -411,16 +405,16 @@ This task creates the *framework* for implicit synthesis. C1/C3 already handle `
 | `__eq__(self, other: T)` | `IEquatable<T>` (for each overload type `T`) |
 | `__bool__` | `IBoolConvertible` (if using option (a) from C4) |
 
-- [ ] In `RoslynEmitter.TypeDeclarations.cs` (or wherever class declarations are built): before emitting the class, scan its methods for dunders that trigger interface synthesis. Build a list of additional base types to add.
-- [ ] Use `ProtocolRegistry.GetProtocol(name)?.SharpyCoreInterface` as the source of truth for which dunders trigger which interfaces.
-- [ ] For `IEnumerable<T>` and `IEnumerator<T>`, the type parameter `T` comes from the return type of `__iter__` / `__next__`.
-- [ ] For `IEquatable<T>`, the type parameter `T` comes from the `other` parameter type of `__eq__`.
-- [ ] Emit info diagnostic for each synthesized interface: "Type '{0}' implicitly implements '{1}' via '{2}'."
-- [ ] Handle conflict: if the user explicitly lists an interface in their inheritance AND the compiler would synthesize it, don't duplicate. Check the existing base list before adding.
-- [ ] Handle conflict: if a base class already implements `IEnumerable<string>` and the derived class defines `__iter__` returning `Iterator[int]`, this is an error (conflicting interface implementations).
-- [ ] Add test fixture: `classes/dunder_implicit_interface.spy` + `.expected`: class with `__len__` and `__iter__`, verify it works with `for` loop and `len()`.
-- [ ] Add test fixture: `warnings/dunder_implicit_interface_info.spy` + `.warning`: verify the info diagnostic is emitted.
-- [ ] Run `dotnet test`.
+- [x] In `RoslynEmitter.TypeDeclarations.cs` (or wherever class declarations are built): before emitting the class, scan its methods for dunders that trigger interface synthesis. Build a list of additional base types to add.
+- [x] Use `ProtocolRegistry.GetProtocol(name)?.SharpyCoreInterface` as the source of truth for which dunders trigger which interfaces.
+- [x] For `IEnumerable<T>` and `IEnumerator<T>`, the type parameter `T` comes from the return type of `__iter__` / `__next__`.
+- [ ] For `IEquatable<T>`, the type parameter `T` comes from the `other` parameter type of `__eq__`. *(Deferred: noted as Future Phase 3 in code)*
+- [x] Emit info diagnostic for each synthesized interface: "Type '{0}' implicitly implements '{1}' via '{2}'."
+- [x] Handle conflict: if the user explicitly lists an interface in their inheritance AND the compiler would synthesize it, don't duplicate. Check the existing base list before adding.
+- [ ] Handle conflict: if a base class already implements `IEnumerable<string>` and the derived class defines `__iter__` returning `Iterator[int]`, this is an error (conflicting interface implementations). *(Deferred: requires cross-class analysis)*
+- [x] Add test fixture: `classes/dunder_implicit_interface.spy` + `.expected`: class with `__len__` and `__iter__`, verify it works with `for` loop and `len()`.
+- [x] Add test fixture: `warnings/dunder_implicit_interface_info.spy` + `.warning`: verify the info diagnostic is emitted.
+- [x] Run `dotnet test`.
 
 ### C7. Wire `len()` built-in to use `ISized`
 

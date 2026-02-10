@@ -1,0 +1,12 @@
+# Verify info diagnostics are emitted for implicit interface synthesis
+class Sized:
+    def __len__(self) -> int:
+        return 42
+
+class Truthy:
+    def __bool__(self) -> bool:
+        return True
+
+def main():
+    s = Sized()
+    print(len(s))

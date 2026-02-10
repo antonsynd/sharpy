@@ -399,8 +399,21 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Scans class body for dunder methods that trigger implicit interface synthesis
-    /// (e.g., __len__ → ISized). Returns base type entries to add to the class declaration.
+    /// Set of Sharpy.Core interfaces that are ready for implicit synthesis.
+    /// When a dunder method triggers an interface listed here (via ProtocolRegistry),
+    /// the interface is automatically added to the class's base type list.
+    /// Extend this set as new interfaces are added to Sharpy.Core.
+    /// </summary>
+    private static readonly HashSet<string> SynthesizableSharpyCoreInterfaces = new()
+    {
+        "ISized",           // __len__ → int Count { get; }
+        "IBoolConvertible", // __bool__ → bool __Bool__()
+    };
+
+    /// <summary>
+    /// Scans class body for dunder methods that trigger implicit interface synthesis.
+    /// Uses ProtocolRegistry as the source of truth for which dunders map to which interfaces.
+    /// Returns base type entries to add to the class declaration.
     /// Avoids duplicates if the user already explicitly listed the interface.
     /// </summary>
     private List<BaseTypeSyntax> CollectSynthesizedInterfaces(
@@ -419,6 +432,7 @@ internal partial class RoslynEmitter
                 dunders.Add(fd.Name);
         }
 
+        // Phase 1: Synthesize non-generic Sharpy.Core interfaces from ProtocolRegistry
         foreach (var stmt in body)
         {
             if (stmt is not FunctionDef funcDef || !DunderMapping.IsDunderMethod(funcDef.Name))
@@ -434,8 +448,8 @@ internal partial class RoslynEmitter
             if (explicitNames.Contains(interfaceName))
                 continue;
 
-            // Sharpy.Core non-generic interfaces (ISized, IBoolConvertible)
-            if (interfaceName is "ISized" or "IBoolConvertible")
+            // Only synthesize interfaces that are ready in Sharpy.Core
+            if (SynthesizableSharpyCoreInterfaces.Contains(interfaceName))
             {
                 result.Add(SimpleBaseType(
                     QualifiedName(IdentifierName("Sharpy"), IdentifierName(interfaceName))));
@@ -449,7 +463,8 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Synthesize IEnumerator<T> when __next__ is present
+        // Phase 2: Synthesize generic .NET interfaces from dunders
+        // IEnumerator<T> from __next__, IEnumerable<T> from __iter__+__next__
         if (dunders.Contains(DunderNames.Next))
         {
             var nextFunc = body.OfType<FunctionDef>()
@@ -507,6 +522,10 @@ internal partial class RoslynEmitter
                 }
             }
         }
+
+        // Future: Phase 3 — IEquatable<T> from __eq__(self, other: T)
+        // Requires extracting T from the 'other' parameter type of each __eq__ overload.
+        // __eq__ is in OperatorRegistry, not ProtocolRegistry, so needs special handling.
 
         return result;
     }

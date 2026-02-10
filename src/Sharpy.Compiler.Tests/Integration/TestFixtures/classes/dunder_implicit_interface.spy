@@ -1,0 +1,34 @@
+# Class with __len__ and __iter__, verify both protocols work
+class Container:
+    items: list[int]
+    pos: int
+
+    def __init__(self):
+        self.items = []
+        self.pos = 0
+
+    def add(self, item: int):
+        self.items.append(item)
+
+    def __len__(self) -> int:
+        return len(self.items)
+
+    def __iter__(self) -> Container:
+        self.pos = 0
+        return self
+
+    def __next__(self) -> int:
+        if self.pos >= len(self.items):
+            raise StopIteration()
+        val: int = self.items[self.pos]
+        self.pos = self.pos + 1
+        return val
+
+def main():
+    c = Container()
+    c.add(10)
+    c.add(20)
+    c.add(30)
+    print(len(c))
+    for item in c:
+        print(item)

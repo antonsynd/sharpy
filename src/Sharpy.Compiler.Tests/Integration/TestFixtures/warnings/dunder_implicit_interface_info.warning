@@ -1,0 +1,2 @@
+implicitly implements 'Sharpy.ISized'
+implicitly implements 'Sharpy.IBoolConvertible'
