@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 
 namespace Sharpy
 {
-    [SharpyModule("sys")]
     public sealed partial class Sys
     {
         private static readonly string[] _argv = Environment.GetCommandLineArgs();

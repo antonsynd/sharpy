@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections;
+
 namespace Sharpy
 {
     public static partial class Builtins
@@ -149,7 +150,7 @@ namespace Sharpy
             // __bool__ dispatch: types with IBoolConvertible (user-defined __bool__)
             if (obj is IBoolConvertible boolConvertible)
             {
-                return boolConvertible.__Bool__();
+                return boolConvertible.IsTrue;
             }
 
             // __len__ fallback: types with ISized (__len__ != 0 is truthy)

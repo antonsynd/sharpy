@@ -57,11 +57,5 @@ namespace Sharpy
 
             throw TypeError.OpNotSupported("<", typeof(T).Name);
         }
-
-        public static bool __Lt__<T>(IComparable<T> left, T right) => Lt(left, right);
-
-        public static bool __Lt__(IComparable left, object right) => Lt(left, right);
-
-        public static bool __Lt__<T>(T left, T right) => Lt(left, right);
     }
 }

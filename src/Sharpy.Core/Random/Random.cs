@@ -5,8 +5,7 @@ namespace Sharpy
     /// <summary>
     /// Pseudo-random number generators for various distributions, similar to Python's random module.
     /// </summary>
-    [SharpyModule("random")]
-    public static class Random
+    public static partial class Random
     {
         private static System.Random _random = new System.Random();
         private static readonly object _lock = new object();

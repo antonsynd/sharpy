@@ -1,4 +1,5 @@
 using System;
+
 namespace Sharpy
 {
     public static partial class Operator

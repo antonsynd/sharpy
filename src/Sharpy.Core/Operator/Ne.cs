@@ -1,4 +1,5 @@
 using System;
+
 namespace Sharpy
 {
     public static partial class Operator
@@ -27,11 +28,5 @@ namespace Sharpy
         {
             return !(left?.Equals(right) ?? right is null);
         }
-
-        public static bool __Ne__<T>(IComparable<T> left, T right) => Ne(left, right);
-
-        public static bool __Ne__(IComparable left, object right) => Ne(left, right);
-
-        public static bool __Ne__(object left, object right) => Ne(left, right);
     }
 }

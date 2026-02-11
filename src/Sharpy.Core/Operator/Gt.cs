@@ -1,4 +1,5 @@
 using System;
+
 namespace Sharpy
 {
     public static partial class Operator
@@ -57,11 +58,5 @@ namespace Sharpy
 
             throw TypeError.OpNotSupported(">", typeof(T).Name);
         }
-
-        public static bool __Gt__<T>(IComparable<T> left, T right) => Gt(left, right);
-
-        public static bool __Gt__(IComparable left, object right) => Gt(left, right);
-
-        public static bool __Gt__<T>(T left, T right) => Gt(left, right);
     }
 }
