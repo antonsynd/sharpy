@@ -1020,14 +1020,18 @@ result = square(5)
    - `print(*values)`: Output to console (variadic via `params object?[]`)
    - `len(collection)`: Collection length (dispatches via `ISized` or `ICollection`)
    - `range(stop)`, `range(start, stop)`, `range(start, stop, step)`
-   - `str(value)`, `int(value)`, `float(value)`: Type conversion
+   - `str(value)`, `int(value)`, `float(value)`, `double(value)`: Type conversion
+   - `list(iterable)`, `set(iterable)`, `tuple(iterable)`, `frozenset(iterable)`: Collection conversion
    - `isinstance(obj, Type)`: Type checking (single type only, no tuples like Python)
    - `type(obj)`: Get type (limited)
    - `bool(value)`: Boolean conversion (dispatches via `IBoolConvertible`)
    - `hash(value)`: Hash computation
    - `repr(obj)`: String representation
+   - `format(value, spec)`: String formatting
    - `input()`, `input(prompt)`: Read from stdin
    - `abs(x)`: Absolute value
+   - `pow(base, exp)`, `pow(base, exp, mod)`: Exponentiation
+   - `divmod(a, b)`: Division with remainder
    - `round(x)`, `round(x, n)`: Rounding
    - `min(iterable)`, `max(iterable)`: Min/max
    - `sum(iterable)`: Summation
@@ -1555,7 +1559,7 @@ print(a == b)   # False
 | **Exceptions** | try/except/else/finally, raise, bare re-raise, custom Sharpy exception types |
 | **Modules** | import, from import, from import *, multi-file via `.spyproj`, `__init__.spy` packages, incremental compilation |
 | **Interop** | .NET namespace imports (10 mapped prefixes), CLR type discovery, assembly loading |
-| **Stdlib** | Sharpy.Core wrapper collections (List, Dict, Set) with Pythonic APIs, protocol interfaces (`ISized`, `IBoolConvertible`), custom exceptions, builtins (print, len, range, bool, hash, input, sorted, reversed, enumerate, zip, map, filter, all, any, sum, min, max, abs, round, repr, etc.) |
+| **Stdlib** | Sharpy.Core wrapper collections (List, Dict, Set) with Pythonic APIs, protocol interfaces (`ISized`, `IBoolConvertible`), custom exceptions, 40+ builtins (print, len, range, str, int, float, double, bool, hash, repr, format, input, abs, pow, divmod, round, min, max, sum, all, any, sorted, reversed, enumerate, zip, map, filter, iter, next, isinstance, type, issubclass, list, set, tuple, frozenset, etc.) |
 | **Synthesis** | Implicit interface synthesis from dunders (SPY1001), `IEquatable<T>` from `__eq__`, `IEnumerable<T>`/`IEnumerator<T>` from `__iter__`/`__next__`, interface conflict detection |
 
 ### Deferred to v0.2.x+
@@ -1568,7 +1572,7 @@ print(a == b)   # False
 | **Control Flow** | Pattern matching (`match`), context managers (`with`) |
 | **Collections** | Wiring Sharpy.Core wrappers as default codegen target (currently codegen emits .NET types directly) |
 | **Dunders** | `__enter__`/`__exit__`, `__call__` |
-| **Protocol Interfaces** | `IContainer`, `ISequence`, `IMutableSequence`, `IIterable`, `IStrConvertible`, `IHashable` (names registered in ProtocolRegistry, Sharpy.Core implementations pending) |
+| **Protocol Interfaces** | `IContainer`, `ISequence`, `IMutableSequence` (names registered in ProtocolRegistry, Sharpy.Core implementations pending — value depends on whether Sharpy needs its own dispatch beyond .NET's `IList<T>`/`ICollection<T>`). `IStrConvertible` and `IHashable` are likely unnecessary — .NET's `ToString()` and `GetHashCode()` already provide the same capability. `IIterable` will not be implemented — `__iter__`/`__next__` synthesize .NET `IEnumerable<T>`/`IEnumerator<T>` directly. |
 | **Async** | async/await, generators, yield |
 | **Advanced** | Conversion operators, extension methods definition |
 
@@ -1591,4 +1595,4 @@ The phases were ordered to maximize **incremental testability**:
 11. **0.1.14**: Lambdas enable functional patterns
 12. **0.1.15**: Dunders for Pythonic feel and operator customization
 
-All phases are now complete. The compiler can compile and run programs using all v0.1.x features. Note that some features originally scoped for v0.2.x were implemented during v0.1.x development: variadic args, loop else clauses, and Optional/Result types with `try`/`maybe` expressions. The next milestone is v0.2.x which will focus on tagged unions, pattern matching, async/await, remaining protocol interfaces, and wiring Sharpy.Core wrappers as the default codegen target for collections.
+All phases are now complete. The compiler can compile and run programs using all v0.1.x features. Note that some features originally scoped for v0.2.x were implemented during v0.1.x development: variadic args, loop else clauses, and Optional/Result types with `try`/`maybe` expressions. The next milestone is v0.2.x which will focus on tagged unions, pattern matching, async/await, context managers, and wiring Sharpy.Core wrappers as the default codegen target for collections. Protocol interfaces (`IContainer`, `ISequence`, `IMutableSequence`) may be implemented if needed for Sharpy-specific dispatch; `IStrConvertible` and `IHashable` are likely unnecessary given .NET's `ToString()` and `GetHashCode()`.
