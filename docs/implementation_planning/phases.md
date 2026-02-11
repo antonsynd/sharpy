@@ -1457,10 +1457,10 @@ print(squared)  # [1, 4, 9, 16, 25]
    | Dunder | C# Generation | Synthesized Interface |
    |--------|---------------|----------------------|
    | `__init__` | Constructor | — |
-   | `__str__` | `ToString()` override | `IStrConvertible`* |
+   | `__str__` | `ToString()` override | — |
    | `__eq__` | `Equals()` + `operator ==`/`!=` + `IEquatable<T>` | — |
    | `__ne__` | `operator !=` (explicit, otherwise synthesized from `__eq__`) | — |
-   | `__hash__` | `GetHashCode()` override | `IHashable`* |
+   | `__hash__` | `GetHashCode()` override | — |
    | `__add__` | `operator +` | — |
    | `__sub__` | `operator -` | — |
    | `__mul__` | `operator *` | — |
@@ -1471,21 +1471,21 @@ print(squared)  # [1, 4, 9, 16, 25]
    | `__invert__` | `operator ~` | — |
    | `__lt__`/`__le__`/`__gt__`/`__ge__` | `operator <`/`<=`/`>`/`>=` | — |
    | `__len__` | `Count` property | **`ISized`** |
-   | `__getitem__` | Indexer `this[...]` get | `ISequence`* |
-   | `__setitem__` | Indexer `this[...]` set | `IMutableSequence`* |
-   | `__contains__` | `Contains()` method | `IContainer`* |
+   | `__getitem__` | Indexer `this[...]` get | — |
+   | `__setitem__` | Indexer `this[...]` set | — |
+   | `__contains__` | `Contains()` method | — |
    | `__bool__` | `operator true`/`operator false` | **`IBoolConvertible`** |
-   | `__iter__` | `GetEnumerator()` → `IEnumerable<T>` | `IIterable`* |
+   | `__iter__` | `GetEnumerator()` → `IEnumerable<T>` | — |
    | `__next__` | `MoveNext()`/`Current` → `IEnumerator<T>` | — |
    | `__and__`/`__or__`/`__xor__` | `operator &`/`\|`/`^` | — |
    | `__lshift__`/`__rshift__` | `operator <<`/`>>` | — |
 
    **Interface synthesis notes:**
    - **Bold** = Sharpy.Core interface exists and is synthesized by the emitter (`ISized`, `IBoolConvertible`)
-   - `*` = Name registered in `ProtocolRegistry` but Sharpy.Core interface not yet implemented; dunder still generates correct C# code, just without a Sharpy protocol interface
-   - `__iter__`/`__next__` synthesize .NET `IEnumerable<T>`/`IEnumerator<T>` (not Sharpy interfaces)
+   - `__iter__`/`__next__` synthesize .NET `IEnumerable<T>`/`IEnumerator<T>` directly
    - `__eq__` synthesizes .NET `IEquatable<T>` when the parameter type is not `object`
    - Implicit interface synthesis emits SPY1001 info diagnostic when adding an interface to a type's base list
+   - Other dunders (`__getitem__`, `__setitem__`, `__contains__`, `__str__`, `__hash__`) generate correct C# code without Sharpy protocol interfaces — .NET equivalents suffice
 
 8. **Unsupported Dunders**
    - `__pow__` — `**` not overloadable in C#
@@ -1534,8 +1534,8 @@ print(a == b)   # False
 - ✅ Arithmetic dunders generate operators (5 binary + 3 unary)
 - ✅ Bitwise dunders generate operators (5 total)
 - ✅ Comparison dunders generate operators (6 total)
-- ✅ `__len__`/`__getitem__`/`__setitem__` work (`ISized` synthesized; `ISequence`/`IMutableSequence` planned)
-- ✅ `__contains__` works (`IContainer` planned)
+- ✅ `__len__`/`__getitem__`/`__setitem__` work (`ISized` synthesized)
+- ✅ `__contains__` works
 - ✅ `__bool__` generates `operator true`/`operator false` (with `IBoolConvertible` synthesis)
 - ✅ `__iter__`/`__next__` work (synthesizes .NET `IEnumerable<T>`/`IEnumerator<T>`)
 - ✅ Operator synthesis (e.g., `!=` from `==`)
@@ -1572,7 +1572,7 @@ print(a == b)   # False
 | **Control Flow** | Pattern matching (`match`), context managers (`with`) |
 | **Collections** | Wiring Sharpy.Core wrappers as default codegen target (currently codegen emits .NET types directly) |
 | **Dunders** | `__enter__`/`__exit__`, `__call__` |
-| **Protocol Interfaces** | `IContainer`, `ISequence`, `IMutableSequence` (names registered in ProtocolRegistry, Sharpy.Core implementations pending — value depends on whether Sharpy needs its own dispatch beyond .NET's `IList<T>`/`ICollection<T>`). `IStrConvertible` and `IHashable` are likely unnecessary — .NET's `ToString()` and `GetHashCode()` already provide the same capability. `IIterable` will not be implemented — `__iter__`/`__next__` synthesize .NET `IEnumerable<T>`/`IEnumerator<T>` directly. |
+| **Protocol Interfaces** | ~~Dropped.~~ `IContainer`, `ISequence`, `IMutableSequence`, `IStrConvertible`, `IHashable`, `IIterable` — all unnecessary. .NET already provides equivalent functionality (`IList<T>`, `ICollection<T>`, `ToString()`, `GetHashCode()`, `IEnumerable<T>`). Names remain registered in `ProtocolRegistry` for dunder→C# mapping but no Sharpy.Core interfaces will be created. |
 | **Async** | async/await, generators, yield |
 | **Advanced** | Conversion operators, extension methods definition |
 
@@ -1595,4 +1595,4 @@ The phases were ordered to maximize **incremental testability**:
 11. **0.1.14**: Lambdas enable functional patterns
 12. **0.1.15**: Dunders for Pythonic feel and operator customization
 
-All phases are now complete. The compiler can compile and run programs using all v0.1.x features. Note that some features originally scoped for v0.2.x were implemented during v0.1.x development: variadic args, loop else clauses, and Optional/Result types with `try`/`maybe` expressions. The next milestone is v0.2.x which will focus on tagged unions, pattern matching, async/await, context managers, and wiring Sharpy.Core wrappers as the default codegen target for collections. Protocol interfaces (`IContainer`, `ISequence`, `IMutableSequence`) may be implemented if needed for Sharpy-specific dispatch; `IStrConvertible` and `IHashable` are likely unnecessary given .NET's `ToString()` and `GetHashCode()`.
+All phases are now complete. The compiler can compile and run programs using all v0.1.x features. Note that some features originally scoped for v0.2.x were implemented during v0.1.x development: variadic args, loop else clauses, and Optional/Result types with `try`/`maybe` expressions. The next milestone is v0.2.x which will focus on tagged unions, pattern matching, async/await, context managers, and wiring Sharpy.Core wrappers as the default codegen target for collections.
