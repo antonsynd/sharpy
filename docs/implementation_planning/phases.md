@@ -4,17 +4,17 @@ This document outlines the phased implementation plan for the Sharpy compiler, f
 
 - Basic control flow and expressions
 - Classes, structs, interfaces, and enums
-- Static and instance methods (no variadic/params args)
+- Static and instance methods, variadic args (`*args` → `params`)
 - Keyword arguments, lambdas, and function types
 - Type aliases and generics
 - Module system, multi-file compilation, and entry points
 - .NET collections directly (List, Dictionary, HashSet) for bootstrapping
-- 23 dunder methods with implicit interface synthesis
+- 29 dunder methods with implicit interface synthesis
 - Exception handling with custom Sharpy exception types
 - .NET interop via CLR type discovery and namespace imports
 - Sharpy.Core standard library with Pythonic collection wrappers
 
-**Deferred to v0.2.x+:** Tagged unions/ADTs, events, context managers, async/await, generators, variadic args, pattern matching, partial application, properties (beyond basic fields), wiring Sharpy.Core wrappers as default codegen target.
+**Deferred to v0.2.x+:** Tagged unions/ADTs, events, context managers, async/await, generators, pattern matching, partial application, properties (beyond basic fields), wiring Sharpy.Core wrappers as default codegen target.
 
 ---
 
@@ -37,7 +37,7 @@ This document outlines the phased implementation plan for the Sharpy compiler, f
 | 0.1.12 | .NET Interop ✅ | Importing .NET types, calling .NET methods |
 | 0.1.13 | Exception Handling ✅ | try/except/else/finally, raise, custom exception types |
 | 0.1.14 | Lambdas & Delegates ✅ | Lambda expressions, function types, Action/Func |
-| 0.1.15 | Essential Dunders ✅ | 23 dunders with implicit interface synthesis |
+| 0.1.15 | Essential Dunders ✅ | 29 dunders with implicit interface synthesis |
 
 ---
 
@@ -334,7 +334,19 @@ const MAX: int = 100
            continue
    ```
 
-5. **Control Flow Validation**
+5. **Loop Else Clauses**
+   ```python
+   for item in items:
+       if matches(item):
+           break
+   else:
+       # Runs only if loop completed without break
+       print("no match found")
+   ```
+
+   Loop else generates a boolean flag pattern: `_loopCompleted` is set to `true`, then `false` before any `break`. After the loop, `if (_loopCompleted)` guards the else body.
+
+6. **Control Flow Validation**
    - `break`/`continue` only inside loops
    - Unreachable code detection (basic)
 
@@ -368,6 +380,7 @@ for i in range(1, 101):
 - Break exits innermost loop
 - Continue skips to next iteration
 - Error on break/continue outside loop
+- Loop else clauses work for both while and for loops
 
 ---
 
@@ -412,7 +425,18 @@ for i in range(1, 101):
    - All paths must return compatible type
    - `-> None` functions may omit return
 
-6. **Function Overloading** (Optional for 0.1.5)
+6. **Variadic Parameters**
+   ```python
+   def sum_all(*args: int) -> int:
+       result: int = 0
+       for x in args:
+           result += x
+       return result
+   ```
+
+   **Note:** Only one variadic parameter allowed, must be the last parameter, and cannot have a default value. Maps to C# `params T[]`.
+
+7. **Function Overloading** (Optional for 0.1.5)
    - Same name, different signatures
    - Resolved at compile time
 
@@ -1001,8 +1025,20 @@ result = square(5)
    - `type(obj)`: Get type (limited)
    - `bool(value)`: Boolean conversion (dispatches via `IBoolConvertible`)
    - `hash(value)`: Hash computation
+   - `repr(obj)`: String representation
+   - `input()`, `input(prompt)`: Read from stdin
+   - `abs(x)`: Absolute value
+   - `round(x)`, `round(x, n)`: Rounding
+   - `min(iterable)`, `max(iterable)`: Min/max
+   - `sum(iterable)`: Summation
+   - `all(iterable)`, `any(iterable)`: Logical aggregation
+   - `sorted(iterable)`, `reversed(iterable)`: Ordering
+   - `enumerate(iterable)`, `zip(iter1, iter2)`: Iteration helpers
+   - `map(func, iterable)`, `filter(func, iterable)`: Functional transforms
+   - `iter(iterable)`, `next(iterator)`: Iterator protocol
+   - `issubclass(cls, Type)`: Type hierarchy check
 
-   **Note:** `isinstance(x, (int, str))` is NOT supported. Use `isinstance(x, int) or isinstance(x, str)` instead. Also, `isinstance(x, list[int])` is a compile error due to type erasure.
+   **Note:** `isinstance(x, (int, str))` is NOT supported. Use `isinstance(x, int) or isinstance(x, str)` instead. Also, `isinstance(x, list[int])` is a compile error due to type erasure. All builtins are discovered via reflection from `Sharpy.Core.Builtins`.
 
 6. **String Operations**
    ```python
@@ -1306,7 +1342,7 @@ print(squared)  # [1, 4, 9, 16, 25]
 
 ## Phase 0.1.15: Essential Dunders ✅ COMPLETED
 
-**Goal:** Core dunder methods for operators and protocols.
+**Goal:** Core dunder methods for operators and protocols (29 total).
 
 **Critical Rule:** Dunder methods cannot be invoked directly by user code. `x.__eq__(y)` is a compile error. Dunders are only callable:
 - Within another dunder method: `self.__other_dunder__()`
@@ -1413,13 +1449,14 @@ print(squared)  # [1, 4, 9, 16, 25]
            return len(self.items) > 0
    ```
 
-7. **Dunder → C# Mapping**
+7. **Dunder → C# Mapping (29 dunders)**
    | Dunder | C# Generation | Synthesized Interface |
    |--------|---------------|----------------------|
    | `__init__` | Constructor | — |
-   | `__str__` | `ToString()` override | `IStrConvertible` |
+   | `__str__` | `ToString()` override | `IStrConvertible`* |
    | `__eq__` | `Equals()` + `operator ==`/`!=` + `IEquatable<T>` | — |
-   | `__hash__` | `GetHashCode()` override | `IHashable` |
+   | `__ne__` | `operator !=` (explicit, otherwise synthesized from `__eq__`) | — |
+   | `__hash__` | `GetHashCode()` override | `IHashable`* |
    | `__add__` | `operator +` | — |
    | `__sub__` | `operator -` | — |
    | `__mul__` | `operator *` | — |
@@ -1429,17 +1466,22 @@ print(squared)  # [1, 4, 9, 16, 25]
    | `__pos__` | `operator +` (unary) | — |
    | `__invert__` | `operator ~` | — |
    | `__lt__`/`__le__`/`__gt__`/`__ge__` | `operator <`/`<=`/`>`/`>=` | — |
-   | `__len__` | `Count` property | `ISized` |
-   | `__getitem__` | Indexer `this[...]` get | `ISequence` |
-   | `__setitem__` | Indexer `this[...]` set | `IMutableSequence` |
-   | `__contains__` | `Contains()` method | `IContainer` |
-   | `__bool__` | `operator true`/`operator false` | `IBoolConvertible` |
-   | `__iter__` | `GetEnumerator()` | `IIterable` |
-   | `__next__` | Element return in `MoveNext()` | — |
-   | `__and__`/`__or__`/`__xor__` | `operator &`/`|`/`^` | — |
+   | `__len__` | `Count` property | **`ISized`** |
+   | `__getitem__` | Indexer `this[...]` get | `ISequence`* |
+   | `__setitem__` | Indexer `this[...]` set | `IMutableSequence`* |
+   | `__contains__` | `Contains()` method | `IContainer`* |
+   | `__bool__` | `operator true`/`operator false` | **`IBoolConvertible`** |
+   | `__iter__` | `GetEnumerator()` → `IEnumerable<T>` | `IIterable`* |
+   | `__next__` | `MoveNext()`/`Current` → `IEnumerator<T>` | — |
+   | `__and__`/`__or__`/`__xor__` | `operator &`/`\|`/`^` | — |
    | `__lshift__`/`__rshift__` | `operator <<`/`>>` | — |
 
-   Implicit interface synthesis emits SPY1001 info diagnostic when adding an interface to a type's base list.
+   **Interface synthesis notes:**
+   - **Bold** = Sharpy.Core interface exists and is synthesized by the emitter (`ISized`, `IBoolConvertible`)
+   - `*` = Name registered in `ProtocolRegistry` but Sharpy.Core interface not yet implemented; dunder still generates correct C# code, just without a Sharpy protocol interface
+   - `__iter__`/`__next__` synthesize .NET `IEnumerable<T>`/`IEnumerator<T>` (not Sharpy interfaces)
+   - `__eq__` synthesizes .NET `IEquatable<T>` when the parameter type is not `object`
+   - Implicit interface synthesis emits SPY1001 info diagnostic when adding an interface to a type's base list
 
 8. **Unsupported Dunders**
    - `__pow__` — `**` not overloadable in C#
@@ -1488,10 +1530,10 @@ print(a == b)   # False
 - ✅ Arithmetic dunders generate operators (5 binary + 3 unary)
 - ✅ Bitwise dunders generate operators (5 total)
 - ✅ Comparison dunders generate operators (6 total)
-- ✅ `__len__`/`__getitem__`/`__setitem__` work (with `ISized`/`ISequence`/`IMutableSequence` synthesis)
-- ✅ `__contains__` works (with `IContainer` synthesis)
+- ✅ `__len__`/`__getitem__`/`__setitem__` work (`ISized` synthesized; `ISequence`/`IMutableSequence` planned)
+- ✅ `__contains__` works (`IContainer` planned)
 - ✅ `__bool__` generates `operator true`/`operator false` (with `IBoolConvertible` synthesis)
-- ✅ `__iter__`/`__next__` work (with `IIterable` synthesis)
+- ✅ `__iter__`/`__next__` work (synthesizes .NET `IEnumerable<T>`/`IEnumerator<T>`)
 - ✅ Operator synthesis (e.g., `!=` from `==`)
 - ✅ `in` operator uses `__contains__`
 - ✅ Null-safe equality dispatch for comparison operators
@@ -1504,28 +1546,29 @@ print(a == b)   # False
 
 | Category | Features |
 |----------|----------|
-| **Types** | Primitives, classes, structs, interfaces, enums, nullable (`T?`), type aliases, generics |
-| **Functions** | Definitions, default params, keyword args, lambdas, return, function types |
+| **Types** | Primitives, classes, structs, interfaces, enums, nullable (`T?`), optional (`T?` via `maybe`), result (`T !E` via `try`), type aliases, generics |
+| **Functions** | Definitions, default params, keyword args, variadic (`*args` → `params`), lambdas, return, function types |
 | **OOP** | Single inheritance, interfaces, abstract classes, `@virtual`/`@override`/`@abstract`/`@final` |
-| **Control Flow** | if/elif/else, while, for, break, continue |
+| **Control Flow** | if/elif/else, while, for, break, continue, loop else (for/while else clauses) |
 | **Collections** | `list`, `dict`, `set` syntax → .NET `List<T>`, `Dictionary<K,V>`, `HashSet<T>`; list/dict/set comprehensions (including filtered) |
-| **Dunders** | `__init__`, `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__getitem__`/`__setitem__`, `__contains__`, `__iter__`/`__next__`, arithmetic/bitwise/comparison/unary operators (23 total) |
+| **Dunders** | `__init__`, `__str__`, `__eq__`/`__ne__`/`__hash__`, `__bool__`, `__len__`, `__getitem__`/`__setitem__`, `__contains__`, `__iter__`/`__next__`, arithmetic/bitwise/comparison/unary operators (29 total) |
 | **Exceptions** | try/except/else/finally, raise, bare re-raise, custom Sharpy exception types |
 | **Modules** | import, from import, from import *, multi-file via `.spyproj`, `__init__.spy` packages, incremental compilation |
 | **Interop** | .NET namespace imports (10 mapped prefixes), CLR type discovery, assembly loading |
-| **Stdlib** | Sharpy.Core wrapper collections (List, Dict, Set) with Pythonic APIs, protocol interfaces (ISized, IBoolConvertible, IStrConvertible, etc.), custom exceptions, builtins (print, len, range, bool, hash, etc.) |
-| **Synthesis** | Implicit interface synthesis from dunders (SPY1001), `IEquatable<T>` from `__eq__`, interface conflict detection |
+| **Stdlib** | Sharpy.Core wrapper collections (List, Dict, Set) with Pythonic APIs, protocol interfaces (`ISized`, `IBoolConvertible`), custom exceptions, builtins (print, len, range, bool, hash, input, sorted, reversed, enumerate, zip, map, filter, all, any, sum, min, max, abs, round, repr, etc.) |
+| **Synthesis** | Implicit interface synthesis from dunders (SPY1001), `IEquatable<T>` from `__eq__`, `IEnumerable<T>`/`IEnumerator<T>` from `__iter__`/`__next__`, interface conflict detection |
 
 ### Deferred to v0.2.x+
 
 | Category | Features |
 |----------|----------|
-| **Types** | Tagged unions (ADTs), Result/Optional types |
-| **Functions** | Variadic args (`*args`), partial application |
+| **Types** | Tagged unions (ADTs) |
+| **Functions** | Partial application |
 | **OOP** | Properties (full), events, delegates (custom definition) |
-| **Control Flow** | Pattern matching (`match`), loop else, context managers (`with`) |
+| **Control Flow** | Pattern matching (`match`), context managers (`with`) |
 | **Collections** | Wiring Sharpy.Core wrappers as default codegen target (currently codegen emits .NET types directly) |
 | **Dunders** | `__enter__`/`__exit__`, `__call__` |
+| **Protocol Interfaces** | `IContainer`, `ISequence`, `IMutableSequence`, `IIterable`, `IStrConvertible`, `IHashable` (names registered in ProtocolRegistry, Sharpy.Core implementations pending) |
 | **Async** | async/await, generators, yield |
 | **Advanced** | Conversion operators, extension methods definition |
 
@@ -1548,4 +1591,4 @@ The phases were ordered to maximize **incremental testability**:
 11. **0.1.14**: Lambdas enable functional patterns
 12. **0.1.15**: Dunders for Pythonic feel and operator customization
 
-All phases are now complete. The compiler can compile and run programs using all v0.1.x features. The next milestone is v0.2.x which will focus on advanced type system features (tagged unions, pattern matching), async/await, and wiring Sharpy.Core wrappers as the default codegen target for collections.
+All phases are now complete. The compiler can compile and run programs using all v0.1.x features. Note that some features originally scoped for v0.2.x were implemented during v0.1.x development: variadic args, loop else clauses, and Optional/Result types with `try`/`maybe` expressions. The next milestone is v0.2.x which will focus on tagged unions, pattern matching, async/await, remaining protocol interfaces, and wiring Sharpy.Core wrappers as the default codegen target for collections.
