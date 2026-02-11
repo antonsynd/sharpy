@@ -1029,7 +1029,6 @@ result = square(5)
    - `repr(obj)`: String representation
    - `format(value, spec)`: String formatting
    - `input()`, `input(prompt)`: Read from stdin
-   - `abs(x)`: Absolute value
    - `pow(base, exp)`, `pow(base, exp, mod)`: Exponentiation
    - `divmod(a, b)`: Division with remainder
    - `round(x)`, `round(x, n)`: Rounding
@@ -1232,6 +1231,7 @@ Console.write_line(f"sqrt(16) = {sqrt_val}")
    - `IndexError` → `Sharpy.IndexError`
    - `KeyError` → `Sharpy.KeyError`
    - `StopIteration` → `Sharpy.StopIteration` (used by iterator protocol)
+   - `UnicodeEncodeError` → `Sharpy.UnicodeEncodeError`
    - `Exception` → `System.Exception` (base)
 
 ### Test Cases
@@ -1559,7 +1559,7 @@ print(a == b)   # False
 | **Exceptions** | try/except/else/finally, raise, bare re-raise, custom Sharpy exception types |
 | **Modules** | import, from import, from import *, multi-file via `.spyproj`, `__init__.spy` packages, incremental compilation |
 | **Interop** | .NET namespace imports (10 mapped prefixes), CLR type discovery, assembly loading |
-| **Stdlib** | Sharpy.Core wrapper collections (List, Dict, Set) with Pythonic APIs, protocol interfaces (`ISized`, `IBoolConvertible`), custom exceptions, 40+ builtins (print, len, range, str, int, float, double, bool, hash, repr, format, input, abs, pow, divmod, round, min, max, sum, all, any, sorted, reversed, enumerate, zip, map, filter, iter, next, isinstance, type, issubclass, list, set, tuple, frozenset, etc.) |
+| **Stdlib** | Sharpy.Core wrapper collections (List, Dict, Set) with Pythonic APIs, protocol interfaces (`ISized`, `IBoolConvertible`), custom exceptions (11 types), 35+ builtins (print, len, range, str, int, float, double, bool, hash, repr, format, input, pow, divmod, round, min, max, sum, all, any, sorted, reversed, enumerate, zip, map, filter, iter, next, isinstance, type, issubclass, list, set, tuple, frozenset) |
 | **Synthesis** | Implicit interface synthesis from dunders (SPY1001), `IEquatable<T>` from `__eq__`, `IEnumerable<T>`/`IEnumerator<T>` from `__iter__`/`__next__`, interface conflict detection |
 
 ### Deferred to v0.2.x+
@@ -1572,7 +1572,7 @@ print(a == b)   # False
 | **Control Flow** | Pattern matching (`match`), context managers (`with`) |
 | **Collections** | Wiring Sharpy.Core wrappers as default codegen target (currently codegen emits .NET types directly) |
 | **Dunders** | `__enter__`/`__exit__`, `__call__` |
-| **Protocol Interfaces** | ~~Dropped.~~ `IContainer`, `ISequence`, `IMutableSequence`, `IStrConvertible`, `IHashable`, `IIterable` — all unnecessary. .NET already provides equivalent functionality (`IList<T>`, `ICollection<T>`, `ToString()`, `GetHashCode()`, `IEnumerable<T>`). Names remain registered in `ProtocolRegistry` for dunder→C# mapping but no Sharpy.Core interfaces will be created. |
+| **Protocol Interfaces** | **Dropped** (not deferred). `IContainer`, `ISequence`, `IMutableSequence`, `IStrConvertible`, `IHashable`, `IIterable` — all unnecessary. .NET already provides equivalent functionality (`IList<T>`, `ICollection<T>`, `ToString()`, `GetHashCode()`, `IEnumerable<T>`). Names remain registered in `ProtocolRegistry` for dunder→C# mapping but no Sharpy.Core interfaces will be created. |
 | **Async** | async/await, generators, yield |
 | **Advanced** | Conversion operators, extension methods definition |
 
