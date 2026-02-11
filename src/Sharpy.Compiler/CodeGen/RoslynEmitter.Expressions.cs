@@ -306,20 +306,20 @@ internal partial class RoslynEmitter
                 return GenerateFloorDivision(left, right, hasFloatOperand);
 
             case BinaryOperator.In:
-                // x in y → y.__Contains__(x)
+                // x in y → y.Contains(x)
                 return InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         right,
-                        IdentifierName("__Contains__")))
+                        IdentifierName("Contains")))
                     .AddArgumentListArguments(Argument(left));
 
             case BinaryOperator.NotIn:
-                // x not in y → !y.__Contains__(x)
+                // x not in y → !y.Contains(x)
                 return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
                     InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             right,
-                            IdentifierName("__Contains__")))
+                            IdentifierName("Contains")))
                         .AddArgumentListArguments(Argument(left)));
 
             case BinaryOperator.Is:

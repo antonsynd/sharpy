@@ -673,7 +673,8 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("__Contains__");
+        code.Should().Contain("Contains");
+        code.Should().NotContain("__Contains__");
         code.Should().Contain("items");
         code.Should().Contain("5");
     }
@@ -695,7 +696,8 @@ public class RoslynEmitterExpressionTests
         // Assert
         var code = result.ToString();
         code.Should().Contain("!");
-        code.Should().Contain("__Contains__");
+        code.Should().Contain("Contains");
+        code.Should().NotContain("__Contains__");
         code.Should().Contain("items");
         code.Should().Contain("5");
     }
