@@ -202,6 +202,26 @@ internal partial class RoslynEmitter
         {
             var obj = GenerateExpression(memberAccess.Object);
 
+            // Cross-dunder calls: transform operator dunders to C# operator expressions.
+            // e.g., self.__lt__(other) → this < other, self.__neg__() → -this
+            // This must happen BEFORE regular method name resolution so that operator dunders
+            // emit operators instead of __PascalCase__ method calls.
+            if (DunderMapping.IsDunderMethod(memberAccess.Member))
+            {
+                var binaryKind = DunderMapping.TryGetBinaryExpressionKind(memberAccess.Member);
+                if (binaryKind != null && call.Arguments.Length == 1)
+                {
+                    var arg = GenerateExpression(call.Arguments[0]);
+                    return BinaryExpression(binaryKind.Value, obj, arg);
+                }
+
+                var unaryKind = DunderMapping.TryGetUnaryExpressionKind(memberAccess.Member);
+                if (unaryKind != null && call.Arguments.Length == 0)
+                {
+                    return PrefixUnaryExpression(unaryKind.Value, obj);
+                }
+            }
+
             // Apply name mangling to method name
             // First check for dunder methods, then Python list method mappings (append -> Add, etc.)
             var methodName = DunderMapping.ResolveCSharpName(memberAccess.Member)

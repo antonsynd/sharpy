@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.CodeGen;
@@ -95,6 +96,56 @@ internal static class DunderMapping
         var middle = name[2..^2]; // Remove leading and trailing __
         var capitalizedMiddle = string.Join("", middle.Split('_').Select(Capitalize));
         return $"__{capitalizedMiddle}__";
+    }
+
+    /// <summary>
+    /// Try to get the binary expression syntax kind for an operator dunder.
+    /// Used to transform cross-dunder calls (e.g., self.__lt__(other) → this &lt; other).
+    /// Returns null if the dunder is not a binary operator or is handled by the method map (e.g., __eq__ → Equals).
+    /// </summary>
+    public static SyntaxKind? TryGetBinaryExpressionKind(string dunderName)
+    {
+        return dunderName switch
+        {
+            // Arithmetic operators
+            DunderNames.Add => SyntaxKind.AddExpression,
+            DunderNames.Sub => SyntaxKind.SubtractExpression,
+            DunderNames.Mul => SyntaxKind.MultiplyExpression,
+            DunderNames.Div => SyntaxKind.DivideExpression,
+            DunderNames.Mod => SyntaxKind.ModuloExpression,
+
+            // Bitwise operators
+            DunderNames.And => SyntaxKind.BitwiseAndExpression,
+            DunderNames.Or => SyntaxKind.BitwiseOrExpression,
+            DunderNames.Xor => SyntaxKind.ExclusiveOrExpression,
+            DunderNames.LShift => SyntaxKind.LeftShiftExpression,
+            DunderNames.RShift => SyntaxKind.RightShiftExpression,
+
+            // Comparison operators (excluding __eq__ which maps to Equals via _dunderMethodMap)
+            DunderNames.Ne => SyntaxKind.NotEqualsExpression,
+            DunderNames.Lt => SyntaxKind.LessThanExpression,
+            DunderNames.Le => SyntaxKind.LessThanOrEqualExpression,
+            DunderNames.Gt => SyntaxKind.GreaterThanExpression,
+            DunderNames.Ge => SyntaxKind.GreaterThanOrEqualExpression,
+
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Try to get the unary expression syntax kind for an operator dunder.
+    /// Used to transform cross-dunder calls (e.g., self.__neg__() → -this).
+    /// Returns null if the dunder is not a unary operator.
+    /// </summary>
+    public static SyntaxKind? TryGetUnaryExpressionKind(string dunderName)
+    {
+        return dunderName switch
+        {
+            DunderNames.Neg => SyntaxKind.UnaryMinusExpression,
+            DunderNames.Pos => SyntaxKind.UnaryPlusExpression,
+            DunderNames.Invert => SyntaxKind.BitwiseNotExpression,
+            _ => null
+        };
     }
 
     private static string Capitalize(string word)
