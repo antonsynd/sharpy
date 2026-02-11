@@ -1,17 +1,20 @@
 # Sharpy Compiler Implementation Phases (v0.1.x Series)
 
-This document outlines the phased implementation plan for the Sharpy compiler, from v0.1.0 through v0.1.15+. Each phase builds incrementally on the previous, targeting a **minimally viable language** capable of:
+This document outlines the phased implementation plan for the Sharpy compiler, from v0.1.0 through v0.1.15. **All 16 phases are now completed.** The v0.1.x series delivers a minimally viable language capable of:
 
 - Basic control flow and expressions
 - Classes, structs, interfaces, and enums
 - Static and instance methods (no variadic/params args)
-- Keyword arguments
-- Type aliases
-- Module system and entry points
+- Keyword arguments, lambdas, and function types
+- Type aliases and generics
+- Module system, multi-file compilation, and entry points
 - .NET collections directly (List, Dictionary, HashSet) for bootstrapping
-- Essential dunder methods only
+- 23 dunder methods with implicit interface synthesis
+- Exception handling with custom Sharpy exception types
+- .NET interop via CLR type discovery and namespace imports
+- Sharpy.Core standard library with Pythonic collection wrappers
 
-**Deferred to v0.2.x+:** Tagged unions/ADTs, events, context managers, async/await, generators, variadic args, pattern matching, partial application, properties (beyond basic fields).
+**Deferred to v0.2.x+:** Tagged unions/ADTs, events, context managers, async/await, generators, variadic args, pattern matching, partial application, properties (beyond basic fields), wiring Sharpy.Core wrappers as default codegen target.
 
 ---
 
@@ -19,26 +22,26 @@ This document outlines the phased implementation plan for the Sharpy compiler, f
 
 | Version | Theme | Key Deliverables |
 |---------|-------|------------------|
-| 0.1.0 | Lexer Foundation | Token types, keyword recognition, indentation (INDENT/DEDENT) |
-| 0.1.1 | Parser Foundation | AST nodes, module structure, literals, identifiers |
-| 0.1.2 | Code Generation Bootstrap | Roslyn emission, entry point, primitive types |
-| 0.1.3 | Variables & Expressions | Variable declarations, assignment, arithmetic/comparison ops |
-| 0.1.4 | Control Flow | if/elif/else, while, for (with range) |
-| 0.1.5 | Functions | Function definitions, positional/default params, return, keyword args |
-| 0.1.6 | Classes | Class definitions, fields, `__init__`, instance methods |
-| 0.1.7 | Inheritance & Interfaces | Single inheritance, abstract classes, interfaces, decorators |
-| 0.1.8 | Structs & Enums | Value types, enumerations |
-| 0.1.9 | Type System Enhancements | Nullable types (`T?`), type aliases, basic generics |
-| 0.1.10 | Module System | Imports, module resolution, multi-file compilation |
-| 0.1.11 | Collections (.NET) | `list`/`dict`/`set` syntax → .NET generics, `print()`, `len()` |
-| 0.1.12 | .NET Interop | Importing .NET types, calling .NET methods |
-| 0.1.13 | Exception Handling | try/except/finally, raise |
-| 0.1.14 | Lambdas & Delegates | Lambda expressions, function types, Action/Func |
-| 0.1.15 | Essential Dunders | `__str__`, `__eq__`, `__hash__`, `__len__`, `__getitem__`, operators |
+| 0.1.0 | Lexer Foundation ✅ | Token types, keyword recognition, indentation (INDENT/DEDENT) |
+| 0.1.1 | Parser Foundation ✅ | AST nodes, module structure, literals, identifiers |
+| 0.1.2 | Code Generation Bootstrap ✅ | Roslyn emission, entry point, primitive types |
+| 0.1.3 | Variables & Expressions ✅ | Variable declarations, assignment, arithmetic/comparison ops |
+| 0.1.4 | Control Flow ✅ | if/elif/else, while, for (with range) |
+| 0.1.5 | Functions ✅ | Function definitions, positional/default params, return, keyword args |
+| 0.1.6 | Classes ✅ | Class definitions, fields, `__init__`, instance methods |
+| 0.1.7 | Inheritance & Interfaces ✅ | Single inheritance, abstract classes, interfaces, decorators |
+| 0.1.8 | Structs & Enums ✅ | Value types, enumerations |
+| 0.1.9 | Type System Enhancements ✅ | Nullable types (`T?`), type aliases, basic generics |
+| 0.1.10 | Module System ✅ | Imports, module resolution, multi-file compilation |
+| 0.1.11 | Collections (.NET) ✅ | `list`/`dict`/`set` syntax → .NET generics, `print()`, `len()`, comprehensions |
+| 0.1.12 | .NET Interop ✅ | Importing .NET types, calling .NET methods |
+| 0.1.13 | Exception Handling ✅ | try/except/else/finally, raise, custom exception types |
+| 0.1.14 | Lambdas & Delegates ✅ | Lambda expressions, function types, Action/Func |
+| 0.1.15 | Essential Dunders ✅ | 23 dunders with implicit interface synthesis |
 
 ---
 
-## Phase 0.1.0: Lexer Foundation
+## Phase 0.1.0: Lexer Foundation ✅ COMPLETED
 
 **Goal:** Tokenize Sharpy source code with Python-style indentation handling.
 
@@ -98,7 +101,7 @@ def foo():
 
 ---
 
-## Phase 0.1.1: Parser Foundation
+## Phase 0.1.1: Parser Foundation ✅ COMPLETED
 
 **Goal:** Parse Sharpy source into an Abstract Syntax Tree (AST).
 
@@ -163,7 +166,7 @@ pass
 
 ---
 
-## Phase 0.1.2: Code Generation Bootstrap
+## Phase 0.1.2: Code Generation Bootstrap ✅ COMPLETED
 
 **Goal:** Generate executable C# code via Roslyn for minimal programs.
 
@@ -225,7 +228,7 @@ pass
 
 ---
 
-## Phase 0.1.3: Variables & Expressions
+## Phase 0.1.3: Variables & Expressions ✅ COMPLETED
 
 **Goal:** Variable declarations, assignments, and full expression support.
 
@@ -288,7 +291,7 @@ const MAX: int = 100
 
 ---
 
-## Phase 0.1.4: Control Flow
+## Phase 0.1.4: Control Flow ✅ COMPLETED
 
 **Goal:** Conditional and loop statements.
 
@@ -368,7 +371,7 @@ for i in range(1, 101):
 
 ---
 
-## Phase 0.1.5: Functions
+## Phase 0.1.5: Functions ✅ COMPLETED
 
 **Goal:** Function definitions with parameters and return values.
 
@@ -437,7 +440,7 @@ z = multiply(4, b=5)     # 20
 
 ---
 
-## Phase 0.1.6: Classes
+## Phase 0.1.6: Classes ✅ COMPLETED
 
 **Goal:** Basic class definitions with fields, constructors, and methods.
 
@@ -551,7 +554,7 @@ result = c.get()  # 11
 
 ---
 
-## Phase 0.1.7: Inheritance & Interfaces
+## Phase 0.1.7: Inheritance & Interfaces ✅ COMPLETED
 
 **Goal:** Class inheritance, abstract classes, and interfaces.
 
@@ -689,7 +692,7 @@ class Integer(Number):
 
 ---
 
-## Phase 0.1.8: Structs & Enums
+## Phase 0.1.8: Structs & Enums ✅ COMPLETED
 
 **Goal:** Value types (structs) and enumerations.
 
@@ -791,7 +794,7 @@ status = Status.ACTIVE
 
 ---
 
-## Phase 0.1.9: Type System Enhancements
+## Phase 0.1.9: Type System Enhancements ✅ COMPLETED
 
 **Goal:** Nullable types, type aliases, and basic generics.
 
@@ -877,7 +880,7 @@ value = result ?? "not found"
 
 ---
 
-## Phase 0.1.10: Module System
+## Phase 0.1.10: Module System ✅ COMPLETED
 
 **Goal:** Import statements and multi-file compilation.
 
@@ -897,17 +900,23 @@ value = result ?? "not found"
    from mymodule import MyClass as MC
    ```
 
-3. **Module Resolution**
+3. **Wildcard Import**
+   ```python
+   from mymodule import *
+   ```
+
+4. **Module Resolution**
    - Search current directory
    - Search project directories
    - Search standard library paths
 
-4. **Multi-File Compilation**
-   - Compile multiple `.spy` files
-   - Resolve cross-module references
-   - Handle circular imports (type annotations only)
+5. **Multi-File Compilation**
+   - Compile multiple `.spy` files via `.spyproj` project files
+   - Resolve cross-module references via shared `SymbolTable`
+   - Handle circular imports (detected and reported with chain path)
+   - Incremental compilation with transitive dependency tracking
 
-5. **Package Structure**
+6. **Package Structure**
    ```
    project/
        main.spy
@@ -915,6 +924,8 @@ value = result ?? "not found"
            __init__.spy
            helpers.spy
    ```
+
+   `__init__.spy` supports re-exports (e.g., `from .helpers import greet` re-exports `greet` at the package level).
 
 ### Test Cases
 
@@ -931,19 +942,20 @@ result = square(5)
 
 ### Exit Criteria
 
-- `import` loads module symbols
-- `from ... import` selectively imports
-- Module aliases work
-- Multi-file projects compile
-- Circular type imports don't crash
+- ✅ `import` loads module symbols
+- ✅ `from ... import` selectively imports
+- ✅ `from ... import *` wildcard imports
+- ✅ Module aliases work
+- ✅ Multi-file projects compile (with `.spyproj`)
+- ✅ Circular imports detected and reported
 
 ---
 
-## Phase 0.1.11: Collections (.NET)
+## Phase 0.1.11: Collections (.NET) ✅ COMPLETED
 
-**Goal:** Collection syntax using .NET types directly for bootstrapping. Sharpy collection wrappers deferred to v0.2.x+.
+**Goal:** Collection syntax using .NET types directly for bootstrapping.
 
-**Method Naming:** In v0.1.x, .NET method names are used directly (via standard name mangling: `ContainsKey` → `contains_key`). Python-style aliases like `append`, `get`, `pop` will be provided by Sharpy.Core wrappers in v0.2.x+.
+**Current state:** Code generation maps `list`, `dict`, `set` to .NET `List<T>`, `Dictionary<K,V>`, `HashSet<T>` directly (via `CodeGen/TypeMapper.cs`). Sharpy.Core wrapper classes (`Sharpy.List<T>`, `Sharpy.Dict<K,V>`, `Sharpy.Set<T>`) exist in the standard library with full Pythonic APIs and implement `ISized`, `IEquatable<T>`, and standard .NET collection interfaces. Wiring Sharpy.Core wrappers as the default codegen target is deferred to v0.2.x+.
 
 ### Features
 
@@ -952,9 +964,9 @@ result = square(5)
    numbers: list[int] = [1, 2, 3]
    numbers.add(4)          # .NET: Add()
    first = numbers[0]
-   length = len(numbers)   # Lowered to .Count
+   length = len(numbers)   # Via ISized protocol or ICollection.Count
 
-   # List comprehension (basic)
+   # List comprehension
    squares = [x * x for x in range(10)]
    ```
 
@@ -963,39 +975,52 @@ result = square(5)
    ages: dict[str, int] = {"Alice": 30, "Bob": 25}
    ages["Charlie"] = 35
 
-   # .NET style access (v0.1.x)
    if ages.contains_key("Alice"):
        age = ages["Alice"]
-
-   # Or use try_get_value pattern
-   success, age = ages.try_get_value("Alice")
    ```
-
-   **Note:** Python's `dict.get(key, default)` deferred to v0.2.x+ with Sharpy wrappers.
 
 3. **Set** → `System.Collections.Generic.HashSet<T>`
    ```python
    unique: set[int] = {1, 2, 3, 2, 1}  # {1, 2, 3}
-   unique.add(4)  # .NET: Add() - same name!
+   unique.add(4)  # .NET: Add()
    ```
 
-4. **Built-in Functions**
-   - `print(value)`: Output to console (single argument only in v0.1.x)
-   - `len(collection)`: Collection length
+4. **All Comprehension Types**
+   ```python
+   squares = [x * x for x in range(10)]              # list comprehension
+   even_set = {x for x in range(10) if x % 2 == 0}   # set comprehension
+   mapping = {k: v for k, v in pairs}                 # dict comprehension
+   ```
+
+5. **Built-in Functions**
+   - `print(*values)`: Output to console (variadic via `params object?[]`)
+   - `len(collection)`: Collection length (dispatches via `ISized` or `ICollection`)
    - `range(stop)`, `range(start, stop)`, `range(start, stop, step)`
    - `str(value)`, `int(value)`, `float(value)`: Type conversion
    - `isinstance(obj, Type)`: Type checking (single type only, no tuples like Python)
    - `type(obj)`: Get type (limited)
+   - `bool(value)`: Boolean conversion (dispatches via `IBoolConvertible`)
+   - `hash(value)`: Hash computation
 
    **Note:** `isinstance(x, (int, str))` is NOT supported. Use `isinstance(x, int) or isinstance(x, str)` instead. Also, `isinstance(x, list[int])` is a compile error due to type erasure.
 
-5. **String Operations**
+6. **String Operations**
    ```python
    s = "hello"
    upper = s.upper()
    contains = "ell" in s
    formatted = f"Value: {x}"
    ```
+
+### Sharpy.Core Wrapper Types (stdlib, not yet default codegen target)
+
+The standard library provides wrapper types with Pythonic APIs:
+
+- **`Sharpy.List<T>`**: `Append()`, `Pop()`, `Remove()`, `Insert()`, `Extend()`, `Sort()`, `Reverse()`, `Index()`, `Count()`, `Copy()`, `Contains()`
+- **`Sharpy.Dict<K,V>`**: `Get()`, `Pop()`, `PopItem()`, `Keys()`, `Values()`, `Items()`, `SetDefault()`, `Update()`, `Merge()`, `Copy()`, `ContainsKey()`
+- **`Sharpy.Set<T>`**: `Add()`, `Discard()`, `Remove()`, `Pop()`, `Union()`, `Intersection()`, `Difference()`, `SymmetricDifference()`, `IsSubset()`, `IsSuperset()`, `IsDisjoint()`, `Copy()`
+
+All implement `ISized`, `IEquatable<T>`, and standard .NET collection interfaces (`IList<T>`, `IDictionary<K,V>`, `ISet<T>`, etc.).
 
 ### Code Generation
 
@@ -1010,34 +1035,18 @@ List<int> items = new List<int> { 1, 2, 3 };
 // With implicit: using System.Collections.Generic;
 ```
 
-### Test Cases
-
-```python
-# Working with collections
-numbers = [1, 2, 3, 4, 5]
-doubled = [n * 2 for n in numbers]
-print(doubled)  # [2, 4, 6, 8, 10]
-
-person: dict[str, str] = {"name": "Alice", "age": "30"}
-if person.contains_key("name"):
-    print(f"Name: {person['name']}")
-
-unique = {1, 2, 2, 3}
-print(len(unique))  # 3
-```
-
 ### Exit Criteria
 
-- `list`, `dict`, `set` literals compile to .NET generic types
-- .NET collection methods accessible (with name mangling)
-- `print()` outputs to console
-- `len()` works on collections (lowered to `.Count`)
-- F-string interpolation works
-- List comprehensions work (basic)
+- ✅ `list`, `dict`, `set` literals compile to .NET generic types
+- ✅ .NET collection methods accessible (with name mangling)
+- ✅ `print()` outputs to console (variadic)
+- ✅ `len()` works on collections (via `ISized` protocol and `ICollection.Count`)
+- ✅ F-string interpolation works
+- ✅ List, dict, and set comprehensions work (including filtered)
 
 ---
 
-## Phase 0.1.12: .NET Interop
+## Phase 0.1.12: .NET Interop ✅ COMPLETED
 
 **Goal:** Import and use .NET types and methods.
 
@@ -1045,10 +1054,12 @@ print(len(unique))  # 3
 
 1. **Importing .NET Namespaces**
    ```python
-   from system import Console, DateTime
+   from system import Console, DateTime, IComparable
    from system.collections.generic import Dictionary
    from system.io import File, Path
    ```
+
+   Mapped namespaces (via `ModuleRegistry.MapModuleToNamespace()`): `system` → `System`, `system.io` → `System.IO`, `system.text` → `System.Text`, `system.linq` → `System.Linq`, `system.threading` → `System.Threading`, `system.threading.tasks` → `System.Threading.Tasks`, `system.net` → `System.Net`, `system.net.http` → `System.Net.Http`, `system.collections` → `System.Collections`, `system.collections.generic` → `System.Collections.Generic`.
 
 2. **Using .NET Types**
    ```python
@@ -1067,9 +1078,9 @@ print(len(unique))  # 3
    File.write_all_text("output.txt", content)
    ```
 
-4. **Name Mangling (Bidirectional)**
-   - Sharpy `snake_case` → C# `PascalCase`
-   - C# `PascalCase` → Sharpy `snake_case` (for discoverability)
+4. **Name Mangling (Forward Only)**
+   - Sharpy `snake_case` → C# `PascalCase` (via `NameMangler`)
+   - No reverse mapping (CLR types accessed via their PascalCase names after mangling)
    - Backtick escapes: `` `PascalCase` `` for exact names
 
 5. **Generic .NET Types**
@@ -1079,6 +1090,12 @@ print(len(unique))  # 3
    names: List[str] = List[str]()
    names.add("Alice")
    ```
+
+6. **CLR Type Discovery**
+   - `CachedModuleDiscovery` reflects loaded assemblies for type/method information
+   - `Discovery/TypeMapper.cs` maps CLR types back to Sharpy `SemanticType` instances
+   - `BuiltinRegistry` fallback searches well-known namespaces (`System`, `System.Collections.Generic`, `System.IO`, `System.Text`)
+   - On-disk cache (`OverloadIndexCache`) with SHA-256 invalidation for incremental builds
 
 ### Test Cases
 
@@ -1096,15 +1113,15 @@ Console.write_line(f"sqrt(16) = {sqrt_val}")
 
 ### Exit Criteria
 
-- .NET namespaces importable
-- Static methods callable
-- Instance methods callable
-- Generic .NET types work
-- Name mangling transparent
+- ✅ .NET namespaces importable (10 mapped namespace prefixes)
+- ✅ Static methods callable
+- ✅ Instance methods callable
+- ✅ Generic .NET types work
+- ✅ Name mangling transparent (forward direction; Sharpy → C#)
 
 ---
 
-## Phase 0.1.13: Exception Handling
+## Phase 0.1.13: Exception Handling ✅ COMPLETED
 
 **Goal:** Try/except/finally and raise statements.
 
@@ -1152,6 +1169,8 @@ Console.write_line(f"sqrt(16) = {sqrt_val}")
        cleanup()
    ```
 
+   The `else` clause uses a flag-based code generation pattern: a `bool __trySucceeded` flag is set to `true` at the end of the try block, and the else body runs in an `if (__trySucceeded)` block after the try/catch/finally.
+
 5. **Raise Statement**
    ```python
    def validate(x: int) -> None:
@@ -1159,12 +1178,21 @@ Console.write_line(f"sqrt(16) = {sqrt_val}")
            raise ValueError("x must be non-negative")
    ```
 
+   Bare `raise` (re-throw) is supported inside `except` blocks only. Using bare `raise` outside an except block is a compile error (`DiagnosticCodes.Semantic.InvalidRaise`).
+
 6. **Exception Types**
-   - Map to .NET exceptions
-   - `Exception` → `System.Exception`
-   - `ValueError` → `System.ArgumentException`
-   - `TypeError` → `System.InvalidCastException`
-   - `IOError` → `System.IO.IOException`
+   Custom Sharpy exception classes defined in `Sharpy.Core` (all inherit from `System.Exception`):
+   - `ValueError` → `Sharpy.ValueError`
+   - `TypeError` → `Sharpy.TypeError`
+   - `RuntimeError` → `Sharpy.RuntimeError`
+   - `NotImplementedError` → `Sharpy.NotImplementedError`
+   - `AttributeError` → `Sharpy.AttributeError`
+   - `ZeroDivisionError` → `Sharpy.ZeroDivisionError`
+   - `OverflowError` → `Sharpy.OverflowError`
+   - `IndexError` → `Sharpy.IndexError`
+   - `KeyError` → `Sharpy.KeyError`
+   - `StopIteration` → `Sharpy.StopIteration` (used by iterator protocol)
+   - `Exception` → `System.Exception` (base)
 
 ### Test Cases
 
@@ -1184,16 +1212,18 @@ finally:
 
 ### Exit Criteria
 
-- Try/except catches exceptions
-- Exception binding (`as e`) works
-- Multiple except clauses checked in order
-- Else clause runs only when no exception raised
-- Finally always executes
-- Raise creates and throws exceptions
+- ✅ Try/except catches exceptions
+- ✅ Exception binding (`as e`) works
+- ✅ Multiple except clauses checked in order
+- ✅ Else clause runs only when no exception raised (flag-based pattern)
+- ✅ Finally always executes
+- ✅ Raise creates and throws exceptions
+- ✅ Bare raise re-throws inside except blocks
+- ✅ Type narrowing works in except blocks
 
 ---
 
-## Phase 0.1.14: Lambdas & Delegates
+## Phase 0.1.14: Lambdas & Delegates ✅ COMPLETED
 
 **Goal:** Lambda expressions and function type handling.
 
@@ -1208,7 +1238,7 @@ finally:
    transform: (int) -> int = lambda x: x * 2
    ```
 
-   **Note:** Lambda parameters have no type annotations; types must be inferable from context. Lambdas in ambiguous contexts (e.g., `g = lambda x, y: x + y` without type annotation) are compile errors.
+   **Note:** Lambda parameters have no type annotations; types are inferred bidirectionally from context (expected `FunctionType`). Lambdas in ambiguous contexts (e.g., `g = lambda x, y: x + y` without type annotation) are compile errors. Lambda scope is isolated from enclosing type narrowing.
 
 2. **Function Types**
    ```python
@@ -1240,7 +1270,7 @@ finally:
    | `(T) -> R` | `Func<T, R>` |
    | `(T1, T2) -> R` | `Func<T1, T2, R>` |
 
-5. **Method References** (Optional)
+5. **Method References**
    ```python
    def double(x: int) -> int:
        return x * 2
@@ -1266,15 +1296,15 @@ print(squared)  # [1, 4, 9, 16, 25]
 
 ### Exit Criteria
 
-- Lambda expressions compile
-- Function type annotations work
-- Lambdas passed as arguments
-- Action/Func delegates generated correctly
-- Method references work (if implemented)
+- ✅ Lambda expressions compile (single-param → `SimpleLambdaExpression`, multi-param → `ParenthesizedLambdaExpression`)
+- ✅ Function type annotations work (with variance: contravariant params, covariant return)
+- ✅ Lambdas passed as arguments with bidirectional type inference
+- ✅ Action/Func delegates generated correctly
+- ✅ Method references work
 
 ---
 
-## Phase 0.1.15: Essential Dunders
+## Phase 0.1.15: Essential Dunders ✅ COMPLETED
 
 **Goal:** Core dunder methods for operators and protocols.
 
@@ -1343,7 +1373,24 @@ print(squared)  # [1, 4, 9, 16, 25]
            return item in self.items
    ```
 
-4. **Comparison Operators**
+4. **Iterator Protocol**
+   ```python
+   class Range:
+       current: int
+       stop: int
+
+       def __iter__(self) -> Range:
+           return self
+
+       def __next__(self) -> int:
+           if self.current >= self.stop:
+               raise StopIteration()
+           val = self.current
+           self.current += 1
+           return val
+   ```
+
+5. **Comparison Operators**
    ```python
    class Number:
        value: int
@@ -1357,20 +1404,44 @@ print(squared)  # [1, 4, 9, 16, 25]
        # Compiler synthesizes __gt__, __ge__ from __lt__, __le__
    ```
 
-5. **Dunder → C# Mapping**
-   | Dunder | C# Generation |
-   |--------|---------------|
-   | `__init__` | Constructor |
-   | `__str__` | `ToString()` override |
-   | `__eq__` | `Equals()` + `operator ==` |
-   | `__hash__` | `GetHashCode()` override |
-   | `__add__` | `operator +` |
-   | `__len__` | `Length` property or method |
-   | `__getitem__` | Indexer `this[...]` get |
-   | `__setitem__` | Indexer `this[...]` set |
-   | `__contains__` | `Contains()` method, used by `in` operator |
+6. **Boolean Conversion**
+   ```python
+   class Container:
+       items: list[int]
 
-6. **Unsupported Dunders**
+       def __bool__(self) -> bool:
+           return len(self.items) > 0
+   ```
+
+7. **Dunder → C# Mapping**
+   | Dunder | C# Generation | Synthesized Interface |
+   |--------|---------------|----------------------|
+   | `__init__` | Constructor | — |
+   | `__str__` | `ToString()` override | `IStrConvertible` |
+   | `__eq__` | `Equals()` + `operator ==`/`!=` + `IEquatable<T>` | — |
+   | `__hash__` | `GetHashCode()` override | `IHashable` |
+   | `__add__` | `operator +` | — |
+   | `__sub__` | `operator -` | — |
+   | `__mul__` | `operator *` | — |
+   | `__div__` | `operator /` | — |
+   | `__mod__` | `operator %` | — |
+   | `__neg__` | `operator -` (unary) | — |
+   | `__pos__` | `operator +` (unary) | — |
+   | `__invert__` | `operator ~` | — |
+   | `__lt__`/`__le__`/`__gt__`/`__ge__` | `operator <`/`<=`/`>`/`>=` | — |
+   | `__len__` | `Count` property | `ISized` |
+   | `__getitem__` | Indexer `this[...]` get | `ISequence` |
+   | `__setitem__` | Indexer `this[...]` set | `IMutableSequence` |
+   | `__contains__` | `Contains()` method | `IContainer` |
+   | `__bool__` | `operator true`/`operator false` | `IBoolConvertible` |
+   | `__iter__` | `GetEnumerator()` | `IIterable` |
+   | `__next__` | Element return in `MoveNext()` | — |
+   | `__and__`/`__or__`/`__xor__` | `operator &`/`|`/`^` | — |
+   | `__lshift__`/`__rshift__` | `operator <<`/`>>` | — |
+
+   Implicit interface synthesis emits SPY1001 info diagnostic when adding an interface to a type's base list.
+
+8. **Unsupported Dunders**
    - `__pow__` — `**` not overloadable in C#
    - `__floordiv__` — `//` not overloadable in C#
    - `__repr__` — use `__str__` instead
@@ -1412,30 +1483,38 @@ print(a == b)   # False
 
 ### Exit Criteria
 
-- `__str__` generates `ToString()`
-- `__eq__`/`__hash__` generate proper overrides
-- Arithmetic dunders generate operators
-- `__len__`/`__getitem__`/`__setitem__` work
-- Operator synthesis (e.g., `!=` from `==`)
-- `in` operator uses `__contains__`
+- ✅ `__str__` generates `ToString()`
+- ✅ `__eq__`/`__hash__` generate proper overrides (+ `IEquatable<T>` synthesis)
+- ✅ Arithmetic dunders generate operators (5 binary + 3 unary)
+- ✅ Bitwise dunders generate operators (5 total)
+- ✅ Comparison dunders generate operators (6 total)
+- ✅ `__len__`/`__getitem__`/`__setitem__` work (with `ISized`/`ISequence`/`IMutableSequence` synthesis)
+- ✅ `__contains__` works (with `IContainer` synthesis)
+- ✅ `__bool__` generates `operator true`/`operator false` (with `IBoolConvertible` synthesis)
+- ✅ `__iter__`/`__next__` work (with `IIterable` synthesis)
+- ✅ Operator synthesis (e.g., `!=` from `==`)
+- ✅ `in` operator uses `__contains__`
+- ✅ Null-safe equality dispatch for comparison operators
 
 ---
 
 ## Summary: What's Included vs Deferred
 
-### Included in v0.1.x
+### Included in v0.1.x (all phases completed)
 
 | Category | Features |
 |----------|----------|
 | **Types** | Primitives, classes, structs, interfaces, enums, nullable (`T?`), type aliases, generics |
-| **Functions** | Definitions, default params, keyword args, lambdas, return |
+| **Functions** | Definitions, default params, keyword args, lambdas, return, function types |
 | **OOP** | Single inheritance, interfaces, abstract classes, `@virtual`/`@override`/`@abstract`/`@final` |
 | **Control Flow** | if/elif/else, while, for, break, continue |
-| **Collections** | `list`, `dict`, `set` syntax → .NET `List<T>`, `Dictionary<K,V>`, `HashSet<T>`, basic comprehensions |
-| **Dunders** | `__init__`, `__str__`, `__eq__`, `__hash__`, `__len__`, `__getitem__`, `__setitem__`, `__contains__`, arithmetic operators |
-| **Exceptions** | try/except/else/finally, raise |
-| **Modules** | import, from import, multi-file |
-| **Interop** | .NET type imports, method calls |
+| **Collections** | `list`, `dict`, `set` syntax → .NET `List<T>`, `Dictionary<K,V>`, `HashSet<T>`; list/dict/set comprehensions (including filtered) |
+| **Dunders** | `__init__`, `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__getitem__`/`__setitem__`, `__contains__`, `__iter__`/`__next__`, arithmetic/bitwise/comparison/unary operators (23 total) |
+| **Exceptions** | try/except/else/finally, raise, bare re-raise, custom Sharpy exception types |
+| **Modules** | import, from import, from import *, multi-file via `.spyproj`, `__init__.spy` packages, incremental compilation |
+| **Interop** | .NET namespace imports (10 mapped prefixes), CLR type discovery, assembly loading |
+| **Stdlib** | Sharpy.Core wrapper collections (List, Dict, Set) with Pythonic APIs, protocol interfaces (ISized, IBoolConvertible, IStrConvertible, etc.), custom exceptions, builtins (print, len, range, bool, hash, etc.) |
+| **Synthesis** | Implicit interface synthesis from dunders (SPY1001), `IEquatable<T>` from `__eq__`, interface conflict detection |
 
 ### Deferred to v0.2.x+
 
@@ -1445,8 +1524,8 @@ print(a == b)   # False
 | **Functions** | Variadic args (`*args`), partial application |
 | **OOP** | Properties (full), events, delegates (custom definition) |
 | **Control Flow** | Pattern matching (`match`), loop else, context managers (`with`) |
-| **Collections** | Sharpy.Core wrapper collections, dict/set comprehensions, advanced comprehension filters |
-| **Dunders** | `__iter__`/`__next__`, `__enter__`/`__exit__`, `__call__` |
+| **Collections** | Wiring Sharpy.Core wrappers as default codegen target (currently codegen emits .NET types directly) |
+| **Dunders** | `__enter__`/`__exit__`, `__call__` |
 | **Async** | async/await, generators, yield |
 | **Advanced** | Conversion operators, extension methods definition |
 
@@ -1454,7 +1533,7 @@ print(a == b)   # False
 
 ## Implementation Order Rationale
 
-The phases are ordered to maximize **incremental testability**:
+The phases were ordered to maximize **incremental testability**:
 
 1. **0.1.0-0.1.2**: Foundation layers must come first (no shortcuts)
 2. **0.1.3-0.1.4**: Variables and control flow enable meaningful programs
@@ -1463,10 +1542,10 @@ The phases are ordered to maximize **incremental testability**:
 5. **0.1.8**: Structs/enums are simpler than classes but depend on type system
 6. **0.1.9**: Type enhancements needed before advanced features
 7. **0.1.10**: Module system for real projects
-8. **0.1.11**: .NET collections for bootstrapping (Sharpy wrappers in v0.2.x+)
+8. **0.1.11**: .NET collections for bootstrapping (Sharpy.Core wrappers exist, not yet default codegen target)
 9. **0.1.12**: .NET interop for ecosystem access
 10. **0.1.13**: Exception handling for robustness
 11. **0.1.14**: Lambdas enable functional patterns
 12. **0.1.15**: Dunders for Pythonic feel and operator customization
 
-Each phase produces a **working compiler** that can compile and run programs using features from that phase and all previous phases.
+All phases are now complete. The compiler can compile and run programs using all v0.1.x features. The next milestone is v0.2.x which will focus on advanced type system features (tagged unions, pattern matching), async/await, and wiring Sharpy.Core wrappers as the default codegen target for collections.
