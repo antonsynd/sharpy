@@ -150,7 +150,7 @@ namespace Sharpy
             // __bool__ dispatch: types with IBoolConvertible (user-defined __bool__)
             if (obj is IBoolConvertible boolConvertible)
             {
-                return boolConvertible.IsTrue;
+                return boolConvertible.__Bool__();
             }
 
             // __len__ fallback: types with ISized (__len__ != 0 is truthy)
