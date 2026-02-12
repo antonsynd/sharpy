@@ -415,6 +415,22 @@ FEATURE_FOCUSES = [
     "maybe_expression",  # maybe expr — T | None → T?
     "try_expression",  # try expr — wraps in Result[T, E]
     "lambda_type_inference",  # lambda params inferred from context
+    # Dunder Methods
+    "dunder_str",  # __str__() method
+    "dunder_eq_hash",  # __eq__() + __hash__() pair
+    "dunder_bool",  # __bool__() for truthiness
+    "dunder_len",  # __len__() + len() builtin
+    "dunder_iter",  # __iter__() + __next__() iterator protocol
+    "dunder_operators",  # __add__(), __sub__(), __mul__(), __div__(), __mod__(), plus bitwise
+    "dunder_comparison",  # __lt__(), __le__(), __gt__(), __ge__(), __ne__()
+    "dunder_unary",  # __neg__(), __pos__(), __invert__()
+    # Additional Builtins
+    "builtin_conversions",  # int(), float(), bool(), str()
+    "builtin_aggregation",  # min(), max(), sum()
+    "builtin_higher_order",  # sorted(), filter(), map(), enumerate(), zip()
+    # Containment & Tuple Types
+    "containment_test",  # x in collection, x not in collection
+    "tuple_types",  # tuple[int, str], tuple unpacking in for loops
     # Combinations
     "nested_if_in_loop",  # if inside for/while
     "loop_in_function",  # for/while inside function
@@ -880,14 +896,14 @@ class DogfoodOrchestrator:
                         attempts=attempt,
                     )
 
-            # Step 1.55: Validate Sharpy syntax (catches malformed code early)
-            syntax_error = await self._validate_sharpy_syntax(code)
-            if syntax_error:
+            # Step 1.55: Validate Sharpy semantics (full pipeline: lexer → parser → semantic → codegen)
+            semantic_error = await self._validate_sharpy_semantics(code)
+            if semantic_error:
                 print(
-                    f"  Sharpy syntax validation failed: {syntax_error}",
+                    f"  Sharpy semantic validation failed: {semantic_error[:200]}",
                     file=sys.stderr,
                 )
-                last_error = f"Sharpy syntax error: {syntax_error}"
+                last_error = f"Sharpy compiler error: {semantic_error}"
                 if attempt < max_attempts:
                     print(
                         f"  Will retry with feedback ({attempt}/{max_attempts})...",
@@ -899,11 +915,14 @@ class DogfoodOrchestrator:
                         success=False,
                         code=code,
                         expected_output=extract_expected_output(code),
-                        skip_reason=f"Sharpy syntax error after {attempt} attempts: {syntax_error}",
+                        skip_reason=f"Sharpy compiler error after {attempt} attempts: {semantic_error}",
                         backend_used=backend_used,
                         generation_duration=total_duration,
                         attempts=attempt,
                     )
+
+            # Compiler validation passed — code is semantically valid.
+            # Skip AI spec validation (emit csharp runs the full pipeline).
 
             # Step 1.6: Verify expected output using Python
             expected_output = extract_expected_output(code)
@@ -932,57 +951,8 @@ class DogfoodOrchestrator:
                         file=sys.stderr,
                     )
 
-            # Step 2: Validate against spec (AI-based detailed check)
-            print("\n[2/4] Validating against spec...", file=sys.stderr)
-            val_result = await self._validate_code(code)
-            if not val_result.success:
-                print(
-                    f"  Validation backend error: {val_result.error}", file=sys.stderr
-                )
-                last_error = f"Validation backend error: {val_result.error}"
-                if attempt < max_attempts:
-                    print(
-                        f"  Will retry with feedback ({attempt}/{max_attempts})...",
-                        file=sys.stderr,
-                    )
-                    continue
-                else:
-                    return GenerationResult(
-                        success=False,
-                        code=code,
-                        expected_output=expected_output,
-                        skip_reason=f"Validation backend error after {attempt} attempts: {val_result.error}",
-                        backend_used=backend_used,
-                        generation_duration=total_duration,
-                        attempts=attempt,
-                        validation_output=val_result.error,
-                    )
-
-            validation_output = val_result.output
-            if "INVALID" in validation_output.upper():
-                print(f"  Code is invalid per spec", file=sys.stderr)
-                # Extract the specific reason from validation output
-                last_error = f"Code invalid per spec: {validation_output[:500]}"
-                if attempt < max_attempts:
-                    print(
-                        f"  Will retry with feedback ({attempt}/{max_attempts})...",
-                        file=sys.stderr,
-                    )
-                    continue
-                else:
-                    return GenerationResult(
-                        success=False,
-                        code=code,
-                        expected_output=expected_output,
-                        skip_reason=f"Code invalid per spec after {attempt} attempts",
-                        backend_used=backend_used,
-                        generation_duration=total_duration,
-                        attempts=attempt,
-                        validation_output=validation_output,
-                    )
-
             # Success!
-            print("  Code validated successfully", file=sys.stderr)
+            print("  Code validated successfully (compiler + Python)", file=sys.stderr)
             return GenerationResult(
                 success=True,
                 code=code,
@@ -1139,17 +1109,18 @@ class DogfoodOrchestrator:
                     skip_reason=f"Unsupported feature in {filename}: {prevalidation_error}",
                 )
 
-        # Step 1.55: Validate Sharpy syntax for each file
+        # Step 1.55: Validate Sharpy semantics for each file (full pipeline via emit csharp)
+        print("\n[2/4] Validating with compiler...", file=sys.stderr)
         for filename, code in files.items():
-            syntax_error = await self._validate_sharpy_syntax(code)
-            if syntax_error:
+            semantic_error = await self._validate_sharpy_semantics(code)
+            if semantic_error:
                 print(
-                    f"  Sharpy syntax validation failed for {filename}: {syntax_error}",
+                    f"  Sharpy semantic validation failed for {filename}: {semantic_error[:200]}",
                     file=sys.stderr,
                 )
                 skip = Skip(
                     timestamp=timestamp,
-                    skip_reason=f"Sharpy syntax error in {filename}: {syntax_error}",
+                    skip_reason=f"Sharpy compiler error in {filename}: {semantic_error}",
                     generated_code=files.get("main.spy", ""),
                     expected_output=expected_output,
                     feature_focus=feature_focus,
@@ -1163,66 +1134,11 @@ class DogfoodOrchestrator:
                 return IterationResult(
                     IterationStatus.SKIPPED,
                     skip_dir=skip_dir,
-                    skip_reason=f"Python syntax error in {filename}: {syntax_error}",
+                    skip_reason=f"Sharpy compiler error in {filename}: {semantic_error}",
                 )
 
-        # Step 2: Validate each file against spec
-        print("\n[2/4] Validating against spec...", file=sys.stderr)
-        available_modules = [f.replace(".spy", "") for f in files.keys()]
-        for filename, code in files.items():
-            val_result = await self._validate_code(
-                code, available_modules=available_modules
-            )
-            if not val_result.success:
-                print(
-                    f"  Validation failed for {filename}: {val_result.error}",
-                    file=sys.stderr,
-                )
-                # Save for inspection
-                skip = Skip(
-                    timestamp=timestamp,
-                    skip_reason=f"Validation backend error for {filename}",
-                    generated_code=files.get("main.spy", ""),
-                    expected_output=expected_output,
-                    feature_focus=feature_focus,
-                    complexity=complexity,
-                    backend_used=gen_result.backend,
-                    generation_duration=gen_result.duration_seconds,
-                    source_files=files,
-                    validation_output=val_result.error,
-                )
-                skip_dir = self.skip_reporter.report(skip)
-                print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
-                return IterationResult(
-                    IterationStatus.SKIPPED,
-                    skip_dir=skip_dir,
-                    skip_reason=f"Validation backend error for {filename}",
-                )
-
-            if "INVALID" in val_result.output.upper():
-                print(f"  {filename} is invalid per spec, skipping", file=sys.stderr)
-                # Save for inspection
-                skip = Skip(
-                    timestamp=timestamp,
-                    skip_reason=f"{filename} invalid per spec",
-                    generated_code=files.get("main.spy", ""),
-                    expected_output=expected_output,
-                    feature_focus=feature_focus,
-                    complexity=complexity,
-                    backend_used=gen_result.backend,
-                    generation_duration=gen_result.duration_seconds,
-                    source_files=files,
-                    validation_output=val_result.output,
-                )
-                skip_dir = self.skip_reporter.report(skip)
-                print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
-                return IterationResult(
-                    IterationStatus.SKIPPED,
-                    skip_dir=skip_dir,
-                    skip_reason=f"{filename} invalid per spec",
-                )
-
-        print("  All files validated successfully", file=sys.stderr)
+        # Compiler validation passed for all files — skip AI spec validation.
+        print("  All files validated successfully (compiler)", file=sys.stderr)
 
         # Step 3: Compile and run multi-file project
         print("\n[3/4] Compiling and running project...", file=sys.stderr)
@@ -1439,20 +1355,20 @@ class DogfoodOrchestrator:
 
         return None
 
-    async def _validate_sharpy_syntax(self, code: str) -> Optional[str]:
-        """Validate that code has valid Sharpy syntax using the Sharpy parser.
+    async def _validate_sharpy_semantics(self, code: str) -> Optional[str]:
+        """Validate that code is semantically valid using the full Sharpy pipeline.
 
-        Uses the 'emit parse' CLI command which runs lexer + parser only.
-        This correctly handles Sharpy keywords like interface, struct, enum
-        that would fail Python's ast.parse().
+        Uses 'emit csharp' which runs lexer → parser → semantic → codegen.
+        This catches type errors, unknown symbols, import errors, and validation
+        errors — not just syntax errors.
 
-        Returns None if syntax is valid, or an error message if invalid.
+        Returns None if code is valid, or an error message if invalid.
         """
         with TempSourceFile(code) as temp_path:
-            result = await self.compiler.parse_file(temp_path, timeout=10.0)
+            result = await self.compiler.check_file(temp_path, timeout=30.0)
             if result.success:
                 return None
-            return result.error or "Unknown parse error"
+            return result.error or "Unknown compiler error"
 
     async def _validate_code(
         self, code: str, available_modules: Optional[list[str]] = None

@@ -235,12 +235,14 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 #### Variables & Types (0.1.3)
 - **Variables**: `x: int = 42` or `x = 42` (type inference)
 - **Types**: `int`, `str`, `bool`, `float` (primitive types)
+- **Additional numeric types**: `long` (64-bit int), `double` (explicit 64-bit float), `float32` (32-bit float)
 - **Nullable types**: `int?`, `str?` with `None` assignment
 - **Operators**: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
 - **Augmented assignment**: `+=`, `-=`, `*=`, `/=`
 - **Null coalescing**: `??` (e.g., `name ?? "default"`)
 - **Null conditional**: `?.` (e.g., `name?.upper()`)
 - **Constants**: `const NAME: int = 42`
+- **`in`/`not in` operators**: `x in collection`, `x not in collection` for lists, sets, dicts
 
 #### Control Flow (0.1.4)
 - **If statements**: `if`, `elif`, `else` with conditions
@@ -266,6 +268,18 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **Instance methods**: `def method(self) -> type:`
 - **Static methods**: methods without `self` parameter (auto-detected)
 - **Field access**: `obj.field`, `self.field`
+
+#### Dunder Methods (Classes)
+- **`__str__(self) -> str`**: String conversion, used by `print()` (maps to `.ToString()`)
+- **`__eq__(self, other) -> bool`** / **`__hash__(self) -> int`**: Equality and hashing (must define both or neither)
+- **`__bool__(self) -> bool`**: Truthiness in `if` statements (synthesizes `IBoolConvertible`)
+- **`__len__(self) -> int`**: Enables `len(obj)` (synthesizes `ISized`)
+- **`__iter__(self)`** / **`__next__(self)`**: Iterator protocol, enables `for item in obj:`
+- **Arithmetic operators**: `__add__`, `__sub__`, `__mul__`, `__div__`, `__mod__` → `+`, `-`, `*`, `/`, `%`
+- **Bitwise operators**: `__and__`, `__or__`, `__xor__`, `__lshift__`, `__rshift__`
+- **Comparison operators**: `__lt__`, `__le__`, `__gt__`, `__ge__`, `__ne__`
+- **Unary operators**: `__neg__` (unary `-`), `__pos__` (unary `+`), `__invert__` (`~`)
+- **Container protocol**: `__getitem__(key)`, `__setitem__(key, value)`, `__contains__(item)`
 
 #### Inheritance & Interfaces (0.1.7)
 - **Single inheritance**: `class Child(Parent):`
@@ -327,6 +341,19 @@ class Dog(Animal):
 - **Range**: `range()` in for loops
 - **Boolean/None literals**: `True`, `False`, `None`
 - **String literals**: `"hello"`, `'world'`
+- **Math**: `pow(x, y)`, `round(x)`, `round(x, n)`, `divmod(x, y)`
+- **Aggregation**: `min(iterable)`, `max(iterable)`, `sum(iterable)`, `all(iterable)`, `any(iterable)`
+- **Ordering**: `sorted(iterable)`, `reversed(sequence)`
+- **Iteration**: `enumerate(iterable)`, `zip(iter1, iter2)`, `iter(iterable)`, `next(iterator)`
+- **Higher-order**: `filter(fn, iterable)`, `map(fn, iterable)`
+- **Type conversions**: `int(x)`, `float(x)`, `bool(x)`, `str(x)`
+- **Inspection**: `isinstance(obj, Type)`, `type(obj)`, `hash(obj)`, `repr(obj)`
+- **I/O**: `input()`, `input(prompt)`
+
+#### Tuple Types
+- **Tuple type annotations**: `tuple[T1, T2]`, `tuple[T1, T2, T3]`
+- **Tuple unpacking in for loops**: `for i, val in enumerate(items):`
+- **NOTE**: Tuple unpacking in comprehensions is NOT supported
 
 #### F-Strings (0.1.11)
 - **F-string interpolation**: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
@@ -388,7 +415,8 @@ class Dog(Animal):
 - **NO with statement**: Context managers not implemented
 - **NO walrus operator**: `:=` - assignment expressions not implemented
 - **NO pattern matching**: `match`/`case` not implemented
-- **NO tuple unpacking**: `a, b = 1, 2` - may have issues
+- **NO tuple unpacking in assignments**: `a, b = 1, 2` - may have issues
+- **NO tuple unpacking in comprehensions**: `[v for k, v in items]` - not supported (SPY error)
 - **NO isinstance with tuples**: `isinstance(x, (int, str))` - use `or` instead
 - **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
 - **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
@@ -396,9 +424,10 @@ class Dog(Animal):
 - **NO string indexing (s[i])**: not yet fully supported — use string methods instead
 - **NO 'in' operator on strings**: `char in "abc"` — not yet fully supported
 - **NO character-by-character string iteration**: use `range(len(s))` and string methods instead
+- **NO `__repr__()` method**: removed — only `__str__()` exists (maps to `.ToString()`)
 
 ### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
-- **NEVER name functions or variables**: `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`
+- **NEVER name functions or variables**: `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`, `long`, `float32`, `pow`, `divmod`, `isinstance`, `repr`, `iter`, `next`
 - Use **descriptive names** like `double_value`, `multiply_by_two`, `calculate_double`, `doubled` instead
 - Names like `double` conflict with the `double` type (float64) and will cause type errors
 
@@ -560,15 +589,20 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 
 ### Allowed Features (same as single-file, phases 0.1.0-0.1.18)
 - Variables, functions, classes, structs, enums, interfaces
+- Additional numeric types: `long`, `double`, `float32`
 - Inheritance: `@virtual` is REQUIRED on base class methods that will be overridden, `@override` on subclass methods
+- Dunder methods: `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__iter__`/`__next__`, arithmetic/comparison/unary operators, `__getitem__`/`__setitem__`/`__contains__`
 - Nullable types, type aliases, basic generics
 - F-strings: `f"Hello {{name}}"`
 - Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals
 - Comprehensions: `[x * 2 for x in range(10)]`
+- `in`/`not in` operators: `x in collection`, `x not in collection`
+- Tuple types: `tuple[T1, T2]`, tuple unpacking in for loops
 - Exception handling: `try`, `except`, `finally`, `raise`
 - Available exception types: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
 - Lambdas: `lambda x: x * 2` (parameter types inferred from context)
 - .NET interop: `from system import Console`
+- Builtins: `pow`, `round`, `divmod`, `min`, `max`, `sum`, `all`, `any`, `sorted`, `reversed`, `enumerate`, `zip`, `filter`, `map`, `int()`, `float()`, `bool()`, `str()`, `isinstance`, `type`, `hash`, `repr`, `input`, `iter`, `next`
 - Optional types: `T?`, `Some(value)`, `None()`, `.unwrap()`, `.unwrap_or()`
 - Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.map(fn)`
 - Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
@@ -620,6 +654,9 @@ When using higher-order functions, declare function type parameters explicitly:
 - **NO string indexing (s[i])**: not yet fully supported — use string methods instead
 - **NO 'in' operator on strings**: `char in "abc"` — not yet fully supported
 - **NO character-by-character string iteration**: use `range(len(s))` and string methods instead
+- **NO `__repr__()` method**: removed — only `__str__()` exists
+- **NO tuple unpacking in comprehensions**: `[v for k, v in items]` - not supported
+- **NO multi-argument print**: `print(a, b)` - use multiple print() calls or f-strings
 
 {existing_fixtures_section}
 
@@ -748,12 +785,14 @@ Every executable Sharpy program MUST have a `main()` function:
 ### ✅ ALLOWED:
 - Entry point: `def main():` is REQUIRED for executable code
 - Variables: `x: int = 42`
-- Types: `int`, `str`, `bool`, `float`, nullable `int?`
+- Types: `int`, `str`, `bool`, `float`, `long`, `double`, `float32`, nullable `int?`
 - Operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
 - Null operators: `??`, `?.`
+- `in`/`not in` operators: `x in collection`, `x not in collection` (lists, sets, dicts)
 - Control flow: `if`/`elif`/`else`, `while`, `for i in range(n)`, `break`, `continue`
 - Functions: `def name(param: type) -> return_type:`, default params, keyword args
 - Classes: `class Name:`, `__init__`, instance/static methods
+- Dunder methods: `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__iter__`/`__next__`, arithmetic/comparison/unary operators, `__getitem__`/`__setitem__`/`__contains__`
 - Inheritance: `class Child(Parent):`, `super().__init__()`, `@abstract`, `@virtual`, `@override`
 - Interfaces: `interface IName:` with `...` bodies
 - Structs: `struct Name:`
@@ -761,7 +800,8 @@ Every executable Sharpy program MUST have a `main()` function:
 - Type aliases: `type UserId = int`
 - Basic generics: `class Box[T]:`, `def foo[T](x: T) -> T:`
 - Imports: `import module`, `from module import item`
-- Built-ins: `print(value)` - SINGLE ARGUMENT ONLY, `range()` in for loops
+- Built-ins: `print(value)` - SINGLE ARGUMENT ONLY, `range()`, `len()`, `pow()`, `round()`, `divmod()`, `min()`, `max()`, `sum()`, `all()`, `any()`, `sorted()`, `reversed()`, `enumerate()`, `zip()`, `filter()`, `map()`, `int()`, `float()`, `bool()`, `str()`, `isinstance()`, `type()`, `hash()`, `repr()`, `input()`, `iter()`, `next()`
+- Tuple types: `tuple[T1, T2]`, tuple unpacking in for loops
 - F-strings: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
 - Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals `[1,2,3]`, `{{"key": val}}`
 - Comprehensions: `[x * 2 for x in range(10)]`
@@ -782,13 +822,15 @@ Every executable Sharpy program MUST have a `main()` function:
 - NO with statement - context managers not implemented
 - NO walrus operator: `:=` - not implemented
 - NO pattern matching: `match`/`case` - not implemented
-- NO tuple unpacking: `a, b = 1, 2` - may have issues
+- NO tuple unpacking in assignments: `a, b = 1, 2` - may have issues
+- NO tuple unpacking in comprehensions: `[v for k, v in items]` - not supported
 - NO @interface decorator - `interface` is a keyword, use `interface IName:` syntax
 - NO combining @abstract and @virtual - abstract methods are inherently virtual in .NET, use only @abstract
 - NO union types (T | U) - use a common base class or interface instead
 - NO string indexing (s[i]) - not yet fully supported, use string methods instead
 - NO 'in' operator on strings: `char in "abc"` - not yet fully supported
 - NO character-by-character string iteration - use `range(len(s))` and string methods instead
+- NO `__repr__()` method - removed, only `__str__()` exists
 
 {examples_section}
 
@@ -860,6 +902,7 @@ it is a library module and is VALID without `main()`.
 ### Variables & Types (0.1.3)
 - Variable declaration: `x: int = 42` or `x = 42` (inference)
 - Primitive types: `int`, `str`, `bool`, `float`
+- Additional numeric types: `long` (64-bit int), `double` (explicit 64-bit float), `float32` (32-bit float)
 - Nullable types: `int?`, `str?`, etc.
 - Constants: `const NAME: int = 42`
 
@@ -870,6 +913,7 @@ it is a library module and is VALID without `main()`.
 - Assignment: `=`, `+=`, `-=`, `*=`, `/=`
 - Null coalescing: `??`
 - Null conditional: `?.`
+- Containment: `x in collection`, `x not in collection` (lists, sets, dicts)
 
 ### Control Flow (0.1.4)
 - If: `if condition:` / `elif condition:` / `else:`
@@ -891,6 +935,7 @@ it is a library module and is VALID without `main()`.
 - Instance methods: `def method(self) -> type:`
 - Static methods: methods without `self` parameter
 - Field access: `obj.field`, `self.field`
+- Dunder methods: `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__iter__`/`__next__`, arithmetic operators (`__add__` etc.), comparison operators (`__lt__` etc.), unary operators (`__neg__` etc.), container protocol (`__getitem__`, `__setitem__`, `__contains__`)
 
 ### Inheritance & Interfaces (0.1.7)
 - Single inheritance: `class Child(Parent):`
@@ -924,7 +969,15 @@ it is a library module and is VALID without `main()`.
 
 ### Built-ins
 - `print(value)` - single argument only
-- `range()` in for loops only
+- `range()` in for loops
+- `len()`, `pow()`, `round()`, `divmod()`, `min()`, `max()`, `sum()`, `all()`, `any()`
+- `sorted()`, `reversed()`, `enumerate()`, `zip()`, `filter()`, `map()`
+- `int()`, `float()`, `bool()`, `str()` (type conversions)
+- `isinstance()`, `type()`, `hash()`, `repr()`, `input()`, `iter()`, `next()`
+
+### Tuple Types
+- Tuple type annotations: `tuple[T1, T2]`, `tuple[T1, T2, T3]`
+- Tuple unpacking in for loops: `for i, val in enumerate(items):`
 
 ### Literals
 - Integer: `42`, `-10`
@@ -985,7 +1038,8 @@ it is a library module and is VALID without `main()`.
 ❌ Context managers: `with` statement - REJECT (not implemented)
 ❌ Walrus operator: `:=` - REJECT (not implemented)
 ❌ Pattern matching: `match`/`case` - REJECT (not implemented)
-❌ Tuple unpacking: `a, b = 1, 2` - REJECT (may have issues)
+❌ Tuple unpacking in assignments: `a, b = 1, 2` - REJECT (may have issues)
+❌ Tuple unpacking in comprehensions: `[v for k, v in items]` - REJECT (not supported)
 ❌ isinstance with tuple: `isinstance(x, (int, str))` - REJECT
 ❌ @interface decorator: `interface` is a keyword, not a decorator - REJECT (use `interface IName:`)
 ❌ Combining @abstract and @virtual on same method - REJECT (abstract is inherently virtual)
@@ -993,6 +1047,7 @@ it is a library module and is VALID without `main()`.
 ❌ String indexing (s[i]) - REJECT (not yet fully supported, use string methods)
 ❌ 'in' operator on strings: `char in "abc"` - REJECT (not yet fully supported)
 ❌ Character-by-character string iteration - REJECT (use string methods instead)
+❌ `__repr__()` method - REJECT (removed, only `__str__()` exists)
 
 ## Code to Validate
 

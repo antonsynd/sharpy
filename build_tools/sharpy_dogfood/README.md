@@ -93,11 +93,12 @@ The tool tests features from implementation phases 0.1.0 through 0.1.18:
 ### Allowed Features (Strict)
 
 ✅ Variables: `x: int = 42`, `x = 42` (inference)
-✅ Types: `int`, `str`, `bool`, `float`, plus nullable variants `T?`
-✅ Operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`, `??`, `?.`
+✅ Types: `int`, `str`, `bool`, `float`, `long`, `double`, `float32`, plus nullable variants `T?`
+✅ Operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`, `??`, `?.`, `in`, `not in`
 ✅ Control flow: `if/elif/else`, `while`, `for i in range(...)`
 ✅ Functions: `def name(param: type) -> return_type:`, default params, keyword args
 ✅ Classes: `class Name:`, fields, `__init__`, instance/static methods
+✅ Dunder methods: `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__iter__`/`__next__`, arithmetic/comparison/unary operators, `__getitem__`/`__setitem__`/`__contains__`
 ✅ Inheritance: `class Child(Parent):`, `super().__init__()`, `@virtual`, `@override`
 ✅ Interfaces: `interface IName:`, multiple interface implementation
 ✅ Abstract: `@abstract` classes and methods
@@ -105,8 +106,9 @@ The tool tests features from implementation phases 0.1.0 through 0.1.18:
 ✅ Enums: `enum Name:` with explicit values
 ✅ Generics: `class Box[T]:`, `def foo[T](x: T) -> T:`
 ✅ Type aliases: `type UserId = int`
+✅ Tuple types: `tuple[T1, T2]`, tuple unpacking in for loops
 ✅ Imports: `import module`, `from module import item`
-✅ Built-ins: `print()`, `range()`
+✅ Built-ins: `print()`, `range()`, `len()`, `pow()`, `round()`, `divmod()`, `min()`, `max()`, `sum()`, `all()`, `any()`, `sorted()`, `reversed()`, `enumerate()`, `zip()`, `filter()`, `map()`, `int()`, `float()`, `bool()`, `str()`, `isinstance()`, `type()`, `hash()`, `repr()`, `input()`, `iter()`, `next()`
 ✅ F-strings: `f"Hello {name}"`, `f"Result: {x + y}"`
 ✅ Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals
 ✅ Comprehensions: `[x * 2 for x in range(10)]`
@@ -124,21 +126,23 @@ The tool tests features from implementation phases 0.1.0 through 0.1.18:
 ❌ Async/await
 ❌ Context managers (`with` statement)
 ❌ Walrus operator (`:=`)
-❌ Multiple assignment / tuple unpacking
+❌ Multiple assignment / tuple unpacking in assignments
+❌ Tuple unpacking in comprehensions
+❌ `__repr__()` method (removed)
 
 ## Validation
 
 Generated code goes through two validation stages:
 
-1. **Quick Pre-validation** - Regex-based check for obviously forbidden features
-2. **AI Spec Validation** - Detailed check against the language specification
+1. **Quick Pre-validation** - Lexer-based token check and regex check for forbidden features
+2. **Compiler Semantic Validation** - Full pipeline validation via `emit csharp` (lexer → parser → semantic → codegen), which catches type errors, unknown symbols, and validation errors
 
-Only code that passes both stages is compiled, ensuring we only test actual compiler bugs.
+If the compiler validation passes, AI spec validation is skipped entirely, saving time and API calls. Only code that passes both stages is compiled and run, ensuring we only test actual compiler bugs.
 
 ## Requirements
 
 - Python 3.10+
-- .NET 9 SDK (for the Sharpy compiler)
+- .NET 10 SDK (for the Sharpy compiler)
 - One of:
   - Claude Code CLI (`claude`)
   - GitHub Copilot CLI (`copilot`)

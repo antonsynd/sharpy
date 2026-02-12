@@ -328,7 +328,7 @@ class SharpyCompiler:
             str(self.cli_project),
             "--",
             "emit",
-            "--cs",
+            "csharp",
             str(source_path),
         ]
 
@@ -383,6 +383,20 @@ class SharpyCompiler:
                 error=f"Emit failed: {e}",
                 duration_seconds=time.time() - start_time,
             )
+
+    async def check_file(
+        self,
+        source_path: Path,
+        timeout: float = 30.0,
+    ) -> CompilationResult:
+        """Check that a Sharpy source file is semantically valid.
+
+        Delegates to emit_cs() which runs the full pipeline:
+        lexer → parser → semantic → codegen. Success means the code
+        is semantically valid. Failure means a semantic error was found
+        (type mismatch, unknown symbol, etc.).
+        """
+        return await self.emit_cs(source_path, timeout=timeout)
 
     async def parse_file(
         self,

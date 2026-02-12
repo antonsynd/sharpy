@@ -167,6 +167,22 @@ def get_category_from_feature(feature_focus: Optional[str]) -> str:
         "result_unwrap": "optional_result",
         "maybe_expression": "optional_result",
         "try_expression": "optional_result",
+        # Dunder Methods
+        "dunder_str": "classes",
+        "dunder_eq_hash": "classes",
+        "dunder_bool": "classes",
+        "dunder_len": "classes",
+        "dunder_iter": "classes",
+        "dunder_operators": "classes",
+        "dunder_comparison": "classes",
+        "dunder_unary": "classes",
+        # Additional Builtins
+        "builtin_conversions": "builtins",
+        "builtin_aggregation": "builtins",
+        "builtin_higher_order": "builtins",
+        # Containment & Tuple Types
+        "containment_test": "collections",
+        "tuple_types": "type_system",
     }
 
     return category_map.get(feature_focus, "misc")
