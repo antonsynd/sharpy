@@ -18,15 +18,10 @@ public static partial class DunderStrAdd
             return FormattableString.Invariant($"Vector({this.X}, {this.Y})");
         }
 
-        public Vector __Add__(Vector other)
-        {
-#line 16 "dunder_str_add.spy"
-            return new Vector(this.X + other.X, this.Y + other.Y);
-        }
-
         public static Vector operator +(Vector left, Vector right)
         {
-            return left.__Add__(right);
+#line 16 "dunder_str_add.spy"
+            return new Vector(left.X + right.X, left.Y + right.Y);
         }
 
         public Vector(int x, int y)

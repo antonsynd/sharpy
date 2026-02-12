@@ -10,15 +10,18 @@ public static partial class DunderBool
     public class Truthy : Sharpy.IBoolConvertible
     {
         public int Value;
-        public bool __Bool__()
+        public bool IsTrue
         {
+            get
+            {
 #line 9 "dunder_bool.spy"
-            return this.Value != 0;
+                return this.Value != 0;
+            }
         }
 
         public static bool operator true(Truthy value)
         {
-            return value.__Bool__();
+            return value.IsTrue;
         }
 
         public Truthy(int value)
@@ -29,7 +32,7 @@ public static partial class DunderBool
 
         public static bool operator false(Truthy value)
         {
-            return !value.__Bool__();
+            return !value.IsTrue;
         }
     }
 
