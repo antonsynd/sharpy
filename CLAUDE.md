@@ -265,6 +265,7 @@ Available in `.claude/skills/`:
 | `/project:emit <file.spy>` | Inspect generated C#, AST, tokens, and parse output |
 | `/project:verify-python <expr>` | Run Python 3 to verify behavior before implementing |
 | `/project:add-test-fixture <desc>` | Create a file-based integration test |
+| `/project:dogfood-analyze [dir]` | Analyze dogfood results and classify failures by root cause |
 
 ## Testing
 
