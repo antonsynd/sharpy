@@ -113,7 +113,7 @@ internal class ProtocolValidator : SemanticValidatorBase
         {
             AddError(_context,
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +
-                "(missing '__iter__' method). Consider implementing IIterable<T> interface.",
+                "(missing '__iter__' method).",
                 forStmt.Iterator.LineStart, forStmt.Iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
                 span: forStmt.Iterator.Span);
         }
@@ -233,7 +233,7 @@ internal class ProtocolValidator : SemanticValidatorBase
         {
             AddError(_context,
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +
-                "(missing '__iter__' method). Consider implementing IIterable<T> interface.",
+                "(missing '__iter__' method).",
                 iterator.LineStart, iterator.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
                 span: iterator.Span);
         }
@@ -249,7 +249,7 @@ internal class ProtocolValidator : SemanticValidatorBase
         {
             AddError(_context,
                 $"Type '{containerType.GetDisplayName()}' does not support indexing " +
-                "(missing '__getitem__' method). Consider implementing ISequence<T> interface.",
+                "(missing '__getitem__' method).",
                 indexAccess.LineStart, indexAccess.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
                 span: indexAccess.Span);
         }
@@ -265,7 +265,7 @@ internal class ProtocolValidator : SemanticValidatorBase
         {
             AddError(_context,
                 $"Type '{containerType.GetDisplayName()}' does not support membership testing " +
-                "(missing '__contains__' method). Consider implementing IContainer<T> interface.",
+                "(missing '__contains__' method).",
                 binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
                 span: binOp.Span);
         }
@@ -374,13 +374,6 @@ internal class ProtocolValidator : SemanticValidatorBase
                 currentType = currentType.BaseType;
             }
 
-            // Check for IIterable<T> from Sharpy.Core
-            var interfaces = clrType.GetInterfaces();
-            if (interfaces.Any(i =>
-                i.IsGenericType && i.GetGenericTypeDefinition().FullName == "Sharpy.IIterable`1"))
-            {
-                return true;
-            }
         }
 
         // ICollection -> __len__, __contains__

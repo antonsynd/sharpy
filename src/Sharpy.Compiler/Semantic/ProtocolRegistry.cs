@@ -21,7 +21,7 @@ public enum ProtocolKind
 /// <param name="DunderName">Lowercase Sharpy source name (e.g., "__len__")</param>
 /// <param name="Kind">The protocol category</param>
 /// <param name="SharpyCoreInterface">The Sharpy.Core interface name (e.g., "ISized"), or null if no interface</param>
-/// <param name="InterfaceMethodName">Sharpy.Core method name preserving dunder format with capitalized inner portion (e.g., "__Len__", "__GetItem__"), or null if no interface method</param>
+/// <param name="InterfaceMethodName">Sharpy.Core method/property name (e.g., "Count", "Contains", "__GetItem__"), or null if no interface method</param>
 /// <param name="ClrMethodName">The .NET method/property name (e.g., "get_Count"), or null if no direct mapping</param>
 /// <param name="ExpectedParamCount">Expected parameter count including 'self'</param>
 /// <param name="ExpectedReturnType">Expected return type name (e.g., "int", "bool", "str"), or null for any</param>
@@ -75,7 +75,7 @@ public static class ProtocolRegistry
             DunderName: DunderNames.Len,
             Kind: ProtocolKind.Container,
             SharpyCoreInterface: "ISized",
-            InterfaceMethodName: "__Len__",
+            InterfaceMethodName: "Count",
             ClrMethodName: "get_Count",  // Maps to Count property in .NET
             ExpectedParamCount: 1,  // Just self
             ExpectedReturnType: "int"  // Sharpy uses int; codegen handles uint conversion
@@ -84,8 +84,8 @@ public static class ProtocolRegistry
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.Contains,
             Kind: ProtocolKind.Container,
-            SharpyCoreInterface: "IContainer",
-            InterfaceMethodName: "__Contains__",
+            SharpyCoreInterface: null,
+            InterfaceMethodName: "Contains",
             ClrMethodName: "Contains",
             ExpectedParamCount: 2,  // self, item
             ExpectedReturnType: "bool"
@@ -94,7 +94,7 @@ public static class ProtocolRegistry
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.GetItem,
             Kind: ProtocolKind.Container,
-            SharpyCoreInterface: "ISequence",
+            SharpyCoreInterface: null,
             InterfaceMethodName: "__GetItem__",
             ClrMethodName: "get_Item",  // Maps to indexer property
             ExpectedParamCount: 2,  // self, key/index
@@ -104,7 +104,7 @@ public static class ProtocolRegistry
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.SetItem,
             Kind: ProtocolKind.Container,
-            SharpyCoreInterface: "IMutableSequence",
+            SharpyCoreInterface: null,
             InterfaceMethodName: "__SetItem__",
             ClrMethodName: "set_Item",  // Maps to indexer property setter
             ExpectedParamCount: 3,  // self, key/index, value
@@ -115,7 +115,7 @@ public static class ProtocolRegistry
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.Iter,
             Kind: ProtocolKind.Iterator,
-            SharpyCoreInterface: "IIterable",
+            SharpyCoreInterface: null,
             InterfaceMethodName: "__Iter__",
             ClrMethodName: "GetEnumerator",
             ExpectedParamCount: 1,  // Just self
@@ -136,8 +136,8 @@ public static class ProtocolRegistry
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.Str,
             Kind: ProtocolKind.Representation,
-            SharpyCoreInterface: "IStrConvertible",
-            InterfaceMethodName: "__Str__",
+            SharpyCoreInterface: null,
+            InterfaceMethodName: "ToString",
             ClrMethodName: "ToString",
             ExpectedParamCount: 1,  // Just self
             ExpectedReturnType: "str"
@@ -147,8 +147,8 @@ public static class ProtocolRegistry
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.Hash,
             Kind: ProtocolKind.Hashing,
-            SharpyCoreInterface: "IHashable",
-            InterfaceMethodName: "__Hash__",
+            SharpyCoreInterface: null,
+            InterfaceMethodName: "GetHashCode",
             ClrMethodName: "GetHashCode",
             ExpectedParamCount: 1,  // Just self
             ExpectedReturnType: "int"

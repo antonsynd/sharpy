@@ -49,12 +49,6 @@ public class ProtocolRegistryTests
 
     [Theory]
     [InlineData("__len__", "ISized")]
-    [InlineData("__contains__", "IContainer")]
-    [InlineData("__getitem__", "ISequence")]
-    [InlineData("__setitem__", "IMutableSequence")]
-    [InlineData("__iter__", "IIterable")]
-    [InlineData("__str__", "IStrConvertible")]
-    [InlineData("__hash__", "IHashable")]
     [InlineData("__bool__", "IBoolConvertible")]
     public void GetProtocol_ReturnsCorrectInterface(string dunderName, string expectedInterface)
     {
@@ -64,8 +58,14 @@ public class ProtocolRegistryTests
     }
 
     [Theory]
-    [InlineData("__init__")]  // Maps to constructor, no interface
-    [InlineData("__next__")]  // Part of Iterator<T> class, not an interface
+    [InlineData("__init__")]      // Maps to constructor, no interface
+    [InlineData("__next__")]      // Part of Iterator<T> class, not an interface
+    [InlineData("__contains__")]  // IContainer removed; method is Contains()
+    [InlineData("__getitem__")]   // ISequence removed; method is __GetItem__()
+    [InlineData("__setitem__")]   // IMutableSequence removed; method is __SetItem__()
+    [InlineData("__iter__")]      // IIterable removed; method is __Iter__()
+    [InlineData("__str__")]       // IStrConvertible removed; maps to ToString()
+    [InlineData("__hash__")]      // IHashable removed; maps to GetHashCode()
     public void GetProtocol_ReturnsNullInterfaceForSpecialCases(string dunderName)
     {
         var protocol = ProtocolRegistry.GetProtocol(dunderName);
@@ -104,14 +104,14 @@ public class ProtocolRegistryTests
     // ==================== Test Interface Method Names ====================
 
     [Theory]
-    [InlineData("__len__", "__Len__")]
-    [InlineData("__contains__", "__Contains__")]
+    [InlineData("__len__", "Count")]
+    [InlineData("__contains__", "Contains")]
     [InlineData("__getitem__", "__GetItem__")]
     [InlineData("__setitem__", "__SetItem__")]
     [InlineData("__iter__", "__Iter__")]
     [InlineData("__next__", "__Next__")]
-    [InlineData("__str__", "__Str__")]
-    [InlineData("__hash__", "__Hash__")]
+    [InlineData("__str__", "ToString")]
+    [InlineData("__hash__", "GetHashCode")]
     [InlineData("__bool__", "IsTrue")]
     public void GetProtocol_ReturnsCorrectInterfaceMethodName(string dunderName, string expectedMethodName)
     {
@@ -242,9 +242,10 @@ public class ProtocolRegistryTests
 
     [Theory]
     [InlineData("__len__", "ISized")]
-    [InlineData("__iter__", "IIterable")]
-    [InlineData("__str__", "IStrConvertible")]
-    [InlineData("__init__", null)]  // No interface for constructor
+    [InlineData("__bool__", "IBoolConvertible")]
+    [InlineData("__iter__", null)]   // IIterable removed
+    [InlineData("__str__", null)]    // IStrConvertible removed
+    [InlineData("__init__", null)]   // No interface for constructor
     public void GetInterfaceName_ReturnsCorrectInterface(string dunderName, string? expectedInterface)
     {
         ProtocolRegistry.GetInterfaceName(dunderName).Should().Be(expectedInterface);
@@ -304,22 +305,23 @@ public class ProtocolRegistryTests
 
     [Theory]
     [InlineData("ISized", "__len__")]
-    [InlineData("IContainer", "__contains__")]
-    [InlineData("ISequence", "__getitem__")]
-    [InlineData("IMutableSequence", "__setitem__")]
-    [InlineData("IIterable", "__iter__")]
-    [InlineData("IStrConvertible", "__str__")]
-    [InlineData("IHashable", "__hash__")]
     [InlineData("IBoolConvertible", "__bool__")]
     public void GetDunderForInterface_ReturnsCorrectDunder(string interfaceName, string expectedDunder)
     {
         ProtocolRegistry.GetDunderForInterface(interfaceName).Should().Be(expectedDunder);
     }
 
-    [Fact]
-    public void GetDunderForInterface_ReturnsNullForUnknownInterface()
+    [Theory]
+    [InlineData("IUnknown")]
+    [InlineData("IContainer")]       // Removed from Sharpy.Core
+    [InlineData("ISequence")]        // Removed from Sharpy.Core
+    [InlineData("IMutableSequence")] // Removed from Sharpy.Core
+    [InlineData("IIterable")]        // Removed from Sharpy.Core
+    [InlineData("IStrConvertible")]  // Removed from Sharpy.Core
+    [InlineData("IHashable")]        // Removed from Sharpy.Core
+    public void GetDunderForInterface_ReturnsNullForRemovedOrUnknownInterface(string interfaceName)
     {
-        ProtocolRegistry.GetDunderForInterface("IUnknown").Should().BeNull();
+        ProtocolRegistry.GetDunderForInterface(interfaceName).Should().BeNull();
     }
 
     [Fact]
