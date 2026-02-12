@@ -7,7 +7,7 @@ namespace Sharpy
     using static Builtins;
 
     /// <summary>
-    /// Python-style methods and deprecated dunder methods for List&lt;T&gt;.
+    /// Python-style methods for List&lt;T&gt;.
     /// </summary>
     public sealed partial class List<T>
     {
@@ -195,136 +195,6 @@ namespace Sharpy
         /// Returns a reverse iterator over the list.
         /// </summary>
         public Iterator<T> __Reversed__() => new ListReverseIterator<T>(this);
-
-        /// <summary>
-        /// Concatenates this list with another list, returning a new list.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <c>list1 + list2</c> operator instead.
-        /// </remarks>
-        public List<T> __Add__(List<T> other) => this + other;
-
-        /// <summary>
-        /// Concatenates this list with another enumerable, returning a new list.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <c>list1 + list2</c> operator instead.
-        /// </remarks>
-        public List<T> __Add__(IEnumerable<T> other)
-        {
-            var res = new List<T>();
-            res._list.AddRange(_list);
-            res._list.AddRange(other);
-
-            return res;
-        }
-
-        /// <summary>
-        /// Right-side addition (prepends other to this list).
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <c>list1 + list2</c> operator instead.
-        /// </remarks>
-        public List<T> __RAdd__(List<T> other)
-        {
-            if (other is null)
-            {
-                throw TypeError.CanOnlyNot("concatenate", $"List<{typeof(T).Name}>", "NoneType", "to", $"List<{typeof(T).Name}>");
-            }
-
-            var res = other.Copy();
-            res.Extend(this);
-
-            return res;
-        }
-
-        /// <summary>
-        /// Right-side addition (prepends other to this list).
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <c>list1 + list2</c> operator instead.
-        /// </remarks>
-        public List<T> __RAdd__(IEnumerable<T> other)
-        {
-            var res = new List<T>();
-            res._list.AddRange(other);
-            res._list.AddRange(_list);
-
-            return res;
-        }
-
-        /// <summary>
-        /// In-place addition (extend) from a list.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <c>list.Extend(other)</c> instead.
-        /// </remarks>
-        public void __IAdd__(List<T> other)
-        {
-            if (other is null)
-            {
-                throw TypeError.CanOnlyNot("concatenate", $"List<{typeof(T).Name}>", "NoneType", "to", $"List<{typeof(T).Name}>");
-            }
-
-            Extend(other);
-        }
-
-        /// <summary>
-        /// In-place addition (extend) from an enumerable.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <c>list.Extend(other)</c> instead.
-        /// </remarks>
-        public void __IAdd__(IEnumerable<T> other)
-        {
-            if (other is null)
-            {
-                throw TypeError.IsNotInterface("NoneType", "iterable");
-            }
-
-            _list.AddRange(other);
-        }
-
-        /// <summary>
-        /// Repeats this list a specified number of times, returning a new list.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <c>list * count</c> operator instead.
-        /// </remarks>
-        public List<T> __Mul__(int count) => this * count;
-
-        /// <summary>
-        /// Repeats this list a specified number of times, returning a new list.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <c>count * list</c> operator instead.
-        /// </remarks>
-        public List<T> __RMul__(int count) => count * this;
-
-        /// <summary>
-        /// In-place repetition of this list.
-        /// </summary>
-        public void __IMul__(int i)
-        {
-            if (i <= 0)
-            {
-                Clear();
-
-                return;
-            }
-
-            var originalLength = _list.Count;
-
-            --i;
-
-            for (; i > 0; --i)
-            {
-                for (uint j = 0; j < originalLength; ++j)
-                {
-                    _list.Add(_list[(int)j]);
-                }
-            }
-        }
 
         #endregion
     }

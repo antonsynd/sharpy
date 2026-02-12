@@ -56,17 +56,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Implements the __rmul__ dunder method for reversed string replication.
-        /// Maps to the * operator in Sharpy code when int is on the left.
-        /// </summary>
-        /// <param name="count">The number of times to replicate the string.</param>
-        /// <returns>A new Str with the replicated result.</returns>
-        public Str __RMul__(int count)
-        {
-            return __Mul__(count);
-        }
-
-        /// <summary>
         /// String replication operator.
         /// </summary>
         public static Str operator *(Str left, int count)
@@ -79,7 +68,7 @@ namespace Sharpy
         /// </summary>
         public static Str operator *(int count, Str right)
         {
-            return right.__RMul__(count);
+            return right.__Mul__(count);
         }
 
         /// <summary>

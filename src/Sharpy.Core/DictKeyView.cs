@@ -247,12 +247,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Right-side union (when dict view is on the right).
-        /// Deprecated: Use <see cref="Union(Set{K})"/> instead.
-        /// </summary>
-        public Set<K> __ROr__(Set<K> other) => Union(other);
-
-        /// <summary>
         /// Right-side difference (when dict view is on the right: other - this).
         /// </summary>
         public Set<K> RightDifference(Set<K> other)
@@ -267,11 +261,6 @@ namespace Sharpy
             }
             return result;
         }
-
-        /// <summary>
-        /// Deprecated: Use <see cref="RightDifference(Set{K})"/> instead.
-        /// </summary>
-        public Set<K> __RSub__(Set<K> other) => RightDifference(other);
 
         /// <summary>
         /// Return difference (elements in this but not in other).

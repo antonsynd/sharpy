@@ -301,48 +301,6 @@ namespace Sharpy
             return newDict;
         }
 
-        /// <summary>
-        /// Deprecated: Use <see cref="Merge(Dict{K,V})"/> instead.
-        /// </summary>
-        public Dict<K, V> __Or__(Dict<K, V> other) => Merge(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="Update(IMapping{K,V})"/> instead.
-        /// </summary>
-        public void __IOr__(Dict<K, V> other) => Update(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="Merge(Dict{K,V})"/> with explicit cast instead.
-        /// </summary>
-        public Dict<K, V> __Or__(IReadOnlyDictionary<K, V> other)
-        {
-            var newDict = Copy();
-            newDict.Update(other);
-
-            return newDict;
-        }
-
-        /// <summary>
-        /// Deprecated: Use Update with IReadOnlyDictionary instead.
-        /// </summary>
-        public void __IOr__(IReadOnlyDictionary<K, V> other) => Update(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="Merge(Dict{K,V})"/> with explicit conversion instead.
-        /// </summary>
-        public Dict<K, V> __Or__(IEnumerable<(K, V)> other)
-        {
-            var newDict = Copy();
-            newDict.Update(other);
-
-            return newDict;
-        }
-
-        /// <summary>
-        /// Deprecated: Use <see cref="Update(IEnumerable{ValueTuple{K,V}})"/> instead.
-        /// </summary>
-        public void __IOr__(IEnumerable<(K, V)> other) => Update(other);
-
         public static Dict<K, V> operator |(Dict<K, V> left, Dict<K, V> right)
         {
             return left.Merge(right);

@@ -7,7 +7,7 @@ namespace Sharpy
     using static Builtins;
 
     /// <summary>
-    /// Python-style mutation methods and deprecated dunder methods for Set&lt;T&gt;.
+    /// Python-style mutation methods for Set&lt;T&gt;.
     /// </summary>
     public sealed partial class Set<T>
     {
@@ -121,121 +121,6 @@ namespace Sharpy
         /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
         /// </summary>
         public Iterator<T> __Iter__() => (Iterator<T>)GetEnumerator();
-
-        /// <summary>
-        /// Deprecated: Use <c>!Equals(other)</c> instead.
-        /// </summary>
-        public bool __Ne__(Set<T> other) => !Equals(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="IsProperSubset(Set{T})"/> instead.
-        /// </summary>
-        public bool __Lt__(Set<T> other) => IsProperSubset(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="IsSubset(Set{T})"/> instead.
-        /// </summary>
-        public bool __Le__(Set<T> other) => IsSubset(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="IsProperSuperset(Set{T})"/> instead.
-        /// </summary>
-        public bool __Gt__(Set<T> other) => IsProperSuperset(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="IsSuperset(Set{T})"/> instead.
-        /// </summary>
-        public bool __Ge__(Set<T> other) => IsSuperset(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="Intersection(Set{T})"/> instead.
-        /// </summary>
-        public Set<T> __And__(Set<T> other) => Intersection(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="Union(Set{T})"/> instead.
-        /// </summary>
-        public Set<T> __Or__(Set<T> other) => Union(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="Difference(Set{T})"/> instead.
-        /// </summary>
-        public Set<T> __Sub__(Set<T> other) => Difference(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="SymmetricDifference(Set{T})"/> instead.
-        /// </summary>
-        public Set<T> __XOr__(Set<T> other) => SymmetricDifference(other);
-
-        /// <summary>
-        /// Returns union with other set (reverse operand order for insertion).
-        /// </summary>
-        /// <remarks>
-        /// For insertion order, the other set is iterated through first.
-        /// Deprecated: Use <see cref="Union(Set{T})"/> with operands swapped instead.
-        /// </remarks>
-        public Set<T> __ROr__(Set<T> other)
-        {
-            if (other is null)
-            {
-                throw TypeError.IsNotInterface("NoneType", "iterable");
-            }
-
-            var result = new Set<T>(other._set);
-
-            foreach (var item in _set)
-            {
-                result._set.Add(item);
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Returns difference with other as left operand.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <c>other.Difference(this)</c> instead.
-        /// </remarks>
-        public Set<T> __RSub__(Set<T> other)
-        {
-            if (other is null)
-            {
-                throw TypeError.IsNotInterface("NoneType", "iterable");
-            }
-
-            var result = new Set<T>();
-
-            foreach (var item in other._set)
-            {
-                if (!_set.Contains(item))
-                {
-                    result._set.Add(item);
-                }
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// In-place intersection.
-        /// </summary>
-        public void __IAnd__(Set<T> other) => _set.IntersectWith(other._set);
-
-        /// <summary>
-        /// In-place union.
-        /// </summary>
-        public void __IOr__(Set<T> other) => _set.UnionWith(other._set);
-
-        /// <summary>
-        /// In-place difference.
-        /// </summary>
-        public void __ISub__(Set<T> other) => _set.ExceptWith(other._set);
-
-        /// <summary>
-        /// In-place symmetric difference.
-        /// </summary>
-        public void __IXOr__(Set<T> other) => _set.SymmetricExceptWith(other._set);
 
         #endregion
     }
