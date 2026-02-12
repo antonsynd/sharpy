@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 dotnet build sharpy.sln                              # Build all
 dotnet test                                          # Run all tests
-dotnet format whitespace                             # Format before committing
+dotnet format whitespace                             # Required before committing
 dotnet run --project src/Sharpy.Cli -- run file.spy # Compile and execute
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C#
 dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Inspect parsed AST
@@ -131,6 +131,20 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 
 **Responsibility split**: TypeChecker handles type mismatches and in-progress inference. ValidationPipeline handles self-contained AST analyses that don't need active inference state.
 
+## Diagnostic Code Ranges
+
+All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
+
+| Range | Level | Component |
+|-------|-------|-----------|
+| SPY0001–SPY0099 | Error | Lexer |
+| SPY0100–SPY0199 | Error | Parser |
+| SPY0200–SPY0399 | Error | Semantic |
+| SPY0400–SPY0449 | Error | Validation |
+| SPY0450–SPY0499 | Warning | Validation (unreachable code, naming conventions) |
+| SPY0500–SPY0599 | Error | Code generation |
+| SPY1000–SPY1099 | Info | Informational (e.g., implicit interface synthesis) |
+
 ## Code Generation
 
 The `RoslynEmitter` is split into 8 partial classes (~6,225 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Statements.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`.
@@ -232,6 +246,15 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 - **Partial class pattern**: Types split across `Partial.{Type}/` directories (e.g., `Partial.List/List.Methods.cs`, `List.Slicing.cs`, `List.Interfaces.cs`)
 - **Builtins**: `partial class Builtins` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
 - **Python semantics**: Negative indexing, slicing, Python-matching exceptions
+
+### Protocol Interfaces
+
+Protocol interfaces enable builtin function dispatch (e.g., `len()`, `bool()`) via compile-time interfaces:
+
+- `ISized` — `int Count { get; }` — implemented by List, Set, Dict; synthesized when `__len__` is present
+- `IBoolConvertible` — `bool __Bool__()` — synthesized when `__bool__` is present
+
+The emitter implicitly adds these interfaces to a class's base list when the corresponding dunder method is detected (emits SPY1001 info diagnostic).
 
 ## Skills
 
