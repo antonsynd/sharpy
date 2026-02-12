@@ -168,7 +168,7 @@ namespace Sharpy
         private void _SetSliceSingleStep(List<T> other, int start, int end)
         {
             var numOldElems = end - start;
-            var numNewElems = other.__Len__();
+            var numNewElems = other._list.Count;
 
             if (numOldElems != numNewElems)
             {

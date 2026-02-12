@@ -46,7 +46,7 @@ namespace Sharpy
                 }
             }
 
-            var numSaved = _saved.__Len__();
+            var numSaved = ((System.Collections.Generic.ICollection<T>)_saved).Count;
 
             // Nothing saved means nothing to iterate through
             if (numSaved == 0)

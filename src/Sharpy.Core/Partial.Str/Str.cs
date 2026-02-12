@@ -1312,7 +1312,7 @@ namespace Sharpy
                 if (replacement is null)
                 {
                     // If mapped to None explicitly, delete the character
-                    if (table.__Contains__(codePoint))
+                    if (table.ContainsKey(codePoint))
                     {
                         continue; // Skip this character
                     }
