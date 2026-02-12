@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.CodeGen;
 using Xunit;
 
@@ -100,6 +101,66 @@ public class DunderMappingTests
     public void HasMapping_UnknownDunder_ReturnsFalse()
     {
         DunderMapping.HasMapping("__add__").Should().BeFalse();
+    }
+
+    #endregion
+
+    #region TryGetBinaryExpressionKind Tests
+
+    [Theory]
+    [InlineData("__add__", SyntaxKind.AddExpression)]
+    [InlineData("__sub__", SyntaxKind.SubtractExpression)]
+    [InlineData("__mul__", SyntaxKind.MultiplyExpression)]
+    [InlineData("__div__", SyntaxKind.DivideExpression)]
+    [InlineData("__mod__", SyntaxKind.ModuloExpression)]
+    [InlineData("__and__", SyntaxKind.BitwiseAndExpression)]
+    [InlineData("__or__", SyntaxKind.BitwiseOrExpression)]
+    [InlineData("__xor__", SyntaxKind.ExclusiveOrExpression)]
+    [InlineData("__lshift__", SyntaxKind.LeftShiftExpression)]
+    [InlineData("__rshift__", SyntaxKind.RightShiftExpression)]
+    [InlineData("__ne__", SyntaxKind.NotEqualsExpression)]
+    [InlineData("__lt__", SyntaxKind.LessThanExpression)]
+    [InlineData("__le__", SyntaxKind.LessThanOrEqualExpression)]
+    [InlineData("__gt__", SyntaxKind.GreaterThanExpression)]
+    [InlineData("__ge__", SyntaxKind.GreaterThanOrEqualExpression)]
+    public void TryGetBinaryExpressionKind_OperatorDunder_ReturnsKind(string dunder, SyntaxKind expected)
+    {
+        DunderMapping.TryGetBinaryExpressionKind(dunder).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("__eq__")]       // Handled by method map (→ Equals), not operator expression
+    [InlineData("__init__")]
+    [InlineData("__str__")]
+    [InlineData("__neg__")]      // Unary, not binary
+    [InlineData("__bool__")]
+    [InlineData("not_a_dunder")]
+    public void TryGetBinaryExpressionKind_NonBinaryOperator_ReturnsNull(string dunder)
+    {
+        DunderMapping.TryGetBinaryExpressionKind(dunder).Should().BeNull();
+    }
+
+    #endregion
+
+    #region TryGetUnaryExpressionKind Tests
+
+    [Theory]
+    [InlineData("__neg__", SyntaxKind.UnaryMinusExpression)]
+    [InlineData("__pos__", SyntaxKind.UnaryPlusExpression)]
+    [InlineData("__invert__", SyntaxKind.BitwiseNotExpression)]
+    public void TryGetUnaryExpressionKind_UnaryDunder_ReturnsKind(string dunder, SyntaxKind expected)
+    {
+        DunderMapping.TryGetUnaryExpressionKind(dunder).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("__add__")]      // Binary, not unary
+    [InlineData("__eq__")]
+    [InlineData("__bool__")]
+    [InlineData("not_a_dunder")]
+    public void TryGetUnaryExpressionKind_NonUnaryOperator_ReturnsNull(string dunder)
+    {
+        DunderMapping.TryGetUnaryExpressionKind(dunder).Should().BeNull();
     }
 
     #endregion
