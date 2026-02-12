@@ -118,11 +118,6 @@ namespace Sharpy
         public Set<K> __And__(Set<K> other) => Intersection(other);
 
         /// <summary>
-        /// Deprecated: Use <see cref="Contains(K)"/> instead.
-        /// </summary>
-        public bool __Contains__(K x) => Contains(x);
-
-        /// <summary>
         /// Check if this is a superset or equal to other.
         /// </summary>
         public bool IsSuperset(Set<K> other)

@@ -54,11 +54,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="Contains(V)"/> instead.
-        /// </summary>
-        public bool __Contains__(V item) => Contains(item);
-
-        /// <summary>
         /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
         /// </summary>
         public Iterator<V> __Iter__()

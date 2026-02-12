@@ -184,14 +184,6 @@ namespace Sharpy
         #region Deprecated Dunder Methods
 
         /// <summary>
-        /// Returns whether the item is in the list.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <see cref="Contains(T)"/> instead.
-        /// </remarks>
-        public bool __Contains__(T x) => Contains(x);
-
-        /// <summary>
         /// Returns an iterator over the list elements.
         /// </summary>
         /// <remarks>

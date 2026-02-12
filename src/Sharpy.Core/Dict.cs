@@ -178,11 +178,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="ContainsKey(K)"/> instead.
-        /// </summary>
-        public bool __Contains__(K key) => ContainsKey(key);
-
-        /// <summary>
         /// Removes the item with the specified key from the dictionary.
         /// </summary>
         /// <exception cref="KeyError">Thrown if the key does not exist.</exception>

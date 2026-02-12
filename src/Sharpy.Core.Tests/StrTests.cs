@@ -125,8 +125,8 @@ public class Str_Tests
     public void Contains_FindsSubstring()
     {
         var s = new Str("Hello World");
-        s.__Contains__(new Str("World")).Should().BeTrue();
-        s.__Contains__(new Str("xyz")).Should().BeFalse();
+        s.Contains(new Str("World")).Should().BeTrue();
+        s.Contains(new Str("xyz")).Should().BeFalse();
     }
 
     [Fact]

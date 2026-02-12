@@ -118,11 +118,6 @@ namespace Sharpy
         #region Deprecated Dunder Methods
 
         /// <summary>
-        /// Deprecated: Use <see cref="Contains(T)"/> instead.
-        /// </summary>
-        public bool __Contains__(T x) => Contains(x);
-
-        /// <summary>
         /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
         /// </summary>
         public Iterator<T> __Iter__() => (Iterator<T>)GetEnumerator();

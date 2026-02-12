@@ -117,7 +117,7 @@ public class Dict_Tests
         dict["key"] = 42;
 
         // Act
-        var result = dict.__Contains__("key");
+        var result = dict.ContainsKey("key");
 
         // Assert
         result.Should().BeTrue();
@@ -130,7 +130,7 @@ public class Dict_Tests
         var dict = new Dict<Str, int>();
 
         // Act
-        var result = dict.__Contains__("missing");
+        var result = dict.ContainsKey("missing");
 
         // Assert
         result.Should().BeFalse();
@@ -165,7 +165,7 @@ public class Dict_Tests
         // Assert
         value.Should().Be(42);
         dict.Count.Should().Be(0);
-        dict.__Contains__("key").Should().BeFalse();
+        dict.ContainsKey("key").Should().BeFalse();
     }
 
     [Fact]
@@ -288,7 +288,7 @@ public class Dict_Tests
         // Modifying copy should not affect original
         copy["c"] = 3;
         original.Count.Should().Be(2);
-        original.__Contains__("c").Should().BeFalse();
+        original.ContainsKey("c").Should().BeFalse();
     }
 
     [Fact]
@@ -351,7 +351,7 @@ public class Dict_Tests
         key.Should().Be("a"); // First inserted (last=false is default)
         value.Should().Be(1);
         dict.Count.Should().Be(2);
-        dict.__Contains__("a").Should().BeFalse();
+        dict.ContainsKey("a").Should().BeFalse();
     }
 
     [Fact]
@@ -382,7 +382,7 @@ public class Dict_Tests
 
         dict.Pop("b");
         dict.Count.Should().Be(2);
-        dict.__Contains__("b").Should().BeFalse();
+        dict.ContainsKey("b").Should().BeFalse();
 
         dict["a"] = 100; // Update
         dict["a"].Should().Be(100);
@@ -435,7 +435,7 @@ public class Dict_Tests
         // Act & Assert
         // Note: With K : notnull constraint, null keys throw NullReferenceException
         // when the key type's GetHashCode is called by the underlying Dictionary
-        dict.Invoking(d => d.__Contains__(null!))
+        dict.Invoking(d => d.ContainsKey(null!))
             .Should().Throw<NullReferenceException>();
     }
 
@@ -467,7 +467,7 @@ public class Dict_Tests
 
         // Assert
         copy["a"].Should().Be(1); // Copy unchanged
-        copy.__Contains__("b").Should().BeFalse();
+        copy.ContainsKey("b").Should().BeFalse();
     }
 
     [Fact]

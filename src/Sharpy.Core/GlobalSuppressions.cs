@@ -37,7 +37,6 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Dict`2.__IOr__(Sharpy.Dict{`0,`1})")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Dict`2.__Or__(Sharpy.Dict{`0,`1})~Sharpy.Dict{`0,`1}")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.DictKeyView`2.__And__(Sharpy.Set{`0})~Sharpy.Set{`0}")]
-[assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.DictKeyView`2.__Contains__(`0)~System.Boolean")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.DictKeyView`2.__Ge__(Sharpy.Set{`0})~System.Boolean")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.DictKeyView`2.__Gt__(Sharpy.Set{`0})~System.Boolean")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.DictKeyView`2.__Le__(Sharpy.Set{`0})~System.Boolean")]

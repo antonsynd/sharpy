@@ -156,7 +156,7 @@ namespace Sharpy
         /// </summary>
         /// <param name="substring">The substring to search for.</param>
         /// <returns>True if the substring is found, false otherwise.</returns>
-        public bool __Contains__(Str substring)
+        public bool Contains(Str substring)
         {
             return _s.Contains(substring._s);
         }

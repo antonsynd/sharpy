@@ -13,7 +13,6 @@ public partial class Set_Tests
 
         // When/then
         s.Contains(1).Should().BeFalse();
-        s.__Contains__(1).Should().BeFalse();
     }
 
     [Fact]
@@ -24,7 +23,6 @@ public partial class Set_Tests
 
         // When/then
         s.Contains(4).Should().BeFalse();
-        s.__Contains__(4).Should().BeFalse();
     }
 
     [Fact]
@@ -35,6 +33,5 @@ public partial class Set_Tests
 
         // When/then
         s.Contains(5).Should().BeTrue();
-        s.__Contains__(5).Should().BeTrue();
     }
 }

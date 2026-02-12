@@ -19,10 +19,10 @@ public class DictViews_Tests
 
         // Assert
         items.Count.Should().Be(3);
-        items.__Contains__(("a", 1)).Should().BeTrue();
-        items.__Contains__(("b", 2)).Should().BeTrue();
-        items.__Contains__(("c", 3)).Should().BeTrue();
-        items.__Contains__(("d", 4)).Should().BeFalse();
+        items.Contains(("a", 1)).Should().BeTrue();
+        items.Contains(("b", 2)).Should().BeTrue();
+        items.Contains(("c", 3)).Should().BeTrue();
+        items.Contains(("d", 4)).Should().BeFalse();
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public class DictViews_Tests
 
         // Assert - view should reflect the change
         items.Count.Should().Be(2);
-        items.__Contains__(("b", 2)).Should().BeTrue();
+        items.Contains(("b", 2)).Should().BeTrue();
     }
 
     [Fact]
@@ -76,8 +76,8 @@ public class DictViews_Tests
         var items = (DictItemsView<Str, int>)dict.Items();
 
         // Assert
-        items.__Contains__(("a", 1)).Should().BeTrue();
-        items.__Contains__(("a", 2)).Should().BeFalse(); // Wrong value
+        items.Contains(("a", 1)).Should().BeTrue();
+        items.Contains(("a", 2)).Should().BeFalse(); // Wrong value
     }
 
     [Fact]
@@ -94,10 +94,10 @@ public class DictViews_Tests
 
         // Assert
         values.Count.Should().Be(3);
-        values.__Contains__(1).Should().BeTrue();
-        values.__Contains__(2).Should().BeTrue();
-        values.__Contains__(3).Should().BeTrue();
-        values.__Contains__(4).Should().BeFalse();
+        values.Contains(1).Should().BeTrue();
+        values.Contains(2).Should().BeTrue();
+        values.Contains(3).Should().BeTrue();
+        values.Contains(4).Should().BeFalse();
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class DictViews_Tests
 
         // Assert - view should reflect the change
         values.Count.Should().Be(2);
-        values.__Contains__(2).Should().BeTrue();
+        values.Contains(2).Should().BeTrue();
     }
 
     [Fact]
@@ -154,7 +154,7 @@ public class DictViews_Tests
 
         // Assert
         values.Count.Should().Be(3);
-        values.__Contains__(1).Should().BeTrue();
+        values.Contains(1).Should().BeTrue();
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class DictViews_Tests
 
         // Assert - view should reflect the change
         keys.Count.Should().Be(2);
-        keys.__Contains__("b").Should().BeTrue();
+        keys.Contains("b").Should().BeTrue();
     }
 
     [Fact]

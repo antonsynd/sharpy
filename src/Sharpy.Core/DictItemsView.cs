@@ -49,11 +49,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="Contains(ValueTuple{K, V})"/> instead.
-        /// </summary>
-        public bool __Contains__((K, V) item) => Contains(item);
-
-        /// <summary>
         /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
         /// </summary>
         public Iterator<(K, V)> __Iter__()
