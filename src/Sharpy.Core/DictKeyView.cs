@@ -113,22 +113,12 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="Intersection(Set{K})"/> instead.
-        /// </summary>
-        public Set<K> __And__(Set<K> other) => Intersection(other);
-
-        /// <summary>
         /// Check if this is a superset or equal to other.
         /// </summary>
         public bool IsSuperset(Set<K> other)
         {
             return Equals(other) || IsProperSuperset(other);
         }
-
-        /// <summary>
-        /// Deprecated: Use <see cref="IsSuperset(Set{K})"/> instead.
-        /// </summary>
-        public bool __Ge__(Set<K> other) => IsSuperset(other);
 
         /// <summary>
         /// Check if this is a proper superset of other.
@@ -150,11 +140,6 @@ namespace Sharpy
             }
             return true;
         }
-
-        /// <summary>
-        /// Deprecated: Use <see cref="IsProperSuperset(Set{K})"/> instead.
-        /// </summary>
-        public bool __Gt__(Set<K> other) => IsProperSuperset(other);
 
         /// <summary>
         /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
@@ -185,11 +170,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="IsSubset(Set{K})"/> instead.
-        /// </summary>
-        public bool __Le__(Set<K> other) => IsSubset(other);
-
-        /// <summary>
         /// Check if this is a proper subset of other.
         /// </summary>
         public bool IsProperSubset(Set<K> other)
@@ -210,16 +190,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="IsProperSubset(Set{K})"/> instead.
-        /// </summary>
-        public bool __Lt__(Set<K> other) => IsProperSubset(other);
-
-        /// <summary>
-        /// Deprecated: Use <c>!Equals(other)</c> instead.
-        /// </summary>
-        public bool __Ne__(Set<K>? other) => !Equals(other);
-
-        /// <summary>
         /// Return union with another set.
         /// </summary>
         public Set<K> Union(Set<K> other)
@@ -235,11 +205,6 @@ namespace Sharpy
             }
             return result;
         }
-
-        /// <summary>
-        /// Deprecated: Use <see cref="Union(Set{K})"/> instead.
-        /// </summary>
-        public Set<K> __Or__(Set<K> other) => Union(other);
 
         public static DictKeyView<K, V> operator |(DictKeyView<K, V> left, DictKeyView<K, V> right)
         {
@@ -279,11 +244,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="Difference(Set{K})"/> instead.
-        /// </summary>
-        public Set<K> __Sub__(Set<K> other) => Difference(other);
-
-        /// <summary>
         /// Return symmetric difference (elements in either but not both).
         /// </summary>
         public Set<K> SymmetricDifference(Set<K> other)
@@ -310,11 +270,6 @@ namespace Sharpy
 
             return result;
         }
-
-        /// <summary>
-        /// Deprecated: Use <see cref="SymmetricDifference(Set{K})"/> instead.
-        /// </summary>
-        public Set<K> __XOr__(Set<K> other) => SymmetricDifference(other);
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }

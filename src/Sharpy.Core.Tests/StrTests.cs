@@ -10,7 +10,7 @@ public class Str_Tests
     {
         var s1 = new Str("Hello");
         var s2 = new Str(" World");
-        var result = s1.__Add__(s2);
+        var result = s1 + s2;
         result.Should().Be(new Str("Hello World"));
     }
 
@@ -27,7 +27,7 @@ public class Str_Tests
     public void Mul_ReplicatesString()
     {
         var s = new Str("Ha");
-        var result = s.__Mul__(3);
+        var result = s * 3;
         result.Should().Be(new Str("HaHaHa"));
     }
 
@@ -35,7 +35,7 @@ public class Str_Tests
     public void Mul_WithZero_ReturnsEmptyString()
     {
         var s = new Str("Hello");
-        var result = s.__Mul__(0);
+        var result = s * 0;
         result.Should().Be(new Str(""));
     }
 
@@ -43,7 +43,7 @@ public class Str_Tests
     public void Mul_WithNegative_ReturnsEmptyString()
     {
         var s = new Str("Hello");
-        var result = s.__Mul__(-5);
+        var result = s * (-5);
         result.Should().Be(new Str(""));
     }
 
@@ -68,8 +68,8 @@ public class Str_Tests
     {
         var s1 = new Str("apple");
         var s2 = new Str("banana");
-        s1.__Lt__(s2).Should().BeTrue();
-        s2.__Lt__(s1).Should().BeFalse();
+        (s1 < s2).Should().BeTrue();
+        (s2 < s1).Should().BeFalse();
     }
 
     [Fact]
@@ -78,9 +78,9 @@ public class Str_Tests
         var s1 = new Str("apple");
         var s2 = new Str("apple");
         var s3 = new Str("banana");
-        s1.__Le__(s2).Should().BeTrue();
-        s1.__Le__(s3).Should().BeTrue();
-        s3.__Le__(s1).Should().BeFalse();
+        (s1 <= s2).Should().BeTrue();
+        (s1 <= s3).Should().BeTrue();
+        (s3 <= s1).Should().BeFalse();
     }
 
     [Fact]
@@ -88,8 +88,8 @@ public class Str_Tests
     {
         var s1 = new Str("banana");
         var s2 = new Str("apple");
-        s1.__Gt__(s2).Should().BeTrue();
-        s2.__Gt__(s1).Should().BeFalse();
+        (s1 > s2).Should().BeTrue();
+        (s2 > s1).Should().BeFalse();
     }
 
     [Fact]
@@ -98,9 +98,9 @@ public class Str_Tests
         var s1 = new Str("banana");
         var s2 = new Str("banana");
         var s3 = new Str("apple");
-        s1.__Ge__(s2).Should().BeTrue();
-        s1.__Ge__(s3).Should().BeTrue();
-        s3.__Ge__(s1).Should().BeFalse();
+        (s1 >= s2).Should().BeTrue();
+        (s1 >= s3).Should().BeTrue();
+        (s3 >= s1).Should().BeFalse();
     }
 
     [Fact]

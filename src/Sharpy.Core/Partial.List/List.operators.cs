@@ -47,7 +47,25 @@ namespace Sharpy
                 throw TypeError.OpNotSupported("<", "NoneType");
             }
 
-            return left.__Lt__(right);
+            if (right is null)
+            {
+                throw TypeError.OpNotSupported("<", "NoneType");
+            }
+
+            var minLen = System.Math.Min(left._list.Count, right._list.Count);
+
+            for (int i = 0; i < minLen; i++)
+            {
+                var leftElem = left._list[i];
+                var rightElem = right._list[i];
+
+                if (!Operator.Eq(leftElem, rightElem))
+                {
+                    return Operator.Lt(leftElem, rightElem);
+                }
+            }
+
+            return left._list.Count < right._list.Count;
         }
 
         /// <summary>
@@ -60,7 +78,25 @@ namespace Sharpy
                 throw TypeError.OpNotSupported("<=", "NoneType");
             }
 
-            return left.__Le__(right);
+            if (right is null)
+            {
+                throw TypeError.OpNotSupported("<=", "NoneType");
+            }
+
+            var minLen = System.Math.Min(left._list.Count, right._list.Count);
+
+            for (int i = 0; i < minLen; i++)
+            {
+                var leftElem = left._list[i];
+                var rightElem = right._list[i];
+
+                if (!Operator.Eq(leftElem, rightElem))
+                {
+                    return Operator.Lt(leftElem, rightElem);
+                }
+            }
+
+            return left._list.Count <= right._list.Count;
         }
 
         /// <summary>
@@ -73,7 +109,25 @@ namespace Sharpy
                 throw TypeError.OpNotSupported(">", "NoneType");
             }
 
-            return left.__Gt__(right);
+            if (right is null)
+            {
+                throw TypeError.OpNotSupported(">", "NoneType");
+            }
+
+            var minLen = System.Math.Min(left._list.Count, right._list.Count);
+
+            for (int i = 0; i < minLen; i++)
+            {
+                var leftElem = left._list[i];
+                var rightElem = right._list[i];
+
+                if (!Operator.Eq(leftElem, rightElem))
+                {
+                    return Operator.Gt(leftElem, rightElem);
+                }
+            }
+
+            return left._list.Count > right._list.Count;
         }
 
         /// <summary>
@@ -86,103 +140,17 @@ namespace Sharpy
                 throw TypeError.OpNotSupported(">=", "NoneType");
             }
 
-            return left.__Ge__(right);
-        }
-
-        /// <summary>
-        /// Lexicographically compares this list with another (less than).
-        /// </summary>
-        internal bool __Lt__(List<T>? other)
-        {
-            if (other is null)
-            {
-                throw TypeError.OpNotSupported("<", "NoneType");
-            }
-
-            var minLen = System.Math.Min(_list.Count, other._list.Count);
-
-            for (int i = 0; i < minLen; i++)
-            {
-                var leftElem = _list[i];
-                var rightElem = other._list[i];
-
-                if (!Operator.Eq(leftElem, rightElem))
-                {
-                    return Operator.Lt(leftElem, rightElem);
-                }
-            }
-
-            return _list.Count < other._list.Count;
-        }
-
-        /// <summary>
-        /// Lexicographically compares this list with another (less than or equal).
-        /// </summary>
-        internal bool __Le__(List<T>? other)
-        {
-            if (other is null)
-            {
-                throw TypeError.OpNotSupported("<=", "NoneType");
-            }
-
-            var minLen = System.Math.Min(_list.Count, other._list.Count);
-
-            for (int i = 0; i < minLen; i++)
-            {
-                var leftElem = _list[i];
-                var rightElem = other._list[i];
-
-                if (!Operator.Eq(leftElem, rightElem))
-                {
-                    return Operator.Lt(leftElem, rightElem);
-                }
-            }
-
-            return _list.Count <= other._list.Count;
-        }
-
-        /// <summary>
-        /// Lexicographically compares this list with another (greater than).
-        /// </summary>
-        internal bool __Gt__(List<T>? other)
-        {
-            if (other is null)
-            {
-                throw TypeError.OpNotSupported(">", "NoneType");
-            }
-
-            var minLen = System.Math.Min(_list.Count, other._list.Count);
-
-            for (int i = 0; i < minLen; i++)
-            {
-                var leftElem = _list[i];
-                var rightElem = other._list[i];
-
-                if (!Operator.Eq(leftElem, rightElem))
-                {
-                    return Operator.Gt(leftElem, rightElem);
-                }
-            }
-
-            return _list.Count > other._list.Count;
-        }
-
-        /// <summary>
-        /// Lexicographically compares this list with another (greater than or equal).
-        /// </summary>
-        internal bool __Ge__(List<T>? other)
-        {
-            if (other is null)
+            if (right is null)
             {
                 throw TypeError.OpNotSupported(">=", "NoneType");
             }
 
-            var minLen = System.Math.Min(_list.Count, other._list.Count);
+            var minLen = System.Math.Min(left._list.Count, right._list.Count);
 
             for (int i = 0; i < minLen; i++)
             {
-                var leftElem = _list[i];
-                var rightElem = other._list[i];
+                var leftElem = left._list[i];
+                var rightElem = right._list[i];
 
                 if (!Operator.Eq(leftElem, rightElem))
                 {
@@ -190,7 +158,7 @@ namespace Sharpy
                 }
             }
 
-            return _list.Count >= other._list.Count;
+            return left._list.Count >= right._list.Count;
         }
 
         #endregion

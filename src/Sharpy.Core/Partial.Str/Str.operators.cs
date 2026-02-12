@@ -15,44 +15,11 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Implements the __add__ dunder method for string concatenation.
-        /// Maps to the + operator in Sharpy code.
-        /// </summary>
-        /// <param name="other">The string to concatenate.</param>
-        /// <returns>A new Str with the concatenated result.</returns>
-        public Str __Add__(Str other)
-        {
-            return new Str(_s + other._s);
-        }
-
-        /// <summary>
         /// String concatenation operator.
         /// </summary>
         public static Str operator +(Str left, Str right)
         {
-            return left.__Add__(right);
-        }
-
-        /// <summary>
-        /// Implements the __mul__ dunder method for string replication.
-        /// Maps to the * operator in Sharpy code.
-        /// </summary>
-        /// <param name="count">The number of times to replicate the string.</param>
-        /// <returns>A new Str with the replicated result.</returns>
-        public Str __Mul__(int count)
-        {
-            if (count <= 0)
-            {
-                return new Str("");
-            }
-
-            var builder = new StringBuilder(_s.Length * count);
-            for (int i = 0; i < count; i++)
-            {
-                builder.Append(_s);
-            }
-
-            return new Str(builder.ToString());
+            return new Str(left._s + right._s);
         }
 
         /// <summary>
@@ -60,7 +27,18 @@ namespace Sharpy
         /// </summary>
         public static Str operator *(Str left, int count)
         {
-            return left.__Mul__(count);
+            if (count <= 0)
+            {
+                return new Str("");
+            }
+
+            var builder = new StringBuilder(left._s.Length * count);
+            for (int i = 0; i < count; i++)
+            {
+                builder.Append(left._s);
+            }
+
+            return new Str(builder.ToString());
         }
 
         /// <summary>
@@ -68,43 +46,7 @@ namespace Sharpy
         /// </summary>
         public static Str operator *(int count, Str right)
         {
-            return right.__Mul__(count);
-        }
-
-        /// <summary>
-        /// Implements the __lt__ dunder method for lexicographical comparison.
-        /// Maps to the &lt; operator in Sharpy code.
-        /// </summary>
-        public bool __Lt__(Str other)
-        {
-            return string.Compare(_s, other._s, StringComparison.Ordinal) < 0;
-        }
-
-        /// <summary>
-        /// Implements the __le__ dunder method for lexicographical comparison.
-        /// Maps to the &lt;= operator in Sharpy code.
-        /// </summary>
-        public bool __Le__(Str other)
-        {
-            return string.Compare(_s, other._s, StringComparison.Ordinal) <= 0;
-        }
-
-        /// <summary>
-        /// Implements the __gt__ dunder method for lexicographical comparison.
-        /// Maps to the &gt; operator in Sharpy code.
-        /// </summary>
-        public bool __Gt__(Str other)
-        {
-            return string.Compare(_s, other._s, StringComparison.Ordinal) > 0;
-        }
-
-        /// <summary>
-        /// Implements the __ge__ dunder method for lexicographical comparison.
-        /// Maps to the &gt;= operator in Sharpy code.
-        /// </summary>
-        public bool __Ge__(Str other)
-        {
-            return string.Compare(_s, other._s, StringComparison.Ordinal) >= 0;
+            return right * count;
         }
 
         /// <summary>
@@ -112,7 +54,7 @@ namespace Sharpy
         /// </summary>
         public static bool operator <(Str left, Str right)
         {
-            return left.__Lt__(right);
+            return string.Compare(left._s, right._s, StringComparison.Ordinal) < 0;
         }
 
         /// <summary>
@@ -120,7 +62,7 @@ namespace Sharpy
         /// </summary>
         public static bool operator <=(Str left, Str right)
         {
-            return left.__Le__(right);
+            return string.Compare(left._s, right._s, StringComparison.Ordinal) <= 0;
         }
 
         /// <summary>
@@ -128,7 +70,7 @@ namespace Sharpy
         /// </summary>
         public static bool operator >(Str left, Str right)
         {
-            return left.__Gt__(right);
+            return string.Compare(left._s, right._s, StringComparison.Ordinal) > 0;
         }
 
         /// <summary>
@@ -136,7 +78,7 @@ namespace Sharpy
         /// </summary>
         public static bool operator >=(Str left, Str right)
         {
-            return left.__Ge__(right);
+            return string.Compare(left._s, right._s, StringComparison.Ordinal) >= 0;
         }
 
         /// <summary>
