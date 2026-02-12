@@ -191,11 +191,6 @@ namespace Sharpy
         /// </remarks>
         public Iterator<T> __Iter__() => (Iterator<T>)GetEnumerator();
 
-        /// <summary>
-        /// Returns a reverse iterator over the list.
-        /// </summary>
-        public Iterator<T> __Reversed__() => new ListReverseIterator<T>(this);
-
         #endregion
     }
 }
