@@ -61,11 +61,6 @@ namespace Sharpy
             return new EnumeratorIterator<(K, V)>(GetEnumerator());
         }
 
-        /// <summary>
-        /// Deprecated: Use <see cref="Count"/> instead.
-        /// </summary>
-        public int __Len__() => Count;
-
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

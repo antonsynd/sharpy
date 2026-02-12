@@ -18,7 +18,7 @@ public class DictViews_Tests
         var items = (DictItemsView<Str, int>)dict.Items();
 
         // Assert
-        items.__Len__().Should().Be(3);
+        items.Count.Should().Be(3);
         items.__Contains__(("a", 1)).Should().BeTrue();
         items.__Contains__(("b", 2)).Should().BeTrue();
         items.__Contains__(("c", 3)).Should().BeTrue();
@@ -37,7 +37,7 @@ public class DictViews_Tests
         dict["b"] = 2;
 
         // Assert - view should reflect the change
-        items.__Len__().Should().Be(2);
+        items.Count.Should().Be(2);
         items.__Contains__(("b", 2)).Should().BeTrue();
     }
 
@@ -93,7 +93,7 @@ public class DictViews_Tests
         var values = (DictValuesView<Str, int>)dict.Values();
 
         // Assert
-        values.__Len__().Should().Be(3);
+        values.Count.Should().Be(3);
         values.__Contains__(1).Should().BeTrue();
         values.__Contains__(2).Should().BeTrue();
         values.__Contains__(3).Should().BeTrue();
@@ -112,7 +112,7 @@ public class DictViews_Tests
         dict["b"] = 2;
 
         // Assert - view should reflect the change
-        values.__Len__().Should().Be(2);
+        values.Count.Should().Be(2);
         values.__Contains__(2).Should().BeTrue();
     }
 
@@ -153,7 +153,7 @@ public class DictViews_Tests
         var values = (DictValuesView<Str, int>)dict.Values();
 
         // Assert
-        values.__Len__().Should().Be(3);
+        values.Count.Should().Be(3);
         values.__Contains__(1).Should().BeTrue();
     }
 
@@ -193,7 +193,7 @@ public class DictViews_Tests
         dict["b"] = 2;
 
         // Assert - view should reflect the change
-        keys.__Len__().Should().Be(2);
+        keys.Count.Should().Be(2);
         keys.__Contains__("b").Should().BeTrue();
     }
 
@@ -204,8 +204,8 @@ public class DictViews_Tests
         var dict = new Dict<Str, int>();
 
         // Act & Assert
-        dict.Keys().__Len__().Should().Be(0);
-        dict.Values().__Len__().Should().Be(0);
-        dict.Items().__Len__().Should().Be(0);
+        dict.Keys().Count.Should().Be(0);
+        dict.Values().Count.Should().Be(0);
+        dict.Items().Count.Should().Be(0);
     }
 }

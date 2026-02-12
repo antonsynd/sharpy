@@ -16,7 +16,7 @@ public class Sorted_Tests
 
         // Then
         result.Should().NotBeNull();
-        result.__Len__().Should().Be(0);
+        Len(result).Should().Be(0);
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class Sorted_Tests
         var result = Sorted(list);
 
         // Then
-        result.__Len__().Should().Be(6);
+        Len(result).Should().Be(6);
         result[0].Should().Be(1);
         result[1].Should().Be(2);
         result[2].Should().Be(3);
@@ -48,7 +48,7 @@ public class Sorted_Tests
         var result = Sorted(list, reverse: true);
 
         // Then
-        result.__Len__().Should().Be(6);
+        Len(result).Should().Be(6);
         result[0].Should().Be(9);
         result[1].Should().Be(8);
         result[2].Should().Be(5);
@@ -67,7 +67,7 @@ public class Sorted_Tests
         var result = Sorted(list, key: s => s.Length);
 
         // Then
-        result.__Len__().Should().Be(4);
+        Len(result).Should().Be(4);
         result[0].Should().Be("a");
         result[1].Should().Be("pie");
         result[2].Should().Be("apple");

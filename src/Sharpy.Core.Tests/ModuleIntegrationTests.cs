@@ -115,7 +115,7 @@ public class ModuleIntegrationTests
         deque.Append(2);
         deque.Appendleft(0);
 
-        deque.__Len__().Should().Be(3);
+        deque.Count.Should().Be(3);
 
         var right = deque.Pop();
         right.Should().Be(2);
@@ -123,7 +123,7 @@ public class ModuleIntegrationTests
         var left = deque.Popleft();
         left.Should().Be(0);
 
-        deque.__Len__().Should().Be(1);
+        deque.Count.Should().Be(1);
     }
 
     [Fact]

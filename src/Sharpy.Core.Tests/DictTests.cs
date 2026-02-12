@@ -12,7 +12,7 @@ public class Dict_Tests
         var dict = new Dict<Str, int>();
 
         // Assert
-        dict.__Len__().Should().Be(0);
+        dict.Count.Should().Be(0);
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public class Dict_Tests
 
         // Assert
         dict["new"].Should().Be(100);
-        dict.__Len__().Should().Be(1);
+        dict.Count.Should().Be(1);
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class Dict_Tests
 
         // Assert
         dict["key"].Should().Be(2);
-        dict.__Len__().Should().Be(1);
+        dict.Count.Should().Be(1);
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public class Dict_Tests
         dict.Clear();
 
         // Assert
-        dict.__Len__().Should().Be(0);
+        dict.Count.Should().Be(0);
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public class Dict_Tests
 
         // Assert
         value.Should().Be(42);
-        dict.__Len__().Should().Be(0);
+        dict.Count.Should().Be(0);
         dict.__Contains__("key").Should().BeFalse();
     }
 
@@ -240,7 +240,7 @@ public class Dict_Tests
         dict1["a"].Should().Be(1);
         dict1["b"].Should().Be(20); // Overwritten
         dict1["c"].Should().Be(30);
-        dict1.__Len__().Should().Be(3);
+        dict1.Count.Should().Be(3);
     }
 
     [Fact]
@@ -262,11 +262,11 @@ public class Dict_Tests
         result["a"].Should().Be(1);
         result["b"].Should().Be(20); // From dict2
         result["c"].Should().Be(30);
-        result.__Len__().Should().Be(3);
+        result.Count.Should().Be(3);
 
         // Original dicts should be unchanged
-        dict1.__Len__().Should().Be(2);
-        dict2.__Len__().Should().Be(2);
+        dict1.Count.Should().Be(2);
+        dict2.Count.Should().Be(2);
     }
 
     [Fact]
@@ -281,13 +281,13 @@ public class Dict_Tests
         var copy = original.Copy();
 
         // Assert
-        copy.__Len__().Should().Be(2);
+        copy.Count.Should().Be(2);
         copy["a"].Should().Be(1);
         copy["b"].Should().Be(2);
 
         // Modifying copy should not affect original
         copy["c"] = 3;
-        original.__Len__().Should().Be(2);
+        original.Count.Should().Be(2);
         original.__Contains__("c").Should().BeFalse();
     }
 
@@ -350,7 +350,7 @@ public class Dict_Tests
         // Assert
         key.Should().Be("a"); // First inserted (last=false is default)
         value.Should().Be(1);
-        dict.__Len__().Should().Be(2);
+        dict.Count.Should().Be(2);
         dict.__Contains__("a").Should().BeFalse();
     }
 
@@ -374,22 +374,22 @@ public class Dict_Tests
 
         // Act & Assert - Progressive operations
         dict["a"] = 1;
-        dict.__Len__().Should().Be(1);
+        dict.Count.Should().Be(1);
 
         dict["b"] = 2;
         dict["c"] = 3;
-        dict.__Len__().Should().Be(3);
+        dict.Count.Should().Be(3);
 
         dict.Pop("b");
-        dict.__Len__().Should().Be(2);
+        dict.Count.Should().Be(2);
         dict.__Contains__("b").Should().BeFalse();
 
         dict["a"] = 100; // Update
         dict["a"].Should().Be(100);
-        dict.__Len__().Should().Be(2);
+        dict.Count.Should().Be(2);
 
         dict.Clear();
-        dict.__Len__().Should().Be(0);
+        dict.Count.Should().Be(0);
     }
 
     [Fact]
@@ -450,7 +450,7 @@ public class Dict_Tests
         var result = dict1 | dict2;
 
         // Assert
-        result.__Len__().Should().Be(0);
+        result.Count.Should().Be(0);
     }
 
     [Fact]

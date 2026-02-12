@@ -118,11 +118,6 @@ namespace Sharpy
         #region Deprecated Dunder Methods
 
         /// <summary>
-        /// Deprecated: Use <see cref="Count"/> instead.
-        /// </summary>
-        public int __Len__() => Count;
-
-        /// <summary>
         /// Deprecated: Use <see cref="Contains(T)"/> instead.
         /// </summary>
         public bool __Contains__(T x) => Contains(x);
@@ -136,16 +131,6 @@ namespace Sharpy
         /// Deprecated: Use <c>!Equals(other)</c> instead.
         /// </summary>
         public bool __Ne__(Set<T> other) => !Equals(other);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="GetHashCode()"/> instead.
-        /// </summary>
-        public int __Hash__() => GetHashCode();
-
-        /// <summary>
-        /// Deprecated: Use <see cref="ToString()"/> instead.
-        /// </summary>
-        public string __Repr__() => ToString();
 
         /// <summary>
         /// Deprecated: Use <see cref="IsProperSubset(Set{T})"/> instead.

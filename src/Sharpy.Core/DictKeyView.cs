@@ -170,11 +170,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="Count"/> instead.
-        /// </summary>
-        public int __Len__() => Count;
-
-        /// <summary>
         /// Check if this is a subset or equal to other.
         /// </summary>
         public bool IsSubset(Set<K> other)

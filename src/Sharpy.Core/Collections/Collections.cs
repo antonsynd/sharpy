@@ -106,11 +106,6 @@ namespace Sharpy
         public int Count => _list.Count;
 
         /// <summary>
-        /// Deprecated: Use <see cref="Count"/> instead.
-        /// </summary>
-        public int __Len__() => Count;
-
-        /// <summary>
         /// Deprecated: Use <see cref="GetEnumerator()"/> instead.
         /// </summary>
         public Iterator<T> __Iter__()

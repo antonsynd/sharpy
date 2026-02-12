@@ -134,7 +134,7 @@ public class Str_Tests
     {
         var s1 = new Str("Hello");
         var s2 = new Str("Hello");
-        s1.__Hash__().Should().Be(s2.__Hash__());
+        s1.GetHashCode().Should().Be(s2.GetHashCode());
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public class Str_Tests
     {
         var s = new Str("Hello World Test");
         var result = s.Split();
-        result.__Len__().Should().Be(3);
+        Len(result).Should().Be(3);
         result[0].Should().Be(new Str("Hello"));
         result[1].Should().Be(new Str("World"));
         result[2].Should().Be(new Str("Test"));
@@ -153,7 +153,7 @@ public class Str_Tests
     {
         var s = new Str("a,b,c,d");
         var result = s.Split(new Str(","));
-        result.__Len__().Should().Be(4);
+        Len(result).Should().Be(4);
         result[0].Should().Be(new Str("a"));
         result[1].Should().Be(new Str("b"));
         result[2].Should().Be(new Str("c"));
@@ -165,7 +165,7 @@ public class Str_Tests
     {
         var s = new Str("a,b,c,d");
         var result = s.Split(new Str(","), maxsplit: 2);
-        result.__Len__().Should().Be(3);
+        Len(result).Should().Be(3);
         result[0].Should().Be(new Str("a"));
         result[1].Should().Be(new Str("b"));
         result[2].Should().Be(new Str("c,d"));

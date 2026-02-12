@@ -18,7 +18,7 @@ public class StrMethods_Tests
 
         // Assert
         ((string)result).Should().Be("hello     ");
-        result.__Len__().Should().Be(10);
+        ((string)result).Length.Should().Be(10);
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class StrMethods_Tests
 
         // Assert
         ((string)result).Should().Be("     hello");
-        result.__Len__().Should().Be(10);
+        ((string)result).Length.Should().Be(10);
     }
 
     [Fact]
@@ -782,7 +782,7 @@ public class StrMethods_Tests
         var table = Str.MakeTrans("abc", "123");
 
         // Assert
-        table.__Len__().Should().Be(3);
+        table.Count.Should().Be(3);
         ((string)table[(uint)'a']).Should().Be("1");
         ((string)table[(uint)'b']).Should().Be("2");
         ((string)table[(uint)'c']).Should().Be("3");
@@ -805,7 +805,7 @@ public class StrMethods_Tests
         var table = Str.MakeTrans("abc", "123", "d");
 
         // Assert
-        table.__Len__().Should().Be(4);
+        table.Count.Should().Be(4);
         table[(uint)'d'].Should().BeNull();
     }
 
@@ -1014,7 +1014,7 @@ public class StrMethods_Tests
         var result = str.RSplit(null, 1);
 
         // Assert
-        result.__Len__().Should().Be(2);
+        Len(result).Should().Be(2);
         ((string)result[0]).Should().Be("hello  world");
         ((string)result[1]).Should().Be("test");
     }
@@ -1286,7 +1286,7 @@ public class StrMethods_Tests
         var result = str.SplitLines();
 
         // Assert
-        result.__Len__().Should().Be(3);
+        Len(result).Should().Be(3);
         foreach (var line in result)
         {
             ((string)line).Should().Be("");

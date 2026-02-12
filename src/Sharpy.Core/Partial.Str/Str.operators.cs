@@ -161,13 +161,5 @@ namespace Sharpy
             return _s.Contains(substring._s);
         }
 
-        /// <summary>
-        /// Implements the __hash__ dunder method.
-        /// Returns the hash code for use in dict/set.
-        /// </summary>
-        public int __Hash__()
-        {
-            return _s.GetHashCode();
-        }
     }
 }

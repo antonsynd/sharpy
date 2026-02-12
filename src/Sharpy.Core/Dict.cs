@@ -231,11 +231,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="Count"/> instead.
-        /// </summary>
-        public int __Len__() => Count;
-
-        /// <summary>
         /// Determines whether this dictionary equals another dictionary by comparing key-value pairs.
         /// </summary>
         public bool Equals(Dict<K, V>? other)
@@ -383,11 +378,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Deprecated: Use <see cref="GetHashCode()"/> instead.
-        /// </summary>
-        public int __Hash__() => GetHashCode();
-
-        /// <summary>
         /// Returns a string representation of this dictionary.
         /// </summary>
         public override string ToString()
@@ -414,11 +404,6 @@ namespace Sharpy
 
             return builder.ToString();
         }
-
-        /// <summary>
-        /// Deprecated: Use <see cref="ToString()"/> instead.
-        /// </summary>
-        public string __Repr__() => ToString();
 
         public static bool operator true(Dict<K, V>? dict)
         {

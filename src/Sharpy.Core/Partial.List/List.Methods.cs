@@ -184,15 +184,6 @@ namespace Sharpy
         #region Deprecated Dunder Methods
 
         /// <summary>
-        /// Returns the number of items in the list.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use the Count property via IReadOnlyCollection{T} interface instead.
-        /// Note: For counting occurrences of a specific item, use <c>list.Count(item)</c> method.
-        /// </remarks>
-        public int __Len__() => _list.Count;
-
-        /// <summary>
         /// Returns whether the item is in the list.
         /// </summary>
         /// <remarks>
@@ -212,16 +203,6 @@ namespace Sharpy
         /// Returns a reverse iterator over the list.
         /// </summary>
         public Iterator<T> __Reversed__() => new ListReverseIterator<T>(this);
-
-        /// <summary>
-        /// Deprecated: Use <see cref="GetHashCode()"/> instead.
-        /// </summary>
-        public int __Hash__() => GetHashCode();
-
-        /// <summary>
-        /// Deprecated: Use <see cref="ToString()"/> instead.
-        /// </summary>
-        public string __Repr__() => ToString();
 
         /// <summary>
         /// Concatenates this list with another list, returning a new list.
