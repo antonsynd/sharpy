@@ -95,6 +95,14 @@ internal partial class RoslynEmitter
     // Track the current TypeSymbol being generated (for IEquatable virtual detection, etc.)
     private TypeSymbol? _currentTypeSymbol;
 
+    // When set, `self` maps to this identifier instead of `this`.
+    // Used for inlining dunder bodies into static operators (self → left/value).
+    private string? _selfReplacementIdentifier;
+
+    // Maps original parameter base names (camelCase) to C# replacement names.
+    // Used for inlined operator bodies: e.g., "other" → "right".
+    private Dictionary<string, string>? _parameterNameOverrides;
+
     // Common .NET namespace acronyms that should be all uppercase
     private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -161,6 +169,14 @@ internal partial class RoslynEmitter
     private string GetMangledVariableName(string name, bool isNewDeclaration)
     {
         var baseName = _nameResolutionService.GetBaseName(name);
+
+        // Check parameter name overrides (used for inlined operator bodies: "other" → "right")
+        if (_parameterNameOverrides != null
+            && !isNewDeclaration
+            && _parameterNameOverrides.TryGetValue(baseName, out var overrideName))
+        {
+            return overrideName;
+        }
 
         // FIRST: Check if this is a local variable (including parameters)
         // Local variables take precedence over module-level variables and CodeGenInfo

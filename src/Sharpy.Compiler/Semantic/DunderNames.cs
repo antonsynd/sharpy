@@ -24,6 +24,7 @@ internal static class DunderNames
     public const string Contains = "__contains__";
     public const string GetItem = "__getitem__";
     public const string SetItem = "__setitem__";
+    public const string Reversed = "__reversed__";
 
     // ---- Comparison operators ----
     public const string Eq = "__eq__";

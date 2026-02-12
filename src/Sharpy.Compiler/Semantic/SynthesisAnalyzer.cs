@@ -31,7 +31,7 @@ internal static class SynthesisAnalyzer
     public static readonly HashSet<string> SynthesizableSharpyCoreInterfaces = new()
     {
         "ISized",           // __len__ → int Count { get; }
-        "IBoolConvertible", // __bool__ → bool __Bool__()
+        "IBoolConvertible", // __bool__ → bool IsTrue { get; }
     };
 
     /// <summary>

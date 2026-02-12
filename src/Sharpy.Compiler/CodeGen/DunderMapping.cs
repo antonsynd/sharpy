@@ -23,6 +23,7 @@ internal static class DunderMapping
         { DunderNames.Len, "Count" },              // For Count property
         { DunderNames.Contains, "Contains" },     // For Contains method
         { DunderNames.Iter, "GetEnumerator" },    // For IEnumerable
+        { DunderNames.Reversed, "GetReverseEnumerator" }, // For reverse iteration
         // __bool__ is handled as special codegen (operator true/false), not a simple name mapping
     };
 

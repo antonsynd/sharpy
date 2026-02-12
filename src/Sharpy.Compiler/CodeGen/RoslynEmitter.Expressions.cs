@@ -40,7 +40,11 @@ internal partial class RoslynEmitter
 
             // Primary expressions
             // Handle 'self' -> 'this' conversion for instance methods
-            Identifier name when string.Equals(name.Name, "self", StringComparison.OrdinalIgnoreCase) => ThisExpression(),
+            // When _selfReplacementIdentifier is set (inlined operator body), map to that instead
+            Identifier name when string.Equals(name.Name, "self", StringComparison.OrdinalIgnoreCase) =>
+                _selfReplacementIdentifier != null
+                    ? IdentifierName(_selfReplacementIdentifier)
+                    : ThisExpression(),
             Identifier name => IdentifierName(GetMangledVariableName(name.Name, isNewDeclaration: false)),
             SuperExpression => BaseExpression(),  // super() -> base
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),

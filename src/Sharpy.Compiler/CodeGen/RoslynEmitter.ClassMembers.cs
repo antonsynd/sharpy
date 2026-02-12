@@ -86,6 +86,13 @@ internal partial class RoslynEmitter
                     {
                         members.Add(GenerateLenProperty(funcDef));
                     }
+                    // __bool__ generates an IsTrue property + operator true/false
+                    else if (funcDef.Name == DunderNames.Bool)
+                    {
+                        members.Add(GenerateBoolProperty(funcDef));
+                        members.Add(GenerateBoolOperatorTrue(className));
+                        // operator false is generated in the complementary section below
+                    }
                     // __next__ generates IEnumerator<T> protocol members (MoveNext, Current, etc.)
                     else if (funcDef.Name == DunderNames.Next)
                     {
@@ -116,16 +123,29 @@ internal partial class RoslynEmitter
                     // Check if this is a dunder method that needs operator synthesis
                     else if (DunderMapping.IsDunderMethod(funcDef.Name))
                     {
-                        // Dunder methods that map to C# overrides should use the override name
-                        // Other dunder methods should preserve their dunder name (e.g., __add__ -> __Add__)
-                        // to avoid conflicts with user-defined methods
-                        members.Add(GenerateClassMethod(funcDef));
-
-                        // Then try to generate operator overload
-                        var operatorMember = TryGenerateOperatorOverload(funcDef, className);
-                        if (operatorMember != null)
+                        if (funcDef.Name == DunderNames.Eq || funcDef.Name == DunderNames.Ne)
                         {
-                            members.Add(operatorMember);
+                            // __eq__/__ne__ keep their current path: Equals()/method + operator ==/ !=
+                            // because operator == routes through Equals() for null-safety and IEquatable<T>
+                            members.Add(GenerateClassMethod(funcDef));
+                            var eqOp = TryGenerateOperatorOverload(funcDef, className);
+                            if (eqOp != null)
+                                members.Add(eqOp);
+                        }
+                        else
+                        {
+                            // Try the inlined path: operator body is inlined, no instance method
+                            var inlined = TryGenerateInlinedOperatorOverload(funcDef, className);
+                            if (inlined != null)
+                            {
+                                members.AddRange(inlined);
+                            }
+                            else
+                            {
+                                // Fallback for dunders that don't map to operators
+                                // (e.g., __getitem__, __setitem__, __str__, __hash__)
+                                members.Add(GenerateClassMethod(funcDef));
+                            }
                         }
                     }
                     else
@@ -528,6 +548,39 @@ internal partial class RoslynEmitter
         }
 
         return method;
+    }
+
+    /// <summary>
+    /// Generates a read-only IsTrue property for __bool__ to satisfy IBoolConvertible.
+    /// The user's __bool__ body becomes the getter body.
+    /// </summary>
+    private PropertyDeclarationSyntax GenerateBoolProperty(FunctionDef func)
+    {
+        _declaredVariables.Clear();
+        _variableVersions.Clear();
+        _constVariables.Clear();
+        _sourceVariableNames.Clear();
+        CollectSourceVariableNames(func.Body);
+
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+
+        var bodyStatements = func.Body
+            .Select(GenerateBodyStatement)
+            .OfType<StatementSyntax>();
+
+        var getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+            .WithBody(Block(bodyStatements));
+
+        var property = PropertyDeclaration(returnType, "IsTrue")
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithAccessorList(AccessorList(SingletonList(getter)));
+
+        if (!string.IsNullOrEmpty(func.DocString))
+        {
+            property = property.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+        }
+
+        return property;
     }
 
     /// <summary>

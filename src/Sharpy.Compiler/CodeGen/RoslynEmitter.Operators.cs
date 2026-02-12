@@ -63,8 +63,8 @@ internal partial class RoslynEmitter
             DunderNames.Pos => GenerateUnaryOperator(funcDef, className, SyntaxKind.PlusToken),
             DunderNames.Invert => GenerateUnaryOperator(funcDef, className, SyntaxKind.TildeToken),
 
-            // Boolean conversion: __bool__ → operator true (operator false generated separately)
-            DunderNames.Bool => GenerateBoolOperatorTrue(funcDef, className),
+            // __bool__ is handled in GenerateClassMembers (IsTrue property + operators)
+            DunderNames.Bool => null,
 
             // Not supported as operators (handled as methods)
             DunderNames.GetItem => null, // Requires indexer syntax, not operator
@@ -72,6 +72,307 @@ internal partial class RoslynEmitter
 
             _ => null
         };
+    }
+
+    /// <summary>
+    /// Try to generate an operator overload with the dunder body inlined directly
+    /// into the static operator (no instance method). Returns null if the dunder
+    /// is not an operator dunder, or returns a list with potentially two members:
+    /// - For super() bodies: a private _Impl method + operator that delegates to it
+    /// - Otherwise: just the operator with inlined body
+    /// </summary>
+    private List<MemberDeclarationSyntax>? TryGenerateInlinedOperatorOverload(FunctionDef funcDef, string className)
+    {
+        return funcDef.Name switch
+        {
+            // Arithmetic operators (binary)
+            DunderNames.Add => GenerateInlinedBinaryOperator(funcDef, className, SyntaxKind.PlusToken),
+            DunderNames.Sub => GenerateInlinedBinaryOperator(funcDef, className, SyntaxKind.MinusToken),
+            DunderNames.Mul => GenerateInlinedBinaryOperator(funcDef, className, SyntaxKind.AsteriskToken),
+            DunderNames.Div => GenerateInlinedBinaryOperator(funcDef, className, SyntaxKind.SlashToken),
+            DunderNames.Mod => GenerateInlinedBinaryOperator(funcDef, className, SyntaxKind.PercentToken),
+
+            // Bitwise operators (binary)
+            DunderNames.And => GenerateInlinedBinaryOperator(funcDef, className, SyntaxKind.AmpersandToken),
+            DunderNames.Or => GenerateInlinedBinaryOperator(funcDef, className, SyntaxKind.BarToken),
+            DunderNames.Xor => GenerateInlinedBinaryOperator(funcDef, className, SyntaxKind.CaretToken),
+            DunderNames.LShift => GenerateInlinedBinaryOperator(funcDef, className, SyntaxKind.LessThanLessThanToken),
+            DunderNames.RShift => GenerateInlinedBinaryOperator(funcDef, className, SyntaxKind.GreaterThanGreaterThanToken),
+
+            // Comparison operators (binary) — excluding __eq__/__ne__ which keep their Equals path
+            DunderNames.Lt => GenerateInlinedComparisonOperator(funcDef, className, SyntaxKind.LessThanToken),
+            DunderNames.Le => GenerateInlinedComparisonOperator(funcDef, className, SyntaxKind.LessThanEqualsToken),
+            DunderNames.Gt => GenerateInlinedComparisonOperator(funcDef, className, SyntaxKind.GreaterThanToken),
+            DunderNames.Ge => GenerateInlinedComparisonOperator(funcDef, className, SyntaxKind.GreaterThanEqualsToken),
+
+            // Unary operators
+            DunderNames.Neg => GenerateInlinedUnaryOperator(funcDef, className, SyntaxKind.MinusToken),
+            DunderNames.Pos => GenerateInlinedUnaryOperator(funcDef, className, SyntaxKind.PlusToken),
+            DunderNames.Invert => GenerateInlinedUnaryOperator(funcDef, className, SyntaxKind.TildeToken),
+
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Checks if an AST body contains any SuperExpression references.
+    /// If so, the body cannot be inlined into a static operator (base requires instance context).
+    /// </summary>
+    private static bool ContainsSuperExpression(IReadOnlyList<Statement> body)
+    {
+        foreach (var stmt in body)
+        {
+            if (ContainsSuperExpressionInStatement(stmt))
+                return true;
+        }
+        return false;
+    }
+
+    private static bool ContainsSuperExpressionInStatement(Statement stmt)
+    {
+        return stmt switch
+        {
+            ExpressionStatement es => ContainsSuperExpressionInExpression(es.Expression),
+            ReturnStatement rs => rs.Value != null && ContainsSuperExpressionInExpression(rs.Value),
+            Assignment a => ContainsSuperExpressionInExpression(a.Value) || ContainsSuperExpressionInExpression(a.Target),
+            IfStatement ifs => ContainsSuperExpression(ifs.ThenBody)
+                || ifs.ElifClauses.Any(e => ContainsSuperExpression(e.Body))
+                || ContainsSuperExpression(ifs.ElseBody)
+                || ContainsSuperExpressionInExpression(ifs.Test),
+            VariableDeclaration vd => vd.InitialValue != null && ContainsSuperExpressionInExpression(vd.InitialValue),
+            _ => false
+        };
+    }
+
+    private static bool ContainsSuperExpressionInExpression(Expression expr)
+    {
+        return expr switch
+        {
+            SuperExpression => true,
+            FunctionCall fc => ContainsSuperExpressionInExpression(fc.Function)
+                || fc.Arguments.Any(ContainsSuperExpressionInExpression),
+            MemberAccess ma => ContainsSuperExpressionInExpression(ma.Object),
+            BinaryOp bo => ContainsSuperExpressionInExpression(bo.Left) || ContainsSuperExpressionInExpression(bo.Right),
+            UnaryOp uo => ContainsSuperExpressionInExpression(uo.Operand),
+            ConditionalExpression ce => ContainsSuperExpressionInExpression(ce.Test)
+                || ContainsSuperExpressionInExpression(ce.ThenValue)
+                || ContainsSuperExpressionInExpression(ce.ElseValue),
+            Parenthesized p => ContainsSuperExpressionInExpression(p.Expression),
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Sets up scope state for inlined operator body generation.
+    /// Clears tracking and sets self replacement + parameter name overrides.
+    /// Returns the previous state for restoration.
+    /// </summary>
+    private (string? prevSelfReplacement, Dictionary<string, string>? prevParamOverrides)
+        SetupInlinedOperatorScope(
+            FunctionDef funcDef,
+            string selfReplacement,
+            Dictionary<string, string> paramOverrides)
+    {
+        var prev = (_selfReplacementIdentifier, _parameterNameOverrides);
+
+        _declaredVariables.Clear();
+        _variableVersions.Clear();
+        _constVariables.Clear();
+        _sourceVariableNames.Clear();
+        CollectSourceVariableNames(funcDef.Body);
+
+        _selfReplacementIdentifier = selfReplacement;
+        _parameterNameOverrides = paramOverrides;
+
+        return prev;
+    }
+
+    /// <summary>
+    /// Restores scope state after inlined operator body generation.
+    /// </summary>
+    private void RestoreInlinedOperatorScope(
+        (string? prevSelfReplacement, Dictionary<string, string>? prevParamOverrides) prev)
+    {
+        _selfReplacementIdentifier = prev.prevSelfReplacement;
+        _parameterNameOverrides = prev.prevParamOverrides;
+    }
+
+    /// <summary>
+    /// Generate an inlined binary operator. The dunder body is emitted directly inside the
+    /// static operator method, with self→left and the non-self parameter→right.
+    /// If the body contains super(), falls back to a private instance method.
+    /// </summary>
+    private List<MemberDeclarationSyntax> GenerateInlinedBinaryOperator(
+        FunctionDef funcDef, string className, SyntaxKind operatorToken)
+    {
+        var members = new List<MemberDeclarationSyntax>();
+
+        var otherParam = funcDef.Parameters
+            .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+
+        if (otherParam == null)
+            throw new InvalidOperationException($"Binary operator {funcDef.Name} must have at least 2 parameters");
+
+        var returnType = funcDef.ReturnType != null
+            ? _typeMapper.MapType(funcDef.ReturnType)
+            : IdentifierName(className);
+
+        var param1 = Parameter(Identifier("left")).WithType(IdentifierName(className));
+        var param2Type = otherParam.Type != null ? _typeMapper.MapType(otherParam.Type) : IdentifierName(className);
+        var param2 = Parameter(Identifier("right")).WithType(param2Type);
+
+        BlockSyntax operatorBody;
+
+        if (ContainsSuperExpression(funcDef.Body))
+        {
+            // Super() requires instance context — generate private impl method + delegation
+            var implName = $"_{NameMangler.ToPascalCase(funcDef.Name[2..^2])}Impl";
+            members.Add(GenerateClassMethod(funcDef)
+                .WithIdentifier(Identifier(implName))
+                .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
+
+            var invocation = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("left"), IdentifierName(implName)))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("right")))));
+            operatorBody = Block(ReturnStatement(invocation));
+        }
+        else
+        {
+            // Inline the body: self→left, other→right
+            var paramBaseName = NameMangler.ToCamelCase(otherParam.Name);
+            var overrides = new Dictionary<string, string> { { paramBaseName, "right" } };
+            var prev = SetupInlinedOperatorScope(funcDef, "left", overrides);
+            try
+            {
+                var bodyStatements = funcDef.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>();
+                operatorBody = Block(bodyStatements);
+            }
+            finally
+            {
+                RestoreInlinedOperatorScope(prev);
+            }
+        }
+
+        members.Add(OperatorDeclaration(returnType, Token(operatorToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(operatorBody));
+
+        return members;
+    }
+
+    /// <summary>
+    /// Generate an inlined comparison operator (excluding __eq__/__ne__).
+    /// The dunder body is emitted directly inside the static operator, always returning bool.
+    /// </summary>
+    private List<MemberDeclarationSyntax> GenerateInlinedComparisonOperator(
+        FunctionDef funcDef, string className, SyntaxKind operatorToken)
+    {
+        var members = new List<MemberDeclarationSyntax>();
+
+        var otherParam = funcDef.Parameters
+            .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+
+        if (otherParam == null)
+            throw new InvalidOperationException($"Comparison operator {funcDef.Name} must have at least 2 parameters");
+
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+
+        var param1 = Parameter(Identifier("left")).WithType(IdentifierName(className));
+        var param2Type = otherParam.Type != null ? _typeMapper.MapType(otherParam.Type) : IdentifierName(className);
+        var param2 = Parameter(Identifier("right")).WithType(param2Type);
+
+        BlockSyntax operatorBody;
+
+        if (ContainsSuperExpression(funcDef.Body))
+        {
+            var implName = $"_{NameMangler.ToPascalCase(funcDef.Name[2..^2])}Impl";
+            members.Add(GenerateClassMethod(funcDef)
+                .WithIdentifier(Identifier(implName))
+                .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
+
+            var invocation = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("left"), IdentifierName(implName)))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("right")))));
+            operatorBody = Block(ReturnStatement(invocation));
+        }
+        else
+        {
+            var paramBaseName = NameMangler.ToCamelCase(otherParam.Name);
+            var overrides = new Dictionary<string, string> { { paramBaseName, "right" } };
+            var prev = SetupInlinedOperatorScope(funcDef, "left", overrides);
+            try
+            {
+                var bodyStatements = funcDef.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>();
+                operatorBody = Block(bodyStatements);
+            }
+            finally
+            {
+                RestoreInlinedOperatorScope(prev);
+            }
+        }
+
+        members.Add(OperatorDeclaration(returnType, Token(operatorToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(operatorBody));
+
+        return members;
+    }
+
+    /// <summary>
+    /// Generate an inlined unary operator. The dunder body is emitted directly inside
+    /// the static operator, with self→value.
+    /// </summary>
+    private List<MemberDeclarationSyntax> GenerateInlinedUnaryOperator(
+        FunctionDef funcDef, string className, SyntaxKind operatorToken)
+    {
+        var members = new List<MemberDeclarationSyntax>();
+
+        var returnType = funcDef.ReturnType != null
+            ? _typeMapper.MapType(funcDef.ReturnType)
+            : IdentifierName(className);
+
+        var param = Parameter(Identifier("value")).WithType(IdentifierName(className));
+
+        BlockSyntax operatorBody;
+
+        if (ContainsSuperExpression(funcDef.Body))
+        {
+            var implName = $"_{NameMangler.ToPascalCase(funcDef.Name[2..^2])}Impl";
+            members.Add(GenerateClassMethod(funcDef)
+                .WithIdentifier(Identifier(implName))
+                .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
+
+            var invocation = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("value"), IdentifierName(implName)))
+                .WithArgumentList(ArgumentList());
+            operatorBody = Block(ReturnStatement(invocation));
+        }
+        else
+        {
+            var overrides = new Dictionary<string, string>();
+            var prev = SetupInlinedOperatorScope(funcDef, "value", overrides);
+            try
+            {
+                var bodyStatements = funcDef.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>();
+                operatorBody = Block(bodyStatements);
+            }
+            finally
+            {
+                RestoreInlinedOperatorScope(prev);
+            }
+        }
+
+        members.Add(OperatorDeclaration(returnType, Token(operatorToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SingletonSeparatedList(param)))
+            .WithBody(operatorBody));
+
+        return members;
     }
 
     /// <summary>
@@ -215,26 +516,22 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generate operator true for __bool__: public static bool operator true(T value) { return value.__Bool__(); }
+    /// Generate operator true for __bool__: public static bool operator true(T value) => value.IsTrue;
     /// </summary>
-    private OperatorDeclarationSyntax GenerateBoolOperatorTrue(FunctionDef funcDef, string className)
+    private static OperatorDeclarationSyntax GenerateBoolOperatorTrue(string className)
     {
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
         var param = Parameter(Identifier("value"))
             .WithType(IdentifierName(className));
 
-        // Call the __Bool__() method on the operand
-        var methodName = DunderMapping.ResolveCSharpName(funcDef.Name)
-            ?? NameMangler.Transform(funcDef.Name, NameContext.Method);
-        var invocation = InvocationExpression(
-            MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName("value"),
-                IdentifierName(methodName)))
-            .WithArgumentList(ArgumentList());
+        // Reference the IsTrue property
+        var isTrueAccess = MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            IdentifierName("value"),
+            IdentifierName("IsTrue"));
 
-        var body = Block(ReturnStatement(invocation));
+        var body = Block(ReturnStatement(isTrueAccess));
 
         return OperatorDeclaration(returnType, Token(SyntaxKind.TrueKeyword))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
@@ -243,26 +540,21 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generate operator false for __bool__: public static bool operator false(T value) { return !value.__Bool__(); }
+    /// Generate operator false for __bool__: public static bool operator false(T value) => !value.IsTrue;
     /// </summary>
-    private OperatorDeclarationSyntax GenerateBoolOperatorFalse(string className)
+    private static OperatorDeclarationSyntax GenerateBoolOperatorFalse(string className)
     {
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
         var param = Parameter(Identifier("value"))
             .WithType(IdentifierName(className));
 
-        // Call the __Bool__() method on the operand and negate it
-        var methodName = DunderMapping.ResolveCSharpName(DunderNames.Bool)
-            ?? DunderMapping.TransformUnknownDunder(DunderNames.Bool);
-        var invocation = InvocationExpression(
-            MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName("value"),
-                IdentifierName(methodName)))
-            .WithArgumentList(ArgumentList());
-
-        var negation = PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, invocation);
+        // Negate the IsTrue property
+        var isTrueAccess = MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            IdentifierName("value"),
+            IdentifierName("IsTrue"));
+        var negation = PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, isTrueAccess);
         var body = Block(ReturnStatement(negation));
 
         return OperatorDeclaration(returnType, Token(SyntaxKind.FalseKeyword))

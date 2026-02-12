@@ -431,10 +431,11 @@ public class RoslynEmitterOperatorTests
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
-        // Assert - should have both the dunder method and the operator
-        Assert.Contains("public Vector __Add__(Vector other)", code);
+        // Assert - should have only the inlined operator (no instance method)
+        Assert.DoesNotContain("__Add__", code);
         Assert.Contains("public static Vector operator +(Vector left, Vector right)", code);
-        Assert.Contains("left.__Add__(right)", code);
+        // The body should reference 'left' (self replacement) not 'this'
+        Assert.Contains("left", code);
     }
 
     [Fact]
@@ -579,13 +580,14 @@ public class RoslynEmitterOperatorTests
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
-        // Assert - should have both operator true and operator false
-        // Note: Roslyn normalization adds space before parens in operator declarations
+        // Assert - should have IsTrue property, operator true, and operator false
+        Assert.Contains("public bool IsTrue", code);
         Assert.Contains("operator true", code);
         Assert.Contains("operator false", code);
-        // operator true calls __Bool__()
-        Assert.Contains("value.__Bool__()", code);
-        // operator false negates the result
-        Assert.Contains("!value.__Bool__()", code);
+        // operator true/false reference IsTrue property
+        Assert.Contains("value.IsTrue", code);
+        Assert.Contains("!value.IsTrue", code);
+        // No __Bool__ method should be generated
+        Assert.DoesNotContain("__Bool__", code);
     }
 }
