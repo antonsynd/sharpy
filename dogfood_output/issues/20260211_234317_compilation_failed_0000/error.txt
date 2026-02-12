@@ -1,0 +1,16 @@
+Assembly compilation failed:
+
+error[CS0103]: The name 'result' does not exist in the current context
+  --> /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmphesl7pga/dogfood_test.spy:15:13
+    |
+ 15 |         result = divide(10, 0)
+    |             ^
+    |
+
+error[CS0103]: The name 'result' does not exist in the current context
+  --> /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmphesl7pga/dogfood_test.spy:16:43
+    |
+ 16 |         print(result)
+    |                      ^
+    |
+

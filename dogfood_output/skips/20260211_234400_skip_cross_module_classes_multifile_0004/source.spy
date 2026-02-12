@@ -1,0 +1,34 @@
+# Main entry point - demonstrates cross-module inheritance and interfaces
+from shapes import Shape
+from geometry import Rectangle, Circle
+
+def calculate_total_area(shapes: list[Shape]) -> float:
+    total: float = 0.0
+    for shape in shapes:
+        total += shape.area()
+    return total
+
+def main():
+    rect: Rectangle = Rectangle("MyRect", 5.0, 3.0)
+    circle: Circle = Circle("MyCircle", 4.0)
+    
+    print(rect.describe())
+    print(f"Rectangle area: {rect.area()}")
+    print(rect.get_dimensions())
+    
+    print(circle.describe())
+    print(f"Circle area: {circle.area()}")
+    print(circle.get_dimensions())
+    
+    shapes: list[Shape] = [rect, circle]
+    total: float = calculate_total_area(shapes)
+    print(f"Total area: {total}")
+
+# EXPECTED OUTPUT:
+# Shape: MyRect - Rectangle 5x3
+# Rectangle area: 15
+# Width: 5, Height: 3
+# Shape: MyCircle - Circle radius 4
+# Circle area: 50.26544
+# Radius: 4
+# Total area: 65.26544

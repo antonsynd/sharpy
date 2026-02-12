@@ -1,0 +1,22 @@
+# Test: Simple exception raising with ValueError
+def divide(a: int, b: int) -> int:
+    if b == 0:
+        raise ValueError("Cannot divide by zero")
+    return a // b
+
+def main():
+    try:
+        result = divide(10, 2)
+        print(result)
+    except ValueError as e:
+        print("Error caught")
+    
+    try:
+        result = divide(10, 0)
+        print(result)
+    except ValueError as e:
+        print("Division by zero handled")
+
+# EXPECTED OUTPUT:
+# 5
+# Division by zero handled

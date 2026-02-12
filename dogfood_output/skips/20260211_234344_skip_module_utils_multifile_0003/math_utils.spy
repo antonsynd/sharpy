@@ -1,0 +1,43 @@
+# Module providing mathematical utility functions and classes
+
+def is_prime(n: int) -> bool:
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+    
+    i: int = 3
+    while i * i <= n:
+        if n % i == 0:
+            return False
+        i += 2
+    return True
+
+def factorial(n: int) -> int:
+    if n <= 1:
+        return 1
+    result: int = 1
+    i: int = 2
+    while i <= n:
+        result *= i
+        i += 1
+    return result
+
+class Statistics:
+    numbers: list[int]
+    
+    def __init__(self, nums: list[int]):
+        self.numbers = nums
+    
+    def get_sum(self) -> int:
+        total: int = 0
+        for num in self.numbers:
+            total += num
+        return total
+    
+    def get_average(self) -> float:
+        total: int = self.get_sum()
+        count: int = len(self.numbers)
+        return float(total) / float(count)

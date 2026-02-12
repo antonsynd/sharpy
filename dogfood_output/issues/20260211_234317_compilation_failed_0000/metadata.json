@@ -1,0 +1,18 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-02-11T23:43:08.521011",
+  "generated_code": "# Test: Simple exception raising with ValueError\ndef divide(a: int, b: int) -> int:\n    if b == 0:\n        raise ValueError(\"Cannot divide by zero\")\n    return a // b\n\ndef main():\n    try:\n        result = divide(10, 2)\n        print(result)\n    except ValueError as e:\n        print(\"Error caught\")\n    \n    try:\n        result = divide(10, 0)\n        print(result)\n    except ValueError as e:\n        print(\"Division by zero handled\")\n\n# EXPECTED OUTPUT:\n# 5\n# Division by zero handled",
+  "expected_output": "5\nDivision by zero handled\n",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n\nerror[CS0103]: The name 'result' does not exist in the current context\n  --> /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmphesl7pga/dogfood_test.spy:15:13\n    |\n 15 |         result = divide(10, 0)\n    |             ^\n    |\n\nerror[CS0103]: The name 'result' does not exist in the current context\n  --> /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmphesl7pga/dogfood_test.spy:16:43\n    |\n 16 |         print(result)\n    |                      ^\n    |\n\n",
+  "compiler_output": "warning[SPY0451]: Local variable 'e' is assigned but never used\n  --> /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmphesl7pga/dogfood_test.spy:17:5\n    |\n 17 |     except ValueError as e:\n    |     ^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\n",
+  "generated_cs": "warning[SPY0451]: Local variable 'e' is assigned but never used\n  --> /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmphesl7pga/dogfood_test.spy:17:5\n    |\n 17 |     except ValueError as e:\n    |     ^^^^^^^^^^^^^^^^^^^^^^^\n    |\n\nGenerated C# code written to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmphesl7pga/dogfood_test.cs\n",
+  "validation_result": null,
+  "feature_focus": "raise_exception",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 4.707618713378906,
+  "compilation_duration": null,
+  "execution_duration": 1.4349730014801025,
+  "source_files": null
+}

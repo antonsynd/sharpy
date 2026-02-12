@@ -1,0 +1,7 @@
+Factorial of 5: 120
+Is 17 prime? True
+GCD of 48 and 18: 6
+Reversed 'hello': olleh
+Vowels in 'beautiful': 5
+Text length: 19
+Word count: 4

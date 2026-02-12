@@ -1,0 +1,6 @@
+Rectangle (5x3)
+Area: 15
+Sphere (radius=3)
+Volume: 113.09724
+Total shapes: 3
+Total surface area: 123.84954

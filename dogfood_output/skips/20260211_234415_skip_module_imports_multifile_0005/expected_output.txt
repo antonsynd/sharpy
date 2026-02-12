@@ -1,0 +1,5 @@
+Factorial of 5: 120
+17 is prime
+3^4 = 81
+7 is prime
+Factorial of 7: 5040

@@ -1,0 +1,67 @@
+# 3D shapes module - extends shapes module with volumetric shapes
+
+from shapes import Shape
+
+interface IVolume:
+    def volume(self) -> float:
+        ...
+
+@abstract
+class Shape3D(Shape):
+    """Base class for 3D shapes - extends Shape"""
+    
+    @abstract
+    def volume(self) -> float:
+        ...
+    
+    @override
+    def area(self) -> float:
+        return self.surface_area()
+    
+    @abstract
+    def surface_area(self) -> float:
+        ...
+
+class Cube(Shape3D, IVolume):
+    side: float
+    
+    def __init__(self, s: float):
+        self.side = s
+    
+    @override
+    def volume(self) -> float:
+        return self.side * self.side * self.side
+    
+    @override
+    def surface_area(self) -> float:
+        return 6.0 * self.side * self.side
+    
+    @override
+    def perimeter(self) -> float:
+        return 12.0 * self.side
+    
+    @override
+    def describe(self) -> str:
+        return f"Cube (side={self.side})"
+
+class Sphere(Shape3D, IVolume):
+    radius: float
+    
+    def __init__(self, r: float):
+        self.radius = r
+    
+    @override
+    def volume(self) -> float:
+        return (4.0 / 3.0) * 3.14159 * self.radius * self.radius * self.radius
+    
+    @override
+    def surface_area(self) -> float:
+        return 4.0 * 3.14159 * self.radius * self.radius
+    
+    @override
+    def perimeter(self) -> float:
+        return 2.0 * 3.14159 * self.radius
+    
+    @override
+    def describe(self) -> str:
+        return f"Sphere (radius={self.radius})"

@@ -1,0 +1,23 @@
+Assembly compilation failed:
+
+error[CS1061]: 'int?' does not contain a definition for 'Unwrap' and no accessible extension method 'Unwrap' accepting a first argument of type 'int?' could be found (are you missing a using directive or an assembly reference?)
+  --> /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmpo3t6nefp/dogfood_test.spy:7:41
+    |
+  7 |     print(x.unwrap())
+    |                      ^
+    |
+
+error[CS1061]: 'int?' does not contain a definition for 'UnwrapOr' and no accessible extension method 'UnwrapOr' accepting a first argument of type 'int?' could be found (are you missing a using directive or an assembly reference?)
+  --> /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmpo3t6nefp/dogfood_test.spy:10:41
+    |
+ 10 |     print(y.unwrap_or(99))
+    |                           ^
+    |
+
+error[CS1061]: 'int?' does not contain a definition for 'UnwrapOr' and no accessible extension method 'UnwrapOr' accepting a first argument of type 'int?' could be found (are you missing a using directive or an assembly reference?)
+  --> /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmpo3t6nefp/dogfood_test.spy:13:41
+    |
+ 13 |     print(x.unwrap_or(0))
+    |                          ^
+    |
+

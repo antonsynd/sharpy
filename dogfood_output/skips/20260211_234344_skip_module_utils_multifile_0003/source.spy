@@ -1,0 +1,34 @@
+# Main entry point - demonstrates utility modules
+from math_utils import is_prime, factorial, Statistics
+from string_utils import count_vowels, reverse_string
+
+def main():
+    # Test prime checking
+    num: int = 17
+    print(is_prime(num))
+    
+    # Test factorial
+    fact_result: int = factorial(5)
+    print(fact_result)
+    
+    # Test statistics
+    data: list[int] = [10, 20, 30, 40]
+    stats = Statistics(data)
+    print(stats.get_sum())
+    print(stats.get_average())
+    
+    # Test string utilities
+    text: str = "Hello"
+    vowel_count: int = count_vowels(text)
+    print(vowel_count)
+    
+    reversed_text: str = reverse_string(text)
+    print(reversed_text)
+
+# EXPECTED OUTPUT:
+# True
+# 120
+# 100
+# 25.0
+# 2
+# olleH

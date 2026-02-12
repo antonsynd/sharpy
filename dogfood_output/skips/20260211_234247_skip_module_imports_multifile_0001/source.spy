@@ -1,0 +1,40 @@
+# Main entry point - demonstrates cross-module inheritance and imports
+
+from shapes import Rectangle, Circle
+from collections_3d import Cube, Sphere
+from geometry_utils import calculate_total_area, calculate_total_volume, ShapeCollection
+
+def main():
+    # Create 2D shapes
+    rect = Rectangle(5.0, 3.0)
+    circ = Circle(2.0)
+    
+    print(rect.describe())
+    print(f"Area: {rect.area()}")
+    
+    # Create 3D shapes
+    cube = Cube(4.0)
+    sphere = Sphere(3.0)
+    
+    print(sphere.describe())
+    print(f"Volume: {sphere.volume()}")
+    
+    # Use shape collection
+    collection = ShapeCollection()
+    collection.add_shape(rect)
+    collection.add_shape(circ)
+    collection.add_shape(cube)
+    
+    print(f"Total shapes: {collection.count()}")
+    
+    # Calculate total area from mixed 2D and 3D shapes
+    total_area: float = calculate_total_area(collection.shapes)
+    print(f"Total surface area: {total_area}")
+
+# EXPECTED OUTPUT:
+# Rectangle (5x3)
+# Area: 15
+# Sphere (radius=3)
+# Volume: 113.09724
+# Total shapes: 3
+# Total surface area: 123.84954

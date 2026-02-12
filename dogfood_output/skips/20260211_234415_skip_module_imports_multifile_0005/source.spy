@@ -1,0 +1,33 @@
+# Main entry point - demonstrates cross-module imports and functionality
+from math_utils import factorial, MathOperations, is_prime
+from number_analyzer import NumberAnalyzer
+
+def main():
+    # Test factorial function
+    fact_5: int = factorial(5)
+    print(f"Factorial of 5: {fact_5}")
+    
+    # Test prime checking
+    num: int = 17
+    if is_prime(num):
+        print(f"{num} is prime")
+    
+    # Test MathOperations class
+    math_op = MathOperations(3)
+    power_result: int = math_op.power(4)
+    print(f"3^4 = {power_result}")
+    
+    # Test NumberAnalyzer from another module
+    analyzer = NumberAnalyzer(7)
+    classification: str = analyzer.analyze()
+    print(f"7 is {classification}")
+    
+    fact_7: int = analyzer.get_factorial()
+    print(f"Factorial of 7: {fact_7}")
+
+# EXPECTED OUTPUT:
+# Factorial of 5: 120
+# 17 is prime
+# 3^4 = 81
+# 7 is prime
+# Factorial of 7: 5040

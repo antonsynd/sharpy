@@ -1,0 +1,43 @@
+# Module providing material types and 3D shapes
+
+from geometry import Shape
+
+enum Material:
+    WOOD = 0
+    METAL = 1
+    PLASTIC = 2
+    GLASS = 3
+
+struct MaterialProperties:
+    material: Material
+    density: float
+
+class Sphere(Shape):
+    radius: float
+    properties: MaterialProperties
+
+    def __init__(self, color: str, radius: float, props: MaterialProperties):
+        super().__init__(color)
+        self.radius = radius
+        self.properties = props
+
+    @override
+    def get_area(self) -> float:
+        return 4.0 * 3.14159 * self.radius * self.radius
+
+    @override
+    def draw(self) -> str:
+        mat_name: str = "unknown"
+        if self.properties.material == Material.WOOD:
+            mat_name = "wood"
+        if self.properties.material == Material.METAL:
+            mat_name = "metal"
+        if self.properties.material == Material.PLASTIC:
+            mat_name = "plastic"
+        if self.properties.material == Material.GLASS:
+            mat_name = "glass"
+        return f"Drawing a {self.color} {mat_name} sphere with radius {self.radius}"
+
+    def get_mass(self) -> float:
+        volume: float = (4.0 / 3.0) * 3.14159 * self.radius * self.radius * self.radius
+        return volume * self.properties.density
