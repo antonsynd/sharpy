@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Test script to verify thread ID management."""
+import inspect
+import re
 import sys
 from pathlib import Path
-import re
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from sharpy_auto_builder.config import Config
-from sharpy_auto_builder.orchestrator import Orchestrator
+from sharpy_auto_builder.orchestrator import Orchestrator, create_initial_state
 
 
 def test_thread_id_management():
@@ -22,8 +23,8 @@ def test_thread_id_management():
     with Orchestrator(c) as orch:
         print("✓ Orchestrator initialized\n")
 
-        # Test 1: Verify _create_initial_state method exists and works
-        initial_state = orch._create_initial_state()
+        # Test 1: Verify create_initial_state() works
+        initial_state = create_initial_state(str(c.ground_truth_path))
         assert initial_state is not None, "Initial state should not be None"
         assert "current_task" in initial_state, "Should have current_task field"
         assert (
@@ -33,11 +34,9 @@ def test_thread_id_management():
             "execution_attempt" in initial_state
         ), "Should have execution_attempt field"
         assert "messages" in initial_state, "Should have messages field"
-        print("✓ _create_initial_state() creates valid state")
+        print("✓ create_initial_state() creates valid state")
 
         # Test 2: Check run() signature accepts thread_id parameter
-        import inspect
-
         sig = inspect.signature(orch.run)
         params = list(sig.parameters.keys())
         assert "thread_id" in params, "run() should accept thread_id parameter"

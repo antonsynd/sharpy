@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Test script to verify rate limit recovery functionality."""
+import asyncio
+import inspect
 import sys
 from pathlib import Path
 
@@ -7,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from sharpy_auto_builder.config import Config
-from sharpy_auto_builder.orchestrator import Orchestrator
+from sharpy_auto_builder.orchestrator import Orchestrator, build_graph
 
 
 def test_rate_limit_detection():
@@ -28,11 +30,9 @@ def test_rate_limit_detection():
         print("✓ _handle_error_node method exists")
 
         # Test 2: Verify graph routes pause_rate_limited to END
-        import inspect
-
-        graph_method = inspect.getsource(orch._build_graph)
+        graph_source = inspect.getsource(build_graph)
         assert (
-            "pause_rate_limited" in graph_method
+            "pause_rate_limited" in graph_source
         ), "Graph should include pause_rate_limited routing"
         print("✓ Graph includes pause_rate_limited routing")
 
@@ -46,8 +46,6 @@ def test_rate_limit_detection():
 
         # Mock thread_id for test
         orch._current_thread_id = "test-thread-12345"
-
-        import asyncio
 
         # Run the error handler
         result = asyncio.run(orch._handle_error_node(test_state))

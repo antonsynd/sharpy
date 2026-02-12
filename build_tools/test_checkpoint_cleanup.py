@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Test script to verify checkpoint cleanup functionality."""
+import os
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -18,7 +20,7 @@ def test_checkpoint_cleanup():
     task_list_path.write_text("# Test Task List\n\n- [ ] Test task\n")
     c.task_list_path = task_list_path
 
-    # Create orchestrator with context manager
+    # Verify cleanup tracking fields are initialized (sync — no DB needed)
     with Orchestrator(c) as orch:
         print("✓ Orchestrator initialized")
 
@@ -31,7 +33,24 @@ def test_checkpoint_cleanup():
         ), "Should match config"
         print(f"✓ Cleanup tracking initialized: interval={orch._cleanup_interval}")
 
-        # Get checkpoint stats
+        # Create a minimal checkpoint DB so get_checkpoint_stats() can query it
+        db_path = c.checkpoint_db_path
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS checkpoints (
+                thread_id TEXT NOT NULL,
+                checkpoint_ns TEXT NOT NULL DEFAULT '',
+                checkpoint_id TEXT NOT NULL,
+                parent_checkpoint_id TEXT,
+                type TEXT,
+                checkpoint BLOB,
+                metadata BLOB,
+                PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
+            )
+        """)
+        conn.commit()
+        conn.close()
+
         stats = orch.get_checkpoint_stats()
         print(f"\n✓ Checkpoint statistics:")
         print(f"  - Total checkpoints: {stats.get('total_checkpoints', 0)}")
@@ -51,7 +70,11 @@ def test_checkpoint_cleanup():
         ), "Should have max_checkpoints_per_thread"
         assert "cleanup_interval" in stats, "Should have cleanup_interval"
 
-        print("\n✓ All checkpoint cleanup tests passed!")
+        # Cleanup DB
+        if db_path.exists():
+            os.unlink(db_path)
+
+    print("\n✓ All checkpoint cleanup tests passed!")
 
     # Cleanup test file
     if task_list_path.exists():

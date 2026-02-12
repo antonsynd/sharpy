@@ -210,36 +210,41 @@ class Orchestrator(
         Keeps the most recent N checkpoints per thread, where N is
         config.checkpoint.max_checkpoints_per_thread.
         """
+        import sqlite3
+
         try:
             max_checkpoints = self.config.checkpoint.max_checkpoints_per_thread
 
-            # Query checkpoints for this thread, ordered by timestamp descending
-            cursor = self._db_connection.cursor()
-            cursor.execute(
-                """
-                SELECT checkpoint_id, checkpoint_ns
-                FROM checkpoints
-                WHERE thread_id = ?
-                ORDER BY checkpoint_id DESC
-                """,
-                (thread_id,),
-            )
-            checkpoints = cursor.fetchall()
-
-            # If we have more than max_checkpoints, delete the oldest ones
-            if len(checkpoints) > max_checkpoints:
-                checkpoints_to_delete = checkpoints[max_checkpoints:]
-                for checkpoint_id, checkpoint_ns in checkpoints_to_delete:
-                    cursor.execute(
-                        "DELETE FROM checkpoints WHERE checkpoint_id = ? AND checkpoint_ns = ?",
-                        (checkpoint_id, checkpoint_ns),
-                    )
-
-                self._db_connection.commit()
-                deleted_count = len(checkpoints_to_delete)
-                print(
-                    f"🧹 Cleaned up {deleted_count} old checkpoints for thread {thread_id}"
+            conn = sqlite3.connect(str(self.config.checkpoint_db_path))
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT checkpoint_id, checkpoint_ns
+                    FROM checkpoints
+                    WHERE thread_id = ?
+                    ORDER BY checkpoint_id DESC
+                    """,
+                    (thread_id,),
                 )
+                checkpoints = cursor.fetchall()
+
+                # If we have more than max_checkpoints, delete the oldest ones
+                if len(checkpoints) > max_checkpoints:
+                    checkpoints_to_delete = checkpoints[max_checkpoints:]
+                    for checkpoint_id, checkpoint_ns in checkpoints_to_delete:
+                        cursor.execute(
+                            "DELETE FROM checkpoints WHERE checkpoint_id = ? AND checkpoint_ns = ?",
+                            (checkpoint_id, checkpoint_ns),
+                        )
+
+                    conn.commit()
+                    deleted_count = len(checkpoints_to_delete)
+                    print(
+                        f"🧹 Cleaned up {deleted_count} old checkpoints for thread {thread_id}"
+                    )
+            finally:
+                conn.close()
 
         except Exception as e:
             # Don't fail the whole operation if cleanup fails
@@ -485,33 +490,53 @@ class Orchestrator(
         Returns:
             dict: Statistics including checkpoint counts, thread info, and database size
         """
+        import os
+        import sqlite3
+
         try:
-            cursor = self._db_connection.cursor()
+            conn = sqlite3.connect(str(self.config.checkpoint_db_path))
+            try:
+                cursor = conn.cursor()
 
-            # Get total checkpoint count
-            cursor.execute("SELECT COUNT(*) FROM checkpoints")
-            total_checkpoints = cursor.fetchone()[0]
+                # Check if checkpoints table exists (may not yet if no checkpoints saved)
+                cursor.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='checkpoints'"
+                )
+                if cursor.fetchone() is None:
+                    conn.close()
+                    return {
+                        "total_checkpoints": 0,
+                        "unique_threads": 0,
+                        "db_size_bytes": os.path.getsize(self.config.checkpoint_db_path),
+                        "db_size_mb": 0.0,
+                        "thread_stats": [],
+                        "max_checkpoints_per_thread": self.config.checkpoint.max_checkpoints_per_thread,
+                        "cleanup_interval": self.config.checkpoint.cleanup_interval,
+                    }
 
-            # Get unique thread count
-            cursor.execute("SELECT COUNT(DISTINCT thread_id) FROM checkpoints")
-            unique_threads = cursor.fetchone()[0]
+                # Get total checkpoint count
+                cursor.execute("SELECT COUNT(*) FROM checkpoints")
+                total_checkpoints = cursor.fetchone()[0]
 
-            # Get checkpoints per thread
-            cursor.execute(
-                """
-                SELECT thread_id, COUNT(*) as count
-                FROM checkpoints
-                GROUP BY thread_id
-                ORDER BY count DESC
-                """
-            )
-            thread_stats = [
-                {"thread_id": row[0], "checkpoint_count": row[1]}
-                for row in cursor.fetchall()
-            ]
+                # Get unique thread count
+                cursor.execute("SELECT COUNT(DISTINCT thread_id) FROM checkpoints")
+                unique_threads = cursor.fetchone()[0]
 
-            # Get database file size
-            import os
+                # Get checkpoints per thread
+                cursor.execute(
+                    """
+                    SELECT thread_id, COUNT(*) as count
+                    FROM checkpoints
+                    GROUP BY thread_id
+                    ORDER BY count DESC
+                    """
+                )
+                thread_stats = [
+                    {"thread_id": row[0], "checkpoint_count": row[1]}
+                    for row in cursor.fetchall()
+                ]
+            finally:
+                conn.close()
 
             db_size = os.path.getsize(self.config.checkpoint_db_path)
 
