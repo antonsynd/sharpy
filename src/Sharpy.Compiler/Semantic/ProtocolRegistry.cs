@@ -155,14 +155,14 @@ public static class ProtocolRegistry
         ));
 
         // 2.2.6 Conversion protocols
-        // IBoolConvertible is defined in Sharpy.Core (IBoolConvertible.cs) with bool __Bool__().
-        // __bool__ codegen emits a __Bool__() method (satisfying IBoolConvertible) plus
+        // IBoolConvertible is defined in Sharpy.Core (IBoolConvertible.cs) with bool IsTrue { get; }.
+        // __bool__ codegen emits an IsTrue property (satisfying IBoolConvertible) plus
         // operator true / operator false. ClrMethodName is null since there's no single CLR method.
         Register(protocols, new ProtocolInfo(
             DunderName: DunderNames.Bool,
             Kind: ProtocolKind.Conversion,
             SharpyCoreInterface: "IBoolConvertible",
-            InterfaceMethodName: "__Bool__",
+            InterfaceMethodName: "IsTrue",
             ClrMethodName: null,
             ExpectedParamCount: 1,  // Just self
             ExpectedReturnType: "bool"

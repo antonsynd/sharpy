@@ -5,7 +5,7 @@ using static Sharpy.Builtins;
 /// <summary>
 /// Test helper wrapper class that provides Python-style dunder methods.
 /// </summary>
-public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>
+public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>, Sharpy.IBoolConvertible
 {
     private static uint _id;
 
@@ -29,20 +29,17 @@ public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>
         return (int)Id;
     }
 
-    // BoolConvertible
-    public bool __Bool__()
-    {
-        return Bool(Value);
-    }
+    // IBoolConvertible
+    public bool IsTrue => Bool(Value);
 
     public static bool operator true(Wrapper<T> wrapper)
     {
-        return wrapper?.__Bool__() ?? false;
+        return wrapper?.IsTrue ?? false;
     }
 
     public static bool operator false(Wrapper<T> wrapper)
     {
-        return !(wrapper?.__Bool__() ?? false);
+        return !(wrapper?.IsTrue ?? false);
     }
 
     // Representable

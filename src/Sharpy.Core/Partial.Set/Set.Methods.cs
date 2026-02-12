@@ -133,11 +133,6 @@ namespace Sharpy
         public Iterator<T> __Iter__() => (Iterator<T>)GetEnumerator();
 
         /// <summary>
-        /// Deprecated: Use <c>set</c> in a boolean context (operator true/false) instead.
-        /// </summary>
-        public bool __Bool__() => _set.Count > 0;
-
-        /// <summary>
         /// Deprecated: Use <c>!Equals(other)</c> instead.
         /// </summary>
         public bool __Ne__(Set<T> other) => !Equals(other);

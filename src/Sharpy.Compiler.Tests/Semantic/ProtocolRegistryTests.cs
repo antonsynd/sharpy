@@ -112,7 +112,7 @@ public class ProtocolRegistryTests
     [InlineData("__next__", "__Next__")]
     [InlineData("__str__", "__Str__")]
     [InlineData("__hash__", "__Hash__")]
-    [InlineData("__bool__", "__Bool__")]
+    [InlineData("__bool__", "IsTrue")]
     public void GetProtocol_ReturnsCorrectInterfaceMethodName(string dunderName, string expectedMethodName)
     {
         var protocol = ProtocolRegistry.GetProtocol(dunderName);

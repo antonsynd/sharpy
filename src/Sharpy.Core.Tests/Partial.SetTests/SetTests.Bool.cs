@@ -13,7 +13,6 @@ public partial class Set_Tests
 
         // When/then
         Bool(s).Should().BeFalse();
-        s.__Bool__().Should().BeFalse();
     }
 
     [Fact]
@@ -24,6 +23,5 @@ public partial class Set_Tests
 
         // When/then
         Bool(s).Should().BeTrue();
-        s.__Bool__().Should().BeTrue();
     }
 }

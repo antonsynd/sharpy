@@ -214,14 +214,6 @@ namespace Sharpy
         public Iterator<T> __Reversed__() => new ListReverseIterator<T>(this);
 
         /// <summary>
-        /// Returns true if the list is not empty.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Use <c>list</c> in a boolean context (operator true/false) instead.
-        /// </remarks>
-        public bool __Bool__() => _list.Count > 0;
-
-        /// <summary>
         /// Deprecated: Use <see cref="GetHashCode()"/> instead.
         /// </summary>
         public int __Hash__() => GetHashCode();

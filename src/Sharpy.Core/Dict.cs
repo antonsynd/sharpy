@@ -420,14 +420,6 @@ namespace Sharpy
         /// </summary>
         public string __Repr__() => ToString();
 
-        /// <summary>
-        /// Deprecated: Use <c>dict</c> in a boolean context (operator true/false) instead.
-        /// </summary>
-        public bool __Bool__()
-        {
-            return _dict.Count > 0;
-        }
-
         public static bool operator true(Dict<K, V>? dict)
         {
             return dict is not null && dict._dict.Count > 0;

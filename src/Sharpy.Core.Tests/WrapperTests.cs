@@ -40,12 +40,12 @@ public class Wrapper_Tests
         // If
         var wrapper = new Wrapper<int>(1);
         // When/then
-        wrapper.__Bool__().Should().BeTrue();
+        wrapper.IsTrue.Should().BeTrue();
 
         // If
         wrapper = new Wrapper<int>(0);
         // When/then
-        wrapper.__Bool__().Should().BeFalse();
+        wrapper.IsTrue.Should().BeFalse();
     }
 
     [Fact]
