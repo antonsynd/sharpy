@@ -1109,33 +1109,32 @@ class DogfoodOrchestrator:
                     skip_reason=f"Unsupported feature in {filename}: {prevalidation_error}",
                 )
 
-        # Step 1.55: Validate Sharpy semantics for each file (full pipeline via emit csharp)
-        print("\n[2/4] Validating with compiler...", file=sys.stderr)
-        for filename, code in files.items():
-            semantic_error = await self._validate_sharpy_semantics(code)
-            if semantic_error:
-                print(
-                    f"  Sharpy semantic validation failed for {filename}: {semantic_error[:200]}",
-                    file=sys.stderr,
-                )
-                skip = Skip(
-                    timestamp=timestamp,
-                    skip_reason=f"Sharpy compiler error in {filename}: {semantic_error}",
-                    generated_code=files.get("main.spy", ""),
-                    expected_output=expected_output,
-                    feature_focus=feature_focus,
-                    complexity=complexity,
-                    backend_used=gen_result.backend,
-                    generation_duration=gen_result.duration_seconds,
-                    source_files=files,
-                )
-                skip_dir = self.skip_reporter.report(skip)
-                print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
-                return IterationResult(
-                    IterationStatus.SKIPPED,
-                    skip_dir=skip_dir,
-                    skip_reason=f"Sharpy compiler error in {filename}: {semantic_error}",
-                )
+        # Step 1.55: Validate Sharpy semantics as a project (full pipeline via emit csharp)
+        print("\n[2/4] Validating project with compiler...", file=sys.stderr)
+        semantic_error = await self._validate_project_semantics(files)
+        if semantic_error:
+            print(
+                f"  Sharpy project validation failed: {semantic_error[:200]}",
+                file=sys.stderr,
+            )
+            skip = Skip(
+                timestamp=timestamp,
+                skip_reason=f"Sharpy compiler error: {semantic_error}",
+                generated_code=files.get("main.spy", ""),
+                expected_output=expected_output,
+                feature_focus=feature_focus,
+                complexity=complexity,
+                backend_used=gen_result.backend,
+                generation_duration=gen_result.duration_seconds,
+                source_files=files,
+            )
+            skip_dir = self.skip_reporter.report(skip)
+            print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
+            return IterationResult(
+                IterationStatus.SKIPPED,
+                skip_dir=skip_dir,
+                skip_reason=f"Sharpy compiler error: {semantic_error}",
+            )
 
         # Compiler validation passed for all files — skip AI spec validation.
         print("  All files validated successfully (compiler)", file=sys.stderr)
@@ -1366,6 +1365,26 @@ class DogfoodOrchestrator:
         """
         with TempSourceFile(code) as temp_path:
             result = await self.compiler.check_file(temp_path, timeout=30.0)
+            if result.success:
+                return None
+            return result.error or "Unknown compiler error"
+
+    async def _validate_project_semantics(
+        self, files: dict[str, str]
+    ) -> Optional[str]:
+        """Validate a multi-file project as a unit using the Sharpy compiler.
+
+        Writes all files to a temp directory and runs 'emit csharp' on main.spy
+        with cwd set to the project dir so imports resolve to sibling files.
+        Only main.spy is treated as the entry point — library modules don't
+        need main() and are validated transitively via imports.
+
+        Returns None if the project is valid, or an error message if invalid.
+        """
+        with TempProjectDir(files) as project_dir:
+            result = await self.compiler.check_project(
+                project_dir, timeout=30.0
+            )
             if result.success:
                 return None
             return result.error or "Unknown compiler error"

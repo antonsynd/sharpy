@@ -398,6 +398,102 @@ class SharpyCompiler:
         """
         return await self.emit_cs(source_path, timeout=timeout)
 
+    async def check_project(
+        self,
+        project_dir: Path,
+        entry_point: str = "main.spy",
+        timeout: float = 30.0,
+    ) -> CompilationResult:
+        """Check that a multi-file Sharpy project is semantically valid.
+
+        Runs 'emit csharp' on the entry point with cwd=project_dir so the
+        compiler's import resolver finds sibling .spy files. Only the entry
+        point needs main() — library modules are resolved via imports.
+
+        Args:
+            project_dir: Directory containing the .spy source files.
+            entry_point: The entry point file (default "main.spy").
+            timeout: Validation timeout in seconds.
+
+        Returns:
+            CompilationResult with success/failure and any error output.
+        """
+        import time
+
+        start_time = time.time()
+        entry_point_path = project_dir / entry_point
+
+        if not entry_point_path.exists():
+            return CompilationResult(
+                success=False,
+                output="",
+                error=f"Entry point file not found: {entry_point_path}",
+                duration_seconds=time.time() - start_time,
+            )
+
+        cmd = [
+            self._dotnet_path,
+            "run",
+            "--project",
+            str(self.cli_project),
+            "--",
+            "emit",
+            "csharp",
+            str(entry_point_path),
+        ]
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=project_dir,
+            )
+
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                try:
+                    process.kill()
+                    await process.wait()
+                except Exception:
+                    pass
+                return CompilationResult(
+                    success=False,
+                    output="",
+                    error=f"Project validation timed out after {timeout}s",
+                    duration_seconds=time.time() - start_time,
+                )
+
+            duration = time.time() - start_time
+            stdout_text = stdout.decode()
+            stderr_text = stderr.decode()
+
+            if process.returncode == 0:
+                return CompilationResult(
+                    success=True,
+                    output=stdout_text,
+                    generated_cs=stdout_text,
+                    duration_seconds=duration,
+                )
+            else:
+                return CompilationResult(
+                    success=False,
+                    output=stdout_text,
+                    error=stderr_text or stdout_text,
+                    duration_seconds=duration,
+                )
+
+        except Exception as e:
+            return CompilationResult(
+                success=False,
+                output="",
+                error=f"Project validation failed: {e}",
+                duration_seconds=time.time() - start_time,
+            )
+
     async def parse_file(
         self,
         source_path: Path,
