@@ -20,6 +20,9 @@ screenlog.*
 # Test results
 **/TestResults/
 
+# Dogfood output
+dogfood_output/
+
 **/bin/Debug/net*/
 **/bin/Release/net*/
 
