@@ -95,15 +95,28 @@ internal partial class RoslynEmitter
         var mangledName = GetMangledVariableName(name.Name, isNewDeclaration: false);
         ExpressionSyntax expr = IdentifierName(mangledName);
 
-        // If this variable has been narrowed from Optional<T> to T, emit .Unwrap()
+        // If this variable has been narrowed from Optional<T>/Nullable<T> to T,
+        // emit .Unwrap() for Optional or .Value for value-type Nullable
         if (IsNarrowed(name.Name))
         {
-            expr = InvocationExpression(
-                MemberAccessExpression(
+            if (IsNullableNarrowed(name.Name))
+            {
+                // Value-type nullable (int?, bool?, etc.) → .Value
+                expr = MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
                     expr,
-                    IdentifierName("Unwrap")))
-                .WithArgumentList(ArgumentList());
+                    IdentifierName("Value"));
+            }
+            else
+            {
+                // Optional<T> → .Unwrap()
+                expr = InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        expr,
+                        IdentifierName("Unwrap")))
+                    .WithArgumentList(ArgumentList());
+            }
         }
 
         return expr;

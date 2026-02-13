@@ -1,0 +1,9 @@
+# Test value-type nullable narrowing with return
+def add_one(x: int | None) -> int:
+    if x is not None:
+        return x + 1
+    return 0
+
+def main():
+    print(add_one(41))
+    print(add_one(None))

@@ -220,6 +220,7 @@ internal partial class RoslynEmitter
         _constVariables.Clear();
         _sourceVariableNames.Clear();
         _narrowedOptionals.Clear();
+        _isNullableNarrowing.Clear();
 
         // Pre-scan the constructor body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
@@ -392,6 +393,7 @@ internal partial class RoslynEmitter
         _constVariables.Clear();
         _sourceVariableNames.Clear();
         _narrowedOptionals.Clear();
+        _isNullableNarrowing.Clear();
 
         // Pre-scan the method body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
@@ -563,6 +565,7 @@ internal partial class RoslynEmitter
         _constVariables.Clear();
         _sourceVariableNames.Clear();
         _narrowedOptionals.Clear();
+        _isNullableNarrowing.Clear();
         CollectSourceVariableNames(func.Body);
 
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
@@ -598,6 +601,7 @@ internal partial class RoslynEmitter
         _constVariables.Clear();
         _sourceVariableNames.Clear();
         _narrowedOptionals.Clear();
+        _isNullableNarrowing.Clear();
 
         CollectSourceVariableNames(func.Body);
 
@@ -652,6 +656,7 @@ internal partial class RoslynEmitter
             _constVariables.Clear();
             _sourceVariableNames.Clear();
             _narrowedOptionals.Clear();
+            _isNullableNarrowing.Clear();
             CollectSourceVariableNames(funcDef.Body);
 
             // Track parameters (skip self)

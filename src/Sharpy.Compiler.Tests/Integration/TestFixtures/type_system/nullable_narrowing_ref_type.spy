@@ -1,0 +1,14 @@
+# Test reference-type nullable narrowing: str | None -> str
+# Reference types don't need .Value — C# narrows automatically
+def main():
+    s: str | None = "hello"
+    if s is not None:
+        t: str = s
+        print(t)
+
+    n: str | None = None
+    if n is None:
+        print("n is null")
+    else:
+        u: str = n
+        print(u)

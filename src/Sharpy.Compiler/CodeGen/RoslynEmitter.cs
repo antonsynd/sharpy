@@ -108,6 +108,14 @@ internal partial class RoslynEmitter
     private readonly Dictionary<string, int> _narrowedOptionals = new();
 
     /// <summary>
+    /// Tracks variable names that are narrowed from NullableType (T | None) rather than
+    /// OptionalType. For value-type nullables (int?, bool?, etc.), the emitter generates
+    /// .Value instead of .Unwrap(). Reference-type nullables (string?) don't need .Value
+    /// because C# narrows them automatically after a null check.
+    /// </summary>
+    private readonly HashSet<string> _isNullableNarrowing = new();
+
+    /// <summary>
     /// Pushes a narrowing scope for the given variable. Reference-counted so
     /// nested scopes (e.g., nested if-statements) work correctly.
     /// </summary>
@@ -140,10 +148,19 @@ internal partial class RoslynEmitter
         => _narrowedOptionals.TryGetValue(variableName, out var count) && count > 0;
 
     /// <summary>
+    /// Returns true if the variable is narrowed as a value-type nullable (needs .Value).
+    /// </summary>
+    private bool IsNullableNarrowed(string variableName)
+        => _isNullableNarrowing.Contains(variableName);
+
+    /// <summary>
     /// Clears narrowing for a variable (e.g., after reassignment).
     /// </summary>
     private void ClearNarrowing(string variableName)
-        => _narrowedOptionals.Remove(variableName);
+    {
+        _narrowedOptionals.Remove(variableName);
+        _isNullableNarrowing.Remove(variableName);
+    }
 
     // Maps original parameter base names (camelCase) to C# replacement names.
     // Used for inlined operator bodies: e.g., "other" → "right".

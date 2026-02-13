@@ -209,14 +209,29 @@ internal partial class RoslynEmitter
                 var varName = GetMangledVariableName(name.Name, isNewDeclaration: false);
                 var target = IdentifierName(varName);
 
-                // For the read side of augmented assignment, apply Optional narrowing
+                // For the read side of augmented assignment, apply Optional/Nullable narrowing
                 // so that x += 1 with narrowed Optional<int> reads as x.Unwrap() + 1
-                ExpressionSyntax readExpr = IsNarrowed(name.Name)
-                    ? InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName(varName), IdentifierName("Unwrap")))
-                        .WithArgumentList(ArgumentList())
-                    : target;
+                // or with narrowed int? reads as x.Value + 1
+                ExpressionSyntax readExpr;
+                if (IsNarrowed(name.Name))
+                {
+                    if (IsNullableNarrowed(name.Name))
+                    {
+                        readExpr = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(varName), IdentifierName("Value"));
+                    }
+                    else
+                    {
+                        readExpr = InvocationExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                IdentifierName(varName), IdentifierName("Unwrap")))
+                            .WithArgumentList(ArgumentList());
+                    }
+                }
+                else
+                {
+                    readExpr = target;
+                }
 
                 var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, assign.Target, assign.Value);
 
@@ -845,13 +860,35 @@ internal partial class RoslynEmitter
             return;
         if (binOp.Left is not Identifier id)
             return;
-        if (GetExpressionSemanticType(binOp.Left) is not OptionalType)
+
+        var leftType = GetExpressionSemanticType(binOp.Left);
+        if (leftType is null)
+            return;
+
+        bool isValueTypeNullable = leftType is NullableType && leftType.IsValueType;
+        bool isRefTypeNullable = leftType is NullableType && !leftType.IsValueType;
+
+        // Reference-type nullables (string?, etc.) don't need codegen narrowing —
+        // C# automatically narrows them after a null check.
+        if (isRefTypeNullable)
+            return;
+
+        if (leftType is not OptionalType && !isValueTypeNullable)
             return;
 
         if (binOp.Operator == BinaryOperator.IsNot)
+        {
             isNotNone.Add(id.Name);
+            // Track value-type nullables so the emitter uses .Value instead of .Unwrap()
+            if (isValueTypeNullable)
+                _isNullableNarrowing.Add(id.Name);
+        }
         else if (binOp.Operator == BinaryOperator.Is)
+        {
             isNone.Add(id.Name);
+            if (isValueTypeNullable)
+                _isNullableNarrowing.Add(id.Name);
+        }
     }
 
     private StatementSyntax GenerateWhile(WhileStatement whileStmt)

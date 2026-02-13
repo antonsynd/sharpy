@@ -1,0 +1,15 @@
+# Test value-type nullable narrowing in while loop
+def get_value(i: int) -> int | None:
+    if i == 2:
+        return None
+    return i
+
+def main():
+    total: int = 0
+    i: int = 0
+    while i < 5:
+        v: int | None = get_value(i)
+        if v is not None:
+            total += v
+        i += 1
+    print(total)

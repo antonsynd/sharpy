@@ -25,6 +25,7 @@ internal partial class RoslynEmitter
         _constVariables.Clear();
         _sourceVariableNames.Clear();
         _narrowedOptionals.Clear();
+        _isNullableNarrowing.Clear();
 
         // Pre-scan the function body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
