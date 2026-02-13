@@ -1,0 +1,13 @@
+def find_value(x: int?) -> int:
+    # Use a while loop with Optional narrowing
+    count: int = 0
+    while x is not None:
+        count = count + x
+        if count > 50:
+            return count
+        x = Some(x + 10)
+    return -1
+
+def main():
+    print(find_value(Some(5)))
+    print(find_value(None()))

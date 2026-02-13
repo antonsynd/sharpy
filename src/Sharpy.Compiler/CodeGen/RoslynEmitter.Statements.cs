@@ -180,6 +180,8 @@ internal partial class RoslynEmitter
                 if (existsAsModuleLevel || existsAsLocal)
                 {
                     // Variable exists - just update it with a regular assignment
+                    // Clear any Optional narrowing since the variable is being reassigned
+                    ClearNarrowing(name.Name);
                     var currentName = GetMangledVariableName(name.Name, isNewDeclaration: false);
                     return ExpressionStatement(
                         AssignmentExpression(
@@ -701,7 +703,8 @@ internal partial class RoslynEmitter
         // Detect Optional narrowing patterns:
         // if x is not None: → x is narrowed to T in the then-body
         // if x is None: → x is narrowed to T in the else-body
-        var narrowingInfo = DetectOptionalNarrowing(ifStmt.Test);
+        // if x is not None and y is not None: → both narrowed in then-body
+        var narrowingInfo = DetectOptionalNarrowings(ifStmt.Test);
 
         var condition = GenerateExpression(ifStmt.Test);
 
@@ -709,9 +712,11 @@ internal partial class RoslynEmitter
         BlockSyntax thenBlock;
         if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
         {
-            _narrowedOptionals.Add(narrowingInfo.Value.VariableName);
+            foreach (var name in narrowingInfo.Value.VariableNames)
+                PushNarrowing(name);
             thenBlock = Block(ifStmt.ThenBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
-            _narrowedOptionals.Remove(narrowingInfo.Value.VariableName);
+            foreach (var name in narrowingInfo.Value.VariableNames)
+                PopNarrowing(name);
         }
         else
         {
@@ -731,9 +736,11 @@ internal partial class RoslynEmitter
                 // Generate else-block with narrowing if applicable (is None → narrow in else)
                 if (narrowingInfo.HasValue && !narrowingInfo.Value.NarrowInThen)
                 {
-                    _narrowedOptionals.Add(narrowingInfo.Value.VariableName);
+                    foreach (var name in narrowingInfo.Value.VariableNames)
+                        PushNarrowing(name);
                     currentElse = Block(ifStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
-                    _narrowedOptionals.Remove(narrowingInfo.Value.VariableName);
+                    foreach (var name in narrowingInfo.Value.VariableNames)
+                        PopNarrowing(name);
                 }
                 else
                 {
@@ -746,7 +753,22 @@ internal partial class RoslynEmitter
             {
                 var elif = ifStmt.ElifClauses[i];
                 var elifCondition = GenerateExpression(elif.Test);
-                var elifBody = Block(elif.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+                // Detect and apply narrowing for this elif's condition
+                var elifNarrowing = DetectOptionalNarrowings(elif.Test);
+                BlockSyntax elifBody;
+                if (elifNarrowing.HasValue && elifNarrowing.Value.NarrowInThen)
+                {
+                    foreach (var name in elifNarrowing.Value.VariableNames)
+                        PushNarrowing(name);
+                    elifBody = Block(elif.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+                    foreach (var name in elifNarrowing.Value.VariableNames)
+                        PopNarrowing(name);
+                }
+                else
+                {
+                    elifBody = Block(elif.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+                }
 
                 var elifElseClause = currentElse != null ? ElseClause(currentElse) : null;
                 var elifStatement = IfStatement(elifCondition, elifBody, elifElseClause);
@@ -764,51 +786,86 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Detects if an if-condition is an Optional narrowing pattern.
-    /// Returns the variable name and which branch should be narrowed.
-    /// Handles both simple patterns (x is not None) and compound patterns
-    /// (x is not None and other_condition).
+    /// Detects Optional narrowing patterns in a condition expression.
+    /// Returns the list of variable names to narrow and which branch they narrow in.
+    /// Handles simple patterns (x is not None), compound patterns (x is not None and y is not None),
+    /// and mixed compound patterns.
     /// </summary>
-    private (string VariableName, bool NarrowInThen)? DetectOptionalNarrowing(Expression test)
+    private (IReadOnlyList<string> VariableNames, bool NarrowInThen)? DetectOptionalNarrowings(Expression test)
     {
-        if (test is not BinaryOp binOp)
-            return null;
+        var isNotNone = new List<string>();
+        var isNone = new List<string>();
+        CollectNarrowingPatterns(test, isNotNone, isNone);
 
-        // Handle compound `and` expressions: `x is not None and <other>`
-        // The left side of an `and` is the narrowing guard
+        // All `is not None` patterns → narrow in then-body
+        if (isNotNone.Count > 0 && isNone.Count == 0)
+            return (isNotNone, NarrowInThen: true);
+
+        // Single `is None` pattern (no compound) → narrow in else-body
+        if (isNone.Count > 0 && isNotNone.Count == 0)
+            return (isNone, NarrowInThen: false);
+
+        // Mixed or no narrowing patterns
+        return null;
+    }
+
+    /// <summary>
+    /// Recursively collects Optional narrowing patterns from an expression.
+    /// Only traverses `and` operators (all must be true → all can be narrowed).
+    /// `or` operators are not traversed (only one side needs to be true).
+    /// </summary>
+    private void CollectNarrowingPatterns(Expression expr, List<string> isNotNone, List<string> isNone)
+    {
+        if (expr is not BinaryOp binOp)
+            return;
+
+        // For `and`: both sides must be true, so collect from both
         if (binOp.Operator == BinaryOperator.And)
         {
-            return DetectOptionalNarrowing(binOp.Left);
+            CollectNarrowingPatterns(binOp.Left, isNotNone, isNone);
+            CollectNarrowingPatterns(binOp.Right, isNotNone, isNone);
+            return;
         }
 
+        // For `or`: don't collect (can't narrow individual variables)
+        if (binOp.Operator == BinaryOperator.Or)
+            return;
+
         if (binOp.Right is not NoneLiteral)
-            return null;
-
+            return;
         if (binOp.Left is not Identifier id)
-            return null;
-
+            return;
         if (GetExpressionSemanticType(binOp.Left) is not OptionalType)
-            return null;
+            return;
 
-        return binOp.Operator switch
-        {
-            // if x is not None: → narrow x in then-body
-            BinaryOperator.IsNot => (id.Name, NarrowInThen: true),
-            // if x is None: → narrow x in else-body
-            BinaryOperator.Is => (id.Name, NarrowInThen: false),
-            _ => null
-        };
+        if (binOp.Operator == BinaryOperator.IsNot)
+            isNotNone.Add(id.Name);
+        else if (binOp.Operator == BinaryOperator.Is)
+            isNone.Add(id.Name);
     }
 
     private StatementSyntax GenerateWhile(WhileStatement whileStmt)
     {
+        // Detect Optional narrowing in while condition:
+        // while x is not None: → x is narrowed to T in the loop body
+        var narrowingInfo = DetectOptionalNarrowings(whileStmt.Test);
+
         var condition = GenerateExpression(whileStmt.Test);
 
         // If there's no else clause, generate simple while loop
         if (whileStmt.ElseBody.IsEmpty)
         {
-            var body = Block(whileStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
-            return WhileStatement(condition, body);
+            if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
+            {
+                foreach (var name in narrowingInfo.Value.VariableNames)
+                    PushNarrowing(name);
+                var body = Block(whileStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+                foreach (var name in narrowingInfo.Value.VariableNames)
+                    PopNarrowing(name);
+                return WhileStatement(condition, body);
+            }
+            var simpleBody = Block(whileStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            return WhileStatement(condition, simpleBody);
         }
 
         // Loop with else clause: use boolean flag pattern
@@ -827,7 +884,19 @@ internal partial class RoslynEmitter
 
         // Transform the body to set flag to false before break
         var transformedBody = TransformLoopBodyForElse(whileStmt.Body, flagName);
-        var bodyBlock = Block(transformedBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        BlockSyntax bodyBlock;
+        if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
+        {
+            foreach (var name in narrowingInfo.Value.VariableNames)
+                PushNarrowing(name);
+            bodyBlock = Block(transformedBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            foreach (var name in narrowingInfo.Value.VariableNames)
+                PopNarrowing(name);
+        }
+        else
+        {
+            bodyBlock = Block(transformedBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        }
 
         // while (condition) { transformedBody }
         statements.Add(WhileStatement(condition, bodyBlock));

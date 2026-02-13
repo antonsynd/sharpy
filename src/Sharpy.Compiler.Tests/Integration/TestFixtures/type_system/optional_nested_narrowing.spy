@@ -1,0 +1,10 @@
+def main():
+    x: int? = Some(42)
+
+    # Nested if: inner and outer both narrow x
+    if x is not None:
+        print(x + 1)
+        if x is not None:
+            print(x + 2)
+        # After inner if, x should still be narrowed in outer scope
+        print(x + 3)

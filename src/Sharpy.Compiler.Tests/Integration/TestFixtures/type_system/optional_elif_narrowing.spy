@@ -1,0 +1,15 @@
+def check(x: int?, y: int?) -> str:
+    if x is not None and y is not None:
+        return f"both: {x + y}"
+    elif x is not None:
+        return f"x only: {x}"
+    elif y is not None:
+        return f"y only: {y}"
+    else:
+        return "neither"
+
+def main():
+    print(check(Some(10), Some(20)))
+    print(check(Some(5), None()))
+    print(check(None(), Some(7)))
+    print(check(None(), None()))

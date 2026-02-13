@@ -101,10 +101,49 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Tracks variable names (original Sharpy names) that have been narrowed from
-    /// Optional&lt;T&gt; to T via an is-not-None check. When a variable is in this set,
-    /// identifier references to it emit .Unwrap() to extract the underlying value.
+    /// Optional&lt;T&gt; to T via an is-not-None check. Uses reference counting to support
+    /// nested scopes (e.g., nested if-statements checking the same variable).
+    /// When a variable's count is &gt; 0, identifier references emit .Unwrap().
     /// </summary>
-    private readonly HashSet<string> _narrowedOptionals = new();
+    private readonly Dictionary<string, int> _narrowedOptionals = new();
+
+    /// <summary>
+    /// Pushes a narrowing scope for the given variable. Reference-counted so
+    /// nested scopes (e.g., nested if-statements) work correctly.
+    /// </summary>
+    private void PushNarrowing(string variableName)
+    {
+        _narrowedOptionals.TryGetValue(variableName, out var count);
+        _narrowedOptionals[variableName] = count + 1;
+    }
+
+    /// <summary>
+    /// Pops a narrowing scope for the given variable. Only fully removes
+    /// narrowing when the last scope is popped.
+    /// </summary>
+    private void PopNarrowing(string variableName)
+    {
+        if (_narrowedOptionals.TryGetValue(variableName, out var count) && count > 1)
+        {
+            _narrowedOptionals[variableName] = count - 1;
+        }
+        else
+        {
+            _narrowedOptionals.Remove(variableName);
+        }
+    }
+
+    /// <summary>
+    /// Returns true if the variable is currently narrowed from Optional&lt;T&gt; to T.
+    /// </summary>
+    private bool IsNarrowed(string variableName)
+        => _narrowedOptionals.TryGetValue(variableName, out var count) && count > 0;
+
+    /// <summary>
+    /// Clears narrowing for a variable (e.g., after reassignment).
+    /// </summary>
+    private void ClearNarrowing(string variableName)
+        => _narrowedOptionals.Remove(variableName);
 
     // Maps original parameter base names (camelCase) to C# replacement names.
     // Used for inlined operator bodies: e.g., "other" → "right".

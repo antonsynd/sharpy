@@ -1,0 +1,8 @@
+def main():
+    x: int? = Some(42)
+    if x is not None:
+        print(x + 1)
+        x = Some(100)
+        # After reassignment to Some, x should no longer emit .Unwrap()
+        # but implicit conversion handles the assignment
+        print(x.unwrap())

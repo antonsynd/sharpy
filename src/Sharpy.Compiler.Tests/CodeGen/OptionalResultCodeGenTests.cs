@@ -433,5 +433,70 @@ def main():
         csharp.Should().Contain("x.Unwrap()");
     }
 
+    [Fact]
+    public void TypeNarrowing_CompoundAnd_NarrowsBothVariables()
+    {
+        var code = @"
+def main():
+    x: int? = Some(10)
+    y: int? = Some(20)
+    if x is not None and y is not None:
+        print(x + y)
+";
+        var csharp = CompileToCSharp(code, isEntryPoint: true);
+        csharp.Should().Contain("x.Unwrap()");
+        csharp.Should().Contain("y.Unwrap()");
+    }
+
+    [Fact]
+    public void TypeNarrowing_NestedIf_PreservesOuterNarrowing()
+    {
+        var code = @"
+def main():
+    x: int? = Some(42)
+    if x is not None:
+        print(x + 1)
+        if x is not None:
+            print(x + 2)
+        print(x + 3)
+";
+        var csharp = CompileToCSharp(code, isEntryPoint: true);
+        // All three uses of x should have .Unwrap()
+        var unwrapCount = System.Text.RegularExpressions.Regex.Matches(csharp, @"x\.Unwrap\(\)").Count;
+        unwrapCount.Should().BeGreaterThanOrEqualTo(3, "all uses of x in narrowed scope should emit .Unwrap()");
+    }
+
+    [Fact]
+    public void TypeNarrowing_Elif_NarrowsInElifBody()
+    {
+        var code = @"
+def test(x: int?, y: int?) -> int:
+    if x is not None:
+        return x
+    elif y is not None:
+        return y
+    return 0
+";
+        var csharp = CompileToCSharp(code);
+        // Both x and y should have .Unwrap() in their respective branches
+        csharp.Should().Contain("x.Unwrap()");
+        csharp.Should().Contain("y.Unwrap()");
+    }
+
+    [Fact]
+    public void TypeNarrowing_IsNone_NarrowsInElseBody()
+    {
+        var code = @"
+def main():
+    x: int? = Some(42)
+    if x is None:
+        print(0)
+    else:
+        print(x + 1)
+";
+        var csharp = CompileToCSharp(code, isEntryPoint: true);
+        csharp.Should().Contain("x.Unwrap()");
+    }
+
     #endregion
 }

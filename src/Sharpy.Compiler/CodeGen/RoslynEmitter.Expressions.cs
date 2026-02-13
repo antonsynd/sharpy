@@ -96,7 +96,7 @@ internal partial class RoslynEmitter
         ExpressionSyntax expr = IdentifierName(mangledName);
 
         // If this variable has been narrowed from Optional<T> to T, emit .Unwrap()
-        if (_narrowedOptionals.Contains(name.Name))
+        if (IsNarrowed(name.Name))
         {
             expr = InvocationExpression(
                 MemberAccessExpression(
@@ -291,19 +291,24 @@ internal partial class RoslynEmitter
                 // For Optional<T>: lower to ternary since ?.  doesn't work on structs
                 if (GetExpressionSemanticType(memberAccess.Object) is OptionalType)
                 {
-                    // obj.IsSome ? obj.Unwrap().Method(args) : default
+                    // Ensure obj is only evaluated once for complex expressions
+                    var (safeObj, capture) = EnsureSingleEvaluation(obj, memberAccess.Object);
+                    // safeObj.IsSome ? safeObj.Unwrap().Method(args) : default
                     var methodCall = InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             InvocationExpression(
                                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                    obj, IdentifierName("Unwrap")))
+                                    safeObj, IdentifierName("Unwrap")))
                                 .WithArgumentList(ArgumentList()),
                             IdentifierName(methodName)))
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
 
+                    ExpressionSyntax cond = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        ParenthesizedExpression(safeObj), IdentifierName("IsSome"));
+                    if (capture != null)
+                        cond = BinaryExpression(SyntaxKind.LogicalAndExpression, capture, cond);
                     return ConditionalExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            ParenthesizedExpression(obj), IdentifierName("IsSome")),
+                        cond,
                         methodCall,
                         LiteralExpression(SyntaxKind.DefaultLiteralExpression));
                 }
@@ -467,14 +472,17 @@ internal partial class RoslynEmitter
                 {
                     if (GetExpressionSemanticType(binOp.Right) is OptionalType)
                     {
-                        // Both Optional: left.IsSome ? left : right
-                        return ConditionalExpression(
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                ParenthesizedExpression(left), IdentifierName("IsSome")),
-                            left,
-                            right);
+                        // Both Optional: safeLeft.IsSome ? safeLeft : right
+                        // Ensure left is only evaluated once for complex expressions
+                        var (safeLeft, captureLeft) = EnsureSingleEvaluation(left, binOp.Left);
+                        ExpressionSyntax coalesceCondition = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            ParenthesizedExpression(safeLeft), IdentifierName("IsSome"));
+                        if (captureLeft != null)
+                            coalesceCondition = BinaryExpression(SyntaxKind.LogicalAndExpression, captureLeft, coalesceCondition);
+                        return ConditionalExpression(coalesceCondition, safeLeft, right);
                     }
                     // Left Optional, right raw T: left.UnwrapOr(right)
+                    // UnwrapOr only evaluates left once (method call on the struct)
                     return InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             ParenthesizedExpression(left), IdentifierName("UnwrapOr")))
@@ -970,14 +978,19 @@ internal partial class RoslynEmitter
             // For Optional<T>: lower to ternary since ?. doesn't work on structs
             if (GetExpressionSemanticType(memberAccess.Object) is OptionalType)
             {
-                // obj.IsSome ? obj.Unwrap().Member : default
+                // Ensure obj is only evaluated once for complex expressions
+                var (safeObj, capture) = EnsureSingleEvaluation(obj, memberAccess.Object);
+                // safeObj.IsSome ? safeObj.Unwrap().Member : default
+                ExpressionSyntax cond = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    ParenthesizedExpression(safeObj), IdentifierName("IsSome"));
+                if (capture != null)
+                    cond = BinaryExpression(SyntaxKind.LogicalAndExpression, capture, cond);
                 return ConditionalExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        ParenthesizedExpression(obj), IdentifierName("IsSome")),
+                    cond,
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         InvocationExpression(
                             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                obj, IdentifierName("Unwrap")))
+                                safeObj, IdentifierName("Unwrap")))
                             .WithArgumentList(ArgumentList()),
                         member),
                     LiteralExpression(SyntaxKind.DefaultLiteralExpression));
@@ -1716,6 +1729,38 @@ internal partial class RoslynEmitter
     {
         var parts = modulePath.Split('.');
         return string.Join(".", parts.Select(p => NameMangler.ToPascalCase(p)));
+    }
+
+    // ============================================================
+    // Helper: Single-evaluation capture for complex expressions
+    // ============================================================
+
+    /// <summary>
+    /// Returns true if the AST expression is side-effect-free (safe to evaluate multiple times).
+    /// Simple identifiers, self, and literals are safe; everything else may have side effects.
+    /// </summary>
+    private static bool IsSideEffectFree(Expression expr)
+        => expr is Parser.Ast.Identifier or NoneLiteral or BooleanLiteral or IntegerLiteral
+                 or FloatLiteral or StringLiteral or SuperExpression;
+
+    /// <summary>
+    /// Ensures an expression is only evaluated once. For simple identifiers, returns the
+    /// expression as-is. For complex expressions, captures the value using an inline
+    /// <c>is var</c> pattern: <c>expr is var __temp &amp;&amp; __temp.Check ? __temp.Access : default</c>.
+    /// Returns the safe-to-reuse expression and an optional capture condition to prepend.
+    /// </summary>
+    private (ExpressionSyntax SafeExpr, ExpressionSyntax? CaptureCondition) EnsureSingleEvaluation(
+        ExpressionSyntax generated, Expression astExpr)
+    {
+        if (IsSideEffectFree(astExpr))
+            return (generated, null);
+
+        var tempName = GenerateTempVarName("opt");
+        var tempIdent = IdentifierName(tempName);
+        var capture = IsPatternExpression(
+            generated,
+            VarPattern(SingleVariableDesignation(Identifier(tempName))));
+        return (tempIdent, capture);
     }
 
     // ============================================================

@@ -1,0 +1,16 @@
+def main():
+    x: int? = Some(10)
+    y: int? = Some(20)
+
+    # Compound and: both should be narrowed in then-body
+    if x is not None and y is not None:
+        print(x + y)
+    else:
+        print("none")
+
+    # Only one narrowed
+    z: int? = None()
+    if x is not None and z is not None:
+        print("both present")
+    else:
+        print("not both")
