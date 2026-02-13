@@ -1,7 +1,0 @@
-Shape: MyRect - Rectangle 5x3
-Rectangle area: 15
-Width: 5, Height: 3
-Shape: MyCircle - Circle radius 4
-Circle area: 50.26544
-Radius: 4
-Total area: 65.26544

@@ -1,9 +1,0 @@
-Sharpy compiler error in math_utils.spy: Compilation errors:
-
-error[SPY0403]: Entry point file requires a 'main()' function
-  --> /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmp8bbajy3f/dogfood_test.spy:3:1
-    |
-  3 | def factorial(n: int) -> int:
-    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-

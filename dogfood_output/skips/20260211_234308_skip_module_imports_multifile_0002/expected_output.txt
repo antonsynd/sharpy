@@ -1,7 +1,0 @@
-Product[101]: Laptop - $999.99 (Electronics)
-Order #5001: 3 items, Total: $1100.49, Status: OrderStatus.PENDING
-Order status: OrderStatus.PROCESSING
-Discounted total: $990.441
-Final status: OrderStatus.SHIPPED
-Type name: Product
-Order type: Order

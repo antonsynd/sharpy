@@ -1,2 +1,0 @@
-5
-Division by zero handled

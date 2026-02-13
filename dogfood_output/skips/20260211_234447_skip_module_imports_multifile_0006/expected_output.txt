@@ -1,7 +1,0 @@
-Drawing a red circle with radius 5.0
-Area: 78.53975
-Drawing a blue rectangle 10.0x4.0
-Area: 40.0
-Drawing a silver metal sphere with radius 3.0
-Area: 113.09724
-Sphere mass: 879.2916532

@@ -1,9 +1,0 @@
-Sharpy compiler error in geometry.spy: Compilation errors:
-
-error[SPY0403]: Entry point file requires a 'main()' function
-  --> /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/tmpxn7iiub4/dogfood_test.spy:3:1
-    |
-  3 | interface IDrawable:
-    | ^^^^^^^^^^^^^^^^^^^^
-    |
-
