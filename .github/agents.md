@@ -47,11 +47,11 @@ All agents follow this priority order when axioms conflict:
 | `verification-expert` | Runs tests, reports results | Test reports |
 | `hallucination-defense` | Fact-checks .NET/Python/Roslyn claims | Verification results |
 
-### Dogfood Agents (Read-Only)
+### Dogfood Agents
 
 | Agent | Purpose | Output |
 |-------|---------|--------|
-| `dogfood-analyst` | Classifies dogfood failures by root cause (C1-C5) | Triage reports |
+| `dogfood-analyst` | Classifies dogfood failures (C1-C5), writes repro files, delegates to `verification-expert`/`test-expert` | Triage reports + test fixtures |
 
 ## Key Rules for All Agents
 
