@@ -1,0 +1,10 @@
+# Test Python string methods via StringExtensions on C# string
+
+def main():
+    name: str = "hello world"
+    print(name.upper())
+    print(name.lower())
+    print(name.capitalize())
+    print("  hello  ".strip())
+    print(name.find("world"))
+    print(", ".join(["a", "b", "c"]))

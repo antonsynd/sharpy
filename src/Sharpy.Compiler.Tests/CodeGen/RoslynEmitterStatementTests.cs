@@ -233,11 +233,9 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        // Should generate Dictionary<string, int>
-        // v0.1.x uses .NET types directly per phases.md
-        Assert.Contains("System.Collections.Generic.Dictionary<string, int>", result);
-        Assert.Contains("new System.Collections.Generic.Dictionary<string, int>", result);
-        Assert.DoesNotContain("Dictionary<object", result);
+        Assert.Contains("Dict<string, int>", result);
+        Assert.Contains("new Dict<string, int>", result);
+        Assert.DoesNotContain("Dict<object", result);
     }
 
     [Fact]

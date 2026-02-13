@@ -192,8 +192,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        // v0.1.x uses .NET types directly per phases.md
-        code.Should().Contain("System.Collections.Generic.Dictionary");
+        code.Should().Contain("Dict");
         code.Should().Contain("\"a\"");
         code.Should().Contain("\"b\"");
     }

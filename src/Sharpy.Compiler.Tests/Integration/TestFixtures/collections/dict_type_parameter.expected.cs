@@ -11,7 +11,7 @@ public static partial class DictTypeParameter
     public static void Main()
     {
 #line 4 "dict_type_parameter.spy"
-        System.Collections.Generic.Dictionary<string, int> scores = new System.Collections.Generic.Dictionary<string, int>()
+        Dict<string, int> scores = new Dict<string, int>()
         {
             {
                 "alice",

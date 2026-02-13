@@ -11,7 +11,7 @@ public static partial class DictComprehension
     public static void Main()
     {
 #line 3 "dict_comprehension.spy"
-        System.Collections.Generic.Dictionary<int, int> result = global::Sharpy.Builtins.Range(5).ToDictionary(i => i, i => i * 2);
+        Dict<int, int> result = global::Sharpy.Builtins.Range(5).ToDictionary(i => i, i => i * 2);
 #line 4 "dict_comprehension.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(result));
 #line 5 "dict_comprehension.spy"

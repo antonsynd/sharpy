@@ -743,7 +743,7 @@ internal partial class RoslynEmitter
                     GenerateExpression(entry.Value)
                 })));
 
-        var dictType = GenericName("System.Collections.Generic.Dictionary")
+        var dictType = GenericName("Dict")
             .AddTypeArgumentListArguments(keyType, valueType);
 
         return ObjectCreationExpression(dictType)
@@ -880,6 +880,7 @@ internal partial class RoslynEmitter
             .WithExpressionBody(valueExpr);
 
         // Apply .ToDictionary(x => key, x => value)
+        // The implicit conversion from Dictionary<K,V> to Dict<K,V> handles the type mismatch
         return InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,

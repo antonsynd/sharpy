@@ -49,6 +49,19 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Implicit conversion from Dictionary to Dict.
+        /// </summary>
+        public static implicit operator Dict<K, V>(Dictionary<K, V> dictionary)
+        {
+            var dict = new Dict<K, V>();
+            foreach (var kvp in dictionary)
+            {
+                dict._dict[kvp.Key] = kvp.Value;
+            }
+            return dict;
+        }
+
+        /// <summary>
         /// Return a shallow copy of the dictionary.
         /// </summary>
         public Dict<K, V> Copy()
@@ -413,6 +426,11 @@ namespace Sharpy
         /// Gets the value associated with the specified key.
         /// </summary>
         public bool TryGetValue(K key, out V value) => _dict.TryGetValue(key, out value!);
+
+        /// <summary>
+        /// For collection initializers.
+        /// </summary>
+        public void Add(K key, V value) => _dict[key] = value;
 
         /// <summary>
         /// Adds the specified key and value to the dictionary.
