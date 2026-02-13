@@ -207,13 +207,23 @@ internal partial class RoslynEmitter
                 // Augmented assignment: x += value
                 // This references the current version and modifies it
                 var varName = GetMangledVariableName(name.Name, isNewDeclaration: false);
-                var left = IdentifierName(varName);
-                var augmentedValue = GenerateAugmentedValue(assign.Operator, left, value, assign.Target, assign.Value);
+                var target = IdentifierName(varName);
+
+                // For the read side of augmented assignment, apply Optional narrowing
+                // so that x += 1 with narrowed Optional<int> reads as x.Unwrap() + 1
+                ExpressionSyntax readExpr = IsNarrowed(name.Name)
+                    ? InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(varName), IdentifierName("Unwrap")))
+                        .WithArgumentList(ArgumentList())
+                    : target;
+
+                var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, assign.Target, assign.Value);
 
                 return ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
-                        left,
+                        target,
                         augmentedValue));
             }
         }

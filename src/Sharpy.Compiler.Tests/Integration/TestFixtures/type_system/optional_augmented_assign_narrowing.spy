@@ -1,0 +1,22 @@
+def main():
+    # Augmented assignment on narrowed Optional should unwrap the read side
+    x: int? = Some(10)
+    if x is not None:
+        x += 5
+        print(x)
+
+    y: int? = Some(20)
+    if y is not None:
+        y -= 3
+        print(y)
+
+    z: int? = Some(6)
+    if z is not None:
+        z *= 7
+        print(z)
+
+    # Augmented assignment with modulo
+    w: int? = Some(17)
+    if w is not None:
+        w %= 5
+        print(w)

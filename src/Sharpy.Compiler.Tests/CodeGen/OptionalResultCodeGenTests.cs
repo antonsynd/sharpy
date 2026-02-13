@@ -373,6 +373,20 @@ def test() -> int?:
         csharp.Should().Contain(".IsSome ? x : y");
     }
 
+    [Fact]
+    public void NullCoalesceAssign_WithOptional_GeneratesTernary()
+    {
+        var code = @"
+def main():
+    x: int? = None()
+    y: int? = Some(42)
+    x ??= y
+";
+        var csharp = CompileToCSharp(code, isEntryPoint: true);
+        // ??= with Optional should use ternary with .IsSome
+        csharp.Should().Contain(".IsSome");
+    }
+
     #endregion
 
     #region Is None / Is Not None
@@ -498,6 +512,23 @@ def main():
         csharp.Should().Contain("x.Unwrap()");
     }
 
+    [Fact]
+    public void TypeNarrowing_OrPattern_DoesNotNarrow()
+    {
+        var code = @"
+def main():
+    x: int? = Some(10)
+    y: int? = None()
+    if x is not None or y is not None:
+        print(x.unwrap_or(0))
+";
+        var csharp = CompileToCSharp(code, isEntryPoint: true);
+        // With `or`, variables should NOT be narrowed (no .Unwrap())
+        // Should use explicit .UnwrapOr() method call instead
+        csharp.Should().Contain("UnwrapOr");
+        csharp.Should().NotContain("x.Unwrap()");
+    }
+
     #endregion
 
     #region Type Coercion
@@ -596,6 +627,20 @@ def func_b(x: int?) -> bool:
         var funcBCode = csharp.Substring(funcBStart);
         funcBCode.Should().Contain("IsSome");
         funcBCode.Should().NotContain("Unwrap()");
+    }
+
+    [Fact]
+    public void AugmentedAssignment_WithNarrowedOptional_EmitsUnwrapOnReadSide()
+    {
+        var code = @"
+def main():
+    x: int? = Some(10)
+    if x is not None:
+        x += 5
+";
+        var csharp = CompileToCSharp(code);
+        // Augmented assignment should read via .Unwrap() but assign to raw variable
+        csharp.Should().Contain("x.Unwrap() + 5");
     }
 
     #endregion
