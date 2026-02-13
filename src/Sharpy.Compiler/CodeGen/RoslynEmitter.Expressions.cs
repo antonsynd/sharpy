@@ -1376,15 +1376,16 @@ internal partial class RoslynEmitter
     {
         // The `to` operator:
         // - value to T → (T)value (throws InvalidCastException on failure)
-        // - value to T? → value as T (for reference types, returns null on failure)
-        //                 value is T _temp ? (T?)_temp : null (for value types)
+        // - value to T? → value is T _temp ? Optional<T>.Some(_temp) : default
 
         var value = GenerateExpression(coercion.Value);
 
         if (coercion.TargetType.IsOptional)
         {
             // Safe form: value to T?
-            // Create a non-nullable version of the target type for the 'as' expression
+            // Generate: value is T _temp ? Optional<T>.Some(_temp) : default
+            // Works for both value types and reference types.
+            // default produces Optional<T>.None (struct with _hasValue = false).
             var baseType = new TypeAnnotation
             {
                 Name = coercion.TargetType.Name,
@@ -1392,39 +1393,26 @@ internal partial class RoslynEmitter
                 IsOptional = false
             };
             var baseTypeSyntax = _typeMapper.MapType(baseType);
-            var nullableTypeSyntax = _typeMapper.MapType(coercion.TargetType);
 
-            // Check if this is a value type (primitives are value types except string/object)
-            var primitiveInfo = PrimitiveCatalog.GetByName(coercion.TargetType.Name);
-            bool isValueType = primitiveInfo != null &&
-                               primitiveInfo.ClrType != typeof(string) &&
-                               primitiveInfo.ClrType != typeof(object) &&
-                               primitiveInfo.ClrType != typeof(void);
+            var tempName = $"__coerce_temp_{_tempVarCounter++}";
 
-            if (isValueType)
-            {
-                // For value types: value is T _temp ? (T?)_temp : null
-                // Generate unique temp variable name
-                var tempName = $"__coerce_temp_{_tempVarCounter++}";
+            var optionalType = GenericName("Optional")
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(baseTypeSyntax)));
+            var someExpr = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    optionalType,
+                    IdentifierName("Some")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName(tempName)))));
 
-                // value is T tempName ? (T?)tempName : (T?)null
-                return ConditionalExpression(
-                    IsPatternExpression(
-                        value,
-                        DeclarationPattern(
-                            baseTypeSyntax,
-                            SingleVariableDesignation(Identifier(tempName)))),
-                    CastExpression(nullableTypeSyntax, IdentifierName(tempName)),
-                    CastExpression(nullableTypeSyntax, LiteralExpression(SyntaxKind.NullLiteralExpression)));
-            }
-            else
-            {
-                // For reference types: value as T
-                return BinaryExpression(
-                    SyntaxKind.AsExpression,
+            return ConditionalExpression(
+                IsPatternExpression(
                     value,
-                    baseTypeSyntax);
-            }
+                    DeclarationPattern(
+                        baseTypeSyntax,
+                        SingleVariableDesignation(Identifier(tempName)))),
+                someExpr,
+                LiteralExpression(SyntaxKind.DefaultLiteralExpression));
         }
         else
         {

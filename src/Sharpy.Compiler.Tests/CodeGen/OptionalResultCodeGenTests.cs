@@ -499,4 +499,58 @@ def main():
     }
 
     #endregion
+
+    #region Type Coercion
+
+    [Fact]
+    public void TypeCoercion_ToOptionalValueType_EmitsIsPatternWithSome()
+    {
+        var code = @"
+def test(obj: object) -> int?:
+    return obj to int?
+";
+        var csharp = CompileToCSharp(code);
+        csharp.Should().Contain("Optional<int>.Some(");
+        csharp.Should().Contain("default");
+        csharp.Should().NotContain("(Optional<int>)null");
+    }
+
+    [Fact]
+    public void TypeCoercion_ToOptionalRefType_EmitsIsPatternWithSome()
+    {
+        var code = @"
+def test(obj: object) -> str?:
+    return obj to str?
+";
+        var csharp = CompileToCSharp(code);
+        csharp.Should().Contain("Optional<string>.Some(");
+        csharp.Should().Contain("default");
+        csharp.Should().NotContain("as string");
+    }
+
+    #endregion
+
+    #region Null Conditional on Optional
+
+    [Fact]
+    public void NullConditional_MemberAccess_EmitsTernaryNotDotAccess()
+    {
+        var code = @"
+class Wrapper:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+def test() -> int:
+    x: Wrapper? = Some(Wrapper(42))
+    return x?.value ?? 0
+";
+        var csharp = CompileToCSharp(code);
+        // Should use ternary pattern for ?. on Optional, not C# ?.
+        csharp.Should().Contain(".IsSome");
+        csharp.Should().Contain(".Unwrap()");
+    }
+
+    #endregion
 }

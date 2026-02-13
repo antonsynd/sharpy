@@ -1094,7 +1094,7 @@ public class RoslynEmitterExpressionTests
     [Fact]
     public void GenerateExpression_TypeCoercion_NullableValueType_GeneratesIsPattern()
     {
-        // Arrange: value to int? → value is int _temp ? (int?)_temp : (int?)null
+        // Arrange: value to int? → value is int _temp ? Optional<int>.Some(_temp) : default
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "obj" },
@@ -1106,18 +1106,17 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        // Should use is pattern for value types
+        // Should use is pattern with Optional<T>.Some and default
         code.Should().Contain("is");
         code.Should().Contain("int");
-        code.Should().Contain("?");
-        code.Should().Contain(":");
-        code.Should().Contain("null");
+        code.Should().Contain("Optional<int>.Some(");
+        code.Should().Contain("default");
     }
 
     [Fact]
-    public void GenerateExpression_TypeCoercion_NullableReferenceType_GeneratesAsExpression()
+    public void GenerateExpression_TypeCoercion_NullableReferenceType_GeneratesIsPattern()
     {
-        // Arrange: value to str? → value as string
+        // Arrange: value to str? → value is string _temp ? Optional<string>.Some(_temp) : default
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "obj" },
@@ -1129,14 +1128,16 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("as");
+        code.Should().Contain("is");
         code.Should().Contain("string");
+        code.Should().Contain("Optional<string>.Some(");
+        code.Should().Contain("default");
     }
 
     [Fact]
-    public void GenerateExpression_TypeCoercion_NullableUserType_GeneratesAsExpression()
+    public void GenerateExpression_TypeCoercion_NullableUserType_GeneratesIsPattern()
     {
-        // Arrange: value to Dog? → value as Dog
+        // Arrange: value to Dog? → value is Dog _temp ? Optional<Dog>.Some(_temp) : default
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "animal" },
@@ -1148,8 +1149,10 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("as");
+        code.Should().Contain("is");
         code.Should().Contain("Dog");
+        code.Should().Contain("Optional<Dog>.Some(");
+        code.Should().Contain("default");
     }
 
     [Fact]
