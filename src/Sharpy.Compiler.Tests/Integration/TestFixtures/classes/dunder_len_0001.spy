@@ -1,0 +1,45 @@
+# Test: __len__ with custom container and conditional logic
+class Inventory:
+    items: list[str]
+    max_capacity: int
+
+    def __init__(self, capacity: int):
+        self.items = []
+        self.max_capacity = capacity
+
+    def __len__(self) -> int:
+        return len(self.items)
+
+    def add_item(self, item: str) -> bool:
+        if len(self) < self.max_capacity:
+            self.items.append(item)
+            return True
+        return False
+
+    def is_full(self) -> bool:
+        return len(self) == self.max_capacity
+
+def main():
+    inv = Inventory(3)
+    print(len(inv))
+    
+    inv.add_item("sword")
+    print(len(inv))
+    
+    inv.add_item("shield")
+    inv.add_item("potion")
+    print(len(inv))
+    
+    if inv.is_full():
+        print("Inventory is full")
+    
+    success = inv.add_item("helmet")
+    if not success:
+        print("Cannot add more items")
+
+# EXPECTED OUTPUT:
+# 0
+# 1
+# 3
+# Inventory is full
+# Cannot add more items
