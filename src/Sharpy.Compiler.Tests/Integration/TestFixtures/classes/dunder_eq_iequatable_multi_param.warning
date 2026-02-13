@@ -1,0 +1,1 @@
+defines '__eq__' but not '__eq__(self, other: object)'

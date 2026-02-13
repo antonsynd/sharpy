@@ -1,0 +1,11 @@
+# Negative test: == on generic class without __eq__
+class Container[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+def main():
+    a = Container[int](1)
+    b = Container[int](2)
+    print(a == b)

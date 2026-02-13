@@ -1,0 +1,20 @@
+class Pair[K, V]:
+    first: K
+    second: V
+
+    def __init__(self, first: K, second: V):
+        self.first = first
+        self.second = second
+
+    def __eq__(self, other: Pair[K, V]) -> bool:
+        return self.first == other.first and self.second == other.second
+
+def main():
+    a = Pair[int, str](1, "hello")
+    b = Pair[int, str](1, "hello")
+    c = Pair[int, str](2, "world")
+
+    print(a == b)
+    print(a == c)
+    print(a != b)
+    print(a != c)

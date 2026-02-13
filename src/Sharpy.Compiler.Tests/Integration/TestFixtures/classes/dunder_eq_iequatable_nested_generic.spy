@@ -1,0 +1,18 @@
+class Wrapper[T]:
+    inner: T
+
+    def __init__(self, inner: T):
+        self.inner = inner
+
+    def __eq__(self, other: Wrapper[T]) -> bool:
+        return self.inner == other.inner
+
+def main():
+    x = Wrapper[str]("abc")
+    y = Wrapper[str]("abc")
+    z = Wrapper[str]("xyz")
+
+    print(x == y)
+    print(x == z)
+    print(x != y)
+    print(x != z)
