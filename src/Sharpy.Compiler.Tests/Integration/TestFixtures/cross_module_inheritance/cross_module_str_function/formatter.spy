@@ -1,0 +1,5 @@
+def format_value(x: int) -> str:
+    return "value=" + str(x)
+
+def format_pair(a: int, b: int) -> str:
+    return str(a) + "," + str(b)

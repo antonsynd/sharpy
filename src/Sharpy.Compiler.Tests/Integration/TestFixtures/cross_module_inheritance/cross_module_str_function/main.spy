@@ -1,0 +1,9 @@
+from formatter import format_value, format_pair
+
+def main():
+    result: str = format_value(42)
+    print(result)
+    print(format_pair(10, 20))
+    # Also test str() concatenation in main module using imported result
+    msg: str = "Got: " + format_value(7)
+    print(msg)

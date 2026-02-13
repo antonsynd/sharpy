@@ -1,0 +1,9 @@
+from converter import IntConverter
+
+def main():
+    conv = IntConverter("num:")
+    result: str = conv.convert(100)
+    print(result)
+    # Use result in concatenation
+    msg: str = "[" + conv.convert(42) + "]"
+    print(msg)

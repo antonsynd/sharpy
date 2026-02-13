@@ -1,0 +1,8 @@
+class IntConverter:
+    prefix: str
+
+    def __init__(self, prefix: str):
+        self.prefix = prefix
+
+    def convert(self, n: int) -> str:
+        return self.prefix + str(n)
