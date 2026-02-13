@@ -208,7 +208,7 @@ def main():
     #region Generated C# Verification
 
     [Fact]
-    public void Maybe_GeneratedCSharp_IsPassthrough()
+    public void Maybe_GeneratedCSharp_EmitsOptionalFrom()
     {
         var source = @"
 def convert(raw: str | None) -> str?:
@@ -223,9 +223,8 @@ def main():
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
         Assert.NotNull(result.GeneratedCSharp);
-        // maybe is a semantic pass-through — both NullableType and OptionalType map to C# T?
-        // The generated code should simply return the operand unchanged
-        Assert.Contains("return raw", result.GeneratedCSharp!);
+        // maybe converts NullableType to OptionalType via Optional.From()
+        Assert.Contains("global::Sharpy.Optional.From(raw)", result.GeneratedCSharp!);
     }
 
     #endregion

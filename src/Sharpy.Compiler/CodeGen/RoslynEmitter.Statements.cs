@@ -363,9 +363,9 @@ internal partial class RoslynEmitter
                     (targetAst != null && IsFloatExpression(targetAst)) ||
                     (valueAst != null && IsFloatExpression(valueAst))),
 
-            // x ??= y → x ?? y (null coalescing)
+            // x ??= y → lowered null coalescing (Optional-aware)
             AssignmentOperator.NullCoalesceAssign =>
-                BinaryExpression(SyntaxKind.CoalesceExpression, left, right),
+                GenerateNullCoalesceValue(left, right, targetAst),
 
             // All other operators use simple binary expressions
             _ => GenerateAugmentedBinaryExpression(op, left, right, targetAst)
@@ -383,6 +383,26 @@ internal partial class RoslynEmitter
                 sourceAst?.LineStart, sourceAst?.ColumnStart);
         }
         return BinaryExpression(kind, left, right);
+    }
+
+    /// <summary>
+    /// Generates a null-coalescing value, aware of Optional vs nullable types.
+    /// For Optional&lt;T&gt;: left.IsSome ? left : right (both Optional) or left.UnwrapOr(right)
+    /// For nullable/reference types: left ?? right
+    /// </summary>
+    private ExpressionSyntax GenerateNullCoalesceValue(ExpressionSyntax left, ExpressionSyntax right, Expression? targetAst)
+    {
+        if (targetAst != null && GetExpressionSemanticType(targetAst) is OptionalType)
+        {
+            // Optional ??= value → target.IsSome ? target : value (staying Optional)
+            // or target.UnwrapOr(value) if rhs is raw T — but ??= assigns back to
+            // the same variable, so both sides are Optional in practice.
+            return ConditionalExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName("IsSome")),
+                left,
+                right);
+        }
+        return BinaryExpression(SyntaxKind.CoalesceExpression, left, right);
     }
 
     /// <summary>
@@ -678,8 +698,25 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateIf(IfStatement ifStmt)
     {
+        // Detect Optional narrowing patterns:
+        // if x is not None: → x is narrowed to T in the then-body
+        // if x is None: → x is narrowed to T in the else-body
+        var narrowingInfo = DetectOptionalNarrowing(ifStmt.Test);
+
         var condition = GenerateExpression(ifStmt.Test);
-        var thenBlock = Block(ifStmt.ThenBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+        // Generate then-block with narrowing if applicable
+        BlockSyntax thenBlock;
+        if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
+        {
+            _narrowedOptionals.Add(narrowingInfo.Value.VariableName);
+            thenBlock = Block(ifStmt.ThenBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            _narrowedOptionals.Remove(narrowingInfo.Value.VariableName);
+        }
+        else
+        {
+            thenBlock = Block(ifStmt.ThenBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        }
 
         ElseClauseSyntax? elseClause = null;
 
@@ -691,7 +728,17 @@ internal partial class RoslynEmitter
             // Start with the final else block if it exists
             if (ifStmt.ElseBody.Length > 0)
             {
-                currentElse = Block(ifStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+                // Generate else-block with narrowing if applicable (is None → narrow in else)
+                if (narrowingInfo.HasValue && !narrowingInfo.Value.NarrowInThen)
+                {
+                    _narrowedOptionals.Add(narrowingInfo.Value.VariableName);
+                    currentElse = Block(ifStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+                    _narrowedOptionals.Remove(narrowingInfo.Value.VariableName);
+                }
+                else
+                {
+                    currentElse = Block(ifStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+                }
             }
 
             // Process elif clauses in reverse order
@@ -714,6 +761,43 @@ internal partial class RoslynEmitter
         }
 
         return IfStatement(condition, thenBlock, elseClause);
+    }
+
+    /// <summary>
+    /// Detects if an if-condition is an Optional narrowing pattern.
+    /// Returns the variable name and which branch should be narrowed.
+    /// Handles both simple patterns (x is not None) and compound patterns
+    /// (x is not None and other_condition).
+    /// </summary>
+    private (string VariableName, bool NarrowInThen)? DetectOptionalNarrowing(Expression test)
+    {
+        if (test is not BinaryOp binOp)
+            return null;
+
+        // Handle compound `and` expressions: `x is not None and <other>`
+        // The left side of an `and` is the narrowing guard
+        if (binOp.Operator == BinaryOperator.And)
+        {
+            return DetectOptionalNarrowing(binOp.Left);
+        }
+
+        if (binOp.Right is not NoneLiteral)
+            return null;
+
+        if (binOp.Left is not Identifier id)
+            return null;
+
+        if (GetExpressionSemanticType(binOp.Left) is not OptionalType)
+            return null;
+
+        return binOp.Operator switch
+        {
+            // if x is not None: → narrow x in then-body
+            BinaryOperator.IsNot => (id.Name, NarrowInThen: true),
+            // if x is None: → narrow x in else-body
+            BinaryOperator.Is => (id.Name, NarrowInThen: false),
+            _ => null
+        };
     }
 
     private StatementSyntax GenerateWhile(WhileStatement whileStmt)

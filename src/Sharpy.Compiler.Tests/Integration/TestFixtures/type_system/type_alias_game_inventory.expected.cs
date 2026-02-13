@@ -12,7 +12,7 @@ public static partial class TypeAliasGameInventory
     {
         public int Id;
         public string Name;
-        public string? Description;
+        public Optional<string> Description;
         public virtual void DisplayInfo()
         {
 #line 23 "type_alias_game_inventory.spy"
@@ -20,12 +20,12 @@ public static partial class TypeAliasGameInventory
 #line 24 "type_alias_game_inventory.spy"
             global::Sharpy.Builtins.Print(this.Name);
 #line 25 "type_alias_game_inventory.spy"
-            string desc = this.Description ?? "No description";
+            string desc = (this.Description).UnwrapOr("No description");
 #line 26 "type_alias_game_inventory.spy"
             global::Sharpy.Builtins.Print(desc);
         }
 
-        public Item(int id, string name, string? description)
+        public Item(int id, string name, Optional<string> description)
         {
 #line 17 "type_alias_game_inventory.spy"
             this.Id = id;
@@ -50,7 +50,7 @@ public static partial class TypeAliasGameInventory
             global::Sharpy.Builtins.Print(this.Durability);
         }
 
-        public Weapon(int id, string name, int damage, double durability) : base(id, name, null)
+        public Weapon(int id, string name, int damage, double durability) : base(id, name, Optional<string>.None)
         {
 #line 34 "type_alias_game_inventory.spy"
             this.Damage = damage;

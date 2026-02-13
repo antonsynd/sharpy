@@ -14,11 +14,11 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// Tests for code generation of Optional and Result types,
 /// including Some/None()/Ok/Err constructor expressions.
 ///
-/// Current codegen strategy:
-/// - T? (Optional) → C# T? (nullable) for backward compatibility
+/// Codegen strategy:
+/// - T? (Optional) → C# Optional&lt;T&gt; (Sharpy.Core struct)
 /// - T !E (Result) → C# Result&lt;T, E&gt; (Sharpy.Core struct)
-/// - Some(v) → v (raw value, compatible with T?)
-/// - None() → null (compatible with T?)
+/// - Some(v) → Optional&lt;T&gt;.Some(v)
+/// - None() → Optional&lt;T&gt;.None
 /// - Ok(v) → Result&lt;T, E&gt;.Ok(v)
 /// - Err(e) → Result&lt;T, E&gt;.Err(e)
 /// </summary>
@@ -60,14 +60,13 @@ public class OptionalResultCodeGenTests
     #region Type Mapping
 
     [Fact]
-    public void TypeMapping_OptionalInt_GeneratesNullableInt()
+    public void TypeMapping_OptionalInt_GeneratesOptionalInt()
     {
-        // T? currently maps to C# int? for backward compatibility
         var code = @"
 x: int? = None()
 ";
         var csharp = CompileToCSharp(code);
-        csharp.Should().Contain("int?");
+        csharp.Should().Contain("Optional<int>");
     }
 
     [Fact]
@@ -85,28 +84,24 @@ x: int !str = Ok(42)
     #region Constructor Generation - Optional
 
     [Fact]
-    public void Constructor_Some_GeneratesRawValue()
+    public void Constructor_Some_GeneratesOptionalSome()
     {
-        // Some(42) → just 42 (compatible with T? codegen)
         var code = @"
 x: int? = Some(42)
 ";
         var csharp = CompileToCSharp(code);
-        // Should contain int? variable with value 42, not Optional<int>.Some(42)
-        csharp.Should().Contain("int?");
-        csharp.Should().NotContain("Optional<int>.Some");
+        csharp.Should().Contain("Optional<int>");
+        csharp.Should().Contain("Optional<int>.Some(42)");
     }
 
     [Fact]
-    public void Constructor_None_GeneratesNull()
+    public void Constructor_None_GeneratesOptionalNone()
     {
-        // None() → null (compatible with T? codegen)
         var code = @"
 x: int? = None()
 ";
         var csharp = CompileToCSharp(code);
-        csharp.Should().Contain("null");
-        csharp.Should().NotContain("Optional<int>.None");
+        csharp.Should().Contain("Optional<int>.None");
     }
 
     #endregion
@@ -138,14 +133,14 @@ x: int !str = Err(""error"")
     #region Function Return Types
 
     [Fact]
-    public void Function_OptionalReturn_GeneratesNullableReturnType()
+    public void Function_OptionalReturn_GeneratesOptionalReturnType()
     {
         var code = @"
 def get_value() -> int?:
     return Some(42)
 ";
         var csharp = CompileToCSharp(code);
-        csharp.Should().Contain("int?");
+        csharp.Should().Contain("Optional<int>");
         csharp.Should().Contain("GetValue()");
     }
 
@@ -171,8 +166,8 @@ def maybe_double(x: int) -> int?:
     return None()
 ";
         var csharp = CompileToCSharp(code);
-        // Some → raw value, None() → null
-        csharp.Should().Contain("null");
+        csharp.Should().Contain("Optional<int>.Some(");
+        csharp.Should().Contain("Optional<int>.None");
     }
 
     [Fact]
@@ -194,16 +189,15 @@ def parse(s: str) -> int !str:
     #region Default Parameters
 
     [Fact]
-    public void DefaultParam_None_GeneratesNull()
+    public void DefaultParam_None_GeneratesDefault()
     {
-        // None() as default parameter generates null for T? compatibility
         var code = @"
 def foo(x: int? = None()) -> None:
     pass
 ";
         var csharp = CompileToCSharp(code);
-        csharp.Should().Contain("int?");
-        csharp.Should().Contain("= null");
+        csharp.Should().Contain("Optional<int>");
+        csharp.Should().Contain("= default");
     }
 
     #endregion
@@ -318,6 +312,125 @@ def foo(x: int? = None()) -> None:
         var csharp = CompileToCSharp(code);
         var success = CompileGeneratedCSharp(csharp, out var errors);
         success.Should().BeTrue($"Generated C# should compile. Errors:\n{errors}\n\nGenerated:\n{csharp}");
+    }
+
+    #endregion
+
+    #region Property Access (is_some, is_none, is_ok, is_err)
+
+    [Fact]
+    public void PropertyAccess_IsSome_EmitsPropertyNotMethodCall()
+    {
+        var code = @"
+def test() -> bool:
+    x: int? = Some(42)
+    return x.is_some()
+";
+        var csharp = CompileToCSharp(code);
+        csharp.Should().Contain("x.IsSome");
+        csharp.Should().NotContain("x.IsSome()");
+    }
+
+    [Fact]
+    public void PropertyAccess_IsOk_EmitsPropertyNotMethodCall()
+    {
+        var code = @"
+def test() -> bool:
+    x: int !str = Ok(42)
+    return x.is_ok()
+";
+        var csharp = CompileToCSharp(code);
+        csharp.Should().Contain("x.IsOk");
+        csharp.Should().NotContain("x.IsOk()");
+    }
+
+    #endregion
+
+    #region Null Coalescing
+
+    [Fact]
+    public void NullCoalesce_WithOptional_GeneratesUnwrapOr()
+    {
+        var code = @"
+def test() -> int:
+    x: int? = Some(42)
+    return x ?? 0
+";
+        var csharp = CompileToCSharp(code);
+        csharp.Should().Contain(".UnwrapOr(0)");
+    }
+
+    [Fact]
+    public void NullCoalesce_OptionalChain_GeneratesTernary()
+    {
+        var code = @"
+def test() -> int?:
+    x: int? = Some(42)
+    y: int? = None()
+    return x ?? y
+";
+        var csharp = CompileToCSharp(code);
+        csharp.Should().Contain(".IsSome ? x : y");
+    }
+
+    #endregion
+
+    #region Is None / Is Not None
+
+    [Fact]
+    public void IsNone_WithOptional_EmitsIsNoneProperty()
+    {
+        var code = @"
+def test() -> bool:
+    x: int? = Some(42)
+    return x is None
+";
+        var csharp = CompileToCSharp(code);
+        csharp.Should().Contain("x.IsNone");
+    }
+
+    [Fact]
+    public void IsNotNone_WithOptional_EmitsIsSomeProperty()
+    {
+        var code = @"
+def test() -> bool:
+    x: int? = Some(42)
+    return x is not None
+";
+        var csharp = CompileToCSharp(code);
+        csharp.Should().Contain("x.IsSome");
+    }
+
+    #endregion
+
+    #region Maybe Expression
+
+    [Fact]
+    public void MaybeExpression_GeneratesOptionalFrom()
+    {
+        var code = @"
+def test(s: str | None) -> str?:
+    return maybe s
+";
+        var csharp = CompileToCSharp(code);
+        csharp.Should().Contain("global::Sharpy.Optional.From(s)");
+    }
+
+    #endregion
+
+    #region Type Narrowing
+
+    [Fact]
+    public void TypeNarrowing_AfterIsNotNone_EmitsUnwrap()
+    {
+        var code = @"
+def main():
+    x: int? = Some(42)
+    if x is not None:
+        print(x + 1)
+";
+        var csharp = CompileToCSharp(code, isEntryPoint: true);
+        csharp.Should().Contain("x.Unwrap()");
     }
 
     #endregion

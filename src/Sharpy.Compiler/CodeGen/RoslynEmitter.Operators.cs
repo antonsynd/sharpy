@@ -725,17 +725,22 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generate a maybe expression: maybe expr
-    /// Converts a C# nullable (T | None) to Optional[T].
-    /// Since both NullableType and OptionalType map to C# T? in code generation,
-    /// this is a semantic pass-through — the value is already in the correct C# form.
+    /// Converts a C# nullable (T | None) to Optional&lt;T&gt; via Optional.From().
     /// </summary>
     private ExpressionSyntax GenerateMaybeExpression(MaybeExpression maybeExpr)
     {
-        // Both NullableType (T | None) and OptionalType (T?) map to C# T?,
-        // so the conversion is a no-op at the C# level. The type checker has
-        // already validated that the operand is a NullableType and the result
-        // is an OptionalType — the semantic distinction is enforced there.
-        return GenerateExpression(maybeExpr.Operand);
+        var operand = GenerateExpression(maybeExpr.Operand);
+
+        // Generate: global::Sharpy.Optional.From(operand)
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), IdentifierName("Sharpy")),
+                    IdentifierName("Optional")),
+                IdentifierName("From")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(operand))));
     }
 
     /// <summary>

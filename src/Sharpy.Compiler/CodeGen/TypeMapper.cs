@@ -194,9 +194,9 @@ internal class TypeMapper
 
     /// <summary>
     /// Maps a Sharpy type annotation to a C# TypeSyntax.
-    /// Note: T? (IsOptional) currently maps to C# T? for backward compatibility
-    /// with existing null-based tests. T !E (IsResult) maps to Result&lt;T, E&gt;.
-    /// Use MapSemanticType for the canonical Optional&lt;T&gt; mapping.
+    /// T? (IsOptional) maps to Optional&lt;T&gt; (Sharpy.Core struct).
+    /// T !E (IsResult) maps to Result&lt;T, E&gt;.
+    /// IsCSharpNullable maps to C# T? (nullable).
     /// </summary>
     public TypeSyntax MapType(TypeAnnotation? type)
     {
@@ -225,15 +225,15 @@ internal class TypeMapper
             {
                 // For type annotations, recursively map the underlying type
                 var expandedType = MapType(aliasSymbol.TypeAnnotation);
-                // Apply nullable modifier from usage site
-                return (type.IsOptional || type.IsCSharpNullable) ? NullableType(expandedType) : expandedType;
+                // Apply nullable/optional modifier from usage site
+                return WrapOptionalOrNullable(expandedType, type);
             }
             else if (aliasSymbol.FunctionType != null)
             {
                 // For function types, map to C# delegate/Func/Action
                 var expandedType = MapFunctionType(aliasSymbol.FunctionType);
                 // Function types typically shouldn't be nullable, but handle it anyway
-                return (type.IsOptional || type.IsCSharpNullable) ? NullableType(expandedType) : expandedType;
+                return WrapOptionalOrNullable(expandedType, type);
             }
         }
 
@@ -251,17 +251,33 @@ internal class TypeMapper
                 .WithTypeArgumentList(
                     TypeArgumentList(SeparatedList(typeArgs)));
 
-            // Handle nullable generic types
-            return (type.IsOptional || type.IsCSharpNullable)
-                ? NullableType(result)
-                : result;
+            // Handle nullable/optional generic types
+            return WrapOptionalOrNullable(result, type);
         }
 
-        // Handle nullable non-generic types
+        // Handle nullable/optional non-generic types
         var typeSyntax = ParseTypeName(baseTypeName);
-        return (type.IsOptional || type.IsCSharpNullable)
-            ? NullableType(typeSyntax)
-            : typeSyntax;
+        return WrapOptionalOrNullable(typeSyntax, type);
+    }
+
+    /// <summary>
+    /// Wraps a type with Optional&lt;T&gt; or C# nullable T? depending on the type annotation flags.
+    /// IsOptional → Optional&lt;T&gt; (Sharpy.Core struct)
+    /// IsCSharpNullable → T? (C# nullable)
+    /// </summary>
+    private TypeSyntax WrapOptionalOrNullable(TypeSyntax innerType, TypeAnnotation type)
+    {
+        if (type.IsOptional)
+        {
+            return GenericName(Identifier("Optional"))
+                .WithTypeArgumentList(
+                    TypeArgumentList(SingletonSeparatedList(innerType)));
+        }
+        if (type.IsCSharpNullable)
+        {
+            return NullableType(innerType);
+        }
+        return innerType;
     }
 
     /// <summary>

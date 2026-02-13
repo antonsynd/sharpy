@@ -1,0 +1,17 @@
+def double_it(n: int) -> int:
+    return n * 2
+
+def wrap_err(s: str) -> str:
+    return f"ERR: {s}"
+
+def main():
+    x: int !str = Ok(5)
+    mapped: int !str = x.map(double_it)
+    print(mapped)
+
+    y: int !str = Err("bad")
+    mapped2: int !str = y.map(double_it)
+    print(mapped2)
+
+    mapped3: int !str = y.map_err(wrap_err)
+    print(mapped3)

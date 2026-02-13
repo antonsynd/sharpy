@@ -11,10 +11,10 @@ public static partial class NullableScoreEvaluator
     public class ScoreEvaluator
     {
         public int PassingGrade;
-        public string Evaluate(int? score)
+        public string Evaluate(Optional<int> score)
         {
 #line 11 "nullable_score_evaluator.spy"
-            if (score == null)
+            if (score.IsNone)
             {
 #line 12 "nullable_score_evaluator.spy"
                 return "No score recorded";
@@ -22,7 +22,7 @@ public static partial class NullableScoreEvaluator
             else
             {
 #line 14 "nullable_score_evaluator.spy"
-                if (score >= this.PassingGrade)
+                if (score.Unwrap() >= this.PassingGrade)
                 {
 #line 15 "nullable_score_evaluator.spy"
                     return "Pass";
@@ -35,10 +35,10 @@ public static partial class NullableScoreEvaluator
             }
         }
 
-        public int GetStatus(int? score)
+        public int GetStatus(Optional<int> score)
         {
 #line 20 "nullable_score_evaluator.spy"
-            if (score == null)
+            if (score.IsNone)
             {
 #line 21 "nullable_score_evaluator.spy"
                 return 0;
@@ -46,7 +46,7 @@ public static partial class NullableScoreEvaluator
             else
             {
 #line 23 "nullable_score_evaluator.spy"
-                if (score >= this.PassingGrade)
+                if (score.Unwrap() >= this.PassingGrade)
                 {
 #line 24 "nullable_score_evaluator.spy"
                     return 1;
@@ -71,7 +71,7 @@ public static partial class NullableScoreEvaluator
 #line 29 "nullable_score_evaluator.spy"
         var evaluator = new ScoreEvaluator(60);
 #line 31 "nullable_score_evaluator.spy"
-        int? testScore1 = 75;
+        Optional<int> testScore1 = 75;
 #line 32 "nullable_score_evaluator.spy"
         var result1 = evaluator.Evaluate(testScore1);
 #line 33 "nullable_score_evaluator.spy"
@@ -81,7 +81,7 @@ public static partial class NullableScoreEvaluator
 #line 35 "nullable_score_evaluator.spy"
         global::Sharpy.Builtins.Print(status1);
 #line 37 "nullable_score_evaluator.spy"
-        int? testScore2 = 45;
+        Optional<int> testScore2 = 45;
 #line 38 "nullable_score_evaluator.spy"
         var result2 = evaluator.Evaluate(testScore2);
 #line 39 "nullable_score_evaluator.spy"
@@ -91,7 +91,7 @@ public static partial class NullableScoreEvaluator
 #line 41 "nullable_score_evaluator.spy"
         global::Sharpy.Builtins.Print(status2);
 #line 43 "nullable_score_evaluator.spy"
-        int? testScore3 = null;
+        Optional<int> testScore3 = Optional<int>.None;
 #line 44 "nullable_score_evaluator.spy"
         var result3 = evaluator.Evaluate(testScore3);
 #line 45 "nullable_score_evaluator.spy"

@@ -1,0 +1,12 @@
+def main():
+    x: int !str = Ok(42)
+    print(x.is_ok())
+    print(x.is_err())
+    print(x.unwrap())
+    print(x.unwrap_or(0))
+
+    y: int !str = Err("error")
+    print(y.is_ok())
+    print(y.is_err())
+    print(y.unwrap_or(99))
+    print(y.unwrap_err())

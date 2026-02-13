@@ -1,0 +1,15 @@
+def main():
+    x: int? = Some(42)
+    y: int? = None()
+
+    a: int = x ?? 0
+    print(a)
+
+    b: int = y ?? 99
+    print(b)
+
+    c: int? = x ?? y
+    print(c)
+
+    d: int? = y ?? x
+    print(d)

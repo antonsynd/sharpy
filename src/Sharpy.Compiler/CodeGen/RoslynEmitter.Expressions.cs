@@ -45,16 +45,16 @@ internal partial class RoslynEmitter
                 _selfReplacementIdentifier != null
                     ? IdentifierName(_selfReplacementIdentifier)
                     : ThisExpression(),
-            Identifier name => IdentifierName(GetMangledVariableName(name.Name, isNewDeclaration: false)),
+            Identifier name => GenerateIdentifierExpression(name),
             SuperExpression => BaseExpression(),  // super() -> base
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
             SliceAccess sliceAccess => GenerateSliceAccess(sliceAccess),
-            // Handle None() -> null (for T? codegen compatibility)
+            // Handle None() -> Optional<T>.None
             FunctionCall call when call.Function is NoneLiteral
                 && call.Arguments.Length == 0
-                && GetExpressionSemanticType(call) is OptionalType
-                => LiteralExpression(SyntaxKind.NullLiteralExpression),
+                && GetExpressionSemanticType(call) is OptionalType optNone
+                => GenerateOptionalNone(optNone),
             // Handle Some/Ok/Err -> Optional/Result factory calls (tagged union constructors)
             FunctionCall call when IsTaggedUnionConstructorCall(call) => GenerateTaggedUnionConstructor(call),
             FunctionCall call => GenerateCall(call),
@@ -83,6 +83,30 @@ internal partial class RoslynEmitter
                 $"Unsupported expression type in code generation: '{expr.GetType().Name}'",
                 DiagnosticCodes.CodeGen.UnsupportedExpressionType, expr.LineStart, expr.ColumnStart)
         };
+    }
+
+    /// <summary>
+    /// Generates an identifier expression, with Optional narrowing support.
+    /// When a variable has been narrowed from Optional&lt;T&gt; to T (via an is-not-None check),
+    /// emits identifier.Unwrap() to extract the underlying value.
+    /// </summary>
+    private ExpressionSyntax GenerateIdentifierExpression(Identifier name)
+    {
+        var mangledName = GetMangledVariableName(name.Name, isNewDeclaration: false);
+        ExpressionSyntax expr = IdentifierName(mangledName);
+
+        // If this variable has been narrowed from Optional<T> to T, emit .Unwrap()
+        if (_narrowedOptionals.Contains(name.Name))
+        {
+            expr = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    expr,
+                    IdentifierName("Unwrap")))
+                .WithArgumentList(ArgumentList());
+        }
+
+        return expr;
     }
 
     private ExpressionSyntax GenerateIntegerLiteral(IntegerLiteral literal)
@@ -232,6 +256,24 @@ internal partial class RoslynEmitter
                 ?? NameMangler.GetListMethodMapping(memberAccess.Member)
                 ?? NameMangler.ToPascalCase(memberAccess.Member);
 
+            // Property-vs-method dispatch for Optional/Result:
+            // is_some/is_none/is_ok/is_err are C# properties, not methods.
+            // Emit property access instead of method invocation.
+            if (call.Arguments.Length == 0 && call.KeywordArguments.Length == 0)
+            {
+                var objType = GetExpressionSemanticType(memberAccess.Object);
+                if (objType is OptionalType && methodName is "IsSome" or "IsNone")
+                {
+                    return MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression, obj, IdentifierName(methodName));
+                }
+                if (objType is ResultType && methodName is "IsOk" or "IsErr")
+                {
+                    return MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression, obj, IdentifierName(methodName));
+                }
+            }
+
             // Generate positional arguments
             var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
 
@@ -246,6 +288,26 @@ internal partial class RoslynEmitter
             // Handle null conditional method calls: obj?.Method(args)
             if (memberAccess.IsNullConditional)
             {
+                // For Optional<T>: lower to ternary since ?.  doesn't work on structs
+                if (GetExpressionSemanticType(memberAccess.Object) is OptionalType)
+                {
+                    // obj.IsSome ? obj.Unwrap().Method(args) : default
+                    var methodCall = InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            InvocationExpression(
+                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    obj, IdentifierName("Unwrap")))
+                                .WithArgumentList(ArgumentList()),
+                            IdentifierName(methodName)))
+                        .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+
+                    return ConditionalExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            ParenthesizedExpression(obj), IdentifierName("IsSome")),
+                        methodCall,
+                        LiteralExpression(SyntaxKind.DefaultLiteralExpression));
+                }
+
                 // Generate: obj?.Method(args)
                 // Uses ConditionalAccessExpression with MemberBindingExpression for the method
                 // followed by InvocationExpression for the call
@@ -348,9 +410,18 @@ internal partial class RoslynEmitter
 
             case BinaryOperator.Is:
                 // x is y → object.ReferenceEquals(x, y)
-                // Special optimization for None: x is None → x == null
+                // Special optimization for None: x is None
                 if (binOp.Right is NoneLiteral)
                 {
+                    // For Optional<T> (struct): emit x.IsNone (property access)
+                    if (GetExpressionSemanticType(binOp.Left) is OptionalType)
+                    {
+                        return MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            left,
+                            IdentifierName("IsNone"));
+                    }
+                    // For nullable/reference types: x == null
                     return BinaryExpression(SyntaxKind.EqualsExpression,
                         left,
                         LiteralExpression(SyntaxKind.NullLiteralExpression));
@@ -365,9 +436,18 @@ internal partial class RoslynEmitter
 
             case BinaryOperator.IsNot:
                 // x is not y → !object.ReferenceEquals(x, y)
-                // Special optimization for None: x is not None → x != null
+                // Special optimization for None: x is not None
                 if (binOp.Right is NoneLiteral)
                 {
+                    // For Optional<T> (struct): emit x.IsSome (property access)
+                    if (GetExpressionSemanticType(binOp.Left) is OptionalType)
+                    {
+                        return MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            left,
+                            IdentifierName("IsSome"));
+                    }
+                    // For nullable/reference types: x != null
                     return BinaryExpression(SyntaxKind.NotEqualsExpression,
                         left,
                         LiteralExpression(SyntaxKind.NullLiteralExpression));
@@ -380,6 +460,28 @@ internal partial class RoslynEmitter
                         .AddArgumentListArguments(
                             Argument(left),
                             Argument(right)));
+
+            case BinaryOperator.NullCoalesce:
+                // x ?? y — for Optional<T>, lower to UnwrapOr or ternary
+                if (GetExpressionSemanticType(binOp.Left) is OptionalType)
+                {
+                    if (GetExpressionSemanticType(binOp.Right) is OptionalType)
+                    {
+                        // Both Optional: left.IsSome ? left : right
+                        return ConditionalExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                ParenthesizedExpression(left), IdentifierName("IsSome")),
+                            left,
+                            right);
+                    }
+                    // Left Optional, right raw T: left.UnwrapOr(right)
+                    return InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            ParenthesizedExpression(left), IdentifierName("UnwrapOr")))
+                        .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(right))));
+                }
+                // For nullable/reference types: C# ?? operator
+                return BinaryExpression(SyntaxKind.CoalesceExpression, left, right);
 
             case BinaryOperator.PipeForward:
                 // x |> f → f(x)
@@ -415,8 +517,7 @@ internal partial class RoslynEmitter
             BinaryOperator.LeftShift => SyntaxKind.LeftShiftExpression,
             BinaryOperator.RightShift => SyntaxKind.RightShiftExpression,
 
-            // Null coalescing
-            BinaryOperator.NullCoalesce => SyntaxKind.CoalesceExpression,
+            // NullCoalesce is handled in the special-cases switch above
 
             _ => SyntaxKind.None
         };
@@ -866,6 +967,21 @@ internal partial class RoslynEmitter
 
         if (memberAccess.IsNullConditional)
         {
+            // For Optional<T>: lower to ternary since ?. doesn't work on structs
+            if (GetExpressionSemanticType(memberAccess.Object) is OptionalType)
+            {
+                // obj.IsSome ? obj.Unwrap().Member : default
+                return ConditionalExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        ParenthesizedExpression(obj), IdentifierName("IsSome")),
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        InvocationExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                obj, IdentifierName("Unwrap")))
+                            .WithArgumentList(ArgumentList()),
+                        member),
+                    LiteralExpression(SyntaxKind.DefaultLiteralExpression));
+            }
             // obj?.member
             return ConditionalAccessExpression(obj,
                 MemberBindingExpression(member));
@@ -1632,7 +1748,7 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generates code for a tagged union constructor call (Some, Ok, Err).
-    /// Some(v) generates just the value (for T? compatibility).
+    /// Some(v) generates Optional&lt;T&gt;.Some(v).
     /// Ok(v)/Err(e) generate Result&lt;T,E&gt;.Ok(v)/Err(e).
     /// </summary>
     private ExpressionSyntax GenerateTaggedUnionConstructor(FunctionCall call)
@@ -1642,12 +1758,42 @@ internal partial class RoslynEmitter
 
         return (id.Name, exprType) switch
         {
-            // Some(v) → just the value (T? uses raw values, not Optional<T>.Some)
-            ("Some", OptionalType) => GenerateExpression(call.Arguments[0]),
+            ("Some", OptionalType opt) => GenerateSomeExpression(call, opt),
             ("Ok", ResultType res) => GenerateOkExpression(call, res),
             ("Err", ResultType res) => GenerateErrExpression(call, res),
             _ => throw new InvalidOperationException($"Unexpected tagged union constructor: {id.Name}")
         };
+    }
+
+    /// <summary>
+    /// Generates: Optional&lt;T&gt;.None (static property access)
+    /// </summary>
+    private ExpressionSyntax GenerateOptionalNone(OptionalType opt)
+    {
+        var underlyingType = _typeMapper.MapSemanticType(opt.UnderlyingType);
+
+        return MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            GenericName("Optional")
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(underlyingType))),
+            IdentifierName("None"));
+    }
+
+    /// <summary>
+    /// Generates: Optional&lt;T&gt;.Some(value)
+    /// </summary>
+    private ExpressionSyntax GenerateSomeExpression(FunctionCall call, OptionalType opt)
+    {
+        var underlyingType = _typeMapper.MapSemanticType(opt.UnderlyingType);
+        var arg = GenerateExpression(call.Arguments[0]);
+
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                GenericName("Optional")
+                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(underlyingType))),
+                IdentifierName("Some")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(arg))));
     }
 
     /// <summary>

@@ -68,6 +68,14 @@ namespace Sharpy
 
         public static bool operator ==(Optional<T> left, Optional<T> right) => left.Equals(right);
         public static bool operator !=(Optional<T> left, Optional<T> right) => !left.Equals(right);
+
+        /// <summary>
+        /// Implicit conversion from T to Optional&lt;T&gt;.
+        /// For value types, always produces Some(value) since value types cannot be null.
+        /// For reference types, null produces None, non-null produces Some(value).
+        /// </summary>
+        public static implicit operator Optional<T>(T value) =>
+            value is null ? None : Some(value);
     }
 
     /// <summary>

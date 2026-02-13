@@ -717,8 +717,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - should generate int? parameter
-        Assert.Contains("int?", code);
+        // Assert - should generate Optional<int> parameter
+        Assert.Contains("Optional<int>", code);
         Assert.Contains("value", code);
     }
 
@@ -751,8 +751,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - should generate string? return type
-        Assert.Contains("string?", code);
+        // Assert - should generate Optional<string> return type
+        Assert.Contains("Optional<string>", code);
     }
 
     [Fact]
@@ -792,8 +792,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - should generate System.Collections.Generic.List<int>?
-        Assert.Contains("System.Collections.Generic.List<int>?", code);
+        // Assert - should generate Optional<System.Collections.Generic.List<int>>
+        Assert.Contains("Optional<System.Collections.Generic.List<int>>", code);
     }
 
     [Fact]
@@ -836,8 +836,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - should generate System.Collections.Generic.List<int?>
-        Assert.Contains("System.Collections.Generic.List<int?>", code);
+        // Assert - should generate System.Collections.Generic.List<Optional<int>>
+        Assert.Contains("System.Collections.Generic.List<Optional<int>>", code);
     }
 
     #endregion

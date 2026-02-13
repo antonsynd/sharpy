@@ -77,7 +77,7 @@ public class TypeMapperTests
     #region Nullable Type Tests
 
     [Fact]
-    public void MapType_NullableInt_ReturnsNullableInt()
+    public void MapType_OptionalInt_ReturnsOptionalInt()
     {
         // Arrange
         var typeAnnotation = new TypeAnnotation
@@ -90,11 +90,11 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("int?");
+        result.ToString().Should().Be("Optional<int>");
     }
 
     [Fact]
-    public void MapType_NullableString_ReturnsNullableString()
+    public void MapType_OptionalString_ReturnsOptionalString()
     {
         // Arrange
         var typeAnnotation = new TypeAnnotation
@@ -107,7 +107,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("string?");
+        result.ToString().Should().Be("Optional<string>");
     }
 
     [Fact]
@@ -206,7 +206,7 @@ public class TypeMapperTests
     }
 
     [Fact]
-    public void MapType_NullableListOfInt_ReturnsNullableListInt()
+    public void MapType_OptionalListOfInt_ReturnsOptionalListInt()
     {
         // Arrange
         var typeAnnotation = new TypeAnnotation
@@ -223,7 +223,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("System.Collections.Generic.List<int>?");
+        result.ToString().Should().Be("Optional<System.Collections.Generic.List<int>>");
     }
 
     #endregion

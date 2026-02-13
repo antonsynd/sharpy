@@ -1,3 +1,0 @@
-# Current limitation: Type narrowing does not work in exception handlers
-# This test documents the current behavior - ideally narrowing should work here
-Cannot implicitly convert

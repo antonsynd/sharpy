@@ -1,0 +1,11 @@
+def double_it(n: int) -> int:
+    return n * 2
+
+def main():
+    x: int? = Some(5)
+    mapped: int? = x.map(double_it)
+    print(mapped)
+
+    y: int? = None()
+    mapped2: int? = y.map(double_it)
+    print(mapped2)

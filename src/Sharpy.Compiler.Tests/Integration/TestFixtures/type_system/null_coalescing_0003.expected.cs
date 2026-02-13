@@ -8,16 +8,16 @@ using global::Sharpy;
 
 public static partial class NullCoalescing0003
 {
-    public static int? X = null;
-    public static int Y = X ?? 42;
-    public static int? A = 100;
-    public static int B = A ?? 999;
-    public static string? Name = null;
-    public static string DefaultName = Name ?? "Guest";
-    public static int? First = null;
-    public static int? Second = null;
+    public static Optional<int> X = Optional<int>.None;
+    public static int Y = (X).UnwrapOr(42);
+    public static Optional<int> A = 100;
+    public static int B = (A).UnwrapOr(999);
+    public static Optional<string> Name = Optional<string>.None;
+    public static string DefaultName = (Name).UnwrapOr("Guest");
+    public static Optional<int> First = Optional<int>.None;
+    public static Optional<int> Second = Optional<int>.None;
     public static int Third = 77;
-    public static int Result = First ?? Second ?? Third;
+    public static int Result = ((First).IsSome ? First : Second).UnwrapOr(Third);
     public static void Main()
     {
 #line 16 "null_coalescing_0003.spy"

@@ -99,6 +99,13 @@ internal partial class RoslynEmitter
     // Used for inlining dunder bodies into static operators (self → left/value).
     private string? _selfReplacementIdentifier;
 
+    /// <summary>
+    /// Tracks variable names (original Sharpy names) that have been narrowed from
+    /// Optional&lt;T&gt; to T via an is-not-None check. When a variable is in this set,
+    /// identifier references to it emit .Unwrap() to extract the underlying value.
+    /// </summary>
+    private readonly HashSet<string> _narrowedOptionals = new();
+
     // Maps original parameter base names (camelCase) to C# replacement names.
     // Used for inlined operator bodies: e.g., "other" → "right".
     private Dictionary<string, string>? _parameterNameOverrides;
