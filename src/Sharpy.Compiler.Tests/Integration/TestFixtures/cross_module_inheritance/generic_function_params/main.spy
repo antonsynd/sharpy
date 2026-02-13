@@ -1,0 +1,8 @@
+from lib import process, total
+
+def main():
+    nums: list[int] = [10, 20, 30]
+    strings: list[str] = process(nums)
+    for s in strings:
+        print(s)
+    print(total(nums))

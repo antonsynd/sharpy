@@ -1,0 +1,5 @@
+# Interface definition in a separate module
+# Tests: cross-module interface used as sole base in class(IFoo) syntax
+
+interface IFormatter:
+    def format(self, text: str) -> str: ...

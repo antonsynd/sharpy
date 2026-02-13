@@ -1,0 +1,8 @@
+from lib import lookup, add_entry
+
+def main():
+    scores: dict[str, int] = {"alice": 90, "bob": 85}
+    print(lookup(scores, "alice"))
+    print(lookup(scores, "bob"))
+    scores = add_entry(scores, "carol", 95)
+    print(lookup(scores, "carol"))

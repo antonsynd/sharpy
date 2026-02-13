@@ -26,6 +26,7 @@ from .prompts import (
     get_spec_context,
     get_code_generation_prompt,
     get_multifile_generation_prompt,
+    get_multifile_regeneration_prompt,
     get_spec_validation_prompt,
     get_regeneration_prompt,
     get_test_uniqueness_prompt,
@@ -81,6 +82,20 @@ class GenerationResult:
     rate_limited: bool = False
     attempts: int = 1
     validation_output: Optional[str] = None  # AI validation output (for debugging)
+
+
+@dataclass
+class MultifileGenerationResult:
+    """Result of the multi-file generate-and-validate process with retry loop."""
+
+    success: bool
+    files: Optional[dict[str, str]] = None
+    expected_output: Optional[str] = None
+    skip_reason: Optional[str] = None
+    backend_used: Optional[str] = None
+    generation_duration: Optional[float] = None
+    rate_limited: bool = False
+    attempts: int = 1
 
 
 def _outputs_equivalent(expected: str, actual: str, rel_tol: float = 1e-9) -> bool:
@@ -992,6 +1007,207 @@ class DogfoodOrchestrator:
             prompt, timeout=self.config.generation_timeout
         )
 
+    async def _regenerate_multifile_code(
+        self,
+        feature_focus: str,
+        complexity: str,
+        previous_files: dict[str, str],
+        validation_error: str,
+        attempt: int,
+    ) -> AIResult:
+        """Regenerate multi-file Sharpy code with feedback from validation failure."""
+        prompt = get_multifile_regeneration_prompt(
+            self.spec_context,
+            feature_focus=feature_focus,
+            complexity=complexity,
+            previous_files=previous_files,
+            validation_error=validation_error,
+            attempt=attempt,
+            max_attempts=self.config.max_regeneration_attempts,
+            example_snippets=(
+                random.sample(self.example_snippets, min(2, len(self.example_snippets)))
+                if self.example_snippets
+                else None
+            ),
+            existing_fixtures_section=self.fixtures_prompt_section,
+        )
+        return await self.backend_manager.execute(
+            prompt, timeout=self.config.generation_timeout
+        )
+
+    async def _generate_and_validate_multifile_code(
+        self, feature_focus: str, complexity: str
+    ) -> MultifileGenerationResult:
+        """Generate and validate multi-file code with retry loop on validation failure.
+
+        Implements a feedback loop for multi-file projects. If code fails parsing,
+        pre-validation, or semantic validation, retries up to max_regeneration_attempts
+        times with feedback about the validation error.
+
+        Returns:
+            MultifileGenerationResult with files if successful, or skip_reason if all
+            attempts failed.
+        """
+        max_attempts = self.config.max_regeneration_attempts
+        last_files: Optional[dict[str, str]] = None
+        last_error: Optional[str] = None
+        total_duration = 0.0
+        backend_used: Optional[str] = None
+
+        for attempt in range(1, max_attempts + 1):
+            # Generate or regenerate code
+            if attempt == 1:
+                # First attempt: generate fresh code
+                gen_result = await self._generate_multifile_code(feature_focus, complexity)
+            else:
+                # Subsequent attempts: regenerate with feedback
+                print(
+                    f"  Regenerating multi-file code (attempt {attempt}/{max_attempts})...",
+                    file=sys.stderr,
+                )
+                gen_result = await self._regenerate_multifile_code(
+                    feature_focus=feature_focus,
+                    complexity=complexity,
+                    previous_files=last_files,
+                    validation_error=last_error,
+                    attempt=attempt,
+                )
+
+            total_duration += gen_result.duration_seconds or 0.0
+            backend_used = gen_result.backend
+
+            # Check for rate limiting
+            if not gen_result.success or not gen_result.output:
+                is_rate_limited = gen_result.rate_limited or (
+                    gen_result.error
+                    and any(
+                        x in gen_result.error.lower()
+                        for x in ["rate limit", "rate-limit", "unavailable", "429"]
+                    )
+                )
+                if is_rate_limited:
+                    return MultifileGenerationResult(
+                        success=False,
+                        skip_reason=f"Rate limited: {gen_result.error or 'All backends unavailable'}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        rate_limited=True,
+                        attempts=attempt,
+                    )
+                # Non-rate-limit generation failure
+                return MultifileGenerationResult(
+                    success=False,
+                    skip_reason=gen_result.error or "No code generated",
+                    backend_used=backend_used,
+                    generation_duration=total_duration,
+                    attempts=attempt,
+                )
+
+            # Parse multi-file response
+            files = extract_multifile_code(gen_result.output)
+            if not files:
+                print("  Failed to parse multi-file response", file=sys.stderr)
+                last_error = "Failed to parse multi-file response. Ensure each file starts with '=== FILE: filename.spy ===' and includes a main.spy file."
+                # Keep last_files from previous attempt if available
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry with feedback ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return MultifileGenerationResult(
+                        success=False,
+                        skip_reason=f"Failed to parse multi-file response after {attempt} attempts",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+
+            last_files = files
+            print(f"  Generated {len(files)} files:", file=sys.stderr)
+            for filename in files:
+                print(f"    - {filename}", file=sys.stderr)
+
+            # Pre-validate each file
+            prevalidation_failed = False
+            for filename, code in files.items():
+                prevalidation_error = await self._quick_prevalidate(code)
+                if prevalidation_error:
+                    print(
+                        f"  Pre-validation failed for {filename}: {prevalidation_error}",
+                        file=sys.stderr,
+                    )
+                    last_error = f"Pre-validation error in {filename}: {prevalidation_error}"
+                    prevalidation_failed = True
+                    break
+
+            if prevalidation_failed:
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry with feedback ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return MultifileGenerationResult(
+                        success=False,
+                        files=files,
+                        expected_output=extract_expected_output_from_multifile(files),
+                        skip_reason=f"Pre-validation failed after {attempt} attempts: {last_error}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+
+            # Semantic validate project
+            semantic_error = await self._validate_project_semantics(files)
+            if semantic_error:
+                print(
+                    f"  Sharpy project validation failed: {semantic_error[:200]}",
+                    file=sys.stderr,
+                )
+                last_error = f"Sharpy compiler error: {semantic_error}"
+                if attempt < max_attempts:
+                    print(
+                        f"  Will retry with feedback ({attempt}/{max_attempts})...",
+                        file=sys.stderr,
+                    )
+                    continue
+                else:
+                    return MultifileGenerationResult(
+                        success=False,
+                        files=files,
+                        expected_output=extract_expected_output_from_multifile(files),
+                        skip_reason=f"Sharpy compiler error after {attempt} attempts: {semantic_error}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                    )
+
+            # All validation passed
+            expected_output = extract_expected_output_from_multifile(files)
+            print("  All files validated successfully (compiler)", file=sys.stderr)
+            return MultifileGenerationResult(
+                success=True,
+                files=files,
+                expected_output=expected_output,
+                backend_used=backend_used,
+                generation_duration=total_duration,
+                attempts=attempt,
+            )
+
+        # Should not reach here, but just in case
+        return MultifileGenerationResult(
+            success=False,
+            files=last_files,
+            expected_output=extract_expected_output_from_multifile(last_files) if last_files else None,
+            skip_reason="Multi-file generation failed after all retry attempts",
+            backend_used=backend_used,
+            generation_duration=total_duration,
+            attempts=max_attempts,
+        )
+
     async def run_multifile_iteration(
         self,
         iteration: int,
@@ -1015,129 +1231,74 @@ class DogfoodOrchestrator:
         start_time = datetime.now()
         timestamp = start_time.isoformat()
 
-        # Step 1: Generate multi-file code
+        # Step 1 & 2: Generate and validate multi-file code (with retry loop)
         print("\n[1/4] Generating multi-file project...", file=sys.stderr)
-        gen_result = await self._generate_multifile_code(feature_focus, complexity)
+        gen_result = await self._generate_and_validate_multifile_code(
+            feature_focus, complexity
+        )
 
-        if not gen_result.success or not gen_result.output:
+        if not gen_result.success:
             # Check if it's a rate limit issue
-            is_rate_limited = gen_result.rate_limited or (
-                gen_result.error
-                and any(
-                    x in gen_result.error.lower()
-                    for x in ["rate limit", "rate-limit", "unavailable", "429"]
-                )
-            )
-
-            if is_rate_limited:
+            if gen_result.rate_limited:
                 print(
                     "  Generation failed due to rate limiting (not a bug)",
                     file=sys.stderr,
                 )
                 return IterationResult(
                     IterationStatus.SKIPPED,
-                    skip_reason=f"Rate limited: {gen_result.error or 'All backends unavailable'}",
+                    skip_reason=gen_result.skip_reason,
                 )
 
+            # If it was a validation failure after retries, skip but save for inspection
+            if gen_result.attempts > 1:
+                print(
+                    f"  Multi-file code generation failed after {gen_result.attempts} attempts",
+                    file=sys.stderr,
+                )
+                skip_dir = None
+                if gen_result.files:
+                    skip = Skip(
+                        timestamp=timestamp,
+                        skip_reason=gen_result.skip_reason or "Validation failed",
+                        generated_code=gen_result.files.get("main.spy", ""),
+                        expected_output=gen_result.expected_output,
+                        feature_focus=feature_focus,
+                        complexity=complexity,
+                        backend_used=gen_result.backend_used,
+                        generation_duration=gen_result.generation_duration,
+                        source_files=gen_result.files,
+                    )
+                    skip_dir = self.skip_reporter.report(skip)
+                    print(
+                        f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr
+                    )
+                return IterationResult(
+                    IterationStatus.SKIPPED,
+                    skip_dir=skip_dir,
+                    skip_reason=gen_result.skip_reason,
+                )
+
+            # First attempt generation failure - report as issue
             issue = Issue(
                 issue_type=IssueType.GENERATION_FAILED,
                 timestamp=timestamp,
                 generated_code="",
-                error_message=gen_result.error or "No code generated",
+                error_message=gen_result.skip_reason or "No code generated",
                 feature_focus=feature_focus,
                 complexity=complexity,
-                backend_used=gen_result.backend,
-                generation_duration=gen_result.duration_seconds,
+                backend_used=gen_result.backend_used,
+                generation_duration=gen_result.generation_duration,
             )
             issue_dir = self.issue_reporter.report(issue)
             return IterationResult(IterationStatus.FAILED, issue_dir)
 
-        # Parse multi-file response
-        files = extract_multifile_code(gen_result.output)
-        if not files:
-            print("  Failed to parse multi-file response", file=sys.stderr)
-            # Save raw output for debugging prompt issues
-            skip = Skip(
-                timestamp=timestamp,
-                skip_reason="Failed to parse multi-file response from AI",
-                generated_code=gen_result.output,  # Raw output for debugging
-                feature_focus=feature_focus,
-                complexity=complexity,
-                backend_used=gen_result.backend,
-                generation_duration=gen_result.duration_seconds,
-            )
-            skip_dir = self.skip_reporter.report(skip)
-            print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
-            return IterationResult(
-                IterationStatus.SKIPPED,
-                skip_dir=skip_dir,
-                skip_reason="Failed to parse multi-file response from AI",
-            )
-
-        print(f"  Generated {len(files)} files:", file=sys.stderr)
-        for filename in files:
-            print(f"    - {filename}", file=sys.stderr)
-
-        # Extract expected output from main.spy
-        expected_output = extract_expected_output_from_multifile(files)
-
-        # Step 1.5: Quick pre-validation for each file
-        for filename, code in files.items():
-            prevalidation_error = await self._quick_prevalidate(code)
-            if prevalidation_error:
-                print(
-                    f"  Pre-validation failed for {filename}: {prevalidation_error}",
-                    file=sys.stderr,
-                )
-                # Save for inspection
-                skip = Skip(
-                    timestamp=timestamp,
-                    skip_reason=f"Unsupported feature in {filename}: {prevalidation_error}",
-                    generated_code=files.get("main.spy", ""),
-                    expected_output=expected_output,
-                    feature_focus=feature_focus,
-                    complexity=complexity,
-                    backend_used=gen_result.backend,
-                    generation_duration=gen_result.duration_seconds,
-                    source_files=files,
-                )
-                skip_dir = self.skip_reporter.report(skip)
-                print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
-                return IterationResult(
-                    IterationStatus.SKIPPED,
-                    skip_dir=skip_dir,
-                    skip_reason=f"Unsupported feature in {filename}: {prevalidation_error}",
-                )
-
-        # Step 1.55: Validate Sharpy semantics as a project (full pipeline via emit csharp)
-        print("\n[2/4] Validating project with compiler...", file=sys.stderr)
-        semantic_error = await self._validate_project_semantics(files)
-        if semantic_error:
+        files = gen_result.files
+        expected_output = gen_result.expected_output
+        if gen_result.attempts > 1:
             print(
-                f"  Sharpy project validation failed: {semantic_error[:200]}",
+                f"  Multi-file code validated successfully after {gen_result.attempts} attempts",
                 file=sys.stderr,
             )
-            skip = Skip(
-                timestamp=timestamp,
-                skip_reason=f"Sharpy compiler error: {semantic_error}",
-                generated_code=files.get("main.spy", ""),
-                expected_output=expected_output,
-                feature_focus=feature_focus,
-                complexity=complexity,
-                backend_used=gen_result.backend,
-                generation_duration=gen_result.duration_seconds,
-                source_files=files,
-            )
-            skip_dir = self.skip_reporter.report(skip)
-            print(f"  Skip saved for inspection: {skip_dir.name}", file=sys.stderr)
-            return IterationResult(
-                IterationStatus.SKIPPED,
-                skip_dir=skip_dir,
-                skip_reason=f"Sharpy compiler error: {semantic_error}",
-            )
-
-        # Compiler validation passed for all files — skip AI spec validation.
-        print("  All files validated successfully (compiler)", file=sys.stderr)
 
         # Step 3: Compile and run multi-file project
         print("\n[3/4] Compiling and running project...", file=sys.stderr)
@@ -1174,8 +1335,8 @@ class DogfoodOrchestrator:
                     compiler_output=run_result.output,
                     feature_focus=feature_focus,
                     complexity=complexity,
-                    backend_used=gen_result.backend,
-                    generation_duration=gen_result.duration_seconds,
+                    backend_used=gen_result.backend_used,
+                    generation_duration=gen_result.generation_duration,
                     execution_duration=run_result.duration_seconds,
                 )
                 issue_dir = self.issue_reporter.report(issue)
@@ -1219,8 +1380,8 @@ class DogfoodOrchestrator:
                         actual_output=actual_output,
                         feature_focus=feature_focus,
                         complexity=complexity,
-                        backend_used=gen_result.backend,
-                        generation_duration=gen_result.duration_seconds,
+                        backend_used=gen_result.backend_used,
+                        generation_duration=gen_result.generation_duration,
                         execution_duration=run_result.duration_seconds,
                     )
                     issue_dir = self.issue_reporter.report(issue)
@@ -1243,8 +1404,8 @@ class DogfoodOrchestrator:
                 actual_output=actual_output,
                 feature_focus=feature_focus,
                 complexity=complexity,
-                backend_used=gen_result.backend,
-                generation_duration=gen_result.duration_seconds,
+                backend_used=gen_result.backend_used,
+                generation_duration=gen_result.generation_duration,
                 execution_duration=execution_duration,
             )
             success_dir = self.success_reporter.report(success)
@@ -1282,6 +1443,19 @@ class DogfoodOrchestrator:
         token_result = await self._check_forbidden_tokens_via_lexer(code)
         if token_result is not None:
             return token_result
+
+        # Check for @abstract + @virtual combination (decorators on consecutive lines)
+        for i, line in enumerate(lines):
+            stripped = line.split("#")[0].strip()
+            if stripped in ("@abstract", "@virtual"):
+                # Look at next non-empty line
+                for j in range(i + 1, min(i + 4, len(lines))):
+                    next_stripped = lines[j].split("#")[0].strip()
+                    if not next_stripped:
+                        continue
+                    if next_stripped in ("@abstract", "@virtual") and next_stripped != stripped:
+                        return f"Line {j + 1}: @abstract and @virtual combined (abstract methods are inherently virtual — use only @abstract)"
+                    break  # Stop at first non-empty, non-decorator line
 
         # Regex-only checks for things the lexer doesn't cover as keyword tokens
         forbidden_regex_checks = [

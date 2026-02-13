@@ -1,0 +1,22 @@
+# Tests: class(IInterface) where interface is imported from another module
+# This exercises the InheritanceResolver path where UnresolvedBaseName
+# resolves to an interface, not a base class
+
+from lib import IFormatter
+
+class BracketFormatter(IFormatter):
+    def format(self, text: str) -> str:
+        return "[" + text + "]"
+
+class ParenFormatter(IFormatter):
+    def format(self, text: str) -> str:
+        return "(" + text + ")"
+
+def main():
+    bracket = BracketFormatter()
+    paren = ParenFormatter()
+    print(bracket.format("hello"))
+    print(paren.format("world"))
+
+    fmt: IFormatter = bracket
+    print(fmt.format("test"))

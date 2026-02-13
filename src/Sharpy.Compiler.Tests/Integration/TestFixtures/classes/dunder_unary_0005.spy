@@ -1,0 +1,26 @@
+# Test unary operators: negation, positive, bitwise NOT
+class Number:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+    def __neg__(self) -> int:
+        return -self.value
+
+    def __pos__(self) -> int:
+        return +self.value
+
+    def __invert__(self) -> int:
+        return ~self.value
+
+def main():
+    num = Number(5)
+    print(-num)
+    print(+num)
+    print(~num)
+
+# EXPECTED OUTPUT:
+# -5
+# 5
+# -6

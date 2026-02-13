@@ -490,8 +490,6 @@ internal class ModuleLoader
         if (typeAnnotation == null)
             return SemanticType.Unknown;
 
-        var isOptional = typeAnnotation.IsOptional;
-
         SemanticType? baseType = typeAnnotation.Name switch
         {
             "int" => SemanticType.Int,
@@ -511,9 +509,54 @@ internal class ModuleLoader
             baseType = new UserDefinedType { Name = typeAnnotation.Name };
         }
 
-        if (isOptional && baseType != SemanticType.Void)
+        // Handle generic type arguments (list[int], dict[str, int], etc.)
+        if (typeAnnotation.TypeArguments.Length > 0)
         {
-            return new NullableType { UnderlyingType = baseType };
+            var typeArgs = typeAnnotation.TypeArguments
+                .Select(ConvertTypeAnnotationToSemanticType)
+                .ToList();
+
+            if (typeAnnotation.Name == "tuple")
+            {
+                baseType = new TupleType { ElementTypes = typeArgs };
+            }
+            else if (typeAnnotation.Name == "Optional" && typeArgs.Count == 1)
+            {
+                baseType = new OptionalType { UnderlyingType = typeArgs[0] };
+            }
+            else if (typeAnnotation.Name == "Result" && typeArgs.Count == 2)
+            {
+                baseType = new ResultType { OkType = typeArgs[0], ErrorType = typeArgs[1] };
+            }
+            else if (typeAnnotation.Name == "function")
+            {
+                var returnType = typeArgs[^1];
+                var paramTypes = typeArgs.Take(typeArgs.Count - 1).ToList();
+                baseType = new FunctionType { ParameterTypes = paramTypes, ReturnType = returnType };
+            }
+            else
+            {
+                baseType = new GenericType { Name = typeAnnotation.Name, TypeArguments = typeArgs };
+            }
+        }
+
+        // Handle T !E (Result type) syntax
+        if (typeAnnotation.ErrorType != null)
+        {
+            var errorType = ConvertTypeAnnotationToSemanticType(typeAnnotation.ErrorType);
+            baseType = new ResultType { OkType = baseType, ErrorType = errorType };
+        }
+
+        // Handle T? (Optional type) — Sharpy native optional
+        if (typeAnnotation.IsOptional && baseType != SemanticType.Void)
+        {
+            baseType = new OptionalType { UnderlyingType = baseType };
+        }
+
+        // Handle T | None (C# nullable) — .NET interop
+        if (typeAnnotation.IsCSharpNullable && baseType != SemanticType.Void)
+        {
+            baseType = new NullableType { UnderlyingType = baseType };
         }
 
         return baseType;

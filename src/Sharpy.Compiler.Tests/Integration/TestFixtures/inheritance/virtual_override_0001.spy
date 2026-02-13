@@ -1,0 +1,120 @@
+# Complex virtual/override test: RPG Character System
+# Tests: virtual methods, override, method chaining, state management
+
+@abstract
+class Character:
+    name: str
+    health: int
+    max_health: int
+
+    def __init__(self, name: str, max_hp: int):
+        self.name = name
+        self.health = max_hp
+        self.max_health = max_hp
+
+    @virtual
+    def take_damage(self, amount: int) -> int:
+        self.health -= amount
+        if self.health < 0:
+            self.health = 0
+        return self.health
+
+    @virtual
+    def get_defense_bonus(self) -> int:
+        return 0
+
+    @abstract
+    def attack(self) -> int:
+        ...
+
+class Warrior(Character):
+    armor: int
+
+    def __init__(self, name: str):
+        super().__init__(name, 150)
+        self.armor = 20
+
+    @override
+    def take_damage(self, amount: int) -> int:
+        reduced: int = amount - self.armor
+        if reduced < 0:
+            reduced = 0
+        return super().take_damage(reduced)
+
+    @override
+    def get_defense_bonus(self) -> int:
+        return self.armor
+
+    @override
+    def attack(self) -> int:
+        return 25
+
+class Mage(Character):
+    shield_active: bool
+
+    def __init__(self, name: str):
+        super().__init__(name, 80)
+        self.shield_active = True
+
+    @override
+    def take_damage(self, amount: int) -> int:
+        if self.shield_active:
+            amount = amount // 2
+            self.shield_active = False
+        return super().take_damage(amount)
+
+    @override
+    def get_defense_bonus(self) -> int:
+        if self.shield_active:
+            return 50
+        return 0
+
+    @override
+    def attack(self) -> int:
+        return 40
+
+def simulate_battle(attacker: Character, defender: Character) -> None:
+    print(f"{attacker.name} attacks {defender.name}")
+    damage: int = attacker.attack()
+    print(f"Base damage: {damage}")
+    defense: int = defender.get_defense_bonus()
+    print(f"Defense bonus: {defense}")
+    remaining: int = defender.take_damage(damage)
+    print(f"{defender.name} health: {remaining}")
+
+def main():
+    warrior: Warrior = Warrior("Brutus")
+    mage: Mage = Mage("Merlin")
+
+    print("=== Initial Stats ===")
+    print(warrior.health)
+    print(mage.health)
+
+    print("=== Round 1 ===")
+    simulate_battle(mage, warrior)
+
+    print("=== Round 2 ===")
+    simulate_battle(warrior, mage)
+
+    print("=== Round 3 ===")
+    simulate_battle(warrior, mage)
+
+# EXPECTED OUTPUT:
+# === Initial Stats ===
+# 150
+# 80
+# === Round 1 ===
+# Merlin attacks Brutus
+# Base damage: 40
+# Defense bonus: 20
+# Brutus health: 130
+# === Round 2 ===
+# Brutus attacks Merlin
+# Base damage: 25
+# Defense bonus: 50
+# Merlin health: 68
+# === Round 3 ===
+# Brutus attacks Merlin
+# Base damage: 25
+# Defense bonus: 0
+# Merlin health: 43

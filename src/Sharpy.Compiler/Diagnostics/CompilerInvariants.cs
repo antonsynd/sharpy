@@ -277,8 +277,12 @@ public static class CompilerInvariants
             if (symbol.ClrType != null)
                 continue;
 
-            // If UnresolvedBaseName is set but BaseType is still null, resolution failed
-            if (symbol.UnresolvedBaseName != null && symbol.BaseType == null)
+            // If UnresolvedBaseName is set but BaseType is still null, resolution failed.
+            // However, if the unresolved name was resolved as an interface (not a base class),
+            // BaseType correctly remains null — the name was successfully resolved via AddInterface().
+            // UnresolvedBaseName is init-only so it can't be cleared after resolution.
+            if (symbol.UnresolvedBaseName != null && symbol.BaseType == null
+                && !symbol.Interfaces.Any(i => i.Name == symbol.UnresolvedBaseName))
             {
                 diagnostics.AddWarning(
                     $"Internal invariant violation: type '{symbol.Name}' has UnresolvedBaseName '{symbol.UnresolvedBaseName}' but BaseType is null after inheritance resolution. This is a compiler bug — please report it.",

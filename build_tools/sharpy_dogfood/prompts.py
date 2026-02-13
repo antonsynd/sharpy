@@ -236,6 +236,7 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **Variables**: `x: int = 42` or `x = 42` (type inference)
 - **Types**: `int`, `str`, `bool`, `float` (primitive types)
 - **Additional numeric types**: `long` (64-bit int), `double` (explicit 64-bit float), `float32` (32-bit float)
+- **Float output**: `float` maps to C# `double`. Printing whole-number floats shows NO trailing `.0` (e.g., `print(5.0)` outputs `5`, not `5.0`). Use integer expected values for whole-number float results.
 - **Nullable types**: `int?`, `str?` with `None` assignment
 - **Operators**: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
 - **Augmented assignment**: `+=`, `-=`, `*=`, `/=`
@@ -477,6 +478,10 @@ def find_first(items: list[int]) -> int?:
     if len(items) > 0:
         return Some(items[0])
     return None()
+
+# IMPORTANT: float output uses C# formatting
+# print(3.14159 * 2.0 ** 2) → "12.5663706"
+# print(5.0 * 3.0) → "15"  (NOT "15.0" — C# drops trailing .0)
 ```
 
 ## Output Format
@@ -855,6 +860,181 @@ IMPORTANT:
 - Use ONLY simple print() calls with ONE argument
 - For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")
 - Every print() output should appear in EXPECTED OUTPUT"""
+
+
+def get_multifile_regeneration_prompt(
+    spec_context: str,
+    feature_focus: str,
+    complexity: str,
+    previous_files: dict[str, str],
+    validation_error: str,
+    attempt: int,
+    max_attempts: int,
+    example_snippets: Optional[list[str]] = None,
+    existing_fixtures_section: str = "",
+) -> str:
+    """Generate a prompt for retrying multi-file code generation with validation feedback.
+
+    Used when previous multi-file code generation failed validation. Provides the AI
+    with the previous files and the specific validation error so it can fix the issue.
+
+    Args:
+        spec_context: Language specification context.
+        feature_focus: The feature area to focus on.
+        complexity: Complexity level (simple, medium, complex).
+        previous_files: The previously generated files that failed validation.
+        validation_error: The error message from validation.
+        attempt: Current attempt number (1-indexed).
+        max_attempts: Maximum number of attempts allowed.
+        example_snippets: Optional list of example code snippets.
+        existing_fixtures_section: Formatted section showing existing test fixtures.
+
+    Returns:
+        Prompt string for regenerating multi-file code with feedback.
+    """
+    examples_section = ""
+    if example_snippets:
+        examples_section = "\n\n## Example Sharpy Code\n\n"
+        for i, snippet in enumerate(example_snippets[:2], 1):
+            examples_section += f"### Example {i}\n```python\n{snippet}\n```\n\n"
+
+    # Format previous files with delimiters
+    files_section = ""
+    for filename, code in previous_files.items():
+        files_section += f"\n=== FILE: {filename} ===\n{code}\n"
+
+    return f"""You are regenerating a MULTI-FILE Sharpy project for compiler testing (dogfooding).
+
+## REGENERATION ATTEMPT {attempt}/{max_attempts}
+
+Your previous multi-file project FAILED validation. You must fix the issue and regenerate.
+
+## Previous Files That Failed
+
+```
+{files_section}
+```
+
+## Validation Error
+
+```
+{validation_error}
+```
+
+## Instructions
+
+1. Analyze the validation error carefully
+2. Identify which file(s) and feature(s) are causing the issue
+3. REMOVE or REPLACE the forbidden/invalid features
+4. Keep the same general logic/intent but use only allowed features
+5. Maintain correct import relationships between files
+
+## CRITICAL: Program Entry Point Requirement
+
+The `main.spy` file MUST have a `main()` function as its entry point:
+- All executable statements (print, variable assignments, function calls) must be inside `main()`
+- Library modules (non-main.spy files) do NOT need a `main()` function
+- Only declarations (classes, functions, type aliases, static fields) can be at module level
+- **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
+
+## CRITICAL: Module System Rules
+
+- **From import**: `from module_name import function1, function2`
+- **Import with alias**: `import module_name as alias`
+- Module name = filename without `.spy` extension
+- NO relative imports, NO package imports, NO star imports
+
+## CRITICAL: Allowed Features (Phases 0.1.0-0.1.18)
+
+### ✅ ALLOWED:
+- Entry point: `def main():` is REQUIRED in main.spy
+- Variables: `x: int = 42`
+- Types: `int`, `str`, `bool`, `float`, `long`, `double`, `float32`, nullable `int?`
+- Operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
+- Null operators: `??`, `?.`
+- `in`/`not in` operators: `x in collection`, `x not in collection` (lists, sets, dicts)
+- Control flow: `if`/`elif`/`else`, `while`, `for i in range(n):`, `break`, `continue`
+- Functions: `def name(param: type) -> return_type:`, default params, keyword args
+- Classes: `class Name:`, `__init__`, instance/static methods
+- Dunder methods: `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__iter__`/`__next__`, arithmetic/comparison/unary operators, `__getitem__`/`__setitem__`/`__contains__`
+- Inheritance: `class Child(Parent):`, `super().__init__()`, `@abstract`, `@virtual`, `@override`
+- Interfaces: `interface IName:` with `...` bodies
+- Structs: `struct Name:`
+- Enums: `enum Name:` with explicit values
+- Type aliases: `type UserId = int`
+- Basic generics: `class Box[T]:`, `def foo[T](x: T) -> T:`
+- Imports: `import module`, `from module import item`
+- Built-ins: `print(value)` - SINGLE ARGUMENT ONLY, `range()`, `len()`, `pow()`, `round()`, `divmod()`, `min()`, `max()`, `sum()`, `all()`, `any()`, `sorted()`, `reversed()`, `enumerate()`, `zip()`, `filter()`, `map()`, `int()`, `float()`, `bool()`, `str()`, `isinstance()`, `type()`, `hash()`, `repr()`, `input()`, `iter()`, `next()`
+- Tuple types: `tuple[T1, T2]`, tuple unpacking in for loops
+- F-strings: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
+- Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals `[1,2,3]`, `{{"key": val}}`
+- Comprehensions: `[x * 2 for x in range(10)]`
+- Exception handling: `try`, `except`, `finally`, `raise`
+- Available exception types: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
+- Lambdas: `lambda x: x * 2` (parameter types inferred from context)
+- .NET interop: `from system import Console`
+- Optional types: `T?`, `Some(value)`, `None()`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
+- Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
+- Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
+- Try expression: `try risky_call()`, `try[ExceptionType] expr` (wraps in Result)
+
+### ❌ FORBIDDEN (DO NOT USE):
+- NO main() call at module level - `main()` is auto-invoked by runtime
+- NO bare executable statements at module level - wrap in `def main():`
+- NO multi-argument print: `print(a, b)` - use multiple print() calls or f-strings
+- NO async/await - not implemented
+- NO with statement - context managers not implemented
+- NO walrus operator: `:=` - not implemented
+- NO pattern matching: `match`/`case` - not implemented
+- NO tuple unpacking in assignments: `a, b = 1, 2` - may have issues
+- NO tuple unpacking in comprehensions: `[v for k, v in items]` - not supported
+- NO @interface decorator - `interface` is a keyword, use `interface IName:` syntax
+- NO combining @abstract and @virtual - abstract methods are inherently virtual in .NET, use only @abstract
+- NO union types (T | U) - use a common base class or interface instead
+- NO string indexing (s[i]) - not yet fully supported, use string methods instead
+- NO 'in' operator on strings: `char in "abc"` - not yet fully supported
+- NO character-by-character string iteration - use `range(len(s))` and string methods instead
+- NO `__repr__()` method - removed, only `__str__()` exists
+- NO relative imports: `from .module import x` - NOT SUPPORTED
+- NO package imports: `from package.module import x` - NOT SUPPORTED
+- NO star imports: `from module import *` - NOT SUPPORTED
+- NO circular imports between modules
+
+{examples_section}
+
+## Task
+
+Regenerate the multi-file project for: **{feature_focus}** (complexity: **{complexity}**)
+
+Fix the validation error above. Generate VALID code that does NOT use any forbidden features.
+
+## Output Format
+
+Return multiple files, each clearly marked with its filename. Use this EXACT format:
+
+```
+=== FILE: module_name.spy ===
+# Fixed module code here
+...
+
+=== FILE: main.spy ===
+# Fixed main code here
+...
+
+# EXPECTED OUTPUT:
+# <expected output lines>
+```
+
+CRITICAL RULES:
+1. Each file starts with `=== FILE: filename.spy ===`
+2. One file MUST be named `main.spy` - this is the entry point
+3. EXPECTED OUTPUT comment goes in main.spy ONLY
+4. Use ONLY `from module import items` syntax (NOT `import module`)
+5. Module names match filenames exactly (without .spy)
+6. All print() calls must be in main.spy
+7. NO circular imports between modules
+8. Use ONLY simple print() calls with ONE argument
+9. For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")"""
 
 
 def get_spec_validation_prompt(

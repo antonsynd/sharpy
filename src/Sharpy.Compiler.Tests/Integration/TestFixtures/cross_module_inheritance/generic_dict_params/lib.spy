@@ -1,0 +1,6 @@
+def lookup(data: dict[str, int], key: str) -> int:
+    return data[key]
+
+def add_entry(data: dict[str, int], key: str, value: int) -> dict[str, int]:
+    data[key] = value
+    return data

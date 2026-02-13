@@ -1,0 +1,22 @@
+# Single interface in base name position: class Impl(IFoo)
+# Tests: interface resolved from UnresolvedBaseName within same file
+
+interface IGreeter:
+    def greet(self, name: str) -> str: ...
+
+class FormalGreeter(IGreeter):
+    def greet(self, name: str) -> str:
+        return "Good day, " + name
+
+class CasualGreeter(IGreeter):
+    def greet(self, name: str) -> str:
+        return "Hey " + name + "!"
+
+def main():
+    formal = FormalGreeter()
+    casual = CasualGreeter()
+    print(formal.greet("Alice"))
+    print(casual.greet("Bob"))
+
+    g: IGreeter = formal
+    print(g.greet("Charlie"))
