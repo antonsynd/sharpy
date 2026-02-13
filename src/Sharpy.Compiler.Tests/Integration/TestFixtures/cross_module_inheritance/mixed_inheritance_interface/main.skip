@@ -1,4 +1,0 @@
-See: #115 (fix cross-module type resolution for str() function return type)
-The str() builtin function's return type is not being recognized correctly in cross-module context,
-causing string concatenation to fail with "Type 'str' does not support operator '+' with right operand of type 'str'".
-This is a pre-existing bug unrelated to the type coercion validation changes.
