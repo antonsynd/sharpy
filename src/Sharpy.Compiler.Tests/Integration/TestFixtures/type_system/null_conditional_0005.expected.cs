@@ -40,13 +40,13 @@ public static partial class NullConditional0005
         public Optional<string> GetCityName()
         {
 #line 26 "null_conditional_0005.spy"
-            return this.Address is var __opt_0 && (__opt_0).IsSome ? __opt_0.Unwrap().GetCity() : default;
+            return this.Address is var __opt_0 && (__opt_0).IsSome ? __opt_0.Unwrap().GetCity() : Optional<string>.None;
         }
 
         public Optional<string> GetStreetName()
         {
 #line 29 "null_conditional_0005.spy"
-            return this.Address is var __opt_1 && (__opt_1).IsSome ? __opt_1.Unwrap().GetStreet() : default;
+            return this.Address is var __opt_1 && (__opt_1).IsSome ? __opt_1.Unwrap().GetStreet() : Optional<string>.None;
         }
 
         public Person(string name, Optional<Address> address)

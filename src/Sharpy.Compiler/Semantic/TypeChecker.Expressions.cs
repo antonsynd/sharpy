@@ -673,9 +673,12 @@ internal partial class TypeChecker
 
                 var fieldType = GetVariableType(field);
 
-                // Wrap result in nullable for null conditional access
-                if (memberAccess.IsNullConditional && fieldType is not NullableType)
+                // Wrap result in optional/nullable for null conditional access
+                if (memberAccess.IsNullConditional && fieldType is not NullableType and not OptionalType)
                 {
+                    // Use OptionalType when object is Optional, NullableType for C# nullable
+                    if (objectType is OptionalType)
+                        return new OptionalType { UnderlyingType = fieldType };
                     return new NullableType { UnderlyingType = fieldType };
                 }
                 return fieldType;
@@ -876,9 +879,17 @@ internal partial class TypeChecker
 
         // Check if this is a null conditional method call (obj?.method())
         bool isNullConditionalCall = call.Function is MemberAccess { IsNullConditional: true };
+        bool isOptionalNullConditional = false;
 
         // Check the called expression type first
         var calleeType = CheckExpression(call.Function);
+
+        // After checking the callee, determine if this is ?. on an Optional object
+        if (isNullConditionalCall && call.Function is MemberAccess nullCondMa)
+        {
+            var objType = _semanticInfo.GetExpressionType(nullCondMa.Object);
+            isOptionalNullConditional = objType is OptionalType;
+        }
 
         // Track super().__init__() calls AFTER validation completes
         // (do this after CheckExpression so the validation doesn't see it as already called)
@@ -1211,9 +1222,11 @@ internal partial class TypeChecker
                     // Store the inferred type arguments for codegen
                     _semanticInfo.SetInferredTypeArguments(call, inferenceResult.InferredTypes);
 
-                    // Wrap result in nullable for null conditional calls
-                    if (isNullConditionalCall && substitutedReturnType is not NullableType)
+                    // Wrap result in optional/nullable for null conditional calls
+                    if (isNullConditionalCall && substitutedReturnType is not NullableType and not OptionalType)
                     {
+                        if (isOptionalNullConditional)
+                            return new OptionalType { UnderlyingType = substitutedReturnType };
                         return new NullableType { UnderlyingType = substitutedReturnType };
                     }
                     return substitutedReturnType;
@@ -1293,9 +1306,11 @@ internal partial class TypeChecker
 
             var returnType = funcSymbol.ReturnType;
 
-            // Wrap result in nullable for null conditional calls
-            if (isNullConditionalCall && returnType is not NullableType)
+            // Wrap result in optional/nullable for null conditional calls
+            if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
             {
+                if (isOptionalNullConditional)
+                    return new OptionalType { UnderlyingType = returnType };
                 return new NullableType { UnderlyingType = returnType };
             }
             return returnType;
@@ -1336,9 +1351,11 @@ internal partial class TypeChecker
 
             var returnType = ft.ReturnType;
 
-            // Wrap result in nullable for null conditional calls
-            if (isNullConditionalCall && returnType is not NullableType)
+            // Wrap result in optional/nullable for null conditional calls
+            if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
             {
+                if (isOptionalNullConditional)
+                    return new OptionalType { UnderlyingType = returnType };
                 return new NullableType { UnderlyingType = returnType };
             }
             return returnType;

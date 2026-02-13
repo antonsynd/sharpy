@@ -179,6 +179,7 @@ internal partial class RoslynEmitter
         _variableVersions.Clear();
         _constVariables.Clear();
         _sourceVariableNames.Clear();
+        _narrowedOptionals.Clear();
         CollectSourceVariableNames(funcDef.Body);
 
         _selfReplacementIdentifier = selfReplacement;

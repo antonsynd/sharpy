@@ -293,7 +293,7 @@ internal partial class RoslynEmitter
                 {
                     // Ensure obj is only evaluated once for complex expressions
                     var (safeObj, capture) = EnsureSingleEvaluation(obj, memberAccess.Object);
-                    // safeObj.IsSome ? safeObj.Unwrap().Method(args) : default
+                    // safeObj.IsSome ? safeObj.Unwrap().Method(args) : Optional<T>.None
                     var methodCall = InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             InvocationExpression(
@@ -307,10 +307,14 @@ internal partial class RoslynEmitter
                         ParenthesizedExpression(safeObj), IdentifierName("IsSome"));
                     if (capture != null)
                         cond = BinaryExpression(SyntaxKind.LogicalAndExpression, capture, cond);
-                    return ConditionalExpression(
-                        cond,
-                        methodCall,
-                        LiteralExpression(SyntaxKind.DefaultLiteralExpression));
+
+                    // Use Optional<T>.None for the false branch so C# resolves the ternary
+                    // as Optional<T> (via implicit conversion on the true branch if needed)
+                    var falseExpr = GetExpressionSemanticType(call) is OptionalType optCallType
+                        ? (ExpressionSyntax)GenerateOptionalNone(optCallType)
+                        : (ExpressionSyntax)LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+
+                    return ConditionalExpression(cond, methodCall, falseExpr);
                 }
 
                 // Generate: obj?.Method(args)
@@ -980,20 +984,26 @@ internal partial class RoslynEmitter
             {
                 // Ensure obj is only evaluated once for complex expressions
                 var (safeObj, capture) = EnsureSingleEvaluation(obj, memberAccess.Object);
-                // safeObj.IsSome ? safeObj.Unwrap().Member : default
+                // safeObj.IsSome ? safeObj.Unwrap().Member : Optional<T>.None
                 ExpressionSyntax cond = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                     ParenthesizedExpression(safeObj), IdentifierName("IsSome"));
                 if (capture != null)
                     cond = BinaryExpression(SyntaxKind.LogicalAndExpression, capture, cond);
-                return ConditionalExpression(
-                    cond,
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        InvocationExpression(
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                safeObj, IdentifierName("Unwrap")))
-                            .WithArgumentList(ArgumentList()),
-                        member),
-                    LiteralExpression(SyntaxKind.DefaultLiteralExpression));
+
+                var trueExpr = (ExpressionSyntax)MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            safeObj, IdentifierName("Unwrap")))
+                        .WithArgumentList(ArgumentList()),
+                    member);
+
+                // Use Optional<T>.None for the false branch so C# resolves the ternary
+                // as Optional<T> (via implicit conversion on the true branch if needed)
+                var falseExpr = GetExpressionSemanticType(memberAccess) is OptionalType optExprType
+                    ? (ExpressionSyntax)GenerateOptionalNone(optExprType)
+                    : LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+
+                return ConditionalExpression(cond, trueExpr, falseExpr);
             }
             // obj?.member
             return ConditionalAccessExpression(obj,

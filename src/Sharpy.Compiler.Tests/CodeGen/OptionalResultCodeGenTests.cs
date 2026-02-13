@@ -552,5 +552,51 @@ def test() -> int:
         csharp.Should().Contain(".Unwrap()");
     }
 
+    [Fact]
+    public void NullConditional_MemberAccess_UsesOptionalNoneNotDefault()
+    {
+        var code = @"
+class Wrapper:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+def test(x: Wrapper?) -> int?:
+    return x?.value
+";
+        var csharp = CompileToCSharp(code);
+        // False branch should use Optional<int>.None, not just 'default'
+        // to ensure the ternary resolves as Optional<int>
+        csharp.Should().Contain("Optional<int>.None");
+    }
+
+    #endregion
+
+    #region Narrowing Scope Isolation
+
+    [Fact]
+    public void TypeNarrowing_DoesNotLeakAcrossFunctions()
+    {
+        var code = @"
+def func_a(x: int?) -> int:
+    if x is not None:
+        return x
+    return 0
+
+def func_b(x: int?) -> bool:
+    return x.is_some()
+";
+        var csharp = CompileToCSharp(code);
+        // func_b's x should NOT have .Unwrap() — narrowing must not leak from func_a
+        // func_a should have .Unwrap() (narrowed in if-body)
+        // func_b should have .IsSome (property access, no .Unwrap())
+        var funcBStart = csharp.IndexOf("FuncB(");
+        funcBStart.Should().BeGreaterThan(0, "func_b should appear in generated C#");
+        var funcBCode = csharp.Substring(funcBStart);
+        funcBCode.Should().Contain("IsSome");
+        funcBCode.Should().NotContain("Unwrap()");
+    }
+
     #endregion
 }

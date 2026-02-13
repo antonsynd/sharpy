@@ -1,0 +1,31 @@
+# Test null conditional operator on Optional with value-type members.
+# Before the fix, x?.value returned 0 (default int) instead of None
+# when x was None, because the ternary false branch was 'default'.
+
+class Wrapper:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+    def get_value(self) -> int:
+        return self.value
+
+def main():
+    # Test member access on Some
+    x: Wrapper? = Some(Wrapper(42))
+    result1: int? = x?.value
+    print(result1)
+
+    # Test member access on None — should be None, not Some(0)
+    y: Wrapper? = None()
+    result2: int? = y?.value
+    print(result2)
+
+    # Test method call on Some
+    result3: int? = x?.get_value()
+    print(result3)
+
+    # Test method call on None — should be None, not Some(0)
+    result4: int? = y?.get_value()
+    print(result4)
