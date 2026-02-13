@@ -1,0 +1,9 @@
+def main():
+    items: list[int] = [1, 2, 3]
+
+    for val in items:
+        print(val)
+
+    for val in items:
+        x: int = val * 10
+        print(x)

@@ -1002,6 +1002,22 @@ internal partial class RoslynEmitter
     /// </summary>
     private StatementSyntax GenerateForEachCore(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements)
     {
+        // Save scope so that loop variables and body-declared variables are
+        // removed from scope after the loop (Sharpy: loop vars are block-scoped).
+        var scopeSnapshot = SaveScope();
+
+        try
+        {
+            return GenerateForEachCoreInner(target, iterator, bodyStatements);
+        }
+        finally
+        {
+            RestoreScope(scopeSnapshot);
+        }
+    }
+
+    private StatementSyntax GenerateForEachCoreInner(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements)
+    {
         if (target is Identifier varName)
         {
             var loopVar = NameMangler.ToCamelCase(varName.Name);

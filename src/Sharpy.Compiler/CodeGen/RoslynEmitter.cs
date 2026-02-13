@@ -162,6 +162,42 @@ internal partial class RoslynEmitter
         _isNullableNarrowing.Remove(variableName);
     }
 
+    /// <summary>
+    /// Snapshot of local scope tracking state, used for block-scoped constructs (for loops).
+    /// </summary>
+    private record ScopeSnapshot(
+        HashSet<string> DeclaredVariables,
+        Dictionary<string, int> VariableVersions,
+        HashSet<string> ConstVariables);
+
+    /// <summary>
+    /// Saves a snapshot of the current local scope state.
+    /// Used before entering a for-loop body so that loop variables
+    /// and body-declared variables are removed from scope after the loop.
+    /// </summary>
+    private ScopeSnapshot SaveScope()
+    {
+        return new ScopeSnapshot(
+            new HashSet<string>(_declaredVariables),
+            new Dictionary<string, int>(_variableVersions),
+            new HashSet<string>(_constVariables));
+    }
+
+    /// <summary>
+    /// Restores the local scope state from a snapshot.
+    /// Variables declared inside the block are removed from scope.
+    /// </summary>
+    private void RestoreScope(ScopeSnapshot snapshot)
+    {
+        _declaredVariables.Clear();
+        _declaredVariables.UnionWith(snapshot.DeclaredVariables);
+        _variableVersions.Clear();
+        foreach (var (k, v) in snapshot.VariableVersions)
+            _variableVersions[k] = v;
+        _constVariables.Clear();
+        _constVariables.UnionWith(snapshot.ConstVariables);
+    }
+
     // Maps original parameter base names (camelCase) to C# replacement names.
     // Used for inlined operator bodies: e.g., "other" → "right".
     private Dictionary<string, string>? _parameterNameOverrides;
