@@ -749,6 +749,21 @@ public class Compiler
         if (moduleInfo.Module == null || moduleInfo.IsNetModule)
             return null;
 
+        // Register the module's own exported symbols into the SymbolTable so that
+        // same-module references (e.g., ValidationResult(...) inside validators.spy)
+        // can be resolved during code generation. In the single-file compilation path,
+        // only explicitly imported symbols are in the SymbolTable; the module's own
+        // types are stored in ModuleInfo.ExportedSymbols by ModuleLoader.
+        var addedSymbols = new List<string>();
+        foreach (var (name, sym) in moduleInfo.ExportedSymbols)
+        {
+            if (symbolTable.Lookup(name, searchParents: false) == null)
+            {
+                symbolTable.TryDefine(sym);
+                addedSymbols.Add(name);
+            }
+        }
+
         var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
         {
             SourceFilePath = moduleInfo.Path,

@@ -1,0 +1,12 @@
+class ValidationResult:
+    is_valid: bool
+    message: str
+
+    def __init__(self, valid: bool, msg: str):
+        self.is_valid = valid
+        self.message = msg
+
+def validate_age(age: int) -> ValidationResult:
+    if age < 0:
+        return ValidationResult(False, "Age cannot be negative")
+    return ValidationResult(True, "Valid age")

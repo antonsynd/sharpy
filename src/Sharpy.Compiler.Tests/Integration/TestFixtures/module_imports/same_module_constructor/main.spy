@@ -1,0 +1,7 @@
+from validators import validate_age
+
+def main():
+    result = validate_age(25)
+    print(result.message)
+    result2 = validate_age(-5)
+    print(result2.message)
