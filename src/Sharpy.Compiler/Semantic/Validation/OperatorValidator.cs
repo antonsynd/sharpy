@@ -410,7 +410,10 @@ internal class OperatorValidator : SemanticValidatorBase
                 "tuple" => dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne,
                 "set" => dunderName is DunderNames.Or or DunderNames.And or DunderNames.Sub or DunderNames.Xor or DunderNames.Eq or DunderNames.Ne,
                 "dict" => dunderName is DunderNames.Or or DunderNames.Eq or DunderNames.Ne,
-                _ => false
+                _ => generic.GenericDefinition != null && (
+                    generic.GenericDefinition.OperatorMethods.ContainsKey(dunderName) ||
+                    (dunderName == DunderNames.Ne && generic.GenericDefinition.OperatorMethods.ContainsKey(DunderNames.Eq)) ||
+                    (dunderName == DunderNames.Eq && generic.GenericDefinition.OperatorMethods.ContainsKey(DunderNames.Ne)))
             };
         }
 

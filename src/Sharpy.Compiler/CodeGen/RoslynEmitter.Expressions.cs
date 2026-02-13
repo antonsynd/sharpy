@@ -554,6 +554,32 @@ internal partial class RoslynEmitter
                 DiagnosticCodes.CodeGen.UnsupportedOperator, binOp.LineStart, binOp.ColumnStart);
         }
 
+        // For == and != on generic type parameters, use EqualityComparer<T>.Default.Equals()
+        // because C# does not allow == on unconstrained generic types
+        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression)
+        {
+            var leftType = GetExpressionSemanticType(binOp.Left);
+            var rightType = GetExpressionSemanticType(binOp.Right);
+            if (leftType is Semantic.TypeParameterType || rightType is Semantic.TypeParameterType)
+            {
+                // EqualityComparer<T>.Default.Equals(left, right)
+                var typeParamType = (leftType as Semantic.TypeParameterType ?? rightType as Semantic.TypeParameterType)!;
+                var equalsCall = InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            GenericName("EqualityComparer")
+                                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(
+                                    (TypeSyntax)IdentifierName(typeParamType.Name)))),
+                            IdentifierName("Default")),
+                        IdentifierName("Equals")))
+                    .AddArgumentListArguments(Argument(left), Argument(right));
+
+                return kind == SyntaxKind.NotEqualsExpression
+                    ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(equalsCall))
+                    : (ExpressionSyntax)equalsCall;
+            }
+        }
+
         return BinaryExpression(kind, left, right);
     }
 

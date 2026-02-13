@@ -286,10 +286,17 @@ internal class TypeInferenceService
         if (dunderName == null)
             return null;
 
-        if (left is UserDefinedType udt && udt.Symbol != null)
+        TypeSymbol? typeSymbol = left switch
+        {
+            UserDefinedType udt => udt.Symbol,
+            GenericType gt => gt.GenericDefinition,
+            _ => null
+        };
+
+        if (typeSymbol != null)
         {
             // Try direct operator
-            if (udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
+            if (typeSymbol.OperatorMethods.TryGetValue(dunderName, out var methods))
             {
                 var bestOverload = FindBestOverload(methods, right);
                 if (bestOverload != null)
@@ -297,7 +304,7 @@ internal class TypeInferenceService
             }
 
             // Try equality complement synthesis
-            var complementResult = TryInferEqualityComplement(op, udt, right);
+            var complementResult = TryInferEqualityComplement(op, typeSymbol, right);
             if (complementResult != null)
                 return complementResult;
         }
@@ -305,24 +312,21 @@ internal class TypeInferenceService
         return null;
     }
 
-    private SemanticType? TryInferEqualityComplement(BinaryOperator op, UserDefinedType udt, SemanticType right)
+    private SemanticType? TryInferEqualityComplement(BinaryOperator op, TypeSymbol typeSymbol, SemanticType right)
     {
-        if (udt.Symbol == null)
-            return null;
-
-        bool hasEq = udt.Symbol.OperatorMethods.ContainsKey(DunderNames.Eq);
-        bool hasNe = udt.Symbol.OperatorMethods.ContainsKey(DunderNames.Ne);
+        bool hasEq = typeSymbol.OperatorMethods.ContainsKey(DunderNames.Eq);
+        bool hasNe = typeSymbol.OperatorMethods.ContainsKey(DunderNames.Ne);
 
         if (op == BinaryOperator.Equal && hasNe && !hasEq)
         {
-            var neMethods = udt.Symbol.OperatorMethods[DunderNames.Ne];
+            var neMethods = typeSymbol.OperatorMethods[DunderNames.Ne];
             var bestOverload = FindBestOverload(neMethods, right);
             if (bestOverload != null)
                 return SemanticType.Bool;
         }
         else if (op == BinaryOperator.NotEqual && hasEq && !hasNe)
         {
-            var eqMethods = udt.Symbol.OperatorMethods[DunderNames.Eq];
+            var eqMethods = typeSymbol.OperatorMethods[DunderNames.Eq];
             var bestOverload = FindBestOverload(eqMethods, right);
             if (bestOverload != null)
                 return SemanticType.Bool;
@@ -352,7 +356,25 @@ internal class TypeInferenceService
             c.Parameters.Count == 2 &&
             argumentType.IsAssignableTo(c.Parameters[1].Type));
 
-        return assignableMatch;
+        if (assignableMatch != null)
+            return assignableMatch;
+
+        // Find generic parameter match: candidate has TypeParameterType args (e.g., Box[T])
+        // and argument is a concrete instantiation (e.g., Box[int])
+        if (argumentType is GenericType argGeneric)
+        {
+            var genericMatch = candidates.FirstOrDefault(c =>
+                c.Parameters.Count == 2 &&
+                c.Parameters[1].Type is GenericType paramGeneric &&
+                paramGeneric.Name == argGeneric.Name &&
+                paramGeneric.TypeArguments.Count == argGeneric.TypeArguments.Count &&
+                paramGeneric.TypeArguments.Any(a => a is TypeParameterType));
+
+            if (genericMatch != null)
+                return genericMatch;
+        }
+
+        return null;
     }
 
     private SemanticType? TryInferClrBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
