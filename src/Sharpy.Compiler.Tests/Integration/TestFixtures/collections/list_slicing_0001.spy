@@ -1,0 +1,7 @@
+# Fix 2: Slice access codegen
+def main():
+    s: str = "hello world"
+    print(s[0:5])
+    print(s[6:])
+    print(s[:5])
+    print(s[::2])

@@ -1,0 +1,18 @@
+# Fix 4: super().__init__() not as first statement
+class Base:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+class Child(Base):
+    extra: int
+
+    def __init__(self, value: int, extra: int):
+        self.extra = extra
+        super().__init__(value)
+
+def main():
+    c: Child = Child(10, 20)
+    print(c.value)
+    print(c.extra)

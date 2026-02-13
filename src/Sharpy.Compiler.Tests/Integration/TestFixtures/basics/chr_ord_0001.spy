@@ -1,0 +1,11 @@
+# Fix 5: chr() and ord() builtins
+def main():
+    print(chr(65))
+    print(chr(97))
+    print(chr(48))
+    print(ord("A"))
+    print(ord("a"))
+    print(ord("0"))
+    # Round-trip
+    print(chr(ord("Z")))
+    print(ord(chr(122)))

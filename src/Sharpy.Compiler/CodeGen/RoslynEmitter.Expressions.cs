@@ -187,33 +187,23 @@ internal partial class RoslynEmitter
         if (call.Function is Identifier funcName)
         {
             // Check if this is a builtin function call (e.g., int(), str(), print(), len(), etc.)
-            // Builtin functions are always invocation expressions, never constructor calls.
             var isBuiltinFunc = _context.IsBuiltinFunction(funcName.Name);
+
+            // User-defined functions shadow builtins (Python scoping rules):
+            // A FunctionSymbol with CodeGenInfo was processed by semantic analysis (user-defined),
+            // while builtin functions from the registry won't have CodeGenInfo set.
+            var symbol = _context.LookupSymbol(funcName.Name);
+            if (isBuiltinFunc && symbol is FunctionSymbol { CodeGenInfo: not null })
+                isBuiltinFunc = false;
 
             // Check if this is a type instantiation (calling a class or struct constructor)
             // We use the symbol table which is populated during semantic analysis.
             // This handles both local type definitions and imported types.
             // NOTE: Builtin functions are NOT type instantiations (e.g., int(x) is a conversion function)
-            var symbol = _context.LookupSymbol(funcName.Name);
             var isTypeInstantiation = !isBuiltinFunc &&
                                       symbol is TypeSymbol typeSymbol &&
                                       (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
                                        typeSymbol.TypeKind == Semantic.TypeKind.Struct);
-
-            string name;
-            if (isBuiltinFunc)
-            {
-                name = $"global::Sharpy.Builtins.{NameMangler.ToPascalCase(funcName.Name)}";
-            }
-            else if (isTypeInstantiation && symbol is TypeSymbol typeSymbolForName)
-            {
-                // For type instantiation, use fully qualified name if type is from another file
-                name = GetFullyQualifiedTypeName(typeSymbolForName, funcName.Name);
-            }
-            else
-            {
-                name = NameMangler.ToPascalCase(funcName.Name);
-            }
 
             // Generate positional arguments
             var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
@@ -226,15 +216,25 @@ internal partial class RoslynEmitter
             // Combine positional and keyword arguments
             var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
 
-            // For type instantiation (class or struct), generate 'new TypeName(args)' instead of 'TypeName(args)'
-            if (isTypeInstantiation)
+            if (isBuiltinFunc)
             {
+                // Use explicit AliasQualifiedName to handle all expression contexts (f-strings, etc.)
+                var builtinName = MakeGlobalQualifiedName("Sharpy", "Builtins", NameMangler.ToPascalCase(funcName.Name));
+                return InvocationExpression(builtinName)
+                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+            }
+
+            if (isTypeInstantiation && symbol is TypeSymbol typeSymbolForName)
+            {
+                // For type instantiation, use fully qualified name if type is from another file
+                var name = GetFullyQualifiedTypeName(typeSymbolForName, funcName.Name);
                 return ObjectCreationExpression(ParseName(name))
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }
 
             // Regular function call
-            return InvocationExpression(ParseName(name))
+            var funcCSharpName = NameMangler.ToPascalCase(funcName.Name);
+            return InvocationExpression(ParseName(funcCSharpName))
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
@@ -268,6 +268,15 @@ internal partial class RoslynEmitter
             var methodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
                 ?? NameMangler.GetListMethodMapping(memberAccess.Member)
                 ?? NameMangler.ToPascalCase(memberAccess.Member);
+
+            // Guard: super().__init__() outside constructor context would produce base.Constructor()
+            // which is invalid C#. This should have been handled in GenerateConstructor.
+            if (methodName == "Constructor" && memberAccess.Object is SuperExpression)
+            {
+                return EmitNotImplementedExpression(
+                    "super().__init__() must be in __init__ method body to be converted to base constructor call",
+                    DiagnosticCodes.CodeGen.UnsupportedFeature, call.LineStart, call.ColumnStart);
+            }
 
             // Property-vs-method dispatch for Optional/Result:
             // is_some/is_none/is_ok/is_err are C# properties, not methods.
@@ -626,11 +635,17 @@ internal partial class RoslynEmitter
     {
         if (expr is Identifier funcName)
         {
-            // Use the same name mangling logic as GenerateCall
-            var name = _context.IsBuiltinFunction(funcName.Name)
-                ? $"global::Sharpy.Builtins.{NameMangler.ToPascalCase(funcName.Name)}"
-                : NameMangler.ToPascalCase(funcName.Name);
-            return ParseName(name);
+            // User-defined functions shadow builtins (Python scoping rules)
+            var isBuiltin = _context.IsBuiltinFunction(funcName.Name);
+            var symbol = _context.LookupSymbol(funcName.Name);
+            if (isBuiltin && symbol is FunctionSymbol { CodeGenInfo: not null })
+                isBuiltin = false;
+
+            if (isBuiltin)
+            {
+                return MakeGlobalQualifiedName("Sharpy", "Builtins", NameMangler.ToPascalCase(funcName.Name));
+            }
+            return ParseName(NameMangler.ToPascalCase(funcName.Name));
         }
 
         // For member access and other expressions, use standard expression generation
@@ -1241,22 +1256,29 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)
     {
         // arr[start:stop:step]
-        // Translates to: global::Sharpy.Slice(arr, start, stop, step)
+        // Translates to: global::Sharpy.Slice.GetSlice(obj, start, stop, step)
+        // where omitted bounds pass null (matching the nullable int? parameters)
         var obj = GenerateExpression(sliceAccess.Object);
         var start = sliceAccess.Start != null
-            ? GenerateExpression(sliceAccess.Start)
+            ? (ExpressionSyntax)CastExpression(
+                NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
+                GenerateExpression(sliceAccess.Start))
             : LiteralExpression(SyntaxKind.NullLiteralExpression);
         var stop = sliceAccess.Stop != null
-            ? GenerateExpression(sliceAccess.Stop)
+            ? (ExpressionSyntax)CastExpression(
+                NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
+                GenerateExpression(sliceAccess.Stop))
             : LiteralExpression(SyntaxKind.NullLiteralExpression);
         var step = sliceAccess.Step != null
-            ? GenerateExpression(sliceAccess.Step)
+            ? (ExpressionSyntax)CastExpression(
+                NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
+                GenerateExpression(sliceAccess.Step))
             : LiteralExpression(SyntaxKind.NullLiteralExpression);
 
         return InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                ParseName("global::Sharpy"),
-                IdentifierName("Slice")))
+                MakeGlobalQualifiedName("Sharpy", "Slice"),
+                IdentifierName("GetSlice")))
             .AddArgumentListArguments(
                 Argument(obj),
                 Argument(start),
@@ -1502,6 +1524,11 @@ internal partial class RoslynEmitter
             }
             else if (part.Expression != null)
             {
+                // IMPORTANT: All interpolation expressions are wrapped in parentheses to prevent
+                // C# parser ambiguity with ':' in interpolation holes. Without parens, expressions
+                // like global::Sharpy.Builtins.Len(x) would be misparsed as
+                // expression 'global' with format '::Sharpy.Builtins.Len(x)'.
+
                 // Special handling for percent format (.N%) - Python's % format doesn't add
                 // a space before %, but .NET's P format does (even with InvariantCulture).
                 // Generate: {value * 100:FN}% instead of {value:PN}
@@ -1513,7 +1540,7 @@ internal partial class RoslynEmitter
                         GenerateExpression(part.Expression),
                         LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(100)));
 
-                    var interpolation = Interpolation(multipliedExpr)
+                    var interpolation = Interpolation(ParenthesizedExpression(multipliedExpr))
                         .WithFormatClause(
                             InterpolationFormatClause(
                                 Token(SyntaxKind.ColonToken),
@@ -1537,7 +1564,7 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    var interpolation = Interpolation(GenerateExpression(part.Expression));
+                    var interpolation = Interpolation(ParenthesizedExpression(GenerateExpression(part.Expression)));
 
                     // Add format specifier if present (e.g., ".2f" in f"{value:.2f}")
                     if (!string.IsNullOrEmpty(part.FormatSpec))

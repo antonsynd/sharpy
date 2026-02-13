@@ -255,30 +255,46 @@ internal partial class RoslynEmitter
             _variableVersions[baseName] = 0;
         }
 
-        // Check if the first statement is a super().__init__() call
-        // This needs to be converted to a constructor initializer (: base(...))
+        // Find super().__init__() anywhere in the body and convert to constructor initializer (: base(...))
         ConstructorInitializerSyntax? baseInitializer = null;
+        int superInitIndex = -1;
+
+        for (int i = 0; i < func.Body.Length; i++)
+        {
+            if (func.Body[i] is ExpressionStatement es &&
+                es.Expression is FunctionCall superCall &&
+                superCall.Function is MemberAccess ma &&
+                ma.Object is SuperExpression &&
+                ma.Member == DunderNames.Init)
+            {
+                superInitIndex = i;
+                break;
+            }
+        }
+
         var bodyStartIndex = 0;
 
-        if (func.Body.Length > 0 && func.Body[0] is ExpressionStatement exprStmt)
+        if (superInitIndex >= 0)
         {
-            // Check if it's super().__init__(...)
-            if (exprStmt.Expression is FunctionCall call &&
-                call.Function is MemberAccess memberAccess &&
-                memberAccess.Object is SuperExpression &&
-                memberAccess.Member == DunderNames.Init)
+            var superStmt = (ExpressionStatement)func.Body[superInitIndex];
+            var superCall = (FunctionCall)superStmt.Expression;
+
+            // Generate the base constructor arguments
+            var baseArgs = superCall.Arguments.Select(arg => Argument(GenerateExpression(arg))).ToArray();
+
+            // Create the base initializer: : base(...)
+            baseInitializer = ConstructorInitializer(
+                SyntaxKind.BaseConstructorInitializer,
+                ArgumentList(SeparatedList(baseArgs)));
+
+            if (superInitIndex == 0)
             {
-                // Generate the base constructor arguments
-                var baseArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg))).ToArray();
-
-                // Create the base initializer: : base(...)
-                baseInitializer = ConstructorInitializer(
-                    SyntaxKind.BaseConstructorInitializer,
-                    ArgumentList(SeparatedList(baseArgs)));
-
-                // Skip this statement in the body (it becomes the initializer)
+                // Simple case: super().__init__() is the first statement, skip it
                 bodyStartIndex = 1;
             }
+            // else: super().__init__() is not the first statement.
+            // We still emit : base(...) and skip the super call during body generation.
+            // Statements before the super call are emitted as regular constructor body.
         }
 
         // Generate constructor body
@@ -288,6 +304,10 @@ internal partial class RoslynEmitter
 
         for (int i = bodyStartIndex; i < func.Body.Length; i++)
         {
+            // Skip the super().__init__() call — it was already converted to : base(...)
+            if (i == superInitIndex)
+                continue;
+
             var stmt = func.Body[i];
 
             // Convert self.field = value to this.Field = value (capitalized)

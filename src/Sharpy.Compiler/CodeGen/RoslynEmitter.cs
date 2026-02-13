@@ -182,6 +182,22 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Build a fully-qualified name using the global:: alias qualifier via explicit Roslyn syntax nodes.
+    /// ParseName("global::X.Y") misparses "global" as a regular identifier instead of the alias qualifier,
+    /// which breaks in constrained expression contexts (e.g., f-string interpolation holes).
+    /// </summary>
+    /// <param name="parts">The namespace/type segments after global:: (e.g., "Sharpy", "Builtins", "Len").</param>
+    private static NameSyntax MakeGlobalQualifiedName(params string[] parts)
+    {
+        NameSyntax name = AliasQualifiedName(
+            IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+            IdentifierName(parts[0]));
+        for (int i = 1; i < parts.Length; i++)
+            name = QualifiedName(name, IdentifierName(parts[i]));
+        return name;
+    }
+
+    /// <summary>
     /// Resolve the C# name for a variable using CodeGenInfo.
     /// Returns null if CodeGenInfo is not available or if this is a local redeclaration.
     /// </summary>

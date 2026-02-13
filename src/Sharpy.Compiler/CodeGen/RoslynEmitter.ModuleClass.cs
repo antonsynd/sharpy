@@ -298,7 +298,7 @@ internal partial class RoslynEmitter
             moduleClassDecl = moduleClassDecl
                 .WithAttributeLists(SingletonList(
                     AttributeList(SingletonSeparatedList(
-                        Attribute(ParseName("global::Sharpy.SharpyModule"),
+                        Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyModule"),
                             AttributeArgumentList(SingletonSeparatedList(
                                 AttributeArgument(LiteralExpression(
                                     SyntaxKind.StringLiteralExpression,

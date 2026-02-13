@@ -1,0 +1,7 @@
+# Fix 1: global:: qualified names in f-string interpolation contexts
+def main():
+    items: list[int] = [1, 2, 3]
+    print(f"Length: {len(items)}")
+    name: str = "hello"
+    print(f"Upper: {len(name)}")
+    print(f"Combined: {len(items)} items, {len(name)} chars")
