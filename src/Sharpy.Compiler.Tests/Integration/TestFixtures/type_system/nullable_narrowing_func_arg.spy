@@ -1,0 +1,15 @@
+# Test nullable narrowing: narrowed int | None passed to function expecting int
+def double_it(n: int) -> int:
+    return n * 2
+
+def main():
+    x: int | None = 21
+    if x is not None:
+        result: int = double_it(x)
+        print(result)
+
+    y: int | None = None
+    if y is not None:
+        print(double_it(y))
+    else:
+        print("y is none")

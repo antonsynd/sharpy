@@ -1,0 +1,15 @@
+# Test narrowing two nullable params independently
+def add_both(a: int | None, b: int | None) -> int:
+    if a is not None and b is not None:
+        return a + b
+    if a is not None:
+        return a
+    if b is not None:
+        return b
+    return 0
+
+def main():
+    print(add_both(10, 20))
+    print(add_both(5, None))
+    print(add_both(None, 7))
+    print(add_both(None, None))

@@ -1,0 +1,13 @@
+# Test nullable narrowing inside for-loop body
+def maybe_value(i: int) -> int | None:
+    if i % 2 == 0:
+        return i
+    return None
+
+def main():
+    total: int = 0
+    for i in range(6):
+        v: int | None = maybe_value(i)
+        if v is not None:
+            total += v
+    print(total)
