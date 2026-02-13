@@ -1,0 +1,26 @@
+# Test null coalescing operator (??) with nullable (T | None) types
+def main():
+    x: int | None = 42
+    y: int | None = None
+
+    a: int = x ?? 0
+    print(a)
+
+    b: int = y ?? 99
+    print(b)
+
+    # Chain of null coalescing: nullable ?? nullable ?? concrete
+    first: int | None = None
+    second: int | None = None
+    third: int = 77
+    result: int = first ?? second ?? third
+    print(result)
+
+    # String coalescing
+    name: str | None = None
+    default_name: str = name ?? "Guest"
+    print(default_name)
+
+    present: str | None = "Alice"
+    used_name: str = present ?? "Guest"
+    print(used_name)

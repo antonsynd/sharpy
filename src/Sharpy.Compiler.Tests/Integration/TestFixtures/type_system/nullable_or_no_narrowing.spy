@@ -1,0 +1,15 @@
+# Test that `or` patterns do NOT narrow (can't guarantee which side is non-null)
+def main():
+    x: int | None = 10
+    y: int | None = None
+    if x is not None or y is not None:
+        # Neither x nor y should be narrowed
+        print((x ?? 0) + (y ?? 0))
+
+    # Both None case
+    a: int | None = None
+    b: int | None = None
+    if a is not None or b is not None:
+        print("at least one")
+    else:
+        print("neither")

@@ -1,0 +1,14 @@
+# Test: Nested function does NOT inherit nullable type narrowing from enclosing scope
+# Narrowing is control-flow based, not lexical. A nested function defined inside a
+# narrowing block should NOT see the narrowed type because it could be called later
+# when the narrowing condition no longer holds.
+
+def main():
+    x: int | None = 42
+    if x is not None:
+        # x is narrowed to int here in the outer function
+        print(x + 1)  # This works - x is narrowed
+
+        def inner() -> None:
+            # x should NOT be narrowed here - inner() has its own isolated scope
+            print(x + 1)  # This should error: int | None doesn't support +

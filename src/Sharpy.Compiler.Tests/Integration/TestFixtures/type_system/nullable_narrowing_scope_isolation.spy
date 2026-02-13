@@ -1,0 +1,18 @@
+# Test that nullable narrowing does NOT leak across function scopes.
+# Before a fix, _narrowedOptionals was not cleared between functions,
+# so narrowing in func_a could leak into func_b.
+
+def func_a(x: int | None) -> None:
+    if x is not None:
+        print(x + 1)
+    else:
+        print("none")
+
+def func_b(x: int | None) -> None:
+    # x should NOT be narrowed here - func_a's narrowing must not leak
+    print(x ?? 99)
+
+def main():
+    func_a(10)
+    func_b(42)
+    func_b(None)

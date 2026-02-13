@@ -1,0 +1,27 @@
+# Test basic nullable (T | None) operations: assignment, None check, narrowing, coalescing
+def main():
+    x: int | None = 42
+    y: int | None = None
+
+    # Narrowing with is not None
+    if x is not None:
+        print(x + 1)
+
+    # Narrowing with is None
+    if y is None:
+        print("y is null")
+
+    # Null coalescing
+    a: int = x ?? 0
+    print(a)
+
+    b: int = y ?? 99
+    print(b)
+
+    # String nullable
+    s: str | None = "hello"
+    t: str | None = None
+
+    if s is not None:
+        print(s)
+    print(t ?? "default")

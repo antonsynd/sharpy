@@ -1,0 +1,42 @@
+# Test functions returning T | None
+
+def find_positive(x: int) -> int | None:
+    if x > 0:
+        return x
+    return None
+
+def add_prefix(s: str | None) -> str | None:
+    if s is not None:
+        return f"[{s}]"
+    return None
+
+def chain(x: int) -> str | None:
+    result: int | None = find_positive(x)
+    if result is not None:
+        return f"found: {result}"
+    return None
+
+def main():
+    r1: int | None = find_positive(42)
+    if r1 is not None:
+        print(r1)
+    else:
+        print("none")
+
+    r2: int | None = find_positive(-5)
+    if r2 is not None:
+        print(r2)
+    else:
+        print("none")
+
+    # Coalescing with function return
+    print(find_positive(10) ?? -1)
+    print(find_positive(-3) ?? -1)
+
+    # String nullable return
+    print(add_prefix("hello") ?? "empty")
+    print(add_prefix(None) ?? "empty")
+
+    # Chained nullable function calls
+    print(chain(7) ?? "nothing")
+    print(chain(-1) ?? "nothing")

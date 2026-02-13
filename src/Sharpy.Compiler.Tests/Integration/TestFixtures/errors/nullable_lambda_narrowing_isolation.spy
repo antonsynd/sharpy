@@ -1,0 +1,13 @@
+# Test: Lambda does NOT inherit nullable type narrowing from enclosing scope
+# Like nested functions, lambdas should have isolated narrowing scopes.
+# A lambda defined inside a narrowing block could be called later when the
+# narrowing condition no longer holds.
+
+def main():
+    x: int | None = 42
+    if x is not None:
+        # x is narrowed to int here in the outer scope
+        print(x + 1)  # This works - x is narrowed
+
+        # Lambda should NOT see x as narrowed
+        f = lambda: x + 1  # This should error: int | None doesn't support +

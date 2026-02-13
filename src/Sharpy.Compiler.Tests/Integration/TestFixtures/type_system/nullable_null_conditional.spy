@@ -1,0 +1,71 @@
+# Test null conditional operator (?.) with nullable (T | None) types on classes
+
+class Address:
+    street: str | None
+    city: str | None
+
+    def __init__(self, street: str | None, city: str | None):
+        self.street = street
+        self.city = city
+
+    def get_city(self) -> str | None:
+        return self.city
+
+    def get_street(self) -> str | None:
+        return self.street
+
+class Person:
+    name: str
+    address: Address | None
+
+    def __init__(self, name: str, address: Address | None):
+        self.name = name
+        self.address = address
+
+    def get_city_name(self) -> str | None:
+        return self.address?.get_city()
+
+    def get_street_name(self) -> str | None:
+        return self.address?.get_street()
+
+def main():
+    # Test with full data
+    addr1 = Address("Main Street", "Springfield")
+    person1 = Person("Alice", addr1)
+
+    city1: str | None = person1.get_city_name()
+    if city1 is not None:
+        print(city1)
+    else:
+        print("no city")
+
+    street1: str | None = person1.get_street_name()
+    if street1 is not None:
+        print(street1)
+    else:
+        print("no street")
+
+    # Test with null address
+    person2 = Person("Bob", None)
+
+    city2: str | None = person2.get_city_name()
+    if city2 is not None:
+        print(city2)
+    else:
+        print("no city")
+
+    # Test with partial null data
+    addr3 = Address(None, "Boston")
+    person3 = Person("Charlie", addr3)
+
+    city3: str | None = person3.get_city_name()
+    if city3 is not None:
+        print(city3)
+    else:
+        print("no city")
+
+    street3: str | None = person3.get_street_name()
+    if street3 is not None:
+        print(street3)
+    else:
+        print("no street")
