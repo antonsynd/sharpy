@@ -269,6 +269,7 @@ Available in `.claude/skills/`:
 | `/project:compiler-audit [focus]` | Run a comprehensive compiler health audit |
 | `/project:verify-plan <plan.md>` | Verify a plan for accuracy and architectural soundness |
 | `/project:implement-plan <plan.md>` | Implement a plan with a coordinated agent team |
+| `/project:verify-implementation <plan.md>` | Verify completed implementation, fix gaps/bugs/regressions, commit fixes |
 
 ## Testing
 
