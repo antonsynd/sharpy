@@ -1,0 +1,20 @@
+# Test: Optional type with basic value operations
+def get_score(has_value: bool) -> int?:
+    if has_value:
+        return Some(42)
+    return None()
+
+def main():
+    score1: int? = get_score(True)
+    score2: int? = get_score(False)
+    
+    print(score1.unwrap())
+    print(score2.unwrap_or(0))
+    
+    doubled: int? = score1.map(lambda x: x * 2)
+    print(doubled.unwrap())
+
+# EXPECTED OUTPUT:
+# 42
+# 0
+# 84

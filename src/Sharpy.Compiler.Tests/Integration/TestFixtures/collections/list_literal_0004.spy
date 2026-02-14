@@ -1,0 +1,47 @@
+# Test: List literals with different element types and operations
+# Focus: List creation, indexing, length, mutation, mixed operations
+
+class StudentGrades:
+    student_name: str
+    scores: list[int]
+
+    def __init__(self, name: str):
+        self.student_name = name
+        self.scores = [0, 0, 0, 0, 0]
+
+    def set_score(self, index: int, score: int) -> None:
+        self.scores[index] = score
+
+    def get_average(self) -> float:
+        total: int = 0
+        for score in self.scores:
+            total += score
+        return total / len(self.scores)
+
+def main():
+    primes: list[int] = [2, 3, 5, 7, 11]
+    print(len(primes))
+    print(primes[0])
+    print(primes[4])
+    
+    names: list[str] = ["Alice", "Bob", "Charlie"]
+    print(names[1])
+    
+    student = StudentGrades("Diana")
+    student.set_score(0, 95)
+    student.set_score(1, 88)
+    student.set_score(2, 92)
+    student.set_score(3, 87)
+    student.set_score(4, 90)
+    
+    avg: float = student.get_average()
+    print(avg)
+    print(student.scores[2])
+
+# EXPECTED OUTPUT:
+# 5
+# 2
+# 11
+# Bob
+# 90.4
+# 92

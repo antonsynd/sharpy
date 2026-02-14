@@ -1,0 +1,18 @@
+# Test: List literal with empty list, single element, and multiple elements
+def main():
+    empty: list[int] = []
+    single: list[int] = [42]
+    multiple: list[int] = [10, 20, 30]
+    
+    print(len(empty))
+    print(len(single))
+    print(single[0])
+    print(len(multiple))
+    print(multiple[1])
+
+# EXPECTED OUTPUT:
+# 0
+# 1
+# 42
+# 3
+# 20

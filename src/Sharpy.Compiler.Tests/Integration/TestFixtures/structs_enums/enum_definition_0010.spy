@@ -1,0 +1,52 @@
+# Test: enum with color codes and operations
+# Tests: enum definition, enum comparison, enum in conditionals
+
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+    YELLOW = 4
+
+class Palette:
+    primary: Color
+    secondary: Color
+
+    def __init__(self, p: Color, s: Color):
+        self.primary = p
+        self.secondary = s
+
+    def is_primary_warm(self) -> bool:
+        return self.primary == Color.RED or self.primary == Color.YELLOW
+
+    def is_cool_combination(self) -> bool:
+        return self.primary == Color.BLUE or self.secondary == Color.GREEN
+
+def main():
+    print(Color.RED)
+    print(Color.GREEN)
+    
+    palette = Palette(Color.RED, Color.BLUE)
+    print(palette.primary)
+    print(palette.secondary)
+    
+    if palette.is_primary_warm():
+        print("Warm primary color")
+    
+    if not palette.is_cool_combination():
+        print("Not a cool combination")
+    
+    if palette.primary == Color.RED:
+        print("Primary is red")
+    
+    if palette.secondary != Color.YELLOW:
+        print("Secondary is not yellow")
+
+# EXPECTED OUTPUT:
+# Red
+# Green
+# Red
+# Blue
+# Warm primary color
+# Not a cool combination
+# Primary is red
+# Secondary is not yellow
