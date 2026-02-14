@@ -195,10 +195,9 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        // Should generate List<int>, not List<object>
-        // v0.1.x uses .NET types directly per phases.md
-        Assert.Contains("System.Collections.Generic.List<int>", result);
-        Assert.Contains("new System.Collections.Generic.List<int>", result);
+        // Should generate Sharpy.List<int>, not List<object>
+        Assert.Contains("Sharpy.List<int>", result);
+        Assert.Contains("new Sharpy.List<int>", result);
         Assert.DoesNotContain("List<object>", result);
     }
 
@@ -266,11 +265,10 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        // Should generate HashSet<int>
-        // v0.1.x uses .NET types directly per phases.md
-        Assert.Contains("System.Collections.Generic.HashSet<int>", result);
-        Assert.Contains("new System.Collections.Generic.HashSet<int>", result);
-        Assert.DoesNotContain("HashSet<object>", result);
+        // Should generate Sharpy.Set<int>
+        Assert.Contains("Sharpy.Set<int>", result);
+        Assert.Contains("new Sharpy.Set<int>", result);
+        Assert.DoesNotContain("Set<object>", result);
     }
 
     [Fact]
@@ -293,9 +291,8 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        // Should infer List<int> from element types
-        // v0.1.x uses .NET types directly per phases.md
-        Assert.Contains("new System.Collections.Generic.List<int>", result);
+        // Should infer Sharpy.List<int> from element types
+        Assert.Contains("new Sharpy.List<int>", result);
     }
 
     #endregion

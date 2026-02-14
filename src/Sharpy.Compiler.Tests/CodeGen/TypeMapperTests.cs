@@ -161,7 +161,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("System.Collections.Generic.List<int>");
+        result.ToString().Should().Be("Sharpy.List<int>");
     }
 
     [Fact]
@@ -202,7 +202,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("System.Collections.Generic.HashSet<string>");
+        result.ToString().Should().Be("Sharpy.Set<string>");
     }
 
     [Fact]
@@ -223,7 +223,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Optional<System.Collections.Generic.List<int>>");
+        result.ToString().Should().Be("Optional<Sharpy.List<int>>");
     }
 
     #endregion
@@ -449,7 +449,7 @@ public class TypeMapperTests
         var result = _typeMapper.CreateCollectionType("list", elementType);
 
         // Assert
-        result.ToString().Should().Be("System.Collections.Generic.List<int>");
+        result.ToString().Should().Be("Sharpy.List<int>");
     }
 
     [Fact]

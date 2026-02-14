@@ -11,7 +11,7 @@ public static partial class ListComprehension
     public static void Main()
     {
 #line 3 "list_comprehension.spy"
-        System.Collections.Generic.List<int> result = global::Sharpy.Builtins.Range(5).Select(x => x * 2).ToList();
+        Sharpy.List<int> result = new Sharpy.List<int>(global::Sharpy.Builtins.Range(5).Select(x => x * 2));
 #line 4 "list_comprehension.spy"
         foreach (var __loopVar_0 in result)
         {

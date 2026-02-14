@@ -792,8 +792,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - should generate Optional<System.Collections.Generic.List<int>>
-        Assert.Contains("Optional<System.Collections.Generic.List<int>>", code);
+        // Assert - should generate Optional<Sharpy.List<int>>
+        Assert.Contains("Optional<Sharpy.List<int>>", code);
     }
 
     [Fact]
@@ -836,8 +836,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - should generate System.Collections.Generic.List<Optional<int>>
-        Assert.Contains("System.Collections.Generic.List<Optional<int>>", code);
+        // Assert - should generate Sharpy.List<Optional<int>>
+        Assert.Contains("Sharpy.List<Optional<int>>", code);
     }
 
     #endregion

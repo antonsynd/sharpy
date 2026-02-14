@@ -23,16 +23,13 @@ internal static class NameMangler
     };
 
     // Python list method mappings to C# equivalents
-    // These are needed because Python and C# have different names for the same operations
+    // With Sharpy.List<T>, Pythonic method names are used directly (Append, Extend, Pop, etc.)
+    // so most mappings just use ToPascalCase. Only add entries here for methods whose
+    // PascalCase name differs from the target C# method name.
     //
     // See: #99 (unconditional mapping should use type information from semantic analysis)
     private static readonly Dictionary<string, string> _listMethodMap = new()
     {
-        { "append", "Add" },      // Python list.append() -> C# List.Add()
-        { "extend", "AddRange" }, // Python list.extend() -> C# List.AddRange()
-        { "pop", "RemoveAt" },    // Python list.pop(i) -> C# List.RemoveAt(i) (Note: pop() without args needs special handling)
-        { "remove", "Remove" },   // Python list.remove() -> C# List.Remove()
-        { "clear", "Clear" },     // Same name, but included for completeness
     };
 
     /// <summary>

@@ -130,8 +130,9 @@ internal class TypeMapper
         var genericDef = clrType.GetGenericTypeDefinition();
         var typeArgs = clrType.GetGenericArguments();
 
-        // List<T> or IList<T>
-        if (IsGenericTypeDefinition(genericDef, typeof(List<>)) ||
+        // Sharpy.List<T>, List<T>, or IList<T>
+        if (genericDef.FullName == "Sharpy.List`1" ||
+            IsGenericTypeDefinition(genericDef, typeof(List<>)) ||
             IsGenericTypeDefinition(genericDef, typeof(IList<>)))
         {
             return new GenericType
@@ -159,8 +160,9 @@ internal class TypeMapper
             };
         }
 
-        // HashSet<T> or ISet<T>
-        if (IsGenericTypeDefinition(genericDef, typeof(HashSet<>)) ||
+        // Sharpy.Set<T>, HashSet<T>, or ISet<T>
+        if (genericDef.FullName == "Sharpy.Set`1" ||
+            IsGenericTypeDefinition(genericDef, typeof(HashSet<>)) ||
             IsGenericTypeDefinition(genericDef, typeof(ISet<>)))
         {
             return new GenericType

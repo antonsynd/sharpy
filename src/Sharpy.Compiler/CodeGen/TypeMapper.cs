@@ -29,10 +29,9 @@ internal class TypeMapper
         }
 
         // Add non-primitive type mappings (collections, etc.)
-        // v0.1.x uses .NET types directly per phases.md (Sharpy.Core wrappers in v0.2.x+)
-        _builtinTypeMap["list"] = "System.Collections.Generic.List";
+        _builtinTypeMap["list"] = "Sharpy.List";
         _builtinTypeMap["dict"] = "Dict";
-        _builtinTypeMap["set"] = "System.Collections.Generic.HashSet";
+        _builtinTypeMap["set"] = "Sharpy.Set";
         _builtinTypeMap["tuple"] = "System.ValueTuple";
     }
 

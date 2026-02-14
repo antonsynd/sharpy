@@ -11,7 +11,7 @@ public static partial class SetComprehension
     public static void Main()
     {
 #line 3 "set_comprehension.spy"
-        System.Collections.Generic.List<int> items = new System.Collections.Generic.List<int>()
+        Sharpy.List<int> items = new Sharpy.List<int>()
         {
             1,
             2,
@@ -21,7 +21,7 @@ public static partial class SetComprehension
             3
         };
 #line 4 "set_comprehension.spy"
-        System.Collections.Generic.HashSet<int> result = items.Select(x => x).ToHashSet();
+        Sharpy.Set<int> result = new Sharpy.Set<int>(items.Select(x => x));
 #line 5 "set_comprehension.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(result));
     }

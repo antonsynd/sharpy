@@ -9,11 +9,11 @@ public static partial class DunderLen
 {
     public class MyList : Sharpy.ISized
     {
-        public System.Collections.Generic.List<int> Items;
+        public Sharpy.List<int> Items;
         public void Add(int item)
         {
 #line 9 "dunder_len.spy"
-            this.Items.Add(item);
+            this.Items.Append(item);
         }
 
         public int Count
@@ -28,7 +28,7 @@ public static partial class DunderLen
         public MyList()
         {
 #line 6 "dunder_len.spy"
-            this.Items = new System.Collections.Generic.List<int>()
+            this.Items = new Sharpy.List<int>()
             {
             };
         }

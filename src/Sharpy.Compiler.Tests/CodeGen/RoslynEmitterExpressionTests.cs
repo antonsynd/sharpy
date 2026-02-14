@@ -136,8 +136,7 @@ public class RoslynEmitterExpressionTests
         var result = InvokeGenerateExpression(expr);
 
         // Assert
-        // v0.1.x uses .NET types directly per phases.md
-        result.ToString().Should().Contain("System.Collections.Generic.List");
+        result.ToString().Should().Contain("Sharpy.List");
     }
 
     [Fact]
@@ -159,8 +158,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        // v0.1.x uses .NET types directly per phases.md
-        code.Should().Contain("System.Collections.Generic.List<int>");
+        code.Should().Contain("Sharpy.List<int>");
         code.Should().Contain("1");
         code.Should().Contain("2");
         code.Should().Contain("3");
@@ -215,8 +213,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        // v0.1.x uses .NET types directly per phases.md
-        code.Should().Contain("System.Collections.Generic.HashSet<int>");
+        code.Should().Contain("Sharpy.Set<int>");
     }
 
     [Fact]

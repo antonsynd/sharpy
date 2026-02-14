@@ -769,8 +769,7 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateListLiteral(ListLiteral list)
     {
-        // new System.Collections.Generic.List<T> { elem1, elem2, elem3 }
-        // v0.1.x uses .NET types directly per phases.md
+        // new Sharpy.List<T> { elem1, elem2, elem3 }
         // Prefer target type annotation if available (e.g., list[int] = [...])
         TypeSyntax elementType;
         if (_targetTypeContext != null &&
@@ -788,7 +787,7 @@ internal partial class RoslynEmitter
 
         var elements = list.Elements.Select(GenerateExpression);
 
-        var listType = GenericName("System.Collections.Generic.List")
+        var listType = GenericName("Sharpy.List")
             .AddTypeArgumentListArguments(elementType);
 
         return ObjectCreationExpression(listType)
@@ -837,8 +836,7 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateSetLiteral(SetLiteral set)
     {
-        // new System.Collections.Generic.HashSet<T> { elem1, elem2, elem3 }
-        // v0.1.x uses .NET types directly per phases.md
+        // new Sharpy.Set<T> { elem1, elem2, elem3 }
         // Prefer target type annotation if available (e.g., set[int] = {...})
         TypeSyntax elementType;
         if (_targetTypeContext != null &&
@@ -854,7 +852,7 @@ internal partial class RoslynEmitter
 
         var elements = set.Elements.Select(GenerateExpression);
 
-        var setType = GenericName("System.Collections.Generic.HashSet")
+        var setType = GenericName("Sharpy.Set")
             .AddTypeArgumentListArguments(elementType);
 
         return ObjectCreationExpression(setType)
@@ -894,9 +892,9 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateListComprehension(ListComprehension listComp)
     {
-        // Generate LINQ method chain: iterator.Where(...).Select(...).ToList()
+        // Generate: new Sharpy.List<T>(iterator.Where(...).Select(...))
         // Example: [x * 2 for x in items if x > 0]
-        // becomes: items.Where(x => x > 0).Select(x => x * 2).ToList()
+        // becomes: new Sharpy.List<int>(items.Where(x => x > 0).Select(x => x * 2))
 
         var (chain, param, errorExpr) = GenerateComprehensionChain(
             listComp.Clauses, "List", listComp.LineStart, listComp.ColumnStart);
@@ -904,7 +902,7 @@ internal partial class RoslynEmitter
         if (errorExpr != null)
             return errorExpr;
 
-        // Apply .Select(x => element_expression).ToList()
+        // Apply .Select(x => element_expression)
         var elementExpr = GenerateExpression(listComp.Element);
         var selectLambda = SimpleLambdaExpression(param)
             .WithExpressionBody(elementExpr);
@@ -916,19 +914,24 @@ internal partial class RoslynEmitter
                 IdentifierName("Select")))
             .AddArgumentListArguments(Argument(selectLambda));
 
-        return InvocationExpression(
-            MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                chain,
-                IdentifierName("ToList")))
-            .WithArgumentList(ArgumentList());
+        // Wrap in new Sharpy.List<T>(chain) using semantic type info for T
+        var elementSemanticType = GetExpressionSemanticType(listComp.Element);
+        var elementTypeSyntax = elementSemanticType != null
+            ? _typeMapper.MapSemanticType(elementSemanticType)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+        var listType = GenericName("Sharpy.List")
+            .AddTypeArgumentListArguments(elementTypeSyntax);
+
+        return ObjectCreationExpression(listType)
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(chain))));
     }
 
     private ExpressionSyntax GenerateSetComprehension(SetComprehension setComp)
     {
-        // Generate LINQ method chain: iterator.Where(...).Select(...).ToHashSet()
+        // Generate: new Sharpy.Set<T>(iterator.Where(...).Select(...))
         // Example: {x * 2 for x in items if x > 0}
-        // becomes: items.Where(x => x > 0).Select(x => x * 2).ToHashSet()
+        // becomes: new Sharpy.Set<int>(items.Where(x => x > 0).Select(x => x * 2))
 
         var (chain, param, errorExpr) = GenerateComprehensionChain(
             setComp.Clauses, "Set", setComp.LineStart, setComp.ColumnStart);
@@ -936,7 +939,7 @@ internal partial class RoslynEmitter
         if (errorExpr != null)
             return errorExpr;
 
-        // Apply .Select(x => element_expression).ToHashSet()
+        // Apply .Select(x => element_expression)
         var elementExpr = GenerateExpression(setComp.Element);
         var selectLambda = SimpleLambdaExpression(param)
             .WithExpressionBody(elementExpr);
@@ -948,12 +951,17 @@ internal partial class RoslynEmitter
                 IdentifierName("Select")))
             .AddArgumentListArguments(Argument(selectLambda));
 
-        return InvocationExpression(
-            MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                chain,
-                IdentifierName("ToHashSet")))
-            .WithArgumentList(ArgumentList());
+        // Wrap in new Sharpy.Set<T>(chain) using semantic type info for T
+        var elementSemanticType = GetExpressionSemanticType(setComp.Element);
+        var elementTypeSyntax = elementSemanticType != null
+            ? _typeMapper.MapSemanticType(elementSemanticType)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+        var setType = GenericName("Sharpy.Set")
+            .AddTypeArgumentListArguments(elementTypeSyntax);
+
+        return ObjectCreationExpression(setType)
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(chain))));
     }
 
     private ExpressionSyntax GenerateDictComprehension(DictComprehension dictComp)

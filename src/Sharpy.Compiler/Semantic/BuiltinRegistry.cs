@@ -54,11 +54,10 @@ internal class BuiltinRegistry
             RegisterType(info.SharpyName, info.ClrType, kind);
         }
 
-        // Collections (generic) - v0.1.x uses .NET types directly per phases.md
-        // Sharpy.Core wrapper types will be introduced in v0.2.x+
-        RegisterType("list", typeof(System.Collections.Generic.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        // Collections (generic) - use Sharpy.Core wrapper types
+        RegisterType("list", typeof(SharpyRT::Sharpy.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
         RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
-        RegisterType("set", typeof(System.Collections.Generic.HashSet<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        RegisterType("set", typeof(SharpyRT::Sharpy.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
 
         // Special
         RegisterType("object", typeof(object), TypeKind.Class);

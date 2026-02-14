@@ -8,7 +8,7 @@ using global::Sharpy;
 
 public static partial class ListShorthand
 {
-    public static int SumList(System.Collections.Generic.List<int> items)
+    public static int SumList(Sharpy.List<int> items)
     {
 #line 3 "list_shorthand.spy"
         int total = 0;
@@ -27,7 +27,7 @@ public static partial class ListShorthand
     public static void Main()
     {
 #line 9 "list_shorthand.spy"
-        System.Collections.Generic.List<int> numbers = new System.Collections.Generic.List<int>()
+        Sharpy.List<int> numbers = new Sharpy.List<int>()
         {
             1,
             2,
