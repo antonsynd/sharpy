@@ -154,7 +154,7 @@ The `RoslynEmitter` is split into 8 partial classes (~6,225 lines total): `Rosly
 - Local variables → runtime tracking via `_variableVersions` (handles redeclarations: x, x_1, x_2)
 - Types → SymbolTable lookup
 
-**Type mappings** (`CodeGen/TypeMapper.cs`): `int` → `int`, `long` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `System.Collections.Generic.List<T>`, `dict[K,V]` → `System.Collections.Generic.Dictionary<K,V>` (v0.1.x uses .NET types directly; Sharpy.Core wrappers planned for v0.2.x+). Note: a separate `Discovery/TypeMapper.cs` maps CLR types back to Sharpy `SemanticType` instances.
+**Type mappings** (`CodeGen/TypeMapper.cs`): `int` → `int`, `long` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `Sharpy.List<T>`, `dict[K,V]` → `Dict<K,V>`, `set[T]` → `Sharpy.Set<T>` (Sharpy.Core wrappers delegate to .NET types internally). Note: a separate `Discovery/TypeMapper.cs` maps CLR types back to Sharpy `SemanticType` instances.
 
 **Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__init__` → constructor, `__add__` → `operator+`, `__str__` → `ToString()`
 
