@@ -365,21 +365,13 @@ internal partial class RoslynEmitter
                 else
                 {
                     // Other assignments, generate normally
-                    var genStmt = GenerateBodyStatement(stmt);
-                    if (genStmt != null)
-                    {
-                        bodyStatements.Add(genStmt);
-                    }
+                    bodyStatements.AddRange(GenerateBodyStatements(stmt));
                 }
             }
             else
             {
                 // Other statements, generate normally
-                var genStmt = GenerateBodyStatement(stmt);
-                if (genStmt != null)
-                {
-                    bodyStatements.Add(genStmt);
-                }
+                bodyStatements.AddRange(GenerateBodyStatements(stmt));
             }
         }
 
@@ -528,7 +520,7 @@ internal partial class RoslynEmitter
         else
         {
             // Generate method body for concrete methods
-            var userStatements = func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>();
+            var userStatements = func.Body.SelectMany(GenerateBodyStatements);
 
             // For __eq__ implementing IEquatable<T> on classes, prepend null guard:
             //   if (other is null) return false;
@@ -591,8 +583,7 @@ internal partial class RoslynEmitter
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
         var bodyStatements = func.Body
-            .Select(GenerateBodyStatement)
-            .OfType<StatementSyntax>();
+            .SelectMany(GenerateBodyStatements);
 
         var getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
             .WithBody(Block(bodyStatements));
@@ -629,8 +620,7 @@ internal partial class RoslynEmitter
 
         // Generate getter body from __len__ body
         var bodyStatements = func.Body
-            .Select(GenerateBodyStatement)
-            .OfType<StatementSyntax>();
+            .SelectMany(GenerateBodyStatements);
 
         var getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
             .WithBody(Block(bodyStatements));
@@ -690,7 +680,7 @@ internal partial class RoslynEmitter
                 _variableVersions[baseName] = 0;
             }
 
-            var body = Block(funcDef.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
 
             var nextImpl = MethodDeclaration(elementType, "__NextImpl__")
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)))
@@ -978,15 +968,51 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapType(func.ReturnType)
             : PredefinedType(Token(SyntaxKind.VoidKeyword));
 
-        // Interface methods have no modifiers and no body
+        // Interface methods skip 'self' parameter
         var parameters = func.Parameters
             .Where(p => p.Name != "self")
             .Select(GenerateParameter)
             .ToArray();
 
         var method = MethodDeclaration(returnType, mangledName)
-            .WithParameterList(ParameterList(SeparatedList(parameters)))
-            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+            .WithParameterList(ParameterList(SeparatedList(parameters)));
+
+        // Check if this is an abstract method (body is single ellipsis or pass)
+        bool isAbstract = func.Body.Length == 1 &&
+            (func.Body[0] is PassStatement ||
+             (func.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral));
+
+        if (isAbstract)
+        {
+            // Abstract interface method: no body, just semicolon
+            method = method.WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        }
+        else
+        {
+            // Default interface method: emit the full body
+            _declaredVariables.Clear();
+            _variableVersions.Clear();
+            _constVariables.Clear();
+            _sourceVariableNames.Clear();
+            _narrowedOptionals.Clear();
+            _isNullableNarrowing.Clear();
+            CollectSourceVariableNames(func.Body);
+
+            // Track parameters as declared variables (skip self)
+            foreach (var param in func.Parameters)
+            {
+                if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                _declaredVariables.Add(paramName);
+                var baseName = NameMangler.ToCamelCase(param.Name);
+                _variableVersions[baseName] = 0;
+            }
+
+            var bodyStatements = func.Body
+                .SelectMany(GenerateBodyStatements);
+            method = method.WithBody(Block(bodyStatements));
+        }
 
         // Add XML documentation from docstring if present
         if (!string.IsNullOrEmpty(func.DocString))

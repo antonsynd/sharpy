@@ -583,6 +583,21 @@ internal partial class TypeChecker
             }
         }
 
+        // Type-check default method bodies (methods with real implementations)
+        // Set _currentClass to the interface symbol so CheckFunction resolves self correctly
+        var previousClass = _currentClass;
+        _currentClass = interfaceSymbol;
+
+        foreach (var statement in interfaceDef.Body)
+        {
+            if (statement is FunctionDef method && !IsAbstractBody(method))
+            {
+                CheckFunction(method);
+            }
+        }
+
+        _currentClass = previousClass;
+
         _symbolTable.ExitScope();
     }
 
@@ -592,6 +607,16 @@ internal partial class TypeChecker
 
         // Validate enum-specific rules
         ValidateEnumRules(enumDef);
+    }
+
+    /// <summary>
+    /// Check if a function body is abstract (single ellipsis or pass statement).
+    /// </summary>
+    private static bool IsAbstractBody(FunctionDef func)
+    {
+        return func.Body.Length == 1 &&
+            (func.Body[0] is PassStatement ||
+             (func.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral));
     }
 
 }

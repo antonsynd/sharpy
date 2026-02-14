@@ -496,12 +496,17 @@ internal class NameResolver
 
         // Determine if method is abstract:
         // 1. Has @abstract decorator explicitly, OR
-        // 2. Is in an @abstract class AND has ellipsis body (implicit abstract)
+        // 2. Is in an @abstract class AND has ellipsis body (implicit abstract), OR
+        // 3. Is in an interface AND has ellipsis or pass body (implicit abstract)
         bool hasAbstractDecorator = method.Decorators.Any(d => d.Name == "abstract");
         bool hasEllipsisBody = method.Body.Length == 1
             && method.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+        bool hasPassBody = method.Body.Length == 1
+            && method.Body[0] is PassStatement;
+        bool isInterfaceAbstract = owningType.TypeKind == TypeKind.Interface
+            && (hasEllipsisBody || hasPassBody);
 
-        bool isAbstract = hasAbstractDecorator || (owningType.IsAbstract && hasEllipsisBody);
+        bool isAbstract = hasAbstractDecorator || (owningType.IsAbstract && hasEllipsisBody) || isInterfaceAbstract;
         bool isVirtual = method.Decorators.Any(d => d.Name == "virtual");
         bool isOverride = method.Decorators.Any(d => d.Name == "override")
             || ProtocolRegistry.IsObjectOverrideDunder(method.Name);
@@ -691,32 +696,17 @@ internal class NameResolver
 
     private void ValidateInterfaceMethod(FunctionDef method, string interfaceName)
     {
-        // Interface methods must have only ... (ellipsis) or pass as their body
-        // They cannot contain actual implementation
+        // Interface methods can have:
+        // 1. ... (ellipsis) or pass -> abstract (no C# body)
+        // 2. A real body -> default implementation (C# 8.0+ default interface method)
 
         if (method.Body.Length == 0)
         {
             AddError($"Interface method '{method.Name}' in interface '{interfaceName}' must have a body with '...' or 'pass'",
                 method.LineStart, method.ColumnStart, code: DiagnosticCodes.Semantic.InterfaceMethodBody, span: method.Span);
-            return;
         }
 
-        if (method.Body.Length == 1)
-        {
-            var stmt = method.Body[0];
-
-            // Allow: pass
-            if (stmt is PassStatement)
-                return;
-
-            // Allow: ... (ExpressionStatement containing EllipsisLiteral)
-            if (stmt is ExpressionStatement exprStmt && exprStmt.Expression is EllipsisLiteral)
-                return;
-        }
-
-        // If we get here, the method has an invalid body (implementation)
-        AddError($"Interface method '{method.Name}' in interface '{interfaceName}' cannot have an implementation. Use '...' or 'pass' instead",
-            method.LineStart, method.ColumnStart, code: DiagnosticCodes.Semantic.InterfaceMethodBody, span: method.Span);
+        // Any non-empty body is now valid -- either abstract (ellipsis/pass) or default implementation
     }
 
     private void AddError(string message, int? line = null, int? column = null, string? code = null,

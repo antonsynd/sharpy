@@ -1,0 +1,31 @@
+# Test interface default methods
+# Default methods provide implementation that implementing classes inherit
+
+interface IGreeter:
+    def greet(self) -> str: ...
+
+    def greet_loudly(self) -> str:
+        return self.greet().upper()
+
+class SimpleGreeter(IGreeter):
+    def greet(self) -> str:
+        return "hello"
+
+class CustomGreeter(IGreeter):
+    def greet(self) -> str:
+        return "howdy"
+
+    def greet_loudly(self) -> str:
+        return "HOWDY PARTNER"
+
+def main():
+    s = SimpleGreeter()
+    print(s.greet())
+
+    # Default interface methods in C# require calling through the interface
+    g: IGreeter = s
+    print(g.greet_loudly())
+
+    c = CustomGreeter()
+    print(c.greet())
+    print(c.greet_loudly())

@@ -1504,18 +1504,17 @@ def foo(a: int = 1, b: int):
     #region Interface Method Validation
 
     [Fact]
-    public void RejectsInterfaceMethodWithImplementation()
+    public void AcceptsInterfaceMethodWithDefaultImplementation()
     {
+        // Interface methods with bodies are now allowed as default interface methods
         var source = @"
 interface IDrawable:
     def draw(self) -> None:
-        print('This is not allowed')
+        print('Drawing')
 ";
         var (module, _, _, nameResolver, _) = CompileAndCheck(source);
 
-        nameResolver.Diagnostics.GetErrors().Should().ContainSingle(e =>
-            e.Message.Contains("cannot have an implementation") &&
-            e.Message.Contains("draw"));
+        nameResolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1545,8 +1544,9 @@ interface IEmpty:
     }
 
     [Fact]
-    public void RejectsInterfaceMethodWithMultipleStatements()
+    public void AcceptsInterfaceMethodWithMultipleStatements()
     {
+        // Interface methods with multiple statements are allowed as default implementations
         var source = @"
 interface IDrawable:
     def draw(self) -> None:
@@ -1555,13 +1555,13 @@ interface IDrawable:
 ";
         var (module, _, _, nameResolver, _) = CompileAndCheck(source);
 
-        nameResolver.Diagnostics.GetErrors().Should().ContainSingle(e =>
-            e.Message.Contains("cannot have an implementation"));
+        nameResolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
-    public void RejectsInterfaceMethodWithReturnStatement()
+    public void AcceptsInterfaceMethodWithReturnStatement()
     {
+        // Interface methods with return statements are allowed as default implementations
         var source = @"
 interface ICalculator:
     def calculate(self, x: int) -> int:
@@ -1569,8 +1569,7 @@ interface ICalculator:
 ";
         var (module, _, _, nameResolver, _) = CompileAndCheck(source);
 
-        nameResolver.Diagnostics.GetErrors().Should().ContainSingle(e =>
-            e.Message.Contains("cannot have an implementation"));
+        nameResolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     [Fact]
@@ -1613,21 +1612,20 @@ interface IDrawable:
     }
 
     [Fact]
-    public void RejectsInterfaceWithMixedValidAndInvalidMethods()
+    public void AcceptsInterfaceWithMixedAbstractAndDefaultMethods()
     {
+        // Interfaces can have both abstract (...) and default (with body) methods
         var source = @"
 interface IMixed:
-    def valid_method(self) -> None:
+    def abstract_method(self) -> None:
         ...
 
-    def invalid_method(self) -> str:
-        return 'not allowed'
+    def default_method(self) -> str:
+        return 'default value'
 ";
         var (module, _, _, nameResolver, _) = CompileAndCheck(source);
 
-        nameResolver.Diagnostics.GetErrors().Should().ContainSingle(e =>
-            e.Message.Contains("invalid_method") &&
-            e.Message.Contains("cannot have an implementation"));
+        nameResolver.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion

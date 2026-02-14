@@ -756,6 +756,11 @@ internal partial class TypeChecker
         {
             foreach (var interfaceMethod in iface.Methods)
             {
+                // Skip default interface methods (non-abstract) -- they have a default
+                // implementation and don't require the class to provide one
+                if (!interfaceMethod.IsAbstract)
+                    continue;
+
                 // Check if there's a method with the same name
                 if (!implementedMethodsByName.TryGetValue(interfaceMethod.Name, out var classMethod))
                 {
