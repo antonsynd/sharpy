@@ -305,6 +305,80 @@ public class TypeMapperTests
         result.ToString().Should().Be("System.Action");
     }
 
+    [Fact]
+    public void MapType_FunctionAnnotation_NoParamsReturnsInt_ReturnsFuncInt()
+    {
+        // (int) -> int with no params is () -> int, encoded as TypeArguments = [int]
+        var typeAnnotation = new TypeAnnotation
+        {
+            Name = "function",
+            TypeArguments = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "int" }
+            }.ToImmutableArray()
+        };
+
+        var result = _typeMapper.MapType(typeAnnotation);
+
+        result.ToString().Should().Be("System.Func<int>");
+    }
+
+    [Fact]
+    public void MapType_FunctionAnnotation_IntParamReturnsInt_ReturnsFuncIntInt()
+    {
+        // (int) -> int encoded as TypeArguments = [int, int]
+        var typeAnnotation = new TypeAnnotation
+        {
+            Name = "function",
+            TypeArguments = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "int" },
+                new TypeAnnotation { Name = "int" }
+            }.ToImmutableArray()
+        };
+
+        var result = _typeMapper.MapType(typeAnnotation);
+
+        result.ToString().Should().Be("System.Func<int,int>");
+    }
+
+    [Fact]
+    public void MapType_FunctionAnnotation_IntParamReturnsVoid_ReturnsActionInt()
+    {
+        // (int) -> None encoded as TypeArguments = [int, None]
+        var typeAnnotation = new TypeAnnotation
+        {
+            Name = "function",
+            TypeArguments = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "int" },
+                new TypeAnnotation { Name = "None" }
+            }.ToImmutableArray()
+        };
+
+        var result = _typeMapper.MapType(typeAnnotation);
+
+        result.ToString().Should().Be("System.Action<int>");
+    }
+
+    [Fact]
+    public void MapType_FunctionAnnotation_NoParamsReturnsVoid_ReturnsAction()
+    {
+        // () -> None encoded as TypeArguments = [None]
+        var typeAnnotation = new TypeAnnotation
+        {
+            Name = "function",
+            TypeArguments = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "None" }
+            }.ToImmutableArray()
+        };
+
+        var result = _typeMapper.MapType(typeAnnotation);
+
+        result.ToString().Should().Be("System.Action");
+    }
+
     #endregion
 
     #region Tuple Type Tests

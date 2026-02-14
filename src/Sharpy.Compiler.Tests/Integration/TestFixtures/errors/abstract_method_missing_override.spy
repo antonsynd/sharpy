@@ -1,0 +1,15 @@
+# Test: Subclass implements abstract method without @override decorator
+
+@abstract
+class Animal:
+    @abstract
+    def speak(self) -> str:
+        ...
+
+class Dog(Animal):
+    def speak(self) -> str:
+        return "Woof"
+
+def main():
+    d: Dog = Dog()
+    print(d.speak())

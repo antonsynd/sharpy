@@ -289,6 +289,7 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **Abstract methods**: `@abstract` decorator + `...` body
 - **Virtual methods**: `@virtual` decorator — **REQUIRED** on any method that will be overridden
 - **Override methods**: `@override` decorator — MUST match a `@virtual` or `@abstract` method in base class
+- **IMPORTANT**: Abstract method implementations ARE overrides. When implementing an `@abstract` method in a subclass, you MUST use `@override`.
 - **Final classes/methods**: `@final` decorator
 - **Interfaces**: `interface IName:` with method signatures using `...` (NOTE: `interface` is a keyword, NOT a decorator — do NOT write `@interface`)
 - **Multiple interfaces**: `class Foo(IBar, IBaz):`

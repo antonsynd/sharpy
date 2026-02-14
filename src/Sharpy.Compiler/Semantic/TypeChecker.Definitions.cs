@@ -95,15 +95,16 @@ internal partial class TypeChecker
         _controlFlowDepth = 0;
         _superInitCalled = false;
 
-        // Validate @override is required when a subclass method shadows a virtual base method
+        // Validate @override is required when a subclass method shadows a virtual, abstract, or override base method
         var currentClassBaseType = _currentClass != null ? GetBaseType(_currentClass) : null;
         if (_currentClass != null && !_currentMethodIsOverride && currentClassBaseType != null)
         {
             var (baseMethod, baseOwner) = FindMethodInHierarchy(currentClassBaseType, functionDef.Name);
-            if (baseMethod != null && baseMethod.IsVirtual)
+            if (baseMethod != null && (baseMethod.IsVirtual || baseMethod.IsAbstract || baseMethod.IsOverride))
             {
+                var methodKind = baseMethod.IsAbstract ? "an abstract" : "a virtual";
                 AddError(
-                    $"Method '{functionDef.Name}' overrides a virtual method in base class '{baseOwner?.Name ?? currentClassBaseType.Name}' and requires the @override decorator",
+                    $"Method '{functionDef.Name}' overrides {methodKind} method in base class '{baseOwner?.Name ?? currentClassBaseType.Name}' and requires the @override decorator",
                     functionDef.LineStart,
                     functionDef.ColumnStart,
                     code: DiagnosticCodes.Semantic.InvalidOverride,

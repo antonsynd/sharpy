@@ -1,0 +1,8 @@
+def double_it(x: int) -> int:
+    return x * 2
+
+def apply(func: (int) -> int, x: int) -> int:
+    return func(x)
+
+def main():
+    print(apply(double_it, 5))

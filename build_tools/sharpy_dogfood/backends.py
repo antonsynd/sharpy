@@ -37,6 +37,29 @@ from build_tools.shared.logging import ExecutionLogger, LogEventType
 from .config import Config, BackendConfig, RateLimitConfig, BackendType
 
 
+# Known error patterns that indicate infrastructure problems (not code issues).
+# These warrant automatic failover to the next backend.
+_INFRASTRUCTURE_ERROR_PATTERNS: list[str] = [
+    "cannot be launched inside another claude code session",
+    "command not found",
+    "no such file or directory",
+    "permission denied",
+]
+
+
+def _is_infrastructure_error(error_message: str) -> bool:
+    """Check if an error message indicates an infrastructure problem.
+
+    Args:
+        error_message: The error string to inspect.
+
+    Returns:
+        True if the error matches a known infrastructure failure pattern.
+    """
+    lower = error_message.lower()
+    return any(pattern in lower for pattern in _INFRASTRUCTURE_ERROR_PATTERNS)
+
+
 @dataclass
 class ExecutionResult:
     """Result of executing an AI prompt.
@@ -53,12 +76,14 @@ class ExecutionResult:
     backend: str = ""
     rate_limited: bool = False
     timed_out: bool = False
+    infrastructure_error: bool = False
 
     @classmethod
     def from_backend_response(
         cls, response: BackendResponse, backend_name: str
     ) -> "ExecutionResult":
         """Convert a shared BackendResponse to ExecutionResult."""
+        error_msg = response.error_message or ""
         return cls(
             success=response.success,
             output=response.output,
@@ -66,7 +91,8 @@ class ExecutionResult:
             duration_seconds=response.duration_seconds,
             backend=backend_name,
             rate_limited=response.rate_limited,
-            timed_out="timed out" in (response.error_message or "").lower(),
+            timed_out="timed out" in error_msg.lower(),
+            infrastructure_error=_is_infrastructure_error(error_msg),
         )
 
 
@@ -392,6 +418,12 @@ class BackendManager:
                     return result
 
                 if not result.rate_limited:
+                    if result.infrastructure_error:
+                        print(
+                            f"[{name}] Infrastructure error, trying next backend...",
+                            file=sys.stderr,
+                        )
+                        continue
                     # Failed but not rate limited - this is a real error, return it
                     return result
 

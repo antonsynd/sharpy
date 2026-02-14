@@ -275,6 +275,52 @@ internal class TypeMapper
             return WrapOptionalOrNullable(result, type);
         }
 
+        // Handle function type annotations: (T, U) -> V parsed as Name="function"
+        // TypeArguments contain [param types..., return type] where return type is the last element
+        if (type.Name == "function" && type.TypeArguments.Length > 0)
+        {
+            var allTypeArgs = type.TypeArguments.Select(MapType).ToArray();
+            var returnTypeSyntax = allTypeArgs[^1];
+            var paramTypeSyntaxes = allTypeArgs.Take(allTypeArgs.Length - 1).ToArray();
+
+            TypeSyntax result;
+
+            // Check if return type is void → use Action
+            if (IsVoidType(type.TypeArguments[^1]))
+            {
+                if (paramTypeSyntaxes.Length == 0)
+                {
+                    result = ParseTypeName("System.Action");
+                }
+                else
+                {
+                    result = GenericName("System.Action")
+                        .WithTypeArgumentList(
+                            TypeArgumentList(SeparatedList(paramTypeSyntaxes)));
+                }
+            }
+            else
+            {
+                // Use Func<params..., return>
+                var funcTypeArgs = paramTypeSyntaxes.Append(returnTypeSyntax).ToArray();
+
+                if (funcTypeArgs.Length == 1)
+                {
+                    result = GenericName("System.Func")
+                        .WithTypeArgumentList(
+                            TypeArgumentList(SingletonSeparatedList(returnTypeSyntax)));
+                }
+                else
+                {
+                    result = GenericName("System.Func")
+                        .WithTypeArgumentList(
+                            TypeArgumentList(SeparatedList(funcTypeArgs)));
+                }
+            }
+
+            return WrapOptionalOrNullable(result, type);
+        }
+
         // Handle generic type arguments
         if (type.TypeArguments.Length > 0)
         {

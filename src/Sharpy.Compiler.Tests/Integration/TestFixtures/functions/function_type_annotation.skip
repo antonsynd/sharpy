@@ -1,0 +1,1 @@
+Pre-existing callable parameter invocation bug: emitter PascalCase-mangles variable identifiers used as function calls (func(x) -> Func(x)). Tracked separately from function type annotation codegen.

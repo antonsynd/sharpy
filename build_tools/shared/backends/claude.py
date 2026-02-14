@@ -6,6 +6,7 @@ timeout handling, and heartbeat logging for long-running operations.
 """
 
 import asyncio
+import os
 import shutil
 import time
 from pathlib import Path
@@ -115,12 +116,17 @@ class ClaudeCodeBackend(Backend):
             cmd = self._build_command(config)
 
             # Execute with timeout and heartbeat logging
+            # Strip CLAUDECODE to avoid "cannot be launched inside another
+            # claude code session" errors when this process is itself running
+            # under Claude Code.
+            clean_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=self._project_root,
+                env=clean_env,
             )
 
             try:
