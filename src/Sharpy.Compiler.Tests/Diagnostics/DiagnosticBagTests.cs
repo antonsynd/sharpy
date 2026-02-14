@@ -701,4 +701,41 @@ public class DiagnosticBagTests
         var errors = bag.GetErrors().ToList();
         Assert.Single(errors);  // Deduplicated after promotion
     }
+
+    [Fact]
+    public void Deduplication_SameCodeSamePositionSameSpan_OnlyAddsOnce()
+    {
+        var bag = new DiagnosticBag();
+        var span = new TextSpan(10, 5);
+
+        bag.Add(new CompilerDiagnostic("Error A", CompilerDiagnosticSeverity.Error, 1, 1, Code: "SPY0200", Span: span));
+        bag.Add(new CompilerDiagnostic("Error A variant", CompilerDiagnosticSeverity.Error, 1, 1, Code: "SPY0200", Span: span));
+
+        Assert.Single(bag.GetAll());
+    }
+
+    [Fact]
+    public void Deduplication_SameCodeSamePositionDifferentSpans_AddsBoth()
+    {
+        var bag = new DiagnosticBag();
+        var span1 = new TextSpan(10, 5);
+        var span2 = new TextSpan(20, 5);
+
+        bag.Add(new CompilerDiagnostic("Error A", CompilerDiagnosticSeverity.Error, 1, 1, Code: "SPY0200", Span: span1));
+        bag.Add(new CompilerDiagnostic("Error A", CompilerDiagnosticSeverity.Error, 1, 1, Code: "SPY0200", Span: span2));
+
+        Assert.Equal(2, bag.GetAll().Count);
+    }
+
+    [Fact]
+    public void Deduplication_NoCodeSamePositionSameMessage_OnlyAddsOnce()
+    {
+        var bag = new DiagnosticBag();
+        var span = new TextSpan(10, 5);
+
+        bag.Add(new CompilerDiagnostic("Some error", CompilerDiagnosticSeverity.Error, 1, 1, Span: span));
+        bag.Add(new CompilerDiagnostic("Some error", CompilerDiagnosticSeverity.Error, 1, 1, Span: span));
+
+        Assert.Single(bag.GetAll());
+    }
 }
