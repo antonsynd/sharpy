@@ -53,6 +53,19 @@ internal partial class RoslynEmitter
             }
         }
 
+        // Also register auto-property names in fieldMapping so self.name = value
+        // in constructors resolves to this.Name = value
+        foreach (var stmt in body.Where(s => s is PropertyDef pd && !pd.IsFunctionStyle))
+        {
+            var propDef = (PropertyDef)stmt;
+            var propName = NameMangler.ToPascalCase(propDef.Name);
+            fieldMapping[propDef.Name] = propName;
+            if (propDef.Type != null)
+            {
+                fieldTypeMapping[propDef.Name] = propDef.Type;
+            }
+        }
+
         // Add field members first
         members.AddRange(fieldMembers);
 
@@ -152,6 +165,10 @@ internal partial class RoslynEmitter
                     {
                         members.Add(GenerateClassMethod(funcDef));
                     }
+                    break;
+
+                case PropertyDef propDef:
+                    members.Add(GeneratePropertyMember(propDef));
                     break;
 
                 case VariableDeclaration _:
@@ -932,6 +949,10 @@ internal partial class RoslynEmitter
                     members.Add(GenerateInterfaceMethod(funcDef));
                     break;
 
+                case PropertyDef propDef:
+                    members.Add(GenerateInterfacePropertyFromDef(propDef));
+                    break;
+
                 case VariableDeclaration varDecl:
                     // Interface properties (get/set accessors)
                     members.Add(GenerateInterfaceProperty(varDecl));
@@ -1051,6 +1072,327 @@ internal partial class RoslynEmitter
             .WithAccessorList(AccessorList(List(accessors)));
 
         return property;
+    }
+
+    /// <summary>
+    /// Generates a C# property member from a PropertyDef AST node.
+    /// Handles both auto-properties and function-style properties.
+    /// </summary>
+    private MemberDeclarationSyntax GeneratePropertyMember(PropertyDef propDef)
+    {
+        if (propDef.IsFunctionStyle)
+        {
+            return GenerateFunctionStyleProperty(propDef);
+        }
+
+        return GenerateAutoProperty(propDef);
+    }
+
+    /// <summary>
+    /// Generates a C# auto-property from a PropertyDef AST node.
+    /// Maps accessor type to C# accessor list:
+    ///   None -> { get; set; }
+    ///   Get  -> { get; }
+    ///   Set  -> { set; }
+    ///   Init -> { get; init; }
+    /// </summary>
+    private PropertyDeclarationSyntax GenerateAutoProperty(PropertyDef propDef)
+    {
+        var propertyName = NameMangler.ToPascalCase(propDef.Name);
+
+        TypeSyntax propertyType;
+        if (propDef.Type != null)
+        {
+            propertyType = _typeMapper.MapType(propDef.Type);
+        }
+        else
+        {
+            propertyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
+
+        // Build accessor list based on accessor type
+        var accessors = new List<AccessorDeclarationSyntax>();
+        switch (propDef.Accessor)
+        {
+            case PropertyAccessor.None:
+                // { get; set; }
+                accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                break;
+
+            case PropertyAccessor.Get:
+                // { get; }
+                accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                break;
+
+            case PropertyAccessor.Set:
+                // { set; }
+                accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                break;
+
+            case PropertyAccessor.Init:
+                // { get; init; }
+                accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                accessors.Add(AccessorDeclaration(SyntaxKind.InitAccessorDeclaration)
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                break;
+        }
+
+        // Apply modifiers from decorators
+        var modifiers = GenerateMethodModifiersFromDecorators(propDef.Decorators);
+
+        var property = PropertyDeclaration(propertyType, propertyName)
+            .WithModifiers(modifiers)
+            .WithAccessorList(AccessorList(List(accessors)));
+
+        // Add initializer if default value is present
+        if (propDef.DefaultValue != null)
+        {
+            var previousTargetType = _targetTypeContext;
+            _targetTypeContext = propDef.Type;
+            try
+            {
+                var initExpr = GenerateExpression(propDef.DefaultValue);
+                property = property.WithInitializer(EqualsValueClause(initExpr))
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+            }
+            finally
+            {
+                _targetTypeContext = previousTargetType;
+            }
+        }
+
+        return property;
+    }
+
+    /// <summary>
+    /// Generates a C# property with a function-style body (custom getter/setter).
+    /// </summary>
+    private PropertyDeclarationSyntax GenerateFunctionStyleProperty(PropertyDef propDef)
+    {
+        var propertyName = NameMangler.ToPascalCase(propDef.Name);
+
+        TypeSyntax propertyType;
+        if (propDef.ReturnType != null)
+        {
+            propertyType = _typeMapper.MapType(propDef.ReturnType);
+        }
+        else if (propDef.Type != null)
+        {
+            propertyType = _typeMapper.MapType(propDef.Type);
+        }
+        else
+        {
+            propertyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
+
+        // Clear method scope tracking
+        _declaredVariables.Clear();
+        _variableVersions.Clear();
+        _constVariables.Clear();
+        _sourceVariableNames.Clear();
+        _narrowedOptionals.Clear();
+        _isNullableNarrowing.Clear();
+        CollectSourceVariableNames(propDef.Body);
+
+        // Track parameters (skip self)
+        foreach (var param in propDef.Parameters)
+        {
+            if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+                continue;
+            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            _declaredVariables.Add(paramName);
+            var baseName = NameMangler.ToCamelCase(param.Name);
+            _variableVersions[baseName] = 0;
+        }
+
+        // Check if this is an abstract property (body is single ellipsis)
+        bool hasAbstractDecorator = propDef.Decorators.Any(d => d.Name == "abstract");
+        bool hasEllipsisBody = propDef.Body.Length == 1
+            && propDef.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+        bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
+
+        // Apply modifiers from decorators
+        var modifiers = GenerateMethodModifiersFromDecorators(propDef.Decorators);
+
+        // Remove static if it has 'self' parameter (Pythonic convention)
+        bool hasSelfParameter = propDef.Parameters.Any(p =>
+            string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+        if (hasSelfParameter && modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
+        {
+            modifiers = TokenList(modifiers.Where(m => !m.IsKind(SyntaxKind.StaticKeyword)));
+        }
+        if (!hasSelfParameter && !modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
+        }
+
+        if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.AbstractKeyword));
+        }
+
+        // Build the accessor
+        AccessorDeclarationSyntax accessor;
+        SyntaxKind accessorKind;
+        switch (propDef.Accessor)
+        {
+            case PropertyAccessor.Set:
+                accessorKind = SyntaxKind.SetAccessorDeclaration;
+                break;
+            case PropertyAccessor.Init:
+                accessorKind = SyntaxKind.InitAccessorDeclaration;
+                break;
+            default:
+                accessorKind = SyntaxKind.GetAccessorDeclaration;
+                break;
+        }
+
+        accessor = AccessorDeclaration(accessorKind);
+
+        if (isAbstract)
+        {
+            accessor = accessor.WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        }
+        else
+        {
+            // For setter, track the 'value' parameter
+            if (accessorKind == SyntaxKind.SetAccessorDeclaration || accessorKind == SyntaxKind.InitAccessorDeclaration)
+            {
+                var valueParam = propDef.Parameters
+                    .FirstOrDefault(p =>
+                        !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+                if (valueParam != null)
+                {
+                    var paramName = NameMangler.Transform(valueParam.Name, NameContext.Parameter);
+                    // C# setter uses implicit 'value' parameter, so remap
+                    _declaredVariables.Add("value");
+                    _variableVersions["value"] = 0;
+                }
+            }
+
+            var bodyStatements = propDef.Body.SelectMany(GenerateBodyStatements);
+            accessor = accessor.WithBody(Block(bodyStatements));
+        }
+
+        var property = PropertyDeclaration(propertyType, propertyName)
+            .WithModifiers(modifiers)
+            .WithAccessorList(AccessorList(SingletonList(accessor)));
+
+        return property;
+    }
+
+    /// <summary>
+    /// Generates a C# interface property from a PropertyDef AST node.
+    /// Interface properties have abstract accessors (semicolon-only).
+    /// </summary>
+    private PropertyDeclarationSyntax GenerateInterfacePropertyFromDef(PropertyDef propDef)
+    {
+        var propertyName = NameMangler.ToPascalCase(propDef.Name);
+
+        TypeSyntax propertyType;
+        if (propDef.Type != null)
+        {
+            propertyType = _typeMapper.MapType(propDef.Type);
+        }
+        else if (propDef.ReturnType != null)
+        {
+            propertyType = _typeMapper.MapType(propDef.ReturnType);
+        }
+        else
+        {
+            propertyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
+
+        var accessors = new List<AccessorDeclarationSyntax>();
+
+        if (propDef.IsFunctionStyle)
+        {
+            // Function-style interface property: single accessor based on kind
+            bool isAbstract = propDef.Body.Length == 1 &&
+                (propDef.Body[0] is PassStatement ||
+                 (propDef.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral));
+
+            SyntaxKind accessorKind;
+            switch (propDef.Accessor)
+            {
+                case PropertyAccessor.Set:
+                    accessorKind = SyntaxKind.SetAccessorDeclaration;
+                    break;
+                case PropertyAccessor.Init:
+                    accessorKind = SyntaxKind.InitAccessorDeclaration;
+                    break;
+                default:
+                    accessorKind = SyntaxKind.GetAccessorDeclaration;
+                    break;
+            }
+
+            if (isAbstract)
+            {
+                accessors.Add(AccessorDeclaration(accessorKind)
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+            }
+            else
+            {
+                // Default interface property implementation
+                _declaredVariables.Clear();
+                _variableVersions.Clear();
+                _constVariables.Clear();
+                _sourceVariableNames.Clear();
+                _narrowedOptionals.Clear();
+                _isNullableNarrowing.Clear();
+                CollectSourceVariableNames(propDef.Body);
+
+                foreach (var param in propDef.Parameters)
+                {
+                    if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                    _declaredVariables.Add(paramName);
+                    var baseName = NameMangler.ToCamelCase(param.Name);
+                    _variableVersions[baseName] = 0;
+                }
+
+                var bodyStatements = propDef.Body.SelectMany(GenerateBodyStatements);
+                accessors.Add(AccessorDeclaration(accessorKind)
+                    .WithBody(Block(bodyStatements)));
+            }
+        }
+        else
+        {
+            // Auto-property style: determine accessors from Accessor type
+            switch (propDef.Accessor)
+            {
+                case PropertyAccessor.None:
+                    accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                    accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                    break;
+                case PropertyAccessor.Get:
+                    accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                    break;
+                case PropertyAccessor.Set:
+                    accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                    break;
+                case PropertyAccessor.Init:
+                    accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                    accessors.Add(AccessorDeclaration(SyntaxKind.InitAccessorDeclaration)
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+                    break;
+            }
+        }
+
+        return PropertyDeclaration(propertyType, propertyName)
+            .WithAccessorList(AccessorList(List(accessors)));
     }
 
     #endregion
