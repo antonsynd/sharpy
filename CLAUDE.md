@@ -266,6 +266,9 @@ Available in `.claude/skills/`:
 | `/project:verify-python <expr>` | Run Python 3 to verify behavior before implementing |
 | `/project:add-test-fixture <desc>` | Create a file-based integration test |
 | `/project:dogfood-analyze [dir]` | Analyze dogfood results and classify failures by root cause |
+| `/project:compiler-audit [focus]` | Run a comprehensive compiler health audit |
+| `/project:verify-plan <plan.md>` | Verify a plan for accuracy and architectural soundness |
+| `/project:implement-plan <plan.md>` | Implement a plan with a coordinated agent team |
 
 ## Testing
 
