@@ -10,6 +10,11 @@ namespace Sharpy
     {
         public static Str Str(object x)
         {
+            if (x is null)
+            {
+                return new Str("None");
+            }
+
             if (x is bool b)
             {
                 return new Str(b ? "True" : "False");
