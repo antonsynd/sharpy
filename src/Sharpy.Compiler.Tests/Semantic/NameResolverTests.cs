@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Xunit;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Parser.Ast;
 using LexerNs = Sharpy.Compiler.Lexer;
 using ParserNs = Sharpy.Compiler.Parser;

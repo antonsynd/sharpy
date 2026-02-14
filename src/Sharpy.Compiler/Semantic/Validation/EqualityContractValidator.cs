@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -98,7 +99,7 @@ internal class EqualityContractValidator : SemanticValidatorBase
     private static bool IsObjectOverload(FunctionDef func)
     {
         var otherParam = func.Parameters
-            .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
         return otherParam?.Type is TypeAnnotation { Name: "object" };
     }
 
@@ -146,6 +147,6 @@ internal class EqualityContractValidator : SemanticValidatorBase
     private static bool HasObjectParameter(FunctionSymbol func)
     {
         return func.Parameters.Any(p =>
-            p.Name != "self" && p.Type is UserDefinedType { Name: "object" });
+            p.Name != PythonNames.Self && p.Type is UserDefinedType { Name: "object" });
     }
 }

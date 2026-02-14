@@ -2,6 +2,7 @@ using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 

@@ -1,6 +1,8 @@
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -186,7 +188,7 @@ internal partial class TypeChecker
                 d.Name == "static");
 
             bool hasSelfParameter = functionDef.Parameters.Length > 0 &&
-                functionDef.Parameters[0].Name == "self";
+                functionDef.Parameters[0].Name == PythonNames.Self;
 
             // Method is static if it has decorator OR doesn't have self parameter
             // No error needed - code generator will make it static
@@ -229,7 +231,7 @@ internal partial class TypeChecker
             var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
 
             // Special handling for 'self' parameter in methods
-            if (i == 0 && param.Name == "self" && _currentClass != null)
+            if (i == 0 && param.Name == PythonNames.Self && _currentClass != null)
             {
                 paramType = new UserDefinedType { Symbol = _currentClass };
             }
@@ -560,11 +562,11 @@ internal partial class TypeChecker
                         var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
 
                         // Special handling for 'self' parameter
-                        if (i == 0 && param.Name == "self")
+                        if (i == 0 && param.Name == PythonNames.Self)
                         {
                             paramType = new UserDefinedType { Name = interfaceSymbol.Name, Symbol = interfaceSymbol };
                         }
-                        else if (param.Type == null && param.Name != "self")
+                        else if (param.Type == null && param.Name != PythonNames.Self)
                         {
                             AddError($"Interface method parameter '{param.Name}' requires a type annotation",
                                 param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.MissingTypeAnnotation,

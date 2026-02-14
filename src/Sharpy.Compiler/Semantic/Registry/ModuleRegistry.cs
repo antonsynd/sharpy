@@ -4,8 +4,9 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 
-namespace Sharpy.Compiler.Semantic;
+namespace Sharpy.Compiler.Semantic.Registry;
 
 /// <summary>
 /// Registry for managing third-party .NET modules.
@@ -320,7 +321,7 @@ internal class ModuleRegistry
         // Add 'self' parameter first (Sharpy convention - will be skipped by type checker)
         parameters.Add(new ParameterSymbol
         {
-            Name = "self",
+            Name = PythonNames.Self,
             Type = new UserDefinedType { Name = declaringType.Name }
         });
 

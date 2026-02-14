@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
@@ -228,7 +229,7 @@ internal partial class RoslynEmitter
         var members = new List<MemberDeclarationSyntax>();
 
         var otherParam = funcDef.Parameters
-            .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
 
         if (otherParam == null)
             throw new InvalidOperationException($"Binary operator {funcDef.Name} must have at least 2 parameters");
@@ -293,7 +294,7 @@ internal partial class RoslynEmitter
         var members = new List<MemberDeclarationSyntax>();
 
         var otherParam = funcDef.Parameters
-            .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
 
         if (otherParam == null)
             throw new InvalidOperationException($"Comparison operator {funcDef.Name} must have at least 2 parameters");
@@ -406,7 +407,7 @@ internal partial class RoslynEmitter
         // Binary operators should have 2 parameters: self and other
         // We skip 'self' and use the other parameter
         var otherParam = funcDef.Parameters
-            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
             .FirstOrDefault();
 
         if (otherParam == null)
@@ -460,7 +461,7 @@ internal partial class RoslynEmitter
     {
         // Similar to binary operators but always returns bool
         var otherParam = funcDef.Parameters
-            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
             .FirstOrDefault();
 
         if (otherParam == null)
@@ -662,7 +663,7 @@ internal partial class RoslynEmitter
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
         var otherParam = eqMethod.Parameters
-            .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
 
         var classTypeSyntax = GetCurrentClassTypeSyntax(className);
         var param2Type = otherParam?.Type != null

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic.Registry;
 
 namespace Sharpy.Compiler.Semantic;
 

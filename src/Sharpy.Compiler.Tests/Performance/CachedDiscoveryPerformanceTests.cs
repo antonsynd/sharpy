@@ -3,6 +3,7 @@ using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
 using Xunit.Abstractions;
 

@@ -3,7 +3,7 @@ using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 
-namespace Sharpy.Compiler.Semantic;
+namespace Sharpy.Compiler.Semantic.Registry;
 
 /// <summary>
 /// Registry of builtin types and functions from Sharpy.Core

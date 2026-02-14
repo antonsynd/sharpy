@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Logging;

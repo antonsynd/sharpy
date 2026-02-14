@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Text;
 using Sharpy.Compiler.Utilities;
 

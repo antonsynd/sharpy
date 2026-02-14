@@ -11,6 +11,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Xunit.Abstractions;
 using static Sharpy.Compiler.Tests.TestHelpers;
 

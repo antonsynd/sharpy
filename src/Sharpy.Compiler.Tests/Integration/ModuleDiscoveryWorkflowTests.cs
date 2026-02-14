@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Integration;

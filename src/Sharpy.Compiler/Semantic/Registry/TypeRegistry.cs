@@ -1,4 +1,4 @@
-namespace Sharpy.Compiler.Semantic;
+namespace Sharpy.Compiler.Semantic.Registry;
 
 /// <summary>
 /// Central registry for type information.

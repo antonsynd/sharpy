@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -451,7 +452,7 @@ internal class ModuleLoader
         var accessLevel = GetAccessLevel(method.Name);
 
         bool hasSelfParameter = method.Parameters.Any(p =>
-            string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+            string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
         bool hasStaticDecorator = method.Decorators.Any(d =>
             d.Name == "static");
         bool isStatic = hasStaticDecorator || !hasSelfParameter;

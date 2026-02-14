@@ -1,6 +1,8 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -247,7 +249,7 @@ internal class SignatureValidator : SemanticValidatorBase
         }
 
         // Validate that the first parameter is named 'self'
-        if (funcDef.Parameters[0].Name != "self")
+        if (funcDef.Parameters[0].Name != PythonNames.Self)
         {
             AddError(_context,
                 $"First parameter of protocol method '{protocol.DunderName}' on '{owningType.Name}' must be " +

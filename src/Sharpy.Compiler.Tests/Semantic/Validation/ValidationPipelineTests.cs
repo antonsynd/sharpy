@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Xunit;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Diagnostics;
 

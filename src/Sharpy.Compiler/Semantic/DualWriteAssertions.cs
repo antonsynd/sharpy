@@ -1,3 +1,5 @@
+using Sharpy.Compiler.Semantic.Registry;
+
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>

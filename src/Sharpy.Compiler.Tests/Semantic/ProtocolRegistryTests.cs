@@ -1,6 +1,7 @@
 using Xunit;
 using FluentAssertions;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 

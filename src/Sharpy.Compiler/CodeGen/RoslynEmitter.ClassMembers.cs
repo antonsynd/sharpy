@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
@@ -265,13 +266,13 @@ internal partial class RoslynEmitter
 
         // Generate parameters with type annotations, skipping 'self' parameter
         var parameters = func.Parameters
-            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
             .Select(GenerateParameter)
             .ToArray();
 
         // Create a mapping of parameter names (original) to their mangled names
         var parameterMapping = func.Parameters
-            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
             .ToDictionary(
                 p => p.Name,
                 p => NameMangler.Transform(p.Name, NameContext.Parameter));
@@ -279,7 +280,7 @@ internal partial class RoslynEmitter
         // Track parameters as declared variables
         foreach (var param in func.Parameters)
         {
-            if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                 continue;
             var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
             _declaredVariables.Add(paramName);
@@ -349,7 +350,7 @@ internal partial class RoslynEmitter
                 // Check if this is a self.field assignment
                 if (assign.Target is MemberAccess memberAccess &&
                     memberAccess.Object is Identifier id &&
-                    string.Equals(id.Name, "self", StringComparison.OrdinalIgnoreCase))
+                    string.Equals(id.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                 {
                     // Look up the field name from the field mapping to ensure consistency
                     // For fields not in mapping (inherited fields), use PascalCase to match
@@ -497,7 +498,7 @@ internal partial class RoslynEmitter
         // Primary mechanism: Method is static if it doesn't have 'self' parameter (Pythonic)
         // @static decorator is valid but OPTIONAL/redundant
         bool hasSelfParameter = func.Parameters.Any(p =>
-            string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+            string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
 
         if (!hasSelfParameter && !modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
         {
@@ -507,16 +508,16 @@ internal partial class RoslynEmitter
         // Generate parameters with type annotations, skipping 'self' and 'cls' parameters
         var parameters = func.Parameters
             .Where(p =>
-                !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(p.Name, "cls", StringComparison.OrdinalIgnoreCase))
+                !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(p.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))
             .Select(GenerateParameter)
             .ToArray();
 
         // Track parameters as declared variables
         foreach (var param in func.Parameters)
         {
-            if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(param.Name, "cls", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(param.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))
                 continue;
             var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
             _declaredVariables.Add(paramName);
@@ -563,7 +564,7 @@ internal partial class RoslynEmitter
                 && _currentTypeSymbol?.TypeKind == Semantic.TypeKind.Class)
             {
                 var otherParam = func.Parameters
-                    .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
 
                 if (otherParam != null)
                 {
@@ -705,7 +706,7 @@ internal partial class RoslynEmitter
             // Track parameters (skip self)
             foreach (var param in funcDef.Parameters)
             {
-                if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                     continue;
                 var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                 _declaredVariables.Add(paramName);
@@ -1007,7 +1008,7 @@ internal partial class RoslynEmitter
 
         // Interface methods skip 'self' parameter
         var parameters = func.Parameters
-            .Where(p => p.Name != "self")
+            .Where(p => p.Name != PythonNames.Self)
             .Select(GenerateParameter)
             .ToArray();
 
@@ -1038,7 +1039,7 @@ internal partial class RoslynEmitter
             // Track parameters as declared variables (skip self)
             foreach (var param in func.Parameters)
             {
-                if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                     continue;
                 var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                 _declaredVariables.Add(paramName);
@@ -1135,7 +1136,7 @@ internal partial class RoslynEmitter
         {
             // Infer type from setter's non-self parameter type
             var valueParam = setterProp.Parameters
-                .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
             if (valueParam?.Type != null)
             {
                 propertyType = _typeMapper.MapType(valueParam.Type);
@@ -1152,7 +1153,7 @@ internal partial class RoslynEmitter
 
         // Handle static: if any accessor has self, property is not static
         bool hasSelfParameter = propGroup.Any(p => p.Parameters.Any(param =>
-            string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase)));
+            string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase)));
         if (hasSelfParameter && modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
         {
             modifiers = TokenList(modifiers.Where(m => !m.IsKind(SyntaxKind.StaticKeyword)));
@@ -1180,7 +1181,7 @@ internal partial class RoslynEmitter
 
             foreach (var param in prop.Parameters)
             {
-                if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                     continue;
                 var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                 _declaredVariables.Add(paramName);
@@ -1384,7 +1385,7 @@ internal partial class RoslynEmitter
         // Track parameters (skip self)
         foreach (var param in propDef.Parameters)
         {
-            if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                 continue;
             var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
             _declaredVariables.Add(paramName);
@@ -1403,7 +1404,7 @@ internal partial class RoslynEmitter
 
         // Remove static if it has 'self' parameter (Pythonic convention)
         bool hasSelfParameter = propDef.Parameters.Any(p =>
-            string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+            string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
         if (hasSelfParameter && modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
         {
             modifiers = TokenList(modifiers.Where(m => !m.IsKind(SyntaxKind.StaticKeyword)));
@@ -1447,7 +1448,7 @@ internal partial class RoslynEmitter
             {
                 var valueParam = propDef.Parameters
                     .FirstOrDefault(p =>
-                        !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+                        !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
                 if (valueParam != null)
                 {
                     var paramName = NameMangler.Transform(valueParam.Name, NameContext.Parameter);
@@ -1531,7 +1532,7 @@ internal partial class RoslynEmitter
 
                 foreach (var param in propDef.Parameters)
                 {
-                    if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                         continue;
                     var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                     _declaredVariables.Add(paramName);
@@ -1585,7 +1586,7 @@ internal partial class RoslynEmitter
     private static bool IsEqualsObjectOverload(FunctionDef func)
     {
         var otherParam = func.Parameters
-            .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
         return otherParam?.Type is TypeAnnotation { Name: "object" };
     }
 

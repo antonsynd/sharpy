@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;

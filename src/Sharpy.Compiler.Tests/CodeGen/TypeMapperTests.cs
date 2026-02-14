@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
 using AstFunctionType = Sharpy.Compiler.Parser.Ast.FunctionType;
 using AstTupleType = Sharpy.Compiler.Parser.Ast.TupleType;

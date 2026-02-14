@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.CodeGen;

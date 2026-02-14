@@ -508,7 +508,7 @@ internal partial class RoslynEmitter
 
         // Generate parameters (skip 'self')
         var parameters = interfaceMethod.Parameters
-            .Where(p => p.Name != "self")
+            .Where(p => p.Name != PythonNames.Self)
             .Select(GenerateParameter)
             .ToArray();
 

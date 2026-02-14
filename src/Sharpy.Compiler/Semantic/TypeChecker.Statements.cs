@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -23,7 +24,7 @@ internal partial class TypeChecker
         }
 
         // Validate that 'self' cannot be reassigned
-        if (assignment.Target is Identifier selfId && selfId.Name == "self")
+        if (assignment.Target is Identifier selfId && selfId.Name == PythonNames.Self)
         {
             AddError("Cannot reassign 'self'",
                 assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,

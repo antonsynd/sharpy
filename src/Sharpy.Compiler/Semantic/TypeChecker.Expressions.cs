@@ -1,6 +1,8 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -92,7 +94,7 @@ internal partial class TypeChecker
     private SemanticType CheckIdentifier(Identifier id)
     {
         // Special validation for 'self' - must be used inside an instance method
-        if (id.Name == "self")
+        if (id.Name == PythonNames.Self)
         {
             if (_currentClass == null)
             {

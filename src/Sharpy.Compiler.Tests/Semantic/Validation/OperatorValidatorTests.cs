@@ -2,6 +2,7 @@ using System.Linq;
 using Xunit;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
 
 namespace Sharpy.Compiler.Tests.Semantic.Validation;

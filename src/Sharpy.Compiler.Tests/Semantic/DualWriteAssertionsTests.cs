@@ -1,5 +1,6 @@
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using FluentAssertions;
 using Xunit;
 

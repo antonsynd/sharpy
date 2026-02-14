@@ -1,6 +1,6 @@
 using System.Collections.Frozen;
 
-namespace Sharpy.Compiler.Semantic;
+namespace Sharpy.Compiler.Semantic.Registry;
 
 /// <summary>
 /// Categorizes operator dunders by their semantic purpose.

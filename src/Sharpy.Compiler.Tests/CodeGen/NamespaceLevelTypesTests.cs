@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
 using Xunit;
 

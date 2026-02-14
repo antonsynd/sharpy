@@ -1,6 +1,8 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -506,7 +508,7 @@ internal class NameResolver
         // Primary mechanism: Method is static if it doesn't have 'self' parameter (Pythonic)
         // @static decorator is valid but OPTIONAL/redundant
         bool hasSelfParameter = method.Parameters.Any(p =>
-            string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+            string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
 
         bool isStatic = hasStaticDecorator || !hasSelfParameter;
 
@@ -636,7 +638,7 @@ internal class NameResolver
         var existingProp = owningType.Properties.FirstOrDefault(p => p.Name == propDef.Name);
 
         bool isStatic = propDef.Decorators.Any(d => d.Name == "static")
-            || !propDef.Parameters.Any(p => string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            || !propDef.Parameters.Any(p => string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
             && propDef.IsFunctionStyle;
         bool isVirtual = propDef.Decorators.Any(d => d.Name == "virtual");
         bool isAbstract = propDef.Decorators.Any(d => d.Name == "abstract");
@@ -991,7 +993,7 @@ internal class NameResolver
     private string GetMethodSignature(FunctionSymbol method)
     {
         var paramTypes = method.Parameters
-            .Where(p => p.Name != "self")
+            .Where(p => p.Name != PythonNames.Self)
             .Select(p => p.Type?.GetDisplayName() ?? "unknown");
         return $"{method.Name}({string.Join(",", paramTypes)})";
     }

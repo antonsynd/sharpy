@@ -2,6 +2,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic.Collections;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Semantic;
@@ -337,7 +338,7 @@ internal partial class TypeChecker
         {
             // Build signature string from parameter types (excluding self)
             var paramTypes = ctor.Parameters
-                .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+                .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                 .Select(p => p.Type.GetDisplayName())
                 .ToList();
             var signature = string.Join(",", paramTypes);
@@ -432,7 +433,7 @@ internal partial class TypeChecker
                     // Check if this is a self.field assignment
                     if (assignment.Target is MemberAccess memberAccess &&
                         memberAccess.Object is Identifier id &&
-                        id.Name == "self")
+                        id.Name == PythonNames.Self)
                     {
                         initializedFields.Add(memberAccess.Member);
                     }
@@ -774,8 +775,8 @@ internal partial class TypeChecker
                 }
 
                 // Verify parameter count matches (excluding 'self')
-                var interfaceParams = interfaceMethod.Parameters.Where(p => p.Name != "self").ToList();
-                var classParams = classMethod.Parameters.Where(p => p.Name != "self").ToList();
+                var interfaceParams = interfaceMethod.Parameters.Where(p => p.Name != PythonNames.Self).ToList();
+                var classParams = classMethod.Parameters.Where(p => p.Name != PythonNames.Self).ToList();
 
                 if (interfaceParams.Count != classParams.Count)
                 {

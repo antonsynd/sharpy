@@ -1,3 +1,6 @@
+using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
+
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
@@ -93,7 +96,7 @@ internal static class SynthesisAnalyzer
             foreach (var overload in eqOverloads)
             {
                 var otherParam = overload.Parameters
-                    .FirstOrDefault(p => p.Name != "self");
+                    .FirstOrDefault(p => p.Name != PythonNames.Self);
 
                 if (otherParam == null)
                     continue;

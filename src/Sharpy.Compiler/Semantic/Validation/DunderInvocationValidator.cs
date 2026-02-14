@@ -309,6 +309,6 @@ internal class DunderInvocationValidator : SemanticValidatorBase
 
     private static bool IsSelfOrSuper(Expression expr)
     {
-        return expr is Identifier { Name: "self" } || expr is SuperExpression;
+        return expr is Identifier { Name: PythonNames.Self } || expr is SuperExpression;
     }
 }
