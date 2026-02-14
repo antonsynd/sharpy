@@ -1,0 +1,16 @@
+class Person:
+    property name: str
+    property age: int
+
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+def main():
+    p = Person("Alice", 30)
+    print(p.name)
+    print(p.age)
+    p.name = "Bob"
+    p.age = 25
+    print(p.name)
+    print(p.age)

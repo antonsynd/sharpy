@@ -684,6 +684,27 @@ internal partial class TypeChecker
                 return fieldType;
             }
 
+            // Look for property (including inherited properties)
+            var (prop, propOwner) = FindPropertyInHierarchy(udt.Symbol, memberAccess.Member);
+            if (prop != null && propOwner != null)
+            {
+                var propType = prop.Type;
+                if (propType is UnknownType && prop.HasGetter)
+                {
+                    // Property type not yet resolved; fallback to unknown
+                    return propType;
+                }
+
+                // Wrap result in optional/nullable for null conditional access
+                if (memberAccess.IsNullConditional && propType is not NullableType and not OptionalType)
+                {
+                    if (objectType is OptionalType)
+                        return new OptionalType { UnderlyingType = propType };
+                    return new NullableType { UnderlyingType = propType };
+                }
+                return propType;
+            }
+
             // Look for method (including inherited methods)
             var (method, methodOwner) = FindMethodInHierarchy(udt.Symbol, memberAccess.Member);
             if (method != null && methodOwner != null)
@@ -762,6 +783,37 @@ internal partial class TypeChecker
             if (field != null)
                 return (field, current);
             current = GetBaseType(current);
+        }
+
+        return (null, null);
+    }
+
+    /// <summary>
+    /// Finds a property by name in the type's hierarchy (including parent classes and interfaces).
+    /// </summary>
+    private (PropertySymbol? Property, TypeSymbol? Owner) FindPropertyInHierarchy(TypeSymbol type, string propertyName)
+    {
+        // First check the type itself
+        var prop = type.Properties.FirstOrDefault(p => p.Name == propertyName);
+        if (prop != null)
+            return (prop, type);
+
+        // Check base class chain
+        var current = GetBaseType(type);
+        while (current != null)
+        {
+            prop = current.Properties.FirstOrDefault(p => p.Name == propertyName);
+            if (prop != null)
+                return (prop, current);
+            current = GetBaseType(current);
+        }
+
+        // Check interfaces
+        foreach (var iface in GetInterfaces(type))
+        {
+            prop = iface.Properties.FirstOrDefault(p => p.Name == propertyName);
+            if (prop != null)
+                return (prop, iface);
         }
 
         return (null, null);

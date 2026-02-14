@@ -1,0 +1,16 @@
+interface Named:
+    property get name: str
+
+class Animal(Named):
+    property name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+def greet(obj: Named):
+    print("Hello, " + obj.name)
+
+def main():
+    a = Animal("Max")
+    print(a.name)
+    greet(a)

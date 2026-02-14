@@ -1,0 +1,17 @@
+class Temperature:
+    _celsius: float
+
+    def __init__(self, celsius: float):
+        self._celsius = celsius
+
+    property get celsius(self) -> float:
+        return self._celsius
+
+    property set celsius(self, value: float):
+        self._celsius = value
+
+def main():
+    t = Temperature(100.0)
+    print(t.celsius)
+    t.celsius = 37.5
+    print(t.celsius)

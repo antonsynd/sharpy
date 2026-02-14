@@ -1,0 +1,12 @@
+class Circle:
+    _radius: float
+
+    def __init__(self, radius: float):
+        self._radius = radius
+
+    property get area(self) -> float:
+        return 3.14159 * self._radius * self._radius
+
+def main():
+    c = Circle(5.0)
+    print(c.area)

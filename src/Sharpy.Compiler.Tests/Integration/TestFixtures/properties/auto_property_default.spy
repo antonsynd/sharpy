@@ -1,0 +1,15 @@
+class Settings:
+    property debug: bool = False
+    property max_retries: int = 3
+
+    def __init__(self):
+        pass
+
+def main():
+    s = Settings()
+    print(s.debug)
+    print(s.max_retries)
+    s.debug = True
+    s.max_retries = 5
+    print(s.debug)
+    print(s.max_retries)

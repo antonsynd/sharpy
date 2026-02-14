@@ -394,6 +394,9 @@ internal partial class TypeChecker
             }
         }
 
+        // Resolve property types (before checking methods that might reference them)
+        ResolvePropertyTypes(classSymbol, classDef.Body);
+
         // Set current class for method type checking (used for self parameter typing)
         var previousClass = _currentClass;
         _currentClass = classSymbol;
@@ -470,6 +473,9 @@ internal partial class TypeChecker
                 }
             }
         }
+
+        // Resolve property types (before checking methods that might reference them)
+        ResolvePropertyTypes(structSymbol, structDef.Body);
 
         // Set current class for method type checking (structs behave like classes for self parameter)
         var previousClass = _currentClass;
@@ -583,6 +589,9 @@ internal partial class TypeChecker
             }
         }
 
+        // Resolve property types
+        ResolvePropertyTypes(interfaceSymbol, interfaceDef.Body);
+
         // Type-check default method bodies (methods with real implementations)
         // Set _currentClass to the interface symbol so CheckFunction resolves self correctly
         var previousClass = _currentClass;
@@ -607,6 +616,57 @@ internal partial class TypeChecker
 
         // Validate enum-specific rules
         ValidateEnumRules(enumDef);
+    }
+
+    /// <summary>
+    /// Resolves property types from their type annotations in the AST.
+    /// Must be called after field type resolution and before member checking.
+    /// </summary>
+    private void ResolvePropertyTypes(TypeSymbol typeSymbol, System.Collections.Immutable.ImmutableArray<Statement> body)
+    {
+        for (int i = 0; i < typeSymbol.Properties.Count; i++)
+        {
+            var propSymbol = typeSymbol.Properties[i];
+            if (propSymbol.Type is UnknownType)
+            {
+                // Find the corresponding PropertyDef in the AST
+                var propDef = body
+                    .OfType<PropertyDef>()
+                    .FirstOrDefault(p => p.Name == propSymbol.Name);
+
+                if (propDef != null)
+                {
+                    SemanticType resolvedType;
+                    if (propDef.IsFunctionStyle)
+                    {
+                        // For function-style properties, type comes from ReturnType (getter) or parameter type (setter)
+                        if (propDef.ReturnType != null)
+                        {
+                            resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType);
+                        }
+                        else if (propDef.Parameters.Length > 1)
+                        {
+                            // Setter: second parameter is the value (first is self)
+                            resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.Parameters[^1].Type);
+                        }
+                        else
+                        {
+                            resolvedType = SemanticType.Unknown;
+                        }
+                    }
+                    else
+                    {
+                        // Auto-property: type comes from type annotation
+                        resolvedType = _typeResolver.ResolveTypeAnnotation(propDef.Type);
+                    }
+
+                    if (resolvedType != SemanticType.Unknown)
+                    {
+                        typeSymbol.Properties[i] = propSymbol with { Type = resolvedType };
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>
