@@ -174,6 +174,14 @@ public static class DiagnosticCodes
         public const string MissingMainFunction = "SPY0403";
         public const string InvalidNullCoalesce = "SPY0404";
 
+        // Property validation (SPY0405-SPY0415)
+        public const string PropertyFieldNameConflict = "SPY0405";
+        public const string PropertyMethodNameConflict = "SPY0406";
+        public const string MixedAutoAndFunctionStyleProperty = "SPY0407";
+        public const string InitOnlyFunctionStyleProperty = "SPY0408";
+        public const string AbstractPropertyMustHaveEllipsisBody = "SPY0409";
+        public const string FinalWithAbstractOrVirtual = "SPY0410";
+
         // Warnings (SPY0450-SPY0499)
         public const string UnreachableCodeWarning = "SPY0450";
         public const string UnusedVariable = "SPY0451";

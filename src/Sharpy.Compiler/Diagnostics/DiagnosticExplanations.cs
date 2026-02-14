@@ -687,6 +687,50 @@ public static class DiagnosticExplanations
             "x: int = 42\ny: int = x ?? 0  # x is never null",
             "Only use ?? with Optional types:\n  x: Optional[int] = get_value()\n  y: int = x ?? 0");
 
+        // ── Validation errors: Property validation (SPY0405-SPY0415) ───
+
+        Add(dict, DiagnosticCodes.Validation.PropertyFieldNameConflict,
+            "Property conflicts with field name",
+            "Validation",
+            "A property has the same name as a field in the same class or struct. Properties and fields occupy the same namespace and cannot share names.",
+            "class Foo:\n    name: str\n    property get name(self) -> str:\n        return self._name",
+            "Rename the field or the property to avoid the conflict.");
+
+        Add(dict, DiagnosticCodes.Validation.PropertyMethodNameConflict,
+            "Property conflicts with method name",
+            "Validation",
+            "A property has the same name as a method in the same class or struct. Properties and methods cannot share names because they both generate members on the C# type.",
+            "class Foo:\n    property get name(self) -> str:\n        return self._name\n    def name(self) -> str:\n        return self._name",
+            "Rename the method or the property to avoid the conflict.");
+
+        Add(dict, DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty,
+            "Mixed auto-property and function-style property",
+            "Validation",
+            "The same property name has both auto-property and function-style definitions. A property must be either entirely auto-property or entirely function-style.",
+            "class Foo:\n    property name: str\n    property get name(self) -> str:\n        return self._name",
+            "Choose one style: either auto-property or function-style with getter/setter bodies.");
+
+        Add(dict, DiagnosticCodes.Validation.InitOnlyFunctionStyleProperty,
+            "'property init' used with function-style property",
+            "Validation",
+            "The 'property init' accessor is only valid for auto-properties. Function-style properties cannot use init-only semantics.",
+            "class Foo:\n    property init name(self, value: str):\n        self._name = value",
+            "Use 'property set' for function-style setters, or switch to an auto-property with 'property init name: str'.");
+
+        Add(dict, DiagnosticCodes.Validation.AbstractPropertyMustHaveEllipsisBody,
+            "@abstract property must have ellipsis body",
+            "Validation",
+            "A property decorated with @abstract must use '...' (ellipsis) as its body. Abstract properties declare the interface without providing an implementation.",
+            "class Shape:\n    @abstract\n    property get area(self) -> float:\n        return 0.0",
+            "Use ellipsis for the body:\n    @abstract\n    property get area(self) -> float: ...");
+
+        Add(dict, DiagnosticCodes.Validation.FinalWithAbstractOrVirtual,
+            "@final combined with @abstract or @virtual on property",
+            "Validation",
+            "A property cannot be both @final and @abstract or @virtual. @final prevents overriding, while @abstract/@virtual require it.",
+            "class Foo:\n    @final\n    @abstract\n    property get name(self) -> str: ...",
+            "Remove either @final or @abstract/@virtual.");
+
         // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
         Add(dict, DiagnosticCodes.Validation.UnreachableCodeWarning, "Unreachable code detected", "Validation",

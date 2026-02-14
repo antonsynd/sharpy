@@ -24,6 +24,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new InterfaceConflictValidator()) // Order: 170 (detects conflicting synthesized interfaces)
             .AddValidator(new DefaultParameterValidator())  // Order: 250
             .AddValidator(new ControlFlowValidator())       // Order: 400 (CFG-based, handles unreachable code)
+            .AddValidator(new PropertyValidator())           // Order: 410 (property declaration rules)
             .AddValidator(new UnusedVariableValidator())      // Order: 420 (unused variable warnings)
             .AddValidator(new UnusedImportValidator())       // Order: 430 (unused import warnings)
             .AddValidator(new AccessValidator())            // Order: 450
