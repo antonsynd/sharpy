@@ -1,5 +1,3 @@
-Bug: Symbol alias (from x import y as z) doesn't work.
+Bug(#157): Symbol alias (from x import y as z) doesn't work.
 Error: "The name 'Aliased' does not exist in the current context"
 The alias binding isn't being properly registered in the symbol table.
-
-TODO: Investigate ImportResolver symbol alias handling.
