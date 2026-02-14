@@ -1,0 +1,5 @@
+# Test: iterating over a dict yields keys (not KeyValuePair)
+def main():
+    d: dict[str, int] = {"x": 10, "y": 20, "z": 30}
+    for k in d:
+        print(k)

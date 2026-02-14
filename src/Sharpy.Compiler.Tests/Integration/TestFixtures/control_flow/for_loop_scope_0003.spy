@@ -1,0 +1,12 @@
+# Test: for loop scope with body-declared variable reuse across loops
+def main():
+    items: list[str] = ["hello", "world"]
+
+    for item in items:
+        result: str = item.upper()
+        print(result)
+
+    # result should not leak — new declaration needed
+    for item in items:
+        result: str = item + "!"
+        print(result)

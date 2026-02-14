@@ -1,0 +1,10 @@
+# Test: try/else with assignment-style declarations (no type annotation)
+def main():
+    try:
+        value = 100
+        doubled = value * 2
+    except Exception:
+        print("error")
+    else:
+        print(value)
+        print(doubled)

@@ -1,0 +1,16 @@
+# Test: additional string methods — strip with chars, find/rfind
+def main():
+    # Strip with specific chars
+    s: str = "xxhelloxx"
+    print(s.strip("x"))
+
+    # lstrip/rstrip with chars (avoids trailing space issues)
+    s2: str = "aaabbbccc"
+    print(s2.lstrip("a"))
+    print(s2.rstrip("c"))
+
+    # Find / rfind
+    s3: str = "hello world hello"
+    print(s3.find("hello"))
+    print(s3.rfind("hello"))
+    print(s3.find("xyz"))

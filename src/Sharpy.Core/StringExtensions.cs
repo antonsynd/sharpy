@@ -59,7 +59,7 @@ namespace Sharpy
         /// Return a copy of the string with leading whitespace removed.
         /// Python: <c>str.lstrip()</c>
         /// </summary>
-        public static string LStrip(this string s)
+        public static string Lstrip(this string s)
         {
             return s.TrimStart();
         }
@@ -69,7 +69,7 @@ namespace Sharpy
         /// <paramref name="chars"/> removed.
         /// Python: <c>str.lstrip(chars)</c>
         /// </summary>
-        public static string LStrip(this string s, string chars)
+        public static string Lstrip(this string s, string chars)
         {
             return s.TrimStart(chars.ToCharArray());
         }
@@ -78,7 +78,7 @@ namespace Sharpy
         /// Return a copy of the string with trailing whitespace removed.
         /// Python: <c>str.rstrip()</c>
         /// </summary>
-        public static string RStrip(this string s)
+        public static string Rstrip(this string s)
         {
             return s.TrimEnd();
         }
@@ -88,7 +88,7 @@ namespace Sharpy
         /// <paramref name="chars"/> removed.
         /// Python: <c>str.rstrip(chars)</c>
         /// </summary>
-        public static string RStrip(this string s, string chars)
+        public static string Rstrip(this string s, string chars)
         {
             return s.TrimEnd(chars.ToCharArray());
         }
@@ -178,7 +178,7 @@ namespace Sharpy
         /// is found. Return -1 if <paramref name="sub"/> is not found.
         /// Python: <c>str.rfind(sub)</c>
         /// </summary>
-        public static int RFind(this string s, string sub)
+        public static int Rfind(this string s, string sub)
         {
             return s.LastIndexOf(sub);
         }
@@ -189,7 +189,7 @@ namespace Sharpy
         /// Return -1 if <paramref name="sub"/> is not found.
         /// Python: <c>str.rfind(sub, start)</c>
         /// </summary>
-        public static int RFind(this string s, string sub, int start)
+        public static int Rfind(this string s, string sub, int start)
         {
             if (start < 0)
             {
@@ -218,7 +218,7 @@ namespace Sharpy
         /// Return -1 if <paramref name="sub"/> is not found.
         /// Python: <c>str.rfind(sub, start, end)</c>
         /// </summary>
-        public static int RFind(this string s, string sub, int start, int end)
+        public static int Rfind(this string s, string sub, int start, int end)
         {
             if (start < 0)
                 start = System.Math.Max(0, s.Length + start);
@@ -295,7 +295,7 @@ namespace Sharpy
         /// lowercase and vice versa.
         /// Python: <c>str.swapcase()</c>
         /// </summary>
-        public static string SwapCase(this string s)
+        public static string Swapcase(this string s)
         {
             if (string.IsNullOrEmpty(s))
             {
@@ -327,7 +327,7 @@ namespace Sharpy
         /// used for caseless matching.
         /// Python: <c>str.casefold()</c>
         /// </summary>
-        public static string CaseFold(this string s)
+        public static string Casefold(this string s)
         {
             return s.ToLowerInvariant();
         }
@@ -337,7 +337,7 @@ namespace Sharpy
         /// there is at least one character, <c>false</c> otherwise.
         /// Python: <c>str.isdigit()</c>
         /// </summary>
-        public static bool IsDigit(this string s)
+        public static bool Isdigit(this string s)
         {
             if (string.IsNullOrEmpty(s))
             {
@@ -360,7 +360,7 @@ namespace Sharpy
         /// and there is at least one character, <c>false</c> otherwise.
         /// Python: <c>str.isalpha()</c>
         /// </summary>
-        public static bool IsAlpha(this string s)
+        public static bool Isalpha(this string s)
         {
             if (string.IsNullOrEmpty(s))
             {
@@ -383,7 +383,7 @@ namespace Sharpy
         /// and there is at least one character, <c>false</c> otherwise.
         /// Python: <c>str.isalnum()</c>
         /// </summary>
-        public static bool IsAlnum(this string s)
+        public static bool Isalnum(this string s)
         {
             if (string.IsNullOrEmpty(s))
             {
@@ -406,7 +406,7 @@ namespace Sharpy
         /// and there is at least one character, <c>false</c> otherwise.
         /// Python: <c>str.isspace()</c>
         /// </summary>
-        public static bool IsSpace(this string s)
+        public static bool Isspace(this string s)
         {
             if (string.IsNullOrEmpty(s))
             {
@@ -430,7 +430,7 @@ namespace Sharpy
         /// otherwise.
         /// Python: <c>str.isupper()</c>
         /// </summary>
-        public static bool IsUpper(this string s)
+        public static bool Isupper(this string s)
         {
             if (string.IsNullOrEmpty(s))
             {
@@ -459,7 +459,7 @@ namespace Sharpy
         /// otherwise.
         /// Python: <c>str.islower()</c>
         /// </summary>
-        public static bool IsLower(this string s)
+        public static bool Islower(this string s)
         {
             if (string.IsNullOrEmpty(s))
             {
@@ -532,7 +532,7 @@ namespace Sharpy
         /// <paramref name="fillchar"/> (default is a space).
         /// Python: <c>str.ljust(width, fillchar)</c>
         /// </summary>
-        public static string LJust(this string s, int width, char fillchar = ' ')
+        public static string Ljust(this string s, int width, char fillchar = ' ')
         {
             if (s.Length >= width)
             {
@@ -548,7 +548,7 @@ namespace Sharpy
         /// <paramref name="fillchar"/> (default is a space).
         /// Python: <c>str.rjust(width, fillchar)</c>
         /// </summary>
-        public static string RJust(this string s, int width, char fillchar = ' ')
+        public static string Rjust(this string s, int width, char fillchar = ' ')
         {
             if (s.Length >= width)
             {
@@ -565,7 +565,7 @@ namespace Sharpy
         /// character rather than before.
         /// Python: <c>str.zfill(width)</c>
         /// </summary>
-        public static string ZFill(this string s, int width)
+        public static string Zfill(this string s, int width)
         {
             if (s.Length >= width)
             {
@@ -588,7 +588,7 @@ namespace Sharpy
         /// boundaries. Line breaks are not included in the resulting list.
         /// Python: <c>str.splitlines()</c>
         /// </summary>
-        public static List<string> SplitLines(this string s)
+        public static List<string> Splitlines(this string s)
         {
             var result = new List<string>();
             if (string.IsNullOrEmpty(s))
@@ -637,7 +637,7 @@ namespace Sharpy
         /// the original string.
         /// Python: <c>str.removeprefix(prefix)</c>
         /// </summary>
-        public static string RemovePrefix(this string s, string prefix)
+        public static string Removeprefix(this string s, string prefix)
         {
             if (s.StartsWith(prefix))
             {
@@ -653,7 +653,7 @@ namespace Sharpy
         /// the original string.
         /// Python: <c>str.removesuffix(suffix)</c>
         /// </summary>
-        public static string RemoveSuffix(this string s, string suffix)
+        public static string Removesuffix(this string s, string suffix)
         {
             if (s.EndsWith(suffix))
             {

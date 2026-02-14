@@ -1,0 +1,25 @@
+# Test: isinstance with builtin type (str) — verifies codegen maps str->string
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Dog(Animal):
+    breed: str
+
+    def __init__(self, name: str, breed: str):
+        super().__init__(name)
+        self.breed = breed
+
+def check(a: Animal):
+    if isinstance(a, Dog):
+        print(a.breed)
+    else:
+        print(a.name)
+
+def main():
+    d: Animal = Dog("Rex", "Lab")
+    a: Animal = Animal("Bird")
+    check(d)
+    check(a)

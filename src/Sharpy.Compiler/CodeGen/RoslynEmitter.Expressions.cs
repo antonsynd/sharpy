@@ -215,8 +215,11 @@ internal partial class RoslynEmitter
                 && call.Arguments[1] is Identifier typeId)
             {
                 var value = GenerateExpression(call.Arguments[0]);
-                var typeName = ParseName(NameMangler.ToPascalCase(typeId.Name));
-                return BinaryExpression(SyntaxKind.IsExpression, value, typeName);
+                // Use TypeMapper to correctly resolve builtin types (str→string, int→int)
+                // and user-defined types (dog→Dog) via MapType.
+                var typeAnnotation = new TypeAnnotation { Name = typeId.Name };
+                var checkType = _typeMapper.MapType(typeAnnotation);
+                return BinaryExpression(SyntaxKind.IsExpression, value, checkType);
             }
 
             // Check if this is a type instantiation (calling a class or struct constructor)
@@ -902,9 +905,11 @@ internal partial class RoslynEmitter
         var valueLambda = SimpleLambdaExpression(param)
             .WithExpressionBody(valueExpr);
 
-        // Apply .ToDictionary(x => key, x => value)
-        // The implicit conversion from Dictionary<K,V> to Dict<K,V> handles the type mismatch
-        return InvocationExpression(
+        // Apply .ToDictionary(x => key, x => value) and cast to Dict<K,V>.
+        // .ToDictionary() returns Dictionary<K,V> which must be explicitly cast
+        // so that 'var' declarations infer Dict<K,V>, not Dictionary<K,V>.
+        // Dict<K,V> has an implicit conversion operator from Dictionary<K,V>.
+        var toDictInvocation = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 chain,
@@ -912,6 +917,20 @@ internal partial class RoslynEmitter
             .AddArgumentListArguments(
                 Argument(keyLambda),
                 Argument(valueLambda));
+
+        // Wrap in (Dict<K,V>)expr so the result type is always Dict, not Dictionary
+        var keySemanticType = GetExpressionSemanticType(dictComp.Key);
+        var valueSemanticType = GetExpressionSemanticType(dictComp.Value);
+        if (keySemanticType != null && valueSemanticType != null)
+        {
+            var dictType = GenericName("Dict")
+                .AddTypeArgumentListArguments(
+                    _typeMapper.MapSemanticType(keySemanticType),
+                    _typeMapper.MapSemanticType(valueSemanticType));
+            return CastExpression(dictType, ParenthesizedExpression(toDictInvocation));
+        }
+
+        return toDictInvocation;
     }
 
     /// <summary>

@@ -936,7 +936,11 @@ internal partial class RoslynEmitter
             && call.Arguments[0] is Identifier varId
             && call.Arguments[1] is Identifier typeId)
         {
-            results.Add((varId.Name, NameMangler.ToPascalCase(typeId.Name)));
+            // Use TypeMapper to resolve builtin types (str→string, int→int)
+            // and user-defined types (dog→Dog) to their C# names for casts.
+            var typeAnnotation = new TypeAnnotation { Name = typeId.Name };
+            var csharpType = _typeMapper.MapType(typeAnnotation).NormalizeWhitespace().ToFullString();
+            results.Add((varId.Name, csharpType));
             return;
         }
 

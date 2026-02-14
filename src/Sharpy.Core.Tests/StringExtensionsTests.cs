@@ -106,83 +106,83 @@ public class StringExtensionsTests
     [Fact]
     public void RFind_SubstringPresent_ReturnsLastIndex()
     {
-        "hello hello".RFind("hello").Should().Be(6);
+        "hello hello".Rfind("hello").Should().Be(6);
     }
 
     [Fact]
     public void RFind_SubstringAbsent_ReturnsMinusOne()
     {
-        "hello".RFind("xyz").Should().Be(-1);
+        "hello".Rfind("xyz").Should().Be(-1);
     }
 
     [Fact]
     public void RFind_WithStart_SearchesInSlice()
     {
         // Python: "hello hello".rfind("hello", 1) → 6
-        "hello hello".RFind("hello", 1).Should().Be(6);
+        "hello hello".Rfind("hello", 1).Should().Be(6);
     }
 
     [Fact]
     public void RFind_StartBeyondLength_ReturnsMinusOne()
     {
         // Python: "hello".rfind("lo", 10) → -1
-        "hello".RFind("lo", 10).Should().Be(-1);
+        "hello".Rfind("lo", 10).Should().Be(-1);
     }
 
     [Fact]
     public void RFind_EmptySubAtLength_ReturnsLength()
     {
         // Python: "hello".rfind("", 5) → 5
-        "hello".RFind("", 5).Should().Be(5);
+        "hello".Rfind("", 5).Should().Be(5);
     }
 
     [Fact]
     public void RFind_EmptySubBeyondLength_ReturnsMinusOne()
     {
         // Python: "hello".rfind("", 6) → -1
-        "hello".RFind("", 6).Should().Be(-1);
+        "hello".Rfind("", 6).Should().Be(-1);
     }
 
     [Fact]
     public void RFind_WithNegativeStart_WrapsAround()
     {
         // Python: "hello".rfind("lo", -3) → 3 (searches from index 2)
-        "hello".RFind("lo", -3).Should().Be(3);
+        "hello".Rfind("lo", -3).Should().Be(3);
     }
 
     [Fact]
     public void RFind_WithStartAndEnd_SearchesSlice()
     {
         // Python: "hello world".rfind("o", 0, 11) → 7
-        "hello world".RFind("o", 0, 11).Should().Be(7);
+        "hello world".Rfind("o", 0, 11).Should().Be(7);
     }
 
     [Fact]
     public void RFind_WithEndLimited_FindsEarlierMatch()
     {
         // Python: "hello world".rfind("o", 0, 5) → 4
-        "hello world".RFind("o", 0, 5).Should().Be(4);
+        "hello world".Rfind("o", 0, 5).Should().Be(4);
     }
 
     [Fact]
     public void RFind_WithNegativeEnd()
     {
         // Python: "hello".rfind("ell", 0, -1) → 1
-        "hello".RFind("ell", 0, -1).Should().Be(1);
+        "hello".Rfind("ell", 0, -1).Should().Be(1);
     }
 
     [Fact]
     public void RFind_EmptySlice_EmptySubReturnsStart()
     {
         // Python: "hello".rfind("", 5, 5) → 5
-        "hello".RFind("", 5, 5).Should().Be(5);
+        "hello".Rfind("", 5, 5).Should().Be(5);
     }
 
     [Fact]
     public void RFind_StartGtEnd_ReturnsMinusOne()
     {
         // Python: "hello".rfind("l", 5, 3) → -1
-        "hello".RFind("l", 5, 3).Should().Be(-1);
+        "hello".Rfind("l", 5, 3).Should().Be(-1);
     }
 
     #endregion
@@ -281,20 +281,20 @@ public class StringExtensionsTests
     public void SplitLines_TrailingNewline()
     {
         // Python: "abc\n".splitlines() → ["abc"]
-        "abc\n".SplitLines().Should().BeEquivalentTo(new[] { "abc" });
+        "abc\n".Splitlines().Should().BeEquivalentTo(new[] { "abc" });
     }
 
     [Fact]
     public void SplitLines_MultipleLines()
     {
-        "a\nb\nc".SplitLines().Should().BeEquivalentTo(new[] { "a", "b", "c" });
+        "a\nb\nc".Splitlines().Should().BeEquivalentTo(new[] { "a", "b", "c" });
     }
 
     [Fact]
     public void SplitLines_EmptyLinesBetween()
     {
         // Python: "\n\n".splitlines() → ["", ""]
-        "\n\n".SplitLines().Should().BeEquivalentTo(new[] { "", "" });
+        "\n\n".Splitlines().Should().BeEquivalentTo(new[] { "", "" });
     }
 
     #endregion
