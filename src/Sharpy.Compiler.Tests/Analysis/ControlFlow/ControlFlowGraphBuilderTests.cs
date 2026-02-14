@@ -744,6 +744,37 @@ public class ControlFlowGraphBuilderTests
 
     #endregion
 
+    #region With Statement
+
+    [Fact]
+    public void Build_WithStatement_StraightThroughFlow()
+    {
+        var func = CreateFunction("with_stmt", ImmutableArray.Create<Statement>(
+            new WithStatement
+            {
+                Items = ImmutableArray.Create(new WithItem
+                {
+                    ContextExpression = Id("ctx"),
+                    Name = "f"
+                }),
+                Body = ImmutableArray.Create<Statement>(Pass())
+            }
+        ));
+
+        var cfg = _builder.Build(func);
+
+        // With statement is straight-through: no branching, no loops
+        var condBlocks = cfg.Blocks.Where(b =>
+            b.Terminator is ConditionalBranchTerminator).ToList();
+        Assert.Empty(condBlocks);
+
+        // All blocks should be reachable
+        var unreachable = cfg.FindUnreachableBlocks();
+        Assert.Empty(unreachable);
+    }
+
+    #endregion
+
     #region Helpers
 
     private static FunctionDef CreateFunction(string name, ImmutableArray<Statement> body)

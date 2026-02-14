@@ -132,6 +132,14 @@ public class ParserNegativeTests
         errors.Should().Contain("Expected Colon");
     }
 
+    [Fact]
+    public void RejectsMissingColonAfterWith()
+    {
+        var source = "with something as x\n    pass";
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected Colon");
+    }
+
     #endregion
 
     #region Missing Brackets/Parentheses
@@ -675,6 +683,21 @@ z = 3";
     {
         var source = "if True:\n    pass\nelif:\n    pass";
         ParseExpectingError(source);
+    }
+
+    [Fact]
+    public void RejectsWithWithoutExpression()
+    {
+        var source = "with as name:\n    pass";
+        ParseExpectingError(source);
+    }
+
+    [Fact]
+    public void RejectsWithAsWithoutName()
+    {
+        var source = "with something as:\n    pass";
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("Expected identifier");
     }
 
     [Fact]
