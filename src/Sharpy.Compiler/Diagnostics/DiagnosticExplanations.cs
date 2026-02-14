@@ -731,6 +731,14 @@ public static class DiagnosticExplanations
             "class Foo:\n    @final\n    @abstract\n    property get name(self) -> str: ...",
             "Remove either @final or @abstract/@virtual.");
 
+        Add(dict, DiagnosticCodes.Validation.InvalidPropertyOverride,
+            "Invalid property override",
+            "Validation",
+            "A property with @override has no matching virtual or abstract property in the base class, or the types are incompatible. " +
+            "Override properties must have a corresponding virtual or abstract property in the base class with a compatible type.",
+            "class Base:\n    property get name(self) -> str:\n        return \"base\"\n\nclass Derived(Base):\n    @override\n    property get missing(self) -> str:\n        return \"derived\"",
+            "Ensure the base class has a virtual or abstract property with the same name and compatible type.");
+
         // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
         Add(dict, DiagnosticCodes.Validation.UnreachableCodeWarning, "Unreachable code detected", "Validation",

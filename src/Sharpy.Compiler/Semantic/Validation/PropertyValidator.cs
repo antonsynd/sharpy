@@ -14,6 +14,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// 4. 'property init' is only valid for auto-properties (SPY0408)
 /// 5. @abstract properties must have ellipsis body (SPY0409)
 /// 6. @final cannot be combined with @abstract or @virtual (SPY0410)
+/// 7. @override property must have matching virtual/abstract base property (SPY0411)
 /// </summary>
 internal class PropertyValidator : SemanticValidatorBase
 {
@@ -78,6 +79,9 @@ internal class PropertyValidator : SemanticValidatorBase
             group.Add(propDef);
         }
 
+        // Resolve the type symbol for override validation
+        var typeSymbol = _context.SymbolTable.LookupType(typeName);
+
         // Check each property definition
         foreach (var propDef in propertyDefs)
         {
@@ -86,6 +90,7 @@ internal class PropertyValidator : SemanticValidatorBase
             ValidateInitOnlyFunctionStyle(typeName, propDef);
             ValidateAbstractPropertyBody(typeName, propDef);
             ValidateFinalNotWithAbstractOrVirtual(typeName, propDef);
+            ValidatePropertyOverride(typeName, propDef, typeSymbol);
         }
 
         // Check for mixed auto/function-style per property name
@@ -215,5 +220,77 @@ internal class PropertyValidator : SemanticValidatorBase
                 code: DiagnosticCodes.Validation.FinalWithAbstractOrVirtual,
                 span: propDef.Span);
         }
+    }
+
+    /// <summary>
+    /// Rule 7: @override property must have a matching virtual/abstract property in the base class
+    /// with a compatible (covariant) return type.
+    /// </summary>
+    private void ValidatePropertyOverride(string typeName, PropertyDef propDef, TypeSymbol? typeSymbol)
+    {
+        bool isOverride = propDef.Decorators.Any(d => d.Name == "override");
+        if (!isOverride || typeSymbol == null)
+            return;
+
+        var baseType = typeSymbol.BaseType;
+        if (baseType == null)
+        {
+            AddError(_context,
+                $"Property '{propDef.Name}' in '{typeName}' is marked @override but the class has no base class",
+                propDef.LineStart, propDef.ColumnStart,
+                code: DiagnosticCodes.Validation.InvalidPropertyOverride,
+                span: propDef.Span);
+            return;
+        }
+
+        var baseProp = FindPropertyInHierarchy(baseType, propDef.Name);
+        if (baseProp == null)
+        {
+            AddError(_context,
+                $"Property '{propDef.Name}' in '{typeName}' is marked @override but no matching property exists in base class '{baseType.Name}'",
+                propDef.LineStart, propDef.ColumnStart,
+                code: DiagnosticCodes.Validation.InvalidPropertyOverride,
+                span: propDef.Span);
+            return;
+        }
+
+        if (!baseProp.IsVirtual && !baseProp.IsAbstract && !baseProp.IsOverride)
+        {
+            AddError(_context,
+                $"Cannot override property '{propDef.Name}' because the base class property in '{baseType.Name}' is not marked @virtual or @abstract",
+                propDef.LineStart, propDef.ColumnStart,
+                code: DiagnosticCodes.Validation.InvalidPropertyOverride,
+                span: propDef.Span);
+            return;
+        }
+
+        // Check covariant return type: the derived property type must be assignable to the base property type
+        var derivedPropSymbol = typeSymbol.Properties.FirstOrDefault(p => p.Name == propDef.Name);
+        if (derivedPropSymbol != null && baseProp.Type is not UnknownType && derivedPropSymbol.Type is not UnknownType)
+        {
+            if (!derivedPropSymbol.Type.IsAssignableTo(baseProp.Type))
+            {
+                AddError(_context,
+                    $"Property '{propDef.Name}' in '{typeName}' has type '{derivedPropSymbol.Type}' which is not compatible with base property type '{baseProp.Type}'",
+                    propDef.LineStart, propDef.ColumnStart,
+                    code: DiagnosticCodes.Validation.InvalidPropertyOverride,
+                    span: propDef.Span);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Walks the base class hierarchy to find a property with the given name.
+    /// </summary>
+    private static PropertySymbol? FindPropertyInHierarchy(TypeSymbol? type, string propertyName)
+    {
+        while (type != null)
+        {
+            var prop = type.Properties.FirstOrDefault(p => p.Name == propertyName);
+            if (prop != null)
+                return prop;
+            type = type.BaseType;
+        }
+        return null;
     }
 }

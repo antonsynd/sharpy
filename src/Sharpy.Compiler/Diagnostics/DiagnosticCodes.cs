@@ -181,6 +181,7 @@ public static class DiagnosticCodes
         public const string InitOnlyFunctionStyleProperty = "SPY0408";
         public const string AbstractPropertyMustHaveEllipsisBody = "SPY0409";
         public const string FinalWithAbstractOrVirtual = "SPY0410";
+        public const string InvalidPropertyOverride = "SPY0411";
 
         // Warnings (SPY0450-SPY0499)
         public const string UnreachableCodeWarning = "SPY0450";
