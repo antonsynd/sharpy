@@ -696,6 +696,7 @@ internal class NameResolver
                 IsFinal = isFinal,
                 GetterAccess = hasGetter ? accessLevel : AccessLevel.Public,
                 SetterAccess = hasSetter || hasInit ? accessLevel : AccessLevel.Public,
+                ExplicitInterface = propDef.ExplicitInterface,
             };
 
             owningType.Properties.Add(propSymbol);

@@ -193,6 +193,7 @@ public record PropertySymbol
     public bool IsFinal { get; init; }
     public AccessLevel GetterAccess { get; init; } = AccessLevel.Public;
     public AccessLevel SetterAccess { get; init; } = AccessLevel.Public;
+    public string? ExplicitInterface { get; init; }
 }
 
 /// <summary>
