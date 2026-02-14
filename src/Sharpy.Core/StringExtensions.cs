@@ -22,18 +22,20 @@ namespace Sharpy
         /// Return a copy of the string converted to uppercase.
         /// Python: <c>str.upper()</c>
         /// </summary>
+        /// <remarks>Uses invariant culture to match Python's culture-independent behavior.</remarks>
         public static string Upper(this string s)
         {
-            return s.ToUpper();
+            return s.ToUpperInvariant();
         }
 
         /// <summary>
         /// Return a copy of the string converted to lowercase.
         /// Python: <c>str.lower()</c>
         /// </summary>
+        /// <remarks>Uses invariant culture to match Python's culture-independent behavior.</remarks>
         public static string Lower(this string s)
         {
-            return s.ToLower();
+            return s.ToLowerInvariant();
         }
 
         /// <summary>
@@ -327,6 +329,11 @@ namespace Sharpy
         /// used for caseless matching.
         /// Python: <c>str.casefold()</c>
         /// </summary>
+        /// <remarks>
+        /// Uses .NET <see cref="string.ToLowerInvariant"/> (simple case folding).
+        /// Does not perform full Unicode case folding like Python
+        /// (e.g., Python folds ß → ss, ﬁ → fi).
+        /// </remarks>
         public static string Casefold(this string s)
         {
             return s.ToLowerInvariant();

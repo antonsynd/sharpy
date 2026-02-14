@@ -433,6 +433,7 @@ internal partial class RoslynEmitter
             case ForStatement forStmt:
                 CollectVariableNamesFromExpression(forStmt.Target);
                 CollectSourceVariableNames(forStmt.Body);
+                CollectSourceVariableNames(forStmt.ElseBody);
                 break;
 
             case IfStatement ifStmt:
@@ -446,6 +447,7 @@ internal partial class RoslynEmitter
 
             case WhileStatement whileStmt:
                 CollectSourceVariableNames(whileStmt.Body);
+                CollectSourceVariableNames(whileStmt.ElseBody);
                 break;
 
             case TryStatement tryStmt:
@@ -459,6 +461,7 @@ internal partial class RoslynEmitter
                     }
                     CollectSourceVariableNames(handler.Body);
                 }
+                CollectSourceVariableNames(tryStmt.ElseBody);
                 CollectSourceVariableNames(tryStmt.FinallyBody);
                 break;
 

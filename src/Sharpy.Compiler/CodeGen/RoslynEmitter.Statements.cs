@@ -958,11 +958,18 @@ internal partial class RoslynEmitter
         // while x is not None: → x is narrowed to T in the loop body
         var narrowingInfo = DetectOptionalNarrowings(whileStmt.Test);
 
+        // Detect isinstance narrowing in while condition:
+        // while isinstance(x, MyType): → x is narrowed to MyType in the loop body
+        var isInstanceNarrowings = DetectIsInstanceNarrowings(whileStmt.Test);
+
         var condition = GenerateExpression(whileStmt.Test);
 
         // If there's no else clause, generate simple while loop
         if (whileStmt.ElseBody.IsEmpty)
         {
+            foreach (var (varName, typeName) in isInstanceNarrowings)
+                PushIsInstanceNarrowing(varName, typeName);
+
             if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
             {
                 foreach (var name in narrowingInfo.Value.VariableNames)
@@ -970,9 +977,15 @@ internal partial class RoslynEmitter
                 var body = Block(whileStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
                 foreach (var name in narrowingInfo.Value.VariableNames)
                     PopNarrowing(name);
+
+                foreach (var (varName, _) in isInstanceNarrowings)
+                    PopIsInstanceNarrowing(varName);
                 return WhileStatement(condition, body);
             }
             var simpleBody = Block(whileStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+            foreach (var (varName, _) in isInstanceNarrowings)
+                PopIsInstanceNarrowing(varName);
             return WhileStatement(condition, simpleBody);
         }
 
@@ -993,6 +1006,10 @@ internal partial class RoslynEmitter
         // Transform the body to set flag to false before break
         var transformedBody = TransformLoopBodyForElse(whileStmt.Body, flagName);
         BlockSyntax bodyBlock;
+
+        foreach (var (varName, typeName) in isInstanceNarrowings)
+            PushIsInstanceNarrowing(varName, typeName);
+
         if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
         {
             foreach (var name in narrowingInfo.Value.VariableNames)
@@ -1005,6 +1022,9 @@ internal partial class RoslynEmitter
         {
             bodyBlock = Block(transformedBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
         }
+
+        foreach (var (varName, _) in isInstanceNarrowings)
+            PopIsInstanceNarrowing(varName);
 
         // while (condition) { transformedBody }
         statements.Add(WhileStatement(condition, bodyBlock));
@@ -1198,43 +1218,8 @@ internal partial class RoslynEmitter
         }
 
         var tryBlock = Block(tryStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
-
-        // Generate catch clauses
-        var catchClauses = tryStmt.Handlers.Select(handler =>
-        {
-            var catchBlock = Block(handler.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
-
-            if (handler.ExceptionType != null)
-            {
-                var exceptionType = _typeMapper.MapType(handler.ExceptionType);
-
-                if (handler.Name != null)
-                {
-                    var exceptionVar = NameMangler.ToCamelCase(handler.Name);
-                    var declaration = CatchDeclaration(exceptionType, Identifier(exceptionVar));
-                    return CatchClause(declaration, null, catchBlock);
-                }
-                else
-                {
-                    var declaration = CatchDeclaration(exceptionType);
-                    return CatchClause(declaration, null, catchBlock);
-                }
-            }
-            else
-            {
-                // Catch all exceptions
-                return CatchClause()
-                    .WithBlock(catchBlock);
-            }
-        }).ToList();
-
-        // Generate finally block if present
-        FinallyClauseSyntax? finallyClause = null;
-        if (tryStmt.FinallyBody.Length > 0)
-        {
-            var finallyBlock = Block(tryStmt.FinallyBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
-            finallyClause = FinallyClause(finallyBlock);
-        }
+        var catchClauses = GenerateCatchClauses(tryStmt.Handlers);
+        var finallyClause = GenerateFinallyClause(tryStmt.FinallyBody);
 
         return TryStatement(tryBlock, List(catchClauses), finallyClause);
     }
@@ -1336,9 +1321,27 @@ internal partial class RoslynEmitter
                 IdentifierName(flagName),
                 LiteralExpression(SyntaxKind.TrueLiteralExpression))));
         var tryBlock = Block(tryBodyStatements);
+        var catchClauses = GenerateCatchClauses(tryStmt.Handlers);
+        var finallyClause = GenerateFinallyClause(tryStmt.FinallyBody);
 
-        // Generate catch clauses
-        var catchClauses = tryStmt.Handlers.Select(handler =>
+        var tryCatchFinally = TryStatement(tryBlock, List(catchClauses), finallyClause);
+
+        // Generate: if (__trySucceeded) { else_body }
+        var elseBlock = Block(tryStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        var elseIf = IfStatement(IdentifierName(flagName), elseBlock);
+
+        // Return a block containing all statements: hoisted decls + flag + try + else-if
+        var allStatements = new List<StatementSyntax>();
+        allStatements.AddRange(hoistedDecls);
+        allStatements.Add(flagDecl);
+        allStatements.Add(tryCatchFinally);
+        allStatements.Add(elseIf);
+        return Block(allStatements);
+    }
+
+    private List<CatchClauseSyntax> GenerateCatchClauses(ImmutableArray<ExceptHandler> handlers)
+    {
+        return handlers.Select(handler =>
         {
             var catchBlock = Block(handler.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
 
@@ -1360,33 +1363,20 @@ internal partial class RoslynEmitter
             }
             else
             {
-                // Catch all exceptions
                 return CatchClause()
                     .WithBlock(catchBlock);
             }
         }).ToList();
+    }
 
-        // Generate finally block if present
-        FinallyClauseSyntax? finallyClause = null;
-        if (tryStmt.FinallyBody.Length > 0)
+    private FinallyClauseSyntax? GenerateFinallyClause(ImmutableArray<Statement> finallyBody)
+    {
+        if (finallyBody.Length > 0)
         {
-            var finallyBlock = Block(tryStmt.FinallyBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
-            finallyClause = FinallyClause(finallyBlock);
+            var finallyBlock = Block(finallyBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            return FinallyClause(finallyBlock);
         }
-
-        var tryCatchFinally = TryStatement(tryBlock, List(catchClauses), finallyClause);
-
-        // Generate: if (__trySucceeded) { else_body }
-        var elseBlock = Block(tryStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
-        var elseIf = IfStatement(IdentifierName(flagName), elseBlock);
-
-        // Return a block containing all statements: hoisted decls + flag + try + else-if
-        var allStatements = new List<StatementSyntax>();
-        allStatements.AddRange(hoistedDecls);
-        allStatements.Add(flagDecl);
-        allStatements.Add(tryCatchFinally);
-        allStatements.Add(elseIf);
-        return Block(allStatements);
+        return null;
     }
 
 }
