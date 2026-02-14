@@ -1,0 +1,11 @@
+def main():
+    try:
+        x: int = 10
+        y: int = 20
+        z: int = x + y
+    except Exception:
+        print("error")
+    else:
+        print(x)
+        print(y)
+        print(z)

@@ -1,0 +1,10 @@
+def main():
+    items: list[int] = [1, 2, 3]
+    names: list[str] = ["a", "b"]
+
+    for val in items:
+        for name in names:
+            print(str(val) + name)
+
+    for val in items:
+        print(val * 2)

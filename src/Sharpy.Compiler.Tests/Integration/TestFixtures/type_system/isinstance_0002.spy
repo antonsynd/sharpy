@@ -1,0 +1,41 @@
+class Shape:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, radius: float):
+        super().__init__("circle")
+        self.radius = radius
+
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+
+class Square(Shape):
+    side: float
+
+    def __init__(self, side: float):
+        super().__init__("square")
+        self.side = side
+
+    def area(self) -> float:
+        return self.side * self.side
+
+def describe(shape: Shape) -> str:
+    if isinstance(shape, Circle):
+        return "Circle with radius " + str(shape.radius)
+    elif isinstance(shape, Square):
+        return "Square with side " + str(shape.side)
+    else:
+        return "Unknown shape: " + shape.name
+
+def main():
+    c: Shape = Circle(5.0)
+    s: Shape = Square(3.0)
+    u: Shape = Shape("triangle")
+    print(describe(c))
+    print(describe(s))
+    print(describe(u))

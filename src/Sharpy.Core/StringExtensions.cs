@@ -136,12 +136,41 @@ namespace Sharpy
                 start = System.Math.Max(0, s.Length + start);
             }
 
-            if (start >= s.Length)
+            if (start > s.Length)
+            {
+                return -1;
+            }
+
+            if (start == s.Length)
             {
                 return string.IsNullOrEmpty(sub) ? s.Length : -1;
             }
 
             return s.IndexOf(sub, start);
+        }
+
+        /// <summary>
+        /// Return the lowest index in the string where substring <paramref name="sub"/>
+        /// is found within <c>s[start:end]</c>.
+        /// Return -1 if <paramref name="sub"/> is not found.
+        /// Python: <c>str.find(sub, start, end)</c>
+        /// </summary>
+        public static int Find(this string s, string sub, int start, int end)
+        {
+            if (start < 0)
+                start = System.Math.Max(0, s.Length + start);
+            if (end < 0)
+                end = System.Math.Max(0, s.Length + end);
+            if (end > s.Length)
+                end = s.Length;
+            if (start > end || start > s.Length)
+                return -1;
+            if (start == end)
+                return string.IsNullOrEmpty(sub) ? start : -1;
+
+            int count = end - start;
+            int index = s.IndexOf(sub, start, count);
+            return index;
         }
 
         /// <summary>
@@ -167,14 +196,43 @@ namespace Sharpy
                 start = System.Math.Max(0, s.Length + start);
             }
 
-            if (start >= s.Length)
+            if (start > s.Length)
             {
-                return s.LastIndexOf(sub);
+                return -1;
+            }
+
+            if (start == s.Length)
+            {
+                return string.IsNullOrEmpty(sub) ? s.Length : -1;
             }
 
             // Python rfind(sub, start) searches in s[start:]
             var substring = s.Substring(start);
             var index = substring.LastIndexOf(sub);
+            return index >= 0 ? start + index : -1;
+        }
+
+        /// <summary>
+        /// Return the highest index in the string where substring <paramref name="sub"/>
+        /// is found within <c>s[start:end]</c>.
+        /// Return -1 if <paramref name="sub"/> is not found.
+        /// Python: <c>str.rfind(sub, start, end)</c>
+        /// </summary>
+        public static int RFind(this string s, string sub, int start, int end)
+        {
+            if (start < 0)
+                start = System.Math.Max(0, s.Length + start);
+            if (end < 0)
+                end = System.Math.Max(0, s.Length + end);
+            if (end > s.Length)
+                end = s.Length;
+            if (start > end || start > s.Length)
+                return -1;
+            if (start == end)
+                return string.IsNullOrEmpty(sub) ? start : -1;
+
+            var slice = s.Substring(start, end - start);
+            int index = slice.LastIndexOf(sub);
             return index >= 0 ? start + index : -1;
         }
 

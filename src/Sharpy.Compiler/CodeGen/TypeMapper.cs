@@ -558,8 +558,7 @@ internal class TypeMapper
     }
 
     /// <summary>
-    /// Creates a System.Collections.Generic.Dictionary type with key and value types
-    /// v0.1.x uses .NET types directly per phases.md
+    /// Creates a Sharpy.Dict type with key and value types.
     /// </summary>
     public TypeSyntax CreateDictType(TypeSyntax keyType, TypeSyntax valueType)
     {

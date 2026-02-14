@@ -778,6 +778,13 @@ public class Compiler
         var emitter = new RoslynEmitter(codeGenContext, cancellationToken);
         var compilationUnit = emitter.GenerateCompilationUnit(moduleInfo.Module);
 
+        // Clean up temporarily added symbols to avoid polluting the shared
+        // SymbolTable for subsequent module code generation.
+        foreach (var name in addedSymbols)
+        {
+            symbolTable.Remove(name);
+        }
+
         if (codeGenContext.HasErrors)
         {
             diagnostics.Merge(codeGenContext.Diagnostics);
