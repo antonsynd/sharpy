@@ -196,7 +196,15 @@ internal class TypeResolver
                 .Select(ResolveTypeAnnotation)
                 .ToList();
 
-            return new TupleType { ElementTypes = elementTypes };
+            var tupleType = new TupleType { ElementTypes = elementTypes };
+
+            // Propagate element names for named tuples
+            if (!annotation.TupleElementNames.IsEmpty)
+            {
+                tupleType = tupleType with { ElementNames = annotation.TupleElementNames };
+            }
+
+            return tupleType;
         }
 
         // Special handling for function types - (T, U) -> V parsed as "function" with type args

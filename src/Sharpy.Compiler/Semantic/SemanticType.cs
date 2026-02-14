@@ -590,10 +590,27 @@ public sealed record TupleType : SemanticType
 {
     public List<SemanticType> ElementTypes { get; init; } = new();
 
+    /// <summary>
+    /// Element names for named tuples. Null means unnamed (backward compatible).
+    /// When present, must have the same count as ElementTypes.
+    /// </summary>
+    public ImmutableArray<string?>? ElementNames { get; init; }
+
+    /// <summary>
+    /// Whether this is a named tuple (has element names).
+    /// </summary>
+    public bool IsNamed => ElementNames != null && ElementNames.Value.Length > 0;
+
     public override string GetDisplayName()
     {
-        var elements = string.Join(", ", ElementTypes.Select(e => e.GetDisplayName()));
-        return $"tuple[{elements}]";
+        if (IsNamed)
+        {
+            var elements = ElementTypes.Select((e, i) =>
+                $"{ElementNames!.Value[i]}: {e.GetDisplayName()}");
+            return $"tuple[{string.Join(", ", elements)}]";
+        }
+        var unnamed = string.Join(", ", ElementTypes.Select(e => e.GetDisplayName()));
+        return $"tuple[{unnamed}]";
     }
 
     public override bool IsAssignableTo(SemanticType other)
@@ -627,6 +644,18 @@ public sealed record TupleType : SemanticType
                 return false;
         }
 
+        // Compare element names
+        if (IsNamed != other.IsNamed)
+            return false;
+        if (IsNamed && other.IsNamed)
+        {
+            for (int i = 0; i < ElementNames!.Value.Length; i++)
+            {
+                if (ElementNames.Value[i] != other.ElementNames!.Value[i])
+                    return false;
+            }
+        }
+
         return true;
     }
 
@@ -636,6 +665,13 @@ public sealed record TupleType : SemanticType
         foreach (var elem in ElementTypes)
         {
             hash.Add(elem);
+        }
+        if (IsNamed)
+        {
+            foreach (var name in ElementNames!.Value)
+            {
+                hash.Add(name);
+            }
         }
         return hash.ToHashCode();
     }

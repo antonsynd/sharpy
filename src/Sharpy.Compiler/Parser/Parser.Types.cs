@@ -181,24 +181,60 @@ public partial class Parser
         }
 
         var typeArgs = new List<TypeAnnotation>();
+        var tupleElementNames = new List<string?>();
 
         // Generic type arguments [T, U]
         if (Current.Type == TokenType.LeftBracket && Peek().Type != TokenType.RightBracket)
         {
             Advance();
             _lastLoopPosition = -1;
+
+            // For tuple types, check for named elements: tuple[x: float, y: float]
+            bool isTuple = name == "tuple";
+            bool hasNamedElements = false;
+            bool hasUnnamedElements = false;
+
             do
             {
                 if (!CheckLoopProgress())
                     break;
 
-                typeArgs.Add(ParseTypeAnnotation());
+                // Check for named tuple element: identifier ':' type
+                if (isTuple && Current.Type == TokenType.Identifier && Peek().Type == TokenType.Colon)
+                {
+                    var elementName = Current.Value;
+                    Advance(); // consume identifier
+                    Advance(); // consume ':'
+                    tupleElementNames.Add(elementName);
+                    hasNamedElements = true;
+                    typeArgs.Add(ParseTypeAnnotation());
+                }
+                else
+                {
+                    if (isTuple)
+                    {
+                        tupleElementNames.Add(null);
+                        hasUnnamedElements = true;
+                    }
+                    typeArgs.Add(ParseTypeAnnotation());
+                }
 
                 if (Current.Type == TokenType.Comma)
                     Advance();
                 else
                     break;
             } while (true);
+
+            // Validate: either all or none are named
+            if (isTuple && hasNamedElements && hasUnnamedElements)
+            {
+                throw ReportError(
+                    "Named tuple elements must be either all named or all unnamed",
+                    startLine, startColumn,
+                    DiagnosticCodes.Parser.MixedNamedUnnamedTupleElements,
+                    span: GetSpanFromTokens(startToken, Current));
+            }
+
             Expect(TokenType.RightBracket);
         }
 
@@ -206,10 +242,16 @@ public partial class Parser
         var endLine = endToken.Line;
         var endColumn = endToken.Column + endToken.Value.Length;
 
+        // Only include element names if there are named elements
+        var elementNames = tupleElementNames.Any(n => n != null)
+            ? tupleElementNames.ToImmutableArray()
+            : ImmutableArray<string?>.Empty;
+
         return new TypeAnnotation
         {
             Name = name,
             TypeArguments = typeArgs.ToImmutableArray(),
+            TupleElementNames = elementNames,
             IsOptional = false,
             LineStart = startLine,
             ColumnStart = startColumn,

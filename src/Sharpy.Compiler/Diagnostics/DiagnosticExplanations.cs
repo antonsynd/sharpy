@@ -254,6 +254,11 @@ public static class DiagnosticExplanations
             "@\ndef foo():\n    pass",
             "Add a valid decorator name:\n@staticmethod\ndef foo():\n    pass");
 
+        Add(dict, DiagnosticCodes.Parser.MixedNamedUnnamedTupleElements, "Mixed named and unnamed tuple elements", "Parser",
+            "A tuple type or literal has a mix of named and unnamed elements. All elements must be either named or unnamed.",
+            "type Point = tuple[x: float, float]",
+            "Make all elements named or all unnamed:\n  type Point = tuple[x: float, y: float]\n  type Pair = tuple[float, float]");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",
