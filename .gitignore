@@ -1,5 +1,9 @@
 snippets/*.cs
 
+# Generated C# from test fixture compilation (but keep .expected.cs snapshots)
+src/Sharpy.Compiler.Tests/Integration/TestFixtures/**/*.cs
+!src/Sharpy.Compiler.Tests/Integration/TestFixtures/**/*.expected.cs
+
 # Swap files
 *.swp
 
