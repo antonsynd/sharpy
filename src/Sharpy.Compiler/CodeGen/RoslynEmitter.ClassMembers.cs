@@ -73,6 +73,9 @@ internal partial class RoslynEmitter
         // Collect all __init__ methods for constructor generation (supports overloading)
         var initMethods = new List<FunctionDef>();
 
+        // Collect all PropertyDef nodes, grouped by name for combining getter/setter
+        var propertyGroups = new Dictionary<string, List<PropertyDef>>();
+
         // Track which dunder methods are present for complementary operator generation
         var dunders = new HashSet<string>();
         foreach (var stmt in body)
@@ -168,7 +171,13 @@ internal partial class RoslynEmitter
                     break;
 
                 case PropertyDef propDef:
-                    members.Add(GeneratePropertyMember(propDef));
+                    // Collect for grouped generation (getter+setter combine into one C# property)
+                    if (!propertyGroups.TryGetValue(propDef.Name, out var group))
+                    {
+                        group = new List<PropertyDef>();
+                        propertyGroups[propDef.Name] = group;
+                    }
+                    group.Add(propDef);
                     break;
 
                 case VariableDeclaration _:
@@ -191,6 +200,12 @@ internal partial class RoslynEmitter
                         stmt.ColumnStart);
                     break;
             }
+        }
+
+        // Generate all properties (grouped by name to combine getter/setter)
+        foreach (var (propName, propGroup) in propertyGroups)
+        {
+            members.Add(GenerateGroupedProperty(propGroup));
         }
 
         // Generate all constructors (supports overloading)
@@ -1075,17 +1090,182 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates a C# property member from a PropertyDef AST node.
-    /// Handles both auto-properties and function-style properties.
+    /// Generates a C# property from a group of PropertyDef AST nodes.
+    /// A single PropertyDef produces a single-accessor property.
+    /// Multiple PropertyDefs with the same name (e.g., getter + setter) combine
+    /// into a single C# property with multiple accessors.
     /// </summary>
-    private MemberDeclarationSyntax GeneratePropertyMember(PropertyDef propDef)
+    private MemberDeclarationSyntax GenerateGroupedProperty(List<PropertyDef> propGroup)
     {
-        if (propDef.IsFunctionStyle)
+        if (propGroup.Count == 1)
         {
-            return GenerateFunctionStyleProperty(propDef);
+            var prop = propGroup[0];
+            if (prop.IsFunctionStyle)
+            {
+                return GenerateFunctionStyleProperty(prop);
+            }
+            return GenerateAutoProperty(prop);
         }
 
-        return GenerateAutoProperty(propDef);
+        // Multiple PropertyDef nodes with the same name: combine into one C# property
+        return GenerateCombinedFunctionStyleProperty(propGroup);
+    }
+
+    /// <summary>
+    /// Generates a single C# property from multiple PropertyDef nodes (e.g., getter + setter).
+    /// Each PropertyDef contributes one accessor. Mixed access modifiers are supported
+    /// (e.g., public get, private set) by applying accessor-level modifiers.
+    /// </summary>
+    private PropertyDeclarationSyntax GenerateCombinedFunctionStyleProperty(List<PropertyDef> propGroup)
+    {
+        var first = propGroup[0];
+        var propertyName = NameMangler.ToPascalCase(first.Name);
+
+        // Determine property type from getter's return type or setter's parameter type
+        TypeSyntax propertyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        var getterProp = propGroup.FirstOrDefault(p => p.Accessor == PropertyAccessor.Get);
+        var setterProp = propGroup.FirstOrDefault(p => p.Accessor == PropertyAccessor.Set || p.Accessor == PropertyAccessor.Init);
+
+        if (getterProp?.ReturnType != null)
+        {
+            propertyType = _typeMapper.MapType(getterProp.ReturnType);
+        }
+        else if (setterProp != null)
+        {
+            // Infer type from setter's non-self parameter type
+            var valueParam = setterProp.Parameters
+                .FirstOrDefault(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+            if (valueParam?.Type != null)
+            {
+                propertyType = _typeMapper.MapType(valueParam.Type);
+            }
+        }
+        else if (first.ReturnType != null)
+        {
+            propertyType = _typeMapper.MapType(first.ReturnType);
+        }
+
+        // Determine property-level modifiers from the getter (or first property)
+        var modifierSource = getterProp ?? first;
+        var modifiers = GenerateMethodModifiersFromDecorators(modifierSource.Decorators);
+
+        // Handle static: if any accessor has self, property is not static
+        bool hasSelfParameter = propGroup.Any(p => p.Parameters.Any(param =>
+            string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase)));
+        if (hasSelfParameter && modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
+        {
+            modifiers = TokenList(modifiers.Where(m => !m.IsKind(SyntaxKind.StaticKeyword)));
+        }
+        if (!hasSelfParameter && !modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
+        }
+
+        // Determine the property-level access modifier (widest access)
+        var propertyAccess = GetWidestAccessModifier(modifiers);
+
+        var accessors = new List<AccessorDeclarationSyntax>();
+
+        foreach (var prop in propGroup)
+        {
+            // Clear method scope tracking for each accessor
+            _declaredVariables.Clear();
+            _variableVersions.Clear();
+            _constVariables.Clear();
+            _sourceVariableNames.Clear();
+            _narrowedOptionals.Clear();
+            _isNullableNarrowing.Clear();
+            CollectSourceVariableNames(prop.Body);
+
+            foreach (var param in prop.Parameters)
+            {
+                if (string.Equals(param.Name, "self", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                _declaredVariables.Add(paramName);
+                var baseName = NameMangler.ToCamelCase(param.Name);
+                _variableVersions[baseName] = 0;
+            }
+
+            SyntaxKind accessorKind;
+            switch (prop.Accessor)
+            {
+                case PropertyAccessor.Set:
+                    accessorKind = SyntaxKind.SetAccessorDeclaration;
+                    break;
+                case PropertyAccessor.Init:
+                    accessorKind = SyntaxKind.InitAccessorDeclaration;
+                    break;
+                default:
+                    accessorKind = SyntaxKind.GetAccessorDeclaration;
+                    break;
+            }
+
+            var accessor = AccessorDeclaration(accessorKind);
+
+            bool hasEllipsisBody = prop.Body.Length == 1
+                && prop.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+            bool isAbstract = prop.Decorators.Any(d => d.Name == "abstract")
+                || (_isInAbstractClass && hasEllipsisBody);
+
+            if (isAbstract)
+            {
+                accessor = accessor.WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+            }
+            else
+            {
+                var bodyStatements = prop.Body.SelectMany(GenerateBodyStatements);
+                accessor = accessor.WithBody(Block(bodyStatements));
+            }
+
+            // Apply accessor-level access modifier if it differs from property-level
+            var accessorModifiers = GenerateMethodModifiersFromDecorators(prop.Decorators);
+            var accessorAccess = GetAccessModifier(accessorModifiers);
+
+            if (accessorAccess != null && accessorAccess != propertyAccess)
+            {
+                accessor = accessor.WithModifiers(TokenList(Token(accessorAccess.Value)));
+            }
+
+            accessors.Add(accessor);
+        }
+
+        return PropertyDeclaration(propertyType, propertyName)
+            .WithModifiers(modifiers)
+            .WithAccessorList(AccessorList(List(accessors)));
+    }
+
+    /// <summary>
+    /// Gets the widest access modifier from a token list.
+    /// public > protected > private
+    /// </summary>
+    private static SyntaxKind? GetWidestAccessModifier(SyntaxTokenList modifiers)
+    {
+        if (modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword)))
+            return SyntaxKind.PublicKeyword;
+        if (modifiers.Any(m => m.IsKind(SyntaxKind.ProtectedKeyword)))
+            return SyntaxKind.ProtectedKeyword;
+        if (modifiers.Any(m => m.IsKind(SyntaxKind.InternalKeyword)))
+            return SyntaxKind.InternalKeyword;
+        if (modifiers.Any(m => m.IsKind(SyntaxKind.PrivateKeyword)))
+            return SyntaxKind.PrivateKeyword;
+        return SyntaxKind.PublicKeyword; // Default
+    }
+
+    /// <summary>
+    /// Gets the access modifier from a token list, or null if none.
+    /// </summary>
+    private static SyntaxKind? GetAccessModifier(SyntaxTokenList modifiers)
+    {
+        if (modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword)))
+            return SyntaxKind.PublicKeyword;
+        if (modifiers.Any(m => m.IsKind(SyntaxKind.ProtectedKeyword)))
+            return SyntaxKind.ProtectedKeyword;
+        if (modifiers.Any(m => m.IsKind(SyntaxKind.InternalKeyword)))
+            return SyntaxKind.InternalKeyword;
+        if (modifiers.Any(m => m.IsKind(SyntaxKind.PrivateKeyword)))
+            return SyntaxKind.PrivateKeyword;
+        return SyntaxKind.PublicKeyword; // Default
     }
 
     /// <summary>
