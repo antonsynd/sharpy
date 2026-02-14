@@ -731,10 +731,19 @@ internal partial class RoslynEmitter
         // if x is not None and y is not None: → both narrowed in then-body
         var narrowingInfo = DetectOptionalNarrowings(ifStmt.Test);
 
+        // Detect isinstance narrowing patterns:
+        // if isinstance(x, MyType): → x is narrowed to MyType in the then-body
+        var isInstanceNarrowings = DetectIsInstanceNarrowings(ifStmt.Test);
+
         var condition = GenerateExpression(ifStmt.Test);
 
         // Generate then-block with narrowing if applicable
         BlockSyntax thenBlock;
+
+        // Push all isinstance narrowings for the then-body
+        foreach (var (varName, typeName) in isInstanceNarrowings)
+            PushIsInstanceNarrowing(varName, typeName);
+
         if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
         {
             foreach (var name in narrowingInfo.Value.VariableNames)
@@ -747,6 +756,10 @@ internal partial class RoslynEmitter
         {
             thenBlock = Block(ifStmt.ThenBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
         }
+
+        // Pop isinstance narrowings after then-body
+        foreach (var (varName, _) in isInstanceNarrowings)
+            PopIsInstanceNarrowing(varName);
 
         ElseClauseSyntax? elseClause = null;
 
@@ -781,6 +794,12 @@ internal partial class RoslynEmitter
 
                 // Detect and apply narrowing for this elif's condition
                 var elifNarrowing = DetectOptionalNarrowings(elif.Test);
+                var elifIsInstanceNarrowings = DetectIsInstanceNarrowings(elif.Test);
+
+                // Push isinstance narrowings for elif body
+                foreach (var (varName, typeName) in elifIsInstanceNarrowings)
+                    PushIsInstanceNarrowing(varName, typeName);
+
                 BlockSyntax elifBody;
                 if (elifNarrowing.HasValue && elifNarrowing.Value.NarrowInThen)
                 {
@@ -794,6 +813,10 @@ internal partial class RoslynEmitter
                 {
                     elifBody = Block(elif.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
                 }
+
+                // Pop isinstance narrowings after elif body
+                foreach (var (varName, _) in elifIsInstanceNarrowings)
+                    PopIsInstanceNarrowing(varName);
 
                 var elifElseClause = currentElse != null ? ElseClause(currentElse) : null;
                 var elifStatement = IfStatement(elifCondition, elifBody, elifElseClause);
@@ -888,6 +911,40 @@ internal partial class RoslynEmitter
             isNone.Add(id.Name);
             if (isValueTypeNullable)
                 _isNullableNarrowing.Add(id.Name);
+        }
+    }
+
+    /// <summary>
+    /// Detects isinstance narrowing patterns in a condition expression.
+    /// Returns (variableName, csharpTypeName) pairs for each isinstance(var, Type) found.
+    /// Handles compound `and` conditions: isinstance(x, A) and isinstance(y, B).
+    /// </summary>
+    private List<(string VariableName, string CSharpTypeName)> DetectIsInstanceNarrowings(Expression test)
+    {
+        var result = new List<(string, string)>();
+        CollectIsInstancePatterns(test, result);
+        return result;
+    }
+
+    private void CollectIsInstancePatterns(Expression expr, List<(string VariableName, string CSharpTypeName)> results)
+    {
+        // isinstance(var, Type)
+        if (expr is FunctionCall call
+            && call.Function is Identifier funcName
+            && funcName.Name == "isinstance"
+            && call.Arguments.Length == 2
+            && call.Arguments[0] is Identifier varId
+            && call.Arguments[1] is Identifier typeId)
+        {
+            results.Add((varId.Name, NameMangler.ToPascalCase(typeId.Name)));
+            return;
+        }
+
+        // Compound `and`: both sides must be true
+        if (expr is BinaryOp binOp && binOp.Operator == BinaryOperator.And)
+        {
+            CollectIsInstancePatterns(binOp.Left, results);
+            CollectIsInstancePatterns(binOp.Right, results);
         }
     }
 

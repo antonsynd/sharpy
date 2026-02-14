@@ -119,6 +119,17 @@ internal partial class RoslynEmitter
             }
         }
 
+        // If this variable has been narrowed by isinstance(), wrap with cast
+        // Wraps in parentheses: ((Dog)animal) so member access works: ((Dog)animal).Breed
+        if (IsInstanceNarrowed(name.Name))
+        {
+            var narrowedType = GetIsInstanceNarrowedType(name.Name)!;
+            expr = ParenthesizedExpression(
+                CastExpression(
+                    ParseTypeName(narrowedType),
+                    expr));
+        }
+
         return expr;
     }
 
@@ -195,6 +206,18 @@ internal partial class RoslynEmitter
             var symbol = _context.LookupSymbol(funcName.Name);
             if (isBuiltinFunc && symbol is FunctionSymbol { CodeGenInfo: not null })
                 isBuiltinFunc = false;
+
+            // isinstance(expr, Type) → expr is Type
+            // Must intercept BEFORE argument evaluation because the second argument
+            // is a type identifier, not a value expression.
+            if (funcName.Name == "isinstance"
+                && call.Arguments.Length == 2
+                && call.Arguments[1] is Identifier typeId)
+            {
+                var value = GenerateExpression(call.Arguments[0]);
+                var typeName = ParseName(NameMangler.ToPascalCase(typeId.Name));
+                return BinaryExpression(SyntaxKind.IsExpression, value, typeName);
+            }
 
             // Check if this is a type instantiation (calling a class or struct constructor)
             // We use the symbol table which is populated during semantic analysis.

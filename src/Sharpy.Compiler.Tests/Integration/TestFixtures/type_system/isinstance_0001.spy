@@ -1,0 +1,44 @@
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def speak(self) -> str:
+        return self.name
+
+class Dog(Animal):
+    breed: str
+
+    def __init__(self, name: str, breed: str):
+        super().__init__(name)
+        self.breed = breed
+
+    def speak(self) -> str:
+        return self.name + " says woof"
+
+class Cat(Animal):
+    indoor: bool
+
+    def __init__(self, name: str, indoor: bool):
+        super().__init__(name)
+        self.indoor = indoor
+
+    def speak(self) -> str:
+        return self.name + " says meow"
+
+def describe(animal: Animal):
+    if isinstance(animal, Dog):
+        print("Dog breed: " + animal.breed)
+    elif isinstance(animal, Cat):
+        print("Cat indoor: " + str(animal.indoor))
+    else:
+        print("Unknown animal: " + animal.name)
+
+def main():
+    dog: Animal = Dog("Rex", "Labrador")
+    cat: Animal = Cat("Whiskers", True)
+    bird: Animal = Animal("Tweety")
+    describe(dog)
+    describe(cat)
+    describe(bird)

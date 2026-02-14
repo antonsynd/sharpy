@@ -160,7 +160,41 @@ internal partial class RoslynEmitter
     {
         _narrowedOptionals.Remove(variableName);
         _isNullableNarrowing.Remove(variableName);
+        _isInstanceNarrowed.Remove(variableName);
     }
+
+    /// <summary>
+    /// Tracks variables narrowed by isinstance() checks.
+    /// Maps variable name → stack of C# type names to cast to.
+    /// </summary>
+    private readonly Dictionary<string, Stack<string>> _isInstanceNarrowed = new();
+
+    private void PushIsInstanceNarrowing(string variableName, string csharpTypeName)
+    {
+        if (!_isInstanceNarrowed.TryGetValue(variableName, out var stack))
+        {
+            stack = new Stack<string>();
+            _isInstanceNarrowed[variableName] = stack;
+        }
+        stack.Push(csharpTypeName);
+    }
+
+    private void PopIsInstanceNarrowing(string variableName)
+    {
+        if (_isInstanceNarrowed.TryGetValue(variableName, out var stack))
+        {
+            stack.Pop();
+            if (stack.Count == 0)
+                _isInstanceNarrowed.Remove(variableName);
+        }
+    }
+
+    private bool IsInstanceNarrowed(string variableName)
+        => _isInstanceNarrowed.TryGetValue(variableName, out var stack) && stack.Count > 0;
+
+    private string? GetIsInstanceNarrowedType(string variableName)
+        => _isInstanceNarrowed.TryGetValue(variableName, out var stack) && stack.Count > 0
+            ? stack.Peek() : null;
 
     /// <summary>
     /// Snapshot of local scope tracking state, used for block-scoped constructs (for loops).
