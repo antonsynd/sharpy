@@ -10,7 +10,42 @@ namespace Sharpy
     {
         public static Str Str(object x)
         {
+            if (x is bool b)
+            {
+                return new Str(b ? "True" : "False");
+            }
+
             return new Str(x);
+        }
+
+        public static Str Str(string s)
+        {
+            return new Str(s);
+        }
+
+        public static Str Str(int i)
+        {
+            return new Str(i.ToString());
+        }
+
+        public static Str Str(long l)
+        {
+            return new Str(l.ToString());
+        }
+
+        public static Str Str(double d)
+        {
+            return new Str(d.ToString());
+        }
+
+        public static Str Str(float f)
+        {
+            return new Str(f.ToString());
+        }
+
+        public static Str Str(bool b)
+        {
+            return new Str(b ? "True" : "False");
         }
     }
 

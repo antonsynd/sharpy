@@ -1,0 +1,6 @@
+def main():
+    print(str(42))
+    print(str(3.14))
+    print(str(True))
+    print(str(False))
+    print(str("hello"))
