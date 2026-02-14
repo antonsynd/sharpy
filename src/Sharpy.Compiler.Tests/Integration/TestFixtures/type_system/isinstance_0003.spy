@@ -1,0 +1,25 @@
+# Test: isinstance narrowing inside while loop body
+class Base:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+class Child(Base):
+    extra: str
+
+    def __init__(self, value: int, extra: str):
+        super().__init__(value)
+        self.extra = extra
+
+def main():
+    items: list[Base] = [Base(1), Child(2, "a"), Base(3), Child(4, "b"), Child(5, "c")]
+    i: int = 0
+    count: int = 0
+    while i < len(items):
+        item: Base = items[i]
+        if isinstance(item, Child):
+            print(item.extra)
+            count = count + 1
+        i = i + 1
+    print(count)

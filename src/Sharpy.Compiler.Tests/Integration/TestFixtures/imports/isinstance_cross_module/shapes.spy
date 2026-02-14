@@ -1,0 +1,12 @@
+class Shape:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, radius: float):
+        super().__init__("circle")
+        self.radius = radius

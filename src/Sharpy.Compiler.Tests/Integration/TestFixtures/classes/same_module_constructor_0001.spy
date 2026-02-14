@@ -1,0 +1,17 @@
+# Test: class method creates another instance of a same-module type
+class Pair:
+    first: int
+    second: int
+
+    def __init__(self, first: int, second: int):
+        self.first = first
+        self.second = second
+
+    def swap(self) -> Pair:
+        return Pair(self.second, self.first)
+
+def main():
+    p: Pair = Pair(1, 2)
+    s: Pair = p.swap()
+    print(s.first)
+    print(s.second)

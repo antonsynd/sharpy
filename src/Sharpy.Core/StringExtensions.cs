@@ -109,10 +109,10 @@ namespace Sharpy
 
             if (s.Length == 1)
             {
-                return s.ToUpper();
+                return s.ToUpperInvariant();
             }
 
-            return char.ToUpper(s[0]) + s.Substring(1).ToLower();
+            return char.ToUpperInvariant(s[0]) + s.Substring(1).ToLowerInvariant();
         }
 
         /// <summary>
@@ -274,11 +274,11 @@ namespace Sharpy
                 {
                     if (!previousWasLetter)
                     {
-                        result.Append(char.ToUpper(c));
+                        result.Append(char.ToUpperInvariant(c));
                     }
                     else
                     {
-                        result.Append(char.ToLower(c));
+                        result.Append(char.ToLowerInvariant(c));
                     }
                     previousWasLetter = true;
                 }
@@ -309,11 +309,11 @@ namespace Sharpy
             {
                 if (char.IsUpper(c))
                 {
-                    result.Append(char.ToLower(c));
+                    result.Append(char.ToLowerInvariant(c));
                 }
                 else if (char.IsLower(c))
                 {
-                    result.Append(char.ToUpper(c));
+                    result.Append(char.ToUpperInvariant(c));
                 }
                 else
                 {

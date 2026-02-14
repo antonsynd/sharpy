@@ -1,0 +1,11 @@
+# Test: try/else with list variable (non-trivial reference type)
+def main():
+    try:
+        data: list[int] = [10, 20, 30]
+        count: int = len(data)
+    except Exception:
+        print("error")
+    else:
+        print(count)
+        for item in data:
+            print(item)

@@ -1,0 +1,8 @@
+# Test: chained string method calls
+def main():
+    name: str = "  Hello World  "
+    print(name.strip().lower())
+    print(name.strip().upper())
+    print("hello".capitalize())
+    print("Hello".capitalize())
+    print("HELLO".lower().capitalize())

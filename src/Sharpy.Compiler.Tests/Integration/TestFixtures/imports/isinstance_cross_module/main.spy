@@ -1,0 +1,12 @@
+from shapes import Shape, Circle
+
+def describe(s: Shape) -> str:
+    if isinstance(s, Circle):
+        return "Circle r=" + str(s.radius)
+    return "Shape: " + s.name
+
+def main():
+    c: Shape = Circle(5.0)
+    s: Shape = Shape("triangle")
+    print(describe(c))
+    print(describe(s))

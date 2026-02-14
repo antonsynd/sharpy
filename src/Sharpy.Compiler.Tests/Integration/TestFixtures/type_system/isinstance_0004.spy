@@ -1,0 +1,32 @@
+# Test: isinstance narrowing in for loop with multiple derived types
+class Vehicle:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Car(Vehicle):
+    doors: int
+
+    def __init__(self, name: str, doors: int):
+        super().__init__(name)
+        self.doors = doors
+
+class Truck(Vehicle):
+    payload: float
+
+    def __init__(self, name: str, payload: float):
+        super().__init__(name)
+        self.payload = payload
+
+def describe(v: Vehicle) -> str:
+    if isinstance(v, Car):
+        return v.name + " has " + str(v.doors) + " doors"
+    elif isinstance(v, Truck):
+        return v.name + " carries " + str(v.payload)
+    return v.name
+
+def main():
+    vehicles: list[Vehicle] = [Car("sedan", 4), Truck("semi", 20.5), Vehicle("bike")]
+    for v in vehicles:
+        print(describe(v))
