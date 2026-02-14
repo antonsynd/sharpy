@@ -869,6 +869,14 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Returns true if the given SemanticType is an integer type (int or long).
+    /// </summary>
+    private static bool IsIntegerSemanticType(SemanticType? type)
+    {
+        return type == SemanticType.Int || type == SemanticType.Long;
+    }
+
+    /// <summary>
     /// Generates floor division expression with correct Python semantics.
     /// Floors toward negative infinity (not truncation toward zero).
     /// - Integer operands: (int)Math.Floor((double)a / b) → result is int32 (pragmatic for .NET)

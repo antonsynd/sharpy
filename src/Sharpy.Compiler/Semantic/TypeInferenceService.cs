@@ -191,10 +191,11 @@ internal class TypeInferenceService
             };
         }
 
-        // String repetition
-        if (left == SemanticType.Str && right == SemanticType.Int)
+        // String repetition: str * int or int * str
+        if (op == BinaryOperator.Multiply)
         {
-            if (op == BinaryOperator.Multiply)
+            if ((left == SemanticType.Str && IsIntegerType(right)) ||
+                (IsIntegerType(left) && right == SemanticType.Str))
                 return SemanticType.Str;
         }
 
