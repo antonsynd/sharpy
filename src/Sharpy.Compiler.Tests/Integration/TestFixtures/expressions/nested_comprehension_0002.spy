@@ -1,0 +1,11 @@
+# Test: nested list comprehension with filters on inner and outer
+def main():
+    # Filter on inner: only even j
+    result1 = [[j for j in range(i) if j % 2 == 0] for i in range(6)]
+    for row in result1:
+        print(row)
+
+    # Filter on outer: only even i
+    result2 = [[j for j in range(i)] for i in range(6) if i % 2 == 0]
+    for row in result2:
+        print(row)

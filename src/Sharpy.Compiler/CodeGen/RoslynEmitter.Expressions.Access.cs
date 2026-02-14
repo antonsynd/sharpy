@@ -350,6 +350,8 @@ internal partial class RoslynEmitter
                 : NameMangler.ToPascalCase(memberAccess.Member));
         var member = IdentifierName(mangledMemberName);
 
+        ExpressionSyntax result;
+
         if (memberAccess.IsNullConditional)
         {
             // For Optional<T>: lower to ternary since ?. doesn't work on structs
@@ -376,20 +378,37 @@ internal partial class RoslynEmitter
                     ? (ExpressionSyntax)GenerateOptionalNone(optExprType)
                     : LiteralExpression(SyntaxKind.DefaultLiteralExpression);
 
-                return ConditionalExpression(cond, trueExpr, falseExpr);
+                result = ConditionalExpression(cond, trueExpr, falseExpr);
             }
-            // obj?.member
-            return ConditionalAccessExpression(obj,
-                MemberBindingExpression(member));
+            else
+            {
+                // obj?.member
+                result = ConditionalAccessExpression(obj,
+                    MemberBindingExpression(member));
+            }
         }
         else
         {
             // obj.member
-            return MemberAccessExpression(
+            result = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 obj,
                 member);
         }
+
+        // If this member access path has been narrowed by isinstance(),
+        // wrap with cast: ((Dog)this.Animal) so further member access works
+        var dottedPath = TryBuildDottedPath(memberAccess);
+        if (dottedPath != null && IsInstanceNarrowed(dottedPath))
+        {
+            var narrowedType = GetIsInstanceNarrowedType(dottedPath)!;
+            result = ParenthesizedExpression(
+                CastExpression(
+                    ParseTypeName(narrowedType),
+                    result));
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -565,11 +584,46 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateIndexAccess(IndexAccess indexAccess)
     {
-        var obj = GenerateExpression(indexAccess.Object);
+        // Tuple positional indexing: t[0] -> t.Item1, t[1] -> t.Item2, etc.
+        // C# ValueTuples don't support [] indexing, so we emit .ItemN member access.
+        if (GetExpressionSemanticType(indexAccess.Object) is Semantic.TupleType
+            && TryGetConstantIntIndex(indexAccess.Index, out var tupleIndex))
+        {
+            var obj = GenerateExpression(indexAccess.Object);
+            var itemName = $"Item{tupleIndex + 1}";
+            return MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                obj,
+                IdentifierName(itemName));
+        }
+
+        var objExpr = GenerateExpression(indexAccess.Object);
         var index = GenerateExpression(indexAccess.Index);
 
-        return ElementAccessExpression(obj)
+        return ElementAccessExpression(objExpr)
             .AddArgumentListArguments(Argument(index));
+    }
+
+    /// <summary>
+    /// Tries to extract a constant integer value from an expression.
+    /// Handles IntegerLiteral and UnaryOp(Minus, IntegerLiteral) for negative indices.
+    /// </summary>
+    private static bool TryGetConstantIntIndex(Expression expr, out int value)
+    {
+        if (expr is IntegerLiteral intLit && int.TryParse(intLit.Value, out value))
+        {
+            return true;
+        }
+
+        if (expr is UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral negIntLit }
+            && int.TryParse(negIntLit.Value, out var posValue))
+        {
+            value = -posValue;
+            return true;
+        }
+
+        value = 0;
+        return false;
     }
 
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)

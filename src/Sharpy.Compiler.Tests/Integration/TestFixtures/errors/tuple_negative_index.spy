@@ -1,0 +1,4 @@
+# Test: negative tuple index error
+def main():
+    t = (1, 2, 3)
+    print(t[-1])

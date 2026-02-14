@@ -188,9 +188,9 @@ internal partial class TypeChecker
         var iterType = CheckExpression(forClause.Iterator);
         var elemType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
-        // Define loop variable (single identifier only for now)
         if (forClause.Target is Identifier id)
         {
+            // Simple variable: for x in iterable
             var loopVarSymbol = new VariableSymbol
             {
                 Name = id.Name,
@@ -206,11 +206,60 @@ internal partial class TypeChecker
             if (elemType is UnknownType)
                 MarkExpressionAsErrorRecovery(forClause.Target);
         }
+        else if (forClause.Target is TupleLiteral targetTuple)
+        {
+            // Tuple unpacking: for a, b in iterable
+            if (elemType is not TupleType tupleType)
+            {
+                AddError($"Cannot unpack non-tuple type '{elemType.GetDisplayName()}' in comprehension",
+                    forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                    span: forClause.Target.Span);
+            }
+            else if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
+            {
+                AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables in comprehension",
+                    forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+                    span: forClause.Target.Span);
+            }
+            else
+            {
+                for (int i = 0; i < targetTuple.Elements.Length; i++)
+                {
+                    var targetElem = targetTuple.Elements[i];
+                    var targetElemType = tupleType.ElementTypes[i];
+
+                    if (targetElem is Identifier elemId)
+                    {
+                        var loopVarSymbol = new VariableSymbol
+                        {
+                            Name = elemId.Name,
+                            Kind = SymbolKind.Variable,
+                            Type = targetElemType,
+                            AccessLevel = AccessLevel.Public,
+                            DeclarationLine = elemId.LineStart,
+                            DeclarationColumn = elemId.ColumnStart
+                        };
+                        _symbolTable.Define(loopVarSymbol);
+                        SemanticBinding.SetVariableType(loopVarSymbol, targetElemType);
+                        _semanticInfo.SetIdentifierSymbol(elemId, loopVarSymbol);
+                        _semanticInfo.SetExpressionType(targetElem, targetElemType);
+                        if (targetElemType is UnknownType)
+                            MarkExpressionAsErrorRecovery(targetElem);
+                    }
+                    else
+                    {
+                        CheckExpression(targetElem);
+                    }
+                }
+            }
+
+            _semanticInfo.SetExpressionType(forClause.Target, elemType);
+            if (elemType is UnknownType)
+                MarkExpressionAsErrorRecovery(forClause.Target);
+        }
         else
         {
-            // For tuple unpacking or other complex targets
-            // See: #104 (tuple unpacking in comprehensions)
-            AddError($"Tuple unpacking in comprehensions not yet supported",
+            AddError($"Unsupported target type in comprehension for clause",
                 forClause.LineStart, forClause.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                 span: forClause.Target.Span);
         }

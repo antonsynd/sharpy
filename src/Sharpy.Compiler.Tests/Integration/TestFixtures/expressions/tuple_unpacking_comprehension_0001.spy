@@ -1,0 +1,5 @@
+# Test: tuple unpacking in list comprehension
+def main():
+    pairs: list[tuple[int, int]] = [(1, 2), (3, 4), (5, 6)]
+    result = [a + b for a, b in pairs]
+    print(result)

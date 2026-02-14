@@ -24,6 +24,11 @@ internal static class DualWriteAssertions
             if (symbol.ClrType != null)
                 continue;
 
+            // Skip re-exported types (from other modules) - their inheritance was set
+            // in a different compilation's SemanticBinding
+            if (symbol.IsReExport)
+                continue;
+
             // Forward: Symbol → SemanticBinding
             if (symbol.BaseType != null)
             {

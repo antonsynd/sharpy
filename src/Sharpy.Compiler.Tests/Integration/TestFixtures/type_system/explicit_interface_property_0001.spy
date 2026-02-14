@@ -1,0 +1,16 @@
+# Test: explicit interface property codegen
+interface INameable:
+    property get name(self) -> str: ...
+
+class Person(INameable):
+    _name: str
+
+    def __init__(self, name: str):
+        self._name = name
+
+    property get INameable.name(self) -> str:
+        return self._name
+
+def main():
+    p: INameable = Person("Alice")
+    print(p.name)

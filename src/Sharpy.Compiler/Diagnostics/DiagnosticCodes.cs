@@ -127,6 +127,8 @@ public static class DiagnosticCodes
         public const string UnrecognizedStatementType = "SPY0255";
         public const string UnrecognizedExpressionType = "SPY0256";
         public const string TuplePatternLengthMismatch = "SPY0257";
+        public const string TupleIndexOutOfRange = "SPY0258";
+        public const string TupleNegativeIndex = "SPY0259";
 
         // Return and control flow (SPY0260-SPY0279)
         public const string MissingReturnValue = "SPY0260";

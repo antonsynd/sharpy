@@ -522,6 +522,16 @@ public static class DiagnosticExplanations
             "def main():\n    t = (1, 2, 3)\n    match t:\n        case (a, b):  # 2 elements vs 3\n            pass",
             "Ensure the pattern has the same number of elements as the tuple:\nmatch t:\n    case (a, b, c):\n        print(a, b, c)");
 
+        Add(dict, DiagnosticCodes.Semantic.TupleIndexOutOfRange, "Tuple index out of range", "Semantic",
+            "A tuple was indexed with a constant integer that is greater than or equal to the number of elements in the tuple. Tuple indices are zero-based, so for a tuple with N elements, valid indices are 0 through N-1.",
+            "def main():\n    t = (1, 2, 3)\n    print(t[3])  # only indices 0, 1, 2 are valid",
+            "Use a valid index within range:\ndef main():\n    t = (1, 2, 3)\n    print(t[2])  # last element");
+
+        Add(dict, DiagnosticCodes.Semantic.TupleNegativeIndex, "Negative tuple index", "Semantic",
+            "A tuple was indexed with a negative integer. Unlike Python lists, Sharpy tuples do not support negative indexing because tuple access is resolved at compile time to specific .ItemN fields.",
+            "def main():\n    t = (1, 2, 3)\n    print(t[-1])  # negative index not supported",
+            "Use a positive index instead:\ndef main():\n    t = (1, 2, 3)\n    print(t[2])  # last element");
+
         // ── Semantic errors: Return and control flow (SPY0260-SPY0279) ──
 
         Add(dict, DiagnosticCodes.Semantic.MissingReturnValue, "Missing return value", "Semantic",

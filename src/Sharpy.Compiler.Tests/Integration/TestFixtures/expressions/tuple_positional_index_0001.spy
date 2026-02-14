@@ -1,0 +1,6 @@
+# Test: tuple positional indexing
+def main():
+    pos = (10, 20, 30)
+    print(pos[0])
+    print(pos[1])
+    print(pos[2])

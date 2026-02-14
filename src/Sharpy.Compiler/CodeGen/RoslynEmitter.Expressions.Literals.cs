@@ -154,7 +154,7 @@ internal partial class RoslynEmitter
         // Example: [x * 2 for x in items if x > 0]
         // becomes: new Sharpy.List<int>(items.Where(x => x > 0).Select(x => x * 2))
 
-        var (chain, param, errorExpr) = GenerateComprehensionChain(
+        var (chain, param, tupleVarNames, errorExpr) = GenerateComprehensionChain(
             listComp.Clauses, "List", listComp.LineStart, listComp.ColumnStart);
 
         if (errorExpr != null)
@@ -162,8 +162,7 @@ internal partial class RoslynEmitter
 
         // Apply .Select(x => element_expression)
         var elementExpr = GenerateExpression(listComp.Element);
-        var selectLambda = SimpleLambdaExpression(param)
-            .WithExpressionBody(elementExpr);
+        var selectLambda = MakeComprehensionLambda(param, tupleVarNames, elementExpr);
 
         chain = InvocationExpression(
             MemberAccessExpression(
@@ -191,7 +190,7 @@ internal partial class RoslynEmitter
         // Example: {x * 2 for x in items if x > 0}
         // becomes: new Sharpy.Set<int>(items.Where(x => x > 0).Select(x => x * 2))
 
-        var (chain, param, errorExpr) = GenerateComprehensionChain(
+        var (chain, param, tupleVarNames, errorExpr) = GenerateComprehensionChain(
             setComp.Clauses, "Set", setComp.LineStart, setComp.ColumnStart);
 
         if (errorExpr != null)
@@ -199,8 +198,7 @@ internal partial class RoslynEmitter
 
         // Apply .Select(x => element_expression)
         var elementExpr = GenerateExpression(setComp.Element);
-        var selectLambda = SimpleLambdaExpression(param)
-            .WithExpressionBody(elementExpr);
+        var selectLambda = MakeComprehensionLambda(param, tupleVarNames, elementExpr);
 
         chain = InvocationExpression(
             MemberAccessExpression(
@@ -226,10 +224,9 @@ internal partial class RoslynEmitter
     {
         // Generate LINQ method chain: iterator.Where(...).ToDictionary(x => key, x => value)
         // Example: {k: v for k, v in pairs if v > 0}
-        // For now, only support single variable (not tuple unpacking)
-        // becomes: pairs.Where(p => p.v > 0).ToDictionary(p => p.k, p => p.v)
+        // becomes: pairs.Where(p => ...).ToDictionary(p => k, p => v)
 
-        var (chain, param, errorExpr) = GenerateComprehensionChain(
+        var (chain, param, tupleVarNames, errorExpr) = GenerateComprehensionChain(
             dictComp.Clauses, "Dict", dictComp.LineStart, dictComp.ColumnStart);
 
         if (errorExpr != null)
@@ -239,10 +236,8 @@ internal partial class RoslynEmitter
         var keyExpr = GenerateExpression(dictComp.Key);
         var valueExpr = GenerateExpression(dictComp.Value);
 
-        var keyLambda = SimpleLambdaExpression(param)
-            .WithExpressionBody(keyExpr);
-        var valueLambda = SimpleLambdaExpression(param)
-            .WithExpressionBody(valueExpr);
+        var keyLambda = MakeComprehensionLambda(param, tupleVarNames, keyExpr);
+        var valueLambda = MakeComprehensionLambda(param, tupleVarNames, valueExpr);
 
         // Apply .ToDictionary(x => key, x => value) and cast to Dict<K,V>.
         // .ToDictionary() returns Dictionary<K,V> which must be explicitly cast
@@ -273,16 +268,55 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Creates a lambda expression for comprehension Select/Where/ToDictionary calls.
+    /// For simple variables, returns a simple lambda: x => body.
+    /// For tuple unpacking, returns a block lambda with deconstruction:
+    ///   (__t_0) => { var (a, b) = __t_0; return body; }
+    /// </summary>
+    private ExpressionSyntax MakeComprehensionLambda(
+        ParameterSyntax param,
+        List<string>? tupleVarNames,
+        ExpressionSyntax body)
+    {
+        if (tupleVarNames == null)
+        {
+            return SimpleLambdaExpression(param)
+                .WithExpressionBody(body);
+        }
+
+        // Tuple unpacking: (__t_0) => { var (a, b) = __t_0; return body; }
+        var paramName = param.Identifier.Text;
+
+        var designations = tupleVarNames
+            .Select(name => (VariableDesignationSyntax)SingleVariableDesignation(Identifier(name)))
+            .ToList();
+
+        var tupleDesignation = ParenthesizedVariableDesignation(
+            SeparatedList(designations));
+
+        // var (a, b) = __t_0;
+        var deconstructStmt = ExpressionStatement(
+            AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                DeclarationExpression(
+                    IdentifierName("var"),
+                    tupleDesignation),
+                IdentifierName(paramName)));
+
+        var returnStmt = ReturnStatement(body);
+
+        return ParenthesizedLambdaExpression()
+            .WithParameterList(ParameterList(SingletonSeparatedList(param)))
+            .WithBlock(Block(deconstructStmt, returnStmt));
+    }
+
+    /// <summary>
     /// Generates the common LINQ chain for comprehensions: validates the first for clause,
     /// extracts the loop variable, and applies all Where clauses. Returns the chain so far,
-    /// the parameter syntax for lambdas, and optionally an error expression if validation failed.
+    /// the parameter syntax for lambdas, optional tuple variable names for deconstruction,
+    /// and optionally an error expression if validation failed.
     /// </summary>
-    /// <param name="clauses">The comprehension clauses</param>
-    /// <param name="comprehensionType">Type name for error messages (List, Set, Dict)</param>
-    /// <param name="lineStart">Line number for error reporting</param>
-    /// <param name="columnStart">Column number for error reporting</param>
-    /// <returns>Tuple of (chain expression, parameter, error expression or null)</returns>
-    private (ExpressionSyntax Chain, ParameterSyntax Param, ExpressionSyntax? Error) GenerateComprehensionChain(
+    private (ExpressionSyntax Chain, ParameterSyntax Param, List<string>? TupleVarNames, ExpressionSyntax? Error) GenerateComprehensionChain(
         ImmutableArray<ComprehensionClause> clauses,
         string comprehensionType,
         int lineStart,
@@ -293,17 +327,38 @@ internal partial class RoslynEmitter
             throw new InvalidOperationException($"{comprehensionType} comprehension must start with a for clause");
         }
 
-        // Get the loop variable name (single identifier only)
-        if (firstFor.Target is not Identifier loopVar)
+        ParameterSyntax param;
+        List<string>? tupleVarNames = null;
+
+        if (firstFor.Target is Identifier loopVar)
+        {
+            var varName = NameMangler.ToCamelCase(loopVar.Name);
+            param = Parameter(Identifier(varName));
+        }
+        else if (firstFor.Target is TupleLiteral tuple &&
+                 tuple.Elements.All(e => e is Identifier))
+        {
+            // Tuple unpacking: use a temp parameter and deconstruct in the lambda body
+            var tempName = $"__t_{_tempVarCounter++}";
+            param = Parameter(Identifier(tempName));
+
+            tupleVarNames = new List<string>();
+            foreach (var elem in tuple.Elements)
+            {
+                var elemId = (Identifier)elem;
+                var name = NameMangler.ToCamelCase(elemId.Name);
+                tupleVarNames.Add(name);
+                _declaredVariables.Add(name);
+                _variableVersions[name] = 0;
+            }
+        }
+        else
         {
             var error = EmitNotImplementedExpression(
-                "Tuple unpacking in comprehensions is not yet supported. Use a for loop instead.",
+                "Complex tuple unpacking in comprehensions is not yet supported. Use a for loop instead.",
                 DiagnosticCodes.CodeGen.TupleUnpackingComprehension, lineStart, columnStart);
-            return (null!, null!, error);
+            return (null!, null!, null, error);
         }
-
-        var varName = NameMangler.ToCamelCase(loopVar.Name);
-        var param = Parameter(Identifier(varName));
 
         // Start with the iterator expression
         ExpressionSyntax chain = GenerateExpression(firstFor.Iterator);
@@ -315,8 +370,7 @@ internal partial class RoslynEmitter
             {
                 case IfClause ifClause:
                     var condition = GenerateExpression(ifClause.Condition);
-                    var lambda = SimpleLambdaExpression(param)
-                        .WithExpressionBody(condition);
+                    var lambda = MakeComprehensionLambda(param, tupleVarNames, condition);
 
                     chain = InvocationExpression(
                         MemberAccessExpression(
@@ -330,16 +384,16 @@ internal partial class RoslynEmitter
                     var forError = EmitNotImplementedExpression(
                         "Nested comprehensions (multiple 'for' clauses) are not yet supported. Use a for loop instead.",
                         DiagnosticCodes.CodeGen.NestedComprehension, lineStart, columnStart);
-                    return (null!, null!, forError);
+                    return (null!, null!, null, forError);
             }
         }
 
-        return (chain, param, null);
+        return (chain, param, tupleVarNames, null);
     }
 
     private ExpressionSyntax GenerateFString(FStringLiteral fstring)
     {
-        // f"Hello {name}" → $"Hello {name}"
+        // f"Hello {name}" -> $"Hello {name}"
         var parts = new List<InterpolatedStringContentSyntax>();
 
         foreach (var part in fstring.Parts)
@@ -437,23 +491,23 @@ internal partial class RoslynEmitter
     /// Python: [[fill]align][sign][#][0][width][grouping_option][.precision][type]
     ///
     /// Supported conversions:
-    /// - .Nf → FN (fixed-point, N decimal places)
-    /// - .Ne → EN (scientific notation)
-    /// - .N% → PN (percent)
-    /// - 0N → DN (zero-padded integer width N)
-    /// - , → N0 (number with thousand separators)
-    /// - .Ng → GN (general format)
+    /// - .Nf -> FN (fixed-point, N decimal places)
+    /// - .Ne -> EN (scientific notation)
+    /// - .N% -> PN (percent)
+    /// - 0N -> DN (zero-padded integer width N)
+    /// - , -> N0 (number with thousand separators)
+    /// - .Ng -> GN (general format)
     /// </summary>
     private static string TranslatePythonFormatSpec(string pythonSpec)
     {
         if (string.IsNullOrEmpty(pythonSpec))
             return pythonSpec;
 
-        // Handle thousand separator only: "," → "N0"
+        // Handle thousand separator only: "," -> "N0"
         if (pythonSpec == ",")
             return "N0";
 
-        // Handle .Nf (fixed-point): ".2f" → "F2"
+        // Handle .Nf (fixed-point): ".2f" -> "F2"
         if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("f"))
         {
             var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
@@ -461,7 +515,7 @@ internal partial class RoslynEmitter
                 return "F" + precision;
         }
 
-        // Handle .Ne (scientific): ".2e" → "E2"
+        // Handle .Ne (scientific): ".2e" -> "E2"
         if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("e"))
         {
             var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
@@ -469,7 +523,7 @@ internal partial class RoslynEmitter
                 return "E" + precision;
         }
 
-        // Handle .N% (percent): ".1%" → "P1"
+        // Handle .N% (percent): ".1%" -> "P1"
         if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("%"))
         {
             var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
@@ -477,7 +531,7 @@ internal partial class RoslynEmitter
                 return "P" + precision;
         }
 
-        // Handle .Ng (general): ".3g" → "G3"
+        // Handle .Ng (general): ".3g" -> "G3"
         if (pythonSpec.StartsWith(".") && pythonSpec.EndsWith("g"))
         {
             var precision = pythonSpec.Substring(1, pythonSpec.Length - 2);
@@ -485,7 +539,7 @@ internal partial class RoslynEmitter
                 return "G" + precision;
         }
 
-        // Handle 0N (zero-padded): "05" → "D5" for integers
+        // Handle 0N (zero-padded): "05" -> "D5" for integers
         if (pythonSpec.StartsWith("0") && pythonSpec.Length > 1)
         {
             var width = pythonSpec.Substring(1);

@@ -1,0 +1,7 @@
+# Test: with statement requires IDisposable
+class NotDisposable:
+    pass
+
+def main() -> None:
+    with NotDisposable() as nd:
+        print("hi")

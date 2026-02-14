@@ -34,6 +34,12 @@ internal partial class TypeChecker
     {
         var narrowedTypes = new Dictionary<string, SemanticType>();
 
+        // Handle 'not <expr>' pattern - flip the branch polarity and recurse
+        if (condition is UnaryOp { Operator: UnaryOperator.Not } notOp)
+        {
+            return ExtractNarrowedTypes(notOp.Operand, !isPositiveBranch);
+        }
+
         // Handle 'A and B' pattern - combine narrowings from both sides
         if (condition is BinaryOp { Operator: BinaryOperator.And } andOp && isPositiveBranch)
         {
@@ -133,8 +139,21 @@ internal partial class TypeChecker
         {
             Identifier id => id.Name,
             IndexAccess indexAccess => $"{ExtractNarrowingKey(indexAccess.Object)}[{ExtractNarrowingKey(indexAccess.Index)}]",
+            MemberAccess ma => ExtractMemberAccessNarrowingKey(ma),
             _ => null
         };
+    }
+
+    /// <summary>
+    /// Builds a dotted path key from a MemberAccess chain (e.g., self.animal -> "self.animal").
+    /// Returns null if the chain contains unsupported expression types.
+    /// </summary>
+    private string? ExtractMemberAccessNarrowingKey(MemberAccess ma)
+    {
+        var objectKey = ExtractNarrowingKey(ma.Object);
+        if (objectKey == null)
+            return null;
+        return $"{objectKey}.{ma.Member}";
     }
 
     /// <summary>
@@ -1051,6 +1070,28 @@ internal partial class TypeChecker
     private string? FindModuleMemberSuggestion(string memberName, ModuleSymbol moduleSymbol)
     {
         return EditDistance.FindClosestMatch(memberName, moduleSymbol.Exports.Keys);
+    }
+
+    /// <summary>
+    /// Tries to extract a constant integer value from an expression.
+    /// Handles IntegerLiteral and UnaryOp(Minus, IntegerLiteral) for negative indices.
+    /// </summary>
+    private static bool TryGetConstantIntIndex(Expression expr, out int value)
+    {
+        if (expr is IntegerLiteral intLit && int.TryParse(intLit.Value, out value))
+        {
+            return true;
+        }
+
+        if (expr is UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral negIntLit }
+            && int.TryParse(negIntLit.Value, out var posValue))
+        {
+            value = -posValue;
+            return true;
+        }
+
+        value = 0;
+        return false;
     }
 }
 

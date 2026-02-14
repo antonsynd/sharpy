@@ -375,6 +375,13 @@ internal partial class RoslynEmitter
                 DiagnosticCodes.CodeGen.UnsupportedOperator, unaryOp.LineStart, unaryOp.ColumnStart);
         }
 
+        // Wrap binary expressions in parentheses when negated to avoid precedence issues.
+        // e.g., `not isinstance(x, T)` → `!(x is T)` not `!x is T`
+        if (kind == SyntaxKind.LogicalNotExpression && operand is BinaryExpressionSyntax)
+        {
+            operand = ParenthesizedExpression(operand);
+        }
+
         return PrefixUnaryExpression(kind, operand);
     }
 

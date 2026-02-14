@@ -1,0 +1,11 @@
+# Test: nested list comprehension — matrix creation using outer variable in inner expression
+def main():
+    # 3x3 matrix: [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+    matrix = [[i * 3 + j for j in range(3)] for i in range(3)]
+    for row in matrix:
+        print(row)
+
+    # Cross-variable: inner expression uses both i and j
+    sums = [[i + j for j in range(3)] for i in range(3)]
+    for row in sums:
+        print(row)

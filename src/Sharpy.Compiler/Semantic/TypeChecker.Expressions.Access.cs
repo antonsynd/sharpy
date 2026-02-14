@@ -19,6 +19,19 @@ internal partial class TypeChecker
 
         var objectType = CheckExpression(memberAccess.Object);
 
+        // Check if this member access path has been narrowed by isinstance()
+        // e.g., isinstance(self.animal, Dog) narrows "self.animal" to Dog
+        var narrowingKey = ExtractNarrowingKey(memberAccess);
+        if (narrowingKey != null)
+        {
+            var narrowedType = _narrowingContext.GetNarrowedType(narrowingKey);
+            if (narrowedType != null)
+            {
+                _semanticInfo.SetNarrowedType(memberAccess, narrowedType);
+                return narrowedType;
+            }
+        }
+
         // If object type is Unknown (e.g., from error recovery symbols), return Unknown
         // to prevent cascading errors. The original error (e.g., import failure) was already reported.
         if (objectType is UnknownType)
@@ -328,6 +341,34 @@ internal partial class TypeChecker
 
         var objectType = CheckExpression(indexAccess.Object);
         var indexType = CheckExpression(indexAccess.Index);
+
+        // Tuple positional indexing: validate constant integer indices at compile time
+        if (objectType is TupleType tupleType && TryGetConstantIntIndex(indexAccess.Index, out var constIndex))
+        {
+            if (constIndex < 0)
+            {
+                AddError(
+                    $"Negative index {constIndex} is not supported for tuple positional access",
+                    indexAccess.Index.LineStart,
+                    indexAccess.Index.ColumnStart,
+                    DiagnosticCodes.Semantic.TupleNegativeIndex,
+                    indexAccess.Index.Span);
+                return SemanticType.Unknown;
+            }
+
+            if (constIndex >= tupleType.ElementTypes.Count)
+            {
+                AddError(
+                    $"Tuple index {constIndex} is out of range for tuple with {tupleType.ElementTypes.Count} elements",
+                    indexAccess.Index.LineStart,
+                    indexAccess.Index.ColumnStart,
+                    DiagnosticCodes.Semantic.TupleIndexOutOfRange,
+                    indexAccess.Index.Span);
+                return SemanticType.Unknown;
+            }
+
+            return tupleType.ElementTypes[constIndex];
+        }
 
         // Use TypeInferenceService for type inference (errors reported by validator in pipeline)
         var resultType = _typeInference.InferIndexAccessType(objectType, indexType);

@@ -1,0 +1,18 @@
+# Test: negated isinstance narrowing in else branch
+class Animal:
+    def speak(self) -> str:
+        return "..."
+
+class Dog(Animal):
+    def fetch(self) -> str:
+        return "Fetching!"
+
+def check(a: Animal) -> str:
+    if not isinstance(a, Dog):
+        return a.speak()
+    else:
+        return a.fetch()
+
+def main():
+    d = Dog()
+    print(check(d))

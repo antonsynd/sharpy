@@ -1,0 +1,5 @@
+# Test: nested list comprehension — inner comprehension as element expression
+def main():
+    result = [[j for j in range(i)] for i in range(4)]
+    for row in result:
+        print(row)

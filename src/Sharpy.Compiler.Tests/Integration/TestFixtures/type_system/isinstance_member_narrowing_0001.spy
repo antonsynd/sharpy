@@ -1,0 +1,28 @@
+# Test: isinstance narrowing for member access
+class Animal:
+    def speak(self) -> str:
+        return "..."
+
+class Dog(Animal):
+    breed: str
+
+    def __init__(self, breed: str):
+        self.breed = breed
+
+    def speak(self) -> str:
+        return "Woof"
+
+class Shelter:
+    animal: Animal
+
+    def __init__(self, animal: Animal):
+        self.animal = animal
+
+    def get_breed(self) -> str:
+        if isinstance(self.animal, Dog):
+            return self.animal.breed
+        return "unknown"
+
+def main():
+    s = Shelter(Dog("Labrador"))
+    print(s.get_breed())

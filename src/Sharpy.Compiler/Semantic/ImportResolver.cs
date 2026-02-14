@@ -651,6 +651,7 @@ internal class ImportResolver
             Constructors = originalType.Constructors,
             BaseType = originalType.BaseType,
             Interfaces = originalType.Interfaces,
+            ClrType = originalType.ClrType,
             UnresolvedBaseName = originalType.UnresolvedBaseName,
             UnresolvedInterfaceNames = originalType.UnresolvedInterfaceNames,
             DeclarationLine = fromImport.LineStart,

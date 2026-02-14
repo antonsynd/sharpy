@@ -1,0 +1,15 @@
+# Test: interface default method auto-promotion
+interface IGreeter:
+    def greet(self) -> str: ...
+    
+    def greet_loudly(self) -> str:
+        return self.greet().upper()
+
+class SimpleGreeter(IGreeter):
+    def greet(self) -> str:
+        return "hello"
+
+def main():
+    g = SimpleGreeter()
+    print(g.greet())
+    print(g.greet_loudly())

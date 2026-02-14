@@ -816,16 +816,20 @@ internal partial class RoslynEmitter
 
         // Detect isinstance narrowing patterns:
         // if isinstance(x, MyType): → x is narrowed to MyType in the then-body
-        var isInstanceNarrowings = DetectIsInstanceNarrowings(ifStmt.Test);
+        // if not isinstance(x, MyType): → x is narrowed to MyType in the else-body
+        var isInstanceNarrowingInfo = DetectIsInstanceNarrowings(ifStmt.Test);
 
         var condition = GenerateExpression(ifStmt.Test);
 
         // Generate then-block with narrowing if applicable
         BlockSyntax thenBlock;
 
-        // Push all isinstance narrowings for the then-body
-        foreach (var (varName, typeName) in isInstanceNarrowings)
-            PushIsInstanceNarrowing(varName, typeName);
+        // Push isinstance narrowings for the then-body only when NarrowInThen is true
+        if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
+        {
+            foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
+                PushIsInstanceNarrowing(varName, typeName);
+        }
 
         if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
         {
@@ -841,8 +845,11 @@ internal partial class RoslynEmitter
         }
 
         // Pop isinstance narrowings after then-body
-        foreach (var (varName, _) in isInstanceNarrowings)
-            PopIsInstanceNarrowing(varName);
+        if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
+        {
+            foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
+                PopIsInstanceNarrowing(varName);
+        }
 
         ElseClauseSyntax? elseClause = null;
 
@@ -854,6 +861,14 @@ internal partial class RoslynEmitter
             // Start with the final else block if it exists
             if (ifStmt.ElseBody.Length > 0)
             {
+                // Push isinstance narrowings for else-body when NarrowInThen is false
+                // (i.e., `not isinstance(x, T)` → narrow x to T in else branch)
+                if (isInstanceNarrowingInfo.HasValue && !isInstanceNarrowingInfo.Value.NarrowInThen)
+                {
+                    foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
+                        PushIsInstanceNarrowing(varName, typeName);
+                }
+
                 // Generate else-block with narrowing if applicable (is None → narrow in else)
                 if (narrowingInfo.HasValue && !narrowingInfo.Value.NarrowInThen)
                 {
@@ -867,6 +882,13 @@ internal partial class RoslynEmitter
                 {
                     currentElse = Block(ifStmt.ElseBody.SelectMany(GenerateBodyStatements));
                 }
+
+                // Pop isinstance narrowings after else-body
+                if (isInstanceNarrowingInfo.HasValue && !isInstanceNarrowingInfo.Value.NarrowInThen)
+                {
+                    foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
+                        PopIsInstanceNarrowing(varName);
+                }
             }
 
             // Process elif clauses in reverse order
@@ -877,11 +899,14 @@ internal partial class RoslynEmitter
 
                 // Detect and apply narrowing for this elif's condition
                 var elifNarrowing = DetectOptionalNarrowings(elif.Test);
-                var elifIsInstanceNarrowings = DetectIsInstanceNarrowings(elif.Test);
+                var elifIsInstanceNarrowingInfo = DetectIsInstanceNarrowings(elif.Test);
 
-                // Push isinstance narrowings for elif body
-                foreach (var (varName, typeName) in elifIsInstanceNarrowings)
-                    PushIsInstanceNarrowing(varName, typeName);
+                // Push isinstance narrowings for elif body (only when NarrowInThen is true)
+                if (elifIsInstanceNarrowingInfo.HasValue && elifIsInstanceNarrowingInfo.Value.NarrowInThen)
+                {
+                    foreach (var (varName, typeName) in elifIsInstanceNarrowingInfo.Value.Narrowings)
+                        PushIsInstanceNarrowing(varName, typeName);
+                }
 
                 BlockSyntax elifBody;
                 if (elifNarrowing.HasValue && elifNarrowing.Value.NarrowInThen)
@@ -898,8 +923,11 @@ internal partial class RoslynEmitter
                 }
 
                 // Pop isinstance narrowings after elif body
-                foreach (var (varName, _) in elifIsInstanceNarrowings)
-                    PopIsInstanceNarrowing(varName);
+                if (elifIsInstanceNarrowingInfo.HasValue && elifIsInstanceNarrowingInfo.Value.NarrowInThen)
+                {
+                    foreach (var (varName, _) in elifIsInstanceNarrowingInfo.Value.Narrowings)
+                        PopIsInstanceNarrowing(varName);
+                }
 
                 var elifElseClause = currentElse != null ? ElseClause(currentElse) : null;
                 var elifStatement = IfStatement(elifCondition, elifBody, elifElseClause);
@@ -999,32 +1027,55 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Detects isinstance narrowing patterns in a condition expression.
-    /// Returns (variableName, csharpTypeName) pairs for each isinstance(var, Type) found.
+    /// Returns (variableName, csharpTypeName) pairs for each isinstance(var, Type) found,
+    /// along with a NarrowInThen flag indicating which branch the narrowing applies to.
+    /// Handles negated patterns: not isinstance(x, T) → narrow in else branch.
     /// Handles compound `and` conditions: isinstance(x, A) and isinstance(y, B).
     /// </summary>
-    private List<(string VariableName, string CSharpTypeName)> DetectIsInstanceNarrowings(Expression test)
+    private (IReadOnlyList<(string VariableName, string CSharpTypeName)> Narrowings, bool NarrowInThen)? DetectIsInstanceNarrowings(Expression test)
     {
+        // Check for negated isinstance: not isinstance(x, T)
+        if (test is UnaryOp { Operator: UnaryOperator.Not } unary)
+        {
+            var negatedResult = new List<(string, string)>();
+            CollectIsInstancePatterns(unary.Operand, negatedResult);
+            if (negatedResult.Count > 0)
+                return (negatedResult, NarrowInThen: false);
+        }
+
         var result = new List<(string, string)>();
         CollectIsInstancePatterns(test, result);
-        return result;
+        if (result.Count > 0)
+            return (result, NarrowInThen: true);
+
+        return null;
     }
 
     private void CollectIsInstancePatterns(Expression expr, List<(string VariableName, string CSharpTypeName)> results)
     {
-        // isinstance(var, Type)
+        // isinstance(var, Type) or isinstance(obj.member, Type)
         if (expr is FunctionCall call
             && call.Function is Identifier funcName
             && funcName.Name == "isinstance"
             && call.Arguments.Length == 2
-            && call.Arguments[0] is Identifier varId
             && call.Arguments[1] is Identifier typeId)
         {
-            // Use TypeMapper to resolve builtin types (str→string, int→int)
-            // and user-defined types (dog→Dog) to their C# names for casts.
-            var typeAnnotation = new TypeAnnotation { Name = typeId.Name };
-            var csharpType = _typeMapper.MapType(typeAnnotation).NormalizeWhitespace().ToFullString();
-            results.Add((varId.Name, csharpType));
-            return;
+            string? key = call.Arguments[0] switch
+            {
+                Identifier varId => varId.Name,
+                MemberAccess ma => TryBuildDottedPath(ma),
+                _ => null
+            };
+
+            if (key != null)
+            {
+                // Use TypeMapper to resolve builtin types (str→string, int→int)
+                // and user-defined types (dog→Dog) to their C# names for casts.
+                var typeAnnotation = new TypeAnnotation { Name = typeId.Name };
+                var csharpType = _typeMapper.MapType(typeAnnotation).NormalizeWhitespace().ToFullString();
+                results.Add((key, csharpType));
+                return;
+            }
         }
 
         // Compound `and`: both sides must be true
@@ -1035,6 +1086,29 @@ internal partial class RoslynEmitter
         }
     }
 
+    /// <summary>
+    /// Builds a dotted path key from a MemberAccess chain (e.g., self.value -> "self.value").
+    /// Returns null if the chain contains non-identifier/non-member-access nodes.
+    /// </summary>
+    private static string? TryBuildDottedPath(MemberAccess ma)
+    {
+        var parts = new List<string>();
+        Expression current = ma;
+
+        while (current is MemberAccess m)
+        {
+            parts.Add(m.Member);
+            current = m.Object;
+        }
+
+        if (current is not Identifier rootId)
+            return null;
+
+        parts.Add(rootId.Name);
+        parts.Reverse();
+        return string.Join(".", parts);
+    }
+
     private StatementSyntax GenerateWhile(WhileStatement whileStmt)
     {
         // Detect Optional narrowing in while condition:
@@ -1043,15 +1117,19 @@ internal partial class RoslynEmitter
 
         // Detect isinstance narrowing in while condition:
         // while isinstance(x, MyType): → x is narrowed to MyType in the loop body
-        var isInstanceNarrowings = DetectIsInstanceNarrowings(whileStmt.Test);
+        // (negated isinstance doesn't apply to while — loop body runs when condition is true)
+        var isInstanceNarrowingInfo = DetectIsInstanceNarrowings(whileStmt.Test);
 
         var condition = GenerateExpression(whileStmt.Test);
 
         // If there's no else clause, generate simple while loop
         if (whileStmt.ElseBody.IsEmpty)
         {
-            foreach (var (varName, typeName) in isInstanceNarrowings)
-                PushIsInstanceNarrowing(varName, typeName);
+            if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
+            {
+                foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
+                    PushIsInstanceNarrowing(varName, typeName);
+            }
 
             if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
             {
@@ -1061,14 +1139,20 @@ internal partial class RoslynEmitter
                 foreach (var name in narrowingInfo.Value.VariableNames)
                     PopNarrowing(name);
 
-                foreach (var (varName, _) in isInstanceNarrowings)
-                    PopIsInstanceNarrowing(varName);
+                if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
+                {
+                    foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
+                        PopIsInstanceNarrowing(varName);
+                }
                 return WhileStatement(condition, body);
             }
             var simpleBody = Block(whileStmt.Body.SelectMany(GenerateBodyStatements));
 
-            foreach (var (varName, _) in isInstanceNarrowings)
-                PopIsInstanceNarrowing(varName);
+            if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
+            {
+                foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
+                    PopIsInstanceNarrowing(varName);
+            }
             return WhileStatement(condition, simpleBody);
         }
 
@@ -1090,8 +1174,11 @@ internal partial class RoslynEmitter
         var transformedBody = TransformLoopBodyForElse(whileStmt.Body, flagName);
         BlockSyntax bodyBlock;
 
-        foreach (var (varName, typeName) in isInstanceNarrowings)
-            PushIsInstanceNarrowing(varName, typeName);
+        if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
+        {
+            foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
+                PushIsInstanceNarrowing(varName, typeName);
+        }
 
         if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
         {
@@ -1106,8 +1193,11 @@ internal partial class RoslynEmitter
             bodyBlock = Block(transformedBody.SelectMany(GenerateBodyStatements));
         }
 
-        foreach (var (varName, _) in isInstanceNarrowings)
-            PopIsInstanceNarrowing(varName);
+        if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
+        {
+            foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
+                PopIsInstanceNarrowing(varName);
+        }
 
         // while (condition) { transformedBody }
         statements.Add(WhileStatement(condition, bodyBlock));
@@ -1536,26 +1626,26 @@ internal partial class RoslynEmitter
                 return VarPattern(DiscardDesignation());
 
             case BindingPattern binding:
-            {
-                var varName = GetMangledVariableName(binding.Name, isNewDeclaration: true);
-                return VarPattern(SingleVariableDesignation(Identifier(varName)));
-            }
+                {
+                    var varName = GetMangledVariableName(binding.Name, isNewDeclaration: true);
+                    return VarPattern(SingleVariableDesignation(Identifier(varName)));
+                }
 
             case LiteralPattern literal:
-            {
-                var literalExpr = GenerateExpression(literal.Literal);
-                return ConstantPattern(literalExpr);
-            }
+                {
+                    var literalExpr = GenerateExpression(literal.Literal);
+                    return ConstantPattern(literalExpr);
+                }
 
             case TuplePattern tuplePattern:
-            {
-                var subPatterns = tuplePattern.Elements
-                    .Select(elem => Subpattern(GenerateMatchPattern(elem)))
-                    .ToArray();
-                return RecursivePattern()
-                    .WithPositionalPatternClause(
-                        PositionalPatternClause(SeparatedList(subPatterns)));
-            }
+                {
+                    var subPatterns = tuplePattern.Elements
+                        .Select(elem => Subpattern(GenerateMatchPattern(elem)))
+                        .ToArray();
+                    return RecursivePattern()
+                        .WithPositionalPatternClause(
+                            PositionalPatternClause(SeparatedList(subPatterns)));
+                }
 
             default:
                 return VarPattern(DiscardDesignation());

@@ -1,0 +1,4 @@
+# Test: tuple index out of range error
+def main():
+    t = (1, 2, 3)
+    print(t[3])
