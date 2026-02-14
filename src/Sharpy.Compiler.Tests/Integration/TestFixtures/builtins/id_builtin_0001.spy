@@ -1,0 +1,4 @@
+def main():
+    a: list[int] = [1, 2, 3]
+    c = a
+    print(id(a) == id(c))
