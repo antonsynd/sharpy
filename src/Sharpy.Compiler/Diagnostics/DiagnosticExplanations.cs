@@ -259,6 +259,11 @@ public static class DiagnosticExplanations
             "type Point = tuple[x: float, float]",
             "Make all elements named or all unnamed:\n  type Point = tuple[x: float, y: float]\n  type Pair = tuple[float, float]");
 
+        Add(dict, DiagnosticCodes.Parser.MaxRecursionDepthExceeded, "Maximum recursion depth exceeded", "Parser",
+            "The parser exceeded its maximum nesting depth while parsing deeply nested expressions. This typically indicates excessively nested parentheses, operators, or other constructs that create deep parse trees.",
+            "# Extremely deeply nested expression\nresult = (((((((...)))))))",
+            "Simplify the expression by breaking it into intermediate variables:\n  part1 = a + b\n  part2 = part1 * c\n  result = part2 + d");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",
