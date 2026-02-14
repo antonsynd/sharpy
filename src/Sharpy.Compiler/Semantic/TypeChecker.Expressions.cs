@@ -717,6 +717,25 @@ internal partial class TypeChecker
                 span: memberAccess.Span);
         }
 
+        // Handle named tuple element access: pos.x, pos.y
+        if (memberLookupType is TupleType tupleType && tupleType.IsNamed)
+        {
+            var names = tupleType.ElementNames!.Value;
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (names[i] == memberAccess.Member)
+                {
+                    return tupleType.ElementTypes[i];
+                }
+            }
+
+            AddError(
+                $"Named tuple type '{tupleType.GetDisplayName()}' has no element '{memberAccess.Member}'",
+                memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedMember,
+                span: memberAccess.Span);
+            return SemanticType.Unknown;
+        }
+
         // Intentional Unknown without error for non-UserDefinedType member access:
         // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
         // are resolved by the codegen layer through CLR member discovery, not the
@@ -1603,7 +1622,15 @@ internal partial class TypeChecker
     private SemanticType CheckTupleLiteral(TupleLiteral tuple)
     {
         var elementTypes = tuple.Elements.Select(CheckExpression).ToList();
-        return new TupleType { ElementTypes = elementTypes };
+        var tupleType = new TupleType { ElementTypes = elementTypes };
+
+        // Propagate element names for named tuple literals
+        if (!tuple.ElementNames.IsEmpty)
+        {
+            tupleType = tupleType with { ElementNames = tuple.ElementNames };
+        }
+
+        return tupleType;
     }
 
     private SemanticType CheckListComprehension(ListComprehension listComp)

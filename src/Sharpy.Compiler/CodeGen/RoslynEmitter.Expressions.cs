@@ -866,9 +866,26 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateTupleLiteral(TupleLiteral tuple)
     {
-        // (elem1, elem2, ...)
-        var elements = tuple.Elements.Select(GenerateExpression);
+        var elements = tuple.Elements.Select(GenerateExpression).ToArray();
 
+        // Named tuple: (x: 1.0, y: 2.0)
+        if (!tuple.ElementNames.IsEmpty)
+        {
+            var namedArgs = elements.Select((expr, i) =>
+            {
+                var arg = Argument(expr);
+                var name = tuple.ElementNames[i];
+                if (name != null)
+                {
+                    arg = arg.WithNameColon(NameColon(name));
+                }
+                return arg;
+            });
+
+            return TupleExpression(SeparatedList(namedArgs));
+        }
+
+        // Unnamed tuple: (elem1, elem2, ...)
         return TupleExpression(SeparatedList(
             elements.Select(e => Argument(e))));
     }
@@ -1117,6 +1134,23 @@ internal partial class RoslynEmitter
                 return CastExpression(
                     PredefinedType(Token(SyntaxKind.IntKeyword)),
                     obj);
+            }
+        }
+
+        // Named tuple element access: keep element names as-is (no PascalCase)
+        if (GetExpressionSemanticType(memberAccess.Object) is Semantic.TupleType namedTupleType
+            && namedTupleType.IsNamed)
+        {
+            var names = namedTupleType.ElementNames!.Value;
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (names[i] == memberAccess.Member)
+                {
+                    return MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        obj,
+                        IdentifierName(memberAccess.Member));
+                }
             }
         }
 

@@ -186,6 +186,23 @@ internal class TypeMapper
             return elementTypes[0];
         }
 
+        // Named tuples use C# tuple syntax with element names: (double x, double y)
+        if (tupleType.IsNamed)
+        {
+            var elements = elementTypes.Select((type, i) =>
+            {
+                var element = TupleElement(type);
+                var name = tupleType.ElementNames!.Value[i];
+                if (name != null)
+                {
+                    element = element.WithIdentifier(Identifier(name));
+                }
+                return element;
+            });
+
+            return SyntaxFactory.TupleType(SeparatedList(elements));
+        }
+
         // Use ValueTuple<T1, T2, ...>
         return GenericName("System.ValueTuple")
             .WithTypeArgumentList(
@@ -239,6 +256,25 @@ internal class TypeMapper
 
         // Get base type name
         var baseTypeName = GetMappedTypeName(type.Name);
+
+        // Handle named tuple type annotations: tuple[x: float, y: float] -> (double x, double y)
+        if (type.Name == "tuple" && !type.TupleElementNames.IsEmpty && type.TypeArguments.Length >= 2)
+        {
+            var elements = type.TypeArguments.Select((ta, i) =>
+            {
+                var elementType = MapType(ta);
+                var element = TupleElement(elementType);
+                var name = type.TupleElementNames[i];
+                if (name != null)
+                {
+                    element = element.WithIdentifier(Identifier(name));
+                }
+                return element;
+            });
+
+            var result = SyntaxFactory.TupleType(SeparatedList(elements));
+            return WrapOptionalOrNullable(result, type);
+        }
 
         // Handle generic type arguments
         if (type.TypeArguments.Length > 0)

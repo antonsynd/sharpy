@@ -1,0 +1,6 @@
+type Point = tuple[x: float, y: float]
+
+def main():
+    p: Point = (x=1.0, y=2.0)
+    print(p.x)
+    print(p.y)

@@ -159,11 +159,17 @@ public record SetLiteral : Expression
 }
 
 /// <summary>
-/// Tuple literal (1, 2, 3) or (1,)
+/// Tuple literal (1, 2, 3) or (1,) or named tuple (x=1.0, y=2.0)
 /// </summary>
 public record TupleLiteral : Expression
 {
     public ImmutableArray<Expression> Elements { get; init; } = ImmutableArray<Expression>.Empty;
+
+    /// <summary>
+    /// Element names for named tuple literals. Empty for unnamed tuples.
+    /// When present, must have the same count as Elements.
+    /// </summary>
+    public ImmutableArray<string?> ElementNames { get; init; } = ImmutableArray<string?>.Empty;
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
