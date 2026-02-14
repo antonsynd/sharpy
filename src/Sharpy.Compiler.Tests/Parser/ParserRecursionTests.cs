@@ -59,9 +59,8 @@ public class ParserRecursionTests
     public void NestedParentheses_500Levels_DoesNotStackOverflow()
     {
         // Generate: (((...(1)...)))  with 500 levels of nesting
-        // NOTE: This currently triggers a StackOverflowException because the parser
-        // has no recursion depth guard for expression parsing. When a depth limit
-        // is added, remove the Skip annotation.
+        // With the recursion depth guard (SPY0119), the parser emits a diagnostic
+        // instead of crashing with StackOverflowException.
         var sb = new StringBuilder();
         const int depth = 500;
         for (int i = 0; i < depth; i++)
