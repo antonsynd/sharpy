@@ -1,0 +1,18 @@
+# Test null conditional operator with field access on nullable class instance
+
+class Person:
+    age: int
+
+    def __init__(self, age: int):
+        self.age = age
+
+def main():
+    p1: Person? = Some(Person(25))
+    p2: Person? = None()
+
+    print(p1?.age ?? -1)
+    print(p2?.age ?? -1)
+
+# EXPECTED OUTPUT:
+# 25
+# -1
