@@ -145,8 +145,9 @@ internal class TypeMapper
             };
         }
 
-        // Dictionary<K, V> or IDictionary<K, V>
-        if (IsGenericTypeDefinition(genericDef, typeof(Dictionary<,>)) ||
+        // Sharpy.Dict<K, V>, Dictionary<K, V>, or IDictionary<K, V>
+        if (genericDef.FullName == "Sharpy.Dict`2" ||
+            IsGenericTypeDefinition(genericDef, typeof(Dictionary<,>)) ||
             IsGenericTypeDefinition(genericDef, typeof(IDictionary<,>)))
         {
             return new GenericType

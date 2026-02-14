@@ -68,6 +68,21 @@ public class TypeMapperTests
     }
 
     [Fact]
+    public void MapSharpyDict_ToDictType()
+    {
+        // Arrange & Act
+        var result = _mapper.MapClrTypeToSemanticType(typeof(SharpyRT::Sharpy.Dict<string, int>));
+
+        // Assert
+        Assert.IsType<GenericType>(result);
+        var genericType = (GenericType)result;
+        Assert.Equal("dict", genericType.Name);
+        Assert.Equal(2, genericType.TypeArguments.Count);
+        Assert.Equal(SemanticType.Str, genericType.TypeArguments[0]);
+        Assert.Equal(SemanticType.Int, genericType.TypeArguments[1]);
+    }
+
+    [Fact]
     public void MapHashSet_ToSetType()
     {
         // Arrange & Act
