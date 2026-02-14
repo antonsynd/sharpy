@@ -1058,7 +1058,9 @@ class DogfoodOrchestrator:
             # Generate or regenerate code
             if attempt == 1:
                 # First attempt: generate fresh code
-                gen_result = await self._generate_multifile_code(feature_focus, complexity)
+                gen_result = await self._generate_multifile_code(
+                    feature_focus, complexity
+                )
             else:
                 # Subsequent attempts: regenerate with feedback
                 print(
@@ -1138,7 +1140,9 @@ class DogfoodOrchestrator:
                         f"  Pre-validation failed for {filename}: {prevalidation_error}",
                         file=sys.stderr,
                     )
-                    last_error = f"Pre-validation error in {filename}: {prevalidation_error}"
+                    last_error = (
+                        f"Pre-validation error in {filename}: {prevalidation_error}"
+                    )
                     prevalidation_failed = True
                     break
 
@@ -1201,7 +1205,11 @@ class DogfoodOrchestrator:
         return MultifileGenerationResult(
             success=False,
             files=last_files,
-            expected_output=extract_expected_output_from_multifile(last_files) if last_files else None,
+            expected_output=(
+                extract_expected_output_from_multifile(last_files)
+                if last_files
+                else None
+            ),
             skip_reason="Multi-file generation failed after all retry attempts",
             backend_used=backend_used,
             generation_duration=total_duration,
@@ -1453,7 +1461,10 @@ class DogfoodOrchestrator:
                     next_stripped = lines[j].split("#")[0].strip()
                     if not next_stripped:
                         continue
-                    if next_stripped in ("@abstract", "@virtual") and next_stripped != stripped:
+                    if (
+                        next_stripped in ("@abstract", "@virtual")
+                        and next_stripped != stripped
+                    ):
                         return f"Line {j + 1}: @abstract and @virtual combined (abstract methods are inherently virtual — use only @abstract)"
                     break  # Stop at first non-empty, non-decorator line
 
@@ -1543,9 +1554,7 @@ class DogfoodOrchestrator:
                 return None
             return result.error or "Unknown compiler error"
 
-    async def _validate_project_semantics(
-        self, files: dict[str, str]
-    ) -> Optional[str]:
+    async def _validate_project_semantics(self, files: dict[str, str]) -> Optional[str]:
         """Validate a multi-file project as a unit using the Sharpy compiler.
 
         Writes all files to a temp directory and runs 'emit csharp' on main.spy
@@ -1556,9 +1565,7 @@ class DogfoodOrchestrator:
         Returns None if the project is valid, or an error message if invalid.
         """
         with TempProjectDir(files) as project_dir:
-            result = await self.compiler.check_project(
-                project_dir, timeout=30.0
-            )
+            result = await self.compiler.check_project(project_dir, timeout=30.0)
             if result.success:
                 return None
             return result.error or "Unknown compiler error"

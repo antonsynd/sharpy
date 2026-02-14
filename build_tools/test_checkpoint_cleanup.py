@@ -36,7 +36,8 @@ def test_checkpoint_cleanup():
         # Create a minimal checkpoint DB so get_checkpoint_stats() can query it
         db_path = c.checkpoint_db_path
         conn = sqlite3.connect(str(db_path))
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS checkpoints (
                 thread_id TEXT NOT NULL,
                 checkpoint_ns TEXT NOT NULL DEFAULT '',
@@ -47,7 +48,8 @@ def test_checkpoint_cleanup():
                 metadata BLOB,
                 PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
             )
-        """)
+        """
+        )
         conn.commit()
         conn.close()
 

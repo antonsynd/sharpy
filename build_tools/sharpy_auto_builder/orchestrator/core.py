@@ -507,7 +507,9 @@ class Orchestrator(
                     return {
                         "total_checkpoints": 0,
                         "unique_threads": 0,
-                        "db_size_bytes": os.path.getsize(self.config.checkpoint_db_path),
+                        "db_size_bytes": os.path.getsize(
+                            self.config.checkpoint_db_path
+                        ),
                         "db_size_mb": 0.0,
                         "thread_stats": [],
                         "max_checkpoints_per_thread": self.config.checkpoint.max_checkpoints_per_thread,

@@ -22,7 +22,9 @@ def test_checkpoint_integration():
 
     # Sync context manager — checkpointer is None until async setup()
     with Orchestrator(c) as orch:
-        assert orch.checkpointer is None, "Checkpointer should be None before async setup"
+        assert (
+            orch.checkpointer is None
+        ), "Checkpointer should be None before async setup"
         print("✓ Checkpointer is None before setup()")
 
     # Async context manager — checkpointer gets initialized
