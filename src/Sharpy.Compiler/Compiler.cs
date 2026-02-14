@@ -114,15 +114,7 @@ public class Compiler
         _logger.LogInfo($"Starting compilation of {filePath}");
         var metrics = new CompilationMetrics(fileName: filePath);
         var diagnostics = new DiagnosticBag(_options.WarningsAsErrors, _options.SuppressedWarnings);
-
-        // Declare artifact variables outside the try block so they are accessible
-        // in catch handlers. This ensures cancelled or crashed compilations still
-        // return whatever artifacts were created before the failure point.
-        SourceText? sourceText = null;
-        List<Lexer.Token>? tokens = null;
-        Module? module = null;
-        SemanticBinding? semanticBinding = null;
-        ImportResolver? importResolver = null;
+        var result = new CompilationResultBuilder(diagnostics, metrics);
 
         try
         {
@@ -130,13 +122,15 @@ public class Compiler
             _logger.LogInfo("Phase 1: Lexical Analysis");
             metrics.StartPhase("Lexical Analysis");
             LogPhaseStart("Lexical Analysis", filePath);
-            sourceText = new SourceText(sourceCode, filePath);
+            var sourceText = new SourceText(sourceCode, filePath);
+            result.SourceText = sourceText;
             var lexer = new Lexer.Lexer(sourceText, _logger, cancellationToken: cancellationToken);
             if (_options.MaxErrors > 0)
             {
                 lexer.MaxErrors = _options.MaxErrors;
             }
-            tokens = lexer.TokenizeAll();
+            var tokens = lexer.TokenizeAll();
+            result.Tokens = tokens;
             LogPhaseEnd(filePath, lexer.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
@@ -151,14 +145,7 @@ public class Compiler
             {
                 diagnostics.Merge(lexer.Diagnostics);
                 metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return new CompilationResult
-                {
-                    Success = false,
-                    Diagnostics = diagnostics,
-                    Metrics = metrics,
-                    SourceText = sourceText,
-                    Tokens = tokens
-                };
+                return result.BuildFailure();
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -169,7 +156,8 @@ public class Compiler
             LogPhaseStart("Syntax Analysis", filePath, tokens.Count);
             var parserMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 25;
             var parser = new Parser.Parser(tokens, _logger, parserMaxErrors, cancellationToken);
-            module = parser.ParseModule();
+            var module = parser.ParseModule();
+            result.Module = module;
             LogPhaseEnd(filePath, parser.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
@@ -185,15 +173,7 @@ public class Compiler
             {
                 diagnostics.Merge(parser.Diagnostics);
                 metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return new CompilationResult
-                {
-                    Success = false,
-                    Diagnostics = diagnostics,
-                    Metrics = metrics,
-                    SourceText = sourceText,
-                    Tokens = tokens,
-                    Module = module
-                };
+                return result.BuildFailure();
             }
 
             // Assertion: Parser must produce a valid module with span info
@@ -214,23 +194,15 @@ public class Compiler
             var builtinRegistry = new BuiltinRegistry(_logger);
             var symbolTable = new SymbolTable(builtinRegistry);
             var semanticInfo = new SemanticInfo();
-            semanticBinding = new SemanticBinding();
+            var semanticBinding = new SemanticBinding();
+            result.SemanticBinding = semanticBinding;
 
             // Check for module registry errors
             if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
             {
                 diagnostics.Merge(_moduleRegistry.Diagnostics);
                 metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return new CompilationResult
-                {
-                    Success = false,
-                    Diagnostics = diagnostics,
-                    Metrics = metrics,
-                    SourceText = sourceText,
-                    Tokens = tokens,
-                    Module = module,
-                    SemanticBinding = semanticBinding
-                };
+                return result.BuildFailure();
             }
 
             // Pass 1: Name resolution (declarations)
@@ -254,16 +226,7 @@ public class Compiler
                 // Capture artifact counts even on error paths for better observability
                 metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
                 metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return new CompilationResult
-                {
-                    Success = false,
-                    Diagnostics = diagnostics,
-                    Metrics = metrics,
-                    SourceText = sourceText,
-                    Tokens = tokens,
-                    Module = module,
-                    SemanticBinding = semanticBinding
-                };
+                return result.BuildFailure();
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -274,7 +237,8 @@ public class Compiler
             var moduleSearchPaths = _moduleRegistry?.GetModulePaths()?.ToArray() ?? Array.Empty<string>();
             _logger.LogDebug($"Module search paths: [{string.Join(", ", moduleSearchPaths)}]");
             var moduleResolver = new ModuleResolver(_logger, moduleSearchPaths);
-            importResolver = new ImportResolver(_logger, _moduleRegistry, moduleResolver);
+            var importResolver = new ImportResolver(_logger, _moduleRegistry, moduleResolver);
+            result.ImportResolver = importResolver;
             importResolver.SetSemanticBinding(semanticBinding);
             importResolver.SetCurrentModule(filePath);
 
@@ -352,17 +316,7 @@ public class Compiler
                 metrics.DiagnosticCount = diagnostics.GetAll().Count + typeChecker.Diagnostics.GetAll().Count;
 
                 diagnostics.Merge(typeChecker.Diagnostics);
-                return new CompilationResult
-                {
-                    Success = false,
-                    Diagnostics = diagnostics,
-                    Metrics = metrics,
-                    SourceText = sourceText,
-                    Tokens = tokens,
-                    Module = module,
-                    SemanticBinding = semanticBinding,
-                    ImportResolver = importResolver
-                };
+                return result.BuildFailure();
             }
             LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
             metrics.EndPhase();
@@ -401,17 +355,7 @@ public class Compiler
             if (diagnostics.HasErrors)
             {
                 metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return new CompilationResult
-                {
-                    Success = false,
-                    Diagnostics = diagnostics,
-                    Metrics = metrics,
-                    SourceText = sourceText,
-                    Tokens = tokens,
-                    Module = module,
-                    SemanticBinding = semanticBinding,
-                    ImportResolver = importResolver
-                };
+                return result.BuildFailure();
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -444,17 +388,7 @@ public class Compiler
             {
                 diagnostics.Merge(codeGenContext.Diagnostics);
                 metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return new CompilationResult
-                {
-                    Success = false,
-                    Diagnostics = diagnostics,
-                    Metrics = metrics,
-                    SourceText = sourceText,
-                    Tokens = tokens,
-                    Module = module,
-                    SemanticBinding = semanticBinding,
-                    ImportResolver = importResolver
-                };
+                return result.BuildFailure();
             }
 
             // Generate C# for all imported .spy modules
@@ -497,38 +431,20 @@ public class Compiler
             // (TokenCount, AstNodeCount, SymbolCount, ValidatorTimes were set incrementally above)
             metrics.DiagnosticCount = diagnostics.GetAll().Count;
 
-            return new CompilationResult
-            {
-                Success = !diagnostics.HasErrors,
-                Diagnostics = diagnostics,
-                Module = module,
-                SymbolTable = symbolTable,
-                SemanticInfo = semanticInfo,
-                ModuleRegistry = _moduleRegistry,
-                GeneratedCSharpCode = csharpCode,  // Keep for backward compatibility
-                GeneratedCSharpFiles = allGeneratedFiles,
-                Metrics = metrics,
-                SourceText = sourceText,
-                Tokens = tokens,
-                SemanticBinding = semanticBinding,
-                ImportResolver = importResolver
-            };
+            return result
+                .WithSuccess(!diagnostics.HasErrors)
+                .WithSymbolTable(symbolTable)
+                .WithSemanticInfo(semanticInfo)
+                .WithModuleRegistry(_moduleRegistry)
+                .WithGeneratedCSharpCode(csharpCode)
+                .WithGeneratedCSharpFiles(allGeneratedFiles)
+                .Build();
         }
         catch (OperationCanceledException)
         {
             _logger.LogInfo("Compilation cancelled");
             diagnostics.AddError("Compilation cancelled", filePath: filePath, code: DiagnosticCodes.Infrastructure.CompilationCancelled);
-            return new CompilationResult
-            {
-                Success = false,
-                Diagnostics = diagnostics,
-                Metrics = metrics,
-                SourceText = sourceText,
-                Tokens = tokens,
-                Module = module,
-                SemanticBinding = semanticBinding,
-                ImportResolver = importResolver
-            };
+            return result.BuildFailure();
         }
         catch (Exception ex)
         {
@@ -541,17 +457,7 @@ public class Compiler
                 : $"Compilation failed ({ex.GetType().Name}): {ex.Message}";
 
             diagnostics.AddError(errorMessage, filePath: filePath, code: DiagnosticCodes.Infrastructure.CompilationFailed);
-            return new CompilationResult
-            {
-                Success = false,
-                Diagnostics = diagnostics,
-                Metrics = metrics,
-                SourceText = sourceText,
-                Tokens = tokens,
-                Module = module,
-                SemanticBinding = semanticBinding,
-                ImportResolver = importResolver
-            };
+            return result.BuildFailure();
         }
     }
 
@@ -792,6 +698,82 @@ public class Compiler
         }
 
         return compilationUnit.ToFullString();
+    }
+}
+
+/// <summary>
+/// Accumulates compilation artifacts progressively and builds a <see cref="CompilationResult"/>.
+/// Each phase of compilation sets its artifacts on the builder; early exit points call
+/// <see cref="BuildFailure"/> which captures whatever has been set so far.
+/// </summary>
+internal class CompilationResultBuilder
+{
+    private readonly DiagnosticBag _diagnostics;
+    private readonly CompilationMetrics _metrics;
+
+    private bool _success;
+    private SourceText? _sourceText;
+    private IReadOnlyList<Lexer.Token>? _tokens;
+    private Module? _module;
+    private SymbolTable? _symbolTable;
+    private SemanticInfo? _semanticInfo;
+    private ModuleRegistry? _moduleRegistry;
+    private string? _generatedCSharpCode;
+    private Dictionary<string, string>? _generatedCSharpFiles;
+    private SemanticBinding? _semanticBinding;
+    private ImportResolver? _importResolver;
+
+    public CompilationResultBuilder(DiagnosticBag diagnostics, CompilationMetrics metrics)
+    {
+        _diagnostics = diagnostics;
+        _metrics = metrics;
+    }
+
+    // Direct setters for artifacts accumulated during compilation phases
+    public SourceText? SourceText { set => _sourceText = value; }
+    public IReadOnlyList<Lexer.Token>? Tokens { set => _tokens = value; }
+    public Module? Module { set => _module = value; }
+    public SemanticBinding? SemanticBinding { set => _semanticBinding = value; }
+    public ImportResolver? ImportResolver { set => _importResolver = value; }
+
+    // Fluent setters for properties only set on the success path
+    public CompilationResultBuilder WithSuccess(bool success) { _success = success; return this; }
+    public CompilationResultBuilder WithSymbolTable(SymbolTable? symbolTable) { _symbolTable = symbolTable; return this; }
+    public CompilationResultBuilder WithSemanticInfo(SemanticInfo? semanticInfo) { _semanticInfo = semanticInfo; return this; }
+    public CompilationResultBuilder WithModuleRegistry(ModuleRegistry? moduleRegistry) { _moduleRegistry = moduleRegistry; return this; }
+    public CompilationResultBuilder WithGeneratedCSharpCode(string? code) { _generatedCSharpCode = code; return this; }
+    public CompilationResultBuilder WithGeneratedCSharpFiles(Dictionary<string, string>? files) { _generatedCSharpFiles = files; return this; }
+
+    /// <summary>
+    /// Build a failure result using all artifacts accumulated so far.
+    /// </summary>
+    public CompilationResult BuildFailure()
+    {
+        _success = false;
+        return Build();
+    }
+
+    /// <summary>
+    /// Build the final <see cref="CompilationResult"/> with all accumulated artifacts.
+    /// </summary>
+    public CompilationResult Build()
+    {
+        return new CompilationResult
+        {
+            Success = _success,
+            Diagnostics = _diagnostics,
+            Metrics = _metrics,
+            SourceText = _sourceText,
+            Tokens = _tokens,
+            Module = _module,
+            SymbolTable = _symbolTable,
+            SemanticInfo = _semanticInfo,
+            ModuleRegistry = _moduleRegistry,
+            GeneratedCSharpCode = _generatedCSharpCode,
+            GeneratedCSharpFiles = _generatedCSharpFiles ?? new(),
+            SemanticBinding = _semanticBinding,
+            ImportResolver = _importResolver
+        };
     }
 }
 

@@ -1,5 +1,5 @@
-using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Discovery;
+using Sharpy.Compiler.Shared;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Discovery;

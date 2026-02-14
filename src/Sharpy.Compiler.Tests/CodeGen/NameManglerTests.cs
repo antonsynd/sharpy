@@ -1,5 +1,5 @@
 using FluentAssertions;
-using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Shared;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.CodeGen;

@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -69,9 +70,7 @@ internal static class DunderMapping
     /// syntactic dunder classification. The difference is harmless.
     /// </remarks>
     public static bool IsDunderMethod(string name)
-    {
-        return name.StartsWith("__") && name.EndsWith("__") && name.Length > 5;
-    }
+        => DunderDetector.IsDunderMethod(name);
 
     /// <summary>
     /// Resolve the C# name for a dunder method. Returns null if the name is not a dunder.

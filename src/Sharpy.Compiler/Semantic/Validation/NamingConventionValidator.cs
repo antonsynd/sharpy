@@ -1,4 +1,4 @@
-using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Text;

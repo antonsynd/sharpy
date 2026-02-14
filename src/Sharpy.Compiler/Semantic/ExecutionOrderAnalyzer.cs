@@ -1,4 +1,4 @@
-using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;

@@ -1,4 +1,4 @@
-using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 
@@ -77,7 +77,7 @@ internal class DunderInvocationValidator : SemanticValidatorBase
     private void ValidateFunctionDef(FunctionDef funcDef)
     {
         var wasDunder = _inDunderMethod;
-        _inDunderMethod = DunderMapping.IsDunderMethod(funcDef.Name);
+        _inDunderMethod = DunderDetector.IsDunderMethod(funcDef.Name);
 
         foreach (var stmt in funcDef.Body)
         {
@@ -176,7 +176,7 @@ internal class DunderInvocationValidator : SemanticValidatorBase
                 break;
             case MemberAccess memberAccess:
                 // A dunder MemberAccess that is NOT a direct call target is a capture
-                if (DunderMapping.IsDunderMethod(memberAccess.Member))
+                if (DunderDetector.IsDunderMethod(memberAccess.Member))
                 {
                     AddError(_context,
                         $"Cannot capture dunder method reference '{memberAccess.Member}'. Dunder methods must be called immediately.",
@@ -267,7 +267,7 @@ internal class DunderInvocationValidator : SemanticValidatorBase
 
     private void ValidateFunctionCall(FunctionCall call)
     {
-        if (call.Function is MemberAccess memberAccess && DunderMapping.IsDunderMethod(memberAccess.Member))
+        if (call.Function is MemberAccess memberAccess && DunderDetector.IsDunderMethod(memberAccess.Member))
         {
             // This is a dunder method call (e.g., self.__eq__(other))
             var dunderName = memberAccess.Member;

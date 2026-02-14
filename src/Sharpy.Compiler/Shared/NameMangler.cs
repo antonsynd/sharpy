@@ -1,4 +1,4 @@
-namespace Sharpy.Compiler.CodeGen;
+namespace Sharpy.Compiler.Shared;
 
 /// <summary>
 /// Converts Sharpy naming conventions to C# naming conventions

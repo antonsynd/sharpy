@@ -1,4 +1,4 @@
-namespace Sharpy.Compiler.CodeGen;
+namespace Sharpy.Compiler.Shared;
 
 /// <summary>
 /// Classifies the naming convention of an identifier.
