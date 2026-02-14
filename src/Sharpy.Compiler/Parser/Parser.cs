@@ -52,6 +52,13 @@ public partial class Parser
     private int _lastLoopPosition = -1;
 
     /// <summary>
+    /// Tracks expression recursion depth to prevent StackOverflowException
+    /// on deeply nested expressions (e.g., 500 nested parentheses).
+    /// </summary>
+    private int _recursionDepth;
+    private const int MaxRecursionDepth = 120;
+
+    /// <summary>
     /// Diagnostics collected during parsing.
     /// </summary>
     public DiagnosticBag Diagnostics => _diagnostics;

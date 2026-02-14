@@ -12,7 +12,26 @@ namespace Sharpy.Compiler.Parser;
 /// </summary>
 public partial class Parser
 {
-    private Expression ParseExpression() => ParseWalrusExpression();
+    private Expression ParseExpression()
+    {
+        if (++_recursionDepth > MaxRecursionDepth)
+        {
+            _recursionDepth--;
+            throw ReportError(
+                $"Expression nesting depth exceeds the maximum of {MaxRecursionDepth}. Simplify the expression or reduce nesting.",
+                Current.Line, Current.Column,
+                DiagnosticCodes.Parser.MaxRecursionDepthExceeded,
+                span: GetSpanFromToken(Current));
+        }
+        try
+        {
+            return ParseWalrusExpression();
+        }
+        finally
+        {
+            _recursionDepth--;
+        }
+    }
 
     private Expression ParseWalrusExpression()
     {

@@ -55,7 +55,7 @@ public class ParserRecursionTests
 
     #region Nested Parentheses
 
-    [Fact(Skip = "TODO: Add recursion depth guard. 500 nested parens causes StackOverflowException in the parser.")]
+    [Fact]
     public void NestedParentheses_500Levels_DoesNotStackOverflow()
     {
         // Generate: (((...(1)...)))  with 500 levels of nesting
@@ -110,6 +110,23 @@ public class ParserRecursionTests
         Assert.False(hasErrors, $"Expected successful parse at depth {depth}, but got: {errors}");
         Assert.NotNull(module);
         Assert.Single(module!.Body);
+    }
+
+    [Fact]
+    public void NestedParentheses_ExceedingLimit_EmitsDiagnostic()
+    {
+        var sb = new StringBuilder("x = ");
+        const int depth = 250;
+        for (int i = 0; i < depth; i++)
+            sb.Append('(');
+        sb.Append('1');
+        for (int i = 0; i < depth; i++)
+            sb.Append(')');
+        sb.AppendLine();
+
+        var (module, hasErrors, errors) = ParseSource(sb.ToString());
+        Assert.True(hasErrors);
+        Assert.Contains("nesting depth exceeds the maximum", errors);
     }
 
     #endregion
@@ -288,7 +305,7 @@ public class ParserRecursionTests
 
     #region Nested List Literals
 
-    [Fact(Skip = "TODO: Add recursion depth guard. 200 nested list literals causes StackOverflowException in the parser.")]
+    [Fact]
     public void NestedListLiterals_200Levels_DoesNotStackOverflow()
     {
         // Generate: x = [[[[....[1]....]]]]  with 200 levels

@@ -66,6 +66,7 @@ public static class DiagnosticCodes
         public const string ExpectedModuleName = "SPY0116";
         public const string ExpectedDecoratorName = "SPY0117";
         public const string MixedNamedUnnamedTupleElements = "SPY0118";
+        public const string MaxRecursionDepthExceeded = "SPY0119";
     }
 
     /// <summary>
