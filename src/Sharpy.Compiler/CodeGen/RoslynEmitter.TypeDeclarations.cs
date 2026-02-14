@@ -62,7 +62,7 @@ internal partial class RoslynEmitter
         }
 
         // Generate method body
-        var body = Block(func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        var body = Block(func.Body.SelectMany(GenerateBodyStatements));
 
         var method = MethodDeclaration(returnType, mangledName)
             .WithModifiers(modifiers)

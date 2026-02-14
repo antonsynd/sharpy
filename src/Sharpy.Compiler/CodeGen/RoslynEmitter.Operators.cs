@@ -265,7 +265,7 @@ internal partial class RoslynEmitter
             var prev = SetupInlinedOperatorScope(funcDef, "left", overrides);
             try
             {
-                var bodyStatements = funcDef.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>();
+                var bodyStatements = funcDef.Body.SelectMany(GenerateBodyStatements);
                 operatorBody = Block(bodyStatements);
             }
             finally
@@ -326,7 +326,7 @@ internal partial class RoslynEmitter
             var prev = SetupInlinedOperatorScope(funcDef, "left", overrides);
             try
             {
-                var bodyStatements = funcDef.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>();
+                var bodyStatements = funcDef.Body.SelectMany(GenerateBodyStatements);
                 operatorBody = Block(bodyStatements);
             }
             finally
@@ -380,7 +380,7 @@ internal partial class RoslynEmitter
             var prev = SetupInlinedOperatorScope(funcDef, "value", overrides);
             try
             {
-                var bodyStatements = funcDef.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>();
+                var bodyStatements = funcDef.Body.SelectMany(GenerateBodyStatements);
                 operatorBody = Block(bodyStatements);
             }
             finally

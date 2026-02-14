@@ -2167,6 +2167,30 @@ internal partial class TypeChecker
     private SemanticType CheckWalrusExpression(WalrusExpression walrus)
     {
         var valueType = CheckExpression(walrus.Value);
+
+        // Register the walrus target variable in the current scope
+        var existingSymbol = _symbolTable.Lookup(walrus.Target, searchParents: false);
+        if (existingSymbol is VariableSymbol existingVar)
+        {
+            // Variable already exists — update its type (redeclaration)
+            SemanticBinding.SetVariableType(existingVar, valueType);
+        }
+        else
+        {
+            // New variable — create and register it
+            var newSymbol = new VariableSymbol
+            {
+                Name = walrus.Target,
+                Kind = SymbolKind.Variable,
+                Type = valueType,
+                IsConstant = false,
+                DeclarationLine = walrus.LineStart,
+                DeclarationColumn = walrus.ColumnStart
+            };
+            _symbolTable.Define(newSymbol);
+            SemanticBinding.SetVariableType(newSymbol, valueType);
+        }
+
         // The walrus expression both assigns and returns the value
         return valueType;
     }

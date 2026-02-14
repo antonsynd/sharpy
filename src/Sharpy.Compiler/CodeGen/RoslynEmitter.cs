@@ -84,6 +84,13 @@ internal partial class RoslynEmitter
     private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions = new(); // Track interface definitions for abstract class stub generation
     private int _tempVarCounter = 0;
 
+    /// <summary>
+    /// Tracks walrus operator (:=) variable declarations that need to be hoisted
+    /// before the containing statement. Populated during expression generation,
+    /// consumed and cleared during statement generation.
+    /// </summary>
+    private readonly List<LocalDeclarationStatementSyntax> _walrusDeclarations = new();
+
     // Target type context for collection literal type inference
     // Set before generating expressions that need target type information
     private TypeAnnotation? _targetTypeContext;
@@ -437,17 +444,24 @@ internal partial class RoslynEmitter
                 break;
 
             case IfStatement ifStmt:
+                CollectVariableNamesFromExpression(ifStmt.Test);
                 CollectSourceVariableNames(ifStmt.ThenBody);
                 CollectSourceVariableNames(ifStmt.ElseBody);
                 foreach (var elif in ifStmt.ElifClauses)
                 {
+                    CollectVariableNamesFromExpression(elif.Test);
                     CollectSourceVariableNames(elif.Body);
                 }
                 break;
 
             case WhileStatement whileStmt:
+                CollectVariableNamesFromExpression(whileStmt.Test);
                 CollectSourceVariableNames(whileStmt.Body);
                 CollectSourceVariableNames(whileStmt.ElseBody);
+                break;
+
+            case ExpressionStatement exprStmt:
+                CollectVariableNamesFromExpression(exprStmt.Expression);
                 break;
 
             case TryStatement tryStmt:
@@ -476,7 +490,9 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Collects variable names from an expression (used for assignment targets).
+    /// Collects variable names from an expression (used for assignment targets and
+    /// walrus operator targets). Recursively walks composite expressions to find
+    /// nested walrus expressions whose target variables need pre-registration.
     /// </summary>
     private void CollectVariableNamesFromExpression(Expression expr)
     {
@@ -492,6 +508,47 @@ internal partial class RoslynEmitter
                 {
                     CollectVariableNamesFromExpression(elem);
                 }
+                break;
+
+            case WalrusExpression walrus:
+                var walrusMangledName = NameMangler.ToCamelCase(walrus.Target);
+                _sourceVariableNames.Add(walrusMangledName);
+                CollectVariableNamesFromExpression(walrus.Value);
+                break;
+
+            case BinaryOp binOp:
+                CollectVariableNamesFromExpression(binOp.Left);
+                CollectVariableNamesFromExpression(binOp.Right);
+                break;
+
+            case UnaryOp unaryOp:
+                CollectVariableNamesFromExpression(unaryOp.Operand);
+                break;
+
+            case ComparisonChain chain:
+                foreach (var operand in chain.Operands)
+                    CollectVariableNamesFromExpression(operand);
+                break;
+
+            case FunctionCall call:
+                CollectVariableNamesFromExpression(call.Function);
+                foreach (var arg in call.Arguments)
+                    CollectVariableNamesFromExpression(arg);
+                break;
+
+            case ListLiteral listLit:
+                foreach (var elem in listLit.Elements)
+                    CollectVariableNamesFromExpression(elem);
+                break;
+
+            case Parenthesized paren:
+                CollectVariableNamesFromExpression(paren.Expression);
+                break;
+
+            case ConditionalExpression cond:
+                CollectVariableNamesFromExpression(cond.Test);
+                CollectVariableNamesFromExpression(cond.ThenValue);
+                CollectVariableNamesFromExpression(cond.ElseValue);
                 break;
         }
     }

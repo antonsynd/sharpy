@@ -79,6 +79,9 @@ internal partial class RoslynEmitter
             TryExpression tryExpr => GenerateTryExpression(tryExpr),
             MaybeExpression maybeExpr => GenerateMaybeExpression(maybeExpr),
 
+            // Walrus operator
+            WalrusExpression walrus => GenerateWalrusExpression(walrus),
+
             _ => EmitNotImplementedExpression(
                 $"Unsupported expression type in code generation: '{expr.GetType().Name}'",
                 DiagnosticCodes.CodeGen.UnsupportedExpressionType, expr.LineStart, expr.ColumnStart)
@@ -2035,6 +2038,36 @@ internal partial class RoslynEmitter
                     .WithTypeArgumentList(TypeArgumentList(SeparatedList(new[] { okType, errType }))),
                 IdentifierName("Err")))
             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(arg))));
+    }
+
+    // ============================================================
+    // Walrus operator (:=) emission
+    // ============================================================
+
+    /// <summary>
+    /// Generates code for a walrus/assignment expression (name := value).
+    /// Emits a hoisted <c>var name = value;</c> declaration that is prepended before
+    /// the containing statement, and returns an <c>IdentifierName</c> referencing the variable.
+    /// </summary>
+    private ExpressionSyntax GenerateWalrusExpression(WalrusExpression walrus)
+    {
+        // Generate the value expression
+        var value = GenerateExpression(walrus.Value);
+
+        // Get the mangled variable name, registering it as a new declaration
+        var varName = GetMangledVariableName(walrus.Target, isNewDeclaration: true);
+
+        // Hoist: var varName = value;
+        _walrusDeclarations.Add(
+            LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(varName))
+                            .WithInitializer(EqualsValueClause(value))))));
+        _declaredVariables.Add(varName);
+
+        // The walrus expression evaluates to the variable itself
+        return IdentifierName(varName);
     }
 
 }
