@@ -20,7 +20,7 @@ When adding codegen support for an existing AST node, always verify that semanti
 
 - All C# output is built with `SyntaxFactory` calls. Never use string interpolation to produce C# source.
 - The emitter uses `static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;` so factory methods like `IdentifierName(...)`, `AssignmentExpression(...)`, etc. are available without qualification.
-- Temporary variables use the `_tempVarCounter` field: `$"__walrus_{_tempVarCounter++}"`.
+- Temporary variables use the `_tempVarCounter` field: e.g. `$"__coerce_temp_{_tempVarCounter++}"`.
 - Local variable tracking uses `_declaredVariables` (HashSet of mangled names) and `_variableVersions` (Dictionary mapping base names to version numbers).
 
 ### Sharpy.Core Constraints
@@ -750,15 +750,15 @@ Currently, there is no `Str()` method in `Sharpy.Builtins`. The BuiltinRegistry 
 
 | File | Purpose |
 |------|---------|
-| `src/Sharpy.Core/Builtins/Str.cs` | **New file** -- `Str()` overloads following the `Int.cs` pattern |
+| `src/Sharpy.Core/Str.cs` | **New file** -- `Str()` overloads following the `Int.cs` pattern |
 
-Note: This is one of the rare cases where a new file is required. The Builtins directory uses one file per builtin function (e.g., `Int.cs`, `Bool.cs`, `Len.cs`).
+Note: This is one of the rare cases where a new file is required. The `Sharpy.Core` root directory uses one file per builtin function (e.g., `Int.cs`, `Bool.cs`, `Len.cs`).
 
 ### Step-by-Step Implementation
 
-**Step 1: Create `Str.cs` in the Builtins directory.**
+**Step 1: Create `Str.cs` in the Sharpy.Core root directory.**
 
-File: `src/Sharpy.Core/Builtins/Str.cs`
+File: `src/Sharpy.Core/Str.cs`
 
 Follow the exact pattern from `Int.cs` (namespace, partial class, overloads):
 
@@ -919,7 +919,7 @@ The `id()` builtin is documented in the spec (`docs/language_specification/built
 
 | File | Purpose |
 |------|---------|
-| `src/Sharpy.Core/Builtins/Id.cs` | **New file** -- `Id()` method |
+| `src/Sharpy.Core/Id.cs` | **New file** -- `Id()` method |
 
 ### Step-by-Step Implementation
 
@@ -927,9 +927,9 @@ The `id()` builtin is documented in the spec (`docs/language_specification/built
 
 `System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(object)` is available in both `netstandard2.0` and `netstandard2.1`. It returns the default hash code for the object (identity-based, like Python's `id()`).
 
-**Step 2: Create `Id.cs` in the Builtins directory.**
+**Step 2: Create `Id.cs` in the Sharpy.Core root directory.**
 
-File: `src/Sharpy.Core/Builtins/Id.cs`
+File: `src/Sharpy.Core/Id.cs`
 
 ```csharp
 using System.Runtime.CompilerServices;

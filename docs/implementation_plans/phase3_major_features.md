@@ -578,12 +578,15 @@ Inline `out` declaration: `out value: int` or `out value: auto`.
 
 ### Architecture
 
-1. **Lexer** -- `ref`, `out`, `in` are not currently reserved keywords and
-   are parsed as identifiers. They will be recognized as special names in
-   the type annotation context (`ref[T]`, `out[T]`, `in[T]`). The `ref`,
-   `out`, and `in` keywords at call sites also need to be recognized. Consider
-   adding `TokenType.Ref`, `TokenType.Out`, `TokenType.In` as reserved
-   keywords, or handle them as contextual identifiers in the parser.
+1. **Lexer** -- `ref` and `out` are not currently reserved keywords and
+   are parsed as identifiers. `in` is already a reserved keyword
+   (`TokenType.In`, used for `for x in items`). They will be recognized as
+   special names in the type annotation context (`ref[T]`, `out[T]`,
+   `in[T]`). The `ref` and `out` keywords at call sites also need to be
+   recognized. Consider adding `TokenType.Ref` and `TokenType.Out` as
+   reserved keywords, or handle them as contextual identifiers in the parser.
+   `TokenType.In` already exists but may need special handling in type
+   annotation and call-site contexts.
 2. **Parser** -- Modify type annotation parsing to recognize `ref[T]`,
    `out[T]`, `in[T]` as modifier wrappers. Modify function call argument
    parsing to handle `ref expr`, `out expr`, `out name: type`.
@@ -610,9 +613,9 @@ Inline `out` declaration: `out value: int` or `out value: auto`.
   patterns. When the type name is `ref`, `out`, or `in` and has exactly one
   type argument, set the modifier on the containing parameter and return
   the inner type.
-- `/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler/Parser/Parser.Definitions.cs`
-  -- Modify `ParseParameters()` to propagate the modifier from the type
-  annotation to the `Parameter` record.
+- `/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler/Parser/Parser.Statements.cs`
+  -- Modify `ParseParameters()` (defined in this file) to propagate the
+  modifier from the type annotation to the `Parameter` record.
 - `/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler/Parser/Ast/Expression.cs`
   -- Add `RefArgument` expression node for call-site `ref expr`, `out expr`,
   `in expr`:
@@ -781,7 +784,7 @@ This is primarily a CodeGen change with some semantic follow-up.
 - [x] `Sharpy.List<T>` implements `IList<T>` -- yes (from `List.cs` line 9)
 - [x] `Sharpy.List<T>` implements `IReadOnlyList<T>` -- yes (line 10)
 - [x] `Sharpy.List<T>` implements `IEnumerable<T>` -- yes (via `IList<T>`)
-- [x] `Sharpy.List<T>` has `Add(T)` for collection initializers -- yes (line 39)
+- [x] `Sharpy.List<T>` has `Add(T)` for collection initializers -- yes (line 42)
 - [x] `Sharpy.Set<T>` implements `ISet<T>` -- yes (from `Set.cs` line 5)
 - [x] `Sharpy.Set<T>` implements `IEnumerable<T>` -- yes (via `ISet<T>`)
 
@@ -1228,7 +1231,7 @@ end-to-end functional).
    var code = $"public {type} Name {{ get; }}";
    ```
 
-3. **Sharpy.Core targets C# 9.0 / netstandard2.1.** The generated code must
+3. **Sharpy.Core targets C# 9.0 / netstandard2.1;netstandard2.0.** The generated code must
    also work within these constraints. The `init` accessor is available
    in C# 9.0. Record types are available. File-scoped namespaces and global
    usings are NOT available.

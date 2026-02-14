@@ -465,7 +465,7 @@ generated constructor call.
 
 ### Context
 
-Python allows both `"ab" * 3` and `3 * "ab"`, both producing `"ababab"`. In Sharpy, `str * int` works (the type inference service recognizes it at line 194-198 of `TypeInferenceService.cs`), but `int * str` fails because there is no symmetric case.
+Python allows both `"ab" * 3` and `3 * "ab"`, both producing `"ababab"`. In Sharpy, `str * int` works (the type inference service recognizes it at lines 194-199 of `TypeInferenceService.cs`), but `int * str` fails because there is no symmetric case.
 
 Additionally, the codegen for `str * int` currently falls through to the standard `BinaryExpression(SyntaxKind.MultiplyExpression, left, right)`, which generates `left * right` in C#. Since C# `string` does not have an `operator *`, this generates invalid C#. Both the semantic analysis and codegen need fixes.
 

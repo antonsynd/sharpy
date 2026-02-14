@@ -126,7 +126,7 @@ This is a user-visible gap: any Sharpy program that uses `color.name` or `for c 
 
 1. **`src/Sharpy.Compiler/CodeGen/RoslynEmitter.Expressions.cs`** -- `GenerateMemberAccess()` method. Add handling for `.name` and `.value` on enum-typed expressions.
 
-2. **`src/Sharpy.Compiler/CodeGen/RoslynEmitter.Statements.cs`** -- `GenerateForStatement()` or wherever `for x in Type:` is handled. Need to detect when the iterable is an enum type and generate `Enum.GetValues()`.
+2. **`src/Sharpy.Compiler/CodeGen/RoslynEmitter.Statements.cs`** -- `GenerateFor()` (line 1039) or wherever `for x in Type:` is handled. Need to detect when the iterable is an enum type and generate `Enum.GetValues()`.
 
 3. **`src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs`** -- Type checking for `.name` and `.value` member access on enum types.
 
@@ -221,7 +221,7 @@ feat: Support enum .name, .value properties and for-in iteration
 
 #### Context
 
-The spec (`docs/language_specification/type_aliases.md`, lines 12-13) shows generic aliases like `type Callback[T] = (T) -> None`. Currently, the `TypeAlias` AST node (`src/Sharpy.Compiler/Parser/Ast/Statement.cs`, line 544-563) has no `TypeParameters` property. The parser (`src/Sharpy.Compiler/Parser/Parser.Definitions.cs`, lines 744-812) reads `type Name = ...` but does not parse `[T]` type parameters after the name.
+The spec (`docs/language_specification/type_aliases.md`, lines 12-13) shows generic aliases like `type Callback[T] = (T) -> None`. Currently, the `TypeAlias` AST node (`src/Sharpy.Compiler/Parser/Ast/Statement.cs`, line 544-566) has no `TypeParameters` property. The parser (`src/Sharpy.Compiler/Parser/Parser.Definitions.cs`, lines 744-812) reads `type Name = ...` but does not parse `[T]` type parameters after the name.
 
 Without this, users cannot create reusable generic type abbreviations, which are common for callback types and container aliases.
 
@@ -511,7 +511,7 @@ Without this, users cannot define multiple overloads of a regular method, which 
 
 #### Files to Modify
 
-1. **`src/Sharpy.Compiler/Semantic/NameResolver.cs`** -- `ResolveMethodDeclaration()` (around line 530). Change regular method registration to allow overloads.
+1. **`src/Sharpy.Compiler/Semantic/NameResolver.cs`** -- `ResolveMethodDeclaration()` (starting at line 480). Change regular method registration to allow overloads.
 2. **`src/Sharpy.Compiler/Semantic/Symbol.cs`** -- `TypeSymbol` may need an overload tracking mechanism for regular methods (similar to `OperatorMethods` dictionary).
 3. **`src/Sharpy.Compiler/Semantic/TypeChecker.Expressions.cs`** -- Method call resolution needs to perform overload resolution among candidates.
 4. **`src/Sharpy.Compiler/Semantic/SymbolTable.cs`** -- May need a method to register overloaded symbols.
@@ -550,7 +550,7 @@ Without this, users cannot define multiple overloads of a regular method, which 
 
 3. **Update method call resolution in TypeChecker**. When resolving a method call `obj.method(args)`, look up the method name in the target type's `MethodOverloads` dictionary (falling back to `Methods` list). If multiple overloads exist, perform overload resolution based on argument count and types. Follow C# overload resolution rules as described in the spec.
 
-4. **Module-level function overloading**. The spec shows module-level function overloading too. This requires similar changes to how module-level functions are registered. Check `ResolveModuleLevelFunction()` or equivalent in `NameResolver.cs`.
+4. **Module-level function overloading**. The spec shows module-level function overloading too. This requires similar changes to how module-level functions are registered. Check `ResolveFunctionDeclaration()` (line 438) in `NameResolver.cs`.
 
 #### Decision Guidance
 
@@ -650,10 +650,10 @@ This is a large feature. Start with Tier 0 only (the `/` and `*` markers with co
 
 4. **No codegen changes needed**. The C# signature is identical regardless of `/` and `*` markers. These are purely compile-time Sharpy semantics.
 
-5. **Add diagnostic codes**:
+5. **Add diagnostic codes** (SPY0280-SPY0288 are already used for class/inheritance errors; use the next available range):
    ```csharp
-   public const string PositionalOnlyViolation = "SPY0280"; // or next available
-   public const string KeywordOnlyViolation = "SPY0281";
+   public const string PositionalOnlyViolation = "SPY0290"; // or next available in SPY0290+ range
+   public const string KeywordOnlyViolation = "SPY0291";
    ```
 
 #### Decision Guidance
