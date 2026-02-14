@@ -659,6 +659,9 @@ internal class NameResolver
                 case "protected":
                     accessLevel = AccessLevel.Protected;
                     break;
+                case "internal":
+                    accessLevel = AccessLevel.Internal;
+                    break;
             }
         }
 

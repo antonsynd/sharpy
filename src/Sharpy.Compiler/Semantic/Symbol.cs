@@ -278,6 +278,7 @@ public enum TypeKind
 public enum AccessLevel
 {
     Public,
+    Internal,
     Protected,
     Private
 }
