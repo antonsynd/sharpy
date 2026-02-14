@@ -314,6 +314,7 @@ public partial class Parser
         TokenType.Try => true,
         TokenType.With => true,
         TokenType.Maybe => true,
+        TokenType.Match => true,
         TokenType.At => true,
         TokenType.Dedent => true,
         _ => false,
@@ -387,6 +388,7 @@ public partial class Parser
             TokenType.Import => ParseImportStatement(),
             TokenType.From => ParseFromImportStatement(),
             TokenType.Const => ParseConstDeclaration(),
+            TokenType.Match => ParseMatchStatement(),
             _ => ParseSimpleStatement()
         };
     }

@@ -908,4 +908,183 @@ public partial class Parser
 
         return parameters;
     }
+
+    private MatchStatement ParseMatchStatement()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+        var startToken = Current;
+        Expect(TokenType.Match);
+
+        var scrutinee = ParseExpression();
+        Expect(TokenType.Colon);
+        ExpectNewline();
+        Expect(TokenType.Indent);
+
+        var cases = new List<MatchCase>();
+        _lastLoopPosition = -1;
+        while (Current.Type == TokenType.Case)
+        {
+            if (!CheckLoopProgress())
+                break;
+            cases.Add(ParseMatchCase());
+        }
+
+        if (cases.Count == 0)
+            throw ReportError("Expected at least one 'case' clause in match statement",
+                Current.Line, Current.Column,
+                DiagnosticCodes.Parser.ExpectedCase, span: CurrentSpan);
+
+        Expect(TokenType.Dedent);
+        var endToken = Previous;
+
+        return new MatchStatement
+        {
+            Scrutinee = scrutinee,
+            Cases = cases.ToImmutableArray(),
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
+
+    private MatchCase ParseMatchCase()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+        var startToken = Current;
+        Expect(TokenType.Case);
+
+        var pattern = ParsePattern();
+
+        Expression? guard = null;
+        if (Current.Type == TokenType.If)
+        {
+            Advance(); // skip 'if'
+            guard = ParseExpression();
+        }
+
+        Expect(TokenType.Colon);
+        ExpectNewline();
+        Expect(TokenType.Indent);
+        var body = ParseBlock();
+        Expect(TokenType.Dedent);
+        var endToken = Previous;
+
+        return new MatchCase
+        {
+            Pattern = pattern,
+            Guard = guard,
+            Body = body.ToImmutableArray(),
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
+
+    private Pattern ParsePattern()
+    {
+        // Tuple pattern: (a, b, ...)
+        if (Current.Type == TokenType.LeftParen)
+            return ParseTuplePattern();
+
+        // Wildcard pattern: _
+        if (Current.Type == TokenType.Identifier && Current.Value == "_")
+        {
+            var token = Current;
+            Advance();
+            return new WildcardPattern
+            {
+                LineStart = token.Line,
+                ColumnStart = token.Column,
+                LineEnd = token.Line,
+                ColumnEnd = token.Column + token.Value.Length,
+                Span = GetSpanFromToken(token)
+            };
+        }
+
+        // Literal patterns: integers, floats, strings, booleans, None
+        if (Current.Type == TokenType.Integer || Current.Type == TokenType.Float ||
+            Current.Type == TokenType.String || Current.Type == TokenType.True ||
+            Current.Type == TokenType.False || Current.Type == TokenType.None)
+            return ParseLiteralPattern();
+
+        // Negative numeric literal
+        if (Current.Type == TokenType.Minus &&
+            (Peek(1).Type == TokenType.Integer || Peek(1).Type == TokenType.Float))
+            return ParseLiteralPattern();
+
+        // Binding pattern: identifier (captures the value)
+        if (Current.Type == TokenType.Identifier)
+        {
+            var token = Current;
+            Advance();
+            return new BindingPattern
+            {
+                Name = token.Value,
+                LineStart = token.Line,
+                ColumnStart = token.Column,
+                LineEnd = token.Line,
+                ColumnEnd = token.Column + token.Value.Length,
+                Span = GetSpanFromToken(token)
+            };
+        }
+
+        throw ReportError($"Expected a pattern, got '{Current.Value}'",
+            Current.Line, Current.Column,
+            DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
+    }
+
+    private TuplePattern ParseTuplePattern()
+    {
+        var startToken = Current;
+        Expect(TokenType.LeftParen);
+
+        var elements = new List<Pattern>();
+        if (Current.Type != TokenType.RightParen)
+        {
+            elements.Add(ParsePattern());
+            while (Current.Type == TokenType.Comma)
+            {
+                Advance();
+                if (Current.Type == TokenType.RightParen)
+                    break;
+                elements.Add(ParsePattern());
+            }
+        }
+
+        var endToken = Current;
+        Expect(TokenType.RightParen);
+
+        return new TuplePattern
+        {
+            Elements = elements.ToImmutableArray(),
+            LineStart = startToken.Line,
+            ColumnStart = startToken.Column,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
+
+    private LiteralPattern ParseLiteralPattern()
+    {
+        var startToken = Current;
+        var literal = ParseExpression();
+        var endToken = Previous;
+
+        return new LiteralPattern
+        {
+            Literal = literal,
+            LineStart = startToken.Line,
+            ColumnStart = startToken.Column,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
 }

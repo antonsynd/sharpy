@@ -193,6 +193,10 @@ internal class ControlFlowGraphBuilder
                 // Type/function/property definitions and imports don't affect control flow
                 break;
 
+            case MatchStatement matchStmt:
+                BuildMatch(matchStmt);
+                break;
+
             default:
                 // Simple statements - add to current block
                 AddStatement(stmt);
@@ -660,5 +664,29 @@ internal class ControlFlowGraphBuilder
         // With statement is a straight-through block (like try without handlers).
         // The body executes linearly; disposal happens at the end.
         BuildStatements(stmt.Body);
+    }
+
+    private void BuildMatch(MatchStatement stmt)
+    {
+        var mergeBlock = CreateBlock("match_merge");
+        var condBlock = _currentBlock;
+
+        foreach (var matchCase in stmt.Cases)
+        {
+            var caseBlock = CreateBlock("match_case");
+            Connect(condBlock, caseBlock);
+            _currentBlock = caseBlock;
+
+            BuildStatements(matchCase.Body);
+
+            if (_currentBlock.Terminator == null)
+            {
+                Connect(_currentBlock, mergeBlock);
+                _currentBlock.Terminator = new BranchTerminator(mergeBlock);
+            }
+        }
+
+        Connect(condBlock, mergeBlock);
+        _currentBlock = mergeBlock;
     }
 }

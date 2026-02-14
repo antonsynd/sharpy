@@ -67,6 +67,8 @@ public static class DiagnosticCodes
         public const string ExpectedDecoratorName = "SPY0117";
         public const string MixedNamedUnnamedTupleElements = "SPY0118";
         public const string MaxRecursionDepthExceeded = "SPY0119";
+        public const string ExpectedPattern = "SPY0120";
+        public const string ExpectedCase = "SPY0121";
     }
 
     /// <summary>
@@ -124,6 +126,7 @@ public static class DiagnosticCodes
         public const string InvalidFunctionType = "SPY0254";
         public const string UnrecognizedStatementType = "SPY0255";
         public const string UnrecognizedExpressionType = "SPY0256";
+        public const string TuplePatternLengthMismatch = "SPY0257";
 
         // Return and control flow (SPY0260-SPY0279)
         public const string MissingReturnValue = "SPY0260";

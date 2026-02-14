@@ -1,0 +1,6 @@
+def main():
+    point = (10, 20)
+    match point:
+        case (x, y):
+            print(x)
+            print(y)

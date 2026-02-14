@@ -705,6 +705,111 @@ internal partial class TypeChecker
         }
     }
 
+    private void CheckMatch(MatchStatement matchStmt)
+    {
+        var scrutineeType = CheckExpression(matchStmt.Scrutinee);
+
+        foreach (var matchCase in matchStmt.Cases)
+        {
+            _symbolTable.EnterScope("match-case");
+            _controlFlowDepth++;
+
+            CheckPattern(matchCase.Pattern, scrutineeType);
+
+            if (matchCase.Guard != null)
+            {
+                var guardType = CheckExpression(matchCase.Guard);
+                if (guardType is not BuiltinType { Name: "bool" })
+                {
+                    AddError("Guard condition must be a boolean expression",
+                        matchCase.Guard.LineStart, matchCase.Guard.ColumnStart,
+                        code: DiagnosticCodes.Semantic.ConditionNotBoolean,
+                        span: matchCase.Guard.Span);
+                }
+            }
+
+            foreach (var stmt in matchCase.Body)
+                CheckStatement(stmt);
+
+            _controlFlowDepth--;
+            _symbolTable.ExitScope();
+        }
+    }
+
+    private void CheckPattern(Pattern pattern, SemanticType scrutineeType)
+    {
+        switch (pattern)
+        {
+            case WildcardPattern:
+                break;
+
+            case BindingPattern binding:
+                {
+                    var newSymbol = new VariableSymbol
+                    {
+                        Name = binding.Name,
+                        Kind = SymbolKind.Variable,
+                        Type = scrutineeType,
+                        IsConstant = false,
+                        DeclarationLine = binding.LineStart,
+                        DeclarationColumn = binding.ColumnStart,
+                        AccessLevel = AccessLevel.Public
+                    };
+
+                    _symbolTable.Define(newSymbol);
+                    SemanticBinding.SetVariableType(newSymbol, scrutineeType);
+                    break;
+                }
+
+            case LiteralPattern literal:
+                {
+                    var litType = CheckExpression(literal.Literal);
+                    if (!IsAssignable(litType, scrutineeType) && !IsAssignable(scrutineeType, litType))
+                    {
+                        AddError(
+                            $"Pattern type '{litType.GetDisplayName()}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                            literal.LineStart, literal.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: literal.Span);
+                    }
+                    break;
+                }
+
+            case TuplePattern tuplePattern:
+                {
+                    if (scrutineeType is TupleType tupleType)
+                    {
+                        if (tuplePattern.Elements.Length != tupleType.ElementTypes.Count)
+                        {
+                            AddError(
+                                $"Tuple pattern has {tuplePattern.Elements.Length} elements but scrutinee has {tupleType.ElementTypes.Count}",
+                                tuplePattern.LineStart, tuplePattern.ColumnStart,
+                                code: DiagnosticCodes.Semantic.TuplePatternLengthMismatch,
+                                span: tuplePattern.Span);
+                        }
+                        else
+                        {
+                            for (int i = 0; i < tuplePattern.Elements.Length; i++)
+                                CheckPattern(tuplePattern.Elements[i], tupleType.ElementTypes[i]);
+                        }
+                    }
+                    else
+                    {
+                        AddError(
+                            $"Cannot destructure non-tuple type '{scrutineeType.GetDisplayName()}' with tuple pattern",
+                            tuplePattern.LineStart, tuplePattern.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: tuplePattern.Span);
+                    }
+                    break;
+                }
+
+            default:
+                _logger.LogWarning($"Unhandled pattern type: {pattern.GetType().Name}", 0, 0);
+                break;
+        }
+    }
+
     /// <summary>
     /// Type check an expression and return its type
     /// </summary>

@@ -374,6 +374,10 @@ internal partial class TypeChecker
                 // Property validation handled elsewhere (property-specific validation)
                 break;
 
+            case MatchStatement matchStmt:
+                CheckMatch(matchStmt);
+                break;
+
             default:
                 _logger.LogWarning($"Unhandled statement type: {statement.GetType().Name}", 0, 0);
                 AddError(

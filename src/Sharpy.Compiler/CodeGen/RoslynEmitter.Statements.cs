@@ -68,6 +68,7 @@ internal partial class RoslynEmitter
             ForStatement forStmt => GenerateFor(forStmt),
             TryStatement tryStmt => GenerateTry(tryStmt),
             WithStatement withStmt => GenerateWith(withStmt),
+            MatchStatement matchStmt => GenerateMatch(matchStmt),
             _ => null
         };
 
@@ -1494,6 +1495,71 @@ internal partial class RoslynEmitter
             return FinallyClause(finallyBlock);
         }
         return null;
+    }
+
+    private StatementSyntax GenerateMatch(MatchStatement matchStmt)
+    {
+        var scrutineeExpr = GenerateExpression(matchStmt.Scrutinee);
+        var sections = new List<SwitchSectionSyntax>();
+
+        foreach (var matchCase in matchStmt.Cases)
+        {
+            var bodyStatements = matchCase.Body.SelectMany(GenerateBodyStatements).ToList();
+            bodyStatements.Add(SyntaxFactory.BreakStatement());
+
+            var pattern = GenerateMatchPattern(matchCase.Pattern);
+            SwitchLabelSyntax caseLabel;
+
+            if (matchCase.Guard != null)
+            {
+                var guardExpr = GenerateExpression(matchCase.Guard);
+                caseLabel = CasePatternSwitchLabel(pattern, WhenClause(guardExpr), Token(SyntaxKind.ColonToken));
+            }
+            else
+            {
+                caseLabel = CasePatternSwitchLabel(pattern, Token(SyntaxKind.ColonToken));
+            }
+
+            sections.Add(SwitchSection(
+                SingletonList(caseLabel),
+                List<StatementSyntax>(bodyStatements)));
+        }
+
+        return SwitchStatement(scrutineeExpr, List(sections));
+    }
+
+    private PatternSyntax GenerateMatchPattern(Pattern pattern)
+    {
+        switch (pattern)
+        {
+            case WildcardPattern:
+                return VarPattern(DiscardDesignation());
+
+            case BindingPattern binding:
+            {
+                var varName = GetMangledVariableName(binding.Name, isNewDeclaration: true);
+                return VarPattern(SingleVariableDesignation(Identifier(varName)));
+            }
+
+            case LiteralPattern literal:
+            {
+                var literalExpr = GenerateExpression(literal.Literal);
+                return ConstantPattern(literalExpr);
+            }
+
+            case TuplePattern tuplePattern:
+            {
+                var subPatterns = tuplePattern.Elements
+                    .Select(elem => Subpattern(GenerateMatchPattern(elem)))
+                    .ToArray();
+                return RecursivePattern()
+                    .WithPositionalPatternClause(
+                        PositionalPatternClause(SeparatedList(subPatterns)));
+            }
+
+            default:
+                return VarPattern(DiscardDesignation());
+        }
     }
 
 }

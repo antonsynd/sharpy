@@ -264,6 +264,16 @@ public static class DiagnosticExplanations
             "# Extremely deeply nested expression\nresult = (((((((...)))))))",
             "Simplify the expression by breaking it into intermediate variables:\n  part1 = a + b\n  part2 = part1 * c\n  result = part2 + d");
 
+        Add(dict, DiagnosticCodes.Parser.ExpectedPattern, "Expected pattern", "Parser",
+            "The parser expected a pattern in a match case but found something else. Valid patterns include: variable bindings, literal values, tuple patterns, and wildcard (_).",
+            "match x:\n    case ???:\n        pass",
+            "Use a valid pattern:\nmatch x:\n    case 42:\n        print(\"found it\")\n    case _:\n        print(\"default\")");
+
+        Add(dict, DiagnosticCodes.Parser.ExpectedCase, "Expected case clause", "Parser",
+            "A match statement must contain at least one 'case' clause. The parser found the match body but no case clauses inside it.",
+            "match x:\n    pass",
+            "Add at least one case clause:\nmatch x:\n    case _:\n        pass");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",
@@ -506,6 +516,11 @@ public static class DiagnosticExplanations
             "This is a compiler bug — the type checker is missing a case for this AST node type.",
             null,
             "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
+
+        Add(dict, DiagnosticCodes.Semantic.TuplePatternLengthMismatch, "Tuple pattern length mismatch", "Semantic",
+            "A tuple pattern in a match statement has a different number of elements than the scrutinee tuple type. The pattern must have exactly the same number of elements as the tuple being matched.",
+            "def main():\n    t = (1, 2, 3)\n    match t:\n        case (a, b):  # 2 elements vs 3\n            pass",
+            "Ensure the pattern has the same number of elements as the tuple:\nmatch t:\n    case (a, b, c):\n        print(a, b, c)");
 
         // ── Semantic errors: Return and control flow (SPY0260-SPY0279) ──
 

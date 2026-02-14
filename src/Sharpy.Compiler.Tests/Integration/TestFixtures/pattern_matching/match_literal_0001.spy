@@ -1,0 +1,9 @@
+def main():
+    value: int = 42
+    match value:
+        case 1:
+            print("one")
+        case 42:
+            print("forty-two")
+        case _:
+            print("other")
