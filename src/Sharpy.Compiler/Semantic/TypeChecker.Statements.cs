@@ -619,6 +619,11 @@ internal partial class TypeChecker
         {
             CheckExpression(raiseStmt.Exception);
         }
+
+        if (raiseStmt.Cause != null)
+        {
+            CheckExpression(raiseStmt.Cause);
+        }
     }
 
     private void CheckTry(TryStatement tryStmt)
