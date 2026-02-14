@@ -1,0 +1,8 @@
+@abstract
+class Foo:
+    @final
+    @abstract
+    property get name(self) -> str: ...
+
+def main():
+    pass

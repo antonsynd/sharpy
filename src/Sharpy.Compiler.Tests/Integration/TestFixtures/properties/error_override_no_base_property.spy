@@ -1,0 +1,10 @@
+class Base:
+    pass
+
+class Derived(Base):
+    @override
+    property get name(self) -> str:
+        return "hello"
+
+def main():
+    pass

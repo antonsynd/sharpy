@@ -1,0 +1,16 @@
+class Config:
+    _name: str
+
+    property get name(self) -> str:
+        return self._name
+
+    @private
+    property set name(self, value: str):
+        self._name = value
+
+    def __init__(self, name: str):
+        self._name = name
+
+def main():
+    config = Config("test")
+    print(config.name)

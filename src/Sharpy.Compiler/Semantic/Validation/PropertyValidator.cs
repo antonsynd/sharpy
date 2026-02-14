@@ -171,8 +171,8 @@ internal class PropertyValidator : SemanticValidatorBase
 
     /// <summary>
     /// Rule 5: @abstract properties must have ellipsis body.
-    /// An abstract function-style property has IsFunctionStyle=true and an empty Body.
-    /// If there's a non-empty body, it's an error.
+    /// An abstract function-style property body must be exactly one statement
+    /// that is either an ellipsis literal or a pass statement.
     /// </summary>
     private void ValidateAbstractPropertyBody(string typeName, PropertyDef propDef)
     {
@@ -180,8 +180,11 @@ internal class PropertyValidator : SemanticValidatorBase
         if (!isAbstract || !propDef.IsFunctionStyle)
             return;
 
-        // For abstract properties, the body must be empty (ellipsis parses to empty body)
-        if (propDef.Body.Length > 0)
+        bool isEllipsisBody = propDef.Body.Length == 1
+            && (propDef.Body[0] is PassStatement
+                || (propDef.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral));
+
+        if (!isEllipsisBody)
         {
             AddError(_context,
                 $"@abstract property '{propDef.Name}' in '{typeName}' must have '...' (ellipsis) body",

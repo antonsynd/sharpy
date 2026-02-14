@@ -1,0 +1,11 @@
+class Foo:
+    _name: str
+
+    def __init__(self):
+        self._name = ""
+
+    property init name(self, value: str):
+        self._name = value
+
+def main():
+    pass

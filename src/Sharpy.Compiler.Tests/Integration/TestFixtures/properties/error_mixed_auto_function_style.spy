@@ -1,0 +1,8 @@
+class Foo:
+    property name: str
+
+    property get name(self) -> str:
+        return "hello"
+
+def main():
+    pass
