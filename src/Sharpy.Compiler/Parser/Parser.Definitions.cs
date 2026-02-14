@@ -811,6 +811,199 @@ public partial class Parser
         };
     }
 
+    private PropertyDef ParsePropertyDef()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+        var startToken = Current;
+
+        Expect(TokenType.Property);
+
+        // Check for accessor keyword: get, set, or init
+        var accessor = PropertyAccessor.None;
+        if (Current.Type == TokenType.Identifier)
+        {
+            switch (Current.Value)
+            {
+                case "get":
+                    accessor = PropertyAccessor.Get;
+                    Advance();
+                    break;
+                case "set":
+                    accessor = PropertyAccessor.Set;
+                    Advance();
+                    break;
+                case "init":
+                    accessor = PropertyAccessor.Init;
+                    Advance();
+                    break;
+            }
+        }
+
+        // Read property name (identifier)
+        var name = ExpectIdentifier();
+
+        // Check for explicit interface: Name.Name pattern
+        string? explicitInterface = null;
+        if (Current.Type == TokenType.Dot)
+        {
+            Advance(); // consume '.'
+            explicitInterface = name;
+            name = ExpectIdentifier();
+        }
+
+        // Function-style property: property get name(self) -> type: body
+        if (Current.Type == TokenType.LeftParen)
+        {
+            Advance(); // consume '('
+            var parameters = ParseParameters();
+            Expect(TokenType.RightParen);
+
+            TypeAnnotation? returnType = null;
+            if (Current.Type == TokenType.Arrow)
+            {
+                Advance();
+                returnType = ParseTypeAnnotation();
+            }
+
+            // For interface properties, the colon and body are optional.
+            if (_parsingInterface && Current.Type != TokenType.Colon)
+            {
+                // Interface property without explicit body - synthesize ellipsis body
+                ExpectNewline();
+
+                var ellipsisExpr = new EllipsisLiteral
+                {
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = startLine,
+                    ColumnEnd = startColumn
+                };
+
+                return new PropertyDef
+                {
+                    Name = name,
+                    Accessor = accessor,
+                    IsFunctionStyle = true,
+                    Parameters = parameters.ToImmutableArray(),
+                    ReturnType = returnType,
+                    ExplicitInterface = explicitInterface,
+                    Body = ImmutableArray.Create<Statement>(
+                        new ExpressionStatement
+                        {
+                            Expression = ellipsisExpr,
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = startLine,
+                            ColumnEnd = startColumn
+                        }
+                    ),
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = Previous.Line,
+                    ColumnEnd = Previous.Column,
+                    Span = GetSpanFromTokens(startToken, Previous)
+                };
+            }
+
+            Expect(TokenType.Colon);
+
+            // Support inline ellipsis syntax: property get name(self) -> type: ...
+            if (Current.Type == TokenType.Ellipsis)
+            {
+                var ellipsisLine = Current.Line;
+                var ellipsisColumn = Current.Column;
+                var ellipsisToken = Current;
+                Advance(); // consume '...'
+                ExpectNewline();
+
+                return new PropertyDef
+                {
+                    Name = name,
+                    Accessor = accessor,
+                    IsFunctionStyle = true,
+                    Parameters = parameters.ToImmutableArray(),
+                    ReturnType = returnType,
+                    ExplicitInterface = explicitInterface,
+                    Body = ImmutableArray.Create<Statement>(
+                        new ExpressionStatement
+                        {
+                            Expression = new EllipsisLiteral
+                            {
+                                LineStart = ellipsisLine,
+                                ColumnStart = ellipsisColumn,
+                                LineEnd = ellipsisLine,
+                                ColumnEnd = ellipsisColumn + 3,
+                                Span = GetSpanFromToken(ellipsisToken)
+                            },
+                            LineStart = ellipsisLine,
+                            ColumnStart = ellipsisColumn,
+                            LineEnd = ellipsisLine,
+                            ColumnEnd = ellipsisColumn + 3,
+                            Span = GetSpanFromToken(ellipsisToken)
+                        }
+                    ),
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = Current.Line,
+                    ColumnEnd = Current.Column,
+                    Span = GetSpanFromTokens(startToken, ellipsisToken)
+                };
+            }
+
+            ExpectNewline();
+            Expect(TokenType.Indent);
+            var body = ParseBlock();
+            Expect(TokenType.Dedent);
+            var endToken = Previous;
+
+            return new PropertyDef
+            {
+                Name = name,
+                Accessor = accessor,
+                IsFunctionStyle = true,
+                Parameters = parameters.ToImmutableArray(),
+                ReturnType = returnType,
+                ExplicitInterface = explicitInterface,
+                Body = body.ToImmutableArray(),
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = Current.Line,
+                ColumnEnd = Current.Column,
+                Span = GetSpanFromTokens(startToken, endToken)
+            };
+        }
+
+        // Auto-property: property name: type = default
+        Expect(TokenType.Colon);
+        var type = ParseTypeAnnotation();
+
+        Expression? defaultValue = null;
+        if (Current.Type == TokenType.Assign)
+        {
+            Advance();
+            defaultValue = ParseExpression();
+        }
+
+        var autoEndToken = Previous;
+        ExpectStatementEnd();
+
+        return new PropertyDef
+        {
+            Name = name,
+            Accessor = accessor,
+            Type = type,
+            DefaultValue = defaultValue,
+            IsFunctionStyle = false,
+            ExplicitInterface = explicitInterface,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = autoEndToken.Line,
+            ColumnEnd = autoEndToken.Column + autoEndToken.Value.Length,
+            Span = CombineSpans(GetSpanFromToken(startToken), GetSpanFromToken(autoEndToken))
+        };
+    }
+
     private VariableDeclaration ParseConstDeclaration()
     {
         var startLine = Current.Line;

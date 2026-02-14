@@ -302,6 +302,7 @@ public partial class Parser
         TokenType.Break => true,
         TokenType.Continue => true,
         TokenType.Const => true,
+        TokenType.Property => true,
         TokenType.Type => true,
         TokenType.Try => true,
         TokenType.With => true,
@@ -364,6 +365,7 @@ public partial class Parser
             TokenType.Struct => ParseStructDef(),
             TokenType.Interface => ParseInterfaceDef(),
             TokenType.Enum => ParseEnumDef(),
+            TokenType.Property => ParsePropertyDef(),
             TokenType.Type => ParseTypeAlias(),
             TokenType.If => ParseIfStatement(),
             TokenType.While => ParseWhileStatement(),
@@ -419,7 +421,8 @@ public partial class Parser
             TokenType.Def => ParseFunctionDef(),
             TokenType.Class => ParseClassDef(),
             TokenType.Struct => ParseStructDef(),
-            _ => throw ReportError("Decorators can only be applied to functions, classes, or structs", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan)
+            TokenType.Property => ParsePropertyDef(),
+            _ => throw ReportError("Decorators can only be applied to functions, classes, structs, or properties", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan)
         };
 
         // Attach decorators
@@ -428,6 +431,7 @@ public partial class Parser
             FunctionDef func => func with { Decorators = decorators.ToImmutableArray() },
             ClassDef cls => cls with { Decorators = decorators.ToImmutableArray() },
             StructDef str => str with { Decorators = decorators.ToImmutableArray() },
+            PropertyDef prop => prop with { Decorators = decorators.ToImmutableArray() },
             _ => throw ReportError("Unexpected decorated statement type", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
         };
     }

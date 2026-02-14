@@ -70,7 +70,7 @@ internal partial class RoslynEmitter
             _ => null
         };
 
-        if (result == null && stmt is not ImportStatement and not FromImportStatement and not TypeAlias)
+        if (result == null && stmt is not ImportStatement and not FromImportStatement and not TypeAlias and not PropertyDef)
         {
             _context.AddError(
                 $"Internal: unrecognized statement type '{stmt.GetType().Name}' was not emitted. This is a compiler bug — please report it.",

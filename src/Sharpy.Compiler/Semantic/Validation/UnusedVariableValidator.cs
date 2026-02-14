@@ -265,6 +265,7 @@ internal class UnusedVariableValidator : SemanticValidatorBase
             case StructDef:
             case InterfaceDef:
             case EnumDef:
+            case PropertyDef:
                 // These define their own scope and are validated at the top level
                 break;
         }

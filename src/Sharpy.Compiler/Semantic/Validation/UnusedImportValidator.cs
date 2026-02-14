@@ -227,6 +227,26 @@ internal class UnusedImportValidator : SemanticValidatorBase
                         CollectReferencesFromExpression(member.Value, refs);
                 }
                 break;
+
+            case PropertyDef propDef:
+                foreach (var decorator in propDef.Decorators)
+                    refs.Add(decorator.Name);
+                if (propDef.Type != null)
+                    CollectReferencesFromTypeAnnotation(propDef.Type, refs);
+                if (propDef.ReturnType != null)
+                    CollectReferencesFromTypeAnnotation(propDef.ReturnType, refs);
+                if (propDef.DefaultValue != null)
+                    CollectReferencesFromExpression(propDef.DefaultValue, refs);
+                foreach (var param in propDef.Parameters)
+                {
+                    if (param.Type != null)
+                        CollectReferencesFromTypeAnnotation(param.Type, refs);
+                    if (param.DefaultValue != null)
+                        CollectReferencesFromExpression(param.DefaultValue, refs);
+                }
+                foreach (var s in propDef.Body)
+                    CollectReferencesFromStatement(s, refs);
+                break;
         }
     }
 

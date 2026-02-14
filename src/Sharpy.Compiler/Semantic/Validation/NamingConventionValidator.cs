@@ -49,6 +49,9 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
             case VariableDeclaration varDecl:
                 CheckName(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart, varDecl.Span);
                 break;
+            case PropertyDef propDef:
+                CheckName(propDef.Name, propDef.LineStart, propDef.ColumnStart, propDef.Span);
+                break;
         }
     }
 

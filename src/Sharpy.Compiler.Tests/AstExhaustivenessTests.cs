@@ -84,7 +84,7 @@ public class AstExhaustivenessTests
             "IfStatement", "WhileStatement", "ForStatement", "TryStatement",
             "WithStatement",
             // Definitions
-            "FunctionDef", "ClassDef", "StructDef", "InterfaceDef", "EnumDef",
+            "FunctionDef", "ClassDef", "StructDef", "InterfaceDef", "EnumDef", "PropertyDef",
             // Type
             "TypeAlias",
             // Imports

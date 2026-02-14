@@ -220,6 +220,10 @@ internal class NameResolver
                 ResolveTypeAliasDeclaration(typeAlias);
                 break;
 
+            case PropertyDef:
+                // Property declarations are resolved as part of class/struct/interface bodies
+                break;
+
                 // Other statements are handled in later passes
         }
     }

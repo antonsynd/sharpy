@@ -66,6 +66,10 @@ internal class DecoratorValidator : SemanticValidatorBase
                 // InterfaceDef doesn't have decorators, but validate methods inside
                 ValidateInterfaceBody(interfaceDef);
                 break;
+
+            case PropertyDef propDef:
+                ValidateDecorators(propDef.Decorators, propDef.Name);
+                break;
         }
     }
 

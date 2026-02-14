@@ -382,6 +382,32 @@ internal class AstDumper
                 }
                 break;
 
+            case PropertyDef propDef:
+                _output.AppendLine($"{indent}{prefix}PropertyDef @ L{node.LineStart}:C{node.ColumnStart}");
+                _output.AppendLine($"{indent}{childPrefix}Name: {propDef.Name}");
+                _output.AppendLine($"{indent}{childPrefix}Accessor: {propDef.Accessor}");
+                _output.AppendLine($"{indent}{childPrefix}FunctionStyle: {propDef.IsFunctionStyle}");
+                if (propDef.ExplicitInterface != null)
+                    _output.AppendLine($"{indent}{childPrefix}ExplicitInterface: {propDef.ExplicitInterface}");
+                if (propDef.Type != null)
+                    _output.AppendLine($"{indent}{childPrefix}Type: {propDef.Type.Name}");
+                if (propDef.ReturnType != null)
+                    _output.AppendLine($"{indent}{childPrefix}ReturnType: {propDef.ReturnType.Name}");
+                if (propDef.DefaultValue != null)
+                {
+                    _output.AppendLine($"{indent}{childPrefix}DefaultValue:");
+                    DumpNode(propDef.DefaultValue, depth + 2, true);
+                }
+                if (propDef.IsFunctionStyle && propDef.Body.Length > 0)
+                {
+                    _output.AppendLine($"{indent}{childPrefix}Body: [{propDef.Body.Length}]");
+                    for (int i = 0; i < propDef.Body.Length; i++)
+                    {
+                        DumpNode(propDef.Body[i], depth + 2, i == propDef.Body.Length - 1);
+                    }
+                }
+                break;
+
             case ImportStatement importStmt:
                 _output.AppendLine($"{indent}{prefix}ImportStatement @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Names: [{importStmt.Names.Length}]");

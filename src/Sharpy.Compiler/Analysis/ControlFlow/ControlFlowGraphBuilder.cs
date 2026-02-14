@@ -186,10 +186,11 @@ internal class ControlFlowGraphBuilder
             case StructDef:
             case InterfaceDef:
             case EnumDef:
+            case PropertyDef:
             case TypeAlias:
             case ImportStatement:
             case FromImportStatement:
-                // Type/function definitions and imports don't affect control flow
+                // Type/function/property definitions and imports don't affect control flow
                 break;
 
             default:

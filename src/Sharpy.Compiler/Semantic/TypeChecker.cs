@@ -370,6 +370,10 @@ internal partial class TypeChecker
                 // Type aliases are compile-time only, no type checking needed
                 break;
 
+            case PropertyDef:
+                // Property validation handled elsewhere (property-specific validation)
+                break;
+
             default:
                 _logger.LogWarning($"Unhandled statement type: {statement.GetType().Name}", 0, 0);
                 AddError(

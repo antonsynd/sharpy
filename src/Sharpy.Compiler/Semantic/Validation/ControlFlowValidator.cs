@@ -56,6 +56,8 @@ internal class ControlFlowValidator : SemanticValidatorBase
                     if (member is FunctionDef method)
                         ValidateFunction(method);
                 break;
+
+                // PropertyDef: function-style bodies validated via class/struct member iteration above
         }
     }
 

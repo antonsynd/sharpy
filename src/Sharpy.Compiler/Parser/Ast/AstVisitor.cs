@@ -212,6 +212,9 @@ public abstract class AstVisitor
             case TypeAlias n:
                 VisitTypeAlias(n);
                 break;
+            case PropertyDef n:
+                VisitPropertyDef(n);
+                break;
 
             // Statements - Imports
             case ImportStatement n:
@@ -416,6 +419,7 @@ public abstract class AstVisitor
     public virtual void VisitInterfaceDef(InterfaceDef node) => VisitStatement(node);
     public virtual void VisitEnumDef(EnumDef node) => VisitStatement(node);
     public virtual void VisitTypeAlias(TypeAlias node) => VisitStatement(node);
+    public virtual void VisitPropertyDef(PropertyDef node) => VisitStatement(node);
 
     #endregion
 
@@ -546,6 +550,7 @@ public abstract class AstVisitor<T>
             InterfaceDef n => VisitInterfaceDef(n),
             EnumDef n => VisitEnumDef(n),
             TypeAlias n => VisitTypeAlias(n),
+            PropertyDef n => VisitPropertyDef(n),
 
             // Statements - Imports
             ImportStatement n => VisitImportStatement(n),
@@ -721,6 +726,7 @@ public abstract class AstVisitor<T>
     public virtual T VisitInterfaceDef(InterfaceDef node) => VisitStatement(node);
     public virtual T VisitEnumDef(EnumDef node) => VisitStatement(node);
     public virtual T VisitTypeAlias(TypeAlias node) => VisitStatement(node);
+    public virtual T VisitPropertyDef(PropertyDef node) => VisitStatement(node);
 
     #endregion
 

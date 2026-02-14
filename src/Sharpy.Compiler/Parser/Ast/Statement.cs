@@ -704,6 +704,53 @@ public record Parameter
 
 #endregion
 
+#region Property Definitions
+
+/// <summary>
+/// Property accessor type
+/// </summary>
+public enum PropertyAccessor { None, Get, Set, Init }
+
+/// <summary>
+/// Property definition (property name: type = default or property get name(self) -> type: body)
+/// </summary>
+public record PropertyDef : Statement
+{
+    public string Name { get; init; } = "";
+    public PropertyAccessor Accessor { get; init; } = PropertyAccessor.None;
+    public TypeAnnotation? Type { get; init; }
+    public Expression? DefaultValue { get; init; }
+    public bool IsFunctionStyle { get; init; }
+    public ImmutableArray<Parameter> Parameters { get; init; } = ImmutableArray<Parameter>.Empty;
+    public TypeAnnotation? ReturnType { get; init; }
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+    public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
+    public string? ExplicitInterface { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(!string.IsNullOrEmpty(Name), "PropertyDef.Name cannot be null or empty");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        if (DefaultValue != null)
+            yield return DefaultValue;
+        foreach (var param in Parameters)
+        {
+            if (param.DefaultValue != null)
+                yield return param.DefaultValue;
+        }
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
+}
+
+#endregion
+
 #region Import Statements
 
 /// <summary>
