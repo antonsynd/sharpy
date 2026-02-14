@@ -122,7 +122,7 @@ namespace Sharpy
         /// </summary>
         public static int Find(this string s, string sub)
         {
-            return s.IndexOf(sub);
+            return s.IndexOf(sub, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -148,7 +148,7 @@ namespace Sharpy
                 return string.IsNullOrEmpty(sub) ? s.Length : -1;
             }
 
-            return s.IndexOf(sub, start);
+            return s.IndexOf(sub, start, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -171,7 +171,7 @@ namespace Sharpy
                 return string.IsNullOrEmpty(sub) ? start : -1;
 
             int count = end - start;
-            int index = s.IndexOf(sub, start, count);
+            int index = s.IndexOf(sub, start, count, StringComparison.Ordinal);
             return index;
         }
 
@@ -182,7 +182,7 @@ namespace Sharpy
         /// </summary>
         public static int Rfind(this string s, string sub)
         {
-            return s.LastIndexOf(sub);
+            return s.LastIndexOf(sub, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -210,7 +210,7 @@ namespace Sharpy
 
             // Python rfind(sub, start) searches in s[start:]
             var substring = s.Substring(start);
-            var index = substring.LastIndexOf(sub);
+            var index = substring.LastIndexOf(sub, StringComparison.Ordinal);
             return index >= 0 ? start + index : -1;
         }
 
@@ -234,7 +234,7 @@ namespace Sharpy
                 return string.IsNullOrEmpty(sub) ? start : -1;
 
             var slice = s.Substring(start, end - start);
-            int index = slice.LastIndexOf(sub);
+            int index = slice.LastIndexOf(sub, StringComparison.Ordinal);
             return index >= 0 ? start + index : -1;
         }
 
@@ -504,7 +504,7 @@ namespace Sharpy
 
             int count = 0;
             int index = 0;
-            while ((index = s.IndexOf(sub, index)) >= 0)
+            while ((index = s.IndexOf(sub, index, StringComparison.Ordinal)) >= 0)
             {
                 count++;
                 index += sub.Length;
@@ -595,6 +595,10 @@ namespace Sharpy
         /// boundaries. Line breaks are not included in the resulting list.
         /// Python: <c>str.splitlines()</c>
         /// </summary>
+        /// <remarks>
+        /// Recognizes all Python line boundaries: \n, \r\n, \r, \v (0x0B),
+        /// \f (0x0C), \x1C, \x1D, \x1E, \x85 (NEL), \u2028 (LS), \u2029 (PS).
+        /// </remarks>
         public static List<string> Splitlines(this string s)
         {
             var result = new List<string>();
@@ -608,18 +612,20 @@ namespace Sharpy
             {
                 char c = s[i];
 
-                if (c == '\n')
-                {
-                    result.Add(currentLine.ToString());
-                    currentLine.Clear();
-                }
-                else if (c == '\r')
+                if (c == '\r')
                 {
                     // Handle \r\n and \r
                     if (i + 1 < s.Length && s[i + 1] == '\n')
                     {
                         i++; // Skip the \n
                     }
+                    result.Add(currentLine.ToString());
+                    currentLine.Clear();
+                }
+                else if (c == '\n' || c == '\x0B' || c == '\x0C'
+                    || c == '\x1C' || c == '\x1D' || c == '\x1E'
+                    || c == '\x85' || c == '\u2028' || c == '\u2029')
+                {
                     result.Add(currentLine.ToString());
                     currentLine.Clear();
                 }
@@ -646,7 +652,7 @@ namespace Sharpy
         /// </summary>
         public static string Removeprefix(this string s, string prefix)
         {
-            if (s.StartsWith(prefix))
+            if (s.StartsWith(prefix, StringComparison.Ordinal))
             {
                 return s.Substring(prefix.Length);
             }
@@ -662,7 +668,7 @@ namespace Sharpy
         /// </summary>
         public static string Removesuffix(this string s, string suffix)
         {
-            if (s.EndsWith(suffix))
+            if (s.EndsWith(suffix, StringComparison.Ordinal))
             {
                 return s.Substring(0, s.Length - suffix.Length);
             }

@@ -297,6 +297,62 @@ public class StringExtensionsTests
         "\n\n".Splitlines().Should().BeEquivalentTo(new[] { "", "" });
     }
 
+    [Fact]
+    public void SplitLines_VerticalTab()
+    {
+        // Python: "a\x0bb".splitlines() → ["a", "b"]
+        "a\u000Bb".Splitlines().Should().BeEquivalentTo(new[] { "a", "b" });
+    }
+
+    [Fact]
+    public void SplitLines_FormFeed()
+    {
+        // Python: "a\x0cb".splitlines() → ["a", "b"]
+        "a\u000Cb".Splitlines().Should().BeEquivalentTo(new[] { "a", "b" });
+    }
+
+    [Fact]
+    public void SplitLines_NextLine()
+    {
+        // Python: "a\x85b".splitlines() → ["a", "b"]
+        "a\u0085b".Splitlines().Should().BeEquivalentTo(new[] { "a", "b" });
+    }
+
+    [Fact]
+    public void SplitLines_LineSeparator()
+    {
+        // Python: "a\u2028b".splitlines() → ["a", "b"]
+        "a\u2028b".Splitlines().Should().BeEquivalentTo(new[] { "a", "b" });
+    }
+
+    [Fact]
+    public void SplitLines_ParagraphSeparator()
+    {
+        // Python: "a\u2029b".splitlines() → ["a", "b"]
+        "a\u2029b".Splitlines().Should().BeEquivalentTo(new[] { "a", "b" });
+    }
+
+    [Fact]
+    public void SplitLines_FileSeparator()
+    {
+        // Python: "a\x1cb".splitlines() → ["a", "b"]
+        "a\u001Cb".Splitlines().Should().BeEquivalentTo(new[] { "a", "b" });
+    }
+
+    [Fact]
+    public void SplitLines_CarriageReturn()
+    {
+        // Python: "a\rb".splitlines() → ["a", "b"]
+        "a\rb".Splitlines().Should().BeEquivalentTo(new[] { "a", "b" });
+    }
+
+    [Fact]
+    public void SplitLines_CrLf()
+    {
+        // Python: "a\r\nb".splitlines() → ["a", "b"]
+        "a\r\nb".Splitlines().Should().BeEquivalentTo(new[] { "a", "b" });
+    }
+
     #endregion
 
     #region Swapcase
