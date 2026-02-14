@@ -287,6 +287,79 @@ public partial class Parser
         return clauses;
     }
 
+    private WithStatement ParseWithStatement()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+        var startToken = Current;
+
+        Expect(TokenType.With);
+
+        var items = new List<WithItem>();
+
+        _lastLoopPosition = -1;
+        do
+        {
+            if (!CheckLoopProgress())
+                break;
+
+            var itemStartLine = Current.Line;
+            var itemStartColumn = Current.Column;
+            var itemStartToken = Current;
+
+            // Inhibit postfix 'as' (type cast) so it's not consumed as part of the expression.
+            // In with statements, 'as' binds the context manager to a name.
+            var savedInhibit = _inhibitPostfixAs;
+            _inhibitPostfixAs = true;
+            var contextExpr = ParseExpression();
+            _inhibitPostfixAs = savedInhibit;
+
+            string? name = null;
+            if (Current.Type == TokenType.As)
+            {
+                Advance();
+                name = ExpectIdentifier();
+            }
+
+            var itemEndLine = Peek(-1).Line;
+            var itemEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            items.Add(new WithItem
+            {
+                ContextExpression = contextExpr,
+                Name = name,
+                LineStart = itemStartLine,
+                ColumnStart = itemStartColumn,
+                LineEnd = itemEndLine,
+                ColumnEnd = itemEndColumn,
+                Span = GetSpanFromTokens(itemStartToken, Previous)
+            });
+
+            if (Current.Type == TokenType.Comma)
+                Advance();
+            else
+                break;
+        } while (true);
+
+        Expect(TokenType.Colon);
+        ExpectNewline();
+        Expect(TokenType.Indent);
+        var body = ParseBlock();
+        Expect(TokenType.Dedent);
+        var endToken = Previous;
+
+        return new WithStatement
+        {
+            Items = items.ToImmutableArray(),
+            Body = body.ToImmutableArray(),
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
+
     private TryStatement ParseTryStatement()
     {
         var startLine = Current.Line;

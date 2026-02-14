@@ -356,6 +356,49 @@ public record ExceptHandler
     public Text.TextSpan? Span { get; init; }
 }
 
+/// <summary>
+/// With statement (with expr as name:) maps to C# using statement
+/// </summary>
+public record WithStatement : Statement
+{
+    public ImmutableArray<WithItem> Items { get; init; } = ImmutableArray<WithItem>.Empty;
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Items != null && Items.Length > 0, "WithStatement.Items must have at least one item");
+        Debug.Assert(Body != null, "WithStatement.Body cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        foreach (var item in Items)
+            yield return item.ContextExpression;
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
+}
+
+public record WithItem
+{
+    public Expression ContextExpression { get; init; } = null!;
+    public string? Name { get; init; }  // The "as name" binding
+
+    // Source location
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
+
+    /// <summary>
+    /// Character offset-based span. May be null if not tracked.
+    /// </summary>
+    public Text.TextSpan? Span { get; init; }
+}
+
 #endregion
 
 #region Definitions

@@ -779,7 +779,7 @@ public partial class Parser
                         Span = CombineSpans(expr.Span, GetSpanFromToken(closeParen))
                     };
                 }
-                else if (Current.Type == TokenType.As)
+                else if (Current.Type == TokenType.As && !_inhibitPostfixAs)
                 {
                     // Type cast
                     Advance();

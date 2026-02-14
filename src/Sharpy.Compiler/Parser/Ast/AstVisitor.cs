@@ -189,6 +189,9 @@ public abstract class AstVisitor
             case TryStatement n:
                 VisitTryStatement(n);
                 break;
+            case WithStatement n:
+                VisitWithStatement(n);
+                break;
 
             // Statements - Definitions
             case FunctionDef n:
@@ -401,6 +404,7 @@ public abstract class AstVisitor
     public virtual void VisitWhileStatement(WhileStatement node) => VisitStatement(node);
     public virtual void VisitForStatement(ForStatement node) => VisitStatement(node);
     public virtual void VisitTryStatement(TryStatement node) => VisitStatement(node);
+    public virtual void VisitWithStatement(WithStatement node) => VisitStatement(node);
 
     #endregion
 
@@ -533,6 +537,7 @@ public abstract class AstVisitor<T>
             WhileStatement n => VisitWhileStatement(n),
             ForStatement n => VisitForStatement(n),
             TryStatement n => VisitTryStatement(n),
+            WithStatement n => VisitWithStatement(n),
 
             // Statements - Definitions
             FunctionDef n => VisitFunctionDef(n),
@@ -704,6 +709,7 @@ public abstract class AstVisitor<T>
     public virtual T VisitWhileStatement(WhileStatement node) => VisitStatement(node);
     public virtual T VisitForStatement(ForStatement node) => VisitStatement(node);
     public virtual T VisitTryStatement(TryStatement node) => VisitStatement(node);
+    public virtual T VisitWithStatement(WithStatement node) => VisitStatement(node);
 
     #endregion
 

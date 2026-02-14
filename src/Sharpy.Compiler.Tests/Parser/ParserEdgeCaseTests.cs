@@ -1090,7 +1090,7 @@ finally:
 
     #region With Statement
 
-    [Fact(Skip = "Unimplemented: With statements not yet supported")]
+    [Fact]
     public void ParsesWithStatement()
     {
         var source = @"
@@ -1099,9 +1099,14 @@ with open('file.txt') as f:
 ";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
+        module.Body[0].Should().BeOfType<WithStatement>();
+        var withStmt = (WithStatement)module.Body[0];
+        withStmt.Items.Should().HaveCount(1);
+        withStmt.Items[0].Name.Should().Be("f");
+        withStmt.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "Unimplemented: Multiple with items not yet supported")]
+    [Fact]
     public void ParsesMultipleWithItems()
     {
         var source = @"
@@ -1110,6 +1115,11 @@ with open('a.txt') as a, open('b.txt') as b:
 ";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
+        module.Body[0].Should().BeOfType<WithStatement>();
+        var withStmt = (WithStatement)module.Body[0];
+        withStmt.Items.Should().HaveCount(2);
+        withStmt.Items[0].Name.Should().Be("a");
+        withStmt.Items[1].Name.Should().Be("b");
     }
 
     #endregion

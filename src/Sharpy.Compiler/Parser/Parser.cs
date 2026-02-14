@@ -62,6 +62,12 @@ public partial class Parser
     /// </summary>
     private bool _parsingInterface;
 
+    /// <summary>
+    /// When true, the postfix 'as' (type cast) is not consumed.
+    /// Used in with-statement parsing where 'as' binds the context manager, not a cast.
+    /// </summary>
+    private bool _inhibitPostfixAs;
+
     public Parser(List<Token> tokens, ICompilerLogger? logger = null, int maxErrors = 25, CancellationToken cancellationToken = default)
     {
         _tokens = tokens;
@@ -298,6 +304,7 @@ public partial class Parser
         TokenType.Const => true,
         TokenType.Type => true,
         TokenType.Try => true,
+        TokenType.With => true,
         TokenType.Maybe => true,
         TokenType.At => true,
         TokenType.Dedent => true,
@@ -361,6 +368,7 @@ public partial class Parser
             TokenType.If => ParseIfStatement(),
             TokenType.While => ParseWhileStatement(),
             TokenType.For => ParseForStatement(),
+            TokenType.With => ParseWithStatement(),
             TokenType.Return => ParseReturnStatement(),
             TokenType.Raise => ParseRaiseStatement(),
             TokenType.Assert => ParseAssertStatement(),

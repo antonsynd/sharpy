@@ -82,6 +82,7 @@ public class AstExhaustivenessTests
             "RaiseStatement",
             // Compound
             "IfStatement", "WhileStatement", "ForStatement", "TryStatement",
+            "WithStatement",
             // Definitions
             "FunctionDef", "ClassDef", "StructDef", "InterfaceDef", "EnumDef",
             // Type
