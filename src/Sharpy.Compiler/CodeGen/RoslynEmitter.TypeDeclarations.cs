@@ -187,6 +187,9 @@ internal partial class RoslynEmitter
                 case "override":
                     tokens.Add(Token(SyntaxKind.OverrideKeyword));
                     break;
+                case "final":
+                    tokens.Add(Token(SyntaxKind.SealedKeyword));
+                    break;
             }
         }
 
@@ -866,6 +869,7 @@ internal partial class RoslynEmitter
                     tokens.Add(Token(SyntaxKind.AbstractKeyword));
                     break;
                 case "sealed":
+                case "final":
                     tokens.Add(Token(SyntaxKind.SealedKeyword));
                     break;
                 case "static":

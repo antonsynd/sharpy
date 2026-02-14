@@ -1,0 +1,8 @@
+def main():
+    try:
+        try:
+            raise Exception("original error")
+        except Exception:
+            raise Exception("wrapped") from Exception("cause")
+    except Exception:
+        print("caught wrapped exception")

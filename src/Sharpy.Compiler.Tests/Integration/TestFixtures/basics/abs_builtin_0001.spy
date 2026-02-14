@@ -1,0 +1,5 @@
+def main():
+    print(abs(-5))
+    print(abs(3))
+    print(abs(-2.5))
+    print(abs(0))

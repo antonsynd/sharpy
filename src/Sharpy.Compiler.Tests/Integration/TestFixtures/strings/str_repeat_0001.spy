@@ -1,0 +1,13 @@
+# String repetition: str * int and int * str
+def main():
+    print("ab" * 3)
+    print(3 * "ab")
+    print("x" * 0)
+    print("y" * 1)
+    print("z" * -5)
+
+    # Variable-based repetition
+    s: str = "ha"
+    n: int = 4
+    print(s * n)
+    print(n * s)

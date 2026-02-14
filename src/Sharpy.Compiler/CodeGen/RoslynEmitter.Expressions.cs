@@ -543,6 +543,20 @@ internal partial class RoslynEmitter
                 // For nullable/reference types: C# ?? operator
                 return BinaryExpression(SyntaxKind.CoalesceExpression, left, right);
 
+            case BinaryOperator.Multiply:
+                {
+                    // String repetition: str * int or int * str
+                    // → string.Concat(System.Linq.Enumerable.Repeat(strExpr, System.Math.Max(0, countExpr)))
+                    var leftType = GetExpressionSemanticType(binOp.Left);
+                    var rightType = GetExpressionSemanticType(binOp.Right);
+                    if (leftType == SemanticType.Str && IsIntegerSemanticType(rightType))
+                        return GenerateStringRepetition(left, right);
+                    if (IsIntegerSemanticType(leftType) && rightType == SemanticType.Str)
+                        return GenerateStringRepetition(right, left);
+                    // Not string repetition — fall through to standard multiply
+                    break;
+                }
+
             case BinaryOperator.PipeForward:
                 // x |> f → f(x)
                 // x |> f(y) → f(x, y) (prepend to argument list)
@@ -616,6 +630,45 @@ internal partial class RoslynEmitter
         }
 
         return BinaryExpression(kind, left, right);
+    }
+
+    /// <summary>
+    /// Generate code for string repetition (str * int or int * str).
+    /// Emits: string.Concat(System.Linq.Enumerable.Repeat(strExpr, System.Math.Max(0, countExpr)))
+    /// Math.Max(0, n) handles negative counts (Python returns empty string, Enumerable.Repeat throws).
+    /// </summary>
+    private ExpressionSyntax GenerateStringRepetition(ExpressionSyntax strExpr, ExpressionSyntax countExpr)
+    {
+        // System.Math.Max(0, countExpr)
+        var maxCall = InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("System"),
+                    IdentifierName("Math")),
+                IdentifierName("Max")))
+            .AddArgumentListArguments(
+                Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))),
+                Argument(countExpr));
+
+        // System.Linq.Enumerable.Repeat(strExpr, maxCall)
+        var repeatCall = InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName("System"),
+                        IdentifierName("Linq")),
+                    IdentifierName("Enumerable")),
+                IdentifierName("Repeat")))
+            .AddArgumentListArguments(
+                Argument(strExpr),
+                Argument(maxCall));
+
+        // string.Concat(repeatCall)
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                PredefinedType(Token(SyntaxKind.StringKeyword)),
+                IdentifierName("Concat")))
+            .AddArgumentListArguments(Argument(repeatCall));
     }
 
     /// <summary>

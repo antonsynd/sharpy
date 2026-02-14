@@ -1,0 +1,13 @@
+@final
+class Immutable:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+    def get_x(self) -> int:
+        return self.x
+
+def main():
+    obj = Immutable(42)
+    print(obj.get_x())
