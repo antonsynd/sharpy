@@ -229,6 +229,20 @@ internal class UnusedVariableValidator : SemanticValidatorBase
                     CollectFromStatement(s, defined, read, parameters);
                 break;
 
+            case WithStatement withStmt:
+                foreach (var item in withStmt.Items)
+                {
+                    CollectReadsFromExpression(item.ContextExpression, read);
+                    if (item.Name != null)
+                    {
+                        defined[item.Name] = new VariableInfo(
+                            item.LineStart, item.ColumnStart, item.Span, false);
+                    }
+                }
+                foreach (var s in withStmt.Body)
+                    CollectFromStatement(s, defined, read, parameters);
+                break;
+
             case RaiseStatement raiseStmt:
                 if (raiseStmt.Exception != null)
                     CollectReadsFromExpression(raiseStmt.Exception, read);
@@ -367,6 +381,13 @@ internal class UnusedVariableValidator : SemanticValidatorBase
                 foreach (var s in tryStmt.ElseBody)
                     CollectReadsFromStatement(s, read);
                 foreach (var s in tryStmt.FinallyBody)
+                    CollectReadsFromStatement(s, read);
+                break;
+
+            case WithStatement withStmt:
+                foreach (var item in withStmt.Items)
+                    CollectReadsFromExpression(item.ContextExpression, read);
+                foreach (var s in withStmt.Body)
                     CollectReadsFromStatement(s, read);
                 break;
 

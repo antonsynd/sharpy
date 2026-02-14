@@ -149,6 +149,12 @@ internal class DunderInvocationValidator : SemanticValidatorBase
                 foreach (var s in tryStmt.FinallyBody)
                     ValidateStatement(s);
                 break;
+            case WithStatement withStmt:
+                foreach (var item in withStmt.Items)
+                    ValidateExpression(item.ContextExpression);
+                foreach (var s in withStmt.Body)
+                    ValidateStatement(s);
+                break;
             case RaiseStatement raiseStmt:
                 if (raiseStmt.Exception != null)
                     ValidateExpression(raiseStmt.Exception);

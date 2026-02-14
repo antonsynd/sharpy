@@ -661,6 +661,40 @@ internal partial class TypeChecker
         }
     }
 
+    private void CheckWith(WithStatement withStmt)
+    {
+        _symbolTable.EnterScope("with");
+        _controlFlowDepth++;
+
+        // Type-check each context expression and register 'as' variable bindings
+        foreach (var item in withStmt.Items)
+        {
+            var exprType = CheckExpression(item.ContextExpression);
+
+            if (item.Name != null)
+            {
+                var varSymbol = new VariableSymbol
+                {
+                    Name = item.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = exprType,
+                    AccessLevel = AccessLevel.Public,
+                    DeclarationLine = item.LineStart,
+                    DeclarationColumn = item.ColumnStart
+                };
+
+                _symbolTable.Define(varSymbol);
+                SemanticBinding.SetVariableType(varSymbol, exprType);
+            }
+        }
+
+        foreach (var stmt in withStmt.Body)
+            CheckStatement(stmt);
+
+        _controlFlowDepth--;
+        _symbolTable.ExitScope();
+    }
+
     private void CheckAssert(AssertStatement assertStmt)
     {
         var testType = CheckExpression(assertStmt.Test);

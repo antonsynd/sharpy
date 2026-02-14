@@ -173,6 +173,10 @@ internal class ControlFlowGraphBuilder
                 BuildTry(tryStmt);
                 break;
 
+            case WithStatement withStmt:
+                BuildWith(withStmt);
+                break;
+
             case RaiseStatement raiseStmt:
                 BuildRaise(raiseStmt);
                 break;
@@ -648,5 +652,12 @@ internal class ControlFlowGraphBuilder
         }
 
         _currentBlock = mergeBlock;
+    }
+
+    private void BuildWith(WithStatement stmt)
+    {
+        // With statement is a straight-through block (like try without handlers).
+        // The body executes linearly; disposal happens at the end.
+        BuildStatements(stmt.Body);
     }
 }

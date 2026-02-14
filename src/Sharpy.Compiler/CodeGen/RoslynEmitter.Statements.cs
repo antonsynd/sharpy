@@ -66,6 +66,7 @@ internal partial class RoslynEmitter
             WhileStatement whileStmt => GenerateWhile(whileStmt),
             ForStatement forStmt => GenerateFor(forStmt),
             TryStatement tryStmt => GenerateTry(tryStmt),
+            WithStatement withStmt => GenerateWith(withStmt),
             _ => null
         };
 
@@ -1282,6 +1283,43 @@ internal partial class RoslynEmitter
         return EmitNotImplementedStatement(
             $"Unsupported expression type in code generation: for loop target type '{target.GetType().Name}'",
             DiagnosticCodes.CodeGen.UnsupportedExpressionType, target.LineStart, target.ColumnStart);
+    }
+
+    private StatementSyntax GenerateWith(WithStatement withStmt)
+    {
+        // Generate the body block
+        var bodyStatements = withStmt.Body.SelectMany(GenerateBodyStatements).ToList();
+
+        // Build using statements from inside out (last item wraps the body,
+        // first item wraps everything)
+        StatementSyntax innermost = Block(bodyStatements);
+
+        for (int i = withStmt.Items.Length - 1; i >= 0; i--)
+        {
+            var item = withStmt.Items[i];
+            var contextExpr = GenerateExpression(item.ContextExpression);
+
+            if (item.Name != null)
+            {
+                // with expr as name: -> using (var name = expr) { ... }
+                var varName = GetMangledVariableName(item.Name, isNewDeclaration: true);
+                _declaredVariables.Add(varName);
+
+                var declaration = VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(varName))
+                            .WithInitializer(EqualsValueClause(contextExpr))));
+
+                innermost = UsingStatement(declaration, null, innermost is BlockSyntax block ? block : Block(innermost));
+            }
+            else
+            {
+                // with expr: -> using (expr) { ... }
+                innermost = UsingStatement(null, contextExpr, innermost is BlockSyntax block ? block : Block(innermost));
+            }
+        }
+
+        return innermost;
     }
 
     private StatementSyntax GenerateTry(TryStatement tryStmt)

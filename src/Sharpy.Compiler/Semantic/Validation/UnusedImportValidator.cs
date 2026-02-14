@@ -151,6 +151,13 @@ internal class UnusedImportValidator : SemanticValidatorBase
                     CollectReferencesFromStatement(s, refs);
                 break;
 
+            case WithStatement withStmt:
+                foreach (var item in withStmt.Items)
+                    CollectReferencesFromExpression(item.ContextExpression, refs);
+                foreach (var s in withStmt.Body)
+                    CollectReferencesFromStatement(s, refs);
+                break;
+
             case RaiseStatement raiseStmt:
                 if (raiseStmt.Exception != null)
                     CollectReferencesFromExpression(raiseStmt.Exception, refs);

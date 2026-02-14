@@ -343,7 +343,9 @@ internal partial class TypeChecker
                 CheckTry(tryStmt);
                 break;
 
-            // See: #98 (with statement scope handling)
+            case WithStatement withStmt:
+                CheckWith(withStmt);
+                break;
 
             case AssertStatement assertStmt:
                 CheckAssert(assertStmt);

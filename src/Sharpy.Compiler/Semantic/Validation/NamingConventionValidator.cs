@@ -173,6 +173,14 @@ internal sealed class NamingConventionValidator : SemanticValidatorBase
                     if (tryStmt.FinallyBody.Length > 0)
                         ValidateBody(tryStmt.FinallyBody);
                     break;
+                case WithStatement withStmt:
+                    foreach (var item in withStmt.Items)
+                    {
+                        if (item.Name != null)
+                            CheckName(item.Name, item.LineStart, item.ColumnStart, item.Span);
+                    }
+                    ValidateBody(withStmt.Body);
+                    break;
             }
         }
     }

@@ -66,6 +66,7 @@ internal class ModuleLevelValidator : SemanticValidatorBase
                 case WhileStatement:
                 case ForStatement:
                 case TryStatement:
+                case WithStatement:
                 case AssertStatement:
                 case ReturnStatement:
                 case BreakStatement:

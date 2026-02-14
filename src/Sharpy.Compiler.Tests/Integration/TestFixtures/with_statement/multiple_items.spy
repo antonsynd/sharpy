@@ -1,0 +1,6 @@
+from System.IO import StringWriter
+
+def main():
+    with StringWriter() as a, StringWriter() as b:
+        print("Inside with block")
+    print("Done")

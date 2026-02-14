@@ -85,6 +85,12 @@ internal class ProtocolValidator : SemanticValidatorBase
                 foreach (var bodyStmt in tryStmt.FinallyBody)
                     ValidateStatement(bodyStmt);
                 break;
+            case WithStatement withStmt:
+                foreach (var item in withStmt.Items)
+                    ValidateExpression(item.ContextExpression);
+                foreach (var bodyStmt in withStmt.Body)
+                    ValidateStatement(bodyStmt);
+                break;
             case ExpressionStatement exprStmt:
                 ValidateExpression(exprStmt.Expression);
                 break;
