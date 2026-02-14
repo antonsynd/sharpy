@@ -33,6 +33,13 @@ public record TypeAnnotation
     /// </summary>
     public bool IsResult => ErrorType != null;
 
+    /// <summary>
+    /// Element names for named tuple type annotations (e.g., tuple[x: float, y: float]).
+    /// Empty for non-tuple types or unnamed tuples.
+    /// When present, must have the same count as TypeArguments.
+    /// </summary>
+    public ImmutableArray<string?> TupleElementNames { get; init; } = ImmutableArray<string?>.Empty;
+
     // Source location
     public int LineStart { get; init; }
     public int ColumnStart { get; init; }
@@ -66,9 +73,16 @@ public record FunctionType
 }
 
 /// <summary>
-/// Tuple type annotation (tuple[int, str, float])
+/// Tuple type annotation (tuple[int, str, float] or tuple[x: float, y: float])
 /// </summary>
 public record TupleType
 {
     public ImmutableArray<TypeAnnotation> ElementTypes { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
+
+    /// <summary>
+    /// Element names for named tuples. Empty for unnamed tuples.
+    /// When present, must have the same count as ElementTypes.
+    /// Null entries indicate unnamed elements (not allowed when any are named).
+    /// </summary>
+    public ImmutableArray<string?> ElementNames { get; init; } = ImmutableArray<string?>.Empty;
 }

@@ -236,6 +236,13 @@ public partial class Parser
                         };
                     }
 
+                    // Check for named tuple literal: (x=1.0, y=2.0)
+                    // identifier '=' (not '==') indicates a named element
+                    if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
+                    {
+                        return ParseNamedTupleLiteral(startLine, startColumn, startToken);
+                    }
+
                     var expr = ParseExpression();
 
                     // Tuple (expr,) or (expr, expr2, ...)
@@ -528,5 +535,58 @@ public partial class Parser
             default:
                 throw ReportError($"Unexpected token: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
         }
+    }
+
+    /// <summary>
+    /// Parses a named tuple literal: (x=1.0, y=2.0)
+    /// Called when the parser has already consumed '(' and sees 'identifier =' pattern.
+    /// </summary>
+    private TupleLiteral ParseNamedTupleLiteral(int startLine, int startColumn, Token startToken)
+    {
+        var elements = new List<Expression>();
+        var names = new List<string?>();
+
+        // Parse first named element
+        var firstName = Current.Value;
+        Advance(); // consume identifier
+        Advance(); // consume '='
+        names.Add(firstName);
+        elements.Add(ParseExpression());
+
+        // Parse remaining elements (must all be named)
+        while (Current.Type == TokenType.Comma)
+        {
+            Advance(); // consume ','
+            if (Current.Type == TokenType.RightParen)
+                break;
+
+            if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
+            {
+                names.Add(Current.Value);
+                Advance(); // consume identifier
+                Advance(); // consume '='
+                elements.Add(ParseExpression());
+            }
+            else
+            {
+                throw ReportError(
+                    "Named tuple elements must be either all named or all unnamed",
+                    Current.Line, Current.Column,
+                    DiagnosticCodes.Parser.MixedNamedUnnamedTupleElements,
+                    span: CurrentSpan);
+            }
+        }
+
+        Expect(TokenType.RightParen);
+        return new TupleLiteral
+        {
+            Elements = elements.ToImmutableArray(),
+            ElementNames = names.ToImmutableArray(),
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = GetSpanFromTokens(startToken, Previous)
+        };
     }
 }

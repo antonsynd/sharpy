@@ -65,6 +65,7 @@ public static class DiagnosticCodes
         public const string EmptySetDictShorthand = "SPY0115";
         public const string ExpectedModuleName = "SPY0116";
         public const string ExpectedDecoratorName = "SPY0117";
+        public const string MixedNamedUnnamedTupleElements = "SPY0118";
     }
 
     /// <summary>

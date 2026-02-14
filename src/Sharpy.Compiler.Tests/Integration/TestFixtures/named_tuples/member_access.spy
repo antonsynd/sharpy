@@ -1,0 +1,16 @@
+type Point = tuple[x: float, y: float]
+type RGB = tuple[r: int, g: int, b: int]
+
+def distance_from_origin(p: Point) -> float:
+    return (p.x ** 2 + p.y ** 2) ** 0.5
+
+def main():
+    p: Point = (x=3.0, y=4.0)
+    print(p.x)
+    print(p.y)
+    print(distance_from_origin(p))
+
+    color: RGB = (r=255, g=128, b=0)
+    print(color.r)
+    print(color.g)
+    print(color.b)
