@@ -364,6 +364,27 @@ public class TypeMapperTests
         result.ToString().Should().Be("System.ValueTuple<int,string>");
     }
 
+    [Fact]
+    public void MapTupleType_NamedElements_ReturnsCSharpNamedTuple()
+    {
+        // Arrange
+        var tupleType = new AstTupleType
+        {
+            ElementTypes = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "float" },
+                new TypeAnnotation { Name = "float" }
+            }.ToImmutableArray(),
+            ElementNames = ImmutableArray.Create<string?>("x", "y")
+        };
+
+        // Act
+        var result = _typeMapper.MapTupleType(tupleType);
+
+        // Assert
+        result.ToString().Should().Be("(doublex,doubley)");
+    }
+
     #endregion
 
     #region Type Inference Tests

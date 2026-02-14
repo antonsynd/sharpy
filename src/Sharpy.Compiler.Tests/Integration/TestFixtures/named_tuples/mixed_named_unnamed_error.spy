@@ -1,0 +1,5 @@
+# This should fail - mixed named and unnamed elements in type annotation
+type Mixed = tuple[a: int, str]
+
+def main():
+    pass

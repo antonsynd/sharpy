@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Xunit;
 using Sharpy.Compiler.Semantic;
 
@@ -210,6 +211,73 @@ public class TypeUtilsTests
         var common = TypeUtils.GetCommonType(SemanticType.Int, SemanticType.Float);
         // Float in Sharpy is double, so GetCommonType returns Double
         Assert.Equal(SemanticType.Double, common);
+    }
+
+    // ========================================
+    // TupleType Equality Tests
+    // ========================================
+
+    [Fact]
+    public void TupleType_Equals_SameNamesAndTypes_ReturnsTrue()
+    {
+        var tuple1 = new TupleType
+        {
+            ElementTypes = [SemanticType.Float, SemanticType.Float],
+            ElementNames = ImmutableArray.Create<string?>("x", "y")
+        };
+        var tuple2 = new TupleType
+        {
+            ElementTypes = [SemanticType.Float, SemanticType.Float],
+            ElementNames = ImmutableArray.Create<string?>("x", "y")
+        };
+        Assert.Equal(tuple1, tuple2);
+    }
+
+    [Fact]
+    public void TupleType_Equals_DifferentNamesSameTypes_ReturnsFalse()
+    {
+        var tuple1 = new TupleType
+        {
+            ElementTypes = [SemanticType.Float, SemanticType.Float],
+            ElementNames = ImmutableArray.Create<string?>("x", "y")
+        };
+        var tuple2 = new TupleType
+        {
+            ElementTypes = [SemanticType.Float, SemanticType.Float],
+            ElementNames = ImmutableArray.Create<string?>("a", "b")
+        };
+        Assert.NotEqual(tuple1, tuple2);
+    }
+
+    [Fact]
+    public void TupleType_Equals_NamedVsUnnamed_ReturnsFalse()
+    {
+        var named = new TupleType
+        {
+            ElementTypes = [SemanticType.Int, SemanticType.Str],
+            ElementNames = ImmutableArray.Create<string?>("x", "y")
+        };
+        var unnamed = new TupleType
+        {
+            ElementTypes = [SemanticType.Int, SemanticType.Str]
+        };
+        Assert.NotEqual(named, unnamed);
+    }
+
+    [Fact]
+    public void TupleType_GetHashCode_ConsistentWithEquals()
+    {
+        var tuple1 = new TupleType
+        {
+            ElementTypes = [SemanticType.Int, SemanticType.Str],
+            ElementNames = ImmutableArray.Create<string?>("a", "b")
+        };
+        var tuple2 = new TupleType
+        {
+            ElementTypes = [SemanticType.Int, SemanticType.Str],
+            ElementNames = ImmutableArray.Create<string?>("a", "b")
+        };
+        Assert.Equal(tuple1.GetHashCode(), tuple2.GetHashCode());
     }
 
     // ========================================

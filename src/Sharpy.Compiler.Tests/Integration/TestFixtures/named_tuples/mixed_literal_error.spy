@@ -1,0 +1,3 @@
+# This should fail - mixed named and unnamed elements in tuple literal
+def main():
+    x = (a=1, 2)
