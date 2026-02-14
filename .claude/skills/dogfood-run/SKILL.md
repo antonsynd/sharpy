@@ -13,7 +13,7 @@ Run the Sharpy dogfooding pipeline to generate, compile, and verify AI-generated
 2. **Run the dogfooding tool in the background** using Bash with `run_in_background: true`:
 
    ```bash
-   cd /Users/anton/Documents/github/sharpy/build_tools && python -m sharpy_dogfood run -n <N> --verbose 2>&1
+   cd build_tools && python3 -m sharpy_dogfood run -n <N> --verbose 2>&1
    ```
 
    Replace `<N>` with the parsed iteration count.
@@ -24,4 +24,4 @@ Run the Sharpy dogfooding pipeline to generate, compile, and verify AI-generated
 
 5. **Present results**. After the task completes:
    - Read `dogfood_output/SUMMARY.md` (relative to the project root `/Users/anton/Documents/github/sharpy/`) and present its contents to the user.
-   - If the summary mentions failures or issues, suggest running `/dogfood-analyze` to classify them by root cause.
+   - If the summary mentions failures or issues, suggest running `/project:dogfood-analyze` to classify them by root cause.
