@@ -1034,48 +1034,10 @@ internal partial class TypeChecker
         // Try to get the function symbol directly for better validation
         FunctionSymbol? funcSymbol = null;
 
-        // Special handling for generic type instantiation: Box[int](42) or Pair[int, str](1, "a")
-        // This is parsed as FunctionCall(Function: IndexAccess(Object: Box, Index: int or TupleLiteral), Arguments: [...])
-        if (call.Function is IndexAccess indexAccess &&
-            indexAccess.Object is Identifier genericTypeId &&
-            _symbolTable.Lookup(genericTypeId.Name) is TypeSymbol genericTypeSymbol &&
-            genericTypeSymbol.IsGeneric)
-        {
-            // The "index" is actually type argument(s) - try to resolve them as types
-            var typeArgs = TryResolveTypeArguments(indexAccess.Index);
-            if (typeArgs != null)
-            {
-                // Cannot instantiate abstract classes
-                if (genericTypeSymbol.IsAbstract)
-                {
-                    AddError($"Cannot instantiate abstract class '{genericTypeSymbol.Name}'",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AbstractInstantiation,
-                        span: call.Span);
-                    return SemanticType.Unknown;
-                }
-
-                // Return a GenericType with the type arguments
-                return new GenericType
-                {
-                    Name = genericTypeSymbol.Name,
-                    TypeArguments = typeArgs,
-                    GenericDefinition = genericTypeSymbol
-                };
-            }
-        }
-
-        // Handle generic function call: identity[int](42)
-        // The calleeType will be GenericFunctionType from CheckIndexAccess
-        if (calleeType is GenericFunctionType genericFuncType)
-        {
-            // For now, just return the substituted return type
-            // We substitute type parameters with type arguments in the return type
-            var substitutedReturnType = SubstituteTypeParameters(
-                genericFuncType.FunctionSymbol.ReturnType,
-                genericFuncType.FunctionSymbol.TypeParameters,
-                genericFuncType.TypeArguments);
-            return substitutedReturnType;
-        }
+        // Handle generic type/function instantiation: Box[int](42) or identity[int](42)
+        var genericResult = CheckGenericInstantiation(call, calleeType);
+        if (genericResult != null)
+            return genericResult;
 
         if (call.Function is Identifier id)
         {
@@ -1154,294 +1116,372 @@ internal partial class TypeChecker
             }
 
             // Special handling for builtin functions with overloads
-            // When there are multiple overloads, we need to perform overload resolution to find the right one.
-            // The funcSymbol from Lookup is just the first overload, which may not match the call.
-            // Only use builtin overloads if there's no user-defined function shadowing the builtin.
-            var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
-            var isBuiltinWithOverloads = overloads != null && overloads.Count > 1;
-            // If funcSymbol was found in symbol table AND it's one of the builtin overloads, use overload resolution
-            var needsOverloadResolution = isBuiltinWithOverloads &&
-                (funcSymbol == null || (funcSymbol != null && overloads!.Contains(funcSymbol)));
-            if (needsOverloadResolution)
-            {
-                // First pass: filter by argument count (considering default parameters and variadic parameters)
-                var candidateOverloads = overloads!.Where(o =>
-                {
-                    var requiredParams = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
-                    var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
-                    var totalParams = o.Parameters.Count;
-                    // Variadic functions can accept any number of arguments >= required
-                    if (hasVariadic)
-                        return totalArgCount >= requiredParams;
-                    return totalArgCount >= requiredParams && totalArgCount <= totalParams;
-                }).ToList();
-
-                // Second pass: check type compatibility
-                FunctionSymbol? matchingOverload = null;
-                foreach (var overload in candidateOverloads)
-                {
-                    bool typesMatch = true;
-                    var hasVariadic = overload.Parameters.Any(p => p.IsVariadic);
-                    var variadicParam = overload.Parameters.FirstOrDefault(p => p.IsVariadic);
-
-                    for (int i = 0; i < argTypes.Count; i++)
-                    {
-                        SemanticType expectedType;
-                        if (i < overload.Parameters.Count && !overload.Parameters[i].IsVariadic)
-                        {
-                            // Regular parameter
-                            expectedType = overload.Parameters[i].Type;
-                        }
-                        else if (variadicParam != null)
-                        {
-                            // Variadic parameter - all remaining args must match the element type
-                            expectedType = variadicParam.Type;
-                        }
-                        else
-                        {
-                            // Index out of bounds - shouldn't happen with valid candidates
-                            typesMatch = false;
-                            break;
-                        }
-
-                        if (!IsAssignable(argTypes[i], expectedType))
-                        {
-                            typesMatch = false;
-                            break;
-                        }
-                    }
-                    if (typesMatch)
-                    {
-                        matchingOverload = overload;
-                        break;
-                    }
-                }
-
-                if (matchingOverload != null)
-                {
-                    // Update the identifier symbol to point to the matching overload
-                    _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
-                    return matchingOverload.ReturnType;
-                }
-                else
-                {
-                    // No matching overload found
-                    var expectedCounts = string.Join(" or ", overloads!.Select(o =>
-                    {
-                        var required = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
-                        var total = o.Parameters.Count;
-                        var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
-                        if (hasVariadic)
-                            return $"{required}+";
-                        return required == total ? total.ToString() : $"{required}-{total}";
-                    }).Distinct());
-                    AddError($"Function '{id.Name}' expects {expectedCounts} arguments but got {totalArgCount}",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                        span: call.Span);
-                    return SemanticType.Unknown;
-                }
-            }
+            var overloadResult = ResolveBuiltinOverload(id, argTypes, totalArgCount, call);
+            if (overloadResult != null)
+                return overloadResult;
         }
         // Handle member access function calls (e.g., module.function() or obj.method())
         // Skip super() calls - they're already validated by ValidateSuperMemberAccess
         else if (call.Function is MemberAccess memberAccessCall && memberAccessCall.Object is not SuperExpression)
         {
-            // For module member access (lib.math.add), we already checked the expression at line 1697
-            // which gave us a FunctionType. But we also need the FunctionSymbol for better validation.
-            // The calleeType already validated that memberAccessCall resolves to a function.
-            // We just need to extract the FunctionSymbol.
-
-            // Note: We can't just call CheckExpression again on memberAccessCall.Object because
-            // it was already called as part of checking call.Function at line 1697.
-            // Instead, we need to use the already-computed calleeType information or
-            // re-traverse the member access to find the function symbol.
-
-            // Since the semantic info stores resolved symbols, let's try to get the function symbol
-            // from the semantic info for the member access.
-            // But actually, the issue is that CheckMemberAccess returns a FunctionType but doesn't
-            // store the underlying FunctionSymbol anywhere we can retrieve it.
-
-            // The best approach is to re-evaluate the object to get the module, then lookup the member.
-            // This is duplicate work but necessary until we refactor to store symbols in SemanticInfo.
-            var objectType = CheckExpression(memberAccessCall.Object);
-            if (objectType is ModuleType moduleType)
-            {
-                var moduleSymbol = moduleType.Symbol;
-                if (moduleSymbol.Exports.TryGetValue(memberAccessCall.Member, out var exportedSymbol))
-                {
-                    funcSymbol = exportedSymbol as FunctionSymbol;
-                }
-            }
+            funcSymbol = ResolveFunctionSymbolFromMemberAccess(memberAccessCall);
         }
 
         // If we have a FunctionSymbol, use it for validation (supports default parameters)
         if (funcSymbol != null)
         {
-            // Handle generic function inference: identity(42) -> infer T=int
-            // This is triggered when calling a generic function without explicit type arguments
-            if (funcSymbol.IsGeneric)
+            return ValidateFunctionSymbolCall(call, funcSymbol, argTypes, kwargTypes, totalArgCount,
+                isNullConditionalCall, isOptionalNullConditional);
+        }
+
+        // Fallback to FunctionType validation (no default parameter support)
+        // Use the already-computed calleeType to avoid re-evaluating call.Function
+        // (which causes double validation, e.g., super().__init__() being flagged as duplicate)
+        if (calleeType is FunctionType ft)
+        {
+            return CheckLambdaCall(call, ft, argTypes, totalArgCount,
+                isNullConditionalCall, isOptionalNullConditional);
+        }
+
+        // If callee type is Unknown, this is error recovery from a sub-expression
+        // (covered by transitive error recovery tracking in CheckExpression).
+        // Otherwise, the callee evaluated to a non-callable type — emit an error.
+        if (calleeType is not UnknownType)
+        {
+            AddError($"Expression of type '{calleeType.GetDisplayName()}' is not callable",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction,
+                span: call.Function.Span);
+        }
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Handles generic type instantiation (Box[int](42)) and generic function calls (identity[int](42)).
+    /// Returns null if the call is not a generic instantiation.
+    /// </summary>
+    private SemanticType? CheckGenericInstantiation(FunctionCall call, SemanticType calleeType)
+    {
+        // Special handling for generic type instantiation: Box[int](42) or Pair[int, str](1, "a")
+        // This is parsed as FunctionCall(Function: IndexAccess(Object: Box, Index: int or TupleLiteral), Arguments: [...])
+        if (call.Function is IndexAccess indexAccess &&
+            indexAccess.Object is Identifier genericTypeId &&
+            _symbolTable.Lookup(genericTypeId.Name) is TypeSymbol genericTypeSymbol &&
+            genericTypeSymbol.IsGeneric)
+        {
+            // The "index" is actually type argument(s) - try to resolve them as types
+            var typeArgs = TryResolveTypeArguments(indexAccess.Index);
+            if (typeArgs != null)
             {
-                var inferenceResult = _genericInference.InferTypeArguments(funcSymbol, argTypes);
-                if (inferenceResult.Success && inferenceResult.InferredTypes != null)
+                // Cannot instantiate abstract classes
+                if (genericTypeSymbol.IsAbstract)
                 {
-                    // Inference succeeded - substitute type parameters and return the result
-                    var substitutedReturnType = SubstituteTypeParameters(
-                        funcSymbol.ReturnType,
-                        funcSymbol.TypeParameters,
-                        inferenceResult.InferredTypes);
-
-                    // Store the inferred type arguments for codegen
-                    _semanticInfo.SetInferredTypeArguments(call, inferenceResult.InferredTypes);
-
-                    // Wrap result in optional/nullable for null conditional calls
-                    if (isNullConditionalCall && substitutedReturnType is not NullableType and not OptionalType)
-                    {
-                        if (isOptionalNullConditional)
-                            return new OptionalType { UnderlyingType = substitutedReturnType };
-                        return new NullableType { UnderlyingType = substitutedReturnType };
-                    }
-                    return substitutedReturnType;
-                }
-                else
-                {
-                    // Inference failed - report error
-                    AddError(inferenceResult.ErrorMessage ?? "Type arguments cannot be inferred",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferGenericType,
+                    AddError($"Cannot instantiate abstract class '{genericTypeSymbol.Name}'",
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AbstractInstantiation,
                         span: call.Span);
                     return SemanticType.Unknown;
                 }
-            }
 
-            // Count required parameters (those without defaults)
-            var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
-            var totalParamCount = funcSymbol.Parameters.Count;
-
-            // Validate argument count considering defaults (include both positional and keyword args)
-            if (totalArgCount < requiredParamCount || totalArgCount > totalParamCount)
-            {
-                if (requiredParamCount == totalParamCount)
+                // Return a GenericType with the type arguments
+                return new GenericType
                 {
-                    AddError($"Function expects {totalParamCount} arguments but got {totalArgCount}",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                        span: call.Span);
+                    Name = genericTypeSymbol.Name,
+                    TypeArguments = typeArgs,
+                    GenericDefinition = genericTypeSymbol
+                };
+            }
+        }
+
+        // Handle generic function call: identity[int](42)
+        // The calleeType will be GenericFunctionType from CheckIndexAccess
+        if (calleeType is GenericFunctionType genericFuncType)
+        {
+            // Substitute type parameters with type arguments in the return type
+            var substitutedReturnType = SubstituteTypeParameters(
+                genericFuncType.FunctionSymbol.ReturnType,
+                genericFuncType.FunctionSymbol.TypeParameters,
+                genericFuncType.TypeArguments);
+            return substitutedReturnType;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves builtin function overloads for a call. Returns the resolved return type,
+    /// or null if no overload resolution is needed.
+    /// </summary>
+    private SemanticType? ResolveBuiltinOverload(
+        Identifier id, List<SemanticType> argTypes, int totalArgCount, FunctionCall call)
+    {
+        // When there are multiple overloads, we need to perform overload resolution to find the right one.
+        // The funcSymbol from Lookup is just the first overload, which may not match the call.
+        // Only use builtin overloads if there's no user-defined function shadowing the builtin.
+        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
+        var isBuiltinWithOverloads = overloads != null && overloads.Count > 1;
+        var funcSymbol = _symbolTable.Lookup(id.Name) as FunctionSymbol;
+        // If funcSymbol was found in symbol table AND it's one of the builtin overloads, use overload resolution
+        var needsOverloadResolution = isBuiltinWithOverloads &&
+            (funcSymbol == null || (funcSymbol != null && overloads!.Contains(funcSymbol)));
+        if (!needsOverloadResolution)
+            return null;
+
+        // First pass: filter by argument count (considering default parameters and variadic parameters)
+        var candidateOverloads = overloads!.Where(o =>
+        {
+            var requiredParams = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
+            var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
+            var totalParams = o.Parameters.Count;
+            // Variadic functions can accept any number of arguments >= required
+            if (hasVariadic)
+                return totalArgCount >= requiredParams;
+            return totalArgCount >= requiredParams && totalArgCount <= totalParams;
+        }).ToList();
+
+        // Second pass: check type compatibility
+        FunctionSymbol? matchingOverload = null;
+        foreach (var overload in candidateOverloads)
+        {
+            bool typesMatch = true;
+            var variadicParam = overload.Parameters.FirstOrDefault(p => p.IsVariadic);
+
+            for (int i = 0; i < argTypes.Count; i++)
+            {
+                SemanticType expectedType;
+                if (i < overload.Parameters.Count && !overload.Parameters[i].IsVariadic)
+                {
+                    // Regular parameter
+                    expectedType = overload.Parameters[i].Type;
+                }
+                else if (variadicParam != null)
+                {
+                    // Variadic parameter - all remaining args must match the element type
+                    expectedType = variadicParam.Type;
                 }
                 else
                 {
-                    AddError($"Function expects {requiredParamCount} to {totalParamCount} arguments but got {totalArgCount}",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                        span: call.Span);
+                    // Index out of bounds - shouldn't happen with valid candidates
+                    typesMatch = false;
+                    break;
                 }
+
+                if (!IsAssignable(argTypes[i], expectedType))
+                {
+                    typesMatch = false;
+                    break;
+                }
+            }
+            if (typesMatch)
+            {
+                matchingOverload = overload;
+                break;
+            }
+        }
+
+        if (matchingOverload != null)
+        {
+            // Update the identifier symbol to point to the matching overload
+            _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
+            return matchingOverload.ReturnType;
+        }
+
+        // No matching overload found
+        var expectedCounts = string.Join(" or ", overloads!.Select(o =>
+        {
+            var required = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
+            var total = o.Parameters.Count;
+            var hasVariadic = o.Parameters.Any(p => p.IsVariadic);
+            if (hasVariadic)
+                return $"{required}+";
+            return required == total ? total.ToString() : $"{required}-{total}";
+        }).Distinct());
+        AddError($"Function '{id.Name}' expects {expectedCounts} arguments but got {totalArgCount}",
+            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+            span: call.Span);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Resolves a FunctionSymbol from a member access expression (e.g., module.function()).
+    /// Returns null if the member does not resolve to a FunctionSymbol.
+    /// </summary>
+    private FunctionSymbol? ResolveFunctionSymbolFromMemberAccess(MemberAccess memberAccess)
+    {
+        // Re-evaluate the object to get the module, then lookup the member.
+        // This is duplicate work but necessary until we refactor to store symbols in SemanticInfo.
+        var objectType = CheckExpression(memberAccess.Object);
+        if (objectType is ModuleType moduleType)
+        {
+            var moduleSymbol = moduleType.Symbol;
+            if (moduleSymbol.Exports.TryGetValue(memberAccess.Member, out var exportedSymbol))
+            {
+                return exportedSymbol as FunctionSymbol;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Validates a function call against a resolved FunctionSymbol, including generic inference,
+    /// argument count, positional/keyword argument type checking.
+    /// </summary>
+    private SemanticType ValidateFunctionSymbolCall(
+        FunctionCall call, FunctionSymbol funcSymbol,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
+        int totalArgCount, bool isNullConditionalCall, bool isOptionalNullConditional)
+    {
+        // Handle generic function inference: identity(42) -> infer T=int
+        // This is triggered when calling a generic function without explicit type arguments
+        if (funcSymbol.IsGeneric)
+        {
+            var inferenceResult = _genericInference.InferTypeArguments(funcSymbol, argTypes);
+            if (inferenceResult.Success && inferenceResult.InferredTypes != null)
+            {
+                // Inference succeeded - substitute type parameters and return the result
+                var substitutedReturnType = SubstituteTypeParameters(
+                    funcSymbol.ReturnType,
+                    funcSymbol.TypeParameters,
+                    inferenceResult.InferredTypes);
+
+                // Store the inferred type arguments for codegen
+                _semanticInfo.SetInferredTypeArguments(call, inferenceResult.InferredTypes);
+
+                // Wrap result in optional/nullable for null conditional calls
+                if (isNullConditionalCall && substitutedReturnType is not NullableType and not OptionalType)
+                {
+                    if (isOptionalNullConditional)
+                        return new OptionalType { UnderlyingType = substitutedReturnType };
+                    return new NullableType { UnderlyingType = substitutedReturnType };
+                }
+                return substitutedReturnType;
+            }
+            else
+            {
+                // Inference failed - report error
+                AddError(inferenceResult.ErrorMessage ?? "Type arguments cannot be inferred",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferGenericType,
+                    span: call.Span);
+                return SemanticType.Unknown;
+            }
+        }
+
+        // Count required parameters (those without defaults)
+        var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
+        var totalParamCount = funcSymbol.Parameters.Count;
+
+        // Validate argument count considering defaults (include both positional and keyword args)
+        if (totalArgCount < requiredParamCount || totalArgCount > totalParamCount)
+        {
+            if (requiredParamCount == totalParamCount)
+            {
+                AddError($"Function expects {totalParamCount} arguments but got {totalArgCount}",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
+            }
+            else
+            {
+                AddError($"Function expects {requiredParamCount} to {totalParamCount} arguments but got {totalArgCount}",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
+            }
+        }
+        else
+        {
+            // Validate positional argument types
+            for (int i = 0; i < argTypes.Count; i++)
+            {
+                if (!IsAssignable(argTypes[i], funcSymbol.Parameters[i].Type))
+                {
+                    AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{funcSymbol.Parameters[i].Type.GetDisplayName()}'",
+                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: call.Arguments[i].Span);
+                }
+            }
+
+            // Validate keyword arguments
+            foreach (var kwarg in call.KeywordArguments)
+            {
+                var param = funcSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
+                if (param == null)
+                {
+                    AddError($"Unknown keyword argument '{kwarg.Name}'",
+                        kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                        span: kwarg.Value.Span);
+                }
+                else
+                {
+                    // Check if this parameter was already provided positionally
+                    var paramIndex = funcSymbol.Parameters.ToList().IndexOf(param);
+                    if (paramIndex < argTypes.Count)
+                    {
+                        AddError($"Argument '{kwarg.Name}' was already provided positionally",
+                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
+                            span: kwarg.Value.Span);
+                    }
+                    else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
+                    {
+                        AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
+                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: kwarg.Value.Span);
+                    }
+                }
+            }
+        }
+
+        var returnType = funcSymbol.ReturnType;
+
+        // Wrap result in optional/nullable for null conditional calls
+        if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
+        {
+            if (isOptionalNullConditional)
+                return new OptionalType { UnderlyingType = returnType };
+            return new NullableType { UnderlyingType = returnType };
+        }
+        return returnType;
+    }
+
+    /// <summary>
+    /// Validates a function call against a FunctionType (lambda/delegate calls without a FunctionSymbol).
+    /// </summary>
+    private SemanticType CheckLambdaCall(
+        FunctionCall call, FunctionType ft, List<SemanticType> argTypes,
+        int totalArgCount, bool isNullConditionalCall, bool isOptionalNullConditional)
+    {
+        // Skip validation for .NET types with multiple constructor overloads
+        // (C# compiler will handle overload resolution)
+        if (!ft.SkipArgumentValidation)
+        {
+            // Validate argument count (include both positional and keyword arguments)
+            if (totalArgCount != ft.ParameterTypes.Count)
+            {
+                AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {totalArgCount}",
+                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                    span: call.Span);
             }
             else
             {
                 // Validate positional argument types
                 for (int i = 0; i < argTypes.Count; i++)
                 {
-                    if (!IsAssignable(argTypes[i], funcSymbol.Parameters[i].Type))
+                    if (!IsAssignable(argTypes[i], ft.ParameterTypes[i]))
                     {
-                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{funcSymbol.Parameters[i].Type.GetDisplayName()}'",
+                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{ft.ParameterTypes[i].GetDisplayName()}'",
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
                     }
                 }
-
-                // Validate keyword arguments
-                foreach (var kwarg in call.KeywordArguments)
-                {
-                    var param = funcSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
-                    if (param == null)
-                    {
-                        AddError($"Unknown keyword argument '{kwarg.Name}'",
-                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
-                            span: kwarg.Value.Span);
-                    }
-                    else
-                    {
-                        // Check if this parameter was already provided positionally
-                        var paramIndex = funcSymbol.Parameters.ToList().IndexOf(param);
-                        if (paramIndex < argTypes.Count)
-                        {
-                            AddError($"Argument '{kwarg.Name}' was already provided positionally",
-                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
-                                span: kwarg.Value.Span);
-                        }
-                        else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
-                        {
-                            AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
-                                kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                                span: kwarg.Value.Span);
-                        }
-                    }
-                }
             }
-
-            var returnType = funcSymbol.ReturnType;
-
-            // Wrap result in optional/nullable for null conditional calls
-            if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
-            {
-                if (isOptionalNullConditional)
-                    return new OptionalType { UnderlyingType = returnType };
-                return new NullableType { UnderlyingType = returnType };
-            }
-            return returnType;
         }
 
-        // Fallback to FunctionType validation (no default parameter support)
-        // Use the already-computed calleeType to avoid re-evaluating call.Function
-        // (which causes double validation, e.g., super().__init__() being flagged as duplicate)
-        var funcType = calleeType;
+        var returnType = ft.ReturnType;
 
-        if (funcType is FunctionType ft)
+        // Wrap result in optional/nullable for null conditional calls
+        if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
         {
-            // Skip validation for .NET types with multiple constructor overloads
-            // (C# compiler will handle overload resolution)
-            if (!ft.SkipArgumentValidation)
-            {
-                // Validate argument count (include both positional and keyword arguments)
-                if (totalArgCount != ft.ParameterTypes.Count)
-                {
-                    AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {totalArgCount}",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                        span: call.Span);
-                }
-                else
-                {
-                    // Validate positional argument types
-                    for (int i = 0; i < argTypes.Count; i++)
-                    {
-                        if (!IsAssignable(argTypes[i], ft.ParameterTypes[i]))
-                        {
-                            AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{ft.ParameterTypes[i].GetDisplayName()}'",
-                                call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                                span: call.Arguments[i].Span);
-                        }
-                    }
-                }
-            }
-
-            var returnType = ft.ReturnType;
-
-            // Wrap result in optional/nullable for null conditional calls
-            if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
-            {
-                if (isOptionalNullConditional)
-                    return new OptionalType { UnderlyingType = returnType };
-                return new NullableType { UnderlyingType = returnType };
-            }
-            return returnType;
+            if (isOptionalNullConditional)
+                return new OptionalType { UnderlyingType = returnType };
+            return new NullableType { UnderlyingType = returnType };
         }
-
-        // If callee type is Unknown, this is error recovery from a sub-expression
-        // (covered by transitive error recovery tracking in CheckExpression).
-        // Otherwise, the callee evaluated to a non-callable type — emit an error.
-        if (funcType is not UnknownType)
-        {
-            AddError($"Expression of type '{funcType.GetDisplayName()}' is not callable",
-                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction,
-                span: call.Function.Span);
-        }
-        return SemanticType.Unknown;
+        return returnType;
     }
 
     /// <summary>
