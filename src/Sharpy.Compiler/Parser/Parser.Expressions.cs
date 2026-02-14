@@ -246,7 +246,7 @@ public partial class Parser
 
     private Expression ParseComparison()
     {
-        var left = ParsePipe();
+        var left = ParseCast();
 
         // Special case: "is" followed by a type name should be parsed as TypeCheck
         if (Current.Type == TokenType.Is && Peek(1).Type == TokenType.Identifier)
@@ -302,7 +302,7 @@ public partial class Parser
                 operators.Add(TokenTypeToComparisonOperator(op));
             }
 
-            operands.Add(ParsePipe());
+            operands.Add(ParseCast());
         }
 
         if (operators.Count == 0)
@@ -397,6 +397,32 @@ public partial class Parser
         }
 
         return left;
+    }
+
+    private Expression ParseCast()
+    {
+        var expr = ParsePipe();
+
+        // Handle `to` (type coercion) at precedence level 11 (between pipe and comparisons)
+        // Left-to-right associativity: `a to int to float` = `(a to int) to float`
+        while (Current.Type == TokenType.To)
+        {
+            Advance();
+            var targetType = ParseTypeAnnotation();
+
+            expr = new TypeCoercion
+            {
+                Value = expr,
+                TargetType = targetType,
+                LineStart = expr.LineStart,
+                ColumnStart = expr.ColumnStart,
+                LineEnd = Previous.Line,
+                ColumnEnd = Previous.Column + Previous.Value.Length,
+                Span = expr.Span
+            };
+        }
+
+        return expr;
     }
 
     private Expression ParseBitwiseOr()
@@ -760,25 +786,6 @@ public partial class Parser
                     var targetType = ParseTypeAnnotation();
 
                     expr = new TypeCast
-                    {
-                        Value = expr,
-                        TargetType = targetType,
-                        LineStart = expr.LineStart,
-                        ColumnStart = expr.ColumnStart,
-                        LineEnd = Previous.Line,
-                        ColumnEnd = Previous.Column + Previous.Value.Length,
-                        // TypeAnnotation doesn't have Span yet (A.12), use expr's span for now
-                        Span = expr.Span
-                    };
-                }
-                else if (Current.Type == TokenType.To)
-                {
-                    // Type coercion (value to T or value to T?)
-                    // Throws InvalidCastException on failure for T, returns None for T?
-                    Advance();
-                    var targetType = ParseTypeAnnotation();
-
-                    expr = new TypeCoercion
                     {
                         Value = expr,
                         TargetType = targetType,

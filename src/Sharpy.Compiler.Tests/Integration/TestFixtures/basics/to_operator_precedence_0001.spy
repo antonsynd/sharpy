@@ -1,0 +1,10 @@
+def main():
+    x: int = 5
+    # Should parse as (x + 1) to float, not x + (1 to float)
+    result: float = x + 1 to float
+    print(result to int)
+
+    # Member access should still bind tighter than to
+    y: float = 3.14
+    z: int = y to int
+    print(z)
