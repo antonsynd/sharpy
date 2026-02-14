@@ -1188,8 +1188,87 @@ internal partial class RoslynEmitter
                     VariableDeclarator(Identifier(flagName))
                         .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.FalseLiteralExpression))))));
 
-        // Generate try body with flag set to true at the end
-        var tryBodyStatements = tryStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>().ToList();
+        // Hoist variables declared in the try body to the outer scope so
+        // the else block can reference them. Only top-level statements are
+        // considered (not nested inside if/for/while).
+        var hoistedDecls = new List<StatementSyntax>();
+        var hoistedNames = new HashSet<string>();
+        foreach (var stmt in tryStmt.Body)
+        {
+            string? varName = null;
+            TypeSyntax? varType = null;
+
+            if (stmt is VariableDeclaration varDecl)
+            {
+                varName = NameMangler.ToCamelCase(varDecl.Name);
+                if (varDecl.Type != null)
+                    varType = _typeMapper.MapType(varDecl.Type);
+                else if (varDecl.InitialValue != null)
+                {
+                    var semType = GetExpressionSemanticType(varDecl.InitialValue);
+                    varType = semType != null ? _typeMapper.MapSemanticType(semType) : null;
+                }
+            }
+            else if (stmt is Assignment assign
+                     && assign.Operator == AssignmentOperator.Assign
+                     && assign.Target is Identifier id
+                     && !_declaredVariables.Contains(NameMangler.ToCamelCase(id.Name)))
+            {
+                varName = NameMangler.ToCamelCase(id.Name);
+                var semType = GetExpressionSemanticType(assign.Value);
+                varType = semType != null ? _typeMapper.MapSemanticType(semType) : null;
+            }
+
+            if (varName != null && !_declaredVariables.Contains(varName))
+            {
+                varType ??= PredefinedType(Token(SyntaxKind.ObjectKeyword));
+                hoistedDecls.Add(LocalDeclarationStatement(
+                    VariableDeclaration(varType)
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(varName))
+                                .WithInitializer(EqualsValueClause(
+                                    DefaultExpression(varType)))))));
+                _declaredVariables.Add(varName);
+                _variableVersions[varName] = 0;
+                hoistedNames.Add(varName);
+            }
+        }
+
+        // Generate try body with flag set to true at the end.
+        // For hoisted variables, convert VariableDeclaration to assignment.
+        var tryBodyStatements = new List<StatementSyntax>();
+        foreach (var stmt in tryStmt.Body)
+        {
+            if (stmt is VariableDeclaration vd && hoistedNames.Contains(NameMangler.ToCamelCase(vd.Name)))
+            {
+                // Generate assignment instead of declaration (variable already declared above)
+                if (vd.InitialValue != null)
+                {
+                    var previousTargetType = _targetTypeContext;
+                    _targetTypeContext = vd.Type;
+                    try
+                    {
+                        var value = GenerateExpression(vd.InitialValue);
+                        var assignStmt = ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                IdentifierName(NameMangler.ToCamelCase(vd.Name)),
+                                value));
+                        tryBodyStatements.Add(AttachLineDirective(assignStmt, stmt));
+                    }
+                    finally
+                    {
+                        _targetTypeContext = previousTargetType;
+                    }
+                }
+            }
+            else
+            {
+                var generated = GenerateBodyStatement(stmt);
+                if (generated != null)
+                    tryBodyStatements.Add(generated);
+            }
+        }
         tryBodyStatements.Add(ExpressionStatement(
             AssignmentExpression(
                 SyntaxKind.SimpleAssignmentExpression,
@@ -1240,8 +1319,13 @@ internal partial class RoslynEmitter
         var elseBlock = Block(tryStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
         var elseIf = IfStatement(IdentifierName(flagName), elseBlock);
 
-        // Return a block containing all statements
-        return Block(flagDecl, tryCatchFinally, elseIf);
+        // Return a block containing all statements: hoisted decls + flag + try + else-if
+        var allStatements = new List<StatementSyntax>();
+        allStatements.AddRange(hoistedDecls);
+        allStatements.Add(flagDecl);
+        allStatements.Add(tryCatchFinally);
+        allStatements.Add(elseIf);
+        return Block(allStatements);
     }
 
 }
