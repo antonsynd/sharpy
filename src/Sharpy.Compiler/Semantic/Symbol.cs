@@ -177,7 +177,7 @@ public record TypeSymbol : Symbol
 }
 
 /// <summary>
-/// Property symbol (for future use)
+/// Property symbol for class/struct/interface properties
 /// </summary>
 public record PropertySymbol
 {
@@ -185,6 +185,12 @@ public record PropertySymbol
     public SemanticType Type { get; init; } = SemanticType.Unknown;
     public bool HasGetter { get; init; }
     public bool HasSetter { get; init; }
+    public bool HasInit { get; init; }
+    public bool IsStatic { get; init; }
+    public bool IsVirtual { get; init; }
+    public bool IsAbstract { get; init; }
+    public bool IsOverride { get; init; }
+    public bool IsFinal { get; init; }
     public AccessLevel GetterAccess { get; init; } = AccessLevel.Public;
     public AccessLevel SetterAccess { get; init; } = AccessLevel.Public;
 }

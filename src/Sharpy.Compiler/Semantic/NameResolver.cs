@@ -291,6 +291,10 @@ internal class NameResolver
             {
                 ResolveFieldDeclaration(field, typeSymbol);
             }
+            else if (statement is PropertyDef propDef)
+            {
+                ResolvePropertyDeclaration(propDef, typeSymbol);
+            }
         }
 
         _symbolTable.ExitScope();
@@ -351,6 +355,10 @@ internal class NameResolver
             {
                 ResolveFieldDeclaration(field, typeSymbol);
             }
+            else if (statement is PropertyDef propDef)
+            {
+                ResolvePropertyDeclaration(propDef, typeSymbol);
+            }
         }
 
         _symbolTable.ExitScope();
@@ -408,6 +416,10 @@ internal class NameResolver
                 // Validate that interface methods have no implementation (only ... or pass)
                 ValidateInterfaceMethod(method, interfaceDef.Name);
                 ResolveMethodDeclaration(method, typeSymbol);
+            }
+            else if (statement is PropertyDef propDef)
+            {
+                ResolvePropertyDeclaration(propDef, typeSymbol);
             }
         }
 
@@ -614,6 +626,77 @@ internal class NameResolver
 
         owningType.Fields.Add(varSymbol);
         _symbolTable.Define(varSymbol);
+    }
+
+    private void ResolvePropertyDeclaration(PropertyDef propDef, TypeSymbol owningType)
+    {
+        _logger.LogDebug($"Resolving property declaration: {owningType.Name}.{propDef.Name}");
+
+        // Check if a property with this name already exists (for combining getter/setter)
+        var existingProp = owningType.Properties.FirstOrDefault(p => p.Name == propDef.Name);
+
+        bool isStatic = propDef.Decorators.Any(d => d.Name == "static")
+            || !propDef.Parameters.Any(p => string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            && propDef.IsFunctionStyle;
+        bool isVirtual = propDef.Decorators.Any(d => d.Name == "virtual");
+        bool isAbstract = propDef.Decorators.Any(d => d.Name == "abstract");
+        bool isOverride = propDef.Decorators.Any(d => d.Name == "override");
+        bool isFinal = propDef.Decorators.Any(d => d.Name == "final");
+
+        bool hasGetter = propDef.Accessor == PropertyAccessor.Get || propDef.Accessor == PropertyAccessor.None;
+        bool hasSetter = propDef.Accessor == PropertyAccessor.Set;
+        bool hasInit = propDef.Accessor == PropertyAccessor.Init;
+
+        var accessLevel = DetermineAccessLevel(propDef.Name);
+        // Override with explicit decorator
+        foreach (var decorator in propDef.Decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "private":
+                    accessLevel = AccessLevel.Private;
+                    break;
+                case "protected":
+                    accessLevel = AccessLevel.Protected;
+                    break;
+            }
+        }
+
+        if (existingProp != null)
+        {
+            // Merge: combine accessor info from additional PropertyDef
+            // This handles the case where getter and setter are defined separately
+            var merged = existingProp with
+            {
+                HasGetter = existingProp.HasGetter || hasGetter,
+                HasSetter = existingProp.HasSetter || hasSetter,
+                HasInit = existingProp.HasInit || hasInit,
+                SetterAccess = hasSetter || hasInit ? accessLevel : existingProp.SetterAccess,
+            };
+
+            // Replace existing in the list
+            var index = owningType.Properties.IndexOf(existingProp);
+            owningType.Properties[index] = merged;
+        }
+        else
+        {
+            var propSymbol = new PropertySymbol
+            {
+                Name = propDef.Name,
+                HasGetter = hasGetter,
+                HasSetter = hasSetter,
+                HasInit = hasInit,
+                IsStatic = isStatic,
+                IsVirtual = isVirtual,
+                IsAbstract = isAbstract,
+                IsOverride = isOverride,
+                IsFinal = isFinal,
+                GetterAccess = hasGetter ? accessLevel : AccessLevel.Public,
+                SetterAccess = hasSetter || hasInit ? accessLevel : AccessLevel.Public,
+            };
+
+            owningType.Properties.Add(propSymbol);
+        }
     }
 
     private void ResolveConstantDeclaration(VariableDeclaration constDecl)
