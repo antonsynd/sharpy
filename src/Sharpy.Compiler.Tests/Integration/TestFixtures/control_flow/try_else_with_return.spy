@@ -1,0 +1,18 @@
+from System.IO import StringWriter
+
+def example(x: int) -> str:
+    try:
+        val: int = x
+    except Exception:
+        return "error"
+    else:
+        with StringWriter() as writer:
+            if val > 0:
+                return "positive"
+            else:
+                return "nonpositive"
+
+def main():
+    print(example(5))
+    print(example(-1))
+    print(example(0))
