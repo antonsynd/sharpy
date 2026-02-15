@@ -1,4 +1,3 @@
-using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Parser.Ast;
@@ -307,7 +306,7 @@ internal class CodeGenInfoComputer
         {
             SetCodeGenInfo(methodSymbol, new CodeGenInfo
             {
-                CSharpName = DunderMapping.ResolveCSharpName(funcDef.Name)
+                CSharpName = DunderNameMapping.ResolveCSharpName(funcDef.Name)
                     ?? NameMangler.ToPascalCase(funcDef.Name),
                 OriginalName = funcDef.Name,
                 IsModuleLevel = false
@@ -322,7 +321,7 @@ internal class CodeGenInfoComputer
         {
             SetCodeGenInfo(funcSymbol, new CodeGenInfo
             {
-                CSharpName = DunderMapping.ResolveCSharpName(funcDef.Name)
+                CSharpName = DunderNameMapping.ResolveCSharpName(funcDef.Name)
                     ?? NameMangler.ToPascalCase(funcDef.Name),
                 OriginalName = funcDef.Name,
                 IsModuleLevel = isModuleLevel
