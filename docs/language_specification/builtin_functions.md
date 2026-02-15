@@ -14,7 +14,7 @@ This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consisten
 |----------|---------|------------|
 | `int(x)` | Convert to integer (32-bit) | `(int)x` or `Convert.ToInt32(x)` |
 | `float(x)` | Convert to float (64-bit) | `(double)x` |
-| `str(x)` | Convert to string | Calls `__str__` if defined, else `.ToString()` |
+| `str(x)` | Convert to string; returns `Sharpy.Str` (a struct), not C# `string` | Calls `__str__` if defined, else `.ToString()` |
 | `bool(x)` | Convert to boolean | Truthiness check |
 
 ### Result-Returning Variants
@@ -39,8 +39,10 @@ f: Result[float, ValueError] = float.parse("3.14")
 
 **Guiding principle:** Use the throwing version (`int(x)`) when bad input is a bug. Use the Result version (`int.parse(x)`) when bad input is expected (e.g., user input).
 
-**`str(x)`** returns a human-readable string representation:
-- For all types, calls `.ToString()`
+**`str(x)`** returns a `Sharpy.Str` (a readonly struct wrapping a C# `string`), not a bare C# `string`:
+- For all types, calls `.ToString()` and wraps the result in `Sharpy.Str`
+- `Sharpy.Str` has implicit conversions to and from `string`, so interop is seamless
+- Primitive overloads (`str(int)`, `str(double)`, etc.) avoid boxing
 
 ## Type Checking
 

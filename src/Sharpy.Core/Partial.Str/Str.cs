@@ -8,6 +8,11 @@ namespace Sharpy
 
     public static partial class Builtins
     {
+        /// <summary>
+        /// Convert an arbitrary object to <see cref="Sharpy.Str"/>.
+        /// Returns <c>"None"</c> for null, Python-style <c>"True"</c>/<c>"False"</c>
+        /// for booleans, and <see cref="object.ToString"/> for everything else.
+        /// </summary>
         public static Str Str(object x)
         {
             if (x is null)
@@ -23,31 +28,50 @@ namespace Sharpy
             return new Str(x);
         }
 
+        /// <summary>
+        /// Wrap a C# <see cref="string"/> in a <see cref="Sharpy.Str"/>.
+        /// </summary>
         public static Str Str(string s)
         {
             return new Str(s);
         }
 
+        /// <summary>
+        /// Convert an <see cref="int"/> to <see cref="Sharpy.Str"/> without boxing.
+        /// </summary>
         public static Str Str(int i)
         {
             return new Str(i.ToString());
         }
 
+        /// <summary>
+        /// Convert a <see cref="long"/> to <see cref="Sharpy.Str"/> without boxing.
+        /// </summary>
         public static Str Str(long l)
         {
             return new Str(l.ToString());
         }
 
+        /// <summary>
+        /// Convert a <see cref="double"/> to <see cref="Sharpy.Str"/> without boxing.
+        /// </summary>
         public static Str Str(double d)
         {
             return new Str(d.ToString());
         }
 
+        /// <summary>
+        /// Convert a <see cref="float"/> to <see cref="Sharpy.Str"/> without boxing.
+        /// </summary>
         public static Str Str(float f)
         {
             return new Str(f.ToString());
         }
 
+        /// <summary>
+        /// Convert a <see cref="bool"/> to <see cref="Sharpy.Str"/>.
+        /// Returns Python-style <c>"True"</c> or <c>"False"</c>.
+        /// </summary>
         public static Str Str(bool b)
         {
             return new Str(b ? "True" : "False");
