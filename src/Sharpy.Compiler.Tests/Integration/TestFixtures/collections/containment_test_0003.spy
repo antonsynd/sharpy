@@ -1,0 +1,23 @@
+# Test: containment operators (in/not in) with lists, sets, and dicts
+def main():
+    numbers: list[int] = [1, 2, 3, 4, 5]
+    print(3 in numbers)
+    print(10 in numbers)
+    print(10 not in numbers)
+    
+    chars: set[str] = {"a", "b", "c"}
+    print("b" in chars)
+    print("z" not in chars)
+    
+    scores: dict[str, int] = {"alice": 100, "bob": 85}
+    print("alice" in scores)
+    print("charlie" not in scores)
+
+# EXPECTED OUTPUT:
+# True
+# False
+# True
+# True
+# True
+# True
+# True
