@@ -140,6 +140,21 @@ internal class InterfaceConflictValidator : SemanticValidatorBase
     /// Collects generic interfaces from a TypeSymbol's explicit Interfaces list.
     /// Extracts interface name and type arguments from GenericType interfaces.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>v0.2.x deferral (see #122):</b> This method currently returns an empty list because
+    /// <see cref="TypeSymbol.Interfaces"/> stores only the interface <em>definition</em>
+    /// (<see cref="TypeSymbol"/>), not the concrete instantiation (e.g., <c>IEquatable&lt;str&gt;</c>).
+    /// Generic type arguments are discarded during name resolution when the interface is
+    /// resolved to its <see cref="TypeSymbol"/>.
+    /// </para>
+    /// <para>
+    /// To fix this, the data model would need to preserve type arguments on interface
+    /// references — for example, by storing <c>(TypeSymbol Definition, SemanticType[] TypeArgs)</c>
+    /// tuples instead of bare <c>TypeSymbol</c> entries. This is planned for v0.2.x when the
+    /// generic type system is extended.
+    /// </para>
+    /// </remarks>
     private static List<(string Name, SemanticType[] TypeArgs)> CollectExplicitGenericInterfaces(TypeSymbol typeSymbol)
     {
         var result = new List<(string, SemanticType[])>();
