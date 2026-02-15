@@ -172,16 +172,7 @@ internal partial class RoslynEmitter
             .AddArgumentListArguments(Argument(selectLambda));
 
         // Wrap in new Sharpy.List<T>(chain) using semantic type info for T
-        var elementSemanticType = GetExpressionSemanticType(listComp.Element);
-
-        // TODO(#167): Fallback for cross-module reference identity issue in SemanticInfo.
-        // Extract element type from the comprehension's overall type (list[ElementType]).
-        if (elementSemanticType == null)
-        {
-            var compType = GetExpressionSemanticType(listComp);
-            if (compType is Semantic.GenericType gt && gt.TypeArguments.Count > 0)
-                elementSemanticType = gt.TypeArguments[0];
-        }
+        var elementSemanticType = GetComprehensionSubExpressionType(listComp.Element, listComp);
 
         var elementTypeSyntax = elementSemanticType != null
             ? _typeMapper.MapSemanticType(elementSemanticType)
@@ -218,16 +209,7 @@ internal partial class RoslynEmitter
             .AddArgumentListArguments(Argument(selectLambda));
 
         // Wrap in new Sharpy.Set<T>(chain) using semantic type info for T
-        var elementSemanticType = GetExpressionSemanticType(setComp.Element);
-
-        // TODO(#167): Fallback for cross-module reference identity issue in SemanticInfo.
-        // Extract element type from the comprehension's overall type (set[ElementType]).
-        if (elementSemanticType == null)
-        {
-            var compType = GetExpressionSemanticType(setComp);
-            if (compType is Semantic.GenericType gt && gt.TypeArguments.Count > 0)
-                elementSemanticType = gt.TypeArguments[0];
-        }
+        var elementSemanticType = GetComprehensionSubExpressionType(setComp.Element, setComp);
 
         var elementTypeSyntax = elementSemanticType != null
             ? _typeMapper.MapSemanticType(elementSemanticType)
@@ -273,20 +255,7 @@ internal partial class RoslynEmitter
                 Argument(valueLambda));
 
         // Wrap in (Dict<K,V>)expr so the result type is always Dict, not Dictionary
-        var keySemanticType = GetExpressionSemanticType(dictComp.Key);
-        var valueSemanticType = GetExpressionSemanticType(dictComp.Value);
-
-        // TODO(#167): Fallback for cross-module reference identity issue in SemanticInfo.
-        // Extract key/value types from the comprehension's overall type (dict[K, V]).
-        if (keySemanticType == null || valueSemanticType == null)
-        {
-            var compType = GetExpressionSemanticType(dictComp);
-            if (compType is Semantic.GenericType gt && gt.TypeArguments.Count >= 2)
-            {
-                keySemanticType ??= gt.TypeArguments[0];
-                valueSemanticType ??= gt.TypeArguments[1];
-            }
-        }
+        var (keySemanticType, valueSemanticType) = GetDictComprehensionTypes(dictComp);
 
         if (keySemanticType != null && valueSemanticType != null)
         {
@@ -298,6 +267,49 @@ internal partial class RoslynEmitter
         }
 
         return toDictInvocation;
+    }
+
+    /// <summary>
+    /// Gets the semantic type of a comprehension sub-expression (element, key, or value),
+    /// falling back to the comprehension's overall generic type arguments if the
+    /// sub-expression's type is not found in SemanticInfo due to cross-module
+    /// reference identity issues.
+    /// </summary>
+    private SemanticType? GetComprehensionSubExpressionType(
+        Expression subExpression,
+        Expression comprehension,
+        int typeArgIndex = 0)
+    {
+        var type = GetExpressionSemanticType(subExpression);
+        // TODO(#167): Fallback for cross-module reference identity issue in SemanticInfo.
+        if (type == null)
+        {
+            var compType = GetExpressionSemanticType(comprehension);
+            if (compType is Semantic.GenericType gt && gt.TypeArguments.Count > typeArgIndex)
+                type = gt.TypeArguments[typeArgIndex];
+        }
+        return type;
+    }
+
+    /// <summary>
+    /// Gets key and value semantic types for a dict comprehension, with cross-module fallback.
+    /// </summary>
+    private (SemanticType? key, SemanticType? value) GetDictComprehensionTypes(
+        DictComprehension dictComp)
+    {
+        var keyType = GetExpressionSemanticType(dictComp.Key);
+        var valueType = GetExpressionSemanticType(dictComp.Value);
+        // TODO(#167): Fallback for cross-module reference identity issue in SemanticInfo.
+        if (keyType == null || valueType == null)
+        {
+            var compType = GetExpressionSemanticType(dictComp);
+            if (compType is Semantic.GenericType gt && gt.TypeArguments.Count >= 2)
+            {
+                keyType ??= gt.TypeArguments[0];
+                valueType ??= gt.TypeArguments[1];
+            }
+        }
+        return (keyType, valueType);
     }
 
     /// <summary>
