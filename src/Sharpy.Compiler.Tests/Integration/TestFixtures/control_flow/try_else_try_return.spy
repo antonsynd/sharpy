@@ -1,0 +1,17 @@
+def process(x: int) -> str:
+    try:
+        val: int = x
+    except Exception:
+        return "outer error"
+    else:
+        try:
+            result: int = val * 2
+        except Exception:
+            return "inner error"
+        else:
+            return str(result)
+
+def main():
+    print(process(5))
+    print(process(0))
+    print(process(-3))
