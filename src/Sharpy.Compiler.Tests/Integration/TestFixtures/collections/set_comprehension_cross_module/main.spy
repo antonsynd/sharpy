@@ -1,0 +1,9 @@
+from item import Item
+
+def main():
+    items: list[Item] = [Item("apple", 5), Item("steak", 20), Item("bread", 3), Item("wine", 15)]
+    expensive_prices: set[int] = {i.price for i in items if i.is_expensive()}
+    print(len(expensive_prices))
+    print(20 in expensive_prices)
+    print(15 in expensive_prices)
+    print(5 in expensive_prices)

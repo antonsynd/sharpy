@@ -1,0 +1,8 @@
+from product import Product
+
+def main():
+    products: list[Product] = [Product("apple", 1), Product("banana", 2), Product("cherry", 3)]
+    prices: dict[str, int] = {p.name: p.price for p in products if p.price > 1}
+    print(len(prices))
+    print(prices["banana"])
+    print(prices["cherry"])

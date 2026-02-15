@@ -1,0 +1,10 @@
+class Item:
+    name: str
+    price: int
+
+    def __init__(self, name: str, price: int):
+        self.name = name
+        self.price = price
+
+    def is_expensive(self) -> bool:
+        return self.price > 10
