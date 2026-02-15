@@ -1,0 +1,12 @@
+def safe_divide(a: int, b: int) -> str:
+    try:
+        result: int = a
+        total: int = result + b
+    except Exception:
+        return "error"
+    else:
+        return f"result: {total}"
+
+def main():
+    print(safe_divide(10, 5))
+    print(safe_divide(3, 7))

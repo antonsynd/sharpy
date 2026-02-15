@@ -1554,6 +1554,23 @@ internal partial class RoslynEmitter
         allStatements.Add(flagDecl);
         allStatements.Add(tryCatchFinally);
         allStatements.Add(elseIf);
+
+        // If the else body returns a value, add a dead-code throw to satisfy C#'s
+        // reachability analysis. __trySucceeded is always true after a successful try,
+        // so the if-body always executes and its return will be reached. C# can't prove
+        // this statically, so the throw prevents CS0161 (not all code paths return).
+        // Only added when the else body returns — void functions don't need this.
+        if (ContainsReturnStatement(tryStmt.ElseBody))
+        {
+            allStatements.Add(ThrowStatement(
+                ObjectCreationExpression(
+                    ParseTypeName("System.InvalidOperationException"))
+                    .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                        Argument(LiteralExpression(
+                            SyntaxKind.StringLiteralExpression,
+                            Literal("unreachable"))))))));
+        }
+
         return Block(allStatements);
     }
 
@@ -1661,6 +1678,15 @@ internal partial class RoslynEmitter
                 throw new InvalidOperationException(
                     $"Unsupported match pattern type: {pattern.GetType().Name} at {pattern.LineStart}:{pattern.ColumnStart}");
         }
+    }
+
+    /// <summary>
+    /// Checks if a statement list contains a return statement (at top level).
+    /// Used to determine if a try/else block needs a dead-code throw for reachability.
+    /// </summary>
+    private static bool ContainsReturnStatement(ImmutableArray<Statement> statements)
+    {
+        return statements.Any(s => s is ReturnStatement);
     }
 
 }
