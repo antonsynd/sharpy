@@ -1,0 +1,8 @@
+def apply_twice(fn: (int) -> int, x: int) -> int:
+    return fn(fn(x))
+
+def increment(n: int) -> int:
+    return n + 1
+
+def main():
+    print(apply_twice(increment, 5))

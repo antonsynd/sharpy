@@ -125,10 +125,23 @@ internal partial class RoslynEmitter
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }
 
-            // Regular function call — use CodeGenInfo.CSharpName for aliased imports,
-            // fall back to PascalCase mangling of the identifier name
+            // Regular function call — check if this is a local variable/parameter (callable)
+            // before falling back to PascalCase for module-level functions
             var codeGenInfo = symbol != null ? GetCodeGenInfo(symbol) : null;
-            var funcCSharpName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(funcName.Name);
+            string funcCSharpName;
+            if (codeGenInfo?.CSharpName != null)
+            {
+                funcCSharpName = codeGenInfo.CSharpName;
+            }
+            else if (_variableVersions.ContainsKey(_nameResolutionService.GetBaseName(funcName.Name)))
+            {
+                // Parameter or local variable with callable type — use camelCase resolution
+                funcCSharpName = GetMangledVariableName(funcName.Name, isNewDeclaration: false);
+            }
+            else
+            {
+                funcCSharpName = NameMangler.ToPascalCase(funcName.Name);
+            }
             return InvocationExpression(ParseName(funcCSharpName))
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
