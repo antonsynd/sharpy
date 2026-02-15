@@ -504,8 +504,7 @@ internal partial class TypeChecker
         if (call.Function is Identifier id)
         {
             // Special handling for builtin len() - validate that argument supports __len__ protocol
-            // See: #103 (use BuiltinNames constant instead of hardcoded string)
-            if (id.Name == "len" && argTypes.Count == 1)
+            if (id.Name == BuiltinNames.Len && argTypes.Count == 1)
             {
                 // Use TypeInferenceService for type inference (errors reported by validator in pipeline)
                 var lenType = _typeInference.InferLenType(argTypes[0]);
@@ -515,7 +514,7 @@ internal partial class TypeChecker
             }
 
             // Special handling for builtin hash() - every object supports GetHashCode()
-            if (id.Name == "hash" && argTypes.Count == 1)
+            if (id.Name == BuiltinNames.Hash && argTypes.Count == 1)
             {
                 var hashType = _typeInference.InferHashType(argTypes[0]);
                 return hashType ?? SemanticType.Unknown;

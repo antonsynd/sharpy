@@ -966,11 +966,8 @@ internal partial class RoslynEmitter
         // Search interfaces for a default method with this name
         foreach (var iface in typeSymbol.Interfaces)
         {
-            if (_interfaceDefinitions.TryGetValue(iface.Name, out var ifaceDef))
-            {
-                if (HasDefaultMethod(ifaceDef, methodName))
-                    return NameMangler.Transform(iface.Name, NameContext.Interface);
-            }
+            if (HasDefaultMethod(iface, methodName))
+                return NameMangler.Transform(iface.Name, NameContext.Interface);
         }
 
         return null;
@@ -992,20 +989,11 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Checks whether an interface definition has a default (non-abstract) method with the given name.
+    /// Checks whether an interface has a default (non-abstract) method with the given name.
+    /// Uses symbol metadata (IsAbstract) rather than inspecting AST body shape.
     /// </summary>
-    private static bool HasDefaultMethod(InterfaceDef interfaceDef, string methodName)
+    private static bool HasDefaultMethod(TypeSymbol interfaceSymbol, string methodName)
     {
-        foreach (var stmt in interfaceDef.Body)
-        {
-            if (stmt is FunctionDef fd && fd.Name == methodName)
-            {
-                bool isAbstract = fd.Body.Length == 1 &&
-                    (fd.Body[0] is PassStatement ||
-                     (fd.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral));
-                return !isAbstract;
-            }
-        }
-        return false;
+        return interfaceSymbol.Methods.Any(m => m.Name == methodName && !m.IsAbstract);
     }
 }

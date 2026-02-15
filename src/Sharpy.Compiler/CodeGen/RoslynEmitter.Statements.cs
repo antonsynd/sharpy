@@ -795,8 +795,21 @@ internal partial class RoslynEmitter
                 }
 
                 // For non-constructor expressions (e.g., raise some_var from cause),
-                // we cannot inject inner exception without reflection.
-                // Fall through to throw without cause (best-effort).
+                // use ExceptionHelper.WithCause to set inner exception via reflection.
+                return ThrowStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                IdentifierName("Sharpy"),
+                                IdentifierName("ExceptionHelper")),
+                            IdentifierName("WithCause")))
+                    .WithArgumentList(ArgumentList(SeparatedList(new[]
+                    {
+                        Argument(exception),
+                        Argument(cause)
+                    }))));
             }
 
             return ThrowStatement(exception);

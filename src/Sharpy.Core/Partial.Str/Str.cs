@@ -201,7 +201,12 @@ namespace Sharpy
         /// </summary>
         public Str CaseFold()
         {
-            return new Str(_s.ToLowerInvariant());
+            var sb = new System.Text.StringBuilder(_s.Length);
+            foreach (var c in _s)
+            {
+                sb.Append(CaseFoldChar(c));
+            }
+            return new Str(sb.ToString());
         }
 
         /// <summary>

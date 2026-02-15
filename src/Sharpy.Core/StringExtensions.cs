@@ -330,13 +330,12 @@ namespace Sharpy
         /// Python: <c>str.casefold()</c>
         /// </summary>
         /// <remarks>
-        /// Uses .NET <see cref="string.ToLowerInvariant"/> (simple case folding).
-        /// Does not perform full Unicode case folding like Python
-        /// (e.g., Python folds ß → ss, ﬁ → fi).
+        /// Performs full Unicode case folding matching Python behavior
+        /// (e.g., ß → ss, ﬁ → fi). Delegates to <see cref="Str.CaseFold"/>.
         /// </remarks>
         public static string Casefold(this string s)
         {
-            return s.ToLowerInvariant();
+            return new Str(s).CaseFold().ToString();
         }
 
         /// <summary>
