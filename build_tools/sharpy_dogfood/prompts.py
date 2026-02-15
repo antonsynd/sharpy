@@ -390,6 +390,7 @@ class Dog(Animal):
 - **Higher-order functions**: Passing lambdas to functions that have typed parameters
 - **Type inference**: Lambda parameter types are inferred from the expected function type context
 - **IMPORTANT**: The receiving function MUST declare its parameter with a function type: `def apply(fn: (int) -> int) -> int:`
+- **WARNING**: Lambdas CANNOT be assigned to `auto` variables — there is no type context to infer parameter types. Use an explicit function type: `square: (int) -> int = lambda n: n * n`, NOT `square: auto = lambda n: n * n`.
 
 #### Optional Types (0.1.15)
 - **Optional type**: `x: int? = Some(42)`, `y: int? = None()`
@@ -1197,6 +1198,7 @@ it is a library module and is VALID without `main()`.
 - Lambdas: `lambda x: x * 2`, `lambda a, b: a + b`
 - Higher-order functions
 - Lambda parameter types inferred from expected function type context
+- **WARNING**: Lambdas CANNOT be assigned to `auto` variables — use an explicit function type: `square: (int) -> int = lambda n: n * n`
 
 ### Optional Types (0.1.15)
 - Optional type annotation: `T?` or `Optional[T]`
