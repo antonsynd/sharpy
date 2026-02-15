@@ -123,6 +123,14 @@ def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
         help="Auto-convert unique successful tests to integration test fixtures (default: enabled)",
     )
 
+    parser.add_argument(
+        "--backend",
+        type=str,
+        choices=["claude", "copilot"],
+        default=None,
+        help="AI backend to use (default: claude with copilot failover)",
+    )
+
 
 def _add_convert_arguments(parser: argparse.ArgumentParser) -> None:
     """Add arguments for the convert command."""
@@ -220,6 +228,11 @@ async def run_dogfood(args: argparse.Namespace) -> int:
     config.compilation_timeout = args.compilation_timeout
     config.execution_timeout = args.execution_timeout
 
+    backend_choice = getattr(args, "backend", None)
+    if backend_choice:
+        for name, backend_cfg in config.backends.items():
+            backend_cfg.enabled = name == backend_choice
+
     # Ensure directories exist
     config.ensure_dirs()
 
@@ -237,6 +250,10 @@ async def run_dogfood(args: argparse.Namespace) -> int:
     )
     print("=" * 40, file=sys.stderr)
 
+    if backend_choice:
+        print(f"Backend: {backend_choice}", file=sys.stderr)
+    else:
+        print("Backend: claude (with copilot failover)", file=sys.stderr)
     auto_convert = getattr(args, "auto_convert", True)
     print(f"Auto-convert: {'enabled' if auto_convert else 'disabled'}", file=sys.stderr)
     print("=" * 40, file=sys.stderr)
