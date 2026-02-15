@@ -200,8 +200,8 @@ internal class TypeInferenceService
         }
 
         // List concatenation
-        if (left is GenericType { Name: "list" } leftList &&
-            right is GenericType { Name: "list" } rightList)
+        if (left is GenericType { Name: BuiltinNames.List } leftList &&
+            right is GenericType { Name: BuiltinNames.List } rightList)
         {
             if (op == BinaryOperator.Add)
             {
@@ -235,7 +235,7 @@ internal class TypeInferenceService
         }
 
         if (leftList.TypeArguments.Count == 0 && rightList.TypeArguments.Count == 0)
-            return new GenericType { Name = "list" };
+            return new GenericType { Name = BuiltinNames.List };
 
         if (leftList.TypeArguments.Count == 0)
             return rightList;
@@ -626,7 +626,7 @@ internal class TypeInferenceService
         if (container is GenericType generic)
         {
             // For dict, indexing returns value type (second argument)
-            if (generic.Name == "dict" && generic.TypeArguments.Count > 1)
+            if (generic.Name == BuiltinNames.Dict && generic.TypeArguments.Count > 1)
                 return generic.TypeArguments[1];
 
             // For list/tuple, return element type (first argument)

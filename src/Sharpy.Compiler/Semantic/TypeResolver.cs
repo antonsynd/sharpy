@@ -158,15 +158,15 @@ internal class TypeResolver
     {
         type = name switch
         {
-            "int" => SemanticType.Int,
-            "long" => SemanticType.Long,
-            "float" => SemanticType.Float,       // float -> double (per spec)
-            "float32" => SemanticType.Float32,   // float32 -> C# float
+            BuiltinNames.Int => SemanticType.Int,
+            BuiltinNames.Long => SemanticType.Long,
+            BuiltinNames.Float => SemanticType.Float,       // float -> double (per spec)
+            BuiltinNames.Float32 => SemanticType.Float32,   // float32 -> C# float
             "float64" => SemanticType.Double,    // float64 -> double
-            "double" => SemanticType.Double,
-            "bool" => SemanticType.Bool,
-            "str" => SemanticType.Str,
-            "None" => SemanticType.Void,
+            BuiltinNames.Double => SemanticType.Double,
+            BuiltinNames.Bool => SemanticType.Bool,
+            BuiltinNames.Str => SemanticType.Str,
+            BuiltinNames.None => SemanticType.Void,
             _ => null!
         };
 
@@ -191,7 +191,7 @@ internal class TypeResolver
         }
 
         // Special handling for tuple types - they have variable arity (tuple[int], tuple[int, str], etc.)
-        if (annotation.Name == "tuple")
+        if (annotation.Name == BuiltinNames.Tuple)
         {
             var elementTypes = annotation.TypeArguments
                 .Select(ResolveTypeAnnotation)

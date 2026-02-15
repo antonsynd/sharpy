@@ -50,4 +50,15 @@ internal static class BuiltinNames
 
     // ---- Iteration ----
     public const string Range = "range";
+
+    // ---- Additional type names ----
+    public const string Long = "long";
+    public const string Double = "double";
+    public const string Float32 = "float32";
+    public const string List = "list";
+    public const string Dict = "dict";
+    public const string Set = "set";
+    public const string Tuple = "tuple";
+    public const string None = "None";
+    public const string Object = "object";
 }

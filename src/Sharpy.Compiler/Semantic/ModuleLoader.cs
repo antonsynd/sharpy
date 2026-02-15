@@ -493,15 +493,15 @@ internal class ModuleLoader
 
         SemanticType? baseType = typeAnnotation.Name switch
         {
-            "int" => SemanticType.Int,
-            "long" => SemanticType.Long,
-            "float" => SemanticType.Float,
-            "double" => SemanticType.Double,
-            "float32" => SemanticType.Float32,
-            "bool" => SemanticType.Bool,
-            "str" or "string" => SemanticType.Str,
-            "void" or "None" => SemanticType.Void,
-            "object" => SemanticType.Object,
+            BuiltinNames.Int => SemanticType.Int,
+            BuiltinNames.Long => SemanticType.Long,
+            BuiltinNames.Float => SemanticType.Float,
+            BuiltinNames.Double => SemanticType.Double,
+            BuiltinNames.Float32 => SemanticType.Float32,
+            BuiltinNames.Bool => SemanticType.Bool,
+            BuiltinNames.Str or "string" => SemanticType.Str,
+            "void" or BuiltinNames.None => SemanticType.Void,
+            BuiltinNames.Object => SemanticType.Object,
             _ => null
         };
 
@@ -517,7 +517,7 @@ internal class ModuleLoader
                 .Select(ConvertTypeAnnotationToSemanticType)
                 .ToList();
 
-            if (typeAnnotation.Name == "tuple")
+            if (typeAnnotation.Name == BuiltinNames.Tuple)
             {
                 baseType = new TupleType { ElementTypes = typeArgs };
             }
