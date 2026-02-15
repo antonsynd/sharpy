@@ -78,13 +78,15 @@ namespace Sharpy
                 throw TypeError.ArgNone("sort", "key");
             }
 
-            // use https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.orderby?view=net-9.0&redirectedfrom=MSDN#System_Linq_Enumerable_OrderBy__2_System_Collections_Generic_IEnumerable___0__System_Func___0___1__
-            _list.Sort(KeyComparerFactory<T, TKey>.Create(key));
+            var comp = KeyComparerFactory<T, TKey>.Create(key);
 
-            // See: #111
             if (reverse)
             {
-                _list.Reverse();
+                _list.Sort(Comparer<T>.Create((a, b) => comp.Compare(b, a)));
+            }
+            else
+            {
+                _list.Sort(comp);
             }
         }
 
