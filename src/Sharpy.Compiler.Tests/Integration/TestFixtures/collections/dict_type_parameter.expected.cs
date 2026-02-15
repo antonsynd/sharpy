@@ -11,7 +11,7 @@ public static partial class DictTypeParameter
     public static void Main()
     {
 #line 4 "dict_type_parameter.spy"
-        Dict<string, int> scores = new Dict<string, int>()
+        Sharpy.Dict<string, int> scores = new Sharpy.Dict<string, int>()
         {
             {
                 "alice",

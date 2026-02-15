@@ -183,7 +183,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Dict<string,int>");
+        result.ToString().Should().Be("Sharpy.Dict<string,int>");
     }
 
     [Fact]
@@ -559,7 +559,7 @@ public class TypeMapperTests
         var result = _typeMapper.CreateDictType(keyType, valueType);
 
         // Assert
-        result.ToString().Should().Be("Dict<string,int>");
+        result.ToString().Should().Be("Sharpy.Dict<string,int>");
     }
 
     [Fact]

@@ -233,8 +233,8 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Contains("Dict<string, int>", result);
-        Assert.Contains("new Dict<string, int>", result);
+        Assert.Contains("Sharpy.Dict<string, int>", result);
+        Assert.Contains("new Sharpy.Dict<string, int>", result);
         Assert.DoesNotContain("Dict<object", result);
     }
 

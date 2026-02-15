@@ -82,7 +82,7 @@ internal partial class RoslynEmitter
                     GenerateExpression(entry.Value)
                 })));
 
-        var dictType = GenericName("Dict")
+        var dictType = GenericName("Sharpy.Dict")
             .AddTypeArgumentListArguments(keyType, valueType);
 
         return ObjectCreationExpression(dictType)
@@ -257,7 +257,7 @@ internal partial class RoslynEmitter
         var valueSemanticType = GetExpressionSemanticType(dictComp.Value);
         if (keySemanticType != null && valueSemanticType != null)
         {
-            var dictType = GenericName("Dict")
+            var dictType = GenericName("Sharpy.Dict")
                 .AddTypeArgumentListArguments(
                     _typeMapper.MapSemanticType(keySemanticType),
                     _typeMapper.MapSemanticType(valueSemanticType));
