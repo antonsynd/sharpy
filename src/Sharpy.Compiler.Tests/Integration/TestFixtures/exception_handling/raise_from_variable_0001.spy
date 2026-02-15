@@ -1,0 +1,9 @@
+# Test: raise variable from cause (issue #131)
+# ExceptionHelper.WithCause sets InnerException via reflection.
+def main():
+    exc: Exception = Exception("raised from variable")
+    cause: Exception = Exception("the cause")
+    try:
+        raise exc from cause
+    except Exception:
+        print("caught variable raise with cause")
