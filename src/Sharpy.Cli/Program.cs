@@ -1,5 +1,6 @@
 extern alias SharpyRT;
 using System.CommandLine;
+using System.Runtime.InteropServices;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
@@ -92,6 +93,7 @@ class Program
         var runModPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
         runModPathOpt.Aliases.Add("-m");
         var runArgsOpt = new Option<string[]>("--args") { Description = "Arguments to pass to the program", AllowMultipleArgumentsPerToken = true };
+        var runSelfContainedOpt = new Option<bool>("--self-contained") { Description = "Publish as a self-contained executable (no .NET runtime required)" };
 
         runCommand.Arguments.Add(runInputArg);
         runCommand.Options.Add(runOutputOpt);
@@ -99,6 +101,7 @@ class Program
         runCommand.Options.Add(runProjRefOpt);
         runCommand.Options.Add(runModPathOpt);
         runCommand.Options.Add(runArgsOpt);
+        runCommand.Options.Add(runSelfContainedOpt);
 
         runCommand.SetAction((parseResult) =>
         {
@@ -108,6 +111,7 @@ class Program
             var projectReference = parseResult.GetValue(runProjRefOpt) ?? Array.Empty<string>();
             var modulePath = parseResult.GetValue(runModPathOpt) ?? Array.Empty<string>();
             var progArgs = parseResult.GetValue(runArgsOpt) ?? Array.Empty<string>();
+            var selfContained = parseResult.GetValue(runSelfContainedOpt);
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
             var metricsFormat = parseResult.GetValue(metricsFormatOption);
@@ -117,7 +121,7 @@ class Program
             var maxErrors = parseResult.GetValue(maxErrorsOption);
 
             var logger = CreateLogger(logLevel, logFile);
-            HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+            HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, selfContained);
         });
 
         // === Project Command ===
@@ -505,7 +509,8 @@ class Program
         FileInfo? metricsOutput,
         bool warnAsError = false,
         string? nowarn = null,
-        int? maxErrors = null)
+        int? maxErrors = null,
+        bool selfContained = false)
     {
         ValidateInputFile(inputFile);
 
@@ -535,7 +540,11 @@ class Program
             var sharpyCoreDestPath = Path.Combine(outputDir, "Sharpy.Core.dll");
             File.Copy(sharpyCorePath, sharpyCoreDestPath, overwrite: true);
 
-            // See: #107 (self-contained publish mode)
+            if (selfContained)
+            {
+                HandleSelfContainedRun(inputFile, outputPath, sharpyCorePath, args, isTempOutput);
+                return;
+            }
 
             // Run the compiled executable
             Console.WriteLine();
@@ -607,6 +616,143 @@ class Program
                 }
             }
             throw;
+        }
+    }
+
+    static void HandleSelfContainedRun(
+        FileInfo inputFile,
+        string compiledExePath,
+        string sharpyCorePath,
+        string[] args,
+        bool isTempOutput)
+    {
+        var rid = RuntimeInformation.RuntimeIdentifier;
+        var assemblyName = Path.GetFileNameWithoutExtension(inputFile.Name);
+        var publishDir = Path.Combine(Path.GetTempPath(), $"sharpy_publish_{Guid.NewGuid():N}");
+
+        try
+        {
+            Directory.CreateDirectory(publishDir);
+
+            // Create a temporary .csproj that references the compiled assembly and Sharpy.Core
+            var tempProjDir = Path.Combine(Path.GetTempPath(), $"sharpy_proj_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempProjDir);
+            var csprojPath = Path.Combine(tempProjDir, $"{assemblyName}.csproj");
+
+            var compiledDir = Path.GetDirectoryName(compiledExePath)!;
+            var csprojContent = $@"<Project Sdk=""Microsoft.NET.Sdk"">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>{assemblyName}</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include=""{Path.GetFileNameWithoutExtension(compiledExePath)}"">
+      <HintPath>{compiledExePath}</HintPath>
+    </Reference>
+    <Reference Include=""Sharpy.Core"">
+      <HintPath>{sharpyCorePath}</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>";
+
+            // Write a minimal Program.cs that calls the compiled entry point
+            File.WriteAllText(csprojPath, csprojContent);
+            File.WriteAllText(
+                Path.Combine(tempProjDir, "Program.cs"),
+                $"// Auto-generated entry point\n{assemblyName}.Main();\n");
+
+            // Run dotnet publish --self-contained
+            Console.WriteLine($"Publishing self-contained executable for {rid}...");
+            var publishInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "dotnet",
+                ArgumentList =
+                {
+                    "publish",
+                    csprojPath,
+                    "--self-contained",
+                    "-r", rid,
+                    "-o", publishDir,
+                    "--nologo",
+                    "-v", "q"
+                },
+                UseShellExecute = false,
+                RedirectStandardError = true
+            };
+
+            var publishProcess = System.Diagnostics.Process.Start(publishInfo);
+            if (publishProcess != null)
+            {
+                var stderr = publishProcess.StandardError.ReadToEnd();
+                publishProcess.WaitForExit();
+
+                if (publishProcess.ExitCode != 0)
+                {
+                    Console.Error.WriteLine("Self-contained publish failed:");
+                    Console.Error.WriteLine(stderr);
+                    Environment.Exit(1);
+                }
+            }
+
+            // Find and run the published executable
+            var publishedExe = Path.Combine(publishDir, assemblyName);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                publishedExe += ".exe";
+
+            if (!File.Exists(publishedExe))
+            {
+                Console.Error.WriteLine($"Published executable not found: {publishedExe}");
+                Environment.Exit(1);
+            }
+
+            Console.WriteLine($"Published to: {publishDir}");
+            Console.WriteLine();
+            Console.WriteLine("=== Running Program ===");
+            Console.WriteLine();
+
+            var runInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = publishedExe,
+                UseShellExecute = false
+            };
+
+            foreach (var arg in args)
+                runInfo.ArgumentList.Add(arg);
+
+            var runProcess = System.Diagnostics.Process.Start(runInfo);
+            if (runProcess != null)
+            {
+                runProcess.WaitForExit();
+                Environment.Exit(runProcess.ExitCode);
+            }
+
+            // Clean up temp project directory
+            try
+            { Directory.Delete(tempProjDir, recursive: true); }
+            catch { }
+        }
+        finally
+        {
+            // Clean up if using temp output
+            if (isTempOutput)
+            {
+                try
+                {
+                    var basePath = Path.GetDirectoryName(compiledExePath)!;
+                    var tempBaseName = Path.GetFileNameWithoutExtension(compiledExePath);
+                    File.Delete(compiledExePath);
+                    File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
+                    File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
+                    File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
+                    File.Delete(Path.Combine(basePath, "Sharpy.Core.dll"));
+                }
+                catch { }
+            }
+
+            // Note: publishDir is intentionally NOT cleaned up since the user likely
+            // wants the self-contained executable. If we wanted auto-cleanup, the user
+            // should specify --output.
         }
     }
 
