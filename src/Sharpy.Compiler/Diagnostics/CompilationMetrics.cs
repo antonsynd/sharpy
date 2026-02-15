@@ -24,6 +24,9 @@ namespace Sharpy.Compiler.Diagnostics;
 /// </remarks>
 public class CompilationMetrics
 {
+    internal static readonly string CompilerVersion =
+        typeof(CompilationMetrics).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+
     private readonly List<PhaseMetric> _phases = new();
     private PhaseMetric? _currentPhase;
     private readonly string? _fileName;
@@ -290,7 +293,7 @@ public class CompilationMetrics
         var data = new
         {
             timestamp = _startTime.ToString("o"),
-            compiler_version = "0.5.0", // See: #97
+            compiler_version = CompilerVersion,
             project_name = _projectName,
             file_name = _fileName,
             configuration = _configuration,
@@ -553,7 +556,7 @@ public class ProjectCompilationMetrics
         var data = new
         {
             timestamp = _startTime.ToString("o"),
-            compiler_version = "0.5.0", // See: #97
+            compiler_version = CompilationMetrics.CompilerVersion,
             project_name = _projectName,
             configuration = _configuration,
             total_files = TotalFiles,
