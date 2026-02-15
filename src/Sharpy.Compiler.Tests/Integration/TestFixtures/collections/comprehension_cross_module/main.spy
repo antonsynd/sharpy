@@ -1,0 +1,7 @@
+from book import Book
+
+def main():
+    books: list[Book] = [Book("1984", 1949), Book("Dune", 1965), Book("Neuromancer", 1984)]
+    classics: list[Book] = [b for b in books if b.is_classic()]
+    for c in classics:
+        print(c.title)

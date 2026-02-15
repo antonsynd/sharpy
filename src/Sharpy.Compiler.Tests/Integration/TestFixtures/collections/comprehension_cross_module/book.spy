@@ -1,0 +1,10 @@
+class Book:
+    title: str
+    year: int
+
+    def __init__(self, title: str, year: int):
+        self.title = title
+        self.year = year
+
+    def is_classic(self) -> bool:
+        return self.year < 1970
