@@ -672,6 +672,17 @@ internal partial class TypeChecker
         {
             var exprType = CheckExpression(item.ContextExpression);
 
+            // Validate that the expression type implements IDisposable
+            if (!IsDisposableType(exprType))
+            {
+                AddError(
+                    $"Type '{exprType.GetDisplayName()}' does not implement IDisposable and cannot be used in a with statement",
+                    item.ContextExpression.LineStart,
+                    item.ContextExpression.ColumnStart,
+                    code: DiagnosticCodes.Semantic.WithNotDisposable,
+                    span: item.ContextExpression.Span);
+            }
+
             if (item.Name != null)
             {
                 var varSymbol = new VariableSymbol
@@ -808,6 +819,54 @@ internal partial class TypeChecker
                 _logger.LogWarning($"Unhandled pattern type: {pattern.GetType().Name}", 0, 0);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Checks whether a type implements IDisposable (required for 'with' statement / C# 'using').
+    /// </summary>
+    private bool IsDisposableType(SemanticType type)
+    {
+        // Unknown type: skip to avoid cascading errors
+        if (type is UnknownType)
+            return true;
+
+        // Nullable/Optional: check underlying type
+        if (type is NullableType nullable)
+            return IsDisposableType(nullable.UnderlyingType);
+        if (type is OptionalType optional)
+            return IsDisposableType(optional.UnderlyingType);
+
+        // User-defined types: check CLR type or interface list
+        if (type is UserDefinedType udt && udt.Symbol != null)
+        {
+            // Check CLR backing type
+            if (udt.Symbol.ClrType != null)
+                return typeof(System.IDisposable).IsAssignableFrom(udt.Symbol.ClrType);
+
+            // Check Sharpy interfaces for IDisposable
+            var allInterfaces = CollectAllInterfaces(udt.Symbol);
+            foreach (var iface in allInterfaces)
+            {
+                if (iface.Name == "IDisposable")
+                    return true;
+                if (iface.ClrType != null && typeof(System.IDisposable).IsAssignableFrom(iface.ClrType))
+                    return true;
+            }
+
+            return false;
+        }
+
+        // Generic types backed by a symbol (e.g., List<T>, Dict<K,V>)
+        if (type is GenericType gt)
+        {
+            var sym = _symbolTable.Lookup(gt.Name) as TypeSymbol;
+            if (sym?.ClrType != null)
+                return typeof(System.IDisposable).IsAssignableFrom(sym.ClrType);
+            return false;
+        }
+
+        // All other types (builtins, functions, tuples, etc.) are not disposable
+        return false;
     }
 
     /// <summary>
