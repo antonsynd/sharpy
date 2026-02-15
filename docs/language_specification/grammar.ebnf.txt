@@ -276,7 +276,7 @@ continue_stmt   ::= 'continue'
 
 return_stmt     ::= 'return' [ expression ]
 
-raise_stmt      ::= 'raise' [ expression [ 'from' expression ] ]
+raise_stmt      ::= 'raise' [ expression ]
 
 assert_stmt     ::= 'assert' expression [ ',' expression ]
 

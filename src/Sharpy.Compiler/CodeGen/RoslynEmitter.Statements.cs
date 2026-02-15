@@ -776,42 +776,6 @@ internal partial class RoslynEmitter
         if (raise.Exception != null)
         {
             var exception = GenerateExpression(raise.Exception);
-
-            // raise X from Y: inject cause as inner exception
-            if (raise.Cause != null)
-            {
-                var cause = GenerateExpression(raise.Cause);
-
-                // If the exception is a constructor call (ObjectCreationExpression),
-                // append the cause as an additional constructor argument.
-                // All standard .NET exception types accept (string, Exception) or
-                // (string message, Exception innerException).
-                if (exception is ObjectCreationExpressionSyntax creation)
-                {
-                    var existingArgs = creation.ArgumentList?.Arguments ?? SeparatedList<ArgumentSyntax>();
-                    var newArgs = existingArgs.Add(Argument(cause));
-                    var newCreation = creation.WithArgumentList(ArgumentList(newArgs));
-                    return ThrowStatement(newCreation);
-                }
-
-                // For non-constructor expressions (e.g., raise some_var from cause),
-                // use ExceptionHelper.WithCause to set inner exception via reflection.
-                return ThrowStatement(
-                    InvocationExpression(
-                        MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                IdentifierName("Sharpy"),
-                                IdentifierName("ExceptionHelper")),
-                            IdentifierName("WithCause")))
-                    .WithArgumentList(ArgumentList(SeparatedList(new[]
-                    {
-                        Argument(exception),
-                        Argument(cause)
-                    }))));
-            }
-
             return ThrowStatement(exception);
         }
 

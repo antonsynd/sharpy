@@ -63,81 +63,19 @@ raise ValueError("Invalid input")
 except Exception as e:
     log_error(e)
     raise
-
-# Raise with cause
-raise RuntimeError("Failed") from original_error
-
-# Suppress exception chaining with 'from None'
-raise NewError("Clean error") from None  # Hides the original exception
-```
-
-## Exception Chaining Semantics
-
-The `raise X from Y` syntax sets the chained exception, mapping to C#'s inner exception:
-
-| Sharpy | C# |
-|--------|----|
-| `raise NewError("msg") from original` | `throw new NewError("msg", original)` |
-| `raise NewError("msg") from None` | `throw new NewError("msg", null)` |
-| `raise NewError("msg")` (in except block) | Automatic chaining via `Exception.InnerException` |
-
-## Accessing the Chained Exception
-
-- In C# code: `.InnerException` property
-- In Sharpy code: `.__cause__` attribute (maps to `.InnerException`)
-
-```python
-try:
-    do_risky_operation()
-except LowLevelError as e:
-    raise HighLevelError("Operation failed") from e
-
-# Later, when catching:
-try:
-    call_high_level()
-except HighLevelError as e:
-    print(f"Error: {e}")
-    if e.__cause__ is not None:
-        print(f"Caused by: {e.__cause__}")
-```
-
-## `from original_error` Context
-
-The `from` clause can reference any in-scope exception variable, not just in `except` blocks:
-
-```python
-# In except block (common case)
-except IOError as e:
-    raise ConfigError("Failed to load config") from e
-
-# Referencing stored exception
-saved_error: Exception | None = None
-try:
-    do_something()
-except Exception as e:
-    saved_error = e
-
-if saved_error is not None:
-    raise ProcessingError("Deferred error") from saved_error
-```
-
-## `raise ... from None`
-
-Using `from None` suppresses the automatic exception chaining, hiding the original exception from tracebacks. This is useful when:
-- The original exception is an implementation detail
-- You want a cleaner error message for users
-- Re-raising with a different exception type for API boundaries
-
-```python
-try:
-    # Low-level operation
-    result = parse_internal_format(data)
-except InternalParseError as e:
-    # Hide internal error, present clean API error
-    raise ValueError("Invalid data format") from None
 ```
 
 *Implementation:*
 - *raise: ✅ Native - `throw new Exception()`*
 - *bare raise: ✅ Native - `throw;`*
-- *raise from: 🔄 Lowered - Inner exception constructor*
+
+## `raise ... from ...` Not Supported
+
+Unlike Python, Sharpy does not support `raise ... from ...` (exception chaining via the `from` clause). This Python feature relies on runtime exception mutation that does not map cleanly to .NET's immutable inner exception model.
+
+To set an inner exception in Sharpy, pass it as a constructor argument:
+
+```python
+except IOError as e:
+    raise ConfigError("Failed to load config", e)  # inner exception via constructor
+```

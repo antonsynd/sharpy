@@ -274,6 +274,11 @@ public static class DiagnosticExplanations
             "match x:\n    pass",
             "Add at least one case clause:\nmatch x:\n    case _:\n        pass");
 
+        Add(dict, DiagnosticCodes.Parser.RaiseFromNotSupported, "'raise ... from ...' not supported", "Parser",
+            "Sharpy does not support the Python 'raise ... from ...' syntax for exception chaining. This feature relies on runtime exception mutation that does not map cleanly to .NET's immutable inner exception model.",
+            "raise RuntimeError(\"Failed\") from original_error",
+            "Pass the cause as a constructor argument instead:\nraise RuntimeError(\"Failed\", original_error)");
+
         // ── Semantic errors: Name resolution (SPY0200-SPY0219) ──────────
 
         Add(dict, DiagnosticCodes.Semantic.UndefinedVariable, "Undefined variable", "Semantic",

@@ -501,11 +501,19 @@ public partial class Parser
         {
             exception = ParseExpression();
 
-            // raise ... from cause
+            // raise ... from cause — not supported in Sharpy
             if (Current.Type == TokenType.From)
             {
+                var fromToken = Current;
                 Advance();
-                cause = ParseExpression();
+                cause = ParseExpression(); // Parse for error recovery
+                _diagnostics.AddError(
+                    "'raise ... from ...' is not supported in Sharpy. Use 'raise' without a cause.",
+                    GetSpanFromToken(fromToken),
+                    fromToken.Line,
+                    fromToken.Column,
+                    code: DiagnosticCodes.Parser.RaiseFromNotSupported,
+                    phase: CompilerPhase.Parser);
             }
         }
 

@@ -69,6 +69,7 @@ public static class DiagnosticCodes
         public const string MaxRecursionDepthExceeded = "SPY0119";
         public const string ExpectedPattern = "SPY0120";
         public const string ExpectedCase = "SPY0121";
+        public const string RaiseFromNotSupported = "SPY0122";
     }
 
     /// <summary>
