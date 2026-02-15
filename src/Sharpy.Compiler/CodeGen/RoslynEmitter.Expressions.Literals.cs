@@ -571,8 +571,10 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generates code for a walrus/assignment expression (name := value).
-    /// Emits a hoisted <c>var name = value;</c> declaration that is prepended before
-    /// the containing statement, and returns an <c>IdentifierName</c> referencing the variable.
+    /// In normal mode, emits a hoisted <c>var name = value;</c> declaration that is prepended
+    /// before the containing statement, and returns an <c>IdentifierName</c> referencing the variable.
+    /// In inline mode (while-loop conditions), emits a typed pre-declaration and returns an
+    /// inline <c>(varName = value)</c> assignment expression so it is re-evaluated each iteration.
     /// </summary>
     private ExpressionSyntax GenerateWalrusExpression(WalrusExpression walrus)
     {
@@ -581,6 +583,30 @@ internal partial class RoslynEmitter
 
         // Get the mangled variable name, registering it as a new declaration
         var varName = GetMangledVariableName(walrus.Target, isNewDeclaration: true);
+
+        if (_walrusInlineMode)
+        {
+            // Inline mode: emit a typed pre-declaration (no initializer) and return
+            // an inline assignment expression so the value is re-evaluated each iteration.
+            var semType = GetExpressionSemanticType(walrus.Value);
+            var typeSyntax = semType != null
+                ? _typeMapper.MapSemanticType(semType)
+                : IdentifierName("var");
+
+            _walrusPreDeclarations.Add(
+                LocalDeclarationStatement(
+                    VariableDeclaration(typeSyntax)
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(varName))))));
+            _declaredVariables.Add(varName);
+
+            // Return: (varName = value)
+            return ParenthesizedExpression(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName(varName),
+                    value));
+        }
 
         // Hoist: var varName = value;
         _walrusDeclarations.Add(

@@ -92,6 +92,19 @@ internal partial class RoslynEmitter
     /// </summary>
     private readonly List<LocalDeclarationStatementSyntax> _walrusDeclarations = new();
 
+    /// <summary>
+    /// When true, walrus expressions emit inline assignment expressions (varName = value)
+    /// instead of hoisted declarations. Used in while-loop conditions where the assignment
+    /// must be re-evaluated on each iteration.
+    /// </summary>
+    private bool _walrusInlineMode;
+
+    /// <summary>
+    /// Typed variable declarations (no initializer) for walrus variables used in inline mode.
+    /// These are emitted before the while loop: <c>int val;</c>
+    /// </summary>
+    private readonly List<LocalDeclarationStatementSyntax> _walrusPreDeclarations = new();
+
     // Target type context for collection literal type inference
     // Set before generating expressions that need target type information
     private TypeAnnotation? _targetTypeContext;

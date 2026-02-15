@@ -1117,7 +1117,19 @@ internal partial class RoslynEmitter
         // (negated isinstance doesn't apply to while — loop body runs when condition is true)
         var isInstanceNarrowingInfo = DetectIsInstanceNarrowings(whileStmt.Test);
 
+        // For walrus operators in while conditions, use inline assignment mode so the
+        // expression is re-evaluated each iteration instead of being hoisted once.
+        var hasWalrus = AstHelper.ContainsWalrusExpression(whileStmt.Test);
+        if (hasWalrus)
+        {
+            _walrusInlineMode = true;
+            _walrusPreDeclarations.Clear();
+        }
+
         var condition = GenerateExpression(whileStmt.Test);
+
+        if (hasWalrus)
+            _walrusInlineMode = false;
 
         // If there's no else clause, generate simple while loop
         if (whileStmt.ElseBody.IsEmpty)
@@ -1141,7 +1153,7 @@ internal partial class RoslynEmitter
                     foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
                         PopIsInstanceNarrowing(varName);
                 }
-                return WhileStatement(condition, body);
+                return WrapWithWalrusPreDeclarations(WhileStatement(condition, body));
             }
             var simpleBody = Block(whileStmt.Body.SelectMany(GenerateBodyStatements));
 
@@ -1150,7 +1162,7 @@ internal partial class RoslynEmitter
                 foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
                     PopIsInstanceNarrowing(varName);
             }
-            return WhileStatement(condition, simpleBody);
+            return WrapWithWalrusPreDeclarations(WhileStatement(condition, simpleBody));
         }
 
         // Loop with else clause: use boolean flag pattern
@@ -1203,7 +1215,22 @@ internal partial class RoslynEmitter
         var elseBodyBlock = Block(whileStmt.ElseBody.SelectMany(GenerateBodyStatements));
         statements.Add(IfStatement(IdentifierName(flagName), elseBodyBlock));
 
-        return Block(statements);
+        return WrapWithWalrusPreDeclarations(Block(statements));
+    }
+
+    /// <summary>
+    /// If walrus pre-declarations were accumulated during inline mode (while-loop conditions),
+    /// wraps the statement in a block containing the pre-declarations followed by the statement.
+    /// Otherwise returns the statement unchanged.
+    /// </summary>
+    private StatementSyntax WrapWithWalrusPreDeclarations(StatementSyntax statement)
+    {
+        if (_walrusPreDeclarations.Count == 0)
+            return statement;
+
+        var wrapped = new List<StatementSyntax>(_walrusPreDeclarations) { statement };
+        _walrusPreDeclarations.Clear();
+        return Block(wrapped);
     }
 
     private StatementSyntax GenerateFor(ForStatement forStmt)
