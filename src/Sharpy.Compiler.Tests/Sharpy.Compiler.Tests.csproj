@@ -32,6 +32,7 @@
   <!-- Exclude .expected.cs snapshot files from compilation (they are test data, not source) -->
   <ItemGroup>
     <Compile Remove="Integration\TestFixtures\**\*.expected.cs" />
+    <Compile Remove="Integration\TestFixtures\**\*.cs" />
   </ItemGroup>
 
   <!-- Copy test fixture files to output directory -->
