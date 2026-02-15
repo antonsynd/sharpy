@@ -353,6 +353,45 @@ public class StringExtensionsTests
         "a\r\nb".Splitlines().Should().BeEquivalentTo(new[] { "a", "b" });
     }
 
+    [Fact]
+    public void Splitlines_KeepEnds_PreservesLineBreaks()
+    {
+        // Python: "hello\nworld\r\nfoo\rbar".splitlines(True) → ['hello\n', 'world\r\n', 'foo\r', 'bar']
+        "hello\nworld\r\nfoo\rbar".Splitlines(true)
+            .Should().Equal("hello\n", "world\r\n", "foo\r", "bar");
+    }
+
+    [Fact]
+    public void Splitlines_KeepEnds_MixedLineEndings()
+    {
+        // Python: "a\nb\r\nc\rd".splitlines(True) → ['a\n', 'b\r\n', 'c\r', 'd']
+        "a\nb\r\nc\rd".Splitlines(true)
+            .Should().Equal("a\n", "b\r\n", "c\r", "d");
+    }
+
+    [Fact]
+    public void Splitlines_KeepEnds_EmptyString()
+    {
+        // Python: "".splitlines(True) → []
+        "".Splitlines(true).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Splitlines_KeepEnds_NoLineBreaks()
+    {
+        // Python: "no newline".splitlines(True) → ['no newline']
+        "no newline".Splitlines(true)
+            .Should().Equal("no newline");
+    }
+
+    [Fact]
+    public void Splitlines_KeepEnds_TrailingNewline()
+    {
+        // Python: "abc\n".splitlines(True) → ['abc\n']
+        "abc\n".Splitlines(true)
+            .Should().Equal("abc\n");
+    }
+
     #endregion
 
     #region Swapcase

@@ -505,6 +505,39 @@ public class Str_Tests
     }
 
     [Fact]
+    public void CaseFold_SharpS_ReturnsSS()
+    {
+        // Python: "ß".casefold() → "ss"
+        var result = new Str("\u00DF").CaseFold();
+        result.Should().Be(new Str("ss"));
+    }
+
+    [Fact]
+    public void CaseFold_Ligatures_Expanded()
+    {
+        // Python: "ﬁ".casefold() → "fi", "ﬀ".casefold() → "ff", "ﬂ".casefold() → "fl"
+        new Str("\uFB01").CaseFold().Should().Be(new Str("fi"));
+        new Str("\uFB00").CaseFold().Should().Be(new Str("ff"));
+        new Str("\uFB02").CaseFold().Should().Be(new Str("fl"));
+    }
+
+    [Fact]
+    public void CaseFold_MicroSign_ReturnsGreekMu()
+    {
+        // Python: "µ".casefold() → "μ" (U+03BC GREEK SMALL LETTER MU)
+        var result = new Str("\u00B5").CaseFold();
+        result.Should().Be(new Str("\u03BC"));
+    }
+
+    [Fact]
+    public void CaseFold_MixedUnicode_FullFolding()
+    {
+        // Python: "Straße ﬁnden µ".casefold() → "strasse finden μ"
+        var result = new Str("Stra\u00DFe \uFB01nden \u00B5").CaseFold();
+        result.Should().Be(new Str("strasse finden \u03BC"));
+    }
+
+    [Fact]
     public void IsLower_ReturnsTrueForLowercase()
     {
         new Str("hello").IsLower().Should().BeTrue();
