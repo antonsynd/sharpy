@@ -9,13 +9,13 @@ public class DictViews_Tests
     public void Items_ReturnsAllKeyValuePairs()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
         dict["b"] = 2;
         dict["c"] = 3;
 
         // Act
-        var items = (DictItemsView<Str, int>)dict.Items();
+        var items = (DictItemsView<string, int>)dict.Items();
 
         // Assert
         items.Count.Should().Be(3);
@@ -29,9 +29,9 @@ public class DictViews_Tests
     public void Items_ReflectsChangesToDict()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
-        var items = (DictItemsView<Str, int>)dict.Items();
+        var items = (DictItemsView<string, int>)dict.Items();
 
         // Act - modify dict after getting view
         dict["b"] = 2;
@@ -45,14 +45,14 @@ public class DictViews_Tests
     public void Items_IteratesCorrectly()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
         dict["b"] = 2;
         dict["c"] = 3;
 
         // Act
         var items = dict.Items();
-        var itemList = new List<(Str, int)>();
+        var itemList = new List<(string, int)>();
         foreach (var item in items)
         {
             itemList.Add(item);
@@ -69,11 +69,11 @@ public class DictViews_Tests
     public void Items_ContainsChecksValue()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
 
         // Act
-        var items = (DictItemsView<Str, int>)dict.Items();
+        var items = (DictItemsView<string, int>)dict.Items();
 
         // Assert
         items.Contains(("a", 1)).Should().BeTrue();
@@ -84,13 +84,13 @@ public class DictViews_Tests
     public void Values_ReturnsAllValues()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
         dict["b"] = 2;
         dict["c"] = 3;
 
         // Act
-        var values = (DictValuesView<Str, int>)dict.Values();
+        var values = (DictValuesView<string, int>)dict.Values();
 
         // Assert
         values.Count.Should().Be(3);
@@ -104,9 +104,9 @@ public class DictViews_Tests
     public void Values_ReflectsChangesToDict()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
-        var values = (DictValuesView<Str, int>)dict.Values();
+        var values = (DictValuesView<string, int>)dict.Values();
 
         // Act - modify dict after getting view
         dict["b"] = 2;
@@ -120,7 +120,7 @@ public class DictViews_Tests
     public void Values_IteratesCorrectly()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
         dict["b"] = 2;
         dict["c"] = 3;
@@ -144,13 +144,13 @@ public class DictViews_Tests
     public void Values_AllowsDuplicates()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
         dict["b"] = 1;
         dict["c"] = 2;
 
         // Act
-        var values = (DictValuesView<Str, int>)dict.Values();
+        var values = (DictValuesView<string, int>)dict.Values();
 
         // Assert
         values.Count.Should().Be(3);
@@ -161,14 +161,14 @@ public class DictViews_Tests
     public void Keys_IteratesCorrectly()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
         dict["b"] = 2;
         dict["c"] = 3;
 
         // Act
         var keys = dict.Keys();
-        var keyList = new List<Str>();
+        var keyList = new List<string>();
         foreach (var key in keys)
         {
             keyList.Add(key);
@@ -176,18 +176,18 @@ public class DictViews_Tests
 
         // Assert
         keyList.Should().HaveCount(3);
-        keyList.Should().Contain(new Str("a"));
-        keyList.Should().Contain(new Str("b"));
-        keyList.Should().Contain(new Str("c"));
+        keyList.Should().Contain("a");
+        keyList.Should().Contain("b");
+        keyList.Should().Contain("c");
     }
 
     [Fact]
     public void Keys_ReflectsChangesToDict()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
-        var keys = (DictKeyView<Str, int>)dict.Keys();
+        var keys = (DictKeyView<string, int>)dict.Keys();
 
         // Act - modify dict after getting view
         dict["b"] = 2;
@@ -201,7 +201,7 @@ public class DictViews_Tests
     public void EmptyDict_ViewsHaveZeroLength()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Act & Assert
         dict.Keys().Count.Should().Be(0);

@@ -9,7 +9,7 @@ public class Dict_Tests
     public void Constructor_CreatesEmptyDict()
     {
         // Act
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Assert
         dict.Count.Should().Be(0);
@@ -19,7 +19,7 @@ public class Dict_Tests
     public void Indexer_Get_ReturnsValue()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["key"] = 42;
 
         // Act
@@ -33,7 +33,7 @@ public class Dict_Tests
     public void Indexer_Get_ThrowsKeyErrorForMissingKey()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Act & Assert
         dict.Invoking(d => { var _ = d["missing"]; })
@@ -44,7 +44,7 @@ public class Dict_Tests
     public void Indexer_Set_AddsNewKey()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Act
         dict["new"] = 100;
@@ -58,7 +58,7 @@ public class Dict_Tests
     public void Indexer_Set_UpdatesExistingKey()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["key"] = 1;
 
         // Act
@@ -73,7 +73,7 @@ public class Dict_Tests
     public void Get_ReturnsValueForExistingKey()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["key"] = 42;
 
         // Act
@@ -87,7 +87,7 @@ public class Dict_Tests
     public void Get_ReturnsNullForMissingKey()
     {
         // Arrange
-        var dict = new Dict<Str, int?>();
+        var dict = new Dict<string, int?>();
 
         // Act
         var value = dict.Get("missing");
@@ -100,7 +100,7 @@ public class Dict_Tests
     public void Get_ReturnsDefaultForMissingKey()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Act
         var value = dict.Get("missing", 99);
@@ -113,7 +113,7 @@ public class Dict_Tests
     public void Contains_ReturnsTrueForExistingKey()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["key"] = 42;
 
         // Act
@@ -127,7 +127,7 @@ public class Dict_Tests
     public void Contains_ReturnsFalseForMissingKey()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Act
         var result = dict.ContainsKey("missing");
@@ -140,7 +140,7 @@ public class Dict_Tests
     public void Clear_RemovesAllItems()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
         dict["b"] = 2;
         dict["c"] = 3;
@@ -156,7 +156,7 @@ public class Dict_Tests
     public void Pop_ReturnsAndRemovesValue()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["key"] = 42;
 
         // Act
@@ -172,7 +172,7 @@ public class Dict_Tests
     public void Pop_ThrowsKeyErrorForMissingKey()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Act & Assert
         dict.Invoking(d => d.Pop("missing"))
@@ -183,7 +183,7 @@ public class Dict_Tests
     public void Pop_ReturnsDefaultForMissingKey()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Act
         var value = dict.Pop("missing", 99);
@@ -196,7 +196,7 @@ public class Dict_Tests
     public void SetDefault_ReturnsExistingValue()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["key"] = 42;
 
         // Act
@@ -211,7 +211,7 @@ public class Dict_Tests
     public void SetDefault_SetsAndReturnsDefaultForMissingKey()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Act
         var value = dict.SetDefault("key", 99);
@@ -225,11 +225,11 @@ public class Dict_Tests
     public void Update_MergesAnotherDict()
     {
         // Arrange
-        var dict1 = new Dict<Str, int>();
+        var dict1 = new Dict<string, int>();
         dict1["a"] = 1;
         dict1["b"] = 2;
 
-        var dict2 = new Dict<Str, int>();
+        var dict2 = new Dict<string, int>();
         dict2["b"] = 20;
         dict2["c"] = 30;
 
@@ -247,11 +247,11 @@ public class Dict_Tests
     public void Or_MergesDicts()
     {
         // Arrange
-        var dict1 = new Dict<Str, int>();
+        var dict1 = new Dict<string, int>();
         dict1["a"] = 1;
         dict1["b"] = 2;
 
-        var dict2 = new Dict<Str, int>();
+        var dict2 = new Dict<string, int>();
         dict2["b"] = 20;
         dict2["c"] = 30;
 
@@ -273,7 +273,7 @@ public class Dict_Tests
     public void Copy_CreatesShallowCopy()
     {
         // Arrange
-        var original = new Dict<Str, int>();
+        var original = new Dict<string, int>();
         original["a"] = 1;
         original["b"] = 2;
 
@@ -295,15 +295,15 @@ public class Dict_Tests
     public void Equality_ComparesKeyValuePairs()
     {
         // Arrange
-        var dict1 = new Dict<Str, int>();
+        var dict1 = new Dict<string, int>();
         dict1["a"] = 1;
         dict1["b"] = 2;
 
-        var dict2 = new Dict<Str, int>();
+        var dict2 = new Dict<string, int>();
         dict2["a"] = 1;
         dict2["b"] = 2;
 
-        var dict3 = new Dict<Str, int>();
+        var dict3 = new Dict<string, int>();
         dict3["a"] = 1;
         dict3["b"] = 99; // Different value
 
@@ -316,13 +316,13 @@ public class Dict_Tests
     public void Iteration_YieldsKeys()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
         dict["b"] = 2;
         dict["c"] = 3;
 
         // Act
-        var keys = new List<Str>();
+        var keys = new List<string>();
         foreach (var key in dict)
         {
             keys.Add(key);
@@ -330,16 +330,16 @@ public class Dict_Tests
 
         // Assert
         keys.Should().HaveCount(3);
-        keys.Should().Contain(new Str("a"));
-        keys.Should().Contain(new Str("b"));
-        keys.Should().Contain(new Str("c"));
+        keys.Should().Contain("a");
+        keys.Should().Contain("b");
+        keys.Should().Contain("c");
     }
 
     [Fact]
     public void PopItem_RemovesAndReturnsFirstItem()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
         dict["b"] = 2;
         dict["c"] = 3;
@@ -358,7 +358,7 @@ public class Dict_Tests
     public void PopItem_ThrowsInvalidOperationOnEmptyDict()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Act & Assert
         dict.Invoking(d => d.PopItem())
@@ -370,7 +370,7 @@ public class Dict_Tests
     public void MixedOperations_MaintainCorrectState()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Act & Assert - Progressive operations
         dict["a"] = 1;
@@ -396,7 +396,7 @@ public class Dict_Tests
     public void Indexer_Get_WithNullKey_ThrowsArgumentNullException()
     {
         // Arrange
-        var dict = new Dict<Str?, int>();
+        var dict = new Dict<string?, int>();
 
         // Act & Assert
         dict.Invoking(d => { var _ = d[null!]; })
@@ -407,7 +407,7 @@ public class Dict_Tests
     public void Indexer_Set_WithNullKey_ThrowsArgumentNullException()
     {
         // Arrange
-        var dict = new Dict<Str?, int>();
+        var dict = new Dict<string?, int>();
 
         // Act & Assert
         dict.Invoking(d => d[null!] = 42)
@@ -418,10 +418,10 @@ public class Dict_Tests
     public void Update_WithNullMapping_ThrowsArgumentNullException()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
 
         // Act & Assert
-        dict.Invoking(d => d.Update((Dict<Str, int>)null!))
+        dict.Invoking(d => d.Update((Dict<string, int>)null!))
             .Should().Throw<ArgumentNullException>();
     }
 
@@ -429,22 +429,20 @@ public class Dict_Tests
     public void Contains_WithNullKey_ThrowsException()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
 
         // Act & Assert
-        // Note: With K : notnull constraint, null keys throw NullReferenceException
-        // when the key type's GetHashCode is called by the underlying Dictionary
         dict.Invoking(d => d.ContainsKey(null!))
-            .Should().Throw<NullReferenceException>();
+            .Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
     public void Or_WithEmptyDicts_ReturnsEmptyDict()
     {
         // Arrange
-        var dict1 = new Dict<Str, int>();
-        var dict2 = new Dict<Str, int>();
+        var dict1 = new Dict<string, int>();
+        var dict2 = new Dict<string, int>();
 
         // Act
         var result = dict1 | dict2;
@@ -457,7 +455,7 @@ public class Dict_Tests
     public void Copy_ModifyingOriginal_DoesNotAffectCopy()
     {
         // Arrange
-        var original = new Dict<Str, int>();
+        var original = new Dict<string, int>();
         original["a"] = 1;
         var copy = original.Copy();
 
@@ -474,7 +472,7 @@ public class Dict_Tests
     public void SetDefault_WithNullDefault_SetsNull()
     {
         // Arrange
-        var dict = new Dict<Str, int?>();
+        var dict = new Dict<string, int?>();
 
         // Act
         var value = dict.SetDefault("key", null);
@@ -488,10 +486,10 @@ public class Dict_Tests
     public void Equality_WithDifferentSizes_ReturnsFalse()
     {
         // Arrange
-        var dict1 = new Dict<Str, int>();
+        var dict1 = new Dict<string, int>();
         dict1["a"] = 1;
 
-        var dict2 = new Dict<Str, int>();
+        var dict2 = new Dict<string, int>();
         dict2["a"] = 1;
         dict2["b"] = 2;
 
@@ -504,7 +502,7 @@ public class Dict_Tests
     public void Equality_WithNull_ReturnsFalse()
     {
         // Arrange
-        var dict = new Dict<Str, int>();
+        var dict = new Dict<string, int>();
         dict["a"] = 1;
 
         // Act & Assert

@@ -259,8 +259,8 @@ public partial class ListTests
         [Fact]
         public void Comparison_WithStrings_WorksCorrectly()
         {
-            var list1 = new List<Str> { "apple", "banana" };
-            var list2 = new List<Str> { "apple", "cherry" };
+            var list1 = new List<string> { "apple", "banana" };
+            var list2 = new List<string> { "apple", "cherry" };
 
             Assert.True(list1 < list2);
             Assert.True(list1 <= list2);

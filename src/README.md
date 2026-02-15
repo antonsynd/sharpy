@@ -42,7 +42,6 @@ Sharpy.Core/
 │   └── Exports.cs      # Global functions (print, len, etc.)
 ├── Partial.List/       # List[T] implementation (partial class pattern)
 ├── Partial.Set/        # Set[T] implementation
-├── Partial.Str/        # String extensions
 ├── Partial.*/          # Other type implementations split by interface
 ├── Collections/        # Collection interfaces
 ├── Dict.cs             # dict[K,V] implementation
@@ -58,8 +57,8 @@ The compiler project references the runtime project, allowing direct reflection 
 
 ```csharp
 // Compiler can inspect runtime types at compile-time
-var strType = typeof(Sharpy.Str);
-var methods = strType.GetMethods(); // Get all Sharpy string methods
+var listType = typeof(Sharpy.List<>);
+var methods = listType.GetMethods(); // Get all Sharpy list methods
 ```
 
 ### 2. Roslyn Code Generation

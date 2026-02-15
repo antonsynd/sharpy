@@ -831,7 +831,7 @@ The Sharpy compiler pipeline flows: Source (.spy) → Lexer → Parser (AST) →
 ## Important: Partial Classes
 Note that large modules in the Sharpy codebase are often split across multiple files using C# partial classes.
 For example, the standard library in `Sharpy.Core` uses `partial class Exports` spread across directories like
-`Partial.List/`, `Partial.Str/`, etc. If you see a partial class, you may need to reference related files
+`Partial.List/`, `Partial.Set/`, etc. If you see a partial class, you may need to reference related files
 to provide complete documentation. Include cross-referencing links to related partial class files when relevant.
 
 ## Task

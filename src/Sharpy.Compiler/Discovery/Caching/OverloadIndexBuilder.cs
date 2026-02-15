@@ -61,7 +61,6 @@ internal class OverloadIndexBuilder
             .Where(t => !t.Name.StartsWith("<"))  // Exclude compiler-generated types
             .Where(t => !t.CustomAttributes.Any(
                 a => a.AttributeType.FullName == "Sharpy.SharpyModuleAttribute"))  // Exclude module classes
-            .Where(t => t.Name != "Str")            // Already mapped to str primitive
             .ToList();
 
         foreach (var type in allTypes)
@@ -139,7 +138,7 @@ internal class OverloadIndexBuilder
             .Where(m => !m.Name.StartsWith("set_"))
             .Where(m => !m.IsSpecialName)
             .Where(m => !m.IsGenericMethodDefinition)  // Skip generic methods for now
-                                                       // Note: Type constructors (Int, Bool, Str, etc.) are included as they are
+                                                       // Note: Type constructors (Int, Bool, etc.) are included as they are
                                                        // valid builtin functions that can be called for type conversion.
             .ToList();
 

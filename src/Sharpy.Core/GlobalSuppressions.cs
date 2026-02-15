@@ -14,6 +14,3 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.List`1._SetSliceMultiStep(Sharpy.List{`0},System.UInt32,System.UInt32,System.UInt32)")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.List`1._SetSliceSingleStep(Sharpy.List{`0},System.UInt32,System.UInt32)")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.List`1._SetSliceSingleStepReplacement(Sharpy.List{`0},System.UInt32,System.UInt32,System.UInt32)")]
-[assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Str.__GetItem__~Sharpy.Str")]
-[assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Str.__GetItem__(Sharpy.Slice)~Sharpy.Str")]
-[assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Str.__GetItem__(System.Int32)~Sharpy.Str")]

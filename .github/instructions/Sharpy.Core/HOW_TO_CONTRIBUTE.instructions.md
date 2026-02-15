@@ -24,7 +24,6 @@ Sharpy.Core/
 ├── Partial.ListReverseIterator/ # List reverse iterator
 ├── Partial.Set/        # set[T] wrapping HashSet<T>
 ├── Partial.SetIterator/ # Set iterator
-├── Partial.Str/        # String methods (lower(), split(), etc.)
 ├── Dict.cs             # dict[K,V] wrapping Dictionary<K,V>
 ├── Range.cs            # range() builtin
 ├── Enumerate.cs        # enumerate() builtin

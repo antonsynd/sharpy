@@ -44,7 +44,6 @@ Sharpy.Core/
 |-- Partial.ListReverseIterator/  # Reverse list iterator
 |-- Partial.Set/             # set[T]
 |-- Partial.SetIterator/     # Set iterator
-|-- Partial.Str/             # String methods
 |-- Builtins/                # Builtin exceptions and exports
 |-- Collections/             # Collections module exports
 |-- Datetime/                # Datetime module exports

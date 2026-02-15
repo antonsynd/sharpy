@@ -96,10 +96,6 @@ internal class TypeMapper
             return SemanticType.Int;
         }
 
-        // Map Sharpy.Core wrapper types to their corresponding semantic types
-        if (clrType.FullName == "Sharpy.Str")
-            return SemanticType.Str;
-
         // Fallback to object for unknown types
         return SemanticType.Object;
     }

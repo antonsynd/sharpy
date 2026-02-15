@@ -39,7 +39,6 @@ Sharpy.Core/
 │   ├── List.Interfaces.cs   # Interface implementations
 │   └── List.operators.cs    # Operator overloads
 ├── Partial.Set/        # set[T]
-├── Partial.Str/        # String methods
 ├── Dict.cs             # dict[K,V]
 ├── Range.cs            # range()
 ├── Enumerate.cs        # enumerate()
