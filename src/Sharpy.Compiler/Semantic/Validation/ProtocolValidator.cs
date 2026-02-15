@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 
@@ -369,17 +370,8 @@ internal class ProtocolValidator : SemanticValidatorBase
                 return true;
 
             // Check for Sharpy.Iterator<T> base class
-            var currentType = clrType;
-            while (currentType != null)
-            {
-                if (currentType.IsGenericType &&
-                    currentType.GetGenericTypeDefinition().FullName == "Sharpy.Iterator`1")
-                {
-                    return true;
-                }
-                currentType = currentType.BaseType;
-            }
-
+            if (ClrTypeHelper.GetIteratorElementType(clrType) != null)
+                return true;
         }
 
         // ICollection -> __len__, __contains__

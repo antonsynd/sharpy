@@ -74,7 +74,7 @@ internal class TypeMapper
 
         // Handle Sharpy.Core types that extend Iterator<T> (like RangeIterator)
         // These are iterable types that yield elements of a specific type
-        var iteratorElementType = GetIteratorElementType(clrType);
+        var iteratorElementType = ClrTypeHelper.GetIteratorElementType(clrType);
         if (iteratorElementType != null)
         {
             return new BuiltinType
@@ -102,28 +102,6 @@ internal class TypeMapper
 
         // Fallback to object for unknown types
         return SemanticType.Object;
-    }
-
-    /// <summary>
-    /// Gets the element type if the given type is Iterator&lt;T&gt; or extends Iterator&lt;T&gt;.
-    /// Returns null otherwise.
-    /// </summary>
-    /// <remarks>
-    /// See: #110 (consider consolidating with ProtocolValidator)
-    /// </remarks>
-    private Type? GetIteratorElementType(Type clrType)
-    {
-        var currentType = clrType;
-        while (currentType != null)
-        {
-            if (currentType.IsGenericType &&
-                currentType.GetGenericTypeDefinition().FullName == "Sharpy.Iterator`1")
-            {
-                return currentType.GetGenericArguments()[0];
-            }
-            currentType = currentType.BaseType;
-        }
-        return null;
     }
 
     private SemanticType MapGenericType(Type clrType)
