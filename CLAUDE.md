@@ -21,6 +21,8 @@ dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Inspect parsed AS
 dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect lexer tokens
 ```
 
+> **Sandbox note:** All `dotnet` commands (especially `build` and `test`) hang when run inside the default sandbox. When operating in a sandboxed environment, run `dotnet` commands with `dangerouslyDisableSandbox: true`.
+
 ## Architecture
 
 ```
