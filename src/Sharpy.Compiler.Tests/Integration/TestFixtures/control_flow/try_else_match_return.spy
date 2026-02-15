@@ -1,0 +1,19 @@
+def classify(x: int) -> str:
+    try:
+        val: int = x
+    except Exception:
+        return "error"
+    else:
+        match val:
+            case 1:
+                return "one"
+            case 2:
+                return "two"
+            case _:
+                return "other"
+        return "unreachable"
+
+def main():
+    print(classify(1))
+    print(classify(2))
+    print(classify(99))

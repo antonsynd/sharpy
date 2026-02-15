@@ -1,0 +1,15 @@
+def count_down(start: int) -> str:
+    try:
+        n: int = start
+    except Exception:
+        return "error"
+    else:
+        while n > 0:
+            if n == 3:
+                return "found three"
+            n = n - 1
+        return "not found"
+
+def main():
+    print(count_down(5))
+    print(count_down(2))

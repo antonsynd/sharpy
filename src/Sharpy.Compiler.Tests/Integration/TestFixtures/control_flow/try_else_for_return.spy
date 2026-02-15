@@ -1,0 +1,14 @@
+def find_positive(numbers: list[int]) -> str:
+    try:
+        val: list[int] = numbers
+    except Exception:
+        return "error"
+    else:
+        for n in val:
+            if n > 10:
+                return "found"
+        return "none"
+
+def main():
+    print(find_positive([1, 2, 3]))
+    print(find_positive([20, 30, 40]))
