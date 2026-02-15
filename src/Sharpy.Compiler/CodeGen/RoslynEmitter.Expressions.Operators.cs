@@ -174,9 +174,9 @@ internal partial class RoslynEmitter
                     var leftType = GetExpressionSemanticType(binOp.Left);
                     var rightType = GetExpressionSemanticType(binOp.Right);
                     if (leftType == SemanticType.Str && IsIntegerSemanticType(rightType))
-                        return GenerateStringRepetition(left, right);
+                        return GenerateStringRepetition(left, right, rightType);
                     if (IsIntegerSemanticType(leftType) && rightType == SemanticType.Str)
-                        return GenerateStringRepetition(right, left);
+                        return GenerateStringRepetition(right, left, leftType);
                     // Not string repetition — fall through to standard multiply
                     break;
                 }
@@ -253,6 +253,30 @@ internal partial class RoslynEmitter
             }
         }
 
+        // For <, >, <=, >= on generic type parameters with IComparable constraint,
+        // emit x.CompareTo(y) <op> 0 because C# does not allow relational operators
+        // on unconstrained generic types
+        if (kind is SyntaxKind.LessThanExpression or SyntaxKind.GreaterThanExpression
+            or SyntaxKind.LessThanOrEqualExpression or SyntaxKind.GreaterThanOrEqualExpression)
+        {
+            var leftType = GetExpressionSemanticType(binOp.Left);
+            var rightType = GetExpressionSemanticType(binOp.Right);
+            if ((leftType is Semantic.TypeParameterType leftTp && HasComparableConstraint(leftTp))
+                || (rightType is Semantic.TypeParameterType rightTp && HasComparableConstraint(rightTp)))
+            {
+                // left.CompareTo(right) <op> 0
+                var compareToCall = InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        left,
+                        IdentifierName("CompareTo")))
+                    .AddArgumentListArguments(Argument(right));
+
+                return BinaryExpression(kind,
+                    compareToCall,
+                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
+            }
+        }
+
         return BinaryExpression(kind, left, right);
     }
 
@@ -260,9 +284,18 @@ internal partial class RoslynEmitter
     /// Generate code for string repetition (str * int or int * str).
     /// Emits: string.Concat(System.Linq.Enumerable.Repeat(strExpr, System.Math.Max(0, countExpr)))
     /// Math.Max(0, n) handles negative counts (Python returns empty string, Enumerable.Repeat throws).
+    /// When countType is long, emits an explicit (int) cast since Enumerable.Repeat expects int.
     /// </summary>
-    private ExpressionSyntax GenerateStringRepetition(ExpressionSyntax strExpr, ExpressionSyntax countExpr)
+    private ExpressionSyntax GenerateStringRepetition(ExpressionSyntax strExpr, ExpressionSyntax countExpr, SemanticType? countType)
     {
+        // When count is long, cast to int: (int)countExpr
+        if (countType == SemanticType.Long)
+        {
+            countExpr = CastExpression(
+                PredefinedType(Token(SyntaxKind.IntKeyword)),
+                ParenthesizedExpression(countExpr));
+        }
+
         // System.Math.Max(0, countExpr)
         var maxCall = InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
@@ -575,5 +608,22 @@ internal partial class RoslynEmitter
             SyntaxKind.IsExpression,
             value,
             checkType);
+    }
+
+    /// <summary>
+    /// Returns true if the type parameter has an IComparable constraint.
+    /// Matches IComparable, IComparable[T], System.IComparable, etc.
+    /// </summary>
+    private static bool HasComparableConstraint(Semantic.TypeParameterType typeParam)
+    {
+        foreach (var constraint in typeParam.Constraints)
+        {
+            if (constraint is TypeConstraint tc
+                && tc.Type.Name.EndsWith("IComparable", System.StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }

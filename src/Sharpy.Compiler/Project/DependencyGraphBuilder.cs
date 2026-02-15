@@ -83,7 +83,7 @@ internal class DependencyGraphBuilder
 
         // Ensure both files exist in the dictionary
         var deps = _dependencies.GetOrAdd(normalizedFrom, _ => new ConcurrentBag<string>());
-        _dependencies.TryAdd(normalizedTo, new ConcurrentBag<string>());
+        _dependencies.GetOrAdd(normalizedTo, _ => new ConcurrentBag<string>());
 
         deps.Add(normalizedTo);
         _cachedGraph = null; // Invalidate cache
