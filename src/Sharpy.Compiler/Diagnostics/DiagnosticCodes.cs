@@ -163,6 +163,7 @@ public static class DiagnosticCodes
         public const string InvalidOperatorSignature = "SPY0321";
         public const string InvalidDecoratorUsage = "SPY0322";
         public const string ConflictingSynthesizedInterface = "SPY0323";
+        public const string WithNotDisposable = "SPY0324";
 
         // Module level (SPY0340-SPY0349)
         public const string ModuleLevelExecutableStatement = "SPY0340";
@@ -188,6 +189,7 @@ public static class DiagnosticCodes
         public const string AbstractPropertyMustHaveEllipsisBody = "SPY0409";
         public const string FinalWithAbstractOrVirtual = "SPY0410";
         public const string InvalidPropertyOverride = "SPY0411";
+        public const string FinalWithoutOverride = "SPY0412";
 
         // Warnings (SPY0450-SPY0499)
         public const string UnreachableCodeWarning = "SPY0450";

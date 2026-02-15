@@ -187,15 +187,30 @@ internal class ImportResolver
                     {
                         foreach (var importAlias in fromImport.Names)
                         {
-                            var symbolName = importAlias.AsName ?? importAlias.Name;
-                            if (reExportedSymbols.TryGetValue(symbolName, out var symbol))
+                            var lookupName = importAlias.Name;
+                            var registerName = importAlias.AsName ?? importAlias.Name;
+                            if (reExportedSymbols.TryGetValue(registerName, out var symbol))
                             {
                                 _logger.LogDebug($"  Defining imported symbol: {symbol.Name} ({symbol.Kind})");
+                                if (importAlias.AsName != null && symbol.Name != registerName)
+                                {
+                                    // Clone symbol with the alias name for registration
+                                    symbol = CloneSymbolWithName(symbol, registerName);
+                                }
+                                symbolTable.TryDefine(symbol);
+                            }
+                            else if (reExportedSymbols.TryGetValue(lookupName, out symbol))
+                            {
+                                _logger.LogDebug($"  Defining imported symbol: {lookupName} as {registerName} ({symbol.Kind})");
+                                if (importAlias.AsName != null)
+                                {
+                                    symbol = CloneSymbolWithName(symbol, registerName);
+                                }
                                 symbolTable.TryDefine(symbol);
                             }
                             else
                             {
-                                _logger.LogWarning($"Symbol '{symbolName}' not found in module exports",
+                                _logger.LogWarning($"Symbol '{lookupName}' not found in module exports",
                                     fromImport.LineStart, fromImport.ColumnStart);
                             }
                         }
@@ -827,6 +842,21 @@ internal class ImportResolver
             ? $"{message} (in {Path.GetFileName(_currentModulePath)})"
             : message;
         _diagnostics.AddError(errorMessage, span, line, column, _currentModulePath, code, CompilerPhase.ImportResolution);
+    }
+
+    /// <summary>
+    /// Clones a symbol with a new name, used for alias registration.
+    /// </summary>
+    private static Symbol CloneSymbolWithName(Symbol symbol, string newName)
+    {
+        return symbol switch
+        {
+            FunctionSymbol func => func with { Name = newName },
+            TypeSymbol type => type with { Name = newName },
+            VariableSymbol var => var with { Name = newName },
+            ModuleSymbol mod => mod with { Name = newName },
+            _ => symbol
+        };
     }
 
     /// <summary>

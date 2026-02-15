@@ -125,8 +125,10 @@ internal partial class RoslynEmitter
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }
 
-            // Regular function call
-            var funcCSharpName = NameMangler.ToPascalCase(funcName.Name);
+            // Regular function call — use CodeGenInfo.CSharpName for aliased imports,
+            // fall back to PascalCase mangling of the identifier name
+            var codeGenInfo = symbol != null ? GetCodeGenInfo(symbol) : null;
+            var funcCSharpName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(funcName.Name);
             return InvocationExpression(ParseName(funcCSharpName))
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
@@ -240,6 +242,22 @@ internal partial class RoslynEmitter
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
 
                 return ConditionalAccessExpression(obj, invocation);
+            }
+
+            // Interface default method promotion: if the method is a default method
+            // on an interface (not overridden by the class), call through an interface cast.
+            // In C#, default interface methods can only be called through interface-typed refs.
+            var defaultMethodInterface = TryGetDefaultMethodInterface(memberAccess.Object, memberAccess.Member);
+            if (defaultMethodInterface != null)
+            {
+                var castExpr = ParenthesizedExpression(
+                    CastExpression(IdentifierName(defaultMethodInterface), obj));
+                var castMethodAccess = MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    castExpr,
+                    IdentifierName(methodName));
+                return InvocationExpression(castMethodAccess)
+                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }
 
             // Generate: obj.Method(args)
@@ -922,5 +940,72 @@ internal partial class RoslynEmitter
                     .WithTypeArgumentList(TypeArgumentList(SeparatedList(new[] { okType, errType }))),
                 IdentifierName("Err")))
             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(arg))));
+    }
+
+    /// <summary>
+    /// Checks whether a method call on an object expression targets a default interface method
+    /// that the concrete class doesn't override. Returns the mangled C# interface name if so,
+    /// or null if the method is defined directly on the class.
+    /// </summary>
+    private string? TryGetDefaultMethodInterface(Parser.Ast.Expression objectExpr, string methodName)
+    {
+        var objType = GetExpressionSemanticType(objectExpr);
+        if (objType is not UserDefinedType udt || udt.Symbol == null)
+            return null;
+
+        var typeSymbol = udt.Symbol;
+
+        // Only applies to class types (not interfaces, enums, structs)
+        if (typeSymbol.TypeKind != Semantic.TypeKind.Class)
+            return null;
+
+        // Check if the class itself defines this method (including inherited concrete methods)
+        if (HasMethodDefined(typeSymbol, methodName))
+            return null;
+
+        // Search interfaces for a default method with this name
+        foreach (var iface in typeSymbol.Interfaces)
+        {
+            if (_interfaceDefinitions.TryGetValue(iface.Name, out var ifaceDef))
+            {
+                if (HasDefaultMethod(ifaceDef, methodName))
+                    return NameMangler.Transform(iface.Name, NameContext.Interface);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Checks whether a type (or its base classes) defines a method with the given name.
+    /// </summary>
+    private static bool HasMethodDefined(TypeSymbol typeSymbol, string methodName)
+    {
+        var current = typeSymbol;
+        while (current != null)
+        {
+            if (current.Methods.Any(m => m.Name == methodName))
+                return true;
+            current = current.BaseType;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Checks whether an interface definition has a default (non-abstract) method with the given name.
+    /// </summary>
+    private static bool HasDefaultMethod(InterfaceDef interfaceDef, string methodName)
+    {
+        foreach (var stmt in interfaceDef.Body)
+        {
+            if (stmt is FunctionDef fd && fd.Name == methodName)
+            {
+                bool isAbstract = fd.Body.Length == 1 &&
+                    (fd.Body[0] is PassStatement ||
+                     (fd.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral));
+                return !isAbstract;
+            }
+        }
+        return false;
     }
 }

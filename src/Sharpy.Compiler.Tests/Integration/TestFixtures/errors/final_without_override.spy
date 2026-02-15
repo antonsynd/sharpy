@@ -1,0 +1,13 @@
+# Test that @final without @override produces a compile error
+class Base:
+    @virtual
+    def greet(self) -> str:
+        return "hello"
+
+class Child(Base):
+    @final
+    def greet(self) -> str:
+        return "hi"
+
+def main():
+    c: Child = Child()

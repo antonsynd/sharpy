@@ -9,6 +9,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 ///
 /// Currently validates:
 /// - @staticmethod is not supported (methods without 'self' are automatically static)
+/// - @final without @override on methods (SPY0412)
 ///
 /// This validator runs early (Order 60) to catch decorator errors before
 /// other validators attempt to process the decorated definitions.
@@ -80,6 +81,7 @@ internal class DecoratorValidator : SemanticValidatorBase
             if (member is FunctionDef method)
             {
                 ValidateDecorators(method.Decorators, $"{classDef.Name}.{method.Name}");
+                ValidateFinalRequiresOverride(method, classDef.Name);
             }
         }
     }
@@ -91,6 +93,7 @@ internal class DecoratorValidator : SemanticValidatorBase
             if (member is FunctionDef method)
             {
                 ValidateDecorators(method.Decorators, $"{structDef.Name}.{method.Name}");
+                ValidateFinalRequiresOverride(method, structDef.Name);
             }
         }
     }
@@ -116,6 +119,28 @@ internal class DecoratorValidator : SemanticValidatorBase
                 AddError(_context, errorMessage, decorator.LineStart, decorator.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
                     span: decorator.Span);
             }
+        }
+    }
+
+    /// <summary>
+    /// Validates that @final on a method is always accompanied by @override.
+    /// @final prevents further overriding, so it only makes sense on an override method.
+    /// </summary>
+    private void ValidateFinalRequiresOverride(FunctionDef method, string typeName)
+    {
+        bool hasFinal = method.Decorators.Any(d => d.Name == "final");
+        bool hasOverride = method.Decorators.Any(d => d.Name == "override");
+
+        if (hasFinal && !hasOverride)
+        {
+            var finalDecorator = method.Decorators.First(d => d.Name == "final");
+            AddError(_context,
+                $"Method '{method.Name}' in '{typeName}' is marked @final but not @override. " +
+                "The @final decorator prevents further overriding and requires @override.",
+                finalDecorator.LineStart,
+                finalDecorator.ColumnStart,
+                code: DiagnosticCodes.Validation.FinalWithoutOverride,
+                span: finalDecorator.Span);
         }
     }
 }

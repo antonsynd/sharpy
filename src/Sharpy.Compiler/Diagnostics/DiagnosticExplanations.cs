@@ -678,6 +678,14 @@ public static class DiagnosticExplanations
             "Remove the conflicting dunder method from the derived class, or restructure the hierarchy " +
             "so that both classes use the same type argument for the interface.");
 
+        Add(dict, DiagnosticCodes.Semantic.WithNotDisposable,
+            "Type not disposable in with statement",
+            "Semantic",
+            "The expression used in a 'with' statement must implement IDisposable. " +
+            "The 'with' statement compiles to a C# 'using' statement, which requires the resource to be disposable.",
+            "class Foo:\n    pass\n\ndef main():\n    with Foo() as f:\n        print(f)",
+            "Implement IDisposable on the class or use a type that supports resource management.");
+
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",
@@ -768,6 +776,15 @@ public static class DiagnosticExplanations
             "Override properties must have a corresponding virtual or abstract property in the base class with a compatible type.",
             "class Base:\n    property get name(self) -> str:\n        return \"base\"\n\nclass Derived(Base):\n    @override\n    property get missing(self) -> str:\n        return \"derived\"",
             "Ensure the base class has a virtual or abstract property with the same name and compatible type.");
+
+        Add(dict, DiagnosticCodes.Validation.FinalWithoutOverride,
+            "@final without @override on method",
+            "Validation",
+            "A method is marked @final but not @override. The @final decorator prevents further overriding, " +
+            "but only makes sense on a method that is itself an override of a virtual or abstract base method.",
+            "class Base:\n    @virtual\n    def greet(self) -> str:\n        return \"hello\"\n\n" +
+            "class Child(Base):\n    @final\n    def greet(self) -> str:  # missing @override\n        return \"hi\"",
+            "Add @override before @final:\nclass Child(Base):\n    @override\n    @final\n    def greet(self) -> str:\n        return \"hi\"");
 
         // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
