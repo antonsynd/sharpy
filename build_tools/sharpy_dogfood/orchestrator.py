@@ -739,6 +739,7 @@ class DogfoodOrchestrator:
                         execution_duration=run_result.duration_seconds,
                     )
                     issue_dir = self.issue_reporter.report(issue)
+                    print(f"  Issue reported: {issue_dir.name}", file=sys.stderr)
                     return IterationResult(IterationStatus.FAILED, issue_dir)
                 else:
                     print("  ✓ Output matches expected (AI verified)", file=sys.stderr)
@@ -1393,6 +1394,7 @@ class DogfoodOrchestrator:
                         execution_duration=run_result.duration_seconds,
                     )
                     issue_dir = self.issue_reporter.report(issue)
+                    print(f"  Issue reported: {issue_dir.name}", file=sys.stderr)
                     return IterationResult(IterationStatus.FAILED, issue_dir)
                 else:
                     print("  ✓ Output matches expected (AI verified)", file=sys.stderr)
