@@ -312,6 +312,12 @@ internal partial class RoslynEmitter
             }
         }
 
+        // NOTE: Default interface methods are handled at the call site by
+        // TryGetDefaultMethodInterface() in RoslynEmitter.Expressions.Access.cs,
+        // which emits ((IInterface)obj).Method() casts. Forwarding stubs were removed
+        // because they cause infinite recursion in C# (the stub becomes the most-derived
+        // implementation, so ((IInterface)this).Method() dispatches back to the stub).
+
         classDecl = classDecl.WithMembers(List(members));
 
         // Add XML documentation from docstring if present
