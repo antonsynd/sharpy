@@ -3,6 +3,7 @@ using FluentAssertions;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
@@ -16,7 +17,7 @@ public class RegistryConsistencyTests
     // __bool__ no longer has a DunderMapping entry — handled as special codegen (operator true/false)
     public void DunderMapping_TransformsProtocolDunderToExpectedName(string dunder, string expectedName)
     {
-        var resolved = DunderMapping.GetCSharpName(dunder);
+        var resolved = DunderNameMapping.GetCSharpName(dunder);
         resolved.Should().Be(expectedName,
             $"Protocol dunder '{dunder}' should map to '{expectedName}'");
     }

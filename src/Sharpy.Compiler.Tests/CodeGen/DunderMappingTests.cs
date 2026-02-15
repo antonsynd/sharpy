@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Shared;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
@@ -23,13 +24,13 @@ public class DunderMappingTests
     // __bool__ is no longer mapped — it uses special codegen (operator true/false)
     public void GetCSharpName_KnownDunder_ReturnsMapping(string dunderName, string expected)
     {
-        DunderMapping.GetCSharpName(dunderName).Should().Be(expected);
+        DunderNameMapping.GetCSharpName(dunderName).Should().Be(expected);
     }
 
     [Fact]
     public void GetCSharpName_UnknownDunder_ReturnsNull()
     {
-        DunderMapping.GetCSharpName("__unknown__").Should().BeNull();
+        DunderNameMapping.GetCSharpName("__unknown__").Should().BeNull();
     }
 
     #endregion
@@ -42,7 +43,7 @@ public class DunderMappingTests
     [InlineData("__custom_method__", "__CustomMethod__")]
     public void TransformUnknownDunder_CapitalizesMiddle(string input, string expected)
     {
-        DunderMapping.TransformUnknownDunder(input).Should().Be(expected);
+        DunderNameMapping.TransformUnknownDunder(input).Should().Be(expected);
     }
 
     #endregion
@@ -94,13 +95,13 @@ public class DunderMappingTests
     [Fact]
     public void HasMapping_KnownDunder_ReturnsTrue()
     {
-        DunderMapping.HasMapping("__init__").Should().BeTrue();
+        DunderNameMapping.HasMapping("__init__").Should().BeTrue();
     }
 
     [Fact]
     public void HasMapping_UnknownDunder_ReturnsFalse()
     {
-        DunderMapping.HasMapping("__add__").Should().BeFalse();
+        DunderNameMapping.HasMapping("__add__").Should().BeFalse();
     }
 
     #endregion

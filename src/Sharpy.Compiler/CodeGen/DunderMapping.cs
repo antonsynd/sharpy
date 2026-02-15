@@ -11,19 +11,6 @@ namespace Sharpy.Compiler.CodeGen;
 internal static class DunderMapping
 {
     /// <summary>
-    /// Get the C# equivalent name for a dunder method, if it exists in the map.
-    /// Returns null if not found.
-    /// </summary>
-    public static string? GetCSharpName(string dunderName)
-        => DunderNameMapping.GetCSharpName(dunderName);
-
-    /// <summary>
-    /// Check if a dunder method has a mapping in the map.
-    /// </summary>
-    public static bool HasMapping(string dunderName)
-        => DunderNameMapping.HasMapping(dunderName);
-
-    /// <summary>
     /// Check if a name is a dunder method (starts and ends with __ and length > 5).
     /// </summary>
     public static bool IsDunderMethod(string name)
@@ -36,12 +23,6 @@ internal static class DunderMapping
     /// </summary>
     public static string? ResolveCSharpName(string name)
         => DunderNameMapping.ResolveCSharpName(name);
-
-    /// <summary>
-    /// Transform an unknown dunder method (not in the map) by capitalizing inner segments.
-    /// </summary>
-    public static string TransformUnknownDunder(string name)
-        => DunderNameMapping.TransformUnknownDunder(name);
 
     /// <summary>
     /// Try to get the binary expression syntax kind for an operator dunder.
