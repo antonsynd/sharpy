@@ -2,6 +2,7 @@ using Sharpy.Compiler.Analysis.ControlFlow;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -66,7 +67,7 @@ internal class ControlFlowValidator : SemanticValidatorBase
         _logger.LogDebug($"Building CFG for function: {func.Name}");
 
         // Skip abstract methods
-        if (func.Decorators.Any(d => d.Name == "abstract"))
+        if (func.Decorators.Any(d => d.Name == DecoratorNames.Abstract))
             return;
 
         // Skip stub bodies (ellipsis only)

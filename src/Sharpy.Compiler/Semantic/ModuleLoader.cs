@@ -284,7 +284,7 @@ internal class ModuleLoader
     internal TypeSymbol ExtractFullClassSymbol(ClassDef classDef, string definingModulePath)
     {
         var accessLevel = GetAccessLevel(classDef.Name);
-        bool isAbstract = classDef.Decorators.Any(d => d.Name == "abstract");
+        bool isAbstract = classDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
 
         string? unresolvedBase = classDef.BaseClasses.Length > 0 ? classDef.BaseClasses[0].Name : null;
         var unresolvedInterfaces = classDef.BaseClasses.Length > 1
@@ -454,7 +454,7 @@ internal class ModuleLoader
         bool hasSelfParameter = method.Parameters.Any(p =>
             string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
         bool hasStaticDecorator = method.Decorators.Any(d =>
-            d.Name == "static");
+            d.Name == DecoratorNames.Static);
         bool isStatic = hasStaticDecorator || !hasSelfParameter;
 
         var parameters = method.Parameters.Select(p => new ParameterSymbol
@@ -473,9 +473,9 @@ internal class ModuleLoader
             Parameters = parameters,
             ReturnType = ConvertTypeAnnotationToSemanticType(method.ReturnType),
             IsStatic = isStatic,
-            IsAbstract = method.Decorators.Any(d => d.Name == "abstract"),
-            IsVirtual = method.Decorators.Any(d => d.Name == "virtual"),
-            IsOverride = method.Decorators.Any(d => d.Name == "override"),
+            IsAbstract = method.Decorators.Any(d => d.Name == DecoratorNames.Abstract),
+            IsVirtual = method.Decorators.Any(d => d.Name == DecoratorNames.Virtual),
+            IsOverride = method.Decorators.Any(d => d.Name == DecoratorNames.Override),
             TypeParameters = method.TypeParameters.ToList(),
             AccessLevel = accessLevel,
             DeclarationLine = method.LineStart,

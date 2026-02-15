@@ -176,19 +176,19 @@ internal partial class RoslynEmitter
         {
             switch (decorator.Name)
             {
-                case "static":
+                case DecoratorNames.Static:
                     tokens.Add(Token(SyntaxKind.StaticKeyword));
                     break;
-                case "abstract":
+                case DecoratorNames.Abstract:
                     tokens.Add(Token(SyntaxKind.AbstractKeyword));
                     break;
-                case "virtual":
+                case DecoratorNames.Virtual:
                     tokens.Add(Token(SyntaxKind.VirtualKeyword));
                     break;
-                case "override":
+                case DecoratorNames.Override:
                     tokens.Add(Token(SyntaxKind.OverrideKeyword));
                     break;
-                case "final":
+                case DecoratorNames.Final:
                     tokens.Add(Token(SyntaxKind.SealedKeyword));
                     break;
             }
@@ -244,7 +244,7 @@ internal partial class RoslynEmitter
 
         // Check if this is an abstract class (for implicit abstract method detection)
         var wasInAbstractClass = _isInAbstractClass;
-        _isInAbstractClass = classDef.Decorators.Any(d => d.Name == "abstract");
+        _isInAbstractClass = classDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
 
         // Transform class name
         var className = NameMangler.Transform(classDef.Name, NameContext.Type);
@@ -872,14 +872,14 @@ internal partial class RoslynEmitter
         {
             switch (decorator.Name)
             {
-                case "abstract":
+                case DecoratorNames.Abstract:
                     tokens.Add(Token(SyntaxKind.AbstractKeyword));
                     break;
                 case "sealed":
-                case "final":
+                case DecoratorNames.Final:
                     tokens.Add(Token(SyntaxKind.SealedKeyword));
                     break;
-                case "static":
+                case DecoratorNames.Static:
                     tokens.Add(Token(SyntaxKind.StaticKeyword));
                     break;
             }

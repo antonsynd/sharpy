@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -176,7 +177,7 @@ internal class PropertyValidator : SemanticValidatorBase
     /// </summary>
     private void ValidateAbstractPropertyBody(string typeName, PropertyDef propDef)
     {
-        bool isAbstract = propDef.Decorators.Any(d => d.Name == "abstract");
+        bool isAbstract = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
         if (!isAbstract || !propDef.IsFunctionStyle)
             return;
 
@@ -199,12 +200,12 @@ internal class PropertyValidator : SemanticValidatorBase
     /// </summary>
     private void ValidateFinalNotWithAbstractOrVirtual(string typeName, PropertyDef propDef)
     {
-        bool isFinal = propDef.Decorators.Any(d => d.Name == "final");
+        bool isFinal = propDef.Decorators.Any(d => d.Name == DecoratorNames.Final);
         if (!isFinal)
             return;
 
-        bool isAbstract = propDef.Decorators.Any(d => d.Name == "abstract");
-        bool isVirtual = propDef.Decorators.Any(d => d.Name == "virtual");
+        bool isAbstract = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool isVirtual = propDef.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
 
         if (isAbstract)
         {
@@ -231,7 +232,7 @@ internal class PropertyValidator : SemanticValidatorBase
     /// </summary>
     private void ValidatePropertyOverride(string typeName, PropertyDef propDef, TypeSymbol? typeSymbol)
     {
-        bool isOverride = propDef.Decorators.Any(d => d.Name == "override");
+        bool isOverride = propDef.Decorators.Any(d => d.Name == DecoratorNames.Override);
         if (!isOverride || typeSymbol == null)
             return;
 

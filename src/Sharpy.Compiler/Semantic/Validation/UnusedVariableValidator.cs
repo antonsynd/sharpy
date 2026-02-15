@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -53,7 +54,7 @@ internal class UnusedVariableValidator : SemanticValidatorBase
     private void ValidateFunction(FunctionDef func)
     {
         // Skip abstract methods and stub bodies
-        if (func.Decorators.Any(d => d.Name == "abstract"))
+        if (func.Decorators.Any(d => d.Name == DecoratorNames.Abstract))
             return;
         if (func.Body.Length == 1 && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral })
             return;

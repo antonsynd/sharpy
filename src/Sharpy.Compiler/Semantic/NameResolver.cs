@@ -243,7 +243,7 @@ internal class NameResolver
         }
 
         // Check for @abstract decorator
-        bool isAbstract = classDef.Decorators.Any(d => d.Name == "abstract");
+        bool isAbstract = classDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
 
         // Create type symbol
         var typeSymbol = new TypeSymbol
@@ -503,7 +503,7 @@ internal class NameResolver
         var accessLevel = DetermineAccessLevel(method.Name);
 
         // Check for special decorators
-        bool hasStaticDecorator = method.Decorators.Any(d => d.Name == "static");
+        bool hasStaticDecorator = method.Decorators.Any(d => d.Name == DecoratorNames.Static);
 
         // Primary mechanism: Method is static if it doesn't have 'self' parameter (Pythonic)
         // @static decorator is valid but OPTIONAL/redundant
@@ -516,7 +516,7 @@ internal class NameResolver
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an @abstract class AND has ellipsis body (implicit abstract), OR
         // 3. Is in an interface AND has ellipsis or pass body (implicit abstract)
-        bool hasAbstractDecorator = method.Decorators.Any(d => d.Name == "abstract");
+        bool hasAbstractDecorator = method.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
         bool hasEllipsisBody = method.Body.Length == 1
             && method.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
         bool hasPassBody = method.Body.Length == 1
@@ -525,8 +525,8 @@ internal class NameResolver
             && (hasEllipsisBody || hasPassBody);
 
         bool isAbstract = hasAbstractDecorator || (owningType.IsAbstract && hasEllipsisBody) || isInterfaceAbstract;
-        bool isVirtual = method.Decorators.Any(d => d.Name == "virtual");
-        bool isOverride = method.Decorators.Any(d => d.Name == "override")
+        bool isVirtual = method.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
+        bool isOverride = method.Decorators.Any(d => d.Name == DecoratorNames.Override)
             || ProtocolRegistry.IsObjectOverrideDunder(method.Name);
 
         // Add parameters to the method symbol (types will be resolved later by TypeChecker)
@@ -637,13 +637,13 @@ internal class NameResolver
         // Check if a property with this name already exists (for combining getter/setter)
         var existingProp = owningType.Properties.FirstOrDefault(p => p.Name == propDef.Name);
 
-        bool isStatic = propDef.Decorators.Any(d => d.Name == "static")
+        bool isStatic = propDef.Decorators.Any(d => d.Name == DecoratorNames.Static)
             || !propDef.Parameters.Any(p => string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
             && propDef.IsFunctionStyle;
-        bool isVirtual = propDef.Decorators.Any(d => d.Name == "virtual");
-        bool isAbstract = propDef.Decorators.Any(d => d.Name == "abstract");
-        bool isOverride = propDef.Decorators.Any(d => d.Name == "override");
-        bool isFinal = propDef.Decorators.Any(d => d.Name == "final");
+        bool isVirtual = propDef.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
+        bool isAbstract = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool isOverride = propDef.Decorators.Any(d => d.Name == DecoratorNames.Override);
+        bool isFinal = propDef.Decorators.Any(d => d.Name == DecoratorNames.Final);
 
         bool hasGetter = propDef.Accessor == PropertyAccessor.Get || propDef.Accessor == PropertyAccessor.None;
         bool hasSetter = propDef.Accessor == PropertyAccessor.Set;

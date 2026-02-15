@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -27,9 +28,9 @@ internal class DecoratorValidator : SemanticValidatorBase
     /// </summary>
     private static readonly Dictionary<string, string> UnsupportedDecorators = new()
     {
-        ["staticmethod"] = "The '@staticmethod' decorator is not supported in Sharpy. " +
+        [DecoratorNames.StaticMethod] = "The '@staticmethod' decorator is not supported in Sharpy. " +
                            "Methods without a 'self' parameter are automatically static.",
-        ["classmethod"] = "The '@classmethod' decorator is not supported in Sharpy.",
+        [DecoratorNames.ClassMethod] = "The '@classmethod' decorator is not supported in Sharpy.",
     };
 
     public override void Validate(Module module, SemanticContext context)
@@ -128,12 +129,12 @@ internal class DecoratorValidator : SemanticValidatorBase
     /// </summary>
     private void ValidateFinalRequiresOverride(FunctionDef method, string typeName)
     {
-        bool hasFinal = method.Decorators.Any(d => d.Name == "final");
-        bool hasOverride = method.Decorators.Any(d => d.Name == "override");
+        bool hasFinal = method.Decorators.Any(d => d.Name == DecoratorNames.Final);
+        bool hasOverride = method.Decorators.Any(d => d.Name == DecoratorNames.Override);
 
         if (hasFinal && !hasOverride)
         {
-            var finalDecorator = method.Decorators.First(d => d.Name == "final");
+            var finalDecorator = method.Decorators.First(d => d.Name == DecoratorNames.Final);
             AddError(_context,
                 $"Method '{method.Name}' in '{typeName}' is marked @final but not @override. " +
                 "The @final decorator prevents further overriding and requires @override.",

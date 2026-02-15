@@ -90,7 +90,7 @@ internal partial class TypeChecker
         var previousSuperInitCalled = _superInitCalled;
 
         _currentMethodName = functionDef.Name;
-        _currentMethodIsOverride = functionDef.Decorators.Any(d => d.Name == "override")
+        _currentMethodIsOverride = functionDef.Decorators.Any(d => d.Name == DecoratorNames.Override)
             || (_currentClass != null && IsDunderMethod(functionDef.Name)
                 && ProtocolRegistry.IsObjectOverrideDunder(functionDef.Name));
         _currentMethodIsDunder = IsDunderMethod(functionDef.Name);
@@ -186,7 +186,7 @@ internal partial class TypeChecker
         // Determine if method is abstract:
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an @abstract class AND has ellipsis body (implicit abstract)
-        bool hasAbstractDecorator = functionDef.Decorators.Any(d => d.Name == "abstract");
+        bool hasAbstractDecorator = functionDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
         bool isInAbstractClass = _currentClass?.IsAbstract == true;
         bool hasEllipsisBody = functionDef.Body.Length == 1
             && functionDef.Body[0] is ExpressionStatement exprStmt
@@ -219,7 +219,7 @@ internal partial class TypeChecker
         {
             // Check if this is a static method (explicitly decorated OR no self parameter)
             bool hasStaticDecorator = functionDef.Decorators.Any(d =>
-                d.Name == "static");
+                d.Name == DecoratorNames.Static);
 
             bool hasSelfParameter = functionDef.Parameters.Length > 0 &&
                 functionDef.Parameters[0].Name == PythonNames.Self;

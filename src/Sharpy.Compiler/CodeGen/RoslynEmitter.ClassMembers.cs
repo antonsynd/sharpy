@@ -538,7 +538,7 @@ internal partial class RoslynEmitter
         // Check if this is an abstract method:
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
-        bool hasAbstractDecorator = func.Decorators.Any(d => d.Name == "abstract");
+        bool hasAbstractDecorator = func.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
         bool hasEllipsisBody = func.Body.Length == 1
             && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
 
@@ -885,19 +885,19 @@ internal partial class RoslynEmitter
         {
             switch (decorator.Name)
             {
-                case "static":
+                case DecoratorNames.Static:
                     tokens.Add(Token(SyntaxKind.StaticKeyword));
                     break;
-                case "abstract":
+                case DecoratorNames.Abstract:
                     tokens.Add(Token(SyntaxKind.AbstractKeyword));
                     break;
-                case "virtual":
+                case DecoratorNames.Virtual:
                     tokens.Add(Token(SyntaxKind.VirtualKeyword));
                     break;
-                case "override":
+                case DecoratorNames.Override:
                     tokens.Add(Token(SyntaxKind.OverrideKeyword));
                     break;
-                case "final":
+                case DecoratorNames.Final:
                     tokens.Add(Token(SyntaxKind.SealedKeyword));
                     break;
             }
@@ -1248,7 +1248,7 @@ internal partial class RoslynEmitter
 
             bool hasEllipsisBody = prop.Body.Length == 1
                 && prop.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
-            bool isAbstract = prop.Decorators.Any(d => d.Name == "abstract")
+            bool isAbstract = prop.Decorators.Any(d => d.Name == DecoratorNames.Abstract)
                 || (_isInAbstractClass && hasEllipsisBody);
 
             if (isAbstract)
@@ -1461,7 +1461,7 @@ internal partial class RoslynEmitter
         }
 
         // Check if this is an abstract property (body is single ellipsis)
-        bool hasAbstractDecorator = propDef.Decorators.Any(d => d.Name == "abstract");
+        bool hasAbstractDecorator = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
         bool hasEllipsisBody = propDef.Body.Length == 1
             && propDef.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
