@@ -369,6 +369,8 @@ class Dog(Animal):
 - **Dict comprehensions**: `{{k: v * 2 for k, v in items.items()}}`
 - **Set comprehensions**: `{{x for x in items if x > 0}}`
 - **Collection iteration**: `for item in collection:`
+- **WARNING**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
+- **str.split()**: `"a,b,c".split(",")` returns `list[str]`.
 - **len()**: `len(collection)` for lists, dicts, sets
 - **Indexing**: `collection[index]`, `dict[key]`
 
@@ -394,6 +396,7 @@ class Dog(Animal):
 - **Optional constructors**: `Some(value)` wraps a value, `None()` represents absence
 - **Optional methods**: `.unwrap()`, `.unwrap_or(default)`, `.map(lambda v: v * 2)`
 - **Type annotation**: `T?` is shorthand for `Optional[T]`
+- **IMPORTANT**: After `if x is not None:` narrowing, `x` is already the unwrapped type. Do NOT call `.unwrap()` after narrowing — it will fail because the type is no longer Optional.
 
 #### Result Types (0.1.16)
 - **Result type**: `x: int !str = Ok(42)`, `y: int !str = Err("failed")`
@@ -1175,6 +1178,8 @@ it is a library module and is VALID without `main()`.
 - List comprehensions: `[x * 2 for x in range(10)]`
 - Dict/Set comprehensions: `{{k: v for k, v in items}}`
 - Collection iteration: `for item in collection:`
+- **WARNING**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
+- `str.split()`: `"a,b,c".split(",")` returns `list[str]`.
 - len(): `len(collection)`
 - Indexing: `collection[index]`, `dict[key]`
 
@@ -1197,6 +1202,7 @@ it is a library module and is VALID without `main()`.
 - Optional type annotation: `T?` or `Optional[T]`
 - Optional constructors: `Some(value)`, `None()`
 - Optional methods: `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
+- **IMPORTANT**: After `if x is not None:` narrowing, `x` is already the unwrapped type. Do NOT call `.unwrap()` after narrowing — it will fail because the type is no longer Optional.
 
 ### Result Types (0.1.16)
 - Result type annotation: `T !E` or `Result[T, E]`
