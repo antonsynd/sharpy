@@ -1,0 +1,11 @@
+# Test that overriding an interface default method requires @override
+interface Greeter:
+    def greet(self) -> str:
+        return "hello"
+
+class MyGreeter(Greeter):
+    def greet(self) -> str:
+        return "hi"
+
+def main():
+    g: MyGreeter = MyGreeter()

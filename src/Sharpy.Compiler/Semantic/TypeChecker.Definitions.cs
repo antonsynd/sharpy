@@ -114,6 +114,25 @@ internal partial class TypeChecker
             }
         }
 
+        // Validate @override is required when a class method shadows an interface default method
+        if (_currentClass != null && !_currentMethodIsOverride && _currentClass.TypeKind != TypeKind.Interface)
+        {
+            foreach (var iface in GetInterfaces(_currentClass))
+            {
+                var ifaceMethod = iface.Methods.FirstOrDefault(m => m.Name == functionDef.Name);
+                if (ifaceMethod != null && !ifaceMethod.IsAbstract)
+                {
+                    AddError(
+                        $"Method '{functionDef.Name}' overrides a default method in interface '{iface.Name}' and requires the @override decorator",
+                        functionDef.LineStart,
+                        functionDef.ColumnStart,
+                        code: DiagnosticCodes.Semantic.InvalidOverride,
+                        span: functionDef.Span);
+                    break;
+                }
+            }
+        }
+
         // Validate @override is only used when base class method is virtual, abstract, or override
         if (_currentClass != null && _currentMethodIsOverride && !_currentMethodIsDunder)
         {
@@ -121,9 +140,24 @@ internal partial class TypeChecker
                 ? FindMethodInHierarchy(currentClassBaseType, functionDef.Name)
                 : (null, null);
 
+            // If not found in base class, also check interfaces for default methods
             if (baseMethod == null)
             {
-                // No matching method in base class
+                foreach (var iface in GetInterfaces(_currentClass))
+                {
+                    var ifaceMethod = iface.Methods.FirstOrDefault(m => m.Name == functionDef.Name);
+                    if (ifaceMethod != null)
+                    {
+                        baseMethod = ifaceMethod;
+                        baseOwner = iface;
+                        break;
+                    }
+                }
+            }
+
+            if (baseMethod == null)
+            {
+                // No matching method in base class or interfaces
                 AddError(
                     $"Method '{functionDef.Name}' is marked @override but no matching method exists in base class",
                     functionDef.LineStart,

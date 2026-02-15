@@ -484,6 +484,15 @@ internal partial class RoslynEmitter
             modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
         }
 
+        // In C#, you cannot use 'override' for interface default methods.
+        // If @override targets an interface default method (not a base class), remove the override keyword.
+        if (modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
+            && _currentTypeSymbol != null
+            && IsOverridingInterfaceDefaultMethod(func.Name))
+        {
+            modifiers = TokenList(modifiers.Where(m => !m.IsKind(SyntaxKind.OverrideKeyword)));
+        }
+
         // Add virtual keyword for non-object __eq__ in class context (for IEquatable<T> dispatch)
         // Structs can't have virtual methods, so skip for struct types
         if (func.Name == DunderNames.Eq && !IsEqualsObjectOverload(func)
@@ -897,6 +906,38 @@ internal partial class RoslynEmitter
         return TokenList(tokens);
     }
 
+    /// <summary>
+    /// Checks if a method with the given name is overriding an interface default method
+    /// rather than a base class method. In C#, interface default methods cannot be overridden
+    /// with the 'override' keyword — the class simply provides its own implementation.
+    /// </summary>
+    private bool IsOverridingInterfaceDefaultMethod(string methodName)
+    {
+        if (_currentTypeSymbol == null)
+            return false;
+
+        // Check if a base class has this method (virtual/abstract/override)
+        var baseType = _context.SemanticBinding.GetBaseType(_currentTypeSymbol) ?? _currentTypeSymbol.BaseType;
+        var current = baseType;
+        while (current != null)
+        {
+            if (current.Methods.Any(m => m.Name == methodName && (m.IsVirtual || m.IsAbstract || m.IsOverride)))
+                return false; // Found in base class, NOT an interface-only override
+            current = _context.SemanticBinding.GetBaseType(current) ?? current.BaseType;
+        }
+
+        // Check if an interface has a default (non-abstract) method with this name
+        var interfaces = _context.SemanticBinding.GetInterfaces(_currentTypeSymbol)
+            ?? (IReadOnlyList<Semantic.TypeSymbol>)_currentTypeSymbol.Interfaces;
+        foreach (var iface in interfaces)
+        {
+            if (iface.Methods.Any(m => m.Name == methodName && !m.IsAbstract))
+                return true;
+        }
+
+        return false;
+    }
+
     private FieldDeclarationSyntax GenerateField(VariableDeclaration varDecl, string? mangledName = null)
     {
         // Use PascalCase for public fields (C# property-like convention)
@@ -1232,9 +1273,23 @@ internal partial class RoslynEmitter
             accessors.Add(accessor);
         }
 
-        return PropertyDeclaration(propertyType, propertyName)
-            .WithModifiers(modifiers)
+        var property = PropertyDeclaration(propertyType, propertyName)
             .WithAccessorList(AccessorList(List(accessors)));
+
+        // Explicit interface properties: add specifier and omit access modifiers
+        // (C# rule: explicit interface members cannot have access modifiers)
+        if (first.ExplicitInterface != null)
+        {
+            var interfaceName = NameMangler.ToPascalCase(first.ExplicitInterface);
+            property = property
+                .WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(IdentifierName(interfaceName)));
+        }
+        else
+        {
+            property = property.WithModifiers(modifiers);
+        }
+
+        return property;
     }
 
     /// <summary>
@@ -1329,8 +1384,20 @@ internal partial class RoslynEmitter
         var modifiers = GenerateMethodModifiersFromDecorators(propDef.Decorators);
 
         var property = PropertyDeclaration(propertyType, propertyName)
-            .WithModifiers(modifiers)
             .WithAccessorList(AccessorList(List(accessors)));
+
+        // Explicit interface properties: add specifier and omit access modifiers
+        // (C# rule: explicit interface members cannot have access modifiers)
+        if (propDef.ExplicitInterface != null)
+        {
+            var interfaceName = NameMangler.ToPascalCase(propDef.ExplicitInterface);
+            property = property
+                .WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(IdentifierName(interfaceName)));
+        }
+        else
+        {
+            property = property.WithModifiers(modifiers);
+        }
 
         // Add initializer if default value is present
         if (propDef.DefaultValue != null)
@@ -1463,8 +1530,20 @@ internal partial class RoslynEmitter
         }
 
         var property = PropertyDeclaration(propertyType, propertyName)
-            .WithModifiers(modifiers)
             .WithAccessorList(AccessorList(SingletonList(accessor)));
+
+        // Explicit interface properties: add specifier and omit access modifiers
+        // (C# rule: explicit interface members cannot have access modifiers)
+        if (propDef.ExplicitInterface != null)
+        {
+            var interfaceName = NameMangler.ToPascalCase(propDef.ExplicitInterface);
+            property = property
+                .WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(IdentifierName(interfaceName)));
+        }
+        else
+        {
+            property = property.WithModifiers(modifiers);
+        }
 
         return property;
     }

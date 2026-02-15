@@ -15,6 +15,7 @@ class CustomGreeter(IGreeter):
     def greet(self) -> str:
         return "howdy"
 
+    @override
     def greet_loudly(self) -> str:
         return "HOWDY PARTNER"
 
