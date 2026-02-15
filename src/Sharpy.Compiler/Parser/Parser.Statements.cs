@@ -1074,7 +1074,7 @@ public partial class Parser
     private LiteralPattern ParseLiteralPattern()
     {
         var startToken = Current;
-        var literal = ParseExpression();
+        var literal = ParseUnary();
         var endToken = Previous;
 
         return new LiteralPattern

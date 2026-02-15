@@ -189,23 +189,19 @@ internal class ImportResolver
                         {
                             var lookupName = importAlias.Name;
                             var registerName = importAlias.AsName ?? importAlias.Name;
-                            if (reExportedSymbols.TryGetValue(registerName, out var symbol))
-                            {
-                                _logger.LogDebug($"  Defining imported symbol: {symbol.Name} ({symbol.Kind})");
-                                if (importAlias.AsName != null && symbol.Name != registerName)
-                                {
-                                    // Clone symbol with the alias name for registration
-                                    symbol = CloneSymbolWithName(symbol, registerName);
-                                }
-                                symbolTable.TryDefine(symbol);
-                            }
-                            else if (reExportedSymbols.TryGetValue(lookupName, out symbol))
+                            if (reExportedSymbols.TryGetValue(lookupName, out var symbol))
                             {
                                 _logger.LogDebug($"  Defining imported symbol: {lookupName} as {registerName} ({symbol.Kind})");
                                 if (importAlias.AsName != null)
                                 {
                                     symbol = CloneSymbolWithName(symbol, registerName);
                                 }
+                                symbolTable.TryDefine(symbol);
+                            }
+                            else if (registerName != lookupName && reExportedSymbols.TryGetValue(registerName, out symbol))
+                            {
+                                // Fallback: error recovery modules may register symbols under alias name
+                                _logger.LogDebug($"  Defining imported symbol (alias fallback): {registerName} ({symbol.Kind})");
                                 symbolTable.TryDefine(symbol);
                             }
                             else

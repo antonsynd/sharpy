@@ -1661,7 +1661,8 @@ internal partial class RoslynEmitter
                 }
 
             default:
-                return VarPattern(DiscardDesignation());
+                throw new InvalidOperationException(
+                    $"Unsupported match pattern type: {pattern.GetType().Name} at {pattern.LineStart}:{pattern.ColumnStart}");
         }
     }
 

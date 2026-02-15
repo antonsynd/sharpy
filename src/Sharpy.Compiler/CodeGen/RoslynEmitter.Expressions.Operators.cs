@@ -619,7 +619,9 @@ internal partial class RoslynEmitter
         foreach (var constraint in typeParam.Constraints)
         {
             if (constraint is TypeConstraint tc
-                && tc.Type.Name.EndsWith("IComparable", System.StringComparison.Ordinal))
+                && (tc.Type.Name == "IComparable" || tc.Type.Name == "System.IComparable"
+                    || tc.Type.Name.StartsWith("IComparable<", System.StringComparison.Ordinal)
+                    || tc.Type.Name.StartsWith("System.IComparable<", System.StringComparison.Ordinal)))
             {
                 return true;
             }
