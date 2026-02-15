@@ -186,9 +186,23 @@ namespace Sharpy
 
         private void _SetSliceSingleStepReplacement(List<T> other, int start, int numOldElems, int numNewElems)
         {
-            // See: #109
-            _list.RemoveRange(start, numOldElems);
-            _list.InsertRange(start, other);
+            // Overwrite the overlapping portion in-place
+            int overlapCount = System.Math.Min(numOldElems, numNewElems);
+            for (int i = 0; i < overlapCount; i++)
+            {
+                _list[start + i] = other[i];
+            }
+
+            if (numNewElems > numOldElems)
+            {
+                // More new elements than old: insert the remainder
+                _list.InsertRange(start + overlapCount, other._list.GetRange(overlapCount, numNewElems - overlapCount));
+            }
+            else if (numOldElems > numNewElems)
+            {
+                // Fewer new elements than old: remove the excess
+                _list.RemoveRange(start + overlapCount, numOldElems - numNewElems);
+            }
         }
 
         private void _SetSliceMultiStep(List<T> other, int start, int end, int step)
