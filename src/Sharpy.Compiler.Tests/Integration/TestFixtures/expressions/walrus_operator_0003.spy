@@ -1,0 +1,9 @@
+# Test: walrus operator in nested if/elif conditions
+def main():
+    x: int = 15
+    if (a := x - 10) > 10:
+        print("big")
+    elif (b := a + 3) > 7:
+        print(b)
+    else:
+        print(a)

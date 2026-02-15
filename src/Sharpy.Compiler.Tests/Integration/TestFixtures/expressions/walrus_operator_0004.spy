@@ -1,0 +1,9 @@
+# Test: walrus operator with function call result
+def compute(x: int) -> int:
+    return x * 3
+
+def main():
+    x: int = 5
+    if (result := compute(x)) > 10:
+        print(result)
+        print(result + 1)

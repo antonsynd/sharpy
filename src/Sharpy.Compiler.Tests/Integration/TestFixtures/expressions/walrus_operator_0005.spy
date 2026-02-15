@@ -1,0 +1,6 @@
+# Test: multiple walrus operators in same expression
+def main():
+    x: int = 10
+    if (a := x + 1) > 5 and (b := a * 2) > 15:
+        print(a)
+        print(b)
