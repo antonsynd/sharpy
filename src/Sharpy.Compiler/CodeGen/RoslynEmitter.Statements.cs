@@ -991,7 +991,10 @@ internal partial class RoslynEmitter
 
         if (binOp.Right is not NoneLiteral)
             return;
-        if (binOp.Left is not Identifier id)
+
+        // Extract narrowing key: simple identifier or dotted path (self.field)
+        var narrowingKey = AstHelper.ExtractNarrowingKey(binOp.Left);
+        if (narrowingKey == null)
             return;
 
         var leftType = GetExpressionSemanticType(binOp.Left);
@@ -1011,16 +1014,16 @@ internal partial class RoslynEmitter
 
         if (binOp.Operator == BinaryOperator.IsNot)
         {
-            isNotNone.Add(id.Name);
+            isNotNone.Add(narrowingKey);
             // Track value-type nullables so the emitter uses .Value instead of .Unwrap()
             if (isValueTypeNullable)
-                _isNullableNarrowing.Add(id.Name);
+                _isNullableNarrowing.Add(narrowingKey);
         }
         else if (binOp.Operator == BinaryOperator.Is)
         {
-            isNone.Add(id.Name);
+            isNone.Add(narrowingKey);
             if (isValueTypeNullable)
-                _isNullableNarrowing.Add(id.Name);
+                _isNullableNarrowing.Add(narrowingKey);
         }
     }
 

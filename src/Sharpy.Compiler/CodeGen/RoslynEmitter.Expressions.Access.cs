@@ -439,6 +439,23 @@ internal partial class RoslynEmitter
                     result));
         }
 
+        // Optional<T> narrowing for member access paths (self.field is not None)
+        if (dottedPath != null && IsNarrowed(dottedPath))
+        {
+            if (IsNullableNarrowed(dottedPath))
+            {
+                result = MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression, result, IdentifierName("Value"));
+            }
+            else
+            {
+                result = InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression, result, IdentifierName("Unwrap")))
+                    .WithArgumentList(ArgumentList());
+            }
+        }
+
         return result;
     }
 

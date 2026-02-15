@@ -62,43 +62,59 @@ internal partial class TypeChecker
             return narrowedTypes;
         }
 
-        // Handle 'x is not None' pattern
+        // Handle 'x is not None' pattern (x can be identifier or member access like self.field)
         if (condition is BinaryOp { Operator: BinaryOperator.IsNot } binOp)
         {
-            if (binOp.Left is Identifier id && binOp.Right is NoneLiteral)
+            if (binOp.Right is NoneLiteral)
             {
-                if (isPositiveBranch)
+                var narrowingKey = ExtractNarrowingKey(binOp.Left);
+                if (narrowingKey != null && isPositiveBranch)
                 {
-                    // In the positive branch (x is not None), narrow nullable/optional to non-nullable
-                    var symbol = _symbolTable.Lookup(id.Name);
-                    if (symbol is VariableSymbol varSymbol)
+                    // Get the type of the expression being narrowed
+                    SemanticType? resolvedType = null;
+                    if (binOp.Left is Identifier id)
                     {
-                        var resolvedType = GetVariableType(varSymbol);
-                        if (resolvedType is NullableType nullable)
-                            narrowedTypes[id.Name] = nullable.UnderlyingType;
-                        else if (resolvedType is OptionalType optional)
-                            narrowedTypes[id.Name] = optional.UnderlyingType;
+                        var symbol = _symbolTable.Lookup(id.Name);
+                        if (symbol is VariableSymbol varSymbol)
+                            resolvedType = GetVariableType(varSymbol);
                     }
+                    else
+                    {
+                        // For member access (self.field), use the already type-checked expression type
+                        resolvedType = _semanticInfo.GetExpressionType(binOp.Left);
+                    }
+
+                    if (resolvedType is NullableType nullable)
+                        narrowedTypes[narrowingKey] = nullable.UnderlyingType;
+                    else if (resolvedType is OptionalType optional)
+                        narrowedTypes[narrowingKey] = optional.UnderlyingType;
                 }
             }
         }
-        // Handle 'x is None' pattern
+        // Handle 'x is None' pattern (x can be identifier or member access like self.field)
         else if (condition is BinaryOp { Operator: BinaryOperator.Is } isOp)
         {
-            if (isOp.Left is Identifier id && isOp.Right is NoneLiteral)
+            if (isOp.Right is NoneLiteral)
             {
-                if (!isPositiveBranch)
+                var narrowingKey = ExtractNarrowingKey(isOp.Left);
+                if (narrowingKey != null && !isPositiveBranch)
                 {
-                    // In the negative branch (else after 'x is None'), narrow to non-nullable
-                    var symbol = _symbolTable.Lookup(id.Name);
-                    if (symbol is VariableSymbol varSymbol)
+                    SemanticType? resolvedType = null;
+                    if (isOp.Left is Identifier id)
                     {
-                        var resolvedType = GetVariableType(varSymbol);
-                        if (resolvedType is NullableType nullable)
-                            narrowedTypes[id.Name] = nullable.UnderlyingType;
-                        else if (resolvedType is OptionalType optional)
-                            narrowedTypes[id.Name] = optional.UnderlyingType;
+                        var symbol = _symbolTable.Lookup(id.Name);
+                        if (symbol is VariableSymbol varSymbol)
+                            resolvedType = GetVariableType(varSymbol);
                     }
+                    else
+                    {
+                        resolvedType = _semanticInfo.GetExpressionType(isOp.Left);
+                    }
+
+                    if (resolvedType is NullableType nullable)
+                        narrowedTypes[narrowingKey] = nullable.UnderlyingType;
+                    else if (resolvedType is OptionalType optional)
+                        narrowedTypes[narrowingKey] = optional.UnderlyingType;
                 }
             }
         }
