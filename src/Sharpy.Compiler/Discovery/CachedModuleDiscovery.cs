@@ -177,8 +177,7 @@ internal class CachedModuleDiscovery
                     // For variadic parameters, extract the element type from list[T] -> T
                     Type = p.IsVariadic ? GetVariadicElementType(p.Type) : ConvertTypeSignature(p.Type),
                     HasDefault = p.HasDefault,
-                    // Note: DefaultValue Expression reconstruction is simplified
-                    DefaultValue = null,  // See: #106
+                    DefaultValue = p.HasDefault ? DefaultValueParser.Parse(p.DefaultValue) : null,
                     IsVariadic = p.IsVariadic
                 })
                 .ToList(),
