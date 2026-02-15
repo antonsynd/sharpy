@@ -1,4 +1,4 @@
-# Test: isinstance with builtin type (str) — verifies codegen maps str->string
+# Test: isinstance with user-defined class hierarchy and type narrowing
 class Animal:
     name: str
 
