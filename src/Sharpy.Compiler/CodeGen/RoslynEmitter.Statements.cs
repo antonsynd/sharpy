@@ -566,7 +566,29 @@ internal partial class RoslynEmitter
         TypeSyntax typeSyntax;
         if (varDecl.Type != null && varDecl.Type.Name == "auto")
         {
-            typeSyntax = IdentifierName("var");
+            // Check if the initializer is a lambda or function reference — C# can't
+            // infer lambda/method-group types with 'var'. Use semantic type to emit
+            // explicit Func<>/Action<> instead.
+            var initSemanticType = varDecl.InitialValue != null
+                ? GetExpressionSemanticType(varDecl.InitialValue)
+                : null;
+
+            // Also check the variable's own symbol type (may have better inference)
+            if (initSemanticType is not Semantic.FunctionType)
+            {
+                var varSymbol = _context.LookupSymbol(varDecl.Name);
+                if (varSymbol is VariableSymbol vs && vs.Type is Semantic.FunctionType)
+                    initSemanticType = vs.Type;
+            }
+
+            if (initSemanticType is Semantic.FunctionType ft && !ft.HasUnresolvedTypes())
+            {
+                typeSyntax = _typeMapper.MapSemanticType(initSemanticType);
+            }
+            else
+            {
+                typeSyntax = IdentifierName("var");
+            }
         }
         else if (varDecl.Type == null && varDecl.IsConst && varDecl.InitialValue != null)
         {

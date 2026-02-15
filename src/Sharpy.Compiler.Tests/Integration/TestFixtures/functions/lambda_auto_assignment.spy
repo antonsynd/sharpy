@@ -1,0 +1,9 @@
+def increment(n: int) -> int:
+    return n + 1
+
+def apply(fn: (int) -> int, x: int) -> int:
+    return fn(x)
+
+def main():
+    f: auto = increment
+    print(apply(f, 5))

@@ -582,6 +582,16 @@ public sealed record FunctionType : SemanticType
         hash.Add(SkipArgumentValidation);
         return hash.ToHashCode();
     }
+
+    /// <summary>
+    /// Returns true if any parameter type or the return type is UnknownType,
+    /// indicating the type was not fully resolved (e.g., bare lambda without context).
+    /// </summary>
+    public bool HasUnresolvedTypes()
+    {
+        return ParameterTypes.Any(p => p is UnknownType)
+            || ReturnType is UnknownType;
+    }
 }
 
 /// <summary>
