@@ -1100,27 +1100,11 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Builds a dotted path key from a MemberAccess chain (e.g., self.value -> "self.value").
-    /// Returns null if the chain contains non-identifier/non-member-access nodes.
+    /// Builds a narrowing key from a MemberAccess chain (e.g., self.value -> "self.value").
+    /// Delegates to <see cref="AstHelper.ExtractNarrowingKey"/>.
     /// </summary>
     private static string? TryBuildDottedPath(MemberAccess ma)
-    {
-        var parts = new List<string>();
-        Expression current = ma;
-
-        while (current is MemberAccess m)
-        {
-            parts.Add(m.Member);
-            current = m.Object;
-        }
-
-        if (current is not Identifier rootId)
-            return null;
-
-        parts.Add(rootId.Name);
-        parts.Reverse();
-        return string.Join(".", parts);
-    }
+        => AstHelper.ExtractNarrowingKey(ma);
 
     private StatementSyntax GenerateWhile(WhileStatement whileStmt)
     {

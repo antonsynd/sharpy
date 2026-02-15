@@ -131,30 +131,9 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Extract a key to use for type narrowing from an expression.
-    /// For simple identifiers, returns the name. For subscript expressions like arr[i], returns "arr[i]".
+    /// Delegates to <see cref="AstHelper.ExtractNarrowingKey"/>.
     /// </summary>
-    private string? ExtractNarrowingKey(Expression expr)
-    {
-        return expr switch
-        {
-            Identifier id => id.Name,
-            IndexAccess indexAccess => $"{ExtractNarrowingKey(indexAccess.Object)}[{ExtractNarrowingKey(indexAccess.Index)}]",
-            MemberAccess ma => ExtractMemberAccessNarrowingKey(ma),
-            _ => null
-        };
-    }
-
-    /// <summary>
-    /// Builds a dotted path key from a MemberAccess chain (e.g., self.animal -> "self.animal").
-    /// Returns null if the chain contains unsupported expression types.
-    /// </summary>
-    private string? ExtractMemberAccessNarrowingKey(MemberAccess ma)
-    {
-        var objectKey = ExtractNarrowingKey(ma.Object);
-        if (objectKey == null)
-            return null;
-        return $"{objectKey}.{ma.Member}";
-    }
+    private string? ExtractNarrowingKey(Expression expr) => AstHelper.ExtractNarrowingKey(expr);
 
     /// <summary>
     /// Check if a source type can be assigned to a target type.
@@ -1074,25 +1053,10 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Tries to extract a constant integer value from an expression.
-    /// Handles IntegerLiteral and UnaryOp(Minus, IntegerLiteral) for negative indices.
+    /// Delegates to <see cref="AstHelper.TryGetConstantIntIndex"/>.
     /// </summary>
     private static bool TryGetConstantIntIndex(Expression expr, out int value)
-    {
-        if (expr is IntegerLiteral intLit && int.TryParse(intLit.Value, out value))
-        {
-            return true;
-        }
-
-        if (expr is UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral negIntLit }
-            && int.TryParse(negIntLit.Value, out var posValue))
-        {
-            value = -posValue;
-            return true;
-        }
-
-        value = 0;
-        return false;
-    }
+        => AstHelper.TryGetConstantIntIndex(expr, out value);
 }
 
 internal class SemanticAnalysisException : Exception
