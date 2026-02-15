@@ -174,8 +174,8 @@ internal partial class RoslynEmitter
         // Wrap in new Sharpy.List<T>(chain) using semantic type info for T
         var elementSemanticType = GetExpressionSemanticType(listComp.Element);
 
-        // Fallback: if element type not found (cross-module reference identity issue),
-        // extract from the comprehension's overall type (list[ElementType])
+        // TODO(#167): Fallback for cross-module reference identity issue in SemanticInfo.
+        // Extract element type from the comprehension's overall type (list[ElementType]).
         if (elementSemanticType == null)
         {
             var compType = GetExpressionSemanticType(listComp);
@@ -220,8 +220,8 @@ internal partial class RoslynEmitter
         // Wrap in new Sharpy.Set<T>(chain) using semantic type info for T
         var elementSemanticType = GetExpressionSemanticType(setComp.Element);
 
-        // Fallback: if element type not found (cross-module reference identity issue),
-        // extract from the comprehension's overall type (set[ElementType])
+        // TODO(#167): Fallback for cross-module reference identity issue in SemanticInfo.
+        // Extract element type from the comprehension's overall type (set[ElementType]).
         if (elementSemanticType == null)
         {
             var compType = GetExpressionSemanticType(setComp);
@@ -276,8 +276,8 @@ internal partial class RoslynEmitter
         var keySemanticType = GetExpressionSemanticType(dictComp.Key);
         var valueSemanticType = GetExpressionSemanticType(dictComp.Value);
 
-        // Fallback: if key/value types not found (cross-module reference identity issue),
-        // extract from the comprehension's overall type (dict[K, V])
+        // TODO(#167): Fallback for cross-module reference identity issue in SemanticInfo.
+        // Extract key/value types from the comprehension's overall type (dict[K, V]).
         if (keySemanticType == null || valueSemanticType == null)
         {
             var compType = GetExpressionSemanticType(dictComp);

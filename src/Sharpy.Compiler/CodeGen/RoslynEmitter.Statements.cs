@@ -1686,6 +1686,7 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Checks if a statement list contains a return statement (at top level).
     /// Used to determine if a try/else block needs a dead-code throw for reachability.
+    /// TODO(#168): Only checks top-level statements; nested returns (inside if/else) are missed.
     /// </summary>
     private static bool ContainsReturnStatement(ImmutableArray<Statement> statements)
     {
