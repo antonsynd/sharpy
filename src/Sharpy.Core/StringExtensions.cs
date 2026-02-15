@@ -601,6 +601,21 @@ namespace Sharpy
         /// </remarks>
         public static List<string> Splitlines(this string s)
         {
+            return Splitlines(s, false);
+        }
+
+        /// <summary>
+        /// Return a list of the lines in the string, breaking at line
+        /// boundaries. When <paramref name="keepends"/> is <c>true</c>, line
+        /// break characters are included in the resulting strings.
+        /// Python: <c>str.splitlines(keepends)</c>
+        /// </summary>
+        /// <remarks>
+        /// Recognizes all Python line boundaries: \n, \r\n, \r, \v (0x0B),
+        /// \f (0x0C), \x1C, \x1D, \x1E, \x85 (NEL), \u2028 (LS), \u2029 (PS).
+        /// </remarks>
+        public static List<string> Splitlines(this string s, bool keepends)
+        {
             var result = new List<string>();
             if (string.IsNullOrEmpty(s))
             {
@@ -617,7 +632,18 @@ namespace Sharpy
                     // Handle \r\n and \r
                     if (i + 1 < s.Length && s[i + 1] == '\n')
                     {
+                        if (keepends)
+                        {
+                            currentLine.Append("\r\n");
+                        }
                         i++; // Skip the \n
+                    }
+                    else
+                    {
+                        if (keepends)
+                        {
+                            currentLine.Append(c);
+                        }
                     }
                     result.Add(currentLine.ToString());
                     currentLine.Clear();
@@ -626,6 +652,10 @@ namespace Sharpy
                     || c == '\x1C' || c == '\x1D' || c == '\x1E'
                     || c == '\x85' || c == '\u2028' || c == '\u2029')
                 {
+                    if (keepends)
+                    {
+                        currentLine.Append(c);
+                    }
                     result.Add(currentLine.ToString());
                     currentLine.Clear();
                 }
