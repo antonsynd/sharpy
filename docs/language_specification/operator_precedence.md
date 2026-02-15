@@ -14,7 +14,7 @@ Operators listed from highest to lowest precedence:
 | 8 | `^` | Bitwise XOR | Left-to-right |
 | 9 | `\|` | Bitwise OR | Left-to-right |
 | 10 | `\|>` | Pipe operator | Left-to-right |
-| 11 | `to` | Type coercion | Left-to-right |
+| 11 | `as`, `to` | Type cast, type coercion | Left-to-right |
 | 12 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | Comparisons | **Chained** (see below) |
 | 13 | `not` | Logical NOT | Right-to-left (unary) |
 | 14 | `and` | Logical AND | Left-to-right |

@@ -422,23 +422,46 @@ public partial class Parser
     {
         var expr = ParsePipe();
 
-        // Handle `to` (type coercion) at precedence level 11 (between pipe and comparisons)
-        // Left-to-right associativity: `a to int to float` = `(a to int) to float`
-        while (Current.Type == TokenType.To)
+        // Handle `to` (type coercion) and `as` (type cast) at precedence level 11
+        // (between pipe and comparisons). Left-to-right associativity.
+        // `_inhibitPostfixAs` suppresses `as` in with-statement contexts where
+        // `as` binds the context manager to a name instead.
+        while (Current.Type == TokenType.To ||
+               (Current.Type == TokenType.As && !_inhibitPostfixAs))
         {
-            Advance();
-            var targetType = ParseTypeAnnotation();
-
-            expr = new TypeCoercion
+            if (Current.Type == TokenType.To)
             {
-                Value = expr,
-                TargetType = targetType,
-                LineStart = expr.LineStart,
-                ColumnStart = expr.ColumnStart,
-                LineEnd = Previous.Line,
-                ColumnEnd = Previous.Column + Previous.Value.Length,
-                Span = expr.Span
-            };
+                Advance();
+                var targetType = ParseTypeAnnotation();
+
+                expr = new TypeCoercion
+                {
+                    Value = expr,
+                    TargetType = targetType,
+                    LineStart = expr.LineStart,
+                    ColumnStart = expr.ColumnStart,
+                    LineEnd = Previous.Line,
+                    ColumnEnd = Previous.Column + Previous.Value.Length,
+                    Span = expr.Span
+                };
+            }
+            else
+            {
+                // Type cast: expr as Type
+                Advance();
+                var targetType = ParseTypeAnnotation();
+
+                expr = new TypeCast
+                {
+                    Value = expr,
+                    TargetType = targetType,
+                    LineStart = expr.LineStart,
+                    ColumnStart = expr.ColumnStart,
+                    LineEnd = Previous.Line,
+                    ColumnEnd = Previous.Column + Previous.Value.Length,
+                    Span = expr.Span
+                };
+            }
         }
 
         return expr;
@@ -796,24 +819,6 @@ public partial class Parser
                         LineEnd = Previous.Line,
                         ColumnEnd = Previous.Column + Previous.Value.Length,
                         Span = CombineSpans(expr.Span, GetSpanFromToken(closeParen))
-                    };
-                }
-                else if (Current.Type == TokenType.As && !_inhibitPostfixAs)
-                {
-                    // Type cast
-                    Advance();
-                    var targetType = ParseTypeAnnotation();
-
-                    expr = new TypeCast
-                    {
-                        Value = expr,
-                        TargetType = targetType,
-                        LineStart = expr.LineStart,
-                        ColumnStart = expr.ColumnStart,
-                        LineEnd = Previous.Line,
-                        ColumnEnd = Previous.Column + Previous.Value.Length,
-                        // TypeAnnotation doesn't have Span yet (A.12), use expr's span for now
-                        Span = expr.Span
                     };
                 }
                 else
