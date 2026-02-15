@@ -419,6 +419,36 @@ public class StringExtensionsTests
         "HELLO".Casefold().Should().Be("hello");
     }
 
+    [Fact]
+    public void Casefold_GermanSharpS()
+    {
+        "Straße".Casefold().Should().Be("strasse");
+    }
+
+    [Fact]
+    public void Casefold_LatinLigature()
+    {
+        "ﬁ".Casefold().Should().Be("fi");
+    }
+
+    [Fact]
+    public void Casefold_SharpSAlone()
+    {
+        "ß".Casefold().Should().Be("ss");
+    }
+
+    [Fact]
+    public void Casefold_EmptyString()
+    {
+        "".Casefold().Should().Be("");
+    }
+
+    [Fact]
+    public void Casefold_AlreadyFolded()
+    {
+        "hello".Casefold().Should().Be("hello");
+    }
+
     #endregion
 
     #region IsDigit / IsAlpha / IsAlnum / IsSpace
