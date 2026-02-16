@@ -5,6 +5,19 @@ Prompt templates for code generation, validation, and verification.
 from pathlib import Path
 from typing import Optional
 
+# Shared behavioral guidance injected into all generation/regeneration prompts.
+# Keep in sync: any update here propagates to all 4 prompt templates automatically.
+BEHAVIORAL_RULES_SECTION = """\
+### ⚠️ CRITICAL BEHAVIORAL RULES — Common pitfalls:
+- **Interface vs override**: When implementing interface methods, do NOT use `@override`. `@override` is ONLY for overriding `@virtual` or `@abstract` methods from base classes.
+- **Struct constructors**: Structs require an explicit `__init__` to accept constructor arguments. There is no auto-generated positional constructor.
+- **String char type**: String indexing `s[i]` and iteration `for c in s` yield `char` values, not `str`. Use `str(c)` or f-string interpolation to convert char to string.
+- **Float division by zero**: Float division by zero produces `Infinity` (not an exception). Only integer division by zero raises `ZeroDivisionError`.
+- **Self prefix**: Always use `self.field_name` to access instance fields inside methods.
+- **Try-block scoping**: Variables declared inside `try`/`except`/`finally` blocks are block-scoped — they are NOT visible outside those blocks. Declare variables before the `try` if they need to be used in `except`/`else`/`finally` or after the `try`.
+- **Float .0 output**: Printing whole-number floats shows NO trailing `.0` (e.g., `print(5.0)` outputs `5`, NOT `5.0`). Use integer expected values for whole-number float results.
+- **Set iteration order**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`."""
+
 
 def load_test_fixtures(fixtures_dir: Path) -> dict[str, list[tuple[str, str]]]:
     """Load existing test fixtures organized by category.
@@ -432,15 +445,7 @@ class Dog(Animal):
 - **NO character-by-character string iteration**: use `range(len(s))` and string methods instead
 - **NO `__repr__()` method**: removed — only `__str__()` exists (maps to `.ToString()`)
 
-### ⚠️ CRITICAL BEHAVIORAL RULES — Common pitfalls:
-- **Interface vs override**: When implementing interface methods, do NOT use `@override`. `@override` is ONLY for overriding `@virtual` or `@abstract` methods from base classes.
-- **Struct constructors**: Structs require an explicit `__init__` to accept constructor arguments. There is no auto-generated positional constructor.
-- **String char type**: String indexing `s[i]` and iteration `for c in s` yield `char` values, not `str`. Use `str(c)` or f-string interpolation to convert char to string.
-- **Float division by zero**: Float division by zero produces `Infinity` (not an exception). Only integer division by zero raises `ZeroDivisionError`.
-- **Self prefix**: Always use `self.field_name` to access instance fields inside methods.
-- **Try-block scoping**: Variables declared inside `try`/`except`/`finally` blocks are block-scoped — they are NOT visible outside those blocks. Declare variables before the `try` if they need to be used in `except`/`else`/`finally` or after the `try`.
-- **Float .0 output**: Printing whole-number floats shows NO trailing `.0` (e.g., `print(5.0)` outputs `5`, NOT `5.0`). Use integer expected values for whole-number float results.
-- **Set iteration order**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
+{BEHAVIORAL_RULES_SECTION}
 
 ### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
 - **NEVER name functions or variables**: `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`, `long`, `float32`, `pow`, `divmod`, `isinstance`, `repr`, `iter`, `next`
@@ -678,15 +683,7 @@ When using higher-order functions, declare function type parameters explicitly:
 - **NO tuple unpacking in comprehensions**: `[v for k, v in items]` - not supported
 - **NO multi-argument print**: `print(a, b)` - use multiple print() calls or f-strings
 
-### ⚠️ CRITICAL BEHAVIORAL RULES — Common pitfalls:
-- **Interface vs override**: When implementing interface methods, do NOT use `@override`. `@override` is ONLY for overriding `@virtual` or `@abstract` methods from base classes.
-- **Struct constructors**: Structs require an explicit `__init__` to accept constructor arguments. There is no auto-generated positional constructor.
-- **String char type**: String indexing `s[i]` and iteration `for c in s` yield `char` values, not `str`. Use `str(c)` or f-string interpolation to convert char to string.
-- **Float division by zero**: Float division by zero produces `Infinity` (not an exception). Only integer division by zero raises `ZeroDivisionError`.
-- **Self prefix**: Always use `self.field_name` to access instance fields inside methods.
-- **Try-block scoping**: Variables declared inside `try`/`except`/`finally` blocks are block-scoped — they are NOT visible outside those blocks. Declare variables before the `try` if they need to be used in `except`/`else`/`finally` or after the `try`.
-- **Float .0 output**: Printing whole-number floats shows NO trailing `.0` (e.g., `print(5.0)` outputs `5`, NOT `5.0`). Use integer expected values for whole-number float results.
-- **Set iteration order**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
+{BEHAVIORAL_RULES_SECTION}
 
 {existing_fixtures_section}
 
@@ -862,15 +859,7 @@ Every executable Sharpy program MUST have a `main()` function:
 - NO character-by-character string iteration - use `range(len(s))` and string methods instead
 - NO `__repr__()` method - removed, only `__str__()` exists
 
-### ⚠️ CRITICAL BEHAVIORAL RULES — Common pitfalls:
-- **Interface vs override**: When implementing interface methods, do NOT use `@override`. `@override` is ONLY for overriding `@virtual` or `@abstract` methods from base classes.
-- **Struct constructors**: Structs require an explicit `__init__` to accept constructor arguments. There is no auto-generated positional constructor.
-- **String char type**: String indexing `s[i]` and iteration `for c in s` yield `char` values, not `str`. Use `str(c)` or f-string interpolation to convert char to string.
-- **Float division by zero**: Float division by zero produces `Infinity` (not an exception). Only integer division by zero raises `ZeroDivisionError`.
-- **Self prefix**: Always use `self.field_name` to access instance fields inside methods.
-- **Try-block scoping**: Variables declared inside `try`/`except`/`finally` blocks are block-scoped — they are NOT visible outside those blocks. Declare variables before the `try` if they need to be used in `except`/`else`/`finally` or after the `try`.
-- **Float .0 output**: Printing whole-number floats shows NO trailing `.0` (e.g., `print(5.0)` outputs `5`, NOT `5.0`). Use integer expected values for whole-number float results.
-- **Set iteration order**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
+{BEHAVIORAL_RULES_SECTION}
 
 {examples_section}
 
@@ -1035,15 +1024,7 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - NO star imports: `from module import *` - NOT SUPPORTED
 - NO circular imports between modules
 
-### ⚠️ CRITICAL BEHAVIORAL RULES — Common pitfalls:
-- **Interface vs override**: When implementing interface methods, do NOT use `@override`. `@override` is ONLY for overriding `@virtual` or `@abstract` methods from base classes.
-- **Struct constructors**: Structs require an explicit `__init__` to accept constructor arguments. There is no auto-generated positional constructor.
-- **String char type**: String indexing `s[i]` and iteration `for c in s` yield `char` values, not `str`. Use `str(c)` or f-string interpolation to convert char to string.
-- **Float division by zero**: Float division by zero produces `Infinity` (not an exception). Only integer division by zero raises `ZeroDivisionError`.
-- **Self prefix**: Always use `self.field_name` to access instance fields inside methods.
-- **Try-block scoping**: Variables declared inside `try`/`except`/`finally` blocks are block-scoped — they are NOT visible outside those blocks. Declare variables before the `try` if they need to be used in `except`/`else`/`finally` or after the `try`.
-- **Float .0 output**: Printing whole-number floats shows NO trailing `.0` (e.g., `print(5.0)` outputs `5`, NOT `5.0`). Use integer expected values for whole-number float results.
-- **Set iteration order**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
+{BEHAVIORAL_RULES_SECTION}
 
 {examples_section}
 
