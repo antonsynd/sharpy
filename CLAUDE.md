@@ -81,10 +81,10 @@ The semantic phase runs multiple ordered passes. Understanding this is critical 
 Symbols are mutable records that use **reference equality** (overridden from record default) because their properties (Type, BaseType, CodeGenInfo) are set progressively across passes.
 
 ```
-Symbol (abstract)
+Symbol (abstract)              — DeclarationSpan, DeclaringFilePath (all symbols)
 ├── VariableSymbol        — Type set during type checking
 ├── FunctionSymbol        — Parameters, ReturnType, IsStatic/Abstract/Virtual/Override
-├── TypeSymbol            — TypeKind, BaseType, Interfaces, Fields, Methods
+├── TypeSymbol            — TypeKind, BaseType, Interfaces, Fields, Methods, DefiningFilePath
 ├── ModuleSymbol          — FilePath
 ├── TypeAliasSymbol       — Aliased type reference
 └── TypeParameterSymbol   — Generic type parameters (T in class Box[T])
@@ -156,7 +156,7 @@ The `RoslynEmitter` is split into 8 partial classes (~6,225 lines total): `Rosly
 - Local variables → runtime tracking via `_variableVersions` (handles redeclarations: x, x_1, x_2)
 - Types → SymbolTable lookup
 
-**Type mappings** (`CodeGen/TypeMapper.cs`): `int` → `int`, `long` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `Sharpy.List<T>`, `dict[K,V]` → `Dict<K,V>`, `set[T]` → `Sharpy.Set<T>` (Sharpy.Core wrappers delegate to .NET types internally). Note: a separate `Discovery/TypeMapper.cs` maps CLR types back to Sharpy `SemanticType` instances.
+**Type mappings** (`CodeGen/TypeMapper.cs`): `int` → `int`, `long` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `Sharpy.List<T>`, `dict[K,V]` → `Sharpy.Dict<K,V>`, `set[T]` → `Sharpy.Set<T>` (Sharpy.Core wrappers delegate to .NET types internally). Collection type name constants live in `Shared/CSharpTypeNames.cs`. Note: a separate `Discovery/ClrTypeMapper.cs` maps CLR types back to Sharpy `SemanticType` instances.
 
 **Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__init__` → constructor, `__add__` → `operator+`, `__str__` → `ToString()`
 
@@ -312,10 +312,10 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 |------|---------|
 | `Analysis/ControlFlow/` | `ControlFlowGraph`, `ControlFlowGraphBuilder`, `BasicBlock` |
 | `Diagnostics/` | `DiagnosticBag`, `DiagnosticCodes`, `DiagnosticRenderer`, `CompilationMetrics` |
-| `Discovery/` | CLR type discovery: `TypeMapper`, `CachedModuleDiscovery` |
+| `Discovery/` | CLR type discovery: `ClrTypeMapper`, `CachedModuleDiscovery` |
 | `Discovery/Caching/` | `OverloadIndex`, `OverloadIndexCache`, `AssemblyIdentity` |
 | `Model/` | `CompilationUnit`, `CompilationUnitFactory`, `ProjectModel` |
-| `Project/` | `ProjectCompiler`, `SpyProject`, `DependencyGraph` |
+| `Project/` | `ProjectCompiler` (7 partial files), `SpyProject`, `DependencyGraph` |
 | `Services/` | `CompilerServices`, `CompilerServicesBuilder` (adapter pattern) |
 | `Text/` | `ILocatable`, `SourceText`, `TextSpan` |
 
