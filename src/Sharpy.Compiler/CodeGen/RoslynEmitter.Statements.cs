@@ -44,11 +44,11 @@ internal partial class RoslynEmitter
 
         // Save any walrus declarations from an outer scope so they aren't
         // accidentally consumed by inner body statement generation.
-        List<LocalDeclarationStatementSyntax>? savedWalrus = null;
-        if (_walrusDeclarations.Count > 0)
+        List<StatementSyntax>? savedWalrus = null;
+        if (_hoistedStatements.Count > 0)
         {
-            savedWalrus = new List<LocalDeclarationStatementSyntax>(_walrusDeclarations);
-            _walrusDeclarations.Clear();
+            savedWalrus = new List<StatementSyntax>(_hoistedStatements);
+            _hoistedStatements.Clear();
         }
 
         var result = stmt switch
@@ -87,7 +87,7 @@ internal partial class RoslynEmitter
         {
             // Restore saved walrus declarations
             if (savedWalrus != null)
-                _walrusDeclarations.AddRange(savedWalrus);
+                _hoistedStatements.AddRange(savedWalrus);
             return output;
         }
 
@@ -95,17 +95,17 @@ internal partial class RoslynEmitter
 
         // If any walrus declarations were accumulated during this statement's
         // expression generation, prepend them as flat siblings.
-        if (_walrusDeclarations.Count > 0)
+        if (_hoistedStatements.Count > 0)
         {
-            output.AddRange(_walrusDeclarations);
-            _walrusDeclarations.Clear();
+            output.AddRange(_hoistedStatements);
+            _hoistedStatements.Clear();
         }
 
         output.Add(result);
 
         // Restore saved walrus declarations from outer scope
         if (savedWalrus != null)
-            _walrusDeclarations.AddRange(savedWalrus);
+            _hoistedStatements.AddRange(savedWalrus);
 
         return output;
     }

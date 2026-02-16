@@ -86,11 +86,12 @@ internal partial class RoslynEmitter
     private int _tempVarCounter = 0;
 
     /// <summary>
-    /// Tracks walrus operator (:=) variable declarations that need to be hoisted
-    /// before the containing statement. Populated during expression generation,
-    /// consumed and cleared during statement generation.
+    /// Tracks statements that need to be hoisted before the containing statement.
+    /// Used by walrus operator (:=) for variable declarations and by multi-for
+    /// comprehensions for imperative loop codegen. Populated during expression
+    /// generation, consumed and cleared during statement generation.
     /// </summary>
-    private readonly List<LocalDeclarationStatementSyntax> _walrusDeclarations = new();
+    private readonly List<StatementSyntax> _hoistedStatements = new();
 
     /// <summary>
     /// When true, walrus expressions emit inline assignment expressions (varName = value)

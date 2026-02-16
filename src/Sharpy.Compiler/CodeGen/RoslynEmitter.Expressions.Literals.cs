@@ -654,7 +654,7 @@ internal partial class RoslynEmitter
         }
 
         // Hoist: var varName = value;
-        _walrusDeclarations.Add(
+        _hoistedStatements.Add(
             LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
                     .WithVariables(SingletonSeparatedList(
