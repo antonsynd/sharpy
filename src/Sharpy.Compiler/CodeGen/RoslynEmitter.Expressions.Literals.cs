@@ -146,14 +146,13 @@ internal partial class RoslynEmitter
             elements.Select(e => Argument(e))));
     }
 
-    // See: #100 (consider imperative code generation for complex comprehensions)
-
     private ExpressionSyntax GenerateListComprehension(ListComprehension listComp)
     {
-        // Generate: new Sharpy.List<T>(iterator.Where(...).Select(...))
-        // Example: [x * 2 for x in items if x > 0]
-        // becomes: new Sharpy.List<int>(items.Where(x => x > 0).Select(x => x * 2))
+        // Multi-for comprehensions use imperative codegen (nested foreach loops)
+        if (listComp.Clauses.Count(c => c is ForClause) > 1)
+            return GenerateImperativeComprehension(listComp.Clauses, listComp.Element, null, null, "list");
 
+        // Single-for: LINQ method chain
         var (chain, param, tupleVarNames, errorExpr) = GenerateComprehensionChain(
             listComp.Clauses, "List", listComp.LineStart, listComp.ColumnStart);
 
@@ -187,10 +186,11 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateSetComprehension(SetComprehension setComp)
     {
-        // Generate: new Sharpy.Set<T>(iterator.Where(...).Select(...))
-        // Example: {x * 2 for x in items if x > 0}
-        // becomes: new Sharpy.Set<int>(items.Where(x => x > 0).Select(x => x * 2))
+        // Multi-for comprehensions use imperative codegen (nested foreach loops)
+        if (setComp.Clauses.Count(c => c is ForClause) > 1)
+            return GenerateImperativeComprehension(setComp.Clauses, setComp.Element, null, null, "set");
 
+        // Single-for: LINQ method chain
         var (chain, param, tupleVarNames, errorExpr) = GenerateComprehensionChain(
             setComp.Clauses, "Set", setComp.LineStart, setComp.ColumnStart);
 
@@ -224,10 +224,11 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateDictComprehension(DictComprehension dictComp)
     {
-        // Generate LINQ method chain: iterator.Where(...).ToDictionary(x => key, x => value)
-        // Example: {k: v for k, v in pairs if v > 0}
-        // becomes: pairs.Where(p => ...).ToDictionary(p => k, p => v)
+        // Multi-for comprehensions use imperative codegen (nested foreach loops)
+        if (dictComp.Clauses.Count(c => c is ForClause) > 1)
+            return GenerateImperativeComprehension(dictComp.Clauses, null, dictComp.Key, dictComp.Value, "dict");
 
+        // Single-for: LINQ method chain
         var (chain, param, tupleVarNames, errorExpr) = GenerateComprehensionChain(
             dictComp.Clauses, "Dict", dictComp.LineStart, dictComp.ColumnStart);
 
@@ -310,6 +311,177 @@ internal partial class RoslynEmitter
             }
         }
         return (keyType, valueType);
+    }
+
+    /// <summary>
+    /// Generates imperative codegen for multi-for comprehensions.
+    /// Produces a temp collection, nested foreach loops with .Add() calls,
+    /// hoists the statements via _hoistedStatements, and returns the temp identifier.
+    /// </summary>
+    /// <param name="clauses">The comprehension clauses (for/if)</param>
+    /// <param name="element">Element expression for list/set comprehensions (null for dict)</param>
+    /// <param name="keyExpr">Key expression for dict comprehensions (null for list/set)</param>
+    /// <param name="valueExpr">Value expression for dict comprehensions (null for list/set)</param>
+    /// <param name="collectionKind">"list", "set", or "dict"</param>
+    private ExpressionSyntax GenerateImperativeComprehension(
+        ImmutableArray<ComprehensionClause> clauses,
+        Expression? element,
+        Expression? keyExpr,
+        Expression? valueExpr,
+        string collectionKind)
+    {
+        var tempName = GenerateTempVarName("comp");
+
+        // Determine collection type
+        TypeSyntax collectionType;
+        if (collectionKind == "dict")
+        {
+            var kType = keyExpr != null ? GetExpressionSemanticType(keyExpr) : null;
+            var vType = valueExpr != null ? GetExpressionSemanticType(valueExpr) : null;
+            var kTypeSyntax = kType != null
+                ? _typeMapper.MapSemanticType(kType)
+                : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+            var vTypeSyntax = vType != null
+                ? _typeMapper.MapSemanticType(vType)
+                : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+            collectionType = GenericName(collectionKind == "dict" ? "Sharpy.Dict" : "Sharpy.Set")
+                .AddTypeArgumentListArguments(kTypeSyntax, vTypeSyntax);
+        }
+        else
+        {
+            var elemType = element != null ? GetExpressionSemanticType(element) : null;
+            var elemTypeSyntax = elemType != null
+                ? _typeMapper.MapSemanticType(elemType)
+                : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+            var typeName = collectionKind == "list" ? "Sharpy.List" : "Sharpy.Set";
+            collectionType = GenericName(typeName)
+                .AddTypeArgumentListArguments(elemTypeSyntax);
+        }
+
+        // var __comp_N = new CollectionType();
+        var tempDecl = LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(tempName))
+                        .WithInitializer(EqualsValueClause(
+                            ObjectCreationExpression(collectionType)
+                                .WithArgumentList(ArgumentList()))))));
+
+        // Build the innermost statement: __comp_N.Add(element) or __comp_N[key] = value
+        StatementSyntax innerStmt;
+        if (collectionKind == "dict")
+        {
+            // __comp_N[key] = value;
+            innerStmt = ExpressionStatement(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    ElementAccessExpression(IdentifierName(tempName))
+                        .WithArgumentList(BracketedArgumentList(
+                            SingletonSeparatedList(Argument(GenerateExpression(keyExpr!))))),
+                    GenerateExpression(valueExpr!)));
+        }
+        else
+        {
+            // __comp_N.Add(element);
+            innerStmt = ExpressionStatement(
+                InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(tempName),
+                        IdentifierName("Add")))
+                    .AddArgumentListArguments(Argument(GenerateExpression(element!))));
+        }
+
+        // Build nested loops from the inside out by processing clauses in reverse
+        // Clauses are: [for x in iter1, if cond1, for y in iter2, if cond2, ...]
+        // We need to wrap innerStmt from the last clause backward
+        var currentBody = new List<StatementSyntax> { innerStmt };
+
+        for (int i = clauses.Length - 1; i >= 0; i--)
+        {
+            switch (clauses[i])
+            {
+                case IfClause ifClause:
+                    // Wrap current body in if (condition) { ... }
+                    var condition = GenerateExpression(ifClause.Condition);
+                    var ifStmt = IfStatement(condition, Block(currentBody));
+                    currentBody = new List<StatementSyntax> { ifStmt };
+                    break;
+
+                case ForClause forClause:
+                    var iterExpr = GenerateExpression(forClause.Iterator);
+
+                    if (forClause.Target is Identifier id)
+                    {
+                        var loopVar = NameMangler.ToCamelCase(id.Name);
+                        var tempLoopVar = GenerateTempVarName("loopVar");
+
+                        _declaredVariables.Add(loopVar);
+                        _variableVersions[loopVar] = 0;
+
+                        // var __loopVar_N = <iter element>;
+                        // var loopVar = __loopVar_N;
+                        var varInit = LocalDeclarationStatement(
+                            VariableDeclaration(IdentifierName("var"))
+                                .WithVariables(SingletonSeparatedList(
+                                    VariableDeclarator(Identifier(loopVar))
+                                        .WithInitializer(EqualsValueClause(
+                                            IdentifierName(tempLoopVar))))));
+
+                        var foreachBody = new List<StatementSyntax> { varInit };
+                        foreachBody.AddRange(currentBody);
+
+                        var foreachStmt = ForEachStatement(
+                            IdentifierName("var"),
+                            Identifier(tempLoopVar),
+                            iterExpr,
+                            Block(foreachBody));
+                        currentBody = new List<StatementSyntax> { foreachStmt };
+                    }
+                    else if (forClause.Target is TupleLiteral tuple &&
+                             tuple.Elements.All(e => e is Identifier))
+                    {
+                        var tempLoopVar = GenerateTempVarName("loopVar");
+                        var tupleVars = tuple.Elements.Cast<Identifier>()
+                            .Select(e => NameMangler.ToCamelCase(e.Name)).ToList();
+
+                        foreach (var tv in tupleVars)
+                        {
+                            _declaredVariables.Add(tv);
+                            _variableVersions[tv] = 0;
+                        }
+
+                        // var (a, b) = __loopVar_N;
+                        var designations = tupleVars
+                            .Select(name => (VariableDesignationSyntax)SingleVariableDesignation(Identifier(name)))
+                            .ToList();
+                        var deconstructStmt = ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                DeclarationExpression(
+                                    IdentifierName("var"),
+                                    ParenthesizedVariableDesignation(SeparatedList(designations))),
+                                IdentifierName(tempLoopVar)));
+
+                        var foreachBody = new List<StatementSyntax> { deconstructStmt };
+                        foreachBody.AddRange(currentBody);
+
+                        var foreachStmt = ForEachStatement(
+                            IdentifierName("var"),
+                            Identifier(tempLoopVar),
+                            iterExpr,
+                            Block(foreachBody));
+                        currentBody = new List<StatementSyntax> { foreachStmt };
+                    }
+                    break;
+            }
+        }
+
+        // Hoist: temp declaration + outermost loop
+        _hoistedStatements.Add(tempDecl);
+        _hoistedStatements.AddRange(currentBody);
+
+        return IdentifierName(tempName);
     }
 
     /// <summary>
