@@ -11,7 +11,7 @@ BEHAVIORAL_RULES_SECTION = """\
 ### ⚠️ CRITICAL BEHAVIORAL RULES — Common pitfalls:
 - **Interface vs override**: When implementing interface methods, do NOT use `@override`. `@override` is ONLY for overriding `@virtual` or `@abstract` methods from base classes.
 - **Struct constructors**: Structs require an explicit `__init__` to accept constructor arguments. There is no auto-generated positional constructor.
-- **String char type**: String indexing `s[i]` and iteration `for c in s` yield `char` values, not `str`. Use `str(c)` or f-string interpolation to convert char to string.
+- **String char type**: String indexing `s[i]` and iteration `for c in s` yield C# `char`, not `str`. You MUST wrap with `str()` before comparing or assigning: `str(s[i]) == "a"` (NOT `s[i] == "a"`), `c: str = str(s[i])` (NOT `c: str = s[i]`). Also use `str(c)` in for-each loops over strings.
 - **Float division by zero**: Float division by zero produces `Infinity` (not an exception). Only integer division by zero raises `ZeroDivisionError`.
 - **Self prefix**: Always use `self.field_name` to access instance fields inside methods.
 - **Try-block scoping**: Variables declared inside `try`/`except`/`finally` blocks are block-scoped — they are NOT visible outside those blocks. Declare variables before the `try` if they need to be used in `except`/`else`/`finally` or after the `try`.
@@ -440,9 +440,9 @@ class Dog(Animal):
 - **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
 - **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
 - **NO union types (T | U)**: union types are not supported — use a common base class or interface instead
-- **NO string indexing (s[i])**: not yet fully supported — use string methods instead
-- **NO 'in' operator on strings**: `char in "abc"` — not yet fully supported
-- **NO character-by-character string iteration**: use `range(len(s))` and string methods instead
+- **NO bare string indexing in comparisons/assignments**: `s[i] == "a"` or `c: str = s[i]` fails — always wrap with `str()`: `str(s[i]) == "a"`, `c: str = str(s[i])`
+- **NO 'in' operator on strings**: `char in "abc"` — not yet supported
+- **NO bare char iteration**: `for c in s:` yields `char` — use `str(c)` before comparing or assigning to `str`
 - **NO `__repr__()` method**: removed — only `__str__()` exists (maps to `.ToString()`)
 
 {BEHAVIORAL_RULES_SECTION}
@@ -676,9 +676,9 @@ When using higher-order functions, declare function type parameters explicitly:
 - **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
 - **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
 - **NO union types (T | U)**: union types are not supported — use a common base class or interface instead
-- **NO string indexing (s[i])**: not yet fully supported — use string methods instead
-- **NO 'in' operator on strings**: `char in "abc"` — not yet fully supported
-- **NO character-by-character string iteration**: use `range(len(s))` and string methods instead
+- **NO bare string indexing in comparisons/assignments**: `s[i] == "a"` or `c: str = s[i]` fails — always wrap with `str()`: `str(s[i]) == "a"`, `c: str = str(s[i])`
+- **NO 'in' operator on strings**: `char in "abc"` — not yet supported
+- **NO bare char iteration**: `for c in s:` yields `char` — use `str(c)` before comparing or assigning to `str`
 - **NO `__repr__()` method**: removed — only `__str__()` exists
 - **NO tuple unpacking in comprehensions**: `[v for k, v in items]` - not supported
 - **NO multi-argument print**: `print(a, b)` - use multiple print() calls or f-strings
@@ -854,9 +854,9 @@ Every executable Sharpy program MUST have a `main()` function:
 - NO @interface decorator - `interface` is a keyword, use `interface IName:` syntax
 - NO combining @abstract and @virtual - abstract methods are inherently virtual in .NET, use only @abstract
 - NO union types (T | U) - use a common base class or interface instead
-- NO string indexing (s[i]) - not yet fully supported, use string methods instead
-- NO 'in' operator on strings: `char in "abc"` - not yet fully supported
-- NO character-by-character string iteration - use `range(len(s))` and string methods instead
+- NO bare string indexing in comparisons/assignments: `s[i] == "a"` or `c: str = s[i]` fails — wrap with `str()`: `str(s[i]) == "a"`
+- NO 'in' operator on strings: `char in "abc"` - not yet supported
+- NO bare char iteration: `for c in s:` yields `char` — use `str(c)` before comparing or assigning to `str`
 - NO `__repr__()` method - removed, only `__str__()` exists
 
 {BEHAVIORAL_RULES_SECTION}
@@ -1015,9 +1015,9 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - NO @interface decorator - `interface` is a keyword, use `interface IName:` syntax
 - NO combining @abstract and @virtual - abstract methods are inherently virtual in .NET, use only @abstract
 - NO union types (T | U) - use a common base class or interface instead
-- NO string indexing (s[i]) - not yet fully supported, use string methods instead
-- NO 'in' operator on strings: `char in "abc"` - not yet fully supported
-- NO character-by-character string iteration - use `range(len(s))` and string methods instead
+- NO bare string indexing in comparisons/assignments: `s[i] == "a"` or `c: str = s[i]` fails — wrap with `str()`: `str(s[i]) == "a"`
+- NO 'in' operator on strings: `char in "abc"` - not yet supported
+- NO bare char iteration: `for c in s:` yields `char` — use `str(c)` before comparing or assigning to `str`
 - NO `__repr__()` method - removed, only `__str__()` exists
 - NO relative imports: `from .module import x` - NOT SUPPORTED
 - NO package imports: `from package.module import x` - NOT SUPPORTED
@@ -1254,9 +1254,9 @@ it is a library module and is VALID without `main()`.
 ❌ @interface decorator: `interface` is a keyword, not a decorator - REJECT (use `interface IName:`)
 ❌ Combining @abstract and @virtual on same method - REJECT (abstract is inherently virtual)
 ❌ Union types (T | U) - REJECT (not supported, use base class or interface)
-❌ String indexing (s[i]) - REJECT (not yet fully supported, use string methods)
-❌ 'in' operator on strings: `char in "abc"` - REJECT (not yet fully supported)
-❌ Character-by-character string iteration - REJECT (use string methods instead)
+❌ Bare string indexing in comparisons/assignments: `s[i] == "a"` or `c: str = s[i]` - REJECT (wrap with `str()`: `str(s[i])`)
+❌ 'in' operator on strings: `char in "abc"` - REJECT (not yet supported)
+❌ Bare char iteration: `for c in s:` yields char, not str - REJECT unless wrapped with `str(c)` before use
 ❌ `__repr__()` method - REJECT (removed, only `__str__()` exists)
 
 ## Code to Validate
