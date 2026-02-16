@@ -1,0 +1,7 @@
+# Test: Set literal with identifier elements in ternary uses SemanticInfo type inference
+def main():
+    x: int = 1
+    y: int = 2
+    flag: bool = True
+    result: set[int] = {x, y} if flag else {x}
+    print(len(result))

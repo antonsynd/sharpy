@@ -37,6 +37,14 @@ internal partial class RoslynEmitter
             // Use the declared element type from the target type annotation
             elementType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
         }
+        else if (GetExpressionSemanticType(list) is GenericType listSemType &&
+                 listSemType.Name == "list" &&
+                 listSemType.TypeArguments.Count > 0 &&
+                 listSemType.TypeArguments[0] is not UnknownType)
+        {
+            // Use the type inferred by the TypeChecker via SemanticInfo
+            elementType = _typeMapper.MapSemanticType(listSemType.TypeArguments[0]);
+        }
         else
         {
             // Fall back to inference from elements
@@ -67,6 +75,16 @@ internal partial class RoslynEmitter
         {
             keyType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
             valueType = _typeMapper.MapType(_targetTypeContext.TypeArguments[1]);
+        }
+        else if (GetExpressionSemanticType(dict) is GenericType dictSemType &&
+                 dictSemType.Name == "dict" &&
+                 dictSemType.TypeArguments.Count >= 2 &&
+                 dictSemType.TypeArguments[0] is not UnknownType &&
+                 dictSemType.TypeArguments[1] is not UnknownType)
+        {
+            // Use the types inferred by the TypeChecker via SemanticInfo
+            keyType = _typeMapper.MapSemanticType(dictSemType.TypeArguments[0]);
+            valueType = _typeMapper.MapSemanticType(dictSemType.TypeArguments[1]);
         }
         else
         {
@@ -102,6 +120,14 @@ internal partial class RoslynEmitter
             _targetTypeContext.TypeArguments.Length > 0)
         {
             elementType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
+        }
+        else if (GetExpressionSemanticType(set) is GenericType setSemType &&
+                 setSemType.Name == "set" &&
+                 setSemType.TypeArguments.Count > 0 &&
+                 setSemType.TypeArguments[0] is not UnknownType)
+        {
+            // Use the type inferred by the TypeChecker via SemanticInfo
+            elementType = _typeMapper.MapSemanticType(setSemType.TypeArguments[0]);
         }
         else
         {

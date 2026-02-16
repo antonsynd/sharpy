@@ -1,0 +1,10 @@
+# Test: List literal with identifier elements (unannotated) uses SemanticInfo type inference
+def main():
+    a: int = 10
+    b: int = 20
+    c: int = 30
+    items = [a, b, c]
+    print(len(items))
+    print(items[0])
+    print(items[1])
+    print(items[2])
