@@ -31,6 +31,14 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Convert a <see cref="char"/> to <see cref="string"/> without boxing.
+        /// </summary>
+        public static string Str(char c)
+        {
+            return c.ToString();
+        }
+
+        /// <summary>
         /// Convert an <see cref="int"/> to <see cref="string"/> without boxing.
         /// </summary>
         public static string Str(int i)

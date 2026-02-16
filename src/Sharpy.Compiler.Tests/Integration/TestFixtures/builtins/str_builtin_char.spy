@@ -1,0 +1,4 @@
+def main():
+    s: str = "hello"
+    print(str(s[0]))
+    print(str(s[4]))
