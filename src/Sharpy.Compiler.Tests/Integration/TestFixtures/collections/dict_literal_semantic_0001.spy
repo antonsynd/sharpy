@@ -1,0 +1,18 @@
+# Dict literal with identifier elements (SemanticInfo fallback path)
+# Tests that the emitter uses GetExpressionSemanticType for dict literals
+# when elements are not literals (e.g., variable references)
+
+def main():
+    # Setup: identifier variables with known types
+    key1: str = "name"
+    key2: str = "age"
+    val1: int = 42
+    val2: int = 30
+
+    # Dict literal with identifier elements (no type annotation)
+    # Should infer dict[str, int] from SemanticInfo, not fall back to dict[object, object]
+    person = {key1: val1, key2: val2}
+
+    # Verify it compiles with correct type
+    print(person[key1])
+    print(person[key2])

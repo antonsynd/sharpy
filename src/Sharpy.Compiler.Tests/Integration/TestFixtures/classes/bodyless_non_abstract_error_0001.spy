@@ -1,0 +1,8 @@
+# Test that body-less method syntax requires @abstract decorator
+
+class Foo:
+    # This should fail: body-less def without @abstract
+    def bar(self) -> int
+
+def main():
+    pass

@@ -639,6 +639,12 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 
 ### ⚠️ Key Patterns for Multi-File Projects
 
+- **IMPORTANT**: Interfaces CANNOT declare fields (e.g., `name: str` inside an interface is invalid). Interfaces may only declare method signatures and `property` declarations.
+- **Abstract methods**: Use `@abstract` decorator. Two equivalent syntaxes:
+  - Inline ellipsis: `@abstract` + `def area(self) -> float: ...`
+  - Body-less: `@abstract` + `def area(self) -> float`  (no colon, no body)
+- **Division**: `/` is ALWAYS float division (e.g., `5 / 2` → `2.5`). `//` is floor division (e.g., `5 // 2` → `2`).
+
 When using inheritance across modules, `@virtual` is REQUIRED on base class methods.
 When a parent class has required constructor parameters, subclass `__init__` MUST call `super().__init__(...)` with the required arguments:
 
@@ -825,7 +831,9 @@ Every executable Sharpy program MUST have a `main()` function:
 - Classes: `class Name:`, `__init__`, instance/static methods
 - Dunder methods: `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__iter__`/`__next__`, arithmetic/comparison/unary operators, `__getitem__`/`__setitem__`/`__contains__`
 - Inheritance: `class Child(Parent):`, `super().__init__()`, `@abstract`, `@virtual`, `@override`
-- Interfaces: `interface IName:` with `...` bodies
+- Interfaces: `interface IName:` with `...` bodies — **IMPORTANT**: Interfaces CANNOT declare fields, only method signatures and `property` declarations
+- **Abstract methods**: Two equivalent syntaxes: `@abstract def area(self) -> float: ...` OR body-less `@abstract def area(self) -> float` (no colon)
+- **Division**: `/` is ALWAYS float division (`5 / 2` → `2.5`). `//` is floor division (`5 // 2` → `2`)
 - Structs: `struct Name:`
 - Enums: `enum Name:` with explicit values
 - Type aliases: `type UserId = int`
@@ -986,7 +994,9 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - Classes: `class Name:`, `__init__`, instance/static methods
 - Dunder methods: `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__iter__`/`__next__`, arithmetic/comparison/unary operators, `__getitem__`/`__setitem__`/`__contains__`
 - Inheritance: `class Child(Parent):`, `super().__init__()`, `@abstract`, `@virtual`, `@override`
-- Interfaces: `interface IName:` with `...` bodies
+- Interfaces: `interface IName:` with `...` bodies — **IMPORTANT**: Interfaces CANNOT declare fields, only method signatures and `property` declarations
+- **Abstract methods**: Two equivalent syntaxes: `@abstract def area(self) -> float: ...` OR body-less `@abstract def area(self) -> float` (no colon)
+- **Division**: `/` is ALWAYS float division (`5 / 2` → `2.5`). `//` is floor division (`5 // 2` → `2`)
 - Structs: `struct Name:`
 - Enums: `enum Name:` with explicit values
 - Type aliases: `type UserId = int`

@@ -1,0 +1,20 @@
+# Test iterator protocol collision with MoveNext, Reset, Dispose
+
+class MyIterator:
+    index: int
+
+    def __init__(self):
+        self.index = 0
+
+    # This should trigger SPY0522 for 'move_next' -> 'MoveNext'
+    def move_next(self) -> bool:
+        return True
+
+    def __next__(self) -> int:
+        result: int = self.index
+        self.index += 1
+        return result
+
+def main():
+    it: MyIterator = MyIterator()
+    print(it.__next__())
