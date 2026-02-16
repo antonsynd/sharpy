@@ -121,6 +121,21 @@ internal partial class RoslynEmitter
             {
                 // For type instantiation, use fully qualified name if type is from another file
                 var name = GetFullyQualifiedTypeName(typeSymbolForName, funcName.Name);
+
+                // For generic types called without explicit type arguments (e.g., set()),
+                // use the resolved expression type to supply type arguments.
+                var exprType = _context.SemanticInfo?.GetExpressionType(call);
+                if (exprType is GenericType resolvedGeneric && resolvedGeneric.TypeArguments.Count > 0
+                    && resolvedGeneric.TypeArguments.All(t => t is not UnknownType))
+                {
+                    var typeArgsSyntax = resolvedGeneric.TypeArguments
+                        .Select(t => _typeMapper.MapSemanticType(t));
+                    var genericTypeSyntax = GenericName(NameMangler.ToPascalCase(funcName.Name))
+                        .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
+                    return ObjectCreationExpression(genericTypeSyntax)
+                        .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+                }
+
                 return ObjectCreationExpression(ParseName(name))
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }

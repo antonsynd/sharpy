@@ -545,6 +545,32 @@ internal partial class TypeChecker
                         return SemanticType.Unknown;
                     }
 
+                    // For generic types called without type arguments (e.g., set()),
+                    // infer type arguments from the expected type annotation if available,
+                    // otherwise fall back to UnknownType args for wildcard matching.
+                    if (typeSymbol.IsGeneric)
+                    {
+                        List<SemanticType> typeArgs;
+                        if (_expectedType is GenericType expectedGeneric
+                            && expectedGeneric.Name == typeSymbol.Name
+                            && expectedGeneric.TypeArguments.Count == typeSymbol.TypeParameters.Count)
+                        {
+                            typeArgs = expectedGeneric.TypeArguments;
+                        }
+                        else
+                        {
+                            typeArgs = Enumerable.Range(0, typeSymbol.TypeParameters.Count)
+                                .Select(_ => (SemanticType)SemanticType.Unknown)
+                                .ToList();
+                        }
+                        return new GenericType
+                        {
+                            Name = typeSymbol.Name,
+                            TypeArguments = typeArgs,
+                            GenericDefinition = typeSymbol
+                        };
+                    }
+
                     // Constructor call returns an instance of the type
                     return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
                 }

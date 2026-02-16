@@ -220,6 +220,11 @@ public sealed record GenericType : SemanticType
             // For now, check if type arguments match exactly
             for (int i = 0; i < TypeArguments.Count; i++)
             {
+                // UnknownType acts as wildcard — allows empty collection literals
+                // (dict[<?>,<?>], list[<?>], set[<?>]) to be assigned to any
+                // compatible annotated type.
+                if (TypeArguments[i] is UnknownType || otherGeneric.TypeArguments[i] is UnknownType)
+                    continue;
                 if (!TypeArguments[i].Equals(otherGeneric.TypeArguments[i]))
                     return false;
             }

@@ -1,0 +1,6 @@
+def main():
+    items: list[int] = []
+    items.append(1)
+    items.append(2)
+    print(items[0])
+    print(len(items))

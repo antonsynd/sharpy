@@ -1,0 +1,5 @@
+def main():
+    s: set[str] = set()
+    s.add("hello")
+    s.add("world")
+    print(len(s))
