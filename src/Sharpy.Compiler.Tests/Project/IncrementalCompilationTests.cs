@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
@@ -404,6 +406,202 @@ def main():
         Assert.Equal("SnakeCaseFunc", cached.CodeGenInfo!.CSharpName);
         Assert.Equal("snake_case_func", cached.CodeGenInfo.OriginalName);
         Assert.True(cached.CodeGenInfo.IsModuleLevel);
+    }
+
+    [Fact]
+    public void SymbolSerializer_RoundTrip_TypeSymbol_WithGenericInterfaces()
+    {
+        // Create an interface symbol (e.g., IEquatable)
+        var ifaceSymbol = new TypeSymbol
+        {
+            Name = "IEquatable",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Interface,
+            AccessLevel = AccessLevel.Public,
+            DefiningFilePath = "/test/iface.spy"
+        };
+
+        // Create a type symbol that implements the interface with type args
+        var typeSymbol = new TypeSymbol
+        {
+            Name = "MyClass",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Public
+        };
+        typeSymbol.Interfaces.Add(new InterfaceReference
+        {
+            Definition = ifaceSymbol,
+            TypeArgAnnotations = ImmutableArray.Create(
+                new TypeAnnotation { Name = "str" })
+        });
+
+        var filePath = CreateTempFile("myclass.spy", "class MyClass(IEquatable[str]):\n    pass");
+        var cached = SymbolSerializer.Serialize(typeSymbol, filePath);
+
+        // Verify cached has InterfaceEntries with TypeArgs
+        Assert.NotNull(cached.InterfaceEntries);
+        Assert.Single(cached.InterfaceEntries!);
+        Assert.NotNull(cached.InterfaceEntries[0].TypeArgs);
+        Assert.Single(cached.InterfaceEntries[0].TypeArgs!);
+        Assert.Equal("str", cached.InterfaceEntries[0].TypeArgs![0]);
+
+        // Deserialize and resolve references
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as TypeSymbol;
+        Assert.NotNull(restored);
+
+        // Register the interface symbol so references can resolve
+        var ifaceId = SymbolSerializer.ComputeSymbolId(ifaceSymbol, "/test/iface.spy");
+        registry[ifaceId] = ifaceSymbol;
+        registry[cached.Id] = restored!;
+
+        SymbolSerializer.ResolveReferences(new[] { cached }, registry);
+
+        // Verify the TypeArgAnnotations survived
+        Assert.Single(restored!.Interfaces);
+        var ifaceRef = restored.Interfaces[0];
+        Assert.Equal("IEquatable", ifaceRef.Definition.Name);
+        Assert.False(ifaceRef.TypeArgAnnotations.IsDefaultOrEmpty);
+        Assert.Single(ifaceRef.TypeArgAnnotations);
+        Assert.Equal("str", ifaceRef.TypeArgAnnotations[0].Name);
+    }
+
+    [Fact]
+    public void SerializeTypeAnnotation_RoundTrips_NestedTypes()
+    {
+        // Test nested annotations like dict[str, list[int]]
+        var annotation = new TypeAnnotation
+        {
+            Name = "dict",
+            TypeArguments = ImmutableArray.Create(
+                new TypeAnnotation { Name = "str" },
+                new TypeAnnotation
+                {
+                    Name = "list",
+                    TypeArguments = ImmutableArray.Create(
+                        new TypeAnnotation { Name = "int" })
+                })
+        };
+
+        var serialized = SymbolSerializer.SerializeTypeAnnotation(annotation);
+        Assert.Equal("dict[str,list[int]]", serialized);
+
+        var restored = SymbolSerializer.DeserializeTypeAnnotation(serialized);
+        Assert.Equal("dict", restored.Name);
+        Assert.Equal(2, restored.TypeArguments.Length);
+        Assert.Equal("str", restored.TypeArguments[0].Name);
+        Assert.Equal("list", restored.TypeArguments[1].Name);
+        Assert.Single(restored.TypeArguments[1].TypeArguments);
+        Assert.Equal("int", restored.TypeArguments[1].TypeArguments[0].Name);
+    }
+
+    [Fact]
+    public void SymbolSerializer_RoundTrip_TypeSymbol_WithNonGenericInterfaces()
+    {
+        // Create an interface symbol without type args
+        var ifaceSymbol = new TypeSymbol
+        {
+            Name = "ISized",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Interface,
+            AccessLevel = AccessLevel.Public,
+            DefiningFilePath = "/test/iface.spy"
+        };
+
+        var typeSymbol = new TypeSymbol
+        {
+            Name = "MyList",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Public
+        };
+        typeSymbol.Interfaces.Add(new InterfaceReference
+        {
+            Definition = ifaceSymbol
+        });
+
+        var filePath = CreateTempFile("mylist.spy", "class MyList(ISized):\n    pass");
+        var cached = SymbolSerializer.Serialize(typeSymbol, filePath);
+
+        // Verify cached has InterfaceEntries without TypeArgs
+        Assert.NotNull(cached.InterfaceEntries);
+        Assert.Single(cached.InterfaceEntries!);
+        Assert.Null(cached.InterfaceEntries[0].TypeArgs);
+
+        // Deserialize and resolve references
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as TypeSymbol;
+        Assert.NotNull(restored);
+
+        var ifaceId = SymbolSerializer.ComputeSymbolId(ifaceSymbol, "/test/iface.spy");
+        registry[ifaceId] = ifaceSymbol;
+        registry[cached.Id] = restored!;
+
+        SymbolSerializer.ResolveReferences(new[] { cached }, registry);
+
+        // Verify the interface was restored correctly (no type args)
+        Assert.Single(restored!.Interfaces);
+        var ifaceRef = restored.Interfaces[0];
+        Assert.Equal("ISized", ifaceRef.Definition.Name);
+        Assert.True(ifaceRef.TypeArgAnnotations.IsDefaultOrEmpty || ifaceRef.TypeArgAnnotations.IsEmpty);
+    }
+
+    [Fact]
+    public void SerializeTypeAnnotation_RoundTrips_OptionalType()
+    {
+        var annotation = new TypeAnnotation { Name = "int", IsOptional = true };
+
+        var serialized = SymbolSerializer.SerializeTypeAnnotation(annotation);
+        Assert.Equal("optional:int", serialized);
+
+        var restored = SymbolSerializer.DeserializeTypeAnnotation(serialized);
+        Assert.Equal("int", restored.Name);
+        Assert.True(restored.IsOptional);
+    }
+
+    [Fact]
+    public void SerializeTypeAnnotation_RoundTrips_NullableType()
+    {
+        var annotation = new TypeAnnotation { Name = "str", IsCSharpNullable = true };
+
+        var serialized = SymbolSerializer.SerializeTypeAnnotation(annotation);
+        Assert.Equal("nullable:str", serialized);
+
+        var restored = SymbolSerializer.DeserializeTypeAnnotation(serialized);
+        Assert.Equal("str", restored.Name);
+        Assert.True(restored.IsCSharpNullable);
+    }
+
+    [Fact]
+    public void SerializeTypeAnnotation_RoundTrips_ResultType()
+    {
+        var annotation = new TypeAnnotation
+        {
+            Name = "int",
+            ErrorType = new TypeAnnotation { Name = "ValueError" }
+        };
+
+        var serialized = SymbolSerializer.SerializeTypeAnnotation(annotation);
+        Assert.Equal("int!ValueError", serialized);
+
+        var restored = SymbolSerializer.DeserializeTypeAnnotation(serialized);
+        Assert.Equal("int", restored.Name);
+        Assert.NotNull(restored.ErrorType);
+        Assert.Equal("ValueError", restored.ErrorType!.Name);
+    }
+
+    [Fact]
+    public void SerializeTypeAnnotation_RoundTrips_SimpleName()
+    {
+        var annotation = new TypeAnnotation { Name = "int" };
+
+        var serialized = SymbolSerializer.SerializeTypeAnnotation(annotation);
+        Assert.Equal("int", serialized);
+
+        var restored = SymbolSerializer.DeserializeTypeAnnotation(serialized);
+        Assert.Equal("int", restored.Name);
+        Assert.True(restored.TypeArguments.IsDefaultOrEmpty || restored.TypeArguments.IsEmpty);
     }
 
     #endregion
