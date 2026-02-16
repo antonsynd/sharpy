@@ -28,7 +28,12 @@ internal class NameResolver
     }
 
     private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-        => _semanticBinding.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+    {
+        var refs = _semanticBinding.GetInterfaces(symbol);
+        if (refs != null)
+            return refs.Select(r => r.Definition).ToList();
+        return symbol.Interfaces.Select(r => r.Definition).ToList();
+    }
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
@@ -154,8 +159,7 @@ internal class NameResolver
                 continue;
             }
 
-            var interfaces = _semanticBinding.GetInterfaces(current) ?? (IReadOnlyList<TypeSymbol>)current.Interfaces;
-            foreach (var iface in interfaces)
+            foreach (var iface in GetInterfaces(current))
             {
                 queue.Enqueue(iface);
             }
@@ -182,8 +186,7 @@ internal class NameResolver
                 continue;
             }
 
-            var interfaces = _semanticBinding.GetInterfaces(current) ?? (IReadOnlyList<TypeSymbol>)current.Interfaces;
-            foreach (var iface in interfaces)
+            foreach (var iface in GetInterfaces(current))
             {
                 queue.Enqueue(iface);
             }
@@ -861,7 +864,11 @@ internal class NameResolver
             }
             else // TypeKind.Interface
             {
-                _semanticBinding.AddInterface(typeSymbol, baseSymbol);
+                _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
+                {
+                    Definition = baseSymbol,
+                    TypeArgAnnotations = baseAnnot.TypeArguments
+                });
             }
         }
     }
@@ -901,7 +908,11 @@ internal class NameResolver
                 continue;
             }
 
-            _semanticBinding.AddInterface(typeSymbol, interfaceSymbol);
+            _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
+            {
+                Definition = interfaceSymbol,
+                TypeArgAnnotations = baseAnnot.TypeArguments
+            });
         }
     }
 
@@ -940,7 +951,11 @@ internal class NameResolver
                 continue;
             }
 
-            _semanticBinding.AddInterface(typeSymbol, baseInterfaceSymbol);
+            _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
+            {
+                Definition = baseInterfaceSymbol,
+                TypeArgAnnotations = baseAnnot.TypeArguments
+            });
         }
 
         // Propagate inherited methods from base interfaces
