@@ -365,7 +365,7 @@ internal class ProjectCompiler
                 // Capture AST node count immediately (available even if later phases fail)
                 if (module != null)
                 {
-                    fileMetrics.AstNodeCount = CountAstNodes(module);
+                    fileMetrics.AstNodeCount = AstValidator.CountNodes(module);
                 }
 
                 // Check if parser collected any errors
@@ -504,7 +504,7 @@ internal class ProjectCompiler
                     // Capture AST node count immediately (available even if later phases fail)
                     if (module != null)
                     {
-                        fileMetrics.AstNodeCount = CountAstNodes(module);
+                        fileMetrics.AstNodeCount = AstValidator.CountNodes(module);
                     }
 
                     if (parser.Diagnostics.HasErrors)
@@ -1733,35 +1733,4 @@ internal class ProjectCompiler
         }
     }
 
-    /// <summary>
-    /// Counts the total number of AST nodes in a module for metrics.
-    /// This provides a rough measure of program complexity.
-    /// Uses the AST nodes' GetChildNodes() method for recursive traversal.
-    /// </summary>
-    private static int CountAstNodes(Parser.Ast.Module module)
-    {
-        var count = 1; // Count the module itself
-        var stack = new Stack<Parser.Ast.Node>();
-
-        // Initialize stack with module body
-        foreach (var statement in module.Body)
-        {
-            stack.Push(statement);
-        }
-
-        // Iterative depth-first traversal (more efficient than recursion for large ASTs)
-        while (stack.Count > 0)
-        {
-            var node = stack.Pop();
-            count++;
-
-            // Push all children onto the stack
-            foreach (var child in node.GetChildNodes())
-            {
-                stack.Push(child);
-            }
-        }
-
-        return count;
-    }
 }

@@ -166,7 +166,7 @@ public class Compiler
             // This must be done before the error check so partial ASTs are counted
             if (module != null)
             {
-                metrics.AstNodeCount = CountAstNodes(module);
+                metrics.AstNodeCount = AstValidator.CountNodes(module);
             }
 
             // Check if parser collected any errors into DiagnosticBag
@@ -661,38 +661,6 @@ public class Compiler
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Counts the total number of AST nodes in a module for metrics.
-    /// This provides a rough measure of program complexity.
-    /// Uses the AST nodes' GetChildNodes() method for recursive traversal.
-    /// </summary>
-    private static int CountAstNodes(Parser.Ast.Module module)
-    {
-        var count = 1; // Count the module itself
-        var stack = new Stack<Parser.Ast.Node>();
-
-        // Initialize stack with module body
-        foreach (var statement in module.Body)
-        {
-            stack.Push(statement);
-        }
-
-        // Iterative depth-first traversal (more efficient than recursion for large ASTs)
-        while (stack.Count > 0)
-        {
-            var node = stack.Pop();
-            count++;
-
-            // Push all children onto the stack
-            foreach (var child in node.GetChildNodes())
-            {
-                stack.Push(child);
-            }
-        }
-
-        return count;
     }
 
     /// <summary>
