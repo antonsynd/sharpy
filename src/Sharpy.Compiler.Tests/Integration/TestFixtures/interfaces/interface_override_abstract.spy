@@ -1,0 +1,11 @@
+interface Processable:
+    def process(self) -> str: ...
+
+class Document(Processable):
+    @override
+    def process(self) -> str:
+        return "processed"
+
+def main():
+    d: Processable = Document()
+    print(d.process())

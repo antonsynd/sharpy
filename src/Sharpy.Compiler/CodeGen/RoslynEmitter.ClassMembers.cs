@@ -484,11 +484,11 @@ internal partial class RoslynEmitter
             modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
         }
 
-        // In C#, you cannot use 'override' for interface default methods.
-        // If @override targets an interface default method (not a base class), remove the override keyword.
+        // In C#, you cannot use 'override' for interface methods (default or abstract).
+        // If @override targets an interface method (not a base class), remove the override keyword.
         if (modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
             && _currentTypeSymbol != null
-            && IsOverridingInterfaceDefaultMethod(func.Name))
+            && ShouldStripOverrideKeyword(func.Name))
         {
             modifiers = TokenList(modifiers.Where(m => !m.IsKind(SyntaxKind.OverrideKeyword)));
         }
@@ -907,32 +907,33 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Checks if a method with the given name is overriding an interface default method
-    /// rather than a base class method. In C#, interface default methods cannot be overridden
-    /// with the 'override' keyword — the class simply provides its own implementation.
+    /// Determines whether the 'override' keyword should be stripped from a method.
+    /// In C#, interface methods (both default and abstract) cannot be overridden with
+    /// the 'override' keyword — the class simply provides its own implementation.
+    /// However, if a base class has the method, 'override' must be kept.
     /// </summary>
-    private bool IsOverridingInterfaceDefaultMethod(string methodName)
+    private bool ShouldStripOverrideKeyword(string methodName)
     {
         if (_currentTypeSymbol == null)
             return false;
 
-        // Check if a base class has this method (virtual/abstract/override)
+        // Walk the base class chain — if any base has this method as virtual/abstract/override, keep override
         var baseType = _context.SemanticBinding.GetBaseType(_currentTypeSymbol) ?? _currentTypeSymbol.BaseType;
         var current = baseType;
         while (current != null)
         {
             if (current.Methods.Any(m => m.Name == methodName && (m.IsVirtual || m.IsAbstract || m.IsOverride)))
-                return false; // Found in base class, NOT an interface-only override
+                return false; // Found in base class, keep override
             current = _context.SemanticBinding.GetBaseType(current) ?? current.BaseType;
         }
 
-        // Check if an interface has a default (non-abstract) method with this name
+        // No base class method found — check ALL interfaces (abstract or default)
         var interfaceRefs = _context.SemanticBinding.GetInterfaces(_currentTypeSymbol)
             ?? (IReadOnlyList<Semantic.InterfaceReference>)_currentTypeSymbol.Interfaces;
         var interfaces = interfaceRefs.Select(r => r.Definition).ToList();
         foreach (var iface in interfaces)
         {
-            if (iface.Methods.Any(m => m.Name == methodName && !m.IsAbstract))
+            if (iface.Methods.Any(m => m.Name == methodName))
                 return true;
         }
 
