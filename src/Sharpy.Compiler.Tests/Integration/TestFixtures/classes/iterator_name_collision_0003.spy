@@ -1,0 +1,20 @@
+# Test iterator protocol collision with Reset
+
+class MyIterator:
+    index: int
+
+    def __init__(self):
+        self.index = 0
+
+    # This should trigger SPY0522 for 'reset' -> 'Reset'
+    def reset(self) -> None:
+        self.index = 0
+
+    def __next__(self) -> int:
+        result: int = self.index
+        self.index += 1
+        return result
+
+def main():
+    it: MyIterator = MyIterator()
+    # This file should fail at compile time due to name collision

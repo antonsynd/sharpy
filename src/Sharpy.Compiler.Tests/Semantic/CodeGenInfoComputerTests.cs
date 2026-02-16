@@ -451,4 +451,74 @@ def foo_bar() -> None:
 
         diagnostics.HasErrors.Should().BeFalse();
     }
+
+    [Fact]
+    public void ComputeForModule_IteratorWithCurrentField_EmitsSPY0522()
+    {
+        var source = @"
+class MyIterator:
+    current: int = 0
+
+    def __next__(self) -> int:
+        self.current += 1
+        return self.current
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module);
+
+        diagnostics.HasErrors.Should().BeTrue();
+        diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.CodeGen.MemberNameCollision &&
+            d.Message.Contains("conflicts with a synthesized iterator protocol member"));
+    }
+
+    [Fact]
+    public void ComputeForModule_IteratorWithMoveNextMethod_EmitsSPY0522()
+    {
+        var source = @"
+class MyIterator:
+    def move_next(self) -> bool:
+        return True
+
+    def __next__(self) -> int:
+        return 42
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module);
+
+        diagnostics.HasErrors.Should().BeTrue();
+        diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.CodeGen.MemberNameCollision &&
+            d.Message.Contains("conflicts with a synthesized iterator protocol member"));
+    }
+
+    [Fact]
+    public void ComputeForModule_IteratorWithNonCollidingMembers_NoCollision()
+    {
+        var source = @"
+class MyIterator:
+    value: int = 0
+    counter: int = 0
+
+    def __next__(self) -> int:
+        self.counter += 1
+        return self.value
+
+    def get_value(self) -> int:
+        return self.value
+";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module);
+
+        diagnostics.HasErrors.Should().BeFalse();
+    }
 }

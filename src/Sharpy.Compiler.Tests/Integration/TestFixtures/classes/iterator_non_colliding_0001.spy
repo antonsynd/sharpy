@@ -1,0 +1,28 @@
+# Positive test: class with __next__ and non-colliding members compiles fine
+
+class GoodIterator:
+    value: int
+    counter: int
+
+    def __init__(self, start: int):
+        self.value = start
+        self.counter = 0
+
+    def __next__(self) -> int:
+        self.counter += 1
+        result: int = self.value
+        self.value += 1
+        return result
+
+    def get_counter(self) -> int:
+        return self.counter
+
+def main():
+    it: GoodIterator = GoodIterator(10)
+    # Manually call the iterator members (not via protocol)
+    value1: int = it.value
+    print(value1)
+    it.value += 1
+    value2: int = it.value
+    print(value2)
+    print(it.get_counter())

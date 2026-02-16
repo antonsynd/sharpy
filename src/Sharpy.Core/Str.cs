@@ -106,7 +106,7 @@ namespace Sharpy
                 return "-inf";
             }
 
-            var s = value.ToString();
+            var s = value.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
 
             // If already contains a decimal point or scientific notation, return as-is
             if (s.IndexOf('.') >= 0 || s.IndexOf('E') >= 0 || s.IndexOf('e') >= 0)
