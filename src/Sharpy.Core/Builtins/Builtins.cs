@@ -39,7 +39,7 @@ namespace Sharpy
             }
 
             var textWriter = file == Stdout ? Console.Out : Console.Error;
-            var output = string.Join(sep, values.Select(v => v?.ToString() ?? "None"));
+            var output = string.Join(sep, values.Select(FormatValue));
 
             if (end == "\n")
             {
@@ -98,6 +98,35 @@ namespace Sharpy
             }
 
             throw new TypeError($"object of type '{obj.GetType().Name}' has no len()");
+        }
+
+        /// <summary>
+        /// Format a value for print output with Python-compatible representation.
+        /// Handles null, booleans, and floating-point types specially.
+        /// </summary>
+        private static string FormatValue(object? v)
+        {
+            if (v is null)
+            {
+                return "None";
+            }
+
+            if (v is bool b)
+            {
+                return b ? "True" : "False";
+            }
+
+            if (v is double d)
+            {
+                return FormatFloat(d);
+            }
+
+            if (v is float f)
+            {
+                return FormatFloat(f);
+            }
+
+            return v.ToString() ?? "";
         }
     }
 }

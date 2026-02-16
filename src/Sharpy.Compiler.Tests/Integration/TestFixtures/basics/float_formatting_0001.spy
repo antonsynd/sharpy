@@ -1,0 +1,26 @@
+# Test Python-compatible float formatting
+# Whole-number float variables must print with trailing .0
+
+def format_via_str(x: float) -> str:
+    return str(x)
+
+a: float = 5.0
+b: float = 0.0
+c: float = 100.0
+d: float = 3.14
+e: float = -2.5
+
+def main():
+    # Whole-number float variables
+    print(a)
+    print(b)
+    print(c)
+
+    # Non-whole floats (should be unchanged)
+    print(d)
+    print(e)
+
+    # str() on floats
+    print(format_via_str(5.0))
+    print(format_via_str(0.0))
+    print(format_via_str(3.14))

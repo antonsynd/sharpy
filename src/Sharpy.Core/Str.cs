@@ -1,3 +1,5 @@
+using System;
+
 namespace Sharpy
 {
     public static partial class Builtins
@@ -17,6 +19,16 @@ namespace Sharpy
             if (x is bool b)
             {
                 return b ? "True" : "False";
+            }
+
+            if (x is double d)
+            {
+                return FormatFloat(d);
+            }
+
+            if (x is float f)
+            {
+                return FormatFloat(f);
             }
 
             return x.ToString() ?? "";
@@ -56,18 +68,53 @@ namespace Sharpy
 
         /// <summary>
         /// Convert a <see cref="double"/> to <see cref="string"/> without boxing.
+        /// Formats with Python-compatible trailing <c>.0</c> for whole numbers.
         /// </summary>
         public static string Str(double d)
         {
-            return d.ToString();
+            return FormatFloat(d);
         }
 
         /// <summary>
         /// Convert a <see cref="float"/> to <see cref="string"/> without boxing.
+        /// Formats with Python-compatible trailing <c>.0</c> for whole numbers.
         /// </summary>
         public static string Str(float f)
         {
-            return f.ToString();
+            return FormatFloat(f);
+        }
+
+        /// <summary>
+        /// Format a floating-point value with Python-compatible representation.
+        /// NaN, Infinity, and -Infinity use Python's lowercase forms.
+        /// Whole-number values get a trailing <c>.0</c>.
+        /// </summary>
+        internal static string FormatFloat(double value)
+        {
+            if (double.IsNaN(value))
+            {
+                return "nan";
+            }
+
+            if (double.IsPositiveInfinity(value))
+            {
+                return "inf";
+            }
+
+            if (double.IsNegativeInfinity(value))
+            {
+                return "-inf";
+            }
+
+            var s = value.ToString();
+
+            // If already contains a decimal point or scientific notation, return as-is
+            if (s.IndexOf('.') >= 0 || s.IndexOf('E') >= 0 || s.IndexOf('e') >= 0)
+            {
+                return s;
+            }
+
+            return s + ".0";
         }
 
         /// <summary>

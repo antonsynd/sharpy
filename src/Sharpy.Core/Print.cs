@@ -20,7 +20,7 @@ namespace Sharpy
 
             foreach (var obj in args.args)
             {
-                var result = obj?.ToString() ?? "None";
+                var result = FormatValue(obj);
 
                 if (i < lastIndex)
                 {

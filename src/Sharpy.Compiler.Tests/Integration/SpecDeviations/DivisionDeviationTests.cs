@@ -219,6 +219,6 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("3\n", result.StandardOutput);
+        Assert.Equal("3.0\n", result.StandardOutput);
     }
 }

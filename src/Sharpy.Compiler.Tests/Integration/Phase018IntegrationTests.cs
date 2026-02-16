@@ -102,7 +102,7 @@ def main():
 
         // Assert
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("1\n2\n3\n4\n", result.StandardOutput);
+        Assert.Equal("1.0\n2.0\n3.0\n4.0\n", result.StandardOutput);
     }
 
     [Fact]
@@ -219,7 +219,7 @@ def main():
 
         // Assert
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("5\n", result.StandardOutput);
+        Assert.Equal("5.0\n", result.StandardOutput);
     }
 
     [Fact]
@@ -350,7 +350,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("3\n4\n5\n", result.StandardOutput);
+        Assert.Equal("3.0\n4.0\n5.0\n", result.StandardOutput);
     }
 
     #endregion
@@ -461,7 +461,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("5\n", result.StandardOutput);
+        Assert.Equal("5.0\n", result.StandardOutput);
     }
 
     [Fact]
@@ -912,7 +912,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("5\n", result.StandardOutput);
+        Assert.Equal("5.0\n", result.StandardOutput);
     }
 
     [Fact]

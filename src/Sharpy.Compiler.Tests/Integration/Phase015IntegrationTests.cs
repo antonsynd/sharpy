@@ -269,7 +269,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("10\n20\n5\n", result.StandardOutput);
+        Assert.Equal("10.0\n20.0\n5.0\n", result.StandardOutput);
     }
 
     #endregion
@@ -1005,7 +1005,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("15\n50\n", result.StandardOutput);
+        Assert.Equal("15.0\n50.0\n", result.StandardOutput);
     }
 
     [Fact]
