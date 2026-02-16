@@ -259,6 +259,7 @@ internal class NameResolver
             IsAbstract = isAbstract,
             DefiningFilePath = _currentFilePath,
             DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = classDef.Span,
             DeclarationLine = classDef.LineStart,
             DeclarationColumn = classDef.ColumnStart
         };
@@ -326,6 +327,7 @@ internal class NameResolver
             TypeParameters = structDef.TypeParameters.ToList(),
             DefiningFilePath = _currentFilePath,
             DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = structDef.Span,
             DeclarationLine = structDef.LineStart,
             DeclarationColumn = structDef.ColumnStart
         };
@@ -391,6 +393,7 @@ internal class NameResolver
             TypeParameters = interfaceDef.TypeParameters.ToList(),
             DefiningFilePath = _currentFilePath,
             DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = interfaceDef.Span,
             DeclarationLine = interfaceDef.LineStart,
             DeclarationColumn = interfaceDef.ColumnStart
         };
@@ -453,6 +456,7 @@ internal class NameResolver
             AccessLevel = AccessLevel.Public,
             DefiningFilePath = _currentFilePath,
             DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = enumDef.Span,
             DeclarationLine = enumDef.LineStart,
             DeclarationColumn = enumDef.ColumnStart
         };
@@ -496,6 +500,7 @@ internal class NameResolver
             Parameters = parameters,
             TypeParameters = functionDef.TypeParameters.ToList(),
             DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = functionDef.Span,
             DeclarationLine = functionDef.LineStart,
             DeclarationColumn = functionDef.ColumnStart
         };
@@ -558,6 +563,7 @@ internal class NameResolver
             IsVirtual = isVirtual,
             IsOverride = isOverride,
             DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = method.Span,
             DeclarationLine = method.LineStart,
             DeclarationColumn = method.ColumnStart
         };
@@ -632,6 +638,7 @@ internal class NameResolver
             AccessLevel = accessLevel,
             IsConstant = field.IsConst,
             DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = field.Span,
             DeclarationLine = field.LineStart,
             DeclarationColumn = field.ColumnStart
         };
@@ -733,6 +740,7 @@ internal class NameResolver
             AccessLevel = AccessLevel.Public,
             IsConstant = true,
             DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = constDecl.Span,
             DeclarationLine = constDecl.LineStart,
             DeclarationColumn = constDecl.ColumnStart
         };

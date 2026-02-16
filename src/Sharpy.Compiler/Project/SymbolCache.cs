@@ -42,6 +42,16 @@ internal record CachedSymbol
     public int? DeclarationColumn { get; init; }
 
     /// <summary>
+    /// Declaration span start offset (for LSP go-to-definition)
+    /// </summary>
+    public int? DeclarationSpanStart { get; init; }
+
+    /// <summary>
+    /// Declaration span length (for LSP go-to-definition)
+    /// </summary>
+    public int? DeclarationSpanLength { get; init; }
+
+    /// <summary>
     /// For VariableSymbol: serialized type ID
     /// </summary>
     public string? TypeId { get; init; }

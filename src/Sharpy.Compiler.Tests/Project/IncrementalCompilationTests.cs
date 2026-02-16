@@ -307,6 +307,8 @@ def main():
             AccessLevel = AccessLevel.Public,
             DeclarationLine = 5,
             DeclarationColumn = 1,
+            DeclarationSpan = new Sharpy.Compiler.Text.TextSpan(20, 50),
+            DeclaringFilePath = "/test/func.spy",
             Parameters = new List<ParameterSymbol>
             {
                 new ParameterSymbol { Name = "count", Type = BuiltinType.Int, HasDefault = true }
@@ -329,6 +331,9 @@ def main():
         Assert.Single(restored.Parameters);
         Assert.Equal("count", restored.Parameters[0].Name);
         Assert.True(restored.Parameters[0].HasDefault);
+        Assert.NotNull(restored.DeclarationSpan);
+        Assert.Equal(20, restored.DeclarationSpan!.Value.Start);
+        Assert.Equal(50, restored.DeclarationSpan.Value.Length);
     }
 
     [Fact]
@@ -341,6 +346,8 @@ def main():
             TypeKind = TypeKind.Class,
             AccessLevel = AccessLevel.Public,
             DeclarationLine = 1,
+            DeclarationSpan = new Sharpy.Compiler.Text.TextSpan(0, 30),
+            DeclaringFilePath = "/test/class.spy",
             IsAbstract = true,
             DefiningModule = "test"
         };
@@ -356,6 +363,9 @@ def main():
         Assert.Equal(TypeKind.Class, restored.TypeKind);
         Assert.True(restored.IsAbstract);
         Assert.Equal("test", restored.DefiningModule);
+        Assert.NotNull(restored.DeclarationSpan);
+        Assert.Equal(0, restored.DeclarationSpan!.Value.Start);
+        Assert.Equal(30, restored.DeclarationSpan.Value.Length);
     }
 
     [Fact]
@@ -367,7 +377,9 @@ def main():
             Kind = SymbolKind.Variable,
             Type = BuiltinType.Int,
             IsConstant = true,
-            AccessLevel = AccessLevel.Public
+            AccessLevel = AccessLevel.Public,
+            DeclarationSpan = new Sharpy.Compiler.Text.TextSpan(0, 16),
+            DeclaringFilePath = "/test/var.spy"
         };
 
         var filePath = CreateTempFile("var.spy", "my_var: int = 42");
@@ -380,6 +392,9 @@ def main():
         Assert.Equal("my_var", restored!.Name);
         Assert.True(restored.IsConstant);
         Assert.Equal(BuiltinType.Int, restored.Type);
+        Assert.NotNull(restored.DeclarationSpan);
+        Assert.Equal(0, restored.DeclarationSpan!.Value.Start);
+        Assert.Equal(16, restored.DeclarationSpan.Value.Length);
     }
 
     [Fact]

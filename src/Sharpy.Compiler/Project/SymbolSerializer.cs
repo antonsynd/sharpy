@@ -101,6 +101,8 @@ internal static class SymbolSerializer
             AccessLevel = ts.AccessLevel.ToString(),
             DeclarationLine = ts.DeclarationLine,
             DeclarationColumn = ts.DeclarationColumn,
+            DeclarationSpanStart = ts.DeclarationSpan?.Start,
+            DeclarationSpanLength = ts.DeclarationSpan?.Length,
             TypeKind = ts.TypeKind.ToString(),
             IsAbstract = ts.IsAbstract,
             DefiningModule = ts.DefiningModule,
@@ -134,6 +136,8 @@ internal static class SymbolSerializer
             AccessLevel = fs.AccessLevel.ToString(),
             DeclarationLine = fs.DeclarationLine,
             DeclarationColumn = fs.DeclarationColumn,
+            DeclarationSpanStart = fs.DeclarationSpan?.Start,
+            DeclarationSpanLength = fs.DeclarationSpan?.Length,
             Parameters = fs.Parameters.Select(SerializeParameter).ToList(),
             ReturnTypeId = SerializeType(fs.ReturnType),
             IsStatic = fs.IsStatic,
@@ -157,6 +161,8 @@ internal static class SymbolSerializer
             AccessLevel = vs.AccessLevel.ToString(),
             DeclarationLine = vs.DeclarationLine,
             DeclarationColumn = vs.DeclarationColumn,
+            DeclarationSpanStart = vs.DeclarationSpan?.Start,
+            DeclarationSpanLength = vs.DeclarationSpan?.Length,
             TypeId = SerializeType(vs.Type),
             IsReExport = vs.IsReExport,
             OriginalModule = vs.OriginalModule,
@@ -181,6 +187,8 @@ internal static class SymbolSerializer
             AccessLevel = ms.AccessLevel.ToString(),
             DeclarationLine = ms.DeclarationLine,
             DeclarationColumn = ms.DeclarationColumn,
+            DeclarationSpanStart = ms.DeclarationSpan?.Start,
+            DeclarationSpanLength = ms.DeclarationSpan?.Length,
             ExportIds = ms.Exports.ToDictionary(
                 kvp => kvp.Key,
                 kvp => ComputeSymbolId(kvp.Value, ms.FilePath)),
@@ -201,6 +209,8 @@ internal static class SymbolSerializer
             AccessLevel = tas.AccessLevel.ToString(),
             DeclarationLine = tas.DeclarationLine,
             DeclarationColumn = tas.DeclarationColumn,
+            DeclarationSpanStart = tas.DeclarationSpan?.Start,
+            DeclarationSpanLength = tas.DeclarationSpan?.Length,
             // TypeAnnotation is AST-based, we don't serialize it (reconstructed from source on reparse)
             IsReExport = tas.IsReExport,
             OriginalModule = tas.OriginalModule,
@@ -219,6 +229,8 @@ internal static class SymbolSerializer
             AccessLevel = tps.AccessLevel.ToString(),
             DeclarationLine = tps.DeclarationLine,
             DeclarationColumn = tps.DeclarationColumn,
+            DeclarationSpanStart = tps.DeclarationSpan?.Start,
+            DeclarationSpanLength = tps.DeclarationSpan?.Length,
             IsReExport = tps.IsReExport,
             OriginalModule = tps.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(tps.CodeGenInfo)
@@ -296,6 +308,13 @@ internal static class SymbolSerializer
 
     #region Deserialization Methods
 
+    private static Text.TextSpan? DeserializeDeclarationSpan(CachedSymbol cached)
+    {
+        if (cached.DeclarationSpanStart != null && cached.DeclarationSpanLength != null)
+            return new Text.TextSpan(cached.DeclarationSpanStart.Value, cached.DeclarationSpanLength.Value);
+        return null;
+    }
+
     private static TypeSymbol DeserializeTypeSymbol(
         CachedSymbol cached,
         Dictionary<string, Symbol> symbolRegistry,
@@ -323,6 +342,7 @@ internal static class SymbolSerializer
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,
             DeclarationColumn = cached.DeclarationColumn,
+            DeclarationSpan = DeserializeDeclarationSpan(cached),
             DeclaringFilePath = cached.FilePath,
             TypeKind = typeKind,
             IsAbstract = cached.IsAbstract,
@@ -355,6 +375,7 @@ internal static class SymbolSerializer
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,
             DeclarationColumn = cached.DeclarationColumn,
+            DeclarationSpan = DeserializeDeclarationSpan(cached),
             DeclaringFilePath = cached.FilePath,
             Parameters = parameters,
             ReturnType = typeResolver(cached.ReturnTypeId ?? "void:"),
@@ -382,6 +403,7 @@ internal static class SymbolSerializer
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,
             DeclarationColumn = cached.DeclarationColumn,
+            DeclarationSpan = DeserializeDeclarationSpan(cached),
             DeclaringFilePath = cached.FilePath,
             Type = typeResolver(cached.TypeId ?? "unknown:"),
             IsParameter = GetBoolProperty(props, "IsParameter"),
@@ -425,6 +447,7 @@ internal static class SymbolSerializer
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,
             DeclarationColumn = cached.DeclarationColumn,
+            DeclarationSpan = DeserializeDeclarationSpan(cached),
             DeclaringFilePath = cached.FilePath,
             FilePath = cached.FilePath,
             IsReExport = cached.IsReExport,
@@ -444,6 +467,7 @@ internal static class SymbolSerializer
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,
             DeclarationColumn = cached.DeclarationColumn,
+            DeclarationSpan = DeserializeDeclarationSpan(cached),
             DeclaringFilePath = cached.FilePath,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
@@ -462,6 +486,7 @@ internal static class SymbolSerializer
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,
             DeclarationColumn = cached.DeclarationColumn,
+            DeclarationSpan = DeserializeDeclarationSpan(cached),
             DeclaringFilePath = cached.FilePath,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
