@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Discovery.Caching;
 /// </summary>
 internal class OverloadIndexBuilder
 {
-    private readonly TypeMapper _typeMapper = new();
+    private readonly ClrTypeMapper _typeMapper = new();
     private readonly ICompilerLogger _logger;
 
     public OverloadIndexBuilder(ICompilerLogger? logger = null)

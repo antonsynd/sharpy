@@ -7,9 +7,9 @@ namespace Sharpy.Compiler.Tests.Discovery;
 
 enum TestEnum { A, B, C }
 
-public class TypeMapperTests
+public class ClrTypeMapperTests
 {
-    private readonly TypeMapper _mapper = new();
+    private readonly ClrTypeMapper _mapper = new();
 
     [Fact]
     public void MapPrimitiveTypes()

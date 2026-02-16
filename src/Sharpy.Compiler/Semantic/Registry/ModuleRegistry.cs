@@ -315,7 +315,7 @@ internal class ModuleRegistry
     /// </summary>
     private FunctionSymbol? CreateConstructorSymbol(System.Reflection.ConstructorInfo ctor, Type declaringType)
     {
-        var typeMapper = new Discovery.TypeMapper();
+        var typeMapper = new Discovery.ClrTypeMapper();
         var parameters = new List<ParameterSymbol>();
 
         // Add 'self' parameter first (Sharpy convention - will be skipped by type checker)

@@ -15,7 +15,7 @@ internal class CachedModuleDiscovery
 {
     private readonly OverloadIndexCache _cache;
     private readonly OverloadIndexBuilder _builder;
-    private readonly TypeMapper _typeMapper;
+    private readonly ClrTypeMapper _typeMapper;
     private readonly ConcurrentDictionary<string, OverloadIndex> _loadedIndices = new();
 
     /// <summary>
@@ -34,7 +34,7 @@ internal class CachedModuleDiscovery
     {
         _cache = cache ?? new OverloadIndexCache(null, logger);
         _builder = new OverloadIndexBuilder(logger);
-        _typeMapper = new TypeMapper();
+        _typeMapper = new ClrTypeMapper();
     }
 
     /// <summary>

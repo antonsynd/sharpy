@@ -5,7 +5,7 @@ using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Parser.Ast;
 using Microsoft.CodeAnalysis.CSharp;
-using DiscoveryTypeMapper = Sharpy.Compiler.Discovery.TypeMapper;
+using DiscoveryTypeMapper = Sharpy.Compiler.Discovery.ClrTypeMapper;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
