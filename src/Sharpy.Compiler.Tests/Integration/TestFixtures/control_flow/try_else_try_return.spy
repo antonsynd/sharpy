@@ -1,11 +1,13 @@
 def process(x: int) -> str:
+    val: int = 0
     try:
-        val: int = x
+        val = x
     except Exception:
         return "outer error"
     else:
+        result: int = 0
         try:
-            result: int = val * 2
+            result = val * 2
         except Exception:
             return "inner error"
         else:

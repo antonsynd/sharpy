@@ -650,6 +650,17 @@ internal partial class TypeChecker
             _symbolTable.ExitScope();
         }
 
+        // Else body has its own scope
+        if (tryStmt.ElseBody.Length > 0)
+        {
+            _symbolTable.EnterScope("try-else");
+            _controlFlowDepth++;
+            foreach (var stmt in tryStmt.ElseBody)
+                CheckStatement(stmt);
+            _controlFlowDepth--;
+            _symbolTable.ExitScope();
+        }
+
         // Finally block has its own scope
         if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Length > 0)
         {

@@ -1,6 +1,7 @@
 def count_down(start: int) -> str:
+    n: int = 0
     try:
-        n: int = start
+        n = start
     except Exception:
         return "error"
     else:

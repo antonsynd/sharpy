@@ -1,6 +1,7 @@
 def example(x: int) -> str:
+    val: int = 0
     try:
-        val: int = x
+        val = x
     except Exception:
         return "error"
     else:

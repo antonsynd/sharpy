@@ -1,6 +1,7 @@
 def find_positive(numbers: list[int]) -> str:
+    val: list[int] = []
     try:
-        val: list[int] = numbers
+        val = numbers
     except Exception:
         return "error"
     else:

@@ -1,0 +1,7 @@
+def main():
+    try:
+        x: int = 42
+    except Exception:
+        pass
+    else:
+        print(x)

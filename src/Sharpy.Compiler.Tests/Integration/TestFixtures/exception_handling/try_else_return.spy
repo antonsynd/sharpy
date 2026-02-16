@@ -1,7 +1,9 @@
 def safe_divide(a: int, b: int) -> str:
+    result: int = 0
+    total: int = 0
     try:
-        result: int = a
-        total: int = result + b
+        result = a
+        total = result + b
     except Exception:
         return "error"
     else:
