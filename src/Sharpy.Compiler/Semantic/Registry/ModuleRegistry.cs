@@ -265,7 +265,7 @@ internal class ModuleRegistry
         }
 
         // Collect implemented interfaces (only directly implemented, not inherited)
-        var interfaces = new List<TypeSymbol>();
+        var interfaces = new List<InterfaceReference>();
         foreach (var iface in clrType.GetInterfaces())
         {
             if (clrType.BaseType != null && clrType.BaseType.GetInterfaces().Contains(iface))
@@ -274,7 +274,7 @@ internal class ModuleRegistry
             var ifaceSymbol = CreateTypeSymbolFromClrType(iface);
             if (ifaceSymbol != null)
             {
-                interfaces.Add(ifaceSymbol);
+                interfaces.Add(new InterfaceReference { Definition = ifaceSymbol });
             }
         }
 

@@ -104,7 +104,7 @@ internal static class SymbolSerializer
             DefiningModule = ts.DefiningModule,
             BaseTypeId = ts.BaseType != null ? ComputeSymbolId(ts.BaseType, ts.BaseType.DefiningFilePath ?? filePath) : null,
             InterfaceIds = ts.Interfaces.Count > 0
-                ? ts.Interfaces.Select(i => ComputeSymbolId(i, i.DefiningFilePath ?? filePath)).ToList()
+                ? ts.Interfaces.Select(i => ComputeSymbolId(i.Definition, i.Definition.DefiningFilePath ?? filePath)).ToList()
                 : null,
             Fields = fields,
             Methods = methods,
@@ -716,7 +716,7 @@ internal static class SymbolSerializer
                     {
                         if (symbolRegistry.TryGetValue(ifaceId, out var ifaceSymbol) && ifaceSymbol is TypeSymbol ifaceType)
                         {
-                            ts.Interfaces.Add(ifaceType);
+                            ts.Interfaces.Add(new InterfaceReference { Definition = ifaceType });
                         }
                     }
                 }

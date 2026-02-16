@@ -52,7 +52,7 @@ internal class InterfaceConflictValidator : SemanticValidatorBase
             return;
 
         // Also include explicit interfaces from TypeSymbol.Interfaces
-        var currentExplicitGeneric = CollectExplicitGenericInterfaces(typeSymbol);
+        var currentExplicitGeneric = CollectExplicitGenericInterfaces(typeSymbol, context);
 
         // Walk ancestor chain
         var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
@@ -64,7 +64,7 @@ internal class InterfaceConflictValidator : SemanticValidatorBase
             var ancestorGeneric = ancestorSynthesized
                 .Where(i => i.TypeArgs.Length > 0)
                 .ToList();
-            var ancestorExplicitGeneric = CollectExplicitGenericInterfaces(ancestor);
+            var ancestorExplicitGeneric = CollectExplicitGenericInterfaces(ancestor, context);
 
             // Check for conflicts: same interface name, different type args
             foreach (var current in currentGeneric)
@@ -138,30 +138,25 @@ internal class InterfaceConflictValidator : SemanticValidatorBase
 
     /// <summary>
     /// Collects generic interfaces from a TypeSymbol's explicit Interfaces list.
-    /// Extracts interface name and type arguments from GenericType interfaces.
+    /// Resolves TypeArgAnnotations from InterfaceReference to SemanticTypes using the TypeResolver.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>v0.2.x deferral (see #122):</b> This method currently returns an empty list because
-    /// <see cref="TypeSymbol.Interfaces"/> stores only the interface <em>definition</em>
-    /// (<see cref="TypeSymbol"/>), not the concrete instantiation (e.g., <c>IEquatable&lt;str&gt;</c>).
-    /// Generic type arguments are discarded during name resolution when the interface is
-    /// resolved to its <see cref="TypeSymbol"/>.
-    /// </para>
-    /// <para>
-    /// To fix this, the data model would need to preserve type arguments on interface
-    /// references — for example, by storing <c>(TypeSymbol Definition, SemanticType[] TypeArgs)</c>
-    /// tuples instead of bare <c>TypeSymbol</c> entries. This is planned for v0.2.x when the
-    /// generic type system is extended.
-    /// </para>
-    /// </remarks>
-    private static List<(string Name, SemanticType[] TypeArgs)> CollectExplicitGenericInterfaces(TypeSymbol typeSymbol)
+    private static List<(string Name, SemanticType[] TypeArgs)> CollectExplicitGenericInterfaces(
+        TypeSymbol typeSymbol, SemanticContext context)
     {
         var result = new List<(string, SemanticType[])>();
-        // TODO(#122): TypeSymbol.Interfaces stores only the interface definition (TypeSymbol),
-        // not the instantiation (e.g., IEquatable<str>). Generic type arguments are discarded
-        // during name resolution. Until the data model preserves type args, explicit generic
-        // interface conflicts cannot be detected here.
+        foreach (var ifaceRef in typeSymbol.Interfaces)
+        {
+            if (ifaceRef.TypeArgAnnotations.IsEmpty)
+                continue;
+
+            var resolvedArgs = ifaceRef.TypeArgAnnotations
+                .Select(a => context.TypeResolver.ResolveTypeAnnotation(a))
+                .Where(t => t != SemanticType.Unknown)
+                .ToArray();
+
+            if (resolvedArgs.Length > 0)
+                result.Add((ifaceRef.Definition.Name, resolvedArgs));
+        }
         return result;
     }
 

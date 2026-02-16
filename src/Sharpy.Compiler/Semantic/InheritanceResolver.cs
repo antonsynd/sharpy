@@ -30,7 +30,12 @@ internal class InheritanceResolver
         => _semanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
 
     private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-        => _semanticBinding.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+    {
+        var refs = _semanticBinding.GetInterfaces(symbol);
+        if (refs != null)
+            return refs.Select(r => r.Definition).ToList();
+        return symbol.Interfaces.Select(r => r.Definition).ToList();
+    }
 
     /// <summary>
     /// Resolve all inheritance relationships for imported types.

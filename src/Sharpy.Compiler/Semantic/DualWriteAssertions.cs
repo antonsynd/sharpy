@@ -43,11 +43,11 @@ internal static class DualWriteAssertions
 
             if (symbol.Interfaces.Count > 0)
             {
-                var bindingInterfaces = semanticBinding.GetInterfaces(symbol);
-                if (bindingInterfaces == null || bindingInterfaces.Count != symbol.Interfaces.Count)
+                var bindingInterfaceRefs = semanticBinding.GetInterfaces(symbol);
+                if (bindingInterfaceRefs == null || bindingInterfaceRefs.Count != symbol.Interfaces.Count)
                 {
                     throw new InvalidOperationException(
-                        $"TypeSymbol '{symbol.Name}' has {symbol.Interfaces.Count} interface(s) but SemanticBinding.GetInterfaces() returned {bindingInterfaces?.Count ?? 0} (materialization inconsistency). " +
+                        $"TypeSymbol '{symbol.Name}' has {symbol.Interfaces.Count} interface(s) but SemanticBinding.GetInterfaces() returned {bindingInterfaceRefs?.Count ?? 0} (materialization inconsistency). " +
                         "This is a compiler bug - please report it.");
                 }
             }
@@ -64,13 +64,13 @@ internal static class DualWriteAssertions
                 }
             }
 
-            var sbInterfaces = semanticBinding.GetInterfaces(symbol);
-            if (sbInterfaces != null && sbInterfaces.Count > 0)
+            var sbInterfaceRefs = semanticBinding.GetInterfaces(symbol);
+            if (sbInterfaceRefs != null && sbInterfaceRefs.Count > 0)
             {
-                if (symbol.Interfaces.Count < sbInterfaces.Count)
+                if (symbol.Interfaces.Count < sbInterfaceRefs.Count)
                 {
                     throw new InvalidOperationException(
-                        $"SemanticBinding has {sbInterfaces.Count} interface(s) for '{symbol.Name}' but Symbol.Interfaces has {symbol.Interfaces.Count} (materialization missed). " +
+                        $"SemanticBinding has {sbInterfaceRefs.Count} interface(s) for '{symbol.Name}' but Symbol.Interfaces has {symbol.Interfaces.Count} (materialization missed). " +
                         "This is a compiler bug - please report it.");
                 }
             }

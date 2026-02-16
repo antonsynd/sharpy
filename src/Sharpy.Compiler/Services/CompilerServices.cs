@@ -179,7 +179,12 @@ public class CompilerServices
         => SemanticBinding.GetBaseType(symbol) ?? symbol.BaseType;
 
     private IReadOnlyList<TypeSymbol> GetInterfaces(TypeSymbol symbol)
-        => SemanticBinding.GetInterfaces(symbol) ?? (IReadOnlyList<TypeSymbol>)symbol.Interfaces;
+    {
+        var refs = SemanticBinding.GetInterfaces(symbol);
+        if (refs != null)
+            return refs.Select(r => r.Definition).ToList();
+        return symbol.Interfaces.Select(r => r.Definition).ToList();
+    }
 
     private bool IsSubtypeOf(TypeSymbol? derived, TypeSymbol? baseType)
     {

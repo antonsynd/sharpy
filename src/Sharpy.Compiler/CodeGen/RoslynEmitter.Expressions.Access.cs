@@ -979,10 +979,10 @@ internal partial class RoslynEmitter
             return null;
 
         // Search interfaces for a default method with this name
-        foreach (var iface in typeSymbol.Interfaces)
+        foreach (var ifaceRef in typeSymbol.Interfaces)
         {
-            if (HasDefaultMethod(iface, methodName))
-                return NameMangler.Transform(iface.Name, NameContext.Interface);
+            if (HasDefaultMethod(ifaceRef.Definition, methodName))
+                return NameMangler.Transform(ifaceRef.Definition.Name, NameContext.Interface);
         }
 
         return null;

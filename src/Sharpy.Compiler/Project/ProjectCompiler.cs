@@ -908,11 +908,11 @@ internal class ProjectCompiler
         }
 
         // Validate interface implementations still exist
-        foreach (var iface in cached.Interfaces)
+        foreach (var ifaceRef in cached.Interfaces)
         {
-            if (SymbolTable.Lookup(iface.Name) == null)
+            if (SymbolTable.Lookup(ifaceRef.Definition.Name) == null)
             {
-                _logger.LogDebug($"Type '{cached.Name}' implements non-existent interface '{iface.Name}'");
+                _logger.LogDebug($"Type '{cached.Name}' implements non-existent interface '{ifaceRef.Definition.Name}'");
                 return false;
             }
         }

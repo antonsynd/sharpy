@@ -67,7 +67,7 @@ public class InheritanceResolverTests
 
         var interfaces = binding.GetInterfaces(impl);
         interfaces.Should().NotBeNull();
-        interfaces.Should().Contain(iface);
+        interfaces.Should().Contain(r => r.Definition == iface);
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public class InheritanceResolverTests
         binding.GetBaseType(impl).Should().BeNull("interface should not become base type");
         var interfaces = binding.GetInterfaces(impl);
         interfaces.Should().NotBeNull();
-        interfaces.Should().Contain(iface);
+        interfaces.Should().Contain(r => r.Definition == iface);
     }
 
     [Fact]
@@ -123,8 +123,8 @@ public class InheritanceResolverTests
 
         var interfaces = binding.GetInterfaces(impl);
         interfaces.Should().HaveCount(2);
-        interfaces.Should().Contain(iface1);
-        interfaces.Should().Contain(iface2);
+        interfaces.Should().Contain(r => r.Definition == iface1);
+        interfaces.Should().Contain(r => r.Definition == iface2);
     }
 
     [Fact]
@@ -154,7 +154,7 @@ public class InheritanceResolverTests
         binding.GetBaseType(child).Should().Be(parent);
         var interfaces = binding.GetInterfaces(child);
         interfaces.Should().NotBeNull();
-        interfaces.Should().Contain(iface);
+        interfaces.Should().Contain(r => r.Definition == iface);
     }
 
     [Fact]

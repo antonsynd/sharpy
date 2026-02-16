@@ -341,9 +341,9 @@ public sealed record UserDefinedType : SemanticType
         var currentType = type;
         while (currentType != null)
         {
-            foreach (var iface in currentType.Interfaces)
+            foreach (var ifaceRef in currentType.Interfaces)
             {
-                queue.Enqueue(iface);
+                queue.Enqueue(ifaceRef.Definition);
             }
             currentType = currentType.BaseType;
         }
@@ -360,9 +360,9 @@ public sealed record UserDefinedType : SemanticType
                 return true;
 
             // Add base interfaces to the queue
-            foreach (var baseIface in iface.Interfaces)
+            foreach (var baseIfaceRef in iface.Interfaces)
             {
-                queue.Enqueue(baseIface);
+                queue.Enqueue(baseIfaceRef.Definition);
             }
         }
 

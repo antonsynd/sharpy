@@ -927,8 +927,9 @@ internal partial class RoslynEmitter
         }
 
         // Check if an interface has a default (non-abstract) method with this name
-        var interfaces = _context.SemanticBinding.GetInterfaces(_currentTypeSymbol)
-            ?? (IReadOnlyList<Semantic.TypeSymbol>)_currentTypeSymbol.Interfaces;
+        var interfaceRefs = _context.SemanticBinding.GetInterfaces(_currentTypeSymbol)
+            ?? (IReadOnlyList<Semantic.InterfaceReference>)_currentTypeSymbol.Interfaces;
+        var interfaces = interfaceRefs.Select(r => r.Definition).ToList();
         foreach (var iface in interfaces)
         {
             if (iface.Methods.Any(m => m.Name == methodName && !m.IsAbstract))

@@ -46,8 +46,8 @@ public class SemanticBindingMaterializationTests
         binding.MaterializeInheritance();
 
         classSymbol.Interfaces.Should().HaveCount(2);
-        classSymbol.Interfaces.Should().Contain(iface1);
-        classSymbol.Interfaces.Should().Contain(iface2);
+        classSymbol.Interfaces.Should().Contain(r => r.Definition == iface1);
+        classSymbol.Interfaces.Should().Contain(r => r.Definition == iface2);
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class SemanticBindingMaterializationTests
         var iface = new TypeSymbol { Name = "IFoo", Kind = SymbolKind.Type, TypeKind = TypeKind.Interface };
 
         // Pre-populate the symbol's interface list (e.g., from a different path)
-        classSymbol.Interfaces.Add(iface);
+        classSymbol.Interfaces.Add(new InterfaceReference { Definition = iface });
         binding.AddInterface(classSymbol, iface);
 
         binding.MaterializeInheritance();
@@ -217,7 +217,7 @@ public class SemanticBindingMaterializationTests
         // Reader should return value from SemanticBinding even before materialization
         var interfaces = binding.GetInterfaces(classSymbol);
         interfaces.Should().NotBeNull();
-        interfaces.Should().Contain(iface);
+        interfaces.Should().Contain(r => r.Definition == iface);
     }
 
     [Fact]

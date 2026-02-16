@@ -447,7 +447,7 @@ public class DualWriteAssertionsTests
 
         // Verify final state
         child.BaseType.Should().Be(parent);
-        child.Interfaces.Should().Contain(iface);
+        child.Interfaces.Should().Contain(r => r.Definition == iface);
         field.Type.Should().Be(SemanticType.Str);
         globalVar.Type.Should().Be(SemanticType.Int);
         child.CodeGenInfo.Should().NotBeNull();
