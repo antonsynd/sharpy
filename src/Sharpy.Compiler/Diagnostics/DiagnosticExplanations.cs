@@ -791,6 +791,15 @@ public static class DiagnosticExplanations
             "class Child(Base):\n    @final\n    def greet(self) -> str:  # missing @override\n        return \"hi\"",
             "Add @override before @final:\nclass Child(Base):\n    @override\n    @final\n    def greet(self) -> str:\n        return \"hi\"");
 
+        Add(dict, DiagnosticCodes.Validation.DunderInUserInterface,
+            "Dunder method in user-defined interface",
+            "Validation",
+            "Dunder methods (e.g., __len__, __str__, __eq__) cannot be declared in user-defined interfaces. " +
+            "Only standard library interfaces (ISized, IBoolConvertible, etc.) may declare dunder methods. " +
+            "User-defined interfaces should declare regular methods instead.",
+            "interface IMyProtocol:\n    def __len__(self) -> int:\n        ...",
+            "Use a regular method name in your interface:\ninterface IMyProtocol:\n    def get_length(self) -> int:\n        ...");
+
         // ── Validation warnings (SPY0450-SPY0499) ──────────────────────
 
         Add(dict, DiagnosticCodes.Validation.UnreachableCodeWarning, "Unreachable code detected", "Validation",
