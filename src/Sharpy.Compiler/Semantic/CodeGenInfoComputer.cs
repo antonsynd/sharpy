@@ -330,6 +330,15 @@ internal class CodeGenInfoComputer
     }
 
     /// <summary>
+    /// C# member names synthesized by the iterator protocol (__next__).
+    /// User-defined members must not mangle to any of these names.
+    /// </summary>
+    private static readonly HashSet<string> IteratorProtocolReservedNames = new()
+    {
+        "Current", "MoveNext", "Reset", "Dispose"
+    };
+
+    /// <summary>
     /// Detects name collisions among members of a type (fields + methods) after mangling.
     /// </summary>
     private void DetectMemberCollisions(TypeSymbol typeSymbol, IEnumerable<Statement> body)
@@ -357,6 +366,34 @@ internal class CodeGenInfoComputer
             else
             {
                 seen[info.CSharpName] = symbol.Name;
+            }
+        }
+
+        // Check for collisions with synthesized iterator protocol members
+        var hasNext = typeSymbol.Methods.Any(m => m.Name == DunderNames.Next);
+        if (hasNext)
+        {
+            foreach (var symbol in typeSymbol.Fields.Cast<Symbol>().Concat(typeSymbol.Methods))
+            {
+                // Skip __next__ itself — it is the trigger, not a collision
+                if (symbol.Name == DunderNames.Next)
+                    continue;
+
+                var info = _semanticBinding.GetCodeGenInfo(symbol);
+                if (info == null)
+                    continue;
+
+                if (IteratorProtocolReservedNames.Contains(info.CSharpName))
+                {
+                    var line = FindMemberLine(body, symbol.Name);
+                    _diagnostics.AddError(
+                        $"Name collision: '{symbol.Name}' compiles to '{info.CSharpName}', " +
+                        $"which conflicts with a synthesized iterator protocol member. " +
+                        $"Rename the member to avoid the collision.",
+                        line: line,
+                        code: DiagnosticCodes.CodeGen.MemberNameCollision,
+                        phase: CompilerPhase.CodeGeneration);
+                }
             }
         }
     }

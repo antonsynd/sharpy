@@ -1,0 +1,14 @@
+# Class with __next__ and a field named "current" that collides with
+# the synthesized Current property from the iterator protocol.
+class BadIterator:
+    current: int
+
+    def __init__(self):
+        self.current = 0
+
+    def __next__(self) -> int:
+        self.current = self.current + 1
+        return self.current
+
+def main():
+    pass
