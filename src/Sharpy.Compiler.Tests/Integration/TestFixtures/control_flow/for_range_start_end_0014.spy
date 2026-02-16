@@ -1,0 +1,43 @@
+# Test for-loop with range(start, end) - password strength checker
+class PasswordChecker:
+    password: str
+    
+    def __init__(self, pwd: str):
+        self.password = pwd
+    
+    def count_special_chars(self) -> int:
+        count: int = 0
+        # ASCII printable special chars: 33-47, 58-64, 91-96, 123-126
+        for code in range(33, 48):
+            char: str = chr(code)
+            if char in self.password:
+                count += 1
+        for code in range(58, 65):
+            char: str = chr(code)
+            if char in self.password:
+                count += 1
+        return count
+    
+    def is_strong(self) -> bool:
+        return self.count_special_chars() >= 2
+
+def main():
+    checker1 = PasswordChecker("hello@world!")
+    print(checker1.count_special_chars())
+    print(checker1.is_strong())
+    
+    checker2 = PasswordChecker("password")
+    print(checker2.count_special_chars())
+    print(checker2.is_strong())
+    
+    checker3 = PasswordChecker("test#$%")
+    print(checker3.count_special_chars())
+    print(checker3.is_strong())
+
+# EXPECTED OUTPUT:
+# 2
+# True
+# 0
+# False
+# 3
+# True

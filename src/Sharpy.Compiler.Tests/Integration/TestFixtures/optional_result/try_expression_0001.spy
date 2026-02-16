@@ -1,0 +1,86 @@
+# Test: try expression with explicit exception types and Result pattern
+def parse_number(text: str) -> int !ValueError:
+    return try[ValueError] int(text)
+
+def divide_safely(a: int, b: int) -> int !ZeroDivisionError:
+    return try[ZeroDivisionError] a // b
+
+def process_input(text: str) -> int !str:
+    num_result = parse_number(text)
+    
+    # Check if it's an error by attempting to unwrap_err (will throw if Ok)
+    is_err = False
+    try:
+        num_result.unwrap_err()
+        is_err = True
+    except:
+        is_err = False
+    
+    if is_err:
+        return Err("Invalid number format")
+    
+    num = num_result.unwrap()
+    
+    div_result = divide_safely(num, 2)
+    
+    # Check if it's an error
+    is_err2 = False
+    try:
+        div_result.unwrap_err()
+        is_err2 = True
+    except:
+        is_err2 = False
+    
+    if is_err2:
+        return Err("Division error")
+    
+    return Ok(div_result.unwrap())
+
+def main():
+    result1 = process_input("42")
+    print(result1.unwrap())
+    
+    result2 = process_input("100")
+    print(result2.unwrap())
+    
+    result3 = process_input("invalid")
+    # Check if result3 is an error
+    is_err3 = False
+    try:
+        result3.unwrap_err()
+        is_err3 = True
+    except:
+        is_err3 = False
+    
+    if is_err3:
+        print(result3.unwrap_err())
+    
+    result4 = parse_number("123")
+    print(result4.unwrap())
+    
+    result5 = parse_number("xyz")
+    # Check if result5 is an error
+    is_err5 = False
+    try:
+        result5.unwrap_err()
+        is_err5 = True
+    except:
+        is_err5 = False
+    
+    if is_err5:
+        print("Parse failed")
+    
+    div1 = divide_safely(10, 2)
+    print(div1.unwrap())
+    
+    div2 = divide_safely(15, 3)
+    print(div2.unwrap())
+
+# EXPECTED OUTPUT:
+# 21
+# 50
+# Invalid number format
+# 123
+# Parse failed
+# 5
+# 5

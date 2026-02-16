@@ -1,0 +1,39 @@
+# Test: Arithmetic operators with division remainder analysis
+# Uses integer division (//) and modulo (%) with a calculation class
+
+class DivisionAnalyzer:
+    dividend: int
+    divisor: int
+
+    def __init__(self, num: int, den: int):
+        self.dividend = num
+        self.divisor = den
+
+    def quotient(self) -> int:
+        return self.dividend // self.divisor
+
+    def remainder(self) -> int:
+        return self.dividend % self.divisor
+
+    def verify(self) -> bool:
+        return (self.divisor * self.quotient() + self.remainder()) == self.dividend
+
+def main():
+    analyzer = DivisionAnalyzer(47, 5)
+    
+    print(analyzer.quotient())
+    print(analyzer.remainder())
+    print(analyzer.verify())
+    
+    result = (analyzer.dividend - analyzer.remainder()) // analyzer.divisor
+    print(result)
+    
+    verification = analyzer.divisor * 9 + 2
+    print(verification)
+
+# EXPECTED OUTPUT:
+# 9
+# 2
+# True
+# 9
+# 47
