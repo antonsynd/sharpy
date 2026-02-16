@@ -99,7 +99,7 @@ internal partial class ProjectCompiler
     /// </summary>
     private bool ResolveImports(ProjectConfig config, CancellationToken cancellationToken = default)
     {
-        _logger.LogInfo("Phase 3: Resolving imports and building symbol table");
+        _logger.LogInfo("Phase 4: Resolving imports and building symbol table");
 
         ImportResolver.SetCancellationToken(cancellationToken);
 
@@ -306,7 +306,7 @@ internal partial class ProjectCompiler
     /// </summary>
     private bool PerformSemanticAnalysis(ProjectConfig config, CancellationToken cancellationToken = default)
     {
-        _logger.LogInfo("Phase 4: Semantic Analysis");
+        _logger.LogInfo("Phase 5: Semantic Analysis");
 
         // Process modules in dependency order (dependencies before dependents)
         // This ensures proper symbol resolution across modules

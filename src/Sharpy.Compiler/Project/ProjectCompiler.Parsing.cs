@@ -251,6 +251,10 @@ internal partial class ProjectCompiler
                     unit.Ast = module!;
                     unit.Phase = CompilationPhase.Parsed;
 
+                    // Validate parse output (same invariants as single-file Compiler)
+                    CompilerInvariants.AssertPostParse(module!, _diagnostics);
+                    AstValidator.ValidateTree(module!);
+
                     // Extract imports from AST
                     var imports = new List<ImportStatement>();
                     var fromImports = new List<FromImportStatement>();

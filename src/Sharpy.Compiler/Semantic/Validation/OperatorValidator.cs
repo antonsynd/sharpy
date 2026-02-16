@@ -81,6 +81,8 @@ internal class OperatorValidator : SemanticValidatorBase
                     foreach (var bodyStmt in handler.Body)
                         ValidateStatement(bodyStmt);
                 }
+                foreach (var bodyStmt in tryStmt.ElseBody)
+                    ValidateStatement(bodyStmt);
                 foreach (var bodyStmt in tryStmt.FinallyBody)
                     ValidateStatement(bodyStmt);
                 break;

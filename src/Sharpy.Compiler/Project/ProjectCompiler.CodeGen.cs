@@ -15,7 +15,7 @@ internal partial class ProjectCompiler
     /// </summary>
     private Dictionary<string, string> GenerateCode(ProjectConfig config)
     {
-        _logger.LogInfo("Phase 5: Code Generation");
+        _logger.LogInfo("Phase 6: Code Generation");
         var generatedCSharp = new Dictionary<string, string>();
         var builtinRegistry = new BuiltinRegistry(_logger);
 
@@ -103,7 +103,7 @@ internal partial class ProjectCompiler
     /// </summary>
     private ProjectCompilationResult CompileAssembly(ProjectConfig config, Dictionary<string, string> generatedCSharp)
     {
-        _logger.LogInfo("Phase 6: Assembly Compilation");
+        _logger.LogInfo("Phase 7: Assembly Compilation");
         var assemblyCompiler = new AssemblyCompiler(_logger);
         var assemblyResult = assemblyCompiler.CompileToAssembly(generatedCSharp, config);
 

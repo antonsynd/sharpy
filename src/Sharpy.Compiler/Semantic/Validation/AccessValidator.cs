@@ -147,6 +147,8 @@ internal class AccessValidator : SemanticValidatorBase
                     foreach (var s in handler.Body)
                         ValidateStatement(s);
                 }
+                foreach (var s in tryStmt.ElseBody)
+                    ValidateStatement(s);
                 foreach (var s in tryStmt.FinallyBody)
                     ValidateStatement(s);
                 break;

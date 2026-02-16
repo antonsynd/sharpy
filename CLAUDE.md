@@ -313,6 +313,7 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 | `Analysis/ControlFlow/` | `ControlFlowGraph`, `ControlFlowGraphBuilder`, `BasicBlock` |
 | `Diagnostics/` | `DiagnosticBag`, `DiagnosticCodes`, `DiagnosticRenderer`, `CompilationMetrics` |
 | `Discovery/` | CLR type discovery: `ClrTypeMapper`, `CachedModuleDiscovery` |
+| `Shared/` | `CSharpKeywords` (keyword escaping), `CSharpTypeNames` (collection type constants), `NameMangler` |
 | `Discovery/Caching/` | `OverloadIndex`, `OverloadIndexCache`, `AssemblyIdentity` |
 | `Model/` | `CompilationUnit`, `CompilationUnitFactory`, `ProjectModel` |
 | `Project/` | `ProjectCompiler` (7 partial files), `SpyProject`, `DependencyGraph` |

@@ -1268,4 +1268,72 @@ class B(IC):
     }
 
     #endregion
+
+    #region DeclaringFilePath Tests
+
+    [Fact]
+    public void DeclaringFilePath_SetForAllSymbolTypes()
+    {
+        var source = @"
+const MY_CONST: int = 42
+
+def greet(name: str) -> str:
+    return name
+
+class Animal:
+    kind: str
+
+    def speak(self) -> str:
+        return self.kind
+
+struct Point:
+    x: int
+    y: int
+";
+        var (resolver, module, symbolTable) = CreateResolver(source);
+        resolver.SetCurrentFilePath("/test/example.spy");
+        resolver.ResolveDeclarations(module);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+
+        // Class symbol
+        var animalType = symbolTable.LookupType("Animal");
+        Assert.NotNull(animalType);
+        Assert.Equal("/test/example.spy", animalType.DeclaringFilePath);
+
+        // Struct symbol
+        var pointType = symbolTable.LookupType("Point");
+        Assert.NotNull(pointType);
+        Assert.Equal("/test/example.spy", pointType.DeclaringFilePath);
+
+        // Function symbol
+        var greetFunc = symbolTable.LookupFunction("greet");
+        Assert.NotNull(greetFunc);
+        Assert.Equal("/test/example.spy", greetFunc.DeclaringFilePath);
+
+        // Constant symbol
+        var constVar = symbolTable.LookupVariable("MY_CONST");
+        Assert.NotNull(constVar);
+        Assert.Equal("/test/example.spy", constVar.DeclaringFilePath);
+    }
+
+    [Fact]
+    public void DeclaringFilePath_NullWhenNotSet()
+    {
+        var source = @"
+class Foo:
+    pass
+";
+        var (resolver, module, symbolTable) = CreateResolver(source);
+        // Do NOT call SetCurrentFilePath
+        resolver.ResolveDeclarations(module);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+
+        var fooType = symbolTable.LookupType("Foo");
+        Assert.NotNull(fooType);
+        Assert.Null(fooType.DeclaringFilePath);
+    }
+
+    #endregion
 }
