@@ -52,9 +52,9 @@ internal record CachedSymbol
     public string? BaseTypeId { get; init; }
 
     /// <summary>
-    /// For TypeSymbol: interface IDs
+    /// For TypeSymbol: interface entries (symbol ID + type arg annotations)
     /// </summary>
-    public List<string>? InterfaceIds { get; init; }
+    public List<CachedInterfaceEntry>? InterfaceEntries { get; init; }
 
     /// <summary>
     /// For TypeSymbol: type kind (Class, Struct, Interface, Enum)
@@ -135,6 +135,23 @@ internal record CachedSymbol
     /// Additional properties for extensibility
     /// </summary>
     public Dictionary<string, object>? Properties { get; init; }
+}
+
+/// <summary>
+/// Cached representation of an InterfaceReference (symbol ID + type arg annotations).
+/// </summary>
+internal record CachedInterfaceEntry
+{
+    /// <summary>
+    /// Stable symbol ID of the interface TypeSymbol.
+    /// </summary>
+    public required string SymbolId { get; init; }
+
+    /// <summary>
+    /// Serialized TypeAnnotation strings for type arguments (e.g., ["str"] for IEquatable[str]).
+    /// Null or empty if the interface has no type arguments.
+    /// </summary>
+    public List<string>? TypeArgs { get; init; }
 }
 
 /// <summary>

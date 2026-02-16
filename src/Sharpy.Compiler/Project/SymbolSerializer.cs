@@ -1,5 +1,7 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Utilities;
+using TypeAnnotation = Sharpy.Compiler.Parser.Ast.TypeAnnotation;
 
 namespace Sharpy.Compiler.Project;
 
@@ -103,8 +105,14 @@ internal static class SymbolSerializer
             IsAbstract = ts.IsAbstract,
             DefiningModule = ts.DefiningModule,
             BaseTypeId = ts.BaseType != null ? ComputeSymbolId(ts.BaseType, ts.BaseType.DefiningFilePath ?? filePath) : null,
-            InterfaceIds = ts.Interfaces.Count > 0
-                ? ts.Interfaces.Select(i => ComputeSymbolId(i.Definition, i.Definition.DefiningFilePath ?? filePath)).ToList()
+            InterfaceEntries = ts.Interfaces.Count > 0
+                ? ts.Interfaces.Select(i => new CachedInterfaceEntry
+                  {
+                      SymbolId = ComputeSymbolId(i.Definition, i.Definition.DefiningFilePath ?? filePath),
+                      TypeArgs = i.TypeArgAnnotations.IsDefaultOrEmpty
+                          ? null
+                          : i.TypeArgAnnotations.Select(SerializeTypeAnnotation).ToList()
+                  }).ToList()
                 : null,
             Fields = fields,
             Methods = methods,
@@ -682,6 +690,139 @@ internal static class SymbolSerializer
 
     #endregion
 
+    #region TypeAnnotation Serialization
+
+    /// <summary>
+    /// Serializes a TypeAnnotation AST node to a string representation.
+    /// Format mirrors SerializeType: name, name[arg1,arg2], optional:name, nullable:name, name!error.
+    /// Note: TupleElementNames is not round-tripped (extremely unlikely in interface type arguments).
+    /// </summary>
+    internal static string SerializeTypeAnnotation(TypeAnnotation ann)
+    {
+        if (ann.IsOptional)
+            return "optional:" + SerializeTypeAnnotation(ann with { IsOptional = false });
+
+        if (ann.IsCSharpNullable)
+            return "nullable:" + SerializeTypeAnnotation(ann with { IsCSharpNullable = false });
+
+        if (ann.ErrorType != null)
+            return SerializeTypeAnnotation(ann with { ErrorType = null }) + "!" + SerializeTypeAnnotation(ann.ErrorType);
+
+        if (!ann.TypeArguments.IsDefaultOrEmpty)
+            return ann.Name + "[" + string.Join(",", ann.TypeArguments.Select(SerializeTypeAnnotation)) + "]";
+
+        return ann.Name;
+    }
+
+    /// <summary>
+    /// Deserializes a string back to a TypeAnnotation AST node.
+    /// Source locations are set to 0 since cached symbols don't need location data.
+    /// Note: TupleElementNames is not restored (see SerializeTypeAnnotation).
+    /// </summary>
+    internal static TypeAnnotation DeserializeTypeAnnotation(string s)
+    {
+        if (string.IsNullOrEmpty(s))
+            return new TypeAnnotation { Name = "" };
+
+        // Check for optional: prefix
+        if (s.StartsWith("optional:"))
+        {
+            var inner = DeserializeTypeAnnotation(s["optional:".Length..]);
+            return inner with { IsOptional = true };
+        }
+
+        // Check for nullable: prefix
+        if (s.StartsWith("nullable:"))
+        {
+            var inner = DeserializeTypeAnnotation(s["nullable:".Length..]);
+            return inner with { IsCSharpNullable = true };
+        }
+
+        // Check for result type (name!error) — find '!' at depth 0
+        var bangIndex = FindCharAtDepthZero(s, '!');
+        if (bangIndex > 0)
+        {
+            var okPart = DeserializeTypeAnnotation(s[..bangIndex]);
+            var errorPart = DeserializeTypeAnnotation(s[(bangIndex + 1)..]);
+            return okPart with { ErrorType = errorPart };
+        }
+
+        // Check for type arguments (name[arg1,arg2])
+        var bracketIndex = s.IndexOf('[');
+        if (bracketIndex > 0 && s[^1] == ']')
+        {
+            var name = s[..bracketIndex];
+            var argsStr = s[(bracketIndex + 1)..^1];
+            var typeArgs = ParseAnnotationArguments(argsStr);
+            return new TypeAnnotation
+            {
+                Name = name,
+                TypeArguments = typeArgs.ToImmutableArray()
+            };
+        }
+
+        // Simple name
+        return new TypeAnnotation { Name = s };
+    }
+
+    /// <summary>
+    /// Finds the index of a character at bracket depth 0, or -1 if not found.
+    /// </summary>
+    private static int FindCharAtDepthZero(string s, char target)
+    {
+        var depth = 0;
+        for (var i = 0; i < s.Length; i++)
+        {
+            var c = s[i];
+            if (c == '[')
+                depth++;
+            else if (c == ']')
+                depth--;
+            else if (c == target && depth == 0)
+                return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// Parses a comma-separated list of serialized TypeAnnotation strings, handling nested brackets.
+    /// </summary>
+    private static List<TypeAnnotation> ParseAnnotationArguments(string argsStr)
+    {
+        var annotations = new List<TypeAnnotation>();
+        if (string.IsNullOrEmpty(argsStr))
+            return annotations;
+
+        var depth = 0;
+        var start = 0;
+
+        for (var i = 0; i < argsStr.Length; i++)
+        {
+            var c = argsStr[i];
+            if (c == '[')
+                depth++;
+            else if (c == ']')
+                depth--;
+            else if (c == ',' && depth == 0)
+            {
+                var part = argsStr[start..i].Trim();
+                annotations.Add(DeserializeTypeAnnotation(part));
+                start = i + 1;
+            }
+        }
+
+        // Add the last annotation
+        if (start < argsStr.Length)
+        {
+            var part = argsStr[start..].Trim();
+            annotations.Add(DeserializeTypeAnnotation(part));
+        }
+
+        return annotations;
+    }
+
+    #endregion
+
     #region Helpers
 
     /// <summary>
@@ -710,13 +851,20 @@ internal static class SymbolSerializer
                 }
 
                 // Resolve Interfaces
-                if (cached.InterfaceIds != null)
+                if (cached.InterfaceEntries != null)
                 {
-                    foreach (var ifaceId in cached.InterfaceIds)
+                    foreach (var entry in cached.InterfaceEntries)
                     {
-                        if (symbolRegistry.TryGetValue(ifaceId, out var ifaceSymbol) && ifaceSymbol is TypeSymbol ifaceType)
+                        if (symbolRegistry.TryGetValue(entry.SymbolId, out var ifaceSymbol) && ifaceSymbol is TypeSymbol ifaceType)
                         {
-                            ts.Interfaces.Add(new InterfaceReference { Definition = ifaceType });
+                            var typeArgs = entry.TypeArgs != null && entry.TypeArgs.Count > 0
+                                ? entry.TypeArgs.Select(DeserializeTypeAnnotation).ToImmutableArray()
+                                : ImmutableArray<TypeAnnotation>.Empty;
+                            ts.Interfaces.Add(new InterfaceReference
+                            {
+                                Definition = ifaceType,
+                                TypeArgAnnotations = typeArgs
+                            });
                         }
                     }
                 }
