@@ -1,0 +1,9 @@
+# Verifies that type errors inside try-else body are caught
+def main():
+    x: int = 0
+    try:
+        x = 42
+    except Exception:
+        pass
+    else:
+        x = "oops"

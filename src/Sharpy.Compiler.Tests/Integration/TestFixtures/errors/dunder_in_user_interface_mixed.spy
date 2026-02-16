@@ -1,0 +1,12 @@
+interface IMyProtocol:
+    def get_name(self) -> str:
+        ...
+
+    def __len__(self) -> int:
+        ...
+
+    def is_valid(self) -> bool:
+        ...
+
+def main():
+    pass

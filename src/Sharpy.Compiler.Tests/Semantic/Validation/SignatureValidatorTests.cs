@@ -556,6 +556,70 @@ class Container:
 
     #endregion
 
+    #region Interface Dunder Validation
+
+    [Fact]
+    public void Interface_DunderMethod_ReportsError()
+    {
+        var code = @"
+interface IMyProtocol:
+    def __len__(self) -> int:
+        ...
+";
+        var (module, context) = Parse(code);
+
+        var validator = new SignatureValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetErrors(),
+            e => e.Message.Contains("Dunder method '__len__'") &&
+                 e.Message.Contains("cannot be declared in a user-defined interface"));
+    }
+
+    [Fact]
+    public void Interface_RegularMethod_NoError()
+    {
+        var code = @"
+interface IMyProtocol:
+    def get_name(self) -> str:
+        ...
+";
+        var (module, context) = Parse(code);
+
+        var validator = new SignatureValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void Interface_MixedDunderAndRegular_OnlyDunderErrors()
+    {
+        var code = @"
+interface IMyProtocol:
+    def get_name(self) -> str:
+        ...
+
+    def __len__(self) -> int:
+        ...
+
+    def is_valid(self) -> bool:
+        ...
+";
+        var (module, context) = Parse(code);
+
+        var validator = new SignatureValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors().ToList();
+        Assert.Single(errors);
+        Assert.Contains("__len__", errors[0].Message);
+    }
+
+    #endregion
+
     #region Error Message Quality
 
     [Fact]
