@@ -5,23 +5,6 @@ namespace Sharpy.Compiler.Shared;
 /// </summary>
 internal static class NameMangler
 {
-    // C# keywords that need @ prefix when used as identifiers
-    private static readonly HashSet<string> _csharpKeywords = new()
-    {
-        "abstract", "as", "base", "bool", "break", "byte", "case", "catch",
-        "char", "checked", "class", "const", "continue", "decimal", "default",
-        "delegate", "do", "double", "else", "enum", "event", "explicit",
-        "extern", "false", "finally", "fixed", "float", "for", "foreach",
-        "goto", "if", "implicit", "in", "int", "interface", "internal",
-        "is", "lock", "long", "namespace", "new", "null", "object",
-        "operator", "out", "override", "params", "private", "protected",
-        "public", "readonly", "ref", "return", "sbyte", "sealed", "short",
-        "sizeof", "stackalloc", "static", "string", "struct", "switch",
-        "this", "throw", "true", "try", "typeof", "uint", "ulong",
-        "unchecked", "unsafe", "ushort", "using", "virtual", "void",
-        "volatile", "while"
-    };
-
     // Python list method mappings to C# equivalents
     // With Sharpy.List<T>, Pythonic method names are used directly (Append, Extend, Pop, etc.)
     // so most mappings just use ToPascalCase. Only add entries here for methods whose
@@ -325,10 +308,7 @@ internal static class NameMangler
 
     private static string EscapeKeywordIfNeeded(string name)
     {
-        // If the name is a C# keyword, prefix with @
-        return _csharpKeywords.Contains(name)
-            ? "@" + name
-            : name;
+        return CSharpKeywords.EscapeIfNeeded(name);
     }
 }
 
