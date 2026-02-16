@@ -164,6 +164,7 @@ internal class ProjectCompiler
 
             // Phase 3: Collect type declarations from all files (first pass - type shells only)
             CollectTypeDeclarations(config, cancellationToken);
+            CompilerInvariants.AssertPostNameResolution(SymbolTable, _diagnostics);
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 3b: Validate restored symbols against current symbol table (DISABLED)
@@ -210,6 +211,7 @@ internal class ProjectCompiler
             // This must happen AFTER imports are resolved so that imported base types
             // are available in the symbol table for cross-module inheritance
             ResolveInheritanceRelationships(cancellationToken);
+            CompilerInvariants.AssertPostInheritance(SymbolTable, _diagnostics);
 
             // Phase 4c: Auto-import transitive base types from external modules,
             // then resolve inheritance for imported types.
@@ -380,6 +382,10 @@ internal class ProjectCompiler
                 // Store AST in CompilationUnit (module is non-null at this point - parser always returns a Module)
                 compilationUnit.Ast = module!;
                 compilationUnit.Phase = CompilationPhase.Parsed;
+
+                // Validate parse output (same invariants as single-file Compiler)
+                CompilerInvariants.AssertPostParse(module!, _diagnostics);
+                AstValidator.ValidateTree(module!);
 
                 // Extract imports from AST
                 var imports = new List<ImportStatement>();
@@ -1436,6 +1442,7 @@ internal class ProjectCompiler
             else
             {
                 unit.Phase = CompilationPhase.TypeChecked;
+                CompilerInvariants.AssertPostTypeChecking(SemanticInfo, typeChecker.Diagnostics);
             }
 
             // Log per-file semantic analysis metrics at Debug level
@@ -1522,6 +1529,7 @@ internal class ProjectCompiler
             // Store generated C# in CompilationUnit
             unit.GeneratedCSharp = csharpCode;
             unit.Phase = CompilationPhase.CodeGenerated;
+            CompilerInvariants.AssertPostCodeGen(csharpCode, _diagnostics);
 
             // Log per-file code gen metrics at Debug level
             if (_logger.IsEnabled(CompilerLogLevel.Debug) && fileMetrics != null)
