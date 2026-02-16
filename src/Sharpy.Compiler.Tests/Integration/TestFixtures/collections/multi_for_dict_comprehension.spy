@@ -1,0 +1,8 @@
+# Test: multi-for dict comprehension
+def main() -> None:
+    keys: list[str] = ["a", "b"]
+    vals: list[int] = [1, 2]
+    result: dict[str, int] = {k: v for k in keys for v in vals}
+    print(len(result))
+    print(result["a"])
+    print(result["b"])

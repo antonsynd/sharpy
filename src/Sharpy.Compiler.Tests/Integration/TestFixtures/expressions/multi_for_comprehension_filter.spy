@@ -1,0 +1,7 @@
+# Test: multi-for list comprehension with filter
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    ys: list[int] = [1, 2, 3]
+    result: list[int] = [x * 10 + y for x in xs for y in ys if x != y]
+    for r in result:
+        print(r)

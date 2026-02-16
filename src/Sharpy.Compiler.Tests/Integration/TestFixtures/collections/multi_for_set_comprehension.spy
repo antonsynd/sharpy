@@ -1,0 +1,6 @@
+# Test: multi-for set comprehension
+def main() -> None:
+    xs: list[int] = [1, 2]
+    ys: list[int] = [10, 20]
+    result: set[int] = {x + y for x in xs for y in ys}
+    print(len(result))

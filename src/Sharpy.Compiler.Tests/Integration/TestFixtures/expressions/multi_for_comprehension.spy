@@ -1,0 +1,7 @@
+# Test: multi-for list comprehension (cartesian product)
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    ys: list[int] = [10, 20]
+    flat: list[int] = [x + y for x in xs for y in ys]
+    for r in flat:
+        print(r)
