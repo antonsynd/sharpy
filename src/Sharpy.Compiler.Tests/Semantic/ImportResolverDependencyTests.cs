@@ -273,7 +273,7 @@ def func2(): pass
 
     #region Transitive Dependencies
 
-    [Fact(Skip = "Complex transitive dependencies tested in ProjectCompiler integration tests")]
+    [Fact]
     public void NestedImports_AddsTransitiveDependencies()
     {
         // c.spy has no imports
@@ -417,7 +417,7 @@ def b_func(): pass
 
     #region Graph Queries After Import Resolution
 
-    [Fact(Skip = "Complex transitive dependencies tested in ProjectCompiler integration tests")]
+    [Fact]
     public void GetAffectedFiles_AfterImportResolution_ReturnsCorrectFiles()
     {
         // Create a diamond dependency: main -> {utils, models}, utils -> base, models -> base
@@ -455,7 +455,7 @@ def b_func(): pass
         AssertContainsPath(affected, mainPath);
     }
 
-    [Fact(Skip = "Complex transitive dependencies tested in ProjectCompiler integration tests")]
+    [Fact]
     public void GetParallelizableGroups_AfterImportResolution_ReturnsCorrectGroups()
     {
         // Create a simple hierarchy: main -> utils -> base

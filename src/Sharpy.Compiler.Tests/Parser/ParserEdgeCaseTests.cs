@@ -485,7 +485,7 @@ def foo(*args: int,):
         errors.Should().Contain("must be the last");
     }
 
-    [Fact(Skip = "Unimplemented: **kwargs keyword arguments not yet supported")]
+    [Fact(Skip = "See: #171 (kwargs not yet supported)")]
     public void ParsesFunctionWithKwargs()
     {
         var source = @"
@@ -496,7 +496,7 @@ def foo(**kwargs):
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "Unimplemented: *args/**kwargs combination not yet supported")]
+    [Fact(Skip = "See: #171 (kwargs not yet supported)")]
     public void ParsesFunctionWithAllParameterTypes()
     {
         var source = @"
@@ -554,7 +554,7 @@ def foo():
         funcDef!.Decorators.Should().HaveCount(3);
     }
 
-    [Fact(Skip = "Unimplemented: Decorators with arguments not yet supported")]
+    [Fact(Skip = "See: #172 (decorator arguments not yet supported)")]
     public void ParsesDecoratorWithArguments()
     {
         var source = @"
@@ -884,7 +884,7 @@ def foo():
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "Unimplemented: Lambda with default arguments not yet supported")]
+    [Fact(Skip = "See: #173 (lambda default arguments not yet supported)")]
     public void ParsesLambdaWithDefaultArgs()
     {
         var source = "f = lambda x, y=10: x + y";
