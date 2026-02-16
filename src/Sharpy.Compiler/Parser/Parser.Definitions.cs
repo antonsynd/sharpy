@@ -193,40 +193,14 @@ public partial class Parser
         // synthesize an ellipsis body to represent the abstract method signature.
         if (_parsingInterface && Current.Type != TokenType.Colon)
         {
-            // Interface method without explicit body - synthesize ellipsis body
-            ExpectNewline();
-
-            var ellipsisExpr = new EllipsisLiteral
-            {
-                LineStart = startLine,
-                ColumnStart = startColumn,
-                LineEnd = startLine,
-                ColumnEnd = startColumn
-            };
-
-            return new FunctionDef
-            {
-                Name = name,
-                TypeParameters = typeParams.ToImmutableArray(),
-                Parameters = parameters.ToImmutableArray(),
-                ReturnType = returnType,
-                Body = ImmutableArray.Create<Statement>(
-                    new ExpressionStatement
-                    {
-                        Expression = ellipsisExpr,
-                        LineStart = startLine,
-                        ColumnStart = startColumn,
-                        LineEnd = startLine,
-                        ColumnEnd = startColumn
-                    }
-                ),
-                DocString = null,
-                LineStart = startLine,
-                ColumnStart = startColumn,
-                LineEnd = Previous.Line,
-                ColumnEnd = Previous.Column,
-                Span = GetSpanFromTokens(startToken, Previous)
-            };
+            return CreateBodylessFunctionDef(
+                name,
+                typeParams.ToImmutableArray(),
+                parameters.ToImmutableArray(),
+                returnType,
+                startLine,
+                startColumn,
+                startToken);
         }
 
         // For @abstract methods in classes, the colon and body are optional.
@@ -234,39 +208,14 @@ public partial class Parser
         if (Current.Type != TokenType.Colon &&
             _pendingDecorators.Any(d => d.Name == "abstract"))
         {
-            ExpectNewline();
-
-            var ellipsisExpr = new EllipsisLiteral
-            {
-                LineStart = startLine,
-                ColumnStart = startColumn,
-                LineEnd = startLine,
-                ColumnEnd = startColumn
-            };
-
-            return new FunctionDef
-            {
-                Name = name,
-                TypeParameters = typeParams.ToImmutableArray(),
-                Parameters = parameters.ToImmutableArray(),
-                ReturnType = returnType,
-                Body = ImmutableArray.Create<Statement>(
-                    new ExpressionStatement
-                    {
-                        Expression = ellipsisExpr,
-                        LineStart = startLine,
-                        ColumnStart = startColumn,
-                        LineEnd = startLine,
-                        ColumnEnd = startColumn
-                    }
-                ),
-                DocString = null,
-                LineStart = startLine,
-                ColumnStart = startColumn,
-                LineEnd = Previous.Line,
-                ColumnEnd = Previous.Column,
-                Span = GetSpanFromTokens(startToken, Previous)
-            };
+            return CreateBodylessFunctionDef(
+                name,
+                typeParams.ToImmutableArray(),
+                parameters.ToImmutableArray(),
+                returnType,
+                startLine,
+                startColumn,
+                startToken);
         }
 
         Expect(TokenType.Colon);
@@ -343,6 +292,53 @@ public partial class Parser
             LineEnd = Current.Line,
             ColumnEnd = Current.Column,
             Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
+
+    /// <summary>
+    /// Creates a FunctionDef with a synthesized ellipsis body (for body-less methods in interfaces or @abstract methods).
+    /// </summary>
+    private FunctionDef CreateBodylessFunctionDef(
+        string name,
+        ImmutableArray<TypeParameterDef> typeParams,
+        ImmutableArray<Parameter> parameters,
+        TypeAnnotation? returnType,
+        int startLine,
+        int startColumn,
+        Token startToken)
+    {
+        ExpectNewline();
+
+        var ellipsisExpr = new EllipsisLiteral
+        {
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = startLine,
+            ColumnEnd = startColumn
+        };
+
+        return new FunctionDef
+        {
+            Name = name,
+            TypeParameters = typeParams,
+            Parameters = parameters,
+            ReturnType = returnType,
+            Body = ImmutableArray.Create<Statement>(
+                new ExpressionStatement
+                {
+                    Expression = ellipsisExpr,
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = startLine,
+                    ColumnEnd = startColumn
+                }
+            ),
+            DocString = null,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column,
+            Span = GetSpanFromTokens(startToken, Previous)
         };
     }
 

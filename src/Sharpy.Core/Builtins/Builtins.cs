@@ -102,31 +102,11 @@ namespace Sharpy
 
         /// <summary>
         /// Format a value for print output with Python-compatible representation.
-        /// Handles null, booleans, and floating-point types specially.
+        /// Delegates to <see cref="Str(object)"/> for consistent formatting.
         /// </summary>
         private static string FormatValue(object? v)
         {
-            if (v is null)
-            {
-                return "None";
-            }
-
-            if (v is bool b)
-            {
-                return b ? "True" : "False";
-            }
-
-            if (v is double d)
-            {
-                return FormatFloat(d);
-            }
-
-            if (v is float f)
-            {
-                return FormatFloat(f);
-            }
-
-            return v.ToString() ?? "";
+            return Str(v!);
         }
     }
 }
