@@ -15,7 +15,7 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Float division by zero**: Float division by zero produces `Infinity` (not an exception). Only integer division by zero raises `ZeroDivisionError`.
 - **Self prefix**: Always use `self.field_name` to access instance fields inside methods.
 - **Try-block scoping**: Variables declared inside `try`/`except`/`finally` blocks are block-scoped — they are NOT visible outside those blocks. Declare variables before the `try` if they need to be used in `except`/`else`/`finally` or after the `try`.
-- **Float .0 output**: Printing whole-number floats shows NO trailing `.0` (e.g., `print(5.0)` outputs `5`, NOT `5.0`). Use integer expected values for whole-number float results.
+- **Float output**: Floats always print with at least one decimal place (e.g., `print(5.0)` outputs `5.0`). This matches Python behavior.
 - **Set iteration order**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`."""
 
 
@@ -249,9 +249,10 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **Variables**: `x: int = 42` or `x = 42` (type inference)
 - **Types**: `int`, `str`, `bool`, `float` (primitive types)
 - **Additional numeric types**: `long` (64-bit int), `double` (explicit 64-bit float), `float32` (32-bit float)
-- **Float output**: `float` maps to C# `double`. Printing whole-number floats shows NO trailing `.0` (e.g., `print(5.0)` outputs `5`, not `5.0`). Use integer expected values for whole-number float results.
+- **Float output**: `float` maps to C# `double`. Floats always print with at least one decimal place (e.g., `print(5.0)` outputs `5.0`), matching Python behavior.
 - **Nullable types**: `int?`, `str?` with `None` assignment
 - **Operators**: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
+- **Division**: `/` is ALWAYS float division (e.g., `5 / 2` → `2.5`). `//` is floor division (e.g., `5 // 2` → `2`).
 - **Augmented assignment**: `+=`, `-=`, `*=`, `/=`
 - **Null coalescing**: `??` (e.g., `name ?? "default"`)
 - **Null conditional**: `?.` (e.g., `name?.upper()`)
@@ -299,12 +300,15 @@ Every executable Sharpy program MUST have a `main()` function as its entry point
 - **Single inheritance**: `class Child(Parent):`
 - **Super calls**: `super().__init__(args)` in `__init__`, `super().method()` in `@override` methods
 - **Abstract classes**: `@abstract` decorator on class
-- **Abstract methods**: `@abstract` decorator + `...` body
+- **Abstract methods**: Use `@abstract` decorator. Two equivalent syntaxes:
+  - Inline ellipsis: `@abstract` + `def area(self) -> float: ...`
+  - Body-less: `@abstract` + `def area(self) -> float` (no colon, no body)
 - **Virtual methods**: `@virtual` decorator — **REQUIRED** on any method that will be overridden
 - **Override methods**: `@override` decorator — MUST match a `@virtual` or `@abstract` method in base class
 - **IMPORTANT**: Abstract method implementations ARE overrides. When implementing an `@abstract` method in a subclass, you MUST use `@override`.
 - **Final classes/methods**: `@final` decorator
 - **Interfaces**: `interface IName:` with method signatures using `...` (NOTE: `interface` is a keyword, NOT a decorator — do NOT write `@interface`)
+- **IMPORTANT**: Interfaces CANNOT declare fields (e.g., `name: str` inside an interface is invalid). Interfaces may only declare method signatures and `property` declarations.
 - **Multiple interfaces**: `class Foo(IBar, IBaz):`
 - **Access modifiers**: `@private`, `@protected`, `@internal` (default is public)
 - **IMPORTANT**: Interface types have NO concrete members - you can only call methods declared in the interface. Do NOT access fields like `.value` through interface types.
@@ -499,9 +503,9 @@ def find_first(items: list[int]) -> int?:
         return Some(items[0])
     return None()
 
-# IMPORTANT: float output uses C# formatting
+# IMPORTANT: float output matches Python formatting
 # print(3.14159 * 2.0 ** 2) → "12.5663706"
-# print(5.0 * 3.0) → "15"  (NOT "15.0" — C# drops trailing .0)
+# print(5.0 * 3.0) → "15.0"  (floats always show at least one decimal place)
 ```
 
 ## Output Format
