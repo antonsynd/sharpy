@@ -45,7 +45,7 @@ internal partial class RoslynEmitter
 
         var elements = list.Elements.Select(GenerateExpression);
 
-        var listType = GenericName("Sharpy.List")
+        var listType = GenericName(CSharpTypeNames.SharpyList)
             .AddTypeArgumentListArguments(elementType);
 
         return ObjectCreationExpression(listType)
@@ -82,7 +82,7 @@ internal partial class RoslynEmitter
                     GenerateExpression(entry.Value)
                 })));
 
-        var dictType = GenericName("Sharpy.Dict")
+        var dictType = GenericName(CSharpTypeNames.SharpyDict)
             .AddTypeArgumentListArguments(keyType, valueType);
 
         return ObjectCreationExpression(dictType)
@@ -110,7 +110,7 @@ internal partial class RoslynEmitter
 
         var elements = set.Elements.Select(GenerateExpression);
 
-        var setType = GenericName("Sharpy.Set")
+        var setType = GenericName(CSharpTypeNames.SharpySet)
             .AddTypeArgumentListArguments(elementType);
 
         return ObjectCreationExpression(setType)
@@ -177,7 +177,7 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapSemanticType(elementSemanticType)
             : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
-        var listType = GenericName("Sharpy.List")
+        var listType = GenericName(CSharpTypeNames.SharpyList)
             .AddTypeArgumentListArguments(elementTypeSyntax);
 
         return ObjectCreationExpression(listType)
@@ -215,7 +215,7 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapSemanticType(elementSemanticType)
             : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
-        var setType = GenericName("Sharpy.Set")
+        var setType = GenericName(CSharpTypeNames.SharpySet)
             .AddTypeArgumentListArguments(elementTypeSyntax);
 
         return ObjectCreationExpression(setType)
@@ -261,7 +261,7 @@ internal partial class RoslynEmitter
 
         if (keySemanticType != null && valueSemanticType != null)
         {
-            var dictType = GenericName("Sharpy.Dict")
+            var dictType = GenericName(CSharpTypeNames.SharpyDict)
                 .AddTypeArgumentListArguments(
                     _typeMapper.MapSemanticType(keySemanticType),
                     _typeMapper.MapSemanticType(valueSemanticType));
@@ -302,7 +302,7 @@ internal partial class RoslynEmitter
             var vTypeSyntax = vType != null
                 ? _typeMapper.MapSemanticType(vType)
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
-            collectionType = GenericName(collectionKind == "dict" ? "Sharpy.Dict" : "Sharpy.Set")
+            collectionType = GenericName(collectionKind == "dict" ? CSharpTypeNames.SharpyDict : CSharpTypeNames.SharpySet)
                 .AddTypeArgumentListArguments(kTypeSyntax, vTypeSyntax);
         }
         else
@@ -311,7 +311,7 @@ internal partial class RoslynEmitter
             var elemTypeSyntax = elemType != null
                 ? _typeMapper.MapSemanticType(elemType)
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
-            var typeName = collectionKind == "list" ? "Sharpy.List" : "Sharpy.Set";
+            var typeName = collectionKind == "list" ? CSharpTypeNames.SharpyList : CSharpTypeNames.SharpySet;
             collectionType = GenericName(typeName)
                 .AddTypeArgumentListArguments(elemTypeSyntax);
         }

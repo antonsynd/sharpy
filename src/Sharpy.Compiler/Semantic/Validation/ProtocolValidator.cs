@@ -321,10 +321,10 @@ internal class ProtocolValidator : SemanticValidatorBase
         {
             return generic.Name switch
             {
-                "list" => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem or DunderNames.SetItem,
-                "dict" => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem or DunderNames.SetItem,
-                "set" => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains,
-                "tuple" => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.GetItem,
+                BuiltinNames.List => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem or DunderNames.SetItem,
+                BuiltinNames.Dict => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem or DunderNames.SetItem,
+                BuiltinNames.Set => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains,
+                BuiltinNames.Tuple => dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.GetItem,
                 _ => false
             };
         }

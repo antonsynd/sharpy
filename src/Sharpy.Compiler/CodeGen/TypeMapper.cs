@@ -31,9 +31,9 @@ internal class TypeMapper
         }
 
         // Add non-primitive type mappings (collections, etc.)
-        _builtinTypeMap["list"] = "Sharpy.List";
-        _builtinTypeMap["dict"] = "Sharpy.Dict";
-        _builtinTypeMap["set"] = "Sharpy.Set";
+        _builtinTypeMap["list"] = CSharpTypeNames.SharpyList;
+        _builtinTypeMap["dict"] = CSharpTypeNames.SharpyDict;
+        _builtinTypeMap["set"] = CSharpTypeNames.SharpySet;
         _builtinTypeMap["tuple"] = "System.ValueTuple";
     }
 
@@ -662,7 +662,7 @@ internal class TypeMapper
     /// </summary>
     public TypeSyntax CreateDictType(TypeSyntax keyType, TypeSyntax valueType)
     {
-        return GenericName("Sharpy.Dict")
+        return GenericName(CSharpTypeNames.SharpyDict)
             .WithTypeArgumentList(
                 TypeArgumentList(SeparatedList(new[] { keyType, valueType })));
     }

@@ -412,10 +412,10 @@ internal class OperatorValidator : SemanticValidatorBase
         {
             return generic.Name switch
             {
-                "list" => dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne,
-                "tuple" => dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne,
-                "set" => dunderName is DunderNames.Or or DunderNames.And or DunderNames.Sub or DunderNames.Xor or DunderNames.Eq or DunderNames.Ne,
-                "dict" => dunderName is DunderNames.Or or DunderNames.Eq or DunderNames.Ne,
+                BuiltinNames.List => dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne,
+                BuiltinNames.Tuple => dunderName is DunderNames.Add or DunderNames.Mul or DunderNames.Eq or DunderNames.Ne,
+                BuiltinNames.Set => dunderName is DunderNames.Or or DunderNames.And or DunderNames.Sub or DunderNames.Xor or DunderNames.Eq or DunderNames.Ne,
+                BuiltinNames.Dict => dunderName is DunderNames.Or or DunderNames.Eq or DunderNames.Ne,
                 _ => generic.GenericDefinition != null && (
                     generic.GenericDefinition.OperatorMethods.ContainsKey(dunderName) ||
                     (dunderName == DunderNames.Ne && generic.GenericDefinition.OperatorMethods.ContainsKey(DunderNames.Eq)) ||

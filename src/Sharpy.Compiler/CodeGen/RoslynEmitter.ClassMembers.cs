@@ -462,10 +462,10 @@ internal partial class RoslynEmitter
         {
             returnType = protocol.ExpectedReturnType switch
             {
-                "str" or "string" => PredefinedType(Token(SyntaxKind.StringKeyword)),
-                "int" => PredefinedType(Token(SyntaxKind.IntKeyword)),
-                "bool" => PredefinedType(Token(SyntaxKind.BoolKeyword)),
-                "None" or "void" => PredefinedType(Token(SyntaxKind.VoidKeyword)),
+                BuiltinNames.Str or "string" => PredefinedType(Token(SyntaxKind.StringKeyword)),
+                BuiltinNames.Int => PredefinedType(Token(SyntaxKind.IntKeyword)),
+                BuiltinNames.Bool => PredefinedType(Token(SyntaxKind.BoolKeyword)),
+                BuiltinNames.None or "void" => PredefinedType(Token(SyntaxKind.VoidKeyword)),
                 _ => func.ReturnType != null ? _typeMapper.MapType(func.ReturnType) : returnType
             };
         }
