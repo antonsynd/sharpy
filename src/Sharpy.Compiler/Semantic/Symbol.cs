@@ -23,6 +23,17 @@ public abstract record Symbol
     public int? DeclarationColumn { get; init; }
 
     /// <summary>
+    /// The source span of this symbol's declaration (for LSP go-to-definition).
+    /// </summary>
+    public Text.TextSpan? DeclarationSpan { get; init; }
+
+    /// <summary>
+    /// The file path where this symbol is declared.
+    /// Populated during name resolution for all symbol types.
+    /// </summary>
+    public string? DeclaringFilePath { get; init; }
+
+    /// <summary>
     /// Indicates if this symbol is re-exported from another module (e.g., via "from .submodule import func")
     /// </summary>
     public bool IsReExport { get; init; }

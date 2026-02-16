@@ -258,6 +258,7 @@ internal class NameResolver
             TypeParameters = classDef.TypeParameters.ToList(),
             IsAbstract = isAbstract,
             DefiningFilePath = _currentFilePath,
+            DeclaringFilePath = _currentFilePath,
             DeclarationLine = classDef.LineStart,
             DeclarationColumn = classDef.ColumnStart
         };
@@ -324,6 +325,7 @@ internal class NameResolver
             AccessLevel = AccessLevel.Public,
             TypeParameters = structDef.TypeParameters.ToList(),
             DefiningFilePath = _currentFilePath,
+            DeclaringFilePath = _currentFilePath,
             DeclarationLine = structDef.LineStart,
             DeclarationColumn = structDef.ColumnStart
         };
@@ -388,6 +390,7 @@ internal class NameResolver
             AccessLevel = AccessLevel.Public,
             TypeParameters = interfaceDef.TypeParameters.ToList(),
             DefiningFilePath = _currentFilePath,
+            DeclaringFilePath = _currentFilePath,
             DeclarationLine = interfaceDef.LineStart,
             DeclarationColumn = interfaceDef.ColumnStart
         };
@@ -449,6 +452,7 @@ internal class NameResolver
             TypeKind = TypeKind.Enum,
             AccessLevel = AccessLevel.Public,
             DefiningFilePath = _currentFilePath,
+            DeclaringFilePath = _currentFilePath,
             DeclarationLine = enumDef.LineStart,
             DeclarationColumn = enumDef.ColumnStart
         };
@@ -491,6 +495,7 @@ internal class NameResolver
             AccessLevel = AccessLevel.Public,
             Parameters = parameters,
             TypeParameters = functionDef.TypeParameters.ToList(),
+            DeclaringFilePath = _currentFilePath,
             DeclarationLine = functionDef.LineStart,
             DeclarationColumn = functionDef.ColumnStart
         };
@@ -552,6 +557,7 @@ internal class NameResolver
             IsAbstract = isAbstract,
             IsVirtual = isVirtual,
             IsOverride = isOverride,
+            DeclaringFilePath = _currentFilePath,
             DeclarationLine = method.LineStart,
             DeclarationColumn = method.ColumnStart
         };
@@ -625,6 +631,7 @@ internal class NameResolver
             Kind = SymbolKind.Variable,
             AccessLevel = accessLevel,
             IsConstant = field.IsConst,
+            DeclaringFilePath = _currentFilePath,
             DeclarationLine = field.LineStart,
             DeclarationColumn = field.ColumnStart
         };
@@ -725,6 +732,7 @@ internal class NameResolver
             Kind = SymbolKind.Variable,
             AccessLevel = AccessLevel.Public,
             IsConstant = true,
+            DeclaringFilePath = _currentFilePath,
             DeclarationLine = constDecl.LineStart,
             DeclarationColumn = constDecl.ColumnStart
         };

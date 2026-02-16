@@ -1058,12 +1058,15 @@ internal class ProjectCompiler
     /// </summary>
     private static string? GetSymbolFilePath(Symbol symbol)
     {
-        return symbol switch
-        {
-            TypeSymbol ts => ts.DefiningFilePath,
-            ModuleSymbol ms => ms.FilePath,
-            _ => null
-        };
+        // Prefer the base DeclaringFilePath (populated for all symbol types since name resolution).
+        // Fall back to subclass-specific properties for symbols restored from cache or created externally.
+        return symbol.DeclaringFilePath
+            ?? (symbol switch
+            {
+                TypeSymbol ts => ts.DefiningFilePath,
+                ModuleSymbol ms => ms.FilePath,
+                _ => null
+            });
     }
 
     /// <summary>
