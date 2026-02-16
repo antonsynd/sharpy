@@ -1,0 +1,6 @@
+interface IConstructable:
+    def __init__(self, value: int):
+        ...
+
+def main():
+    pass

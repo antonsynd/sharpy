@@ -1,3 +1,5 @@
+# Note: Python allows this due to function-level scoping;
+# Sharpy uses block scoping per .NET semantics (Axiom 1).
 def main():
     try:
         x: int = 42

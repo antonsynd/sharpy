@@ -22,11 +22,12 @@ Sharpy uses C#-style block scoping: **all compound statement bodies introduce a 
 - `for` body (including the loop variable itself)
 - `try` body
 - `except` body (including the `as` binding)
+- `else` body (in `try`/`except`/`else`)
 - `finally` body
 - `with` body
 - Comprehensions (including walrus assignments inside comprehensions)
 
-**Note on `try`/`finally`**: Variables declared in the `try` body are **not** visible in `except` or `finally` handlers. If a variable must be accessible across all clauses, declare it before the `try` statement:
+**Note on `try`/`except`/`else`/`finally`**: Variables declared in the `try` body are **not** visible in `except`, `else`, or `finally` handlers. If a variable must be accessible across all clauses, declare it before the `try` statement:
 
 ```python
 result: int = 0
