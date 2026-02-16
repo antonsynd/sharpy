@@ -12,15 +12,34 @@ nonlocal y     # ERROR: unexpected 'nonlocal'
 
 To modify outer scope variables, use explicit assignment to a mutable container or return values from functions.
 
-## Block-Scoped vs Containing-Scope Constructs
+## Block Scoping
 
-**Block-Scoped Constructs** (variable doesn't leak):
-- For loop variables
-- Comprehension variables (including walrus assignments inside comprehensions)
-- Exception binding (`except E as e`)
+Sharpy uses C#-style block scoping: **all compound statement bodies introduce a new scope**. Variables declared inside a block are not visible outside it. This is a deliberate departure from Python, where variables leak out of most blocks.
+
+**Block-Scoped Compound Statements** (variables declared inside don't leak):
+- `if` / `elif` / `else` bodies
+- `while` body
+- `for` body (including the loop variable itself)
+- `try` body
+- `except` body (including the `as` binding)
+- `finally` body
+- `with` body
+- Comprehensions (including walrus assignments inside comprehensions)
+
+**Note on `try`/`finally`**: Variables declared in the `try` body are **not** visible in `except` or `finally` handlers. If a variable must be accessible across all clauses, declare it before the `try` statement:
+
+```python
+result: int = 0
+try:
+    result = risky_operation()
+except ValueError as e:
+    print(f"Failed: {e}")
+finally:
+    print(f"Result was: {result}")
+```
 
 **Containing-Scope Constructs** (variable persists):
-- Regular declarations (`x = value`, `x: type = value`)
+- Declarations in a function body or module top-level (outside any compound statement)
 - Walrus operator (`x := value`) in non-block contexts - see [Walrus Operator](walrus_operator.md)
 
 **Walrus Operator Scoping:**
