@@ -322,6 +322,62 @@ public class Compiler
             LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
+            // Type-check imported .spy modules so that SemanticInfo is populated for
+            // all their expressions. Without this, GetExpressionSemanticType() returns
+            // null for cross-module AST nodes during codegen (root cause of #167).
+            foreach (var (modulePath, moduleInfo) in importResolver.LoadedSpyModules)
+            {
+                if (string.Equals(Path.GetFullPath(modulePath), Path.GetFullPath(filePath),
+                    StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (moduleInfo.IsNetModule || moduleInfo.IsErrorRecovery || moduleInfo.Module == null)
+                    continue;
+
+                // Temporarily register the module's own exported symbols so that
+                // same-module references can be resolved during type checking.
+                var addedSymbols = new List<string>();
+                foreach (var (name, sym) in moduleInfo.ExportedSymbols)
+                {
+                    if (symbolTable.Lookup(name, searchParents: false) == null)
+                    {
+                        symbolTable.TryDefine(sym);
+                        addedSymbols.Add(name);
+                    }
+                }
+
+                var moduleTypeChecker = new TypeChecker(
+                    symbolTable, semanticInfo, typeResolver, _logger, pipeline)
+                {
+                    CurrentFilePath = modulePath,
+                    SemanticBinding = semanticBinding,
+                    ContinueAfterError = true
+                };
+                moduleTypeChecker.CheckModule(
+                    moduleInfo.Module,
+                    computeCodeGenInfo: true,
+                    isEntryPoint: false,
+                    cancellationToken);
+
+                // Clean up temporarily added symbols
+                foreach (var name in addedSymbols)
+                {
+                    symbolTable.Remove(name);
+                }
+
+                // Only merge warnings from imported module type-checking. Errors are
+                // expected when the module has its own imports not in our SymbolTable
+                // (e.g., transitive imports). The primary purpose is to populate
+                // SemanticInfo with expression types for codegen, not to validate.
+                foreach (var diag in moduleTypeChecker.Diagnostics.GetAll())
+                {
+                    if (diag.Severity != CompilerDiagnosticSeverity.Error)
+                    {
+                        diagnostics.Add(diag);
+                    }
+                }
+            }
+
             // Assertion: After successful type checking, warn if unknown types remain
             assertionTimer.Restart();
             CompilerInvariants.AssertPostTypeChecking(semanticInfo, typeChecker.Diagnostics);
