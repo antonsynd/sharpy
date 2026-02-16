@@ -43,6 +43,9 @@ internal class SignatureValidator : SemanticValidatorBase
             case StructDef structDef:
                 ValidateStructSignatures(structDef);
                 break;
+            case InterfaceDef interfaceDef:
+                ValidateInterfaceDunders(interfaceDef);
+                break;
         }
     }
 
@@ -78,6 +81,22 @@ internal class SignatureValidator : SemanticValidatorBase
             if (member is FunctionDef funcDef)
             {
                 ValidateMethodSignature(funcDef, typeSymbol);
+            }
+        }
+    }
+
+    private void ValidateInterfaceDunders(InterfaceDef interfaceDef)
+    {
+        foreach (var member in interfaceDef.Body)
+        {
+            if (member is FunctionDef funcDef && DunderDetector.IsDunderMethod(funcDef.Name))
+            {
+                AddError(_context,
+                    $"Dunder method '{funcDef.Name}' cannot be declared in a user-defined interface. " +
+                    "Only standard library interfaces may declare dunder methods.",
+                    funcDef.LineStart, funcDef.ColumnStart,
+                    code: DiagnosticCodes.Validation.DunderInUserInterface,
+                    span: funcDef.Span);
             }
         }
     }

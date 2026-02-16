@@ -1,0 +1,6 @@
+interface IMyProtocol:
+    def __len__(self) -> int:
+        ...
+
+def main():
+    pass

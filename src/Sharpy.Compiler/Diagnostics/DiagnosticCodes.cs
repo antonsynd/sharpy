@@ -192,6 +192,9 @@ public static class DiagnosticCodes
         public const string InvalidPropertyOverride = "SPY0411";
         public const string FinalWithoutOverride = "SPY0412";
 
+        // Interface validation (SPY0413-SPY0419)
+        public const string DunderInUserInterface = "SPY0413";
+
         // Warnings (SPY0450-SPY0499)
         public const string UnreachableCodeWarning = "SPY0450";
         public const string UnusedVariable = "SPY0451";
