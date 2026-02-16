@@ -35,6 +35,14 @@ namespace Sharpy
             _list.AddRange(enumerable);
         }
 
+        /// <summary>
+        /// Implicitly converts a .NET array to a Sharpy list.
+        /// </summary>
+        public static implicit operator List<T>(T[] array)
+        {
+            return new List<T>(array);
+        }
+
         /// <remarks>
         /// For collection initializers. Also a part of the
         /// System.Collections.Generic.ICollection interface.

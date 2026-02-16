@@ -1,0 +1,6 @@
+def main():
+    s: str = "hello world foo"
+    parts: list[str] = s.split(" ")
+    print(len(parts))
+    print(parts[0])
+    print(parts[2])
