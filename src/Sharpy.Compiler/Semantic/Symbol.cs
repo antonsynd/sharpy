@@ -158,7 +158,7 @@ public record TypeSymbol : Symbol
     /// Readers should prefer SemanticBinding.GetBaseType when available.
     /// </remarks>
     public TypeSymbol? BaseType { get; internal set; }
-    public List<TypeSymbol> Interfaces { get; init; } = new();
+    public List<InterfaceReference> Interfaces { get; init; } = new();
 
     /// <summary>
     /// Unresolved base class name from AST, used for deferred inheritance resolution

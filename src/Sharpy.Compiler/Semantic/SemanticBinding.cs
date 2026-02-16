@@ -73,7 +73,7 @@ public class SemanticBinding
         new(ReferenceEqualityComparer.Instance);
 
     // Maps type symbols to their resolved interface lists (ConcurrentQueue preserves insertion order)
-    private readonly ConcurrentDictionary<TypeSymbol, ConcurrentQueue<TypeSymbol>> _interfaces =
+    private readonly ConcurrentDictionary<TypeSymbol, ConcurrentQueue<InterfaceReference>> _interfaces =
         new(ReferenceEqualityComparer.Instance);
 
     // Maps FromImportStatement nodes to their resolved module paths
@@ -220,23 +220,31 @@ public class SemanticBinding
     #region Interfaces
 
     /// <summary>
-    /// Adds a resolved interface to a type symbol.
+    /// Adds a resolved interface to a type symbol with full type argument information.
     /// </summary>
-    public void AddInterface(TypeSymbol symbol, TypeSymbol iface)
+    public void AddInterface(TypeSymbol symbol, InterfaceReference iface)
     {
         if (_inheritanceFrozen)
         {
             AssertNotFrozen("Inheritance", symbol.Name);
         }
-        var queue = _interfaces.GetOrAdd(symbol, _ => new ConcurrentQueue<TypeSymbol>());
+        var queue = _interfaces.GetOrAdd(symbol, _ => new ConcurrentQueue<InterfaceReference>());
         queue.Enqueue(iface);
+    }
+
+    /// <summary>
+    /// Adds a resolved interface to a type symbol (convenience overload without type arguments).
+    /// </summary>
+    public void AddInterface(TypeSymbol symbol, TypeSymbol iface)
+    {
+        AddInterface(symbol, new InterfaceReference { Definition = iface });
     }
 
     /// <summary>
     /// Gets the resolved interfaces for a type symbol.
     /// Returns null if the symbol has no interfaces registered in this binding.
     /// </summary>
-    public IReadOnlyList<TypeSymbol>? GetInterfaces(TypeSymbol symbol)
+    public IReadOnlyList<InterfaceReference>? GetInterfaces(TypeSymbol symbol)
         => _interfaces.TryGetValue(symbol, out var queue) ? queue.ToList() : null;
 
     #endregion
@@ -254,7 +262,7 @@ public class SemanticBinding
             symbol.BaseType = baseType;
         foreach (var (symbol, queue) in _interfaces)
             foreach (var iface in queue)
-                if (!symbol.Interfaces.Any(i => ReferenceEquals(i, iface) || i.Name == iface.Name))
+                if (!symbol.Interfaces.Any(i => ReferenceEquals(i, iface) || i.Definition.Name == iface.Definition.Name))
                     symbol.Interfaces.Add(iface);
     }
 
