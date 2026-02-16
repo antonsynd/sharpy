@@ -107,12 +107,12 @@ internal static class SymbolSerializer
             BaseTypeId = ts.BaseType != null ? ComputeSymbolId(ts.BaseType, ts.BaseType.DefiningFilePath ?? filePath) : null,
             InterfaceEntries = ts.Interfaces.Count > 0
                 ? ts.Interfaces.Select(i => new CachedInterfaceEntry
-                  {
-                      SymbolId = ComputeSymbolId(i.Definition, i.Definition.DefiningFilePath ?? filePath),
-                      TypeArgs = i.TypeArgAnnotations.IsDefaultOrEmpty
+                {
+                    SymbolId = ComputeSymbolId(i.Definition, i.Definition.DefiningFilePath ?? filePath),
+                    TypeArgs = i.TypeArgAnnotations.IsDefaultOrEmpty
                           ? null
                           : i.TypeArgAnnotations.Select(SerializeTypeAnnotation).ToList()
-                  }).ToList()
+                }).ToList()
                 : null,
             Fields = fields,
             Methods = methods,
