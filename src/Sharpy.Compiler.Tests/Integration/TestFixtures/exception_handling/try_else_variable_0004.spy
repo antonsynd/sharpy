@@ -1,8 +1,10 @@
 # Test: try/else with list variable (non-trivial reference type)
 def main():
+    data: list[int] = []
+    count: int = 0
     try:
-        data: list[int] = [10, 20, 30]
-        count: int = len(data)
+        data = [10, 20, 30]
+        count = len(data)
     except Exception:
         print("error")
     else:

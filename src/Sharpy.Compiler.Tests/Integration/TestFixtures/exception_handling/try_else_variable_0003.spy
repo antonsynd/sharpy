@@ -1,5 +1,7 @@
 # Test: try/else with assignment-style declarations (no type annotation)
 def main():
+    value: int = 0
+    doubled: int = 0
     try:
         value = 100
         doubled = value * 2

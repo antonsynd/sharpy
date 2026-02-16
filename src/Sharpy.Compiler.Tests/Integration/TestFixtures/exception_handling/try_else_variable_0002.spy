@@ -1,8 +1,11 @@
 def main():
+    x: int = 0
+    y: int = 0
+    z: int = 0
     try:
-        x: int = 10
-        y: int = 20
-        z: int = x + y
+        x = 10
+        y = 20
+        z = x + y
     except Exception:
         print("error")
     else:
