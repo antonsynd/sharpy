@@ -182,4 +182,60 @@ class Shape:
         describeFunc!.Name.Should().Be("describe");
         describeFunc.Body[0].Should().BeOfType<ReturnStatement>();
     }
+
+    [Fact]
+    public void ParseFunctionDef_BodylessAbstract_SynthesizesEllipsisBody()
+    {
+        // @abstract decorator with no colon and no body should synthesize ellipsis body
+        var source = @"
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float
+
+    @abstract
+    def perimeter(self) -> float
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+
+        classDef.Body.Should().HaveCount(2);
+
+        var areaFunc = classDef.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        areaFunc.Name.Should().Be("area");
+        areaFunc.Decorators.Should().ContainSingle(d => d.Name == "abstract");
+        areaFunc.Body.Should().HaveCount(1);
+        areaFunc.Body[0].Should().BeOfType<ExpressionStatement>()
+            .Which.Expression.Should().BeOfType<EllipsisLiteral>();
+
+        var perimFunc = classDef.Body[1].Should().BeOfType<FunctionDef>().Subject;
+        perimFunc.Name.Should().Be("perimeter");
+        perimFunc.Decorators.Should().ContainSingle(d => d.Name == "abstract");
+        perimFunc.Body.Should().HaveCount(1);
+        perimFunc.Body[0].Should().BeOfType<ExpressionStatement>()
+            .Which.Expression.Should().BeOfType<EllipsisLiteral>();
+    }
+
+    [Fact]
+    public void ParseFunctionDef_BodylessAbstract_WithReturnTypeAndParams()
+    {
+        var source = @"
+@abstract
+class Calculator:
+    @abstract
+    def compute(self, x: int, y: int) -> int
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+
+        var func = classDef.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        func.Name.Should().Be("compute");
+        func.Parameters.Should().HaveCount(3);
+        func.Parameters[0].Name.Should().Be("self");
+        func.Parameters[1].Name.Should().Be("x");
+        func.Parameters[2].Name.Should().Be("y");
+        func.ReturnType.Should().NotBeNull();
+        func.Body[0].Should().BeOfType<ExpressionStatement>()
+            .Which.Expression.Should().BeOfType<EllipsisLiteral>();
+    }
 }

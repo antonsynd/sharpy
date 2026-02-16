@@ -184,16 +184,19 @@ circle = Circle(5.0)       # OK
 print(circle.describe())   # "Circle with area 78.53975"
 ```
 
-The explicit `@abstract` decorator on methods is still supported but optional when using ellipsis body in an `@abstract` class:
+The explicit `@abstract` decorator on methods is still supported but optional when using ellipsis body in an `@abstract` class. When using `@abstract` explicitly, the method can also omit the colon and body entirely:
 
 ```python
 @abstract
 class Shape:
-    # Both forms are equivalent in @abstract classes:
+    # All three forms are equivalent in @abstract classes:
     def area(self) -> float: ...           # Implicit abstract (preferred)
 
     @abstract
-    def perimeter(self) -> float: ...      # Explicit abstract (still valid)
+    def perimeter(self) -> float: ...      # Explicit abstract with ellipsis body
+
+    @abstract
+    def volume(self) -> float              # Body-less form (colon and body omitted)
 ```
 
 **Note:** Ellipsis body in a *non-abstract* class generates a `NotImplementedException` stub instead of an abstract method:

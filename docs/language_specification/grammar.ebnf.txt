@@ -407,7 +407,8 @@ keyword_pattern ::= identifier '=' pattern
 # -----------------------------------------------------------------------------
 
 func_def        ::= 'def' identifier [ type_params ] '(' [ parameters ] ')'
-                    [ '->' type_expr ] ':' func_body
+                    [ '->' type_expr ] ( ':' func_body | NEWLINE )
+                    (* Body-less form (just NEWLINE) is valid only with @abstract decorator *)
 
 async_func_def  ::= 'async' func_def
 
@@ -522,7 +523,8 @@ interface_member
 
 interface_method
                 ::= 'def' identifier [ type_params ] '(' [ parameters ] ')'
-                    [ '->' type_expr ] ':' ( ELLIPSIS NEWLINE | suite )
+                    [ '->' type_expr ] ( ':' ( ELLIPSIS NEWLINE | suite ) | NEWLINE )
+                    (* Body-less form (just NEWLINE) is also valid in interfaces *)
 
 interface_property
                 ::= 'property' [ property_modifier ] identifier ':' type_expr

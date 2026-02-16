@@ -1,0 +1,48 @@
+# Abstract class with body-less @abstract methods (no colon, no body)
+@abstract
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @abstract
+    def speak(self) -> str
+
+    @abstract
+    def legs(self) -> int
+
+    def describe(self) -> str:
+        return self.name + " says " + self.speak()
+
+class Dog(Animal):
+    def __init__(self):
+        super().__init__("Dog")
+
+    @override
+    def speak(self) -> str:
+        return "Woof"
+
+    @override
+    def legs(self) -> int:
+        return 4
+
+class Cat(Animal):
+    def __init__(self):
+        super().__init__("Cat")
+
+    @override
+    def speak(self) -> str:
+        return "Meow"
+
+    @override
+    def legs(self) -> int:
+        return 4
+
+def main():
+    dog = Dog()
+    cat = Cat()
+    print(dog.describe())
+    print(cat.describe())
+    print(dog.legs())
+    print(cat.legs())

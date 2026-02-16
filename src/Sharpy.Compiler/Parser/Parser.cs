@@ -75,6 +75,14 @@ public partial class Parser
     /// </summary>
     private bool _inhibitPostfixAs;
 
+    /// <summary>
+    /// Decorators parsed for the current definition being processed.
+    /// Set by ParseDecoratedStatement() before dispatching to the definition parser,
+    /// so that ParseFunctionDef() can check for @abstract to allow body-less syntax.
+    /// Reset to empty in a finally block after the definition is parsed.
+    /// </summary>
+    private ImmutableArray<Decorator> _pendingDecorators = ImmutableArray<Decorator>.Empty;
+
     public Parser(List<Token> tokens, ICompilerLogger? logger = null, int maxErrors = 25, CancellationToken cancellationToken = default)
     {
         _tokens = tokens;
@@ -424,15 +432,26 @@ public partial class Parser
             ExpectNewline();
         }
 
-        // Parse the decorated definition
-        Statement stmt = Current.Type switch
+        // Make decorators available to definition parsers (e.g., ParseFunctionDef checks for @abstract)
+        _pendingDecorators = decorators.ToImmutableArray();
+
+        Statement stmt;
+        try
         {
-            TokenType.Def => ParseFunctionDef(),
-            TokenType.Class => ParseClassDef(),
-            TokenType.Struct => ParseStructDef(),
-            TokenType.Property => ParsePropertyDef(),
-            _ => throw ReportError("Decorators can only be applied to functions, classes, structs, or properties", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan)
-        };
+            // Parse the decorated definition
+            stmt = Current.Type switch
+            {
+                TokenType.Def => ParseFunctionDef(),
+                TokenType.Class => ParseClassDef(),
+                TokenType.Struct => ParseStructDef(),
+                TokenType.Property => ParsePropertyDef(),
+                _ => throw ReportError("Decorators can only be applied to functions, classes, structs, or properties", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan)
+            };
+        }
+        finally
+        {
+            _pendingDecorators = ImmutableArray<Decorator>.Empty;
+        }
 
         // Attach decorators
         return stmt switch

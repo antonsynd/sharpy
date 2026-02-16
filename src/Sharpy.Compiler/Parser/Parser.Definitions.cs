@@ -229,6 +229,46 @@ public partial class Parser
             };
         }
 
+        // For @abstract methods in classes, the colon and body are optional.
+        // e.g., @abstract\ndef foo(self) -> int
+        if (Current.Type != TokenType.Colon &&
+            _pendingDecorators.Any(d => d.Name == "abstract"))
+        {
+            ExpectNewline();
+
+            var ellipsisExpr = new EllipsisLiteral
+            {
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = startLine,
+                ColumnEnd = startColumn
+            };
+
+            return new FunctionDef
+            {
+                Name = name,
+                TypeParameters = typeParams.ToImmutableArray(),
+                Parameters = parameters.ToImmutableArray(),
+                ReturnType = returnType,
+                Body = ImmutableArray.Create<Statement>(
+                    new ExpressionStatement
+                    {
+                        Expression = ellipsisExpr,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = startLine,
+                        ColumnEnd = startColumn
+                    }
+                ),
+                DocString = null,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = Previous.Line,
+                ColumnEnd = Previous.Column,
+                Span = GetSpanFromTokens(startToken, Previous)
+            };
+        }
+
         Expect(TokenType.Colon);
 
         // Support inline ellipsis syntax: def foo(): ...
