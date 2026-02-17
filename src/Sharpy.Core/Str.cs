@@ -88,6 +88,7 @@ namespace Sharpy
         /// Format a floating-point value with Python-compatible representation.
         /// NaN, Infinity, and -Infinity use Python's lowercase forms.
         /// Whole-number values get a trailing <c>.0</c>.
+        /// NOTE: Keep in sync with <see cref="FormatFloat(float)"/> overload.
         /// </summary>
         internal static string FormatFloat(double value)
         {
@@ -120,6 +121,7 @@ namespace Sharpy
         /// <summary>
         /// Format a <see cref="float"/> value with Python-compatible representation.
         /// Overload to avoid float→double widening precision issues.
+        /// NOTE: Keep in sync with <see cref="FormatFloat(double)"/> overload.
         /// </summary>
         internal static string FormatFloat(float value)
         {

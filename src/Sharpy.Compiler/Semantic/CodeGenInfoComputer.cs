@@ -335,7 +335,7 @@ internal class CodeGenInfoComputer
     /// </summary>
     private static readonly HashSet<string> IteratorProtocolReservedNames = new()
     {
-        "Current", "MoveNext", "Reset", "Dispose"
+        "Current", "MoveNext", "Reset", "Dispose", "GetEnumerator"
     };
 
     /// <summary>
@@ -370,13 +370,22 @@ internal class CodeGenInfoComputer
         }
 
         // Check for collisions with synthesized iterator protocol members
-        var hasNext = typeSymbol.Methods.Any(m => m.Name == DunderNames.Next);
+        var hasNext = false;
+        foreach (var method in typeSymbol.Methods)
+        {
+            if (method.Name == DunderNames.Next)
+            {
+                hasNext = true;
+                break;
+            }
+        }
+
         if (hasNext)
         {
             foreach (var symbol in typeSymbol.Fields.Cast<Symbol>().Concat(typeSymbol.Methods))
             {
-                // Skip __next__ itself — it is the trigger, not a collision
-                if (symbol.Name == DunderNames.Next)
+                // Skip __next__ and __iter__ — they are part of the iterator protocol, not collisions
+                if (symbol.Name == DunderNames.Next || symbol.Name == DunderNames.Iter)
                     continue;
 
                 var info = _semanticBinding.GetCodeGenInfo(symbol);
