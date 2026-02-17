@@ -22,6 +22,7 @@ class IssueType(str, Enum):
     EXECUTION_FAILED = "execution_failed"
     OUTPUT_MISMATCH = "output_mismatch"
     TIMEOUT = "timeout"
+    INTERNAL_COMPILER_ERROR = "internal_compiler_error"  # SPY09xx - compiler/infrastructure bug, not user code
     SKIPPED = "skipped"  # Generated code uses unsupported features - not a bug
 
 

@@ -48,6 +48,19 @@ from .reporting import (
 )
 
 
+_INTERNAL_COMPILER_ERROR_PATTERN = re.compile(r"SPY09\d{2}")
+
+
+def _is_internal_compiler_error(error_message: str) -> bool:
+    """Check if an error message contains an internal compiler error (SPY09xx).
+
+    SPY09xx errors are infrastructure/compiler-level errors, not user code errors.
+    In dogfood context, these should not be retried since the generated code may
+    be perfectly valid.
+    """
+    return bool(_INTERNAL_COMPILER_ERROR_PATTERN.search(error_message))
+
+
 class IterationStatus(Enum):
     """Status of a dogfooding iteration."""
 
@@ -80,6 +93,7 @@ class GenerationResult:
     rate_limited: bool = False
     attempts: int = 1
     validation_output: Optional[str] = None  # AI validation output (for debugging)
+    is_internal_compiler_error: bool = False
 
 
 @dataclass
@@ -94,6 +108,7 @@ class MultifileGenerationResult:
     generation_duration: Optional[float] = None
     rate_limited: bool = False
     attempts: int = 1
+    is_internal_compiler_error: bool = False
 
 
 def _outputs_equivalent(expected: str, actual: str, rel_tol: float = 1e-9) -> bool:
@@ -585,6 +600,27 @@ class DogfoodOrchestrator:
                     skip_reason=gen_result.skip_reason,
                 )
 
+            # Check for internal compiler errors (SPY09xx) — report immediately
+            if gen_result.is_internal_compiler_error:
+                print(
+                    "  Internal compiler error (SPY09xx) — reporting as compiler bug",
+                    file=sys.stderr,
+                )
+                issue = Issue(
+                    issue_type=IssueType.INTERNAL_COMPILER_ERROR,
+                    timestamp=timestamp,
+                    generated_code=gen_result.code or "",
+                    expected_output=gen_result.expected_output,
+                    error_message=gen_result.skip_reason,
+                    feature_focus=feature_focus,
+                    complexity=complexity,
+                    backend_used=gen_result.backend_used,
+                    generation_duration=gen_result.generation_duration,
+                )
+                issue_dir = self.issue_reporter.report(issue)
+                print(f"  Issue reported: {issue_dir.name}", file=sys.stderr)
+                return IterationResult(IterationStatus.FAILED, issue_dir)
+
             # If it was a validation failure after retries, skip but save for inspection
             if gen_result.attempts > 1:
                 print(
@@ -917,6 +953,23 @@ class DogfoodOrchestrator:
             # Step 1.55: Validate Sharpy semantics (full pipeline: lexer → parser → semantic → codegen)
             semantic_error = await self._validate_sharpy_semantics(code)
             if semantic_error:
+                # Check for internal compiler errors (SPY09xx) — don't retry these
+                if _is_internal_compiler_error(semantic_error):
+                    print(
+                        f"  Internal compiler error detected (SPY09xx): {semantic_error[:200]}",
+                        file=sys.stderr,
+                    )
+                    return GenerationResult(
+                        success=False,
+                        code=code,
+                        expected_output=extract_expected_output(code),
+                        skip_reason=f"Internal compiler error: {semantic_error}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                        is_internal_compiler_error=True,
+                    )
+
                 print(
                     f"  Sharpy semantic validation failed: {semantic_error[:200]}",
                     file=sys.stderr,
@@ -1168,6 +1221,23 @@ class DogfoodOrchestrator:
             # Semantic validate project
             semantic_error = await self._validate_project_semantics(files)
             if semantic_error:
+                # Check for internal compiler errors (SPY09xx) — don't retry these
+                if _is_internal_compiler_error(semantic_error):
+                    print(
+                        f"  Internal compiler error detected (SPY09xx): {semantic_error[:200]}",
+                        file=sys.stderr,
+                    )
+                    return MultifileGenerationResult(
+                        success=False,
+                        files=files,
+                        expected_output=extract_expected_output_from_multifile(files),
+                        skip_reason=f"Internal compiler error: {semantic_error}",
+                        backend_used=backend_used,
+                        generation_duration=total_duration,
+                        attempts=attempt,
+                        is_internal_compiler_error=True,
+                    )
+
                 print(
                     f"  Sharpy project validation failed: {semantic_error[:200]}",
                     file=sys.stderr,
@@ -1257,6 +1327,28 @@ class DogfoodOrchestrator:
                     IterationStatus.SKIPPED,
                     skip_reason=gen_result.skip_reason,
                 )
+
+            # Check for internal compiler errors (SPY09xx) — report immediately
+            if gen_result.is_internal_compiler_error:
+                print(
+                    "  Internal compiler error (SPY09xx) — reporting as compiler bug",
+                    file=sys.stderr,
+                )
+                issue = Issue(
+                    issue_type=IssueType.INTERNAL_COMPILER_ERROR,
+                    timestamp=timestamp,
+                    generated_code=gen_result.files.get("main.spy", "") if gen_result.files else "",
+                    source_files=gen_result.files,
+                    expected_output=gen_result.expected_output,
+                    error_message=gen_result.skip_reason,
+                    feature_focus=feature_focus,
+                    complexity=complexity,
+                    backend_used=gen_result.backend_used,
+                    generation_duration=gen_result.generation_duration,
+                )
+                issue_dir = self.issue_reporter.report(issue)
+                print(f"  Issue reported: {issue_dir.name}", file=sys.stderr)
+                return IterationResult(IterationStatus.FAILED, issue_dir)
 
             # If it was a validation failure after retries, skip but save for inspection
             if gen_result.attempts > 1:
