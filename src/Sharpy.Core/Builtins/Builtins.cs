@@ -106,7 +106,7 @@ namespace Sharpy
         /// </summary>
         private static string FormatValue(object? v)
         {
-            return Str(v!);
+            return v is null ? "None" : Str(v);
         }
     }
 }
