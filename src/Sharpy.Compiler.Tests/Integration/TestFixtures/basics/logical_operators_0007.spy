@@ -1,0 +1,40 @@
+# Test short-circuit evaluation of logical operators with side effects
+class Counter:
+    count: int
+
+    def __init__(self):
+        self.count = 0
+
+    def increment_and_check(self, threshold: int) -> bool:
+        self.count += 1
+        return self.count > threshold
+
+def main():
+    c = Counter()
+    
+    # Test AND short-circuit: second operand should NOT execute
+    result1 = False and c.increment_and_check(5)
+    print(c.count)  # Should be 0 (not incremented)
+    
+    # Test AND: both execute when first is True
+    result2 = True and c.increment_and_check(0)
+    print(c.count)  # Should be 1 (incremented once)
+    
+    # Test OR short-circuit: second operand should NOT execute
+    result3 = True or c.increment_and_check(5)
+    print(c.count)  # Should still be 1 (not incremented)
+    
+    # Test OR: second executes when first is False
+    result4 = False or c.increment_and_check(0)
+    print(c.count)  # Should be 2 (incremented again)
+    
+    # Test NOT with method call
+    result5 = not c.increment_and_check(10)
+    print(c.count)  # Should be 3
+
+# EXPECTED OUTPUT:
+# 0
+# 1
+# 1
+# 2
+# 3

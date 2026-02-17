@@ -1,0 +1,103 @@
+# Test builtin aggregation functions: manual min, max, sum, all, any
+# Tests with lists of different types and edge cases
+
+def find_min_int(values: list[int]) -> int:
+    result: int = values[0]
+    for v in values:
+        if v < result:
+            result = v
+    return result
+
+def find_max_int(values: list[int]) -> int:
+    result: int = values[0]
+    for v in values:
+        if v > result:
+            result = v
+    return result
+
+def sum_int(values: list[int]) -> int:
+    result: int = 0
+    for v in values:
+        result = result + v
+    return result
+
+def check_all(flags: list[bool]) -> bool:
+    for flag in flags:
+        if not flag:
+            return False
+    return True
+
+def check_any(flags: list[bool]) -> bool:
+    for flag in flags:
+        if flag:
+            return True
+    return False
+
+def find_min_float(values: list[float]) -> float:
+    result: float = values[0]
+    for v in values:
+        if v < result:
+            result = v
+    return result
+
+def find_max_float(values: list[float]) -> float:
+    result: float = values[0]
+    for v in values:
+        if v > result:
+            result = v
+    return result
+
+def sum_float(values: list[float]) -> float:
+    result: float = 0.0
+    for v in values:
+        result = result + v
+    return result
+
+def analyze_scores(scores: list[int]) -> None:
+    min_score: int = find_min_int(scores)
+    max_score: int = find_max_int(scores)
+    total: int = sum_int(scores)
+    avg: int = total // len(scores)
+    print(f"Min: {min_score}")
+    print(f"Max: {max_score}")
+    print(f"Sum: {total}")
+    print(f"Avg: {avg}")
+
+def check_conditions(flags: list[bool]) -> None:
+    all_true: bool = check_all(flags)
+    any_true: bool = check_any(flags)
+    print(f"All true: {all_true}")
+    print(f"Any true: {any_true}")
+
+def find_extremes(temperatures: list[float]) -> None:
+    coldest: float = find_min_float(temperatures)
+    hottest: float = find_max_float(temperatures)
+    total: float = sum_float(temperatures)
+    print(f"Coldest: {coldest}")
+    print(f"Hottest: {hottest}")
+    print(f"Total: {total}")
+
+def main():
+    test_scores: list[int] = [85, 92, 78, 95, 88]
+    analyze_scores(test_scores)
+    
+    all_passed: list[bool] = [True, True, True]
+    some_passed: list[bool] = [False, True, False]
+    check_conditions(all_passed)
+    check_conditions(some_passed)
+    
+    temps: list[float] = [-5.5, 0.0, 12.3, -2.1, 8.7]
+    find_extremes(temps)
+
+# EXPECTED OUTPUT:
+# Min: 78
+# Max: 95
+# Sum: 438
+# Avg: 87
+# All true: True
+# Any true: True
+# All true: False
+# Any true: True
+# Coldest: -5.5
+# Hottest: 12.3
+# Total: 13.4

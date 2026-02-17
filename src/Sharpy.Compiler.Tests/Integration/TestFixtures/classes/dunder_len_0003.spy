@@ -1,0 +1,23 @@
+# Test __len__ dunder with a simple string wrapper
+class TextBox:
+    text: str
+
+    def __init__(self, content: str):
+        self.text = content
+
+    def __len__(self) -> int:
+        return len(self.text)
+
+def main():
+    box1 = TextBox("hello")
+    box2 = TextBox("")
+    box3 = TextBox("Sharpy")
+    
+    print(len(box1))
+    print(len(box2))
+    print(len(box3))
+
+# EXPECTED OUTPUT:
+# 5
+# 0
+# 6

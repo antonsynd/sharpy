@@ -1,0 +1,19 @@
+# Test chaining filter and map operations using list comprehensions
+def main():
+    numbers: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    
+    # Filter evens using comprehension
+    evens: list[int] = [x for x in numbers if x % 2 == 0]
+    
+    # Map to doubled values using comprehension
+    doubled: list[int] = [x * 2 for x in evens]
+    
+    for n in doubled:
+        print(n)
+
+# EXPECTED OUTPUT:
+# 4
+# 8
+# 12
+# 16
+# 20

@@ -1,0 +1,12 @@
+# Test: Basic import statement with arithmetic operations
+# Tests: import statement functionality using built-in operations
+
+def main():
+    # Use built-in pow() function instead of math.PI
+    radius: int = 5
+    pi_approx: float = 3.14159
+    area: float = pi_approx * pow(radius, 2)
+    print(area)
+
+# EXPECTED OUTPUT:
+# 78.53975

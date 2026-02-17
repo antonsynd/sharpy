@@ -1,0 +1,20 @@
+# Test __str__ with a simple book class showing formatting
+class Book:
+    title: str
+    pages: int
+
+    def __init__(self, title: str, pages: int):
+        self.title = title
+        self.pages = pages
+
+    def __str__(self) -> str:
+        return f"{self.title} ({self.pages}p)"
+
+def main():
+    book = Book("The Hobbit", 310)
+    print(book)
+    print(str(book))
+
+# EXPECTED OUTPUT:
+# The Hobbit (310p)
+# The Hobbit (310p)
