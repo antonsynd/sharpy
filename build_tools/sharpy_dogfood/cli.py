@@ -240,6 +240,7 @@ async def run_dogfood(args: argparse.Namespace) -> int:
     # Apply timeout multiplier if provided
     timeout_multiplier = getattr(args, "timeout_multiplier", None)
     if timeout_multiplier and timeout_multiplier > 0:
+        config.timeout_multiplier = timeout_multiplier
         config.generation_timeout *= timeout_multiplier
         config.compilation_timeout *= timeout_multiplier
         config.execution_timeout *= timeout_multiplier

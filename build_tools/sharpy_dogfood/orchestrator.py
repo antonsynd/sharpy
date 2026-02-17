@@ -526,6 +526,10 @@ class DogfoodOrchestrator:
         self.test_fixtures: dict[str, list[tuple[str, str]]] = {}
         self.auto_converted_count: int = 0
 
+    def _timeout(self, base_seconds: float) -> float:
+        """Apply the configured timeout multiplier to a base timeout value."""
+        return base_seconds * self.config.timeout_multiplier
+
     async def initialize(self) -> bool:
         """Initialize the orchestrator and verify dependencies."""
         print("Initializing dogfooding tool...", file=sys.stderr)
@@ -744,7 +748,9 @@ class DogfoodOrchestrator:
 
             if not run_result.success:
                 # Try to get generated C# for debugging
-                cs_result = await self.compiler.emit_cs(source_path, timeout=30.0)
+                cs_result = await self.compiler.emit_cs(
+                    source_path, timeout=self._timeout(30.0)
+                )
                 generated_cs = cs_result.generated_cs if cs_result.success else None
 
                 issue_type = (
@@ -1713,7 +1719,9 @@ class DogfoodOrchestrator:
                 temp_path = Path(f.name)
 
             try:
-                result = await self.compiler.emit_tokens(temp_path, timeout=15.0)
+                result = await self.compiler.emit_tokens(
+                    temp_path, timeout=self._timeout(15.0)
+                )
             finally:
                 try:
                     temp_path.unlink()
@@ -1750,7 +1758,9 @@ class DogfoodOrchestrator:
         Returns None if code is valid, or an error message if invalid.
         """
         with TempSourceFile(code) as temp_path:
-            result = await self.compiler.check_file(temp_path, timeout=30.0)
+            result = await self.compiler.check_file(
+                temp_path, timeout=self._timeout(30.0)
+            )
             if result.success:
                 return None
             return result.error or "Unknown compiler error"
@@ -1766,7 +1776,9 @@ class DogfoodOrchestrator:
         Returns None if the project is valid, or an error message if invalid.
         """
         with TempProjectDir(files) as project_dir:
-            result = await self.compiler.check_project(project_dir, timeout=30.0)
+            result = await self.compiler.check_project(
+                project_dir, timeout=self._timeout(30.0)
+            )
             if result.success:
                 return None
             return result.error or "Unknown compiler error"
@@ -1777,7 +1789,7 @@ class DogfoodOrchestrator:
 
         prompt = get_output_verification_prompt(code, expected, actual)
         return await self.backend_manager.execute(
-            prompt, timeout=30.0  # Quick comparison
+            prompt, timeout=self._timeout(30.0)  # Quick comparison
         )
 
     async def _auto_convert_if_unique(
@@ -1803,7 +1815,7 @@ class DogfoodOrchestrator:
 
         # Ask AI to evaluate uniqueness
         prompt = get_test_uniqueness_prompt(code, existing_tests)
-        result = await self.backend_manager.execute(prompt, timeout=30.0)
+        result = await self.backend_manager.execute(prompt, timeout=self._timeout(30.0))
 
         if not result.success:
             print(
