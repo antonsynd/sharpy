@@ -17,7 +17,7 @@
   <ItemGroup>
     <PackageReference Include="System.Collections.Immutable" Version="10.0.3" />
     <!-- Polyfill for System.Index/Range on netstandard2.0 -->
-    <PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.2" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
+    <PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.3" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
   </ItemGroup>
 
 </Project>
