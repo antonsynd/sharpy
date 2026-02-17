@@ -44,6 +44,7 @@ _INFRASTRUCTURE_ERROR_PATTERNS: list[str] = [
     "command not found",
     "no such file or directory",
     "permission denied",
+    "requires interactive input",
 ]
 
 
