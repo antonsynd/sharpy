@@ -1,0 +1,19 @@
+# Non-abstract class with bodyless @abstract method
+# The class itself is not marked @abstract, but the method is
+class Shape:
+    @abstract
+    def area(self) -> float
+
+class Circle(Shape):
+    radius: float
+
+    def __init__(self, r: float):
+        self.radius = r
+
+    @override
+    def area(self) -> float:
+        return 3.14 * self.radius * self.radius
+
+def main():
+    c = Circle(5.0)
+    print(c.area())

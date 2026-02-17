@@ -68,6 +68,8 @@ public class RoslynEmitterExpressionTests
     [InlineData("3.14", "3.14")]
     [InlineData("0.5", "0.5")]
     [InlineData("2.718", "2.718")]
+    [InlineData("5.0", "5.0")]
+    [InlineData("100.0", "100.0")]
     public void GenerateExpression_FloatLiteral_GeneratesCorrectSyntax(string value, string expected)
     {
         // Arrange
