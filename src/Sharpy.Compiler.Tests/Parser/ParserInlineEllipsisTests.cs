@@ -238,4 +238,68 @@ class Calculator:
         func.Body[0].Should().BeOfType<ExpressionStatement>()
             .Which.Expression.Should().BeOfType<EllipsisLiteral>();
     }
+
+    [Fact]
+    public void ParseFunctionDef_BodylessAbstract_WithTypeParameters()
+    {
+        // Body-less @abstract method with generic type parameters should parse
+        // successfully and synthesize an ellipsis body
+        var source = @"
+@abstract
+class Container:
+    @abstract
+    def transform[T](self, x: T) -> T
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+
+        var func = classDef.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        func.Name.Should().Be("transform");
+        func.Decorators.Should().ContainSingle(d => d.Name == "abstract");
+
+        // Type parameters should be captured
+        func.TypeParameters.Should().HaveCount(1);
+        func.TypeParameters[0].Name.Should().Be("T");
+
+        // Parameters: self, x: T
+        func.Parameters.Should().HaveCount(2);
+        func.Parameters[0].Name.Should().Be("self");
+        func.Parameters[1].Name.Should().Be("x");
+        func.Parameters[1].Type.Should().NotBeNull();
+        func.Parameters[1].Type!.Name.Should().Be("T");
+
+        // Return type: T
+        func.ReturnType.Should().NotBeNull();
+        func.ReturnType!.Name.Should().Be("T");
+
+        // Synthesized ellipsis body
+        func.Body.Should().HaveCount(1);
+        func.Body[0].Should().BeOfType<ExpressionStatement>()
+            .Which.Expression.Should().BeOfType<EllipsisLiteral>();
+    }
+
+    [Fact]
+    public void ParseFunctionDef_BodylessAbstract_WithMultipleTypeParameters()
+    {
+        // Body-less @abstract with multiple type parameters
+        var source = @"
+@abstract
+class Mapper:
+    @abstract
+    def map[K, V](self, key: K) -> V
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+
+        var func = classDef.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        func.Name.Should().Be("map");
+        func.TypeParameters.Should().HaveCount(2);
+        func.TypeParameters[0].Name.Should().Be("K");
+        func.TypeParameters[1].Name.Should().Be("V");
+
+        // Synthesized ellipsis body
+        func.Body.Should().HaveCount(1);
+        func.Body[0].Should().BeOfType<ExpressionStatement>()
+            .Which.Expression.Should().BeOfType<EllipsisLiteral>();
+    }
 }

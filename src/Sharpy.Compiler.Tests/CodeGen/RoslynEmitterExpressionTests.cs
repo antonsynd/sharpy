@@ -1566,4 +1566,128 @@ public class RoslynEmitterExpressionTests
     }
 
     #endregion
+
+    #region Collection Literal SemanticInfo Fallback Tests
+
+    [Fact]
+    public void GenerateExpression_ListLiteralWithIdentifiers_UsesSemanticInfoFallback()
+    {
+        // Arrange: Create a list literal with identifier elements (not literal values)
+        // so that element-type inference from literals fails and the SemanticInfo fallback is used
+        var listLiteral = new ListLiteral
+        {
+            Elements = new List<Expression>
+            {
+                new Identifier { Name = "x" },
+                new Identifier { Name = "y" }
+            }.ToImmutableArray()
+        };
+
+        // Set up SemanticInfo with the type for this list literal node
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetExpressionType(listLiteral, new GenericType
+        {
+            Name = "list",
+            TypeArguments = new List<SemanticType> { BuiltinType.Int }
+        });
+        _context.SemanticInfo = semanticInfo;
+
+        // Act
+        var result = InvokeGenerateExpression(listLiteral);
+
+        // Assert: The generated code should use int from SemanticInfo, not object from fallback
+        var code = result.ToString();
+        code.Should().Contain("Sharpy.List<int>");
+        code.Should().Contain("x");
+        code.Should().Contain("y");
+    }
+
+    [Fact]
+    public void GenerateExpression_SetLiteralWithIdentifiers_UsesSemanticInfoFallback()
+    {
+        // Arrange: Create a set literal with identifier elements
+        var setLiteral = new SetLiteral
+        {
+            Elements = new List<Expression>
+            {
+                new Identifier { Name = "a" },
+                new Identifier { Name = "b" }
+            }.ToImmutableArray()
+        };
+
+        // Set up SemanticInfo with the type for this set literal node
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetExpressionType(setLiteral, new GenericType
+        {
+            Name = "set",
+            TypeArguments = new List<SemanticType> { BuiltinType.Str }
+        });
+        _context.SemanticInfo = semanticInfo;
+
+        // Act
+        var result = InvokeGenerateExpression(setLiteral);
+
+        // Assert: The generated code should use string from SemanticInfo
+        var code = result.ToString();
+        code.Should().Contain("Sharpy.Set<string>");
+    }
+
+    [Fact]
+    public void GenerateExpression_DictLiteralWithIdentifiers_UsesSemanticInfoFallback()
+    {
+        // Arrange: Create a dict literal with identifier keys/values
+        var dictLiteral = new DictLiteral
+        {
+            Entries = new List<DictEntry>
+            {
+                new DictEntry
+                {
+                    Key = new Identifier { Name = "k" },
+                    Value = new Identifier { Name = "v" }
+                }
+            }.ToImmutableArray()
+        };
+
+        // Set up SemanticInfo with the type for this dict literal node
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetExpressionType(dictLiteral, new GenericType
+        {
+            Name = "dict",
+            TypeArguments = new List<SemanticType> { BuiltinType.Str, BuiltinType.Int }
+        });
+        _context.SemanticInfo = semanticInfo;
+
+        // Act
+        var result = InvokeGenerateExpression(dictLiteral);
+
+        // Assert: The generated code should use string,int from SemanticInfo
+        var code = result.ToString();
+        code.Should().Contain("Dict<string,int>");
+    }
+
+    [Fact]
+    public void GenerateExpression_ListLiteralWithoutSemanticInfo_FallsBackToElementInference()
+    {
+        // Arrange: List with integer literals but NO SemanticInfo set
+        // This verifies the fallback path still works when SemanticInfo is absent
+        var listLiteral = new ListLiteral
+        {
+            Elements = new List<Expression>
+            {
+                new IntegerLiteral { Value = "1" },
+                new IntegerLiteral { Value = "2" }
+            }.ToImmutableArray()
+        };
+
+        // SemanticInfo is NOT set (default null on context)
+
+        // Act
+        var result = InvokeGenerateExpression(listLiteral);
+
+        // Assert: Falls back to element inference, which sees IntegerLiteral -> int
+        var code = result.ToString();
+        code.Should().Contain("Sharpy.List<int>");
+    }
+
+    #endregion
 }
