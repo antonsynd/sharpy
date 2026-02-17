@@ -111,21 +111,49 @@ class MultifileGenerationResult:
     is_internal_compiler_error: bool = False
 
 
+_NUMBER_PATTERN = re.compile(r"-?\d+\.?\d*")
+_PURE_NUMBER_PATTERN = re.compile(r"^-?\d+\.?\d*$")
+
+
+def _numbers_close(a: str, b: str, rel_tol: float) -> bool:
+    """Compare two numeric strings with tolerance, respecting decimal point presence.
+
+    Returns True only if:
+    - Both have a decimal point (or both don't), AND
+    - The numeric values are within relative tolerance.
+
+    "22.0" vs "22" → False (decimal point presence differs).
+    "3.14" vs "3.140000000000001" → True (float tolerance, both have ".").
+    """
+    a_has_dot = "." in a
+    b_has_dot = "." in b
+    if a_has_dot != b_has_dot:
+        return False  # Decimal presence differs — format mismatch
+    try:
+        a_val = float(a)
+        b_val = float(b)
+        if a_val == 0:
+            return abs(b_val) <= rel_tol
+        return abs((a_val - b_val) / a_val) <= rel_tol
+    except ValueError:
+        return False
+
+
 def _outputs_equivalent(expected: str, actual: str, rel_tol: float = 1e-9) -> bool:
     """
     Compare two outputs line by line, allowing floating-point tolerance.
 
     Returns True if outputs are equivalent considering:
     - Exact string matches
-    - Floating-point numbers within relative tolerance
+    - Pure-number lines: floating-point tolerance (but decimal point presence must match)
+    - Embedded numbers: extract all numeric tokens, verify non-numeric text is identical,
+      then compare numeric tokens with tolerance (decimal point presence must match)
     """
     expected_lines = expected.strip().split("\n")
     actual_lines = actual.strip().split("\n")
 
     if len(expected_lines) != len(actual_lines):
         return False
-
-    float_pattern = re.compile(r"^-?\d+\.?\d*$")
 
     for exp_line, act_line in zip(expected_lines, actual_lines):
         exp_line = exp_line.strip()
@@ -134,22 +162,30 @@ def _outputs_equivalent(expected: str, actual: str, rel_tol: float = 1e-9) -> bo
         if exp_line == act_line:
             continue
 
-        # Try float comparison
-        if float_pattern.match(exp_line) and float_pattern.match(act_line):
-            try:
-                exp_val = float(exp_line)
-                act_val = float(act_line)
-                # Use relative tolerance for comparison
-                if exp_val == 0:
-                    if abs(act_val) > rel_tol:
-                        return False
-                elif abs((exp_val - act_val) / exp_val) > rel_tol:
-                    return False
+        # Try pure-number comparison first
+        if _PURE_NUMBER_PATTERN.match(exp_line) and _PURE_NUMBER_PATTERN.match(act_line):
+            if _numbers_close(exp_line, act_line, rel_tol):
                 continue
-            except ValueError:
-                pass
+            return False
 
-        # Not equal and not matching floats
+        # Try embedded number comparison
+        exp_nums = _NUMBER_PATTERN.findall(exp_line)
+        act_nums = _NUMBER_PATTERN.findall(act_line)
+
+        if exp_nums and act_nums and len(exp_nums) == len(act_nums):
+            # Verify non-numeric text is identical
+            exp_text = _NUMBER_PATTERN.sub("\x00", exp_line)
+            act_text = _NUMBER_PATTERN.sub("\x00", act_line)
+            if exp_text == act_text:
+                # Compare each numeric token
+                all_close = all(
+                    _numbers_close(e, a, rel_tol)
+                    for e, a in zip(exp_nums, act_nums)
+                )
+                if all_close:
+                    continue
+
+        # Not equal and not matching via any strategy
         return False
 
     return True
