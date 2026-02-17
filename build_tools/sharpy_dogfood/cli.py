@@ -284,9 +284,15 @@ async def run_dogfood(args: argparse.Namespace) -> int:
     print(f"Auto-convert: {'enabled' if auto_convert else 'disabled'}", file=sys.stderr)
     print("=" * 40, file=sys.stderr)
 
+    verbose = getattr(args, "verbose", False)
+    if verbose:
+        print("Verbose mode: ON", file=sys.stderr)
+
     if args.dry_run:
         print("\nDry run - checking configuration...", file=sys.stderr)
-        orchestrator = DogfoodOrchestrator(config, auto_convert=auto_convert)
+        orchestrator = DogfoodOrchestrator(
+            config, auto_convert=auto_convert, verbose=verbose
+        )
         if await orchestrator.initialize():
             print("✓ Configuration is valid", file=sys.stderr)
             return 0
@@ -295,7 +301,9 @@ async def run_dogfood(args: argparse.Namespace) -> int:
             return 1
 
     # Run the dogfooding process
-    orchestrator = DogfoodOrchestrator(config, auto_convert=auto_convert)
+    orchestrator = DogfoodOrchestrator(
+        config, auto_convert=auto_convert, verbose=verbose
+    )
     return await orchestrator.run(args.iterations)
 
 

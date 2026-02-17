@@ -46,6 +46,7 @@ class ClaudeCodeBackend(Backend):
         heartbeat_callback: Optional[Callable[[str], None]] = None,
         cli_path: Optional[str] = None,
         project_root: Optional[Path] = None,
+        verbose: bool = False,
     ):
         """Initialize Claude Code backend.
 
@@ -56,12 +57,22 @@ class ClaudeCodeBackend(Backend):
                 long operations. Called with status messages.
             cli_path: Path to claude CLI executable. If None, searches PATH.
             project_root: Working directory for execution. If None, uses cwd.
+            verbose: If True, log detailed diagnostic information about
+                command construction, process execution, and raw output.
         """
         self._rate_limit_state = rate_limit_state or RateLimitState()
         self._heartbeat_callback = heartbeat_callback
         self._cli_path = cli_path or self._find_claude_cli()
         self._project_root = project_root or Path.cwd()
         self._heartbeat_interval = 60.0  # Log heartbeat every 60 seconds
+        self._verbose = verbose
+
+    def _vlog(self, message: str) -> None:
+        """Log a message to stderr if verbose mode is enabled."""
+        if self._verbose:
+            import sys
+
+            print(f"[claude:verbose] {message}", file=sys.stderr)
 
     @property
     def backend_type(self) -> BackendType:
@@ -98,6 +109,20 @@ class ClaudeCodeBackend(Backend):
         if config is None:
             config = BackendConfig()
 
+        self._vlog(f"CLI path: {self._cli_path}")
+        self._vlog(f"Project root: {self._project_root}")
+        self._vlog(f"Timeout: {config.timeout_seconds}s")
+        self._vlog(f"Model: {config.model or '(default)'}")
+        self._vlog(
+            f"Allowed tools: {', '.join(t.value for t in config.allowed_tools) if config.allowed_tools else '(none)'}"
+        )
+        self._vlog(f"Prompt length: {len(prompt)} chars")
+        if len(prompt) < 2000:
+            self._vlog(f"Prompt content:\n{prompt}")
+        else:
+            self._vlog(f"Prompt content (first 500 chars):\n{prompt[:500]}...")
+            self._vlog(f"Prompt content (last 300 chars):\n...{prompt[-300:]}")
+
         # Wait if rate limited (check simple availability without per-request params)
         wait_time = self._rate_limit_state.get_wait_time()
         if wait_time is not None and wait_time > 0:
@@ -114,12 +139,15 @@ class ClaudeCodeBackend(Backend):
         try:
             # Build command
             cmd = self._build_command(config)
+            self._vlog(f"Command: {' '.join(cmd)}")
 
             # Execute with timeout and heartbeat logging
             # Strip CLAUDECODE to avoid "cannot be launched inside another
             # claude code session" errors when this process is itself running
             # under Claude Code.
             clean_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+            self._vlog(f"Env CLAUDECODE stripped: {'CLAUDECODE' in os.environ}")
+            self._vlog(f"Starting subprocess in cwd={self._project_root}")
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdin=asyncio.subprocess.PIPE,
@@ -139,6 +167,9 @@ class ClaudeCodeBackend(Backend):
             except asyncio.TimeoutError:
                 # Kill the process on timeout
                 duration = time.time() - start_time
+                self._vlog(
+                    f"Process TIMED OUT after {duration:.1f}s (limit: {config.timeout_seconds}s)"
+                )
                 try:
                     process.kill()
                     await process.wait()
@@ -164,8 +195,20 @@ class ClaudeCodeBackend(Backend):
             stdout_text = stdout.decode(errors="replace")
             stderr_text = stderr.decode(errors="replace")
 
+            self._vlog(f"Process exited with code: {process.returncode}")
+            self._vlog(f"Duration: {duration:.1f}s")
+            self._vlog(f"Stdout length: {len(stdout_text)} chars")
+            self._vlog(f"Stderr length: {len(stderr_text)} chars")
+            if stdout_text:
+                preview = stdout_text[:1000] if len(stdout_text) > 1000 else stdout_text
+                self._vlog(f"Stdout preview:\n{preview}")
+            if stderr_text:
+                preview = stderr_text[:1000] if len(stderr_text) > 1000 else stderr_text
+                self._vlog(f"Stderr preview:\n{preview}")
+
             # Check for rate limiting
             rate_limited = is_rate_limit_error(stdout_text, stderr_text)
+            self._vlog(f"Rate limited: {rate_limited}")
 
             if rate_limited:
                 # Extract wait time and update rate limit state
@@ -188,6 +231,7 @@ class ClaudeCodeBackend(Backend):
 
             # Check for success
             if process.returncode == 0:
+                self._vlog("Execution succeeded (exit code 0)")
                 self._rate_limit_state.record_success()
                 return BackendResponse(
                     success=True,
@@ -202,6 +246,9 @@ class ClaudeCodeBackend(Backend):
                 # Non-zero exit code but not rate limited
                 self._rate_limit_state.record_error()
                 error_msg = stderr_text or stdout_text or "Unknown error"
+                self._vlog(
+                    f"Execution FAILED (exit code {process.returncode}): {error_msg[:500]}"
+                )
                 return BackendResponse(
                     success=False,
                     output=stdout_text,
@@ -213,6 +260,7 @@ class ClaudeCodeBackend(Backend):
                 )
 
         except FileNotFoundError:
+            self._vlog(f"FileNotFoundError: Claude CLI not found at '{self._cli_path}'")
             return BackendResponse(
                 success=False,
                 output="",
@@ -223,6 +271,7 @@ class ClaudeCodeBackend(Backend):
                 error_message=f"Claude Code CLI not found at: {self._cli_path}",
             )
         except Exception as e:
+            self._vlog(f"Unexpected exception: {type(e).__name__}: {e}")
             self._rate_limit_state.record_error()
             return BackendResponse(
                 success=False,

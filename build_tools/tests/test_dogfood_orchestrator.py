@@ -70,9 +70,10 @@ class TestOutputsEquivalent:
         assert _outputs_equivalent("3.14", "3.140000000000001") is True
 
     def test_pure_float_tolerance_multiline(self):
-        assert _outputs_equivalent(
-            "3.14\n7.85", "3.140000000000001\n7.8500000000000005"
-        ) is True
+        assert (
+            _outputs_equivalent("3.14\n7.85", "3.140000000000001\n7.8500000000000005")
+            is True
+        )
 
     # --- Pure number decimal format mismatch ---
 
@@ -88,14 +89,17 @@ class TestOutputsEquivalent:
     # --- Embedded number tolerance ---
 
     def test_embedded_float_tolerance_match(self):
-        assert _outputs_equivalent(
-            "result = 3.14", "result = 3.140000000000001"
-        ) is True
+        assert (
+            _outputs_equivalent("result = 3.14", "result = 3.140000000000001") is True
+        )
 
     def test_embedded_multiple_floats(self):
-        assert _outputs_equivalent(
-            "x=3.14, y=2.71", "x=3.140000000000001, y=2.710000000000001"
-        ) is True
+        assert (
+            _outputs_equivalent(
+                "x=3.14, y=2.71", "x=3.140000000000001, y=2.710000000000001"
+            )
+            is True
+        )
 
     # --- Embedded number decimal format mismatch ---
 
@@ -118,9 +122,10 @@ class TestOutputsEquivalent:
     # --- Mixed lines ---
 
     def test_multiline_mixed_types(self):
-        assert _outputs_equivalent(
-            "3.14\nhello\n42", "3.140000000000001\nhello\n42"
-        ) is True
+        assert (
+            _outputs_equivalent("3.14\nhello\n42", "3.140000000000001\nhello\n42")
+            is True
+        )
 
     def test_multiline_one_mismatch(self):
         assert _outputs_equivalent("3.14\nhello\n22.0", "3.14\nhello\n22") is False
@@ -162,6 +167,7 @@ class TestIsInternalCompilerError:
         assert _is_internal_compiler_error("some random error message") is False
 
     def test_multiline_with_spy09xx(self):
-        assert _is_internal_compiler_error(
-            "line 1 error\nSPY0907: unexpected\nmore text"
-        ) is True
+        assert (
+            _is_internal_compiler_error("line 1 error\nSPY0907: unexpected\nmore text")
+            is True
+        )

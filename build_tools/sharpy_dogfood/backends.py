@@ -173,10 +173,13 @@ class ClaudeBackend:
     interface while leveraging heartbeat logging and rate limiting.
     """
 
-    def __init__(self, config: BackendConfig, project_root: Path):
+    def __init__(
+        self, config: BackendConfig, project_root: Path, verbose: bool = False
+    ):
         self.config = config
         self.project_root = project_root
         self.rate_limit_state = DogfoodRateLimitState()
+        self._verbose = verbose
 
         # Create the shared backend with heartbeat callback
         self._shared_backend = SharedClaudeBackend(
@@ -184,6 +187,7 @@ class ClaudeBackend:
             heartbeat_callback=create_heartbeat_callback("claude"),
             cli_path=config.claude_cli_path,
             project_root=project_root,
+            verbose=verbose,
         )
 
     @property
@@ -242,8 +246,24 @@ class ClaudeBackend:
             model=self.config.model,  # Use model from backend config
         )
 
+        if self._verbose:
+            print(
+                f"[claude:verbose] ClaudeBackend.execute: model={self.config.model}, "
+                f"timeout={effective_timeout}s, prompt_len={len(prompt)}",
+                file=sys.stderr,
+            )
+
         # Execute via shared backend (includes heartbeat logging)
         response = await self._shared_backend.execute(prompt, shared_config)
+
+        if self._verbose:
+            print(
+                f"[claude:verbose] ClaudeBackend.execute result: success={response.success}, "
+                f"exit_code={response.exit_code}, duration={response.duration_seconds:.1f}s, "
+                f"rate_limited={response.rate_limited}, "
+                f"error={response.error_message[:200] if response.error_message else None}",
+                file=sys.stderr,
+            )
 
         # Update our rate limit state based on response
         if response.rate_limited:
@@ -259,10 +279,13 @@ class CopilotBackend:
     interface while leveraging heartbeat logging and rate limiting.
     """
 
-    def __init__(self, config: BackendConfig, project_root: Path):
+    def __init__(
+        self, config: BackendConfig, project_root: Path, verbose: bool = False
+    ):
         self.config = config
         self.project_root = project_root
         self.rate_limit_state = DogfoodRateLimitState()
+        self._verbose = verbose
 
         # Create the shared backend with heartbeat callback
         self._shared_backend = SharedCopilotBackend(
@@ -347,8 +370,9 @@ class BackendManager:
 
     BACKEND_PRIORITY: list[BackendType] = ["claude", "klaude", "copilot"]
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, verbose: bool = False):
         self.config = config
+        self._verbose = verbose
         self.backends: dict[str, DogfoodBackend] = {}
         self._init_backends()
 
@@ -360,13 +384,45 @@ class BackendManager:
                 if name in ("claude", "klaude"):
                     # claude and klaude are synonymous; only register one
                     if "claude" in self.backends or "klaude" in self.backends:
+                        if self._verbose:
+                            print(
+                                f"[backend-mgr:verbose] Skipping '{name}' (already registered a claude variant)",
+                                file=sys.stderr,
+                            )
                         continue
                     self.backends[name] = ClaudeBackend(
-                        backend_config, self.config.project_root
+                        backend_config, self.config.project_root, verbose=self._verbose
                     )
+                    if self._verbose:
+                        print(
+                            f"[backend-mgr:verbose] Registered backend '{name}': "
+                            f"model={backend_config.model}, "
+                            f"cli_path={backend_config.claude_cli_path or '(auto-detect)'}, "
+                            f"timeout={backend_config.execution_timeout}s",
+                            file=sys.stderr,
+                        )
                 elif name == "copilot":
                     self.backends[name] = CopilotBackend(
-                        backend_config, self.config.project_root
+                        backend_config, self.config.project_root, verbose=self._verbose
+                    )
+                    if self._verbose:
+                        print(
+                            f"[backend-mgr:verbose] Registered backend '{name}': "
+                            f"model={backend_config.model}, "
+                            f"cli_path={backend_config.copilot_cli_path or '(auto-detect)'}, "
+                            f"timeout={backend_config.execution_timeout}s",
+                            file=sys.stderr,
+                        )
+            elif self._verbose:
+                if backend_config:
+                    print(
+                        f"[backend-mgr:verbose] Backend '{name}' disabled (enabled={backend_config.enabled})",
+                        file=sys.stderr,
+                    )
+                else:
+                    print(
+                        f"[backend-mgr:verbose] Backend '{name}' not configured",
+                        file=sys.stderr,
                     )
 
     def get_available_backend(self) -> Optional[DogfoodBackend]:
@@ -413,10 +469,33 @@ class BackendManager:
                         f"[{name}] Not available, wait time: {wait_time:.1f}s",
                         file=sys.stderr,
                     )
+                    if self._verbose:
+                        print(
+                            f"[backend-mgr:verbose] Backend '{name}' unavailable details: "
+                            f"enabled={backend.config.enabled}, "
+                            f"rate_limit_wait={wait_time:.1f}s",
+                            file=sys.stderr,
+                        )
                     continue
 
                 print(f"[{name}] Executing prompt...", file=sys.stderr)
+                if self._verbose:
+                    print(
+                        f"[backend-mgr:verbose] Dispatching to backend '{name}' "
+                        f"(prompt_len={len(prompt)}, timeout={timeout})",
+                        file=sys.stderr,
+                    )
                 result = await backend.execute(prompt, timeout)
+
+                if self._verbose:
+                    print(
+                        f"[backend-mgr:verbose] Backend '{name}' returned: "
+                        f"success={result.success}, rate_limited={result.rate_limited}, "
+                        f"infrastructure_error={result.infrastructure_error}, "
+                        f"timed_out={result.timed_out}, "
+                        f"error={result.error[:200] if result.error else None}",
+                        file=sys.stderr,
+                    )
 
                 if result.success:
                     return result

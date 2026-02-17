@@ -163,7 +163,9 @@ def _outputs_equivalent(expected: str, actual: str, rel_tol: float = 1e-9) -> bo
             continue
 
         # Try pure-number comparison first
-        if _PURE_NUMBER_PATTERN.match(exp_line) and _PURE_NUMBER_PATTERN.match(act_line):
+        if _PURE_NUMBER_PATTERN.match(exp_line) and _PURE_NUMBER_PATTERN.match(
+            act_line
+        ):
             if _numbers_close(exp_line, act_line, rel_tol):
                 continue
             return False
@@ -179,8 +181,7 @@ def _outputs_equivalent(expected: str, actual: str, rel_tol: float = 1e-9) -> bo
             if exp_text == act_text:
                 # Compare each numeric token
                 all_close = all(
-                    _numbers_close(e, a, rel_tol)
-                    for e, a in zip(exp_nums, act_nums)
+                    _numbers_close(e, a, rel_tol) for e, a in zip(exp_nums, act_nums)
                 )
                 if all_close:
                     continue
@@ -509,10 +510,13 @@ COMPLEXITY_LEVELS = ["simple", "simple", "simple", "medium", "medium", "complex"
 class DogfoodOrchestrator:
     """Orchestrates the dogfooding process."""
 
-    def __init__(self, config: Config, auto_convert: bool = True):
+    def __init__(
+        self, config: Config, auto_convert: bool = True, verbose: bool = False
+    ):
         self.config = config
         self.auto_convert = auto_convert
-        self.backend_manager = BackendManager(config)
+        self._verbose = verbose
+        self.backend_manager = BackendManager(config, verbose=verbose)
         self.compiler = SharpyCompiler(config.project_root, config.sharpy_cli_project)
         self.issue_reporter = IssueReporter(config.issues_dir)
         self.success_reporter = SuccessReporter(config.successes_dir)
@@ -532,8 +536,20 @@ class DogfoodOrchestrator:
         available_backends = [k for k, v in availability.items() if v]
         if not available_backends:
             print("ERROR: No AI backends available", file=sys.stderr)
+            if self._verbose:
+                for name, avail in availability.items():
+                    print(
+                        f"[orchestrator:verbose] Backend '{name}': available={avail}",
+                        file=sys.stderr,
+                    )
             return False
         print(f"Available backends: {', '.join(available_backends)}", file=sys.stderr)
+        if self._verbose:
+            for name, avail in availability.items():
+                print(
+                    f"[orchestrator:verbose] Backend '{name}': available={avail}",
+                    file=sys.stderr,
+                )
 
         # Check compiler
         print("Checking Sharpy compiler...", file=sys.stderr)
@@ -860,6 +876,12 @@ class DogfoodOrchestrator:
             ),
             existing_fixtures_section=self.fixtures_prompt_section,
         )
+        if self._verbose:
+            print(
+                f"[orchestrator:verbose] _generate_code: feature={feature_focus}, "
+                f"complexity={complexity}, prompt_len={len(prompt)}",
+                file=sys.stderr,
+            )
         return await self.backend_manager.execute(
             prompt, timeout=self.config.generation_timeout
         )
@@ -931,6 +953,17 @@ class DogfoodOrchestrator:
             total_duration += gen_result.duration_seconds or 0.0
             backend_used = gen_result.backend
 
+            if self._verbose:
+                print(
+                    f"[orchestrator:verbose] Generation attempt {attempt} result: "
+                    f"success={gen_result.success}, backend={gen_result.backend}, "
+                    f"duration={gen_result.duration_seconds:.1f}s, "
+                    f"rate_limited={gen_result.rate_limited}, "
+                    f"output_len={len(gen_result.output) if gen_result.output else 0}, "
+                    f"error={gen_result.error[:200] if gen_result.error else None}",
+                    file=sys.stderr,
+                )
+
             # Check for rate limiting
             if not gen_result.success or not gen_result.output:
                 is_rate_limited = gen_result.rate_limited or (
@@ -940,6 +973,14 @@ class DogfoodOrchestrator:
                         for x in ["rate limit", "rate-limit", "unavailable", "429"]
                     )
                 )
+                if self._verbose:
+                    print(
+                        f"[orchestrator:verbose] Generation failed: "
+                        f"is_rate_limited={is_rate_limited}, "
+                        f"has_output={bool(gen_result.output)}, "
+                        f"success={gen_result.success}",
+                        file=sys.stderr,
+                    )
                 if is_rate_limited:
                     return GenerationResult(
                         success=False,
@@ -1373,7 +1414,9 @@ class DogfoodOrchestrator:
                 issue = Issue(
                     issue_type=IssueType.INTERNAL_COMPILER_ERROR,
                     timestamp=timestamp,
-                    generated_code=gen_result.files.get("main.spy", "") if gen_result.files else "",
+                    generated_code=(
+                        gen_result.files.get("main.spy", "") if gen_result.files else ""
+                    ),
                     source_files=gen_result.files,
                     expected_output=gen_result.expected_output,
                     error_message=gen_result.skip_reason,

@@ -88,7 +88,9 @@ class Config(BaseConfig):
     backends: dict[BackendType, BackendConfig] = field(
         default_factory=lambda: {
             "claude": BackendConfig(name="claude", model=CLAUDE_CLI_MODEL),
-            "klaude": BackendConfig(name="klaude", enabled=False, model=CLAUDE_CLI_MODEL),
+            "klaude": BackendConfig(
+                name="klaude", enabled=False, model=CLAUDE_CLI_MODEL
+            ),
             "copilot": BackendConfig(name="copilot", model=COPILOT_CLI_MODEL),
         }
     )
