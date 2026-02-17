@@ -1503,6 +1503,10 @@ class DogfoodOrchestrator:
                     file=sys.stderr,
                 )
             else:
+                print(
+                    "  \u26a0 Multi-file test: output verified by AI only (no Python baseline)",
+                    file=sys.stderr,
+                )
                 verify_result = await self._verify_output(
                     files.get("main.spy", ""), expected_output, actual_output
                 )
