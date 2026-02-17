@@ -1,0 +1,22 @@
+# Test collection methods: list.extend, dict.update, set operations
+def main():
+    # List extend
+    nums: list[int] = [1, 2, 3]
+    nums.extend([4, 5])
+    print(len(nums))
+    
+    # Dict update
+    scores: dict[str, int] = {"alice": 90}
+    scores.update({"bob": 85, "charlie": 92})
+    print(len(scores))
+    
+    # Set add and discard
+    tags: set[str] = {"python", "code"}
+    tags.add("test")
+    tags.discard("code")
+    print(len(tags))
+
+# EXPECTED OUTPUT:
+# 5
+# 3
+# 2
