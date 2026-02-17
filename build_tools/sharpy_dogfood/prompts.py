@@ -882,10 +882,15 @@ Determine if the actual output matches the expected output.
 
 Consider:
 - Whitespace differences (trailing spaces, newlines) should be IGNORED
-- **Floating-point precision**: Minor differences in decimal representation are ACCEPTABLE
-  - Example: "5.14" and "5.140000000000001" are EQUIVALENT (IEEE 754 precision)
+- **Floating-point precision**: IEEE 754 trailing-digit differences are ACCEPTABLE
+  - Example: "5.14" and "5.140000000000001" are EQUIVALENT (trailing precision noise)
   - Example: "7.85" and "7.8500000000000005" are EQUIVALENT
   - Compare floating-point numbers to ~10 significant figures
+- **CRITICAL — Decimal point presence is significant**: The PRESENCE or ABSENCE of a decimal point changes the type/meaning:
+  - "22.0" vs "22" → MISMATCH (float vs integer formatting)
+  - "5.0" vs "5" → MISMATCH (float vs integer formatting)
+  - "1.0" vs "1" → MISMATCH (float vs integer formatting)
+  - These are NOT precision differences — they indicate a type mismatch in the program output
 - String content should be exact
 - Integer values should match exactly
 
