@@ -1,0 +1,13 @@
+@abstract
+class Shape:
+    @abstract
+    def describe(self)
+
+class Circle(Shape):
+    @override
+    def describe(self):
+        print("I am a circle")
+
+def main():
+    c: Circle = Circle()
+    c.describe()
