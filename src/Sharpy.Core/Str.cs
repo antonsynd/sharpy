@@ -118,6 +118,38 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Format a <see cref="float"/> value with Python-compatible representation.
+        /// Overload to avoid float→double widening precision issues.
+        /// </summary>
+        internal static string FormatFloat(float value)
+        {
+            if (float.IsNaN(value))
+            {
+                return "nan";
+            }
+
+            if (float.IsPositiveInfinity(value))
+            {
+                return "inf";
+            }
+
+            if (float.IsNegativeInfinity(value))
+            {
+                return "-inf";
+            }
+
+            var s = value.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+
+            // If already contains a decimal point or scientific notation, return as-is
+            if (s.IndexOf('.') >= 0 || s.IndexOf('E') >= 0 || s.IndexOf('e') >= 0)
+            {
+                return s;
+            }
+
+            return s + ".0";
+        }
+
+        /// <summary>
         /// Convert a <see cref="bool"/> to <see cref="string"/>.
         /// Returns Python-style <c>"True"</c> or <c>"False"</c>.
         /// </summary>
