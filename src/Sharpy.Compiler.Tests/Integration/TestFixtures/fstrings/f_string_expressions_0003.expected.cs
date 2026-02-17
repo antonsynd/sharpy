@@ -27,7 +27,7 @@ public static partial class FStringExpressions0003
 #line 12 "f_string_expressions_0003.spy"
             this.BaseScore = score;
 #line 13 "f_string_expressions_0003.spy"
-            this.Multiplier = 1;
+            this.Multiplier = 1.0;
         }
     }
 

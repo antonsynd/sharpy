@@ -14,13 +14,13 @@ public static partial class VirtualOverrideShapes
         public virtual double Area()
         {
 #line 12 "virtual_override_shapes.spy"
-            return 0;
+            return 0.0;
         }
 
         public virtual double Perimeter()
         {
 #line 16 "virtual_override_shapes.spy"
-            return 0;
+            return 0.0;
         }
 
         public void Describe()
@@ -53,7 +53,7 @@ public static partial class VirtualOverrideShapes
         public override double Perimeter()
         {
 #line 38 "virtual_override_shapes.spy"
-            return 2 * (this.Width + this.Height);
+            return 2.0 * (this.Width + this.Height);
         }
 
         public Rectangle(double width, double height) : base("Rectangle")
@@ -77,7 +77,7 @@ public static partial class VirtualOverrideShapes
         public override double Perimeter()
         {
 #line 53 "virtual_override_shapes.spy"
-            return 2 * 3.14 * this.Radius;
+            return 2.0 * 3.14 * this.Radius;
         }
 
         public Circle(double radius) : base("Circle")
@@ -87,8 +87,8 @@ public static partial class VirtualOverrideShapes
         }
     }
 
-    public static Rectangle Rect = new Rectangle(5, 3);
-    public static Circle Circ = new Circle(4);
+    public static Rectangle Rect = new Rectangle(5.0, 3.0);
+    public static Circle Circ = new Circle(4.0);
     public static void Main()
     {
 #line 59 "virtual_override_shapes.spy"

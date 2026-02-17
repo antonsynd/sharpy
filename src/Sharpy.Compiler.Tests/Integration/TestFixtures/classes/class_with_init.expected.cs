@@ -15,7 +15,7 @@ public static partial class ClassWithInit
         public double ToFahrenheit()
         {
 #line 13 "class_with_init.spy"
-            return this.Celsius * 9 / 5 + 32;
+            return this.Celsius * 9.0 / 5.0 + 32.0;
         }
 
         public double ToKelvin()
@@ -50,7 +50,7 @@ public static partial class ClassWithInit
     public static void Main()
     {
 #line 26 "class_with_init.spy"
-        var converter = new TemperatureConverter(0, "Water freezing point");
+        var converter = new TemperatureConverter(0.0, "Water freezing point");
 #line 27 "class_with_init.spy"
         global::Sharpy.Builtins.Print(converter.GetCelsius());
 #line 28 "class_with_init.spy"
@@ -58,13 +58,13 @@ public static partial class ClassWithInit
 #line 29 "class_with_init.spy"
         global::Sharpy.Builtins.Print(converter.ToKelvin());
 #line 31 "class_with_init.spy"
-        converter.Adjust(100);
+        converter.Adjust(100.0);
 #line 32 "class_with_init.spy"
         global::Sharpy.Builtins.Print(converter.GetCelsius());
 #line 33 "class_with_init.spy"
         global::Sharpy.Builtins.Print(converter.ToFahrenheit());
 #line 35 "class_with_init.spy"
-        var second = new TemperatureConverter(25, "Room temperature");
+        var second = new TemperatureConverter(25.0, "Room temperature");
 #line 36 "class_with_init.spy"
         global::Sharpy.Builtins.Print(second.GetCelsius());
 #line 37 "class_with_init.spy"

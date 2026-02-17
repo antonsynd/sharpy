@@ -142,7 +142,10 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateFloatLiteral(FloatLiteral literal)
     {
-        return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(double.Parse(literal.Value)));
+        // Preserve original text to maintain decimal point (e.g., "5.0" not "5")
+        // Roslyn's Literal(double) normalizes whole numbers, losing Python-compatible formatting
+        var value = double.Parse(literal.Value, System.Globalization.CultureInfo.InvariantCulture);
+        return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(literal.Value, value));
     }
 
     private ExpressionSyntax GenerateStringLiteral(StringLiteral literal)

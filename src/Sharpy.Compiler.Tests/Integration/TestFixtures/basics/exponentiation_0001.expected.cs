@@ -19,7 +19,7 @@ public static partial class Exponentiation0001
 #line 5 "exponentiation_0001.spy"
         global::Sharpy.Builtins.Print(y);
 #line 6 "exponentiation_0001.spy"
-        double z = System.Math.Pow(2, 3);
+        double z = System.Math.Pow(2.0, 3.0);
 #line 7 "exponentiation_0001.spy"
         global::Sharpy.Builtins.Print(z);
     }

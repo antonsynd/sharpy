@@ -1,0 +1,10 @@
+# Test float literal printing (not variables)
+# Regression test for float literals being emitted as integers
+
+def main():
+    # Direct float literals
+    print(5.0)
+    print(0.0)
+    print(100.0)
+    print(3.14)
+    print(-2.5)

@@ -69,9 +69,9 @@ public static partial class AbstractClass0000
     public static void Main()
     {
 #line 46 "abstract_class_0000.spy"
-        var rect = new Rectangle(4, 5);
+        var rect = new Rectangle(4.0, 5.0);
 #line 47 "abstract_class_0000.spy"
-        var circ = new Circle(3);
+        var circ = new Circle(3.0);
 #line 49 "abstract_class_0000.spy"
         global::Sharpy.Builtins.Print(rect.Describe());
 #line 50 "abstract_class_0000.spy"
