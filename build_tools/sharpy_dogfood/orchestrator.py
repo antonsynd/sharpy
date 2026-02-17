@@ -714,14 +714,28 @@ class DogfoodOrchestrator:
                 verify_result = await self._verify_output(
                     code, expected_output, actual_output
                 )
-                if "MISMATCH" in verify_result.output.upper():
-                    print("  ✗ Output mismatch detected", file=sys.stderr)
+                verify_upper = verify_result.output.upper()
+                if not verify_result.success:
+                    reason = "AI verification backend failure"
+                    is_mismatch = True
+                elif "MISMATCH" in verify_upper:
+                    reason = "AI explicitly reported mismatch"
+                    is_mismatch = True
+                elif "MATCH" not in verify_upper:
+                    reason = "AI verification response was ambiguous or empty"
+                    is_mismatch = True
+                else:
+                    is_mismatch = False
+
+                if is_mismatch:
+                    print(f"  ✗ Output mismatch detected ({reason})", file=sys.stderr)
                     issue = Issue(
                         issue_type=IssueType.OUTPUT_MISMATCH,
                         timestamp=timestamp,
                         generated_code=code,
                         expected_output=expected_output,
                         actual_output=actual_output,
+                        error_message=reason,
                         feature_focus=feature_focus,
                         complexity=complexity,
                         backend_used=gen_result.backend_used,
@@ -1364,8 +1378,21 @@ class DogfoodOrchestrator:
                 verify_result = await self._verify_output(
                     files.get("main.spy", ""), expected_output, actual_output
                 )
-                if "MISMATCH" in verify_result.output.upper():
-                    print("  ✗ Output mismatch detected", file=sys.stderr)
+                verify_upper = verify_result.output.upper()
+                if not verify_result.success:
+                    reason = "AI verification backend failure"
+                    is_mismatch = True
+                elif "MISMATCH" in verify_upper:
+                    reason = "AI explicitly reported mismatch"
+                    is_mismatch = True
+                elif "MATCH" not in verify_upper:
+                    reason = "AI verification response was ambiguous or empty"
+                    is_mismatch = True
+                else:
+                    is_mismatch = False
+
+                if is_mismatch:
+                    print(f"  ✗ Output mismatch detected ({reason})", file=sys.stderr)
                     issue = Issue(
                         issue_type=IssueType.OUTPUT_MISMATCH,
                         timestamp=timestamp,
@@ -1373,6 +1400,7 @@ class DogfoodOrchestrator:
                         source_files=files,
                         expected_output=expected_output,
                         actual_output=actual_output,
+                        error_message=reason,
                         feature_focus=feature_focus,
                         complexity=complexity,
                         backend_used=gen_result.backend_used,
