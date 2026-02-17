@@ -181,6 +181,14 @@ class ClaudeBackend:
         self.rate_limit_state = DogfoodRateLimitState()
         self._verbose = verbose
 
+        # When using klaude, set env vars to route through local proxy
+        extra_env: dict[str, str] | None = None
+        if config.name == "klaude":
+            extra_env = {
+                "ANTHROPIC_AUTH_TOKEN": "freecc",
+                "ANTHROPIC_BASE_URL": "http://localhost:8082",
+            }
+
         # Create the shared backend with heartbeat callback
         self._shared_backend = SharedClaudeBackend(
             rate_limit_state=self.rate_limit_state,
@@ -188,6 +196,7 @@ class ClaudeBackend:
             cli_path=config.claude_cli_path,
             project_root=project_root,
             verbose=verbose,
+            extra_env=extra_env,
         )
 
     @property

@@ -47,6 +47,7 @@ class ClaudeCodeBackend(Backend):
         cli_path: Optional[str] = None,
         project_root: Optional[Path] = None,
         verbose: bool = False,
+        extra_env: Optional[dict[str, str]] = None,
     ):
         """Initialize Claude Code backend.
 
@@ -59,6 +60,8 @@ class ClaudeCodeBackend(Backend):
             project_root: Working directory for execution. If None, uses cwd.
             verbose: If True, log detailed diagnostic information about
                 command construction, process execution, and raw output.
+            extra_env: Optional dict of additional environment variables to set
+                when launching the CLI process (e.g. for proxy/auth overrides).
         """
         self._rate_limit_state = rate_limit_state or RateLimitState()
         self._heartbeat_callback = heartbeat_callback
@@ -66,6 +69,7 @@ class ClaudeCodeBackend(Backend):
         self._project_root = project_root or Path.cwd()
         self._heartbeat_interval = 60.0  # Log heartbeat every 60 seconds
         self._verbose = verbose
+        self._extra_env = extra_env or {}
 
     def _vlog(self, message: str) -> None:
         """Log a message to stderr if verbose mode is enabled."""
@@ -146,6 +150,9 @@ class ClaudeCodeBackend(Backend):
             # claude code session" errors when this process is itself running
             # under Claude Code.
             clean_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+            if self._extra_env:
+                clean_env.update(self._extra_env)
+                self._vlog(f"Extra env vars applied: {list(self._extra_env.keys())}")
             self._vlog(f"Env CLAUDECODE stripped: {'CLAUDECODE' in os.environ}")
             self._vlog(f"Starting subprocess in cwd={self._project_root}")
             process = await asyncio.create_subprocess_exec(
