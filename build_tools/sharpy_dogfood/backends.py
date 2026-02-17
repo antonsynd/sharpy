@@ -345,7 +345,7 @@ DogfoodBackend = ClaudeBackend | CopilotBackend
 class BackendManager:
     """Manages multiple AI backends with automatic failover."""
 
-    BACKEND_PRIORITY: list[BackendType] = ["claude", "copilot"]
+    BACKEND_PRIORITY: list[BackendType] = ["claude", "klaude", "copilot"]
 
     def __init__(self, config: Config):
         self.config = config
@@ -357,11 +357,14 @@ class BackendManager:
         for name in self.BACKEND_PRIORITY:
             backend_config = self.config.backends.get(name)
             if backend_config and backend_config.enabled:
-                if name == "claude":
+                if name in ("claude", "klaude"):
+                    # claude and klaude are synonymous; only register one
+                    if "claude" in self.backends or "klaude" in self.backends:
+                        continue
                     self.backends[name] = ClaudeBackend(
                         backend_config, self.config.project_root
                     )
-                if name == "copilot":
+                elif name == "copilot":
                     self.backends[name] = CopilotBackend(
                         backend_config, self.config.project_root
                     )

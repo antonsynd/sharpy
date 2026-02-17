@@ -126,9 +126,18 @@ def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--backend",
         type=str,
-        choices=["claude", "copilot"],
+        choices=["claude", "copilot", "klaude"],
         default=None,
-        help="AI backend to use (default: claude with copilot failover)",
+        help="AI backend to use (default: claude with copilot failover). "
+        "'klaude' is identical to 'claude' but keeps copilot failover active.",
+    )
+
+    parser.add_argument(
+        "--timeout-multiplier",
+        type=float,
+        default=None,
+        help="Multiply all timeouts (generation, compilation, execution) by this factor. "
+        "For example, --timeout-multiplier 2 doubles all timeouts.",
     )
 
 
@@ -228,10 +237,22 @@ async def run_dogfood(args: argparse.Namespace) -> int:
     config.compilation_timeout = args.compilation_timeout
     config.execution_timeout = args.execution_timeout
 
+    # Apply timeout multiplier if provided
+    timeout_multiplier = getattr(args, "timeout_multiplier", None)
+    if timeout_multiplier and timeout_multiplier > 0:
+        config.generation_timeout *= timeout_multiplier
+        config.compilation_timeout *= timeout_multiplier
+        config.execution_timeout *= timeout_multiplier
+
     backend_choice = getattr(args, "backend", None)
     if backend_choice:
-        for name, backend_cfg in config.backends.items():
-            backend_cfg.enabled = name == backend_choice
+        if backend_choice == "klaude":
+            # klaude: enable klaude + copilot failover, disable regular claude
+            for name, backend_cfg in config.backends.items():
+                backend_cfg.enabled = name in ("klaude", "copilot")
+        else:
+            for name, backend_cfg in config.backends.items():
+                backend_cfg.enabled = name == backend_choice
 
     # Ensure directories exist
     config.ensure_dirs()
@@ -251,9 +272,14 @@ async def run_dogfood(args: argparse.Namespace) -> int:
     print("=" * 40, file=sys.stderr)
 
     if backend_choice:
-        print(f"Backend: {backend_choice}", file=sys.stderr)
+        if backend_choice == "klaude":
+            print(f"Backend: klaude (with copilot failover)", file=sys.stderr)
+        else:
+            print(f"Backend: {backend_choice}", file=sys.stderr)
     else:
         print("Backend: claude (with copilot failover)", file=sys.stderr)
+    if timeout_multiplier:
+        print(f"Timeout multiplier: {timeout_multiplier}x", file=sys.stderr)
     auto_convert = getattr(args, "auto_convert", True)
     print(f"Auto-convert: {'enabled' if auto_convert else 'disabled'}", file=sys.stderr)
     print("=" * 40, file=sys.stderr)
