@@ -801,20 +801,9 @@ Your previous multi-file project FAILED validation. You must fix the issue and r
 4. Keep the same general logic/intent but use only allowed features
 5. Maintain correct import relationships between files
 
-## CRITICAL: Program Entry Point Requirement
+{ENTRY_POINT_SECTION}
 
-The `main.spy` file MUST have a `main()` function as its entry point:
-- All executable statements (print, variable assignments, function calls) must be inside `main()`
-- Library modules (non-main.spy files) do NOT need a `main()` function
-- Only declarations (classes, functions, type aliases, static fields) can be at module level
-- **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
-
-## CRITICAL: Module System Rules
-
-- **From import**: `from module_name import function1, function2`
-- **Import with alias**: `import module_name as alias`
-- Module name = filename without `.spy` extension
-- NO relative imports, NO package imports, NO star imports
+{MULTIFILE_MODULE_RULES_SECTION}
 
 {ALLOWED_FEATURES_SECTION}
 
