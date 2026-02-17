@@ -228,6 +228,20 @@ public partial class Parser
     }
 
     /// <summary>
+    /// Checks if _pendingDecorators contains a decorator named "abstract".
+    /// Avoids LINQ to prevent ImmutableArray boxing allocation.
+    /// </summary>
+    private bool HasAbstractDecorator()
+    {
+        foreach (var decorator in _pendingDecorators)
+        {
+            if (decorator.Name == "abstract")
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Truncates a string value for diagnostic display.
     /// </summary>
     private static string TruncateValue(string value, int maxLength)

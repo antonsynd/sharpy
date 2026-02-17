@@ -205,8 +205,7 @@ public partial class Parser
 
         // For @abstract methods in classes, the colon and body are optional.
         // e.g., @abstract\ndef foo(self) -> int
-        if (Current.Type != TokenType.Colon &&
-            _pendingDecorators.Any(d => d.Name == "abstract"))
+        if (Current.Type != TokenType.Colon && HasAbstractDecorator())
         {
             return CreateBodylessFunctionDef(
                 name,
