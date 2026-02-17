@@ -20,6 +20,7 @@ sys.path.insert(0, build_tools_dir)
 from sharpy_dogfood.config import Config
 from sharpy_dogfood.orchestrator import (
     DogfoodOrchestrator,
+    IterationStatus,
     FEATURE_FOCUSES,
     COMPLEXITY_LEVELS,
 )
@@ -47,15 +48,15 @@ async def run_quick_test(feature: str = None, complexity: str = None):
         print("Failed to initialize", file=sys.stderr)
         return 1
 
-    success, issue_dir = await orchestrator.run_iteration(1, feature, complexity)
+    result = await orchestrator.run_iteration(1, feature, complexity)
 
-    if success:
+    if result.status == IterationStatus.SUCCESS:
         print("\n✓ Test passed!")
         return 0
     else:
         print(f"\n✗ Test failed")
-        if issue_dir:
-            print(f"  Issue report: {issue_dir}")
+        if result.issue_dir:
+            print(f"  Issue report: {result.issue_dir}")
         return 1
 
 
