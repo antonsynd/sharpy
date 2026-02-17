@@ -5,8 +5,11 @@ Prompt templates for code generation, validation, and verification.
 from pathlib import Path
 from typing import Optional
 
-# Shared behavioral guidance injected into all generation/regeneration prompts.
-# Keep in sync: any update here propagates to all 4 prompt templates automatically.
+# =============================================================================
+# Shared prompt sections — referenced by all 4 generation/regeneration prompts.
+# Keep in sync: any update here propagates to all templates automatically.
+# =============================================================================
+
 BEHAVIORAL_RULES_SECTION = """\
 ### ⚠️ CRITICAL BEHAVIORAL RULES — Common pitfalls:
 - **Interface vs override**: When implementing interface methods, do NOT use `@override`. `@override` is ONLY for overriding `@virtual` or `@abstract` methods from base classes.
@@ -17,6 +20,244 @@ BEHAVIORAL_RULES_SECTION = """\
 - **Try-block scoping**: Variables declared inside `try`/`except`/`finally` blocks are block-scoped — they are NOT visible outside those blocks. Declare variables before the `try` if they need to be used in `except`/`else`/`finally` or after the `try`.
 - **Float output**: Floats always print with at least one decimal place (e.g., `print(5.0)` outputs `5.0`). This matches Python behavior.
 - **Set iteration order**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`."""
+
+ENTRY_POINT_SECTION = """\
+## CRITICAL: Program Entry Point Requirement
+
+Every executable Sharpy program MUST have a `main()` function as its entry point:
+- All executable statements (print, variable assignments, function calls) must be inside `main()`
+- Only declarations (classes, functions, type aliases, static fields with type annotations) can be at module level
+- Module-level variables require explicit type annotations: `counter: int = 0`
+- **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
+- Example of WRONG: `def main(): ... \\n main()` - the `main()` call is forbidden at module level"""
+
+ALLOWED_FEATURES_SECTION = """\
+## CRITICAL: Allowed Features (Phases 0.1.0-0.1.18)
+
+### ✅ ALLOWED - Use these features:
+
+#### Program Structure
+- **Entry point**: `def main():` is REQUIRED for all executable code
+- **Module-level declarations**: classes, functions, constants, static fields (with type annotation)
+
+#### Variables & Types (0.1.3)
+- **Variables**: `x: int = 42` or `x = 42` (type inference)
+- **Types**: `int`, `str`, `bool`, `float` (primitive types)
+- **Additional numeric types**: `long` (64-bit int), `double` (explicit 64-bit float), `float32` (32-bit float)
+- **Float output**: `float` maps to C# `double`. Floats always print with at least one decimal place (e.g., `print(5.0)` outputs `5.0`), matching Python behavior.
+- **Nullable types**: `int?`, `str?` with `None` assignment
+- **Operators**: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
+- **Division**: `/` is ALWAYS float division (e.g., `5 / 2` → `2.5`). `//` is floor division (e.g., `5 // 2` → `2`).
+- **Augmented assignment**: `+=`, `-=`, `*=`, `/=`
+- **Null coalescing**: `??` (e.g., `name ?? "default"`)
+- **Null conditional**: `?.` (e.g., `name?.upper()`)
+- **Constants**: `const NAME: int = 42`
+- **`in`/`not in` operators**: `x in collection`, `x not in collection` for lists, sets, dicts
+
+#### Control Flow (0.1.4)
+- **If statements**: `if`, `elif`, `else` with conditions
+- **While loops**: `while condition:`
+- **For loops**: `for i in range(n):`, `for i in range(start, end):`, `for i in range(start, end, step):`
+- **Break/Continue**: inside loops only
+- **Pass statement**: `pass` (no-op placeholder)
+
+#### Functions (0.1.5)
+- **Function definition**: `def name(param: type) -> return_type:`
+- **Default parameters**: `def foo(x: int, y: int = 5) -> int:`
+- **Keyword arguments**: `foo(x=10, y=20)`
+- **Return**: `return value`
+- **Function type parameters**: Use `(ParamType) -> ReturnType` syntax for callable parameters
+  - `() -> int` (no params, returns int)
+  - `(int) -> str` (one param)
+  - `(int, str) -> bool` (two params)
+  - Example: `def apply(func: (int) -> int, x: int) -> int:`
+
+#### Classes (0.1.6)
+- **Class definition**: `class ClassName:`
+- **Fields**: `x: int` inside class body
+- **Constructor**: `def __init__(self, params):`
+- **Instance methods**: `def method(self) -> type:`
+- **Static methods**: methods without `self` parameter (auto-detected)
+- **Field access**: `obj.field`, `self.field`
+
+#### Dunder Methods (Classes)
+- **`__str__(self) -> str`**: String conversion, used by `print()` (maps to `.ToString()`)
+- **`__eq__(self, other) -> bool`** / **`__hash__(self) -> int`**: Equality and hashing (must define both or neither)
+- **`__bool__(self) -> bool`**: Truthiness in `if` statements (synthesizes `IBoolConvertible`)
+- **`__len__(self) -> int`**: Enables `len(obj)` (synthesizes `ISized`)
+- **`__iter__(self)`** / **`__next__(self)`**: Iterator protocol, enables `for item in obj:`
+- **Arithmetic operators**: `__add__`, `__sub__`, `__mul__`, `__div__`, `__mod__` → `+`, `-`, `*`, `/`, `%`
+- **Bitwise operators**: `__and__`, `__or__`, `__xor__`, `__lshift__`, `__rshift__`
+- **Comparison operators**: `__lt__`, `__le__`, `__gt__`, `__ge__`, `__ne__`
+- **Unary operators**: `__neg__` (unary `-`), `__pos__` (unary `+`), `__invert__` (`~`)
+- **Container protocol**: `__getitem__(key)`, `__setitem__(key, value)`, `__contains__(item)`
+
+#### Inheritance & Interfaces (0.1.7)
+- **Single inheritance**: `class Child(Parent):`
+- **Super calls**: `super().__init__(args)` in `__init__`, `super().method()` in `@override` methods
+- **Abstract classes**: `@abstract` decorator on class
+- **Abstract methods**: Use `@abstract` decorator. Two equivalent syntaxes:
+  - Inline ellipsis: `@abstract` + `def area(self) -> float: ...`
+  - Body-less: `@abstract` + `def area(self) -> float` (no colon, no body)
+- **Virtual methods**: `@virtual` decorator — **REQUIRED** on any method that will be overridden
+- **Override methods**: `@override` decorator — MUST match a `@virtual` or `@abstract` method in base class
+- **IMPORTANT**: Abstract method implementations ARE overrides. When implementing an `@abstract` method in a subclass, you MUST use `@override`.
+- **Final classes/methods**: `@final` decorator
+- **Interfaces**: `interface IName:` with method signatures using `...` (NOTE: `interface` is a keyword, NOT a decorator — do NOT write `@interface`)
+- **IMPORTANT**: Interfaces CANNOT declare fields (e.g., `name: str` inside an interface is invalid). Interfaces may only declare method signatures and `property` declarations.
+- **Multiple interfaces**: `class Foo(IBar, IBaz):`
+- **Access modifiers**: `@private`, `@protected`, `@internal` (default is public)
+- **IMPORTANT**: Interface types have NO concrete members - you can only call methods declared in the interface. Do NOT access fields like `.value` through interface types.
+- **IMPORTANT**: Unlike Python, `@virtual` is REQUIRED on base class methods that subclasses override. Without `@virtual`, using `@override` in a subclass will cause a compile error.
+- **IMPORTANT**: When a parent class has required constructor parameters, subclass `__init__` MUST call `super().__init__(...)` with the required arguments.
+
+#### Structs & Enums (0.1.8)
+- **Structs**: `struct Name:` (value types, copied on assignment)
+- **Enums**: `enum Name:` with explicit values (e.g., `RED = 1`, `PENDING = 0`)
+- **Enum values**: `EnumName.VALUE` (e.g., `Color.RED`, `Status.PENDING`)
+- **Enum output**: When printed, enums display in PascalCase (e.g., `print(Status.PENDING)` outputs `Pending`)
+
+#### Type System (0.1.9)
+- **Nullable types**: `T?` syntax
+- **Type narrowing**: `if x is not None:` narrows type
+- **Type aliases**: `type UserId = int`
+- **Basic generics**: `class Box[T]:`, `def identity[T](x: T) -> T:`
+- **Generic constraints**: `[T: IComparable]` - single constraint only
+- **Multiple constraints**: NOT SUPPORTED - use single constraint only, do NOT write `[T: A, B]`
+
+#### Module System (0.1.10)
+- **Import**: `import module_name`, `import module as alias`
+- **From import**: `from module import item1, item2`
+- **Import alias**: `from module import Item as Alias`
+
+#### Built-ins
+- **Print**: `print(value)` - SINGLE argument only
+- **Range**: `range()` in for loops
+- **Boolean/None literals**: `True`, `False`, `None`
+- **String literals**: `"hello"`, `'world'`
+- **Math**: `abs(x)`, `pow(x, y)`, `round(x)`, `round(x, n)`, `divmod(x, y)`
+- **Aggregation**: `min(iterable)`, `max(iterable)`, `sum(iterable)`, `all(iterable)`, `any(iterable)`
+- **Ordering**: `sorted(iterable)`, `reversed(sequence)`
+- **Iteration**: `enumerate(iterable)`, `zip(iter1, iter2)`, `iter(iterable)`, `next(iterator)`
+- **Higher-order**: `filter(fn, iterable)`, `map(fn, iterable)`
+- **Type conversions**: `int(x)`, `float(x)`, `bool(x)`, `str(x)`
+- **Inspection**: `isinstance(obj, Type)`, `type(obj)`, `hash(obj)`, `repr(obj)`
+- **I/O**: `input()`, `input(prompt)`
+
+#### Tuple Types
+- **Tuple type annotations**: `tuple[T1, T2]`, `tuple[T1, T2, T3]`
+- **Tuple unpacking in for loops**: `for i, val in enumerate(items):`
+- **NOTE**: Tuple unpacking in comprehensions is NOT supported
+
+#### F-Strings (0.1.11)
+- **F-string interpolation**: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
+- **Format specifiers**: `f"{{value:.2f}}"`, `f"{{num:05d}}"`
+
+#### Collections (0.1.11)
+- **List literals**: `nums: list[int] = [1, 2, 3]`
+- **Dict literals**: `scores: dict[str, int] = {{"alice": 100, "bob": 85}}`
+- **Set literals**: `unique: set[int] = {{1, 2, 3}}`
+- **List comprehensions**: `[x * 2 for x in range(10)]`
+- **Dict comprehensions**: `{{k: v * 2 for k, v in items.items()}}`
+- **Set comprehensions**: `{{x for x in items if x > 0}}`
+- **Collection iteration**: `for item in collection:`
+- **WARNING**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
+- **str.split()**: `"a,b,c".split(",")` returns `list[str]`.
+- **len()**: `len(collection)` for lists, dicts, sets
+- **Indexing**: `collection[index]`, `dict[key]`
+
+#### Collection Methods
+- **list**: `.append()`, `.pop()`, `.insert()`, `.remove()`, `.clear()`, `.reverse()`, `.sort()`, `.copy()`, `.extend()`, `.index()`, `.count()`
+- **dict**: `.keys()`, `.values()`, `.items()`, `.get()`, `.pop()`, `.update()`, `.clear()`, `.copy()`, `.setdefault()`
+- **set**: `.add()`, `.remove()`, `.discard()`, `.pop()`, `.clear()`
+- **str**: `.upper()`, `.lower()`, `.strip()`, `.split()`, `.join()`, `.find()`, `.rfind()`, `.capitalize()`, `.title()`, `.count()`, `.isdigit()`, `.isalpha()`, `.isalnum()`, `.removeprefix()`, `.removesuffix()`
+
+#### .NET Interop (0.1.12)
+- **Import .NET namespaces**: `from system import Console`
+- **Use .NET types**: After importing, use types normally
+
+#### Exception Handling (0.1.13)
+- **Try/except**: `try: ... except ExceptionType as e: ...`
+- **Try/finally**: `try: ... finally: ...`
+- **Try/except/else/finally**: Full exception handling pattern
+- **Raise**: `raise ValueError("message")`
+- **Available exception types**: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
+
+#### Lambda Expressions (0.1.14)
+- **Lambdas**: `lambda x: x * 2`, `lambda a, b: a + b`
+- **Higher-order functions**: Passing lambdas to functions that have typed parameters
+- **Type inference**: Lambda parameter types are inferred from the expected function type context
+- **IMPORTANT**: The receiving function MUST declare its parameter with a function type: `def apply(fn: (int) -> int) -> int:`
+- **WARNING**: Lambdas CANNOT be assigned to `auto` variables — there is no type context to infer parameter types. Use an explicit function type: `square: (int) -> int = lambda n: n * n`, NOT `square: auto = lambda n: n * n`.
+
+#### Optional Types (0.1.15)
+- **Optional type**: `x: int? = Some(42)`, `y: int? = None()`
+- **Optional constructors**: `Some(value)` wraps a value, `None()` represents absence
+- **Optional methods**: `.unwrap()`, `.unwrap_or(default)`, `.map(lambda v: v * 2)`
+- **Type annotation**: `T?` is shorthand for `Optional[T]`
+- **IMPORTANT**: After `if x is not None:` narrowing, `x` is already the unwrapped type. Do NOT call `.unwrap()` after narrowing — it will fail because the type is no longer Optional.
+
+#### Result Types (0.1.16)
+- **Result type**: `x: int !str = Ok(42)`, `y: int !str = Err("failed")`
+- **Result constructors**: `Ok(value)` for success, `Err(error)` for failure
+- **Result methods**: `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`, `.map_err(fn)`
+- **Type annotation**: `T !E` is shorthand for `Result[T, E]`
+
+#### Maybe Expression (0.1.17)
+- **Maybe**: `maybe nullable_value` converts `T | None` to `T?` (Optional)
+- **Usage**: Useful for converting .NET nullable values to Sharpy optionals
+
+#### Try Expression (0.1.18)
+- **Try**: `try risky_call()` wraps a call in `Result[T, Exception]`
+- **Try with type**: `try[ValueError] int("abc")` catches specific exception type
+- **Usage**: Converts exception-throwing code into Result-based error handling"""
+
+FORBIDDEN_FEATURES_SECTION = """\
+### ❌ FORBIDDEN - Do NOT use these features (not yet implemented):
+- **NO main() call at module level**: Do NOT write `main()` after defining it - it's auto-invoked by runtime
+- **NO multi-argument print**: `print(a, b, c)` - use multiple `print()` calls
+- **NO async/await**: Async programming not implemented
+- **NO with statement**: Context managers not implemented
+- **NO walrus operator**: `:=` - assignment expressions not implemented
+- **NO pattern matching**: `match`/`case` not implemented
+- **NO tuple unpacking in assignments**: `a, b = 1, 2` - may have issues
+- **NO tuple unpacking in comprehensions**: `[v for k, v in items]` - not supported (SPY error)
+- **NO isinstance with tuples**: `isinstance(x, (int, str))` - use `or` instead
+- **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
+- **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
+- **NO union types (T | U)**: union types are not supported — use a common base class or interface instead
+- **NO bare string indexing in comparisons/assignments**: `s[i] == "a"` or `c: str = s[i]` fails — always wrap with `str()`: `str(s[i]) == "a"`, `c: str = str(s[i])`
+- **NO 'in' operator on strings**: `char in "abc"` — not yet supported
+- **NO bare char iteration**: `for c in s:` yields `char` — use `str(c)` before comparing or assigning to `str`
+- **NO `__repr__()` method**: removed — only `__str__()` exists (maps to `.ToString()`)"""
+
+NAMING_RULES_SECTION = """\
+### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
+- **NEVER name functions or variables**: `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`, `long`, `float32`, `pow`, `divmod`, `isinstance`, `repr`, `iter`, `next`
+- Use **descriptive names** like `double_value`, `multiply_by_two`, `calculate_double`, `doubled` instead
+- Names like `double` conflict with the `double` type (float64) and will cause type errors"""
+
+MULTIFILE_MODULE_RULES_SECTION = """\
+## CRITICAL: Module System Rules (Phase 0.1.10)
+
+### Import Syntax
+- **Import entire module**: `import module_name` (then use `module_name.function()`)
+- **Import with alias**: `import module_name as alias`
+- **From import**: `from module_name import function1, function2`
+- **From import with alias**: `from module_name import Item as Alias`
+
+### Module File Structure
+- Each `.spy` file is a module
+- Module name = filename without `.spy` extension
+- No `__init__.py` needed (not Python!)
+- Modules in same directory can import each other
+- The entry point file (`main.spy`) MUST have a `main()` function"""
+
+MULTIFILE_FORBIDDEN_SECTION = """\
+- **NO relative imports**: `from .module import x` - NOT SUPPORTED
+- **NO package imports**: `from package.module import x` - NOT SUPPORTED
+- **NO star imports**: `from module import *` - NOT SUPPORTED
+- **NO circular imports between modules**"""
 
 
 def load_test_fixtures(fixtures_dir: Path) -> dict[str, list[tuple[str, str]]]:
@@ -105,79 +346,7 @@ def format_fixtures_for_prompt(
     return "\n".join(parts)
 
 
-def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
-    """Load relevant specification context for prompts."""
-    context_parts = []
-
-    # Load phases overview
-    if phases_file.exists():
-        content = phases_file.read_text()
-        # Extract phases 0.1.0 through 0.1.18 (implemented features)
-        lines = content.split("\n")
-        in_relevant_section = False
-        relevant_lines = []
-
-        for line in lines:
-            if "## Phase 0.1.0" in line:
-                in_relevant_section = True
-            elif "## Phase 0.1.19" in line:
-                in_relevant_section = False
-                break
-
-            if in_relevant_section:
-                relevant_lines.append(line)
-
-        if relevant_lines:
-            context_parts.append("# Implementation Phases (0.1.0 - 0.1.18)\n\n")
-            context_parts.append("\n".join(relevant_lines[:2000]))  # Limit size
-
-    # Load key spec files
-    key_specs = [
-        "introduction.md",
-        "variable_declaration.md",
-        "function_definition.md",
-        "if_statement.md",
-        "for_statement.md",
-        "while_statement.md",
-        "primitive_types.md",
-        "expressions.md",
-        "class_definition.md",
-        "inheritance.md",
-        "interfaces.md",
-        "structs.md",
-        "enums.md",
-        "nullable_types.md",
-        "generics.md",
-        "type_aliases.md",
-        "modules.md",
-        # Phase 0.1.11+ features
-        "collections.md",
-        "comprehensions.md",
-        "exception_handling.md",
-        "lambda_expressions.md",
-        "fstrings.md",
-        "dotnet_interop.md",
-        # Phase 0.1.15-0.1.18: Optional & Result types
-        "tagged_unions_optional.md",
-        "tagged_unions_result.md",
-        "maybe_expressions.md",
-        "try_expressions.md",
-    ]
-
-    for spec_name in key_specs:
-        spec_path = spec_dir / spec_name
-        if spec_path.exists():
-            content = spec_path.read_text()
-            # Truncate long specs
-            if len(content) > 2000:
-                content = content[:2000] + "\n... (truncated)"
-            context_parts.append(f"\n\n# {spec_name}\n\n{content}")
-
-    return "\n".join(context_parts)
-
-
 def get_code_generation_prompt(
-    spec_context: str,
     feature_focus: str = "general",
     complexity: str = "simple",
     example_snippets: list[str] | None = None,
@@ -186,7 +355,6 @@ def get_code_generation_prompt(
     """Generate a prompt for creating Sharpy code.
 
     Args:
-        spec_context: Language specification context.
         feature_focus: The feature area to focus on.
         complexity: Complexity level (simple, medium, complex).
         example_snippets: Optional list of example code snippets.
@@ -228,233 +396,15 @@ Generate COMPLEX code:
 
     return f"""You are generating Sharpy code for compiler testing (dogfooding).
 
-## CRITICAL: Program Entry Point Requirement
+{ENTRY_POINT_SECTION}
 
-Every executable Sharpy program MUST have a `main()` function as its entry point:
-- All executable statements (print, variable assignments, function calls) must be inside `main()`
-- Only declarations (classes, functions, type aliases, static fields with type annotations) can be at module level
-- Module-level variables require explicit type annotations: `counter: int = 0`
-- **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
-- Example of WRONG: `def main(): ... \\n main()` - the `main()` call is forbidden at module level
+{ALLOWED_FEATURES_SECTION}
 
-## CRITICAL: Allowed Features (Phases 0.1.0-0.1.18)
-
-### ✅ ALLOWED - Use these features:
-
-#### Program Structure
-- **Entry point**: `def main():` is REQUIRED for all executable code
-- **Module-level declarations**: classes, functions, constants, static fields (with type annotation)
-
-#### Variables & Types (0.1.3)
-- **Variables**: `x: int = 42` or `x = 42` (type inference)
-- **Types**: `int`, `str`, `bool`, `float` (primitive types)
-- **Additional numeric types**: `long` (64-bit int), `double` (explicit 64-bit float), `float32` (32-bit float)
-- **Float output**: `float` maps to C# `double`. Floats always print with at least one decimal place (e.g., `print(5.0)` outputs `5.0`), matching Python behavior.
-- **Nullable types**: `int?`, `str?` with `None` assignment
-- **Operators**: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
-- **Division**: `/` is ALWAYS float division (e.g., `5 / 2` → `2.5`). `//` is floor division (e.g., `5 // 2` → `2`).
-- **Augmented assignment**: `+=`, `-=`, `*=`, `/=`
-- **Null coalescing**: `??` (e.g., `name ?? "default"`)
-- **Null conditional**: `?.` (e.g., `name?.upper()`)
-- **Constants**: `const NAME: int = 42`
-- **`in`/`not in` operators**: `x in collection`, `x not in collection` for lists, sets, dicts
-
-#### Control Flow (0.1.4)
-- **If statements**: `if`, `elif`, `else` with conditions
-- **While loops**: `while condition:`
-- **For loops**: `for i in range(n):`, `for i in range(start, end):`, `for i in range(start, end, step):`
-- **Break/Continue**: inside loops only
-
-#### Functions (0.1.5)
-- **Function definition**: `def name(param: type) -> return_type:`
-- **Default parameters**: `def foo(x: int, y: int = 5) -> int:`
-- **Keyword arguments**: `foo(x=10, y=20)`
-- **Return**: `return value`
-- **Function type parameters**: Use `(ParamType) -> ReturnType` syntax for callable parameters
-  - `() -> int` (no params, returns int)
-  - `(int) -> str` (one param)
-  - `(int, str) -> bool` (two params)
-  - Example: `def apply(func: (int) -> int, x: int) -> int:`
-
-#### Classes (0.1.6)
-- **Class definition**: `class ClassName:`
-- **Fields**: `x: int` inside class body
-- **Constructor**: `def __init__(self, params):`
-- **Instance methods**: `def method(self) -> type:`
-- **Static methods**: methods without `self` parameter (auto-detected)
-- **Field access**: `obj.field`, `self.field`
-
-#### Dunder Methods (Classes)
-- **`__str__(self) -> str`**: String conversion, used by `print()` (maps to `.ToString()`)
-- **`__eq__(self, other) -> bool`** / **`__hash__(self) -> int`**: Equality and hashing (must define both or neither)
-- **`__bool__(self) -> bool`**: Truthiness in `if` statements (synthesizes `IBoolConvertible`)
-- **`__len__(self) -> int`**: Enables `len(obj)` (synthesizes `ISized`)
-- **`__iter__(self)`** / **`__next__(self)`**: Iterator protocol, enables `for item in obj:`
-- **Arithmetic operators**: `__add__`, `__sub__`, `__mul__`, `__div__`, `__mod__` → `+`, `-`, `*`, `/`, `%`
-- **Bitwise operators**: `__and__`, `__or__`, `__xor__`, `__lshift__`, `__rshift__`
-- **Comparison operators**: `__lt__`, `__le__`, `__gt__`, `__ge__`, `__ne__`
-- **Unary operators**: `__neg__` (unary `-`), `__pos__` (unary `+`), `__invert__` (`~`)
-- **Container protocol**: `__getitem__(key)`, `__setitem__(key, value)`, `__contains__(item)`
-
-#### Inheritance & Interfaces (0.1.7)
-- **Single inheritance**: `class Child(Parent):`
-- **Super calls**: `super().__init__(args)` in `__init__`, `super().method()` in `@override` methods
-- **Abstract classes**: `@abstract` decorator on class
-- **Abstract methods**: Use `@abstract` decorator. Two equivalent syntaxes:
-  - Inline ellipsis: `@abstract` + `def area(self) -> float: ...`
-  - Body-less: `@abstract` + `def area(self) -> float` (no colon, no body)
-- **Virtual methods**: `@virtual` decorator — **REQUIRED** on any method that will be overridden
-- **Override methods**: `@override` decorator — MUST match a `@virtual` or `@abstract` method in base class
-- **IMPORTANT**: Abstract method implementations ARE overrides. When implementing an `@abstract` method in a subclass, you MUST use `@override`.
-- **Final classes/methods**: `@final` decorator
-- **Interfaces**: `interface IName:` with method signatures using `...` (NOTE: `interface` is a keyword, NOT a decorator — do NOT write `@interface`)
-- **IMPORTANT**: Interfaces CANNOT declare fields (e.g., `name: str` inside an interface is invalid). Interfaces may only declare method signatures and `property` declarations.
-- **Multiple interfaces**: `class Foo(IBar, IBaz):`
-- **Access modifiers**: `@private`, `@protected`, `@internal` (default is public)
-- **IMPORTANT**: Interface types have NO concrete members - you can only call methods declared in the interface. Do NOT access fields like `.value` through interface types.
-- **IMPORTANT**: Unlike Python, `@virtual` is REQUIRED on base class methods that subclasses override. Without `@virtual`, using `@override` in a subclass will cause a compile error.
-- **IMPORTANT**: When a parent class has required constructor parameters, subclass `__init__` MUST call `super().__init__(...)` with the required arguments.
-
-Example:
-```python
-class Animal:
-    name: str
-
-    def __init__(self, name: str):
-        self.name = name
-
-    @virtual
-    def speak(self) -> str:
-        return "..."
-
-class Dog(Animal):
-    def __init__(self, name: str):
-        super().__init__(name)
-
-    @override
-    def speak(self) -> str:
-        return "Woof!"
-```
-
-#### Structs & Enums (0.1.8)
-- **Structs**: `struct Name:` (value types, copied on assignment)
-- **Enums**: `enum Name:` with explicit values (e.g., `RED = 1`, `PENDING = 0`)
-- **Enum values**: `EnumName.VALUE` (e.g., `Color.RED`, `Status.PENDING`)
-- **Enum output**: When printed, enums display in PascalCase (e.g., `print(Status.PENDING)` outputs `Pending`)
-
-#### Type System (0.1.9)
-- **Nullable types**: `T?` syntax
-- **Type narrowing**: `if x is not None:` narrows type
-- **Type aliases**: `type UserId = int`
-- **Basic generics**: `class Box[T]:`, `def identity[T](x: T) -> T:`
-- **Generic constraints**: `[T: IComparable]` - single constraint only
-- **Multiple constraints**: NOT SUPPORTED - use single constraint only, do NOT write `[T: A, B]`
-
-#### Module System (0.1.10)
-- **Import**: `import module_name`, `import module as alias`
-- **From import**: `from module import item1, item2`
-- **Import alias**: `from module import Item as Alias`
-
-#### Built-ins
-- **Print**: `print(value)` - SINGLE argument only
-- **Range**: `range()` in for loops
-- **Boolean/None literals**: `True`, `False`, `None`
-- **String literals**: `"hello"`, `'world'`
-- **Math**: `pow(x, y)`, `round(x)`, `round(x, n)`, `divmod(x, y)`
-- **Aggregation**: `min(iterable)`, `max(iterable)`, `sum(iterable)`, `all(iterable)`, `any(iterable)`
-- **Ordering**: `sorted(iterable)`, `reversed(sequence)`
-- **Iteration**: `enumerate(iterable)`, `zip(iter1, iter2)`, `iter(iterable)`, `next(iterator)`
-- **Higher-order**: `filter(fn, iterable)`, `map(fn, iterable)`
-- **Type conversions**: `int(x)`, `float(x)`, `bool(x)`, `str(x)`
-- **Inspection**: `isinstance(obj, Type)`, `type(obj)`, `hash(obj)`, `repr(obj)`
-- **I/O**: `input()`, `input(prompt)`
-
-#### Tuple Types
-- **Tuple type annotations**: `tuple[T1, T2]`, `tuple[T1, T2, T3]`
-- **Tuple unpacking in for loops**: `for i, val in enumerate(items):`
-- **NOTE**: Tuple unpacking in comprehensions is NOT supported
-
-#### F-Strings (0.1.11)
-- **F-string interpolation**: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
-- **Format specifiers**: `f"{{value:.2f}}"`, `f"{{num:05d}}"`
-
-#### Collections (0.1.11)
-- **List literals**: `nums: list[int] = [1, 2, 3]`
-- **Dict literals**: `scores: dict[str, int] = {{"alice": 100, "bob": 85}}`
-- **Set literals**: `unique: set[int] = {{1, 2, 3}}`
-- **List comprehensions**: `[x * 2 for x in range(10)]`
-- **Dict comprehensions**: `{{k: v * 2 for k, v in items.items()}}`
-- **Set comprehensions**: `{{x for x in items if x > 0}}`
-- **Collection iteration**: `for item in collection:`
-- **WARNING**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
-- **str.split()**: `"a,b,c".split(",")` returns `list[str]`.
-- **len()**: `len(collection)` for lists, dicts, sets
-- **Indexing**: `collection[index]`, `dict[key]`
-
-#### .NET Interop (0.1.12)
-- **Import .NET namespaces**: `from system import Console`
-- **Use .NET types**: After importing, use types normally
-
-#### Exception Handling (0.1.13)
-- **Try/except**: `try: ... except ExceptionType as e: ...`
-- **Try/finally**: `try: ... finally: ...`
-- **Try/except/else/finally**: Full exception handling pattern
-- **Raise**: `raise ValueError("message")`
-- **Available exception types**: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
-
-#### Lambda Expressions (0.1.14)
-- **Lambdas**: `lambda x: x * 2`, `lambda a, b: a + b`
-- **Higher-order functions**: Passing lambdas to functions that have typed parameters
-- **Type inference**: Lambda parameter types are inferred from the expected function type context
-- **IMPORTANT**: The receiving function MUST declare its parameter with a function type: `def apply(fn: (int) -> int) -> int:`
-- **WARNING**: Lambdas CANNOT be assigned to `auto` variables — there is no type context to infer parameter types. Use an explicit function type: `square: (int) -> int = lambda n: n * n`, NOT `square: auto = lambda n: n * n`.
-
-#### Optional Types (0.1.15)
-- **Optional type**: `x: int? = Some(42)`, `y: int? = None()`
-- **Optional constructors**: `Some(value)` wraps a value, `None()` represents absence
-- **Optional methods**: `.unwrap()`, `.unwrap_or(default)`, `.map(lambda v: v * 2)`
-- **Type annotation**: `T?` is shorthand for `Optional[T]`
-- **IMPORTANT**: After `if x is not None:` narrowing, `x` is already the unwrapped type. Do NOT call `.unwrap()` after narrowing — it will fail because the type is no longer Optional.
-
-#### Result Types (0.1.16)
-- **Result type**: `x: int !str = Ok(42)`, `y: int !str = Err("failed")`
-- **Result constructors**: `Ok(value)` for success, `Err(error)` for failure
-- **Result methods**: `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`, `.map_err(fn)`
-- **Type annotation**: `T !E` is shorthand for `Result[T, E]`
-
-#### Maybe Expression (0.1.17)
-- **Maybe**: `maybe nullable_value` converts `T | None` to `T?` (Optional)
-- **Usage**: Useful for converting .NET nullable values to Sharpy optionals
-
-#### Try Expression (0.1.18)
-- **Try**: `try risky_call()` wraps a call in `Result[T, Exception]`
-- **Try with type**: `try[ValueError] int("abc")` catches specific exception type
-- **Usage**: Converts exception-throwing code into Result-based error handling
-
-### ❌ FORBIDDEN - Do NOT use these features (not yet implemented):
-- **NO main() call at module level**: Do NOT write `main()` after defining it - it's auto-invoked by runtime
-- **NO multi-argument print**: `print(a, b, c)` - use multiple `print()` calls
-- **NO async/await**: Async programming not implemented
-- **NO with statement**: Context managers not implemented
-- **NO walrus operator**: `:=` - assignment expressions not implemented
-- **NO pattern matching**: `match`/`case` not implemented
-- **NO tuple unpacking in assignments**: `a, b = 1, 2` - may have issues
-- **NO tuple unpacking in comprehensions**: `[v for k, v in items]` - not supported (SPY error)
-- **NO isinstance with tuples**: `isinstance(x, (int, str))` - use `or` instead
-- **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
-- **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
-- **NO union types (T | U)**: union types are not supported — use a common base class or interface instead
-- **NO bare string indexing in comparisons/assignments**: `s[i] == "a"` or `c: str = s[i]` fails — always wrap with `str()`: `str(s[i]) == "a"`, `c: str = str(s[i])`
-- **NO 'in' operator on strings**: `char in "abc"` — not yet supported
-- **NO bare char iteration**: `for c in s:` yields `char` — use `str(c)` before comparing or assigning to `str`
-- **NO `__repr__()` method**: removed — only `__str__()` exists (maps to `.ToString()`)
+{FORBIDDEN_FEATURES_SECTION}
 
 {BEHAVIORAL_RULES_SECTION}
 
-### ⚠️ CRITICAL NAMING RULES - Avoid builtin conflicts:
-- **NEVER name functions or variables**: `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`, `long`, `float32`, `pow`, `divmod`, `isinstance`, `repr`, `iter`, `next`
-- Use **descriptive names** like `double_value`, `multiply_by_two`, `calculate_double`, `doubled` instead
-- Names like `double` conflict with the `double` type (float64) and will cause type errors
+{NAMING_RULES_SECTION}
 
 {existing_fixtures_section}
 
@@ -543,7 +493,6 @@ IMPORTANT:
 
 
 def get_multifile_generation_prompt(
-    spec_context: str,
     feature_focus: str = "module_imports",
     complexity: str = "medium",
     example_snippets: list[str] | None = None,
@@ -552,7 +501,6 @@ def get_multifile_generation_prompt(
     """Generate a prompt for creating multi-file Sharpy code with imports.
 
     Args:
-        spec_context: Language specification context.
         feature_focus: The feature area to focus on.
         complexity: Complexity level (simple, medium, complex).
         example_snippets: Optional list of example code snippets.
@@ -601,49 +549,11 @@ The `main.spy` file MUST have a `main()` function as its entry point:
 - Only declarations (classes, functions, type aliases, static fields) can be at module level
 - **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
 
-## CRITICAL: Module System Rules (Phase 0.1.10)
+{MULTIFILE_MODULE_RULES_SECTION}
 
-### Import Syntax
-- **Import entire module**: `import module_name` (then use `module_name.function()`)
-- **Import with alias**: `import module_name as alias`
-- **From import**: `from module_name import function1, function2`
-- **From import with alias**: `from module_name import Item as Alias`
-
-### Module File Structure
-- Each `.spy` file is a module
-- Module name = filename without `.spy` extension
-- No `__init__.py` needed (not Python!)
-- Modules in same directory can import each other
-- The entry point file (`main.spy`) MUST have a `main()` function
-
-### Allowed Features (same as single-file, phases 0.1.0-0.1.18)
-- Variables, functions, classes, structs, enums, interfaces
-- Additional numeric types: `long`, `double`, `float32`
-- Inheritance: `@virtual` is REQUIRED on base class methods that will be overridden, `@override` on subclass methods
-- Dunder methods: `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__iter__`/`__next__`, arithmetic/comparison/unary operators, `__getitem__`/`__setitem__`/`__contains__`
-- Nullable types, type aliases, basic generics
-- F-strings: `f"Hello {{name}}"`
-- Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals
-- Comprehensions: `[x * 2 for x in range(10)]`
-- `in`/`not in` operators: `x in collection`, `x not in collection`
-- Tuple types: `tuple[T1, T2]`, tuple unpacking in for loops
-- Exception handling: `try`, `except`, `finally`, `raise`
-- Available exception types: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
-- Lambdas: `lambda x: x * 2` (parameter types inferred from context)
-- .NET interop: `from system import Console`
-- Builtins: `pow`, `round`, `divmod`, `min`, `max`, `sum`, `all`, `any`, `sorted`, `reversed`, `enumerate`, `zip`, `filter`, `map`, `int()`, `float()`, `bool()`, `str()`, `isinstance`, `type`, `hash`, `repr`, `input`, `iter`, `next`
-- Optional types: `T?`, `Some(value)`, `None()`, `.unwrap()`, `.unwrap_or()`
-- Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.map(fn)`
-- Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
-- Try expression: `try risky_call()` (wraps in `Result[T, Exception]`)
+{ALLOWED_FEATURES_SECTION}
 
 ### ⚠️ Key Patterns for Multi-File Projects
-
-- **IMPORTANT**: Interfaces CANNOT declare fields (e.g., `name: str` inside an interface is invalid). Interfaces may only declare method signatures and `property` declarations.
-- **Abstract methods**: Use `@abstract` decorator. Two equivalent syntaxes:
-  - Inline ellipsis: `@abstract` + `def area(self) -> float: ...`
-  - Body-less: `@abstract` + `def area(self) -> float`  (no colon, no body)
-- **Division**: `/` is ALWAYS float division (e.g., `5 / 2` → `2.5`). `//` is floor division (e.g., `5 // 2` → `2`).
 
 When using inheritance across modules, `@virtual` is REQUIRED on base class methods.
 When a parent class has required constructor parameters, subclass `__init__` MUST call `super().__init__(...)` with the required arguments:
@@ -675,23 +585,8 @@ class Dog(Animal):
 When using higher-order functions, declare function type parameters explicitly:
 `def apply(fn: (int) -> int, x: int) -> int:`
 
-### ❌ FORBIDDEN in module system:
-- **NO relative imports**: `from .module import x` - NOT SUPPORTED
-- **NO package imports**: `from package.module import x` - NOT SUPPORTED
-- **NO star imports**: `from module import *` - NOT SUPPORTED
-- **NO async/await**: Not implemented
-- **NO with statement**: Context managers not implemented
-- **NO walrus operator**: `:=` - Not implemented
-- **NO pattern matching**: `match`/`case` - Not implemented
-- **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
-- **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
-- **NO union types (T | U)**: union types are not supported — use a common base class or interface instead
-- **NO bare string indexing in comparisons/assignments**: `s[i] == "a"` or `c: str = s[i]` fails — always wrap with `str()`: `str(s[i]) == "a"`, `c: str = str(s[i])`
-- **NO 'in' operator on strings**: `char in "abc"` — not yet supported
-- **NO bare char iteration**: `for c in s:` yields `char` — use `str(c)` before comparing or assigning to `str`
-- **NO `__repr__()` method**: removed — only `__str__()` exists
-- **NO tuple unpacking in comprehensions**: `[v for k, v in items]` - not supported
-- **NO multi-argument print**: `print(a, b)` - use multiple print() calls or f-strings
+{FORBIDDEN_FEATURES_SECTION}
+{MULTIFILE_FORBIDDEN_SECTION}
 
 {BEHAVIORAL_RULES_SECTION}
 
@@ -750,7 +645,6 @@ CRITICAL RULES:
 
 
 def get_regeneration_prompt(
-    spec_context: str,
     feature_focus: str,
     complexity: str,
     previous_code: str,
@@ -766,7 +660,6 @@ def get_regeneration_prompt(
     the previous code and the specific validation error so it can fix the issue.
 
     Args:
-        spec_context: Language specification context.
         feature_focus: The feature area to focus on.
         complexity: Complexity level (simple, medium, complex).
         previous_code: The previously generated code that failed validation.
@@ -810,66 +703,11 @@ Your previous code FAILED validation. You must fix the issue and regenerate.
 3. REMOVE or REPLACE the forbidden features
 4. Keep the same general logic/intent but use only allowed features
 
-## CRITICAL: Program Entry Point Requirement
+{ENTRY_POINT_SECTION}
 
-Every executable Sharpy program MUST have a `main()` function:
-- All executable statements (print, assignments, function calls) must be inside `main()`
-- Only declarations (classes, functions, constants) can be at module level
-- **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
+{ALLOWED_FEATURES_SECTION}
 
-## CRITICAL: Allowed Features (Phases 0.1.0-0.1.18)
-
-### ✅ ALLOWED:
-- Entry point: `def main():` is REQUIRED for executable code
-- Variables: `x: int = 42`
-- Types: `int`, `str`, `bool`, `float`, `long`, `double`, `float32`, nullable `int?`
-- Operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
-- Null operators: `??`, `?.`
-- `in`/`not in` operators: `x in collection`, `x not in collection` (lists, sets, dicts)
-- Control flow: `if`/`elif`/`else`, `while`, `for i in range(n)`, `break`, `continue`
-- Functions: `def name(param: type) -> return_type:`, default params, keyword args
-- Classes: `class Name:`, `__init__`, instance/static methods
-- Dunder methods: `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__iter__`/`__next__`, arithmetic/comparison/unary operators, `__getitem__`/`__setitem__`/`__contains__`
-- Inheritance: `class Child(Parent):`, `super().__init__()`, `@abstract`, `@virtual`, `@override`
-- Interfaces: `interface IName:` with `...` bodies — **IMPORTANT**: Interfaces CANNOT declare fields, only method signatures and `property` declarations
-- **Abstract methods**: Two equivalent syntaxes: `@abstract def area(self) -> float: ...` OR body-less `@abstract def area(self) -> float` (no colon)
-- **Division**: `/` is ALWAYS float division (`5 / 2` → `2.5`). `//` is floor division (`5 // 2` → `2`)
-- Structs: `struct Name:`
-- Enums: `enum Name:` with explicit values
-- Type aliases: `type UserId = int`
-- Basic generics: `class Box[T]:`, `def foo[T](x: T) -> T:`
-- Imports: `import module`, `from module import item`
-- Built-ins: `print(value)` - SINGLE ARGUMENT ONLY, `range()`, `len()`, `pow()`, `round()`, `divmod()`, `min()`, `max()`, `sum()`, `all()`, `any()`, `sorted()`, `reversed()`, `enumerate()`, `zip()`, `filter()`, `map()`, `int()`, `float()`, `bool()`, `str()`, `isinstance()`, `type()`, `hash()`, `repr()`, `input()`, `iter()`, `next()`
-- Tuple types: `tuple[T1, T2]`, tuple unpacking in for loops
-- F-strings: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
-- Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals `[1,2,3]`, `{{"key": val}}`
-- Comprehensions: `[x * 2 for x in range(10)]`
-- Exception handling: `try`, `except`, `finally`, `raise`
-- Available exception types: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
-- Lambdas: `lambda x: x * 2` (parameter types inferred from context)
-- .NET interop: `from system import Console`
-- Optional types: `T?`, `Some(value)`, `None()`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
-- Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
-- Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
-- Try expression: `try risky_call()`, `try[ExceptionType] expr` (wraps in Result)
-
-### ❌ FORBIDDEN (DO NOT USE):
-- NO main() call at module level - `main()` is auto-invoked by runtime, do NOT call it yourself
-- NO bare executable statements at module level - wrap in `def main():`
-- NO multi-argument print: `print(a, b)` - use multiple print() calls or f-strings
-- NO async/await - not implemented
-- NO with statement - context managers not implemented
-- NO walrus operator: `:=` - not implemented
-- NO pattern matching: `match`/`case` - not implemented
-- NO tuple unpacking in assignments: `a, b = 1, 2` - may have issues
-- NO tuple unpacking in comprehensions: `[v for k, v in items]` - not supported
-- NO @interface decorator - `interface` is a keyword, use `interface IName:` syntax
-- NO combining @abstract and @virtual - abstract methods are inherently virtual in .NET, use only @abstract
-- NO union types (T | U) - use a common base class or interface instead
-- NO bare string indexing in comparisons/assignments: `s[i] == "a"` or `c: str = s[i]` fails — wrap with `str()`: `str(s[i]) == "a"`
-- NO 'in' operator on strings: `char in "abc"` - not yet supported
-- NO bare char iteration: `for c in s:` yields `char` — use `str(c)` before comparing or assigning to `str`
-- NO `__repr__()` method - removed, only `__str__()` exists
+{FORBIDDEN_FEATURES_SECTION}
 
 {BEHAVIORAL_RULES_SECTION}
 
@@ -899,7 +737,6 @@ IMPORTANT:
 
 
 def get_multifile_regeneration_prompt(
-    spec_context: str,
     feature_focus: str,
     complexity: str,
     previous_files: dict[str, str],
@@ -915,7 +752,6 @@ def get_multifile_regeneration_prompt(
     with the previous files and the specific validation error so it can fix the issue.
 
     Args:
-        spec_context: Language specification context.
         feature_focus: The feature area to focus on.
         complexity: Complexity level (simple, medium, complex).
         previous_files: The previously generated files that failed validation.
@@ -965,78 +801,14 @@ Your previous multi-file project FAILED validation. You must fix the issue and r
 4. Keep the same general logic/intent but use only allowed features
 5. Maintain correct import relationships between files
 
-## CRITICAL: Program Entry Point Requirement
+{ENTRY_POINT_SECTION}
 
-The `main.spy` file MUST have a `main()` function as its entry point:
-- All executable statements (print, variable assignments, function calls) must be inside `main()`
-- Library modules (non-main.spy files) do NOT need a `main()` function
-- Only declarations (classes, functions, type aliases, static fields) can be at module level
-- **DO NOT call main() yourself** - Sharpy automatically invokes `main()` at runtime
+{MULTIFILE_MODULE_RULES_SECTION}
 
-## CRITICAL: Module System Rules
+{ALLOWED_FEATURES_SECTION}
 
-- **From import**: `from module_name import function1, function2`
-- **Import with alias**: `import module_name as alias`
-- Module name = filename without `.spy` extension
-- NO relative imports, NO package imports, NO star imports
-
-## CRITICAL: Allowed Features (Phases 0.1.0-0.1.18)
-
-### ✅ ALLOWED:
-- Entry point: `def main():` is REQUIRED in main.spy
-- Variables: `x: int = 42`
-- Types: `int`, `str`, `bool`, `float`, `long`, `double`, `float32`, nullable `int?`
-- Operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
-- Null operators: `??`, `?.`
-- `in`/`not in` operators: `x in collection`, `x not in collection` (lists, sets, dicts)
-- Control flow: `if`/`elif`/`else`, `while`, `for i in range(n):`, `break`, `continue`
-- Functions: `def name(param: type) -> return_type:`, default params, keyword args
-- Classes: `class Name:`, `__init__`, instance/static methods
-- Dunder methods: `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__iter__`/`__next__`, arithmetic/comparison/unary operators, `__getitem__`/`__setitem__`/`__contains__`
-- Inheritance: `class Child(Parent):`, `super().__init__()`, `@abstract`, `@virtual`, `@override`
-- Interfaces: `interface IName:` with `...` bodies — **IMPORTANT**: Interfaces CANNOT declare fields, only method signatures and `property` declarations
-- **Abstract methods**: Two equivalent syntaxes: `@abstract def area(self) -> float: ...` OR body-less `@abstract def area(self) -> float` (no colon)
-- **Division**: `/` is ALWAYS float division (`5 / 2` → `2.5`). `//` is floor division (`5 // 2` → `2`)
-- Structs: `struct Name:`
-- Enums: `enum Name:` with explicit values
-- Type aliases: `type UserId = int`
-- Basic generics: `class Box[T]:`, `def foo[T](x: T) -> T:`
-- Imports: `import module`, `from module import item`
-- Built-ins: `print(value)` - SINGLE ARGUMENT ONLY, `range()`, `len()`, `pow()`, `round()`, `divmod()`, `min()`, `max()`, `sum()`, `all()`, `any()`, `sorted()`, `reversed()`, `enumerate()`, `zip()`, `filter()`, `map()`, `int()`, `float()`, `bool()`, `str()`, `isinstance()`, `type()`, `hash()`, `repr()`, `input()`, `iter()`, `next()`
-- Tuple types: `tuple[T1, T2]`, tuple unpacking in for loops
-- F-strings: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
-- Collections: `list[int]`, `dict[str, int]`, `set[int]` with literals `[1,2,3]`, `{{"key": val}}`
-- Comprehensions: `[x * 2 for x in range(10)]`
-- Exception handling: `try`, `except`, `finally`, `raise`
-- Available exception types: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
-- Lambdas: `lambda x: x * 2` (parameter types inferred from context)
-- .NET interop: `from system import Console`
-- Optional types: `T?`, `Some(value)`, `None()`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
-- Result types: `T !E`, `Ok(value)`, `Err(error)`, `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
-- Maybe expression: `maybe nullable_value` (converts `T | None` to `T?`)
-- Try expression: `try risky_call()`, `try[ExceptionType] expr` (wraps in Result)
-
-### ❌ FORBIDDEN (DO NOT USE):
-- NO main() call at module level - `main()` is auto-invoked by runtime
-- NO bare executable statements at module level - wrap in `def main():`
-- NO multi-argument print: `print(a, b)` - use multiple print() calls or f-strings
-- NO async/await - not implemented
-- NO with statement - context managers not implemented
-- NO walrus operator: `:=` - not implemented
-- NO pattern matching: `match`/`case` - not implemented
-- NO tuple unpacking in assignments: `a, b = 1, 2` - may have issues
-- NO tuple unpacking in comprehensions: `[v for k, v in items]` - not supported
-- NO @interface decorator - `interface` is a keyword, use `interface IName:` syntax
-- NO combining @abstract and @virtual - abstract methods are inherently virtual in .NET, use only @abstract
-- NO union types (T | U) - use a common base class or interface instead
-- NO bare string indexing in comparisons/assignments: `s[i] == "a"` or `c: str = s[i]` fails — wrap with `str()`: `str(s[i]) == "a"`
-- NO 'in' operator on strings: `char in "abc"` - not yet supported
-- NO bare char iteration: `for c in s:` yields `char` — use `str(c)` before comparing or assigning to `str`
-- NO `__repr__()` method - removed, only `__str__()` exists
-- NO relative imports: `from .module import x` - NOT SUPPORTED
-- NO package imports: `from package.module import x` - NOT SUPPORTED
-- NO star imports: `from module import *` - NOT SUPPORTED
-- NO circular imports between modules
+{FORBIDDEN_FEATURES_SECTION}
+{MULTIFILE_FORBIDDEN_SECTION}
 
 {BEHAVIORAL_RULES_SECTION}
 
@@ -1075,231 +847,6 @@ CRITICAL RULES:
 7. NO circular imports between modules
 8. Use ONLY simple print() calls with ONE argument
 9. For multiple values, use multiple print() statements or f-strings: print(f"value: {{x}}")"""
-
-
-def get_spec_validation_prompt(
-    code: str,
-    spec_context: str,
-    available_modules: Optional[list[str]] = None,
-) -> str:
-    """Generate a prompt for validating code against the spec."""
-
-    modules_section = ""
-    if available_modules:
-        modules_section = (
-            f"\n## Multi-File Project Context\n\n"
-            f"This file is part of a multi-file project. The following modules "
-            f"are available and can be imported: {', '.join(available_modules)}. "
-            f"Imports from these modules are VALID.\n"
-        )
-
-    return f"""You are a STRICT Sharpy language specification validator for phases 0.1.0-0.1.18.
-{modules_section}
-
-## Program Entry Point Requirement
-
-Every executable Sharpy program MUST have a `main()` function:
-- All executable statements (print, assignments without type annotation, function calls) must be inside `main()`
-- Only declarations are allowed at module level: classes, functions, constants, static fields (with type annotation)
-- Example of valid module-level: `counter: int = 0` (static field with type annotation)
-- Example of INVALID module-level: `x = 5` (no type annotation, or bare statement)
-- **DO NOT call main() yourself** - Sharpy auto-invokes `main()` at runtime
-- Example of INVALID: `def main(): ... \\n main()` - the `main()` call is forbidden
-
-## Module Files (Library Modules)
-
-**IMPORTANT**: Library modules that are IMPORTED by other files do NOT require a `main()` function.
-Only the entry point file (main.spy or a single executable file) needs `main()`.
-If the code contains ONLY declarations (classes, functions, constants) and no executable statements,
-it is a library module and is VALID without `main()`.
-
-## ALLOWED Features (Phases 0.1.0-0.1.18):
-
-### Program Structure
-- Entry point: `def main():` is REQUIRED for executable code
-- Module-level declarations: classes, functions, constants, static fields (with type annotation)
-
-### Variables & Types (0.1.3)
-- Variable declaration: `x: int = 42` or `x = 42` (inference)
-- Primitive types: `int`, `str`, `bool`, `float`
-- Additional numeric types: `long` (64-bit int), `double` (explicit 64-bit float), `float32` (32-bit float)
-- Nullable types: `int?`, `str?`, etc.
-- Constants: `const NAME: int = 42`
-
-### Operators (0.1.3)
-- Arithmetic: `+`, `-`, `*`, `/`, `//`, `%`, `**`
-- Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
-- Logical: `and`, `or`, `not`
-- Assignment: `=`, `+=`, `-=`, `*=`, `/=`
-- Null coalescing: `??`
-- Null conditional: `?.`
-- Containment: `x in collection`, `x not in collection` (lists, sets, dicts)
-
-### Control Flow (0.1.4)
-- If: `if condition:` / `elif condition:` / `else:`
-- While: `while condition:`
-- For: `for i in range(n):`, `for i in range(start, end):`, `for i in range(start, end, step):`
-- Break/continue inside loops
-- Pass statement
-
-### Functions (0.1.5)
-- Definition: `def name(param: type) -> return_type:`
-- Default parameters: `def foo(x: int = 5) -> int:`
-- Keyword arguments: `foo(x=10, y=20)`
-- Return statement: `return value`
-
-### Classes (0.1.6)
-- Class definition: `class Name:`
-- Fields: `x: int` in class body
-- Constructor: `def __init__(self, ...):`
-- Instance methods: `def method(self) -> type:`
-- Static methods: methods without `self` parameter
-- Field access: `obj.field`, `self.field`
-- Dunder methods: `__str__`, `__eq__`/`__hash__`, `__bool__`, `__len__`, `__iter__`/`__next__`, arithmetic operators (`__add__` etc.), comparison operators (`__lt__` etc.), unary operators (`__neg__` etc.), container protocol (`__getitem__`, `__setitem__`, `__contains__`)
-
-### Inheritance & Interfaces (0.1.7)
-- Single inheritance: `class Child(Parent):`
-- Super calls: `super().__init__(...)`, `super().method()`
-- Abstract classes: `@abstract` decorator
-- Abstract methods: `@abstract` + `...` body
-- Virtual methods: `@virtual` decorator
-- Override methods: `@override` decorator
-- Final: `@final` decorator
-- Interfaces: `interface IName:` with `...` method bodies
-- Multiple interfaces: `class Foo(IBar, IBaz):`
-- Access modifiers: `@private`, `@protected`, `@internal`
-
-### Structs & Enums (0.1.8)
-- Structs: `struct Name:` with fields and methods
-- Enums: `enum Name:` with explicit values (e.g., `RED = 1`)
-- Enum access: `EnumName.VALUE`
-- Enum output: When printed, displays PascalCase (e.g., `print(Status.PENDING)` outputs `Pending`)
-
-### Type System (0.1.9)
-- Nullable types: `T?` syntax
-- Type narrowing: `if x is not None:`
-- Type aliases: `type UserId = int`
-- Basic generics: `class Box[T]:`, `def foo[T](x: T) -> T:`
-- Generic constraints: `[T: IComparable]`
-
-### Module System (0.1.10)
-- Import: `import module`, `import module as alias`
-- From import: `from module import item1, item2`
-- Import alias: `from module import Item as Alias`
-
-### Built-ins
-- `print(value)` - single argument only
-- `range()` in for loops
-- `len()`, `pow()`, `round()`, `divmod()`, `min()`, `max()`, `sum()`, `all()`, `any()`
-- `sorted()`, `reversed()`, `enumerate()`, `zip()`, `filter()`, `map()`
-- `int()`, `float()`, `bool()`, `str()` (type conversions)
-- `isinstance()`, `type()`, `hash()`, `repr()`, `input()`, `iter()`, `next()`
-
-### Tuple Types
-- Tuple type annotations: `tuple[T1, T2]`, `tuple[T1, T2, T3]`
-- Tuple unpacking in for loops: `for i, val in enumerate(items):`
-
-### Literals
-- Integer: `42`, `-10`
-- Float: `3.14`
-- String: `"hello"`, `'world'`
-- F-strings: `f"Hello {{name}}"`, `f"Result: {{x + y}}"`
-- Boolean: `True`, `False`
-- None: `None`
-
-### Collections (0.1.11)
-- List literals: `nums: list[int] = [1, 2, 3]`
-- Dict literals: `scores: dict[str, int] = {{"alice": 100}}`
-- Set literals: `unique: set[int] = {{1, 2, 3}}`
-- List comprehensions: `[x * 2 for x in range(10)]`
-- Dict/Set comprehensions: `{{k: v for k, v in items}}`
-- Collection iteration: `for item in collection:`
-- **WARNING**: Set iteration order is NOT deterministic. Do NOT rely on set iteration order in expected output. Sort first if deterministic output is needed: `sorted(my_set)`.
-- `str.split()`: `"a,b,c".split(",")` returns `list[str]`.
-- len(): `len(collection)`
-- Indexing: `collection[index]`, `dict[key]`
-
-### .NET Interop (0.1.12)
-- Import .NET namespaces: `from system import Console`
-- Use .NET types after importing
-
-### Exception Handling (0.1.13)
-- Try/except: `try: ... except ExceptionType as e: ...`
-- Try/finally: `try: ... finally: ...`
-- Raise: `raise ValueError("message")`
-- Available exception types: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
-
-### Lambda Expressions (0.1.14)
-- Lambdas: `lambda x: x * 2`, `lambda a, b: a + b`
-- Higher-order functions
-- Lambda parameter types inferred from expected function type context
-- **WARNING**: Lambdas CANNOT be assigned to `auto` variables — use an explicit function type: `square: (int) -> int = lambda n: n * n`
-
-### Optional Types (0.1.15)
-- Optional type annotation: `T?` or `Optional[T]`
-- Optional constructors: `Some(value)`, `None()`
-- Optional methods: `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`
-- **IMPORTANT**: After `if x is not None:` narrowing, `x` is already the unwrapped type. Do NOT call `.unwrap()` after narrowing — it will fail because the type is no longer Optional.
-
-### Result Types (0.1.16)
-- Result type annotation: `T !E` or `Result[T, E]`
-- Result constructors: `Ok(value)`, `Err(error)`
-- Result methods: `.unwrap()`, `.unwrap_or(default)`, `.map(fn)`, `.map_err(fn)`
-
-### Maybe Expression (0.1.17)
-- Maybe: `maybe expr` converts `T | None` to `T?` (Optional)
-
-### Try Expression (0.1.18)
-- Try: `try expr` wraps in `Result[T, Exception]`
-- Try with type: `try[ExceptionType] expr` catches specific exception
-
-## FORBIDDEN Features (NOT in phases 0.1.0-0.1.18):
-
-❌ Calling main() at module level - main() is auto-invoked, do NOT call it yourself - REJECT
-❌ Bare executable statements at module level (must be in `main()`) - REJECT
-❌ Multi-argument print: `print(a, b, c)` - REJECT (use multiple print calls or f-strings)
-❌ Async/await: `async def`, `await` - REJECT (not implemented)
-❌ Context managers: `with` statement - REJECT (not implemented)
-❌ Walrus operator: `:=` - REJECT (not implemented)
-❌ Pattern matching: `match`/`case` - REJECT (not implemented)
-❌ Tuple unpacking in assignments: `a, b = 1, 2` - REJECT (may have issues)
-❌ Tuple unpacking in comprehensions: `[v for k, v in items]` - REJECT (not supported)
-❌ isinstance with tuple: `isinstance(x, (int, str))` - REJECT
-❌ @interface decorator: `interface` is a keyword, not a decorator - REJECT (use `interface IName:`)
-❌ Combining @abstract and @virtual on same method - REJECT (abstract is inherently virtual)
-❌ Union types (T | U) - REJECT (not supported, use base class or interface)
-❌ Bare string indexing in comparisons/assignments: `s[i] == "a"` or `c: str = s[i]` - REJECT (wrap with `str()`: `str(s[i])`)
-❌ 'in' operator on strings: `char in "abc"` - REJECT (not yet supported)
-❌ Bare char iteration: `for c in s:` yields char, not str - REJECT unless wrapped with `str(c)` before use
-❌ `__repr__()` method - REJECT (removed, only `__str__()` exists)
-
-## Code to Validate
-
-```python
-{code}
-```
-
-## Validation Task
-
-Scan the code line by line. If ANY forbidden feature is used, mark as INVALID.
-
-## Response Format
-
-If ALL features are from the allowed list:
-```
-VALID
-The code uses only features from phases 0.1.0-0.1.18.
-```
-
-If ANY forbidden feature is found:
-```
-INVALID
-Reason: [specific forbidden feature found]
-Line: [line number]
-Found: [the problematic code]
-```
-
-BE VERY STRICT. When in doubt, reject the code."""
 
 
 def get_output_verification_prompt(

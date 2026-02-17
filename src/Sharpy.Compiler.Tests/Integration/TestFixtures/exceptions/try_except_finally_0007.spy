@@ -1,0 +1,19 @@
+# Test try/except/finally with resource cleanup pattern
+def main():
+    result: int = 0
+    
+    try:
+        result = 10 // 2
+        print(result)
+    except ZeroDivisionError as e:
+        print("Division by zero")
+        result = -1
+    finally:
+        print("Cleanup executed")
+    
+    print(result)
+
+# EXPECTED OUTPUT:
+# 5
+# Cleanup executed
+# 5

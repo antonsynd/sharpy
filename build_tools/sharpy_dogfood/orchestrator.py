@@ -23,11 +23,9 @@ from .compiler import (
     verify_compiler_available,
 )
 from .prompts import (
-    get_spec_context,
     get_code_generation_prompt,
     get_multifile_generation_prompt,
     get_multifile_regeneration_prompt,
-    get_spec_validation_prompt,
     get_regeneration_prompt,
     get_test_uniqueness_prompt,
     extract_expected_output,
@@ -469,7 +467,6 @@ class DogfoodOrchestrator:
         self.success_reporter = SuccessReporter(config.successes_dir)
         self.skip_reporter = SkipReporter(config.skips_dir)
         self.summary_reporter = SummaryReporter(config.output_dir)
-        self.spec_context: Optional[str] = None
         self.example_snippets: list[str] = []
         self.test_fixtures: dict[str, list[tuple[str, str]]] = {}
         self.fixtures_prompt_section: str = ""
@@ -493,13 +490,6 @@ class DogfoodOrchestrator:
             print("ERROR: Sharpy compiler not available", file=sys.stderr)
             return False
         print("Sharpy compiler is available", file=sys.stderr)
-
-        # Load specification context
-        print("Loading specification context...", file=sys.stderr)
-        self.spec_context = get_spec_context(
-            self.config.spec_dir, self.config.phases_file
-        )
-        print(f"Loaded {len(self.spec_context)} chars of spec context", file=sys.stderr)
 
         # Load example snippets
         self._load_example_snippets()
@@ -775,7 +765,6 @@ class DogfoodOrchestrator:
     async def _generate_code(self, feature_focus: str, complexity: str) -> AIResult:
         """Generate Sharpy code using AI."""
         prompt = get_code_generation_prompt(
-            self.spec_context,
             feature_focus=feature_focus,
             complexity=complexity,
             example_snippets=(
@@ -799,7 +788,6 @@ class DogfoodOrchestrator:
     ) -> AIResult:
         """Regenerate Sharpy code with feedback from validation failure."""
         prompt = get_regeneration_prompt(
-            self.spec_context,
             feature_focus=feature_focus,
             complexity=complexity,
             previous_code=previous_code,
@@ -994,7 +982,6 @@ class DogfoodOrchestrator:
     ) -> AIResult:
         """Generate multi-file Sharpy code using AI."""
         prompt = get_multifile_generation_prompt(
-            self.spec_context,
             feature_focus=feature_focus,
             complexity=complexity,
             example_snippets=(
@@ -1018,7 +1005,6 @@ class DogfoodOrchestrator:
     ) -> AIResult:
         """Regenerate multi-file Sharpy code with feedback from validation failure."""
         prompt = get_multifile_regeneration_prompt(
-            self.spec_context,
             feature_focus=feature_focus,
             complexity=complexity,
             previous_files=previous_files,
@@ -1571,17 +1557,6 @@ class DogfoodOrchestrator:
             if result.success:
                 return None
             return result.error or "Unknown compiler error"
-
-    async def _validate_code(
-        self, code: str, available_modules: Optional[list[str]] = None
-    ) -> AIResult:
-        """Validate code against the Sharpy spec."""
-        prompt = get_spec_validation_prompt(
-            code, self.spec_context, available_modules=available_modules
-        )
-        return await self.backend_manager.execute(
-            prompt, timeout=60.0  # Validation should be quick
-        )
 
     async def _verify_output(self, code: str, expected: str, actual: str) -> AIResult:
         """Verify output using AI for fuzzy comparison."""
