@@ -292,6 +292,8 @@ def format_fixtures_for_prompt(
     fixtures: dict[str, list[tuple[str, str]]],
     max_examples_per_category: int = 2,
     max_total_chars: int = 3000,
+    max_categories: int = 8,
+    shuffle: bool = True,
 ) -> str:
     """Format test fixtures as a prompt section showing what already exists.
 
@@ -299,10 +301,16 @@ def format_fixtures_for_prompt(
         fixtures: Dict from load_test_fixtures
         max_examples_per_category: Max number of example files to show per category
         max_total_chars: Maximum total characters for the section
+        max_categories: Maximum number of categories to include. When shuffling
+            is enabled, a random subset is selected each call for variety.
+        shuffle: If True, randomize category order and example selection so
+            successive calls produce different prompt content.
 
     Returns:
         Formatted string describing existing tests.
     """
+    import random
+
     if not fixtures:
         return ""
 
@@ -317,7 +325,17 @@ def format_fixtures_for_prompt(
 
     total_chars = 0
 
-    for category, test_files in sorted(fixtures.items()):
+    # Determine category ordering
+    categories = list(fixtures.items())
+    if shuffle:
+        random.shuffle(categories)
+    else:
+        categories.sort(key=lambda x: x[0])
+
+    # Cap number of categories
+    categories = categories[:max_categories]
+
+    for category, test_files in categories:
         if total_chars > max_total_chars:
             parts.append(f"\n... and more categories (truncated for brevity)")
             break
@@ -329,8 +347,15 @@ def format_fixtures_for_prompt(
         )
         parts.append(f"Existing tests: {', '.join(test_names)}")
 
-        # Show a couple of examples
-        for name, content in test_files[:max_examples_per_category]:
+        # Pick example files to show
+        if shuffle:
+            examples = random.sample(
+                test_files, min(max_examples_per_category, len(test_files))
+            )
+        else:
+            examples = test_files[:max_examples_per_category]
+
+        for name, content in examples:
             # Truncate long examples
             if len(content) > 400:
                 content = content[:400] + "\n# ... (truncated)"

@@ -524,7 +524,6 @@ class DogfoodOrchestrator:
         self.summary_reporter = SummaryReporter(config.output_dir)
         self.example_snippets: list[str] = []
         self.test_fixtures: dict[str, list[tuple[str, str]]] = {}
-        self.fixtures_prompt_section: str = ""
         self.auto_converted_count: int = 0
 
     async def initialize(self) -> bool:
@@ -580,10 +579,21 @@ class DogfoodOrchestrator:
             return
 
         self.test_fixtures = load_test_fixtures(fixtures_dir)
-        self.fixtures_prompt_section = format_fixtures_for_prompt(
+        # Don't pre-format; _get_fixtures_prompt_section() generates a fresh
+        # shuffled section per iteration for variety.
+
+    def _get_fixtures_prompt_section(self) -> str:
+        """Generate a shuffled fixtures prompt section for this iteration.
+
+        Each call produces a different random subset of categories and examples,
+        which encourages the LLM to produce more varied code across iterations.
+        """
+        return format_fixtures_for_prompt(
             self.test_fixtures,
             max_examples_per_category=2,
             max_total_chars=3000,
+            max_categories=8,
+            shuffle=True,
         )
 
     def _load_example_snippets(self) -> None:
@@ -874,7 +884,7 @@ class DogfoodOrchestrator:
                 if self.example_snippets
                 else None
             ),
-            existing_fixtures_section=self.fixtures_prompt_section,
+            existing_fixtures_section=self._get_fixtures_prompt_section(),
         )
         if self._verbose:
             print(
@@ -907,7 +917,7 @@ class DogfoodOrchestrator:
                 if self.example_snippets
                 else None
             ),
-            existing_fixtures_section=self.fixtures_prompt_section,
+            existing_fixtures_section=self._get_fixtures_prompt_section(),
         )
         return await self.backend_manager.execute(
             prompt, timeout=self.config.generation_timeout
@@ -1133,7 +1143,7 @@ class DogfoodOrchestrator:
                 if self.example_snippets
                 else None
             ),
-            existing_fixtures_section=self.fixtures_prompt_section,
+            existing_fixtures_section=self._get_fixtures_prompt_section(),
         )
         return await self.backend_manager.execute(
             prompt, timeout=self.config.generation_timeout
@@ -1160,7 +1170,7 @@ class DogfoodOrchestrator:
                 if self.example_snippets
                 else None
             ),
-            existing_fixtures_section=self.fixtures_prompt_section,
+            existing_fixtures_section=self._get_fixtures_prompt_section(),
         )
         return await self.backend_manager.execute(
             prompt, timeout=self.config.generation_timeout
