@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import AbstractSet, Mapping, MutableSequence, Sequence
+from typing import AbstractSet, Mapping, MutableSequence, Sequence, Tuple
 
 _logger: logging.Logger = logging.getLogger(name="build_sharpy")
 
@@ -30,6 +30,14 @@ CSHARP_PROJECTS: Sequence[Path] = [
     CORE_DIR / "Sharpy.Core.csproj",
     CORE_TEST_DIR / "Sharpy.Core.Tests.csproj",
 ]
+
+CSHARP_CS: str = "cs"
+CSHARP_CSHARP: str = "csharp"
+CSHARP_CONSTS: AbstractSet[str] = {CSHARP_CS, CSHARP_CSHARP}
+PYTHON_PY: str = "py"
+PYTHON_PYTHON: str = "python"
+PYTHON_CONSTS: AbstractSet[str] = {PYTHON_PY, PYTHON_PYTHON}
+TARGET_CONSTS: Tuple[str, ...] = (CSHARP_CSHARP, CSHARP_CS, PYTHON_PYTHON, PYTHON_PY)
 
 
 def main() -> None:
@@ -60,26 +68,19 @@ def main() -> None:
         install(args=args, rest=rest)
     elif command == "format":
         format(args=args, rest=rest)
-        format_python(args=args, rest=rest)
     elif command == "debug":
         format(args=args, rest=rest)
-        format_python(args=args, rest=rest)
         build(args=args, rest=rest, release=False)
         test(args=args, rest=rest, release=False)
-        test_python(args=args, rest=rest)
     elif command == "release":
         format(args=args, rest=rest)
-        format_python(args=args, rest=rest)
         build(args=args, rest=rest, release=False)
         test(args=args, rest=rest, release=False)
-        test_python(args=args, rest=rest)
         build(args=args, rest=rest, release=True)
         test(args=args, rest=rest, release=True)
-        test_python(args=args, rest=rest)
         install(args=args, rest=rest)
     elif command == "test":
         test(args=args, rest=rest, release=False)
-        test_python(args=args, rest=rest)
     elif command == "help":
         parser.print_help()
     else:
@@ -97,7 +98,7 @@ def create_parser() -> argparse.ArgumentParser:
         "--project",
         type=str,
         default="all",
-        choices=("all", "compiler", "lib", "tests"),
+        choices=("all", "cli", "compiler", "lib", "tests"),
     )
     build_parser.add_argument("--release", action="store_true")
     clean_parser = subparsers.add_parser(
@@ -128,28 +129,28 @@ def create_parser() -> argparse.ArgumentParser:
     format_parser.add_argument(
         "--target",
         action="append",
-        choices=("cs", "csharp", "rs", "rust"),
+        choices=TARGET_CONSTS,
         default=None,
     )
     debug_parser = subparsers.add_parser("debug", help="Runs all steps.")
     debug_parser.add_argument(
         "--target",
         action="append",
-        choices=("cs", "csharp", "rs", "rust"),
+        choices=TARGET_CONSTS,
         default=None,
     )
     release_parser = subparsers.add_parser("release", help="Runs all steps.")
     release_parser.add_argument(
         "--target",
         action="append",
-        choices=("cs", "csharp", "rs", "rust"),
+        choices=TARGET_CONSTS,
         default=None,
     )
     test_parser = subparsers.add_parser("test", help="Runs tests.")
     test_parser.add_argument(
         "--target",
         action="append",
-        choices=("cs", "csharp", "rs", "rust"),
+        choices=TARGET_CONSTS,
         default=None,
     )
     _ = subparsers.add_parser("help", help="Prints this help message.")
@@ -161,7 +162,7 @@ def get_targets(args: argparse.Namespace) -> AbstractSet[str]:
     if args.target:
         return set(args.target)
 
-    return {"cs", "rs"}
+    return {CSHARP_CS, PYTHON_PY}
 
 
 def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
@@ -333,6 +334,16 @@ exec dotnet "{target_dir}/sharpyc.dll" "$@"
 
 
 def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    targets = get_targets(args)
+
+    if CSHARP_CS in targets or CSHARP_CSHARP in targets:
+        format_csharp(args=args, rest=rest)
+
+    if PYTHON_PY in targets or PYTHON_PYTHON in targets:
+        format_python(args=args, rest=rest)
+
+
+def format_csharp(args: argparse.Namespace, rest: Sequence[str]) -> None:
     try:
         for project in CSHARP_PROJECTS:
             if not project.exists():
@@ -389,6 +400,16 @@ def format_python(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
 
 def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
+    targets = get_targets(args)
+
+    if CSHARP_CS in targets or CSHARP_CSHARP in targets:
+        test_csharp(args=args, rest=rest, release=release)
+
+    if PYTHON_PY in targets or PYTHON_PYTHON in targets:
+        test_python(args=args, rest=rest)
+
+
+def test_csharp(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
     build_type: str = "Release" if release else "Debug"
 
     get_logger().info(
