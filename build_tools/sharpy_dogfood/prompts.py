@@ -2,8 +2,42 @@
 Prompt templates for code generation, validation, and verification.
 """
 
+import re
 from pathlib import Path
 from typing import Optional
+
+# =============================================================================
+# Error-pattern-specific remediation hints for retry prompts.
+# Each entry is (regex_pattern, human-readable hint).  Patterns are matched
+# case-insensitively against the full validation error text.
+# =============================================================================
+
+RETRY_REMEDIATION: list[tuple[str, str]] = [
+    (r"SPY0456", "When defining __hash__, you MUST also define __eq__(self, other: object). "
+     "Note: the parameter type must be 'object', not the class type."),
+    (r"SPY0018", "Remove ALL backtick characters (`) from your code. "
+     "Backticks are only valid as identifier escape syntax in Sharpy, not as code fences."),
+    (r"SPY0220.*list\[.*\?\]", "Cannot create list[T?] from mixed T and None literals. "
+     "Use an empty list and .append() each value individually."),
+    (r"SPY0301.*no exported symbol", "Check that the imported symbol name matches exactly "
+     "(case-sensitive) and that the symbol is defined at the module's top level."),
+    (r"SPY0907", "An internal compiler error occurred. Try simplifying your code — "
+     "avoid deeply nested generics or complex cross-module patterns."),
+    (r"FormatException.*0x", "Hex literals in enum values may not be supported yet. "
+     "Use decimal integer values instead."),
+]
+
+
+def _get_remediation_hint(validation_error: str) -> str:
+    """Match validation_error against known patterns and return remediation hints."""
+    hints = []
+    for pattern, hint in RETRY_REMEDIATION:
+        if re.search(pattern, validation_error, re.IGNORECASE):
+            hints.append(hint)
+    if not hints:
+        return ""
+    return "\n\n## Remediation Hints\n\n" + "\n".join(f"- {h}" for h in hints) + "\n"
+
 
 # =============================================================================
 # Shared prompt sections — referenced by all 4 generation/regeneration prompts.
@@ -705,6 +739,8 @@ def get_regeneration_prompt(
         for i, snippet in enumerate(example_snippets[:2], 1):
             examples_section += f"### Example {i}\n```python\n{snippet}\n```\n\n"
 
+    remediation_hint = _get_remediation_hint(validation_error)
+
     return f"""You are regenerating Sharpy code for compiler testing (dogfooding).
 
 ## REGENERATION ATTEMPT {attempt}/{max_attempts}
@@ -722,7 +758,7 @@ Your previous code FAILED validation. You must fix the issue and regenerate.
 ```
 {validation_error}
 ```
-
+{remediation_hint}
 ## Instructions
 
 1. Analyze the validation error carefully
@@ -806,6 +842,8 @@ def get_multifile_regeneration_prompt(
         for filename, code in previous_files.items():
             files_section += f"\n=== FILE: {filename} ===\n{code}\n"
 
+    remediation_hint = _get_remediation_hint(validation_error)
+
     return f"""You are regenerating a MULTI-FILE Sharpy project for compiler testing (dogfooding).
 
 ## REGENERATION ATTEMPT {attempt}/{max_attempts}
@@ -823,7 +861,7 @@ Your previous multi-file project FAILED validation. You must fix the issue and r
 ```
 {validation_error}
 ```
-
+{remediation_hint}
 ## Instructions
 
 1. Analyze the validation error carefully
