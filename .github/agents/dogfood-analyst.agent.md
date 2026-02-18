@@ -2,7 +2,8 @@
 name: Dogfood Analyst
 description: Investigates dogfood_output/ and classifies each failure by root cause. Produces structured triage reports. Can write temp files for reproductions and delegate to specialized agents.
 tools: ["read", "search", "execute"]
-infer: false
+user-invokable: true
+disable-model-invocation: true
 ---
 # Dogfood Analyst
 

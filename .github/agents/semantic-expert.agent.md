@@ -2,7 +2,8 @@
 name: Semantic Expert
 description: Implements and maintains Sharpy semantic analysis — type checking, name resolution, scope analysis. Owns src/Sharpy.Compiler/Semantic/.
 tools: ["read", "edit", "search", "execute"]
-infer: false
+user-invokable: true
+disable-model-invocation: false
 ---
 # Semantic Expert
 

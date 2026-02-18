@@ -2,7 +2,8 @@
 name: Verification Expert
 description: Read-only verification of compiler, stdlib, CLI, and documentation. Runs tests and produces verification reports.
 tools: ["read", "search", "execute"]
-infer: false
+user-invokable: true
+disable-model-invocation: false
 ---
 # Verification Expert
 

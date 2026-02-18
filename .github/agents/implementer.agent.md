@@ -2,6 +2,8 @@
 name: Implementer
 description: Implements Sharpy compiler/stdlib tasks — writes code, runs tests, creates branches, submits PRs.
 tools: ["read", "edit", "search", "execute", "github/*", "agent", "todo"]
+user-invokable: true
+disable-model-invocation: false
 ---
 # Implementer
 

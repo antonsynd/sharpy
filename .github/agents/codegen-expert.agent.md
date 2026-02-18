@@ -2,7 +2,8 @@
 name: CodeGen Expert
 description: Implements Sharpy code generation via Roslyn SyntaxFactory. Owns src/Sharpy.Compiler/CodeGen/.
 tools: ["read", "edit", "search", "execute"]
-infer: false
+user-invokable: true
+disable-model-invocation: false
 ---
 # CodeGen Expert
 

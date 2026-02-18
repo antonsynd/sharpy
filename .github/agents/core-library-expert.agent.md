@@ -2,7 +2,8 @@
 name: Core Library Expert
 description: Implements and maintains Sharpy.Core standard library — Pythonic collections, builtins, matching Python behavior.
 tools: ["read", "edit", "search", "execute"]
-infer: false
+user-invokable: true
+disable-model-invocation: false
 ---
 # Core Library Expert
 

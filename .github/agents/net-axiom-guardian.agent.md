@@ -2,7 +2,8 @@
 name: .NET Axiom Guardian
 description: Guards Axiom 1 — .NET Runtime Compatibility. Ensures valid C# 9.0 output, verifies .NET interop. Advisory only.
 tools: ["read", "search", "execute"]
-infer: false
+user-invokable: true
+disable-model-invocation: false
 ---
 # .NET Axiom Guardian
 

@@ -2,7 +2,8 @@
 name: Parser Expert
 description: Implements and maintains the Sharpy parser — AST construction, grammar, precedence climbing. Owns src/Sharpy.Compiler/Parser/.
 tools: ["read", "edit", "search", "execute"]
-infer: false
+user-invokable: true
+disable-model-invocation: false
 ---
 # Parser Expert
 

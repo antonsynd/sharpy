@@ -2,7 +2,8 @@
 name: Hallucination Defense
 description: Fact-checks claims about .NET, Roslyn, Python, and Sharpy. Validates assumptions before they become bugs. Read-only.
 tools: ["read", "search", "execute", "web"]
-infer: false
+user-invokable: true
+disable-model-invocation: false
 ---
 # Hallucination Defense
 

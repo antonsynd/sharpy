@@ -2,7 +2,8 @@
 name: Code Reviewer
 description: Reviews Sharpy PRs for security, performance, SOLID principles, and design alignment. Read-only.
 tools: ["read", "search", "github/*"]
-infer: false
+user-invokable: true
+disable-model-invocation: false
 ---
 # Code Reviewer
 

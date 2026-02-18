@@ -2,7 +2,8 @@
 name: Test Expert
 description: Designs and implements tests for Sharpy compiler and stdlib. Focuses on coverage, edge cases, regression prevention.
 tools: ["read", "edit", "search", "execute"]
-infer: false
+user-invokable: true
+disable-model-invocation: false
 ---
 # Test Expert
 
