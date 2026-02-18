@@ -1,3 +1,6 @@
+<!-- Verified by /project:verify-plan on 2026-02-18 -->
+<!-- Verification result: PASS WITH CORRECTIONS -->
+
 # Sharpy Issue Sprint Plan — 2026-02-18
 
 **Branch:** `fix/issue-sprint-feb18`
@@ -80,7 +83,7 @@ inference from the TypeChecker body traversal, but imported modules only go thro
    used for parameter types, where `null` has different semantics.
 
 3. **Add multi-file integration test** at
-   `src/Sharpy.Compiler.Tests/Integration/TestFixtures/multifile/cross_module_void_method/`:
+   `src/Sharpy.Compiler.Tests/Integration/TestFixtures/multi_file/cross_module_void_method/`: [CORRECTED: directory is `multi_file/` not `multifile/`]
    - `lib.spy`:
      ```python
      class StringBuilder:
@@ -140,7 +143,7 @@ The issue description shows `from animals import Mammal` failing with SPY0301 ev
 ### Investigation Steps
 
 1. **Create reproduction test first** at
-   `src/Sharpy.Compiler.Tests/Integration/TestFixtures/multifile/cross_module_inheritance/`:
+   `src/Sharpy.Compiler.Tests/Integration/TestFixtures/multi_file/cross_module_inheritance/`: [CORRECTED: directory is `multi_file/` not `multifile/`]
    - `animals.spy` (as in issue)
    - `main.spy` importing all three classes
    - `main.expected` with expected output
@@ -220,7 +223,7 @@ and `FunctionDef.Parameters` from the AST to build stubs.
    a. In `CollectInterfaceMethodDefs`, when `_interfaceDefinitions.ContainsKey` returns
       false, fall back to checking the SymbolTable:
       ```csharp
-      var typeSymbol = _context.LookupType(typeName);
+      var typeSymbol = _context.SymbolTable.LookupType(typeName); // [CORRECTED: _context has no LookupType; use _context.SymbolTable.LookupType]
       if (typeSymbol?.TypeKind == TypeKind.Interface)
       {
           // Use typeSymbol.Methods instead of InterfaceDef.Body
@@ -323,7 +326,7 @@ the semantic type checker says the loop variable is `str`.
    ```
 
 2. **Fix string iteration** in `GenerateForEachCoreInner()` at
-   `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Statements.cs:~1286`:
+   `src/Sharpy.Compiler/CodeGen/RoslynEmitter.Statements.cs:1286` (note: `GenerateForEachCore` wrapper is at line 1270): [CORRECTED: clarified line numbers]
 
    When the iterator is a string, wrap the loop variable assignment with `.ToString()`:
    - Detect string iteration by checking `GetExpressionSemanticType` on the `ForStatement.Iterator`
@@ -501,9 +504,10 @@ The lexer's `ReadHexNumber()` stores the full `"0x..."` prefix in the token valu
    Note: Use `long` throughout to handle large hex values like `0xFF000000` that exceed
    `int.MaxValue`.
 
-3. **Also check** if the existing code already handles underscores in integer literals
-   (e.g., `1_000_000`). The lexer strips underscores for some literal types but may
-   preserve them for hex. Add `Replace("_", "")` to be safe.
+3. **Note on underscores**: The lexer's `ReadHexNumber()` does NOT append underscores to
+   the StringBuilder — they are consumed but stripped. The `Replace("_", "")` in the fix
+   above is therefore unnecessary for hex tokens, but harmless as a safety measure.
+   [CORRECTED: lexer strips underscores from hex/binary/octal tokens during lexing]
 
 4. **Add test fixtures**:
    - `enum_hex_values.spy`:
@@ -657,8 +661,9 @@ Roslyn may emit `5` instead of `5.0`, losing the float type information.
    RETRY_REMEDIATION: list[tuple[str, str]] = [
        (r"SPY0456", "When defining __hash__, you MUST also define __eq__(self, other: object). "
         "Note: the parameter type must be 'object', not the class type."),
-       (r"SPY0018", "Remove ALL markdown code fences (```) from your code. "
-        "They are not valid Sharpy syntax."),
+       (r"SPY0018", "Remove ALL backtick characters (`) from your code. "
+        "Backticks are only valid as identifier escape syntax in Sharpy, not as code fences."),
+       # [CORRECTED: SPY0018 is UnterminatedBacktickIdentifier, not markdown fences]
        (r"SPY0220.*list\[.*\?\]", "Cannot create list[T?] from mixed T and None literals. "
         "Use an empty list and .append() each value individually."),
        (r"SPY0301.*no exported symbol", "Check that the imported symbol name matches exactly "
@@ -874,3 +879,40 @@ for imported symbols. Fix #186 first (simplest, highest impact), then check if #
 | #108 (str.format parser) | v0.6 feature, large scope |
 | #192 (dogfood timeout tracing) | Low severity, observability |
 | #193 (auto-generate fixtures) | Nice-to-have, low priority |
+
+---
+
+## Verification Summary
+
+**Result:** PASS WITH CORRECTIONS
+**Verified on:** 2026-02-18
+**Plan file:** `plans/issue-sprint-2026-02-18.md`
+
+### Corrections Made
+
+1. **Task 1 & 2**: Multi-file test fixture directory is `multi_file/` (with underscore), not `multifile/`. Corrected both references.
+2. **Task 3**: `_context.LookupType(typeName)` does not exist — `CodeGenContext` has no `LookupType` method. Corrected to `_context.SymbolTable.LookupType(typeName)`.
+3. **Task 4**: Clarified line numbers — `GenerateForEachCore` is at line 1270, `GenerateForEachCoreInner` at line 1286.
+4. **Task 6**: The lexer does NOT include underscores in hex/binary/octal token values (they are consumed but not appended to the StringBuilder). The `Replace("_", "")` is harmless but unnecessary for these token types. Corrected the description.
+5. **Task 8**: SPY0018 is `UnterminatedBacktickIdentifier`, not "markdown code fences". Corrected the remediation hint text.
+
+### Warnings
+
+1. **Task 3 — SymbolTable fallback approach**: The plan proposes using `_context.SymbolTable.LookupType()` as a fallback when `_interfaceDefinitions` misses cross-module interfaces. This is architecturally sound, but note that `SymbolTable.LookupType` returns a `Symbol?`, not a `TypeSymbol?` — a cast may be needed.
+2. **Task 4 — Signature change required**: `GenerateForEachCore` and `GenerateForEachCoreInner` currently take `(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements)`. Adding string-type detection requires either passing the semantic type as a new parameter or calling `GetExpressionSemanticType` on the AST `forStmt.Iterator` node inside the method. The plan suggests the former but should note this changes the method signatures, affecting two call sites in `GenerateFor()` (lines 1233 and 1251).
+3. **Task 5 — Diagnostic code**: SPY0220 (`TypeMismatch`) is an existing code. Using it for "cannot infer type of empty collection" is reasonable (it IS a type mismatch scenario), but the implementer should verify this is the right semantic. Alternatively, a new code in SPY0220-0259 range (type checking) could be added for clarity.
+4. **Task 7 — Root cause needs verification**: The current `GenerateFloatLiteral` (line 143-149) already uses `Literal(literal.Value, value)` which passes the original text. If Roslyn's `SyntaxFactory.Literal(string, double)` still normalizes whole-number doubles despite the text parameter, the `d` suffix fix is correct. The implementer should write a quick Roslyn test to confirm the normalization behavior before applying the fix.
+5. **Task 7 — Suffix handling**: The current implementation ignores `literal.Suffix` entirely. The plan proposes adding suffix handling (for `f`, `d`, etc.) which goes beyond the bug fix. This is fine but should be noted as a minor scope expansion.
+6. **Task 8 — New test file**: `build_tools/tests/test_prompts.py` does not exist and would be a new file. The plan should explicitly note this.
+7. **Task 9 & 10 — Test accessibility**: `Str.FormatFloat` is `internal static`. Tests in `Sharpy.Core.Tests` will need `InternalsVisibleTo` to be set in `Sharpy.Core.csproj` (verify if it's already present), or tests should invoke `FormatFloat` indirectly via `print()` integration tests.
+8. **SPY0907 terminology**: The plan refers to SPY0907 as "ICE" (Internal Compiler Error). The actual diagnostic name is `UnexpectedUnknownType` in the `Infrastructure` class. This is semantically close (it IS an internal error) but not a generic ICE — it specifically means the compiler encountered `UnknownType` where it shouldn't have.
+
+### Missing Steps Added
+
+- None required. All tasks have adequate implementation steps.
+
+### Unchecked Claims
+
+1. **Task 7**: Whether Roslyn's `SyntaxFactory.Literal(string text, double value)` actually normalizes `"5.0"` to `"5"` at output time. The current code already uses this overload with text preservation intent (see comment on line 145). If Roslyn respects the text parameter, the bug may have a different root cause (e.g., runtime `ToString()` formatting rather than codegen).
+2. **Task 1**: The claim that `ConvertTypeAnnotationToSemanticType` converts explicit `-> None` to `SemanticType.Void` was not verified (would require reading the method body).
+3. **Issue #174**: The claim that commit `9a93adc8` resolved the dead code removal was not independently verified against git history.
