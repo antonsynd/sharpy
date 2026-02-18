@@ -1,5 +1,0 @@
-temperature: 42
-unknown
-temperature: 84
-30
-84

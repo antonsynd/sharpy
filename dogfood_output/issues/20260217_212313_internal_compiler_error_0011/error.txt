@@ -1,5 +1,0 @@
-Internal compiler error: Compilation errors:
-
-error[SPY0900]: Compilation failed (FormatException): The input string '0xFF0000' was not in a correct format.
-  --> /tmp/tmp4zw07g0s/main.spy
-

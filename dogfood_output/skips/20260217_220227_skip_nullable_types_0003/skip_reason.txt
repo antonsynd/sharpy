@@ -1,9 +1,0 @@
-Sharpy compiler error after 3 attempts: Compilation errors:
-
-error[SPY0220]: Cannot assign type 'list[object]' to variable of type 'list[int?]'
-  --> /tmp/tmp3iepqx0a/dogfood_test.spy:46:5
-    |
- 46 |     readings: list[int?] = [10, None, 30, None, 50]
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-

@@ -1,9 +1,0 @@
-Internal compiler error: Compilation errors:
-
-error[SPY0907]: Internal: type inference produced UnknownType for 'FunctionCall' without a corresponding error diagnostic. This is a compiler bug.
-  --> /tmp/tmp2drfgaen/main.spy:18:9
-    |
- 18 |         stats.add_shape(shape)
-    |         ^^^^^^^^^^^^^^^^^^^^^^
-    |
-

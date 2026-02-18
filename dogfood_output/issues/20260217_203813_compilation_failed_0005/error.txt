@@ -1,5 +1,0 @@
-Assembly compilation failed:
-
-error[CS0103]: The name 'Max' does not exist in the current context
-  --> /tmp/tmp1lhim5t_/services.spy:51:20
-

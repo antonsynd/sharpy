@@ -1,5 +1,0 @@
-Stripe
-Processing $100.0 via generic using card ...4242
-2.9
-Processing $100.0 via generic
-5.0
